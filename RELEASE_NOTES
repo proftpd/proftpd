@@ -44,11 +44,30 @@ files.
           </IfModule>
 
       QuotaOptions
-        ScanOnLogin
+
+        The mod_quotatab module supports a new QuotaOptions directive.
+        This directive currently supports one option: "ScanOnLogin".
+        With this option enabled, mod_quotatab will perform a
+        (possibly) intensive scan of the directory into which the client
+        is logged, and update the tally for the user accordingly.
 
       SQLOptions
-        noDisconnectOnError
-        useNormalizedGroupSchema
+
+        The mod_sql module supports a new SQLOptions directive.  This
+        directive currently supports two options: "noDisconnectOnError"
+        and "useNormalizedGroupSchema".
+
+        The "noDisconnectOnError" option tells mod_sql not to automatically
+        disconnect the client's session whenever there is a database
+        error.
+
+        The "useNormalizedGroupSchema" option tells mod_sql to use a
+        slightly different SQL statement when retrieving information
+        from a group information table (see SQLGroupInfo).  See:
+
+          doc/contrib/mod_sql.html#SQLOptions
+
+        for details.
 
       TLSCryptoDevice
 
@@ -99,17 +118,38 @@ files.
 
       CreateHome uid gid
 
+        The CreateHome directive now allows creation of non-root-owned
+        parent directories in the path leading up the created home directory.
+        The optional 'uid' and 'gid' parameters for this directive can be
+        used to set the UID and GID of the owner for the parent directories.
+
+        For more details, read:
+
+          doc/howto/CreateHome.html
+
       LogFormat %S, %{version}
 
       SQLConnectInfo MySQL Unix domain socket
 
       SQLNamedQuery
-        %{env:VAR}
+
+        SQL statements configured using mod_sql's SQLNamedQuery directive
+        can now use environment variables using "%{env:VAR}".  The value
+        of the environment variable VAR will be substituted into the
+        SQL statement.
 
       SQLGroupWhereClause, SQLUserWhereClause
-        variables except for %{n} numeric references supported
+
+        These directives, from mod_sql, can now use the same variables as
+        supported by SQLNamedQuery directives, with the exception of "%{n}"
+        numeric references.
 
       TLSRequired auth, auth+data
+
+        The TLSRequired directive for mod_tls supports two new settings:
+        'auth' and 'auth+data'.  These settings are documented in:
+
+          doc/contrib/mod_tls.html#TLSRequired
 
   + New configure options:
 
@@ -191,4 +231,4 @@ files.
 
           doc/howto/CreateHome.html
 
-Last Updated: $Date: 2006-12-02 01:08:58 $
+Last Updated: $Date: 2006-12-02 03:26:19 $
