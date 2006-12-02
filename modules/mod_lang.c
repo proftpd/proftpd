@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.1 2006-09-09 00:48:27 castaglia Exp $
+ * $Id: mod_lang.c,v 1.2 2006-12-02 02:13:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -162,6 +162,8 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
   config_rec *c;
 
   /* Scan the LangPath for the .mo files to read in. */
+  const char *lang_path = PR_LOCALE_DIR;
+  const char *locale_path = NULL;
 
   c = find_config(main_server->conf, CONF_PARAM, "LangPath", FALSE);
   if (c) {
@@ -170,6 +172,17 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
      * callers, e.g. modules that need to call bindtextdomain() for
      * their own catalogs?
      */
+
+    lang_path = c->argv[0];
+  }
+
+  pr_log_debug(DEBUG4, MOD_LANG_VERSION
+    ": binding to text domain 'proftpd' using locale path '%s'", lang_path);
+  locale_path = bindtextdomain("proftpd", lang_path); 
+  if (locale_path == NULL) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
+      ": unable to bind to text domain 'proftpd' using locale path '%s': %s",
+      lang_path, strerror(errno));
   }
 
   /* Iterate through the server_rec list, checking each for a configured
