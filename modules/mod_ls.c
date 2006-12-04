@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.133 2006-11-01 02:36:23 castaglia Exp $
+ * $Id: mod_ls.c,v 1.134 2006-12-04 18:25:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1354,6 +1354,13 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
     target = *pbuffer ? pbuffer : arg;
 
+    /* Open data connection */
+    if (!opt_STAT) {
+      session.sf_flags |= SF_ASCII_OVERRIDE;
+      if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+        return -1;
+    }
+
     /* If there are no globbing characters in the given target,
      * we can check to see if it even exists.
      */
@@ -1366,13 +1373,6 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
           pr_fs_encode_path(cmd->tmp_pool, target), strerror(errno));
         return -1;
       }
-    }
-
-    /* Open data connection */
-    if (!opt_STAT) {
-      session.sf_flags |= SF_ASCII_OVERRIDE;
-      if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
-        return -1;
     }
 
     /* Check perms on the directory/file we are about to scan. */
