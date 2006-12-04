@@ -20,7 +20,7 @@ PACKAGE=proftpd
 # and is then checked into CVS.
 FILES=files.txt
 
-LANGS=en
+LANGS=en_US
 
 # gettext utilities.  Note that this assumes gettext is installed and
 # available on the system.
@@ -50,6 +50,6 @@ clean:
 	$(RM) $(PACKAGE).pot *.po
 
 # Specific languages
-en:
+en_US:
 	-$(MSGINIT) --no-translator -i $(PACKAGE).pot -o $@.po -l $@
 	-$(MSGFMT) $@.po -o $@.mo
