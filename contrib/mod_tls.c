@@ -2919,9 +2919,11 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
    * CRL-based verification, of course.
    */
   if (!tls_crl_store) {
-    tls_log("no CRL store present, assuming client is verified");
     return ok;
   }
+
+  tls_log("CRL store present, checking client certificate against configured "
+    "CRLs");
 
   /* Determine certificate ingredients in advance.
    */
