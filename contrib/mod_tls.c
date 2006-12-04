@@ -2994,6 +2994,10 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
 
     len = BIO_read(b, buf, sizeof(buf) - 1);
     buf[strlen(buf)-1] = '\0';
+
+    if (len >= sizeof(buf)) {
+      len = sizeof(buf)-1;
+    }
     buf[len] = '\0';
 
     BIO_free(b);
@@ -3470,8 +3474,8 @@ static int tls_openlog(void) {
   int res = 0;
 
   /* Sanity checks */
-  if ((tls_logname = get_param_ptr(main_server->conf, "TLSLog",
-      FALSE)) == NULL)
+  tls_logname = get_param_ptr(main_server->conf, "TLSLog", FALSE);
+  if (tls_logname == NULL)
     return 0;
 
   if (strcasecmp(tls_logname, "none") == 0) {
