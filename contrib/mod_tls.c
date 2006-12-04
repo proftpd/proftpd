@@ -317,7 +317,9 @@ static unsigned int tls_npkeys = 0;
 #define TLS_DEFAULT_PROTOCOL		"SSLv23"
 
 /* Module variables */
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
 static const char *tls_crypto_device = NULL;
+#endif
 static unsigned char tls_engine = FALSE;
 static unsigned long tls_flags = 0UL, tls_opts = 0UL;
 static tls_pkey_t *tls_pkey = NULL;
@@ -2946,10 +2948,14 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
    * the current certificate in order to verify its integrity.
    */
   memset(&obj, 0, sizeof(obj));
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
   if (X509_STORE_CTX_init(&store_ctx, tls_crl_store, NULL, NULL) <= 0) {
     tls_log("error initializing CRL store context: %s", tls_get_errors());
     return ok;
   }
+#else
+  X509_STORE_CTX_init(&store_ctx, tls_crl_store, NULL, NULL);
+#endif
 
   rc = X509_STORE_get_by_subject(&store_ctx, X509_LU_CRL, subject, &obj);
   X509_STORE_CTX_cleanup(&store_ctx);
@@ -3019,10 +3025,14 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
    * the current certificate in order to check for revocation.
    */
   memset(&obj, 0, sizeof(obj));
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
   if (X509_STORE_CTX_init(&store_ctx, tls_crl_store, NULL, NULL) == 0) {
     tls_log("error initializing CRL store context: %s", tls_get_errors());
     return ok;
   }
+#else
+  X509_STORE_CTX_init(&store_ctx, tls_crl_store, NULL, NULL);
+#endif
 
   rc = X509_STORE_get_by_subject(&store_ctx, X509_LU_CRL, issuer, &obj);
   X509_STORE_CTX_cleanup(&store_ctx);
