@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.81 2006-11-28 19:37:29 jwm Exp $
+ * $Id: support.c,v 1.82 2006-12-04 19:11:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -767,8 +767,15 @@ char *sreplace(pool *p, char *s, ...) {
 unsigned char memscrub_ctr = 0;
 
 void pr_memscrub(void *ptr, size_t ptrlen) {
-  unsigned char *p = ptr;
-  size_t loop = ptrlen;
+  unsigned char *p;
+  size_t loop;
+
+  if (!ptr || ptrlen == 0) {
+    return;
+  }
+
+  *p = ptr;
+  loop = ptrlen;
 
   while (loop--) {
     *(p++) = memscrub_ctr++;
@@ -785,8 +792,10 @@ void pr_memscrub(void *ptr, size_t ptrlen) {
 char *sstrcat(char *dest, const char *src, size_t n) {
   register char *d;
 
-  if (n == 0)
+  if (!dest || !src || n == 0) {
+    errno = EINVAL;
     return NULL;
+  }
 
   for (d = dest; *d && n > 1; d++, n--) ;
 
