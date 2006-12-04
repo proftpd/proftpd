@@ -2857,13 +2857,28 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
       case X509_V_ERR_CERT_HAS_EXPIRED:
       case X509_V_ERR_CERT_REVOKED:
       case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
-      case X509_V_ERR_INVALID_PURPOSE:
       case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
       case X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE:
         tls_log("client certificate failed verification: %s",
           X509_verify_cert_error_string(ctx->error));
         ok = 0;
         break;
+
+      case X509_V_ERR_INVALID_PURPOSE: {
+        register unsigned int i;
+        int count = X509_PURPOSE_get_count();
+
+        tls_log("client certificate failed verification: %s",
+          X509_verify_cert_error_string(ctx->error));
+
+        for (i = 0; i < count; i++) {
+          X509_PURPOSE *purp = X509_PURPOSE_get0(i);
+          tls_log("  purpose #%d: %s", i+1, X509_PURPOSE_get0_name(purp));
+        }
+
+        ok = 0;
+        break;
+      }
 
       case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
         /* XXX this is strange. we get this error for certain clients
@@ -3096,7 +3111,7 @@ static ssize_t tls_write(SSL *ssl, const void *buf, size_t len) {
 }
 
 static char *tls_x509_name_oneline(X509_NAME *x509_name) {
-  static char buf[256] = {'\0'};
+  static char buf[1024] = {'\0'};
 
   /* If we are using OpenSSL 0.9.6 or newer, we want to use X509_NAME_print_ex()
    * instead of X509_NAME_oneline().
