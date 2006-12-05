@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.137 2006-12-04 19:31:43 castaglia Exp $
+ * $Id: mod_ls.c,v 1.138 2006-12-05 18:54:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -45,6 +45,14 @@ static int outputfiles(cmd_rec *);
 
 static int listfile(cmd_rec *, pool *, const char *);
 static int listdir(cmd_rec *, pool *, const char *);
+
+static int sendline(int flags, char *fmt, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 2, 3)));
+#else
+       ;
+#endif
+#define LS_SENDLINE_FL_FLUSH	0x0001
 
 static unsigned char list_strict_opts = FALSE;
 static char *list_options = NULL;
@@ -235,14 +243,13 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
 }
 
 /* sendline() now has an internal buffer, to help speed up LIST output. */
-static int sendline(char *fmt, ...) {
+static int sendline(int flags, char *fmt, ...) {
   static char listbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   va_list msg;
   char buf[PR_TUNABLE_BUFFER_SIZE+1] = {'\0'};
   int res = 0;
 
-  /* A NULL fmt argument is the signal to flush the buffer */
-  if (!fmt) {
+  if (flags & LS_SENDLINE_FL_FLUSH) {
     res = pr_data_xfer(listbuf, strlen(listbuf));
     if (res < 0) {
       pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s.", res,
@@ -749,7 +756,7 @@ static int outputfiles(cmd_rec *cmd) {
         sstrncpy(pad, "\n", sizeof(pad));
       }
 
-      if (sendline("%s%s", q->line, pad, NULL) < 0)
+      if (sendline(0, "%s%s", q->line, pad) < 0)
         return -1;
 
       q = q->right;
@@ -763,8 +770,7 @@ static int outputfiles(cmd_rec *cmd) {
   colwidth = 0;
   filenames = 0;
 
-  /* flush the buffer */
-  if (sendline(NULL) < 0)
+  if (sendline(LS_SENDLINE_FL_FLUSH, " ") < 0)
     return -1;
 
   return 0;
@@ -1060,9 +1066,9 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
           pr_response_add(R_211, "%s:",
             pr_fs_encode_path(cmd->tmp_pool, subdir));
 
-        } else if (sendline("\n%s:\n",
-                     pr_fs_encode_path(cmd->tmp_pool, subdir), NULL) < 0 ||
-            sendline(NULL) < 0) {
+        } else if (sendline(0, "\n%s:\n",
+                     pr_fs_encode_path(cmd->tmp_pool, subdir)) < 0 ||
+            sendline(LS_SENDLINE_FL_FLUSH, " ") < 0) {
           pop_cwd(cwd_buf, &symhold);
 
           if (dest_workp)
@@ -1480,9 +1486,9 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
                 pr_fs_encode_path(cmd->tmp_pool, *path));
 
             } else {
-              sendline("\n%s:\n",
-                pr_fs_encode_path(cmd->tmp_pool, *path), NULL);
-              sendline(NULL);
+              sendline(0, "\n%s:\n",
+                pr_fs_encode_path(cmd->tmp_pool, *path));
+              sendline(LS_SENDLINE_FL_FLUSH, " ");
             }
           }
 
@@ -1595,11 +1601,11 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
     return 1;
 
   /* Be sure to flush the output */
-  res = sendline("%s\n", pr_fs_encode_path(cmd->tmp_pool, file), NULL);
+  res = sendline(0, "%s\n", pr_fs_encode_path(cmd->tmp_pool, file));
   if (res < 0)
     return res;
 
-  res = sendline(NULL);
+  res = sendline(LS_SENDLINE_FL_FLUSH, " ");
   if (res < 0)
     return res;
 
@@ -1716,8 +1722,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
         char *str = pr_fs_encode_path(cmd->tmp_pool,
           pdircat(cmd->tmp_pool, dir, p, NULL));
 
-        if (sendline("%s\n", str, NULL) < 0 ||
-            sendline(NULL) < 0)
+        if (sendline(0, "%s\n", str) < 0 ||
+            sendline(LS_SENDLINE_FL_FLUSH, " ") < 0)
           count = -1;
 
         else {
@@ -1738,8 +1744,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
         }
 
       } else {
-        if (sendline("%s\n", pr_fs_encode_path(cmd->tmp_pool, p), NULL) < 0 ||
-            sendline(NULL) < 0)
+        if (sendline(0, "%s\n", pr_fs_encode_path(cmd->tmp_pool, p)) < 0 ||
+            sendline(LS_SENDLINE_FL_FLUSH, " ") < 0)
           count = -1;
 
         else {
