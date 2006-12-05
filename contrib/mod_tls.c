@@ -3673,6 +3673,10 @@ MODRET tls_auth(cmd_rec *cmd) {
       if (tls_required_on_ctrl)
         end_login(1);
 
+      /* If we reach this point, the debug logging may show gibberish
+       * commands from the client.  In reality, this gibberish is probably
+       * more encrypted data from the client.
+       */
       pr_response_add_err(R_550, "TLS handshake failed");
       return PR_ERROR(cmd);
     }
@@ -3697,6 +3701,10 @@ MODRET tls_auth(cmd_rec *cmd) {
       if (tls_required_on_ctrl)
         end_login(1);
 
+      /* If we reach this point, the debug logging may show gibberish
+       * commands from the client.  In reality, this gibberish is probably
+       * more encrypted data from the client.
+       */
       pr_response_add_err(R_550, "TLS handshake failed");
       return PR_ERROR(cmd);
     }
