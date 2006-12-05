@@ -171,7 +171,7 @@ static int wrap2_openlog(void) {
 
   pr_signals_block();
   PRIVS_ROOT
-  res = log_openfile(wrap2_logname, &wrap2_logfd, 0640);
+  res = pr_log_openfile(wrap2_logname, &wrap2_logfd, 0640);
   PRIVS_RELINQUISH
   pr_signals_unblock();
 
@@ -487,7 +487,7 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
     char *name = wrap2_get_hostname(host);
     return (strchr(name, '.') == NULL && WRAP2_IS_KNOWN_HOSTNAME(name));
 
-#ifdef USE_IPV6 
+#ifdef PR_USE_IPV6 
   } else if (*tok == '[') {
     char *cp, *tmp;
     pr_netaddr_t *acl_addr;
@@ -519,7 +519,7 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
     }
 
     return (pr_netaddr_ncmp(session.c->remote_addr, acl_addr, nmaskbits) == 0);
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
 
   } else if ((mask = wrap2_strsplit(tok, '/')) != 0) {
 
@@ -1191,7 +1191,7 @@ MODRET set_wrapmsg(cmd_rec *cmd) {
   c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: WrapEngine on|off */
@@ -1209,7 +1209,7 @@ MODRET set_wrapengine(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = (unsigned char) bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: WrapGroupTables group-and-expression allow-table deny-table */
@@ -1274,7 +1274,7 @@ MODRET set_wrapgrouptables(cmd_rec *cmd) {
 
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: WrapLog file|"none" */
@@ -1284,7 +1284,7 @@ MODRET set_wraplog(cmd_rec *cmd) {
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: WrapServiceName <name> */
@@ -1293,7 +1293,7 @@ MODRET set_wrapservicename(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: WrapTables allow-table deny-table */
@@ -1329,7 +1329,7 @@ MODRET set_wraptables(cmd_rec *cmd) {
   }
 
   add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: WrapUserTables user-or-expression allow-table deny-table */
@@ -1394,7 +1394,7 @@ MODRET set_wrapusertables(cmd_rec *cmd) {
 
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Command handlers
