@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.82 2006-12-04 19:11:44 castaglia Exp $
+ * $Id: support.c,v 1.83 2006-12-05 17:47:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -774,7 +774,7 @@ void pr_memscrub(void *ptr, size_t ptrlen) {
     return;
   }
 
-  *p = ptr;
+  p = ptr;
   loop = ptrlen;
 
   while (loop--) {
