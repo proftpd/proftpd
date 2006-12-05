@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.5 2006-10-24 02:32:32 castaglia Exp $
+ * $Id: trace.c,v 1.6 2006-12-05 17:44:27 castaglia Exp $
  */
 
 
@@ -42,6 +42,7 @@ static const char *trace_levels[] = {
   "command",
   "config",
   "ctrls",
+  "data",
   "delay",
   "dns",
   "dso",
