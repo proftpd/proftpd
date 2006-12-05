@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.25 2005-06-14 01:23:44 castaglia Exp $
+ * $Id: log.h,v 1.26 2006-12-05 19:00:56 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -69,7 +69,12 @@ int log_wtmp(char *, const char *, const char *, pr_netaddr_t *);
 
 /* file-based logging functions */
 int pr_log_openfile(const char *, int *, mode_t);
-int pr_log_writefile(int, const char *, const char *, ...);
+int pr_log_writefile(int, const char *, const char *, ...)
+#ifdef __GNUC__
+  __attribute__ ((format (printf, 3, 4)));
+#else
+  ;
+#endif
 
 /* syslog-based logging functions.  Note that the open/close functions are
  * not part of the public API; use the pr_log_pri() function to log via
