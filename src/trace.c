@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.6 2006-12-05 17:44:27 castaglia Exp $
+ * $Id: trace.c,v 1.7 2006-12-06 04:21:27 castaglia Exp $
  */
 
 
@@ -62,6 +62,7 @@ static const char *trace_levels[] = {
   "site",
   "timer",
   "utf8",
+  "var",
   NULL
 };
 
