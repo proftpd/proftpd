@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.5 2004-12-04 07:39:44 castaglia Exp $
+ * $Id: display.c,v 1.6 2006-12-06 04:22:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -242,8 +242,8 @@ int pr_display_file(const char *path, const char *fs, const char *code) {
       val = pr_var_get(key);
 
       if (!val) {
-        pr_log_debug(DEBUG10,
-          "Variables: no value set for name '%s', using \"(none)\"", key);
+        pr_trace_msg("var", 4,
+          "no value set for name '%s', using \"(none)\"", key);
         val = "(none)";
       }
 
