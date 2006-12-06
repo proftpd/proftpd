@@ -24,7 +24,9 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-#include "conf.h"
+#include <errno.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 /* "safe" strncpy, saves room for \0 at end of dest, and refuses to copy
  * more than "n" bytes.
