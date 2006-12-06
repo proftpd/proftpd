@@ -27,6 +27,9 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
+
+#include "libsupp.h"
 
 /* "safe" strncpy, saves room for \0 at end of dest, and refuses to copy
  * more than "n" bytes.
