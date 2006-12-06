@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004 The ProFTPD Project team
+ * Copyright (c) 2004-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.6 2006-12-06 04:22:32 castaglia Exp $
+ * $Id: display.c,v 1.7 2006-12-06 04:29:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -43,8 +43,7 @@ static void format_size_str(char *buf, size_t buflen, off_t size) {
   snprintf(buf, buflen, "%.3" PR_LU "%cB", (pr_off_t) size, units[i]);
 }
 
-int pr_display_file(const char *path, const char *fs, const char *code) {
-  pr_fh_t *fp = NULL;
+static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   int len;
   unsigned int *current_clients = NULL;
@@ -66,17 +65,13 @@ int pr_display_file(const char *path, const char *fs, const char *code) {
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || \
    defined(HAVE_SYS_VFS_H)
-  fs_size = pr_fs_getsize((fs ? (char *) fs : (char *) path));
+  fs_size = pr_fs_getsize((fs ? (char *) fs : (char *) fh->fh_path));
   snprintf(mg_size, sizeof(mg_size), "%" PR_LU, (pr_off_t) fs_size);
   format_size_str(mg_size_units, sizeof(mg_size_units), fs_size);
 #else
   snprintf(mg_size, sizeof(mg_size), "%" PR_LU, (pr_off_t) fs_size);
   format_size_str(mg_size_units, sizeof(mg_size_units), fs_size);
 #endif
-
-  fp = pr_fsio_open_canon(path, O_RDONLY);
-  if (fp == NULL)
-    return -1;
 
   p = make_sub_pool(session.pool);
   pr_pool_tag(p, "Display Pool");
@@ -182,7 +177,7 @@ int pr_display_file(const char *path, const char *fs, const char *code) {
     session.total_files_xfer);
   total_files_xfer[sizeof(total_files_xfer)-1] = '\0';
 
-  while (pr_fsio_gets(buf, sizeof(buf), fp) != NULL) {
+  while (pr_fsio_gets(buf, sizeof(buf), fh) != NULL) {
     char *tmp;
 
     pr_signals_handle();
@@ -266,6 +261,36 @@ int pr_display_file(const char *path, const char *fs, const char *code) {
     }
   }
 
-  pr_fsio_close(fp);
   return 0;
+}
+
+int pr_display_fh(pr_fh_t *fh, const char *fs, const char *code) {
+  if (!fh || !code) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  return display_fh(fh, fs, code);
+}
+
+int pr_display_file(const char *path, const char *fs, const char *code) {
+  pr_fh_t *fh = NULL;
+  int res, xerrno;
+
+  if (!path || !code) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fh = pr_fsio_open_canon(path, O_RDONLY);
+  if (fh == NULL)
+    return -1;
+
+  res = display_fh(fh, fs, code);
+  xerrno = errno;
+
+  pr_fsio_close(fh);
+ 
+  errno = xerrno;
+  return res; 
 }
