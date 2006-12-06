@@ -486,6 +486,9 @@
 /* Define if you have the <limits.h> header file.  */
 #undef HAVE_LIMITS_H
 
+/* Define if you have the <locale.h> header file.  */
+#undef HAVE_LOCALE_H
+
 /* Define if you have the <login.h> header file.  */
 #undef HAVE_LOGIN_H
 

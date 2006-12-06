@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.65 2006-06-15 20:53:36 castaglia Exp $
+ * $Id: conf.h,v 1.66 2006-12-06 18:55:14 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -246,6 +246,9 @@ char *strchr(),*strrchr();
 #  include <libintl.h>
 # endif
 # define _(str) gettext(str)
+# ifdef HAVE_LOCALE_H
+#  include <locale.h>
+# endif
 #else
 # define _(str) (str)
 # define textdomain(dir)
