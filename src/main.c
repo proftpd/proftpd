@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.294 2006-11-17 23:42:04 jwm Exp $
+ * $Id: main.c,v 1.295 2006-12-07 17:18:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1358,7 +1358,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
       session.class->cls_name);
 
   else
-    pr_log_debug(DEBUG2, "FTP session requested from unknown class");
+    pr_log_debug(DEBUG5, "FTP session requested from unknown class");
 
   /* Create a table for modules to use. */
   session.notes = pr_table_alloc(session.pool, 0);
