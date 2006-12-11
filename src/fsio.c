@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.54 2006-12-11 07:21:48 castaglia Exp $
+ * $Id: fsio.c,v 1.55 2006-12-11 08:12:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1299,6 +1299,11 @@ int pr_fs_dircat(char *buf, int buflen, const char *dir1, const char *dir2) {
   /* Make temporary copies so that memory areas can overlap */
   char *_dir1 = NULL, *_dir2 = NULL;
   size_t dir1len = 0;
+
+  if (!dir1 || !dir2) {
+    errno = EINVAL;
+    return -1;
+  }
 
   /* This is a test to see if we've got reasonable directories to concatenate.
    */
