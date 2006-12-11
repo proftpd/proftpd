@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.8 2006-12-11 07:55:51 castaglia Exp $
+ * $Id: trace.c,v 1.9 2006-12-11 17:07:00 castaglia Exp $
  */
 
 
@@ -271,7 +271,7 @@ int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
 
   /* Trim trailing newlines. */
   buflen = strlen(buf);
-  while (buflen > 1 &&
+  while (buflen >= 1 &&
          buf[buflen-1] == '\n') {
     pr_signals_handle();
     buf[buflen-1] = '\0';

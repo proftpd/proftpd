@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.55 2006-12-11 08:12:16 castaglia Exp $
+ * $Id: fsio.c,v 1.56 2006-12-11 17:03:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1523,7 +1523,7 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
         size_t wherelen = strlen(where);
 
         ptr = where;
-        if (wherelen > 1)
+        if (wherelen >= 1)
           ptr += (wherelen - 1);
 
       } else
@@ -1680,7 +1680,7 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
         size_t wherelen = strlen(where);
 
         ptr = where;
-        if (wherelen > 1)
+        if (wherelen >= 1)
           ptr += (wherelen - 1);
 
       } else
@@ -1840,7 +1840,7 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
         size_t wherelen = strlen(where);
 
         ptr = where;
-        if (wherelen > 1)
+        if (wherelen >= 1)
           ptr += (wherelen - 1);
 
       } else
@@ -2020,7 +2020,7 @@ void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {
         size_t wherelen = strlen(where);
 
         ptr = where;
-        if (wherelen > 1)
+        if (wherelen >= 1)
           ptr += (wherelen - 1);
 
       } else

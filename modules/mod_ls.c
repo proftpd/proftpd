@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.140 2006-12-11 07:37:03 castaglia Exp $
+ * $Id: mod_ls.c,v 1.141 2006-12-11 17:04:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2131,7 +2131,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
   /* Remove any trailing separators. */
   targetlen = strlen(target);
-  while (targetlen > 1 &&
+  while (targetlen >= 1 &&
          target[targetlen-1] == '/') {
 
     if (strcmp(target, "/") == 0) {
