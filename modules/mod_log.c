@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.78 2006-12-11 07:59:14 castaglia Exp $
+ * $Id: mod_log.c,v 1.79 2006-12-11 08:02:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -797,14 +797,18 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
         if (timz < 0)
           timz = -timz;
 
-        strftime(argp, 80, time_fmt, &t);
-        if (internal_fmt) {
-          if (strlen(argp) < sizeof(arg))
-            snprintf(argp + strlen(argp), sizeof(arg) - strlen(argp),
-              "%c%.2d%.2d]", sign, timz/60, timz%60);
-          else
-            pr_log_pri(PR_LOG_NOTICE, "notice: %%t expansion yields excessive "
-              "string, ignoring");
+        if (time_fmt) {
+          strftime(argp, 80, time_fmt, &t);
+          if (internal_fmt) {
+            if (strlen(argp) < sizeof(arg)) {
+              snprintf(argp + strlen(argp), sizeof(arg) - strlen(argp),
+                "%c%.2d%.2d]", sign, timz/60, timz%60);
+
+            } else {
+              pr_log_pri(PR_LOG_NOTICE,
+                "notice: %%t expansion yields excessive string, ignoring");
+            }
+          }
         }
       }
       break;
