@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.176 2006-09-29 16:38:16 castaglia Exp $
+ * $Id: dirtree.c,v 1.177 2006-12-11 18:59:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -266,8 +266,8 @@ char *path_subst_uservar(pool *path_pool, char **path) {
    */
 
   substr_path = *path;
-
-  while ((substr = strstr(substr_path, "%u[")) != NULL) {
+  substr = substr_path ? strstr(substr_path, "%u[") : NULL;
+  while (substr) {
     int i = 0;
     char *substr_end = NULL, *substr_dup = NULL, *endp = NULL;
     char ref_char[2] = {'\0', '\0'};
@@ -275,10 +275,11 @@ char *path_subst_uservar(pool *path_pool, char **path) {
     /* Now, find the closing ']'. If not found, it is a syntax error;
      * continue on without processing this occurrence.
      */
-    if ((substr_end = strchr(substr, ']')) == NULL)
-
+    substr_end = strchr(substr, ']');
+    if (substr_end == NULL) {
       /* Just end here. */
       break;
+    }
 
     /* Make a copy of the entire substring. */
     substr_dup = pstrdup(path_pool, substr);
@@ -340,11 +341,14 @@ char *path_subst_uservar(pool *path_pool, char **path) {
      * referenced character/string.
      */
     substr_path = sreplace(path_pool, substr_path, substr_dup, ref_char, NULL);
+    substr = substr_path ? strstr(substr_path, "%u[") : NULL;
   }
 
   /* Check for any bare "%u", and handle those if present. */
-  if (strstr(substr_path, "%u"))
+  if (substr_path &&
+      strstr(substr_path, "%u"))
     new_path = sreplace(path_pool, substr_path, "%u", session.user, NULL);
+
   else
     new_path = substr_path;
 
