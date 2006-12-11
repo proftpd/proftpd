@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.291 2006-12-11 19:58:16 castaglia Exp $
+ * $Id: mod_core.c,v 1.292 2006-12-11 20:06:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3321,8 +3321,12 @@ MODRET core_eprt(cmd_rec *cmd) {
    */
   switch (family) {
     case 1: {
+      struct sockaddr *sa = NULL;
+
       pr_netaddr_set_family(&na, AF_INET);
-      pr_netaddr_get_sockaddr(&na)->sa_family = AF_INET;
+      sa = pr_netaddr_get_sockaddr(&na);
+      if (sa)
+        sa->sa_family = AF_INET;
       if (pr_inet_pton(AF_INET, argstr, pr_netaddr_get_inaddr(&na)) <= 0) {
         pr_log_debug(DEBUG2, "error converting IPv4 address '%s': %s",
           argstr, strerror(errno));
@@ -3333,8 +3337,12 @@ MODRET core_eprt(cmd_rec *cmd) {
     }
 
     case 2: {
+      struct sockaddr *sa = NULL;
+
       pr_netaddr_set_family(&na, AF_INET6);
-      pr_netaddr_get_sockaddr(&na)->sa_family = AF_INET6;
+      sa = pr_netaddr_get_sockaddr(&na);
+      if (sa)
+        sa->sa_family = AF_INET6;
       if (pr_inet_pton(AF_INET6, argstr, pr_netaddr_get_inaddr(&na)) <= 0) {
         pr_log_debug(DEBUG2, "error converting IPv6 address '%s': %s",
           argstr, strerror(errno));
