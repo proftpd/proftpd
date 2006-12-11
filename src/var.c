@@ -23,7 +23,7 @@
  */
 
 /* Variables API implementation
- * $Id: var.c,v 1.3 2004-12-04 07:43:46 castaglia Exp $
+ * $Id: var.c,v 1.4 2006-12-11 23:11:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -121,8 +121,7 @@ const char *pr_var_next(const char **desc) {
     return NULL;
 
   v = pr_table_get(var_tab, name, NULL);
-
-  if (desc)
+  if (v && desc)
     *desc = v->v_desc;
 
   return name;
