@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.56 2006-12-11 17:03:46 castaglia Exp $
+ * $Id: fsio.c,v 1.57 2006-12-11 19:05:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1314,7 +1314,14 @@ int pr_fs_dircat(char *buf, int buflen, const char *dir1, const char *dir2) {
   }
 
   _dir1 = strdup(dir1);
+  if (!_dir1)
+    return -1;
+
   _dir2 = strdup(dir2);
+  if (!_dir2) {
+    free(_dir1);
+    return -1;
+  }
 
   dir1len = strlen(_dir1) - 1;
 
