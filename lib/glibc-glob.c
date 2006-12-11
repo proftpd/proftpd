@@ -1124,7 +1124,7 @@ glob_limited (unsigned int depth, const char *pattern, int flags,
 #endif
 
       for (i = oldcount; i < pglob->gl_pathc + pglob->gl_offs; ++i)
-	if (((flags & GLOB_ALTDIRFUNC)
+	if ((((flags & GLOB_ALTDIRFUNC) && (pglob->gl_pathv != NULL))
 	     ? ((*pglob->gl_stat) (pglob->gl_pathv[i], &st) == 0
 		&& S_ISDIR (st.st_mode))
 	     : (__stat64 (pglob->gl_pathv[i], &st64) == 0
