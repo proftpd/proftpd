@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.139 2006-12-07 00:10:06 castaglia Exp $
+ * $Id: mod_ls.c,v 1.140 2006-12-11 07:37:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2013,6 +2013,7 @@ MODRET ls_list(cmd_rec *cmd) {
 
 MODRET ls_nlst(cmd_rec *cmd) {
   char *target, buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+  size_t targetlen = 0;
   config_rec *c = NULL;
   int count = 0, res = 0, hidden = 0;
   int glob_flags = GLOB_PERIOD;
@@ -2129,12 +2130,16 @@ MODRET ls_nlst(cmd_rec *cmd) {
   }
 
   /* Remove any trailing separators. */
-  while (target[strlen(target)-1] == '/') {
+  targetlen = strlen(target);
+  while (targetlen > 1 &&
+         target[targetlen-1] == '/') {
+
     if (strcmp(target, "/") == 0) {
       break;
     }
 
-    target[strlen(target)-1] = '\0';
+    target[targetlen-1] = '\0';
+    targetlen = strlen(target);
   }
 
   /* If the data connection isn't open, open it now. */
