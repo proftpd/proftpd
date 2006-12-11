@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.47 2006-06-16 01:40:16 castaglia Exp $
+ * $Id: mod_site.c,v 1.48 2006-12-11 07:40:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -52,13 +52,18 @@ static struct {
 
 static char *_get_full_cmd(cmd_rec *cmd) {
   char *res = "";
+  size_t reslen = 0;
   int i;
 
   for (i = 0; i < cmd->argc; i++)
     res = pstrcat(cmd->tmp_pool, res, cmd->argv[i], " ", NULL);
 
-  while (res[strlen(res)-1] == ' ')
-    res[strlen(res)-1] = '\0';
+  reslen = strlen(res);
+  while (reslen > 1 &&
+         res[reslen-1] == ' ') {
+    res[reslen-1] = '\0';
+    reslen = strlen(res);
+  }
 
   return res;
 }
