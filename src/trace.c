@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.7 2006-12-06 04:21:27 castaglia Exp $
+ * $Id: trace.c,v 1.8 2006-12-11 07:55:51 castaglia Exp $
  */
 
 
@@ -239,6 +239,7 @@ int pr_trace_set_level(const char *channel, int level) {
 
 int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  size_t buflen;
   va_list msg;
   int res;
 
@@ -266,12 +267,15 @@ int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
   va_end(msg);
 
   /* Always make sure the buffer is NUL-terminated. */
-  buf[sizeof(buf) - 1] = '\0';
+  buf[sizeof(buf)-1] = '\0';
 
   /* Trim trailing newlines. */
-  while (buf[strlen(buf)-1] == '\n') {
+  buflen = strlen(buf);
+  while (buflen > 1 &&
+         buf[buflen-1] == '\n') {
     pr_signals_handle();
-    buf[strlen(buf)-1] = '\0';
+    buf[buflen-1] = '\0';
+    buflen = strlen(buf);
   }
 
   return trace_write(channel, level, buf);
