@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.290 2006-09-29 16:38:15 castaglia Exp $
+ * $Id: mod_core.c,v 1.291 2006-12-11 19:58:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4029,6 +4029,10 @@ MODRET core_dele(cmd_rec *cmd) {
 
   /* If told to delete a symlink, don't delete the file it points to!  */
   path = dir_canonical_path(cmd->tmp_pool, path);
+  if (!path) {
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(ENOENT));
+    return PR_ERROR(cmd);
+  }
 
   /* Stat the path, before it is deleted, so that the size of the file
    * being deleted can be logged.
@@ -4036,8 +4040,7 @@ MODRET core_dele(cmd_rec *cmd) {
   pr_fs_clear_cache();
   pr_fsio_stat(path, &st);
 
-  if (!path ||
-      !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
+  if (!dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
       pr_fsio_unlink(path) == -1) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return PR_ERROR(cmd);
