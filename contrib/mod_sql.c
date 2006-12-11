@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.116 2006-09-12 00:48:34 castaglia Exp $
+ * $Id: mod_sql.c,v 1.117 2006-12-11 22:40:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -520,6 +520,8 @@ int sql_unregister_backend(const char *backend) {
 static int sql_set_backend(char *backend) {
 
   if (sql_nbackends == 1) {
+    pr_log_debug(DEBUG8, MOD_SQL_VERSION ": defaulting to '%s' backend",
+      sql_backends->backend);
     sql_log(DEBUG_INFO, "defaulting to '%s' backend", sql_backends->backend);
     sql_cmdtable = sql_backends->cmdtab;
 
