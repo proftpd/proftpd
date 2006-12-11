@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.53 2006-09-14 18:02:04 castaglia Exp $
+ * $Id: fsio.c,v 1.54 2006-12-11 07:21:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1514,9 +1514,14 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
 
       ptr = strchr(where, '/');
 
-      if (!ptr)
-        ptr = where + strlen(where) - 1;
-      else
+      if (!ptr) {
+        size_t wherelen = strlen(where);
+
+        ptr = where;
+        if (wherelen > 1)
+          ptr += (wherelen - 1);
+
+      } else
         *ptr = '\0';
 
       sstrncpy(namebuf, workpath, sizeof(namebuf));
@@ -1666,9 +1671,14 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
 
       ptr = strchr(where, '/');
 
-      if (!ptr)
-        ptr = where + strlen(where) - 1;
-      else
+      if (!ptr) {
+        size_t wherelen = strlen(where);
+
+        ptr = where;
+        if (wherelen > 1)
+          ptr += (wherelen - 1);
+
+      } else
         *ptr = '\0';
 
       sstrncpy(namebuf, workpath, sizeof(namebuf));
@@ -1821,9 +1831,14 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
       }
       ptr = strchr(where, '/');
 
-      if (!ptr)
-        ptr = where + strlen(where) - 1;
-      else
+      if (!ptr) {
+        size_t wherelen = strlen(where);
+
+        ptr = where;
+        if (wherelen > 1)
+          ptr += (wherelen - 1);
+
+      } else
         *ptr = '\0';
 
       sstrncpy(namebuf, workpath, sizeof(namebuf));
@@ -1996,9 +2011,14 @@ void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {
       }
       ptr = strchr(where, '/');
 
-      if (!ptr)
-        ptr = where + strlen(where) - 1;
-      else
+      if (!ptr) {
+        size_t wherelen = strlen(where);
+
+        ptr = where;
+        if (wherelen > 1)
+          ptr += (wherelen - 1);
+
+      } else
         *ptr = '\0';
 
       sstrncpy(namebuf, workpath, sizeof(namebuf));
