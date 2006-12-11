@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.141 2006-12-11 17:04:44 castaglia Exp $
+ * $Id: mod_ls.c,v 1.142 2006-12-11 22:42:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2070,11 +2070,11 @@ MODRET ls_nlst(cmd_rec *cmd) {
       while (*target != '\0' && !isspace((int) *target))
         target++;
 
-      while (isspace((int) *target))
+      while (*target && isspace((int) *target))
         target++;
     }
 
-    while (isspace((int) *target))
+    while (*target && isspace((int) *target))
       target++;
   }
 
