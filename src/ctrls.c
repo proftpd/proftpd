@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.14 2006-10-24 16:13:31 castaglia Exp $
+ * $Id: ctrls.c,v 1.15 2006-12-12 16:34:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -534,11 +534,20 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
     return -1;
   }
 
+  if (reqarglen >= sizeof(reqaction)) {
+    pr_signals_unblock();
+    errno = ENOMEM;
+    return -1;
+  }
+
+  memset(reqaction, '\0', sizeof(reqaction));
+
   if (read(cl->cl_fd, reqaction, reqarglen) < 0) {
     pr_signals_unblock();
     return -1;
   }
 
+  reqaction[sizeof(reqaction)-1] = '\0';
   nreqargs--;
 
   /* Find a matching action object, and use it to populate a ctrl object,
@@ -657,17 +666,16 @@ int pr_ctrls_recv_response(pool *resp_pool, int ctrls_sockfd,
       return -1;
     }
 
-    memset(response, '\0', sizeof(response));
-
     /* Make sure resparglen is not too big */
-    if (resparglen > sizeof(response)) {
+    if (resparglen >= sizeof(response)) {
       pr_signals_unblock();
       errno = ENOMEM;
       return -1;
     }
 
-    bread = read(ctrls_sockfd, response, resparglen);
+    memset(response, '\0', sizeof(response));
 
+    bread = read(ctrls_sockfd, response, resparglen);
     while (bread != resparglen) {
       if (bread < 0) {
         pr_signals_unblock(); 
