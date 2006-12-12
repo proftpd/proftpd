@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.794 2006-12-12 16:34:43 castaglia Exp $
+$Id: NEWS,v 1.795 2006-12-12 17:00:22 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -9,7 +9,7 @@ $Id: NEWS,v 1.794 2006-12-12 16:34:43 castaglia Exp $
   where `N' is the bug number.
 -----------------------------------------------------------------------------
 
-CVS
+1.3.1rc1 - Released 12-Dec-2006
 --------------------------------
 - Bug 2766 - Support for automatic stack trace if SIGSEGV is received.
 - Bug 2714 - mod_auth_file munges AuthUserFile, AuthGroupFile records.
