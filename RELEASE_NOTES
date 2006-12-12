@@ -85,6 +85,19 @@ files.
 
       Trace, TraceLog
 
+        The Trace functionality is intended to be a more focused
+        type of debug logging, where components can log, at various
+        log levels, to a log "channel".  Log channels can have their
+        verbosity managed independently; all log channels write to
+        the same TraceLog.  Use of trace logging, while small now,
+        will grow in future releases.
+
+        To get an idea of what the trace logging might look like,
+        you can add the following to your proftpd.conf:
+
+          Trace ALL:9
+          TraceLog /path/to/ftpd/trace.log
+
       UseIPv6
 
         To disable IPv6 support in a running proftpd, you can place:
@@ -129,7 +142,21 @@ files.
 
       LogFormat %S, %{version}
 
+        The LogFormat directive now handles two new variables, %S and
+        %{version}.
+
+        The %S variable can used to log the response message, the human
+        readable message which accompanies the response code, sent to
+        clients in response to FTP commands.
+
+        The %{version} variable logs the version of ProFTPD; it is mainly
+        useful for logs collated from multiple proftpd instances which
+        may be running different versions.
+
       SQLConnectInfo MySQL Unix domain socket
+
+        The SQLConnectInfo directive can now handle an optional path to
+        a Unix domain socket for MySQL database connections.
 
       SQLNamedQuery
 
@@ -161,10 +188,14 @@ files.
 
       --enable-nls
 
+        This configure option enables handling of translated message
+        catalogs for response messages, and also enables handling of
+        UTF8 paths in client commands.
+
       --with-lastlog[=PATH]
 
-        Automatic determination
-        /var/adm/lastlog
+        A lastlog is a binary type of log file, similar to utmp/wtmp.
+        This compile option enables logging to the lastlog file.
  
   + New modules:
 
@@ -231,4 +262,4 @@ files.
 
           doc/howto/CreateHome.html
 
-Last Updated: $Date: 2006-12-02 03:26:19 $
+Last Updated: $Date: 2006-12-12 16:52:08 $
