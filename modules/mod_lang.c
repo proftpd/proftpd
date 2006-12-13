@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.2 2006-12-02 02:13:50 castaglia Exp $
+ * $Id: mod_lang.c,v 1.3 2006-12-13 17:44:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -163,7 +163,9 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
 
   /* Scan the LangPath for the .mo files to read in. */
   const char *lang_path = PR_LOCALE_DIR;
+#ifdef HAVE_LIBINTL_H
   const char *locale_path = NULL;
+#endif
 
   c = find_config(main_server->conf, CONF_PARAM, "LangPath", FALSE);
   if (c) {
@@ -176,6 +178,7 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
     lang_path = c->argv[0];
   }
 
+#ifdef HAVE_LIBINTL_H
   pr_log_debug(DEBUG4, MOD_LANG_VERSION
     ": binding to text domain 'proftpd' using locale path '%s'", lang_path);
   locale_path = bindtextdomain("proftpd", lang_path); 
@@ -184,6 +187,10 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
       ": unable to bind to text domain 'proftpd' using locale path '%s': %s",
       lang_path, strerror(errno));
   }
+#else
+  pr_log_debug(DEBUG2, MOD_LANG_VERSION
+    ": unable to bind to text domain 'proftpd', lacking libintl support");
+#endif /* !HAVE_LIBINTL_H */
 
   /* Iterate through the server_rec list, checking each for a configured
    * LangDefault.  If configured, make sure that the specified lang
