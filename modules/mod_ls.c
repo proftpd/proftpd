@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.142 2006-12-11 22:42:21 castaglia Exp $
+ * $Id: mod_ls.c,v 1.143 2006-12-13 18:04:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -787,11 +787,11 @@ static void discard_output(void) {
 }
 
 static int dircmp(const void *a, const void *b) {
-#ifdef PR_USE_NLS
+#if defined(PR_USE_NLS) && defined(HAVE_STRCOLL)
   return strcoll(*(const char **)a, *(const char **)b);
 #else
   return strcmp(*(const char **)a, *(const char **)b);
-#endif /* PR_USE_NLS */
+#endif /* !PR_USE_NLS or !HAVE_STRCOLL */
 }
 
 static char **sreaddir(const char *dirname, const int sort) {
