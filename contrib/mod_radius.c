@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.42 2006-11-29 17:08:09 castaglia Exp $
+ * $Id: mod_radius.c,v 1.43 2006-12-13 22:54:47 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9"
@@ -169,6 +169,7 @@ static char *radius_logname = NULL;
 static struct sockaddr radius_local_sock, radius_remote_sock;
 
 /* For tracking various values not stored in the session struct */
+static const char *radius_nas_identifier = "ftp";
 static char *radius_realm = NULL;
 static time_t radius_session_start = 0;
 static off_t radius_session_bytes_in = 0;
@@ -1976,16 +1977,18 @@ static void radius_build_packet(radius_packet_t *packet, const char *user,
   radius_add_attrib(packet, RADIUS_USER_NAME, user, strlen(user));
 
   /* Add the password attribute, if given. */
-  if (passwd)
+  if (passwd) {
     radius_add_passwd(packet, RADIUS_PASSWORD, passwd, secret);
 
-  else if (packet->code != RADIUS_ACCT_REQUEST)
+  } else if (packet->code != RADIUS_ACCT_REQUEST) {
 
     /* Add a NULL password if necessary. */
     radius_add_passwd(packet, RADIUS_PASSWORD, "", secret);
+  }
 
-  /* Add a NAS identifier attribute of the service name: 'ftp'. */
-  radius_add_attrib(packet, RADIUS_NAS_IDENTIFIER, "ftp", 3);
+  /* Add a NAS identifier attribute of the service name, e.g. 'ftp'. */
+  radius_add_attrib(packet, RADIUS_NAS_IDENTIFIER, radius_nas_identifier,
+    strlen(radius_nas_identifier));
 
 #ifndef PR_USE_IPV6
   /* Add a NAS IP address attribute. */
@@ -2812,14 +2815,17 @@ MODRET set_radiusacctserver(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   /* Check to see if there's a port specified in the server name */
-  if ((port = strchr(cmd->argv[1], ':')) != NULL) {
+  port = strchr(cmd->argv[1], ':');
+  if (port != NULL) {
 
     /* Separate the server name from the port */
     *(port++) = '\0';
 
-    if ((server_port = (unsigned short) atoi(port)) < 1024)
+    server_port = (unsigned short) atoi(port);
+    if (server_port < 1024) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "port number must be greater "
         "than 1023", NULL));
+    }
   }
 
   if (pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[1], NULL) == NULL)
@@ -2969,6 +2975,15 @@ MODRET set_radiusgroupinfo(cmd_rec *cmd) {
 MODRET set_radiuslog(cmd_rec *cmd) {
   if (cmd->argc-1 != 1)
     CONF_ERROR(cmd, "wrong number of parameters");
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return PR_HANDLED(cmd);
+}
+
+/* usage: RadiusNASIdentifier string */
+MODRET set_radiusnasidentifier(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
@@ -3229,6 +3244,13 @@ static int radius_sess_init(void) {
   radius_session_bytes_in = 0;
   radius_session_bytes_out = 0;
 
+  c = find_config(main_server->conf, CONF_PARAM, "RadiusNASIdentifier", FALSE);
+  if (c) {
+    radius_nas_identifier = c->argv[0];
+
+    radius_log("RadiusNASIdentifier '%s' configured", radius_nas_identifier);
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "RadiusVendor", FALSE);
   if (c) {
     radius_vendor_name = c->argv[0];
@@ -3347,6 +3369,7 @@ static conftable radius_conftab[] = {
   { "RadiusEngine",		set_radiusengine,	NULL },
   { "RadiusGroupInfo",		set_radiusgroupinfo,	NULL },
   { "RadiusLog",		set_radiuslog,		NULL },
+  { "RadiusNASIdentifier",	set_radiusnasidentifier,NULL },
   { "RadiusQuotaInfo",		set_radiusquotainfo,	NULL },
   { "RadiusRealm",		set_radiusrealm,	NULL },
   { "RadiusUserInfo",		set_radiususerinfo,	NULL },
