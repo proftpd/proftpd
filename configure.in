@@ -486,19 +486,22 @@ AC_ARG_ENABLE(nls,
   [ if test x"$enableval" = x"yes" ; then
 
       dnl The libintl library is only needed on non-GNU systems.  If it
-      dnl is not installed, and the admin enables NLS support, the linker
-      dnl will complain.
+      dnl is not installed, and the admin enables NLS support, then we
+      dnl should abort.
 
       AC_CHECK_LIB(intl, bindtextdomain,
-        ac_build_addl_libs="-lintl $ac_build_addl_libs"
-        AC_DEFINE(HAVE_LIBINTL, 1, [Define if libintl is present.])
-
-        dnl Will it be problem that LIBS is not automatically updated
-        dnl to include -lintl here, since we are defining our own actions?
+        [ac_build_addl_libs="-lintl $ac_build_addl_libs"
+         AC_DEFINE(HAVE_LIBINTL, 1, [Define if libintl is present.])
+         AC_DEFINE(PR_USE_NLS, 1, [Define if using NLS support.])
+         ENABLE_NLS="1"
+        ],
+        [AC_CHECK_LIB(c, bindtextdomain,
+          [AC_DEFINE(PR_USE_NLS, 1, [Define if using NLS support.])
+           ENABLE_NLS="1"
+          ],
+          [AC_MSG_ERROR([libintl support, required for NLS, not present -- aborting])]
+        ])
       )
-
-      AC_DEFINE(PR_USE_NLS, 1, [Define if using NLS support.])
-      ENABLE_NLS="1"
     fi
   ])
 
