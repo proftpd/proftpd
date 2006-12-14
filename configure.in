@@ -490,7 +490,7 @@ AC_ARG_ENABLE(nls,
       dnl should abort.
 
       AC_CHECK_LIB(intl, bindtextdomain,
-        [ac_build_addl_libs="-lintl $ac_build_addl_libs"
+        [ac_build_addl_libs="-lintl $ac_build_addl_libs" UTILS_LIBS="-lintl"
          AC_DEFINE(HAVE_LIBINTL, 1, [Define if libintl is present.])
          AC_DEFINE(PR_USE_NLS, 1, [Define if using NLS support.])
          ENABLE_NLS="1"
@@ -2000,6 +2000,7 @@ AC_SUBST(INCLUDES)
 AC_SUBST(LIBDIRS)
 AC_SUBST(LIBRARIES)
 AC_SUBST(CURSES_LIBS)
+AC_SUBST(UTILS_LIBS)
 AC_SUBST(VERSION)
 
 AC_CONFIG_HEADER(config.h)

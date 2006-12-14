@@ -54,19 +54,19 @@ proftpd$(EXEEXT): lib src modules dirs locale
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(MAIN_LDFLAGS) -o $@ $(BUILD_PROFTPD_OBJS) $(LIBS) $(MAIN_LIBS)
 
 ftpcount$(EXEEXT): utils
-	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPCOUNT_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPCOUNT_OBJS) $(UTILS_LIBS)
 
 ftpdctl$(EXEEXT): src
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPDCTL_OBJS) $(LIBS)
 
 ftpshut$(EXEEXT): utils
-	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPSHUT_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPSHUT_OBJS) $(UTILS_LIBS)
 
 ftptop$(EXEEXT): lib utils
-	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPTOP_OBJS) $(CURSES_LIBS) -lsupp
+	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPTOP_OBJS) $(CURSES_LIBS) $(UTILS_LIBS) -lsupp
 
 ftpwho$(EXEEXT): lib utils
-	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPWHO_OBJS) -lsupp
+	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPWHO_OBJS) $(UTILS_LIBS) -lsupp
 
 
 # BSD install -d doesn't work, so ...
