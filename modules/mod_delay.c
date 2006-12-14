@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.21 2006-06-16 01:40:16 castaglia Exp $
+ * $Id: mod_delay.c,v 1.22 2006-12-14 23:12:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -196,8 +196,7 @@ static long delay_get_median(pool *p, unsigned int rownum, long interval) {
     *((long *) push_array(list)) = tab_vals[DELAY_NVALUES - i];
   *((long *) push_array(list)) = interval;
 
-  pr_log_debug(DEBUG6, MOD_DELAY_VERSION
-    ": selecting median interval from %d %s", list->nelts,
+  pr_trace_msg("delay", 6, "selecting median interval from %d %s", list->nelts,
     list->nelts != 1 ? "values" : "value");
   return delay_select_k(((list->nelts + 1) / 2), list);
 }
@@ -244,13 +243,13 @@ static void delay_delay(long interval) {
    */
   rand_usec = ((interval / 2.0) * rand()) / RAND_MAX;
   interval += rand_usec;
-  pr_log_debug(DEBUG10, MOD_DELAY_VERSION
-    ": additional random delay of %ld usecs added", (long int) rand_usec);
+  pr_trace_msg("delay", 8, "additional random delay of %ld usecs added",
+    (long int) rand_usec);
 
   tv.tv_sec = interval / 1000000;
   tv.tv_usec = interval % 1000000;
 
-  pr_log_debug(DEBUG0, MOD_DELAY_VERSION ": delaying for %ld usecs",
+  pr_trace_msg("delay", 8, "delaying for %ld usecs",
     (long int) ((tv.tv_sec * 1000000) + tv.tv_usec));
 
   delay_signals_block();
@@ -305,13 +304,14 @@ static int delay_table_init(void) {
     pr_log_debug(DEBUG0, MOD_DELAY_VERSION
       ": error opening DelayTable '%s': %s", delay_tab.dt_path,
       strerror(errno));
+    pr_trace_msg("delay", 1, "error opening DelayTable '%s': %s",
+      delay_tab.dt_path, strerror(errno));
     return -1;
   }
 
   if (pr_fsio_fstat(fh, &st) < 0) {
-    pr_log_debug(DEBUG0, MOD_DELAY_VERSION
-      ": error stat'ing DelayTable '%s': %s", delay_tab.dt_path,
-      strerror(errno));
+    pr_trace_msg("delay", 1, "error stat'ing DelayTable '%s': %s",
+      delay_tab.dt_path, strerror(errno));
     return -1;
   }
 
@@ -321,8 +321,8 @@ static int delay_table_init(void) {
      * configuration has changed by having vhosts added or removed.
      */
 
-    pr_log_debug(DEBUG2, MOD_DELAY_VERSION
-      ": expected table size %" PR_LU ", found %" PR_LU ", resetting table",
+    pr_trace_msg("delay", 3,
+      "expected table size %" PR_LU ", found %" PR_LU ", resetting table",
       (pr_off_t) tab_size, (pr_off_t) st.st_size);
     reset_table = TRUE;
   }
@@ -335,8 +335,7 @@ static int delay_table_init(void) {
     lock.l_start = 0;
     lock.l_len = 0;
 
-    pr_log_debug(DEBUG10, MOD_DELAY_VERSION ": write-locking DelayTable '%s'",
-      fh->fh_path);
+    pr_trace_msg("delay", 8, "write-locking DelayTable '%s'", fh->fh_path);
     while (fcntl(fh->fh_fd, F_SETLKW, &lock) < 0) {
       if (errno == EINTR) {
         pr_signals_handle();
@@ -346,6 +345,9 @@ static int delay_table_init(void) {
         pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
           "warning: unable to obtain write lock on DelayTable '%s': %s",
           fh->fh_path, strerror(errno));
+        pr_trace_msg("delay", 1,
+          "unable to obtain write lock on DelayTable '%s': %s", fh->fh_path,
+          strerror(errno));
         pr_fsio_close(fh);
         return -1;
       } 
@@ -364,16 +366,14 @@ static int delay_table_init(void) {
 
     lock.l_type = F_UNLCK;
 
-    pr_log_debug(DEBUG10, MOD_DELAY_VERSION ": unlocking DelayTable '%s'",
-      fh->fh_path);
+    pr_trace_msg("delay", 8, "unlocking DelayTable '%s'", fh->fh_path);
     fcntl(fh->fh_fd, F_SETLK, &lock);
   }
 
   delay_tab.dt_fd = fh->fh_fd;
   delay_tab.dt_size = tab_size;
 
-  pr_log_debug(DEBUG10, MOD_DELAY_VERSION
-    ": mapping DelayTable '%s' into memory", fh->fh_path);
+  pr_trace_msg("delay", 8, "mapping DelayTable '%s' into memory", fh->fh_path);
   delay_tab.dt_data = mmap(NULL, delay_tab.dt_size, PROT_READ|PROT_WRITE,
     MAP_SHARED, delay_tab.dt_fd, 0);
 
@@ -381,6 +381,8 @@ static int delay_table_init(void) {
     pr_log_pri(PR_LOG_ERR, MOD_DELAY_VERSION
       ": error mapping DelayTable '%s' into memory: %s", delay_tab.dt_path,
       strerror(errno));
+    pr_trace_msg("delay", 1, "error mapping DelayTable '%s' into memory: %s",
+      delay_tab.dt_path, strerror(errno));
     pr_fsio_close(fh);
     return -1;
   }
@@ -425,8 +427,7 @@ static int delay_table_init(void) {
     lock.l_start = 0;
     lock.l_len = 0;
 
-    pr_log_debug(DEBUG10, MOD_DELAY_VERSION ": write-locking DelayTable '%s'",
-      fh->fh_path);
+    pr_trace_msg("delay", 8, "write-locking DelayTable '%s'", fh->fh_path);
     while (fcntl(fh->fh_fd, F_SETLKW, &lock) < 0) {
       if (errno == EINTR) {
         pr_signals_handle();
@@ -436,6 +437,9 @@ static int delay_table_init(void) {
         pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
           "warning: unable to obtain write lock on DelayTable '%s': %s",
           fh->fh_path, strerror(errno));
+        pr_trace_msg("delay", 1,
+          "unable to obtain write lock on DelayTable '%s': %s", fh->fh_path,
+          strerror(errno));
         pr_fsio_close(fh);
         return -1;
       }
@@ -452,20 +456,18 @@ static int delay_table_init(void) {
     /* Truncate the table, in case we're shrinking an existing table. */
     pr_fsio_ftruncate(fh, tab_size);
 
-    pr_log_debug(DEBUG6, MOD_DELAY_VERSION ": resetting DelayTable '%s'",
-      delay_tab.dt_path);
+    pr_trace_msg("delay", 6, "resetting DelayTable '%s'", delay_tab.dt_path);
     delay_table_reset();
 
     lock.l_type = F_UNLCK;
 
-    pr_log_debug(DEBUG10, MOD_DELAY_VERSION ": unlocking DelayTable '%s'",
-      fh->fh_path);
+    pr_trace_msg("delay", 8, "unlocking DelayTable '%s'", fh->fh_path);
     fcntl(fh->fh_fd, F_SETLK, &lock);
   }
 
   /* Done */
-  pr_log_debug(DEBUG10, MOD_DELAY_VERSION
-    ": unmapping DelayTable '%s' from memory", delay_tab.dt_path);
+  pr_trace_msg("delay", 8, "unmapping DelayTable '%s' from memory",
+    delay_tab.dt_path);
   if (munmap(delay_tab.dt_data, delay_tab.dt_size) < 0) {
     int xerrno = errno;
     pr_fsio_close(fh);
@@ -474,6 +476,8 @@ static int delay_table_init(void) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": error unmapping DelayTable '%s': %s", delay_tab.dt_path,
       strerror(errno));
+    pr_trace_msg("delay", 1, "error unmapping DelayTable '%s': %s",
+      delay_tab.dt_path, strerror(errno));
     return -1;
   }
 
@@ -483,6 +487,8 @@ static int delay_table_init(void) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": error closing DelayTable '%s': %s", delay_tab.dt_path,
       strerror(errno));
+    pr_trace_msg("delay", 1, "error closing DelayTable '%s': %s",
+      delay_tab.dt_path, strerror(errno));
     return -1;
   }
 
@@ -499,7 +505,7 @@ static int delay_table_load(int lock_table) {
     lock.l_start = 0;
     lock.l_len = 0;
 
-    pr_log_debug(DEBUG10, MOD_DELAY_VERSION ": write-locking DelayTable '%s'",
+    pr_trace_msg("delay", 8, "write-locking DelayTable '%s'",
       delay_tab.dt_path);
     while (fcntl(delay_tab.dt_fd, F_SETLKW, &lock) < 0) {
       if (errno == EINTR) {
@@ -512,8 +518,8 @@ static int delay_table_load(int lock_table) {
   }
 
   if (!delay_tab.dt_data) {
-    pr_log_debug(DEBUG10, MOD_DELAY_VERSION
-      ": mapping DelayTable '%s' into memory", delay_tab.dt_path);
+    pr_trace_msg("delay", 8, "mapping DelayTable '%s' into memory",
+      delay_tab.dt_path);
     delay_tab.dt_data = mmap(NULL, delay_tab.dt_size, PROT_READ|PROT_WRITE,
       MAP_SHARED, delay_tab.dt_fd, 0);
 
@@ -558,16 +564,15 @@ static int delay_table_wlock(unsigned int rownum) {
   lock.l_start = sizeof(struct delay_rec) * rownum;
   lock.l_len = sizeof(struct delay_rec);
 
-  pr_log_debug(DEBUG10, MOD_DELAY_VERSION
-    ": write-locking DelayTable '%s', row %u", delay_tab.dt_path, rownum + 1);
+  pr_trace_msg("delay", 8, "write-locking DelayTable '%s', row %u",
+    delay_tab.dt_path, rownum + 1);
   while (fcntl(delay_tab.dt_fd, F_SETLKW, &lock) < 0) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
-    pr_log_debug(DEBUG2, MOD_DELAY_VERSION
-       ": error locking table: %s", strerror(errno));
+    pr_trace_msg("delay", 1, "error locking row: %s", strerror(errno));
     return -1;
   }
 
@@ -577,12 +582,14 @@ static int delay_table_wlock(unsigned int rownum) {
 static int delay_table_unload(int unlock_table) {
 
   if (delay_tab.dt_data) {
-    pr_log_debug(DEBUG10, MOD_DELAY_VERSION
-      ": unmapping DelayTable '%s' from memory", delay_tab.dt_path);
+    pr_trace_msg("delay", 8, "unmapping DelayTable '%s' from memory",
+      delay_tab.dt_path);
     if (munmap(delay_tab.dt_data, delay_tab.dt_size) < 0) {
       pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
         ": error unmapping DelayTable '%s': %s", delay_tab.dt_path,
         strerror(errno));
+      pr_trace_msg("delay", 1, "error unmapping DelayTable '%s': %s",
+        delay_tab.dt_path, strerror(errno));
       return -1;
     }
 
@@ -596,8 +603,7 @@ static int delay_table_unload(int unlock_table) {
     lock.l_start = 0;
     lock.l_len = 0;
 
-    pr_log_debug(DEBUG10, MOD_DELAY_VERSION ": unlocking DelayTable '%s'",
-      delay_tab.dt_path);
+    pr_trace_msg("delay", 8, "unlocking DelayTable '%s'", delay_tab.dt_path);
     while (fcntl(delay_tab.dt_fd, F_SETLK, &lock) < 0) {
       if (errno == EINTR) {
         pr_signals_handle();
@@ -619,16 +625,15 @@ static int delay_table_unlock(unsigned int rownum) {
   lock.l_start = sizeof(struct delay_rec) * rownum;
   lock.l_len = sizeof(struct delay_rec);
 
-  pr_log_debug(DEBUG10, MOD_DELAY_VERSION
-    ": unlocking DelayTable '%s', row %u", delay_tab.dt_path, rownum + 1);
+  pr_trace_msg("delay", 8, "unlocking DelayTable '%s', row %u",
+    delay_tab.dt_path, rownum + 1);
   while (fcntl(delay_tab.dt_fd, F_SETLKW, &lock) < 0) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
-    pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-       ": error unlocking table: %s", strerror(errno));
+    pr_trace_msg("delay", 1, "error unlocking row: %s", strerror(errno));
     return -1;
   }
 
@@ -664,6 +669,8 @@ static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
   if (delay_table_load(TRUE) < 0) {
     pr_ctrls_add_response(ctrl,
       "unable to load DelayTable '%s' into memory: %s",
+      delay_tab.dt_path, strerror(errno));
+    pr_trace_msg("delay", 1, "unable to load DelayTable '%s' into memory: %s",
       delay_tab.dt_path, strerror(errno));
 
     pr_fsio_close(fh);
@@ -931,6 +938,8 @@ MODRET delay_post_pass(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       "warning: unable to load DelayTable '%s' into memory: %s",
       delay_tab.dt_path, strerror(errno));
+    pr_trace_msg("delay", 1, "unable to load DelayTable '%s' into memory: %s",
+      delay_tab.dt_path, strerror(errno));
     return PR_DECLINED(cmd);
   }
 
@@ -949,8 +958,7 @@ MODRET delay_post_pass(cmd_rec *cmd) {
    * poisoning the cache.
    */
   if (delay_npass < (DELAY_NVALUES / DELAY_SESS_NVALUES)) {
-    pr_log_debug(DEBUG10, MOD_DELAY_VERSION ": adding %ld usecs to PASS row",
-      interval);
+    pr_trace_msg("delay", 8, "adding %ld usecs to PASS row", interval);
     delay_table_add_interval(rownum, interval);
     delay_npass++;
 
@@ -1003,6 +1011,8 @@ MODRET delay_post_user(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       "warning: unable to load DelayTable '%s' into memory: %s",
       delay_tab.dt_path, strerror(errno));
+    pr_trace_msg("delay", 1, "unable to load DelayTable '%s' into memory: %s",
+      delay_tab.dt_path, strerror(errno));
     return PR_DECLINED(cmd);
   }
 
@@ -1021,8 +1031,7 @@ MODRET delay_post_user(cmd_rec *cmd) {
    * poisoning the cache.
    */
   if (delay_nuser < (DELAY_NVALUES / DELAY_SESS_NVALUES)) {
-    pr_log_debug(DEBUG10, MOD_DELAY_VERSION ": adding %ld usecs to USER row",
-      interval);
+    pr_trace_msg("delay", 8, "adding %ld usecs to USER row", interval);
     delay_table_add_interval(rownum, interval);
     delay_nuser++;
 
@@ -1093,6 +1102,8 @@ static void delay_exit_ev(const void *event_data, void *user_data) {
     errno = xerrno;
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       "warning: unable to load DelayTable '%s' into memory: %s",
+      delay_tab.dt_path, strerror(errno));
+    pr_trace_msg("delay", 1, "unable to load DelayTable '%s' into memory: %s",
       delay_tab.dt_path, strerror(errno));
     return;
   }
@@ -1205,8 +1216,7 @@ static int delay_sess_init(void) {
   delay_nuser = 0;
   delay_npass = 0;
 
-  pr_log_debug(DEBUG6, MOD_DELAY_VERSION ": opening DelayTable '%s'",
-    delay_tab.dt_path);
+  pr_trace_msg("delay", 6, "opening DelayTable '%s'", delay_tab.dt_path);
 
   PRIVS_ROOT
   fh = pr_fsio_open(delay_tab.dt_path, O_RDWR);
@@ -1216,6 +1226,8 @@ static int delay_sess_init(void) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": warning: unable to open DelayTable '%s': %s", delay_tab.dt_path,
       strerror(errno));
+    pr_trace_msg("delay", 1, "unable to open DelayTable '%s': %s",
+      delay_tab.dt_path, strerror(errno));
     delay_engine = FALSE;
     return 0;
   }
