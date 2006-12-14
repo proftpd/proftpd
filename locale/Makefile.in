@@ -40,7 +40,7 @@ Makefile: Makefile.in ../config.status
 	cd ../ && ./config.status
 
 template:
-	-$(XGETTEXT) -L C --keyword=_ --flag=_:1:pass-c-format --keyword=N_ --flag=N_:1:pass-c-format --no-wrap --copyright-holder $(COPYRIGHT_HOLDER) --msgid-bugs-address $(CONTACT_ADDRESS) -f $(FILES) -o $(PACKAGE).pot
+	-$(XGETTEXT) -L C --keyword=_ --flag=_:1:pass-c-format --keyword=N_ --flag=N_:1:pass-c-format --no-wrap --copyright-holder $(COPYRIGHT_HOLDER) --msgid-bugs-address $(CONTACT_ADDRESS) --sort-by-file -f $(FILES) -o $(PACKAGE).pot
 
 locale: template $(LANGS)
 
@@ -51,5 +51,5 @@ clean:
 
 # Specific languages
 en_US:
-	-$(MSGINIT) --no-translator -i $(PACKAGE).pot -o $@.po -l $@
+	-$(MSGINIT) --no-translator --sort-by-file -i $(PACKAGE).pot -o $@.po -l $@
 	-$(MSGFMT) $@.po -o $@.mo
