@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.97 2006-09-29 16:38:16 castaglia Exp $
+ * $Id: inet.c,v 1.98 2006-12-14 22:18:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -323,7 +323,8 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 
     pr_netaddr_set_port(&na, htons(port));
 
-    if (port != INPORT_ANY && port < 1024) {
+    if (port != INPORT_ANY &&
+        port < 1024) {
       pr_signals_block();
       PRIVS_ROOT
     }
@@ -339,7 +340,8 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
         pr_netaddr_get_sockaddr_len(&na));
       hold_errno = errno;
 
-      if (res == -1 && errno == EINTR) {
+      if (res == -1 &&
+          errno == EINTR) {
         pr_signals_handle();
 	i++;
 	continue;
@@ -350,21 +352,24 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 	  (port != INPORT_ANY && !retry_bind))
         break;
 
-      if (port != INPORT_ANY && port < 1024) {
+      if (port != INPORT_ANY &&
+          port < 1024) {
         PRIVS_RELINQUISH
         pr_signals_unblock();
       }
 
       pr_timer_sleep(1);
 
-      if (port != INPORT_ANY && port < 1024) {
+      if (port != INPORT_ANY &&
+          port < 1024) {
         pr_signals_block();
         PRIVS_ROOT
       }
     }
 
     if (res == -1) {
-      if (port != INPORT_ANY && port < 1024) {
+      if (port != INPORT_ANY &&
+          port < 1024) {
         PRIVS_RELINQUISH
         pr_signals_unblock();
       }
@@ -382,7 +387,8 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       return NULL;
     }
 
-    if (port != INPORT_ANY && port < 1024) {
+    if (port != INPORT_ANY &&
+        port < 1024) {
       PRIVS_RELINQUISH
       pr_signals_unblock();
     }
@@ -404,6 +410,9 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 
   c->listen_fd = fd;
   register_cleanup(c->pool, (void *) c, conn_cleanup_cb, conn_cleanup_cb);
+
+  pr_trace_msg("binding", 4, "bound address %s, port %d to socket fd %d",
+    pr_netaddr_get_ipstr(&na), port, fd);
 
   return c;
 }
