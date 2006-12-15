@@ -23,7 +23,7 @@
  */
 
 /* UTF8 encoding/decoding
- * $Id: utf8.c,v 1.4 2006-12-13 17:40:35 castaglia Exp $
+ * $Id: utf8.c,v 1.5 2006-12-15 18:51:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -67,6 +67,7 @@ static int utf8_convert(iconv_t conv, char *inbuf, size_t *inbuflen,
   return -1;
 # endif /* HAVE_ICONV */
 }
+#endif /* !HAVE_ICONV_H */
 
 int utf8_free(void) {
 # ifdef HAVE_ICONV
@@ -128,7 +129,6 @@ int utf8_init(void) {
   return -1;
 # endif /* HAVE_ICONV */
 }
-#endif /* !HAVE_ICONV_H */
 
 char *pr_utf8_decode(pool *p, const char *in, size_t inlen, size_t *outlen) {
 #ifdef HAVE_ICONV_H
