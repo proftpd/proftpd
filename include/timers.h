@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: timers.h,v 1.13 2004-11-20 22:35:39 castaglia Exp $
+ * $Id: timers.h,v 1.14 2006-12-15 00:06:18 castaglia Exp $
  */
 
 #ifndef PR_TIMERS_H
@@ -68,11 +68,5 @@ int pr_timer_sleep(int secs);
 /* For internal use only. */
 void handle_alarm(void);
 void timers_init(void);
-
-/* Compatibility redefines; will be removed at some point the future. */
-#define add_timer	pr_timer_add
-#define remove_timer	pr_timer_remove
-#define reset_timer	pr_timer_reset
-#define timer_sleep	pr_timer_sleep
 
 #endif /* PR_TIMERS_H */

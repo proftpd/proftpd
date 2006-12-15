@@ -23,7 +23,7 @@
  */
 
 /* Compatibility
- * $Id: compat.h,v 1.4 2006-06-16 00:48:05 castaglia Exp $
+ * $Id: compat.h,v 1.5 2006-12-15 00:06:18 castaglia Exp $
  */
 
 #ifndef PR_COMPAT_H
@@ -55,6 +55,11 @@
 #define pr_group_or_expression  pr_expr_eval_group_or
 #define pr_user_and_expression  pr_expr_eval_user_and
 #define pr_user_or_expression   pr_expr_eval_user_or
+
+#define add_timer               pr_timer_add
+#define remove_timer            pr_timer_remove
+#define reset_timer             pr_timer_reset
+#define timer_sleep             pr_timer_sleep
 
 #define DECLINED		PR_DECLINED
 #define	ERROR			PR_ERROR
