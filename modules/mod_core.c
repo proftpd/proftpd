@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.292 2006-12-11 20:06:07 castaglia Exp $
+ * $Id: mod_core.c,v 1.293 2006-12-15 19:05:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3976,7 +3976,7 @@ MODRET core_size(cmd_rec *cmd) {
   /* Refuse the command if we're in ASCII mode. */
   if (session.sf_flags & SF_ASCII) {
     pr_log_debug(DEBUG5, "%s not allowed in ASCII mode", cmd->argv[0]);
-    pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(EPERM));
+    pr_response_add_err(R_550, _("%s not allowed in ASCII mode"), cmd->argv[0]);
     return PR_ERROR(cmd);
   }
 
