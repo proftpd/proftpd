@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2005 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.44 2005-06-14 18:11:12 castaglia Exp $
+ * $Id: auth.c,v 1.45 2006-12-15 19:35:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -71,7 +71,7 @@ static modret_t *dispatch_auth(cmd_rec *cmd, char *match) {
     &cmd->stash_index);
 
   while (authtab) {
-    pr_log_debug(DEBUG6, "dispatching auth request \"%s\" to module mod_%s",
+    pr_trace_msg("auth", 6, "dispatching auth request \"%s\" to module mod_%s",
       match, authtab->m->name);
 
     mr = call_module(authtab->m, authtab->handler, cmd);
