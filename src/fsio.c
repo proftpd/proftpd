@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.58 2006-12-15 19:49:50 castaglia Exp $
+ * $Id: fsio.c,v 1.59 2006-12-15 22:32:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -639,6 +639,8 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   pr_fsio_truncate(dst, 0);
 
   while ((res = pr_fsio_read(src_fh, buf, bufsz)) > 0) {
+    pr_signals_handle();
+
     if (pr_fsio_write(dst_fh, buf, res) != res) {
       pr_log_pri(PR_LOG_WARNING, "error copying to '%s': %s", dst,
         strerror(errno));
@@ -3043,6 +3045,8 @@ int pr_fsio_chroot(const char *path) {
         /* Need to do this for any stacked FSs as well. */
         next = tmpfs->fs_next;
         while (next) {
+          pr_signals_handle();
+
           memmove(next->fs_path, next->fs_path + strlen(path),
             strlen(next->fs_path) - strlen(path) + 1);
 
@@ -3089,6 +3093,8 @@ char *pr_fsio_gets(char *buf, size_t size, pr_fh_t *fh) {
   bp = buf;
 
   while (size) {
+    pr_signals_handle();
+
     if (!pbuf->current ||
         pbuf->remaining == pbuf->buflen) { /* empty buffer */
 
@@ -3110,13 +3116,20 @@ char *pr_fsio_gets(char *buf, size_t size, pr_fh_t *fh) {
     } else
       toread = pbuf->buflen - pbuf->remaining;
 
-    while (size && toread > 0 && *pbuf->current != '\n' && toread--) {
+    while (size &&
+           toread > 0 &&
+           *pbuf->current != '\n' &&
+           toread--) {
+      pr_signals_handle();
+
       *bp++ = *pbuf->current++;
       size--;
       pbuf->remaining++;
     }
 
-    if (size && toread && *pbuf->current == '\n') {
+    if (size &&
+        toread &&
+        *pbuf->current == '\n') {
       size--;
       toread--;
       *bp++ = *pbuf->current++;
@@ -3144,8 +3157,6 @@ char *pr_fsio_getline(char *buf, int buflen, pr_fh_t *fh,
   char *start = buf;
 
   while (pr_fsio_gets(buf, buflen, fh)) {
-
-    /* while() loops should always handle signals. */
     pr_signals_handle();
 
     inlen = strlen(buf);
