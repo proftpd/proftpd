@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.26 2006-06-16 02:22:05 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.27 2006-12-15 23:07:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -65,19 +65,6 @@ static pr_ctrls_t *ctrls_dump_ctrl = NULL;
 
 /* Support routines
  */
-
-static void ctrls_admin_printf(const char *fmt, ...) {
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  va_list msg;
-
-  va_start(msg, fmt);
-  vsnprintf(buf, sizeof(buf), fmt, msg);
-  va_end(msg);
-
-  buf[sizeof(buf)-1] = '\0';
-
-  pr_ctrls_add_response(ctrls_dump_ctrl, "%s", buf);
-}
 
 #if 0
 /* Will be used when scheduled shutdowns are supported.. */
@@ -785,7 +772,7 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
 
 static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-#if PR_USE_TRACE
+#ifdef PR_USE_TRACE
 
   /* Check the trace ACL. */
   if (!ctrls_check_acl(ctrl, ctrls_admin_acttab, "trace")) {
@@ -835,9 +822,24 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
     pr_table_t *trace_tab = pr_trace_get_table();
 
     if (trace_tab) {
-      ctrls_dump_ctrl = ctrl;
-      pr_table_dump(ctrls_admin_printf, trace_tab);
-      ctrls_dump_ctrl = NULL;
+      void *key = NULL, *value = NULL;
+
+      pr_ctrls_add_response(ctrl, "%-10s %-6s", "Channel", "Level");
+      pr_ctrls_add_response(ctrl, "---------- ------");
+
+      pr_table_rewind(trace_tab);
+      key = pr_table_next(trace_tab);
+      while (key) {
+        pr_signals_handle();
+
+        value = pr_table_get(trace_tab, (const char *) key, NULL);
+        if (value) {
+          pr_ctrls_add_response(ctrl, "%10s %-6d", (const char *) key,
+            *((int *) value));
+        }
+
+        key = pr_table_next(trace_tab);
+      }
 
     } else {
       pr_ctrls_add_response(ctrl, "trace: no info available");
