@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.24 2004-11-20 22:35:46 castaglia Exp $
+ * $Id: timers.c,v 1.25 2006-12-15 00:21:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -80,7 +80,8 @@ static int process_timers(int elapsed) {
   if (!recycled)
     recycled = xaset_create(NULL, NULL);
 
-  if (!elapsed && !recycled->xas_list)
+  if (!elapsed &&
+      !recycled->xas_list)
     return (timers->xas_list ? ((struct timer *) timers->xas_list)->count : 0);
 
   /* Critical code, no interruptions please */
@@ -101,8 +102,13 @@ static int process_timers(int elapsed) {
         xaset_insert(free_timers, (xasetmember_t *) t);
 
       } else if ((t->count -= elapsed) <= 0) {
-
         /* This timer's interval has elapsed, so trigger its callback. */
+
+        pr_trace_msg("timer", 4,
+          "%ld seconds for timer ID %d (for module '%s') elapsed, "
+          "invoking callback (%p)", t->interval, t->timerno,
+          t->mod ? t->mod->name : "[none]", t->callback);
+
         if (t->callback(t->interval, t->timerno, t->interval - t->count,
             t->mod) == 0) {
 
@@ -116,6 +122,9 @@ static int process_timers(int elapsed) {
           /* A non-zero return value from a timer callback signals that
            * the timer should be reused/restarted.
            */
+          pr_trace_msg("timer", 6, "restarting timer ID %d, as per callback",
+            t->timerno);
+
           xaset_remove(timers, (xasetmember_t *) t);
           t->count = t->interval;
           xaset_insert(recycled, (xasetmember_t *) t);
@@ -281,7 +290,13 @@ int pr_timer_remove(int timerno, module *mod) {
 
   pr_alarms_unblock();
 
-  return (t ? t->timerno : 0);
+  if (t) {
+    pr_trace_msg("timer", 7, "removed timer ID %d (for module '%s')",
+      t->timerno, t->mod ? t->mod->name : "[none]");
+    return t->timerno;
+  }
+
+  return 0;
 }
 
 int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb) {
@@ -358,6 +373,9 @@ int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb) {
 
   pr_alarms_unblock();
 
+  pr_trace_msg("timer", 7, "added timer ID %d (for module '%s'), "
+    "triggering in %ld seconds", t->timerno, t->mod ? t->mod->name : "[none]",
+    t->interval);
   return timerno;
 }
 
