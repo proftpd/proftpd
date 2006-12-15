@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.57 2006-12-11 19:05:20 castaglia Exp $
+ * $Id: fsio.c,v 1.58 2006-12-15 19:49:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -62,6 +62,7 @@ struct fsopendir {
   DIR *dir;
 };
 
+static const char *trace_channel = "fsio";
 static pr_fs_t *root_fs = NULL, *fs_cwd = NULL;
 static array_header *fs_map = NULL;
 
@@ -739,7 +740,7 @@ pr_fs_t *pr_register_fs(pool *p, const char *name, const char *path) {
 
     /* Call pr_insert_fs() from here */
     if (!pr_insert_fs(fs, path)) {
-      pr_log_debug(DEBUG8, "FS: error inserting fs '%s' at path '%s'",
+      pr_trace_msg(trace_channel, 4, "error inserting FS '%s' at path '%s'",
         name, path);
 
       destroy_pool(fs->fs_pool);
@@ -747,7 +748,7 @@ pr_fs_t *pr_register_fs(pool *p, const char *name, const char *path) {
     }
 
   } else
-    pr_log_debug(DEBUG8, "FS: error creating fs '%s'", name);
+    pr_trace_msg(trace_channel, 6, "error creating FS '%s'", name);
 
   return fs;
 }
@@ -2074,7 +2075,7 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
   while (fs && fs->fs_next && !fs->chdir)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s chdir()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s chdir()", fs->fs_name);
   res = fs->chdir(fs, resbuf);
 
   if (res != -1) {
@@ -2105,7 +2106,7 @@ int pr_fsio_chdir(const char *path, int hidesymlink) {
   while (fs && fs->fs_next && !fs->chdir)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s chdir()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s chdir()", fs->fs_name);
   res = fs->chdir(fs, resbuf);
 
   if (res != -1) {
@@ -2149,7 +2150,7 @@ void *pr_fsio_opendir(const char *path) {
   while (fs && fs->fs_next && !fs->opendir)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s opendir()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s opendir()", fs->fs_name);
   res = fs->opendir(fs, path);
 
   if (!res)
@@ -2255,7 +2256,7 @@ int pr_fsio_closedir(void *dir) {
   while (fs && fs->fs_next && !fs->closedir)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s closedir()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s closedir()", fs->fs_name);
   res = fs->closedir(fs, dir);
 
   return res;
@@ -2274,7 +2275,7 @@ struct dirent *pr_fsio_readdir(void *dir) {
   while (fs && fs->fs_next && !fs->readdir)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s readdir()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s readdir()", fs->fs_name);
   res = fs->readdir(fs, dir);
 
   return res;
@@ -2290,7 +2291,7 @@ int pr_fsio_mkdir(const char *path, mode_t mode) {
   while (fs && fs->fs_next && !fs->mkdir)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s mkdir()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s mkdir()", fs->fs_name);
   res = fs->mkdir(fs, path, mode);
 
   return res;
@@ -2306,7 +2307,7 @@ int pr_fsio_rmdir(const char *path) {
   while (fs && fs->fs_next && !fs->rmdir)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s rmdir()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s rmdir()", fs->fs_name);
   res = fs->rmdir(fs, path);
 
   return res;
@@ -2321,7 +2322,8 @@ int pr_fsio_stat_canon(const char *path, struct stat *sbuf) {
   while (fs && fs->fs_next && !fs->stat)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s stat()", fs ? fs->fs_name : "system");
+  pr_trace_msg(trace_channel, 8, "using %s stat()",
+    fs ? fs->fs_name : "system");
   return fs_cache_stat(fs ? fs : root_fs, path, sbuf);
 }
 
@@ -2334,7 +2336,7 @@ int pr_fsio_stat(const char *path, struct stat *sbuf) {
   while (fs && fs->fs_next && !fs->stat)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s stat()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s stat()", fs->fs_name);
   return fs_cache_stat(fs ? fs : root_fs, path, sbuf);
 }
 
@@ -2354,7 +2356,7 @@ int pr_fsio_fstat(pr_fh_t *fh, struct stat *sbuf) {
   while (fs && fs->fs_next && !fs->fstat)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s fstat()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s fstat()", fs->fs_name);
   res = fs->fstat(fh, fh->fh_fd, sbuf);
 
   return res;
@@ -2369,7 +2371,8 @@ int pr_fsio_lstat_canon(const char *path, struct stat *sbuf) {
   while (fs && fs->fs_next && !fs->lstat)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s lstat()", fs ? fs->fs_name : "system");
+  pr_trace_msg(trace_channel, 8, "using %s lstat()",
+    fs ? fs->fs_name : "system");
   return fs_cache_lstat(fs ? fs : root_fs, path, sbuf);
 }
 
@@ -2382,7 +2385,7 @@ int pr_fsio_lstat(const char *path, struct stat *sbuf) {
   while (fs && fs->fs_next && !fs->lstat)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s lstat()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s lstat()", fs->fs_name);
   return fs_cache_lstat(fs ? fs : root_fs, path, sbuf);
 }
 
@@ -2396,7 +2399,7 @@ int pr_fsio_readlink_canon(const char *path, char *buf, size_t buflen) {
   while (fs && fs->fs_next && !fs->readlink)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s readlink()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s readlink()", fs->fs_name);
   res = fs->readlink(fs, path, buf, buflen);
 
   return res;
@@ -2412,7 +2415,7 @@ int pr_fsio_readlink(const char *path, char *buf, size_t buflen) {
   while (fs && fs->fs_next && !fs->readlink)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s readlink()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s readlink()", fs->fs_name);
   res = fs->readlink(fs, path, buf, buflen);
 
   return res;
@@ -2456,7 +2459,7 @@ int pr_fsio_rename_canon(const char *rfrom, const char *rto) {
   while (fs && fs->fs_next && !fs->rename)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s rename()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s rename()", fs->fs_name);
   res = fs->rename(fs, rfrom, rto);
 
   return res;
@@ -2477,7 +2480,7 @@ int pr_fsio_rename(const char *rnfm, const char *rnto) {
   while (fs && fs->fs_next && !fs->rename)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s rename()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s rename()", fs->fs_name);
   res = fs->rename(fs, rnfm, rnto);
 
   return res;
@@ -2493,7 +2496,7 @@ int pr_fsio_unlink_canon(const char *name) {
   while (fs && fs->fs_next && !fs->unlink)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s unlink()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s unlink()", fs->fs_name);
   res = fs->unlink(fs, name);
 
   return res;
@@ -2509,7 +2512,7 @@ int pr_fsio_unlink(const char *name) {
   while (fs && fs->fs_next && !fs->unlink)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s unlink()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s unlink()", fs->fs_name);
   res = fs->unlink(fs, name);
 
   return res;
@@ -2539,7 +2542,7 @@ pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
   while (fs && fs->fs_next && !fs->open)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s open()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s open()", fs->fs_name);
   fh->fh_fd = fs->open(fh, deref, flags);
 
   if (fh->fh_fd == -1) {
@@ -2579,7 +2582,7 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
   while (fs && fs->fs_next && !fs->open)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s open()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s open()", fs->fs_name);
   fh->fh_fd = fs->open(fh, name, flags);
 
   if (fh->fh_fd == -1) {
@@ -2613,7 +2616,7 @@ pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
   while (fs && fs->fs_next && !fs->creat)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s creat()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s creat()", fs->fs_name);
   fh->fh_fd = fs->creat(fh, deref, mode);
 
   if (fh->fh_fd == -1) {
@@ -2646,7 +2649,7 @@ pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
   while (fs && fs->fs_next && !fs->creat)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s creat()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s creat()", fs->fs_name);
   fh->fh_fd = fs->creat(fh, name, mode);
 
   if (fh->fh_fd == -1) {
@@ -2673,7 +2676,7 @@ int pr_fsio_close(pr_fh_t *fh) {
   while (fs && fs->fs_next && !fs->close)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s close()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s close()", fs->fs_name);
   res = fs->close(fh, fh->fh_fd);
 
   destroy_pool(fh->fh_pool);
@@ -2696,7 +2699,7 @@ int pr_fsio_read(pr_fh_t *fh, char *buf, size_t size) {
   while (fs && fs->fs_next && !fs->read)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s read()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s read()", fs->fs_name);
   res = fs->read(fh, fh->fh_fd, buf, size);
 
   return res;
@@ -2718,7 +2721,7 @@ int pr_fsio_write(pr_fh_t *fh, const char *buf, size_t size) {
   while (fs && fs->fs_next && !fs->write)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s write()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s write()", fs->fs_name);
   res = fs->write(fh, fh->fh_fd, buf, size);
 
   return res;
@@ -2740,7 +2743,7 @@ off_t pr_fsio_lseek(pr_fh_t *fh, off_t offset, int whence) {
   while (fs && fs->fs_next && !fs->lseek)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s lseek()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s lseek()", fs->fs_name);
   res = fs->lseek(fh, fh->fh_fd, offset, whence);
 
   return res;
@@ -2761,7 +2764,7 @@ int pr_fsio_link_canon(const char *lfrom, const char *lto) {
   while (fs && fs->fs_next && !fs->link)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s link()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s link()", fs->fs_name);
   res = fs->link(fs, lfrom, lto);
 
   return res;
@@ -2782,7 +2785,7 @@ int pr_fsio_link(const char *lfrom, const char *lto) {
   while (fs && fs->fs_next && !fs->link)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s link()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s link()", fs->fs_name);
   res = fs->link(fs, lfrom, lto);
 
   return res;
@@ -2798,7 +2801,7 @@ int pr_fsio_symlink_canon(const char *lfrom, const char *lto) {
   while (fs && fs->fs_next && !fs->symlink)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s symlink()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s symlink()", fs->fs_name);
   res = fs->symlink(fs, lfrom, lto);
 
   return res;
@@ -2814,7 +2817,7 @@ int pr_fsio_symlink(const char *lfrom, const char *lto) {
   while (fs && fs->fs_next && !fs->symlink)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s symlink()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s symlink()", fs->fs_name);
   res = fs->symlink(fs, lfrom, lto);
 
   return res;
@@ -2836,7 +2839,7 @@ int pr_fsio_ftruncate(pr_fh_t *fh, off_t len) {
   while (fs && fs->fs_next && !fs->ftruncate)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s ftruncate()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s ftruncate()", fs->fs_name);
   res = fs->ftruncate(fh, fh->fh_fd, len);
 
   return res;
@@ -2852,7 +2855,7 @@ int pr_fsio_truncate_canon(const char *path, off_t len) {
   while (fs && fs->fs_next && !fs->truncate)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s truncate()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s truncate()", fs->fs_name);
   res = fs->truncate(fs, path, len);
 
   return res;
@@ -2868,7 +2871,7 @@ int pr_fsio_truncate(const char *path, off_t len) {
   while (fs && fs->fs_next && !fs->truncate)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s truncate()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s truncate()", fs->fs_name);
   res = fs->truncate(fs, path, len);
   
   return res;
@@ -2885,7 +2888,7 @@ int pr_fsio_chmod_canon(const char *name, mode_t mode) {
   while (fs && fs->fs_next && !fs->chmod)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s chmod()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s chmod()", fs->fs_name);
   res = fs->chmod(fs, deref, mode);
 
   return res;
@@ -2901,7 +2904,7 @@ int pr_fsio_chmod(const char *name, mode_t mode) {
   while (fs && fs->fs_next && !fs->chmod)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s chmod()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s chmod()", fs->fs_name);
   res = fs->chmod(fs, name, mode);
   
   return res;
@@ -2917,7 +2920,7 @@ int pr_fsio_chown_canon(const char *name, uid_t uid, gid_t gid) {
   while (fs && fs->fs_next && !fs->chown)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s chown()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s chown()", fs->fs_name);
   res = fs->chown(fs, name, uid, gid);
   
   return res;
@@ -2933,7 +2936,7 @@ int pr_fsio_chown(const char *name, uid_t uid, gid_t gid) {
   while (fs && fs->fs_next && !fs->chown)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s chown()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s chown()", fs->fs_name);
   res = fs->chown(fs, name, uid, gid);
   
   return res;
@@ -2956,7 +2959,7 @@ int pr_fsio_access(const char *path, int mode, uid_t uid, gid_t gid,
   while (fs && fs->fs_next && !fs->access)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s access()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s access()", fs->fs_name);
   return fs->access(fs, path, mode, uid, gid, suppl_gids);
 }
 
@@ -2976,7 +2979,7 @@ int pr_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
   while (fs && fs->fs_next && !fs->faccess)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s faccess()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s faccess()", fs->fs_name);
   return fh->fh_fs->faccess(fh, mode, uid, gid, suppl_gids);
 }
 
@@ -2994,7 +2997,7 @@ int pr_fsio_chroot(const char *path) {
   while (fs && fs->fs_next && !fs->chroot)
     fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s chroot()", fs->fs_name);
+  pr_trace_msg(trace_channel, 8, "using %s chroot()", fs->fs_name);
   res = fs->chroot(fs, path);
   if (res == 0) {
     unsigned int iter_start = 0;
