@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.143 2006-12-13 18:04:10 castaglia Exp $
+ * $Id: mod_ls.c,v 1.144 2006-12-15 22:25:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -194,7 +194,8 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
       list_show_symlinks = *tmp;
   }
 
-  if ((fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE))) {
+  fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE);
+  if (fake_mode) {
     fakemode = *fake_mode;
     have_fake_mode = TRUE;
 
@@ -232,7 +233,8 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
       list_show_symlinks = *tmp;
   }
 
-  if ((fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE))) {
+  fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE);
+  if (fake_mode) {
     fakemode = *fake_mode;
     have_fake_mode = TRUE;
 
@@ -859,6 +861,7 @@ static char **sreaddir(const char *dirname, const int sort) {
   i = 0;
 
   while ((de = pr_fsio_readdir(d)) != NULL) {
+    pr_signals_handle();
 
     if (i >= dsize - 1) {
       char **newp;
@@ -952,7 +955,8 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
   /* Search for relevant <Limit>'s to this LIST command.  If found,
    * check to see whether hidden files should be ignored.
    */
-  if ((c = _find_ls_limit(cmd->argv[0])) != NULL) {
+  c = _find_ls_limit(cmd->argv[0]);
+  if (c != NULL) {
     unsigned char *ignore = get_param_ptr(c->subset, "IgnoreHidden", FALSE);
 
     if (ignore && *ignore == TRUE)
@@ -1145,11 +1149,15 @@ static void ls_terminate(void) {
 }
 
 static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
-  while (isspace((int) **opt))
+  while (isspace((int) **opt)) {
+    pr_signals_handle();
     (*opt)++;
+  }
 
   /* Check for standard /bin/ls options */
   while (*opt && **opt == '-') {
+    pr_signals_handle();
+
     while ((*opt)++ && isalnum((int) **opt)) {
       switch (**opt) {
         case '1':
@@ -1224,8 +1232,10 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
       }
     }
 
-    while (isspace((int) **opt))
+    while (isspace((int) **opt)) {
+      pr_signals_handle();
       (*opt)++;
+    }
   }
 
   if (!handle_plus_opts)
@@ -1233,6 +1243,8 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
 
   /* Check for non-standard options */
   while (*opt && **opt == '+') {
+    pr_signals_handle();
+
     while ((*opt)++ && isalnum((int) **opt)) {
       switch (**opt) {
         case '1':
@@ -1295,8 +1307,10 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
       }
     }
 
-    while (isspace((int) **opt))
+    while (isspace((int) **opt)) {
+      pr_signals_handle();
       (*opt)++;
+    }
   }
 }
 
@@ -1322,8 +1336,10 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     /* Even if the user-given options are ignored, they still need to
      * "processed" (ie skip past options) in order to get to the paths.
      */
-    while (*arg && isspace((int) *arg))
+    while (*arg && isspace((int) *arg)) {
+      pr_signals_handle();
       arg++;
+    }
 
     while (arg && *arg == '-') {
 
@@ -1835,7 +1851,8 @@ MODRET genericlist(cmd_rec *cmd) {
   if (fakegroup && strcmp(fakegroup, "~") == 0)
     fakegroup = session.group;
 
-  if ((fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE))) {
+  fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE);
+  if (fake_mode) {
     fakemode = *fake_mode;
     have_fake_mode = TRUE;
 
@@ -1935,11 +1952,14 @@ MODRET ls_stat(cmd_rec *cmd) {
 
   /* Get to the actual argument. */
   if (*arg == '-')
-    while (arg && *arg && !isspace((int) *arg)) arg++;
+    while (arg && *arg && !isspace((int) *arg))
+      arg++;
 
-  while (arg && *arg && isspace((int) *arg)) arg++;
+  while (arg && *arg && isspace((int) *arg))
+    arg++;
 
-  if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
+  tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
+  if (tmp != NULL)
     list_show_symlinks = *tmp;
 
   list_strict_opts = FALSE;
@@ -1977,14 +1997,16 @@ MODRET ls_stat(cmd_rec *cmd) {
   if (fakegroup && strcmp(fakegroup, "~") == 0)
     fakegroup = session.group;
 
-  if ((fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE))) {
+  fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE);
+  if (fake_mode) {
     fakemode = *fake_mode;
     have_fake_mode = TRUE;
 
   } else
     have_fake_mode = FALSE;
 
-  if ((tmp = get_param_ptr(TOPLEVEL_CONF, "TimesGMT", FALSE)) != NULL)
+  tmp = get_param_ptr(TOPLEVEL_CONF, "TimesGMT", FALSE);
+  if (tmp != NULL)
     list_times_gmt = *tmp;
 
   opt_C = opt_d = opt_F = opt_R = 0;
