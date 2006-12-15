@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.2.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.10 2006-06-16 01:40:16 castaglia Exp $
+ * $Id: mod_dso.c,v 1.11 2006-12-15 23:24:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -42,6 +42,8 @@ module dso_module;
 static const char *dso_module_path = PR_LIBEXEC_DIR;
 static pool *dso_pool = NULL;
 
+static const char *trace_channel = "dso";
+
 #ifdef PR_USE_CTRLS
 static ctrls_acttab_t dso_acttab[];
 #endif
@@ -52,6 +54,8 @@ static int dso_load_file(char *path) {
     errno = EINVAL;
     return -1;
   }
+
+  pr_trace_msg(trace_channel, 5, "loading file '%s'", path);
 
   /* XXX Is this sufficient for loading an external library? */
   if (lt_dlopenext(path) == NULL) {
@@ -92,6 +96,8 @@ static int dso_load_module(char *name) {
   /* Load file: $prefix/libexec/<module> */
   path = pdircat(dso_pool, dso_module_path, name, NULL);
 
+  pr_trace_msg(trace_channel, 5, "loading module '%s'", path);
+
   mh = lt_dlopenext(path);
   if (mh == NULL) {
     *tmp = '.';
@@ -124,6 +130,9 @@ static int dso_load_module(char *name) {
     pr_log_debug(DEBUG1, MOD_DSO_VERSION
       ": unable to find module symbol '%s' in '%s'", symbol_name,
         mh ? name : "self");
+    pr_trace_msg(trace_channel, 1, "unable to find module symbol '%s' in '%s'",
+      symbol_name, mh ? name : "self");
+
     lt_dlclose(mh);
     mh = NULL;
 
@@ -137,18 +146,26 @@ static int dso_load_module(char *name) {
   /* Add the module to the core structures */
   res = pr_module_load(m);
   if (res < 0) {
-    if (errno == EEXIST)
+    if (errno == EEXIST) {
       pr_log_pri(PR_LOG_INFO, MOD_DSO_VERSION
         ": module 'mod_%s.c' already loaded", m->name);
+      pr_trace_msg(trace_channel, 1, "module 'mod_%s.c' already loaded",
+        m->name);
 
-    else if (errno == EACCES)
+    } else if (errno == EACCES) {
       pr_log_pri(PR_LOG_ERR, MOD_DSO_VERSION
         ": module 'mod_%s.c' has wrong API version (0x%x), must be 0x%x",
         m->name, m->api_version, PR_MODULE_API_VERSION);
+      pr_trace_msg(trace_channel, 1,
+        "module 'mod_%s.c' has wrong API version (0x%x), must be 0x%x",
+        m->name, m->api_version, PR_MODULE_API_VERSION);
 
-    else if (errno == EPERM)
+    } else if (errno == EPERM) {
       pr_log_pri(PR_LOG_ERR, MOD_DSO_VERSION
         ": module 'mod_%s.c' failed to initialize", m->name);
+      pr_trace_msg(trace_channel, 1, "module 'mod_%s.c' failed to initialize",
+        m->name);
+    }
 
     lt_dlclose(mh);
     mh = NULL;
@@ -170,10 +187,15 @@ static int dso_unload_module(module *m) {
 
   name = pstrdup(dso_pool, m->name);
 
+  pr_trace_msg(trace_channel, 5, "unloading module 'mod_%s.c'", m->name);
+
   res = pr_module_unload(m);
-  if (res < 0)
+  if (res < 0) {
     pr_log_debug(DEBUG1, MOD_DSO_VERSION
       ": error unloading module 'mod_%s.c': %s", m->name, strerror(errno));
+    pr_trace_msg(trace_channel, 1,
+      "error unloading module 'mod_%s.c': %s", m->name, strerror(errno));
+  }
 
   if (lt_dlclose(m->handle) < 0) {
     pr_log_debug(DEBUG1, MOD_DSO_VERSION ": error closing '%s': %s",
