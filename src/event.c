@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.13 2006-10-24 17:47:03 castaglia Exp $
+ * $Id: event.c,v 1.14 2006-12-15 22:17:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -53,6 +53,8 @@ static struct event_list *events = NULL;
 static const char *curr_event = NULL;
 static struct event_list *curr_evl = NULL;
 
+static const char *trace_channel = "event";
+
 #define EVENT_POOL_SZ	256
 
 int pr_event_register(module *m, const char *event,
@@ -71,7 +73,7 @@ int pr_event_register(module *m, const char *event,
     pr_pool_tag(event_pool, "Event Pool");
   }
 
-  pr_trace_msg("event", 3,
+  pr_trace_msg(trace_channel, 3,
     "module '%s' registering handler for event '%s' (at %p)",
     m ? m->name : "(none)", event, cb);
 
@@ -132,7 +134,8 @@ int pr_event_unregister(module *m, const char *event,
   if (!events)
     return 0;
 
-  pr_trace_msg("event", 3, "module '%s' unregistering handler for event '%s'",
+  pr_trace_msg(trace_channel, 3,
+    "module '%s' unregistering handler for event '%s'",
     m ? m->name : "(none)", event ? event : "(all)");
 
   /* For now, simply remove the event_handler entry for this callback.  In
@@ -206,7 +209,8 @@ void pr_event_generate(const char *event, const void *event_data) {
 
       /* If there are no registered callbacks for this event, be done. */
       if (!evl->handlers) {
-        pr_log_debug(DEBUG10, "no event handlers registered for '%s'", event);
+        pr_trace_msg(trace_channel, 8, "no event handlers registered for '%s'",
+          event);
         return;
       }
 
@@ -215,11 +219,12 @@ void pr_event_generate(const char *event, const void *event_data) {
 
       for (evh = evl->handlers; evh; evh = evh->next) {
         if (evh->module)
-          pr_log_debug(DEBUG10, "dispatching event '%s' to mod_%s", event,
-            evh->module->name);
+          pr_trace_msg(trace_channel, 8, "dispatching event '%s' to mod_%s",
+            event, evh->module->name);
 
         else
-          pr_log_debug(DEBUG10, "dispatching event '%s' to core", event);
+          pr_trace_msg(trace_channel, 8, "dispatching event '%s' to core",
+            event);
 
         evh->cb(event_data, evh->user_data);
       }
