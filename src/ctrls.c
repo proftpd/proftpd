@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.15 2006-12-12 16:34:43 castaglia Exp $
+ * $Id: ctrls.c,v 1.16 2006-12-16 01:13:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -51,6 +51,8 @@ static pr_ctrls_t *ctrls_active_list = NULL;
 static pr_ctrls_t *ctrls_free_list = NULL;
 
 static int ctrls_use_isfifo = FALSE;
+
+static const char *trace_channel = "ctrls";
 
 /* lookup/lookup_next indices */
 static ctrls_action_t *action_lookup_next = NULL;
@@ -1029,7 +1031,8 @@ int pr_run_ctrls(module *mod, const char *action) {
 
     if (action &&
         strcmp(ctrl->ctrls_action, action) == 0) {
-      pr_log_debug(DEBUG7, "calling '%s' control handler", ctrl->ctrls_action);
+      pr_trace_msg(trace_channel, 7, "calling '%s' control handler",
+        ctrl->ctrls_action);
 
       /* Invoke the callback, if the ctrl's action matches.  Unblock
        * ctrls before invoking the callback, then re-block them after the
@@ -1049,7 +1052,8 @@ int pr_run_ctrls(module *mod, const char *action) {
       }
 
     } else if (!action) {
-      pr_log_debug(DEBUG5, "calling '%s' control handler", ctrl->ctrls_action);
+      pr_trace_msg(trace_channel, 7, "calling '%s' control handler",
+        ctrl->ctrls_action);
 
       /* If no action was given, invoke every callback */
       pr_unblock_ctrls();
@@ -1158,26 +1162,26 @@ void init_ctrls(void) {
   }
 
 #ifdef S_ISFIFO
-  pr_log_debug(DEBUG10, "Controls: testing Unix domain socket using S_ISFIFO");
+  pr_trace_msg(trace_channel, 9, "testing Unix domain socket using S_ISFIFO");
   if (S_ISFIFO(st.st_mode)) {
     ctrls_use_isfifo = TRUE;
   }
 #else
-  pr_log_debug(DEBUG10, "Controls: cannot test Unix domain socket using "
+  pr_trace_msg(trace_channel, 9, "cannot test Unix domain socket using "
     "S_ISFIFO: macro undefined");
 #endif
 
 #ifdef S_ISSOCK
-  pr_log_debug(DEBUG10, "Controls: testing Unix domain socket using S_ISSOCK");
+  pr_trace_msg(trace_channel, 9, "testing Unix domain socket using S_ISSOCK");
   if (S_ISSOCK(st.st_mode)) {
     ctrls_use_isfifo = FALSE;
   }
 #else
-  pr_log_debug(DEBUG10, "Controls: cannot test Unix domain socket using "
+  pr_trace_msg(trace_channel, 9, "cannot test Unix domain socket using "
     "S_ISSOCK: macro undefined");
 #endif
 
-  pr_log_debug(DEBUG10, "Controls: using %s macro for Unix domain socket "
+  pr_trace_msg(trace_channel, 9, "using %s macro for Unix domain socket "
     "detection", ctrls_use_isfifo ? "S_ISFIFO" : "S_ISSOCK");
 
   (void) close(sockfd);

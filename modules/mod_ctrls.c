@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.33 2006-06-22 19:48:35 jwm Exp $
+ * $Id: mod_ctrls.c,v 1.34 2006-12-16 01:13:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -41,6 +41,8 @@ extern unsigned char is_master;
 
 module ctrls_module;
 static ctrls_acttab_t ctrls_acttab[];
+
+static const char *trace_channel = "ctrls";
 
 /* Hard-coded Controls timer IDs.  Need two, one for the initial timer, one
  * to identify the user-configured-interval timer
@@ -434,8 +436,8 @@ char *ctrls_unregister_module_actions(ctrls_acttab_t *acttab,
     }
 
     if (have_action) {
-      pr_log_debug(DEBUG4, "mod_%s.c: removing '%s' control", mod->name,
-        acttab[i].act_action);
+      pr_trace_msg(trace_channel, 4, "mod_%s.c: removing '%s' control",
+        mod->name, acttab[i].act_action);
       pr_ctrls_unregister(mod, acttab[i].act_action);
       destroy_pool(acttab[i].act_acl->acl_pool);
     }
@@ -984,8 +986,7 @@ static int ctrls_listen(const char *sock_file) {
   len = sizeof(sock);
 
   /* Bind the name to the descriptor */
-  pr_log_debug(DEBUG3, MOD_CTRLS_VERSION ": binding ctrls socket to '%s'",
-    sock.sun_path);
+  pr_trace_msg(trace_channel, 1, "binding ctrls socket to '%s'", sock.sun_path);
   if (bind(sockfd, (struct sockaddr *) &sock, len) < 0) {
     int xerrno = errno;
 
@@ -993,7 +994,9 @@ static int ctrls_listen(const char *sock_file) {
     (void) close(sockfd);
     errno = xerrno;
     ctrls_log(MOD_CTRLS_VERSION,
-      "error: unable to bind to local socket: %s", strerror(errno));
+      "error: unable to bind to local socket: %s", strerror(xerrno));
+    pr_trace_msg(trace_channel, 1, "unable to bind to local socket: %s",
+      strerror(xerrno));
     return -1;
   }
 
@@ -1005,7 +1008,9 @@ static int ctrls_listen(const char *sock_file) {
     (void) close(sockfd);
     errno = xerrno;
     ctrls_log(MOD_CTRLS_VERSION,
-      "error: unable to listen on local socket: %s", strerror(errno));
+      "error: unable to listen on local socket: %s", strerror(xerrno));
+    pr_trace_msg(trace_channel, 1, "unable to listen on local socket: %s",
+      strerror(xerrno));
     return -1;
   }
 
@@ -1017,7 +1022,9 @@ static int ctrls_listen(const char *sock_file) {
     (void) close(sockfd);
     errno = xerrno;
     ctrls_log(MOD_CTRLS_VERSION,
-      "error: unable to chmod local socket: %s", strerror(errno));
+      "error: unable to chmod local socket: %s", strerror(xerrno));
+    pr_trace_msg(trace_channel, 1, "unable to chmod local socket: %s",
+      strerror(xerrno));
     return -1;
   }
 
@@ -1508,7 +1515,7 @@ MODRET set_ctrlssocket(cmd_rec *cmd) {
 
   /* Close the socket. */
   if (ctrls_sockfd >= 0) {
-    pr_log_debug(DEBUG3, MOD_CTRLS_VERSION ": closing ctrls socket '%s' (%d)",
+    pr_trace_msg(trace_channel, 3, "closing ctrls socket '%s' (fd %d)",
       ctrls_sock_file, ctrls_sockfd);
     close(ctrls_sockfd);
     ctrls_sockfd = -1;
@@ -1655,7 +1662,7 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
   cl_list = NULL;
   cl_listlen = 0;
 
-  pr_log_debug(DEBUG3, MOD_CTRLS_VERSION ": closing ctrls socket '%s' (%d)",
+  pr_trace_msg(trace_channel, 3, "closing ctrls socket '%s' (fd %d)",
     ctrls_sock_file, ctrls_sockfd);
   close(ctrls_sockfd);
   ctrls_sockfd = -1;
