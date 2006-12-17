@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.293 2006-12-15 19:05:35 castaglia Exp $
+ * $Id: mod_core.c,v 1.294 2006-12-17 23:28:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -421,7 +421,6 @@ MODRET set_servertype(cmd_rec *cmd) {
 }
 
 MODRET set_setenv(cmd_rec *cmd) {
-#ifdef HAVE_SETENV
   int ctxt_type;
 
   CHECK_ARGS(cmd, 2);
@@ -439,18 +438,13 @@ MODRET set_setenv(cmd_rec *cmd) {
      cmd->server->config_type : CONF_ROOT);
 
   if (ctxt_type == CONF_ROOT) {
-    if (setenv(cmd->argv[1], cmd->argv[2], 1) < 0)
+    if (pr_env_set(cmd->server->pool, cmd->argv[1], cmd->argv[2]) < 0) {
       pr_log_debug(DEBUG1, "%s: unable to set environ variable '%s': %s",
         cmd->argv[0], cmd->argv[1], strerror(errno));
+    }
   }
 
   return PR_HANDLED(cmd);
-
-#else
-  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
-    " directive cannot be used on this system, as it does not have the "
-    "setenv() function", NULL));
-#endif /* HAVE_SETENV */
 }
 
 MODRET add_transferlog(cmd_rec *cmd) {
@@ -1152,18 +1146,11 @@ MODRET set_umask(cmd_rec *cmd) {
 }
 
 MODRET set_unsetenv(cmd_rec *cmd) {
-#ifdef HAVE_UNSETENV
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]); 
   return PR_HANDLED(cmd);
-
-#else
-  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
-    " directive cannot be used on this system, as it does not have the "
-    "unsetenv() function", NULL));
-#endif /* HAVE_UNSETENV */
 }
 
 MODRET set_rlimitcpu(cmd_rec *cmd) {
@@ -4459,36 +4446,29 @@ static int core_sess_init(void) {
   if (debug_level != NULL)
     pr_log_setdebuglevel(*debug_level);
 
-#ifdef HAVE_SETENV
   /* Check for configured SetEnvs. */
   c = find_config(main_server->conf, CONF_PARAM, "SetEnv", FALSE);
 
   while (c) {
-    if (setenv(c->argv[0], c->argv[1], 1) < 0)
+    if (pr_env_set(session.pool, c->argv[0], c->argv[1]) < 0) {
       pr_log_debug(DEBUG1, "unable to set environ variable '%s': %s",
         (char *) c->argv[0], strerror(errno));
+    }
 
     c = find_config_next(c, c->next, CONF_PARAM, "SetEnv", FALSE);
   }
-#endif /* HAVE_SETENV */
 
-#ifdef HAVE_UNSETENV
   /* Check for configured UnsetEnvs. */
   c = find_config(main_server->conf, CONF_PARAM, "UnsetEnv", FALSE);
 
   while (c) {
-
-    /* The same key may appear multiple times in environ, so make
-     * certain that all such occurrences are removed.
-     */
-    while (getenv(c->argv[0])) {
-      pr_signals_handle();
-      unsetenv(c->argv[0]);
+    if (pr_env_unset(session.pool, c->argv[0]) < 0) {
+      pr_log_debug(DEBUG1, "unable to unset environ variable '%s': %s",
+        (char *) c->argv[0], strerror(errno));
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "UnsetEnv", FALSE);
   }
-#endif /* HAVE_UNSETENV */
 
 #ifdef PR_USE_NLS
   c = find_config(main_server->conf, CONF_PARAM, "UseUTF8", FALSE);

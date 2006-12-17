@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.217 2006-09-12 02:38:41 castaglia Exp $
+ * $Id: mod_auth.c,v 1.218 2006-12-17 23:28:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -63,7 +63,8 @@ static int lockdown(char *newroot) {
   __GLIBC__ == 2 && __GLIBC_MINOR__ >= 3
   char *tz = getenv("TZ");
   if (tz == NULL) {
-    if (setenv("TZ", pstrdup(permanent_pool, tzname[0]), 1) < 0) {
+    if (pr_env_set(session.pool, "TZ", pstrdup(permanent_pool,
+        tzname[0])) < 0) {
       pr_log_debug(DEBUG0, "error setting TZ environment variable to "
         "'%s': %s", tzname[0], strerror(errno));
 

@@ -734,8 +734,10 @@ static int wrap2_opt_setenv(char *val) {
   if (*(value = val + strcspn(val, WRAP2_WHITESPACE)))
     *value++ = '\0';
 
-  if (setenv(wrap2_opt_trim_string(val), wrap2_opt_trim_string(value), 1))
-    wrap2_log("error handling setenv option: Insufficient memory");
+  if (pr_env_set(session.pool, wrap2_opt_trim_string(val),
+      wrap2_opt_trim_string(value)) < 0) {
+    wrap2_log("error handling setenv option: %s", strerror(errno));
+  }
 
   return 0;
 }
