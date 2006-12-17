@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.218 2006-12-17 23:28:47 castaglia Exp $
+ * $Id: mod_auth.c,v 1.219 2006-12-17 23:37:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -61,7 +61,7 @@ static void auth_count_scoreboard(cmd_rec *, char *);
 static int lockdown(char *newroot) {
 #if defined(HAVE_SETENV) && defined(__GLIBC__) && defined(__GLIBC_MINOR__) && \
   __GLIBC__ == 2 && __GLIBC_MINOR__ >= 3
-  char *tz = getenv("TZ");
+  char *tz = pr_env_get(session.pool, "TZ");
   if (tz == NULL) {
     if (pr_env_set(session.pool, "TZ", pstrdup(permanent_pool,
         tzname[0])) < 0) {

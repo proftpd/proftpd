@@ -24,7 +24,7 @@
 
 /*
  * Configuration parser
- * $Id: parser.c,v 1.10 2006-10-13 15:00:10 castaglia Exp $
+ * $Id: parser.c,v 1.11 2006-12-17 23:37:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -106,7 +106,6 @@ static char *get_config_word(pool *p, char *word) {
    * contain a string duped from the given pool.
    */
 
-#ifdef HAVE_GETENV
   /* Does the given word use the environment syntax? */
   if (strlen(word) > 7 &&
       strncmp(word, "%{env:", 6) == 0 &&
@@ -115,11 +114,10 @@ static char *get_config_word(pool *p, char *word) {
 
     word[strlen(word)-1] = '\0';
 
-    env = getenv(word + 6);
+    env = pr_env_get(p, word + 6);
 
     return env ? pstrdup(p, env) : "";
   }
-#endif /* HAVE_GETENV */
 
   return pstrdup(p, word);
 }
