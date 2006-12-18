@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.4 2006-12-05 20:05:37 castaglia Exp $
+ * $Id: mod_ban.c,v 1.5 2006-12-18 20:04:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1886,8 +1886,10 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
 static void ban_restart_ev(const void *event_data, void *user_data) {
   register unsigned int i;
 
-  if (ban_pool)
+  if (ban_pool) {
     destroy_pool(ban_pool);
+    ban_pool = NULL;
+  }
 
   ban_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(ban_pool, MOD_BAN_VERSION);
@@ -1949,7 +1951,7 @@ static void ban_restart_ev(const void *event_data, void *user_data) {
 }
 
 static void ban_startup_ev(const void *event_data, void *user_data) {
-  add_timer(BAN_TIMER_INTERVAL, -1, &ban_module, ban_timer_cb);
+  pr_timer_add(BAN_TIMER_INTERVAL, -1, &ban_module, ban_timer_cb);
 }
 
 static void ban_timeoutidle_ev(const void *event_data, void *user_data) {
