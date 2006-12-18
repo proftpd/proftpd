@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.85 2006-12-17 23:24:54 castaglia Exp $
+ * $Id: support.c,v 1.86 2006-12-18 18:09:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -845,14 +845,16 @@ int pr_env_set(pool *p, const char *key, const char *value) {
 }
 
 int pr_env_unset(pool *p, const char *key) {
+#if defined(HAVE_UNSETENV)
+  char *res;
+#endif /* !HAVE_UNSETENV */
+
   if (!p || !key) {
     errno = EINVAL;
     return -1;
   }
 
 #if defined(HAVE_UNSETENV)
-  char *res;
-
   /* The same key may appear multiple times in the environ, so make certain
    * that all such occurrences are removed.
    */
