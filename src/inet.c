@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.98 2006-12-14 22:18:24 castaglia Exp $
+ * $Id: inet.c,v 1.99 2006-12-18 18:33:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -237,7 +237,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
-    defined(__OpenBSD__) || defined(__NetBSD__) || \
+    defined(FREEBSD7) || defined(__OpenBSD__) || defined(__NetBSD__) || \
     defined(DARWIN6) || defined(DARWIN7) || defined(DARWIN8) || \
     defined(SCO3) || defined(CYGWIN) || defined(SYSV4_2MP) || \
     defined(SYSV5UNIXWARE7)
@@ -255,7 +255,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
-    defined(__OpenBSD__) || defined(__NetBSD__) || \
+    defined(FREEBSD7) || defined(__OpenBSD__) || defined(__NetBSD__) || \
     defined(DARWIN6) || defined(DARWIN7) || defined(DARWIN8) || \
     defined(SCO3) || defined(CYGWIN) || defined(SYSV4_2MP) || \
     defined(SYSV5UNIXWARE7)
