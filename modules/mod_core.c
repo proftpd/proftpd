@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.294 2006-12-17 23:28:47 castaglia Exp $
+ * $Id: mod_core.c,v 1.295 2006-12-18 19:27:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -57,6 +57,10 @@ module core_module;
 char AddressCollisionCheck = TRUE;
 
 static int core_scrub_timer_id;
+
+#ifdef PR_USE_TRACE
+static const char *trace_log = NULL;
+#endif /* PR_USE_TRACE */
 
 static ssize_t get_num_bytes(char *nbytes_str) {
   ssize_t nbytes = 0;
@@ -1092,9 +1096,11 @@ MODRET set_tracelog(cmd_rec *cmd) {
   if (pr_fs_valid_path(cmd->argv[1]) < 0)
     CONF_ERROR(cmd, "must be an absolute path");
 
-  if (pr_trace_set_file(cmd->argv[1]) < 0)
+  trace_log = pstrdup(permanent_pool, cmd->argv[1]);
+  if (pr_trace_set_file(trace_log) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error using TraceLog '",
-      cmd->argv[1], "'", NULL));
+      trace_log, "': ", strerror(errno), NULL));
+  }
 
   return PR_HANDLED(cmd);
 #else
@@ -4357,6 +4363,16 @@ static const char *core_get_sess_files_str(void *data, size_t datasz) {
 
 static void core_restart_ev(const void *event_data, void *user_data) {
   pr_scoreboard_scrub();
+
+#ifdef PR_USE_TRACE
+  if (trace_log) {
+    pr_trace_set_file(NULL);
+    if (pr_trace_set_file(trace_log) < 0) {
+      pr_log_debug(DEBUG1, "error using TraceLog '%s': %s", trace_log,
+        strerror(errno));
+    }
+  }
+#endif /* PR_USE_TRACE */
 }
 
 static void core_startup_ev(const void *event_data, void *user_data) {
@@ -4421,7 +4437,6 @@ static int core_init(void) {
   pr_feat_add("UTF8");
 #endif /* PR_USE_NLS */
 
-  /* Register a startup handler. */
   pr_event_register(&core_module, "core.startup", core_startup_ev, NULL);
 
   return 0;
