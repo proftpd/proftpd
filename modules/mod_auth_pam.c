@@ -36,7 +36,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.16 2006-06-22 16:08:57 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.17 2006-12-19 03:26:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -79,6 +79,8 @@ static size_t		pam_user_len		= 0;
 static size_t		pam_pass_len		= 0;
 static int		pam_conv_error		= 0;
 
+static const char *trace_channel = "pam";
+
 static int pam_exchange(num_msg, msg, resp, appdata_ptr)
      int num_msg;
      struct pam_message **msg;
@@ -101,6 +103,8 @@ static int pam_exchange(num_msg, msg, resp, appdata_ptr)
 
     switch (msg[i]->msg_style) {
     case PAM_PROMPT_ECHO_ON:
+      pr_trace_msg(trace_channel, 9, "received PAM_PROMPT_ECHO_ON response");
+
       /* PAM frees response and resp.  If you don't believe this, please read
        * the actual PAM RFCs as well as have a good look at libpam.
        */
@@ -108,6 +112,8 @@ static int pam_exchange(num_msg, msg, resp, appdata_ptr)
       break;
 
     case PAM_PROMPT_ECHO_OFF:
+      pr_trace_msg(trace_channel, 9, "received PAM_PROMPT_ECHO_OFF response");
+
       /* PAM frees response and resp.  If you don't believe this, please read
        * the actual PAM RFCs as well as have a good look at libpam.
        */
@@ -116,6 +122,9 @@ static int pam_exchange(num_msg, msg, resp, appdata_ptr)
 
     case PAM_TEXT_INFO:
     case PAM_ERROR_MSG:
+      pr_trace_msg(trace_channel, 9, "received %s response",
+        msg[i]->msg_style == PAM_TEXT_INFO ? "PAM_TEXT_INFO" : "PAM_ERROR_MSG");
+
       /* Ignore it, but pam still wants a NULL response... */
       response[i].resp = NULL;
       break;
@@ -161,14 +170,17 @@ static void auth_pam_exit_ev(const void *event_data, void *user_data) {
 #else
   pam_error = pam_setcred(pamh, PAM_DELETE_CRED);
 #endif /* !PAM_CRED_DELETE */
-  if (pam_error != PAM_SUCCESS)
-    pr_log_pri(PR_LOG_NOTICE, "PAM(setcred): %s",
+  if (pam_error != PAM_SUCCESS) {
+    pr_trace_msg(trace_channel, 1,
+      "error setting PDM_DELETE_CRED credential: %s",
       pam_strerror(pamh, pam_error));
+  }
 
   pam_error = pam_close_session(pamh, PAM_SILENT);
-  if (pam_error != PAM_SUCCESS)
-    pr_log_pri(PR_LOG_NOTICE, "PAM(close_session): %s",
+  if (pam_error != PAM_SUCCESS) {
+    pr_trace_msg(trace_channel, 1, "error closing PAM session: %s",
       pam_strerror(pamh, pam_error));
+  }
 
 #ifndef SOLARIS2
   pam_end(pamh, 0);
@@ -233,6 +245,9 @@ MODRET pam_auth(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_NOTICE,
       "PAM(%s): Name exceeds maximum login length (%u)", cmd->argv[0],
       MAXLOGNAME);
+    pr_trace_msg(trace_channel, 1,
+      "user name '%s' exceeds maximum login length %u, declining",
+      cmd->argv[0], MAXLOGNAME);
     return PR_DECLINED(cmd);
   }
 #endif
@@ -261,9 +276,11 @@ MODRET pam_auth(cmd_rec *cmd) {
    * potential servers, they may each require a separate type of PAM
    * authentication.
    */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "AuthPAMConfig",
-      FALSE)) != NULL)
+  c = find_config(main_server->conf, CONF_PARAM, "AuthPAMConfig", FALSE);
+  if (c != NULL) {
     pamconfig = c->argv[0];
+    pr_trace_msg(trace_channel, 8, "using PAM service name '%s'", pamconfig);
+  }
 
   /* Due to the different types of authentication used, such as shadow
    * passwords, etc. we need root privs for this operation.
@@ -323,7 +340,8 @@ MODRET pam_auth(cmd_rec *cmd) {
         break;
     }
 
-    pr_log_pri(PR_LOG_NOTICE, "PAM(%s): %s.", cmd->argv[0],
+    pr_trace_msg(trace_channel, 1,
+      "authentication error (%d) for user '%s': %s", pam_error, cmd->argv[0],
       pam_strerror(pamh, pam_error));
     goto done;
   }
@@ -339,27 +357,37 @@ MODRET pam_auth(cmd_rec *cmd) {
     switch (pam_error) {
 #ifdef PAM_AUTHTOKEN_REQD
       case PAM_AUTHTOKEN_REQD:
+        pr_trace_msg(trace_channel, 8,
+          "account mgmt error: PAM_AUTHTOKEN_REQD");
         retval = PR_AUTH_AGEPWD;
         break;
 #endif /* PAM_AUTHTOKEN_REQD */
 
       case PAM_ACCT_EXPIRED:
-#ifdef PAM_ACCT_DISABLED
-      case PAM_ACCT_DISABLED:
-#endif /* PAM_ACCT_DISABLED */
+        pr_trace_msg(trace_channel, 8, "account mgmt error: PAM_ACCT_EXPIRED");
         retval = PR_AUTH_DISABLEDPWD;
         break;
 
+#ifdef PAM_ACCT_DISABLED
+      case PAM_ACCT_DISABLED:
+        pr_trace_msg(trace_channel, 8, "account mgmt error: PAM_ACCT_DISABLED");
+        retval = PR_AUTH_DISABLEDPWD;
+        break;
+#endif /* PAM_ACCT_DISABLED */
+
       case PAM_USER_UNKNOWN:
+        pr_trace_msg(trace_channel, 8, "account mgmt error: PAM_USER_UNKNOWN");
         retval = PR_AUTH_NOPWD;
         break;
 
       default:
+        pr_trace_msg(trace_channel, 8, "account mgmt error: (unknown) [%d]",
+          pam_error);
         retval = PR_AUTH_BADPWD;
         break;
     }
 
-    pr_log_pri(PR_LOG_NOTICE, "PAM(%s): %s.", cmd->argv[0],
+    pr_log_pri(PR_LOG_NOTICE, "PAM(%s): %s", cmd->argv[0],
       pam_strerror(pamh, pam_error));
     goto done;
   }
@@ -375,7 +403,7 @@ MODRET pam_auth(cmd_rec *cmd) {
         break;
     }
 
-    pr_log_pri(PR_LOG_NOTICE, "PAM(%s): %s.", cmd->argv[0],
+    pr_log_pri(PR_LOG_NOTICE, "PAM(%s): %s", cmd->argv[0],
       pam_strerror(pamh, pam_error));
     goto done;
   }
@@ -390,19 +418,23 @@ MODRET pam_auth(cmd_rec *cmd) {
   if (pam_error != PAM_SUCCESS) {
     switch (pam_error) {
       case PAM_CRED_EXPIRED:
+        pr_trace_msg(trace_channel, 8, "credentials error: PAM_CRED_EXPIRED");
         retval = PR_AUTH_AGEPWD;
         break;
 
       case PAM_USER_UNKNOWN:
+        pr_trace_msg(trace_channel, 8, "credentials error: PAM_USER_UNKNOWN");
         retval = PR_AUTH_NOPWD;
         break;
 
       default:
+        pr_trace_msg(trace_channel, 8, "credentials error: (unknown) [%d]",
+          pam_error);
         retval = PR_AUTH_BADPWD;
         break;
     }
 
-    pr_log_pri(PR_LOG_NOTICE, "PAM(%s): %s.", cmd->argv[0],
+    pr_log_pri(PR_LOG_NOTICE, "PAM(%s): %s", cmd->argv[0],
       pam_strerror(pamh, pam_error));
     goto done;
   }
@@ -411,8 +443,7 @@ MODRET pam_auth(cmd_rec *cmd) {
 
  done:
 
-  /* And we're done.  Clean up and relinquish our root privs.
-   */
+  /* And we're done.  Clean up and relinquish our root privs.  */
 
 #if defined(SOLARIS2) || defined(HPUX10) || defined(HPUX11)
   if (success)
@@ -476,7 +507,6 @@ MODRET set_authpamconfig(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-
   return PR_HANDLED(cmd);
 }
 
