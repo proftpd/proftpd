@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.56 2006-09-29 16:38:16 castaglia Exp $
+ * $Id: netaddr.c,v 1.57 2006-12-19 03:11:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -49,6 +49,8 @@ static int use_ipv6 = TRUE;
 #else
 static int use_ipv6 = FALSE;
 #endif /* PR_USE_IPV6 */
+
+static const char *trace_channel = "dns";
 
 /* Provide replacements for needed functions. */
 
@@ -291,6 +293,9 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     return NULL;
   }
 
+  pr_trace_msg(trace_channel, 10, "resolving name '%s' to IP address",
+    name);
+
   /* Attempt to translate the given name into a pr_netaddr_t using
    * pr_inet_pton() first.
    *
@@ -320,7 +325,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
       if (addrs)
         *addrs = NULL;
 
-      pr_log_debug(DEBUG10, "'%s' resolved to IPv6 address %s", name,
+      pr_trace_msg(trace_channel, 7, "'%s' resolved to IPv6 address %s", name,
         pr_netaddr_get_ipstr(na));
       return na;
     }
@@ -341,7 +346,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     if (addrs)
       *addrs = NULL;
 
-    pr_log_debug(DEBUG10, "'%s' resolved to IPv4 address %s", name,
+    pr_trace_msg(trace_channel, 7, "'%s' resolved to IPv4 address %s", name,
       pr_netaddr_get_ipstr(na));
     return na;
 
@@ -362,16 +367,16 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
 
-    pr_log_debug(DEBUG10,
+    pr_trace_msg(trace_channel, 7,
       "attempting to resolve '%s' to IPv4 address via DNS", name);
     gai_res = pr_getaddrinfo(name, NULL, &hints, &info);
     if (gai_res != 0) {
       if (gai_res != EAI_SYSTEM) {
-        pr_log_pri(PR_LOG_INFO, "IPv4 getaddrinfo '%s' error: %s", name,
-          pr_gai_strerror(gai_res));
+        pr_trace_msg(trace_channel, 1, "IPv4 getaddrinfo '%s' error: %s",
+          name, pr_gai_strerror(gai_res));
 
       } else {
-        pr_log_pri(PR_LOG_INFO,
+        pr_trace_msg(trace_channel, 1,
           "IPv4 getaddrinfo '%s' system error: [%d] %s", name,
           errno, strerror(errno));
       }
@@ -384,7 +389,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
       pr_netaddr_set_family(na, info->ai_family);
       pr_netaddr_set_sockaddr(na, info->ai_addr);
 
-      pr_log_debug(DEBUG10, "resolved '%s' to %s address %s", name,
+      pr_trace_msg(trace_channel, 7, "resolved '%s' to %s address %s", name,
         info->ai_family == AF_INET ? "IPv4" : "IPv6",
         pr_netaddr_get_ipstr(na));
 
@@ -411,16 +416,16 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
       hints.ai_family = AF_INET6;
       hints.ai_socktype = SOCK_STREAM;
 
-      pr_log_debug(DEBUG10,
+      pr_trace_msg(trace_channel, 7,
         "attempting to resolve '%s' to IPv6 address via DNS", name);
       gai_res = pr_getaddrinfo(name, NULL, &hints, &info);
       if (gai_res != 0) {
         if (gai_res != EAI_SYSTEM) {
-          pr_log_pri(PR_LOG_INFO, "IPv6 getaddrinfo '%s' error: %s", name,
-            pr_gai_strerror(gai_res));
+          pr_trace_msg(trace_channel, 1, "IPv6 getaddrinfo '%s' error: %s",
+            name, pr_gai_strerror(gai_res));
 
         } else {
-          pr_log_pri(PR_LOG_INFO,
+          pr_trace_msg(trace_channel, 1, 
             "IPv6 getaddrinfo '%s' system error: [%d] %s", name,
             errno, strerror(errno));
         }
@@ -438,7 +443,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
         pr_netaddr_set_family(*elt, info->ai_family);
         pr_netaddr_set_sockaddr(*elt, info->ai_addr);
 
-        pr_log_debug(DEBUG10, "resolved '%s' to %s address %s", name,
+        pr_trace_msg(trace_channel, 7, "resolved '%s' to %s address %s", name,
           info->ai_family == AF_INET ? "IPv4" : "IPv6",
           pr_netaddr_get_ipstr(*elt));
 
@@ -450,7 +455,8 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     return na;
   }
 
-  pr_log_debug(DEBUG10, "failed to resolve '%s' to an IP address", name);
+  pr_trace_msg(trace_channel, 8, "failed to resolve '%s' to an IP address",
+    name);
   return NULL;
 }
 
@@ -726,7 +732,7 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
 
       b = (pr_netaddr_t *) na2;
 
-      pr_log_debug(DEBUG10, "comparing IPv4 address '%s' against "
+      pr_trace_msg(trace_channel, 6, "comparing IPv4 address '%s' against "
         "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(b),
         pr_netaddr_get_ipstr(a));
 
@@ -744,7 +750,7 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
       memcpy(&b->na_addr.v4.sin_addr, get_v4inaddr(na2),
         sizeof(struct in_addr));
 
-      pr_log_debug(DEBUG10, "comparing IPv4 address '%s' against "
+      pr_trace_msg(trace_channel, 6, "comparing IPv4 address '%s' against "
         "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(a),
         pr_netaddr_get_ipstr(b));
 
@@ -828,7 +834,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
 
       b = (pr_netaddr_t *) na2;
 
-      pr_log_debug(DEBUG10, "comparing IPv4 address '%s' against "
+      pr_trace_msg(trace_channel, 6, "comparing IPv4 address '%s' against "
         "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(b),
         pr_netaddr_get_ipstr(a));
 
@@ -846,7 +852,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
       memcpy(&b->na_addr.v4.sin_addr, get_v4inaddr(na2),
         sizeof(struct in_addr));
 
-      pr_log_debug(DEBUG10, "comparing IPv4 address '%s' against "
+      pr_trace_msg(trace_channel, 6, "comparing IPv4 address '%s' against "
         "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(a),
         pr_netaddr_get_ipstr(b));
 
@@ -971,21 +977,25 @@ int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern, int flags) {
   if (flags & PR_NETADDR_MATCH_DNS) {
     const char *dnsstr = pr_netaddr_get_dnsstr(na);
 
-    pr_log_debug(DEBUG6, "comparing DNS name '%s' to pattern '%s'", dnsstr,
-      pattern);
-    if (pr_fnmatch(pattern, dnsstr, match_flags) == 0)
+    if (pr_fnmatch(pattern, dnsstr, match_flags) == 0) {
+      pr_trace_msg(trace_channel, 6, "DNS name '%s' matches pattern '%s'",
+        dnsstr, pattern);
       return TRUE;
+    }
   }
 
   if (flags & PR_NETADDR_MATCH_IP) {
     const char *ipstr = pr_netaddr_get_ipstr(na);
 
-    pr_log_debug(DEBUG6, "comparing IP address '%s' to pattern '%s'", ipstr,
-      pattern);
-    if (pr_fnmatch(pattern, ipstr, match_flags) == 0)
+    if (pr_fnmatch(pattern, ipstr, match_flags) == 0) {
+      pr_trace_msg(trace_channel, 6, "DNS name '%s' matches pattern '%s'",
+        ipstr, pattern);
       return TRUE;
+    }
   }
 
+  pr_trace_msg(trace_channel, 4, "addr %s does not match pattern '%s'",
+    pr_netaddr_get_ipstr(na), pattern);
   return FALSE;
 }
 
@@ -1055,6 +1065,10 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
 
   if (reverse_dns) {
     int res = 0;
+
+    pr_trace_msg(trace_channel, 3,
+      "verifying DNS name for IP address %s via reverse DNS lookup",
+      pr_netaddr_get_ipstr(na));
 
     memset(buf, '\0', sizeof(buf));
     res = pr_getnameinfo(pr_netaddr_get_sockaddr(na),
@@ -1151,6 +1165,8 @@ const char *pr_netaddr_get_localaddr_str(pool *p) {
     return pr_inet_validate(pstrdup(p, buf));
   }
 
+  pr_trace_msg(trace_channel, 1,  "gethostname(2) error: %s",
+    strerror(errno));
   return NULL;
 }
 
