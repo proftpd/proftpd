@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.14 2006-12-15 22:17:19 castaglia Exp $
+ * $Id: event.c,v 1.15 2006-12-19 01:29:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -148,11 +148,11 @@ int pr_event_unregister(module *m, const char *event,
     if (!event || strcmp(evl->event, event) == 0) {
       struct event_handler *evh;
 
-      /* If there are no handlers for this event, this is nothing to
-       * unregister.
+      /* If there are no handlers for this event, there is nothing to
+       * unregister.  Skip on to the next list.
        */
       if (!evl->handlers)
-        return 0;
+        continue;
 
       for (evh = evl->handlers; evh;) {
 
