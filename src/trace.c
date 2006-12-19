@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.10 2006-12-19 02:42:53 castaglia Exp $
+ * $Id: trace.c,v 1.11 2006-12-19 23:54:24 castaglia Exp $
  */
 
 
@@ -56,7 +56,6 @@ static const char *trace_levels[] = {
   "netacl",
   "netio",
   "pam",
-  "parser",
   "pool",
   "regexp",
   "response",

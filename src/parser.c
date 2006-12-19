@@ -24,7 +24,7 @@
 
 /*
  * Configuration parser
- * $Id: parser.c,v 1.11 2006-12-17 23:37:12 castaglia Exp $
+ * $Id: parser.c,v 1.12 2006-12-19 23:54:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -42,6 +42,8 @@ static server_rec **parser_curr_server = NULL;
 static unsigned int parser_sid = 0;
 
 static xaset_t **parser_server_list = NULL;
+
+static const char *trace_channel = "config";
 
 struct config_src {
   struct config_src *cs_next;
@@ -285,7 +287,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
   pr_pool_tag(tmp_pool, "parser file pool");
 
   if (!(flags & PR_PARSER_FL_DYNAMIC_CONFIG))
-    pr_log_debug(DEBUG2, "parsing '%s' configuration", report_path);
+    pr_trace_msg(trace_channel, 3, "parsing '%s' configuration", report_path);
 
   fh = pr_fsio_open(path, O_RDONLY);
   if (fh == NULL) {
@@ -319,8 +321,9 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
 
         cmd->argv[0] = conftab->directive;
 
-        pr_log_debug(DEBUG8, "dispatching directive '%s' to module mod_%s",
-          conftab->directive, conftab->m->name);
+        pr_trace_msg(trace_channel, 7,
+          "dispatching directive '%s' to module mod_%s", conftab->directive,
+          conftab->m->name);
 
         mr = call_module(conftab->m, conftab->handler, cmd);
         if (mr != NULL) {
