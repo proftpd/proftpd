@@ -24,7 +24,7 @@
 
 /*
  * POSIX ACL checking code (aka POSIX.1e hell)
- * $Id: mod_facl.c,v 1.4 2006-10-11 16:37:09 castaglia Exp $
+ * $Id: mod_facl.c,v 1.5 2006-12-19 02:42:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -32,11 +32,12 @@
 #define MOD_FACL_VERSION		"mod_facl/0.3"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030003
-# error "ProFTPD 1.3.0rc3 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030101
+# error "ProFTPD 1.3.1rc1 or later required"
 #endif
 
 static int facl_engine = TRUE;
+static const char *trace_channel = "facl";
 
 #ifdef HAVE_POSIX_ACL
 
@@ -70,16 +71,16 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
    */
   res = acl_get_entry(facl, ACL_FIRST_ENTRY, &ae);
   if (res < 0) {
-    pr_log_debug(DEBUG10, MOD_FACL_VERSION
-      ": unable to retrieve first ACL entry for '%s': %s", path,
+    pr_trace_msg(trace_channel, 8,
+      "unable to retrieve first ACL entry for '%s': %s", path,
       strerror(errno));
     errno = EACCES;
     return -1;
   }
 
   if (res == 0) {
-    pr_log_debug(DEBUG3, MOD_FACL_VERSION
-      ": ill-formed ACL for '%s' has no entries!", path);
+    pr_trace_msg(trace_channel, 3, "ill-formed ACL for '%s' has no entries",
+      path);
     errno = EACCES;
     return -1;
   }
@@ -90,8 +91,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 
   while (res > 0) {
     if (acl_get_tag_type(ae, &ae_type) < 0) {
-      pr_log_debug(DEBUG5, MOD_FACL_VERSION
-        ": error retrieving type of ACL entry for '%s': %s", path,
+      pr_trace_msg(trace_channel, 5,
+        "error retrieving type of ACL entry for '%s': %s", path,
         strerror(errno));
       res = acl_get_entry(facl, ACL_NEXT_ENTRY, &ae);
       continue;
@@ -133,9 +134,12 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
     ae = acl_user_entry;
     ae_type = ACL_USER_OBJ;
     have_access_entry = TRUE;
+
+    pr_trace_msg(trace_channel, 10, "user ID %lu matches ACL owner user ID",
+      (unsigned long) uid);
   }
 
-  /* 2. If not matched above, and f the given user ID matches one of the
+  /* 2. If not matched above, and if the given user ID matches one of the
    *    named user entries, use that entry for access.
    */
   for (i = 0; !have_access_entry && i < acl_users->nelts; i++) {
@@ -149,6 +153,10 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
       ae = e;
       ae_type = ACL_USER;
       have_access_entry = TRUE;
+
+      pr_trace_msg(trace_channel, 10,
+        "user ID %lu matches ACL allowed users list", (unsigned long) uid);
+
       break;
     }
   }
@@ -174,6 +182,10 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
       ae = acl_group_entry;
       ae_type = ACL_GROUP_OBJ;
       have_access_entry = TRUE;
+
+      pr_trace_msg(trace_channel, 10,
+        "primary group ID %lu matches ACL owner group ID",
+        (unsigned long) gid);
     }
   }
 
@@ -196,6 +208,11 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
           ae = acl_group_entry;
           ae_type = ACL_GROUP_OBJ;
           have_access_entry = TRUE;
+
+          pr_trace_msg(trace_channel, 10,
+            "supplemental group ID %lu matches ACL owner group ID",
+            (unsigned long) suppl_gid);
+
           break;
         }
       }
@@ -225,6 +242,11 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
         ae = e;
         ae_type = ACL_GROUP;
         have_access_entry = TRUE;
+
+        pr_trace_msg(trace_channel, 10,
+          "primary group ID %lu matches ACL allowed groups list",
+          (unsigned long) gid);
+
         break;
       }
     }
@@ -250,6 +272,11 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
             ae = e;
             ae_type = ACL_GROUP;
             have_access_entry = TRUE;
+
+            pr_trace_msg(trace_channel, 10,
+              "supplemental group ID %lu matches ACL allowed groups list",
+              (unsigned long) suppl_gid);
+
             break;
           }
         }
@@ -263,12 +290,16 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
    *    the requested permissions, access is denied.
    */
 
+  /* XXX implement this condition properly */
+
   /* 7. If not matched above, the other entry determines access.
    */
   if (!have_access_entry) {
     ae = acl_other_entry;
     ae_type = ACL_OTHER;
     have_access_entry = TRUE;
+
+    pr_trace_msg(trace_channel, 10, "using ACL 'other' list");
   }
 
   /* Access determination:
@@ -319,8 +350,13 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 
   destroy_pool(acl_pool);
 
-  if (res < 0)
+  if (res < 0) {
     errno = EACCES;
+    pr_trace_msg(trace_channel, 3,
+      "returning EACCES for path '%p', user ID %lu", path,
+      (unsigned long) uid);
+  }
+
   return res;
 
 # elif defined(HAVE_SOLARIS_POSIX_ACL)
@@ -348,50 +384,50 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
       break;
 
     case GRP_ERROR:
-      pr_log_debug(DEBUG3, MOD_FACL_VERSION
-        ": ill-formed ACL for '%s': %s", path, "too many GROUP entries");
+      pr_trace_msg(trace_channel, 3, "ill-formed ACL for '%s': %s",
+        path, "too many GROUP entries");
       errno = EACCES;
       return -1;
 
     case USER_ERROR:
-      pr_log_debug(DEBUG3, MOD_FACL_VERSION
-        ": ill-formed ACL for '%s': %s", path, "too many USER entries");
+      pr_trace_msg(trace_channel, 3, "ill-formed ACL for '%s': %s",
+        path, "too many USER entries");
       errno = EACCES;
       return -1;
 
     case OTHER_ERROR:
-      pr_log_debug(DEBUG3, MOD_FACL_VERSION
-        ": ill-formed ACL for '%s': %s", path, "too many OTHER entries");
+      pr_trace_msg(trace_channel, 3, "ill-formed ACL for '%s': %s",
+        path, "too many OTHER entries");
       errno = EACCES;
       return -1;
 
     case CLASS_ERROR:
-      pr_log_debug(DEBUG3, MOD_FACL_VERSION
-        ": ill-formed ACL for '%s': %s", path, "too many CLASS entries");
+      pr_trace_msg(trace_channel, 3, "ill-formed ACL for '%s': %s",
+        path, "too many CLASS entries");
       errno = EACCES;
       return -1;
 
     case DUPLICATE_ERROR:
-      pr_log_debug(DEBUG3, MOD_FACL_VERSION
-        ": ill-formed ACL for '%s': %s", path, "duplicate entries");
+      pr_trace_msg(trace_channel, 3, "ill-formed ACL for '%s': %s",
+        path, "duplicate entries");
       errno = EACCES;
       return -1;
 
     case MISS_ERROR:
-      pr_log_debug(DEBUG3, MOD_FACL_VERSION
-        ": ill-formed ACL for '%s': %s", path, "missing required entry");
+      pr_trace_msg(trace_channel, 3, "ill-formed ACL for '%s': %s",
+        path, "missing required entry");
       errno = EACCES;
       return -1;
 
     case MEM_ERROR:
-      pr_log_debug(DEBUG3, MOD_FACL_VERSION
-        ": ill-formed ACL for '%s': %s", path, "Out of memory!");
+      pr_trace_msg(trace_channel, 3, "ill-formed ACL for '%s': %s",
+        path, "Out of memory!");
       errno = EACCES;
       return -1;
 
     case ENTRY_ERROR:
-      pr_log_debug(DEBUG3, MOD_FACL_VERSION
-        ": ill-formed ACL for '%s': %s", path, "invalid entry type");
+      pr_trace_msg(trace_channel, 3, "ill-formed ACL for '%s': %s",
+        path, "invalid entry type");
       errno = EACCES;
       return -1;
   }
@@ -438,6 +474,9 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
     memcpy(&ae, &acl_user_entry, sizeof(aclent_t));
     ae_type = USER_OBJ;
     have_access_entry = TRUE;
+
+    pr_trace_msg(trace_channel, 10, "user ID %lu matches ACL owner user ID",
+      (unsigned long) uid);
   }
 
   /* 2. If not matched above, and f the given user ID matches one of the
@@ -455,6 +494,10 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
       memcpy(&ae, &e, sizeof(aclent_t));
       ae_type = USER;
       have_access_entry = TRUE;
+
+      pr_trace_msg(trace_channel, 10,
+        "user ID %lu matches ACL allowed users list", (unsigned long) uid);
+
       break;
     }
   }
@@ -473,6 +516,10 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
       memcpy(&ae, &acl_group_entry, sizeof(aclent_t));
       ae_type = GROUP_OBJ;
       have_access_entry = TRUE;
+
+      pr_trace_msg(trace_channel, 10,
+        "primary group ID %lu matches ACL owner group ID",
+        (unsigned long) gid);
     }
   }
 
@@ -488,6 +535,11 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
           memcpy(&ae, &acl_group_entry, sizeof(aclent_t));
           ae_type = GROUP_OBJ;
           have_access_entry = TRUE;
+
+          pr_trace_msg(trace_channel, 10,
+            "supplemental group ID %lu matches ACL owner group ID",
+            (unsigned long) suppl_gid);
+
           break;
         }
       }
@@ -511,6 +563,11 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
         memcpy(&ae, &e, sizeof(aclent_t));
         ae_type = GROUP;
         have_access_entry = TRUE;
+
+        pr_trace_msg(trace_channel, 10,
+          "primary group ID %lu matches ACL allowed groups list",
+          (unsigned long) gid);
+
         break;
       }
     }
@@ -529,6 +586,11 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
             memcpy(&ae, &e, sizeof(aclent_t));
             ae_type = GROUP;
             have_access_entry = TRUE;
+
+            pr_trace_msg(trace_channel, 10,
+              "supplemental group ID %lu matches ACL allowed groups list",
+              (unsigned long) suppl_gid);
+
             break;
           }
         }
@@ -542,12 +604,16 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
    *    the requested permissions, access is denied.
    */
 
+  /* XXX implement this condition properly */
+
   /* 7. If not matched above, the other entry determines access.
    */
   if (!have_access_entry) {
     memcpy(&ae, &acl_other_entry, sizeof(aclent_t));
     ae_type = OTHER_OBJ;
     have_access_entry = TRUE;
+
+    pr_trace_msg(trace_channel, 10, "using ACL 'other' list");
   }
 
   /* Access determination:
@@ -576,8 +642,13 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 
   destroy_pool(acl_pool);
 
-  if (res < 0)
+  if (res < 0) {
     errno = EACCES;
+    pr_trace_msg(trace_channel, 3,
+      "returning EACCES for path '%p', user ID %lu", path,
+      (unsigned long) uid);
+  }
+
   return res;
 # endif /* HAVE_SOLARIS_POSIX_ACL */
 }
@@ -600,8 +671,8 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
   acls = acl_get_file(path, ACL_TYPE_ACCESS);
 
   if (!acls) {
-    pr_log_debug(DEBUG10, MOD_FACL_VERSION
-      ": unable to retrieve ACL for '%s': %s", path, strerror(errno));
+    pr_trace_msg(trace_channel, 10, "unable to retrieve ACL for '%s': %s",
+      path, strerror(errno));
     return -1;
   }
 
@@ -609,8 +680,8 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
 
   nents = acl(path, GETACLCNT, 0, NULL);
   if (nents < 0) {
-    pr_log_debug(DEBUG10, MOD_FACL_VERSION
-      ": unable to retrieve ACL count for '%s': %s", path, strerror(errno));
+    pr_trace_msg(trace_channel, 10,
+      "unable to retrieve ACL count for '%s': %s", path, strerror(errno));
     return -1;
   }
 
@@ -618,8 +689,8 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
 
   nents = acl(path, GETACL, nents, acls);
   if (nents < 0) {
-    pr_log_debug(DEBUG10, MOD_FACL_VERSION
-      ": unable to retrieve ACL for '%s': %s", path, strerror(errno));
+    pr_trace_msg(trace_channel, 10,
+      "unable to retrieve ACL for '%s': %s", path, strerror(errno));
     return -1;
   }
 # endif
@@ -643,8 +714,8 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
   acls = acl_get_fd(PR_FH_FD(fh));
 
   if (!acls) {
-    pr_log_debug(DEBUG10, MOD_FACL_VERSION
-      ": unable to retrieve ACL for '%s': %s", fh->fh_path, strerror(errno));
+    pr_trace_msg(trace_channel, 10,
+      "unable to retrieve ACL for '%s': %s", fh->fh_path, strerror(errno));
     return -1;
   }
 
@@ -652,8 +723,8 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
 
   nents = facl(PR_FH_FD(fh), GETACLCNT, 0, NULL);
   if (nents < 0) {
-    pr_log_debug(DEBUG10, MOD_FACL_VERSION
-      ": unable to retrieve ACL count for '%s': %s", fh->fh_path,
+    pr_trace_msg(trace_channel, 10,
+      "unable to retrieve ACL count for '%s': %s", fh->fh_path,
       strerror(errno));
     return -1;
   }
@@ -662,8 +733,8 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
 
   nents = facl(PR_FH_FD(fh), GETACL, nents, acls);
   if (nents < 0) {
-    pr_log_debug(DEBUG10, MOD_FACL_VERSION
-      ": unable to retrieve ACL for '%s': %s", fh->fh_path, strerror(errno));
+    pr_trace_msg(trace_channel, 10,
+      "unable to retrieve ACL for '%s': %s", fh->fh_path, strerror(errno));
     return -1;
   }
 # endif
@@ -672,6 +743,15 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
     uid, gid, suppl_gids);
 }
 #endif /* HAVE_POSIX_ACL */
+
+#if defined(PR_SHARED_MODULE)
+static void facl_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_facl.c", (const char *) event_data) == 0) {
+    pr_event_unregister(&facl_module, NULL, NULL);
+    pr_unregister_fs("facl");
+  }
+}
+#endif /* !PR_SHARED_MODULE */
 
 /* Initialization routines
  */
@@ -687,15 +767,20 @@ static int facl_init(void) {
 #if defined(PR_USE_FACL) && defined(HAVE_POSIX_ACL)
   fs = pr_register_fs(permanent_pool, "facl", "/");
   if (!fs) {
-    pr_log_pri(PR_LOG_ERR, MOD_FACL_VERSION ": error registering fs: %s",
+    pr_log_pri(PR_LOG_ERR, MOD_FACL_VERSION ": error registering 'facl' FS: %s",
       strerror(errno));
     return -1;
   }
-  pr_log_debug(DEBUG6, MOD_FACL_VERSION ": registered 'facl' fs");
+  pr_log_debug(DEBUG6, MOD_FACL_VERSION ": registered 'facl' FS");
 
   /* Ensure that our ACL-checking handlers are used. */
   fs->access = facl_fsio_access;
   fs->faccess = facl_fsio_faccess;
+
+# if defined(PR_SHARED_MODULE)
+    pr_event_register(&facl_module, "core.module-unload", facl_mod_unload_ev,
+      NULL);
+# endif /* !PR_SHARED_MODULE */
 #endif /* PR_USE_FACL and HAVE_POSIX_ACL */
 
   return 0;

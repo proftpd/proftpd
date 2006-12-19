@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.9 2006-12-11 17:07:00 castaglia Exp $
+ * $Id: trace.c,v 1.10 2006-12-19 02:42:53 castaglia Exp $
  */
 
 
@@ -47,6 +47,7 @@ static const char *trace_levels[] = {
   "dns",
   "dso",
   "event",
+  "facl",
   "fsio",
   "ident",
   "inet",
