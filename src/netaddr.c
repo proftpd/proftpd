@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.57 2006-12-19 03:11:16 castaglia Exp $
+ * $Id: netaddr.c,v 1.58 2006-12-19 21:36:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1073,6 +1073,7 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
     memset(buf, '\0', sizeof(buf));
     res = pr_getnameinfo(pr_netaddr_get_sockaddr(na),
       pr_netaddr_get_sockaddr_len(na), buf, sizeof(buf), NULL, 0, NI_NAMEREQD);
+    buf[sizeof(buf)-1] = '\0';
 
     if (res == 0) {
       char **checkaddr;
@@ -1093,6 +1094,16 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
 #endif /* HAVE_GETHOSTBYNAME2 */
 
       if (hent != NULL) {
+        char **alias;
+
+        pr_trace_msg(trace_channel, 10,
+          "checking addresses associated with host '%s'",
+          hent->h_name ? hent->h_name : "(null)");
+        for (alias = hent->h_aliases; *alias; ++alias) {
+          pr_trace_msg(trace_channel, 10, "host '%s' has alias '%s'",
+            hent->h_name ? hent->h_name : "(null)", *alias);
+        }
+        
         switch (hent->h_addrtype) {
           case AF_INET:
             if (family == AF_INET) {
@@ -1119,7 +1130,18 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
 #endif /* PR_USE_IPV6 */
         }
 
-        name = ok ? buf : NULL;
+        if (ok) {
+          name = buf;
+          pr_trace_msg(trace_channel, 8,
+            "using DNS name '%s' for IP address '%s'", name,
+            pr_netaddr_get_ipstr(na));
+
+        } else {
+          name = NULL;
+          pr_trace_msg(trace_channel, 8,
+            "unable to verify any DNS names for IP address '%s'",
+            pr_netaddr_get_ipstr(na));
+        }
 
       } else
         pr_log_debug(DEBUG1, "notice: unable to resolve '%s': %s", buf,
@@ -1130,10 +1152,12 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
     pr_log_debug(DEBUG10,
       "UseReverseDNS off, returning IP address instead of DNS name");
 
-  if (!name)
-    name = (char *) pr_netaddr_get_ipstr(na);
+  if (name) {
+    name = pr_inet_validate(name);
 
-  name = pr_inet_validate(name);
+  } else {
+    name = (char *) pr_netaddr_get_ipstr(na);
+  }
 
   /* Copy the string into the pr_netaddr_t cache as well, so we only
    * have to do this once for this pr_netaddr_t.
