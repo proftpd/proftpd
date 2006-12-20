@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.295 2006-12-18 19:27:53 castaglia Exp $
+ * $Id: mod_core.c,v 1.296 2006-12-20 18:28:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1096,7 +1096,7 @@ MODRET set_tracelog(cmd_rec *cmd) {
   if (pr_fs_valid_path(cmd->argv[1]) < 0)
     CONF_ERROR(cmd, "must be an absolute path");
 
-  trace_log = pstrdup(permanent_pool, cmd->argv[1]);
+  trace_log = pstrdup(cmd->server->pool, cmd->argv[1]);
   if (pr_trace_set_file(trace_log) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error using TraceLog '",
       trace_log, "': ", strerror(errno), NULL));
@@ -4366,11 +4366,9 @@ static void core_restart_ev(const void *event_data, void *user_data) {
 
 #ifdef PR_USE_TRACE
   if (trace_log) {
+    pr_trace_set_level("ALL", -1);
     pr_trace_set_file(NULL);
-    if (pr_trace_set_file(trace_log) < 0) {
-      pr_log_debug(DEBUG1, "error using TraceLog '%s': %s", trace_log,
-        strerror(errno));
-    }
+    trace_log = NULL;
   }
 #endif /* PR_USE_TRACE */
 }

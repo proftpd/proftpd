@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.11 2006-12-19 23:54:24 castaglia Exp $
+ * $Id: trace.c,v 1.12 2006-12-20 18:28:19 castaglia Exp $
  */
 
 
@@ -65,6 +65,12 @@ static const char *trace_levels[] = {
   "var",
   NULL
 };
+
+/* XXX This hardcoded fd number is NOT a good idea.  There's always the
+ * possibility of it colliding with a "real" fd.  That's why it's so 
+ * arbitrarily high.
+ */
+static const int trace_log_fallback_fd = 777;
 
 static void trace_restart_ev(const void *event_data, void *user_data) {
   if (trace_pool) {
@@ -154,20 +160,39 @@ int pr_trace_set_file(const char *path) {
 
   if (res < 0) {
     if (res == -1)
-      pr_log_debug(DEBUG1, "trace: unable to open '%s': %s", path,
+      pr_log_debug(DEBUG1, "unable to open TraceLog '%s': %s", path,
         strerror(errno));
 
     else if (res == PR_LOG_WRITABLE_DIR)
       pr_log_debug(DEBUG1,
-        "trace: unable to open '%s': parent directory is world-writable",
+        "unable to open TraceLog '%s': parent directory is world-writable",
         path);
 
     else if (res == PR_LOG_SYMLINK)
       pr_log_debug(DEBUG1,
-        "trace: unable to open '%s': cannot log to a symbolic link",
+        "unable to open TraceLog '%s': cannot log to a symbolic link",
         path);
 
     return res;
+  }
+
+  /* Ensure that the log fd used is not one of the major three
+   * (stdin, stdout, or stderr).
+   */
+  if (trace_logfd < 3) {
+    if (dup2(trace_logfd, trace_log_fallback_fd) < 0) {
+      pr_log_pri(PR_LOG_NOTICE, "error duplicating trace log fd: %s",
+        strerror(errno));
+      (void) close(trace_logfd);
+      trace_logfd = -1;
+
+      errno = EACCES;
+      return -1;
+
+    } else {
+      (void) close(trace_logfd);
+      trace_logfd = trace_log_fallback_fd;
+    }
   }
 
   return 0;
