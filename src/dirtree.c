@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.178 2006-12-21 18:01:17 castaglia Exp $
+ * $Id: dirtree.c,v 1.179 2006-12-21 22:19:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -58,8 +58,6 @@ static xaset_t *find_config_top = NULL;
 
 static void merge_down(xaset_t *, int);
 
-/* Used by get_param_int_next & get_param_ptr_next as "placeholders" */
-static config_rec *_last_param_int = NULL;
 static config_rec *_last_param_ptr = NULL;
 static unsigned char _kludge_disable_umask = 0;
 
@@ -2547,55 +2545,6 @@ config_rec *find_config(xaset_t *set, int type, const char *name, int recurse) {
 
   return find_config_next(NULL, (config_rec *) set->xas_list, type, name,
     recurse);
-}
-
-/* These next two functions return the first argument in a
- * CONF_PARAM configuration entry.  If more than one or all
- * parameters are needed, the caller will need to use find_config,
- * and iterate through the argv themselves.
- * _int returns -1 if the config name is not found, _ptr returns
- * NULL.
- */
-long get_param_int(xaset_t *set, const char *name, int recurse) {
-  config_rec *c;
-
-  if (!set) {
-    _last_param_int = NULL;
-    return -1;
-  }
-
-  c = find_config(set, CONF_PARAM, name, recurse);
-
-  if (c &&
-      c->argc) {
-    _last_param_int = c;
-    return (long) c->argv[0];
-  }
-
-  _last_param_int = NULL;
-  return -1;  /* Parameters aren't allowed to contain neg. integers anyway */
-}
-
-long get_param_int_next(const char *name, int recurse) {
-  config_rec *c;
-
-  if (!_last_param_int ||
-      !_last_param_int->next) {
-    _last_param_int = NULL;
-    return -1;
-  }
-
-  c = find_config_next(_last_param_int, _last_param_int->next, CONF_PARAM,
-    name, recurse);
-
-  if (c &&
-      c->argc) {
-    _last_param_int = c;
-    return (long) c->argv[0];
-  }
-
-  _last_param_int = NULL;
-  return -1;
 }
 
 void *get_param_ptr(xaset_t *set, const char *name, int recurse) {

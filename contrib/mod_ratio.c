@@ -232,8 +232,13 @@ MODRET _calc_ratios (cmd_rec * cmd)
   char buf[1024] = {'\0'};
   char *mask;
   char **data;
+  void *ptr;
 
-  if (!(g.enable = get_param_int (main_server->conf, "Ratios", FALSE) == TRUE))
+  ptr = get_param_ptr (main_server->conf, "Ratios", FALSE);
+  if (ptr)
+    g.enable = *((int *) ptr);
+
+  if (!g.enable)
     return PR_DECLINED (cmd);
 
   mr = _dispatch (cmd, "getstats");
@@ -709,7 +714,9 @@ add_ratios (cmd_rec * cmd)
   b = get_boolean (cmd, 1);
   if (b == -1)
     CONF_ERROR (cmd, "requires a boolean value");
-  c = add_config_param ("Ratios", 1, (void *) b);
+  c = add_config_param ("Ratios", 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = b;
   c->flags |= CF_MERGEDOWN;
   return PR_HANDLED (cmd);
 }
@@ -726,7 +733,9 @@ add_saveratios (cmd_rec * cmd)
   b = get_boolean (cmd, 1);
   if (b == -1)
     CONF_ERROR (cmd, "requires a boolean value");
-  c = add_config_param ("SaveRatios", 1, (void *) b);
+  c = add_config_param ("SaveRatios", 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = b;
   c->flags |= CF_MERGEDOWN;
   return PR_HANDLED (cmd);
 }
@@ -769,9 +778,17 @@ static conftable ratio_conftab[] = {
 static int
 ratio_child_init ()
 {
+  void *ptr;
+
   memset (&g, 0, sizeof (g));
-  g.enable = get_param_int (TOPLEVEL_CONF, "Ratios", FALSE) == TRUE;
-  g.save = get_param_int (TOPLEVEL_CONF, "SaveRatios", FALSE) == TRUE;
+
+  ptr = get_param_ptr (TOPLEVEL_CONF, "Ratios", FALSE);
+  if (ptr)
+    g.enable = *((int *) ptr);
+
+  ptr = get_param_ptr (TOPLEVEL_CONF, "SaveRatios", FALSE);
+  if (ptr)
+    g.save = *((int *) ptr);
 
   if (!(g.filemsg = get_param_ptr (TOPLEVEL_CONF, "FileRatioErrMsg", FALSE)))
     g.filemsg = "Too few files uploaded to earn file -- please upload more.";
