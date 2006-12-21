@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.177 2006-12-11 18:59:15 castaglia Exp $
+ * $Id: dirtree.c,v 1.178 2006-12-21 18:01:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -961,20 +961,7 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
         tmp_path = pdircat(p, tmp_path, "*", NULL);
       }
 
-      /* Temporary measure until we figure what's going on with
-       * gnu fnmatch
-       *
-       * Hmm...wonder what this is, and if it's still an issue.  I love
-       * cryptic comments in other people's code. :)
-       *
-       * - MacGyver
-       */
-
-#if 0
-      if (pr_fnmatch(tmp_path, path, PR_FNM_PATHNAME) == 0) {
-#else
       if (pr_fnmatch(tmp_path, path, 0) == 0) {
-#endif
         if (c->subset) {
           if ((res = recur_match_path(p, c->subset, path)))
             return res;
