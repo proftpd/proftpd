@@ -24,7 +24,7 @@
 
 /*
  * Configuration parser
- * $Id: parser.c,v 1.12 2006-12-19 23:54:24 castaglia Exp $
+ * $Id: parser.c,v 1.13 2006-12-27 01:59:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -246,6 +246,13 @@ config_rec *pr_parser_config_ctxt_open(const char *name) {
   pr_pool_tag(c_pool, "sub-config pool");
 
   c = (config_rec *) pcalloc(c_pool, sizeof(config_rec));
+
+  if (!*set) {
+    pool *set_pool = make_sub_pool(parent_pool);
+    *set = xaset_create(set_pool, NULL);
+    (*set)->pool = set_pool;
+  }
+
   xaset_insert(*set, (xasetmember_t *) c);
 
   c->pool = c_pool;
@@ -253,9 +260,10 @@ config_rec *pr_parser_config_ctxt_open(const char *name) {
   c->parent = parent;
   c->name = pstrdup(c->pool, name);
 
-  if (parent &&
-      (parent->config_type == CONF_DYNDIR))
-    c->flags |= CF_DYNAMIC;
+  if (parent) {
+    if (parent->config_type == CONF_DYNDIR)
+      c->flags |= CF_DYNAMIC;
+  }
 
   add_config_ctxt(c);
   return c;
