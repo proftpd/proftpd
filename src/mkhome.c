@@ -23,7 +23,7 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.9 2006-04-17 18:52:35 castaglia Exp $
+ * $Id: mkhome.c,v 1.10 2006-12-28 17:52:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -119,7 +119,8 @@ static int copy_symlink(pool *p, const char *src_dir, const char *src_path,
   char *link_path = pcalloc(p, PR_TUNABLE_BUFFER_SIZE);
   int len;
 
-  if ((len = pr_fsio_readlink(src_path, link_path, sizeof(link_path)-1)) < 0) {
+  len = pr_fsio_readlink(src_path, link_path, PR_TUNABLE_BUFFER_SIZE-1);
+  if (len < 0) {
     pr_log_pri(PR_LOG_WARNING, "CreateHome: error reading link '%s': %s",
       src_path, strerror(errno));
     return -1;
@@ -139,9 +140,10 @@ static int copy_symlink(pool *p, const char *src_dir, const char *src_path,
   }
 
   /* Make sure the new symlink has the proper ownership. */
-  if (pr_fsio_chown(dst_path, uid, gid) < 0)
+  if (pr_fsio_chown(dst_path, uid, gid) < 0) {
     pr_log_pri(PR_LOG_WARNING, "CreateHome: error chown'ing '%s' to %u/%u: %s",
       dst_path, (unsigned int) uid, (unsigned int) gid, strerror(errno));
+  }
 
   return 0; 
 }
