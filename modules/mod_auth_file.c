@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.31 2007-01-03 22:06:46 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.32 2007-01-03 22:57:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -864,13 +864,13 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
   if (!ciphertxt_pass) {
     pr_log_debug(DEBUG2, MOD_AUTH_FILE_VERSION
       ": missing ciphertext password for comparison");
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   if (!cleartxt_pass) {
     pr_log_debug(DEBUG2, MOD_AUTH_FILE_VERSION
       ": missing client-provided password for comparison");
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Even though the AuthUserFile is not used here, there must be one
@@ -885,7 +885,7 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
   if (!crypted_pass) {
     pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
       ": error using crypt(3): %s", strerror(errno));
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   if (strcmp(crypted_pass, ciphertxt_pass) == 0) {
