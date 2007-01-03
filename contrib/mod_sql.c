@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.120 2006-12-22 20:23:02 castaglia Exp $
+ * $Id: mod_sql.c,v 1.121 2007-01-03 18:24:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3131,9 +3131,15 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
     }
 
   } else {
-    /* retrieve our list of groups */
-    where = sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL);
-    
+    /* Retrieve our list of groups. */
+    if (cmap.groupwhere &&
+        strlen(cmap.groupwhere) > 0) {
+      where = sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL);
+
+    } else {
+      where = NULL;
+    }
+ 
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 6, "default",
       cmap.grptable, cmap.grpfield, where, NULL, "DISTINCT"), "sql_select");
     if (check_response(mr) < 0)
