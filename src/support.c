@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.86 2006-12-18 18:09:24 castaglia Exp $
+ * $Id: support.c,v 1.87 2007-01-04 07:26:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -321,10 +321,9 @@ char *dir_realpath(pool *p, const char *path) {
   return pstrdup(p, buf);
 }
 
-/* Takes a directory and returns it's absolute version.  ~username
- * references are appropriately interpolated.  "Absolute" includes
- * a *full* reference based on the root directory, not upon a chrooted
- * dir.
+/* Takes a directory and returns its absolute version.  ~username references
+ * are appropriately interpolated.  "Absolute" includes a _full_ reference
+ * based on the root directory, not upon a chrooted dir.
  */
 char *dir_abs_path(pool *p, const char *path, int interpolate) {
   char *res = NULL;
@@ -336,16 +335,27 @@ char *dir_abs_path(pool *p, const char *path, int interpolate) {
     return NULL;
 
   if (*path != '/') {
-    if (session.chroot_path)
+    if (session.chroot_path) {
       res = pdircat(p, session.chroot_path, pr_fs_getcwd(), path, NULL);
-    else
+
+    } else {
       res = pdircat(p, pr_fs_getcwd(), path, NULL);
+    }
 
-  } else if (session.chroot_path)
-    res = pdircat(p, session.chroot_path, path, NULL);
-
-  else
-    res = pstrdup(p, path);
+  } else {
+    if (session.chroot_path) {
+      if (strncmp(path, session.chroot_path,
+          strlen(session.chroot_path)) != 0) {
+        res = pdircat(p, session.chroot_path, path, NULL);
+ 
+      } else {
+        res = pstrdup(p, path);
+      }
+ 
+    } else {
+      res = pstrdup(p, path);
+    }
+  }
 
   return res;
 }
