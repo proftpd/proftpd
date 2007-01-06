@@ -3743,6 +3743,14 @@ MODRET tls_ccc(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  if (tls_required_on_ctrl) {
+    pr_response_add_err(R_534, "Unwilling to accept security parameters");
+    tls_log("%s: unwilling to accept security parameters: "
+      "TLSRequired setting does not allow for unprotected control channel",
+      cmd->argv[0]);
+    return PR_ERROR(cmd);
+  }
+
   /* Check for <Limit> restrictions. */
   if (!dir_check(cmd->tmp_pool, C_CCC, G_NONE, session.cwd, NULL)) {
     pr_response_add_err(R_534, "Unwilling to accept security parameters");
