@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.44 2006-12-12 17:00:23 castaglia Exp $
+# $Id: proftpd.spec,v 1.45 2007-01-07 20:42:00 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -18,6 +18,7 @@
 #   mod_ifsession
 #   mod_facl
 #   mod_quotatab
+#   mod_quotatab_file
 #   mod_quotatab_sql
 #   ipv6
 
@@ -88,6 +89,7 @@ This package is neccesary to setup ProFTPD to run from inetd/xinetd.
   MODULES="${MODULES}%{?_with_mod_rewrite::mod_rewrite}"
   MODULES="${MODULES}%{?_with_mod_ifsession::mod_ifsession}"
   MODULES="${MODULES}%{?_with_mod_quotatab::mod_quotatab}"
+  MODULES="${MODULES}%{?_with_mod_quotatab_file::mod_quotatab_file}"
   MODULES="${MODULES}%{?_with_mod_quotatab_sql::mod_quotatab_sql}"
   MODULES="${MODULES}%{?_with_mod_facl:mod_facl}"
   CFLAGS="$RPM_OPT_FLAGS" ./configure \
@@ -218,6 +220,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 %defattr(-,root,root)
 %{prefix}/sbin/*
 %{prefix}/bin/*
+%{prefix}/include/proftpd/*.h
 %dir /var/run/proftpd
 %dir /home/ftp
 /etc/rc.d/init.d/proftpd
