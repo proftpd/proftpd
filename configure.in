@@ -154,7 +154,6 @@ dnl itself similarly bundles a getopt implementation).  Thus, we need to
 dnl support/handle --without-getopt, to disable use of ProFTPD's getopt.
 dnl I don't know if MySQL supports any similar option.
 LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o"
-ac_pr_check_getopt="yes"
 
 AC_ARG_WITH(getopt,
   [AC_HELP_STRING(
@@ -163,15 +162,21 @@ AC_ARG_WITH(getopt,
   ],
   [
     if test "$withval" != "no" ; then
-      LIB_OBJS="$LIB_OBJS getopt.o getopt1.o"
-      AC_CHECK_FUNCS(getopt getopt_long)
-      AC_CHECK_HEADERS(getopt.h)
+      AC_CHECK_FUNCS(getopt getopt_long,
+        [AC_CHECK_HEADERS(getopt.h)
+         AC_DEFINE(PR_USE_SYSTEM_GETOPT, 1,
+           [Define if using system getopt support])],
+        [LIB_OBJS="$LIB_OBJS getopt.o getopt1.o"]
+      )
     fi
   ],
   [
-    LIB_OBJS="$LIB_OBJS getopt.o getopt1.o"
-    AC_CHECK_FUNCS(getopt getopt_long)
-    AC_CHECK_HEADERS(getopt.h)
+    AC_CHECK_FUNCS(getopt getopt_long,
+      [AC_CHECK_HEADERS(getopt.h)
+       AC_DEFINE(PR_USE_SYSTEM_GETOPT, 1,
+         [Define if using system getopt support])],
+      [LIB_OBJS="$LIB_OBJS getopt.o getopt1.o"]
+    )
   ])
 
 dnl Lastlog support

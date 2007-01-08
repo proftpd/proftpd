@@ -17,6 +17,8 @@
    write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
    Boston, MA 02111-1307, USA.  */
 
+#ifndef PR_USE_SYSTEM_GETOPT
+
 #ifndef _GETOPT_H
 
 #ifndef __need_getopt
@@ -167,3 +169,5 @@ extern int _getopt_internal ();
 #undef __need_getopt
 
 #endif /* getopt.h */
+
+#endif /* !PR_USE_SYSTEM_GETOPT */

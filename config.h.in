@@ -809,6 +809,9 @@
 /* Define if using Tru64's C2 SIA authentication.  */
 #undef PR_USE_SIA
 
+/* Define if use of system getopt is desired.  */
+#undef PR_USE_SYSTEM_GETOPT
+
 /* Define if using trace support.  */
 #undef PR_USE_TRACE
 

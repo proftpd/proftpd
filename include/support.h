@@ -25,7 +25,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.26 2006-12-17 23:24:54 castaglia Exp $
+ * $Id: support.h,v 1.27 2007-01-08 19:47:06 castaglia Exp $
  */
 
 #ifndef PR_SUPPORT_H
@@ -48,7 +48,6 @@
 int getopt(int, char * const [], const char *);
 extern char *optarg;
 extern int optind,opterr,optopt;
-#endif
 
 #ifndef HAVE_GETOPT_LONG
 struct option {
@@ -60,7 +59,8 @@ struct option {
 
 int getopt_long(int, char * const [], const char *, const struct option *,
   int *);
-#endif
+# endif /* !HAVE_GETOPT_LONG */
+#endif /* !HAVE_GETOPT */
 
 void pr_signals_block(void);
 void pr_signals_unblock(void);
