@@ -19237,7 +19237,6 @@ LIB_DEPS="\"\""
 
 
 LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o"
-ac_pr_check_getopt="yes"
 
 
 # Check whether --with-getopt or --without-getopt was given.
@@ -19245,7 +19244,6 @@ if test "${with_getopt+set}" = set; then
   withval="$with_getopt"
 
     if test "$withval" != "no" ; then
-      LIB_OBJS="$LIB_OBJS getopt.o getopt1.o"
 
 
 for ac_func in getopt getopt_long
@@ -19345,10 +19343,6 @@ if test `eval echo '${'$as_ac_var'}'` = yes; then
   cat >>confdefs.h <<_ACEOF
 #define `echo "HAVE_$ac_func" | $as_tr_cpp` 1
 _ACEOF
-
-fi
-done
-
 
 for ac_header in getopt.h
 do
@@ -19497,13 +19491,23 @@ _ACEOF
 
 fi
 
+done
+
+
+cat >>confdefs.h <<\_ACEOF
+#define PR_USE_SYSTEM_GETOPT 1
+_ACEOF
+
+else
+  LIB_OBJS="$LIB_OBJS getopt.o getopt1.o"
+
+fi
 done
 
     fi
 
 else
 
-    LIB_OBJS="$LIB_OBJS getopt.o getopt1.o"
 
 
 for ac_func in getopt getopt_long
@@ -19603,10 +19607,6 @@ if test `eval echo '${'$as_ac_var'}'` = yes; then
   cat >>confdefs.h <<_ACEOF
 #define `echo "HAVE_$ac_func" | $as_tr_cpp` 1
 _ACEOF
-
-fi
-done
-
 
 for ac_header in getopt.h
 do
@@ -19755,6 +19755,17 @@ _ACEOF
 
 fi
 
+done
+
+
+cat >>confdefs.h <<\_ACEOF
+#define PR_USE_SYSTEM_GETOPT 1
+_ACEOF
+
+else
+  LIB_OBJS="$LIB_OBJS getopt.o getopt1.o"
+
+fi
 done
 
 
