@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.45 2006-12-15 19:35:16 castaglia Exp $
+ * $Id: auth.c,v 1.46 2007-01-08 06:52:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -71,6 +71,8 @@ static modret_t *dispatch_auth(cmd_rec *cmd, char *match) {
     &cmd->stash_index);
 
   while (authtab) {
+    pr_signals_handle();
+
     pr_trace_msg("auth", 6, "dispatching auth request \"%s\" to module mod_%s",
       match, authtab->m->name);
 
