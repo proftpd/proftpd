@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.46 2007-01-08 06:52:47 castaglia Exp $
+ * $Id: auth.c,v 1.47 2007-01-08 22:59:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -64,29 +64,38 @@ static cmd_rec *make_cmd(pool *cp, int argc, ...) {
 }
 
 static modret_t *dispatch_auth(cmd_rec *cmd, char *match) {
-  authtable *authtab = NULL;
+  authtable *start_tab = NULL, *iter_tab = NULL;
   modret_t *mr = NULL;
 
-  authtab = pr_stash_get_symbol(PR_SYM_AUTH, match, NULL,
+  start_tab = pr_stash_get_symbol(PR_SYM_AUTH, match, NULL,
     &cmd->stash_index);
+  iter_tab = start_tab;
 
-  while (authtab) {
+  while (iter_tab) {
     pr_signals_handle();
 
     pr_trace_msg("auth", 6, "dispatching auth request \"%s\" to module mod_%s",
-      match, authtab->m->name);
+      match, iter_tab->m->name);
 
-    mr = call_module(authtab->m, authtab->handler, cmd);
+    mr = call_module(iter_tab->m, iter_tab->handler, cmd);
 
-    if (authtab->auth_flags & PR_AUTH_FL_REQUIRED)
+    if (iter_tab->auth_flags & PR_AUTH_FL_REQUIRED)
       break;
 
     if (MODRET_ISHANDLED(mr) ||
         MODRET_ISERROR(mr))
       break;
 
-    authtab = pr_stash_get_symbol(PR_SYM_AUTH, match, authtab,
+    iter_tab = pr_stash_get_symbol(PR_SYM_AUTH, match, iter_tab,
       &cmd->stash_index);
+
+    if (iter_tab == start_tab) {
+      /* We have looped back to the start.  Break out now and do not loop
+       * around again (and again, and again...)
+       */
+      mr = PR_DECLINED(cmd);
+      break;
+    }
   }
 
   return mr;
