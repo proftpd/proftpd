@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.46 2007-01-07 20:48:38 castaglia Exp $
+# $Id: proftpd.spec,v 1.47 2007-01-09 04:14:16 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -22,6 +22,8 @@
 #   mod_quotatab_sql
 #   ipv6
 #   ctrls
+#   dso
+#   lastlog
 
 %define proftpd_version 1.3.1rc1
 %define usecvsversion             0
@@ -62,7 +64,8 @@ The base proftpd package installs standalone support. You can install the
 proftpd-inetd package to enable inetd/xinetd support.
 
 %{?_with_ipv6: This package is IPv6 enabled.}
-Addtional modules enabled: mod_ratio mod_readme %{?_with_mod_tls: mod_tls}%{?_with_mod_radius: mod_radius}%{?_with_mod_ldap: mod_ldap}%{?_with_mod_wrap: mod_wrap}%{?_with_mod_sql: mod_sql}%{?_with_mod_sql_mysql: mod_sql_mysql}%{?_with_mod_sql_postgres: mod_sql_postgres}%{?_with_mod_rewrite: mod_rewrite}%{?_with_mod_ifsession: mod_ifsession}%{?_with_mod_facl: mod_facl}%{?_with_mod_quotatab: mod_quotatab}%{_with_mod_quotatab_file: mod_quotatab}%{_with_mod_quotatab_sql: mod_quotatab_sql}%{_with_ctrls: mod_ctrls}
+%{?_with_dso: This package supports DSO (shared) modules.}
+Addtional modules enabled: mod_ratio mod_readme %{?_with_mod_tls: mod_tls}%{?_with_mod_radius: mod_radius}%{?_with_mod_ldap: mod_ldap}%{?_with_mod_wrap: mod_wrap}%{?_with_mod_sql: mod_sql}%{?_with_mod_sql_mysql: mod_sql_mysql}%{?_with_mod_sql_postgres: mod_sql_postgres}%{?_with_mod_rewrite: mod_rewrite}%{?_with_mod_ifsession: mod_ifsession}%{?_with_mod_facl: mod_facl}%{?_with_mod_quotatab: mod_quotatab}%{_with_mod_quotatab_file: mod_quotatab}%{_with_mod_quotatab_sql: mod_quotatab_sql}%{_with_ctrls: mod_ctrls}%{_with_dso: mod_dso}
 
 %package inetd
 Summary:	ProFTPD -- Setup for inetd/xinetd operation.
@@ -103,6 +106,8 @@ This package is neccesary to setup ProFTPD to run from inetd/xinetd.
 	%{?_with_mod_facl:--enable-facl} \
 	%{?_with_ipv6:--enable-ipv6} \
 	%{?_with_ctrls:--enable-ctrls} \
+	%{?_with_dso:--enable-dso} \
+	%{?_with_lastlog:--with-lastlog} \
 	--with-modules=${MODULES}
 
 %build
