@@ -1791,6 +1791,43 @@ for module in $ac_static_modules ; do
   elif test -d $srcdir/contrib/$moduledir; then
     ac_static_module_dirs="$ac_static_module_dirs contrib/$moduledir";
     ac_static_modules=`echo "$ac_static_modules" | sed -e "s/$module//"`
+
+    addonlibs=""
+    src=`echo "$module" | sed -e 's/\.o$//'`.c;
+    srcinc=`echo "$module" | sed -e 's/\.o$//'`.h;
+
+    srclib=`cat $srcdir/contrib/$moduledir/$src | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
+
+    if test -f $srcdir/contrib/$moduledir/$srcinc ; then
+      inclib=`cat $srcdir/contrib/$moduledir/$srcinc | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
+    else
+      inclib= 
+    fi
+
+    srcinc_in="$srcinc.in"
+    if test -f $srcdir/contrib/$moduledir/$srcinc_in ; then
+      inclib=`cat $srcdir/contrib/$moduledir/$srcinc_in | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
+    else
+      inclib=
+    fi
+
+    dnl Test for duplicate libraries, just in case.
+    for thelib in $srclib $inclib; do
+      dup="no"
+
+      for somelib in $ac_addl_libs $LIBS; do
+        if test "$thelib" = "$somelib"; then
+          dup="yes"
+          break
+        fi
+      done
+	
+      if test "$dup" = "no"; then
+        addonlibs="$addonlibs $thelib"
+      fi
+    done
+
+    test x"$addonlibs" = x || ac_addl_libs="$addonlibs $ac_addl_libs"
   fi
 done
 
