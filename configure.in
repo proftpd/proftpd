@@ -77,9 +77,10 @@ fi
 
 LDFLAGS="-L\$(top_srcdir)/lib $LDFLAGS"
 
-# Record the current CPPFLAGS and LDFLAGS here
+# Record the current CPPFLAGS, LDFLAGS, and LIBS here
 ac_orig_cppflags="$CPPFLAGS"
 ac_orig_ldflags="$LDFLAGS"
+ac_orig_libs="$LIBS"
 
 if test $ac_cv_prog_gcc = yes; then
   if test x"$CFLAGS" = "x-g -O2"; then
@@ -1900,7 +1901,7 @@ done
 
 ac_addl_libs=`echo "$ac_addl_libs" | sed -e 's/ *\$//'`
 ac_addl_libs=`echo "$ac_addl_libs" | sed -e 's/^ *//'`
-test "x$ac_addl_libs" = x || LIBS="$LIBS $ac_addl_libs"
+test "x$ac_addl_libs" = x || ac_build_addl_libs="$ac_build_addl_libs $ac_addl_libs"
 ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/ *\$//'`
 ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/^ *//'`
 ADDL_DIRS="$ac_addl_dirs"
@@ -1922,6 +1923,7 @@ STATIC_MODULE_DIRS="$ac_static_module_dirs"
 STATIC_MODULE_OBJS="$ac_core_modules $ac_static_modules"
 BUILD_SHARED_MODULE_OBJS="$ac_build_shared_modules"
 BUILD_STATIC_MODULE_OBJS="$ac_build_core_modules $ac_build_static_modules"
+SHARED_MODULE_LIBS="$ac_orig_libs"
 VERSION=`cat $srcdir/include/version.h | grep "#define VERSION " | sed -e 's/^.*\"\(.*\)\"/\1/'`
 
 dnl Substitute in our configuration paths as appropriate.  We also have to
@@ -1995,6 +1997,7 @@ AC_SUBST(MAIN_LIBS)
 AC_SUBST(MODULE_DEPS)
 AC_SUBST(MODULE_LDFLAGS)
 AC_SUBST(SHARED_MODULE_DIRS)
+AC_SUBST(SHARED_MODULE_LIBS)
 AC_SUBST(SHARED_MODULE_OBJS)
 AC_SUBST(STATIC_MODULE_DIRS)
 AC_SUBST(STATIC_MODULE_OBJS)
