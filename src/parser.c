@@ -24,7 +24,7 @@
 
 /*
  * Configuration parser
- * $Id: parser.c,v 1.13 2006-12-27 01:59:49 castaglia Exp $
+ * $Id: parser.c,v 1.14 2007-01-09 02:14:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -326,6 +326,8 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
 
       while (conftab) {
         modret_t *mr;
+
+        pr_signals_handle();
 
         cmd->argv[0] = conftab->directive;
 
