@@ -16,14 +16,13 @@ MODULE_NAME=mod_load
 INCLUDES=-I. -I../.. -I../../include
 CPPFLAGS= -DHAVE_CONFIG_H $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
 LDFLAGS=-L../../lib
-LIBS=$(SHARED_MODULE_LIBS)
 
 .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 .c.la:
 	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $*.c
-	$(LIBTOOL) --mode=link $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $*.lo $(LIBS) `cat $*.c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
+	$(LIBTOOL) --mode=link $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $*.lo $(SHARED_MODULE_LIBS) `cat $*.c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
 
 shared: $(MODULE_NAME).la
 
