@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.49 2004-10-26 23:25:11 castaglia Exp $
+ * $Id: modules.c,v 1.50 2007-01-09 03:31:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -227,10 +227,11 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
   int idx;
   struct stash *sym = NULL;
 
-  if (idx_cache && *idx_cache != -1)
+  if (idx_cache &&
+      *idx_cache != -1) {
     idx = *idx_cache;
 
-  else {
+  } else {
 
     /* XXX Ugly hack to support mixed cases of directives in config files. */
     if (sym_type != PR_SYM_CONF)
@@ -257,6 +258,7 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
     if (*idx_cache)
       *idx_cache = -1;
 
+    errno = EINVAL;
     return NULL;
   }
 
@@ -280,6 +282,7 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
   }
 
   /* In case the compiler complains */
+  errno = EINVAL;
   return NULL;
 }
 
@@ -329,6 +332,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
             curr_sym->sym_module == sym_module) {
           xaset_remove(symbol_table[symtab_idx], (xasetmember_t *) curr_sym);
           destroy_pool(curr_sym->sym_pool);
+          curr_sym = NULL;
           tab = NULL;
         }
 
