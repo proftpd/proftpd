@@ -10,12 +10,14 @@ localstatedir=@localstatedir@
 rundir=@localstatedir@/proftpd
 mandir=@mandir@
 
+AR=@AR@
 CC=@CC@
 PLATFORM=@OSREL@ @OSTYPE@
 LDFLAGS=@LDFLAGS@ @LIBDIRS@
 LIBEXECDIR=@LIBEXECDIR@
 LIBS=@LIBRARIES@ @LIBS@
 LIBTOOL=@LIBTOOL@
+RANLIB=@RANLIB@
 
 CURSES_LIBS=@CURSES_LIBS@
 UTILS_LIBS=@UTILS_LIBS@ @LIBS@
