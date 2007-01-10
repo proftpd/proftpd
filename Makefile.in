@@ -18,6 +18,7 @@ MAIN_LDFLAGS=@MAIN_LDFLAGS@
 MAIN_LIBS=@MAIN_LIBS@
 
 BUILD_PROFTPD_OBJS=$(BUILD_OBJS) $(BUILD_STATIC_MODULE_OBJS)
+BUILD_PROFTPD_ARCHIVES=$(BUILD_STATIC_MODULE_ARCHIVES)
 BUILD_BIN=proftpd$(EXEEXT) ftpcount$(EXEEXT) ftpdctl$(EXEEXT) ftpshut$(EXEEXT) ftptop$(EXEEXT) ftpwho$(EXEEXT)
 
 
@@ -51,7 +52,7 @@ dirs: include/buildstamp.h dummy
 	done
 
 proftpd$(EXEEXT): lib src modules dirs locale
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(MAIN_LDFLAGS) -o $@ $(BUILD_PROFTPD_OBJS) $(LIBS) $(MAIN_LIBS)
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(MAIN_LDFLAGS) -o $@ $(BUILD_PROFTPD_OBJS) $(BUILD_PROFTPD_ARCHIVES) $(LIBS) $(MAIN_LIBS)
 
 ftpcount$(EXEEXT): utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPCOUNT_OBJS) $(UTILS_LIBS)

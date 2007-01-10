@@ -1796,20 +1796,49 @@ for module in $ac_static_modules ; do
     src=`echo "$module" | sed -e 's/\.o$//'`.c;
     srcinc=`echo "$module" | sed -e 's/\.o$//'`.h;
 
+    srcarch=`cat $srcdir/contrib/$moduledir/$src | grep "\\\$Archive:" | sed -e 's/^.*\$Archive: \(.*\)\\$/\1/'`
     srclib=`cat $srcdir/contrib/$moduledir/$src | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
 
     if test -f $srcdir/contrib/$moduledir/$srcinc ; then
+      if test -z $srcarch ; then
+        incarch=`cat $srcdir/contrib/$moduledir/$srcinc | grep "\\\$Archive:" | sed -e 's/^.*\$Archive: \(.*\)\\$/\1/'`
+      else
+        incarch=
+      fi
+
       inclib=`cat $srcdir/contrib/$moduledir/$srcinc | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
     else
+      incarch= 
       inclib= 
     fi
 
     srcinc_in="$srcinc.in"
     if test -f $srcdir/contrib/$moduledir/$srcinc_in ; then
+      if test -z $srcarch -a test -z $incarch ; then
+        incarch=`cat $srcdir/contrib/$moduledir/$srcinc_in | grep "\\\$Archive:" | sed -e 's/^.*\$Archive: \(.*\)\\$/\1/'`
+      else
+        incarch=
+      fi
+
       inclib=`cat $srcdir/contrib/$moduledir/$srcinc_in | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
     else
+      incarch=
       inclib=
     fi
+
+    dnl If the module will be providing an archive (.a file), then remove it
+    dnl from the list of static module objects (.o files).
+    for thearch in $srcarch $incarch; do
+      archive=`echo "$thearch" | sed -e 's/\.a$//'`
+
+      if test x"$archive" != x"$moduledir" ; then
+        AC_MSG_ERROR([specified archive '$thearch' does not match expected module archive name '$moduledir.a' -- aborting])
+      fi
+
+      ac_static_modules=`echo "$ac_static_modules" | sed -e "s/$module//g"`
+      ac_build_static_modules=`echo "$ac_build_static_modules" | sed -e "s/modules\/$module//g"`
+      ac_build_static_module_archives="$ac_build_static_module_archives contrib/$moduledir/$thearch"
+    done
 
     dnl Test for duplicate libraries, just in case.
     for thelib in $srclib $inclib; do
@@ -1959,6 +1988,7 @@ fi
 STATIC_MODULE_DIRS="$ac_static_module_dirs"
 STATIC_MODULE_OBJS="$ac_core_modules $ac_static_modules"
 BUILD_SHARED_MODULE_OBJS="$ac_build_shared_modules"
+BUILD_STATIC_MODULE_ARCHIVES="$ac_build_static_module_archives"
 BUILD_STATIC_MODULE_OBJS="$ac_build_core_modules $ac_build_static_modules"
 SHARED_MODULE_LIBS="$ac_orig_libs"
 VERSION=`cat $srcdir/include/version.h | grep "#define VERSION " | sed -e 's/^.*\"\(.*\)\"/\1/'`
@@ -2039,6 +2069,7 @@ AC_SUBST(SHARED_MODULE_OBJS)
 AC_SUBST(STATIC_MODULE_DIRS)
 AC_SUBST(STATIC_MODULE_OBJS)
 AC_SUBST(BUILD_SHARED_MODULE_OBJS)
+AC_SUBST(BUILD_STATIC_MODULE_ARCHIVES)
 AC_SUBST(BUILD_STATIC_MODULE_OBJS)
 AC_SUBST(ADDL_DIRS)
 AC_SUBST(INCLUDES)
