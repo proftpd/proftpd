@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.46 2007-01-11 04:05:07 castaglia Exp $
+ * $Id: pool.c,v 1.47 2007-01-11 04:09:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -185,19 +185,6 @@ static union block_hdr *new_block(int minsz, int exact) {
   return malloc_block(minsz);
 }
 
-/* Accounting */
-
-static unsigned long bytes_in_block_list(union block_hdr *blok) {
-  unsigned long size = 0;
-
-  while (blok) {
-    size += blok->h.endp - (char *) (blok + 1);
-    blok = blok->h.next;
-  }
-
-  return size;
-}
-
 struct cleanup;
 
 static void run_cleanups(struct cleanup *);
@@ -228,6 +215,17 @@ pool *global_config_pool = NULL;
 #define POOL_HDR_BYTES (POOL_HDR_CLICKS * CLICK_SZ)
 
 #ifdef PR_USE_DEVEL
+
+static unsigned long bytes_in_block_list(union block_hdr *blok) {
+  unsigned long size = 0;
+
+  while (blok) {
+    size += blok->h.endp - (char *) (blok + 1);
+    blok = blok->h.next;
+  }
+
+  return size;
+}
 
 /* Walk all pools, starting with top level permanent pool, displaying a
  * tree.
@@ -428,17 +426,6 @@ void destroy_pool(pool *p) {
 
   pr_alarms_unblock();
 }
-
-#if 0
-/* NOTE: not used at the moment */
-static long bytes_in_pool(pool *p) {
-  return bytes_in_block_list(p->first);
-}
-
-static long bytes_in_free_blocks(void) {
-  return bytes_in_block_list(block_freelist);
-}
-#endif
 
 /* Allocation interface...
  */
