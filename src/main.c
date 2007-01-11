@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.296 2007-01-11 04:05:07 castaglia Exp $
+ * $Id: main.c,v 1.297 2007-01-11 19:16:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -41,25 +41,6 @@
 #ifdef HAVE_LIBUTIL_H
 # include <libutil.h>
 #endif /* HAVE_LIBUTIL_H */
-
-#if PF_ARGV_TYPE == PF_ARGV_PSTAT
-# ifdef HAVE_SYS_PSTAT_H
-#  include <sys/pstat.h>
-# else
-#  undef PF_ARGV_TYPE
-#  define PF_ARGV_TYPE PF_ARGV_WRITEABLE
-# endif /* HAVE_SYS_PSTAT_H */
-#endif /* PF_ARGV_PSTAT */
-
-#if PF_ARGV_TYPE == PF_ARGV_PSSTRINGS
-# ifndef HAVE_SYS_EXEC_H
-#  undef PF_ARGV_TYPE
-#  define PF_ARGV_TYPE PF_ARGV_WRITEABLE
-# else
-#  include <machine/vmparam.h>
-#  include <sys/exec.h>
-# endif /* HAVE_SYS_EXEC_H */
-#endif /* PF_ARGV_PSSTRINGS */
 
 #ifdef HAVE_REGEX_H
 # include <regex.h>
@@ -181,152 +162,7 @@ static int semaphore_fds(fd_set *rfd, int maxfd) {
   return maxfd;
 }
 
-#ifdef HAVE___PROGNAME
-extern char *__progname, *__progname_full;
-#endif /* HAVE___PROGNAME */
-extern char **environ;
-
-static void init_proc_title(int argc, char *argv[], char *envp[]) {
-#ifndef PR_DEVEL_STACK_TRACE
-  register int i, envpsize;
-  char **p;
-
-  /* Move the environment so setproctitle can use the space. */
-  for (i = envpsize = 0; envp[i] != NULL; i++)
-    envpsize += strlen(envp[i]) + 1;
-
-  if ((p = (char **)malloc((i + 1) * sizeof(char *))) != NULL) {
-    environ = p;
-
-    for (i = 0; envp[i] != NULL; i++)
-      if ((environ[i] = malloc(strlen(envp[i]) + 1)) != NULL)
-        strcpy(environ[i], envp[i]);
-
-    environ[i] = NULL;
-  }
-
-  Argv = argv;
-
-  for (i = 0; i < argc; i++)
-    if (!i || (LastArgv + 1 == argv[i]))
-      LastArgv = argv[i] + strlen(argv[i]);
-
-  for (i = 0; envp[i] != NULL; i++)
-    if ((LastArgv + 1) == envp[i])
-      LastArgv = envp[i] + strlen(envp[i]);
-
-# ifdef HAVE___PROGNAME
-  /* Set the __progname and __progname_full variables so glibc and company
-   * don't go nuts.
-   */
-  __progname = strdup("proftpd");
-  __progname_full = strdup(argv[0]);
-# endif /* HAVE___PROGNAME */
-#endif /* !PR_DEVEL_STACK_TRACE */
-}
-
-#ifdef PR_DEVEL
-static void free_proc_title(void) {
-# ifndef PR_DEVEL_STACK_TRACE
-  if (environ) {
-    register unsigned int i;
-
-    for (i = 0; environ[i] != NULL; i++)
-      free(environ[i]);
-    free(environ);
-    environ = NULL;
-  }
-
-#  ifdef HAVE___PROGNAME
-  free(__progname);
-  __progname = NULL;
-  free(__progname_full);
-  __progname_full = NULL;
-#  endif /* HAVE___PROGNAME */
-# endif /* !PR_DEVEL_STACK_TRACE */
-}
-#endif /* PR_DEVEL */
-
-static void set_proc_title(const char *fmt, ...) {
-#ifndef PR_DEVEL_STACK_TRACE
-  va_list msg;
-  static char statbuf[BUFSIZ];
-
-# ifndef HAVE_SETPROCTITLE
-#  if PF_ARGV_TYPE == PF_ARGV_PSTAT
-  union pstun pst;
-#  endif /* PF_ARGV_PSTAT */
-  char *p;
-  int i,maxlen = (LastArgv - Argv[0]) - 2;
-# endif /* HAVE_SETPROCTITLE */
-
-  va_start(msg,fmt);
-
-  memset(statbuf, 0, sizeof(statbuf));
-
-# ifdef HAVE_SETPROCTITLE
-#  if __FreeBSD__ >= 4 && !defined(FREEBSD4_0) && !defined(FREEBSD4_1)
-  /* FreeBSD's setproctitle() automatically prepends the process name. */
-  vsnprintf(statbuf, sizeof(statbuf), fmt, msg);
-
-#  else /* FREEBSD4 */
-  /* Manually append the process name for non-FreeBSD platforms. */
-  snprintf(statbuf, sizeof(statbuf), "%s", "proftpd: ");
-  vsnprintf(statbuf + strlen(statbuf), sizeof(statbuf) - strlen(statbuf),
-    fmt, msg);
-
-#  endif /* FREEBSD4 */
-  setproctitle("%s", statbuf);
-
-# else /* HAVE_SETPROCTITLE */
-  /* Manually append the process name for non-setproctitle() platforms. */
-  snprintf(statbuf, sizeof(statbuf), "%s", "proftpd: ");
-  vsnprintf(statbuf + strlen(statbuf), sizeof(statbuf) - strlen(statbuf),
-    fmt, msg);
-
-# endif /* HAVE_SETPROCTITLE */
-
-  va_end(msg);
-
-# ifdef HAVE_SETPROCTITLE
-  return;
-# else
-  i = strlen(statbuf);
-
-#  if PF_ARGV_TYPE == PF_ARGV_NEW
-  /* We can just replace argv[] arguments.  Nice and easy.
-   */
-  Argv[0] = statbuf;
-  Argv[1] = NULL;
-#  endif /* PF_ARGV_NEW */
-
-#  if PF_ARGV_TYPE == PF_ARGV_WRITEABLE
-  /* We can overwrite individual argv[] arguments.  Semi-nice.
-   */
-  snprintf(Argv[0], maxlen, "%s", statbuf);
-  p = &Argv[0][i];
-
-  while(p < LastArgv)
-    *p++ = '\0';
-  Argv[1] = NULL;
-#  endif /* PF_ARGV_WRITEABLE */
-
-#  if PF_ARGV_TYPE == PF_ARGV_PSTAT
-  pst.pst_command = statbuf;
-  pstat(PSTAT_SETCMD, pst, i, 0, 0);
-#  endif /* PF_ARGV_PSTAT */
-
-#  if PF_ARGV_TYPE == PF_ARGV_PSSTRINGS
-  PS_STRINGS->ps_nargvstr = 1;
-  PS_STRINGS->ps_argvstr = statbuf;
-#  endif /* PF_ARGV_PSSTRINGS */
-
-# endif /* HAVE_SETPROCTITLE */
-#endif /* !PR_DEVEL_STACK_TRACE */
-}
-
 void session_set_idle(void) {
-
   pr_scoreboard_update_entry(getpid(),
     PR_SCORE_BEGIN_IDLE, time(NULL),
     PR_SCORE_CMD, "%s", "idle", NULL, NULL);
@@ -334,7 +170,7 @@ void session_set_idle(void) {
   pr_scoreboard_update_entry(getpid(),
     PR_SCORE_CMD_ARG, "%s", "", NULL, NULL);
 
-  set_proc_title("%s - %s: IDLE", session.user, session.proc_prefix);
+  proctitle_set("%s - %s: IDLE", session.user, session.proc_prefix);
 }
 
 void set_auth_check(int (*chk)(cmd_rec*)) {
@@ -413,7 +249,7 @@ void end_login(int exitcode) {
   if (is_master) {
     main_server = NULL;
     free_pools();
-    free_proc_title();
+    proctitle_free();
   }
 #endif /* PR_DEVEL */
 
@@ -552,12 +388,12 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
           pr_scoreboard_update_entry(getpid(),
             PR_SCORE_CMD_ARG, "%s", args ? (args+1) : "", NULL, NULL);
 
-          set_proc_title("%s - %s: %s", session.user, session.proc_prefix,
+          proctitle_set("%s - %s: %s", session.user, session.proc_prefix,
             cmdargstr);
 
         /* ...else the client has not yet authenticated */
         } else
-          set_proc_title("%s:%d: %s", session.c->remote_addr ?
+          proctitle_set("%s:%d: %s", session.c->remote_addr ?
             pr_netaddr_get_ipstr(session.c->remote_addr) : "?",
             session.c->remote_port ? session.c->remote_port : 0, cmdargstr);
       }
@@ -765,7 +601,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 
   serveraddress = pr_netaddr_get_ipstr(c->local_addr);
 
-  set_proc_title("connected: %s (%s:%d)",
+  proctitle_set("connected: %s (%s:%d)",
     c->remote_name ? c->remote_name : "?",
     c->remote_addr ? pr_netaddr_get_ipstr(c->remote_addr) : "?",
     c->remote_port ? c->remote_port : 0);
@@ -1401,7 +1237,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   end_login_noexit();
   main_server = NULL;
   free_pools();
-  free_proc_title();
+  proctitle_free();
 #endif /* PR_DEVEL_NO_DAEMON */
 }
 
@@ -1436,7 +1272,7 @@ static void daemon_loop(void) {
   struct timeval tv;
   static int running = 0;
 
-  set_proc_title("(accepting connections)");
+  proctitle_set("(accepting connections)");
 
   time(&last_error);
 
@@ -2722,8 +2558,7 @@ int main(int argc, char *argv[], char **envp) {
 
   memset(&session, 0, sizeof(session));
 
-  /* Initialize stuff for set_proc_title. */
-  init_proc_title(argc, argv, envp);
+  proctitle_init(argc, argv, envp);
 
   /* Seed rand */
   srand(time(NULL));

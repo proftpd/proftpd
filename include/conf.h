@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.66 2006-12-06 18:55:14 castaglia Exp $
+ * $Id: conf.h,v 1.67 2007-01-11 19:16:35 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -436,6 +436,7 @@ typedef struct {
 #include "trace.h"
 #include "utf8.h"
 #include "compat.h"
+#include "proctitle.h"
 #include "pr-syslog.h"
 
 # ifdef HAVE_SETPASSENT
