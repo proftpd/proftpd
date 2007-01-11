@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.179 2006-12-21 22:19:30 castaglia Exp $
+ * $Id: dirtree.c,v 1.180 2007-01-11 04:05:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2205,6 +2205,30 @@ void pr_config_dump(void (*dumpf)(const char *, ...), xaset_t *s,
         pstrcat(c->pool, indent, " ", NULL));
   }
 }
+
+#ifdef PR_USE_DEVEL
+void pr_dirs_dump(void (*dumpf)(const char *, ...), xaset_t *s, char *indent) {
+  config_rec *c;
+
+  if (!s)
+    return;
+
+  if (!indent)
+    indent = " ";
+
+  for (c = (config_rec *) s->xas_list; c; c = c->next) {
+    if (c->config_type != CONF_DIR)
+      continue;
+
+    dumpf("%s<Directory %s>", indent, c->name);
+
+    if (c->subset)
+      pr_dirs_dump(dumpf, c->subset, pstrcat(c->pool, indent, " ", NULL));
+  }
+
+  return;
+}
+#endif /* PR_USE_DEVEL */
 
 static void merge_down(xaset_t *s, int dynamic) {
   config_rec *c, *dst, *newconf;

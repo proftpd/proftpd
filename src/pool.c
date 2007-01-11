@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.45 2006-10-24 16:43:39 castaglia Exp $
+ * $Id: pool.c,v 1.46 2007-01-11 04:05:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -227,11 +227,12 @@ pool *global_config_pool = NULL;
 #define POOL_HDR_CLICKS (1 + ((sizeof(struct pool) - 1) / CLICK_SZ))
 #define POOL_HDR_BYTES (POOL_HDR_CLICKS * CLICK_SZ)
 
-/* walk all pools, starting with top level permanent pool, displaying a
+#ifdef PR_USE_DEVEL
+
+/* Walk all pools, starting with top level permanent pool, displaying a
  * tree.
  */
-
-static long __walk_pools(pool *p, int level,
+static long walk_pools(pool *p, int level,
     void (*debugf)(const char *, ...)) {
   char _levelpad[80] = "";
   long total = 0;
@@ -259,7 +260,7 @@ static long __walk_pools(pool *p, int level,
 
     /* Recurse */
     if (p->sub_pools)
-      total += __walk_pools(p->sub_pools, level+1, debugf);
+      total += walk_pools(p->sub_pools, level+1, debugf);
   }
 
   return total;
@@ -278,10 +279,10 @@ static void debug_pool_info(void (*debugf)(const char *, ...)) {
 
 void pr_pool_debug_memory(void (*debugf)(const char *, ...)) {
   debugf("Memory pool allocation:");
-  debugf("Total %lu bytes allocated",
-    __walk_pools(permanent_pool, 0, debugf));
+  debugf("Total %lu bytes allocated", walk_pools(permanent_pool, 0, debugf));
   debug_pool_info(debugf);
 }
+#endif /* PR_USE_DEVEL */
 
 void pr_pool_tag(pool *p, const char *tag) {
   if (!p || !tag)

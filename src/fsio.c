@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.59 2006-12-15 22:32:50 castaglia Exp $
+ * $Id: fsio.c,v 1.60 2007-01-11 04:05:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3373,3 +3373,127 @@ int init_fs(void) {
 
   return 0;
 }
+
+#ifdef PR_USE_DEVEL
+
+static const char *get_fs_hooks_str(pool *p, pr_fs_t *fs) {
+  char *hooks = "";
+
+  if (fs->stat)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "stat(2)", NULL);
+
+  if (fs->lstat)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "lstat(2)", NULL);
+
+  if (fs->fstat)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "fstat(2)", NULL);
+
+  if (fs->rename)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "rename(2)", NULL);
+
+  if (fs->link)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "link(2)", NULL);
+
+  if (fs->unlink)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "unlink(2)", NULL);
+
+  if (fs->open)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "open(2)", NULL);
+
+  if (fs->creat)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "creat(2)", NULL);
+
+  if (fs->close)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "close(2)", NULL);
+
+  if (fs->read)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "read(2)", NULL);
+
+  if (fs->lseek)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "lseek(2)", NULL);
+
+  if (fs->readlink)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "readlink(2)", NULL);
+
+  if (fs->symlink)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "symlink(2)", NULL);
+
+  if (fs->ftruncate)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "ftruncate(2)", NULL);
+
+  if (fs->truncate)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "truncate(2)", NULL);
+
+  if (fs->chmod)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "chmod(2)", NULL);
+
+  if (fs->chown)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "chown(2)", NULL);
+
+  if (fs->access)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "access(2)", NULL);
+
+  if (fs->faccess)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "faccess(2)", NULL);
+
+  if (fs->chdir)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "chdir(2)", NULL);
+
+  if (fs->chroot)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "chroot(2)", NULL);
+
+  if (fs->opendir)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "opendir(3)", NULL);
+
+  if (fs->closedir)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "closedir(3)", NULL);
+
+  if (fs->readdir)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "readdir(3)", NULL);
+
+  if (fs->mkdir)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "mkdir(2)", NULL);
+
+  if (!*hooks) {
+    return pstrdup(p, "(none)");
+  }
+
+  return hooks;
+}
+
+static void get_fs_info(pool *p, int depth, pr_fs_t *fs,
+    void (*dumpf)(const char *, ...)) {
+
+  dumpf("FS#%u: '%s', mounted at '%s', implementing the following hooks:",
+    depth, fs->fs_name, fs->fs_path);
+  dumpf("FS#%u:    %s", depth, get_fs_hooks_str(p, fs));
+}
+
+void pr_fs_dump(void (*dumpf)(const char *, ...)) {
+  pool *p;
+
+  dumpf("FS#0: 'system' mounted at '/', implementing the following hooks:");
+  dumpf("FS#0:    (all)");
+
+  if (!fs_map ||
+      fs_map->nelts == 0)
+    return;
+
+  p = make_sub_pool(permanent_pool);
+
+  if (fs_map->nelts > 0) {
+    pr_fs_t **fs_objs = (pr_fs_t **) fs_map->elts;
+    register int i;
+
+    for (i = 0; i < fs_map->nelts; i++) {
+      pr_fs_t *fsi = fs_objs[i];
+
+      for (; fsi->fs_next; fsi = fsi->fs_next) {
+        get_fs_info(p, i+1, fsi, dumpf);
+      }
+    }
+  }
+
+  destroy_pool(p);
+}
+#endif /* PR_USE_DEVEL */

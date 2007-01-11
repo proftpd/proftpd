@@ -27,7 +27,7 @@
 /* Memory allocation/anti-leak system.  Yes, this *IS* stolen from Apache
  * also.  What can I say?  It makes sense, and it's safe (more overhead
  * though)
- * $Id: pool.h,v 1.19 2006-06-15 01:54:24 castaglia Exp $
+ * $Id: pool.h,v 1.20 2007-01-11 04:05:07 castaglia Exp $
  */
 
 #ifndef PR_POOL_H
@@ -42,13 +42,6 @@ void free_pools(void);
 pool *make_sub_pool(pool *);		/* All pools are sub-pools of perm */
 pool *pr_pool_create_sz(pool *, int);
 
-/* The make_named_sub_pool() function, which was never really supported,
- * has been deprecated.  This macro is for supporting those contrib modules
- * that still may make use of this old function.  Newer code should simply
- * use make_sub_pool() directly.
- */
-#define make_named_sub_pool(p, s)       make_sub_pool((p))
-
 /* Clears out _everything_ in a pool, destroying any sub-pools */
 void destroy_pool(struct pool *);
 
@@ -61,10 +54,11 @@ extern char *pstrdup(struct pool *, const char *);
 extern char *pstrndup(struct pool *, const char *, int);
 char *pstrcat(struct pool *, ...);       /* Must be char * */
 char *pdircat(struct pool *, ...);	/* Must be char * */
-
-/* MM debugging */
-void pr_pool_debug_memory(void (*)(const char *, ...));
 void pr_pool_tag(struct pool *, const char *);
+
+#ifdef PR_USE_DEVEL
+void pr_pool_debug_memory(void (*)(const char *, ...));
+#endif /* PR_USE_DEVEL */
 
 /* Array management */
 

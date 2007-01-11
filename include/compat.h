@@ -23,7 +23,7 @@
  */
 
 /* Compatibility
- * $Id: compat.h,v 1.5 2006-12-15 00:06:18 castaglia Exp $
+ * $Id: compat.h,v 1.6 2007-01-11 04:05:07 castaglia Exp $
  */
 
 #ifndef PR_COMPAT_H
@@ -66,5 +66,7 @@
 #define	ERROR_INT		PR_ERROR_INT
 #define	ERROR_MSG		PR_ERROR_MSG
 #define HANDLED			PR_HANDLED
+
+#define make_named_sub_pool(p, s)	make_sub_pool((p))
 
 #endif /* PR_COMPAT_H */

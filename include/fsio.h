@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.14 2006-07-20 02:15:28 castaglia Exp $
+ * $Id: fsio.h,v 1.15 2007-01-11 04:05:07 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -295,5 +295,9 @@ off_t pr_fs_getsize(char *);
 
 /* For internal use only. */
 int init_fs(void);
+
+#ifdef PR_USE_DEVEL
+void pr_fs_dump(void (*)(const char *, ...));
+#endif /* PR_USE_DEVEL */
 
 #endif /* PR_FSIO_H */

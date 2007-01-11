@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.295 2006-12-07 17:18:00 castaglia Exp $
+ * $Id: main.c,v 1.296 2007-01-11 04:05:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1890,30 +1890,9 @@ static void handle_chld(void) {
   pr_alarms_unblock();
 }
 
-#ifndef PR_USE_CTRLS
-static void debug_memory(const char *fmt, ...) {
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  va_list msg;
-
-  va_start(msg, fmt);
-  vsnprintf(buf, sizeof(buf), fmt, msg);
-  va_end(msg);
-
-  buf[sizeof(buf)-1] = '\0';
-
-  pr_log_pri(PR_LOG_NOTICE, "%s", buf);
-}
-
-static void handle_evnt(void) {
-  pr_pool_debug_memory(debug_memory);
-}
-
-#else
-
 static void handle_evnt(void) {
   pr_event_generate("core.signal.USR2", NULL);
 }
-#endif /* !PR_USE_CTRLS */
 
 static void handle_xcpu(void) {
   pr_log_pri(PR_LOG_NOTICE, "ProFTPD CPU limit exceeded (signal %d)", SIGXCPU);
