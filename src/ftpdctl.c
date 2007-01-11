@@ -26,7 +26,7 @@
 
 /* ProFTPD Controls command-line client
  *
- * $Id: ftpdctl.c,v 1.5 2006-11-30 18:06:33 castaglia Exp $
+ * $Id: ftpdctl.c,v 1.6 2007-01-11 23:43:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -72,9 +72,14 @@ int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
 char *sstrcat(char *dest, const char *src, size_t n) {
   register char *d;
 
+  if (!dest || !src || n == 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   for (d = dest; *d && n > 1; d++, n--) ;
 
-  while(n-- > 1 && *src)
+  while (n-- > 1 && *src)
     *d++ = *src++;
 
   *d = 0;
@@ -85,6 +90,9 @@ char *sstrncpy(char *dest, const char *src, size_t n) {
   register char *d = dest;
 
   if (!dest)
+    return NULL;
+
+  if (n == 0)
     return NULL;
 
   if (src && *src) {
