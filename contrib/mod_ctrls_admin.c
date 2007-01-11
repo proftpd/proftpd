@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.27 2006-12-15 23:07:30 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.28 2007-01-11 23:08:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -624,8 +624,8 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
           time(NULL) - now > timeout) {
 
         ctrls_log(MOD_CTRLS_ADMIN_VERSION,
-          "shutdown: %u seconds elapsed, ending remaining sessions",
-          timeout);
+          "shutdown: %u seconds elapsed, ending %lu remaining sessions",
+          timeout, nkids);
 
         /* End all remaining sessions at this point. */
         PRIVS_ROOT
