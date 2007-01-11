@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.297 2007-01-11 19:16:35 castaglia Exp $
+ * $Id: main.c,v 1.298 2007-01-11 21:36:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -98,13 +98,6 @@ static unsigned char have_dead_child = FALSE;
 static char sbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 
 #define PR_DEFAULT_CMD_BUFSZ	512
-
-#ifndef PR_DEVEL_STACK_TRACE
-static char **Argv = NULL;
-static char *LastArgv = NULL;
-#endif /* PR_DEVEL_STACK_TRACE */
-
-static const char *PidPath = PR_PID_FILE_PATH;
 
 /* From mod_auth_unix.c */
 extern unsigned char persistent_passwd;
@@ -268,7 +261,7 @@ void session_exit(int pri, void *lv, int exitval, void *dummy) {
     PRIVS_ROOT
     pr_delete_scoreboard();
     if (!nodaemon)
-      unlink(PidPath);
+      pidfile_remove();
     PRIVS_RELINQUISH
   }
 
@@ -1760,12 +1753,14 @@ static void handle_terminate(void) {
 
 static void finish_terminate(void) {
 
-  if (is_master && mpid == getpid()) {
+  if (is_master &&
+      mpid == getpid()) {
     PRIVS_ROOT
 
     /* Do not need the pidfile any longer. */
-    if (is_standalone && !nodaemon)
-      unlink(PidPath);
+    if (is_standalone &&
+        !nodaemon)
+      pidfile_remove();
 
     /* Run any exit handlers registered in the master process here, so that
      * they may have the benefit of root privs.  More than likely these
@@ -2108,28 +2103,6 @@ void set_session_rlimits(void) {
 #endif /* defined RLIMIT_NOFILE or defined RLIMIT_OFILE */
 }
 
-static void write_pid(void) {
-  FILE *pidf = NULL;
-
-  PidPath = get_param_ptr(main_server->conf, "PidFile", FALSE);
-  if (!PidPath || !*PidPath)
-    PidPath = PR_PID_FILE_PATH;
-
-  PRIVS_ROOT
-  pidf = fopen(PidPath, "w");
-  PRIVS_RELINQUISH
-
-  if (pidf == NULL) {
-    fprintf(stderr, "error opening PidFile '%s': %s\n", PidPath,
-      strerror(errno));
-    exit(1);
-  }
-
-  fprintf(pidf, "%lu\n", (unsigned long) getpid());
-  fclose(pidf);
-  pidf = NULL;
-}
-
 static void daemonize(void) {
 #ifndef HAVE_SETSID
   int ttyfd;
@@ -2288,7 +2261,7 @@ static void standalone_main(void) {
   pr_log_pri(PR_LOG_NOTICE, "ProFTPD %s (built %s) standalone mode STARTUP",
     PROFTPD_VERSION_TEXT " " PR_STATUS, BUILD_STAMP);
 
-  write_pid();
+  pidfile_write();
   daemon_loop();
 }
 
