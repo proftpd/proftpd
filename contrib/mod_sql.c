@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.121 2007-01-03 18:24:35 castaglia Exp $
+ * $Id: mod_sql.c,v 1.122 2007-01-11 18:21:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -173,7 +173,6 @@ static struct {
   char *grpgidfield;            /* group gid field */
   char *grpmembersfield;        /* group members field */
   char *groupwhere;             /* groups where clause */
-  char *groupcustom;		/* custom groups query */
 
   /*
    * other information
@@ -756,9 +755,9 @@ static char *_sql_realuser(cmd_rec *cmd) {
 }
 
 static char *sql_prepare_where(int flags, cmd_rec *cmd, int cnt, ...) {
-  int i, flag;
+  int i, flag, nclauses = 0;
   int curr_avail;
-  char *buf = "", *res, *tchar;
+  char *buf = "", *res;
   va_list dummy;
 
   res = pcalloc(cmd->tmp_pool, SQL_MAX_STMT_LEN);
@@ -766,16 +765,20 @@ static char *sql_prepare_where(int flags, cmd_rec *cmd, int cnt, ...) {
   flag = 0;
   va_start(dummy, cnt);
   for (i = 0; i < cnt; i++) {
-    tchar = va_arg(dummy, char *);
-    if (tchar != NULL &&
-        *tchar != '\0') {
-      if (flag++)
-        buf = pstrcat(cmd->tmp_pool, buf, " and ", NULL);
+    char *clause = va_arg(dummy, char *);
+    if (clause != NULL &&
+        *clause != '\0') {
+      nclauses++;
 
-      buf = pstrcat(cmd->tmp_pool, buf, "(", tchar, ")", NULL);
+      if (flag++)
+        buf = pstrcat(cmd->tmp_pool, buf, " AND ", NULL);
+      buf = pstrcat(cmd->tmp_pool, buf, "(", clause, ")", NULL);
     }
   }
   va_end(dummy);
+
+  if (nclauses == 0)
+    return NULL;
 
   if (!(flags & SQL_PREPARE_WHERE_FL_NO_TAGS)) {
     char *curr, *tmp;
@@ -1467,8 +1470,9 @@ static struct group *_sql_getgroup(cmd_rec *cmd, struct group *g) {
 
   grpwhere = pstrcat(cmd->tmp_pool, cmap.grpfield, " = '", groupname, "'",
     NULL);
+
   where = sql_prepare_where(0, cmd, 2, grpwhere, cmap.groupwhere, NULL);
-  
+
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default",
     cmap.grptable, cmap.grpfields, where), "sql_select");
   if (check_response(mr) < 0)
@@ -1541,6 +1545,7 @@ static void _setstats(cmd_rec *cmd, int fstor, int fretr, int bstor,
 
   usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", _sql_realuser(cmd),
     "'", NULL);
+
   where = sql_prepare_where(0, cmd, 2, usrwhere, cmap.userwhere, NULL);
 
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default", cmap.usrtable,
@@ -2991,7 +2996,7 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
   } else {
     /* retrieve our list of passwds */
     where = sql_prepare_where(0, cmd, 1, cmap.userwhere, NULL);
-    
+
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default",
       cmap.usrtable, cmap.usrfield, where), "sql_select");
     if (check_response(mr) < 0)
@@ -3099,7 +3104,7 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
   if (SQL_FASTGROUPS) {
     /* retrieve our list of groups */
     where = sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL);
-    
+
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 6, "default",
       cmap.grptable, cmap.grpfields, where, NULL), "sql_select");
     if (check_response(mr) < 0)
@@ -3132,13 +3137,7 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
 
   } else {
     /* Retrieve our list of groups. */
-    if (cmap.groupwhere &&
-        strlen(cmap.groupwhere) > 0) {
-      where = sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL);
-
-    } else {
-      where = NULL;
-    }
+    where = sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL);
  
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 6, "default",
       cmap.grptable, cmap.grpfield, where, NULL, "DISTINCT"), "sql_select");
@@ -3611,8 +3610,9 @@ MODRET cmd_getstats(cmd_rec *cmd) {
 
   usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", _sql_realuser(cmd),
     "'", NULL);
+
   where = sql_prepare_where(0, cmd, 2, usrwhere, cmap.userwhere, NULL);
-  
+ 
   query = pstrcat(cmd->tmp_pool, cmap.sql_fstor, ", ",
 		  cmap.sql_fretr, ", ", cmap.sql_bstor, ", ",
 		  cmap.sql_bretr, NULL);
@@ -3645,8 +3645,9 @@ MODRET cmd_getratio(cmd_rec *cmd) {
 
   usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", _sql_realuser(cmd),
     "'", NULL);
+
   where = sql_prepare_where(0, cmd, 2, usrwhere, cmap.userwhere, NULL);
-  
+
   query = pstrcat(cmd->tmp_pool, cmap.sql_frate, ", ",
 		  cmap.sql_fcred, ", ", cmap.sql_brate, ", ",
 		  cmap.sql_bcred, NULL);
@@ -4733,10 +4734,12 @@ static int sql_sess_init(void) {
   cmap.grpfields = pstrdup(sql_pool, fieldset);
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLUserWhereClause", FALSE);
-  cmap.userwhere = temp_ptr ? pstrcat(sql_pool, "(", temp_ptr, ")", NULL) : "";
+  cmap.userwhere = temp_ptr ? pstrcat(sql_pool, "(", temp_ptr, ")", NULL) :
+    NULL;
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLGroupWhereClause", FALSE);
-  cmap.groupwhere = temp_ptr ? pstrcat(sql_pool, "(", temp_ptr, ")", NULL) : "";
+  cmap.groupwhere = temp_ptr ? pstrcat(sql_pool, "(", temp_ptr, ")", NULL) :
+    NULL;
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLAuthTypes", FALSE);
   cmap.authlist = temp_ptr;
