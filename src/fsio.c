@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.60 2007-01-11 04:05:07 castaglia Exp $
+ * $Id: fsio.c,v 1.61 2007-01-12 07:01:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2893,6 +2893,9 @@ int pr_fsio_chmod_canon(const char *name, mode_t mode) {
   pr_trace_msg(trace_channel, 8, "using %s chmod()", fs->fs_name);
   res = fs->chmod(fs, deref, mode);
 
+  if (res == 0)
+    pr_fs_clear_cache();
+
   return res;
 }
 
@@ -2908,7 +2911,10 @@ int pr_fsio_chmod(const char *name, mode_t mode) {
 
   pr_trace_msg(trace_channel, 8, "using %s chmod()", fs->fs_name);
   res = fs->chmod(fs, name, mode);
-  
+
+  if (res == 0)
+    pr_fs_clear_cache();
+
   return res;
 }
 
@@ -2924,7 +2930,10 @@ int pr_fsio_chown_canon(const char *name, uid_t uid, gid_t gid) {
 
   pr_trace_msg(trace_channel, 8, "using %s chown()", fs->fs_name);
   res = fs->chown(fs, name, uid, gid);
-  
+
+  if (res == 0)
+    pr_fs_clear_cache();
+
   return res;
 }
 
@@ -2940,7 +2949,10 @@ int pr_fsio_chown(const char *name, uid_t uid, gid_t gid) {
 
   pr_trace_msg(trace_channel, 8, "using %s chown()", fs->fs_name);
   res = fs->chown(fs, name, uid, gid);
-  
+
+  if (res == 0)
+    pr_fs_clear_cache();
+
   return res;
 }
 
