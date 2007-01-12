@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.87 2007-01-04 07:26:27 castaglia Exp $
+ * $Id: support.c,v 1.88 2007-01-12 01:30:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -822,65 +822,6 @@ char *sstrcat(char *dest, const char *src, size_t n) {
 
   *d = 0;
   return dest;
-}
-
-char *pr_env_get(pool *p, const char *key) {
-  if (!p || !key) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-#if defined(HAVE_GETENV)
-  return getenv(key);
-#else
-  errno = ENOSYS;
-  return NULL;
-#endif /* !HAVE_GETENV */
-}
-
-int pr_env_set(pool *p, const char *key, const char *value) {
-  if (!p || !key || !value) {
-    errno = EINVAL;
-    return -1;
-  }
-
-#if defined(HAVE_SETENV)
-  return setenv(key, value, 1);
-#elif defined(HAVE_PUTENV)
-  return putenv(pstrcat(key, "=", value, NULL));
-#else
-  errno = ENOSYS;
-  return -1;
-#endif /* !HAVE_SETENV and !HAVE_PUTENV */
-}
-
-int pr_env_unset(pool *p, const char *key) {
-#if defined(HAVE_UNSETENV)
-  char *res;
-#endif /* !HAVE_UNSETENV */
-
-  if (!p || !key) {
-    errno = EINVAL;
-    return -1;
-  }
-
-#if defined(HAVE_UNSETENV)
-  /* The same key may appear multiple times in the environ, so make certain
-   * that all such occurrences are removed.
-   */
-  res = pr_env_get(p, key);
-  while (res) {
-    pr_signals_handle();
-
-    unsetenv(key);
-    res = pr_env_get(p, key);
-  }
-
-  return 0;
-#else
-  errno = ENOSYS;
-  return -1;
-#endif /* !HAVE_UNSETENV */
 }
 
 struct tm *pr_gmtime(pool *p, const time_t *t) {
