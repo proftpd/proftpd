@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.9 2007-01-06 03:25:32 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.10 2007-01-12 17:33:53 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -311,9 +311,42 @@ that talk to hardware devices that can do specialized cryptographic operations.
 These changes involve being able to dynamically load the "engine" software
 modules.
 
+<p><a name="TLSNoSharedCipher">
+<font color=red>Question</font>: Why would I see a &quot;no shared cipher&quot; error in the TLSLog when attempting to connect with my FTPS client?<br>
+<pre>
+  Jan 10 17:15:18 mod_tls/2.1.1[2212]: TLS/TLS-C requested, starting TLS handshake
+  Jan 10 17:15:18 mod_tls/2.1.1[2212]: unable to accept TLS connection:
+    (1) error:1408A0C1:SSL routines:SSL3_GET_CLIENT_HELLO:no shared cipher
+  Jan 10 17:15:18 mod_tls/2.1.1[2212]: TLS/TLS-C negotiation failed on control channel
+</pre>
+<font color=blue>Answer</font>:
+There are two reasons this might happen.
+
+<p>
+The first is that there is indeed no ciphersuite in common between
+<code>mod_tls</code> and your FTPS client.  The SSL/TLS ciphersuites used by
+<code>mod_tls</code> are configured using the <code>TLSCipherSuite</code>
+directive.  If you have a complex or restrictive <code>TLSCipherSuite</code>
+configured, that could be the culprit.  Try relaxing (or removing outright)
+your <code>TLSCipherSuite</code>, or try to configure your FTPS client to use
+the same SSL/TLS ciphersuites.
+
+<p>
+Another possibility is a misconfiguration.  If your
+<code>TLSCACertificateFile</code> and <code>TLSRSACertificateFile</code>
+directives are in the &quot;server config&quot; context of the
+<code>proftpd.conf</code> file, <i>and</i> you have
+<code>&gt;VirtualHost&lt;</code> sections in your <code>proftpd.conf</code>,
+then you might see the &quot;no shared cipher&quot; error.  The easiest
+thing is to move those <code>TLSCACertificateFile</code> and
+<code>TLSRSACertificateFile</code> directives into a <code>&gt;Global&lt;</code>
+section in your <code>proftpd.conf</code>, so that they apply to all
+vhosts configured.  The virtual hosting <a href="Vhost.html">howto</a>
+describes this in more detail.
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2007-01-06 03:25:32 $</i><br>
+Last Updated: <i>$Date: 2007-01-12 17:33:53 $</i><br>
 <hr>
 
 </body>
