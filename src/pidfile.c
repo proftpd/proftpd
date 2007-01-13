@@ -24,7 +24,7 @@
 
 /*
  * Pidfile management
- * $Id: pidfile.c,v 1.2 2007-01-12 05:40:37 castaglia Exp $
+ * $Id: pidfile.c,v 1.3 2007-01-13 04:16:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -32,7 +32,7 @@
 
 static const char *pidfile_path = PR_PID_FILE_PATH;
 
-void pidfile_write(void) {
+void pr_pidfile_write(void) {
   FILE *fh = NULL;
 
   pidfile_path = get_param_ptr(main_server->conf, "PidFile", FALSE);
@@ -56,6 +56,6 @@ void pidfile_write(void) {
   }
 }
 
-int pidfile_remove(void) {
+int pr_pidfile_remove(void) {
   return unlink(pidfile_path);
 }

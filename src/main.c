@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.298 2007-01-11 21:36:06 castaglia Exp $
+ * $Id: main.c,v 1.299 2007-01-13 04:16:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -261,7 +261,7 @@ void session_exit(int pri, void *lv, int exitval, void *dummy) {
     PRIVS_ROOT
     pr_delete_scoreboard();
     if (!nodaemon)
-      pidfile_remove();
+      pr_pidfile_remove();
     PRIVS_RELINQUISH
   }
 
@@ -1760,7 +1760,7 @@ static void finish_terminate(void) {
     /* Do not need the pidfile any longer. */
     if (is_standalone &&
         !nodaemon)
-      pidfile_remove();
+      pr_pidfile_remove();
 
     /* Run any exit handlers registered in the master process here, so that
      * they may have the benefit of root privs.  More than likely these
@@ -2261,7 +2261,7 @@ static void standalone_main(void) {
   pr_log_pri(PR_LOG_NOTICE, "ProFTPD %s (built %s) standalone mode STARTUP",
     PROFTPD_VERSION_TEXT " " PR_STATUS, BUILD_STAMP);
 
-  pidfile_write();
+  pr_pidfile_write();
   daemon_loop();
 }
 

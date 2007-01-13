@@ -23,14 +23,14 @@
  */
 
 /* Pidfile handling
- * $Id: pidfile.h,v 1.1 2007-01-11 21:36:06 castaglia Exp $
+ * $Id: pidfile.h,v 1.2 2007-01-13 04:16:20 castaglia Exp $
  */
 
 #ifndef PR_PIDFILE_H
 #define PR_PIDFILE_H
 
 /* For internal use only. */
-int pidfile_remove(void);
-void pidfile_write(void);
+int pr_pidfile_remove(void);
+void pr_pidfile_write(void);
 
 #endif /* PR_PIDFILE_H */
