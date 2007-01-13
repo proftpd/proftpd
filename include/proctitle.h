@@ -23,16 +23,16 @@
  */
 
 /* Proctitle handling
- * $Id: proctitle.h,v 1.1 2007-01-11 19:16:35 castaglia Exp $
+ * $Id: proctitle.h,v 1.2 2007-01-13 06:12:15 castaglia Exp $
  */
 
 #ifndef PR_PROCTITLE_H
 #define PR_PROCTITLE_H
 
 /* For internal use only. */
-void proctitle_free(void);
-void proctitle_init(int, char *[], char *[]);
-void proctitle_set(const char *, ...)
+void pr_proctitle_free(void);
+void pr_proctitle_init(int, char *[], char *[]);
+void pr_proctitle_set(const char *, ...)
 #ifdef __GNUC__
        __attribute__ ((format (printf, 1, 2)));
 #else

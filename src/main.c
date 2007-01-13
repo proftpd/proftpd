@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.299 2007-01-13 04:16:21 castaglia Exp $
+ * $Id: main.c,v 1.300 2007-01-13 06:12:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -163,7 +163,7 @@ void session_set_idle(void) {
   pr_scoreboard_update_entry(getpid(),
     PR_SCORE_CMD_ARG, "%s", "", NULL, NULL);
 
-  proctitle_set("%s - %s: IDLE", session.user, session.proc_prefix);
+  pr_proctitle_set("%s - %s: IDLE", session.user, session.proc_prefix);
 }
 
 void set_auth_check(int (*chk)(cmd_rec*)) {
@@ -242,7 +242,7 @@ void end_login(int exitcode) {
   if (is_master) {
     main_server = NULL;
     free_pools();
-    proctitle_free();
+    pr_proctitle_free();
   }
 #endif /* PR_DEVEL */
 
@@ -381,12 +381,12 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
           pr_scoreboard_update_entry(getpid(),
             PR_SCORE_CMD_ARG, "%s", args ? (args+1) : "", NULL, NULL);
 
-          proctitle_set("%s - %s: %s", session.user, session.proc_prefix,
+          pr_proctitle_set("%s - %s: %s", session.user, session.proc_prefix,
             cmdargstr);
 
         /* ...else the client has not yet authenticated */
         } else
-          proctitle_set("%s:%d: %s", session.c->remote_addr ?
+          pr_proctitle_set("%s:%d: %s", session.c->remote_addr ?
             pr_netaddr_get_ipstr(session.c->remote_addr) : "?",
             session.c->remote_port ? session.c->remote_port : 0, cmdargstr);
       }
@@ -594,7 +594,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 
   serveraddress = pr_netaddr_get_ipstr(c->local_addr);
 
-  proctitle_set("connected: %s (%s:%d)",
+  pr_proctitle_set("connected: %s (%s:%d)",
     c->remote_name ? c->remote_name : "?",
     c->remote_addr ? pr_netaddr_get_ipstr(c->remote_addr) : "?",
     c->remote_port ? c->remote_port : 0);
@@ -1230,7 +1230,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   end_login_noexit();
   main_server = NULL;
   free_pools();
-  proctitle_free();
+  pr_proctitle_free();
 #endif /* PR_DEVEL_NO_DAEMON */
 }
 
@@ -1265,7 +1265,7 @@ static void daemon_loop(void) {
   struct timeval tv;
   static int running = 0;
 
-  proctitle_set("(accepting connections)");
+  pr_proctitle_set("(accepting connections)");
 
   time(&last_error);
 
@@ -2531,7 +2531,7 @@ int main(int argc, char *argv[], char **envp) {
 
   memset(&session, 0, sizeof(session));
 
-  proctitle_init(argc, argv, envp);
+  pr_proctitle_init(argc, argv, envp);
 
   /* Seed rand */
   srand(time(NULL));

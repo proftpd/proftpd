@@ -24,7 +24,7 @@
 
 /*
  * Proctitle management
- * $Id: proctitle.c,v 1.2 2007-01-12 05:40:37 castaglia Exp $
+ * $Id: proctitle.c,v 1.3 2007-01-13 06:12:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -58,7 +58,7 @@ static char **Argv = NULL;
 static char *LastArgv = NULL;
 #endif /* PR_DEVEL_STACK_TRACE */
 
-void proctitle_init(int argc, char *argv[], char *envp[]) {
+void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
 #ifndef PR_DEVEL_STACK_TRACE
   register int i, envpsize;
   char **p;
@@ -99,7 +99,7 @@ void proctitle_init(int argc, char *argv[], char *envp[]) {
 #endif /* !PR_DEVEL_STACK_TRACE */
 }
 
-void proctitle_free(void) {
+void pr_proctitle_free(void) {
 #ifdef PR_DEVEL
 # ifndef PR_DEVEL_STACK_TRACE
   if (environ) {
@@ -121,7 +121,7 @@ void proctitle_free(void) {
 #endif /* PR_DEVEL */
 }
 
-void proctitle_set(const char *fmt, ...) {
+void pr_proctitle_set(const char *fmt, ...) {
 #ifndef PR_DEVEL_STACK_TRACE
   va_list msg;
   static char statbuf[BUFSIZ];
