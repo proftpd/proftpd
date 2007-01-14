@@ -1486,8 +1486,6 @@ if test x"$enable_sendfile" != xno ; then
   if test "$pr_cv_func_sendfile" != "none"; then
     AC_DEFINE(HAVE_SENDFILE)
     AC_DEFINE(PR_USE_SENDFILE, 1)
-  else
-    AC_DEFINE(PR_USE_SENDFILE, 0)
   fi
 
   case "$pr_cv_func_sendfile" in
