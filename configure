@@ -34961,11 +34961,6 @@ _ACEOF
 #define PR_USE_SENDFILE 1
 _ACEOF
 
-  else
-    cat >>confdefs.h <<\_ACEOF
-#define PR_USE_SENDFILE 0
-_ACEOF
-
   fi
 
   case "$pr_cv_func_sendfile" in
