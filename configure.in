@@ -1817,20 +1817,6 @@ for module in $ac_static_modules ; do
       inclib= 
     fi
 
-    srcinc_in="$srcinc.in"
-    if test -f $srcdir/contrib/$moduledir/$srcinc_in ; then
-      if test -z $srcarch -a -z $incarch ; then
-        incarch=`cat $srcdir/contrib/$moduledir/$srcinc_in | grep "\\\$Archive:" | sed -e 's/^.*\$Archive: \(.*\)\\$/\1/'`
-      else
-        incarch=
-      fi
-
-      inclib=`cat $srcdir/contrib/$moduledir/$srcinc_in | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
-    else
-      incarch=
-      inclib=
-    fi
-
     dnl If the module will be providing an archive (.a file), then remove it
     dnl from the list of static module objects (.o files).
     for thearch in $srcarch $incarch; do
