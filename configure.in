@@ -163,8 +163,9 @@ AC_ARG_WITH(getopt,
   ],
   [
     if test "$withval" != "no" ; then
-      AC_CHECK_FUNCS(getopt getopt_long,
+      AC_CHECK_FUNCS(getopt,
         [AC_CHECK_HEADERS(getopt.h)
+         AC_CHECK_FUNCS(getopt_long)
          AC_DEFINE(PR_USE_SYSTEM_GETOPT, 1,
            [Define if using system getopt support])],
         [LIB_OBJS="$LIB_OBJS getopt.o getopt1.o"]
@@ -172,8 +173,9 @@ AC_ARG_WITH(getopt,
     fi
   ],
   [
-    AC_CHECK_FUNCS(getopt getopt_long,
+    AC_CHECK_FUNCS(getopt,
       [AC_CHECK_HEADERS(getopt.h)
+       AC_CHECK_FUNCS(getopt_long)
        AC_DEFINE(PR_USE_SYSTEM_GETOPT, 1,
          [Define if using system getopt support])],
       [LIB_OBJS="$LIB_OBJS getopt.o getopt1.o"]
