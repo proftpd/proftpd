@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.34 2006-12-16 01:13:52 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.35 2007-01-15 22:21:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -641,7 +641,7 @@ static void ctrls_del_cl(pr_ctrls_cl_t *cl) {
 static int ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid) {
   pid_t cl_pid = 0;
   int cl_fd = -1;
-  size_t len = 0;
+  socklen_t len = 0;
   char *tmp = NULL;
   time_t stale_time;
   struct sockaddr_un sock;
