@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.300 2007-01-13 06:12:15 castaglia Exp $
+ * $Id: main.c,v 1.301 2007-01-16 19:54:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2353,29 +2353,23 @@ static void show_settings(void) {
   printf("    - Largefile support\n");
 #endif /* PR_USE_LARGEFILES */
 
-#ifdef PR_USE_NLS
-  printf("    + NLS support\n");
-#else
-  printf("    - NLS support\n");
-#endif /* PR_USE_NLS */
-
 #ifdef PR_USE_LASTLOG
   printf("    + Lastlog support\n");
 #else
   printf("    - Lastlog support\n");
 #endif /* PR_USE_LASTLOG */
 
-#ifdef PR_USE_NLS
-  printf("    + NLS support\n");
-#else
-  printf("    - NLS support\n");
-#endif /* PR_USE_NLS */
-
 #ifdef PR_USE_NCURSES
   printf("    + ncurses support\n");
 #else
   printf("    - ncurses support\n");
 #endif /* PR_USE_NCURSES */
+
+#ifdef PR_USE_NLS
+  printf("    + NLS support\n");
+#else
+  printf("    - NLS support\n");
+#endif /* PR_USE_NLS */
 
 #ifdef PR_USE_OPENSSL
   printf("    + OpenSSL support\n");
