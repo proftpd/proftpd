@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2006 The ProFTPD Project team
+dnl Copyright (c) 2001-2007 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -250,9 +250,14 @@ AC_ARG_WITH(lastlog,
 
          if test -z "$pr_lastlog_path" ; then
            if test x"$found_lastlog_path" = x"no" ; then
-             for f in /var/log/lastlog /usr/adm/lastlog /var/adm/lastlog /etc/security/lastlog ; do
+             for f in /var/log/lastlog /var/adm/lastlog /usr/adm/lastlog /etc/security/lastlog ; do
+               AC_MSG_CHECKING([for $f])
                if (test -d "$f" || test -f "$f") ; then
                  pr_lastlog_path=$f
+                 AC_MSG_RESULT(yes)
+
+               else
+                 AC_MSG_RESULT(no)
                fi
              done
 
