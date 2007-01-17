@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.99 2006-12-18 18:33:49 castaglia Exp $
+ * $Id: inet.c,v 1.100 2007-01-17 15:39:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -406,6 +406,11 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       pr_netaddr_set_sockaddr(c->local_addr, pr_netaddr_get_sockaddr(&na));
       c->local_port = ntohs(pr_netaddr_get_port(&na));
     }
+
+  } else {
+    /* Make sure the netaddr has its address family set. */
+    if (pr_netaddr_get_family(&na) == 0)
+      pr_netaddr_set_family(&na, addr_family);
   }
 
   c->listen_fd = fd;
