@@ -20281,9 +20281,17 @@ rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
 
          if test -z "$pr_lastlog_path" ; then
            if test x"$found_lastlog_path" = x"no" ; then
-             for f in /var/log/lastlog /usr/adm/lastlog /var/adm/lastlog /etc/security/lastlog ; do
+             for f in /var/log/lastlog /var/adm/lastlog /usr/adm/lastlog /etc/security/lastlog ; do
+               echo "$as_me:$LINENO: checking for $f" >&5
+echo $ECHO_N "checking for $f... $ECHO_C" >&6
                if (test -d "$f" || test -f "$f") ; then
                  pr_lastlog_path=$f
+                 echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+
+               else
+                 echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
                fi
              done
 
