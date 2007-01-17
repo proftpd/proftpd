@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.302 2007-01-17 05:33:06 castaglia Exp $
+ * $Id: main.c,v 1.303 2007-01-17 19:32:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -233,7 +233,7 @@ static void end_login_noexit(void) {
 void end_login(int exitcode) {
   end_login_noexit();
 
-#ifdef PR_DEVEL
+#ifdef PR_USE_DEVEL
   destroy_pool(session.pool);
 
   if (is_master) {
@@ -241,7 +241,7 @@ void end_login(int exitcode) {
     free_pools();
     pr_proctitle_free();
   }
-#endif /* PR_DEVEL */
+#endif /* PR_USE_DEVEL */
 
   _exit(exitcode);
 }

@@ -614,7 +614,7 @@ AC_ARG_ENABLE(trace,
   ])
 
 dnl Enable developer code
-pr_devel_cflags="-DPR_DEVEL -g -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wshadow -Wundef"
+pr_devel_cflags="-g -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wshadow -Wundef"
 pr_devel_libs=""
 
 AC_ARG_ENABLE(devel,

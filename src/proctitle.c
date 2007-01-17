@@ -24,7 +24,7 @@
 
 /*
  * Proctitle management
- * $Id: proctitle.c,v 1.3 2007-01-13 06:12:15 castaglia Exp $
+ * $Id: proctitle.c,v 1.4 2007-01-17 19:32:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -100,7 +100,7 @@ void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
 }
 
 void pr_proctitle_free(void) {
-#ifdef PR_DEVEL
+#ifdef PR_USE_DEVEL
 # ifndef PR_DEVEL_STACK_TRACE
   if (environ) {
     register unsigned int i;
@@ -118,7 +118,7 @@ void pr_proctitle_free(void) {
   __progname_full = NULL;
 #  endif /* HAVE___PROGNAME */
 # endif /* !PR_DEVEL_STACK_TRACE */
-#endif /* PR_DEVEL */
+#endif /* PR_USE_DEVEL */
 }
 
 void pr_proctitle_set(const char *fmt, ...) {
