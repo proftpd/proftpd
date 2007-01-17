@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.301 2007-01-16 19:54:53 castaglia Exp $
+ * $Id: main.c,v 1.302 2007-01-17 05:33:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -77,9 +77,6 @@ unsigned long max_connects = 0UL;
 unsigned int max_connect_interval = 1;
 
 session_t session;
-
-/* Is this daemon operating in standalone mode? */
-static unsigned char is_standalone = FALSE;
 
 /* Is this process the master standalone daemon process? */
 unsigned char is_master = TRUE;
@@ -254,7 +251,8 @@ void session_exit(int pri, void *lv, int exitval, void *dummy) {
 
   pr_log_pri(pri, "%s", msg);
 
-  if (is_standalone && is_master) {
+  if (ServerType == SERVER_STANDALONE &&
+      is_master) {
     pr_log_pri(PR_LOG_NOTICE, "ProFTPD " PROFTPD_VERSION_TEXT
       " standalone mode SHUTDOWN");
 
@@ -1758,7 +1756,7 @@ static void finish_terminate(void) {
     PRIVS_ROOT
 
     /* Do not need the pidfile any longer. */
-    if (is_standalone &&
+    if (ServerType == SERVER_STANDALONE &&
         !nodaemon)
       pr_pidfile_remove();
 
@@ -1779,7 +1777,7 @@ static void finish_terminate(void) {
 
     PRIVS_RELINQUISH
 
-    if (is_standalone) {
+    if (ServerType == SERVER_STANDALONE) {
       pr_log_pri(PR_LOG_NOTICE, "ProFTPD " PROFTPD_VERSION_TEXT
         " standalone mode SHUTDOWN");
 
@@ -2210,8 +2208,6 @@ static void inetd_main(void) {
 
 static void standalone_main(void) {
   int res = 0;
-
-  is_standalone = TRUE;
 
   if (nodaemon) {
     log_stderr(quiet ? FALSE : TRUE);
