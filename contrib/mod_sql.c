@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2006 TJ Saunders
+ * Copyright (c) 2004-2007 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.122 2007-01-11 18:21:35 castaglia Exp $
+ * $Id: mod_sql.c,v 1.123 2007-01-17 19:50:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1735,13 +1735,11 @@ MODRET sql_post_retr(cmd_rec *cmd) {
 
 static char *resolve_long_tag(cmd_rec *cmd, char *tag) {
 
-#ifdef HAVE_GETENV
   if (strlen(tag) > 5 &&
       strncmp(tag, "env:", 4) == 0) {
-    char *env = getenv(tag + 4);
+    char *env = pr_env_get(cmd->pool, tag + 4);
     return pstrdup(cmd->tmp_pool, env ? env : "");
   }
-#endif /* HAVE_GETENV */
 
   return NULL;
 }
