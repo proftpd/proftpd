@@ -191,14 +191,14 @@ AC_ARG_WITH(lastlog,
   [
     if test "x$withval" = "xno" ; then
       # nothing to do
-      foo = bar
+      foo=bar
 
     elif test -n "$withval" ; then
       AC_DEFINE(PR_USE_LASTLOG, 1, [Define if enabling lastlog support.])
       AC_CHECK_HEADERS(lastlog.h login.h paths.h)
 
       if test "x${withval}" != "xyes" ; then
-        ac_lastlog_path = $withval
+        pr_lastlog_path="$withval"
 
       else
         dnl Try to determine the correct lastlog location (be it file or
@@ -248,23 +248,23 @@ AC_ARG_WITH(lastlog,
               ])
           ])
 
-         if test -z "$ac_lastlog_path" ; then
+         if test -z "$pr_lastlog_path" ; then
            if test x"$found_lastlog_path" = x"no" ; then
              for f in /var/log/lastlog /usr/adm/lastlog /var/adm/lastlog /etc/security/lastlog ; do
                if (test -d "$f" || test -f "$f") ; then
-                 ac_lastlog_path = $f
+                 pr_lastlog_path=$f
                fi
              done
 
-             if test -z "$ac_lastlog_path" ; then
+             if test -z "$pr_lastlog_path" ; then
                AC_MSG_WARN([** Cannot find lastlog **])
              fi
           fi
         fi
       fi
 
-      if test -n "$ac_lastlog_path" ; then
-        AC_DEFINE_UNQUOTED(PR_LASTLOG_PATH, "`eval echo "$ac_lastlog_path"`")
+      if test -n "$pr_lastlog_path" ; then
+        AC_DEFINE_UNQUOTED(PR_LASTLOG_PATH, "`eval echo "$pr_lastlog_path"`")
       fi
     fi
   ])
