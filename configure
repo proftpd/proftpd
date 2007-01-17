@@ -19981,7 +19981,7 @@ if test "${with_lastlog+set}" = set; then
 
     if test "x$withval" = "xno" ; then
       # nothing to do
-      foo = bar
+      foo=bar
 
     elif test -n "$withval" ; then
 
@@ -20143,7 +20143,7 @@ done
 
 
       if test "x${withval}" != "xyes" ; then
-        ac_lastlog_path = $withval
+        pr_lastlog_path="$withval"
 
       else
                         echo "$as_me:$LINENO: checking for LASTLOG_FILE" >&5
@@ -20279,15 +20279,15 @@ rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
 
-         if test -z "$ac_lastlog_path" ; then
+         if test -z "$pr_lastlog_path" ; then
            if test x"$found_lastlog_path" = x"no" ; then
              for f in /var/log/lastlog /usr/adm/lastlog /var/adm/lastlog /etc/security/lastlog ; do
                if (test -d "$f" || test -f "$f") ; then
-                 ac_lastlog_path = $f
+                 pr_lastlog_path=$f
                fi
              done
 
-             if test -z "$ac_lastlog_path" ; then
+             if test -z "$pr_lastlog_path" ; then
                { echo "$as_me:$LINENO: WARNING: ** Cannot find lastlog **" >&5
 echo "$as_me: WARNING: ** Cannot find lastlog **" >&2;}
              fi
@@ -20295,9 +20295,9 @@ echo "$as_me: WARNING: ** Cannot find lastlog **" >&2;}
         fi
       fi
 
-      if test -n "$ac_lastlog_path" ; then
+      if test -n "$pr_lastlog_path" ; then
         cat >>confdefs.h <<_ACEOF
-#define PR_LASTLOG_PATH "`eval echo "$ac_lastlog_path"`"
+#define PR_LASTLOG_PATH "`eval echo "$pr_lastlog_path"`"
 _ACEOF
 
       fi
