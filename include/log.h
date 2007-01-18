@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.26 2006-12-05 19:00:56 castaglia Exp $
+ * $Id: log.h,v 1.27 2007-01-18 02:48:32 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -64,6 +64,47 @@
 /* Log file modes */
 #define PR_LOG_SYSTEM_MODE	0640
 #define PR_LOG_XFER_MODE	0644
+
+#ifdef PR_USE_LASTLOG
+
+/* It is tempting to want to have these lastlog-related includes separated
+ * out into their own lastlog.h file.  However, on some systems, such a
+ * proftpd-specific lastlog.h file may collide with the system's lastlog.h
+ * file.  Ultimately it's an issue with the default search order of the
+ * system C preprocessor, not with us -- and not every installation has
+ * this problem.
+ *
+ * In the meantime, the most portable thing is to keep these lastlog-related
+ * includes in this file.  Yay portability.
+ */
+
+#ifdef HAVE_LASTLOG_H
+# include <lastlog.h>
+#endif
+
+#ifdef HAVE_LOGIN_H
+# include <login.h>
+#endif
+
+#ifdef HAVE_PATHS_H
+# include <paths.h>
+#endif
+
+#ifndef PR_LASTLOG_PATH
+# ifdef _PATH_LASTLOG
+#   define PR_LASTLOG_PATH      _PATH_LASTLOG
+# else
+#   ifdef LASTLOG_FILE
+#     define PR_LASTLOG_PATH    LASTLOG_FILE
+#   else
+#     error "Missing path to lastlog file (use --with-lastlog=PATH)"
+#   endif
+# endif
+#endif
+
+int log_lastlog(uid_t uid, const char *user_name, const char *tty,
+  pr_netaddr_t *remote_addr);
+#endif /* PR_USE_LASTLOG */
 
 int log_wtmp(char *, const char *, const char *, pr_netaddr_t *);
 

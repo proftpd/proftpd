@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.69 2007-01-12 01:30:55 castaglia Exp $
+ * $Id: conf.h,v 1.70 2007-01-18 02:48:32 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -421,7 +421,6 @@ typedef struct {
 #include "feat.h"
 #include "ftp.h"
 #include "log.h"
-#include "lastlog.h"
 #include "parser.h"
 #include "xferlog.h"
 #include "scoreboard.h"
