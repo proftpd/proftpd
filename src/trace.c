@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006 The ProFTPD Project team
+ * Copyright (c) 2006-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.12 2006-12-20 18:28:19 castaglia Exp $
+ * $Id: trace.c,v 1.13 2007-01-18 16:08:40 castaglia Exp $
  */
 
 
@@ -36,7 +36,7 @@ static int trace_logfd = -1;
 static pool *trace_pool = NULL;
 static pr_table_t *trace_tab = NULL;
 
-static const char *trace_levels[] = {
+static const char *trace_channels[] = {
   "auth",
   "binding",
   "command",
@@ -241,8 +241,8 @@ int pr_trace_set_level(const char *channel, int level) {
     } else {
       register unsigned int i;
 
-      for (i = 0; trace_levels[i]; i++) {
-        (void) pr_trace_set_level(trace_levels[i], level);
+      for (i = 0; trace_channels[i]; i++) {
+        (void) pr_trace_set_level(trace_channels[i], level);
       }
     }
 
@@ -253,8 +253,8 @@ int pr_trace_set_level(const char *channel, int level) {
     } else {
       register unsigned int i;
 
-      for (i = 0; trace_levels[i]; i++) {
-        (void) pr_table_remove(trace_tab, trace_levels[i], NULL);
+      for (i = 0; trace_channels[i]; i++) {
+        (void) pr_table_remove(trace_tab, trace_channels[i], NULL);
       }
     }
   }
