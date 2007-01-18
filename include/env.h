@@ -23,14 +23,30 @@
  */
 
 /* Environment handling
- * $Id: env.h,v 1.1 2007-01-12 01:30:55 castaglia Exp $
+ * $Id: env.h,v 1.2 2007-01-18 02:11:55 castaglia Exp $
  */
 
 #ifndef PR_ENV_H
 #define PR_ENV_H
 
-char *pr_env_get(pool *, const char *);
-int pr_env_set(pool *, const char *, const char *);
-int pr_env_unset(pool *, const char *);
+/* Returns the value of the environment variable named key, or NULL if no
+ * such value is present.
+ */
+char *pr_env_get(pool *p, const char *key);
+
+/* Set an environment variable named key, with the given value.  Returns
+ * zero if successful, or -1 (with errno set appropriately) if there was
+ * a problem.
+ *
+ * The memory of the strings in the environment are the responsibility of
+ * the caller; if allocating those strings from a memory pool, please be
+ * sure to use a pool of the proper lifetime.
+ */
+int pr_env_set(pool *p, const char *key, const char *value);
+
+/* Clear the environment of any variables named key.  Returns zero if
+ * successful, -1 otherwise (with errno set appropriately.
+ */
+int pr_env_unset(pool *p, const char *key);
 
 #endif /* PR_ENV_H */

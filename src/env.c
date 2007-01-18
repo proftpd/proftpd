@@ -24,7 +24,7 @@
 
 /*
  * Environment management
- * $Id: env.c,v 1.3 2007-01-16 19:53:00 castaglia Exp $
+ * $Id: env.c,v 1.4 2007-01-18 02:11:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,15 +44,54 @@ char *pr_env_get(pool *p, const char *key) {
 }
 
 int pr_env_set(pool *p, const char *key, const char *value) {
+#if defined(HAVE_SETENV)
+  const char *k, *v;
+#elif defined(HAVE_PUTENV)
+  const char *str;
+#endif /* !HAVE_SETENV and !HAVE_PUTENV */
+
   if (!p || !key || !value) {
     errno = EINVAL;
     return -1;
   }
 
+  /* In the PR_USE_DEVEL cases below, we use strdup(2) rather than ProFTPD's
+   * pstrdup() in order to soothe memory trackers (e.g. Valgrind) who may
+   * complain.
+   */
+
 #if defined(HAVE_SETENV)
-  return setenv(key, value, 1);
+# ifdef PR_USE_DEVEL
+  k = strdup(key);
+  if (!k) {
+    pr_log_pri(PR_LOG_ERR, "fatal: Memory exhausted");
+    exit(1);
+  }
+
+  v = strdup(value);
+  if (!v) {
+    pr_log_pri(PR_LOG_ERR, "fatal: Memory exhausted");
+    exit(1);
+  }
+
+# else
+  k = key;
+  v = value;
+# endif /* PR_USE_DEVEL */
+  return setenv(k, v, 1);
+
 #elif defined(HAVE_PUTENV)
-  return putenv(pstrcat(p, key, "=", value, NULL));
+  str = pstrcat(p, key, "=", value, NULL);
+
+# ifdef PR_USE_DEVEL
+  str = strdup(str);
+  if (!str) {
+    pr_log_pri(PR_LOG_ERR, "fatal: Memory exhausted");
+    exit(1);
+  }
+# endif /* PR_USE_DEVEL */
+  return putenv(str);
+
 #else
   errno = ENOSYS;
   return -1;
