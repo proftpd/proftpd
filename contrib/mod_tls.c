@@ -659,7 +659,7 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
     status = -1;
 
   } else if (pid == 0) {
-    char buf[32] = {'\0'};
+    char nbuf[32] = {'\0'};
     pool *tmp_pool;
     char *stdin_argv[4];
 
@@ -682,9 +682,9 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
 
     stdin_argv[0] = pstrdup(tmp_pool, tls_passphrase_provider);
 
-    snprintf(buf, sizeof(buf)-1, "%u", s->ServerPort);
-    buf[sizeof(buf)-1] = '\0';
-    stdin_argv[1] = pstrcat(tmp_pool, s->ServerName, ":", buf, NULL);
+    snprintf(nbuf, sizeof(buf)-1, "%u", s->ServerPort);
+    nbuf[sizeof(nbuf)-1] = '\0';
+    stdin_argv[1] = pstrcat(tmp_pool, s->ServerName, ":", nbuf, NULL);
 
     stdin_argv[2] = pstrdup(tmp_pool, flags & TLS_PASSPHRASE_FL_RSA_KEY ?
       "RSA" : "DSA");
@@ -2360,149 +2360,88 @@ static void tls_setup_cert_ext_environ(const char *env_prefix, X509 *cert) {
 
 static void tls_setup_cert_dn_environ(const char *env_prefix, X509_NAME *name) {
   register unsigned int i = 0;
-#ifdef PR_USE_DEVEL
-  char *tmp;
-#endif /* PR_USE_DEVEL */
+  char *k, *v;
 
   for (i = 0; i < sk_X509_NAME_ENTRY_num(name->entries); i++) {
     X509_NAME_ENTRY *entry = sk_X509_NAME_ENTRY_value(name->entries, i);
     int nid = OBJ_obj2nid(entry->object);
-   
+
     switch (nid) {
       case NID_countryName:
-#ifdef PR_USE_DEVEL
-        tmp = pstrcat(main_server->pool, env_prefix, "C=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL);
-        putenv(strdup(tmp));
-#else
-        putenv(pstrcat(main_server->pool, env_prefix, "C=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL));
-#endif /* PR_USE_DEVEL */
+        k = pstrcat(main_server->pool, env_prefix, "C", NULL);
+        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+          entry->value->length);
+        pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_commonName:
-#ifdef PR_USE_DEVEL
-        tmp = pstrcat(main_server->pool, env_prefix, "CN=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL);
-        putenv(strdup(tmp));
-#else
-        putenv(pstrcat(main_server->pool, env_prefix, "CN=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL));
-#endif
+        k = pstrcat(main_server->pool, env_prefix, "CN", NULL);
+        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+          entry->value->length);
+        pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_description:
-#ifdef PR_USE_DEVEL
-        tmp = pstrcat(main_server->pool, env_prefix, "D=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL);
-        putenv(strdup(tmp));
-#else
-        putenv(pstrcat(main_server->pool, env_prefix, "D=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL));
-#endif /* PR_USE_DEVEL */
+        k = pstrcat(main_server->pool, env_prefix, "D", NULL);
+        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+          entry->value->length);
+        pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_givenName:
-#ifdef PR_USE_DEVEL
-        tmp = pstrcat(main_server->pool, env_prefix, "G=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL);
-        putenv(strdup(tmp));
-#else
-        putenv(pstrcat(main_server->pool, env_prefix, "G=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL));
-#endif /* PR_USE_DEVEL */
+        k = pstrcat(main_server->pool, env_prefix, "G", NULL);
+        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+          entry->value->length);
+        pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_initials:
-#ifdef PR_USE_DEVEL
-        tmp = pstrcat(main_server->pool, env_prefix, "I=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL);
-        putenv(strdup(tmp));
-#else
-        putenv(pstrcat(main_server->pool, env_prefix, "I=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL));
-#endif /* PR_USE_DEVEL */
+        k = pstrcat(main_server->pool, env_prefix, "I", NULL);
+        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+          entry->value->length);
+        pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_localityName:
-        putenv(pstrcat(main_server->pool, env_prefix, "L=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL));
+        k = pstrcat(main_server->pool, env_prefix, "L", NULL);
+        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+          entry->value->length);
+        pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_organizationName:
-#ifdef PR_USE_DEVEL
-        tmp = pstrcat(main_server->pool, env_prefix, "O=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL);
-        putenv(strdup(tmp));
-#else
-        putenv(pstrcat(main_server->pool, env_prefix, "O=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL));
-#endif /* PR_USE_DEVEL */
+        k = pstrcat(main_server->pool, env_prefix, "O", NULL);
+        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+          entry->value->length);
+        pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_organizationalUnitName:
-#ifdef PR_USE_DEVEL
-        tmp = pstrcat(main_server->pool, env_prefix, "OU=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL);
-        putenv(strdup(tmp));
-#else
-        putenv(pstrcat(main_server->pool, env_prefix, "OU=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL));
-#endif /* PR_USE_DEVEL */
+        k = pstrcat(main_server->pool, env_prefix, "OU", NULL);
+        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+          entry->value->length);
+        pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_stateOrProvinceName:
-#ifdef PR_USE_DEVEL
-        tmp = pstrcat(main_server->pool, env_prefix, "ST=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL);
-        putenv(strdup(tmp));
-#else
-        putenv(pstrcat(main_server->pool, env_prefix, "ST=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL));
-#endif /* PR_USE_DEVEL */
+        k = pstrcat(main_server->pool, env_prefix, "ST", NULL);
+        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+          entry->value->length);
+        pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_surname:
-#ifdef PR_USE_DEVEL
-        tmp = pstrcat(main_server->pool, env_prefix, "S=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL);
-        putenv(strdup(tmp));
-#else
-        putenv(pstrcat(main_server->pool, env_prefix, "S=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL));
-#endif /* PR_USE_DEVEL */
+        k = pstrcat(main_server->pool, env_prefix, "S", NULL);
+        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+          entry->value->length);
+        pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_title:
-#ifdef PR_USE_DEVEL
-        tmp = pstrcat(main_server->pool, env_prefix, "T=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL);
-        putenv(strdup(tmp));
-#else
-        putenv(pstrcat(main_server->pool, env_prefix, "T=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL));
-#endif /* PR_USE_DEVEL */
+        k = pstrcat(main_server->pool, env_prefix, "T", NULL);
+        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+          entry->value->length);
+        pr_env_set(main_server->pool, k, v);
         break;
 
 #if OPENSSL_VERSION_NUMBER >= 0x00907000L
@@ -2510,29 +2449,17 @@ static void tls_setup_cert_dn_environ(const char *env_prefix, X509_NAME *name) {
 #else
       case NID_uniqueIdentifier:
 #endif
-#ifdef PR_USE_DEVEL
-        tmp = pstrcat(main_server->pool, env_prefix, "UID=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL);
-        putenv(strdup(tmp));
-#else
-        putenv(pstrcat(main_server->pool, env_prefix, "UID=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL));
-#endif /* PR_USE_DEVEL */
+        k = pstrcat(main_server->pool, env_prefix, "UID", NULL);
+        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+          entry->value->length);
+        pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_pkcs9_emailAddress:
-#ifdef PR_USE_DEVEL
-        tmp = pstrcat(main_server->pool, env_prefix, "Email=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL);
-        putenv(strdup(tmp));
-#else
-        putenv(pstrcat(main_server->pool, env_prefix, "Email=",
-          pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length), NULL));
-#endif /* PR_USE_DEVEL */
+        k = pstrcat(main_server->pool, env_prefix, "Email", NULL);
+        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+          entry->value->length);
+        pr_env_set(main_server->pool, k, v);
         break;
 
       default:
@@ -2542,12 +2469,9 @@ static void tls_setup_cert_dn_environ(const char *env_prefix, X509_NAME *name) {
 }
 
 static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
-  char *data = NULL;
+  char *data = NULL, *k, *v;
   long datalen = 0;
   BIO *bio = NULL;
-#ifdef PR_USE_DEVEL
-  char *tmp;
-#endif /* PR_USE_DEVEL */
 
   if (tls_opts & TLS_OPT_STD_ENV_VARS) {
     char buf[80] = {'\0'};
@@ -2556,52 +2480,39 @@ static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
     sprintf(buf, "%lu", X509_get_version(cert) + 1);
     buf[sizeof(buf)-1] = '\0';
 
-#ifdef PR_USE_DEVEL
-    tmp = pstrcat(main_server->pool, env_prefix, "M_VERSION=", buf, NULL);
-    putenv(strdup(tmp));
-#else
-    putenv(pstrcat(main_server->pool, env_prefix, "M_VERSION=", buf, NULL));
-#endif /* PR_USE_DEVEL */
+    k = pstrcat(main_server->pool, env_prefix, "M_VERSION", NULL);
+    v = pstrdup(main_server->pool, buf);
+    pr_env_set(main_server->pool, k, v);
 
     if (serial->length < 4) {
       memset(buf, '\0', sizeof(buf));
       sprintf(buf, "%lu", ASN1_INTEGER_get(serial));
       buf[sizeof(buf)-1] = '\0';
 
-#ifdef PR_USE_DEVEL
-      tmp = pstrcat(main_server->pool, env_prefix, "M_SERIAL=", buf, NULL);
-      putenv(strdup(tmp));
-#else
-      putenv(pstrcat(main_server->pool, env_prefix, "M_SERIAL=", buf, NULL));
-#endif /* PR_USE_DEVEL */
+      k = pstrcat(main_server->pool, env_prefix, "M_SERIAL", NULL);
+      v = pstrdup(main_server->pool, buf);
+      pr_env_set(main_server->pool, k, v);
 
-    } else
+    } else {
 
       /* NOTE: actually, the number is printable, I'm just being lazy. This
        * case is much harder to deal with, and not really worth the effort.
        */
       tls_log("%s", "certificate serial number not printable");
+    }
 
-#ifdef PR_USE_DEVEL
-    tmp = pstrcat(main_server->pool, env_prefix, "S_DN=",
-      tls_x509_name_oneline(X509_get_subject_name(cert)), NULL);
-    putenv(strdup(tmp));
-#else
-    putenv(pstrcat(main_server->pool, env_prefix, "S_DN=",
-      tls_x509_name_oneline(X509_get_subject_name(cert)), NULL));
-#endif
+    k = pstrcat(main_server->pool, env_prefix, "S_DN", NULL);
+    v = pstrdup(main_server->pool,
+      tls_x509_name_oneline(X509_get_subject_name(cert)));
+    pr_env_set(main_server->pool, k, v);
 
     tls_setup_cert_dn_environ(pstrcat(main_server->pool, env_prefix, "S_DN_",
       NULL), X509_get_subject_name(cert));
 
-#ifdef PR_USE_DEVEL
-    tmp = pstrcat(main_server->pool, env_prefix, "I_DN=",
-      tls_x509_name_oneline(X509_get_issuer_name(cert)), NULL);
-    putenv(strdup(tmp));
-#else
-    putenv(pstrcat(main_server->pool, env_prefix, "I_DN=",
-      tls_x509_name_oneline(X509_get_issuer_name(cert)), NULL));
-#endif /* PR_USE_DEVEL */
+    k = pstrcat(main_server->pool, env_prefix, "I_DN", NULL);
+    v = pstrdup(main_server->pool,
+      tls_x509_name_oneline(X509_get_issuer_name(cert)));
+    pr_env_set(main_server->pool, k, v);
 
     tls_setup_cert_dn_environ(pstrcat(main_server->pool, env_prefix, "I_DN_",
       NULL), X509_get_issuer_name(cert));
@@ -2613,48 +2524,44 @@ static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
     ASN1_TIME_print(bio, X509_get_notBefore(cert));
     datalen = BIO_get_mem_data(bio, &data);
     data[datalen] = '\0';
-#ifdef PR_USE_DEVEL
-    tmp = pstrcat(main_server->pool, env_prefix, "V_START=", data, NULL);
-    putenv(strdup(tmp));
-#else
-    putenv(pstrcat(main_server->pool, env_prefix, "V_START=", data, NULL));
-#endif /* PR_USE_DEVEL */
+
+    k = pstrcat(main_server->pool, env_prefix, "V_START", NULL);
+    v = pstrdup(main_server->pool, data);
+    pr_env_set(main_server->pool, k, v);
+
     BIO_free(bio);
 
     bio = BIO_new(BIO_s_mem());
     ASN1_TIME_print(bio, X509_get_notAfter(cert));
     datalen = BIO_get_mem_data(bio, &data);
     data[datalen] = '\0';
-#ifdef PR_USE_DEVEL
-    tmp = pstrcat(main_server->pool, env_prefix, "V_END=", data, NULL);
-    putenv(strdup(tmp));
-#else
-    putenv(pstrcat(main_server->pool, env_prefix, "V_END=", data, NULL));
-#endif /* PR_USE_DEVEL */
+
+    k = pstrcat(main_server->pool, env_prefix, "V_END", NULL);
+    v = pstrdup(main_server->pool, data);
+    pr_env_set(main_server->pool, k, v);
+
     BIO_free(bio);
 
     bio = BIO_new(BIO_s_mem());
     i2a_ASN1_OBJECT(bio, cert->cert_info->signature->algorithm);
     datalen = BIO_get_mem_data(bio, &data);
     data[datalen] = '\0';
-#ifdef PR_USE_DEVEL
-    tmp = pstrcat(main_server->pool, env_prefix, "A_SIG=", data, NULL);
-    putenv(strdup(tmp));
-#else
-    putenv(pstrcat(main_server->pool, env_prefix, "A_SIG=", data, NULL));
-#endif /* PR_USE_DEVEL */
+
+    k = pstrcat(main_server->pool, env_prefix, "A_SIG", NULL);
+    v = pstrdup(main_server->pool, data);
+    pr_env_set(main_server->pool, k, v);
+
     BIO_free(bio);
 
     bio = BIO_new(BIO_s_mem());
     i2a_ASN1_OBJECT(bio, cert->cert_info->key->algor->algorithm);
     datalen = BIO_get_mem_data(bio, &data);
     data[datalen] = '\0';
-#ifdef PR_USE_DEVEL
-    tmp = pstrcat(main_server->pool, env_prefix, "A_KEY=", data, NULL);
-    putenv(strdup(tmp));
-#else
-    putenv(pstrcat(main_server->pool, env_prefix, "A_KEY=", data, NULL));
-#endif /* PR_USE_DEVEL */
+
+    k = pstrcat(main_server->pool, env_prefix, "A_KEY", NULL);
+    v = pstrdup(main_server->pool, data);
+    pr_env_set(main_server->pool, k, v);
+
     BIO_free(bio);
   }
 
@@ -2662,18 +2569,18 @@ static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
   PEM_write_bio_X509(bio, cert);
   datalen = BIO_get_mem_data(bio, &data);
   data[datalen] = '\0';
-#ifdef PR_USE_DEVEL
-  tmp = pstrcat(main_server->pool, env_prefix, "CERT=", data, NULL);
-  putenv(strdup(tmp));
-#else
-  putenv(pstrcat(main_server->pool, env_prefix, "CERT=", data, NULL));
-#endif /* PR_USE_DEVEL */
+
+  k = pstrcat(main_server->pool, env_prefix, "CERT", NULL);
+  v = pstrdup(main_server->pool, data);
+  pr_env_set(main_server->pool, k, v);
+
   BIO_free(bio);
 }
 
 static void tls_setup_environ(SSL *ssl) {
   X509 *cert = NULL;
   STACK_OF(X509) *sk_cert_chain = NULL;
+  char *k, *v;
 
   if (!(tls_opts & TLS_OPT_EXPORT_CERT_DATA) &&
       !(tls_opts & TLS_OPT_STD_ENV_VARS))
@@ -2682,20 +2589,14 @@ static void tls_setup_environ(SSL *ssl) {
   if (tls_opts & TLS_OPT_STD_ENV_VARS) {
     SSL_CIPHER *cipher = NULL;
     SSL_SESSION *ssl_session = NULL;
-#ifdef PR_USE_DEVEL
-    char *tmp;
-#endif
 
-#ifdef PR_USE_DEVEL
-    putenv(strdup("FTPS=1"));
-    tmp = pstrcat(main_server->pool, "TLS_PROTOCOL=",
-      SSL_get_cipher_version(ssl), NULL);
-    putenv(strdup(tmp));
-#else
-    putenv(pstrdup(main_server->pool, "FTPS=1"));
-    putenv(pstrcat(main_server->pool, "TLS_PROTOCOL=",
-      SSL_get_cipher_version(ssl), NULL));
-#endif /* PR_USE_DEVEL */
+    k = pstrdup(main_server->pool, "FTPS");
+    v = pstrdup(main_server->pool, "1");
+    pr_env_set(main_server->pool, k, v);
+
+    k = pstrdup(main_server->pool, "TLS_PROTOCOL");
+    v = pstrdup(main_server->pool, SSL_get_cipher_version(ssl));
+    pr_env_set(main_server->pool, k, v);
 
     /* Process the SSL session-related environ variable. */
     ssl_session = SSL_get_session(ssl);
@@ -2708,12 +2609,9 @@ static void tls_setup_environ(SSL *ssl) {
         sprintf(&(buf[i*2]), "%02X", ssl_session->session_id[i]);
       buf[sizeof(buf)-1] = '\0';
 
-#ifdef PR_USE_DEVEL
-      tmp = pstrcat(main_server->pool, "TLS_SESSION_ID=", buf, NULL);
-      putenv(strdup(tmp));
-#else
-      putenv(pstrcat(main_server->pool, "TLS_SESSION_ID=", buf, NULL));
-#endif /* PR_USE_DEVEL */
+      k = pstrdup(main_server->pool, "TLS_SESSION_ID");
+      v = pstrdup(main_server->pool, buf);
+      pr_env_set(main_server->pool, k, v);
     }
 
     /* Process the SSL cipher-related environ variables. */
@@ -2722,60 +2620,38 @@ static void tls_setup_environ(SSL *ssl) {
       char buf[10] = {'\0'};
       int cipher_bits_used = 0, cipher_bits_possible = 0;
 
-#ifdef PR_USE_DEVEL
-      tmp = pstrcat(main_server->pool, "TLS_CIPHER=",
-        SSL_CIPHER_get_name(cipher), NULL);
-      putenv(strdup(tmp));
-#else
-      putenv(pstrcat(main_server->pool, "TLS_CIPHER=",
-        SSL_CIPHER_get_name(cipher), NULL));
-#endif /* PR_USE_DEVEL */
+      k = pstrdup(main_server->pool, "TLS_CIPHER");
+      v = pstrdup(main_server->pool, SSL_CIPHER_get_name(cipher));
+      pr_env_set(main_server->pool, k, v);
 
       cipher_bits_used = SSL_CIPHER_get_bits(cipher, &cipher_bits_possible);
 
       if (cipher_bits_used < 56) {
-#ifdef PR_USE_DEVEL
-        putenv(strdup("TLS_CIPHER_EXPORT=1"));
-#else
-        putenv(pstrdup(main_server->pool, "TLS_CIPHER_EXPORT=1"));
-#endif /* PR_USE_DEVEL */
+        k = pstrdup(main_server->pool, "TLS_CIPHER_EXPORT");
+        v = pstrdup(main_server->pool, "1");
+        pr_env_set(main_server->pool, k, v);
       }
 
       memset(buf, '\0', sizeof(buf));
       snprintf(buf, sizeof(buf), "%d", cipher_bits_possible);
       buf[sizeof(buf)-1] = '\0';
 
-#ifdef PR_USE_DEVEL
-      tmp = pstrcat(main_server->pool, "TLS_CIPHER_KEYSIZE_POSSIBLE=",
-        buf, NULL);
-      putenv(strdup(tmp));
-#else
-      putenv(pstrcat(main_server->pool, "TLS_CIPHER_KEYSIZE_POSSIBLE=",
-        buf, NULL));
-#endif /* PR_USE_DEVEL */
+      k = pstrdup(main_server->pool, "TLS_CIPHER_KEYSIZE_POSSIBLE");
+      v = pstrdup(main_server->pool, buf);
+      pr_env_set(main_server->pool, k, v);
 
       memset(buf, '\0', sizeof(buf));
       snprintf(buf, sizeof(buf), "%d", cipher_bits_used);
       buf[sizeof(buf)-1] = '\0';
 
-#ifdef PR_USE_DEVEL
-      tmp = pstrcat(main_server->pool, "TLS_CIPHER_KEYSIZE_USED=",
-        buf, NULL);
-      putenv(strdup(tmp));
-#else
-      putenv(pstrcat(main_server->pool, "TLS_CIPHER_KEYSIZE_USED=",
-        buf, NULL));
-#endif /* PR_USE_DEVEL */
+      k = pstrdup(main_server->pool, "TLS_CIPHER_KEYSIZE_USED");
+      v = pstrdup(main_server->pool, buf);
+      pr_env_set(main_server->pool, k, v);
     }
 
-#ifdef PR_USE_DEVEL
-    tmp = pstrcat(main_server->pool, "TLS_LIBRARY_VERSION=",
-       OPENSSL_VERSION_TEXT, NULL);
-    putenv(strdup(tmp));
-#else
-    putenv(pstrcat(main_server->pool, "TLS_LIBRARY_VERSION=",
-       OPENSSL_VERSION_TEXT, NULL));
-#endif /* PR_USE_DEVEL */
+    k = pstrdup(main_server->pool, "TLS_LIBRARY_VERSION");
+    v = pstrdup(main_server->pool, OPENSSL_VERSION_TEXT);
+    pr_env_set(main_server->pool, k, v);
   }
 
   sk_cert_chain = SSL_get_peer_cert_chain(ssl);
@@ -2787,21 +2663,18 @@ static void tls_setup_environ(SSL *ssl) {
 
     /* Adding TLS_CLIENT_CERT_CHAIN environ variables. */
     for (i = 0; i < sk_X509_num(sk_cert_chain); i++) {
-      bio = BIO_new(BIO_s_mem());
-      BIO_printf(bio, "TLS_CLIENT_CERT_CHAIN%u=", i);
-      PEM_write_bio_X509(bio, sk_X509_value(sk_cert_chain, i));
+      size_t klen = 256;
+      k = pcalloc(main_server->pool, klen);
+      snprintf(k, klen - 1, "%s%u", "TLS_CLIENT_CERT_CHAIN", i + 1);
 
+      bio = BIO_new(BIO_s_mem());
+      PEM_write_bio_X509(bio, sk_X509_value(sk_cert_chain, i));
       datalen = BIO_get_mem_data(bio, &data);
       data[datalen] = '\0';
-#ifdef PR_USE_DEVEL
-      if (putenv(strdup(data)) < 0) {
-        tls_log("error setting environ variable: %s", strerror(errno));
-      }
-#else
-      if (putenv(pstrdup(main_server->pool, data)) < 0) {
-        tls_log("error setting environ variable: %s", strerror(errno));
-      }
-#endif /* PR_USE_DEVEL */
+
+      v = pstrdup(main_server->pool, data);
+
+      pr_env_set(main_server->pool, k, v);
 
       BIO_free(bio);
     } 
