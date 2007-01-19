@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.4 2007-01-19 21:59:44 castaglia Exp $
+ * $Id: mod_lang.c,v 1.5 2007-01-19 23:01:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -262,8 +262,17 @@ static void lang_restart_ev(const void *event_data, void *user_data) {
 
 static int lang_init(void) {
   if (setlocale(LC_ALL, "") == NULL) {
-    pr_log_pri(PR_LOG_NOTICE, "unable to set locale: %s", strerror(errno));
+    pr_log_pri(PR_LOG_NOTICE, "unable to set LC_ALL: %s", strerror(errno));
     return -1;
+  }
+
+  /* Preserve the POSIX/portable handling of number formatting; local
+   * formatting of decimal points, for example, can cause problems with
+   * numbers in SQL queries.
+   */
+  if (setlocale(LC_NUMERIC, "C") == NULL) {
+    pr_log_pri(PR_LOG_NOTICE, "unable to set LC_NUMERIC: %s",
+      strerror(errno));
   }
 
   lang_pool = make_sub_pool(permanent_pool);
