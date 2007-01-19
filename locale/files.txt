@@ -9,6 +9,7 @@
 ../include/default_paths.h
 ../include/dirtree.h
 ../include/display.h
+../include/env.h
 ../include/event.h
 ../include/feat.h
 ../include/fsio.h
@@ -17,7 +18,6 @@
 ../include/help.h
 ../include/ident.h
 ../include/inet.h
-../include/lastlog.h
 ../include/libsupp.h
 ../include/log.h
 ../include/mkhome.h
@@ -28,9 +28,11 @@
 ../include/netio.h
 ../include/options.h
 ../include/parser.h
+../include/pidfile.h
 ../include/pool.h
 ../include/pr-syslog.h
 ../include/privs.h
+../include/proctitle.h
 ../include/proftpd.h
 ../include/regexp.h
 ../include/response.h
@@ -70,6 +72,7 @@
 ../src/data.c
 ../src/dirtree.c
 ../src/display.c
+../src/env.c
 ../src/event.c
 ../src/feat.c
 ../src/fsio.c
@@ -86,7 +89,9 @@
 ../src/netaddr.c
 ../src/netio.c
 ../src/parser.c
+../src/pidfile.c
 ../src/pool.c
+../src/proctitle.c
 ../src/regexp.c
 ../src/response.c
 ../src/scoreboard.c
