@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.296 2006-12-20 18:28:19 castaglia Exp $
+ * $Id: mod_core.c,v 1.297 2007-01-19 21:59:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4259,48 +4259,22 @@ MODRET core_feat(cmd_rec *cmd) {
 }
 
 MODRET core_opts(cmd_rec *cmd) {
-  char *opts_cmd = NULL, *cp = NULL;
-
-  /* This is an ugly command to implement.
-   */
+  register unsigned int i;
+  int res;
+  cmd_rec *subcmd;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  /* First, check to see if the FTP command given is supported.  This involves
-   * scanning through the master cmdtab for a CMD handler for that command.
-   * Make sure to check for the command in an all-uppercase fashion.
-   */
+  subcmd = pr_cmd_alloc(cmd->tmp_pool, cmd->argc-1, NULL);
+  subcmd->argv[0] = pstrcat(cmd->tmp_pool, "OPTS_", cmd->argv[1], NULL);
 
-  opts_cmd = pstrdup(cmd->tmp_pool, cmd->argv[1]);
+  for (i = 2; i < cmd->argc; i++)
+    subcmd->argv[i-1] = cmd->argv[i];
 
-  for (cp = opts_cmd; *cp; cp++)
-    *cp = toupper(*cp);
-
-  if (!command_exists(opts_cmd)) {
-    pr_response_add_err(R_501, _("%s: %s not understood"), cmd->argv[0],
-      cmd->argv[1]);
+  res = pr_cmd_dispatch(subcmd);
+  if (res < 0)
     return PR_ERROR(cmd);
-  }
 
-  /* If the command is valid, process any possible options that may have
-   * been specified by the client.  At the moment, only the LIST and NLST
-   * commands are capable of supporting options specified via OPTS.  Note
-   * this is our interpretation of the reality of the situation; RFC959
-   * does not officially sanction the /bin/ls switches often used by clients
-   * when requesting listings.  No clients, as far as I know, use OPTS for
-   * specifying options to LIST/NLST.
-   *
-   * NOTE: this hasn't been implemented yet. For now, if any options are
-   * given, fail the command.
-   */
-
-  if (cmd->argc == 3) {
-    pr_response_add_err(R_501, _("%s: %s options '%s' not understood"),
-      cmd->argv[0], cmd->argv[1], cmd->argv[2]);
-    return PR_ERROR(cmd);
-  }
-
-  pr_response_add(R_200, _("%s command successful"), cmd->argv[0]);
   return PR_HANDLED(cmd);
 }
 

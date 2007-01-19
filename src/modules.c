@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.50 2007-01-09 03:31:14 castaglia Exp $
+ * $Id: modules.c,v 1.51 2007-01-19 21:59:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -500,10 +500,13 @@ int modules_session_init(void) {
 }
 
 unsigned char command_exists(char *name) {
-  cmdtable *cmdtab = pr_stash_get_symbol(PR_SYM_CMD, name, NULL, NULL);
+  int idx = -1;
+  cmdtable *cmdtab = pr_stash_get_symbol(PR_SYM_CMD, name, NULL, &idx);
 
-  while (cmdtab && cmdtab->cmd_type != CMD)
-    cmdtab = pr_stash_get_symbol(PR_SYM_CMD, name, cmdtab, NULL);
+  while (cmdtab && cmdtab->cmd_type != CMD) {
+    pr_signals_handle();
+    cmdtab = pr_stash_get_symbol(PR_SYM_CMD, name, cmdtab, &idx);
+  }
 
   return (cmdtab ? TRUE : FALSE);
 }

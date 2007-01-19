@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.303 2007-01-17 19:32:45 castaglia Exp $
+ * $Id: main.c,v 1.304 2007-01-19 21:59:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -314,10 +314,13 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
 }
 
 static int get_command_class(const char *name) {
-  cmdtable *c = pr_stash_get_symbol(PR_SYM_CMD, name, NULL, NULL);
+  int idx = -1;
+  cmdtable *c = pr_stash_get_symbol(PR_SYM_CMD, name, NULL, &idx);
 
-  while (c && c->cmd_type != CMD)
-    c = pr_stash_get_symbol(PR_SYM_CMD, name, c, NULL);
+  while (c && c->cmd_type != CMD) {
+    pr_signals_handle();
+    c = pr_stash_get_symbol(PR_SYM_CMD, name, c, &idx);
+  }
 
   /* By default, every command has a class of CL_ALL.  This insures that
    * any configured ExtendedLogs that default to "all" will log the command.
@@ -442,15 +445,33 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
       c = pr_stash_get_symbol(PR_SYM_CMD, match, c, index_cache);
   }
 
-  if (!c && !success && validate) {
-    pr_response_add_err(R_500, _("%s not understood"), cmd->argv[0]);
+  if (!c &&
+      !success &&
+      validate) {
+    char *method;
+
+    /* Prettify the command method, if need be. */
+    if (strchr(cmd->argv[0], '_') == NULL) {
+      method = cmd->argv[0];
+
+    } else {
+      register unsigned int i;
+
+      method = pstrdup(cmd->pool, cmd->argv[0]);
+      for (i = 0; method[i]; i++) {
+        if (method[i] == '_')
+          method[i] = ' ';
+      }
+    }
+
+    pr_response_add_err(R_500, _("%s not understood"), method);
     success = -1;
   }
 
   return success;
 }
 
-void pr_cmd_dispatch(cmd_rec *cmd) {
+int pr_cmd_dispatch(cmd_rec *cmd) {
   char *cp = NULL;
   int success = 0;
 
@@ -483,7 +504,7 @@ void pr_cmd_dispatch(cmd_rec *cmd) {
     _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
 
     pr_response_flush(&resp_err_list);
-    return;
+    return success;
   }
 
   success = _dispatch(cmd, CMD, FALSE, C_ANY);
@@ -514,6 +535,8 @@ void pr_cmd_dispatch(cmd_rec *cmd) {
 
     pr_response_flush(&resp_err_list);
   }
+
+  return success;
 }
 
 static cmd_rec *make_ftp_cmd(pool *p, char *buf, int flags) {

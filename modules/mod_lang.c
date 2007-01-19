@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_lang -- a module for handling the LANG command [RFC2640]
  *
- * Copyright (c) 2006 The ProFTPD Project
+ * Copyright (c) 2006-2007 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.3 2006-12-13 17:44:33 castaglia Exp $
+ * $Id: mod_lang.c,v 1.4 2007-01-19 21:59:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -155,6 +155,49 @@ MODRET lang_lang(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+MODRET lang_utf8(cmd_rec *cmd) {
+  register unsigned int i;
+  int bool, prev;
+  char *method = pstrdup(cmd->tmp_pool, cmd->argv[0]);
+
+  /* Convert underscores to spaces in the method name, for prettier
+   * logging.
+   */
+  for (i = 0; method[i]; i++) {
+    if (method[i] == '_')
+      method[i] = ' ';
+  }
+
+  if (cmd->argc != 2) {
+    pr_response_add_err(R_501, _("'%s' not understood"), method);
+    return PR_ERROR(cmd);
+  }
+
+  bool = get_boolean(cmd, 1);
+  if (bool < 0) {
+    pr_response_add_err(R_501, _("'%s' not understood"), method);
+    return PR_ERROR(cmd);
+  }
+ 
+  prev = pr_fs_use_utf8(bool);
+  if (bool == TRUE &&
+      prev == FALSE) {
+    /* If we are being asked to enable UTF8, and the previous setting was to
+     * NOT use UTF8, it usually means that the sysadmin set "UseUTF8 off" in
+     * the proftpd.conf.  Thus we revert back to the non-UTF8 case, and
+     * report an error back to the client. 
+     */
+    pr_fs_use_utf8(prev);
+    pr_log_debug(DEBUG5, "unable to accept 'OPTS UTF8 on' due to UseUTF8 "
+      "directive in config file");
+    pr_response_add_err(R_451, _("Unable to accept %s"), method); 
+    return PR_ERROR(cmd);
+  }
+
+  pr_response_add(R_200, _("UTF8 set to %s"), bool ? "on" : "off");
+  return PR_HANDLED(cmd);
+}
+
 /* Event handlers
  */
 
@@ -263,7 +306,8 @@ static conftable lang_conftab[] = {
 };
 
 static cmdtable lang_cmdtab[] = {
-  { CMD,	C_LANG,	G_NONE,	lang_lang,	FALSE,	FALSE },
+  { CMD,	C_LANG,			G_NONE,	lang_lang,	FALSE,	FALSE },
+  { CMD,	C_OPTS "_UTF8",		G_NONE,	lang_utf8,	FALSE,	FALSE },
   { 0, NULL }
 };
 
