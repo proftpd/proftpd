@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.219 2006-12-17 23:37:12 castaglia Exp $
+ * $Id: mod_auth.c,v 1.220 2007-02-08 17:24:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -749,6 +749,21 @@ static int setup_env(pool *p, char *user, char *pass) {
 
   /* Check for any expandable variables in session.cwd. */
   pw->pw_dir = path_subst_uservar(p, &pw->pw_dir);
+
+  /* Before we check for supplemental groups, check to see if the locally
+   * resolved name of the user, returned via auth_getpwnam(), is different
+   * from the USER argument sent by the client.  The name can change, since
+   * auth modules can play all sorts of neat tricks on us.
+   *
+   * If the names differ, assume that any cached data in the session.gids
+   * and session.groups lists are stale, and clear them out.
+   */
+  if (strcmp(pw->pw_name, user) != 0) {
+    pr_log_debug(DEBUG10, "local user name '%s' differs from client-sent "
+      "user name '%s', clearing cached group data", pw->pw_name, user);
+    session.gids = NULL;
+    session.groups = NULL;
+  }
 
   /* Get the supplemental groups */
   if (!session.gids && !session.groups &&
