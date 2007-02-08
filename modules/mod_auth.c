@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.220 2007-02-08 17:24:15 castaglia Exp $
+ * $Id: mod_auth.c,v 1.221 2007-02-08 19:11:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -765,12 +765,21 @@ static int setup_env(pool *p, char *user, char *pass) {
     session.groups = NULL;
   }
 
-  /* Get the supplemental groups */
-  if (!session.gids && !session.groups &&
-      (res = pr_auth_getgroups(p, pw->pw_name, &session.gids,
-       &session.groups)) < 1)
-    pr_log_debug(DEBUG2, "no supplemental groups found for user '%s'",
-      pw->pw_name);
+  if (!session.gids &&
+      !session.groups) {
+    /* Get the supplemental groups.  Note that we only look up the
+     * supplemental group credentials if we have not cached the group
+     * credentials before, in session.gids and session.groups.  
+     *
+     * Those credentials may have already been retrieved, as part of the
+     * pr_auth_get_anon_config() call.
+     */
+     res = pr_auth_getgroups(p, pw->pw_name, &session.gids, &session.groups);
+     if (res < 1) {
+       pr_log_debug(DEBUG2, "no supplemental groups found for user '%s'",
+         pw->pw_name);
+     }
+  }
 
   /* If c != NULL from this point on, we have an anonymous login */
   aclp = login_check_limits(main_server->conf,FALSE,TRUE,&i);
