@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.181 2007-02-12 19:28:00 castaglia Exp $
+ * $Id: dirtree.c,v 1.182 2007-02-12 19:43:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2077,8 +2077,18 @@ static config_rec *_find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
 
   for (c = (config_rec *) set->xas_list; c; c = c->next) {
     if (c->config_type == CONF_DIR) {
-      if (strcmp(c->name, path) == 0)
-        continue;				/* Don't examine the current */
+      /* Note: this comparison of pointers, rather than of strings, is
+       * intentional.  DO NOT CHANGE THIS TO A strcmp()!
+       *
+       * This function is only called by reorder_dirs(), and reorder_dirs()
+       * always uses a c->name as the path parameter.  This means that
+       * doing direct pointer/address comparisons is valid.  If ever this
+       * assumption is broken, we will need to revert back to a more
+       * costly (especially when there are many <Directory> config sections)
+       * use of strcmp().
+       */
+      if c->name == path)
+        continue;
 
       len = strlen(c->name);
       while (len > 0 &&
