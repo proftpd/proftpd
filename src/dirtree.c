@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.180 2007-01-11 04:05:07 castaglia Exp $
+ * $Id: dirtree.c,v 1.181 2007-02-12 19:28:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -914,8 +914,8 @@ unsigned char pr_expr_eval_user_or(char **expr) {
 }
 /* Per-directory configuration */
 
-static int _strmatch(register char *s1, register char *s2) {
-  register int len = 0;
+static size_t _strmatch(register char *s1, register char *s2) {
+  register size_t len = 0;
 
   while (*s1 && *s2 && *s1++ == *s2++)
     len++;
@@ -2063,20 +2063,23 @@ static void _reparent_all(config_rec *newparent, xaset_t *set) {
  * directive to.
  */
 
-static config_rec *_find_best_dir(xaset_t *set,char *path,int *matchlen)
-{
-  config_rec *c,*res = NULL,*rres;
-  int len,imatchlen,tmatchlen;
+static config_rec *_find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
+  config_rec *c, *res = NULL, *rres;
+  size_t len, pathlen, imatchlen, tmatchlen;
 
   *matchlen = 0;
 
-  if (!set || !set->xas_list)
+  if (!set ||
+      !set->xas_list)
     return NULL;
 
-  for (c = (config_rec*)set->xas_list; c; c=c->next) {
+  pathlen = strlen(path);
+
+  for (c = (config_rec *) set->xas_list; c; c = c->next) {
     if (c->config_type == CONF_DIR) {
-      if (!strcmp(c->name,path))
+      if (strcmp(c->name, path) == 0)
         continue;				/* Don't examine the current */
+
       len = strlen(c->name);
       while (len > 0 &&
              (*(c->name+len-1) == '*' || *(c->name+len-1) == '/'))
@@ -2093,21 +2096,24 @@ static config_rec *_find_best_dir(xaset_t *set,char *path,int *matchlen)
        * /var/www/.1/images
        *            ^ -- /, is subdir
        */
-      if (strlen(path) > len && path[len] != '/')
+      if (pathlen > len &&
+          path[len] != '/')
           continue;
 
-      if (!strncmp(c->name,path,len) &&
-         len < strlen(path)) {
-           rres = _find_best_dir(c->subset,path,&imatchlen);
-           tmatchlen = _strmatch(path,c->name);
-           if (!rres && tmatchlen > *matchlen) {
-             res = c;
-             *matchlen = tmatchlen;
-           } else if (imatchlen > *matchlen) {
-             res = rres;
-             *matchlen = imatchlen;
-           }
-         }
+      if (len < pathlen &&
+          strncmp(c->name, path, len) == 0) {
+        rres = _find_best_dir(c->subset ,path, &imatchlen);
+        tmatchlen = _strmatch(path, c->name);
+        if (!rres &&
+            tmatchlen > *matchlen) {
+          res = c;
+          *matchlen = tmatchlen;
+
+        } else if (imatchlen > *matchlen) {
+          res = rres;
+          *matchlen = imatchlen;
+        }
+      }
     }
   }
 
@@ -2120,7 +2126,8 @@ static config_rec *_find_best_dir(xaset_t *set,char *path,int *matchlen)
 
 static void _reorder_dirs(xaset_t *set, int flags) {
   config_rec *c = NULL, *cnext = NULL, *newparent = NULL;
-  int tmp, defer = 0;
+  int defer = 0;
+  size_t tmp;
 
   if (!set || !set->xas_list)
     return;
@@ -2141,9 +2148,9 @@ static void _reorder_dirs(xaset_t *set, int flags) {
       /* If <Directory *> is used inside <Anonymous>, move all
        * the directives from '*' into the higher level.
        */
-      if (strcmp(c->name, "*") == 0 &&
-          c->parent &&
-          c->parent->config_type == CONF_ANON) {
+      if (c->parent &&
+          c->parent->config_type == CONF_ANON &&
+          strcmp(c->name, "*") == 0) {
 
         if (c->subset)
           _reparent_all(c->parent, c->subset);
