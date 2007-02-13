@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.206 2007-02-13 16:17:23 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.207 2007-02-13 16:29:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -662,6 +662,10 @@ static int transmit_sendfile(off_t count, off_t *offset,
     } else if (have_zmode) {
       pr_log_debug(DEBUG10, "declining use of sendfile due to MODE Z "
         "restrictions");
+
+    } else if (!use_sendfile) {
+      pr_log_debug(DEBUG10, "declining use of sendfile due to UseSendfile "
+        "configuration setting");
 
     } else {
       pr_log_debug(DEBUG10, "declining use of sendfile due to lack of data "
