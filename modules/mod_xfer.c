@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.205 2006-10-04 21:06:42 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.206 2007-02-13 16:17:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -646,8 +646,32 @@ static int transmit_sendfile(off_t count, off_t *offset,
      !(session.xfer.file_size - count) ||
      (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) ||
      have_prot || have_zmode ||
-     !use_sendfile)
+     !use_sendfile) {
+
+    if (have_xfer_rate) {
+      pr_log_debug(DEBUG10, "declining use of sendfile due to TransferRate "
+        "restrictions");
+
+    } else if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
+      pr_log_debug(DEBUG10, "declining use of sendfile for ASCII data");
+
+    } else if (have_prot) {
+      pr_log_debug(DEBUG10, "declining use of sendfile due to RFC2228 data "
+        "channel protections");
+
+    } else if (have_zmode) {
+      pr_log_debug(DEBUG10, "declining use of sendfile due to MODE Z "
+        "restrictions");
+
+    } else {
+      pr_log_debug(DEBUG10, "declining use of sendfile due to lack of data "
+        "to transmit");
+    }
+
     return 0;
+  }
+
+  pr_log_debug(DEBUG0, "using sendfile capability for transmitting data");
 
  retry:
   *sentlen = pr_data_sendfile(PR_FH_FD(retr_fh), offset,
