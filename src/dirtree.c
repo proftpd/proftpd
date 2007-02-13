@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.182 2007-02-12 19:43:43 castaglia Exp $
+ * $Id: dirtree.c,v 1.183 2007-02-13 16:00:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2087,7 +2087,7 @@ static config_rec *_find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
        * costly (especially when there are many <Directory> config sections)
        * use of strcmp().
        */
-      if c->name == path)
+      if (c->name == path)
         continue;
 
       len = strlen(c->name);
