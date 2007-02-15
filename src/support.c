@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.89 2007-02-15 01:40:34 castaglia Exp $
+ * $Id: support.c,v 1.90 2007-02-15 16:43:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -866,8 +866,21 @@ struct tm *pr_localtime(pool *p, const time_t *t) {
   memcpy(&tzname_dup, tzname, sizeof(tzname_dup));
 
   sys_tm = localtime(t);
-  dup_tm = pcalloc(p, sizeof(struct tm));
-  memcpy(dup_tm, sys_tm, sizeof(struct tm));
+
+  if (p) {
+    /* If the caller provided a pool, make a copy of the returned
+     * struct tm, allocated out of that pool.
+     */
+    dup_tm = pcalloc(p, sizeof(struct tm));
+    memcpy(dup_tm, sys_tm, sizeof(struct tm));
+
+  } else {
+
+    /* Other callers do not require pool-allocated copies, and instead
+     * are happy with the struct tm as is.
+     */
+    dup_tm = sys_tm;
+  }
 
   /* Restore the old tzname values prior to returning. */
   memcpy(tzname, tzname_dup, sizeof(tzname_dup));
