@@ -1068,6 +1068,49 @@ AC_CHECK_HEADERS(regex.h)
 AC_CHECK_HEADER(syslog.h,have_syslog_h="yes",)
 AC_CHECK_HEADERS(curses.h ncurses.h)
 
+dnl Check for the presence of the tzname, timezone, and daylight global
+dnl variables.
+AC_MSG_CHECKING(for tzname global variable)
+AC_TRY_COMPILE([
+  #include <time.h>
+  ], [
+    char *dup[2];
+    dup[0] = tzname[0];
+    dup[1] = tzname[1];
+  ],
+  [
+    AC_DEFINE(HAVE_TZNAME)
+    AC_MSG_RESULT(yes)
+  ], [
+    AC_MSG_RESULT(no)
+  ])
+
+AC_MSG_CHECKING(for timezone global variable)
+AC_TRY_COMPILE([
+  #include <time.h>
+  ], [
+    long foo = timezone;
+  ],
+  [
+    AC_DEFINE(HAVE_TIMEZONE)
+    AC_MSG_RESULT(yes)
+  ], [
+    AC_MSG_RESULT(no)
+  ])
+
+AC_MSG_CHECKING(for daylight global variable)
+AC_TRY_COMPILE([
+  #include <time.h>
+  ], [
+    int foo = daylight;
+  ],
+  [
+    AC_DEFINE(HAVE_DAYLIGHT)
+    AC_MSG_RESULT(yes)
+  ], [
+    AC_MSG_RESULT(no)
+  ])
+
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_C_INLINE
