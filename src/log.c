@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.80 2007-02-15 16:46:43 castaglia Exp $
+ * $Id: log.c,v 1.81 2007-02-15 16:54:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -479,7 +479,7 @@ static void log_write(int priority, int f, char *s) {
     time_t tt = time(NULL);
     struct tm *t;
 
-    t = localtime(&tt);
+    t = pr_localtime(NULL, &tt);
     if (!t)
       return;
 
