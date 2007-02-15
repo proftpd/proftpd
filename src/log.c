@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.78 2006-12-11 19:53:43 castaglia Exp $
+ * $Id: log.c,v 1.79 2007-02-15 01:23:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -378,8 +378,14 @@ int pr_log_writefile(int logfd, const char *ident, const char *fmt, ...) {
   buf[sizeof(buf)-1] = '\0';
   buf[strlen(buf)] = '\n';
 
-  if (write(logfd, buf, strlen(buf)) < 0)
+  while (write(logfd, buf, strlen(buf)) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+    }
+
     return -1;
+  }
 
   return 0;
 }
@@ -491,7 +497,14 @@ static void log_write(int priority, int f, char *s) {
     }
 
     buf[sizeof(buf) - 1] = '\0';
-    write(systemlog_fd, buf, strlen(buf));
+    while (write(systemlog_fd, buf, strlen(buf)) < 0) {
+      if (errno == EINTR) {
+        pr_signals_handle();
+        continue;
+      }
+
+      return;
+    }
     return;
   }
 
