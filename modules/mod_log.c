@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.81 2007-02-15 01:31:50 castaglia Exp $
+ * $Id: mod_log.c,v 1.82 2007-02-15 16:46:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -520,7 +520,7 @@ static struct tm *_get_gmtoff(int *tz) {
   int days,hours,minutes;
 
   gmt = *gmtime(&tt);
-  t = localtime(&tt);
+  t = pr_localtime(NULL, &tt);
 
   days = t->tm_yday - gmt.tm_yday;
   hours = ((days < -1 ? 24 : 1 < days ? -24 : days * 24)

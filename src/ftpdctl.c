@@ -26,7 +26,7 @@
 
 /* ProFTPD Controls command-line client
  *
- * $Id: ftpdctl.c,v 1.7 2007-02-15 01:23:25 castaglia Exp $
+ * $Id: ftpdctl.c,v 1.8 2007-02-15 16:46:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -65,6 +65,10 @@ void pr_signals_unblock(void) {
 }
 
 void pr_signals_handle(void) {
+}
+
+struct tm *pr_localtime(pool *p, const time_t *t) {
+  return localtime(t);
 }
 
 int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
