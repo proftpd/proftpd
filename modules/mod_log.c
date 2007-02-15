@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.80 2006-12-17 23:37:12 castaglia Exp $
+ * $Id: mod_log.c,v 1.81 2007-02-15 01:31:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -513,21 +513,7 @@ MODRET set_systemlog(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-#ifdef HAVE_GMTOFF
-static
-struct tm *_get_gmtoff(int *tz)
-{
-  time_t tt = time(NULL);
-  struct tm *t;
-
-  t = localtime(&tt);
-  *tz = (int)(t->tm_gmtoff / 60)
-  return t;
-}
-#else
-static
-struct tm *_get_gmtoff(int *tz)
-{
+static struct tm *_get_gmtoff(int *tz) {
   time_t tt = time(NULL);
   struct tm gmt;
   struct tm *t;
@@ -543,7 +529,6 @@ struct tm *_get_gmtoff(int *tz)
   *tz = minutes;
   return t;
 }
-#endif /* HAVE_GMTOFF */
 
 static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
   unsigned char *m;
