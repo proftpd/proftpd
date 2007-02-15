@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.91 2007-02-15 17:01:19 castaglia Exp $
+ * $Id: support.c,v 1.92 2007-02-15 17:54:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -836,6 +836,8 @@ struct tm *pr_gmtime(pool *p, const time_t *t) {
 
 struct tm *pr_localtime(pool *p, const time_t *t) {
   struct tm *sys_tm, *dup_tm;
+
+#ifdef HAVE_TZNAME
   char *tzname_dup[2];
 
   /* The localtime(3) function has a nasty habit of changing the tzname
@@ -864,6 +866,7 @@ struct tm *pr_localtime(pool *p, const time_t *t) {
    * mktime(3) antics.
    */
   memcpy(&tzname_dup, tzname, sizeof(tzname_dup));
+#endif /* HAVE_TZNAME */
 
   sys_tm = localtime(t);
 
@@ -882,8 +885,10 @@ struct tm *pr_localtime(pool *p, const time_t *t) {
     dup_tm = sys_tm;
   }
 
+#ifdef HAVE_TZNAME
   /* Restore the old tzname values prior to returning. */
   memcpy(tzname, tzname_dup, sizeof(tzname_dup));
+#endif /* HAVE_TZNAME */
 
   return dup_tm;
 }
