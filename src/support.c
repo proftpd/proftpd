@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.88 2007-01-12 01:30:55 castaglia Exp $
+ * $Id: support.c,v 1.89 2007-02-15 01:40:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -836,10 +836,41 @@ struct tm *pr_gmtime(pool *p, const time_t *t) {
 
 struct tm *pr_localtime(pool *p, const time_t *t) {
   struct tm *sys_tm, *dup_tm;
+  char *tzname_dup[2];
+
+  /* The localtime(3) function has a nasty habit of changing the tzname
+   * global variable as a side-effect.  This can cause problems, as when
+   * the process has become chrooted, and localtime(3) sets/changes
+   * tzname wrong.  (For more information on the tzname global variable,
+   * see the tzset(3) man page.)
+   *
+   * The best way to deal with this issue (which is especially prominent
+   * on systems running glibc-2.3 or later, which is particularly ill-behaved
+   * in a chrooted environment, as it assumes the ability to find system
+   * timezone files at paths which are no longer valid within the chroot)
+   * is to set the TZ environment variable explicitly, before starting
+   * proftpd.  You can also use the SetEnv configuration directive within
+   * the proftpd.conf to set the TZ environment variable, e.g.:
+   *
+   *  SetEnv TZ PST
+   *
+   * To try to help sites which fail to do this, the tzname global variable
+   * will be copied prior to the localtime(3) call, and the copy restored
+   * after the call.  (Note that calling the ctime(3) and mktime(3)
+   * functions also causes a similar overwriting/setting of the tzname
+   * environment variable.)
+   *
+   * This hack is also used in the lib/pr-syslog.c code, to work around
+   * mktime(3) antics.
+   */
+  memcpy(&tzname_dup, tzname, sizeof(tzname_dup));
 
   sys_tm = localtime(t);
   dup_tm = pcalloc(p, sizeof(struct tm));
   memcpy(dup_tm, sys_tm, sizeof(struct tm));
+
+  /* Restore the old tzname values prior to returning. */
+  memcpy(tzname, tzname_dup, sizeof(tzname_dup));
 
   return dup_tm;
 }
