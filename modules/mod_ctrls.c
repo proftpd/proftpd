@@ -3,7 +3,7 @@
  *          server, as well as several utility functions for other Controls
  *          modules
  *
- * Copyright (c) 2000-2006 TJ Saunders
+ * Copyright (c) 2000-2007 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.35 2007-01-15 22:21:44 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.36 2007-02-15 17:01:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -471,7 +471,7 @@ int ctrls_log(const char *module_version, const char *fmt, ...) {
   if (!ctrls_logname)
     return 0;
 
-  t = localtime(&timestamp);
+  t = pr_localtime(NULL, &timestamp);
 
   /* prepend the timestamp */ 
   strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);

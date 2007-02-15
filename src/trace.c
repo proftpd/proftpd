@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.13 2007-01-18 16:08:40 castaglia Exp $
+ * $Id: trace.c,v 1.14 2007-02-15 17:01:19 castaglia Exp $
  */
 
 
@@ -93,7 +93,7 @@ static int trace_write(const char *channel, int level, const char *msg) {
     return 0;
 
   now = time(NULL);
-  t = localtime(&now);
+  t = pr_localtime(NULL, &now);
   strftime(buf, sizeof(buf), "%b %d %H:%M:%S", t);
   buf[sizeof(buf) - 1] = '\0';
 

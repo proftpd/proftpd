@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
  *
- * Copyright (c) 2001-2006 TJ Saunders
+ * Copyright (c) 2001-2007 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.24 2006-06-16 02:22:05 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.25 2007-02-15 17:01:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1507,7 +1507,7 @@ static void rewrite_log(char *format, ...) {
   char prefix[80] = {'\0'};
   char entry[1156] = {'\0'};
   time_t logtime = time(NULL);
-  struct tm *timestamp = localtime(&logtime);
+  struct tm *timestamp = pr_localtime(NULL, &logtime);
   va_list mesg;
 
   /* Format the log message */

@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.25 2007-02-12 17:16:13 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.26 2007-02-15 17:01:19 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -337,7 +337,7 @@ int quotatab_log(const char *fmt, ...) {
   if (!quota_logname)
     return 0;
 
-  t = localtime(&timestamp);
+  t = pr_localtime(NULL, &timestamp);
 
   /* prepend the timestamp */
   strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);

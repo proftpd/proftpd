@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_radius -- a module for RADIUS authentication and accounting
  *
- * Copyright (c) 2001-2006 TJ Saunders
+ * Copyright (c) 2001-2007 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.43 2006-12-13 22:54:47 castaglia Exp $
+ * $Id: mod_radius.c,v 1.44 2007-02-15 17:01:19 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9"
@@ -1681,7 +1681,7 @@ static int radius_log(const char *fmt, ...) {
   if (!radius_logname)
     return 0;
 
-  t = localtime(&timestamp);
+  t = pr_localtime(NULL, &timestamp);
 
   /* prepend the timestamp */
   strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);

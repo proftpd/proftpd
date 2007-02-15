@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.90 2007-02-15 16:43:53 castaglia Exp $
+ * $Id: support.c,v 1.91 2007-02-15 17:01:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -897,7 +897,7 @@ const char *pr_strtime(time_t t) {
 
   memset(buf, '\0', sizeof(buf));
 
-  tr = localtime(&t);
+  tr = pr_localtime(NULL, &t);
   if (tr != NULL) {
     snprintf(buf, sizeof(buf), "%s %s %2d %02d:%02d:%02d %d",
       days[tr->tm_wday], mons[tr->tm_mon], tr->tm_mday, tr->tm_hour,

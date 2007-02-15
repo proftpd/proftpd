@@ -3320,7 +3320,7 @@ static int tls_log(const char *fmt, ...) {
   if (!tls_logname)
     return 0;
 
-  t = localtime(&timestamp);
+  t = pr_localtime(NULL, &timestamp);
 
   /* Prepend the timestamp */
   strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);

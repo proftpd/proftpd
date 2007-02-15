@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_wrap2 -- tcpwrappers-like access control
  *
- * Copyright (c) 2000-2006 TJ Saunders
+ * Copyright (c) 2000-2007 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -123,7 +123,7 @@ int wrap2_log(const char *fmt, ...) {
   if (!wrap2_logname)
     return 0;
 
-  t = localtime(&timestamp);
+  t = pr_localtime(NULL, &timestamp);
 
   /* Prepend the timestamp. */
   strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);

@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.123 2007-01-17 19:50:53 castaglia Exp $
+ * $Id: mod_sql.c,v 1.124 2007-02-15 17:01:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4168,7 +4168,7 @@ int sql_log(int level, const char *fmt, ...) {
   if (!sql_logfile)
     return 0;
 
-  t = localtime(&timestamp);
+  t = pr_localtime(NULL, &timestamp);
 
   /* prepend the timestamp */
   strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);
