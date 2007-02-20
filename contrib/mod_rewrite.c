@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.25 2007-02-15 17:01:19 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.26 2007-02-20 17:07:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -398,7 +398,7 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
       rewrite_log("rewrite_match_cond(): checking regex cond");
 
       memset(&rewrite_cond_matches, '\0', sizeof(rewrite_cond_matches));
-      rewrite_cond_matches.match_string = cond->argv[0];
+      rewrite_cond_matches.match_string = cond_str;
       return rewrite_regexec(cond_str, (regex_t *) cond->argv[1], negated,
         &rewrite_cond_matches);
     }
