@@ -1,4 +1,4 @@
-<!-- $Id: mod_radius.html,v 1.4 2006-12-13 22:54:47 castaglia Exp $ -->
+<!-- $Id: mod_radius.html,v 1.5 2007-02-20 22:01:40 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_radius.html,v $ -->
 
 <html>
@@ -15,8 +15,8 @@
 <hr><br>
 
 This module is contained in the <code>mod_radius.c</code> file for
-ProFTPD 1.2.<i>x</i>, and is not compiled by default.  Installation instructions
-are discussed <a href="#Installation">here</a>.
+ProFTPD 1.2.<i>x</i>/1.3.<i>x</i>, and is not compiled by default.
+Installation instructions are discussed <a href="#Installation">here</a>.
 
 <p>
 This module is used to authenticate users using the <code>RADIUS</code>
@@ -53,6 +53,7 @@ some circumstances.
   <li><a href="#RadiusGroupInfo">RadiusGroupInfo</a>
   <li><a href="#RadiusLog">RadiusLog</a>
   <li><a href="#RadiusNASIdentifier">RadiusNASIdentifier</a>
+  <li><a href="#RadiusQuotaInfo">RadiusQuotaInfo</a>
   <li><a href="#RadiusRealm">RadiusRealm</a>
   <li><a href="#RadiusUserInfo">RadiusUserInfo</a>
   <li><a href="#RadiusVendor">RadiusVendor</a>
@@ -214,6 +215,70 @@ Example:
 <pre>
   RadiusNASIdentifier customID
 </pre>
+
+<p>
+<hr>
+<h2><a name="RadiusQuotaInfo">RadiusQuotaInfo</a></h2>
+<strong>Syntax:</strong> RadiusQuotaInfo <em>per-sess limit-type bytes-in bytes-out bytes-xfer files-in files-out files-xfer</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_radius<br>
+<strong>Compatibility:</strong> 1.3.0rc1 and later
+
+    QuotaLimitTable radius:
+    QuotaTallyTable file:/home/tj/proftpd/devel/build/cvs/etc/ftpquota.tallytab
+
+    RadiusEngine on
+    RadiusAuthServer localhost:1812 testing123 5
+    RadiusLog /home/tj/proftpd/devel/build/cvs/etc/radius.log
+    RadiusQuotaInfo false soft 3.0 2.0 1.0 7 8 9
+
+<p>
+The <code>RadiusQuotaInfo</code> directive is used to configure quota
+information used for every user.  This information will be used,
+in conjunction with the <code>mod_quotatab_radius</code> module, for
+provisioning per-user quota information via RADIUS.
+
+<p>
+In order to support RADIUS servers that may use custom attributes in their
+<code>Access-Accept</code> response packets to supply user information back
+to the RADIUS client (<code>mod_radius</code> in this case), this directive
+allows the following syntax for some of its parameters:
+<pre>
+  $(<i>attribute-id</i>:<i>default-value</i>)
+</pre>
+where the enclosing <code>$()</code> signals that the parameter is to
+be supplied by the RADIUS server, <code><i>attribute-id</i></code> is the
+Vendor Specific Attribute (VSA) ID for which to search in the response packet,
+and <code><i>default-value</i></code> is the value to use in case the requested
+attribute is not present in the response packet.  See the
+<code>RadiusVendor</code> directive description for more information about
+VSAs.
+
+<p>
+The <code>RadiusQuotaInfo</code> directive can be used to configure unchanging
+numbers, rather than custom attributes, if need be.
+
+<p>
+An example configuration might look like:
+<pre>
+  &lt;IfModule mod_quotatab_radius.c&gt;
+    QuotaLimitTable radius:
+    QuotaTallyTable file:/home/tj/proftpd/devel/build/cvs/etc/ftpquota.tallytab
+
+    # mod_radius attributes
+    RadiusEngine on
+    RadiusAuthServer localhost:1812 testing123 5
+    RadiusLog /var/ftpd/log/radius.log
+
+    # This sets unchanging quota limit values, rather than using custom attributes 
+    # from a RADIUS server
+    RadiusQuotaInfo false soft 3.0 2.0 1.0 7 8 9
+
+  &lt;/IfModule&gt;
+</pre>
+<p>
+See Also: <a href="#RadiusVendor"><code>RadiusVendor</code></a>
 
 <p>
 <hr>
@@ -416,7 +481,7 @@ the normal steps for using third-party modules in proftpd:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2006-12-13 22:54:47 $</i><br>
+Last Updated: <i>$Date: 2007-02-20 22:01:40 $</i><br>
 
 <br><hr>
 
