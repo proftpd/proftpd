@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.207 2007-02-13 16:29:25 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.208 2007-02-20 04:46:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1816,7 +1816,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
   pr_scoreboard_update_entry(getpid(),
     PR_SCORE_XFER_SIZE, session.xfer.file_size,
-    PR_SCORE_XFER_DONE, 0,
+    PR_SCORE_XFER_DONE, (off_t) 0,
     NULL);
 
   while (nbytes_sent != session.xfer.file_size) {
