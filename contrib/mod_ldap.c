@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.17-20060915
+ * mod_ldap v2.8.17-20070221
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.49 2006-10-20 02:18:07 jwm Exp $
+ * $Id: mod_ldap.c,v 1.50 2007-02-21 22:58:59 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -70,10 +70,10 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.8.17-20051202"
+#define MOD_LDAP_VERSION	"mod_ldap/2.8.17-20070221"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001021002
-# error "mod_ldap " MOD_LDAP_VERSION " requires ProFTPD 1.2.10rc2 or later"
+# error MOD_LDAP_VERSION " requires ProFTPD 1.2.10rc2 or later"
 #endif
 
 #if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
@@ -293,7 +293,8 @@ pr_ldap_generate_filter(pool *p, char *template, const char *entity)
   }
 
   /* -2 for the %v, +1 for the NULL */
-  filter = pcalloc(p, strlen(template) - (num_escapes * 2) + (num_escapes * strlen(entity)) + 1);
+  filter = pcalloc(p, strlen(template) - (num_escapes * 2) +
+    (num_escapes * strlen(entity)) + 1);
 
   while (template[i] != '\0') {
     /* Replace %u or %v with entity. */
