@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.50 2007-02-21 22:58:59 jwm Exp $
+ * $Id: mod_ldap.c,v 1.51 2007-02-21 23:02:32 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1889,6 +1889,33 @@ ldap_getconf(void)
   config_rec *c;
   void *ptr;
 
+  /* Look up any attr redefinitions (LDAPAttr) before using those variables,
+   * such as when generating the default search filters.
+   */
+  if ((c = find_config(main_server->conf, CONF_PARAM, "LDAPAttr", FALSE)) != NULL) {
+    do {
+      if (strcasecmp(c->argv[0], "uid") == 0) {
+        ldap_attr_uid = pstrdup(session.pool, c->argv[1]);
+      } else if (strcasecmp(c->argv[0], "uidNumber") == 0) {
+        ldap_attr_uidnumber = pstrdup(session.pool, c->argv[1]);
+      } else if (strcasecmp(c->argv[0], "gidNumber") == 0) {
+        ldap_attr_gidnumber = pstrdup(session.pool, c->argv[1]);
+      } else if (strcasecmp(c->argv[0], "homeDirectory") == 0) {
+        ldap_attr_homedirectory = pstrdup(session.pool, c->argv[1]);
+      } else if (strcasecmp(c->argv[0], "userPassword") == 0) {
+        ldap_attr_userpassword = pstrdup(session.pool, c->argv[1]);
+      } else if (strcasecmp(c->argv[0], "loginShell") == 0) {
+        ldap_attr_loginshell = pstrdup(session.pool, c->argv[1]);
+      } else if (strcasecmp(c->argv[0], "cn") == 0) {
+        ldap_attr_cn = pstrdup(session.pool, c->argv[1]);
+      } else if (strcasecmp(c->argv[0], "memberUid") == 0) {
+        ldap_attr_memberuid = pstrdup(session.pool, c->argv[1]);
+      } else if (strcasecmp(c->argv[0], "ftpQuota") == 0) {
+        ldap_attr_ftpquota = pstrdup(session.pool, c->argv[1]);
+      }
+    } while ((c = find_config_next(c, c->next, CONF_PARAM, "LDAPAttr", FALSE)));
+  }
+
   /* If ldap_server is NULL, ldap_init() will connect to the LDAP SDK's
    * default.
    */
@@ -2047,30 +2074,6 @@ ldap_getconf(void)
     ldap_use_tls = *((int *) ptr);
   }
 #endif
-
-  if ((c = find_config(main_server->conf, CONF_PARAM, "LDAPAttr", FALSE)) != NULL) {
-    do {
-      if (strcasecmp(c->argv[0], "uid") == 0) {
-        ldap_attr_uid = pstrdup(session.pool, c->argv[1]);
-      } else if (strcasecmp(c->argv[0], "uidNumber") == 0) {
-        ldap_attr_uidnumber = pstrdup(session.pool, c->argv[1]);
-      } else if (strcasecmp(c->argv[0], "gidNumber") == 0) {
-        ldap_attr_gidnumber = pstrdup(session.pool, c->argv[1]);
-      } else if (strcasecmp(c->argv[0], "homeDirectory") == 0) {
-        ldap_attr_homedirectory = pstrdup(session.pool, c->argv[1]);
-      } else if (strcasecmp(c->argv[0], "userPassword") == 0) {
-        ldap_attr_userpassword = pstrdup(session.pool, c->argv[1]);
-      } else if (strcasecmp(c->argv[0], "loginShell") == 0) {
-        ldap_attr_loginshell = pstrdup(session.pool, c->argv[1]);
-      } else if (strcasecmp(c->argv[0], "cn") == 0) {
-        ldap_attr_cn = pstrdup(session.pool, c->argv[1]);
-      } else if (strcasecmp(c->argv[0], "memberUid") == 0) {
-        ldap_attr_memberuid = pstrdup(session.pool, c->argv[1]);
-      } else if (strcasecmp(c->argv[0], "ftpQuota") == 0) {
-        ldap_attr_ftpquota = pstrdup(session.pool, c->argv[1]);
-      }
-    } while ((c = find_config_next(c, c->next, CONF_PARAM, "LDAPAttr", FALSE)));
-  }
 
   return 0;
 }
