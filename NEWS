@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.810 2007-02-20 17:07:29 castaglia Exp $
+$Id: NEWS,v 1.811 2007-03-01 16:07:15 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -96,7 +96,7 @@ CVS
   pool allocated by mod_tls.
 - Bug 2801 - Error compiling proftpd on NetBSD 3.0/sparc64.
 - Bug 2687 - Support for more efficient group table schema.  A new
-  directive, SQLOption, has been added.  One possible parameter of this
+  directive, SQLOptions, has been added.  One possible parameter of this
   directive is 'useNormalizedGroupSchema', in which case mod_sql will
   process the group info table in a more efficient manner.
 - Bug 2798 - MDTM should return time in GMT.  MDTM responses now always use GMT.
