@@ -77,7 +77,7 @@ Then, in your proftpd.conf, use:
 
   <IfModule mod_auth_pam.c>
     AuthPAMConfig ftpd
-  </IfModule.
+  </IfModule>
 
 
 PAM Configuration Options
