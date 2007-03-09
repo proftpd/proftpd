@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.297 2007-01-19 21:59:44 castaglia Exp $
+ * $Id: mod_core.c,v 1.298 2007-03-09 16:20:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1711,8 +1711,8 @@ MODRET set_passiveports(cmd_rec *cmd) {
   if (pasv_min_port < 1024 || pasv_max_port < 1024)
     CONF_ERROR(cmd, "port numbers must be above 1023");
 
-  if (pasv_max_port < pasv_min_port)
-    CONF_ERROR(cmd, "min port must be equal to or less than max port");
+  if (pasv_max_port <= pasv_min_port)
+    CONF_ERROR(cmd, "min port must be less than max port");
 
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
