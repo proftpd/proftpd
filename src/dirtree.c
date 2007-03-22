@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.183 2007-02-13 16:00:51 castaglia Exp $
+ * $Id: dirtree.c,v 1.184 2007-03-22 03:54:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -633,7 +633,7 @@ config_rec *add_config_set(xaset_t **set, const char *name) {
     set_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(set_pool, "config set pool");
 
-    *set = xaset_create(set_pool,NULL);
+    *set = xaset_create(set_pool, NULL);
     (*set)->pool = set_pool;
 
     /* Now, make a subpool for the config_rec to be allocated. */
@@ -2048,12 +2048,12 @@ static void _reparent_all(config_rec *newparent, xaset_t *set) {
   config_rec *c,*cnext;
 
   if (!newparent->subset)
-    newparent->subset = xaset_create(newparent->pool,NULL);
+    newparent->subset = xaset_create(newparent->pool, NULL);
 
-  for (c = (config_rec*)set->xas_list; c; c = cnext) {
+  for (c = (config_rec *) set->xas_list; c; c = cnext) {
     cnext = c->next;
-    xaset_remove(set, (xasetmember_t*)c);
-    xaset_insert(newparent->subset, (xasetmember_t*)c);
+    xaset_remove(set, (xasetmember_t *) c);
+    xaset_insert(newparent->subset, (xasetmember_t *) c);
     c->set = newparent->subset;
     c->parent = newparent;
   }
