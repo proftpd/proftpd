@@ -24,7 +24,7 @@
 
 /*
  * Configuration parser
- * $Id: parser.c,v 1.14 2007-01-09 02:14:47 castaglia Exp $
+ * $Id: parser.c,v 1.15 2007-03-28 03:33:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -287,12 +287,11 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
   }
 
   tmp_pool = make_sub_pool(p ? p : permanent_pool);
+  pr_pool_tag(tmp_pool, "parser file pool");
 
   report_path = (char *) path;
   if (session.chroot_path)
     report_path = pdircat(tmp_pool, session.chroot_path, path, NULL);
-
-  pr_pool_tag(tmp_pool, "parser file pool");
 
   if (!(flags & PR_PARSER_FL_DYNAMIC_CONFIG))
     pr_trace_msg(trace_channel, 3, "parsing '%s' configuration", report_path);
