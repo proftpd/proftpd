@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.208 2007-02-20 04:46:02 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.209 2007-03-28 03:24:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1909,7 +1909,7 @@ MODRET xfer_type(cmd_rec *cmd) {
        !strcmp(cmd->argv[2], "8"))) {
 
     /* TYPE I(MAGE) or TYPE L 8. */
-    session.sf_flags &= (SF_ALL^SF_ASCII);
+    session.sf_flags &= (SF_ALL^(SF_ASCII|SF_ASCII_OVERRIDE));
 
   } else {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));

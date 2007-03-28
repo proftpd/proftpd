@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.811 2007-03-01 16:07:15 castaglia Exp $
+$Id: NEWS,v 1.812 2007-03-28 03:24:41 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -25,6 +25,7 @@ CVS
   explicit compiler cast to ensure that the proper data type size is used
   in the arguments for a variadic function.
 - Bug 2906 - RewriteCondition backreferences not properly substituted.
+- Bug 2913 - TYPE command does not clear ASCII flag from LIST/NLST commands.
 
 1.3.1rc2 - Released 12-Jan-2007
 --------------------------------
