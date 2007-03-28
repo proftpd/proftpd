@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.26 2007-02-20 17:07:29 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.27 2007-03-28 02:58:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -156,22 +156,27 @@ static int rewrite_write_fifo(int, char *, size_t);
 
 static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
     const char *var) {
-  if (!strcmp(var, "%c")) {
+  if (strcmp(var, "%c") == 0) {
     REWRITE_CHECK_VAR(session.class, "%c");
     return (session.class ? session.class->cls_name : NULL);
 
-  } else if (!strcmp(var, "%F")) {
+  } else if (strcmp(var, "%F") == 0) {
 
     /* This variable is only valid for commands that operate on paths.
      * mod_log uses the session.xfer.xfer_path variable, but that is not yet
      * set at this stage in the command dispatch cycle.
      */
-    if (!strcmp(cmd->argv[0], "APPE") || !strcmp(cmd->argv[0], "RETR") ||
-        !strcmp(cmd->argv[0], "STOR") || !strcmp(cmd->argv[0], "DELE") ||
-        !strcmp(cmd->argv[0], "MKD") || !strcmp(cmd->argv[0], "MDTM") ||
-        !strcmp(cmd->argv[0], "RMD") || !strcmp(cmd->argv[0], "SIZE") ||
-        !strcmp(cmd->argv[0], "STOU") || !strcmp(cmd->argv[0], "XMKD") ||
-        !strcmp(cmd->argv[0], "XRMD")) {
+    if (strcmp(cmd->argv[0], "APPE") == 0 ||
+        strcmp(cmd->argv[0], "RETR") == 0 ||
+        strcmp(cmd->argv[0], "STOR") == 0 ||
+        strcmp(cmd->argv[0], "DELE") == 0 ||
+        strcmp(cmd->argv[0], "MKD") == 0 ||
+        strcmp(cmd->argv[0], "MDTM") == 0 ||
+        strcmp(cmd->argv[0], "RMD") == 0 ||
+        strcmp(cmd->argv[0], "SIZE") == 0 ||
+        strcmp(cmd->argv[0], "STOU") == 0 ||
+        strcmp(cmd->argv[0], "XMKD") == 0 ||
+        strcmp(cmd->argv[0], "XRMD") == 0) {
       return dir_abs_path(cmd->tmp_pool, cmd->arg, FALSE);
 
     } else {
@@ -179,46 +184,46 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
       return NULL;
     }
 
-  } else if (!strcmp(var, "%f")) {
+  } else if (strcmp(var, "%f") == 0) {
     REWRITE_CHECK_VAR(cmd->arg, "%f");
     return cmd->arg;
 
-  } else if (!strcmp(var, "%m")) {
+  } else if (strcmp(var, "%m") == 0) {
     return cmd->argv[0];
 
-  } else if (!strcmp(var, "%p")) {
+  } else if (strcmp(var, "%p") == 0) {
     char *port = pcalloc(cmd->tmp_pool, 8 * sizeof(char));
     snprintf(port, 8, "%d", main_server->ServerPort);
     port[7] = '\0';
     return port;
 
-  } else if (!strcmp(var, "%U")) {
+  } else if (strcmp(var, "%U") == 0) {
     return get_param_ptr(main_server->conf, C_USER, FALSE);
 
-  } else if (!strcmp(var, "%P")) {
+  } else if (strcmp(var, "%P") == 0) {
     char *pid = pcalloc(cmd->tmp_pool, 8 * sizeof(char));
     snprintf(pid, 8, "%u", getpid());
     pid[7] = '\0';
     return pid;
 
-  } else if (!strcmp(var, "%g")) {
+  } else if (strcmp(var, "%g") == 0) {
     REWRITE_CHECK_VAR(session.group, "%g");
     return session.group;
 
-  } else if (!strcmp(var, "%u")) {
+  } else if (strcmp(var, "%u") == 0) {
     REWRITE_CHECK_VAR(session.user, "%u");
     return session.user;
 
-  } else if (!strcmp(var, "%a")) {
+  } else if (strcmp(var, "%a") == 0) {
     return (char *) pr_netaddr_get_ipstr(session.c->remote_addr);
 
-  } else if (!strcmp(var, "%h")) {
+  } else if (strcmp(var, "%h") == 0) {
     return (char *) session.c->remote_name;
 
-  } else if (!strcmp(var, "%v")) {
+  } else if (strcmp(var, "%v") == 0) {
     return (char *) main_server->ServerName;
 
-  } else if (!strcmp(var, "%G")) {
+  } else if (strcmp(var, "%G") == 0) {
 
     if (session.groups) {
       register unsigned int i = 0;
@@ -236,7 +241,7 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
       return NULL;
     }
 
-  } else if (!strcmp(var, "%t")) {
+  } else if (strcmp(var, "%t") == 0) {
     char *timestr = pcalloc(cmd->tmp_pool, 80 * sizeof(char));
     snprintf(timestr, 80, "%lu", time(NULL));
     timestr[79] = '\0';
@@ -310,11 +315,14 @@ static unsigned int rewrite_parse_cond_flags(pool *p, const char *flags_str) {
 
   opts = opt_list->elts;
   for (i = 0; i < opt_list->nelts; i++) {
-    if (strcmp(opts[i], "nocase") == 0 || strcmp(opts[i], "NC") == 0)
+    if (strcmp(opts[i], "nocase") == 0 ||
+        strcmp(opts[i], "NC") == 0) {
       flags |= REWRITE_COND_FLAG_NOCASE;
   
-    else if (strcmp(opts[i], "ornext") == 0 || strcmp(opts[i], "OR") == 0)
+    } else if (strcmp(opts[i], "ornext") == 0 ||
+               strcmp(opts[i], "OR") == 0) {
       flags |= REWRITE_COND_FLAG_ORNEXT;
+    }
   }
 
   return flags;
@@ -342,11 +350,14 @@ static unsigned int rewrite_parse_rule_flags(pool *p, const char *flags_str) {
 
   opts = opt_list->elts;
   for (i = 0; i < opt_list->nelts; i++) {
-    if (strcmp(opts[i], "nocase") == 0 || strcmp(opts[i], "NC") == 0)
+    if (strcmp(opts[i], "nocase") == 0 ||
+        strcmp(opts[i], "NC") == 0) {
       flags |= REWRITE_RULE_FLAG_NOCASE;
 
-    else if (strcmp(opts[i], "last") == 0 || strcmp(opts[i], "L") == 0)
+    } else if (strcmp(opts[i], "last") == 0 ||
+               strcmp(opts[i], "L") == 0) {
       flags |= REWRITE_RULE_FLAG_LAST;
+    }
   }
 
   return flags;
@@ -774,7 +785,7 @@ static char *rewrite_subst_maps(cmd_rec *cmd, char *pattern) {
 
     while (c) {
 
-      if (!strcmp(c->argv[0], map.map_name)) { 
+      if (strcmp(c->argv[0], map.map_name) == 0) { 
         char *lookup_value = NULL;
         have_map = TRUE;
 
@@ -782,19 +793,19 @@ static char *rewrite_subst_maps(cmd_rec *cmd, char *pattern) {
           map.map_lookup_key, map.map_name);
 
         /* Handle FIFO maps */
-        if (!strcmp(c->argv[1], "fifo")) {
+        if (strcmp(c->argv[1], "fifo") == 0) {
           lookup_value = rewrite_subst_maps_fifo(cmd, c, &map);
           rewrite_log("rewrite_subst_maps(): fifo map '%s' returned '%s'",
             map.map_name, lookup_value);
 
         /* Handle maps of internal functions */
-        } else if (!strcmp(c->argv[1], "int")) {
+        } else if (strcmp(c->argv[1], "int") == 0) {
           lookup_value = rewrite_subst_maps_int(cmd, c, &map);
           rewrite_log("rewrite_subst_maps(): internal map '%s' returned '%s'",
             map.map_name, lookup_value);
 
         /* Handle external file maps */
-        } else if (!strcmp(c->argv[1], "txt")) {
+        } else if (strcmp(c->argv[1], "txt") == 0) {
           lookup_value = rewrite_subst_maps_txt(cmd, c, &map);
           rewrite_log("rewrite_subst_maps(): txt map '%s' returned '%s'",
             map.map_name, lookup_value);
@@ -850,13 +861,15 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
   pr_signals_block();
 
   /* See if a RewriteLock has been configured. */
-  if ((fifo_lockname = (char *) get_param_ptr(main_server->conf, "RewriteLock",
-      FALSE)) != NULL) {
-
+  fifo_lockname = (char *) get_param_ptr(main_server->conf, "RewriteLock",
+    FALSE);
+  if (fifo_lockname != NULL) {
     /* Make sure the file exists. */
-    if ((fifo_lockfd = open(fifo_lockname, O_CREAT)) < 0)
+    fifo_lockfd = open(fifo_lockname, O_CREAT);
+    if (fifo_lockfd < 0) {
       rewrite_log("rewrite_subst_maps_fifo(): error creating '%s': %s",
         fifo_lockname, strerror(errno));
+    }
   }
 
   /* Obtain a write lock on the lock file, if configured */
@@ -944,8 +957,8 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
 
   /* Read the value from the FIFO, if any. Unblock signals before doing so. */
   pr_signals_unblock();
-  if ((res = rewrite_read_fifo(fifo_fd, value, REWRITE_FIFO_MAXLEN)) <= 0) {
-    
+  res = rewrite_read_fifo(fifo_fd, value, REWRITE_FIFO_MAXLEN);
+  if (res <= 0) {
     if (res < 0)
       rewrite_log("rewrite_subst_maps_fifo(): error reading value from FIFO "
         "'%s': %s", fifo, strerror(errno));
@@ -1033,7 +1046,7 @@ static char *rewrite_subst_maps_txt(cmd_rec *cmd, config_rec *c,
   txt_vals = (char **) txtmap->txt_values;
 
   for (i = 0; i < txtmap->txt_nents; i++)
-    if (!strcmp(txtmap->txt_keys[i], map->map_lookup_key))
+    if (strcmp(txtmap->txt_keys[i], map->map_lookup_key) == 0)
       value = txtmap->txt_values[i];
 
   if (!value)
@@ -1213,19 +1226,19 @@ static char *rewrite_map_int_replaceall(pool *map_pool, char *key) {
   
   tmp = strchr(str , sep);
   if (tmp == NULL) {
-    rewrite_log("rewrite_map_int_replace(): badly formatted input key");
+    rewrite_log("rewrite_map_int_replaceall(): badly formatted input key");
     return NULL;
   }
 
   *tmp = '\0';
   value = str;
-  rewrite_log("rewrite_map_int_replace(): actual key: '%s'", value); 
+  rewrite_log("rewrite_map_int_replaceall(): actual key: '%s'", value); 
  
   str = tmp + 1;
 
   tmp = strchr(str, sep);
   if (tmp == NULL) {
-    rewrite_log("rewrite_map_int_replace(): badly formatted input key");
+    rewrite_log("rewrite_map_int_replaceall(): badly formatted input key");
     return NULL;
   }
 
@@ -1233,12 +1246,12 @@ static char *rewrite_map_int_replaceall(pool *map_pool, char *key) {
   src = str;
   dst = tmp + 1;
   
-  rewrite_log("rewrite_map_int_replace(): replacing '%s' with '%s'", src,
+  rewrite_log("rewrite_map_int_replaceall(): replacing '%s' with '%s'", src,
     dst);
 
   /* Make sure the source sequence is present in the given key. */
   if (strstr(value, src) == NULL) {
-    rewrite_log("rewrite_map_int_replace(): '%s' does not occur in given "
+    rewrite_log("rewrite_map_int_replaceall(): '%s' does not occur in given "
       "key '%s'", src, value);
     return NULL;
   }
@@ -1750,14 +1763,15 @@ MODRET set_rewritemap(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   /* Check the configured map types */
-  if ((mapsrc = strchr(cmd->argv[2], ':')) == NULL)
+  mapsrc = strchr(cmd->argv[2], ':');
+  if (mapsrc == NULL)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid RewriteMap parameter: '",
       cmd->argv[2], "'", NULL));
 
   *mapsrc = '\0';
   mapsrc++;
 
-  if (!strcmp(cmd->argv[2], "int")) {
+  if (strcmp(cmd->argv[2], "int") == 0) {
     c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
 
     /* Check that the given function is a valid internal mapping function. */
@@ -1780,7 +1794,7 @@ MODRET set_rewritemap(cmd_rec *cmd) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "unknown internal map function requested: '", mapsrc, "'", NULL));
 
-  } else if (!strcmp(cmd->argv[2], "fifo")) {
+  } else if (strcmp(cmd->argv[2], "fifo") == 0) {
     struct stat st;
 
     c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
@@ -1805,7 +1819,7 @@ MODRET set_rewritemap(cmd_rec *cmd) {
     c->argv[3] = pcalloc(c->pool, sizeof(int));
     *((int *) c->argv[3]) = -1;
 
-  } else if (!strcmp(cmd->argv[2], "txt")) {
+  } else if (strcmp(cmd->argv[2], "txt") == 0) {
     pool *txt_pool = NULL;
     rewrite_map_txt_t *txtmap = NULL;
 
@@ -2150,7 +2164,7 @@ static int rewrite_sess_init(void) {
   while (c) {
     pr_signals_handle();
 
-    if (!strcmp(c->argv[1], "fifo")) {
+    if (strcmp(c->argv[1], "fifo") == 0) {
       PRIVS_ROOT
       if (!rewrite_open_fifo(c))
         rewrite_log("error preparing FIFO RewriteMap");
