@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.91 2006-05-25 16:55:34 castaglia Exp $
+ * $Id: data.c,v 1.92 2007-04-02 16:32:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -587,7 +587,7 @@ void pr_data_cleanup(void) {
   if (session.xfer.p)
     destroy_pool(session.xfer.p);
 
-  memset(&session.xfer,0,sizeof(session.xfer));
+  memset(&session.xfer, 0, sizeof(session.xfer));
 }
 
 /* In order to avoid clearing the transfer counters in session.xfer, we don't

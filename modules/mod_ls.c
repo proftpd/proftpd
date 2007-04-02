@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.144 2006-12-15 22:25:31 castaglia Exp $
+ * $Id: mod_ls.c,v 1.145 2007-04-02 16:32:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -252,13 +252,18 @@ static int sendline(int flags, char *fmt, ...) {
   int res = 0;
 
   if (flags & LS_SENDLINE_FL_FLUSH) {
-    res = pr_data_xfer(listbuf, strlen(listbuf));
-    if (res < 0) {
-      pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s.", res,
-        strerror(PR_NETIO_ERRNO(session.d->outstrm)));
+    size_t listbuflen = strlen(listbuf);
+
+    if (listbuflen > 0) {
+      res = pr_data_xfer(listbuf, listbuflen);
+      if (res < 0) {
+        pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s.", res,
+          strerror(PR_NETIO_ERRNO(session.d->outstrm)));
+      }
+
+      memset(listbuf, '\0', sizeof(listbuf));
     }
 
-    memset(listbuf, '\0', sizeof(listbuf));
     return res;
   }
 
@@ -2164,14 +2169,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
     targetlen = strlen(target);
   }
 
-  /* If the data connection isn't open, open it now. */
-  if ((session.sf_flags & SF_XFER) == 0) {
-    if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
-      return PR_ERROR(cmd);
-    }
-
-    session.sf_flags |= SF_ASCII_OVERRIDE;
-  }
+  if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+    return PR_ERROR(cmd);
+  session.sf_flags |= SF_ASCII_OVERRIDE;
 
   /* If the target is a glob, get the listing of files/dirs to send. */
   if (use_globbing &&
