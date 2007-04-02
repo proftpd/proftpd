@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2005 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.100 2007-01-17 15:39:09 castaglia Exp $
+ * $Id: inet.c,v 1.101 2007-04-02 22:22:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -240,7 +240,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     defined(FREEBSD7) || defined(__OpenBSD__) || defined(__NetBSD__) || \
     defined(DARWIN6) || defined(DARWIN7) || defined(DARWIN8) || \
     defined(SCO3) || defined(CYGWIN) || defined(SYSV4_2MP) || \
-    defined(SYSV5UNIXWARE7)
+    defined(SYSV5SCO_SV6) || defined(SYSV5UNIXWARE7)
 # ifdef SOLARIS2
     if (port != INPORT_ANY && port < 1024) {
 # endif
@@ -258,7 +258,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     defined(FREEBSD7) || defined(__OpenBSD__) || defined(__NetBSD__) || \
     defined(DARWIN6) || defined(DARWIN7) || defined(DARWIN8) || \
     defined(SCO3) || defined(CYGWIN) || defined(SYSV4_2MP) || \
-    defined(SYSV5UNIXWARE7)
+    defined(SYSV5SCO_SV6) || defined(SYSV5UNIXWARE7)
 # ifdef SOLARIS2
     if (port != INPORT_ANY && port < 1024) {
 # endif
