@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.813 2007-04-02 16:32:40 castaglia Exp $
+$Id: NEWS,v 1.814 2007-04-17 21:33:40 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -28,6 +28,8 @@ CVS
 - Bug 2913 - TYPE command does not clear ASCII flag from LIST/NLST commands.
 - Bug 2911 - NLST on a nonexistent path, followed by an NLST on an existing
   file, causes segfault.
+- Bug 2922 - Auth API allows one auth module to authenticate user data provided
+  by a different auth module.
 
 1.3.1rc2 - Released 12-Jan-2007
 --------------------------------

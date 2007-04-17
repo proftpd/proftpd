@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2005 The ProFTPD Project team
+ * Copyright (c) 2004-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /* ProFTPD Auth API
  *
- * $Id: auth.h,v 1.4 2005-06-10 17:21:10 castaglia Exp $
+ * $Id: auth.h,v 1.5 2007-04-17 21:33:40 castaglia Exp $
  */
 
 #ifndef PR_AUTH_H
@@ -86,6 +86,7 @@ int pr_auth_requires_pass(pool *, const char *);
 config_rec *pr_auth_get_anon_config(pool *p, char **, char **, char **);
 
 /* For internal use only. */
+int init_auth(void);
 int set_groups(pool *, gid_t, array_header *);
 
 #endif /* PR_MODULES_H */
