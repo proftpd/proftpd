@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2006 The ProFTPD Project team
+ * Copyright (c) 2004-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * POSIX ACL checking code (aka POSIX.1e hell)
- * $Id: mod_facl.c,v 1.5 2006-12-19 02:42:53 castaglia Exp $
+ * $Id: mod_facl.c,v 1.6 2007-04-18 15:31:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -671,7 +671,7 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
   acls = acl_get_file(path, ACL_TYPE_ACCESS);
 
   if (!acls) {
-    pr_trace_msg(trace_channel, 10, "unable to retrieve ACL for '%s': %s",
+    pr_trace_msg(trace_channel, 5, "unable to retrieve ACL for '%s': %s",
       path, strerror(errno));
     return -1;
   }
@@ -680,16 +680,19 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
 
   nents = acl(path, GETACLCNT, 0, NULL);
   if (nents < 0) {
-    pr_trace_msg(trace_channel, 10,
+    pr_trace_msg(trace_channel, 5,
       "unable to retrieve ACL count for '%s': %s", path, strerror(errno));
     return -1;
   }
+
+  pr_trace_msg(trace_channel, 10,
+    "acl(2) returned %d ACL entries for path '%s'", nents, path);
 
   acls = pcalloc(fs->fs_pool, nents * sizeof(aclent_t));
 
   nents = acl(path, GETACL, nents, acls);
   if (nents < 0) {
-    pr_trace_msg(trace_channel, 10,
+    pr_trace_msg(trace_channel, 5,
       "unable to retrieve ACL for '%s': %s", path, strerror(errno));
     return -1;
   }
