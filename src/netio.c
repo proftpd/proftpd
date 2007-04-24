@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.23 2006-11-01 02:35:13 castaglia Exp $
+ * $Id: netio.c,v 1.24 2007-04-24 16:12:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -128,11 +128,16 @@ static int core_netio_poll_cb(pr_netio_stream_t *nstrm) {
   FD_ZERO(&rfds);
   FD_ZERO(&wfds);
 
-  if (nstrm->strm_mode == PR_NETIO_IO_RD)
-    FD_SET(nstrm->strm_fd, &rfds);
+  if (nstrm->strm_mode == PR_NETIO_IO_RD) {
+    if (nstrm->strm_fd >= 0) {
+      FD_SET(nstrm->strm_fd, &rfds);
+    }
 
-  else
-    FD_SET(nstrm->strm_fd, &wfds);
+  } else {
+    if (nstrm->strm_fd >= 0) {
+      FD_SET(nstrm->strm_fd, &wfds);
+    }
+  }
 
   tval.tv_sec = ((nstrm->strm_flags & PR_NETIO_SESS_INTR) ?
     nstrm->strm_interval: 60);
@@ -231,11 +236,7 @@ int pr_netio_close(pr_netio_stream_t *nstrm) {
 
 static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
     int flags) {
-
   int res;
-  struct timeval tv;
-  fd_set rs;
-  time_t when = time(NULL) + linger;
 
   if (!nstrm) {
     errno = EINVAL;
@@ -245,42 +246,48 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
   if (!(flags & NETIO_LINGERING_CLOSE_FL_NO_SHUTDOWN))
     pr_netio_shutdown(nstrm, 1);
 
-  tv.tv_sec = linger;
-  tv.tv_usec = 0L;
+  if (nstrm->strm_fd >= 0) {
+    struct timeval tv;
+    fd_set rs;
+    time_t when = time(NULL) + linger;
 
-  /* Handle timers during reading, once selected for read this
-   * should mean all buffers have been flushed and the receiving end
-   * has closed.
-   */
-  while (TRUE) {
-    run_schedule();
+    tv.tv_sec = linger;
+    tv.tv_usec = 0L;
 
-    FD_ZERO(&rs);
-    FD_SET(nstrm->strm_fd, &rs);
+    /* Handle timers during reading, once selected for read this
+     * should mean all buffers have been flushed and the receiving end
+     * has closed.
+     */
+    while (TRUE) {
+      run_schedule();
 
-    res = select(nstrm->strm_fd+1, &rs, NULL, NULL, &tv);
-    if (res == -1) {
-      if (errno == EINTR) {
-        time_t now = time(NULL);
-        pr_signals_handle();
+      FD_ZERO(&rs);
+      FD_SET(nstrm->strm_fd, &rs);
 
-        /* Still here? If the requested lingering interval hasn't passed,
-         * continue lingering.  Reset the timeval struct's fields to
-         * linger for the interval remaining in the given period of time.
-         */
-        if (now < when) {
-          tv.tv_sec = when - now;
-          tv.tv_usec = 0L;
-          continue;
+      res = select(nstrm->strm_fd+1, &rs, NULL, NULL, &tv);
+      if (res == -1) {
+        if (errno == EINTR) {
+          time_t now = time(NULL);
+          pr_signals_handle();
+
+          /* Still here? If the requested lingering interval hasn't passed,
+           * continue lingering.  Reset the timeval struct's fields to
+           * linger for the interval remaining in the given period of time.
+           */
+          if (now < when) {
+            tv.tv_sec = when - now;
+            tv.tv_usec = 0L;
+            continue;
+          }
+
+        } else {
+          nstrm->strm_errno = errno;
+          return -1;
         }
-
-      } else {
-        nstrm->strm_errno = errno;
-        return -1;
       }
-    }
 
-    break;
+      break;
+    }
   }
 
   if (nstrm->strm_type == PR_NETIO_STRM_CTRL)
@@ -301,8 +308,6 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
 
 int pr_netio_lingering_abort(pr_netio_stream_t *nstrm, long linger) {
   int res;
-  struct timeval tv;
-  fd_set rs;
 
   if (!nstrm) {
     errno = EINVAL;
@@ -311,33 +316,38 @@ int pr_netio_lingering_abort(pr_netio_stream_t *nstrm, long linger) {
 
   pr_netio_shutdown(nstrm, 1);
 
-  /* Wait for just a little while for the shutdown to take effect. */
-  tv.tv_sec = 0L;
-  tv.tv_usec = 300000L;
+  if (nstrm->strm_fd >= 0) {
+    fd_set rs;
+    struct timeval tv;
 
-  while (TRUE) {
-    run_schedule();
+    /* Wait for just a little while for the shutdown to take effect. */
+    tv.tv_sec = 0L;
+    tv.tv_usec = 300000L;
 
-    FD_ZERO(&rs);
-    FD_SET(nstrm->strm_fd, &rs);
+    while (TRUE) {
+      run_schedule();
 
-    res = select(nstrm->strm_fd+1, &rs, NULL, NULL, &tv);
-    if (res == -1) {
-      if (errno == EINTR) {
-        pr_signals_handle();
+      FD_ZERO(&rs);
+      FD_SET(nstrm->strm_fd, &rs);
 
-        /* Linger some more. */
-        tv.tv_sec = 0L;
-        tv.tv_usec = 300000L;
-        continue;
+      res = select(nstrm->strm_fd+1, &rs, NULL, NULL, &tv);
+      if (res == -1) {
+        if (errno == EINTR) {
+          pr_signals_handle();
 
-      } else {
-        nstrm->strm_errno = errno;
-        return -1;
+          /* Linger some more. */
+          tv.tv_sec = 0L;
+          tv.tv_usec = 300000L;
+          continue;
+
+        } else {
+          nstrm->strm_errno = errno;
+          return -1;
+        }
       }
-    }
 
-    break;
+      break;
+    }
   }
 
   /* Send an appropriate response code down the stream asychronously. */
