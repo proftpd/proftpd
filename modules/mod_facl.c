@@ -24,7 +24,7 @@
 
 /*
  * POSIX ACL checking code (aka POSIX.1e hell)
- * $Id: mod_facl.c,v 1.6 2007-04-18 15:31:28 castaglia Exp $
+ * $Id: mod_facl.c,v 1.7 2007-04-30 17:47:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -826,10 +826,10 @@ module facl_module = {
   "facl",
 
   /* Module configuration directive handlers */
-  NULL,
+  facl_conftab,
 
   /* Module command handlers */
-  facl_conftab,
+  NULL,
 
   /* Module authentication handlers */
   NULL,
