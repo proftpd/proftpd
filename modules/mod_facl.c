@@ -24,7 +24,7 @@
 
 /*
  * POSIX ACL checking code (aka POSIX.1e hell)
- * $Id: mod_facl.c,v 1.7 2007-04-30 17:47:34 castaglia Exp $
+ * $Id: mod_facl.c,v 1.8 2007-05-04 17:05:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,6 +48,25 @@ static const char *trace_channel = "facl";
 /* This header appears on Linux. */
 #ifdef HAVE_ACL_LIBACL_H
 # include <acl/libacl.h>
+#endif
+
+#if defined(HAVE_BSD_POSIX_ACL) || defined(HAVE_LINUX_POSIX_ACL)
+static acl_perm_t get_facl_perm_for_mode(int mode) {
+  acl_perm_t res;
+
+  memset(&res, 0, sizeof(acl_perm_t));
+
+  if (mode & R_OK)
+    res |= ACL_READ;
+
+  if (mode & W_OK)
+    res |= ACL_WRITE;
+
+  if (mode & X_OK)
+    res |= ACL_EXECUTE;
+
+  return res;
+}
 #endif
 
 static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
@@ -167,18 +186,24 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
    */
   if (!have_access_entry &&
       gid == st->st_gid) {
+    int ret;
 
     /* Check the acl_group_entry for access. First though, we need to
      * see if the acl_group_entry contains the requested permissions.
      */
     acl_permset_t perms;
-    acl_get_permset(acl_group_entry, &perms);
+    if (acl_get_permset(acl_group_entry, &perms) < 0) {
+      pr_trace_msg(trace_channel, 5, "error retrieving permission set: %s",
+        strerror(errno));
+    }
 
 #  if defined(HAVE_BSD_POSIX_ACL)
-    if (acl_get_perm_np(perms, mode) == 1) {
+    ret = acl_get_perm_np(perms, get_facl_perm_for_mode(mode));
 #  elif defined(HAVE_LINUX_POSIX_ACL)
-    if (acl_get_perm(perms, mode) == 1) {
+    ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
 #  endif
+
+    if (ret == 1) {
       ae = acl_group_entry;
       ae_type = ACL_GROUP_OBJ;
       have_access_entry = TRUE;
@@ -186,6 +211,10 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
       pr_trace_msg(trace_channel, 10,
         "primary group ID %lu matches ACL owner group ID",
         (unsigned long) gid);
+
+    } else if (ret < 0) {
+      pr_trace_msg(trace_channel, 5,
+        "error checking permissions in permission set: %s", strerror(errno));
     }
   }
 
@@ -194,17 +223,24 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
       gid_t suppl_gid = ((gid_t *) suppl_gids->elts)[i];
 
       if (suppl_gid == st->st_gid) {
+        int ret;
+
         /* Check the acl_group_entry for access. First though, we need to
          * see if the acl_group_entry contains the requested permissions.
          */
         acl_permset_t perms;
-        acl_get_permset(acl_group_entry, &perms);
+        if (acl_get_permset(acl_group_entry, &perms) < 0) {
+          pr_trace_msg(trace_channel, 5, "error retrieving permission set: %s",
+            strerror(errno));
+        }
 
 #  if defined(HAVE_BSD_POSIX_ACL)
-        if (acl_get_perm_np(perms, mode) == 1) {
+        ret = acl_get_perm_np(perms, get_facl_perm_for_mode(mode));
 #  elif defined(HAVE_LINUX_POSIX_ACL)
-        if (acl_get_perm(perms, mode) == 1) {
+        ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
 #  endif
+
+        if (ret == 1) {
           ae = acl_group_entry;
           ae_type = ACL_GROUP_OBJ;
           have_access_entry = TRUE;
@@ -214,6 +250,11 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
             (unsigned long) suppl_gid);
 
           break;
+
+        } else if (ret < 0) {
+          pr_trace_msg(trace_channel, 5,
+            "error checking permissions in permission set: %s",
+            strerror(errno));
         }
       }
     }
@@ -227,18 +268,24 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
     acl_entry_t e = ((acl_entry_t *) acl_groups->elts)[i];
 
     if (gid == *((gid_t *) acl_get_qualifier(e))) {
+      int ret;
 
       /* Check this entry for access. Note that it'll need to
        * be modified by the mask, if any, later.
        */
       acl_permset_t perms;
-      acl_get_permset(e, &perms);
+      if (acl_get_permset(e, &perms) < 0) {
+        pr_trace_msg(trace_channel, 5, "error retrieving permission set: %s",
+          strerror(errno));
+      }
 
 #  if defined(HAVE_BSD_POSIX_ACL)
-      if (acl_get_perm_np(perms, mode) == 1) {
+      ret = acl_get_perm_np(perms, get_facl_perm_for_mode(mode));
 #  elif defined(HAVE_LINUX_POSIX_ACL)
-      if (acl_get_perm(perms, mode) == 1) {
+      ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
 #  endif
+
+      if (ret == 1) {
         ae = e;
         ae_type = ACL_GROUP;
         have_access_entry = TRUE;
@@ -248,6 +295,10 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
           (unsigned long) gid);
 
         break;
+
+      } else if (ret < 0) {
+        pr_trace_msg(trace_channel, 5,
+          "error checking permissions in permission set: %s", strerror(errno));
       }
     }
 
@@ -258,17 +309,24 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
         gid_t suppl_gid = ((gid_t *) suppl_gids->elts)[j];
 
         if (suppl_gid == *((gid_t *) acl_get_qualifier(e))) {
+          int ret;
+
           /* Check this entry for access. Note that it'll need to
            * be modified by the mask, if any, later.
            */
           acl_permset_t perms;
-          acl_get_permset(e, &perms);
+          if (acl_get_permset(e, &perms) < 0) {
+            pr_trace_msg(trace_channel, 5,
+              "error retrieving permission set: %s", strerror(errno));
+          }
 
 #  if defined(HAVE_BSD_POSIX_ACL)
-          if (acl_get_perm_np(perms, mode) == 1) {
+          ret = acl_get_perm_np(perms, get_facl_perm_for_mode(mode));
 #  elif defined(HAVE_LINUX_POSIX_ACL)
-          if (acl_get_perm(perms, mode) == 1) {
+          ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
 #  endif
+
+          if (ret == 1) {
             ae = e;
             ae_type = ACL_GROUP;
             have_access_entry = TRUE;
@@ -278,6 +336,11 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
               (unsigned long) suppl_gid);
 
             break;
+
+          } else if (ret < 0) {
+            pr_trace_msg(trace_channel, 5,
+              "error checking permissions in permission set: %s",
+              strerror(errno));
           }
         }
       }
@@ -315,33 +378,68 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
   switch (ae_type) {
     case ACL_USER_OBJ:
     case ACL_OTHER: {
+      int ret;
+
       acl_permset_t perms;
-      acl_get_permset(ae, &perms);
+      if (acl_get_permset(ae, &perms) < 0) {
+        pr_trace_msg(trace_channel, 5, "error retrieving permission set: %s",
+          strerror(errno));
+      }
 
 #  if defined(HAVE_BSD_POSIX_ACL)
-      if (acl_get_perm_np(perms, mode) == 1) {
+      ret = acl_get_perm_np(perms, get_facl_perm_for_mode(mode));
 #  elif defined(HAVE_LINUX_POSIX_ACL)
-      if (acl_get_perm(perms, mode) == 1) {
+      ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
 #  endif
+
+     if (ret == 1) {
         res = 0;
+
+      } else if (ret < 0) {
+        pr_trace_msg(trace_channel, 5,
+          "error checking permissions in permission set: %s", strerror(errno));
       }
 
       break;
     }
 
     default: {
+      int ret1, ret2;
       acl_permset_t ent_perms, mask_perms;
-      acl_get_permset(ae, &ent_perms);
-      acl_get_permset(acl_mask_entry, &mask_perms);
+
+      if (acl_get_permset(ae, &ent_perms) < 0) {
+        pr_trace_msg(trace_channel, 5, "error retrieving permission set: %s",
+          strerror(errno));
+      }
+
+      if (acl_get_permset(acl_mask_entry, &mask_perms) < 0) {
+        pr_trace_msg(trace_channel, 5,
+          "error retrieving mask permission set: %s", strerror(errno));
+      }
 
 #  if defined(HAVE_BSD_POSIX_ACL)
-      if (acl_get_perm_np(ent_perms, mode) == 1 &&
-          acl_get_perm_np(mask_perms, mode) == 1) {
+      ret1 = acl_get_perm_np(ent_perms, get_facl_perm_for_mode(mode));
+      ret2 = acl_get_perm_np(mask_perms, get_facl_perm_for_mode(mode));
 #  elif defined(HAVE_LINUX_POSIX_ACL)
-      if (acl_get_perm(ent_perms, mode) == 1 &&
-          acl_get_perm(mask_perms, mode) == 1) {
+      ret1 = acl_get_perm(ent_perms, get_facl_perm_for_mode(mode));
+      ret2 = acl_get_perm(mask_perms, get_facl_perm_for_mode(mode));
 #  endif
+
+      if (ret1 == 1 && ret2 == 1) {
         res = 0;
+
+      } else {
+        if (ret1 < 0) {
+          pr_trace_msg(trace_channel, 5,
+            "error checking permissions in entry permission set: %s",
+            strerror(errno));
+        }
+
+        if (ret2 < 0) {
+          pr_trace_msg(trace_channel, 5,
+            "error checking permissions in mask permission set: %s",
+            strerror(errno));
+        }
       }
 
       break;
@@ -353,7 +451,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
   if (res < 0) {
     errno = EACCES;
     pr_trace_msg(trace_channel, 3,
-      "returning EACCES for path '%p', user ID %lu", path,
+      "returning EACCES for path '%s', user ID %lu", path,
       (unsigned long) uid);
   }
 
@@ -645,7 +743,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
   if (res < 0) {
     errno = EACCES;
     pr_trace_msg(trace_channel, 3,
-      "returning EACCES for path '%p', user ID %lu", path,
+      "returning EACCES for path '%s', user ID %lu", path,
       (unsigned long) uid);
   }
 
