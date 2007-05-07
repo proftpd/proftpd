@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.221 2007-02-08 19:11:55 castaglia Exp $
+ * $Id: mod_auth.c,v 1.222 2007-05-07 15:35:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,6 +50,7 @@ static int TimeoutLogin = PR_TUNABLE_TIMEOUTLOGIN;
 static int logged_in = 0;
 static int auth_tries = 0;
 static char *auth_pass_resp_code = R_230;
+static pr_fh_t *displaylogin_fh = NULL;
 static unsigned int TimeoutSession = 0;
 
 static void auth_scan_scoreboard(void);
@@ -270,7 +271,7 @@ MODRET auth_err_pass(cmd_rec *cmd) {
 
 MODRET auth_post_pass(cmd_rec *cmd) {
   config_rec *c = NULL;
-  char *displaylogin = NULL, *grantmsg = NULL, *user;
+  char *grantmsg = NULL, *user;
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_timeout, have_group_timeout, have_class_timeout,
     have_all_timeout, *privsdrop = NULL;
@@ -371,11 +372,20 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   }
 
   /* Handle a DisplayLogin file. */
-  displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
-  if (displaylogin) {
-    if (pr_display_file(displaylogin, NULL, auth_pass_resp_code) < 0)
+  if (displaylogin_fh) {
+    if (pr_display_fh(displaylogin_fh, NULL, auth_pass_resp_code) < 0)
       pr_log_debug(DEBUG6, "unable to display DisplayLogin file '%s': %s",
-        displaylogin, strerror(errno));
+        displaylogin_fh->fh_path, strerror(errno));
+    pr_fsio_close(displaylogin_fh);
+    displaylogin_fh = NULL;
+
+  } else {
+    char *displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
+    if (displaylogin) {
+      if (pr_display_file(displaylogin, NULL, auth_pass_resp_code) < 0)
+        pr_log_debug(DEBUG6, "unable to display DisplayLogin file '%s': %s",
+          displaylogin, strerror(errno));
+    }
   }
 
   grantmsg = get_param_ptr(TOPLEVEL_CONF, "AccessGrantMsg", FALSE);
@@ -1914,8 +1924,26 @@ MODRET auth_user(cmd_rec *cmd) {
 
 /* Close the passwd and group databases, similar to auth_pre_user(). */
 MODRET auth_pre_pass(cmd_rec *cmd) {
+  char *displaylogin;
+
   pr_auth_endpwent(cmd->tmp_pool);
   pr_auth_endgrent(cmd->tmp_pool);
+
+  /* Look for a DisplayLogin file which has an absolute path.  If we
+   * find one, open a filehandle, such that that file can be displayed
+   * even if the session is chrooted.  DisplayLogin files with
+   * relative paths will be handled after chroot, preserving the old
+   * behavior.
+   */
+  displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
+  if (displaylogin &&
+      *displaylogin == '/') {
+
+    displaylogin_fh = pr_fsio_open(displaylogin, O_RDONLY);
+    if (displaylogin_fh == NULL)
+      pr_log_debug(DEBUG6, "unable to open DisplayLogin file '%s': %s",
+        displaylogin, strerror(errno));
+  }
 
   return PR_DECLINED(cmd);
 }
@@ -2373,6 +2401,18 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
   *argv = NULL;
 
   c->flags |= CF_MERGEDOWN;
+  return PR_HANDLED(cmd);
+}
+
+MODRET set_displaylogin(cmd_rec *cmd) {
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  c->flags |= CF_MERGEDOWN;
+
   return PR_HANDLED(cmd);
 }
 
@@ -2949,6 +2989,7 @@ static conftable auth_conftab[] = {
   { "CreateHome",		set_createhome,			NULL },
   { "DefaultChdir",		add_defaultchdir,		NULL },
   { "DefaultRoot",		add_defaultroot,		NULL },
+  { "DisplayLogin",		set_displaylogin,		NULL },
   { "GroupPassword",		set_grouppassword,		NULL },
   { "LoginPasswordPrompt",	set_loginpasswordprompt,	NULL },
   { "MaxClients",		set_maxclients,			NULL },

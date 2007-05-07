@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.209 2007-03-28 03:24:41 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.210 2007-05-07 15:35:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,6 +48,7 @@ extern pid_t mpid;
 /* Variables for this module */
 static pr_fh_t *retr_fh = NULL;
 static pr_fh_t *stor_fh = NULL;
+static pr_fh_t *displayfilexfer_fh = NULL;
 
 static unsigned char have_prot = FALSE;
 static unsigned char have_zmode = FALSE;
@@ -1241,13 +1242,24 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
 }
 
 MODRET xfer_post_xfer(cmd_rec *cmd) {
-  char *display = get_param_ptr(main_server->conf, "DisplayFileTransfer",
-    FALSE);
 
-  if (display) {
-    if (pr_display_file(display, session.vwd, R_226) < 0) {
-      pr_log_debug(DEBUG3, "error displaying '%s': %s", display,
-        strerror(errno));
+  if (displayfilexfer_fh) {
+    if (pr_display_fh(displayfilexfer_fh, session.vwd, R_226) < 0)
+      pr_log_debug(DEBUG6, "unable to display DisplayFileTransfer "
+        "file '%s': %s", displayfilexfer_fh->fh_path, strerror(errno));
+
+    /* Rewind the filehandle, so that it can be used again. */
+    if (pr_fsio_lseek(displayfilexfer_fh, 0, SEEK_SET) < 0)
+      pr_log_debug(DEBUG6, "error rewinding DisplayFileTransfer "
+        "file '%s': %s", displayfilexfer_fh->fh_path, strerror(errno));
+
+  } else {
+    char *displayfilexfer = get_param_ptr(main_server->conf,
+      "DisplayFileTransfer", FALSE);
+    if (displayfilexfer) {
+      if (pr_display_file(displayfilexfer, session.vwd, R_226) < 0)
+        pr_log_debug(DEBUG6, "unable to display DisplayFileTransfer "
+          "file '%s': %s", displayfilexfer, strerror(errno));
     }
   }
 
@@ -2621,6 +2633,7 @@ static int xfer_init(void) {
 }
 
 static int xfer_sess_init(void) {
+  char *displayfilexfer = NULL;
   config_rec *c = NULL;
 
   /* Check for a server-specific TimeoutNoTransfer */
@@ -2653,6 +2666,23 @@ static int xfer_sess_init(void) {
 
   pr_event_register(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev,
     NULL);
+
+  /* Look for a DisplayFileTransfer file which has an absolute path.  If we
+   * find one, open a filehandle, such that that file can be displayed
+   * even if the session is chrooted.  DisplayFileTransfer files with
+   * relative paths will be handled after chroot, preserving the old
+   * behavior.
+   */
+  displayfilexfer = get_param_ptr(main_server->conf, "DisplayFileTransfer",
+    FALSE);
+  if (displayfilexfer &&
+      *displayfilexfer == '/') {
+
+    displayfilexfer_fh = pr_fsio_open(displayfilexfer, O_RDONLY);
+    if (displayfilexfer_fh == NULL)
+      pr_log_debug(DEBUG6, "unable to open DisplayFileTransfer file '%s': %s",
+        displayfilexfer, strerror(errno));
+  }
 
   return 0;
 }

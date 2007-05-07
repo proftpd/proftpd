@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.299 2007-04-17 21:33:40 castaglia Exp $
+ * $Id: mod_core.c,v 1.300 2007-05-07 15:35:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -57,6 +57,7 @@ module core_module;
 char AddressCollisionCheck = TRUE;
 
 static int core_scrub_timer_id;
+static pr_fh_t *displayquit_fh = NULL;
 
 #ifdef PR_USE_TRACE
 static const char *trace_log = NULL;
@@ -2641,18 +2642,6 @@ MODRET set_ignorehidden(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET set_displaylogin(cmd_rec *cmd) {
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  c->flags |= CF_MERGEDOWN;
-
-  return PR_HANDLED(cmd);
-}
-
 /* usage: DisplayChdir path [on|off] */
 MODRET set_displaychdir(cmd_rec *cmd) {
   config_rec *c = NULL;
@@ -2911,21 +2900,33 @@ MODRET core_clear_fs(cmd_rec *cmd) {
 }
 
 MODRET core_quit(cmd_rec *cmd) {
-  char *display = NULL;
-
-  display = get_param_ptr(TOPLEVEL_CONF, "DisplayQuit", FALSE); 
-  if (display) {
-    if (pr_display_file(display, NULL, R_221) < 0)
+  if (displayquit_fh) {
+    if (pr_display_fh(displayquit_fh, NULL, R_221) < 0)
       pr_log_debug(DEBUG6, "unable to display DisplayQuit file '%s': %s",
-        display, strerror(errno));
+        displayquit_fh->fh_path, strerror(errno));
+    pr_fsio_close(displayquit_fh);
+    displayquit_fh = NULL;
 
-    /* Hack or feature, pr_display_file() always puts a hyphen on the
-     * last line
+    /* Hack or feature, pr_display_file() always puts a hyphen on the last line.
      */
     pr_response_send(R_221, "%s", "");
 
-  } else
-    pr_response_send(R_221, _("Goodbye."));
+  } else {
+    char *display = get_param_ptr(TOPLEVEL_CONF, "DisplayQuit", FALSE); 
+    if (display) {
+      if (pr_display_file(display, NULL, R_221) < 0)
+        pr_log_debug(DEBUG6, "unable to display DisplayQuit file '%s': %s",
+          display, strerror(errno));
+
+      /* Hack or feature, pr_display_file() always puts a hyphen on the
+       * last line
+       */
+      pr_response_send(R_221, "%s", "");
+
+    } else {
+      pr_response_send(R_221, _("Goodbye."));
+    }
+  }
 
   /* The LOG_CMD handler for QUIT is responsible for actually ending
    * the session.
@@ -4415,6 +4416,7 @@ static int core_init(void) {
 }
 
 static int core_sess_init(void) {
+  char *displayquit = NULL;
   config_rec *c = NULL;
   unsigned int *debug_level = NULL;
 
@@ -4591,6 +4593,22 @@ static int core_sess_init(void) {
     pr_log_debug(DEBUG6, "error setting %%{total_files_xfer} variable: %s",
       strerror(errno));
 
+  /* Look for a DisplayQuit file which has an absolute path.  If we
+   * find one, open a filehandle, such that that file can be displayed
+   * even if the session is chrooted.  DisplayQuit files with
+   * relative paths will be handled after chroot, preserving the old
+   * behavior.
+   */
+  displayquit = get_param_ptr(TOPLEVEL_CONF, "DisplayQuit", FALSE);
+  if (displayquit &&
+      *displayquit == '/') {
+
+    displayquit_fh = pr_fsio_open(displayquit, O_RDONLY);
+    if (displayquit_fh == NULL)
+      pr_log_debug(DEBUG6, "unable to open DisplayQuit file '%s': %s",
+        displayquit, strerror(errno));
+  }
+
   return 0;
 }
 
@@ -4640,7 +4658,6 @@ static conftable core_conftab[] = {
   { "DisplayChdir",		set_displaychdir,		NULL },
   { "DisplayConnect",		set_displayconnect,		NULL },
   { "DisplayGoAway",		set_displaygoaway,		NULL },
-  { "DisplayLogin",		set_displaylogin,		NULL },
   { "DisplayQuit",		set_displayquit,		NULL },
   { "From",			add_from,			NULL },
   { "Group",			set_group, 			NULL },
