@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql_postgres -- Support for connecting to Postgres databases.
  * Time-stamp: <1999-10-04 03:21:21 root>
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2006 TJ Saunders
+ * Copyright (c) 2004-2007 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.30 2006-06-28 16:32:47 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.31 2007-05-09 17:15:18 castaglia Exp $
  */
 
 /*
@@ -458,6 +458,20 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
   if ((cmd->argc < 4) || (cmd->argc > 5) || (!cmd->argv[0])) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_defineconnection");
     return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
+  }
+
+  if (!conn_pool) {
+    pr_log_pri(PR_LOG_WARNING, "warning: the mod_sql_postgres module has not "
+      "been properly intialized.  Please make sure your --with-modules "
+      "configure option lists mod_sql *before* mod_sql_postgres, and "
+      "recompile.");
+      
+    sql_log(DEBUG_FUNC, "%s", "The mod_sql_postgres module has not been "
+      "properly intialized.  Please make sure your --with-modules configure "
+      "option lists mod_sql *before* mod_sql_postgres, and recompile.");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_defineconnection");
+
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "uninitialized module");
   }
 
   conn = (db_conn_t *) palloc(conn_pool, sizeof(db_conn_t));
