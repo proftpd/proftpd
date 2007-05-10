@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.304 2007-01-19 21:59:44 castaglia Exp $
+ * $Id: main.c,v 1.305 2007-05-10 21:49:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -393,6 +393,16 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
       }
 
       pr_log_debug(DEBUG4, "dispatching %s command '%s' to mod_%s",
+        (cmd_type == PRE_CMD ? "PRE_CMD" :
+         cmd_type == CMD ? "CMD" :
+         cmd_type == POST_CMD ? "POST_CMD" :
+         cmd_type == POST_CMD_ERR ? "POST_CMD_ERR" :
+         cmd_type == LOG_CMD ? "LOG_CMD" :
+         cmd_type == LOG_CMD_ERR ? "LOG_CMD_ERR" :
+         "(unknown)"),
+        cmdargstr, c->m->name);
+
+      pr_trace_msg("command", 7, "dispatching %s command '%s' to mod_%s.c",
         (cmd_type == PRE_CMD ? "PRE_CMD" :
          cmd_type == CMD ? "CMD" :
          cmd_type == POST_CMD ? "POST_CMD" :
