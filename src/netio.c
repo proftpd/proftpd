@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.24 2007-04-24 16:12:17 castaglia Exp $
+ * $Id: netio.c,v 1.25 2007-05-10 21:55:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,6 +44,8 @@
 #ifndef WILL
 #define WILL	251
 #endif
+
+static const char *trace_channel = "netio";
 
 static pr_netio_t *core_ctrl_netio = NULL, *ctrl_netio = NULL;
 static pr_netio_t *core_data_netio = NULL, *data_netio = NULL;
@@ -243,6 +245,10 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
     return -1;
   }
 
+  if (nstrm->strm_fd < 0)
+    /* Already closed. */
+    return 0;
+
   if (!(flags & NETIO_LINGERING_CLOSE_FL_NO_SHUTDOWN))
     pr_netio_shutdown(nstrm, 1);
 
@@ -263,6 +269,10 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
 
       FD_ZERO(&rs);
       FD_SET(nstrm->strm_fd, &rs);
+
+      pr_trace_msg(trace_channel, 8,
+        "lingering %lu secs before closing fd %d", (unsigned long) tv.tv_sec,
+        nstrm->strm_fd);
 
       res = select(nstrm->strm_fd+1, &rs, NULL, NULL, &tv);
       if (res == -1) {
@@ -289,6 +299,9 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
       break;
     }
   }
+
+  pr_trace_msg(trace_channel, 8, "done lingering, closing fd %d",
+    nstrm->strm_fd);
 
   if (nstrm->strm_type == PR_NETIO_STRM_CTRL)
     return ctrl_netio ? ctrl_netio->close(nstrm) :

@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.101 2007-04-02 22:22:02 castaglia Exp $
+ * $Id: inet.c,v 1.102 2007-05-10 21:55:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,6 +48,8 @@ static int inet_errno = 0;		/* Holds errno */
  * is not given.  This is mainly for the benefit of initialize_connection().
  */
 static int inet_family = 0;
+
+static const char *trace_channel = "inet";
 
 /* Called by others after running a number of pr_inet_* functions in order
  * to free up memory.
@@ -525,7 +527,7 @@ void pr_inet_lingering_close(pool *p, conn_t *c, long linger) {
    * the output stream.
    */
   if (c->instrm != c->outstrm)
-    pr_netio_lingering_close(c->instrm, linger);
+    pr_netio_close(c->instrm);
 
   c->outstrm = NULL;
   c->instrm = NULL;
@@ -548,7 +550,7 @@ void pr_inet_lingering_abort(pool *p, conn_t *c, long linger) {
    * want and need one.
    */
   if (c->outstrm != c->instrm)
-    pr_netio_lingering_close(c->outstrm, linger);
+    pr_netio_close(c->outstrm);
 
   c->instrm = NULL;
   c->outstrm = NULL;
