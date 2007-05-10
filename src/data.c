@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.92 2007-04-02 16:32:40 castaglia Exp $
+ * $Id: data.c,v 1.93 2007-05-10 22:47:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -39,6 +39,8 @@
 #ifdef HAVE_SYS_UIO_H
 #include <sys/uio.h>
 #endif /* HAVE_SYS_UIO_H */
+
+static const char *trace_channel = "data";
 
 /* local macro */
 
@@ -65,14 +67,16 @@ static int stalled_timeout_cb(CALLBACK_FRAME) {
   return 0;
 }
 
-/* this signal is raised if we get OOB data on the control connection, and
- * a data transfer is in progress
+/* This signal is raised if we get OOB data on the control connection, and
+ * a data transfer is in progress.
  */
-static RETSIGTYPE data_urgent(int sig) {
-  if (nstrm) {
-    session.sf_flags |= SF_ABORT;
+static RETSIGTYPE data_urgent(int signo) {
+  pr_trace_msg(trace_channel, 5, "received SIGURG signal (signal %d), "
+    "setting 'aborted' session flag", signo);
+  session.sf_flags |= SF_ABORT;
+
+  if (nstrm)
     pr_netio_abort(nstrm);
-  }
 
   signal(SIGURG, data_urgent);
 }
@@ -510,10 +514,8 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
     if (TimeoutNoXfer)
       pr_timer_reset(TIMER_NOXFER, ANY_MODULE);
 
-    /* Allow aborts. */
-
-    /* Set the current NetIO stream to allow interrupted syscalls, so our
-     * SIGURG handler can interrupt it
+    /* Allow aborts -- set the current NetIO stream to allow interrupted
+     * syscalls, so our SIGURG handler can interrupt it
      */
     pr_netio_set_poll_interval(nstrm, 1);
 
@@ -530,12 +532,19 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
 #ifdef SA_INTERRUPT
     act.sa_flags |= SA_INTERRUPT;
 #endif
-    sigaction(SIGURG, &act, NULL);
+
+    if (sigaction(SIGURG, &act, NULL) < 0)
+      pr_log_pri(PR_LOG_WARNING,
+        "warning: unable to set SIGURG signal handler: %s", strerror(errno));
+
 #ifdef HAVE_SIGINTERRUPT
     /* This is the BSD way of ensuring interruption.
      * Linux uses it too (??)
      */
-    siginterrupt(SIGURG, 1);
+    if (siginterrupt(SIGURG, 1) < 0)
+      pr_log_pri(PR_LOG_WARNING,
+        "warning: unable to make SIGURG interrupt system calls: %s",
+        strerror(errno));
 #endif
   }
 

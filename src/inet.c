@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.102 2007-05-10 21:55:00 castaglia Exp $
+ * $Id: inet.c,v 1.103 2007-05-10 22:47:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -723,8 +723,16 @@ static void set_owner(int fd) {
 int pr_inet_set_async(pool *p, conn_t *c) {
 
 #ifdef SO_OOBINLINE
+  pr_trace_msg(trace_channel, 7,
+    "setting SO_OOBINLINE for listening socket %d",  c->listen_fd);
   set_oobinline(c->listen_fd);
+
+  pr_trace_msg(trace_channel, 7,
+    "setting SO_OOBINLINE for reading socket %d",  c->rfd);
   set_oobinline(c->rfd);
+
+  pr_trace_msg(trace_channel, 7,
+    "setting SO_OOBINLINE for writing socket %d",  c->wfd);
   set_oobinline(c->wfd);
 #endif
 

@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.210 2007-05-07 15:35:31 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.211 2007-05-10 22:47:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1891,6 +1891,13 @@ MODRET xfer_abor(cmd_rec *cmd) {
   if (cmd->argc != 1) {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
     return PR_ERROR(cmd);
+  }
+
+  if (session.xfer.direction == PR_NETIO_IO_RD) {
+    stor_abort();
+
+  } else if (session.xfer.direction == PR_NETIO_IO_WR) {
+    retr_abort();
   }
 
   pr_data_abort(0, FALSE);
