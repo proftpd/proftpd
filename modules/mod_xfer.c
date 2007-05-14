@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.211 2007-05-10 22:47:45 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.212 2007-05-14 21:31:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -479,7 +479,6 @@ static void xfer_rate_sigmask(unsigned char block) {
     sigaddset(&sig_set, SIGUSR1);
     sigaddset(&sig_set, SIGINT);
     sigaddset(&sig_set, SIGQUIT);
-    sigaddset(&sig_set, SIGURG);
 #ifdef SIGIO
     sigaddset(&sig_set, SIGIO);
 #endif /* SIGIO */
