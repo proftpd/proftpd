@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.26 2007-05-10 22:47:45 castaglia Exp $
+ * $Id: netio.c,v 1.27 2007-05-15 17:35:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -327,6 +327,9 @@ int pr_netio_lingering_abort(pr_netio_stream_t *nstrm, long linger) {
     return -1;
   }
 
+  /* Send an appropriate response code down the stream asychronously. */
+  pr_response_send_async(R_426, _("Transfer aborted. Data connection closed."));
+
   pr_netio_shutdown(nstrm, 1);
 
   if (nstrm->strm_fd >= 0) {
@@ -362,9 +365,6 @@ int pr_netio_lingering_abort(pr_netio_stream_t *nstrm, long linger) {
       break;
     }
   }
-
-  /* Send an appropriate response code down the stream asychronously. */
-  pr_response_send_async(R_426, _("Transfer aborted. Data connection closed."));
 
   /* Now continue with a normal lingering close. */
   return netio_lingering_close(nstrm, linger,
@@ -671,10 +671,15 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 
   while (buflen) {
     do {
-      pr_signals_handle();
 
-      if (XFER_ABORTED)
-        break;
+      /* Do NOT check for XFER_ABORTED here.  After a client aborts a
+       * transfer, proftpd still needs to send the 426 response code back
+       * to the client via the control connection; checking for XFER_ABORTED
+       * here would block that response code sending, which in turn causes
+       * problems for clients waiting for that response code.
+       */
+
+      pr_signals_handle();
 
       switch (nstrm->strm_type) {
         case PR_NETIO_STRM_CTRL:
