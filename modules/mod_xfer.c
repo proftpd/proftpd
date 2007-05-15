@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.214 2007-05-15 00:41:19 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.215 2007-05-15 02:23:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -522,6 +522,9 @@ static long xfer_rate_since(struct timeval *then) {
 static void xfer_rate_throttle(off_t xferlen, unsigned int xfer_ending) {
   long ideal = 0, elapsed = 0;
   off_t orig_xferlen = xferlen;
+
+  if (XFER_ABORTED)
+    return;
 
   /* Calculate the time interval since the transfer of data started. */
   elapsed = xfer_rate_since(&session.xfer.start_time);
