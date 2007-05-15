@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.93 2007-05-10 22:47:45 castaglia Exp $
+ * $Id: data.c,v 1.94 2007-05-15 00:41:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1010,6 +1010,10 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
       /* Under Linux semantics, this occurs when a signal has interrupted
        * sendfile().
        */
+      if (XFER_ABORTED) {
+        errno = EINTR;
+        return -1;
+      }
 
       count -= len;
 
@@ -1098,6 +1102,9 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
        * For obvious reasons, HP/UX sendfile is not supported yet.
        */
       if (errno == EINTR) {
+        if (XFER_ABORTED)
+          return -1;
+
         pr_signals_handle();
 
         /* If we got everything in this transaction, we're done. */

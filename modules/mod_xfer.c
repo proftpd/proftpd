@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.213 2007-05-14 21:34:37 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.214 2007-05-15 00:41:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -691,6 +691,11 @@ static int transmit_sendfile(off_t count, off_t *offset,
     switch (errno) {
       case EAGAIN:
       case EINTR:
+        if (XFER_ABORTED) {
+          pr_log_pri(PR_LOG_NOTICE, "sendfile transmission aborted");
+          return -1;
+        }
+
         /* Interrupted call, or the other side wasn't ready yet. */
         pr_signals_handle();
         goto retry;
