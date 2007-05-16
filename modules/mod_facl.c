@@ -24,7 +24,7 @@
 
 /*
  * POSIX ACL checking code (aka POSIX.1e hell)
- * $Id: mod_facl.c,v 1.8 2007-05-04 17:05:00 castaglia Exp $
+ * $Id: mod_facl.c,v 1.9 2007-05-16 15:25:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,6 +35,8 @@
 #if PROFTPD_VERSION_NUMBER < 0x0001030101
 # error "ProFTPD 1.3.1rc1 or later required"
 #endif
+
+module facl_module;
 
 static int facl_engine = TRUE;
 static const char *trace_channel = "facl";
