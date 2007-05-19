@@ -24,7 +24,7 @@
 
 /*
  * POSIX ACL checking code (aka POSIX.1e hell)
- * $Id: mod_facl.c,v 1.9 2007-05-16 15:25:57 castaglia Exp $
+ * $Id: mod_facl.c,v 1.10 2007-05-19 01:51:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -753,6 +753,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 # endif /* HAVE_SOLARIS_POSIX_ACL */
 }
 
+# if defined(PR_USE_FACL)
+
 /* FSIO handlers
  */
 
@@ -845,6 +847,8 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
   return check_facl(fh->fh_fs->fs_pool, fh->fh_path, mode, acls, nents, &st,
     uid, gid, suppl_gids);
 }
+# endif /* !PR_USE_FACL */
+
 #endif /* HAVE_POSIX_ACL */
 
 #if defined(PR_SHARED_MODULE)
@@ -863,6 +867,11 @@ static int facl_init(void) {
 #if defined(PR_USE_FACL) && defined(HAVE_POSIX_ACL)
   pr_fs_t *fs;
 #endif /* PR_USE_FACL and HAVE_POSIX_ACL */
+
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&facl_module, "core.module-unload", facl_mod_unload_ev,
+    NULL);
+#endif /* PR_SHARED_MODULE */
 
   if (!facl_engine)
     return 0;
