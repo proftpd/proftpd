@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.48 2007-04-17 21:33:40 castaglia Exp $
+ * $Id: auth.c,v 1.49 2007-05-21 15:19:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -442,6 +442,32 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
 
   cmd = make_cmd(p, 2, name, pw);
 
+  /* First, check for the mod_auth_pam.c module.
+   *
+   * PAM is a bit of hack in this Auth API, because PAM only provides
+   * yes/no checks, and is not a source of user information.
+   */
+  m = pr_module_get("mod_auth_pam.c");
+  if (m) {
+    pr_trace_msg(trace_channel, 4,
+      "using module 'mod_auth_pam.c' to authenticate user '%s'", name);
+
+    mr = dispatch_auth(cmd, "auth", &m);
+
+    if (MODRET_ISHANDLED(mr)) {
+      res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
+
+      if (cmd->tmp_pool) {
+        destroy_pool(cmd->tmp_pool);
+        cmd->tmp_pool = NULL;
+      }
+
+      return res;
+    }
+
+    m = NULL;
+  }
+
   if (auth_tab) {
 
     /* Fetch the specific module to be used for authenticating this user. */
@@ -478,6 +504,32 @@ int pr_auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
   int res = PR_AUTH_BADPWD;
 
   cmd = make_cmd(p, 3, cpw, name, pw);
+
+  /* First, check for the mod_auth_pam.c module.  
+   *
+   * PAM is a bit of hack in this Auth API, because PAM only provides
+   * yes/no checks, and is not a source of user information.
+   */
+  m = pr_module_get("mod_auth_pam.c");
+  if (m) {
+    pr_trace_msg(trace_channel, 4,
+      "using module 'mod_auth_pam.c' to authenticate user '%s'", name);
+
+    mr = dispatch_auth(cmd, "auth", &m);
+
+    if (MODRET_ISHANDLED(mr)) {
+      res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
+
+      if (cmd->tmp_pool) {
+        destroy_pool(cmd->tmp_pool);
+        cmd->tmp_pool = NULL;
+      }
+
+      return res;
+    }
+
+    m = NULL;
+  }
 
   if (auth_tab) {
 
