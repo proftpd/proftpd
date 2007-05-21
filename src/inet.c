@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.103 2007-05-10 22:47:45 castaglia Exp $
+ * $Id: inet.c,v 1.104 2007-05-21 16:04:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -300,13 +300,9 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 #if defined(PR_USE_IPV6) && defined(IPV6_V6ONLY)
     if (pr_netaddr_use_ipv6() &&
         addr_family == AF_INET6) {
-      int on = 0;
-
-# ifdef SOL_IP
-      int level = SOL_IP;
-# else
       int level = ipv6_proto;
-# endif /* SOL_IP */
+      int off;
+      socklen_t len = sizeof(off);
 
       /* If creating a wildcard socket IPv6 socket, make sure that it
        * will accept IPv4 connections as well.  This is the default on
@@ -317,9 +313,20 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
        * SocketOptions directive.
        */
 
-      if (setsockopt(fd, level, IPV6_V6ONLY, (void *) &on, sizeof(on)) < 0)
-        pr_log_pri(PR_LOG_NOTICE, "error setting IPV6_V6ONLY: %s",
-          strerror(errno));
+      if (getsockopt(fd, level, IPV6_V6ONLY, (void *) &off, &len) >= 0) {
+        if (off != 0) {
+          off = 0;
+
+          pr_trace_msg(trace_channel, 5,
+            "disabling IPV6_V6ONLY on server socket %d", fd);
+
+          if (setsockopt(fd, level, IPV6_V6ONLY, (void *) &off,
+              len) < 0) {
+            pr_log_pri(PR_LOG_NOTICE, "error setting IPV6_V6ONLY: %s",
+              strerror(errno));
+          }
+        }
+      }
     }
 #endif /* PR_USE_IPV6 and IPV6_V6ONLY */
 
