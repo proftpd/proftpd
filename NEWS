@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.817 2007-05-10 22:47:45 castaglia Exp $
+$Id: NEWS,v 1.818 2007-05-21 14:39:31 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -36,6 +36,7 @@ CVS
   for DisplayQuit and DisplayTransferFiles as well.
 - Bug 2920 - ABOR command not handled during data transfer.
 - Bug 2924 - DeleteAbortedStores doesn't work when the ABOR command is used.
+- Bug 2890 - SystemLog permission errors on SIGHUP when mod_tls is enabled.
 
 1.3.1rc2 - Released 12-Jan-2007
 --------------------------------

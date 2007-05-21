@@ -3906,13 +3906,10 @@ MODRET set_tlsdsacertfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  PRIVS_ROOT
   if (!file_exists(cmd->argv[1])) {
-    PRIVS_RELINQUISH
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
   }
-  PRIVS_RELINQUISH
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -3926,13 +3923,10 @@ MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  PRIVS_ROOT
   if (!file_exists(cmd->argv[1])) {
-    PRIVS_RELINQUISH
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
   }
-  PRIVS_RELINQUISH
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -4218,13 +4212,10 @@ MODRET set_tlsrsacertfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  PRIVS_ROOT
   if (!file_exists(cmd->argv[1])) {
-    PRIVS_RELINQUISH
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
   }
-  PRIVS_RELINQUISH
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -4238,13 +4229,10 @@ MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  PRIVS_ROOT
   if (!file_exists(cmd->argv[1])) {
-    PRIVS_RELINQUISH
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
   }
-  PRIVS_RELINQUISH
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
