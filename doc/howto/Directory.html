@@ -1,4 +1,4 @@
-<!-- $Id: Directory.html,v 1.7 2004-10-17 23:42:28 castaglia Exp $ -->
+<!-- $Id: Directory.html,v 1.8 2007-05-21 15:30:52 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Directory.html,v $ -->
 
 <html>
@@ -84,14 +84,15 @@ since <code>*</code> does not expand to <code>some/other/</code> or
 <p>
 There is another case about which the administrator should know: for the
 purposes of handling the <code>APPE</code>, <code>RETR</code>,
-<code>STOR</code>, and <code>STOU</code> FTP commands, the daemon will
-match a <code>&lt;Directory&gt;</code> path with the filename appended. As
-above, in most cases this will not matter much.  However, consider the case
-where the administrator specifically wants to use the trailing <code>/*</code>,
-as when she wants a particular <code>&lt;Limit&gt;</code> to apply to all
-subdirectories of a given directory, but not to that directory itself.  For
-example, the administrators wishes to block anonymous uploads everywhere
-except for subdirectories of <code>upload/</code>:
+<code>RNTO</code>, <code>STOR</code>, and <code>STOU</code> FTP commands, the
+daemon will match a <code>&lt;Directory&gt;</code> path with the filename
+appended. As above, in most cases this will not matter much.  However,
+consider the case where the administrator specifically wants to use the
+trailing <code>/*</code>, as when she wants a particular
+<code>&lt;Limit&gt;</code> to apply to all subdirectories of a given directory,
+but not to that directory itself.  For example, the administrators wishes to
+block anonymous uploads everywhere except for subdirectories of
+<code>upload/</code>:
 <pre>
   &lt;Anonymous ~ftp&gt;
     User ftp
@@ -138,7 +139,7 @@ in the 1.2.7rc1 release) will provide fine-grained control over when
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-10-17 23:42:28 $</i><br>
+Last Updated: <i>$Date: 2007-05-21 15:30:52 $</i><br>
 <hr>
 
 </body>
