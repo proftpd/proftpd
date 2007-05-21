@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.104 2007-05-21 16:04:46 castaglia Exp $
+ * $Id: inet.c,v 1.105 2007-05-21 16:10:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -326,6 +326,11 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
               strerror(errno));
           }
         }
+
+      } else {
+        pr_trace_msg(trace_channel, 3,
+          "error getting IPV6_V6ONLY setting on socket %d: %s", fd,
+          strerror(errno));
       }
     }
 #endif /* PR_USE_IPV6 and IPV6_V6ONLY */
