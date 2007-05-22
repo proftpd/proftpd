@@ -1415,6 +1415,8 @@ if test "$pr_cv_func_facl" != "none"; then
     "Linux")
       AC_DEFINE(HAVE_LIBACL, 1)
       AC_DEFINE(HAVE_LINUX_POSIX_ACL)
+      AC_CHECK_LIB(acl, perm_copy_fd,
+        [AC_DEFINE(HAVE_PERM_COPY_FD)])
       ;;
 
     "Solaris")

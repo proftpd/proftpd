@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.62 2007-04-17 21:03:44 castaglia Exp $
+ * $Id: fsio.c,v 1.63 2007-05-22 20:54:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -679,12 +679,31 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 
 # elif defined(HAVE_LINUX_POSIX_ACL)
 
+#  if defined(HAVE_PERM_COPY_FD)
     /* Linux provides the handy perm_copy_fd(3) function in its libacl
      * library just for this purpose.
      */
     if (perm_copy_fd(src, PR_FH_FD(src_fh), dst, PR_FH_FD(dst_fh), NULL) < 0)
       pr_log_debug(DEBUG3, "error copying ACL to destination file: %s",
         strerror(errno));
+
+#  else
+    acl_t src_acl = acl_get_fd(PR_FH_FD(src_fh));
+    if (src_acl == NULL) {
+      pr_log_debug(DEBUG3, "error obtaining ACL for fd %d: %s",
+        PR_FH_FD(src_fh), strerror(errno));
+
+    } else {
+      if (acl_set_fd(PR_FH_FD(dst_fh), src_acl) < 0) {
+        pr_log_debug(DEBUG3, "error setting ACL on fd %d: %s",
+          PR_FH_FD(dst_fh), strerror(errno));
+
+      } else {
+        acl_free(src_acl);
+      }
+    }
+
+#  endif /* !HAVE_PERM_COPY_FD */
 
 # elif defined(HAVE_SOLARIS_POSIX_ACL)
     int nents;

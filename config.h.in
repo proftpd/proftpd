@@ -348,6 +348,9 @@
 /* Define if you have the pathconf function.  */
 #undef HAVE_PATHCONF
 
+/* Define if you have the perm_copy_fd function.  */
+#undef HAVE_PERM_COPY_FD
+
 /* Define if you have the pstat function.  */
 #undef HAVE_PSTAT
 
