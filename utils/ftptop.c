@@ -26,7 +26,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.32 2006-03-22 18:51:45 castaglia Exp $
+ * $Id: ftptop.c,v 1.33 2007-05-22 21:21:25 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.9"
@@ -317,6 +317,12 @@ static void process_opts(int argc, char *argv[]) {
         if (delay < 0) {
           fprintf(stderr, "%s: negative delay illegal: %d\n", program,
             delay);
+          exit(1);
+        }
+
+        if (delay > 15) {
+          fprintf(stderr, "%s: delay of 0-15 seconds only supported\n",
+            program);
           exit(1);
         }
 
