@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.23 2006-08-02 18:26:16 castaglia Exp $
+ * $Id: options.h,v 1.24 2007-05-22 17:45:19 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -203,7 +203,7 @@
  *
  * The default behavior is not to delay between retries.
  */
- # define PR_TUNABLE_EINTR_RETRY_INTERVAL      0
+# define PR_TUNABLE_EINTR_RETRY_INTERVAL	0
 #endif
 
 #endif /* PR_OPTIONS_H */
