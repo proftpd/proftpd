@@ -53,6 +53,18 @@ For SuSE:
 These settings are valid for RedHat and SuSE Linux systems.  Other Linux
 distributions may differ.
 
+NOTE: If you are using a 64-bit system, you may need to change the above
+paths from "/lib/security/..." to "/lib64/security/...".  Without this
+correction, on 64-bit systems, your proftpd logs may contain errors
+like:
+
+  PAM unable to dlopen(/lib/security/pam_pwdb.so) 
+  PAM [dlerror: /lib/security/pam_pwdb.so: cannot open shared object file:
+  No such file or directory]
+
+After updating the paths in your /etc/pam.d/ftp file, be sure to restart
+proftpd, so that the new PAM configuration takes effect.
+
 
 Mac OS X
 --------
