@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004 The ProFTPD Project team
+ * Copyright (c) 2004-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * HELP management code
- * $Id: help.c,v 1.2 2006-05-25 16:55:34 castaglia Exp $
+ * $Id: help.c,v 1.3 2007-05-24 15:47:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -98,7 +98,8 @@ int pr_help_add_response(cmd_rec *cmd, const char *target) {
           outa[col++] = pstrcat(cmd->tmp_pool, helps[i].cmd, "*", NULL);
 
         /* 8 rows */
-        if ((i + 1) % 8 == 0) {
+        if ((i + 1) % 8 == 0 ||
+            helps[i+1].cmd == NULL) {
           register unsigned int j;
 
           for (j = 0; j < 8; j++) {
