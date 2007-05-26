@@ -1,4 +1,4 @@
-<!-- $Id: Quotas.html,v 1.2 2006-04-21 16:26:30 castaglia Exp $ -->
+<!-- $Id: Quotas.html,v 1.3 2007-05-26 00:26:12 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Quotas.html,v $ -->
 
 <html>
@@ -124,6 +124,24 @@ As of <code>proftpd-1.3.1rc1</code>, the <code>mod_quotatab</code> supports
 this feature via the <code>ScanOnLogin</code> parameter of the
 <code>QuotaOptions</code> directive.
 
+<p><a name="QuotasExcludeFiles"></a>
+<font color=red>Question</font>: If I use this <code>ScanOnLogin</code> option, how do I tell it to ignore certain files?</br>
+<font color=blue>Answer</font>: Use the new
+<a href="../contrib/mod_quotatab.html#QuotaExcludeFilter"><code>QuotaExcludeFilter</code></a> directive.  For example, if you wanted to exclude all files
+that ended in ".log" from the automatic quota calculation, you might use:
+<pre>
+  &lt;IfModule mod_quotatab.c&gt;
+     ...
+
+     # Automatically calculate the used quota on login
+     QuotaOptions ScanOnLogin
+
+     # Do not include files ending in ".log" in the automatically
+     # calculated quota
+     QuotaExludeFilter \.log$
+  &lt;/IfModule&gt;
+</pre>
+
 <p><a name="QuotasInitialization" title="#QuotasInitialization"></a>
 <font color=red>Question</font>: If <code>mod_quotatab</code> does not
 automatically scan for disk space usage, how will it know about my existing
@@ -245,7 +263,7 @@ to handle the specifics of storage formats.  Every backend module
 
 <p>
 <hr>
-<i>$Date: 2006-04-21 16:26:30 $</i><br>
+<i>$Date: 2007-05-26 00:26:12 $</i><br>
 
 </body>
 </html>
