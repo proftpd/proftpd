@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.300 2007-05-07 15:35:31 castaglia Exp $
+ * $Id: mod_core.c,v 1.301 2007-05-30 15:52:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3426,6 +3426,7 @@ MODRET core_epsv(cmd_rec *cmd) {
   char *addrstr = "";
   char *endp = NULL, *arg = NULL;
   int family = 0;
+  int epsv_min_port = 1024, epsv_max_port = 65535;
   config_rec *c = NULL;
 
   CHECK_CMD_MIN_ARGS(cmd, 1);
@@ -3504,30 +3505,38 @@ MODRET core_epsv(cmd_rec *cmd) {
       return PR_ERROR(cmd);
   }
 
-  if ((c = find_config(main_server->conf, CONF_PARAM, "PassivePorts",
-      FALSE)) != NULL) {
-    int pasv_min_port = *((int *) c->argv[0]);
-    int pasv_max_port = *((int *) c->argv[1]);
-
-    if (!(session.d = pr_inet_create_connection_portrange(session.pool,
-        NULL, session.c->local_addr, pasv_min_port, pasv_max_port))) {
-
-      /* If not able to open a passive port in the given range, default to
-       * normal behavior (using INPORT_ANY), and log the failure.  This
-       * indicates a too-small range configuration.
-       */
-      pr_log_pri(PR_LOG_WARNING, "unable to find open port in "
-        "PassivePorts range %d-%d: defaulting to INPORT_ANY",
-        pasv_min_port, pasv_max_port);
-    }
+  c = find_config(main_server->conf, CONF_PARAM, "PassivePorts", FALSE);
+  if (c != NULL) {
+    epsv_min_port = *((int *) c->argv[0]);
+    epsv_max_port = *((int *) c->argv[1]);
   }
 
-  /* Open up the connection and pass it back. */
-  if (!session.d)
+  /* We always use the portrange variant of inet_create_connection() here,
+   * since it seems that some Unix kernels have issues when choosing a
+   * random port number for IPv6 sockets (see Bug #2900).  By using the
+   * portrange variant, proftpd, and not the kernel, will be the one
+   * choosing the port number.  We really only need to do this for EPSV
+   * and not PASV since only the EPSV command can be used for IPv6
+   * connections; using PASV means IPv4 connections, and Unix kernels
+   * have more predictable behavior for choosing random IPv4 socket ports.
+   */
+
+  session.d = pr_inet_create_connection_portrange(session.pool, NULL,
+    session.c->local_addr, epsv_min_port, epsv_max_port);
+
+  if (session.d == NULL) {
+    /* If not able to open a passive port in the given range, default to
+     * normal behavior (using INPORT_ANY), and log the failure.  This
+     * indicates a too-small range configuration.
+     */
+    pr_log_pri(PR_LOG_WARNING, "unable to find open port in PassivePorts "
+      "range %d-%d: defaulting to INPORT_ANY", epsv_min_port, epsv_max_port);
+
     session.d = pr_inet_create_connection(session.pool, NULL, -1,
       session.c->local_addr, INPORT_ANY, FALSE);
+  }
 
-  if (!session.d) {
+  if (session.d == NULL) {
     pr_response_add_err(R_425,
       _("Unable to build data connection: Internal error"));
     return PR_ERROR(cmd);
