@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.301 2007-05-30 15:52:54 castaglia Exp $
+ * $Id: mod_core.c,v 1.302 2007-06-04 23:53:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4045,14 +4045,24 @@ MODRET core_dele(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  if (!dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL)) {
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    return PR_ERROR(cmd);
+  }
+
   /* Stat the path, before it is deleted, so that the size of the file
    * being deleted can be logged.
    */
+  memset(&st, 0, sizeof(st));
   pr_fs_clear_cache();
-  pr_fsio_stat(path, &st);
+  if (pr_fsio_stat(path, &st) < 0) {
+    pr_log_debug(DEBUG3, "unable to stat '%s': %s", path, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    return PR_ERROR(cmd);
+  }
 
-  if (!dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
-      pr_fsio_unlink(path) == -1) {
+  if (pr_fsio_unlink(path) < 0) {
+    pr_log_debug(DEBUG3, "error deleting '%s': %s", path, strerror(errno));
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return PR_ERROR(cmd);
   }
