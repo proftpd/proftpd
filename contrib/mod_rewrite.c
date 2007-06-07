@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.27 2007-03-28 02:58:38 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.28 2007-06-07 00:30:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2239,7 +2239,10 @@ module rewrite_module = {
   rewrite_init,
 
   /* Session initialization function */
-  rewrite_sess_init
+  rewrite_sess_init,
+
+  /* Module version */
+  MOD_REWRITE_VERSION
 };
 
 #endif /* HAVE_REGEX_H */
