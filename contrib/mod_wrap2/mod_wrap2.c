@@ -1020,101 +1020,6 @@ static unsigned char wrap2_eval_and_expression(char **acl, array_header *creds) 
   return FALSE;
 }
 
-static config_rec *wrap2_resolve_user(pool *p, char **user) {
-  config_rec *conf = NULL, *top_conf = NULL;
-  char *ourname = NULL, *anonname = NULL;
-  unsigned char is_alias = FALSE, force_anon = FALSE, *auth_alias_only = NULL;
-
-  /* Precedence rules:
-   *   1. Search for UserAlias directive.
-   *   2. Search for Anonymous directive.
-   *   3. Normal user login
-   */
-
-  ourname = get_param_ptr(main_server->conf, "UserName", FALSE);
-
-  conf = find_config(main_server->conf, CONF_PARAM, "UserAlias", TRUE);
-
-  if (conf) do {
-    if (!strcmp(conf->argv[0], "*") || !strcmp(conf->argv[0], *user)) {
-      is_alias = TRUE;
-      break;
-    } 
-
-  } while ((conf = find_config_next(conf, conf->next, CONF_PARAM,
-    "UserAlias", TRUE)) != NULL);
-
-  top_conf = conf;
-
-  while (conf && conf->parent && (auth_alias_only = 
-      get_param_ptr(conf->parent->set, "AuthAliasOnly", FALSE))) {
-
-    /* If AuthAliasOnly is on, ignore this one and continue. */
-    if (auth_alias_only && *auth_alias_only == TRUE) {
-      conf = find_config_next(conf, conf->next, CONF_PARAM, "UserAlias", TRUE);
-      continue;
-    }
-
-    is_alias = FALSE;
-    find_config_set_top(top_conf);
-
-    conf = find_config_next(conf, conf->next, CONF_PARAM, "UserAlias", TRUE);
-
-    if (conf && (!strcmp(conf->argv[0], "*") || !strcmp(conf->argv[0], *user)))
-      is_alias = TRUE;
-  }
-
-  if (conf) {
-    *user = conf->argv[1];
-
-    /* If the alias is applied inside an <Anonymous> context, we have found
-     * our anon block
-     */
-    if (conf->parent && conf->parent->config_type == CONF_ANON)
-      conf = conf->parent;
-    else
-      conf = NULL;
-  }
-
-  /* Next, search for an anonymous entry */
-  if (!conf)
-    conf = find_config(main_server->conf, CONF_ANON, NULL, FALSE);
-
-  else
-    find_config_set_top(conf);
-
-  if (conf) do {
-    anonname = get_param_ptr(conf->subset, "UserName", FALSE);
-
-    if (!anonname)
-      anonname = ourname;
-
-    if (anonname && strcmp(anonname, *user) == 0)
-      break;
-
-  } while ((conf = find_config_next(conf, conf->next, CONF_ANON, NULL,
-    FALSE)) != NULL);
-
-  if (!is_alias && !force_anon) {
-
-    if (find_config((conf ? conf->subset :
-        main_server->conf), CONF_PARAM, "AuthAliasOnly", FALSE)) {
-
-      if (conf && conf->config_type == CONF_ANON)
-        conf = NULL;
-
-      else
-        *user = NULL;
-
-      if (*user && find_config(main_server->conf, CONF_PARAM, "AuthAliasOnly",
-          FALSE))
-        *user = NULL;
-    }
-  }
-
-  return conf;
-}
-
 int wrap2_register(const char *srcname,
     wrap2_table_t *(*srcopen)(pool *, char *)) {
 
@@ -1303,6 +1208,7 @@ MODRET set_wraptables(cmd_rec *cmd) {
   register wrap2_regtab_t *regtab = NULL;
   register unsigned int i = 0;
   unsigned char have_registration = FALSE;
+  config_rec *c = NULL;
   
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -1330,7 +1236,9 @@ MODRET set_wraptables(cmd_rec *cmd) {
     *tmp = ':'; 
   }
 
-  add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+  c->flags |= CF_MERGEDOWN;
+
   return PR_HANDLED(cmd);
 }
 
@@ -1419,7 +1327,7 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
   if (!user)
     return PR_DECLINED(cmd);
 
-  wrap2_ctxt = wrap2_resolve_user(cmd->pool, &user);
+  wrap2_ctxt = pr_auth_get_anon_config(cmd->pool, &user, NULL, NULL);
 
   if (!user)
     return PR_DECLINED(cmd);
