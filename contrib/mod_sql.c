@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.124 2007-02-15 17:01:19 castaglia Exp $
+ * $Id: mod_sql.c,v 1.125 2007-06-12 00:59:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3398,6 +3398,10 @@ MODRET cmd_check(cmd_rec *cmd) {
           auth_entry->name);
 	success = 1;
 	break;
+
+      } else {
+	sql_log(DEBUG_AUTH, "'%s' auth handler reports failure",
+          auth_entry->name);
       }
     }
   }
