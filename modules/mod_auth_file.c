@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_file - file-based authentication module that supports
  *                          restrictions on the file contents
  *
- * Copyright (c) 2002-2006 The ProFTPD Project team
+ * Copyright (c) 2002-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.32 2007-01-03 22:57:33 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.33 2007-06-12 17:41:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -410,8 +410,6 @@ static int af_setgrent(void) {
       return 0;
 
     } else {
-pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION ": af_setgrent: opening AuthGroupFile");
-
       af_group_file->af_file = fopen(af_group_file->af_path, "r");
       if (af_group_file->af_file == NULL) {
         pr_log_pri(PR_LOG_ERR, "error: unable to open group file '%s': %s",
@@ -590,7 +588,6 @@ static int af_setpwent(void) {
       return 0;
 
     } else {
-pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION ": af_setpwent: opening AuthUserFile '%s'", af_user_file->af_path);
       af_user_file->af_file = fopen(af_user_file->af_path, "r");
       if (af_user_file->af_file == NULL) {
         pr_log_pri(PR_LOG_ERR, "error: unable to open passwd file '%s': %s",
@@ -1142,13 +1139,11 @@ static int authfile_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "AuthUserFile", FALSE);
   if (c) {
     af_user_file = c->argv[0];
-pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION ": found AuthUserFile '%s'", af_user_file->af_path);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "AuthGroupFile", FALSE);
   if (c) {
     af_group_file = c->argv[0];
-pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION ": found AuthGroupFile '%s'", af_group_file->af_path);
   }
 
   return 0;
