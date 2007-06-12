@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.49 2007-05-21 15:19:41 castaglia Exp $
+ * $Id: auth.c,v 1.50 2007-06-12 18:57:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -449,12 +449,12 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
    */
   m = pr_module_get("mod_auth_pam.c");
   if (m) {
-    pr_trace_msg(trace_channel, 4,
-      "using module 'mod_auth_pam.c' to authenticate user '%s'", name);
-
     mr = dispatch_auth(cmd, "auth", &m);
 
     if (MODRET_ISHANDLED(mr)) {
+      pr_trace_msg(trace_channel, 4,
+        "module 'mod_auth_pam.c' used for authenticating user '%s'", name);
+
       res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
 
       if (cmd->tmp_pool) {
@@ -512,12 +512,12 @@ int pr_auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
    */
   m = pr_module_get("mod_auth_pam.c");
   if (m) {
-    pr_trace_msg(trace_channel, 4,
-      "using module 'mod_auth_pam.c' to authenticate user '%s'", name);
-
-    mr = dispatch_auth(cmd, "auth", &m);
+    mr = dispatch_auth(cmd, "check", &m);
 
     if (MODRET_ISHANDLED(mr)) {
+      pr_trace_msg(trace_channel, 4,
+        "module 'mod_auth_pam.c' used for authenticating user '%s'", name);
+
       res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
 
       if (cmd->tmp_pool) {
