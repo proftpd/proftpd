@@ -1,4 +1,4 @@
-<!-- $Id: Quotas.html,v 1.3 2007-05-26 00:26:12 castaglia Exp $ -->
+<!-- $Id: Quotas.html,v 1.4 2007-06-18 21:45:47 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Quotas.html,v $ -->
 
 <html>
@@ -261,9 +261,34 @@ to handle the specifics of storage formats.  Every backend module
 <code>mod_quotatab_sql</code> module has not been compiled/loaded into
 <code>proftpd</code>.
 
+<p><a name="QuotasGroupQuotas" title="#QuotasGroupQuotas"></a>
+<font color=red>Question</font>: How do group quotas work?  If a user is in multiple groups, what happens?<br>
+<font color=blue>Answer</font>: The <code>mod_quotatab</code> module searches
+for applicable quotas, by type, in the following order:
+<ul>
+  <li>user quotas
+  <li>group quotas
+  <li>class quotas
+  <li>the "all" quota
+</ul>
+Thus if there is a user-specific quota, it will be used; the search stops there.
+The <code>mod_quotatab</code> module does <b>not</b> combine multiple different
+quotas.
+
+<p>
+What happens, then, if a user belongs to multiple different groups, and there
+are different quotas set for those different groups?  First, the <i>primary</i>
+group of the user is checked; this is the group that is included, for example,
+in the entry for the user in the <code>/etc/passwd</code> file.  If no quota
+for the primary group is found, the module then checks against each of
+the user's <i>supplemental</i> groups.  The order in which these groups
+are checked is dependent up on the order in which the groups are returned
+from the auth module providing them, <i>e.g.</i> <code>mod_sql</code>,
+<code>mod_ldap</code>, or perhaps <code>mod_auth_unix</code>.
+
 <p>
 <hr>
-<i>$Date: 2007-05-26 00:26:12 $</i><br>
+<i>$Date: 2007-06-18 21:45:47 $</i><br>
 
 </body>
 </html>
