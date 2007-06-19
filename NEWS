@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.824 2007-06-11 15:28:45 castaglia Exp $
+$Id: NEWS,v 1.825 2007-06-19 02:04:18 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -465,7 +465,7 @@ CVS
 - Bug 2403 - Sending SIGHUP to proftpd stops it when using Classes.  The fix
   for Bug #2400 could result in an infinite loop during a SIGHUP.
 - Bug 2405 - "LIST *" should not list dotfiles.
-- Bug 2366 - Add support for -h list option.
+- Bug 2366 - Add support for -h LIST option.
 - Bug 2332 - SO_OOBINLINE error after upgrading proftpd from 1.2.6 to 1.2.9.
   This is due mostly to a change in the logging; a check for error values
   and logging of them was added.  The setting of this particular socket option
@@ -554,7 +554,7 @@ CVS
 - Bug 2290 - gmtime() static storage may be overwritten by modules.
 - Bug 2288 - ServerFQDN set to 255.255.255.255 and not hostname.
 - Added mod_quotatab to the contrib area.
-- Bug 2300 - poll() returns 1 and read returns 0, resulting in an inifinite
+- Bug 2300 - poll() returns 1 and read returns 0, resulting in an infinite
   loop.  The actual bug was caused by a goto that was being inappropriately
   used; a return value was not being checked to see if it was an error value.
 - Bug 2305 - Compile Problems since > 1.2.9
