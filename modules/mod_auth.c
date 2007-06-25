@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.222 2007-05-07 15:35:31 castaglia Exp $
+ * $Id: mod_auth.c,v 1.223 2007-06-25 15:10:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1355,7 +1355,10 @@ static int setup_env(pool *p, char *user, char *pass) {
   sstrncpy(session.cwd, pr_fs_getcwd(), sizeof(session.cwd));
   sstrncpy(session.vwd, pr_fs_getvwd(), sizeof(session.vwd));
 
-  /* Make sure session.dir_config is set correctly */
+  /* Make sure directory config pointers are set correctly */
+  session.anon_config = NULL;
+  session.dir_config = NULL;
+
   dir_check_full(p, C_PASS, G_NONE, session.cwd, NULL);
 
   if (c) {
@@ -1963,6 +1966,10 @@ MODRET auth_pass(cmd_rec *cmd) {
 
     return PR_ERROR_MSG(cmd, R_503, "Login with " C_USER " first");
   }
+
+  /* Clear any potentially cached directory config */
+  session.anon_config = NULL;
+  session.dir_config = NULL;
 
   res = setup_env(cmd->tmp_pool, user, cmd->arg);
   if (res == 1) {
