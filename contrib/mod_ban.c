@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.5 2006-12-18 20:04:49 castaglia Exp $
+ * $Id: mod_ban.c,v 1.6 2007-06-25 17:19:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1427,8 +1427,10 @@ MODRET set_banlog(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if (pr_fs_valid_path(cmd->argv[1]) < 0)
+  if (strcasecmp(cmd->argv[1], "none") != 0 &&
+      pr_fs_valid_path(cmd->argv[1]) < 0) {
     CONF_ERROR(cmd, "must be an absolute path");
+  }
 
   ban_log = pstrdup(ban_pool, cmd->argv[1]);
   return PR_HANDLED(cmd);
