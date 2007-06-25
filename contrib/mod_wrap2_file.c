@@ -2,7 +2,7 @@
  * ProFTPD: mod_wrap2_file -- a mod_wrap2 sub-module for supplying IP-based
  *                            access control data via file-based tables
  *
- * Copyright (c) 2002-2006 TJ Saunders
+ * Copyright (c) 2002-2007 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,27 +22,32 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_file.c,v 1.1 2006-09-07 00:15:01 castaglia Exp $
+ * $Id: mod_wrap2_file.c,v 1.2 2007-06-25 22:55:55 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
 
-#define MOD_WRAP2_FILE_VERSION		"mod_wrap2_file/1.0"
+#define MOD_WRAP2_FILE_VERSION		"mod_wrap2_file/1.1"
 
 static char *filetab_clients_list = NULL;
 static char *filetab_daemons_list = NULL;
 static char *filetab_options_list = NULL;
 
+#ifndef MOD_WRAP2_FILE_BUFFER_SIZE
+# define MOD_WRAP2_FILE_BUFFER_SIZE	PR_TUNABLE_BUFFER_SIZE
+#endif
+
 static void filetab_parse_table(wrap2_table_t *filetab) {
   unsigned int lineno = 0;
-  static char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  char buf[MOD_WRAP2_FILE_BUFFER_SIZE] = {'\0'};
 
   while (pr_fsio_getline(buf, sizeof(buf), (pr_fh_t *) filetab->tab_handle,
       &lineno) != NULL) {
+    size_t buflen = strlen(buf);
 
-    if (buf[strlen(buf) - 1] != '\n') {
-      wrap2_log("file '%s': missing newline or line too long at %u",
-        filetab->tab_name, lineno);
+    if (buf[buflen - 1] != '\n') {
+      wrap2_log("file '%s': missing newline or line too long (%u) at %u",
+        filetab->tab_name, buflen, lineno);
       continue;
     } 
 
