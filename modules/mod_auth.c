@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.223 2007-06-25 15:10:31 castaglia Exp $
+ * $Id: mod_auth.c,v 1.224 2007-06-28 15:52:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1356,9 +1356,6 @@ static int setup_env(pool *p, char *user, char *pass) {
   sstrncpy(session.vwd, pr_fs_getvwd(), sizeof(session.vwd));
 
   /* Make sure directory config pointers are set correctly */
-  session.anon_config = NULL;
-  session.dir_config = NULL;
-
   dir_check_full(p, C_PASS, G_NONE, session.cwd, NULL);
 
   if (c) {
