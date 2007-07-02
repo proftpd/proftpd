@@ -488,7 +488,8 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
     return (strchr(name, '.') == NULL && WRAP2_IS_KNOWN_HOSTNAME(name));
 
 #ifdef PR_USE_IPV6 
-  } else if (*tok == '[') {
+  } else if (pr_netaddr_use_ipv6() &&
+             *tok == '[') {
     char *cp, *tmp;
     pr_netaddr_t *acl_addr;
     unsigned int nmaskbits;
