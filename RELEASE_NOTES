@@ -9,6 +9,13 @@ files.
 1.3.1rc3
 ---------
 
+  + Bugfixes:
+
+    Fixed segfault which can occur if NLST is used twice, the first time
+    on a path which does not exist.
+
+    Fixed reporting of addresses via EPSV for IPv6 addresses.
+
   + New documentation:
 
     doc/howto/Timestamps.html
@@ -294,4 +301,4 @@ files.
 
           doc/howto/CreateHome.html
 
-Last Updated: $Date: 2007-05-24 17:15:24 $
+Last Updated: $Date: 2007-07-02 20:27:03 $
