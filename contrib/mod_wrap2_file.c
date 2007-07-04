@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_file.c,v 1.2 2007-06-25 22:55:55 castaglia Exp $
+ * $Id: mod_wrap2_file.c,v 1.3 2007-07-04 18:08:09 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -43,10 +43,11 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
 
   while (pr_fsio_getline(buf, sizeof(buf), (pr_fh_t *) filetab->tab_handle,
       &lineno) != NULL) {
+    char *res = NULL;
     size_t buflen = strlen(buf);
 
     if (buf[buflen - 1] != '\n') {
-      wrap2_log("file '%s': missing newline or line too long (%u) at %u",
+      wrap2_log("file '%s': missing newline or line too long (%u) at line %u",
         filetab->tab_name, buflen, lineno);
       continue;
     } 
@@ -54,16 +55,33 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
     if (buf[0] == '#' || buf[strspn(buf, " \t\r\n")] == 0)
       continue;
 
-    filetab_daemons_list = buf;
+    buf[buflen-1] = '\0';
 
-    filetab_clients_list = wrap2_strsplit(buf, ':');
-    if (filetab_clients_list == 0) {
+    /* The list of daemons is from the start of the line to a ':' delimiter.
+     * This list is assumed to be space-delimited; failure to match this
+     * syntax will result in lack of desired results when doing the access
+     * checks.
+     */
+    res = strchr(buf, ':');
+    if (res == NULL) {
+      wrap2_log("file '%s': badly formatted list of daemon/service names at "
+        "line %u", filetab->tab_name, lineno);
+      continue;
+    }
+
+    filetab_daemons_list = pstrndup(filetab->tab_pool, buf, (res - buf));
+
+    res = wrap2_strsplit(buf, ':');
+    if (res == NULL) {
       wrap2_log("file '%s': missing \":\" separator at %u",
         filetab->tab_name, lineno);
       continue;
     }
-
-    filetab_options_list = wrap2_strsplit(filetab_clients_list, ':');    
+    filetab_clients_list = pstrdup(filetab->tab_pool, res);
+    
+    res = wrap2_strsplit(filetab_clients_list, ':');    
+    if (res)
+      filetab_options_list = pstrdup(filetab->tab_pool, res);
   }
 }
 
