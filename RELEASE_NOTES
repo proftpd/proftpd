@@ -16,6 +16,12 @@ files.
 
     Fixed reporting of addresses via EPSV for IPv6 addresses.
 
+    Fixes occurrences of "ai_family not supported" for inetd-run
+    proftpd daemons.
+
+    DisplayLogin, DisplayQuit, and DisplayTransferFiles files now work
+    regardless of whether the session process is chrooted.
+
   + New documentation:
 
     doc/howto/Timestamps.html
@@ -301,4 +307,4 @@ files.
 
           doc/howto/CreateHome.html
 
-Last Updated: $Date: 2007-07-02 20:27:03 $
+Last Updated: $Date: 2007-07-04 19:27:58 $
