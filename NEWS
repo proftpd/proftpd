@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.827 2007-06-25 17:19:03 castaglia Exp $
+$Id: NEWS,v 1.828 2007-07-05 15:18:41 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -9,7 +9,7 @@ $Id: NEWS,v 1.827 2007-06-25 17:19:03 castaglia Exp $
   where `N' is the bug number.
 -----------------------------------------------------------------------------
 
-CVS
+1.3.1rc3 - Released 04-Jul-2007
 --------------------------------
 - Bug 2875 - Malformed getopt checks cause compilation errors in getopt.c.
 - Bug 2877 - ServerType 'inetd' results in "getnameinfo error: ai_family not
