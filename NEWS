@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.828 2007-07-05 15:18:41 castaglia Exp $
+$Id: NEWS,v 1.829 2007-07-06 16:51:07 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -8,6 +8,10 @@ $Id: NEWS,v 1.828 2007-07-05 15:18:41 castaglia Exp $
 
   where `N' is the bug number.
 -----------------------------------------------------------------------------
+
+CVS
+--------------------------------
+- Bug 2944 - mod_sql_mysql fails to compile due to missing quotation.
 
 1.3.1rc3 - Released 04-Jul-2007
 --------------------------------
