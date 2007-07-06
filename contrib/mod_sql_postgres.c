@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.31 2007-05-09 17:15:18 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.32 2007-07-06 22:40:58 castaglia Exp $
  */
 
 /*
@@ -462,12 +462,12 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
 
   if (!conn_pool) {
     pr_log_pri(PR_LOG_WARNING, "warning: the mod_sql_postgres module has not "
-      "been properly intialized.  Please make sure your --with-modules "
+      "been properly initialized.  Please make sure your --with-modules "
       "configure option lists mod_sql *before* mod_sql_postgres, and "
       "recompile.");
       
     sql_log(DEBUG_FUNC, "%s", "The mod_sql_postgres module has not been "
-      "properly intialized.  Please make sure your --with-modules configure "
+      "properly initialized.  Please make sure your --with-modules configure "
       "option lists mod_sql *before* mod_sql_postgres, and recompile.");
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_defineconnection");
 
