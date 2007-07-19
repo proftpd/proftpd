@@ -24,7 +24,7 @@
 
 /*
  * Proctitle management
- * $Id: proctitle.c,v 1.4 2007-01-17 19:32:45 castaglia Exp $
+ * $Id: proctitle.c,v 1.5 2007-07-19 18:12:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -54,9 +54,11 @@ extern char *__progname, *__progname_full;
 extern char **environ;
 
 #ifndef PR_DEVEL_STACK_TRACE
-static char **Argv = NULL;
-static char *LastArgv = NULL;
+static char **prog_argv = NULL;
+static char *prog_last_argv = NULL;
 #endif /* PR_DEVEL_STACK_TRACE */
+
+static int prog_argc = -1;
 
 void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
 #ifndef PR_DEVEL_STACK_TRACE
@@ -77,16 +79,17 @@ void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
     environ[i] = NULL;
   }
 
-  Argv = argv;
+  prog_argv = argv;
+  prog_argc = argc;
 
-  for (i = 0; i < argc; i++) {
-    if (!i || (LastArgv + 1 == argv[i]))
-      LastArgv = argv[i] + strlen(argv[i]);
+  for (i = 0; i < prog_argc; i++) {
+    if (!i || (prog_last_argv + 1 == argv[i]))
+      prog_last_argv = argv[i] + strlen(argv[i]);
   }
 
   for (i = 0; envp[i] != NULL; i++) {
-    if ((LastArgv + 1) == envp[i])
-      LastArgv = envp[i] + strlen(envp[i]);
+    if ((prog_last_argv + 1) == envp[i])
+      prog_last_argv = envp[i] + strlen(envp[i]);
   }
 
 # ifdef HAVE___PROGNAME
@@ -131,7 +134,7 @@ void pr_proctitle_set(const char *fmt, ...) {
   union pstun pst;
 #  endif /* PF_ARGV_PSTAT */
   char *p;
-  int i, maxlen = (LastArgv - Argv[0]) - 2;
+  int i, statbuflen, maxlen = (prog_last_argv - prog_argv[0]) - 2;
 # endif /* HAVE_SETPROCTITLE */
 
   if (!fmt)
@@ -168,27 +171,33 @@ void pr_proctitle_set(const char *fmt, ...) {
 # ifdef HAVE_SETPROCTITLE
   return;
 # else
-  i = strlen(statbuf);
+  statbuflen = strlen(statbuf);
 
 #  if PF_ARGV_TYPE == PF_ARGV_NEW
   /* We can just replace argv[] arguments.  Nice and easy. */
-  Argv[0] = statbuf;
-  Argv[1] = NULL;
+  prog_argv[0] = statbuf;
+  for (i = 1; i < prog_argc; i++) {
+    prog_argv[i] = "";
+  }
 #  endif /* PF_ARGV_NEW */
 
 #  if PF_ARGV_TYPE == PF_ARGV_WRITEABLE
   /* We can overwrite individual argv[] arguments.  Semi-nice. */
-  snprintf(Argv[0], maxlen, "%s", statbuf);
-  p = &Argv[0][i];
+  snprintf(prog_argv[0], maxlen, "%s", statbuf);
+  p = &prog_argv[0][statbuflen];
 
-  while (p < LastArgv)
+  while (p < prog_last_argv)
     *p++ = '\0';
-  Argv[1] = NULL;
+
+  for (i = 1; i < prog_argc; i++) {
+    prog_argv[i] = "";
+  }
+
 #  endif /* PF_ARGV_WRITEABLE */
 
 #  if PF_ARGV_TYPE == PF_ARGV_PSTAT
   pst.pst_command = statbuf;
-  pstat(PSTAT_SETCMD, pst, i, 0, 0);
+  pstat(PSTAT_SETCMD, pst, statbuflen, 0, 0);
 #  endif /* PF_ARGV_PSTAT */
 
 #  if PF_ARGV_TYPE == PF_ARGV_PSSTRINGS
