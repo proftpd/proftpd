@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.184 2007-03-22 03:54:20 castaglia Exp $
+ * $Id: dirtree.c,v 1.185 2007-07-24 22:09:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2911,12 +2911,13 @@ int fixup_servers(xaset_t *list) {
                * this address.
                */
               snprintf(ipbuf, sizeof(ipbuf), "::ffff:%s", ipstr);
-              ipstr = ipbuf;
+              ipstr = pstrdup(s->pool, ipbuf);
             }
           }
 #endif /* PR_USE_IPV6 */
 
-          pr_conf_add_server_config_param_str(s, "_bind", 1, ipstr);
+          if (ipstr)
+            pr_conf_add_server_config_param_str(s, "_bind", 1, ipstr);
         }
       }
  
