@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.224 2007-06-28 15:52:08 castaglia Exp $
+ * $Id: mod_auth.c,v 1.225 2007-07-31 22:08:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -554,14 +554,14 @@ static unsigned char auth_check_shell(xaset_t *s, const char *shell) {
 /* Determine any applicable chdirs
  */
 
-static char *_get_default_chdir(pool *p, xaset_t *conf) {
+static char *get_default_chdir(pool *p, xaset_t *conf) {
   config_rec *c;
   char *dir = NULL;
   int ret;
 
-  c = find_config(conf,CONF_PARAM,"DefaultChdir",FALSE);
+  c = find_config(conf, CONF_PARAM, "DefaultChdir", FALSE);
 
-  while(c) {
+  while (c) {
     /* Check the groups acl */
     if (c->argc < 2) {
       dir = c->argv[0];
@@ -592,7 +592,7 @@ static char *_get_default_chdir(pool *p, xaset_t *conf) {
 /* Determine if the user (non-anon) needs a default root dir other than /.
  */
 
-static char *_get_default_root(pool *p) {
+static char *get_default_root(pool *p) {
   config_rec *c = NULL;
   char *dir = NULL;
   int ret;
@@ -800,11 +800,11 @@ static int setup_env(pool *p, char *user, char *pass) {
   if (c && c->config_type != CONF_ANON) {
     force_anon = 1;
 
-    defroot = _get_default_root(session.pool);
+    defroot = get_default_root(session.pool);
     if (!defroot)
       defroot = pstrdup(session.pool, pw->pw_dir);
 
-    c = (config_rec*)pcalloc(session.pool,sizeof(config_rec));
+    c = (config_rec *) pcalloc(session.pool, sizeof(config_rec));
     c->config_type = CONF_ANON;
     c->name = defroot;
 
@@ -997,9 +997,11 @@ static int setup_env(pool *p, char *user, char *pass) {
     pr_signals_block();
 
     PRIVS_ROOT
-    if ((res = set_groups(p, pw->pw_gid, session.gids)) < 0)
+    res = set_groups(p, pw->pw_gid, session.gids);
+    if (res < 0) {
       pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
         strerror(errno));
+    }
 
 #ifndef PR_DEVEL_COREDUMP
 # ifdef __hpux
@@ -1032,9 +1034,11 @@ static int setup_env(pool *p, char *user, char *pass) {
 
     /* Return all privileges back to that of the daemon, for now. */
     PRIVS_ROOT
-    if ((res = set_groups(p, daemon_gid, daemon_gids)) < 0)
+    res = set_groups(p, daemon_gid, daemon_gids);
+    if (res < 0) {
       pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
         strerror(errno));
+    }
 
 #ifndef PR_DEVEL_COREDUMP
 # ifdef __hpux
@@ -1124,7 +1128,7 @@ static int setup_env(pool *p, char *user, char *pass) {
   }
 
   /* Get default chdir (if any) */
-  defchdir = _get_default_chdir(p, (c ? c->subset : main_server->conf));
+  defchdir = get_default_chdir(p, (c ? c->subset : main_server->conf));
 
   if (defchdir)
     sstrncpy(session.cwd, defchdir, sizeof(session.cwd));
@@ -1205,14 +1209,16 @@ static int setup_env(pool *p, char *user, char *pass) {
   else
     xferlog_open(xferlog);
 
-  if ((res = set_groups(p, pw->pw_gid, session.gids)) < 0)
+  res = set_groups(p, pw->pw_gid, session.gids);
+  if (res < 0) {
     pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
       strerror(errno));
+  }
 
   PRIVS_RELINQUISH
 
   /* Now check to see if the user has an applicable DefaultRoot */
-  if (!c && (defroot = _get_default_root(session.pool))) {
+  if (!c && (defroot = get_default_root(session.pool))) {
 
     ensure_open_passwd(p);
 
@@ -1226,7 +1232,7 @@ static int setup_env(pool *p, char *user, char *pass) {
      * place the user in / (of defroot)
      */
 
-    if (strncmp(session.cwd,defroot,strlen(defroot)) == 0) {
+    if (strncmp(session.cwd, defroot, strlen(defroot)) == 0) {
       char *newcwd = &session.cwd[strlen(defroot)];
 
       if (*newcwd == '/')
@@ -1239,7 +1245,8 @@ static int setup_env(pool *p, char *user, char *pass) {
   if (c)
     ensure_open_passwd(p);
 
-  if (c && lockdown(session.chroot_path) == -1) {
+  if (c &&
+      lockdown(session.chroot_path) == -1) {
     pr_log_pri(PR_LOG_ERR, "error: unable to set anonymous privileges");
     pr_response_send(R_530, "Login incorrect.");
     end_login(1);
@@ -1282,7 +1289,8 @@ static int setup_env(pool *p, char *user, char *pass) {
 #endif
 
   /* If the home directory is NULL or "", reject the login. */
-  if (pw->pw_dir == NULL || !strcmp(pw->pw_dir, "")) {
+  if (pw->pw_dir == NULL ||
+      strcmp(pw->pw_dir, "") == 0) {
     pr_log_pri(PR_LOG_ERR, "error: user %s home directory is NULL or \"\"",
       session.user);
     pr_response_send(R_530, "Login incorrect.");
@@ -1384,18 +1392,21 @@ static int setup_env(pool *p, char *user, char *pass) {
   /* While closing the pointer to the password database would avoid any
    * potential attempt to hijack this information, it is unfortunately needed
    * in a chroot()ed environment.  Otherwise, mappings from UIDs to names,
-   * among other things, would fail. - MacGyver
+   * among other things, would fail.
    */
   /* pr_auth_endpwent(p); */
 
   /* Default transfer mode is ASCII */
-  defaulttransfermode = (char*)get_param_ptr(main_server->conf,
+  defaulttransfermode = (char *) get_param_ptr(main_server->conf,
     "DefaultTransferMode", FALSE);
 
-  if (defaulttransfermode && strcasecmp(defaulttransfermode, "binary") == 0)
-        session.sf_flags &= (SF_ALL^SF_ASCII);
-  else
-        session.sf_flags |= SF_ASCII;
+  if (defaulttransfermode &&
+      strcasecmp(defaulttransfermode, "binary") == 0) {
+    session.sf_flags &= (SF_ALL^SF_ASCII);
+
+  } else {
+    session.sf_flags |= SF_ASCII;
+  }
 
   /* Authentication complete, user logged in, now kill the login
    * timer.
