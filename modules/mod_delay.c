@@ -2,7 +2,7 @@
  * ProFTPD: mod_delay -- a module for adding arbitrary delays to the FTP
  *                       session lifecycle
  *
- * Copyright (c) 2004-2006 TJ Saunders
+ * Copyright (c) 2004-2007 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.22 2006-12-14 23:12:52 castaglia Exp $
+ * $Id: mod_delay.c,v 1.23 2007-07-31 15:17:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -43,6 +43,14 @@
 
 #ifdef HAVE_SYS_MMAN_H
 # include <sys/mman.h>
+#endif
+
+/* On some platforms, this may not be defined.  On AIX, for example, this
+ * symbol is only defined when _NO_PROTO is defined, and _XOPEN_SOURCE is 500.
+ * How annoying.
+ */
+#ifndef MAP_FAILED
+# define MAP_FAILED	((void *) -1)
 #endif
 
 #if defined(PR_USE_CTRLS)
