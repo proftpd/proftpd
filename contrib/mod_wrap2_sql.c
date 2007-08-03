@@ -2,7 +2,7 @@
  * ProFTPD: mod_wrap2_sql -- a mod_wrap2 sub-module for supplying IP-based
  *                           access control data via SQL tables
  *
- * Copyright (c) 2002-2006 TJ Saunders
+ * Copyright (c) 2002-2007 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_sql.c,v 1.1 2006-09-07 00:15:01 castaglia Exp $
+ * $Id: mod_wrap2_sql.c,v 1.2 2007-08-03 14:52:06 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -58,13 +58,15 @@ static int sqltab_close_cb(wrap2_table_t *sqltab) {
   return 0;
 }
 
-static char *sqltab_fetch_clients_cb(wrap2_table_t *sqltab, const char *name) {
+static array_header *sqltab_fetch_clients_cb(wrap2_table_t *sqltab,
+    const char *name) {
   pool *tmp_pool = NULL;
   cmdtable *sql_cmdtab = NULL;
   cmd_rec *sql_cmd = NULL;
   modret_t *sql_res = NULL;
   array_header *sql_data = NULL;
-  char *query = NULL, **vals = NULL, *clients_list = "";
+  char *query = NULL, **vals = NULL;
+  array_header *clients_list = NULL;
 
   /* Allocate a temporary pool for the duration of this read. */
   tmp_pool = make_sub_pool(sqltab->tab_pool);
@@ -110,33 +112,41 @@ static char *sqltab_fetch_clients_cb(wrap2_table_t *sqltab, const char *name) {
     return NULL;
   }
 
-  clients_list = pstrdup(sqltab->tab_pool, vals[0]);
+  clients_list = make_array(sqltab->tab_pool, sql_data->nelts, sizeof(char *));
+  *((char **) push_array(clients_list)) = pstrdup(sqltab->tab_pool, vals[0]);
 
   if (sql_data->nelts > 1) {
     register unsigned int i = 0;
 
-    for (i = 1; i < sql_data->nelts; i++)
-      clients_list = pstrcat(sqltab->tab_pool, clients_list, " ", vals[i],
-        NULL);
+    for (i = 1; i < sql_data->nelts; i++) {
+      *((char **) push_array(clients_list)) = pstrdup(sqltab->tab_pool,
+        vals[i]);
+    }
   }
 
   destroy_pool(tmp_pool);
   return clients_list;
 }
 
-static char *sqltab_fetch_daemons_cb(wrap2_table_t *sqltab, const char *name) {
+static array_header *sqltab_fetch_daemons_cb(wrap2_table_t *sqltab,
+    const char *name) {
+  array_header *daemons_list = make_array(sqltab->tab_pool, 1, sizeof(char *));
 
   /* Simply return the service name we're given. */
-  return pstrdup(sqltab->tab_pool, name);
+  *((char **) push_array(daemons_list)) = pstrdup(sqltab->tab_pool, name);
+
+  return daemons_list;
 }
 
-static char *sqltab_fetch_options_cb(wrap2_table_t *sqltab, const char *name) {
+static array_header *sqltab_fetch_options_cb(wrap2_table_t *sqltab,
+    const char *name) {
   pool *tmp_pool = NULL;
   cmdtable *sql_cmdtab = NULL;
   cmd_rec *sql_cmd = NULL;
   modret_t *sql_res = NULL;
   array_header *sql_data = NULL;
-  char *query = NULL, **vals = NULL, *options_list = "";
+  char *query = NULL, **vals = NULL;
+  array_header *options_list = NULL;
 
   /* Allocate a temporary pool for the duration of this read. */
   tmp_pool = make_sub_pool(sqltab->tab_pool);
@@ -186,14 +196,16 @@ static char *sqltab_fetch_options_cb(wrap2_table_t *sqltab, const char *name) {
     return NULL;
   }
 
-  options_list = pstrdup(sqltab->tab_pool, vals[0]);
+  options_list = make_array(sqltab->tab_pool, sql_data->nelts, sizeof(char *));
+  *((char **) push_array(options_list)) = pstrdup(sqltab->tab_pool, vals[0]);
 
   if (sql_data->nelts > 1) {
     register unsigned int i = 0;
 
-    for (i = 1; i < sql_data->nelts; i++)
-      options_list = pstrcat(sqltab->tab_pool, options_list, " : ", vals[i],
-        NULL);
+    for (i = 1; i < sql_data->nelts; i++) {
+      *((char **) push_array(options_list)) = pstrdup(sqltab->tab_pool,
+        vals[i]);
+    }
   }
 
   destroy_pool(tmp_pool);

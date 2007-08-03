@@ -22,16 +22,18 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_file.c,v 1.3 2007-07-04 18:08:09 castaglia Exp $
+ * $Id: mod_wrap2_file.c,v 1.4 2007-08-03 14:52:06 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
 
 #define MOD_WRAP2_FILE_VERSION		"mod_wrap2_file/1.1"
 
-static char *filetab_clients_list = NULL;
-static char *filetab_daemons_list = NULL;
-static char *filetab_options_list = NULL;
+static const char *filetab_service_name = NULL;
+
+static array_header *filetab_clients_list = NULL;
+static array_header *filetab_daemons_list = NULL;
+static array_header *filetab_options_list = NULL;
 
 #ifndef MOD_WRAP2_FILE_BUFFER_SIZE
 # define MOD_WRAP2_FILE_BUFFER_SIZE	PR_TUNABLE_BUFFER_SIZE
@@ -43,10 +45,10 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
 
   while (pr_fsio_getline(buf, sizeof(buf), (pr_fh_t *) filetab->tab_handle,
       &lineno) != NULL) {
-    char *res = NULL;
+    char *res = NULL, *service = NULL;
     size_t buflen = strlen(buf);
 
-    if (buf[buflen - 1] != '\n') {
+    if (buf[buflen-1] != '\n') {
       wrap2_log("file '%s': missing newline or line too long (%u) at line %u",
         filetab->tab_name, buflen, lineno);
       continue;
@@ -69,29 +71,60 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
       continue;
     }
 
-    filetab_daemons_list = pstrndup(filetab->tab_pool, buf, (res - buf));
+    service = pstrndup(filetab->tab_pool, buf, (res - buf));
 
-    res = wrap2_strsplit(buf, ':');
-    if (res == NULL) {
-      wrap2_log("file '%s': missing \":\" separator at %u",
-        filetab->tab_name, lineno);
-      continue;
-    }
-    filetab_clients_list = pstrdup(filetab->tab_pool, res);
+    if (filetab_service_name &&
+        strcasecmp(filetab_service_name, service) == 0) {
+
+      if (filetab_daemons_list == NULL)
+        filetab_daemons_list = make_array(filetab->tab_pool, 0, sizeof(char *));
+
+      *((char **) push_array(filetab_daemons_list)) = service;
+
+      res = wrap2_strsplit(buf, ':');
+      if (res == NULL) {
+        wrap2_log("file '%s': missing \":\" separator at %u",
+          filetab->tab_name, lineno);
+        continue;
+      }
+
+      if (filetab_clients_list == NULL)
+        filetab_clients_list = make_array(filetab->tab_pool, 0, sizeof(char *));
+
+      *((char **) push_array(filetab_clients_list)) =
+        pstrdup(filetab->tab_pool, res);
     
-    res = wrap2_strsplit(filetab_clients_list, ':');    
-    if (res)
-      filetab_options_list = pstrdup(filetab->tab_pool, res);
+      res = wrap2_strsplit(res, ':');    
+      if (res) {
+        if (filetab_options_list == NULL)
+          filetab_options_list = make_array(filetab->tab_pool, 0, 
+            sizeof(char *));
+
+        *((char **) push_array(filetab_options_list)) =
+          pstrdup(filetab->tab_pool, res);
+      }
+
+    } else {
+      wrap2_log("file '%s': skipping irrevelant daemon/service ('%s') line %u",
+        filetab->tab_name, service, lineno);
+    }
   }
 }
 
 static int filetab_close_cb(wrap2_table_t *filetab) {
   int res = pr_fsio_close((pr_fh_t *) filetab->tab_handle);
   filetab->tab_handle = NULL;
+
+  filetab_clients_list = NULL;
+  filetab_daemons_list = NULL;
+  filetab_options_list = NULL;
+
+  filetab_service_name = NULL;
+
   return res;
 }
 
-static char *filetab_fetch_clients_cb(wrap2_table_t *filetab,
+static array_header *filetab_fetch_clients_cb(wrap2_table_t *filetab,
     const char *name) {
 
   /* If this table/file has not yet been parsed, parse it. */
@@ -103,8 +136,10 @@ static char *filetab_fetch_clients_cb(wrap2_table_t *filetab,
   return filetab_clients_list;
 }
 
-static char *filetab_fetch_daemons_cb(wrap2_table_t *filetab,
+static array_header *filetab_fetch_daemons_cb(wrap2_table_t *filetab,
     const char *name) {
+
+  filetab_service_name = name;
 
   /* If this table/file has not yet been parsed, parse it. */
   if (*((unsigned char *) filetab->tab_data) == FALSE) {
@@ -115,7 +150,7 @@ static char *filetab_fetch_daemons_cb(wrap2_table_t *filetab,
   return filetab_daemons_list;
 }
 
-static char *filetab_fetch_options_cb(wrap2_table_t *filetab,
+static array_header *filetab_fetch_options_cb(wrap2_table_t *filetab,
     const char *name) {
 
   /* If this table/file has not yet been parsed, parse it. */

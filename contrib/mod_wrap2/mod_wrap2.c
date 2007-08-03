@@ -364,14 +364,30 @@ static char *wrap2_get_client(wrap2_conn_t *conn) {
 char *wrap2_strsplit(char *str, int delim) {
   char *tmp = NULL;
 
-  if ((tmp = strchr(str, delim)) != 0)
+  tmp = strchr(str, delim);
+  if (tmp != NULL)
     *tmp++ = '\0';
 
   return tmp;
 }
 
-/* NOTE: use strsep() instead of strtok() */
-static const char delim[] = ", \t\r\n";
+static char *wrap2_skip_whitespace(char *str) {
+  register unsigned int i;
+  char *tmp;
+
+  /* Skip any leading whitespace. */
+  tmp = str;
+  for (i = 0; str[i]; i++) {
+    if (isspace((int) str[i])) {
+      tmp = &str[i+1];
+      continue;
+    }
+
+    break;
+  }
+
+  return tmp;
+}
 
 static unsigned char wrap2_match_string(const char *tok, const char *str) {
   size_t len = 0;
@@ -451,6 +467,8 @@ static unsigned char wrap2_match_netmask(const char *net_tok,
 
 static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
   char *mask = NULL;
+
+  tok = wrap2_skip_whitespace(tok);
 
   /* This code looks a little hairy because we want to avoid unnecessary
    * hostname lookups.
@@ -590,9 +608,15 @@ static unsigned char wrap2_match_daemon(char *tok, wrap2_conn_t *conn) {
   return match;
 }
 
-static unsigned char wrap2_match_list(char *list, wrap2_conn_t *conn,
-    unsigned char (*match_tok)()) {
-  char *tok = NULL;
+static unsigned char wrap2_match_list(array_header *list, wrap2_conn_t *conn,
+    unsigned char (*match_token)(), unsigned int list_idx) {
+  register unsigned int i;
+  char **tokens = NULL;
+
+  if (list == NULL)
+    return FALSE;
+
+  tokens = list->elts;
 
   /* Process tokens one at a time. We have exhausted all possible matches
    * when we reach an "EXCEPT" token or the end of the list. If we do find
@@ -600,18 +624,26 @@ static unsigned char wrap2_match_list(char *list, wrap2_conn_t *conn,
    * the match is affected by any exceptions.
    */
 
-  for (tok = strtok(list, delim); tok; tok = strtok(NULL, delim)) {
-    if (strcasecmp(tok, "EXCEPT") == 0)
+  for (i = list_idx; i < list->nelts; i++) {
+    char *token = wrap2_skip_whitespace(tokens[i]);
 
+    if (strcasecmp(token, "EXCEPT") == 0) {
       /* EXCEPT -- give up now. */
       return FALSE;
+    }
 
-    if (match_tok(tok, conn)) {
+    if (match_token(token, conn)) {
+      register unsigned int j;
 
       /* If yes, look for exceptions */
-      while ((tok = strtok(NULL, delim)) && (strcasecmp(tok, "EXCEPT") != 0));
+      for (j = i + 1; j < list->nelts; j++) {      
+        token = wrap2_skip_whitespace(tokens[j]);
+        if (strcasecmp(token, "EXCEPT") == 0) {
+          return (wrap2_match_list(list, conn, match_token, j+1) == 0);
+        } 
+      }
 
-      return (tok == NULL || wrap2_match_list(NULL, conn, match_tok) == 0);
+      return TRUE;
     }
   }
 
@@ -657,10 +689,12 @@ static char *wrap2_opt_trim_string(char *string) {
   return (start ? (end[1] = '\0', start) : cp);
 }
 
-static char *wrap2_opt_get_field(char *string) {
+static char *wrap2_opt_get_field(array_header *opts, unsigned int *opt_idx) {
   static char *last = "";
   char *src = NULL, *dst = NULL, *res = NULL;
   char c = 0;
+
+  char *string = ((char **) opts->elts)[*opt_idx];
 
   /* This function returns pointers to successive fields within a given
    * string. ":" is the field separator; warn if the rule ends in one. It
@@ -695,6 +729,7 @@ static char *wrap2_opt_get_field(char *string) {
   last = src;
   *dst = '\0';
 
+  *opt_idx++;
   return res;
 }
 
@@ -762,21 +797,23 @@ static const struct wrap2_opt options_tab[] = {
   { NULL, NULL, 0 }
 };
 
-static int wrap2_handle_opts(char *options, wrap2_conn_t *conn) {
+static int wrap2_handle_opts(array_header *options, wrap2_conn_t *conn) {
   char *key = NULL, *value = NULL;
-  char *curropt = NULL, *nextopt = NULL;
+  char *curr_opt = NULL, *next_opt = NULL;
   const struct wrap2_opt *opt = NULL;
+  unsigned int opt_idx = 0;
 
-  for (curropt = wrap2_opt_get_field(options); curropt; curropt = nextopt) {
+  for (curr_opt = wrap2_opt_get_field(options, &opt_idx); curr_opt;
+       curr_opt = next_opt) {
     int res = 0;
-    nextopt = wrap2_opt_get_field(NULL);
+    next_opt = wrap2_opt_get_field(options, &opt_idx);
 
     /* Separate the option into name and value parts. For backwards
      * compatibility we ignore exactly one '=' between name and value.
      */
-    curropt = wrap2_opt_trim_string(curropt);
+    curropt = wrap2_opt_trim_string(curr_opt);
 
-    if (*(value = curropt + strcspn(curropt, "=" WRAP2_WHITESPACE))) {
+    if (*(value = curr_opt + strcspn(curr_opt, "=" WRAP2_WHITESPACE))) {
       if (*value != '=') {
         *value++ = '\0';
         value += strspn(value, WRAP2_WHITESPACE);
@@ -791,7 +828,7 @@ static int wrap2_handle_opts(char *options, wrap2_conn_t *conn) {
     if (*value == '\0')
       value = NULL;
 
-    key = curropt;
+    key = curr_opt;
 
     /* Disallow missing option names (and empty option fields). */
     if (*key == '\0') {
@@ -822,14 +859,15 @@ static int wrap2_handle_opts(char *options, wrap2_conn_t *conn) {
       continue;
     }
 
-    if (nextopt && WRAP2_OPT_NEEDS_LAST(opt)) {
+    if (next_opt && WRAP2_OPT_NEEDS_LAST(opt)) {
       wrap2_log("option '%s' must be the last option in the list", key);
       continue;
     }
 
     wrap2_log("processing option: '%s %s'", key, value ? value : "");
 
-    if ((res = opt->func(value)) != 0)
+    res = opt->func(value);
+    if (res != 0)
       return res;
   }
 
@@ -842,32 +880,50 @@ static int wrap2_handle_opts(char *options, wrap2_conn_t *conn) {
 #define WRAP2_TAB_DENY	-1
 
 static int wrap2_match_table(wrap2_table_t *tab, wrap2_conn_t *conn) {
-  char *daemon_list = NULL, *client_list = NULL, *options_list = NULL;
+  register unsigned int i;
+  array_header *daemon_list = NULL, *client_list = NULL, *options_list = NULL;
 
   /* Build daemon list. */
-  if ((daemon_list = tab->tab_fetch_daemons(tab, wrap2_service_name)) == NULL ||
-      *daemon_list == '\0') {
+  daemon_list = tab->tab_fetch_daemons(tab, wrap2_service_name);
+  if (daemon_list == NULL ||
+      daemon_list->nelts == 0) {
     wrap2_log("%s", "daemon list is empty");
     return 0;
   }
-  wrap2_log("table daemon list: '%s'", daemon_list);
+
+  wrap2_log("table daemon list:");
+  for (i = 0; i < daemon_list->nelts; i++) {
+    char **daemons = daemon_list->elts;
+    wrap2_log("  %s", daemons[i]);
+  }
 
   /* Build client list. */
-  if ((client_list = tab->tab_fetch_clients(tab, wrap2_client_name)) == NULL ||
-      *client_list == '\0') {
+  client_list = tab->tab_fetch_clients(tab, wrap2_client_name);
+  if (client_list == NULL ||
+      client_list->nelts == 0) {
     wrap2_log("%s", "client list is empty");
     return 0;
   }
-  wrap2_log("table client list: '%s'", client_list);
+
+  wrap2_log("table client list:");
+  for (i = 0; i < client_list->nelts; i++) {
+    char **clients = client_list->elts;
+    wrap2_log("  %s", clients[i]);
+  }
 
   /* Build options list. */
   options_list = tab->tab_fetch_options(tab, wrap2_client_name);
+  if (options_list &&
+      options_list->nelts > 0) {
+    wrap2_log("table options list:");
+    for (i = 0; i < options_list->nelts; i++) {
+      char **opts = options_list->elts;
+      wrap2_log("  %s", opts[i]);
+    }
+  }
 
-  if (options_list)
-    wrap2_log("table options list: '%s'", options_list);
-
-  if (wrap2_match_list(daemon_list, conn, wrap2_match_daemon) &&
-      wrap2_match_list(client_list, conn, wrap2_match_client)) {
+  if (wrap2_match_list(daemon_list, conn, wrap2_match_daemon, 0) &&
+      wrap2_match_list(client_list, conn, wrap2_match_client, 0)) {
 #ifdef WRAP2_USE_OPTIONS
     int res = 0;
     res = wrap2_handle_opts(options_list, conn);
@@ -1048,15 +1104,24 @@ static int builtin_close_cb(wrap2_table_t *tab) {
   return 0;
 }
 
-static char *builtin_fetch_clients_cb(wrap2_table_t *tab, const char *name) {
-  return pstrdup(tab->tab_pool, "ALL");
+static array_header *builtin_fetch_clients_cb(wrap2_table_t *tab,
+    const char *name) {
+  array_header *list = make_array(tab->tab_pool, 1, sizeof(char *));
+
+  *((char **) push_array(list)) = pstrdup(tab->tab_pool, "ALL");
+  return list;
 }
 
-static char *builtin_fetch_daemons_cb(wrap2_table_t *tab, const char *name) {
-  return pstrdup(tab->tab_pool, name);
+static array_header *builtin_fetch_daemons_cb(wrap2_table_t *tab,
+    const char *name) {
+  array_header *list = make_array(tab->tab_pool, 1, sizeof(char *));
+
+  *((char **) push_array(list)) = pstrdup(tab->tab_pool, name);
+  return list;
 }
 
-static char *builtin_fetch_options_cb(wrap2_table_t *tab, const char *name) {
+static array_header *builtin_fetch_options_cb(wrap2_table_t *tab,
+    const char *name) {
   return NULL;
 }
 
