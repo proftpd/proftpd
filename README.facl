@@ -38,5 +38,5 @@ the problem.
 
 Future work on ProFTPD's support of POSIX ACLs will most likely include
 changing mod_ls so that it displays a '+' symbol when LISTing files,
-denoting a file marked with  POSIX ACLs, and perhaps adding support for
+denoting a file marked with POSIX ACLs, and perhaps adding support for
 SITE commands for manipulating ACLs (similar to SITE CHMOD).
