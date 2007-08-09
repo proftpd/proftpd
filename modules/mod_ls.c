@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.146 2007-05-04 17:10:02 castaglia Exp $
+ * $Id: mod_ls.c,v 1.147 2007-08-09 22:56:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1330,7 +1330,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
   ls_curtime = time(NULL);
 
   if (clearflags)
-    opt_a = opt_C = opt_d = opt_F = opt_h = opt_n = opt_r = opt_R =
+    opt_A = opt_a = opt_C = opt_d = opt_F = opt_h = opt_n = opt_r = opt_R =
       opt_S = opt_t = opt_STAT = opt_L = 0;
 
   if (!list_strict_opts) {
@@ -2077,8 +2077,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
   }
 
   /* Clear the listing option flags. */
-  opt_a = opt_C = opt_d = opt_F = opt_n = opt_r = opt_R = opt_S = opt_t =
-    opt_STAT = opt_L = 0;
+  opt_A = opt_a = opt_C = opt_d = opt_F = opt_n = opt_r = opt_R = opt_S =
+    opt_t = opt_STAT = opt_L = 0;
 
   if (!list_strict_opts) {
     parse_list_opts(&target, &glob_flags, FALSE);
