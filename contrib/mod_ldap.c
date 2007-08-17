@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.17-20070707
+ * mod_ldap v2.8.17
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.55 2007-07-07 14:24:06 jwm Exp $
+ * $Id: mod_ldap.c,v 1.56 2007-08-17 21:41:34 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
