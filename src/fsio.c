@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (C) 2001-2006 The ProFTPD Project
+ * Copyright (C) 2001-2007 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.63 2007-05-22 20:54:09 castaglia Exp $
+ * $Id: fsio.c,v 1.64 2007-08-22 14:50:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2098,7 +2098,7 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
 
   pr_trace_msg(trace_channel, 8, "using %s chdir() for path '%s'", fs->fs_name,
     path);
-  res = fs->chdir(fs, resbuf);
+  res = (fs->chdir)(fs, resbuf);
 
   if (res != -1) {
     /* chdir succeeded, so we set fs_cwd for future references. */
@@ -2130,7 +2130,7 @@ int pr_fsio_chdir(const char *path, int hidesymlink) {
 
   pr_trace_msg(trace_channel, 8, "using %s chdir() for path '%s'", fs->fs_name,
     path);
-  res = fs->chdir(fs, resbuf);
+  res = (fs->chdir)(fs, resbuf);
 
   if (res != -1) {
     /* chdir succeeded, so we set fs_cwd for future references. */
@@ -2175,7 +2175,7 @@ void *pr_fsio_opendir(const char *path) {
 
   pr_trace_msg(trace_channel, 8, "using %s opendir() for path '%s'",
     fs->fs_name, path);
-  res = fs->opendir(fs, path);
+  res = (fs->opendir)(fs, path);
 
   if (!res)
     return NULL;
@@ -2192,7 +2192,7 @@ void *pr_fsio_opendir(const char *path) {
   if (!fsod) {
 
     if (fs->closedir) {
-      fs->closedir(fs, res);
+      (fs->closedir)(fs, res);
       errno = ENOMEM;
       return NULL;
 
@@ -2281,7 +2281,7 @@ int pr_fsio_closedir(void *dir) {
     fs = fs->fs_next;
 
   pr_trace_msg(trace_channel, 8, "using %s closedir()", fs->fs_name);
-  res = fs->closedir(fs, dir);
+  res = (fs->closedir)(fs, dir);
 
   return res;
 }
@@ -2300,7 +2300,7 @@ struct dirent *pr_fsio_readdir(void *dir) {
     fs = fs->fs_next;
 
   pr_trace_msg(trace_channel, 8, "using %s readdir()", fs->fs_name);
-  res = fs->readdir(fs, dir);
+  res = (fs->readdir)(fs, dir);
 
   return res;
 }
@@ -2317,7 +2317,7 @@ int pr_fsio_mkdir(const char *path, mode_t mode) {
 
   pr_trace_msg(trace_channel, 8, "using %s mkdir() for path '%s'", fs->fs_name,
     path);
-  res = fs->mkdir(fs, path, mode);
+  res = (fs->mkdir)(fs, path, mode);
 
   return res;
 }
@@ -2334,7 +2334,7 @@ int pr_fsio_rmdir(const char *path) {
 
   pr_trace_msg(trace_channel, 8, "using %s rmdir() for path '%s'", fs->fs_name,
     path);
-  res = fs->rmdir(fs, path);
+  res = (fs->rmdir)(fs, path);
 
   return res;
 }
@@ -2385,7 +2385,7 @@ int pr_fsio_fstat(pr_fh_t *fh, struct stat *sbuf) {
 
   pr_trace_msg(trace_channel, 8, "using %s fstat() for path '%s'", fs->fs_name,
     fh->fh_path);
-  res = fs->fstat(fh, fh->fh_fd, sbuf);
+  res = (fs->fstat)(fh, fh->fh_fd, sbuf);
 
   return res;
 }
@@ -2430,7 +2430,7 @@ int pr_fsio_readlink_canon(const char *path, char *buf, size_t buflen) {
 
   pr_trace_msg(trace_channel, 8, "using %s readlink() for path '%s'",
     fs->fs_name, path);
-  res = fs->readlink(fs, path, buf, buflen);
+  res = (fs->readlink)(fs, path, buf, buflen);
 
   return res;
 }
@@ -2447,7 +2447,7 @@ int pr_fsio_readlink(const char *path, char *buf, size_t buflen) {
 
   pr_trace_msg(trace_channel, 8, "using %s readlink() for path '%s'",
     fs->fs_name, path);
-  res = fs->readlink(fs, path, buf, buflen);
+  res = (fs->readlink)(fs, path, buf, buflen);
 
   return res;
 }
@@ -2492,7 +2492,7 @@ int pr_fsio_rename_canon(const char *rfrom, const char *rto) {
 
   pr_trace_msg(trace_channel, 8, "using %s rename() for paths '%s', '%s'",
     fs->fs_name, rfrom, rto);
-  res = fs->rename(fs, rfrom, rto);
+  res = (fs->rename)(fs, rfrom, rto);
 
   return res;
 }
@@ -2514,7 +2514,7 @@ int pr_fsio_rename(const char *rnfm, const char *rnto) {
 
   pr_trace_msg(trace_channel, 8, "using %s rename() for paths '%s', '%s'",
     fs->fs_name, rnfm, rnto);
-  res = fs->rename(fs, rnfm, rnto);
+  res = (fs->rename)(fs, rnfm, rnto);
 
   return res;
 }
@@ -2531,7 +2531,7 @@ int pr_fsio_unlink_canon(const char *name) {
 
   pr_trace_msg(trace_channel, 8, "using %s unlink() for path '%s'",
     fs->fs_name, name);
-  res = fs->unlink(fs, name);
+  res = (fs->unlink)(fs, name);
 
   return res;
 }
@@ -2548,7 +2548,7 @@ int pr_fsio_unlink(const char *name) {
 
   pr_trace_msg(trace_channel, 8, "using %s unlink() for path '%s'",
     fs->fs_name, name);
-  res = fs->unlink(fs, name);
+  res = (fs->unlink)(fs, name);
 
   return res;
 }
@@ -2579,7 +2579,7 @@ pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
 
   pr_trace_msg(trace_channel, 8, "using %s open() for path '%s'", fs->fs_name,
     name);
-  fh->fh_fd = fs->open(fh, deref, flags);
+  fh->fh_fd = (fs->open)(fh, deref, flags);
 
   if (fh->fh_fd == -1) {
     destroy_pool(fh->fh_pool);
@@ -2620,7 +2620,7 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
 
   pr_trace_msg(trace_channel, 8, "using %s open() for path '%s'", fs->fs_name,
     name);
-  fh->fh_fd = fs->open(fh, name, flags);
+  fh->fh_fd = (fs->open)(fh, name, flags);
 
   if (fh->fh_fd == -1) {
     destroy_pool(fh->fh_pool);
@@ -2655,7 +2655,7 @@ pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
 
   pr_trace_msg(trace_channel, 8, "using %s creat() for path '%s'", fs->fs_name,
     name);
-  fh->fh_fd = fs->creat(fh, deref, mode);
+  fh->fh_fd = (fs->creat)(fh, deref, mode);
 
   if (fh->fh_fd == -1) {
     destroy_pool(fh->fh_pool);
@@ -2689,7 +2689,7 @@ pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
 
   pr_trace_msg(trace_channel, 8, "using %s creat() for path '%s'", fs->fs_name,
     name);
-  fh->fh_fd = fs->creat(fh, name, mode);
+  fh->fh_fd = (fs->creat)(fh, name, mode);
 
   if (fh->fh_fd == -1) {
     destroy_pool(fh->fh_pool);
@@ -2717,7 +2717,7 @@ int pr_fsio_close(pr_fh_t *fh) {
 
   pr_trace_msg(trace_channel, 8, "using %s close() for path '%s'", fs->fs_name,
     fh->fh_path);
-  res = fs->close(fh, fh->fh_fd);
+  res = (fs->close)(fh, fh->fh_fd);
 
   destroy_pool(fh->fh_pool);
   return res;
@@ -2741,7 +2741,7 @@ int pr_fsio_read(pr_fh_t *fh, char *buf, size_t size) {
 
   pr_trace_msg(trace_channel, 8, "using %s read() for path '%s'", fs->fs_name,
     fh->fh_path);
-  res = fs->read(fh, fh->fh_fd, buf, size);
+  res = (fs->read)(fh, fh->fh_fd, buf, size);
 
   return res;
 }
@@ -2764,7 +2764,7 @@ int pr_fsio_write(pr_fh_t *fh, const char *buf, size_t size) {
 
   pr_trace_msg(trace_channel, 8, "using %s write() for path '%s'", fs->fs_name,
     fh->fh_path);
-  res = fs->write(fh, fh->fh_fd, buf, size);
+  res = (fs->write)(fh, fh->fh_fd, buf, size);
 
   return res;
 }
@@ -2787,7 +2787,7 @@ off_t pr_fsio_lseek(pr_fh_t *fh, off_t offset, int whence) {
 
   pr_trace_msg(trace_channel, 8, "using %s lseek() for path '%s'", fs->fs_name,
     fh->fh_path);
-  res = fs->lseek(fh, fh->fh_fd, offset, whence);
+  res = (fs->lseek)(fh, fh->fh_fd, offset, whence);
 
   return res;
 }
@@ -2809,7 +2809,7 @@ int pr_fsio_link_canon(const char *lfrom, const char *lto) {
 
   pr_trace_msg(trace_channel, 8, "using %s link() for paths '%s', '%s'",
     fs->fs_name, lfrom, lto);
-  res = fs->link(fs, lfrom, lto);
+  res = (fs->link)(fs, lfrom, lto);
 
   return res;
 }
@@ -2831,7 +2831,7 @@ int pr_fsio_link(const char *lfrom, const char *lto) {
 
   pr_trace_msg(trace_channel, 8, "using %s link() for paths '%s', '%s'",
     fs->fs_name, lfrom, lto);
-  res = fs->link(fs, lfrom, lto);
+  res = (fs->link)(fs, lfrom, lto);
 
   return res;
 }
@@ -2848,7 +2848,7 @@ int pr_fsio_symlink_canon(const char *lfrom, const char *lto) {
 
   pr_trace_msg(trace_channel, 8, "using %s symlink() for path '%s'",
     fs->fs_name, lto);
-  res = fs->symlink(fs, lfrom, lto);
+  res = (fs->symlink)(fs, lfrom, lto);
 
   return res;
 }
@@ -2865,7 +2865,7 @@ int pr_fsio_symlink(const char *lfrom, const char *lto) {
 
   pr_trace_msg(trace_channel, 8, "using %s symlink() for path '%s'",
     fs->fs_name, lto);
-  res = fs->symlink(fs, lfrom, lto);
+  res = (fs->symlink)(fs, lfrom, lto);
 
   return res;
 }
@@ -2888,7 +2888,7 @@ int pr_fsio_ftruncate(pr_fh_t *fh, off_t len) {
 
   pr_trace_msg(trace_channel, 8, "using %s ftruncate() for path '%s'",
     fs->fs_name, fh->fh_path);
-  res = fs->ftruncate(fh, fh->fh_fd, len);
+  res = (fs->ftruncate)(fh, fh->fh_fd, len);
 
   return res;
 }
@@ -2905,7 +2905,7 @@ int pr_fsio_truncate_canon(const char *path, off_t len) {
 
   pr_trace_msg(trace_channel, 8, "using %s truncate() for path '%s'",
     fs->fs_name, path);
-  res = fs->truncate(fs, path, len);
+  res = (fs->truncate)(fs, path, len);
 
   return res;
 }
@@ -2922,7 +2922,7 @@ int pr_fsio_truncate(const char *path, off_t len) {
 
   pr_trace_msg(trace_channel, 8, "using %s truncate() for path '%s'",
     fs->fs_name, path);
-  res = fs->truncate(fs, path, len);
+  res = (fs->truncate)(fs, path, len);
   
   return res;
 }
@@ -2940,7 +2940,7 @@ int pr_fsio_chmod_canon(const char *name, mode_t mode) {
 
   pr_trace_msg(trace_channel, 8, "using %s chmod() for path '%s'",
     fs->fs_name, name);
-  res = fs->chmod(fs, deref, mode);
+  res = (fs->chmod)(fs, deref, mode);
 
   if (res == 0)
     pr_fs_clear_cache();
@@ -2960,7 +2960,7 @@ int pr_fsio_chmod(const char *name, mode_t mode) {
 
   pr_trace_msg(trace_channel, 8, "using %s chmod() for path '%s'",
     fs->fs_name, name);
-  res = fs->chmod(fs, name, mode);
+  res = (fs->chmod)(fs, name, mode);
 
   if (res == 0)
     pr_fs_clear_cache();
@@ -2980,7 +2980,7 @@ int pr_fsio_chown_canon(const char *name, uid_t uid, gid_t gid) {
 
   pr_trace_msg(trace_channel, 8, "using %s chown() for path '%s'",
     fs->fs_name, name);
-  res = fs->chown(fs, name, uid, gid);
+  res = (fs->chown)(fs, name, uid, gid);
 
   if (res == 0)
     pr_fs_clear_cache();
@@ -3000,7 +3000,7 @@ int pr_fsio_chown(const char *name, uid_t uid, gid_t gid) {
 
   pr_trace_msg(trace_channel, 8, "using %s chown() for path '%s'",
     fs->fs_name, name);
-  res = fs->chown(fs, name, uid, gid);
+  res = (fs->chown)(fs, name, uid, gid);
 
   if (res == 0)
     pr_fs_clear_cache();
@@ -3027,7 +3027,7 @@ int pr_fsio_access(const char *path, int mode, uid_t uid, gid_t gid,
 
   pr_trace_msg(trace_channel, 8, "using %s access() for path '%s'",
     fs->fs_name, path);
-  return fs->access(fs, path, mode, uid, gid, suppl_gids);
+  return (fs->access)(fs, path, mode, uid, gid, suppl_gids);
 }
 
 int pr_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
@@ -3048,7 +3048,7 @@ int pr_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
 
   pr_trace_msg(trace_channel, 8, "using %s faccess() for path '%s'",
     fs->fs_name, fh->fh_path);
-  return fh->fh_fs->faccess(fh, mode, uid, gid, suppl_gids);
+  return (fh->fh_fs->faccess)(fh, mode, uid, gid, suppl_gids);
 }
 
 /* If the wrapped chroot() function suceeds (eg returns 0), then all
@@ -3067,7 +3067,7 @@ int pr_fsio_chroot(const char *path) {
 
   pr_trace_msg(trace_channel, 8, "using %s chroot() for path '%s'",
     fs->fs_name, path);
-  res = fs->chroot(fs, path);
+  res = (fs->chroot)(fs, path);
   if (res == 0) {
     unsigned int iter_start = 0;
 

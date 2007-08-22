@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.27 2007-05-15 17:35:05 castaglia Exp $
+ * $Id: netio.c,v 1.28 2007-08-22 14:50:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -390,25 +390,26 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
   if (strm_type == PR_NETIO_STRM_CTRL) {
     nstrm->strm_type = PR_NETIO_STRM_CTRL;
     nstrm->strm_mode = mode;
-    return ctrl_netio ? ctrl_netio->open(nstrm, fd, mode) :
-      core_ctrl_netio->open(nstrm, fd, mode);
+    return ctrl_netio ? (ctrl_netio->open)(nstrm, fd, mode) :
+      (core_ctrl_netio->open)(nstrm, fd, mode);
   }
 
   if (strm_type == PR_NETIO_STRM_DATA) {
     nstrm->strm_type = PR_NETIO_STRM_DATA;
     nstrm->strm_mode = mode;
-    return data_netio ? data_netio->open(nstrm, fd, mode) :
-      core_data_netio->open(nstrm, fd, mode);
+    return data_netio ? (data_netio->open)(nstrm, fd, mode) :
+      (core_data_netio->open)(nstrm, fd, mode);
   }
 
   if (strm_type == PR_NETIO_STRM_OTHR) {
     nstrm->strm_type = PR_NETIO_STRM_OTHR;
     nstrm->strm_mode = mode;
-    return othr_netio ? othr_netio->open(nstrm, fd, mode) :
-      core_othr_netio->open(nstrm, fd, mode);
+    return othr_netio ? (othr_netio->open)(nstrm, fd, mode) :
+      (core_othr_netio->open)(nstrm, fd, mode);
   }
 
   destroy_pool(nstrm->strm_pool);
+  nstrm->strm_pool = NULL;
 
   errno = EPERM;
   return NULL;
@@ -422,16 +423,16 @@ pr_netio_stream_t *pr_netio_reopen(pr_netio_stream_t *nstrm, int fd, int mode) {
   }
 
   if (nstrm->strm_type == PR_NETIO_STRM_CTRL)
-    return ctrl_netio ? ctrl_netio->reopen(nstrm, fd, mode) :
-      core_ctrl_netio->reopen(nstrm, fd, mode);
+    return ctrl_netio ? (ctrl_netio->reopen)(nstrm, fd, mode) :
+      (core_ctrl_netio->reopen)(nstrm, fd, mode);
 
   if (nstrm->strm_type == PR_NETIO_STRM_DATA)
-    return data_netio ? data_netio->reopen(nstrm, fd, mode) :
-      core_data_netio->reopen(nstrm, fd, mode);
+    return data_netio ? (data_netio->reopen)(nstrm, fd, mode) :
+      (core_data_netio->reopen)(nstrm, fd, mode);
 
   if (nstrm->strm_type == PR_NETIO_STRM_OTHR)
-    return othr_netio ? othr_netio->reopen(nstrm, fd, mode) :
-      core_othr_netio->reopen(nstrm, fd, mode);
+    return othr_netio ? (othr_netio->reopen)(nstrm, fd, mode) :
+      (core_othr_netio->reopen)(nstrm, fd, mode);
 
   errno = EPERM;
   return NULL;
@@ -474,18 +475,18 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
 
     switch (nstrm->strm_type) {
       case PR_NETIO_STRM_CTRL:
-        res = ctrl_netio ? ctrl_netio->poll(nstrm) :
-          core_ctrl_netio->poll(nstrm);
+        res = ctrl_netio ? (ctrl_netio->poll)(nstrm) :
+          (core_ctrl_netio->poll)(nstrm);
         break;
 
       case PR_NETIO_STRM_DATA:
-        res = data_netio ? data_netio->poll(nstrm) :
-          core_data_netio->poll(nstrm);
+        res = data_netio ? (data_netio->poll)(nstrm) :
+          (core_data_netio->poll)(nstrm);
         break;
 
       case PR_NETIO_STRM_OTHR:
-        res = othr_netio ? othr_netio->poll(nstrm) :
-          core_othr_netio->poll(nstrm);
+        res = othr_netio ? (othr_netio->poll)(nstrm) :
+          (core_othr_netio->poll)(nstrm);
         break;
     }
 
@@ -531,16 +532,16 @@ int pr_netio_postopen(pr_netio_stream_t *nstrm) {
   }
 
   if (nstrm->strm_type == PR_NETIO_STRM_CTRL)
-    return ctrl_netio ? ctrl_netio->postopen(nstrm) :
-      core_ctrl_netio->postopen(nstrm);
+    return ctrl_netio ? (ctrl_netio->postopen)(nstrm) :
+      (core_ctrl_netio->postopen)(nstrm);
 
   if (nstrm->strm_type == PR_NETIO_STRM_DATA)
-    return data_netio ? data_netio->postopen(nstrm) :
-      core_data_netio->postopen(nstrm);
+    return data_netio ? (data_netio->postopen)(nstrm) :
+      (core_data_netio->postopen)(nstrm);
 
   if (nstrm->strm_type == PR_NETIO_STRM_OTHR)
-    return othr_netio ? othr_netio->postopen(nstrm) :
-      core_othr_netio->postopen(nstrm);
+    return othr_netio ? (othr_netio->postopen)(nstrm) :
+      (core_othr_netio->postopen)(nstrm);
 
   errno = EPERM;
   return -1;
@@ -615,18 +616,18 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 
           switch (nstrm->strm_type) {
             case PR_NETIO_STRM_CTRL:
-              bwritten = ctrl_netio ? ctrl_netio->write(nstrm, buf, buflen) :
-                core_ctrl_netio->write(nstrm, buf, buflen);
+              bwritten = ctrl_netio ? (ctrl_netio->write)(nstrm, buf, buflen) :
+                (core_ctrl_netio->write)(nstrm, buf, buflen);
                 break;
 
             case PR_NETIO_STRM_DATA:
-              bwritten = data_netio ? data_netio->write(nstrm, buf, buflen) :
-                core_data_netio->write(nstrm, buf, buflen);
+              bwritten = data_netio ? (data_netio->write)(nstrm, buf, buflen) :
+                (core_data_netio->write)(nstrm, buf, buflen);
               break;
 
             case PR_NETIO_STRM_OTHR:
-              bwritten = othr_netio ? othr_netio->write(nstrm, buf, buflen) :
-                core_othr_netio->write(nstrm, buf, buflen);
+              bwritten = othr_netio ? (othr_netio->write)(nstrm, buf, buflen) :
+                (core_othr_netio->write)(nstrm, buf, buflen);
               break;
           }
 
@@ -683,18 +684,18 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 
       switch (nstrm->strm_type) {
         case PR_NETIO_STRM_CTRL:
-          bwritten = ctrl_netio ? ctrl_netio->write(nstrm, buf, buflen) :
-            core_ctrl_netio->write(nstrm, buf, buflen);
+          bwritten = ctrl_netio ? (ctrl_netio->write)(nstrm, buf, buflen) :
+            (core_ctrl_netio->write)(nstrm, buf, buflen);
           break;
 
         case PR_NETIO_STRM_DATA:
-          bwritten = data_netio ? data_netio->write(nstrm, buf, buflen) :
-            core_data_netio->write(nstrm, buf, buflen);
+          bwritten = data_netio ? (data_netio->write)(nstrm, buf, buflen) :
+            (core_data_netio->write)(nstrm, buf, buflen);
           break;
 
         case PR_NETIO_STRM_OTHR:
-          bwritten = othr_netio ? othr_netio->write(nstrm, buf, buflen) :
-            core_othr_netio->write(nstrm, buf, buflen);
+          bwritten = othr_netio ? (othr_netio->write)(nstrm, buf, buflen) :
+            (core_othr_netio->write)(nstrm, buf, buflen);
           break;
       }
 
@@ -762,18 +763,18 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
 
           switch (nstrm->strm_type) {
             case PR_NETIO_STRM_CTRL:
-              bread = ctrl_netio ? ctrl_netio->read(nstrm, buf, buflen) :
-                core_ctrl_netio->read(nstrm, buf, buflen);
+              bread = ctrl_netio ? (ctrl_netio->read)(nstrm, buf, buflen) :
+                (core_ctrl_netio->read)(nstrm, buf, buflen);
                 break;
 
             case PR_NETIO_STRM_DATA:
-              bread = data_netio ? data_netio->read(nstrm, buf, buflen) :
-                core_data_netio->read(nstrm, buf, buflen);
+              bread = data_netio ? (data_netio->read)(nstrm, buf, buflen) :
+                (core_data_netio->read)(nstrm, buf, buflen);
               break;
 
             case PR_NETIO_STRM_OTHR:
-              bread = othr_netio ? othr_netio->read(nstrm, buf, buflen) :
-                core_othr_netio->read(nstrm, buf, buflen);
+              bread = othr_netio ? (othr_netio->read)(nstrm, buf, buflen) :
+                (core_othr_netio->read)(nstrm, buf, buflen);
               break;
           }
 
@@ -815,20 +816,20 @@ int pr_netio_shutdown(pr_netio_stream_t *nstrm, int how) {
   }
 
   if (nstrm->strm_type == PR_NETIO_STRM_CTRL) {
-    res = ctrl_netio ? ctrl_netio->shutdown(nstrm, how) :
-      core_ctrl_netio->shutdown(nstrm, how);
+    res = ctrl_netio ? (ctrl_netio->shutdown)(nstrm, how) :
+      (core_ctrl_netio->shutdown)(nstrm, how);
     return res;
   }
 
   if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
-    res = data_netio ? data_netio->shutdown(nstrm, how) :
-      core_data_netio->shutdown(nstrm, how);
+    res = data_netio ? (data_netio->shutdown)(nstrm, how) :
+      (core_data_netio->shutdown)(nstrm, how);
     return res;
   }
 
   if (nstrm->strm_type == PR_NETIO_STRM_OTHR) {
-    res = othr_netio ? othr_netio->shutdown(nstrm, how) :
-      core_othr_netio->shutdown(nstrm, how);
+    res = othr_netio ? (othr_netio->shutdown)(nstrm, how) :
+      (core_othr_netio->shutdown)(nstrm, how);
     return res;
   }
 
