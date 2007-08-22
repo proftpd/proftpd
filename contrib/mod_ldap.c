@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.56 2007-08-17 21:41:34 jwm Exp $
+ * $Id: mod_ldap.c,v 1.57 2007-08-22 02:00:06 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -70,7 +70,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.8.17-20070707"
+#define MOD_LDAP_VERSION	"mod_ldap/2.8.17"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001021002
 # error MOD_LDAP_VERSION " requires ProFTPD 1.2.10rc2 or later"
