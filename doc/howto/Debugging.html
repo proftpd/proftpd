@@ -1,4 +1,4 @@
-<!-- $Id: Debugging.html,v 1.5 2006-04-16 22:35:55 castaglia Exp $ -->
+<!-- $Id: Debugging.html,v 1.6 2007-08-24 15:07:35 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Debugging.html,v $ -->
 
 <html>
@@ -25,8 +25,13 @@ user follows these steps and determines the solution for themselves.
 Various problems afflict various versions of the code, so when tracking down
 problems, it is good to know the version being used:
 <pre>
+  proftpd -V
   proftpd -vv
 </pre>
+When reporting issues, please include the output from <i>both</i> of these
+commands.
+
+<p>
 It is possible that the problem you are encountering is due to some bug
 that may already be fixed in a more current version, fixed in the CVS
 repository, or has a bug report with an attached patch.  Searching
@@ -244,7 +249,7 @@ be answered:
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2006-04-16 22:35:55 $</i><br>
+Last Updated: <i>$Date: 2007-08-24 15:07:35 $</i><br>
 <hr>
 
 <hr>
