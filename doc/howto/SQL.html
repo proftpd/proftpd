@@ -1,4 +1,4 @@
-<!-- $Id: SQL.html,v 1.9 2006-10-30 22:07:15 castaglia Exp $ -->
+<!-- $Id: SQL.html,v 1.10 2007-08-29 17:47:42 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/SQL.html,v $ -->
 
 <html>
@@ -455,9 +455,28 @@ the <code>libz</code> library.  For many systems, this library is provided by
 the <code>zlib</code> package; you may need to install this zlib package.
 The <code>libz</code> library is required by the MySQL client libraries.
 
+<p><a name="SQLLoaderError"></a>
+<font color=red>Question</font>: I was able to compile <code>proftpd</code> with <code>mod_sql</code> without problems, but now when I try to start <code>proftpd</code>, I get the following error.  Why?<br>
+<pre>
+  proftpd: error while loading shared libraries: libpq.so.5: cannot open shared object file: No such file or directory
+</pre>
+<font color=blue>Answer</font>:  Errors about "loading shared libraries",
+especially when they happen when starting <code>proftpd</code>, come from
+the dynamic/shared library loader.  The linker was able to find that library
+at compile time, but not at run time.  If you were to look for the specified
+library, you would see it.  So why can't the shared library loader find it?
+
+<p>
+Updating the directories searched automatically by the shared library loader
+is a platform-specific task.  On Linux, for example, you will need to
+edit your <code>/etc/ld.so.conf</code> file to include the directory containing
+the SQL client libraries; then run <code>/sbin/ldconfig</code> in order
+update the shared library loader cache file.  Once the shared library loader
+has been updated, <code>proftpd</code> should start without problems.
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2006-10-30 22:07:15 $</i><br>
+Last Updated: <i>$Date: 2007-08-29 17:47:42 $</i><br>
 <hr>
 
 </body>
