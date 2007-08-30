@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.215 2007-05-15 02:23:44 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.216 2007-08-30 02:00:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1384,23 +1384,27 @@ MODRET xfer_stor(cmd_rec *cmd) {
    */
   pr_fs_setcwd(pr_fs_getcwd());
 
-  if (session.xfer.xfer_type == STOR_HIDDEN)
+  if (session.xfer.xfer_type == STOR_HIDDEN) {
     stor_fh = pr_fsio_open(session.xfer.path_hidden,
       O_WRONLY|(session.restart_pos ? 0 : O_CREAT|O_EXCL));
 
-  else if (session.xfer.xfer_type == STOR_APPEND) {
+  } else if (session.xfer.xfer_type == STOR_APPEND) {
     stor_fh = pr_fsio_open(session.xfer.path, O_CREAT|O_WRONLY);
 
-    if (stor_fh)
+    if (stor_fh) {
       if (pr_fsio_lseek(stor_fh, 0, SEEK_END) == (off_t) -1) {
+        pr_log_debug(DEBUG4, "unable to seek to end of '%s' for appending: %s",
+          cmd->arg, strerror(errno));
         (void) pr_fsio_close(stor_fh);
         stor_fh = NULL;
       }
-  }
+    }
 
-  else /* Normal session */
+  } else {
+    /* Normal session */
     stor_fh = pr_fsio_open(dir,
         O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT));
+  }
 
   if (stor_fh && session.restart_pos) {
     int xerrno = 0;
