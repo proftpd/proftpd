@@ -3702,6 +3702,7 @@ MODRET tls_post_pass(cmd_rec *cmd) {
 
       tls_required_on_ctrl = *((unsigned char *) c->argv[0]);
       tls_required_on_data = *((unsigned char *) c->argv[1]);
+      tls_required_on_auth = *((unsigned char *) c->argv[2]);
     }
   }
 
@@ -4528,10 +4529,11 @@ static int tls_sess_init(void) {
       tls_verify_depth = *depth;
   }
 
-  if ((c = find_config(main_server->conf, CONF_PARAM, "TLSRequired",
-      FALSE))) {
+  c = find_config(main_server->conf, CONF_PARAM, "TLSRequired", FALSE);
+  if (c) {
     tls_required_on_ctrl = *((unsigned char *) c->argv[0]);
     tls_required_on_data = *((unsigned char *) c->argv[1]);
+    tls_required_on_auth = *((unsigned char *) c->argv[2]);
   }
 
   if ((c = find_config(main_server->conf, CONF_PARAM, "TLSTimeoutHandshake",
