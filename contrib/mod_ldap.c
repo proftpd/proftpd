@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.57 2007-08-22 02:00:06 jwm Exp $
+ * $Id: mod_ldap.c,v 1.58 2007-09-07 16:13:41 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -298,7 +298,7 @@ pr_ldap_connect(LDAP **conn_ld, int bind)
   if (bind == TRUE) {
 #if LDAP_API_VERSION >= 2000
     bindcred.bv_val = ldap_dnpass;
-    bindcred.bv_len = strlen(ldap_dnpass);
+    bindcred.bv_len = ldap_dnpass != NULL ? strlen(ldap_dnpass) : 0;
     ret = ldap_sasl_bind_s(*conn_ld, ldap_dn, NULL, &bindcred, NULL, NULL, NULL);
 #else /* LDAP_API_VERSION >= 2000 */
     ret = ldap_simple_bind_s(*conn_ld, ldap_dn, ldap_dnpass);
