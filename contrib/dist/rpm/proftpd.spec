@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.50 2007-09-08 00:13:01 castaglia Exp $
+# $Id: proftpd.spec,v 1.51 2007-09-10 22:55:14 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -105,10 +105,10 @@ This package is neccesary to setup ProFTPD to run from inetd/xinetd.
   MODULES="${MODULES}%{?_with_mod_quotatab::mod_quotatab}"
   MODULES="${MODULES}%{?_with_mod_quotatab_file::mod_quotatab_file}"
   MODULES="${MODULES}%{?_with_mod_quotatab_sql::mod_quotatab_sql}"
-  MODULES="${MODULES}%{?_with_mod_facl:mod_facl}"
-  MODULES="${MODULES}%{?_with_mod_ban:mod_ban}"
-  MODULES="${MODULES}%{?_with_mod_ctrls_admin:mod_ctrls_admin}"
-  MODULES="${MODULES}%{?_with_mod_site_misc:mod_site_misc}"
+  MODULES="${MODULES}%{?_with_mod_facl::mod_facl}"
+  MODULES="${MODULES}%{?_with_mod_ban::mod_ban}"
+  MODULES="${MODULES}%{?_with_mod_ctrls_admin::mod_ctrls_admin}"
+  MODULES="${MODULES}%{?_with_mod_site_misc::mod_site_misc}"
   CFLAGS="$RPM_OPT_FLAGS" ./configure \
 	--prefix=%{prefix} \
 	--sysconfdir=/etc \
