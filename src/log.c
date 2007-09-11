@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.81 2007-02-15 16:54:09 castaglia Exp $
+ * $Id: log.c,v 1.82 2007-09-11 00:49:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -117,7 +117,7 @@ int log_wtmp(char *line, const char *name, const char *host,
     utx.ut_exit.e_exit = 0;
 #endif /* HAVE_UT_UT_EXIT */
     if (write(fdx, (char *)&utx, sizeof(utx)) != sizeof(utx))
-      ftruncate(fdx, buf.st_size);
+      (void) ftruncate(fdx, buf.st_size);
 
   } else {
     pr_log_debug(DEBUG0, "%s fstat(): %s", WTMPX_FILE, strerror(errno));
