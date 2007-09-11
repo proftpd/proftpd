@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.82 2007-02-15 16:46:43 castaglia Exp $
+ * $Id: mod_log.c,v 1.83 2007-09-11 00:47:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -992,10 +992,13 @@ static void do_log(cmd_rec *cmd, logfile_t *lf) {
   *bp++ = '\n';
   *bp = '\0';
 
-  if (lf->lf_fd != EXTENDED_LOG_SYSLOG)
-    write(lf->lf_fd, logbuf, strlen(logbuf));
+  if (lf->lf_fd != EXTENDED_LOG_SYSLOG) {
+    if (write(lf->lf_fd, logbuf, strlen(logbuf)) < 0) {
+      pr_log_pri(PR_LOG_ERR, "error: cannot write ExtendedLog to fd %d: %s",
+        lf->lf_fd, strerror(errno));
+    }
 
-  else
+  } else
     pr_syslog(syslog_sockfd, lf->lf_syslog_level, "%s", logbuf);
 }
 
