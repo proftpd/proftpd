@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.23 2007-07-31 15:17:12 castaglia Exp $
+ * $Id: mod_delay.c,v 1.24 2007-09-11 00:44:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -367,7 +367,7 @@ static int delay_table_init(void) {
      * mmap() call.
      */
     lseek(fh->fh_fd, tab_size-1, SEEK_SET);
-    write(fh->fh_fd, "", 1);
+    (void) write(fh->fh_fd, "", 1);
 
     /* Truncate the table, in case we're shrinking an existing table. */
     pr_fsio_ftruncate(fh, tab_size);
@@ -459,7 +459,7 @@ static int delay_table_init(void) {
      * mmap() call.
      */
     lseek(fh->fh_fd, tab_size-1, SEEK_SET);
-    write(fh->fh_fd, "", 1);
+    (void) write(fh->fh_fd, "", 1);
 
     /* Truncate the table, in case we're shrinking an existing table. */
     pr_fsio_ftruncate(fh, tab_size);
