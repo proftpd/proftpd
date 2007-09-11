@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_dso -- support for loading/unloading modules at run-time
  *
- * Copyright (c) 2004-2006 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2004-2007 TJ Saunders <tj@castaglia.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,10 +22,10 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * This is mod_dso, contrib software for proftpd 1.2.x.
+ * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.11 2006-12-15 23:24:59 castaglia Exp $
+ * $Id: mod_dso.c,v 1.12 2007-09-11 22:58:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -65,6 +65,7 @@ static int dso_load_file(char *path) {
     return -1;
   }
 
+  pr_trace_msg(trace_channel, 8, "file '%s' successfully loaded", path);
   return 0;
 }
 
@@ -171,7 +172,8 @@ static int dso_load_module(char *name) {
     mh = NULL;
     return -1;
   }
-  
+
+  pr_trace_msg(trace_channel, 8, "module '%s' successfully loaded", path);
   return 0;
 }
 
@@ -187,7 +189,7 @@ static int dso_unload_module(module *m) {
 
   name = pstrdup(dso_pool, m->name);
 
-  pr_trace_msg(trace_channel, 5, "unloading module 'mod_%s.c'", m->name);
+  pr_trace_msg(trace_channel, 5, "unloading module 'mod_%s.c'", name);
 
   res = pr_module_unload(m);
   if (res < 0) {
@@ -203,6 +205,8 @@ static int dso_unload_module(module *m) {
     return -1;
   }
 
+  pr_trace_msg(trace_channel, 8, "module 'mod_%s.c' successfully unloaded",
+    name);
   return 0;
 }
 
