@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.302 2007-06-04 23:53:11 castaglia Exp $
+ * $Id: mod_core.c,v 1.303 2007-09-11 17:47:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4482,8 +4482,15 @@ static int core_sess_init(void) {
 
 #ifdef PR_USE_NLS
   c = find_config(main_server->conf, CONF_PARAM, "UseUTF8", FALSE);
-  if (c != NULL)
-    pr_fs_use_utf8(*((int *) c->argv[0]));
+  if (c != NULL) {
+    int use_utf8 = *((int *) c->argv[0]);
+
+    if (use_utf8 == 0) {
+      pr_feat_remove("UTF8");
+    }
+
+    pr_fs_use_utf8(use_utf8);
+  }
 #endif /* PR_USE_NLS */
 
   /* Check for a server-specific AuthOrder. */
