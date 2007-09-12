@@ -1,4 +1,4 @@
-<!-- $Id: Vhost.html,v 1.4 2004-04-10 18:01:18 castaglia Exp $ -->
+<!-- $Id: Vhost.html,v 1.5 2007-09-12 18:08:19 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Vhost.html,v $ -->
 
 <html>
@@ -153,23 +153,18 @@ used to say that a <code>&lt;VirtualHost&gt;</code> should be the default,
 and not necessarily the &quot;server config&quot; context, as is common.
 
 <p>
-One source of confusion, when it comes to configuring virtual hosts, is the
-<a href="http://www.proftpd.org/docs/directives/linked/config_ref_Bind.html"><code>Bind</code></a> configuration directive.  This directive is another
-convenience configuration directive; it is used to indicate that the
-server configuration for a certain IP address should also be used, exactly as
-it is, for another IP address.  For example:
+If you would like the same virtual host configuration to be used for
+multiple different IP addresses (or DNS names), the
+<code>&lt;VirtualHost&gt;</code> supports this:
 <pre>
-  &lt;VirtualHost 1.2.3.4&gt;
-    Bind 5.6.7.8
+  &lt;VirtualHost 1.2.3.4 5.6.7.8&gt;
     ...
   &lt;/VirtualHost&gt;
 </pre>
-would associate the configuration within that <code>&lt;VirtualHost&gt;</code>
-context with the IP addresses 1.2.3.4 <b>and</b> 5.6.7.8.  The <code>Bind</code>
-configuration directive <b>is not</b> used to replace a server's IP address,
-but rather to add another IP address.  This too sometimes confuses
-administrators.  If you want to specify the IP address to which a server should
-listen in the &quot;server config&quot; context, use <code>DefaultAddress</code>
+
+<p>
+If, however, you want to specific the address to which the configuration
+of the &quot;server config&quot; context, use <code>DefaultAddress</code>
 (mentioned above).
 
 <p>
@@ -190,7 +185,7 @@ the host machine.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-04-10 18:01:18 $</i><br>
+Last Updated: <i>$Date: 2007-09-12 18:08:19 $</i><br>
 <hr>
 
 </body>
