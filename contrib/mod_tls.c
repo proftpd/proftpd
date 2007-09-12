@@ -4443,6 +4443,20 @@ static void tls_sess_exit_ev(const void *event_data, void *user_data) {
 static int tls_init(void) {
   int res = 0;
 
+  /* Make sure that the OpenSSL headers used match the version of the
+   * OpenSSL library used.
+   */
+  if (SSLeay() != OPENSSL_VERSION_NUMBER) {
+    pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION
+      ": compiled using OpenSSL version '%s' headers, but linked to "
+      "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
+      SSLeay_version(SSLEAY_VERSION));
+    tls_log("compiled using OpenSSL version '%s' headers, but linked to "
+      "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
+      SSLeay_version(SSLEAY_VERSION));
+    return -1;
+  }
+
   /* Install our control channel NetIO handlers.  This is done here
    * specifically because we need to cache a pointer to the nstrm that
    * is passed to the open callback().  Ideally we'd only install our
