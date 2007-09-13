@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.12 2007-09-11 22:58:21 castaglia Exp $
+ * $Id: mod_dso.c,v 1.13 2007-09-13 14:57:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -569,7 +569,9 @@ static void dso_restart_ev(const void *event_data, void *user_data) {
 
   /* Unload all shared modules. */
   for (mi = loaded_modules; mi; mi = m) {
+#ifndef PR_USE_CTRLS
     register unsigned int i;
+#endif /* PR_USE_CTRLS */
     int is_static = FALSE;
 
     m = mi->next;
