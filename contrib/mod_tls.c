@@ -1832,14 +1832,13 @@ static void tls_cleanup(int flags) {
     tls_tmp_rsa = NULL;
   }
 
-  ERR_free_strings();
-  ERR_remove_state(0);
-
   if (!(flags & TLS_CLEANUP_FL_SESS_INIT)) {
+    ERR_free_strings();
+    ERR_remove_state(0);
     EVP_cleanup();
 
   } else {
-    /* Only call EVP_cleanup() if other OpenSSL-using modules are not
+    /* Only call EVP_cleanup() et al if other OpenSSL-using modules are not
      * present.  If we called EVP_cleanup() here during session
      * initialization, and other modules want to use OpenSSL, we may
      * be depriving those modules of OpenSSL functionality.
@@ -1849,6 +1848,8 @@ static void tls_cleanup(int flags) {
      */
     if (pr_module_get("mod_ldap.c") == NULL &&
         pr_module_get("mod_sql.c") == NULL) {
+      ERR_free_strings();
+      ERR_remove_state(0);
       EVP_cleanup();
     }
   }
