@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.126 2007-09-11 00:52:06 castaglia Exp $
+ * $Id: mod_sql.c,v 1.127 2007-09-13 15:22:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -644,8 +644,10 @@ static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
   char *hashvalue;              /* ptr to hashed value we're comparing to */
   char *copyhash;               /* temporary copy of the c_hash string */
 
-  if (c_hash[0] != '{') 
+  if (c_hash[0] != '{') {
+    sql_log(DEBUG_WARN, "%s", "no digest found in password hash");
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
 
   /* We need a copy of c_hash. */
   copyhash = pstrdup(cmd->tmp_pool, c_hash);
@@ -653,9 +655,10 @@ static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
   digestname = copyhash + 1;
 
   hashvalue = (char *) strchr(copyhash, '}');
-
-  if (hashvalue == NULL)
+  if (hashvalue == NULL) {
+    sql_log(DEBUG_WARN, "%s", "no terminating '}' for digest");
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
 
   *hashvalue = '\0';
   hashvalue++;
@@ -664,8 +667,10 @@ static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
 
   md = EVP_get_digestbyname(digestname);
 
-  if (!md)
+  if (!md) {
+    sql_log(DEBUG_WARN, "no such digest '%s' supported", digestname);
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
 
   EVP_DigestInit(&md_ctxt, md);
   EVP_DigestUpdate(&md_ctxt, c_clear, strlen(c_clear));
