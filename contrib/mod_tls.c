@@ -358,6 +358,9 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_OPT_STD_ENV_VARS		0x0020
 #define TLS_OPT_ALLOW_PER_USER		0x0040
 
+/* mod_tls cleanup flags */
+#define TLS_CLEANUP_FL_SESS_INIT	0x0001
+
 static char *tls_cipher_suite = NULL;
 static char *tls_crl_file = NULL, *tls_crl_path = NULL;
 static char *tls_dhparam_file = NULL;
@@ -1800,7 +1803,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   return 0;
 }
 
-static void tls_cleanup(void) {
+static void tls_cleanup(int flags) {
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   if (tls_crypto_device) {
@@ -1831,7 +1834,24 @@ static void tls_cleanup(void) {
 
   ERR_free_strings();
   ERR_remove_state(0);
-  EVP_cleanup();
+
+  if (!(flags & TLS_CLEANUP_FL_SESS_INIT)) {
+    EVP_cleanup();
+
+  } else {
+    /* Only call EVP_cleanup() if other OpenSSL-using modules are not
+     * present.  If we called EVP_cleanup() here during session
+     * initialization, and other modules want to use OpenSSL, we may
+     * be depriving those modules of OpenSSL functionality.
+     *
+     * At the moment, the modules known to use OpenSSL are mod_ldap
+     * and mod_sql.
+     */
+    if (pr_module_get("mod_ldap.c") == NULL &&
+        pr_module_get("mod_sql.c") == NULL) {
+      EVP_cleanup();
+    }
+  }
 }
 
 static void tls_end_sess(SSL *ssl, int strms, int use_shutdown) {
@@ -4309,7 +4329,7 @@ static void tls_mod_unload_ev(const void *event_data, void *user_data) {
     pr_event_unregister(&tls_module, NULL, NULL);
 
     /* Cleanup the OpenSSL stuff. */
-    tls_cleanup();
+    tls_cleanup(0);
 
     /* Unregister our NetIO handler for the control channel. */
     pr_unregister_netio(PR_NETIO_STRM_CTRL);
@@ -4411,7 +4431,7 @@ static void tls_restart_ev(const void *event_data, void *user_data) {
 static void tls_sess_exit_ev(const void *event_data, void *user_data) {
 
   /* OpenSSL cleanup */
-  tls_cleanup();
+  tls_cleanup(0);
 
   /* Write out a new RandomSeed file, for use later */
   if (tls_rand_file)
@@ -4501,7 +4521,7 @@ static int tls_sess_init(void) {
 
     /* No need for all the OpenSSL stuff in this process space, either.
      */
-    tls_cleanup();
+    tls_cleanup(TLS_CLEANUP_FL_SESS_INIT);
     tls_scrub_pkeys();
 
     return 0;
