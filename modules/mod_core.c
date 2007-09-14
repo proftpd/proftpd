@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.303 2007-09-11 17:47:22 castaglia Exp $
+ * $Id: mod_core.c,v 1.304 2007-09-14 16:08:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3503,6 +3503,12 @@ MODRET core_epsv(cmd_rec *cmd) {
       pr_response_add_err(R_522, _("Network protocol not supported, use (1)"));
 #endif /* PR_USE_IPV6 */
       return PR_ERROR(cmd);
+  }
+
+  /* If we already have a passive listen data connection open, kill it. */
+  if (session.d) {
+    pr_inet_close(session.d->pool, session.d);
+    session.d = NULL;
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "PassivePorts", FALSE);
