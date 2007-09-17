@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.836 2007-08-21 22:36:28 castaglia Exp $
+$Id: NEWS,v 1.837 2007-09-17 17:36:37 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -24,6 +24,8 @@ CVS
   This is actually caused by a particular combination of compiler flags
   (-O2 and -Wp,-D_FORTIFY_SOURCE=2), which are used by the `rpmbuild'
   command in some Linux releases.
+- Bug 2974 - Install error if multiple modules, using their own build script,
+  are built as shared modules.
 
 1.3.1rc3 - Released 04-Jul-2007
 --------------------------------

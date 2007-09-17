@@ -50,7 +50,7 @@ install:
 	test -z "$(SHARED_MODULE_OBJS)" || $(LIBTOOL) --mode=install $(INSTALL_BIN) $(SHARED_MODULE_OBJS) $(DESTDIR)$(LIBEXECDIR)
 	@dirs="$(SHARED_MODULE_DIRS)"; \
 	for dir in $$dirs; do\
-		cd $(top_srcdir)/$$dir/ && $(MAKE) install; \
+		(cd $(top_srcdir)/$$dir/ && $(MAKE) install); \
 	done
 
 clean:
@@ -59,7 +59,7 @@ clean:
 	$(LIBTOOL) --mode=clean $(RM) `echo $(SHARED_MODULE_OBJS) | sed 's/\.la$\/.lo/g'`
 	@dirs="$(SHARED_MODULE_DIRS) $(STATIC_MODULE_DIRS)"; \
 	for dir in $$dirs; do\
-		cd $(top_srcdir)/$$dir/ && $(MAKE) clean; \
+		(cd $(top_srcdir)/$$dir/ && $(MAKE) clean); \
 	done
 
 depend:
