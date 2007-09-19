@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.11 2007-02-16 16:36:42 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.12 2007-09-19 03:14:18 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -380,9 +380,50 @@ them:
   TLSRenegotiate required off
 </pre>
 
+<p><a name="TLSNoCertRequest">
+<font color=red>Question</font>: My FTPS client has trouble connecting to <code>proftpd</code> using SSL/TLS, with the following error appearing in the <code>TLSLog</code>:
+<pre>
+  Sep 17 11:03:46 mod_tls/2.1.2[9628]: TLS/TLS-C requested, starting TLS handshake
+  Sep 17 11:03:46 mod_tls/2.1.2[9628]: unable to accept TLS connection: received EOF that violates protocol
+  Sep 17 11:03:46 mod_tls/2.1.2[9628]: TLS/TLS-C negotiation failed on control channel
+</pre>
+Is this a bug in <code>mod_tls</code>, in the client, or something else?<br>
+<font color=blue>Answer</font>: There might be several different causes for
+this error.  It could be a bug in the OpenSSL library, in <code>mod_tls</code>,
+in the FTPS client, or it could be a transient network issue.
+
+<p>
+Now, one possible thing to try is to use the following in your <code>proftpd.conf</code> file:
+<pre>
+  TLSOptions NoCertRequest
+</pre>
+This option tells the OpenSSL library to <b>not</b> include a message requesting
+the client's certificate in the SSL/TLS handshake messages.  Some older
+SSL implementations seem to have trouble with this certificate request message,
+and react badly.  This includes some Windows FTP clients, as well as some
+FTP clients for the Mac.
+
+<p>
+One user tried using both the <a href="http://www.panic.com/transmit/">Transmit</a> and the <a href="http://www.fetchsoftworks.com/">Fetch</a> applications for
+the Mac; both state that they can handle FTP over SSL/TLS.  Using both of
+these applications, the user saw the above error.  The user, when using
+Transmit, saw the following error message appear from the client:
+<pre>
+  Server said:
+  AUTH TLS successful
+  error:00000000:lib(0):func(0):reason(0)
+</pre>
+And when using Fetch, the error message displayed by that client was:
+<pre> 
+  SSL Error -9844
+  Server responded: "AUTH TLS successful"
+</pre>
+In <b>both</b> causes, using "TLSOptions NoCertRequest" appeared to make
+those clients happy.
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2007-02-16 16:36:42 $</i><br>
+Last Updated: <i>$Date: 2007-09-19 03:14:18 $</i><br>
 <hr>
 
 </body>
