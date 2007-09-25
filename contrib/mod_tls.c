@@ -3739,7 +3739,8 @@ MODRET tls_prot(cmd_rec *cmd) {
 
   CHECK_CMD_ARGS(cmd, 2);
 
-  if (!(tls_flags & TLS_SESS_ON_CTRL)) {
+  if (!(tls_flags & TLS_SESS_ON_CTRL) &&
+      !(tls_flags & TLS_SESS_HAVE_CCC)) {
     pr_response_add_err(R_503,
       "PROT not allowed on insecure control connection");
     return PR_ERROR(cmd);
