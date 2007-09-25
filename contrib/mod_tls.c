@@ -1914,7 +1914,8 @@ static void tls_end_sess(SSL *ssl, int strms, int use_shutdown) {
           break;
 
         case SSL_ERROR_SYSCALL:
-          if (errno != EOF &&
+          if (errno != 0 &&
+              errno != EOF &&
               errno != EBADF &&
               errno != EPIPE) {
             tls_log("SSL_shutdown syscall error: %s", strerror(errno));
