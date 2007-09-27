@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.217 2007-09-11 00:42:51 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.218 2007-09-27 16:13:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -69,6 +69,7 @@ static void xfer_rate_throttle(off_t, unsigned int);
 module xfer_module;
 
 static int xfer_errno;
+static const char *trace_channel = "xfer";
 
 static unsigned long find_max_nbytes(char *directive) {
   config_rec *c = NULL;
@@ -2607,10 +2608,12 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
   if (session.sf_flags & SF_XFER) {
     if (session.xfer.direction == PR_NETIO_IO_RD) {
        /* An upload is occurring... */
+      pr_trace_msg(trace_channel, 6, "session exiting, aborting upload");
       stor_abort();
 
     } else {
       /* A download is occurring... */
+      pr_trace_msg(trace_channel, 6, "session exiting, aborting download");
       retr_abort();
     }
   }
@@ -2621,9 +2624,11 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
 static void xfer_xfer_stalled_ev(const void *event_data, void *user_data) {
   if (!(session.sf_flags & SF_XFER)) {
     if (session.xfer.direction == PR_NETIO_IO_RD) {
+      pr_trace_msg(trace_channel, 6, "transfer stalled, aborting upload");
       stor_abort();
 
     } else {
+      pr_trace_msg(trace_channel, 6, "transfer stalled, aborting download");
       retr_abort();
     }
   }
