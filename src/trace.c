@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.14 2007-02-15 17:01:19 castaglia Exp $
+ * $Id: trace.c,v 1.15 2007-09-27 16:04:11 castaglia Exp $
  */
 
 
@@ -63,6 +63,7 @@ static const char *trace_channels[] = {
   "timer",
   "utf8",
   "var",
+  "xfer",
   NULL
 };
 
