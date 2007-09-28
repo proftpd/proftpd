@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.148 2007-09-28 00:47:41 castaglia Exp $
+ * $Id: mod_ls.c,v 1.149 2007-09-28 00:53:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -291,7 +291,12 @@ static int sendline(int flags, char *fmt, ...) {
 }
 
 static void ls_done(cmd_rec *cmd) {
-  pr_data_close(FALSE);
+  int quiet = FALSE;
+
+  if (session.sf_flags & SF_ABORT)
+    quiet = TRUE;
+
+  pr_data_close(quiet);
 }
 
 static char units[6][2] = 
