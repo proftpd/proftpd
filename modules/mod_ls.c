@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.147 2007-08-09 22:56:01 castaglia Exp $
+ * $Id: mod_ls.c,v 1.148 2007-09-28 00:47:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -256,7 +256,8 @@ static int sendline(int flags, char *fmt, ...) {
 
     if (listbuflen > 0) {
       res = pr_data_xfer(listbuf, listbuflen);
-      if (res < 0) {
+      if (res < 0 &&
+          errno != 0) {
         pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s.", res,
           strerror(PR_NETIO_ERRNO(session.d->outstrm)));
       }
@@ -276,7 +277,8 @@ static int sendline(int flags, char *fmt, ...) {
   /* If buf won't fit completely into listbuf, flush listbuf */
   if (strlen(buf) >= (sizeof(listbuf) - strlen(listbuf))) {
     res = pr_data_xfer(listbuf, strlen(listbuf));
-    if (res < 0) {
+    if (res < 0 &&
+        errno != 0) {
       pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s.", res,
         strerror(PR_NETIO_ERRNO(session.d->outstrm)));
     }
