@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.305 2007-05-10 21:49:34 castaglia Exp $
+ * $Id: main.c,v 1.306 2007-09-30 21:05:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2312,6 +2312,8 @@ static struct option opts[] = {
   { "version-status", 0, NULL, 1   },
   { "configtest",     0, NULL, 't' },
   { "help",	      0, NULL, 'h' },
+  { "ipv4",           0, NULL, '4' },
+  { "ipv6",           0, NULL, '6' },
   { NULL,	      0, NULL,  0  }
 };
 #endif /* HAVE_GETOPT_LONG */
