@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.25 2006-12-15 00:21:24 castaglia Exp $
+ * $Id: timers.c,v 1.26 2007-09-30 23:38:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -81,8 +81,13 @@ static int process_timers(int elapsed) {
     recycled = xaset_create(NULL, NULL);
 
   if (!elapsed &&
-      !recycled->xas_list)
+      !recycled->xas_list) {
+
+    if (!timers)
+      return 0;
+
     return (timers->xas_list ? ((struct timer *) timers->xas_list)->count : 0);
+  }
 
   /* Critical code, no interruptions please */
   if (_indispatch)
