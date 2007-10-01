@@ -1,4 +1,4 @@
-<!-- $Id: mod_delay.html,v 1.4 2006-12-12 18:44:00 castaglia Exp $ -->
+<!-- $Id: mod_delay.html,v 1.5 2007-10-01 15:14:50 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_delay.html,v $ -->
 
 <html>
@@ -167,6 +167,59 @@ to be useful.
 
 <p>
 <hr>
+<h2><a name="Usage">Usage</a></h2>
+The <code>mod_delay</code> module provides protection against a very specific
+problem.  However, the module may not be appropriate for all situations.
+
+<p>
+For some sites, the delay added by <code>mod_delay</code> is not
+helpful, and in fact can annoy users.  To disable <code>mod_delay</code>,
+simply add the following to your <code>proftpd.conf</code> file:
+<pre>
+  &lt;IfModule mod_delay.c&gt;
+    DelayEngine off
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
+For other sites, malicious users may notice that they can add arbitrarily
+long delays to <i>all</i> users' sessions by "poisoning"
+<code>mod_delay</code>'s cache of timing information.  For example, a
+malicious client might connect, send a <code>USER</code> command, and then
+not disconnect for long time.  After a few such clients have connected,
+<code>mod_delay</code> will add a delay for <i>all</i> clients, such that
+some legitimate clients may time out.  In effect, this may look like a sort
+of denial of service (DoS).
+
+<p>
+To guard against the above situation, there are two possible solutions.
+First, you can disable the <code>mod_delay</code> module entirely (see above);
+if the timing information leak is not of concern for your FTP site, this is
+the recommended approach.  Second, you can use the
+<a href="http://www.proftpd.org/docs/contrib/mod_ifsession.html"><code>mod_ifsession</code></a> module and its <code>&lt;IfClass&gt;</code> sections so that
+the <code>mod_delay</code> module applies only to certain DNS names and
+IP address ranges.  For example:
+<pre>
+  # Define a class which identifies trusted clients
+  &lt;Class trusted&gt;
+    From a.b.c.d
+    From e.f.g.h
+  &lt;/Class&gt;
+
+  &lt;IfModule mod_delay.c&gt;
+    &lt;IfClass trusted&gt;
+      DelayEngine off
+    &lt;/IfClass&gt;
+
+    &lt;IfClass !trusted&gt;
+      DelayEngine on
+    &lt;/IfClass&gt;
+  &lt;/IfModule&gt;
+</pre>
+More information on defining classes can be found <a href="http://www.proftpd.org/docs/howto/Classes.html">here</a>.
+
+<p>
+<hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_delay</code> module is compiled by default.
 
@@ -174,12 +227,12 @@ The <code>mod_delay</code> module is compiled by default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2006-12-12 18:44:00 $</i><br>
+Last Updated: <i>$Date: 2007-10-01 15:14:50 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2004 TJ Saunders<br>
+&copy; Copyright 2004-2007 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
