@@ -737,8 +737,8 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
       if (res < 0) {
         if (errno != EINTR) {
           pr_log_debug(DEBUG2, MOD_TLS_VERSION
-            ": passphrase provider error: unable to wait for pid %d: %s",
-            pid, strerror(errno));
+            ": passphrase provider error: unable to wait for pid %u: %s",
+            (unsigned int) pid, strerror(errno));
           status = -1;
           break;
 
