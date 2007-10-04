@@ -6,6 +6,20 @@ This file contains a description of the major changes to ProFTPD for the
 More information on these changes can be found in the NEWS and ChangeLog
 files.
 
+1.3.1 (stable)
+---------------
+
+  + Bugfixes:
+
+    Fixed compilation error in mod_sql_mysql.
+
+    Fixed handling of the --ipv4 and --ipv6 command-line options.
+
+    Fixed "directory not accessible" errors when using the mod_facl module
+
+    Improvements to the RPM spec file, and updated the PAM configuration
+    installed by the RPM spec.
+
 1.3.1rc3
 ---------
 
@@ -307,4 +321,4 @@ files.
 
           doc/howto/CreateHome.html
 
-Last Updated: $Date: 2007-07-04 19:27:58 $
+Last Updated: $Date: 2007-10-04 16:24:22 $
