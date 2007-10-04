@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.51 2007-09-10 22:55:14 castaglia Exp $
+# $Id: proftpd.spec,v 1.52 2007-10-04 02:25:03 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -31,11 +31,44 @@
 #   dso
 #   lastlog
 #   nls
+#
+# note that the following are equivalent:
+#
+#	--enable-nls		--with-mod_lang
+#	--enable-dso		--with-mod_dso
+#	--enable-ctrls		--with-mod_ctrls
+#
+# to turn everything on, build as:
+#
+# rpmbuild -ba --with ctrls --with mod_facl --with mod_tls --with nls \
+#	--with ipv6 --with dso proftpd.spec
 
 %define proftpd_version 1.3.1rc3
-%define usecvsversion             0
+%define usecvsversion             0%{?_with_cvs:1}
 %define proftpd_cvs_version_main  1.2
-%define proftpd_cvs_version_date  20031009
+%define proftpd_cvs_version_date  20070929
+
+%define static_modules	%{?_with_mod_facl:mod_facl}
+
+# put mod_ifsession at the end of the list (always)
+%define shared_modules	%{?_with_mod_tls:mod_tls:}mod_sql:mod_radius:mod_ban:mod_ctrls_admin:mod_load:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_ratio:mod_readme:mod_rewrite:mod_site_misc:mod_wrap2:mod_wrap2_file:mod_wrap2_sql%{?_with_nls::mod_lang}:mod_ifsession
+
+%define unbundled_modules mod_ldap:mod_sql_mysql:mod_sql_postgres:mod_wrap
+
+%if ! %([ -n '%{shared_modules}' -o -n '%{unbundled_modules}' ] ; echo $?)
+%define _with_dso 	1
+%endif
+
+# avoid confusion and redundancy
+%if 0%{?_with_mod_dso:1}
+%define _with_dso	1
+%undefine _with_mod_dso
+%endif
+
+# we don't actually pass this list into configure... we just use it to
+# generate the manifest of modules for the %description section of the
+# resulting package.
+%define builtin_modules	mod_core:mod_xfer:mod_auth_unix:mod_auth_file:mod_auth:mod_ls:mod_log:mod_site:mod_delay%{?_with_dso::mod_dso}:mod_cap:mod_auth_pam%{?_with_ctrls::mod_ctrls}
 
 Summary:		ProFTPD -- Professional FTP Server.
 Name:			proftpd
@@ -52,10 +85,28 @@ Version:		%{proftpd_cvs_version_main}cvs%{proftpd_cvs_version_date}
 Source:			ftp://ftp.proftpd.org/distrib/%{name}-%{version}.tar.bz2
 Version:		%{proftpd_version}
 %endif
-Prefix:			/usr
-BuildRoot:		%{_builddir}/%{name}-%{version}-root
-Requires:		pam >= 0.72, /sbin/chkconfig, %{?_with_mod_tls:openssl krb5-libs}, %{?_with_mod_facl:libacl}
-BuildPreReq:	pam-devel %{?_with_mod_tls:openssl-devel krb5-devel}
+Prefix:			%{_prefix}
+BuildRoot:		%{_tmppath}/%{name}-%{version}-root
+Requires:		pam >= 0.99, /sbin/chkconfig
+BuildRequires:		pkgconfig, pam-devel, ncurses-devel, zlib-devel
+# For mod_tls:
+%if 0%{?_with_mod_tls:1}
+%define _with_openssl	1
+Requires:		krb5-libs, zlib
+BuildRequires:		krb5-devel, zlib-devel
+%endif
+%if 0%{?_with_openssl:1}
+Requires:		openssl
+BuildRequires:		openssl-devel
+%endif
+%if 0%{?_with_mod_facl:1}
+# For mod_facl
+Requires:		libacl
+BuildRequires:		libacl-devel
+%endif
+# For mod_cap
+Requires:		libcap
+BuildRequires:		libcap-devel
 Provides:		ftpserver
 Prereq:			fileutils
 Obsoletes:		proftpd-core, proftpd-standalone
@@ -70,9 +121,18 @@ visibility.
 The base proftpd package installs standalone support. You can install the
 proftpd-inetd package to enable inetd/xinetd support.
 
-%{?_with_ipv6: This package is IPv6 enabled.}
-%{?_with_dso: This package supports DSO (shared) modules.}
-Addtional modules enabled: mod_ratio mod_readme %{?_with_mod_tls: mod_tls}%{?_with_mod_radius: mod_radius}%{?_with_mod_ldap: mod_ldap}%{?_with_mod_wrap: mod_wrap}%{?_with_mod_wrap2: mod_wrap2}%{?_with_mod_wrap2_file: mod_wrap2_file}%{?_with_mod_wrap2_sql: mod_wrap2_sql}%{?_with_mod_sql: mod_sql}%{?_with_mod_sql_mysql: mod_sql_mysql}%{?_with_mod_sql_postgres: mod_sql_postgres}%{?_with_mod_rewrite: mod_rewrite}%{?_with_mod_ifsession: mod_ifsession}%{?_with_mod_facl: mod_facl}%{?_with_mod_quotatab: mod_quotatab}%{_with_mod_quotatab_file: mod_quotatab}%{_with_mod_quotatab_sql: mod_quotatab_sql}%{_with_ctrls: mod_ctrls}%{_with_dso: mod_dso}%{?_with_mod_ban: mod_ban}%{?_with_mod_ctrls_admin: mod_ctrls_admin}%{?_with_mod_site_misc: mod_site_misc}
+Likewise, mod_sql_mysql, mod_ldap, etc. can be installed separately to avoid
+unnecessary dependencies.
+
+%{?_with_dso:This package supports DSO (shared) modules.}
+
+Intrinsic static modules: %(echo "%{builtin_modules}" | sed -e 's/\:/, /g')
+
+Optional static modules: %(echo "%{static_modules}" | sed -e 's/\:/, /g')
+
+Bundled shared modules: %(echo "%{shared_modules}" | sed -e 's/\:/, /g')
+
+Unbundled (optional) shared modules: %(echo "%{unbundled_modules}" | sed -e 's/\:/, /g')
 
 %package inetd
 Summary:	ProFTPD -- Setup for inetd/xinetd operation.
@@ -83,58 +143,83 @@ Obsoletes:	proftpd-standalone
 %description inetd
 This package is neccesary to setup ProFTPD to run from inetd/xinetd.
 
+%package ldap
+Summary:	ProFTPD -- Modules relying on LDAP.
+Group:		Development/Libraries
+Requires:	proftpd, openldap, krb5-libs, openssl
+BuildRequires:	openldap-devel, krb5-devel, openssl-devel
+
+%description ldap 
+This optional package contains the modules using LDAP.
+
+%package mysql
+Summary:	ProFTPD -- Modules relying on SQL.
+Group:		Development/Libraries
+Requires:	proftpd, mysql, krb5-libs
+BuildRequires:	mysql-devel, krb5-devel
+
+%description mysql
+This optional package contains the modules using Postgres.
+
+%package postgres
+Summary:	ProFTPD -- Modules relying on Postgres.
+Group:		Development/Libraries
+Requires:	proftpd, postgresql, krb5-libs, openssl
+BuildRequires:	postgresql-devel, krb5-devel, openssl-devel
+
+%description postgres
+This optional package contains the modules using SQL.
+
+%package wrap
+Summary:	ProFTPD -- Modules relying on TCP Wrappers.
+Group:		Development/Libraries
+Requires:	proftpd, tcp_wrappers
+BuildRequires:	tcp_wrappers
+
+%description wrap
+This optional package contains the modules using SQL.
+
+%package devel
+Summary:	ProFTPD -- Header files for developers.
+Group:		Development/Libraries
+Requires:	proftpd
+
+%description devel
+This package is required to develop additional modules for ProFTPD.
+
 %prep
 %if %{usecvsversion}
 %setup -q -n %{name}-%{proftpd_cvs_version_main}
 %else
 %setup -q
 %endif
-  MODULES="mod_ratio:mod_readme"
-  MODULES="${MODULES}%{?_with_mod_tls::mod_tls}"
-  MODULES="${MODULES}%{?_with_mod_radius::mod_radius}"
-  MODULES="${MODULES}%{?_with_mod_ldap::mod_ldap}"
-  MODULES="${MODULES}%{?_with_mod_wrap::mod_wrap}"
-  MODULES="${MODULES}%{?_with_mod_wrap2::mod_wrap2}"
-  MODULES="${MODULES}%{?_with_mod_wrap2_file::mod_wrap2_file}"
-  MODULES="${MODULES}%{?_with_mod_wrap2_sql::mod_wrap2_sql}"
-  MODULES="${MODULES}%{?_with_mod_sql::mod_sql}"
-  MODULES="${MODULES}%{?_with_mod_sql_mysql::mod_sql_mysql}"
-  MODULES="${MODULES}%{?_with_mod_sql_postgres::mod_sql_postgres}"
-  MODULES="${MODULES}%{?_with_mod_rewrite::mod_rewrite}"
-  MODULES="${MODULES}%{?_with_mod_ifsession::mod_ifsession}"
-  MODULES="${MODULES}%{?_with_mod_quotatab::mod_quotatab}"
-  MODULES="${MODULES}%{?_with_mod_quotatab_file::mod_quotatab_file}"
-  MODULES="${MODULES}%{?_with_mod_quotatab_sql::mod_quotatab_sql}"
-  MODULES="${MODULES}%{?_with_mod_facl::mod_facl}"
-  MODULES="${MODULES}%{?_with_mod_ban::mod_ban}"
-  MODULES="${MODULES}%{?_with_mod_ctrls_admin::mod_ctrls_admin}"
-  MODULES="${MODULES}%{?_with_mod_site_misc::mod_site_misc}"
-  CFLAGS="$RPM_OPT_FLAGS" ./configure \
+CFLAGS="$RPM_OPT_FLAGS" ./configure \
 	--prefix=%{prefix} \
-	--sysconfdir=/etc \
-	--localstatedir=/var/run \
-	--mandir=%_mandir \
-	%{?_with_mod_tls:--with-includes=/usr/kerberos/include} \
-	%{?_with_mod_sql_mysql:--with-includes=/usr/include/mysql} \
-	%{?_with_mod_facl:--enable-facl} \
+	--sysconfdir=%{_sysconfdir} \
+	--localstatedir=%{_localstatedir}/run \
+	--mandir=%{_mandir} \
 	%{?_with_ipv6:--enable-ipv6} \
 	%{?_with_ctrls:--enable-ctrls} \
 	%{?_with_dso:--enable-dso} \
 	%{?_with_lastlog:--with-lastlog} \
-	%{?_with_nls:--enable-nls} \
-	--with-modules=${MODULES}
+	%{?_with_openssl:--enable-openssl} \
+	--with-libraries=%{_libdir}/mysql \
+	--with-includes=%{_includedir}/mysql \
+	%{?static_modules:--with-modules=%{static_modules}} \
+	%{?shared_modules:--with-shared=%{?unbundled_modules:%{unbundled_modules}:}%{shared_modules}}
 
 %build
   make
 
 %install
   rm -rf $RPM_BUILD_ROOT
-  make prefix=$RPM_BUILD_ROOT%{prefix} \
-	exec_prefix=$RPM_BUILD_ROOT%{prefix} \
-	sysconfdir=$RPM_BUILD_ROOT/etc \
-    mandir=$RPM_BUILD_ROOT/%_mandir \
-	localstatedir=$RPM_BUILD_ROOT/var/run \
-	rundir=$RPM_BUILD_ROOT/var/run/proftpd \
+  make DESTDIR=$RPM_BUILD_ROOT \
+	prefix=%{prefix} \
+	exec_prefix=%{_exec_prefix} \
+	sysconfdir=%{_sysconfdir} \
+	mandir=%{_mandir} \
+	localstatedir=%{_localstatedir}/run \
+	rundir=%{_localstatedir}/run/proftpd \
 	INSTALL_USER=`id -un` INSTALL_GROUP=`id -gn` \
     install
   mkdir -p $RPM_BUILD_ROOT/home/ftp
@@ -239,15 +324,23 @@ rm -rf %{_builddir}/%{name}-%{version}
 
 %files
 %defattr(-,root,root)
-%{prefix}/sbin/*
-%{prefix}/bin/*
-%{prefix}/include/proftpd/*.h
-%dir /var/run/proftpd
+%{_sbindir}/*
+%{_bindir}/*
+# need to figure out how to exclude from this list...
+%exclude %{_libexecdir}/*.a
+%exclude %{_libexecdir}/*.la
+%exclude %{_libexecdir}/mod_ldap.so
+%exclude %{_libexecdir}/mod_sql_mysql.so
+%exclude %{_libexecdir}/mod_sql_postgres.so
+%exclude %{_libexecdir}/mod_wrap.so
+%{_libexecdir}/*.a
+%{_libexecdir}/*.so
+%dir %{_localstatedir}/run/proftpd
 %dir /home/ftp
-/etc/rc.d/init.d/proftpd
-%config(noreplace) /etc/proftpd.conf
-%config(noreplace) /etc/pam.d/ftp
-%config(noreplace) /etc/logrotate.d/proftpd
+%{_initrddir}/proftpd
+%config(noreplace) %{_sysconfdir}/proftpd.conf
+%config(noreplace) %{_sysconfdir}/pam.d/ftp
+%config(noreplace) %{_sysconfdir}/logrotate.d/proftpd
 
 %doc COPYING CREDITS ChangeLog NEWS
 %doc README* doc/*
@@ -257,10 +350,34 @@ rm -rf %{_builddir}/%{name}-%{version}
 
 %files inetd
 %defattr(-,root,root)
-%config(noreplace) /etc/proftpd.conf
-%config(noreplace) /etc/xinetd.d/proftpd
+%config(noreplace) %{_sysconfdir}/proftpd.conf
+%config(noreplace) %{_sysconfdir}/xinetd.d/proftpd
+
+%files ldap
+%defattr(-,root,root)
+%{_libexecdir}/mod_ldap.so
+
+%files mysql
+%defattr(-,root,root)
+%{_libexecdir}/mod_sql_mysql.so
+
+%files postgres
+%defattr(-,root,root)
+%{_libexecdir}/mod_sql_postgres.so
+
+%files wrap
+%defattr(-,root,root)
+%{_libexecdir}/mod_wrap.so
+
+%files devel
+%defattr(-,root,root)
+%{_includedir}/proftpd/*.h
 
 %changelog
+* Mon Sep 11 2007 Philip Prindeville <philipp_subx@redfish-solutions.com>
+- Cleaned up the .spec file to work with more recent releases of RPM.  Moved
+  header files into separate component.
+
 * Sun Mar 5 2006 Itamar Reis Peixoto <itamar@ispbrasil.com.br>
 - Added "--with mod_quotatab" and "--with mod_quotatab_sql" to enable Quota Support while building the RPM
 

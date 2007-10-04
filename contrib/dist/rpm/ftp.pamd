@@ -1,6 +1,6 @@
 #%PAM-1.0
-auth       required	/lib/security/pam_listfile.so item=user sense=deny file=/etc/ftpusers onerr=succeed
-auth       required	/lib/security/pam_pwdb.so shadow nullok
+auth       required	pam_listfile.so item=user sense=deny file=/etc/ftpusers onerr=succeed
+auth       required	pam_unix.so shadow nullok
 
 # If this is enabled, anonymous logins will fail because the 'ftp' user does
 # not have a "valid" shell, as listed in /etc/shells.
@@ -8,7 +8,8 @@ auth       required	/lib/security/pam_pwdb.so shadow nullok
 # If you enable this, it is recommended that you do *not* give the 'ftp'
 # user a real shell. Instead, give the 'ftp' user /bin/false for a shell and
 # add /bin/false to /etc/shells.
-#auth       required	/lib/security/pam_shells.so
+#
+#auth       required	pam_shells.so
 
-account    required	/lib/security/pam_pwdb.so
-session    required	/lib/security/pam_pwdb.so
+account    required	pam_unix.so
+session    required	pam_unix.so

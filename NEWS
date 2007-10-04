@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.838 2007-09-30 21:05:39 castaglia Exp $
+$Id: NEWS,v 1.839 2007-10-04 02:25:03 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -27,6 +27,8 @@ CVS
 - Bug 2974 - Install error if multiple modules, using their own build script,
   are built as shared modules.
 - Bug 2981 - Command-line long options --ipv4 and --ipv6 do not work.
+- Bug 2795 - Improvements to RPM .spec file to build more of the modules, plus
+  better optional packaging organization.
 
 1.3.1rc3 - Released 04-Jul-2007
 --------------------------------
