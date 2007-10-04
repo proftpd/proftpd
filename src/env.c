@@ -24,7 +24,7 @@
 
 /*
  * Environment management
- * $Id: env.c,v 1.4 2007-01-18 02:11:56 castaglia Exp $
+ * $Id: env.c,v 1.5 2007-10-04 17:01:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -90,7 +90,7 @@ int pr_env_set(pool *p, const char *key, const char *value) {
     exit(1);
   }
 # endif /* PR_USE_DEVEL */
-  return putenv(str);
+  return putenv((char *) str);
 
 #else
   errno = ENOSYS;
