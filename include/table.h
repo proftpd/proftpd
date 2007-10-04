@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004, 2005 The ProFTPD Project team
+ * Copyright (c) 2004-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Table management
- * $Id: table.h,v 1.5 2006-04-16 22:45:54 castaglia Exp $
+ * $Id: table.h,v 1.6 2007-10-04 01:46:58 castaglia Exp $
  */
 
 #ifndef PR_TABLE_H
@@ -68,7 +68,7 @@ int pr_table_add_dup(pr_table_t *tab, const char *key_data, void *value_data,
 
 /* Allocates a new table from the given pool.  flags can be used to
  * determine the table behavior, e.g. will it allow multiple entries under
- * the same key (PR_TABLE_MULTI_VALUE).
+ * the same key (PR_TABLE_FL_MULTI_VALUE).
  */
 pr_table_t *pr_table_alloc(pool *p, int flags);
 #define PR_TABLE_FL_MULTI_VALUE		0x0001
