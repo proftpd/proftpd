@@ -1,4 +1,4 @@
-<!-- $Id: mod_ban.html,v 1.2 2007-03-06 18:30:38 castaglia Exp $ -->
+<!-- $Id: mod_ban.html,v 1.3 2007-10-05 18:36:22 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_ban.html,v $ -->
 
 <html>
@@ -24,15 +24,14 @@ automatic bans that are triggered based on configurable criteria.
 
 <p>
 This module is contained in the <code>mod_ban.c</code> file for
-ProFTPD 1.2.<i>x</i>, and is not compiled by default.  Installation instructions
-are discussed <a href="#Installation">here</a>.  Detailed documentation on
-<code>mod_ban</code> usage can be found <a href="#Usage">here</a>.
+ProFTPD 1.2.<i>x</i>/1.3.<i>x</i>, and is not compiled by default.
+nstallation instructions are discussed <a href="#Installation">here</a>.
+Detailed documentation on <code>mod_ban</code> usage can be found
+<a href="#Usage">here</a>.
 
 <p>
-The most current version of <code>mod_ban</code> can be found at:
-<pre>
-  <a href="http://www.castaglia.org/proftpd/">http://www.castaglia.org/proftpd/</a>
-</pre>
+The most current version of <code>mod_ban</code> is distributed with the
+proftpd source.
 
 <h2>Author</h2>
 <p>
@@ -165,6 +164,7 @@ that is triggered whenever the named <em>event</em> occurs.  The currently
 supported events are:
 <pre>
   AnonRejectPasswords
+  ClientConnectRate
   MaxClientsPerClass
   MaxClientsPerHost
   MaxClientsPerUser
@@ -209,6 +209,10 @@ For example:
   # Configure a rule to automatically ban scripts looking for anonymous
   # servers to which they can upload
   BanOnEvent AnonRejectPasswords 1/01:00:00 99:99:99
+
+  # Ban clients which connect too frequently.  This rule bans clients
+  # which connect more than 5 times within one minute.
+  BanOnEvent ClientConnectRate 5/00:01:00 04:00:00
 </pre>
 
 <p>
@@ -388,12 +392,12 @@ eventually tying up your available system resources with waiting
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2007-03-06 18:30:38 $</i><br>
+Last Updated: <i>$Date: 2007-10-05 18:36:22 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2004 TJ Saunders<br>
+&copy; Copyright 2004-2007 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
