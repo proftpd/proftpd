@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.845 2007-10-05 17:08:55 castaglia Exp $
+$Id: NEWS,v 1.846 2007-10-05 18:33:27 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -22,6 +22,8 @@ CVS
 - Bug 2925 - Add caching of IP address and DNS name lookups.  This may help
   speed up data transfers, especially rapid-fire data transfers as used by
   "download accelerators".
+- Bug 2979 - Ability to ban clients which connect too often.  The mod_ban
+  module now supports a "ClientConnectRate" BanOnEvent rule.
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------

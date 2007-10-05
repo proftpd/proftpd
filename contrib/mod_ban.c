@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
  *
- * Copyright (c) 2004-2006 TJ Saunders
+ * Copyright (c) 2004-2007 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.6 2007-06-25 17:19:03 castaglia Exp $
+ * $Id: mod_ban.c,v 1.7 2007-10-05 18:33:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,11 +35,11 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#define MOD_BAN_VERSION			"mod_ban/0.5.1"
+#define MOD_BAN_VERSION			"mod_ban/0.5.2"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030001
-# error "ProFTPD 1.3.0rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030101
+# error "ProFTPD 1.3.1rc1 or later required"
 #endif
 
 #ifndef PR_USE_CTRLS
@@ -63,7 +63,11 @@
 #endif
 
 #ifndef BAN_LIST_MAXSZ
-# define BAN_LIST_MAXSZ		256
+# define BAN_LIST_MAXSZ		512
+#endif
+
+#ifndef BAN_EVENT_LIST_MAXSZ
+# define BAN_EVENT_LIST_MAXSZ	512
 #endif
 
 /* From src/main.c */
@@ -113,9 +117,10 @@ struct ban_event_entry {
 #define BAN_EV_TYPE_TIMEOUT_IDLE		7
 #define BAN_EV_TYPE_TIMEOUT_NO_TRANSFER		8
 #define BAN_EV_TYPE_MAX_CONN_PER_HOST		9
+#define BAN_EV_TYPE_CLIENT_CONNECT_RATE		10
 
 struct ban_event_list {
-  struct ban_event_entry bel_entries[BAN_LIST_MAXSZ];
+  struct ban_event_entry bel_entries[BAN_EVENT_LIST_MAXSZ];
   unsigned int bel_listlen;
   unsigned int bel_next_slot;
 };
@@ -137,6 +142,7 @@ static pr_fh_t *ban_tabfh = NULL;
 static int ban_lock_shm(int);
 
 static void ban_anonrejectpasswords_ev(const void *, void *);
+static void ban_clientconnectrate_ev(const void *, void *);
 static void ban_maxclientsperclass_ev(const void *, void *);
 static void ban_maxclientsperhost_ev(const void *, void *);
 static void ban_maxclientsperuser_ev(const void *, void *);
@@ -184,6 +190,11 @@ static struct ban_data *ban_get_shm(pr_fh_t *tabfh) {
 
   /* Attach to the shm. */
   data = (struct ban_data *) shmat(shmid, NULL, 0);
+  if (data == NULL) {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "unable to attached to shm: %s", strerror(errno));
+    return NULL;
+  }
 
   if (!shm_existed) {
 
@@ -293,12 +304,15 @@ static int ban_disconnect_class(const char *class) {
    * pid whose class matches the given class.
    */
 
-  if (pr_rewind_scoreboard() < 0) {
+  if (pr_rewind_scoreboard() < 0 &&
+      errno != EINVAL) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "error rewinding scoreboard: %s", strerror(errno));
   }
 
   while ((score = pr_scoreboard_read_entry()) != NULL) {
+    pr_signals_handle();
+
     if (strcmp(class, score->sce_class) == 0) {
       int res = 0;
 
@@ -318,7 +332,8 @@ static int ban_disconnect_class(const char *class) {
     }
   }
 
-  if (pr_restore_scoreboard() < 0) {
+  if (pr_restore_scoreboard() < 0 &&
+      errno != EINVAL) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "error restoring scoreboard: %s", strerror(errno));
   }
@@ -351,12 +366,15 @@ static int ban_disconnect_host(const char *host) {
    * pid whose address matches the given host.
    */
 
-  if (pr_rewind_scoreboard() < 0) {
+  if (pr_rewind_scoreboard() < 0 &&
+      errno != EINVAL) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "error rewinding scoreboard: %s", strerror(errno));
   }
 
   while ((score = pr_scoreboard_read_entry()) != NULL) {
+    pr_signals_handle();
+
     if (strcmp(host, score->sce_client_addr) == 0) {
       int res = 0;
 
@@ -376,7 +394,8 @@ static int ban_disconnect_host(const char *host) {
     }
   }
 
-  if (pr_restore_scoreboard() < 0) {
+  if (pr_restore_scoreboard() < 0 &&
+      errno != EINVAL) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "error restoring scoreboard: %s", strerror(errno));
   }
@@ -409,12 +428,15 @@ static int ban_disconnect_user(const char *user) {
    * pid whose name matches the given user name.
    */
 
-  if (pr_rewind_scoreboard() < 0) {
+  if (pr_rewind_scoreboard() < 0 &&
+      errno != EINVAL) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "error rewinding scoreboard: %s", strerror(errno));
   }
 
   while ((score = pr_scoreboard_read_entry()) != NULL) {
+    pr_signals_handle();
+
     if (strcmp(user, score->sce_user) == 0) {
       int res = 0;
 
@@ -434,7 +456,8 @@ static int ban_disconnect_user(const char *user) {
     }
   }
 
-  if (pr_restore_scoreboard() < 0) {
+  if (pr_restore_scoreboard() < 0 &&
+      errno != EINVAL) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "error restoring scoreboard: %s", strerror(errno));
   }
@@ -506,6 +529,8 @@ static int ban_list_add(unsigned int type, unsigned int sid,
   /* Find an open slot in the list for this new entry. */
   while (TRUE) {
     struct ban_entry *be;
+
+    pr_signals_handle();
 
     if (ban_lists->bans.bl_next_slot == BAN_LIST_MAXSZ)
       ban_lists->bans.bl_next_slot = 0;
@@ -582,12 +607,16 @@ static int ban_list_exists(unsigned int type, unsigned int sid,
   if (ban_lists->bans.bl_listlen) {
     register unsigned int i = 0;
 
-    for (i = 0; i < BAN_LIST_MAXSZ; i++)
+    for (i = 0; i < BAN_LIST_MAXSZ; i++) {
+      pr_signals_handle();
+
       if (ban_lists->bans.bl_entries[i].be_type == type &&
           (ban_lists->bans.bl_entries[i].be_sid == 0 ||
            ban_lists->bans.bl_entries[i].be_sid == sid) &&
-          strcmp(ban_lists->bans.bl_entries[i].be_name, name) == 0)
+          strcmp(ban_lists->bans.bl_entries[i].be_name, name) == 0) {
         return 0;
+      }
+    }
   }
 
   errno = ENOENT;
@@ -605,6 +634,8 @@ static int ban_list_remove(unsigned int type, const char *name) {
     register unsigned int i = 0;
 
     for (i = 0; i < BAN_LIST_MAXSZ; i++) {
+      pr_signals_handle();
+
       if (ban_lists->bans.bl_entries[i].be_type == type &&
           (name ? strcmp(ban_lists->bans.bl_entries[i].be_name, name) == 0 :
            TRUE)) {
@@ -646,14 +677,15 @@ static int ban_list_remove(unsigned int type, const char *name) {
 
 /* Remove all expired bans from the list. */
 static void ban_list_expire(void) {
-  unsigned int len = BAN_LIST_MAXSZ;
   time_t now = time(NULL);
   register unsigned int i = 0;
 
   if (!ban_lists || ban_lists->bans.bl_listlen == 0)
     return;
 
-  for (i = 0; i < len; i++) {
+  for (i = 0; i < BAN_LIST_MAXSZ; i++) {
+    pr_signals_handle();
+
     if (ban_lists->bans.bl_entries[i].be_type &&
         ban_lists->bans.bl_entries[i].be_expires &&
         !(ban_lists->bans.bl_entries[i].be_expires > now)) {
@@ -700,6 +732,9 @@ static const char *ban_event_entry_typestr(unsigned int type) {
 
     case BAN_EV_TYPE_MAX_CONN_PER_HOST:
       return "MaxConnectionsPerHost";
+
+    case BAN_EV_TYPE_CLIENT_CONNECT_RATE:
+      return "ClientConnectRate";
   }
 
   return NULL;
@@ -722,7 +757,9 @@ static int ban_event_list_add(unsigned int type, unsigned int sid,
   while (TRUE) {
     struct ban_event_entry *bee;
 
-    if (ban_lists->events.bel_next_slot == BAN_LIST_MAXSZ)
+    pr_signals_handle();
+
+    if (ban_lists->events.bel_next_slot == BAN_EVENT_LIST_MAXSZ)
       ban_lists->events.bel_next_slot = 0;
 
     bee = &(ban_lists->events.bel_entries[ban_lists->events.bel_next_slot]);
@@ -753,7 +790,7 @@ static int ban_event_list_add(unsigned int type, unsigned int sid,
          */
         (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
           "maximum number of ban event slots (%u) already in use",
-          BAN_LIST_MAXSZ);
+          BAN_EVENT_LIST_MAXSZ);
 
         errno = ENOSPC;
         return -1;
@@ -776,11 +813,15 @@ static struct ban_event_entry *ban_event_list_get(unsigned int type,
   if (ban_lists->events.bel_listlen) {
     register unsigned int i = 0;
 
-    for (i = 0; i < BAN_LIST_MAXSZ; i++)
+    for (i = 0; i < BAN_EVENT_LIST_MAXSZ; i++) {
+      pr_signals_handle();
+
       if (ban_lists->events.bel_entries[i].bee_type == type &&
           ban_lists->events.bel_entries[i].bee_sid == sid &&
-          strcmp(ban_lists->events.bel_entries[i].bee_src, src) == 0)
+          strcmp(ban_lists->events.bel_entries[i].bee_src, src) == 0) {
         return &(ban_lists->events.bel_entries[i]);
+      }
+    }
   }
 
   return NULL;
@@ -797,7 +838,9 @@ static int ban_event_list_remove(unsigned int type, unsigned int sid,
   if (ban_lists->events.bel_listlen) {
     register unsigned int i = 0;
 
-    for (i = 0; i < BAN_LIST_MAXSZ; i++) {
+    for (i = 0; i < BAN_EVENT_LIST_MAXSZ; i++) {
+      pr_signals_handle();
+
       if (ban_lists->events.bel_entries[i].bee_type == type &&
           ban_lists->events.bel_entries[i].bee_sid == sid &&
           (src ? strcmp(ban_lists->events.bel_entries[i].bee_src, src) == 0 :
@@ -821,16 +864,18 @@ static int ban_event_list_remove(unsigned int type, unsigned int sid,
 }
 
 static void ban_event_list_expire(void) {
-  unsigned int len = BAN_LIST_MAXSZ;
-  time_t now = time(NULL);
   register unsigned int i = 0;
+  time_t now = time(NULL);
 
-  if (!ban_lists || ban_lists->events.bel_listlen == 0)
+  if (!ban_lists ||
+      ban_lists->events.bel_listlen == 0)
     return;
 
-  for (i = 0; i < len; i++) {
+  for (i = 0; i < BAN_EVENT_LIST_MAXSZ; i++) {
     time_t bee_end = ban_lists->events.bel_entries[i].bee_start +
       ban_lists->events.bel_entries[i].bee_window;
+
+    pr_signals_handle();
 
     if (ban_lists->events.bel_entries[i].bee_type &&
         ban_lists->events.bel_entries[i].bee_expires &&
@@ -1146,7 +1191,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
         int have_banner = FALSE;
         time_t now = time(NULL);
 
-        for (i = 0; i < BAN_LIST_MAXSZ; i++) {
+        for (i = 0; i < BAN_EVENT_LIST_MAXSZ; i++) {
           int type = ban_lists->events.bel_entries[i].bee_type;
 
           switch (type) {
@@ -1159,6 +1204,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
             case BAN_EV_TYPE_TIMEOUT_IDLE:
             case BAN_EV_TYPE_TIMEOUT_NO_TRANSFER:
             case BAN_EV_TYPE_MAX_CONN_PER_HOST:
+            case BAN_EV_TYPE_CLIENT_CONNECT_RATE:
               if (!have_banner) {
                 pr_ctrls_add_response(ctrl, "Ban Events:");
                 have_banner = TRUE;
@@ -1493,6 +1539,11 @@ MODRET set_banonevent(cmd_rec *cmd) {
     pr_event_register(&ban_module, "mod_auth.anon-reject-passwords",
       ban_anonrejectpasswords_ev, bee);
 
+  } else if (strcasecmp(cmd->argv[1], "ClientConnectRate") == 0) {
+    bee->bee_type = BAN_EV_TYPE_CLIENT_CONNECT_RATE;
+    pr_event_register(&ban_module, "mod_ban.client-connect-rate",
+      ban_clientconnectrate_ev, bee);
+
   } else if (strcasecmp(cmd->argv[1], "MaxClientsPerClass") == 0) {
     bee->bee_type = BAN_EV_TYPE_MAX_CLIENTS_PER_CLASS;
     pr_event_register(&ban_module, "mod_auth.max-clients-per-class",
@@ -1577,13 +1628,20 @@ static void ban_exit_ev(const void *event_data, void *user_data) {
     struct shmid_ds ds;
     int res;
 
+    res = shmdt(ban_lists);
+    if (res < 0) {
+      pr_log_debug(DEBUG1, MOD_BAN_VERSION ": error detaching shm: %s",
+        strerror(errno));
+    }
+
     memset(&ds, 0, sizeof(ds));
 
     PRIVS_ROOT
     res = shmctl(ban_shmid, IPC_RMID, &ds);
     PRIVS_RELINQUISH
 
-    if (res < 0 && errno != EINVAL)
+    if (res < 0 &&
+        errno != EINVAL)
       pr_log_debug(DEBUG1, MOD_BAN_VERSION ": error removing shm %d: %s",
         ban_shmid, strerror(errno));
   }
@@ -1606,52 +1664,58 @@ static void ban_handle_event(unsigned int ev_type, int ban_type,
   }
 
   tmp_pool = make_sub_pool(ban_pool);
+
   ban_event_list_expire();
 
   bee = ban_event_list_get(ev_type, main_server->sid, src);
 
-  if (!bee && tmpl->bee_count_max > 0) {
-    /* Add a a new entry. */
+  if (!bee &&
+      tmpl->bee_count_max > 0) {
+    /* Add a new entry. */
     if (ban_event_list_add(ev_type, main_server->sid, src, tmpl->bee_count_max,
-        tmpl->bee_window, tmpl->bee_expires) < 0)
+        tmpl->bee_window, tmpl->bee_expires) < 0) {
       (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
         "error adding ban event for %s: %s", event,
         strerror(errno));
 
-    else
+    } else {
       (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
         "added ban event for %s", event);
+    }
 
     bee = ban_event_list_get(ev_type, main_server->sid, src);
   }
 
   if (bee) {
     /* Update the entry. */
-    if (bee->bee_count_curr < bee->bee_count_max)
+    if (bee->bee_count_curr < bee->bee_count_max) {
       bee->bee_count_curr++;
+    }
 
     if (bee->bee_count_curr >= bee->bee_count_max) {
       /* Threshold has been reached, add an entry to the ban list.
        * Check for an existing entry first, though.
        */
+
       if (ban_list_exists(ban_type, main_server->sid, src) < 0) {
         const char *reason = pstrcat(tmp_pool, event, " autoban at ",
           pr_strtime(time(NULL)), NULL);
 
         ban_list_expire();
         if (ban_list_add(ban_type, main_server->sid, src, reason,
-            tmpl->bee_expires) < 0)
+            tmpl->bee_expires) < 0) {
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
             "error adding %s-triggered autoban for %s '%s': %s", event,
             ban_type == BAN_TYPE_USER ? "user" :
               ban_type == BAN_TYPE_HOST ? "host" : "class", src,
             strerror(errno));
 
-        else
+        } else {
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
             "added %s-triggered autoban for %s '%s'", event,
               ban_type == BAN_TYPE_USER ? "user" :
                 ban_type == BAN_TYPE_HOST ? "host" : "class", src);
+        }
 
         end_session = TRUE;
 
@@ -1691,6 +1755,21 @@ static void ban_anonrejectpasswords_ev(const void *event_data,
 
   ban_handle_event(BAN_EV_TYPE_ANON_REJECT_PASSWORDS, BAN_TYPE_HOST,
     ipstr, tmpl);
+}
+
+static void ban_clientconnectrate_ev(const void *event_data, void *user_data) {
+
+  /* For this event, event_data is the client. */
+  conn_t *c = (conn_t *) event_data;
+  const char *ipstr = pr_netaddr_get_ipstr(c->remote_addr);
+
+  /* user_data is a template of the ban event entry. */
+  struct ban_event_entry *tmpl = user_data;
+
+  if (!ban_engine)
+    return;
+
+  ban_handle_event(BAN_EV_TYPE_CLIENT_CONNECT_RATE, BAN_TYPE_HOST, ipstr, tmpl);
 }
 
 static void ban_maxclientsperclass_ev(const void *event_data, void *user_data) {
@@ -1872,7 +1951,8 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
 
   /* Get the shm for storing all of our ban info. */
   lists = ban_get_shm(ban_tabfh);
-  if (lists == NULL && errno != EEXIST) {
+  if (lists == NULL &&
+      errno != EEXIST) {
     pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
       ": unable to get shared memory for BanTable '%s': %s", ban_table,
       strerror(errno));
@@ -1915,6 +1995,7 @@ static void ban_restart_ev(const void *event_data, void *user_data) {
   pr_event_unregister(&ban_module, "mod_auth.max-hosts-per-user", NULL);
   pr_event_unregister(&ban_module, "mod_auth.max-login-attempts", NULL);
   pr_event_unregister(&ban_module, "mod_auth.max-users-per-host", NULL);
+  pr_event_unregister(&ban_module, "mod_ban.client-connect-rate", NULL);
 
   /* "Bounce" the log file descriptor */
   close(ban_logfd);
@@ -2050,6 +2131,8 @@ static int ban_sess_init(void) {
     destroy_pool(tmp_pool);
     end_login(0);
   }
+
+  pr_event_generate("mod_ban.client-connect-rate", session.c);
 
   pr_event_unregister(&ban_module, "core.exit", ban_exit_ev);
   pr_event_unregister(&ban_module, "core.restart", ban_restart_ev);
