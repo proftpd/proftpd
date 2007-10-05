@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.304 2007-09-14 16:08:40 castaglia Exp $
+ * $Id: mod_core.c,v 1.305 2007-10-05 17:33:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2679,25 +2679,6 @@ MODRET set_displayconnect(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET set_displayfirstchdir(cmd_rec *cmd) {
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
-
-  c = add_config_param("DisplayChdir", 2, NULL, NULL);
-  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
-  c->argv[1] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[1]) = TRUE;
-  c->flags |= CF_MERGEDOWN;
-
-  pr_log_pri(PR_LOG_WARNING,
-    "warning: the DisplayFirstChdir directive is deprecated and will be "
-    "removed in a future release.  Please use the DisplayChdir directive.");
-
-  return PR_HANDLED(cmd);
-}
-
 MODRET set_displayquit(cmd_rec *cmd) {
   config_rec *c = NULL;
 
@@ -4741,9 +4722,6 @@ static conftable core_conftab[] = {
   { "WtmpLog",			set_wtmplog,			NULL },
   { "tcpBackLog",		set_tcpbacklog,			NULL },
   { "tcpNoDelay",		set_tcpnodelay,			NULL },
-
-  /* Deprecated */
-  { "DisplayFirstChdir",	set_displayfirstchdir,		NULL },
 
   { NULL, NULL, NULL }
 };
