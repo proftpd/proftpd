@@ -24,7 +24,7 @@
 
 /* ProFTPD Auth API
  *
- * $Id: auth.h,v 1.5 2007-04-17 21:33:40 castaglia Exp $
+ * $Id: auth.h,v 1.6 2007-10-05 17:00:50 castaglia Exp $
  */
 
 #ifndef PR_AUTH_H
@@ -84,6 +84,11 @@ int pr_auth_requires_pass(pool *, const char *);
  * an anonymous login, NULL is returned.
  */
 config_rec *pr_auth_get_anon_config(pool *p, char **, char **, char **);
+
+/* Enable caching of certain data within the Auth API. */
+int pr_auth_cache_set(int, unsigned int);
+#define PR_AUTH_CACHE_FL_UID2NAME	0x00001
+#define PR_AUTH_CACHE_FL_GID2NAME	0x00002
 
 /* For internal use only. */
 int init_auth(void);

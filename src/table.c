@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004, 2005 The ProFTPD Project team
+ * Copyright (c) 2004-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.9 2006-05-26 16:43:15 castaglia Exp $
+ * $Id: table.c,v 1.10 2007-10-05 17:00:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -47,7 +47,7 @@ struct table_rec {
   pr_table_entry_t *tab_iter_ent;
 
   /* For iterating through all of the possible multiple values for a single
-   * key.
+   * key.  Only used if the PR_TABLE_FL_MULTI_VALUE flag is set.
    */
   pr_table_entry_t *val_iter_ent;
 
@@ -460,7 +460,6 @@ void *pr_table_kget(pr_table_t *tab, const void *key_data, size_t key_datasz,
 
   } else {
     unsigned int idx = h % tab->nchains;
-
     head = tab->chains[idx];
   }
 
@@ -483,7 +482,8 @@ void *pr_table_kget(pr_table_t *tab, const void *key_data, size_t key_datasz,
       if (tab->flags & PR_TABLE_FL_USE_CACHE) 
         tab->cache_ent = ent;
 
-      tab->val_iter_ent = ent;
+      if (tab->flags & PR_TABLE_FL_MULTI_VALUE)
+        tab->val_iter_ent = ent;
 
       if (value_datasz)
         *value_datasz = ent->value_datasz;
@@ -638,7 +638,8 @@ int pr_table_kset(pr_table_t *tab, const void *key_data, size_t key_datasz,
       if (tab->flags & PR_TABLE_FL_USE_CACHE)
         tab->cache_ent = ent;
 
-      tab->val_iter_ent = ent;
+      if (tab->flags & PR_TABLE_FL_MULTI_VALUE)
+        tab->val_iter_ent = ent;
 
       return 0;
     }

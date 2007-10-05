@@ -25,14 +25,51 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.50 2007-06-12 18:57:51 castaglia Exp $
+ * $Id: auth.c,v 1.51 2007-10-05 17:00:50 castaglia Exp $
  */
 
 #include "conf.h"
 
 static pool *auth_pool = NULL;
-static pr_table_t *auth_tab = NULL;
+static pr_table_t *auth_tab = NULL, *uid_tab = NULL, *gid_tab = NULL;
 static const char *trace_channel = "auth";
+
+/* Caching of ID-to-name lookups, for both UIDs and GIDs, is enabled by
+ * default.
+ */
+static unsigned int auth_caching = PR_AUTH_CACHE_FL_UID2NAME|PR_AUTH_CACHE_FL_GID2NAME
+
+/* Key comparison callback for the uidcache and gidcache. */
+static int uid_keycmp_cb(const void *key1, size_t keysz1,
+    const void *key2, size_t keysz2) {
+  return memcmp(key1, key2, sizeof(uid_t));
+}
+
+static int gid_keycmp_cb(const void *key1, size_t keysz1,
+    const void *key2, size_t keysz2) {
+  return memcmp(key1, key2, sizeof(gid_t));
+}
+
+/* Key "hash" callback for the uidcache and gidcache. */
+static unsigned int uid_hash_cb(const void *key, size_t keysz) {
+  uid_t u;
+  unsigned int res;
+
+  memcpy(&u, key, keysz);
+  res = (unsigned int) (u << 8);
+
+  return res;
+}
+
+static unsigned int gid_hash_cb(const void *key, size_t keysz) {
+  gid_t g;
+  unsigned int res;
+
+  memcpy(&g, key, keysz);
+  res = (unsigned int) (g << 8);
+
+  return res;
+}
 
 /* The difference between this function, and pr_cmd_alloc(), is that this
  * allocates the cmd_rec directly from the given pool, whereas pr_cmd_alloc()
@@ -285,7 +322,8 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
     return NULL;
   }
 
-  if (!auth_tab && auth_pool) {
+  if (!auth_tab &&
+       auth_pool) {
     auth_tab = pr_table_alloc(auth_pool, 0);
   }
 
@@ -587,13 +625,84 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
 
   memset(namebuf, '\0', sizeof(namebuf));
 
+  if ((auth_caching & PR_AUTH_CACHE_FL_UID2NAME) &&
+      !uid_tab &&
+      auth_pool) {
+    int ok = TRUE;
+    uid_tab = pr_table_alloc(auth_pool, 0);
+
+    if (pr_table_ctl(uid_tab, PR_TABLE_CTL_SET_KEY_CMP, uid_keycmp_cb) < 0) {
+      pr_trace_msg(trace_channel, 2,
+        "error setting key comparison callback for uidcache: %s",
+        strerror(errno));
+      ok = FALSE;
+    }
+
+    if (pr_table_ctl(uid_tab, PR_TABLE_CTL_SET_KEY_HASH, uid_hash_cb) < 0) {
+      pr_trace_msg(trace_channel, 2,
+        "error setting key hash callback for uidcache: %s",
+        strerror(errno));
+      ok = FALSE;
+    }
+
+    if (!ok) {
+      pr_trace_msg(trace_channel, 2, "%s",
+        "destroying unusable uidcache table");
+      pr_table_free(uid_tab);
+      uid_tab = NULL;
+    }
+  }
+
+  if (uid_tab) {
+    void *v = NULL;
+
+    v = pr_table_kget(uid_tab, (const void *) &uid, sizeof(uid_t), NULL);
+    if (v) {
+      sstrncpy(namebuf, v, sizeof(namebuf));
+
+      pr_trace_msg(trace_channel, 8,
+        "using name '%s' from uidcache for UID %lu", namebuf,
+        (unsigned long) uid);
+ 
+      res = namebuf;
+      return res;
+
+    } else {
+      pr_trace_msg(trace_channel, 9,
+        "no value found in uidcache for UID %lu: %s", (unsigned long) uid,
+        strerror(errno));
+    }
+  }
+
   cmd = make_cmd(p, 1, (void *) &uid);
   mr = dispatch_auth(cmd, "uid2name", NULL);
 
-  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
+  if (MODRET_ISHANDLED(mr) &&
+      MODRET_HASDATA(mr)) {
     res = mr->data;
     sstrncpy(namebuf, res, sizeof(namebuf));
     res = namebuf;
+
+    if (uid_tab) {
+      int count;
+
+      (void) pr_table_rewind(uid_tab);
+      count = pr_table_kexists(uid_tab, (const void *) &uid, sizeof(uid_t));
+      if (count <= 0) {
+        if (pr_table_kadd(uid_tab, (const void *) &uid, sizeof(uid_t),
+            pstrdup(auth_pool, res), strlen(res) + 1) < 0 &&
+            errno != EEXIST) {
+          pr_trace_msg(trace_channel, 3,
+            "error adding name '%s' for UID %lu to the uidcache: %s",
+            res, (unsigned long) uid, strerror(errno));
+
+        } else {
+          pr_trace_msg(trace_channel, 5,
+            "stashed name '%s' for UID %lu in the uidcache", res,
+            (unsigned long) uid);
+        }
+      }
+    }
   }
 
   if (cmd->tmp_pool) {
@@ -612,13 +721,85 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
 
   memset(namebuf, '\0', sizeof(namebuf));
 
+  if ((auth_caching & PR_AUTH_CACHE_FL_GID2NAME) &&
+      !gid_tab &&
+      auth_pool) {
+    int ok = TRUE;
+
+    gid_tab = pr_table_alloc(auth_pool, 0);
+
+    if (pr_table_ctl(gid_tab, PR_TABLE_CTL_SET_KEY_CMP, gid_keycmp_cb) < 0) {
+      pr_trace_msg(trace_channel, 2,
+        "error setting key comparison callback for gidcache: %s",
+        strerror(errno));
+      ok = FALSE;
+    }
+
+    if (pr_table_ctl(gid_tab, PR_TABLE_CTL_SET_KEY_HASH, gid_hash_cb) < 0) {
+      pr_trace_msg(trace_channel, 2,
+        "error setting key hash callback for gidcache: %s",
+        strerror(errno));
+      ok = FALSE;
+    }
+
+    if (!ok) {
+      pr_trace_msg(trace_channel, 2, "%s",
+        "destroying unusable gidcache table");
+      pr_table_free(gid_tab);
+      gid_tab = NULL;
+    }
+  }
+
+  if (gid_tab) {
+    void *v = NULL;
+ 
+    v = pr_table_kget(gid_tab, (const void *) &gid, sizeof(gid_t), NULL);
+    if (v) {
+      sstrncpy(namebuf, v, sizeof(namebuf));
+
+      pr_trace_msg(trace_channel, 8,
+        "using name '%s' from gidcache for GID %lu", namebuf,
+        (unsigned long) gid);
+
+      res = namebuf;
+      return res;
+
+    } else {
+      pr_trace_msg(trace_channel, 9,
+        "no value found in gidcache for GID %lu: %s", (unsigned long) gid,
+        strerror(errno));
+    }
+  }
+
   cmd = make_cmd(p, 1, (void *) &gid);
   mr = dispatch_auth(cmd, "gid2name", NULL);
 
-  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
+  if (MODRET_ISHANDLED(mr) &&
+      MODRET_HASDATA(mr)) {
     res = mr->data;
     sstrncpy(namebuf, res, sizeof(namebuf));
     res = namebuf;
+
+    if (gid_tab) {
+      int count;
+
+      (void) pr_table_rewind(gid_tab);
+      count = pr_table_kexists(gid_tab, (const void *) &gid, sizeof(gid_t));
+      if (count <= 0) {
+        if (pr_table_kadd(gid_tab, (const void *) &gid, sizeof(gid_t),
+            pstrdup(auth_pool, res), strlen(res) + 1) < 0 &&
+            errno != EEXIST) {
+          pr_trace_msg(trace_channel, 3,
+            "error adding name '%s' for GID %lu to the gidcache: %s",
+            res, (unsigned long) gid, strerror(errno));
+
+        } else {
+          pr_trace_msg(trace_channel, 5,
+            "stashed name '%s' for GID %lu in the uidcache", res,
+            (unsigned long) gid);
+        }
+      }
+    }
   }
 
   if (cmd->tmp_pool) {
@@ -980,6 +1161,40 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
     destroy_pool(tmp_pool);
 
   return res;
+}
+
+int pr_auth_cache_set(int bool, unsigned int flags) {
+  if (bool != 0 &&
+      bool != 1) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (bool == 0) {
+    if (flags & PR_AUTH_CACHE_FL_UID2NAME) {
+      auth_caching &= ~PR_AUTH_CACHE_FL_UID2NAME;
+      pr_trace_msg(trace_channel, 7, "UID-to-name caching (uidcache) disabled");
+    }
+
+    if (flags & PR_AUTH_CACHE_FL_GID2NAME) {
+      auth_caching &= ~PR_AUTH_CACHE_FL_GID2NAME;
+      pr_trace_msg(trace_channel, 7, "GID-to-name caching (gidcache) disabled");
+    }
+  }
+
+  if (bool == 1) {
+    if (flags & PR_AUTH_CACHE_FL_UID2NAME) {
+      auth_caching |= PR_AUTH_CACHE_FL_UID2NAME;
+      pr_trace_msg(trace_channel, 7, "UID-to-name caching (uidcache) enabled");
+    }
+
+    if (flags & PR_AUTH_CACHE_FL_GID2NAME) {
+      auth_caching |= PR_AUTH_CACHE_FL_GID2NAME;
+      pr_trace_msg(trace_channel, 7, "GID-to-name caching (gidcache) enabled");
+    }
+  }
+
+  return 0;
 }
 
 /* Internal use only.  To be called in the session process. */
