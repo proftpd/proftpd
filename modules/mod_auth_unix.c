@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.31 2006-06-29 17:16:23 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.32 2007-10-05 16:55:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -872,15 +872,16 @@ MODRET pw_getgroups(cmd_rec *cmd) {
   struct passwd *pw = NULL;
   struct group *gr = NULL;
   array_header *gids = NULL, *groups = NULL;
-  char **gr_member = NULL, *name = NULL;
+  char *name = NULL;
+  int use_getgrouplist = FALSE;
 
-  /* function pointers for which lookup functions to use */
+  /* Function pointers for which lookup functions to use */
   struct passwd *(*my_getpwnam)(const char *) = NULL;
   struct group *(*my_getgrgid)(gid_t) = NULL;
   struct group *(*my_getgrent)(void) = NULL;
   RETSETGRENTTYPE (*my_setgrent)(void) = NULL;
 
-  /* play function pointer games */
+  /* Play function pointer games */
   if (persistent_passwd) {
     my_getpwnam = p_getpwnam;
     my_getgrgid = p_getgrgid;
@@ -893,6 +894,22 @@ MODRET pw_getgroups(cmd_rec *cmd) {
     my_getgrent = getgrent;
     my_setgrent = setgrent;
   }
+
+  /* Determine whether to use getgrouplist(3), if available.  Older glibc
+   * versions (i.e. 2.2.4 and older) had buggy getgrouplist() implementations
+   * which allowed for buffer overflows (see CVS-2003-0689); do not use
+   * getgrouplist() on such glibc versions.
+   */
+#ifdef HAVE_GETGROUPLIST
+  use_getgrouplist = TRUE;
+
+# if defined(__GLIBC__) && \
+     defined(__GLIBC_MINOR__) && \
+     __GLIBC__ <= 2 && \
+     __GLIBC_MINOR__ < 3
+  use_getgrouplist = FALSE;
+# endif
+#endif /* !HAVE_GETGROUPLIST */
 
   name = (char *) cmd->argv[0];
 
@@ -916,24 +933,59 @@ MODRET pw_getgroups(cmd_rec *cmd) {
 
   my_setgrent();
 
-  /* This is where things get slow, expensive, and ugly.  Loop through
-   * everything, checking to make sure we haven't already added it.
-   */
-  while ((gr = my_getgrent()) != NULL && gr->gr_mem) {
+  if (use_getgrouplist) {
+#ifndef HAVE_GETGROUPLIST
+    ;
+#else
+    int group_ids[NGROUPS_MAX];
+    int ngroups = NGROUPS_MAX;
+    register unsigned int i;
 
-    /* Loop through each member name listed */
-    for (gr_member = gr->gr_mem; *gr_member; gr_member++) {
+    pr_trace_msg("auth", 4,
+      "using getgrouplist(3) to look up group membership");
 
-      /* If it matches the given username... */
-      if (!strcmp(*gr_member, pw->pw_name)) {
+    memset(group_ids, 0, sizeof(group_ids));
+    if (getgrouplist(pw->pw_name, pw->pw_gid, group_ids, &ngroups) < 0) {
+      pr_log_pri(PR_LOG_ERR, "getgrouplist error: %s", strerror(errno));
+      return PR_DECLINED(cmd);
+    }
 
-        /* ...add the GID and name */
-        if (gids)
+    for (i = 0; i < ngroups; i++) {
+      gr = my_getgrgid(group_ids[i]);
+      if (gr) {
+        if (gids && pw->pw_gid != gr->gr_gid)
           *((gid_t *) push_array(gids)) = gr->gr_gid;
 
         if (groups && pw->pw_gid != gr->gr_gid)
           *((char **) push_array(groups)) = pstrdup(session.pool,
             gr->gr_name);
+      }
+    }
+#endif /* !HAVE_GETGROUPLIST */
+
+  } else {
+    char **gr_member = NULL;
+
+    /* This is where things get slow, expensive, and ugly.  Loop through
+     * everything, checking to make sure we haven't already added it.
+     */
+    while ((gr = my_getgrent()) != NULL && gr->gr_mem) {
+      pr_signals_handle();
+
+      /* Loop through each member name listed */
+      for (gr_member = gr->gr_mem; *gr_member; gr_member++) {
+
+        /* If it matches the given username... */
+        if (strcmp(*gr_member, pw->pw_name) == 0) {
+
+          /* ...add the GID and name */
+          if (gids)
+            *((gid_t *) push_array(gids)) = gr->gr_gid;
+
+          if (groups && pw->pw_gid != gr->gr_gid)
+            *((char **) push_array(groups)) = pstrdup(session.pool,
+              gr->gr_name);
+        }
       }
     }
   }
