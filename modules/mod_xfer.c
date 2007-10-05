@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.219 2007-10-05 16:48:26 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.220 2007-10-05 17:22:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2218,14 +2218,6 @@ MODRET set_hiddenstores(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET set_hiddenstor(cmd_rec *cmd) {
-  pr_log_pri(PR_LOG_WARNING,
-    "warning: the HiddenStor directive is deprecated, and will be removed "
-    "in a future release.  Please use the HiddenStores directive.");
-
-  return set_hiddenstores(cmd);
-}
-
 MODRET set_maxfilesize(cmd_rec *cmd) {
   config_rec *c = NULL;
   unsigned long nbytes;
@@ -2739,9 +2731,6 @@ static conftable xfer_conftab[] = {
   { "TimeoutStalled",		set_timeoutstalled,		NULL },
   { "TransferRate",		set_transferrate,		NULL },
   { "UseSendfile",		set_usesendfile,		NULL },
-
-  /* Deprecated */
-  { "HiddenStor",		set_hiddenstor,			NULL },
 
   { NULL }
 };
