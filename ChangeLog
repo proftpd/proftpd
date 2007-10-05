@@ -1,3 +1,378 @@
+2007-10-05 08:38  castaglia
+
+	* doc/: Configuration.html, Configuration.pdf: 
+	Updating the HTML page with the configuration directives.  Also
+	added a PDF copy of the same information (thanks Sven!).
+
+2007-10-05 08:15  castaglia
+
+	* contrib/dist/rpm/proftpd.spec, include/version.h: 
+	Updating version for 1.3.1-stable.
+
+2007-10-04 10:04  castaglia
+
+	* contrib/mod_tls.c: 
+	Log a PID as an explicit unsigned int, not an implicit int.  Quells
+	a compiler warning about mismatched printf arguments.
+
+2007-10-04 10:01  castaglia
+
+	* src/env.c: 
+	Quell a compiler warning about casting away the const qualifier, on
+	systems which support the putenv(3) function.
+
+2007-10-04 09:24  castaglia
+
+	* RELEASE_NOTES: 
+	Updating the release notes, preparing for a release.
+
+2007-10-03 19:25  castaglia
+
+	* NEWS, contrib/dist/rpm/ftp.pamd, contrib/dist/rpm/proftpd.spec: 
+	Bug#2795 - Improvements to RPM .spec file to build more of the
+	modules, plus better optional packaging organization.
+
+2007-10-03 18:46  castaglia
+
+	* include/table.h: 
+	Correct comment in table.h.
+
+2007-10-02 15:29  castaglia
+
+	* doc/howto/TLS.html: 
+	Add mention of RFC 2228, and URL, to TLS doc.
+
+2007-10-01 14:41  castaglia
+
+	* modules/mod_delay.c: 
+	Update the trace message for the other location in mod_delay where
+	the DelayTable is mapped into memory.
+
+2007-10-01 14:25  castaglia
+
+	* modules/mod_delay.c: 
+	Log the table size, and the table fd, when attempting to map a
+	DelayTable into memory.
+
+2007-10-01 09:40  castaglia
+
+	* doc/modules/mod_delay.html: 
+	Change to using relative URLs, so that the documentation can be
+	used outside of a network connection.
+
+2007-10-01 08:14  castaglia
+
+	* doc/modules/mod_delay.html: 
+	Add notes about mod_delay usage to the mod_delay documentation.
+
+2007-09-30 16:38  castaglia
+
+	* src/timers.c: Catch edge case where the timers list may be
+	empty/null.
+
+2007-09-30 14:05  castaglia
+
+	* NEWS, src/main.c: Bug#2981 - Command-line long options --ipv4 and
+	--ipv6 do not work.
+
+2007-09-27 17:53  castaglia
+
+	* modules/mod_ls.c: 
+	If an FTP client aborted the data transfer during a directory
+	listing, then a 226 response would be sent *twice*, e.g.:
+	
+	  226 Transfer complete
+	  226 Abort successful
+	
+	would be seen, using the ftp(1) client.  The problem was that
+	mod_ls, when closing its data connection, did not check to see if
+	the transfer had been aborted.	Aborted transfers should cause the
+	data connection to be closed "quietly", i.e. no sending of the
+	"Transfer complete" message.
+	
+	With this change, mod_ls now checks for an aborted transfer, and
+	will close the data connection "quietly" when appropriate, thus
+	eliminating the duplicate 226 responses.
+
+2007-09-27 17:47  castaglia
+
+	* modules/mod_ls.c: 
+	Cut down on logging an error if errno indicates "success"; usually
+	this happens when the client aborted the directory listing.
+
+2007-09-27 09:13  castaglia
+
+	* modules/mod_xfer.c: 
+	Add some tracing to aborted transfers.
+
+2007-09-27 09:04  castaglia
+
+	* src/trace.c: 
+	Add the 'xfer' channel to the list of default trace channels.
+
+2007-09-25 09:27  castaglia
+
+	* contrib/mod_tls.c: 
+	No need to report on system call errors of "Success".
+
+2007-09-24 19:16  castaglia
+
+	* contrib/mod_tls.c: 
+	Allow handling of the PROT command after the CCC command has been
+	used.  One particular FTPS client (lftp) is known to send PROT
+	(again) after CCC.
+
+2007-09-18 20:22  castaglia
+
+	* doc/howto/TLS.html: 
+	Minor formatting tweak.
+
+2007-09-18 20:14  castaglia
+
+	* doc/howto/TLS.html: 
+	Add FAQ about a commonly-seen error in the TLSLog, and how using
+	the NoCertRequest TLSOption may help.
+
+2007-09-17 10:36  castaglia
+
+	* NEWS, modules/Makefile.in: 
+	Bug#2974 - Install error if multiple modules, using their own build
+	script, are built as shared modules.
+
+2007-09-14 09:08  castaglia
+
+	* modules/mod_core.c: 
+	When handling an EPSV command, close any existing data connection
+	first.	Related to Bug #2900.
+
+2007-09-13 14:32  castaglia
+
+	* contrib/mod_tls.c: 
+	Just as we don't want to call EVP_cleanup(3) at session
+	initialization time if there are other OpenSSL-using modules
+	around, we don't want to unload the human-readable OpenSSL error
+	strings, either.
+
+2007-09-13 08:25  castaglia
+
+	* contrib/mod_tls.c: 
+	Alter the conditions under which mod_tls calls EVP_cleanup(3). 
+	Call the function when mod_tls is being unloaded, or when the
+	session is exiting, without reservation.  If however the FTP
+	session is being initialized, and mod_tls has been compiled but not
+	enabled (i.e. the TLSEngine is off or not present), *and* any other
+	known OpenSSL using modules (i.e.  mod_ldap and mod_sql) are
+	present, do NOT call EVP_cleanup().  Doing so might deprive those
+	other modules of OpenSSL functionality unnecessarily.
+	
+	Patch suggested by Nigel Kukard a while ago.
+
+2007-09-13 08:22  castaglia
+
+	* contrib/mod_sql.c: 
+	Adding some logging about various error cases when using OpenSSL
+	digests for authentication; these were contributed by Nigel Kukard
+	a while ago.
+
+2007-09-13 07:57  castaglia
+
+	* modules/mod_dso.c: 
+	Fix compiler warning about redeclaring a variable if Controls
+	support is enabled.
+
+2007-09-12 11:08  castaglia
+
+	* doc/howto/Vhost.html: 
+	Remove mention of the now-deprecated Bind directive.
+
+2007-09-11 19:24  castaglia
+
+	* contrib/mod_tls.c: 
+	When initializing mod_tls, check the version of the OpenSSL headers
+	used against the version of the OpenSSL library used.  Refuse to
+	load the module unless the versions match properly.  (This will
+	help catch systems where mismatched versions of headers and
+	libraries are used inadvertently.)
+
+2007-09-11 15:58  castaglia
+
+	* modules/mod_dso.c: 
+	Add trace logging of the succesful loading of modules/files.
+
+2007-09-11 10:47  castaglia
+
+	* modules/mod_core.c: 
+	If the admin has specified "UseUTF8 off" in the proftpd.conf file,
+	be sure to remove the UTF8 listing from the FEAT output. 
+	Otherwise, clients might be a little confused.
+
+2007-09-10 17:52  castaglia
+
+	* contrib/mod_sql.c: 
+	Cast the off_t value of total_xfer_bytes properly, and quell
+	warnings from picky compilers.
+
+2007-09-10 17:49  castaglia
+
+	* src/log.c: 
+	When writing to utmp/wtmp logs, we're really not concerned if we
+	fail to truncate the file as requested.
+
+2007-09-10 17:47  castaglia
+
+	* modules/mod_log.c: 
+	If there was a problem writing to the ExtendedLog fd, be sure to
+	log it using proftpd's logging (and hope that that write()
+	succeeds).
+
+2007-09-10 17:44  castaglia
+
+	* modules/mod_delay.c: 
+	Inform picky compilers that we will be ignoring the return value
+	from write(2).	This may not be the best behavior, but it is what
+	we are doing.
+
+2007-09-10 17:42  castaglia
+
+	* modules/mod_xfer.c: 
+	Make sure to cast the restart_pos value (an off_t), in order to
+	satisfy picky compilers.
+
+2007-09-10 15:55  castaglia
+
+	* contrib/dist/rpm/proftpd.spec: 
+	Fix syntax of RPM options for some modules.
+
+2007-09-07 17:13  castaglia
+
+	* contrib/dist/rpm/proftpd.spec: 
+	Update the RPM spec file to include the mod_wrap2 modules, mod_ban,
+	mod_ctrls_admin, mod_site_misc, and the NLS capability.
+
+2007-09-07 09:13  jwm
+
+	* contrib/mod_ldap.c: Fix anonymous binds when
+	draft-ietf-ldapext-ldap-c-api-04 functions are used.
+	
+	Submitted by: Quentin Garnier <cube@cubidou.net>
+
+2007-09-04 14:14  castaglia
+
+	* contrib/mod_tls.c: 
+	The implementation of the fix for Bug #2686 missed a few places
+	where we need to lookup one of the TLSRequired settings.
+
+2007-08-29 19:00  castaglia
+
+	* modules/mod_xfer.c: 
+	Clean up the code style in the xfer_stor() function.  Also add
+	logging of the case where an lseek() fails for some reason.
+
+2007-08-29 10:47  castaglia
+
+	* doc/howto/SQL.html: 
+	Added SQL FAQ about shared library loader errors.
+
+2007-08-24 08:07  castaglia
+
+	* doc/howto/Debugging.html: 
+	Mention using `proftpd -V' in the Debugging howto.
+
+2007-08-22 07:50  castaglia
+
+	* src/: fsio.c, netio.c: 
+	Surround the invocation of function pointers with parentheses, to
+	help some (broken, IMHO) code introspection tools to be able to
+	read the code better.
+
+2007-08-21 19:00  jwm
+
+	* contrib/mod_ldap.c: missed version number
+
+2007-08-21 15:36  castaglia
+
+	* NEWS, lib/sstrncpy.c: 
+	Bug#2964 - Building RPM fails because of *snprintf trying to be
+	redefined.
+
+2007-08-17 14:41  jwm
+
+	* contrib/mod_ldap.c: release 2.8.17
+
+2007-08-09 15:56  castaglia
+
+	* NEWS, modules/mod_ls.c: 
+	Bug#2963 - Use of -A option for LIST/NLST commands not cleared for
+	subsequent commands.
+
+2007-08-09 15:16  castaglia
+
+	* README.facl: 
+	Remove extraneous whitespace.
+
+2007-08-03 07:52  castaglia
+
+	* NEWS, contrib/mod_wrap2_file.c, contrib/mod_wrap2_sql.c,
+	contrib/mod_wrap2/mod_wrap2.c, contrib/mod_wrap2/mod_wrap2.h.in: 
+	Bug#2958 - mod_wrap2 does not handle multiple rules in access
+	files.
+
+2007-07-31 15:08  castaglia
+
+	* modules/mod_auth.c: 
+	Coding style changes; no functional change.
+
+2007-07-31 08:17  castaglia
+
+	* NEWS, modules/mod_delay.c: 
+	Bug#2955 - Undeclared identifier MAP_FAILED for mod_delay on AIX.
+
+2007-07-24 15:09  castaglia
+
+	* NEWS, src/dirtree.c: 
+	Bug#2950 - Hostname with multiple IP addresses might cause
+	"ai_family not supported" error if IPv6 support enabled.
+
+2007-07-19 11:12  castaglia
+
+	* NEWS, src/proctitle.c: 
+	Bug#2947 - SIGBUS on Mac OS X when dynamically loading shared libs.
+	 The solution is to set argv elements to the empty string, rather
+	than NULL, so that stupid libraries which grovel around in argv
+	without checking for NULL pointers don't crash.  Silly libraries.
+
+2007-07-18 09:41  castaglia
+
+	* NEWS, modules/mod_facl.c: 
+	Bug#2946 - Anonymous logins fail if the mod_facl module is enabled.
+
+2007-07-07 07:24  jwm
+
+	* contrib/mod_ldap.c:	mod_ldap 2.8.17-20070707:
+	    fix LDAPServer handling; config_rec argv arrays don't contain
+	the
+	    directive name in index 0.
+
+2007-07-06 15:40  castaglia
+
+	* contrib/: mod_sql_mysql.c, mod_sql_postgres.c: 
+	Correct misspellings.
+
+2007-07-06 09:51  castaglia
+
+	* NEWS, contrib/mod_sql_mysql.c: 
+	Bug#2944 - mod_sql_mysql fails to compile due to missing quotation.
+
+2007-07-05 08:18  castaglia
+
+	* NEWS, include/version.h: 
+	Reset files for 1.3.1rc4.
+
+2007-07-04 12:34  castaglia
+
+	* ChangeLog: 
+	Updating ChangeLog.
+
 2007-07-04 12:33  castaglia
 
 	* contrib/dist/rpm/proftpd.spec, include/version.h: 
@@ -11378,7 +11753,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c: 
-	Missing $Id: ChangeLog,v 1.134 2007-07-04 19:34:36 castaglia Exp $ keyword.
+	Missing $Id: ChangeLog,v 1.135 2007-10-05 15:40:50 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -12549,7 +12924,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.134 2007-07-04 19:34:36 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.135 2007-10-05 15:40:50 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -13066,12 +13441,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.134 2007-07-04 19:34:36 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.135 2007-10-05 15:40:50 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.134 2007-07-04 19:34:36 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.135 2007-10-05 15:40:50 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
