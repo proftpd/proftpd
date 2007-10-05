@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.127 2007-09-13 15:22:01 castaglia Exp $
+ * $Id: mod_sql.c,v 1.128 2007-10-05 17:25:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3884,12 +3884,6 @@ MODRET set_sqldefaulthomedir(cmd_rec *cmd) {
   return add_virtualstr("SQLDefaultHomedir", cmd);
 }
 
-MODRET set_sqlhomedirondemand(cmd_rec *cmd) {
-  pr_log_pri(PR_LOG_WARNING, "warning: the SQLHomedirOnDemand directive "
-    "is deprecated, and will be removed in the next release");
-  return add_virtualbool("SQLHomedirOnDemand", cmd);
-}
-
 /* usage: SQLLog cmdlist query-name */
 MODRET set_sqllog(cmd_rec *cmd) {
   config_rec *c;
@@ -4978,9 +4972,6 @@ static conftable sql_conftab[] = {
   { "SQLLogFile", set_sqllogfile, NULL },
   { "SQLNamedQuery", set_sqlnamedquery, NULL },
   { "SQLShowInfo", set_sqlshowinfo, NULL },
-
-  /* Deprecated. */
-  { "SQLHomedirOnDemand", set_sqlhomedirondemand, NULL },
 
   { NULL, NULL, NULL }
 };
