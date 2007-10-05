@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.51 2007-10-05 17:00:50 castaglia Exp $
+ * $Id: auth.c,v 1.52 2007-10-05 17:04:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -37,7 +37,7 @@ static const char *trace_channel = "auth";
 /* Caching of ID-to-name lookups, for both UIDs and GIDs, is enabled by
  * default.
  */
-static unsigned int auth_caching = PR_AUTH_CACHE_FL_UID2NAME|PR_AUTH_CACHE_FL_GID2NAME
+static unsigned int auth_caching = PR_AUTH_CACHE_FL_UID2NAME|PR_AUTH_CACHE_FL_GID2NAME;
 
 /* Key comparison callback for the uidcache and gidcache. */
 static int uid_keycmp_cb(const void *key1, size_t keysz1,
