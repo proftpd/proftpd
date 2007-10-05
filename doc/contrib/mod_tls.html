@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.11 2006-09-11 18:42:38 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.12 2007-10-05 16:44:32 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -550,6 +550,13 @@ The currently implemented options are:
     However, <code>TLSRequired auth</code> and
     <code>TLSRequired auth+data</code> configurations will override the
     <code>AllowPerUser</code> option.
+
+  <p>
+  <li><code>EnableDiags</code><br>
+    Sets callbacks in the OpenSSL library such that <b>a lot</b> of
+    SSL/TLS protcol information is logged to the
+    <a href="#TLSLog"><code>TLSLog</code></a> file.  This option is very
+    useful when debugging strange interactions with FTPS clients.
 
   <p>
   <li><code>ExportCertData</code><br>
@@ -1171,7 +1178,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2006-09-11 18:42:38 $</i><br>
+Last Updated: <i>$Date: 2007-10-05 16:44:32 $</i><br>
 
 <br><hr>
 
