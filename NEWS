@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.840 2007-10-05 15:47:18 castaglia Exp $
+$Id: NEWS,v 1.841 2007-10-05 16:42:19 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -8,6 +8,12 @@ $Id: NEWS,v 1.840 2007-10-05 15:47:18 castaglia Exp $
 
   where `N' is the bug number.
 -----------------------------------------------------------------------------
+
+CVS
+--------------------------------
+- Bug 2978 - Support more verbose OpenSSL diagnostic logging.  There is now
+  support for an "EnableDiags" TLSOptions setting, which logs a lot of
+  SSL/TLS protocol information to the TLSLog.
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------

@@ -357,6 +357,7 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_OPT_EXPORT_CERT_DATA	0x0010
 #define TLS_OPT_STD_ENV_VARS		0x0020
 #define TLS_OPT_ALLOW_PER_USER		0x0040
+#define TLS_OPT_ENABLE_DIAGS		0x0080
 
 /* mod_tls cleanup flags */
 #define TLS_CLEANUP_FL_SESS_INIT	0x0001
@@ -430,6 +431,314 @@ static void tls_setup_environ(SSL *);
 static int tls_verify_cb(int, X509_STORE_CTX *);
 static int tls_verify_crl(int, X509_STORE_CTX *);
 static char *tls_x509_name_oneline(X509_NAME *);
+
+static void tls_diags_cb(const SSL *ssl, int where, int ret) {
+  const char *str;
+  int w;
+
+  w = where &~ SSL_ST_MASK;
+
+  if (w & SSL_ST_CONNECT) {
+    str = "connecting";
+
+  } else if (w & SSL_ST_ACCEPT) {
+    str = "accepting";
+
+  } else {
+    str = "(unknown)";
+  }
+
+  if (where & SSL_CB_LOOP) {
+    tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
+
+  } else if (where & SSL_CB_ALERT) {
+    str = (where & SSL_CB_READ) ? "reading" : "writing";
+    tls_log("[info] %s: SSL/TLS alert %s: %s", str,
+      SSL_alert_type_string_long(ret), SSL_alert_desc_string_long(ret));
+
+  } else if (where & SSL_CB_EXIT) {
+    if (ret == 0) {
+      tls_log("[info] %s: failed in %s: %s", str,
+        SSL_state_string_long(ssl), tls_get_errors());
+
+    } else if (ret < 0 && errno != 0) {
+      tls_log("[info] %s: error in %s (errno %d: %s)",
+        str, SSL_state_string_long(ssl), errno, strerror(errno));
+    }
+  }
+}
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+static void tls_msg_cb(int io_flag, int version, int content_type,
+    const void *buf, size_t buflen, SSL *ssl, void *arg) {
+  char *action_str = NULL;
+  char *version_str = NULL;
+  char *bytes_str = buflen != 1 ? "bytes" : "byte";
+
+  if (io_flag == 0) {
+    action_str = "received";
+
+  } else if (io_flag == 1) {
+    action_str = "sent";
+  }
+
+  switch (version) {
+    case SSL2_VERSION:
+      version_str = "SSLv2";
+      break;
+
+    case SSL3_VERSION:
+      version_str = "SSLv3";
+      break;
+
+    case TLS1_VERSION:
+      version_str = "TLSv1";
+      break;
+  }
+
+  if (version == SSL3_VERSION ||
+      version == TLS1_VERSION) {
+
+    switch (content_type) {
+      case 20:
+        /* ChangeCipherSpec message */
+        tls_log("[msg] %s %s ChangeCipherSpec message (%u %s)",
+          action_str, version_str, buflen, bytes_str);
+        break;
+
+      case 21: {
+        /* Alert messages */
+        if (buflen == 2) {
+          char *severity_str = NULL;
+
+          /* Peek naughtily into the buffer. */
+          switch (((const unsigned char *) buf)[0]) {
+            case 1:
+              severity_str = "warning";
+              break;
+
+            case 2:
+              severity_str = "fatal";
+              break;
+          }
+
+          switch (((const unsigned char *) buf)[1]) {
+            case 0:
+              tls_log("[msg] %s %s %s 'close_notify' Alert message (%u %s)",
+                action_str, version_str, severity_str, buflen, bytes_str);
+              break;
+
+            case 10:
+              tls_log("[msg] %s %s %s 'unexpected_message' Alert message "
+                "(%u %s)", action_str, version_str, severity_str, buflen,
+                bytes_str);
+              break;
+
+            case 20:
+              tls_log("[msg] %s %s %s 'bad_record_mac' Alert message (%u %s)",
+                action_str, version_str, severity_str, buflen, bytes_str);
+              break;
+
+            case 21:
+              tls_log("[msg] %s %s %s 'decryption_failed' Alert message "
+                "(%u %s)", action_str, version_str, severity_str, buflen,
+                bytes_str);
+              break;
+
+            case 22:
+              tls_log("[msg] %s %s %s 'record_overflow' Alert message (%u %s)",
+                action_str, version_str, severity_str, buflen, bytes_str);
+              break;
+
+            case 30:
+              tls_log("[msg] %s %s %s 'decompression_failure' Alert message "
+                "(%u %s)", action_str, version_str, severity_str, buflen,
+                bytes_str);
+              break;
+
+            case 40:
+              tls_log("[msg] %s %s %s 'handshake_failure' Alert message "
+                "(%u %s)", action_str, version_str, severity_str, buflen,
+                bytes_str);
+              break;
+          }
+
+        } else {
+          tls_log("[msg] %s %s Alert message, unknown type (%u %s)", action_str,
+            version_str, buflen, bytes_str);
+        }
+
+        break;
+      }
+
+      case 22: {
+        /* Handshake messages */
+        if (buflen > 0) {
+          /* Peek naughtily into the buffer. */
+          switch (((const unsigned char *) buf)[0]) {
+            case 0:
+              tls_log("[msg] %s %s 'HelloRequest' Handshake message (%u %s)",
+                action_str, version_str, buflen, bytes_str);
+              break;
+
+            case 1:
+              tls_log("[msg] %s %s 'ClientHello' Handshake message (%u %s)",
+                action_str, version_str, buflen, bytes_str);
+              break;
+
+            case 2:
+              tls_log("[msg] %s %s 'ServerHello' Handshake message (%u %s)",
+                action_str, version_str, buflen, bytes_str);
+              break;
+
+            case 11:
+              tls_log("[msg] %s %s 'Certificate' Handshake message (%u %s)",
+                action_str, version_str, buflen, bytes_str);
+              break;
+
+            case 12:
+              tls_log("[msg] %s %s 'ServerKeyExchange' Handshake message "
+                "(%u %s)", action_str, version_str, buflen, bytes_str);
+              break;
+
+            case 13:
+              tls_log("[msg] %s %s 'CertificateRequest' Handshake message "
+                "(%u %s)", action_str, version_str, buflen, bytes_str);
+              break;
+
+            case 14:
+              tls_log("[msg] %s %s 'ServerHelloDone' Handshake message (%u %s)",
+                action_str, version_str, buflen, bytes_str);
+              break;
+
+            case 15:
+              tls_log("[msg] %s %s 'CertificateVerify' Handshake message "
+                "(%u %s)", action_str, version_str, buflen, bytes_str);
+              break;
+
+            case 16:
+              tls_log("[msg] %s %s 'ClientKeyExchange' Handshake message "
+                "(%u %s)", action_str, version_str, buflen, bytes_str);
+              break;
+
+            case 20:
+              tls_log("[msg] %s %s 'Finished' Handshake message (%u %s)",
+                action_str, version_str, buflen, bytes_str);
+              break;
+          }
+
+        } else {
+          tls_log("[msg] %s %s Handshake message, unknown type (%u %s)",
+            action_str, version_str, buflen, bytes_str);
+        }
+
+        break;
+      }
+    }
+
+  } else if (version == SSL2_VERSION) {
+    /* SSLv2 message.  Ideally we wouldn't get these, but sometimes badly
+     * behaving FTPS clients send them.
+     */
+
+    if (buflen > 0) {
+      /* Peek naughtily into the buffer. */
+
+      switch (((const unsigned char *) buf)[0]) {
+        case 0: {
+          /* Error */
+          if (buflen > 3) {
+            unsigned err_code = (((const unsigned char *) buf)[1] << 8) +
+              ((const unsigned char *) buf)[2];
+
+            switch (err_code) {
+              case 0x0001:
+                tls_log("[msg] %s %s 'NO-CIPHER-ERROR' Error message (%u %s)",
+                  action_str, version_str, buflen, bytes_str);
+                break;
+
+              case 0x0002:
+                tls_log("[msg] %s %s 'NO-CERTIFICATE-ERROR' Error message "
+                  "(%u %s)", action_str, version_str, buflen, bytes_str);
+                break;
+
+              case 0x0004:
+                tls_log("[msg] %s %s 'BAD-CERTIFICATE-ERROR' Error message "
+                  "(%u %s)", action_str, version_str, buflen, bytes_str);
+                break;
+
+              case 0x0006:
+                tls_log("[msg] %s %s 'UNSUPPORTED-CERTIFICATE-TYPE-ERROR' "
+                  "Error message (%u %s)", action_str, version_str, buflen,
+                  bytes_str);
+                break;
+            }
+
+          } else {
+            tls_log("[msg] %s %s Error message, unknown type (%u %s)",
+              action_str, version_str, buflen, bytes_str);
+          }
+          break;
+        }
+
+        case 1:
+          tls_log("[msg] %s %s 'CLIENT-HELLO' message (%u %s)", action_str,
+            version_str, buflen, bytes_str);
+          break;
+
+        case 2:
+          tls_log("[msg] %s %s 'CLIENT-MASTER-KEY' message (%u %s)", action_str,
+            version_str, buflen, bytes_str);
+          break;
+
+        case 3:
+          tls_log("[msg] %s %s 'CLIENT-FINISHED' message (%u %s)", action_str,
+            version_str, buflen, bytes_str);
+          break;
+
+        case 4:
+          tls_log("[msg] %s %s 'SERVER-HELLO' message (%u %s)", action_str,
+            version_str, buflen, bytes_str);
+          break;
+
+        case 5:
+          tls_log("[msg] %s %s 'SERVER-VERIFY' message (%u %s)", action_str,
+            version_str, buflen, bytes_str);
+          break;
+
+        case 6:
+          tls_log("[msg] %s %s 'SERVER-FINISHED' message (%u %s)", action_str,
+            version_str, buflen, bytes_str);
+          break;
+
+        case 7:
+          tls_log("[msg] %s %s 'REQUEST-CERTIFICATE' message (%u %s)",
+            action_str, version_str, buflen, bytes_str);
+          break;
+
+        case 8:
+          tls_log("[msg] %s %s 'CLIENT-CERTIFICATE' message (%u %s)",
+            action_str, version_str, buflen, bytes_str);
+          break;
+      }
+
+    } else {
+      tls_log("[msg] %s %s message (%u %s)", action_str, version_str, buflen,
+        bytes_str);
+    }
+
+  } else {
+    /* This case might indicate an issue with OpenSSL itself; the version
+     * given to the msg_callback function was not initialized, or not set to
+     * one of the recognized SSL/TLS versions.  Weird.
+     */
+
+    tls_log("[msg] %s message of unknown version (%d) (%u %s)", action_str,
+      version, buflen, bytes_str);
+  }
+
+}
+#endif
 
 static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
   X509 *cert = NULL;
@@ -4006,6 +4315,9 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
     else if (strcmp(cmd->argv[i], "AllowPerUser") == 0)
       opts |= TLS_OPT_ALLOW_PER_USER;
 
+    else if (strcmp(cmd->argv[i], "EnableDiags") == 0)
+      opts |= TLS_OPT_ENABLE_DIAGS;
+
     else if (strcmp(cmd->argv[i], "ExportCertData") == 0)
       opts |= TLS_OPT_EXPORT_CERT_DATA;
 
@@ -4610,7 +4922,19 @@ static int tls_sess_init(void) {
     SSL_CTX_set_default_passwd_cb(ssl_ctx, tls_pkey_cb);
     SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx, (void *) tls_pkey);
   }
-  
+
+  /* Install a callback for logging OpenSSL diagnostic information, if
+   * requested.
+   */
+  if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+    tls_log("%s",
+      "TLSOption EnableDiags enabled, setting diagnostics callback");
+    SSL_CTX_set_info_callback(ssl_ctx, tls_diags_cb);
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+    SSL_CTX_set_msg_callback(ssl_ctx, tls_msg_cb);
+#endif
+  }
+
   /* NOTE: fail session init if TLS server init fails (e.g. res < 0)? */
   /* Initialize the OpenSSL context for this server's configuration. */
   res = tls_init_server();
