@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.218 2007-09-27 16:13:11 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.219 2007-10-05 16:48:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1316,8 +1316,6 @@ MODRET xfer_post_stou(cmd_rec *cmd) {
  */
 MODRET xfer_pre_appe(cmd_rec *cmd) {
   session.xfer.xfer_type = STOR_APPEND;
-  session.restart_pos = 0L;
-
   return xfer_pre_stor(cmd);
 }
 
@@ -1407,14 +1405,20 @@ MODRET xfer_stor(cmd_rec *cmd) {
         O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT));
   }
 
-  if (stor_fh && session.restart_pos) {
+  if (stor_fh &&
+      session.restart_pos) {
     int xerrno = 0;
 
-    if (pr_fsio_lseek(stor_fh, session.restart_pos, SEEK_SET) == -1)
+    if (pr_fsio_lseek(stor_fh, session.restart_pos, SEEK_SET) == -1) {
+      pr_log_debug(DEBUG4, "unable to seek to position %" PR_LU " of '%s': %s",
+        (pr_off_t) session.restart_pos, cmd->arg, strerror(errno));
       xerrno = errno;
 
-    else if (pr_fsio_stat(dir, &st) == -1)
+    } else if (pr_fsio_stat(dir, &st) == -1) {
+      pr_log_debug(DEBUG4, "unable to stat '%s': %s", cmd->arg,
+        strerror(errno));
       xerrno = errno;
+    }
 
     if (xerrno) {
       (void) pr_fsio_close(stor_fh);
@@ -1425,7 +1429,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
     /* Make sure that the requested offset is valid (within the size of the
      * file being resumed.
      */
-    if (stor_fh && session.restart_pos > st.st_size) {
+    if (stor_fh &&
+        session.restart_pos > st.st_size) {
       pr_response_add_err(R_554, _("%s: invalid REST argument"), cmd->arg);
       (void) pr_fsio_close(stor_fh);
       stor_fh = NULL;
@@ -1473,9 +1478,9 @@ MODRET xfer_stor(cmd_rec *cmd) {
   if (have_limit &&
       nbytes_max_store == 0) {
 
-    pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " byte%s) reached: "
+    pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " %s) reached: "
       "aborting transfer of '%s'", (pr_off_t) nbytes_max_store,
-      nbytes_max_store != 1 ? "s" : "", dir);
+      nbytes_max_store != 1 ? "bytes" : "byte", dir);
 
     /* Abort the transfer. */
     stor_abort();
@@ -1827,9 +1832,9 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (have_limit &&
       ((nbytes_max_retrieve == 0) || (st.st_size > nbytes_max_retrieve))) {
 
-    pr_log_pri(PR_LOG_INFO, "MaxRetrieveFileSize (%" PR_LU " byte%s) reached: "
+    pr_log_pri(PR_LOG_INFO, "MaxRetrieveFileSize (%" PR_LU " %s) reached: "
       "aborting transfer of '%s'", (pr_off_t) nbytes_max_retrieve,
-      nbytes_max_retrieve != 1 ? "s" : "", dir);
+      nbytes_max_retrieve != 1 ? "bytes" : "byte", dir);
 
     /* Abort the transfer. */
     retr_abort();
