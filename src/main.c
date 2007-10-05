@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.306 2007-09-30 21:05:39 castaglia Exp $
+ * $Id: main.c,v 1.307 2007-10-05 17:08:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -811,6 +811,8 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
     init_log();
     init_class();
     init_config();
+
+    pr_netaddr_clear_cache();
 
 #ifdef PR_USE_NLS
     utf8_init();
@@ -2744,6 +2746,7 @@ int main(int argc, char *argv[], char **envp) {
   init_log();
   init_inet();
   init_netio();
+  init_netaddr();
   init_fs();
   init_class();
   free_bindings();

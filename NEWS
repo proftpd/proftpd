@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.844 2007-10-05 17:00:50 castaglia Exp $
+$Id: NEWS,v 1.845 2007-10-05 17:08:55 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -19,6 +19,9 @@ CVS
   potentially speed up the group membership lookup on some systems.
 - Bug 2984 - mod_auth_file uid2name() does not cache results causing slow LIST
   response.
+- Bug 2925 - Add caching of IP address and DNS name lookups.  This may help
+  speed up data transfers, especially rapid-fire data transfers as used by
+  "download accelerators".
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------

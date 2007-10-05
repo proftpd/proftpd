@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2006 The ProFTPD Project team
+ * Copyright (c) 2003-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.20 2006-09-29 16:38:15 castaglia Exp $
+ * $Id: netaddr.h,v 1.21 2007-10-05 17:08:56 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -369,5 +369,11 @@ pr_netaddr_t *pr_netaddr_get_sess_local_addr(void);
 pr_netaddr_t *pr_netaddr_get_sess_remote_addr(void);
 const char *pr_netaddr_get_sess_remote_name(void);
 void pr_netaddr_set_sess_addrs(void);
+
+/* Clears the cache of netaddr objects. */
+void pr_netaddr_clear_cache(void);
+
+/* Internal use only. */
+void init_netaddr(void);
 
 #endif /* PR_NETADDR_H */

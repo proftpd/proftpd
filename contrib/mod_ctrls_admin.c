@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ctrls_admin -- a module implementing admin control handlers
  *
- * Copyright (c) 2000-2006 TJ Saunders
+ * Copyright (c) 2000-2007 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.28 2007-01-11 23:08:16 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.29 2007-10-05 17:08:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -152,24 +152,38 @@ static int ctrls_handle_dns(pr_ctrls_t *ctrl, int reqargc,
     return -1;
   }
 
-  if (reqargc != 1) {
+  if (reqargc != 1 &&
+      reqargc != 2) {
     pr_ctrls_add_response(ctrl, "dns: wrong number of parameters");
     return -1;
   }
 
-  bool = pr_is_boolean(reqargv[0]);
-  if (bool == -1) {
-    pr_ctrls_add_response(ctrl, "dns: error: expected Boolean parameter: '%s'",
-      reqargv[0]);
-    return -1;
+  if (reqargc == 2 &&
+      strcmp(reqargv[0], "cache") == 0) {
+    if (strcmp(reqargv[1], "clear") != 0) {
+      pr_ctrls_add_response(ctrl,
+        "dns: error: expected 'clear' command: '%s'", reqargv[1]);
+      return -1;
+    }
+
+    pr_netaddr_clear_cache();
+    pr_ctrls_add_response(ctrl, "dns: netaddr cache cleared");
+    
+  } else {
+    bool = pr_is_boolean(reqargv[0]);
+    if (bool == -1) {
+      pr_ctrls_add_response(ctrl,
+        "dns: error: expected Boolean parameter: '%s'", reqargv[0]);
+      return -1;
+    }
+
+    ServerUseReverseDNS = bool;
+
+    ctrls_log(MOD_CTRLS_ADMIN_VERSION, "dns: UseReverseDNS set to '%s'",
+      bool ? "on" : "off");
+    pr_ctrls_add_response(ctrl, "dns: UseReverseDNS set to '%s'",
+      bool ? "on" : "off");
   }
-
-  ServerUseReverseDNS = bool;
-
-  ctrls_log(MOD_CTRLS_ADMIN_VERSION, "dns: UseReverseDNS set to '%s'",
-    bool ? "on" : "off");
-  pr_ctrls_add_response(ctrl, "dns: UseReverseDNS set to '%s'",
-    bool ? "on" : "off");
 
   return 0;
 }

@@ -26,7 +26,7 @@
 
 /* ProFTPD Controls command-line client
  *
- * $Id: ftpdctl.c,v 1.8 2007-02-15 16:46:43 castaglia Exp $
+ * $Id: ftpdctl.c,v 1.9 2007-10-05 17:08:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -65,6 +65,46 @@ void pr_signals_unblock(void) {
 }
 
 void pr_signals_handle(void) {
+}
+
+pr_table_t *pr_table_alloc(pool *p, int flags) {
+  errno = EPERM;
+  return NULL;
+}
+
+int pr_table_add(pr_table_t *tab, const char *k, void *v, size_t sz) {
+  errno = EPERM;
+  return -1;
+}
+
+int pr_table_count(pr_table_t *tab) {
+  errno = EPERM;
+  return -1;
+}
+
+int pr_table_empty(pr_table_t *tab) {
+  errno = EPERM;
+  return -1;
+}
+
+int pr_table_exists(pr_table_t *tab, const char *k) {
+  errno = EPERM;
+  return -1;
+}
+
+int pr_table_free(pr_table_t *tab) {
+  errno = EPERM;
+  return -1;
+}
+
+void *pr_table_get(pr_table_t *tab, const char *k, size_t *sz) {
+  errno = EPERM;
+  return NULL;
+}
+
+int pr_table_set(pr_table_t *tab, const char *k, void *v, size_t sz) {
+  errno = EPERM;
+  return -1;
 }
 
 struct tm *pr_localtime(pool *p, const time_t *t) {
