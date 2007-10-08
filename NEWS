@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.846 2007-10-05 18:33:27 castaglia Exp $
+$Id: NEWS,v 1.847 2007-10-08 18:22:35 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -24,6 +24,8 @@ CVS
   "download accelerators".
 - Bug 2979 - Ability to ban clients which connect too often.  The mod_ban
   module now supports a "ClientConnectRate" BanOnEvent rule.
+- Bug 2987 - Verbose ban information (i.e. 'ftpdctl ban info -v') not working
+  on FreeBSD.
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------
