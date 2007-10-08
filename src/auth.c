@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.52 2007-10-05 17:04:13 castaglia Exp $
+ * $Id: auth.c,v 1.53 2007-10-08 18:47:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -503,6 +503,17 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
       return res;
     }
 
+    if (MODRET_ISERROR(mr)) {
+      res = MODRET_ERROR(mr);
+
+      if (cmd->tmp_pool) {
+        destroy_pool(cmd->tmp_pool);
+        cmd->tmp_pool = NULL;
+      }
+
+      return res;
+    }
+
     m = NULL;
   }
 
@@ -557,6 +568,17 @@ int pr_auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
         "module 'mod_auth_pam.c' used for authenticating user '%s'", name);
 
       res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
+
+      if (cmd->tmp_pool) {
+        destroy_pool(cmd->tmp_pool);
+        cmd->tmp_pool = NULL;
+      }
+
+      return res;
+    }
+
+    if (MODRET_ISERROR(mr)) {
+      res = MODRET_ERROR(mr);
 
       if (cmd->tmp_pool) {
         destroy_pool(cmd->tmp_pool);

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.847 2007-10-08 18:22:35 castaglia Exp $
+$Id: NEWS,v 1.848 2007-10-08 18:47:06 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -26,6 +26,7 @@ CVS
   module now supports a "ClientConnectRate" BanOnEvent rule.
 - Bug 2987 - Verbose ban information (i.e. 'ftpdctl ban info -v') not working
   on FreeBSD.
+- Bug 2986 - Authoritative PAM is not honored.
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------
