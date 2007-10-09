@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.60 2007-10-09 21:54:28 castaglia Exp $
+ * $Id: netaddr.c,v 1.61 2007-10-09 21:56:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -863,13 +863,17 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
     case AF_INET:
       res = memcmp(&a->na_addr.v4.sin_addr, &b->na_addr.v4.sin_addr,
         sizeof(struct in_addr));
-      if (tmp_pool)
-        destroy_pool(tmp_pool);
 
       if (res != 0) {
         pr_trace_msg(trace_channel, 4, "addr %s does not match addr %s",
           pr_netaddr_get_ipstr(a), pr_netaddr_get_ipstr(b));
       }
+
+      if (tmp_pool) {
+        destroy_pool(tmp_pool);
+        tmp_pool = NULL;
+      }
+
       return res;
 
 #ifdef PR_USE_IPV6
@@ -877,13 +881,17 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
       if (use_ipv6) {
         res = memcmp(&a->na_addr.v6.sin6_addr, &b->na_addr.v6.sin6_addr,
           sizeof(struct in6_addr));
-        if (tmp_pool)
-          destroy_pool(tmp_pool);
 
         if (res != 0) {
           pr_trace_msg(trace_channel, 4, "addr %s does not match addr %s",
             pr_netaddr_get_ipstr(a), pr_netaddr_get_ipstr(b));
         }
+
+        if (tmp_pool) {
+          destroy_pool(tmp_pool);
+          tmp_pool = NULL;
+        }
+
         return res;
       }
 #endif /* PR_USE_IPV6 */
