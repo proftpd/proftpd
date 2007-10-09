@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.849 2007-10-09 17:24:01 castaglia Exp $
+$Id: NEWS,v 1.850 2007-10-09 17:30:38 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -28,6 +28,9 @@ CVS
   on FreeBSD.
 - Bug 2986 - Authoritative PAM is not honored.
 - Bug 2988 - mod_wrap2_file ignores "ALL" keyword.
+- Bug 2982 - Support limit on number of simultaneous file transfers from one
+  client.  Two new configuration directives, MaxTransfersPerHost and
+  MaxTransfersPerUser, have been added.
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------

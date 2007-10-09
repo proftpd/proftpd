@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.220 2007-10-05 17:22:48 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.221 2007-10-09 17:30:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -54,6 +54,8 @@ static unsigned char have_prot = FALSE;
 static unsigned char have_zmode = FALSE;
 static unsigned char use_sendfile = TRUE;
 
+static int xfer_check_limit(cmd_rec *);
+
 /* Transfer rate variables */
 static long double xfer_rate_kbps = 0.0, xfer_rate_bps = 0.0;
 static off_t xfer_rate_freebytes = 0.0;
@@ -62,9 +64,11 @@ static unsigned int xfer_rate_scoreboard_updates = 0;
 
 /* Transfer rate functions */
 static void xfer_rate_lookup(cmd_rec *);
-static unsigned char xfer_rate_parse_cmdlist(config_rec *, char *);
 static void xfer_rate_sigmask(unsigned char);
 static void xfer_rate_throttle(off_t, unsigned int);
+
+/* Used for both MaxTransferPerHost and TransferRate */
+static int xfer_parse_cmdlist(const char *, config_rec *, char *);
 
 module xfer_module;
 
@@ -312,6 +316,158 @@ static char *get_cmd_from_list(char **list) {
   return res;
 }
 
+static int xfer_check_limit(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  const char *client_addr = pr_netaddr_get_ipstr(session.c->remote_addr);
+  char server_addr[128];
+
+  memset(server_addr, '\0', sizeof(server_addr));
+  snprintf(server_addr, sizeof(server_addr)-1, "%s:%d",
+    pr_netaddr_get_ipstr(main_server->addr), main_server->ServerPort);
+  server_addr[sizeof(server_addr)-1] = '\0';
+
+  c = find_config(CURRENT_CONF, CONF_PARAM, "MaxTransfersPerHost", FALSE);
+  while (c) {
+    char *xfer_cmd = NULL, **cmdlist = (char **) c->argv[0];
+    unsigned char matched_cmd = FALSE;
+    unsigned int curr = 0, max = 0;
+    pr_scoreboard_entry_t *score = NULL;
+
+    /* Does this MaxTransfersPerHost apply to the current command?  Note: this
+     * could be made more efficient by using bitmasks rather than string
+     * comparisons.
+     */
+    for (xfer_cmd = *cmdlist; xfer_cmd; xfer_cmd = *(cmdlist++)) {
+      if (strcasecmp(xfer_cmd, cmd->argv[0]) == 0) {
+        matched_cmd = TRUE;
+        break;
+      }
+    }
+
+    if (!matched_cmd) {
+      c = find_config_next(c, c->next, CONF_PARAM, "MaxTransfersPerHost",
+        FALSE);
+      continue;
+    }
+
+    max = *((unsigned int *) c->argv[1]);
+
+    /* Count how many times the current IP address is logged in, AND how
+     * many of those other logins are currently using this command.
+     */
+
+    (void) pr_rewind_scoreboard();
+    while ((score = pr_scoreboard_read_entry()) != NULL) {
+      /* Scoreboard entry must match local server address and remote client
+       * address to be counted.
+       */
+      if (strcmp(score->sce_server_addr, server_addr) != 0)
+        continue;
+
+      if (strcmp(score->sce_client_addr, client_addr) != 0)
+        continue;
+
+      if (strcmp(score->sce_cmd, xfer_cmd) == 0)
+        curr++;
+    }
+
+    pr_restore_scoreboard();
+
+    if (curr >= max) {
+      char maxn[20];
+
+      char *maxstr = "Sorry, the maximum number of data transfers (%m) from "
+        "your host are currently being used.";
+
+      if (c->argv[2] != NULL)
+        maxstr = c->argv[2];
+
+      pr_event_generate("mod_xfer.max-transfers-per-host", session.c);
+
+      memset(maxn, '\0', sizeof(maxn));
+      snprintf(maxn, sizeof(maxn)-1, "%u", max);
+      pr_response_send(R_451, "%s", sreplace(cmd->tmp_pool, maxstr, "%m",
+        maxn, NULL));
+      pr_log_debug(DEBUG4, "MaxTransfersPerHost %u exceeded for %s for "
+        "client '%s'", max, xfer_cmd, client_addr);
+
+      return -1;
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "MaxTransferPerHost", FALSE);
+  }
+
+  c = find_config(CURRENT_CONF, CONF_PARAM, "MaxTransfersPerUser", FALSE);
+  while (c) {
+    char *xfer_cmd = NULL, **cmdlist = (char **) c->argv[0];
+    unsigned char matched_cmd = FALSE;
+    unsigned int curr = 0, max = 0;
+    pr_scoreboard_entry_t *score = NULL;
+
+    /* Does this MaxTransfersPerUser apply to the current command?  Note: this
+     * could be made more efficient by using bitmasks rather than string
+     * comparisons.
+     */
+    for (xfer_cmd = *cmdlist; xfer_cmd; xfer_cmd = *(cmdlist++)) {
+      if (strcasecmp(xfer_cmd, cmd->argv[0]) == 0) {
+        matched_cmd = TRUE;
+        break;
+      }
+    }
+
+    if (!matched_cmd) {
+      c = find_config_next(c, c->next, CONF_PARAM, "MaxTransfersPerUser",
+        FALSE);
+      continue;
+    }
+
+    max = *((unsigned int *) c->argv[1]);
+
+    /* Count how many times the current user is logged in, AND how many of
+     * those other logins are currently using this command.
+     */
+
+    (void) pr_rewind_scoreboard();
+    while ((score = pr_scoreboard_read_entry()) != NULL) {
+      if (strcmp(score->sce_server_addr, server_addr) != 0)
+        continue;
+
+      if (strcmp(score->sce_user, session.user) != 0)
+        continue;
+
+      if (strcmp(score->sce_cmd, xfer_cmd) == 0)
+        curr++;
+    }
+
+    pr_restore_scoreboard();
+
+    if (curr >= max) {
+      char maxn[20];
+
+      char *maxstr = "Sorry, the maximum number of data transfers (%m) from "
+        "this user are currently being used.";
+
+      if (c->argv[2] != NULL)
+        maxstr = c->argv[2];
+
+      pr_event_generate("mod_xfer.max-transfers-per-user", session.user);
+
+      memset(maxn, '\0', sizeof(maxn));
+      snprintf(maxn, sizeof(maxn)-1, "%u", max);
+      pr_response_send(R_451, "%s", sreplace(cmd->tmp_pool, maxstr, "%m",
+        maxn, NULL));
+      pr_log_debug(DEBUG4, "MaxTransfersPerUser %u exceeded for %s for "
+        "user '%s'", max, xfer_cmd, session.user);
+
+      return -1;
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "MaxTransferPerHost", FALSE);
+  }
+
+  return 0;
+}
+
 static void xfer_rate_lookup(cmd_rec *cmd) {
   config_rec *c = NULL;
   char *xfer_cmd = NULL;
@@ -435,7 +591,8 @@ static void xfer_rate_lookup(cmd_rec *cmd) {
   }
 }
 
-static unsigned char xfer_rate_parse_cmdlist(config_rec *c, char *cmdlist) {
+static int xfer_parse_cmdlist(const char *name, config_rec *c,
+    char *cmdlist) {
   char *cmd = NULL;
   array_header *cmds = NULL;
 
@@ -448,10 +605,12 @@ static unsigned char xfer_rate_parse_cmdlist(config_rec *c, char *cmdlist) {
   while ((cmd = get_cmd_from_list(&cmdlist)) != NULL) {
 
     /* Is the given command a valid one for this directive? */
-    if (strcasecmp(cmd, C_APPE) && strcasecmp(cmd, C_RETR) &&
-        strcasecmp(cmd, C_STOR) && strcasecmp(cmd, C_STOU)) {
-      pr_log_debug(DEBUG0, "invalid TransferRate command: %s", cmd);
-      return FALSE;
+    if (strcasecmp(cmd, C_APPE) != 0 &&
+        strcasecmp(cmd, C_RETR) != 0 &&
+        strcasecmp(cmd, C_STOR) != 0 &&
+        strcasecmp(cmd, C_STOU) != 0) {
+      pr_log_debug(DEBUG0, "invalid %s command: %s", name, cmd);
+      return -1;
     }
 
     *((char **) push_array(cmds)) = pstrdup(c->pool, cmd);
@@ -463,7 +622,7 @@ static unsigned char xfer_rate_parse_cmdlist(config_rec *c, char *cmdlist) {
   /* Store the array of commands in the config_rec. */
   c->argv[0] = (void *) cmds->elts;
 
-  return TRUE;
+  return 0;
 }
 
 /* Very similar to the {block,unblock}_signals() function, this masks most
@@ -1094,6 +1253,11 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  if (xfer_check_limit(cmd) < 0) {
+    pr_response_add_err(R_451, _("%s: Too many transfers"), cmd->arg);
+    return PR_ERROR(cmd);
+  }
+
   fmode = file_mode(dir);
 
   allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
@@ -1166,6 +1330,11 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  if (xfer_check_limit(cmd) < 0) {
+    pr_response_add_err(R_451, _("%s: Too many transfers"), cmd->arg);
+    return PR_ERROR(cmd);
+  }
+
   /* Watch for STOU preceded by REST, which makes no sense.
    *
    *   REST: session.restart_pos > 0
@@ -1178,8 +1347,8 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   /* Generate the filename to be stored, depending on the configured
    * unique filename prefix.
    */
-  if ((c = find_config(CURRENT_CONF, CONF_PARAM, "StoreUniquePrefix",
-      FALSE)) != NULL)
+  c = find_config(CURRENT_CONF, CONF_PARAM, "StoreUniquePrefix", FALSE);
+  if (c != NULL)
     prefix = c->argv[0];
 
   /* Now, construct the unique filename using the cmd_rec's pool, the
@@ -1315,6 +1484,11 @@ MODRET xfer_post_stou(cmd_rec *cmd) {
  * simply sets xfer_type to STOR_APPEND and calls xfer_pre_stor().
  */
 MODRET xfer_pre_appe(cmd_rec *cmd) {
+  if (xfer_check_limit(cmd) < 0) {
+    pr_response_add_err(R_451, _("%s: Too many transfers"), cmd->arg);
+    return PR_ERROR(cmd);
+  }
+
   session.xfer.xfer_type = STOR_APPEND;
   return xfer_pre_stor(cmd);
 }
@@ -1703,6 +1877,11 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   if (!dir ||
       !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL)) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    return PR_ERROR(cmd);
+  }
+
+  if (xfer_check_limit(cmd) < 0) {
+    pr_response_add_err(R_451, _("%s: Too many transfers"), cmd->arg);
     return PR_ERROR(cmd);
   }
 
@@ -2345,6 +2524,74 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: MaxTransferPerHost cmdlist count [msg] */
+MODRET set_maxtransfersperhost(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  int count = 0;
+
+  if (cmd->argc-1 < 2 ||
+      cmd->argc-1 > 3)
+    CONF_ERROR(cmd, "bad number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
+    CONF_DIR|CONF_DYNDIR);
+
+  count = atoi(cmd->argv[2]);
+  if (count < 1)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "count must be greater than zero: '",
+      cmd->argv[2], "'", NULL));
+
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+
+  /* Parse the command list. */
+  if (xfer_parse_cmdlist(cmd->argv[0], c, cmd->argv[1]) < 0)
+    CONF_ERROR(cmd, "error with command list");
+
+  c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[1]) = count;
+
+  if (cmd->argc-1 == 3)
+    c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+
+  c->flags |= CF_MERGEDOWN_MULTI;
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: MaxTransferPerUser cmdlist count [msg] */
+MODRET set_maxtransfersperuser(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  int count = 0;
+
+  if (cmd->argc-1 < 2 ||
+      cmd->argc-1 > 3) 
+    CONF_ERROR(cmd, "bad number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
+    CONF_DIR|CONF_DYNDIR);
+
+  count = atoi(cmd->argv[2]);
+  if (count < 1)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "count must be greater than zero: '",
+      cmd->argv[2], "'", NULL));
+
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+
+  /* Parse the command list. */
+  if (xfer_parse_cmdlist(cmd->argv[0], c, cmd->argv[1]) < 0)
+    CONF_ERROR(cmd, "error with command list");
+
+  c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[1]) = count;
+
+  if (cmd->argc-1 == 3)
+    c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+
+  c->flags |= CF_MERGEDOWN_MULTI;
+
+  return PR_HANDLED(cmd);
+}
+
 MODRET set_storeuniqueprefix(cmd_rec *cmd) {
   config_rec *c = NULL;
 
@@ -2492,7 +2739,7 @@ MODRET set_transferrate(cmd_rec *cmd) {
     c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
 
     /* Parse the command list. */
-    if (!xfer_rate_parse_cmdlist(c, cmd->argv[1]))
+    if (xfer_parse_cmdlist(cmd->argv[0], c, cmd->argv[1]) < 0)
       CONF_ERROR(cmd, "error with command list");
 
     c->argv[1] = pcalloc(c->pool, sizeof(long double));
@@ -2521,7 +2768,7 @@ MODRET set_transferrate(cmd_rec *cmd) {
     c->argv = pcalloc(c->pool, ((c->argc + 1) * sizeof(char *)));
     argv = (char **) c->argv;
 
-    if (!xfer_rate_parse_cmdlist(c, cmd->argv[1]))
+    if (xfer_parse_cmdlist(cmd->argv[0], c, cmd->argv[1]) < 0)
       CONF_ERROR(cmd, "error with command list");
 
     /* Note: the command list is at index 0, hence this increment. */
@@ -2726,6 +2973,8 @@ static conftable xfer_conftab[] = {
   { "HiddenStores",		set_hiddenstores,		NULL },
   { "MaxRetrieveFileSize",	set_maxfilesize,		NULL },
   { "MaxStoreFileSize",		set_maxfilesize,		NULL },
+  { "MaxTransfersPerHost",	set_maxtransfersperhost,	NULL },
+  { "MaxTransfersPerUser",	set_maxtransfersperuser,	NULL },
   { "StoreUniquePrefix",	set_storeuniqueprefix,		NULL },
   { "TimeoutNoTransfer",	set_timeoutnoxfer,		NULL },
   { "TimeoutStalled",		set_timeoutstalled,		NULL },
