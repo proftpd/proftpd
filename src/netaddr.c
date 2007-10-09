@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.59 2007-10-05 17:08:56 castaglia Exp $
+ * $Id: netaddr.c,v 1.60 2007-10-09 21:54:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -865,6 +865,11 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
         sizeof(struct in_addr));
       if (tmp_pool)
         destroy_pool(tmp_pool);
+
+      if (res != 0) {
+        pr_trace_msg(trace_channel, 4, "addr %s does not match addr %s",
+          pr_netaddr_get_ipstr(a), pr_netaddr_get_ipstr(b));
+      }
       return res;
 
 #ifdef PR_USE_IPV6
@@ -874,6 +879,11 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
           sizeof(struct in6_addr));
         if (tmp_pool)
           destroy_pool(tmp_pool);
+
+        if (res != 0) {
+          pr_trace_msg(trace_channel, 4, "addr %s does not match addr %s",
+            pr_netaddr_get_ipstr(a), pr_netaddr_get_ipstr(b));
+        }
         return res;
       }
 #endif /* PR_USE_IPV6 */
