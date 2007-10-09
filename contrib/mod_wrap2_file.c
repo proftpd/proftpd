@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_file.c,v 1.4 2007-08-03 14:52:06 castaglia Exp $
+ * $Id: mod_wrap2_file.c,v 1.5 2007-10-09 17:24:02 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -74,7 +74,8 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
     service = pstrndup(filetab->tab_pool, buf, (res - buf));
 
     if (filetab_service_name &&
-        strcasecmp(filetab_service_name, service) == 0) {
+        (strcasecmp(filetab_service_name, service) == 0 ||
+         strcasecmp("ALL", service) == 0)) {
 
       if (filetab_daemons_list == NULL)
         filetab_daemons_list = make_array(filetab->tab_pool, 0, sizeof(char *));
