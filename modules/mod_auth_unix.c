@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.32 2007-10-05 16:55:50 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.33 2007-10-10 02:32:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -94,29 +94,7 @@ static const char *grpfname = "/etc/group";
 extern int _pw_stayopen;
 #endif
 
-#define HASH_TABLE_SIZE		100
-
-typedef union idauth {
-  uid_t uid;
-  gid_t gid;
-} idauth_t;
-
-typedef struct _idmap {
-  struct _idmap *next,*prev;
-
-  /* This is a union because different OSs may give different types to UIDs
-   * and GIDs.  This presents a far more portable way to deal with this
-   * reality.
-   */
-  idauth_t id;
-
-  char *name;			/* user or group name */
-} idmap_t;
-
 module auth_unix_module;
-
-static xaset_t *uid_table[HASH_TABLE_SIZE];
-static xaset_t *gid_table[HASH_TABLE_SIZE];
 
 static FILE *pwdf = NULL;
 static FILE *grpf = NULL;
@@ -141,10 +119,13 @@ static void p_setpwent(void) {
   if (pwdf)
     rewind(pwdf);
 
-  else
-    if ((pwdf = fopen(PASSWD,"r")) == NULL)
+  else {
+    pwdf = fopen(PASSWD, "r");
+    if (pwdf == NULL) {
       pr_log_pri(PR_LOG_ERR, "Unable to open password file %s for reading: %s",
         PASSWD, strerror(errno));
+    }
+  }
 }
 
 static void p_endpwent(void) {
@@ -158,10 +139,13 @@ static RETSETGRENTTYPE p_setgrent(void) {
   if (grpf)
     rewind(grpf);
 
-  else
-    if ((grpf = fopen(GROUP,"r")) == NULL)
+  else {
+    grpf = fopen(GROUP, "r");
+    if (grpf == NULL) {
       pr_log_pri(PR_LOG_ERR, "Unable to open group file %s for reading: %s",
         GROUP, strerror(errno));
+    }
+  }
 
 #ifndef SETGRENT_VOID
   return 0;
@@ -203,9 +187,12 @@ static struct passwd *p_getpwnam(const char *name) {
   struct passwd *pw = NULL;
 
   p_setpwent();
-  while ((pw = p_getpwent()) != NULL)
-    if (!strcmp(name,pw->pw_name))
+  while ((pw = p_getpwent()) != NULL) {
+    pr_signals_handle();
+
+    if (strcmp(name, pw->pw_name) == 0)
       break;
+  }
 
   return pw;
 }
@@ -214,9 +201,12 @@ static struct passwd *p_getpwuid(uid_t uid) {
   struct passwd *pw = NULL;
 
   p_setpwent();
-  while ((pw = p_getpwent()) != NULL)
+  while ((pw = p_getpwent()) != NULL) {
+    pr_signals_handle();
+
     if (pw->pw_uid == uid)
       break;
+  }
 
   return pw;
 }
@@ -225,9 +215,12 @@ static struct group *p_getgrnam(const char *name) {
   struct group *gr = NULL;
 
   p_setgrent();
-  while ((gr = p_getgrent()) != NULL)
-    if (!strcmp(name,gr->gr_name))
+  while ((gr = p_getgrent()) != NULL) {
+    pr_signals_handle();
+
+    if (strcmp(name, gr->gr_name) == 0)
       break;
+  }
 
   return gr;
 }
@@ -236,67 +229,14 @@ static struct group *p_getgrgid(gid_t gid) {
   struct group *gr = NULL;
 
   p_setgrent();
-  while ((gr = p_getgrent()) != NULL)
+  while ((gr = p_getgrent()) != NULL) {
+    pr_signals_handle();
+
     if (gr->gr_gid == gid)
       break;
+  }
 
   return gr;
-}
-
-inline static int _compare_uid(idmap_t *m1, idmap_t *m2) {
-  if (m1->id.uid < m2->id.uid)
-    return -1;
-
-  if (m1->id.uid > m2->id.uid)
-    return 1;
-
-  return 0;
-}
-
-inline static int _compare_gid(idmap_t *m1, idmap_t *m2) {
-  if (m1->id.gid < m2->id.gid)
-    return -1;
-
-  if (m1->id.gid > m2->id.gid)
-    return 1;
-
-  return 0;
-}
-
-inline static int _compare_id(xaset_t **table, idauth_t id, idauth_t idcomp) {
-  if (table == uid_table)
-    return id.uid == idcomp.uid;
-  else
-    return id.gid == idcomp.gid;
-}
-
-static idmap_t *_auth_lookup_id(xaset_t **id_table, idauth_t id) {
-  int hash = ((id_table == uid_table) ? id.uid : id.gid) % HASH_TABLE_SIZE;
-  idmap_t *m;
-
-  if (!id_table[hash])
-    id_table[hash] = xaset_create(session.pool,
-      (id_table == uid_table) ? (XASET_COMPARE)_compare_uid :
-      (XASET_COMPARE)_compare_gid);
-
-  for (m = (idmap_t *) id_table[hash]->xas_list; m; m = m->next) {
-    if (_compare_id(id_table, m->id, id))
-      break;
-  }
-
-  if (!m || !_compare_id(id_table, m->id, id)) {
-    /* Isn't in the table */
-    m = (idmap_t *) pcalloc(id_table[hash]->pool, sizeof(idmap_t));
-
-    if (id_table == uid_table)
-      m->id.uid = id.uid;
-    else
-      m->id.gid = id.gid;
-
-    xaset_insert_sort(id_table[hash], (xasetmember_t *) m, FALSE);
-  }
-
-  return m;
 }
 
 MODRET pw_setpwent(cmd_rec *cmd) {
@@ -466,7 +406,8 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
     endspent();
     PRIVS_RELINQUISH
 
-    if ((pw = getpwnam(u)) != NULL) {
+    pw = getpwnam(u);
+    if (pw != NULL) {
       cpw = pstrdup(p, pw->pw_passwd);
 
       if (lstchg)
@@ -530,7 +471,6 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
 #endif /* BSDI3 || BSDI4 */
 
   pw = getpwnam(u);
-
   if (pw) {
     cpw = pstrdup(p, pw->pw_passwd);
 
@@ -777,60 +717,39 @@ MODRET pw_check(cmd_rec *cmd) {
 }
 
 MODRET pw_uid2name(cmd_rec *cmd) {
-  idmap_t *m;
-  idauth_t id;
+  uid_t uid;
   struct passwd *pw;
 
-  id.uid = *((uid_t *) cmd->argv[0]);
-  m = _auth_lookup_id(uid_table, id);
+  uid = *((uid_t *) cmd->argv[0]);
 
-  if (!m->name) {
-    /* Wasn't cached, so perform a lookup */
+  if (persistent_passwd)
+    pw = p_getpwuid(uid);
 
-    if (persistent_passwd)
-      pw = p_getpwuid(id.uid);
+  else
+    pw = getpwuid(uid);
 
-    else
-      pw = getpwuid(id.uid);
+  if (pw)
+    return mod_create_data(cmd, pw->pw_name);
 
-    if (pw) {
-      m->name = pstrdup(session.pool ? session.pool : permanent_pool,
-        pw->pw_name);
-      return mod_create_data(cmd, m->name);
-    }
-
-    return PR_DECLINED(cmd);
-  }
-
-  return mod_create_data(cmd, m->name);
+  return PR_DECLINED(cmd);
 }
 
 MODRET pw_gid2name(cmd_rec *cmd) {
-  idmap_t *m;
-  idauth_t id;
+  gid_t gid;
   struct group *gr;
 
-  id.gid = *((gid_t *) cmd->argv[0]);
+  gid = *((gid_t *) cmd->argv[0]);
 
-  m = _auth_lookup_id(gid_table, id);
+  if (persistent_passwd)
+    gr = p_getgrgid(gid);
 
-  if (!m->name) {
-    if (persistent_passwd)
-      gr = p_getgrgid(id.gid);
+  else
+    gr = getgrgid(gid);
 
-    else
-      gr = getgrgid(id.gid);
+  if (gr) 
+    return mod_create_data(cmd, gr->gr_name);
 
-    if (gr) {
-      m->name = pstrdup(session.pool ? session.pool : permanent_pool,
-        gr->gr_name);
-      return mod_create_data(cmd, m->name);
-    }
-
-    return PR_DECLINED(cmd);
-  }
-
-  return mod_create_data(cmd, m->name);
+  return PR_DECLINED(cmd);
 }
 
 MODRET pw_name2uid(cmd_rec *cmd) {
@@ -1027,8 +946,6 @@ static void auth_unix_exit_ev(const void *event_data, void *user_data) {
  */
 
 static int auth_unix_init(void) {
-  memset(uid_table, 0 ,sizeof(uid_table));
-  memset(gid_table, 0, sizeof(gid_table));
 
 #ifdef HAVE__PW_STAYOPEN
   _pw_stayopen = 1;
