@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.16 2006-12-16 01:13:52 castaglia Exp $
+ * $Id: ctrls.c,v 1.17 2007-10-10 17:13:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1162,27 +1162,27 @@ void init_ctrls(void) {
   }
 
 #ifdef S_ISFIFO
-  pr_trace_msg(trace_channel, 9, "testing Unix domain socket using S_ISFIFO");
+  pr_log_debug(DEBUG10, "testing Unix domain socket using S_ISFIFO");
   if (S_ISFIFO(st.st_mode)) {
     ctrls_use_isfifo = TRUE;
   }
 #else
-  pr_trace_msg(trace_channel, 9, "cannot test Unix domain socket using "
-    "S_ISFIFO: macro undefined");
+  pr_log_debug(DEBUG10, "cannot test Unix domain socket using S_ISFIFO: "
+    "macro undefined");
 #endif
 
 #ifdef S_ISSOCK
-  pr_trace_msg(trace_channel, 9, "testing Unix domain socket using S_ISSOCK");
+  pr_log_debug(DEBUG10, "testing Unix domain socket using S_ISSOCK");
   if (S_ISSOCK(st.st_mode)) {
     ctrls_use_isfifo = FALSE;
   }
 #else
-  pr_trace_msg(trace_channel, 9, "cannot test Unix domain socket using "
-    "S_ISSOCK: macro undefined");
+  pr_log_debug(DEBUG10, "cannot test Unix domain socket using S_ISSOCK: "
+    "macro undefined");
 #endif
 
-  pr_trace_msg(trace_channel, 9, "using %s macro for Unix domain socket "
-    "detection", ctrls_use_isfifo ? "S_ISFIFO" : "S_ISSOCK");
+  pr_log_debug(DEBUG10, "using %s macro for Unix domain socket detection",
+    ctrls_use_isfifo ? "S_ISFIFO" : "S_ISSOCK");
 
   (void) close(sockfd);
   (void) unlink(sockpath);
