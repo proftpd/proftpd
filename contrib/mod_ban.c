@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.8 2007-10-08 18:22:35 castaglia Exp $
+ * $Id: mod_ban.c,v 1.9 2007-10-10 03:38:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1062,10 +1062,15 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     optreset = 1;
     opterr = 1;
     optind = 1;
+
+#elif defined(SOLARIS2)
+    opterr = 0;
+    optind = 1;
+
 #else
     opterr = 0;
     optind = 0;
-#endif /* !FreeBSD */
+#endif /* !FreeBSD and !Solaris2 */
 
     while ((optc = getopt(reqargc, reqargv, opts)) != -1) {
       switch (optc) {
