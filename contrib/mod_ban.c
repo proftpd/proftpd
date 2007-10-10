@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.10 2007-10-10 03:44:43 castaglia Exp $
+ * $Id: mod_ban.c,v 1.11 2007-10-10 03:56:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1642,11 +1642,11 @@ static void ban_exit_ev(const void *event_data, void *user_data) {
     struct shmid_ds ds;
     int res;
 
-#if defined(SOLARIS2)
+#if !defined(_POSIX_SOURCE)
     res = shmdt((char *) ban_lists);
 #else
     res = shmdt((const void *) ban_lists);
-#endif /* !SOLARIS2 */
+#endif
 
     if (res < 0) {
       pr_log_debug(DEBUG1, MOD_BAN_VERSION ": error detaching shm: %s",
