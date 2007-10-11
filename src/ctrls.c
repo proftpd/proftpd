@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.18 2007-10-11 02:31:56 castaglia Exp $
+ * $Id: ctrls.c,v 1.19 2007-10-11 02:37:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1025,7 +1025,8 @@ static int ctrls_get_creds_peercred(int sockfd, uid_t *uid, gid_t *gid,
 
   if (getsockopt(sockfd, SOL_SOCKET, SO_PEERCRED, &cred, &credlen) < 0) {
     pr_trace_msg(trace_channel, 2,
-      "error obtaining peer creds using SO_PEERCRED: %s", strerror(errno));
+      "error obtaining peer credentials using SO_PEERCRED: %s",
+      strerror(errno));
     errno = EPERM;
     return -1;
   }
