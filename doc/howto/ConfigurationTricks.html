@@ -1,4 +1,4 @@
-<!-- $Id: ConfigurationTricks.html,v 1.1 2007-10-11 16:21:01 castaglia Exp $ -->
+<!-- $Id: ConfigurationTricks.html,v 1.2 2007-10-11 18:08:35 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/ConfigurationTricks.html,v $ -->
 
 <html>
@@ -221,6 +221,17 @@ problems.  Keeping separate log files (<code>ServerLog</code>,
 <code>SystemLog</code>, <i>etc</i>) for each daemon is simply a good idea.
 
 <p>
+What about the <code>PassivePorts</code> directive?  Do the different
+<code>proftpd</code> instances each need their own range?  No.
+When a passive data transfer is requested, <code>proftpd</code> will choose a
+random port from within a <code>PassivePorts</code> range, <i>but not before
+then</i>.  If the port happens to be in use, <code>proftpd</code> will try
+another random port within the range, and so on, until the range is exhausted.
+Thus multiple <code>proftpd</code> instances should be able to share the same
+<code>PassivePorts</code> range without issue (assuming it is a decently wide
+range).
+
+<p>
 There is one final setting which <i>can</i> cause problems: <code>Port</code>.
 An actual incident can help illustrate the issue:
 <blockquote>
@@ -293,7 +304,7 @@ production configuration.
 
 <p>
 <hr>
-<i>$Date: 2007-10-11 16:21:01 $</i><br>
+<i>$Date: 2007-10-11 18:08:35 $</i><br>
 
 </body>
 </html>
