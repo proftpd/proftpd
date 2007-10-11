@@ -21,6 +21,10 @@ files.
 
       TLSOptions EnableDiags
 
+      TLSRequired !data, ctrl+!data, auth+!data
+
+        See doc/contrib/mod_tls.html#TLSRequired for more information.
+
   + New modules:
 
       mod_dynmasq
@@ -36,4 +40,4 @@ files.
 
       doc/howto/ConfigurationTricks.html
 
-Last Updated: $Date: 2007-10-11 16:32:12 $
+Last Updated: $Date: 2007-10-11 16:45:07 $
