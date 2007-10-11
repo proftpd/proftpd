@@ -332,9 +332,9 @@ static char *tls_passphrase_provider = NULL;
 #define TLS_PASSPHRASE_FL_DSA_KEY	0x0002
 
 static char *tls_protocol = TLS_DEFAULT_PROTOCOL;
-static unsigned char tls_required_on_auth = FALSE;
-static unsigned char tls_required_on_ctrl = FALSE;
-static unsigned char tls_required_on_data = FALSE;
+static int tls_required_on_auth = 0;
+static int tls_required_on_ctrl = 0;
+static int tls_required_on_data = 0;
 static unsigned char *tls_authenticated = NULL;
 
 /* mod_tls session flags */
@@ -3474,7 +3474,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
       nstrm->strm_mode == PR_NETIO_IO_WR) {
 
     /* Enforce the "data" part of TLSRequired, if configured. */
-    if (tls_required_on_data ||
+    if (tls_required_on_data == 1 ||
         (tls_flags & TLS_SESS_NEED_DATA_PROT)) {
       X509 *ctrl_cert = NULL, *data_cert = NULL;
 
@@ -3792,7 +3792,7 @@ MODRET tls_any(cmd_rec *cmd) {
       strcmp(cmd->argv[0], C_QUIT) == 0)
     return PR_DECLINED(cmd);
 
-  if (tls_required_on_auth &&
+  if (tls_required_on_auth == 1 &&
       !(tls_flags & TLS_SESS_ON_CTRL)) {
     if (strcmp(cmd->argv[0], C_USER) == 0 ||
         strcmp(cmd->argv[0], C_PASS) == 0 ||
@@ -3802,7 +3802,7 @@ MODRET tls_any(cmd_rec *cmd) {
     }
   }
 
-  if (tls_required_on_ctrl &&
+  if (tls_required_on_ctrl == 1 &&
       !(tls_flags & TLS_SESS_ON_CTRL)) {
 
     if (!(tls_opts & TLS_OPT_ALLOW_PER_USER)) {
@@ -3823,7 +3823,7 @@ MODRET tls_any(cmd_rec *cmd) {
     }
   }
 
-  if (tls_required_on_data &&
+  if (tls_required_on_data == 1 &&
       !(tls_flags & TLS_SESS_NEED_DATA_PROT)) {
     if (strcmp(cmd->argv[0], C_APPE) == 0 ||
         strcmp(cmd->argv[0], C_LIST) == 0 ||
@@ -3874,7 +3874,7 @@ MODRET tls_auth(cmd_rec *cmd) {
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "TLS/TLS-C negotiation failed on control channel");
 
-      if (tls_required_on_ctrl)
+      if (tls_required_on_ctrl == 1)
         end_login(1);
 
       /* If we reach this point, the debug logging may show gibberish
@@ -3902,7 +3902,7 @@ MODRET tls_auth(cmd_rec *cmd) {
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "SSL/TLS-P negotiation failed on control channel");
 
-      if (tls_required_on_ctrl)
+      if (tls_required_on_ctrl == 1)
         end_login(1);
 
       /* If we reach this point, the debug logging may show gibberish
@@ -3941,13 +3941,20 @@ MODRET tls_ccc(cmd_rec *cmd) {
       strcmp(session.rfc2228_mech, "TLS") != 0)
     return PR_DECLINED(cmd);
 
+  /* Check for <Limit> restrictions. */
+  if (!dir_check(cmd->tmp_pool, C_PROT, G_NONE, session.cwd, NULL)) {
+    pr_response_add_err(R_534, "Unwilling to accept security parameters");
+    tls_log("%s: denied by <Limit> configuration", cmd->argv[0]);
+    return PR_ERROR(cmd);
+  }
+
   if (!(tls_flags & TLS_SESS_ON_CTRL)) {
     pr_response_add_err(R_533,
       "CCC not allowed on insecure control connection");
     return PR_ERROR(cmd);
   }
 
-  if (tls_required_on_ctrl) {
+  if (tls_required_on_ctrl == 1) {
     pr_response_add_err(R_534, "Unwilling to accept security parameters");
     tls_log("%s: unwilling to accept security parameters: "
       "TLSRequired setting does not allow for unprotected control channel",
@@ -4031,9 +4038,9 @@ MODRET tls_post_pass(cmd_rec *cmd) {
        * <Anonymous>, for example, or modified by mod_ifsession).
        */
 
-      tls_required_on_ctrl = *((unsigned char *) c->argv[0]);
-      tls_required_on_data = *((unsigned char *) c->argv[1]);
-      tls_required_on_auth = *((unsigned char *) c->argv[2]);
+      tls_required_on_ctrl = *((int *) c->argv[0]);
+      tls_required_on_data = *((int *) c->argv[1]);
+      tls_required_on_auth = *((int *) c->argv[2]);
     }
   }
 
@@ -4065,8 +4072,7 @@ MODRET tls_prot(cmd_rec *cmd) {
   if (strcmp(cmd->argv[1], "C") == 0) {
     char *mesg = "Protection set to Clear";
 
-    if (!tls_required_on_data) {
-
+    if (tls_required_on_data == 0) {
       /* Only accept this if SSL/TLS is not required, by policy, on data
        * connections.
        */
@@ -4086,9 +4092,22 @@ MODRET tls_prot(cmd_rec *cmd) {
   } else if (strcmp(cmd->argv[1], "P") == 0) {
     char *mesg = "Protection set to Private";
 
-    tls_flags |= TLS_SESS_NEED_DATA_PROT;
-    pr_response_add(R_200, "%s", mesg);
-    tls_log("%s", mesg);
+    if (tls_required_on_data != -1) {
+      /* Only accept this if SSL/TLS is allowed, by policy, on data
+       * connections.
+       */
+      tls_flags |= TLS_SESS_NEED_DATA_PROT;
+      pr_response_add(R_200, "%s", mesg);
+      tls_log("%s", mesg);
+
+    } else {
+      pr_response_add_err(R_534, "Unwilling to accept security parameters");
+      tls_log("%s: TLSRequired does not allow protection for data transfers",
+        cmd->argv[0]);
+      tls_log("%s: unwilling to accept security parameter (%s)", cmd->argv[0],
+        cmd->argv[1]);
+      return PR_ERROR(cmd);
+    }
 
   } else if (strcmp(cmd->argv[1], "S") == 0 ||
              strcmp(cmd->argv[1], "E") == 0) {
@@ -4487,10 +4506,10 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
 #endif
 }
 
-/* usage: TLSRequired on|off|both|ctrl|control|data|auth|auth+data */
+/* usage: TLSRequired on|off|both|control|ctrl|[!]data|auth|auth+data */
 MODRET set_tlsrequired(cmd_rec *cmd) {
   int bool = -1;
-  unsigned char on_auth = FALSE, on_ctrl = FALSE, on_data = FALSE;
+  int on_auth = 0, on_ctrl = 0, on_data = 0;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
@@ -4500,43 +4519,55 @@ MODRET set_tlsrequired(cmd_rec *cmd) {
   if (bool == -1) {
     if (strcmp(cmd->argv[1], "control") == 0 ||
         strcmp(cmd->argv[1], "ctrl") == 0) {
-      on_auth = TRUE;
-      on_ctrl = TRUE;
+      on_auth = 1;
+      on_ctrl = 1;
 
     } else if (strcmp(cmd->argv[1], "data") == 0) {
-      on_data = TRUE;
+      on_data = 1;
+
+    } else if (strcmp(cmd->argv[1], "!data") == 0) {
+      on_data = -1;
 
     } else if (strcmp(cmd->argv[1], "both") == 0 ||
                strcmp(cmd->argv[1], "ctrl+data") == 0) {
-      on_auth = TRUE;
-      on_ctrl = TRUE;
-      on_data = TRUE;
+      on_auth = 1;
+      on_ctrl = 1;
+      on_data = 1;
+
+    } else if (strcmp(cmd->argv[1], "ctrl+!data") == 0) {
+      on_auth = 1;
+      on_ctrl = 1;
+      on_data = -1;
 
     } else if (strcmp(cmd->argv[1], "auth") == 0) {
-      on_auth = TRUE;
+      on_auth = 1;
 
     } else if (strcmp(cmd->argv[1], "auth+data") == 0) {
-      on_auth = TRUE;
-      on_data = TRUE;
+      on_auth = 1;
+      on_data = 1;
+
+    } else if (strcmp(cmd->argv[1], "auth+!data") == 0) {
+      on_auth = 1;
+      on_data = -1;
 
     } else
       CONF_ERROR(cmd, "bad parameter");
 
   } else {
     if (bool == TRUE) {
-      on_auth = TRUE;
-      on_ctrl = TRUE;
-      on_data = TRUE;
+      on_auth = 1;
+      on_ctrl = 1;
+      on_data = 1;
     }
   }
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = on_ctrl;
-  c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[1]) = on_data;
-  c->argv[2] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[2]) = on_auth;
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = on_ctrl;
+  c->argv[1] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = on_data;
+  c->argv[2] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[2]) = on_auth;
 
   c->flags |= CF_MERGEDOWN;
 
@@ -4880,9 +4911,9 @@ static int tls_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "TLSRequired", FALSE);
   if (c) {
-    tls_required_on_ctrl = *((unsigned char *) c->argv[0]);
-    tls_required_on_data = *((unsigned char *) c->argv[1]);
-    tls_required_on_auth = *((unsigned char *) c->argv[2]);
+    tls_required_on_ctrl = *((int *) c->argv[0]);
+    tls_required_on_data = *((int *) c->argv[1]);
+    tls_required_on_auth = *((int *) c->argv[2]);
   }
 
   if ((c = find_config(main_server->conf, CONF_PARAM, "TLSTimeoutHandshake",
