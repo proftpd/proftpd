@@ -3941,13 +3941,6 @@ MODRET tls_ccc(cmd_rec *cmd) {
       strcmp(session.rfc2228_mech, "TLS") != 0)
     return PR_DECLINED(cmd);
 
-  /* Check for <Limit> restrictions. */
-  if (!dir_check(cmd->tmp_pool, C_PROT, G_NONE, session.cwd, NULL)) {
-    pr_response_add_err(R_534, "Unwilling to accept security parameters");
-    tls_log("%s: denied by <Limit> configuration", cmd->argv[0]);
-    return PR_ERROR(cmd);
-  }
-
   if (!(tls_flags & TLS_SESS_ON_CTRL)) {
     pr_response_add_err(R_533,
       "CCC not allowed on insecure control connection");
@@ -4065,6 +4058,13 @@ MODRET tls_prot(cmd_rec *cmd) {
 
   if (!(tls_flags & TLS_SESS_PBSZ_OK)) {
     pr_response_add_err(R_503, "You must issue the PBSZ command prior to PROT");
+    return PR_ERROR(cmd);
+  }
+
+  /* Check for <Limit> restrictions. */
+  if (!dir_check(cmd->tmp_pool, C_PROT, G_NONE, session.cwd, NULL)) {
+    pr_response_add_err(R_534, "Unwilling to accept security parameters");
+    tls_log("%s: denied by <Limit> configuration", cmd->argv[0]);
     return PR_ERROR(cmd);
   }
 
