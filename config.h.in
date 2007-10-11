@@ -79,6 +79,12 @@
 /* Define if your DIR structure has member __dd_fd */
 #undef HAVE_STRUCT_DIR___DD_FD
 
+/* Define if you have struct cmsgcred.  */
+#undef HAVE_STRUCT_CMSGCRED
+
+/* Define if you have struct sockcred.  */
+#undef HAVE_STRUCT_SOCKCRED
+
 /* Define if your spwd structure has member warn */
 #undef HAVE_SPWD_SP_WARN
 
@@ -299,6 +305,9 @@
 
 /* Define if you have the getopt_long function.  */
 #undef HAVE_GETOPT_LONG
+
+/* Define if you have the getpeereid function.  */
+#undef HAVE_GETPEEREID
 
 /* Define if you have the getprpwent function.  */
 #undef HAVE_GETPRPWENT
@@ -623,6 +632,9 @@
 
 /* Define if you have the <sys/types.h> header file.  */
 #undef HAVE_SYS_TYPES_H
+
+/* Define if you have the <sys/ucred.h> header file.  */
+#undef HAVE_SYS_UCRED_H
 
 /* Define if you have the <sys/uio.h> header file.  */
 #undef HAVE_SYS_UIO_H

@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.36 2007-02-15 17:01:19 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.37 2007-10-11 02:31:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -144,9 +144,11 @@ static unsigned char ctrls_check_group_acl(gid_t cl_gid,
    * that all groups are to be treated according to the allow member.
    */
   if (grp_acl->gids) {
-    for (i = 0; i < grp_acl->ngids; i++)
-      if ((grp_acl->gids)[i] == cl_gid)
+    for (i = 0; i < grp_acl->ngids; i++) {
+      if ((grp_acl->gids)[i] == cl_gid) {
         res = TRUE;
+      }
+    }
 
   } else if (grp_acl->ngids == 1)
     res = TRUE;
@@ -170,9 +172,11 @@ static unsigned char ctrls_check_user_acl(uid_t cl_uid,
    * that all users are to be treated according to the allow member.
    */
   if (usr_acl->uids) {
-    for (i = 0; i < usr_acl->nuids; i++)
-      if ((usr_acl->uids)[i] == cl_uid)
+    for (i = 0; i < usr_acl->nuids; i++) {
+      if ((usr_acl->uids)[i] == cl_uid) {
         res = TRUE;
+      }
+    }
 
   } else if (usr_acl->nuids == 1)
     res = TRUE;
@@ -637,140 +641,6 @@ static void ctrls_del_cl(pr_ctrls_cl_t *cl) {
 /* Controls socket routines
  */
 
-/* Accept a client connection */
-static int ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid) {
-  pid_t cl_pid = 0;
-  int cl_fd = -1;
-  socklen_t len = 0;
-  char *tmp = NULL;
-  time_t stale_time;
-  struct sockaddr_un sock;
-  struct stat st;
-
-  len = sizeof(sock);
-
-  while ((cl_fd = accept(sockfd, (struct sockaddr *) &sock, &len)) < 0) {
-    if (errno == EINTR) {
-      pr_signals_handle();
-      continue;
-    }
-
-    ctrls_log(MOD_CTRLS_VERSION,
-      "error: unable to accept on local socket: %s", strerror(errno));
-
-    return -1;
-  }
-
-  len -= sizeof(sock.sun_family);
-
-  /* NULL terminate the name */
-  sock.sun_path[len] = '\0';
-
-  /* Check the path -- hmmm... */
-  PRIVS_ROOT
-  while (stat(sock.sun_path, &st) < 0) {
-    if (errno == EINTR) {
-      pr_signals_handle();
-      continue;
-    }
-
-    PRIVS_RELINQUISH
-    ctrls_log(MOD_CTRLS_VERSION,
-      "error: unable to stat %s: %s", sock.sun_path, strerror(errno));
-    (void) close(cl_fd);
-    return -1;
-  }
-  PRIVS_RELINQUISH
-
-  /* Is it a socket? */
-  if (pr_ctrls_issock_unix(st.st_mode) < 0) {
-    (void) close(cl_fd);
-    errno = ENOTSOCK;
-    return -1;
-  }
-
-  /* Are the perms _not_ rwx------? */
-  if (st.st_mode & (S_IRWXG|S_IRWXO) ||
-      ((st.st_mode & S_IRWXU) != PR_CTRLS_CL_MODE)) {
-    ctrls_log(MOD_CTRLS_VERSION,
-      "error: unable to accept connection: incorrect mode");
-    (void) close(cl_fd);
-    errno = EPERM;
-    return -1;
-  }
-
-  /* Is it new enough? */
-  stale_time = time(NULL) - ctrls_cl_freshness;
-
-  if (st.st_atime < stale_time ||
-      st.st_ctime < stale_time ||
-      st.st_mtime < stale_time) {
-    char *msg = "error: stale connection";
-
-    ctrls_log(MOD_CTRLS_VERSION,
-      "unable to accept connection: stale connection");
-
-    /* Log the times being compared, to aid in debugging this situation. */
-    if (st.st_atime < stale_time) {
-      time_t age = stale_time - st.st_atime;
-
-      ctrls_log(MOD_CTRLS_VERSION,
-         "last access time of '%s' is %lu seconds old (must be less than %u)",
-         sock.sun_path, (unsigned long) age, ctrls_cl_freshness);
-    }
-
-    if (st.st_ctime < stale_time) {
-      time_t age = stale_time - st.st_ctime;
-
-      ctrls_log(MOD_CTRLS_VERSION,
-         "last change time of '%s' is %lu seconds old (must be less than %u)",
-         sock.sun_path, (unsigned long) age, ctrls_cl_freshness);
-    }
-
-    if (st.st_mtime < stale_time) {
-      time_t age = stale_time - st.st_mtime;
-
-      ctrls_log(MOD_CTRLS_VERSION,
-         "last modified time of '%s' is %lu seconds old (must be less than %u)",
-         sock.sun_path, (unsigned long) age, ctrls_cl_freshness);
-    }
- 
-    if (pr_ctrls_send_msg(cl_fd, -1, 1, &msg) < 0)
-      ctrls_log("error sending message: %s", strerror(errno));
-    close(cl_fd);
-    cl_fd = -1;
-
-    /* Done with the path now */
-    PRIVS_ROOT
-    unlink(sock.sun_path);
-    PRIVS_RELINQUISH
-
-    errno = ETIMEDOUT;
-    return -1;
-  }
-
-  /* Parse the PID out of the path */
-  tmp = sock.sun_path;
-  tmp += strlen("/tmp/ftp.cl");
-  cl_pid = atol(tmp);
-
-  /* Return the IDs of the caller */
-  if (uid)
-    *uid = st.st_uid;
-
-  if (gid)
-    *gid = st.st_gid;
-
-  if (pid)
-    *pid = cl_pid;
-
-  /* Done with the path now */
-  PRIVS_ROOT
-  unlink(sock.sun_path);
-  PRIVS_RELINQUISH
-
-  return cl_fd;
-}
 
 /* Iterate through any readable descriptors, reading each into appropriate
  * client objects
@@ -956,6 +826,10 @@ static int ctrls_cls_write(void) {
 static int ctrls_listen(const char *sock_file) {
   int sockfd = -1, len = 0;
   struct sockaddr_un sock;
+#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && defined(LOCAL_CREDS)
+  int opt = 1;
+  socklen_t optlen = sizeof(opt);
+#endif /* !LOCAL_CREDS */
 
   /* No interruptions */
   pr_signals_block();
@@ -1013,6 +887,13 @@ static int ctrls_listen(const char *sock_file) {
       strerror(xerrno));
     return -1;
   }
+
+#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && defined(LOCAL_CREDS)
+  /* Set the LOCAL_CREDS socket option. */
+  if (setsockopt(sockfd, 0, LOCAL_CREDS, &opt, optlen) < 0)
+    ctrls_log(MOD_CTRLS_VERSION, "error enabling LOCAL_CREDS: %s",
+      strerror(errno));
+#endif /* !LOCAL_CREDS */
 
   /* Change the permissions on the socket, so that users can connect */
   if (chmod(sock.sun_path, (mode_t) PR_CTRLS_MODE) < 0) {
@@ -1088,8 +969,9 @@ static int ctrls_recv_cl_reqs(void) {
       }
 
       /* Accept pending connections */
-      if ((cl_fd = ctrls_accept(ctrls_sockfd, &cl_uid, &cl_gid,
-          &cl_pid)) < 0) {
+      cl_fd = pr_ctrls_accept(ctrls_sockfd, &cl_uid, &cl_gid, &cl_pid,
+        ctrls_cl_freshness);
+      if (cl_fd < 0) {
         if (errno != ETIMEDOUT)
           ctrls_log(MOD_CTRLS_VERSION,
             "error: unable to accept connection: %s", strerror(errno));
@@ -1456,7 +1338,8 @@ MODRET set_ctrlsinterval(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if ((nsecs = atoi(cmd->argv[1])) <= 0)
+  nsecs = atoi(cmd->argv[1]);
+  if (nsecs <= 0)
     CONF_ERROR(cmd, "must be a positive number");
 
   /* Remove the existing timer, and re-install it with this new interval. */

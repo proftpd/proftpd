@@ -24,10 +24,19 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.17 2007-10-10 17:13:08 castaglia Exp $
+ * $Id: ctrls.c,v 1.18 2007-10-11 02:31:56 castaglia Exp $
  */
 
 #include "conf.h"
+#include "privs.h"
+
+#ifdef HAVE_SYS_UCRED_H
+# include <sys/ucred.h>
+#endif /* !HAVE_SYS_UCRED_H */
+
+#ifdef HAVE_SYS_UIO_H
+# include <sys/uio.h>
+#endif /* !HAVE_SYS_UIO_H */
 
 #ifdef PR_USE_CTRLS
 
@@ -889,6 +898,35 @@ int pr_set_registered_actions(module *mod, const char *action,
   return 0;
 }
 
+#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && defined(LOCAL_CREDS)
+static int ctrls_connect_local_creds(int sockfd) {
+  char buf[1] = {'\0'};
+  int res;
+
+  /* The backend doesn't care what we send here, but it wants
+   * exactly one character to force recvmsg() to block and wait
+   * for us.
+   */
+
+  res = write(sockfd, buf, 1);
+  while (res < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+
+      res = write(sockfd, buf, 1);
+      continue;
+    }
+
+    pr_trace_msg(trace_channel, 5,
+      "error writing credentials byte for LOCAL_CREDS to fd %d: %s", sockfd,
+      strerror(errno));
+    return -1;
+  }
+
+  return res;
+}
+#endif /* !SCM_CREDS */
+
 int pr_ctrls_connect(const char *socket_file) {
   int sockfd = -1, len = 0;
   struct sockaddr_un cl_sock, ctrl_sock;
@@ -947,6 +985,14 @@ int pr_ctrls_connect(const char *socket_file) {
     return -1;
   }
 
+#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && defined(LOCAL_CREDS)
+  if (ctrls_connect_local_creds(sockfd) < 0) {
+    unlink(cl_sock.sun_path);
+    pr_signals_unblock();
+    return -1;
+  }
+#endif /* LOCAL_CREDS */
+
   pr_signals_unblock();
   return sockfd;
 }
@@ -969,6 +1015,320 @@ int pr_ctrls_issock_unix(mode_t sock_mode) {
 
   errno = ENOSYS;
   return -1;
+}
+
+#if defined(SO_PEERCRED)
+static int ctrls_get_creds_peercred(int sockfd, uid_t *uid, gid_t *gid,
+    pid_t *pid) {
+  struct ucred cred;
+  socklen_t credlen = sizeof(cred);
+
+  if (getsockopt(sockfd, SOL_SOCKET, SO_PEERCRED, &cred, &credlen) < 0) {
+    pr_trace_msg(trace_channel, 2,
+      "error obtaining peer creds using SO_PEERCRED: %s", strerror(errno));
+    errno = EPERM;
+    return -1;
+  }
+
+  if (uid)
+    *uid = cred.uid;
+
+  if (gid)
+    *gid = cred.gid;
+
+  if (pid)
+    *pid = cred.pid;
+
+  return 0;
+}
+#endif /* SO_PEERCRED */
+
+#if !defined(SO_PEERCRED) && defined(HAVE_GETPEEREID)
+static int ctrls_get_creds_peereid(int sockfd, uid_t *uid, gid_t *gid) {
+  if (getpeereid(sockfd, uid, gid) < 0) {
+    pr_trace_msg(trace_channel, 7, "error obtaining credentials using "
+      "getpeereid(2) on fd %d: %s", sockfd, strerror(errno));
+    return -1;
+  }
+
+  return 0;
+}
+#endif /* !HAVE_GETPEEREID */
+
+#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && defined(LOCAL_CREDS)
+static int ctrls_get_creds_local(int sockfd, uid_t *uid, gid_t *gid,
+    pid_t *pid) {
+  int res;
+  char buf[1];
+  struct iovec iov;
+  struct msghdr msg;
+
+# if defined(SOCKCREDSIZE)
+#  define MINCREDSIZE		(sizeof(struct cmsghdr) + SOCKCREDSIZE(0))
+# else
+#  if defined(HAVE_STRUCT_CMSGCRED)
+#   define MINCREDSIZE		(sizeof(struct cmsghdr) + sizeof(struct cmsgcred))
+#  elif defined(HAVE_STRUCT_SOCKCRED)
+#   define MINCREDSIZE		(sizeof(struct cmsghdr) + sizeof(struct sockcred))
+#  endif
+# endif /* !SOCKCREDSIZE */
+
+  char control[MINCREDSIZE];
+
+  iov.iov_base = buf;
+  iov.iov_len = 1;
+
+  memset(&msg, 0, sizeof(msg));
+  msg.msg_iov = &iov;
+  msg.msg_iovlen = 1;
+  msg.msg_control = control;
+  msg.msg_controllen = sizeof(control);
+  msg.msg_flags = 0;
+
+  res = recvmsg(sockfd, &msg, 0);
+  while (res < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+
+      res = recvmsg(sockfd, &msg, 0);
+      continue;
+    }
+
+    pr_trace_msg(trace_channel, 6,
+      "error calling recvmsg() on fd %d: %s", sockfd, strerror(errno));
+    return -1;
+  }
+
+  if (msg.msg_controllen > 0) {
+#if defined(HAVE_STRUCT_CMSGCRED)
+    struct cmsgcred cred;
+#elif defined(HAVE_STRUCT_SOCKCRED)
+    struct sockcred cred;
+#endif /* !CMSGCRED and !SOCKCRED */
+
+    struct cmsghdr *hdr = (struct cmsghdr *) control;
+
+    if (hdr->cmsg_level != SOL_SOCKET) {
+      pr_trace_msg(trace_channel, 5,
+        "message received via recvmsg() on fd %d was not a SOL_SOCKET message",
+        sockfd);
+
+      errno = EINVAL;
+      return -1;
+    }
+
+    if (hdr->cmsg_len < MINCREDSIZE) {
+      pr_trace_msg(trace_channel, 5,
+        "message received via recvmsg() on fd %d was not of proper "
+        "length (%u bytes)", sockfd, MINCREDSIZE);
+
+      errno = EINVAL;
+      return -1;
+    }
+
+    if (hdr->cmsg_type != SCM_CREDS) {
+      pr_trace_msg(trace_channel, 5,
+        "message received via recvmsg() on fd %d was not of type SCM_CREDS",
+        sockfd);
+
+      errno = EINVAL;
+      return -1;
+    }
+
+#if defined(HAVE_STRUCT_CMSGCRED)
+    memcpy(&cred, CMSG_DATA(hdr), sizeof(struct cmsgcred));
+
+    if (uid)
+      *uid = cred.cmcred_uid;
+
+    if (gid)
+      *gid = cred.cmcred_gid;
+
+    if (pid)
+      *pid = cred.cmcred_pid;
+
+#elif defined(HAVE_STRUCT_SOCKCRED)
+    memcpy(&cred, CMSG_DATA(hdr), sizeof(struct sockcred));
+
+    if (uid)
+      *uid = cred.sc_uid;
+
+    if (gid)
+      *gid = cred.sc_gid;
+#endif
+
+    return 0;
+  }
+
+  return -1;
+}
+#endif /* !SCM_CREDS */
+
+static int ctrls_get_creds_basic(struct sockaddr_un *sock, int cl_fd,
+    unsigned int max_age, uid_t *uid, gid_t *gid, pid_t *pid) {
+  pid_t cl_pid = 0;
+  char *tmp = NULL;
+  time_t stale_time;
+  struct stat st;
+
+  /* Check the path -- hmmm... */
+  PRIVS_ROOT
+  while (stat(sock->sun_path, &st) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+    }
+
+    PRIVS_RELINQUISH
+    pr_trace_msg(trace_channel, 2, "error: unable to stat %s: %s",
+      sock->sun_path, strerror(errno));
+    (void) close(cl_fd);
+    return -1;
+  }
+  PRIVS_RELINQUISH
+
+  /* Is it a socket? */
+  if (pr_ctrls_issock_unix(st.st_mode) < 0) {
+    (void) close(cl_fd);
+    errno = ENOTSOCK;
+    return -1;
+  }
+
+  /* Are the perms _not_ rwx------? */
+  if (st.st_mode & (S_IRWXG|S_IRWXO) ||
+      ((st.st_mode & S_IRWXU) != PR_CTRLS_CL_MODE)) {
+    pr_trace_msg(trace_channel, 3,
+      "error: unable to accept connection: incorrect mode");
+    (void) close(cl_fd);
+    errno = EPERM;
+    return -1;
+  }
+
+  /* Is it new enough? */
+  stale_time = time(NULL) - max_age;
+
+  if (st.st_atime < stale_time ||
+      st.st_ctime < stale_time ||
+      st.st_mtime < stale_time) {
+    char *msg = "error: stale connection";
+
+    pr_trace_msg(trace_channel, 3,
+      "unable to accept connection: stale connection");
+
+    /* Log the times being compared, to aid in debugging this situation. */
+    if (st.st_atime < stale_time) {
+      time_t age = stale_time - st.st_atime;
+
+      pr_trace_msg(trace_channel, 3,
+         "last access time of '%s' is %lu secs old (must be less than %u secs)",
+         sock->sun_path, (unsigned long) age, max_age);
+    }
+
+    if (st.st_ctime < stale_time) {
+      time_t age = stale_time - st.st_ctime;
+
+      pr_trace_msg(trace_channel, 3,
+         "last change time of '%s' is %lu secs old (must be less than %u secs)",
+         sock->sun_path, (unsigned long) age, max_age);
+    }
+
+    if (st.st_mtime < stale_time) {
+      time_t age = stale_time - st.st_mtime;
+
+      pr_trace_msg(trace_channel, 3,
+         "last modified time of '%s' is %lu secs old (must be less than %u "
+         "secs)", sock->sun_path, (unsigned long) age, max_age);
+    }
+
+    if (pr_ctrls_send_msg(cl_fd, -1, 1, &msg) < 0)
+      pr_trace_msg(trace_channel, 2, "error sending message: %s",
+        strerror(errno));
+
+    close(cl_fd);
+    cl_fd = -1;
+
+    errno = ETIMEDOUT;
+    return -1;
+  }
+
+  /* Parse the PID out of the path */
+  tmp = sock->sun_path;
+  tmp += strlen("/tmp/ftp.cl");
+  cl_pid = atol(tmp);
+
+  /* Return the IDs of the caller */
+  if (uid)
+    *uid = st.st_uid;
+
+  if (gid)
+    *gid = st.st_gid;
+
+  if (pid)
+    *pid = cl_pid;
+
+  return 0;
+}
+
+int pr_ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid,
+    unsigned int max_age) {
+  socklen_t len = 0;
+  struct sockaddr_un sock;
+  int cl_fd = -1;
+  int res = -1;
+
+  len = sizeof(sock);
+
+  while ((cl_fd = accept(sockfd, (struct sockaddr *) &sock, &len)) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+    }
+
+    pr_trace_msg(trace_channel, 3,
+      "error: unable to accept on local socket: %s", strerror(errno));
+    return -1;
+  }
+
+  len -= sizeof(sock.sun_family);
+
+  /* NULL terminate the name */
+  sock.sun_path[len] = '\0';
+
+#if defined(SO_PEERCRED)
+  pr_trace_msg(trace_channel, 5,
+    "checking client credentials using SO_PEERCRED");
+  res = ctrls_get_creds_peercred(cl_fd, uid, gid, pid);
+
+#elif !defined(SO_PEERCRED) && defined(HAVE_GETPEEREID)
+  pr_trace_msg(trace_channel, 5,
+    "checking client credentials using getpeereid(2)");
+  res = ctrls_get_creds_peereid(cl_fd, uid, gid);
+
+#elif !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && defined(LOCAL_CREDS)
+  pr_trace_msg(trace_channel, 5,
+    "checking client credentials using SCM_CREDS");
+  res = ctrls_get_creds_local(cl_fd, uid, gid, pid);
+
+#endif
+
+  /* Fallback to the Stevens method of determining connection credentials,
+   * if the kernel-enforced methods did not pan out.
+   */
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 5,
+      "checking client credentials using Stevens' method");
+    res = ctrls_get_creds_basic(&sock, cl_fd, max_age, uid, gid, pid);
+
+    if (res < 0)
+      return res;
+  }
+
+  /* Done with the path now */
+  PRIVS_ROOT
+  unlink(sock.sun_path);
+  PRIVS_RELINQUISH
+
+  return cl_fd;
 }
 
 void pr_block_ctrls(void) {

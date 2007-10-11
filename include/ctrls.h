@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2005 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Controls API definitions
- * $Id: ctrls.h,v 1.4 2005-11-11 21:05:32 castaglia Exp $
+ * $Id: ctrls.h,v 1.5 2007-10-11 02:31:56 castaglia Exp $
  */
 
 #ifndef PR_CTRLS_H
@@ -215,6 +215,18 @@ int pr_ctrls_send_msg(int sockfd, int msgstatus, unsigned int msgargc,
  * Returns zero if true, -1 otherwise.
  */
 int pr_ctrls_issock_unix(mode_t sock_mode);
+
+/* Accept a Controls connection.  Returns the fd of the connected client
+ * if successful, -1 (with errno set appropriately) otherwise.
+ *
+ * The optional uid, gid, and pid pointers, if provided, will be filled in
+ * with the uid, gid, and pid of the connecting client process.  These can
+ * be used e.g. for access control checks.  The max_age parameter specifies
+ * the maximum age, in seconds, for the connecting client; this is used
+ * for some types of credentials checking.
+ */
+int pr_ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid,
+  unsigned int max_age);
 
 int pr_get_registered_actions(pr_ctrls_t *ctrl, int flags);
 
