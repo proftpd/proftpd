@@ -24,7 +24,7 @@ files.
       TLSRequired !data, ctrl+!data, auth+!data
 
         See doc/contrib/mod_tls.html#TLSRequired for more information.
-
+      
   + New modules:
 
       mod_dynmasq
@@ -36,8 +36,16 @@ files.
 
           doc/contrib/mod_dynmasq.html
 
+      mod_unique_id
+
+        Generates a unique ID for every FTP session.  This ID can be
+        written to log files and stored in databases, for tracking all of
+        the activity associated with a particular FTP session.  See:
+
+          doc/contrib/mod_unique_id.html
+
   + New documentation:
 
       doc/howto/ConfigurationTricks.html
 
-Last Updated: $Date: 2007-10-11 16:45:07 $
+Last Updated: $Date: 2007-10-11 17:07:04 $
