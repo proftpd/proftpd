@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.853 2007-10-11 16:39:51 castaglia Exp $
+$Id: NEWS,v 1.854 2007-10-11 17:02:15 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -36,6 +36,8 @@ CVS
   more information.
 - Bug 2968 - Ability to allow protection on control channel, but reject
   protection on data channel.  See doc/contrib/mod_tls.html#TLSRequired
+  for details.
+- Added mod_unique_id contrib module.  See doc/contrib/mod_unique_id.html
   for details.
 
 1.3.1 - Released 5-Oct-2007
