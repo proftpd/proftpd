@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.44 2007-02-15 17:01:19 castaglia Exp $
+ * $Id: mod_radius.c,v 1.45 2007-10-12 20:40:31 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9"
@@ -3305,6 +3305,19 @@ static int radius_sess_init(void) {
      */
     if (!radius_auth_server)
       radius_have_user_info = FALSE;
+  }
+
+  /* If the RadiusUserInfo directive has not been set (or if it has been
+   * set, but it was not well-formed), then we will be acting in a
+   * "yes/no" style of authentication, similar to PAM.
+   *
+   * The Auth API tries to use the same module for authenticating a user
+   * as the one which provided information for that user.  If we are not
+   * providing user information, then we won't get a chance to authenticate
+   * the user -- unless we disable that Auth API behavior.
+   */
+  if (!radius_have_user_info) {
+    pr_auth_cache_set(0, PR_AUTH_CACHE_FL_AUTH_MODULE);
   }
 
   /* Prepare any configured fake group information. */

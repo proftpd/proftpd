@@ -24,7 +24,7 @@
 
 /* ProFTPD Auth API
  *
- * $Id: auth.h,v 1.6 2007-10-05 17:00:50 castaglia Exp $
+ * $Id: auth.h,v 1.7 2007-10-12 20:40:31 castaglia Exp $
  */
 
 #ifndef PR_AUTH_H
@@ -89,6 +89,7 @@ config_rec *pr_auth_get_anon_config(pool *p, char **, char **, char **);
 int pr_auth_cache_set(int, unsigned int);
 #define PR_AUTH_CACHE_FL_UID2NAME	0x00001
 #define PR_AUTH_CACHE_FL_GID2NAME	0x00002
+#define PR_AUTH_CACHE_FL_AUTH_MODULE	0x00004
 
 /* For internal use only. */
 int init_auth(void);

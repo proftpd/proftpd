@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.53 2007-10-08 18:47:06 castaglia Exp $
+ * $Id: auth.c,v 1.54 2007-10-12 20:40:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -37,7 +37,7 @@ static const char *trace_channel = "auth";
 /* Caching of ID-to-name lookups, for both UIDs and GIDs, is enabled by
  * default.
  */
-static unsigned int auth_caching = PR_AUTH_CACHE_FL_UID2NAME|PR_AUTH_CACHE_FL_GID2NAME;
+static unsigned int auth_caching = PR_AUTH_CACHE_FL_UID2NAME|PR_AUTH_CACHE_FL_GID2NAME|PR_AUTH_CACHE_FL_AUTH_MODULE;
 
 /* Key comparison callback for the uidcache and gidcache. */
 static int uid_keycmp_cb(const void *key1, size_t keysz1,
@@ -322,12 +322,14 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
     return NULL;
   }
 
-  if (!auth_tab &&
-       auth_pool) {
+  if ((auth_caching & PR_AUTH_CACHE_FL_AUTH_MODULE) &&
+      !auth_tab &&
+      auth_pool) {
     auth_tab = pr_table_alloc(auth_pool, 0);
   }
 
-  if (m && auth_tab) {
+  if (m &&
+      auth_tab) {
     int count = 0;
     void *value = NULL;
 
@@ -1202,6 +1204,12 @@ int pr_auth_cache_set(int bool, unsigned int flags) {
       auth_caching &= ~PR_AUTH_CACHE_FL_GID2NAME;
       pr_trace_msg(trace_channel, 7, "GID-to-name caching (gidcache) disabled");
     }
+
+    if (flags & PR_AUTH_CACHE_FL_AUTH_MODULE) {
+      auth_caching &= ~PR_AUTH_CACHE_FL_AUTH_MODULE;
+      pr_trace_msg(trace_channel, 7,
+        "auth module caching (authcache) disabled");
+    }
   }
 
   if (bool == 1) {
@@ -1213,6 +1221,11 @@ int pr_auth_cache_set(int bool, unsigned int flags) {
     if (flags & PR_AUTH_CACHE_FL_GID2NAME) {
       auth_caching |= PR_AUTH_CACHE_FL_GID2NAME;
       pr_trace_msg(trace_channel, 7, "GID-to-name caching (gidcache) enabled");
+    }
+
+    if (flags & PR_AUTH_CACHE_FL_AUTH_MODULE) {
+      auth_caching &= ~PR_AUTH_CACHE_FL_AUTH_MODULE;
+      pr_trace_msg(trace_channel, 7, "auth module caching (authcache) enabled");
     }
   }
 
