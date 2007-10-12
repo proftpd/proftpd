@@ -1908,62 +1908,6 @@ static int tls_init_server(void) {
     }
   }
 
-  /* Lookup and handle any requested crypto accelerators/drivers. */
-  c = find_config(main_server->conf, CONF_PARAM, "TLSCryptoDevice", FALSE);
-  if (c) {
-    if (strcasecmp((const char *) c->argv[0], "NONE") == 0) {
-      tls_crypto_device = NULL;
-
-    } else if (strcasecmp((const char *) c->argv[0], "ALL") == 0) {
-      /* Load all ENGINE implementations bundled with OpenSSL. */
-      ENGINE_load_builtin_engines();
-      ENGINE_register_all_complete();
-
-      tls_crypto_device = c->argv[0];
-      tls_log("enabled all builtin crypto devices");
-
-    } else {
-      ENGINE *e;
-
-      /* Load all ENGINE implementations bundled with OpenSSL. */
-      ENGINE_load_builtin_engines();
-
-      e = ENGINE_by_id(c->argv[0]);
-      if (!e) {
-        /* The requested driver is not available. */
-        tls_log("TLSCryptoDevice '%s' is not available",
-          (const char *) c->argv[0]);
-        return 0;
-      }
-
-      if (!ENGINE_init(e)) {
-        /* The requested driver could not be initialized. */
-        tls_log("unable to initialize TLSCryptoDevice '%s': %s",
-          (const char *) c->argv[0], tls_get_errors());
-
-        ENGINE_free(e);
-        return 0;
-      }
-
-      if (!ENGINE_set_default(e, ENGINE_METHOD_ALL)) {
-        /* The requested driver could not be used as the default for
-         * some odd reason.
-         */
-        tls_log("unable to register TLSCryptoDevice '%s' as the default: %s",
-          (const char *) c->argv[0], tls_get_errors());
-
-        ENGINE_finish(e);
-        ENGINE_free(e);
-        return 0;
-      }
-
-      ENGINE_finish(e);
-      ENGINE_free(e);
-
-      tls_crypto_device = c->argv[0];
-      tls_log("using TLSCryptoDevice '%s'", tls_crypto_device);
-    }
-  }
 #endif
 
   return 0;
@@ -4221,13 +4165,19 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: TLSCryptoDevice driver|"ALL"|"NONE" */
+/* usage: TLSCryptoDevice driver|"ALL" */
 MODRET set_tlscryptodevice(cmd_rec *cmd) {
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT);
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  tls_crypto_device = pstrdup(cmd->server->pool, cmd->argv[1]);
+
+  /* Add this config, so that dumping the config tree in debug logging
+   * shows the TLSCryptoDevice directive.
+   */
+  (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+
   return PR_HANDLED(cmd);
 
 #else /* OpenSSL is too old for ENGINE support */
@@ -4965,6 +4915,63 @@ static int tls_sess_init(void) {
     SSL_CTX_set_msg_callback(ssl_ctx, tls_msg_cb);
 #endif
   }
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+  /* Handle any requested crypto accelerators/drivers. */
+  if (tls_crypto_device) {
+    if (strcasecmp(tls_crypto_device, "ALL") == 0) {
+      /* Load all ENGINE implementations bundled with OpenSSL. */
+      ENGINE_load_builtin_engines();
+      ENGINE_register_all_complete();
+
+      tls_log("%s", "enabled all builtin crypto devices");
+
+    } else {
+      ENGINE *e;
+
+      /* Load all ENGINE implementations bundled with OpenSSL. */
+      ENGINE_load_builtin_engines();
+
+      e = ENGINE_by_id(tls_crypto_device);
+      if (e) {
+        if (ENGINE_init(e)) {
+          if (ENGINE_set_default(e, ENGINE_METHOD_ALL)) {
+            ENGINE_finish(e);
+            ENGINE_free(e);
+
+            tls_log("using TLSCryptoDevice '%s'", tls_crypto_device);
+
+          } else {
+            /* The requested driver could not be used as the default for
+             * some odd reason.
+             */
+            tls_log("unable to register TLSCryptoDevice '%s' as the "
+              "default: %s", tls_crypto_device, tls_get_errors());
+
+            ENGINE_finish(e);
+            ENGINE_free(e);
+            e = NULL;
+            tls_crypto_device = NULL;
+          }
+
+        } else {
+          /* The requested driver could not be initialized. */
+          tls_log("unable to initialize TLSCryptoDevice '%s': %s",
+            tls_crypto_device, tls_get_errors());
+
+          ENGINE_free(e);
+          e = NULL;
+          tls_crypto_device = NULL;
+        }
+
+      } else {
+        /* The requested driver is not available. */
+        tls_log("TLSCryptoDevice '%s' is not available", tls_crypto_device);
+        tls_crypto_device = NULL;
+      }
+    }
+  }
+#endif
 
   /* NOTE: fail session init if TLS server init fails (e.g. res < 0)? */
   /* Initialize the OpenSSL context for this server's configuration. */
