@@ -4245,7 +4245,8 @@ MODRET set_tlsengine(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -4587,8 +4588,9 @@ MODRET set_tlsverifyclient(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
-     CONF_ERROR(cmd, "expected Boolean parameter");
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
@@ -4605,7 +4607,8 @@ MODRET set_tlsverifydepth(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((depth = atoi(cmd->argv[1])) < 0)
+  depth = atoi(cmd->argv[1]);
+  if (depth < 0)
     CONF_ERROR(cmd, "depth must be zero or greater");
  
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -4804,11 +4807,12 @@ static int tls_sess_init(void) {
   config_rec *c = NULL;
 
   /* First, check to see whether mod_tls is even enabled. */
-  if ((tmp = get_param_ptr(main_server->conf, "TLSEngine",
-      FALSE)) != NULL && *tmp == TRUE)
+  tmp = get_param_ptr(main_server->conf, "TLSEngine", FALSE);
+  if (tmp != NULL &&
+      *tmp == TRUE) {
     tls_engine = TRUE;
 
-  else {
+  } else {
 
     /* No need for this modules's control channel NetIO handlers
      * anymore.
@@ -4846,16 +4850,18 @@ static int tls_sess_init(void) {
   tls_rsa_key_file = get_param_ptr(main_server->conf,
     "TLSRSACertificateKeyFile", FALSE);
 
-  if ((opts = get_param_ptr(main_server->conf, "TLSOptions", FALSE)) != NULL)
+  opts = get_param_ptr(main_server->conf, "TLSOptions", FALSE);
+  if (opts != NULL)
     tls_opts = *opts;
 
-  if ((tmp = get_param_ptr(main_server->conf, "TLSVerifyClient",
-      FALSE)) != NULL && *tmp == TRUE) {
+  tmp = get_param_ptr(main_server->conf, "TLSVerifyClient", FALSE);
+  if (tmp!= NULL &&
+      *tmp == TRUE) {
     int *depth = NULL;
     tls_flags |= TLS_SESS_VERIFY_CLIENT;
 
-    if ((depth = get_param_ptr(main_server->conf, "TLSVerifyDepth",
-        FALSE)) != NULL)
+    depth = get_param_ptr(main_server->conf, "TLSVerifyDepth", FALSE);
+    if (depth != NULL)
       tls_verify_depth = *depth;
   }
 
@@ -4866,8 +4872,8 @@ static int tls_sess_init(void) {
     tls_required_on_auth = *((int *) c->argv[2]);
   }
 
-  if ((c = find_config(main_server->conf, CONF_PARAM, "TLSTimeoutHandshake",
-      FALSE)))
+  c = find_config(main_server->conf, CONF_PARAM, "TLSTimeoutHandshake", FALSE);
+  if (c)
     tls_handshake_timeout = *((unsigned int *) c->argv[0]);
 
   /* Open the TLSLog, if configured */
