@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.37 2007-10-11 02:31:56 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.38 2007-10-13 03:05:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -826,7 +826,8 @@ static int ctrls_cls_write(void) {
 static int ctrls_listen(const char *sock_file) {
   int sockfd = -1, len = 0;
   struct sockaddr_un sock;
-#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && defined(LOCAL_CREDS)
+#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && \
+    !defined(HAVE_GETPEERUCRED) && defined(LOCAL_CREDS)
   int opt = 1;
   socklen_t optlen = sizeof(opt);
 #endif /* !LOCAL_CREDS */
@@ -888,7 +889,8 @@ static int ctrls_listen(const char *sock_file) {
     return -1;
   }
 
-#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && defined(LOCAL_CREDS)
+#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && \
+    !defined(HAVE_GETPEERUCRED) && defined(LOCAL_CREDS)
   /* Set the LOCAL_CREDS socket option. */
   if (setsockopt(sockfd, 0, LOCAL_CREDS, &opt, optlen) < 0)
     ctrls_log(MOD_CTRLS_VERSION, "error enabling LOCAL_CREDS: %s",

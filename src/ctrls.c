@@ -24,11 +24,15 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.19 2007-10-11 02:37:04 castaglia Exp $
+ * $Id: ctrls.c,v 1.20 2007-10-13 03:05:27 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
+
+#ifdef HAVE_UCRED_H
+# include <ucred.h>
+#endif /* !HAVE_UCRED_H */
 
 #ifdef HAVE_SYS_UCRED_H
 # include <sys/ucred.h>
@@ -898,7 +902,8 @@ int pr_set_registered_actions(module *mod, const char *action,
   return 0;
 }
 
-#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && defined(LOCAL_CREDS)
+#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && \
+    !defined(HAVE_GETPEERUCRED) && defined(LOCAL_CREDS)
 static int ctrls_connect_local_creds(int sockfd) {
   char buf[1] = {'\0'};
   int res;
@@ -985,7 +990,8 @@ int pr_ctrls_connect(const char *socket_file) {
     return -1;
   }
 
-#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && defined(LOCAL_CREDS)
+#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && \
+    !defined(HAVE_GETPEERUCRED) && defined(LOCAL_CREDS)
   if (ctrls_connect_local_creds(sockfd) < 0) {
     unlink(cl_sock.sun_path);
     pr_signals_unblock();
@@ -1056,7 +1062,30 @@ static int ctrls_get_creds_peereid(int sockfd, uid_t *uid, gid_t *gid) {
 }
 #endif /* !HAVE_GETPEEREID */
 
-#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && defined(LOCAL_CREDS)
+#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && \
+    defined(HAVE_GETPEERUCRED)
+static int ctrls_get_creds_peerucred(int sockfd, uid_t *uid, gid_t *gid) {
+  ucred_t *cred = NULL;
+
+  if (getpeerucred(sockfd, &cred) < 0) {
+    pr_trace_msg(trace_channel, 7, "error obtaining credentials using "
+      "getpeerucred(3) on fd %d: %s", sockfd, strerror(errno));
+    return -1;
+  }
+
+  if (uid)
+    *uid = ucred_getruid(cred);
+
+  if (gid)
+    *gid = ucred_getrgid(cred);
+
+  ucred_free(cred);
+  return 0;
+}
+#endif /* !HAVE_GETPEERUCRED */
+
+#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && \
+    !defined(HAVE_GETPEERUCRED) && defined(LOCAL_CREDS)
 static int ctrls_get_creds_local(int sockfd, uid_t *uid, gid_t *gid,
     pid_t *pid) {
   int res;
@@ -1305,7 +1334,14 @@ int pr_ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid,
     "checking client credentials using getpeereid(2)");
   res = ctrls_get_creds_peereid(cl_fd, uid, gid);
 
-#elif !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && defined(LOCAL_CREDS)
+#elif !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && \
+      defined(HAVE_GETPEERUCRED)
+  pr_trace_msg(trace_channel, 5,
+    "checking client credentials using getpeerucred(3)");
+  res = ctrls_get_creds_peerucred(cl_fd, uid, gid);
+
+#elif !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && \
+      !defined(HAVE_GETPEERUCRED) && defined(LOCAL_CREDS)
   pr_trace_msg(trace_channel, 5,
     "checking client credentials using SCM_CREDS");
   res = ctrls_get_creds_local(cl_fd, uid, gid, pid);

@@ -309,6 +309,9 @@
 /* Define if you have the getpeereid function.  */
 #undef HAVE_GETPEEREID
 
+/* Define if you have the getpeerucred function.  */
+#undef HAVE_GETPEERUCRED
+
 /* Define if you have the getprpwent function.  */
 #undef HAVE_GETPRPWENT
 
@@ -650,6 +653,9 @@
 
 /* Define if you have the <ucontext.h> header file.  */
 #undef HAVE_UCONTEXT_H
+
+/* Define if you have the <ucred.h> header file.  */
+#undef HAVE_UCRED_H
 
 /* Define if you have the <unistd.h> header file.  */
 #undef HAVE_UNISTD_H
