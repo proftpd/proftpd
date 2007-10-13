@@ -4169,13 +4169,8 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
 MODRET set_tlscryptodevice(cmd_rec *cmd) {
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  tls_crypto_device = pstrdup(cmd->server->pool, cmd->argv[1]);
-
-  /* Add this config, so that dumping the config tree in debug logging
-   * shows the TLSCryptoDevice directive.
-   */
   (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
 
   return PR_HANDLED(cmd);
@@ -4924,7 +4919,10 @@ static int tls_sess_init(void) {
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   /* Handle any requested crypto accelerators/drivers. */
-  if (tls_crypto_device) {
+  c = find_config(main_server->conf, CONF_PARAM, "TLSCryptoDevice", FALSE);
+  if (c) {
+    tls_crypto_device = (const char *) c->argv[0];
+
     if (strcasecmp(tls_crypto_device, "ALL") == 0) {
       /* Load all ENGINE implementations bundled with OpenSSL. */
       ENGINE_load_builtin_engines();
