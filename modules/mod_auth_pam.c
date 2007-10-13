@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_pam -- Support for PAM-style authentication.
  * Copyright (c) 1998, 1999, 2000 Habeeb J. Dihu aka
  *   MacGyver <macgyver@tos.net>, All Rights Reserved.
- * Copyright 2000-2006 The ProFTPD Project
+ * Copyright 2000-2007 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.17 2006-12-19 03:26:32 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.18 2007-10-13 01:47:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,7 +44,7 @@
 
 #ifdef HAVE_PAM
 
-#define MOD_AUTH_PAM_VERSION		"mod_auth_pam/1.0.1"
+#define MOD_AUTH_PAM_VERSION		"mod_auth_pam/1.0.2"
 
 #ifdef HAVE_SECURITY_PAM_APPL_H
 # ifdef HPUX11
@@ -510,6 +510,14 @@ MODRET set_authpamconfig(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* Initialization routines
+ */
+
+static int auth_pam_sess_init(void) {
+  pr_auth_add_auth_only_module("mod_auth_pam.c");
+  return 0;
+}
+
 static authtable auth_pam_authtab[] = {
   { 0, "auth", pam_auth },
   { 0, NULL, NULL }
@@ -543,7 +551,7 @@ module auth_pam_module = {
   NULL,
 
   /* Session initialization */
-  NULL,
+  auth_pam_sess_init,
 
   /* Module version */
   MOD_AUTH_PAM_VERSION

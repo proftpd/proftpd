@@ -25,13 +25,20 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.54 2007-10-12 20:40:31 castaglia Exp $
+ * $Id: auth.c,v 1.55 2007-10-13 01:47:57 castaglia Exp $
  */
 
 #include "conf.h"
 
 static pool *auth_pool = NULL;
 static pr_table_t *auth_tab = NULL, *uid_tab = NULL, *gid_tab = NULL;
+static xaset_t *auth_module_list = NULL;
+
+struct auth_module_elt {
+  struct auth_module_elt *prev, *next;
+  const char *name;
+};
+
 static const char *trace_channel = "auth";
 
 /* Caching of ID-to-name lookups, for both UIDs and GIDs, is enabled by
@@ -323,6 +330,7 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
   }
 
   if ((auth_caching & PR_AUTH_CACHE_FL_AUTH_MODULE) &&
+      auth_module_list != NULL &&
       !auth_tab &&
       auth_pool) {
     auth_tab = pr_table_alloc(auth_pool, 0);
@@ -482,41 +490,48 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
 
   cmd = make_cmd(p, 2, name, pw);
 
-  /* First, check for the mod_auth_pam.c module.
-   *
-   * PAM is a bit of hack in this Auth API, because PAM only provides
-   * yes/no checks, and is not a source of user information.
+  /* First, check for any of the modules in the "authenticating only" list
+   * of modules.  This is usually only mod_auth_pam, but other modules
+   * might also add themselves (e.g. mod_radius under certain conditions).
    */
-  m = pr_module_get("mod_auth_pam.c");
-  if (m) {
-    mr = dispatch_auth(cmd, "auth", &m);
+  if (auth_module_list) {
+    struct auth_module_elt *elt;
 
-    if (MODRET_ISHANDLED(mr)) {
-      pr_trace_msg(trace_channel, 4,
-        "module 'mod_auth_pam.c' used for authenticating user '%s'", name);
+    for (elt = (struct auth_module_elt *) auth_module_list->xas_list; elt;
+        elt = elt->next) {
 
-      res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
+      m = pr_module_get(elt->name);
+      if (m) {
+        mr = dispatch_auth(cmd, "auth", &m);
 
-      if (cmd->tmp_pool) {
-        destroy_pool(cmd->tmp_pool);
-        cmd->tmp_pool = NULL;
+        if (MODRET_ISHANDLED(mr)) {
+          pr_trace_msg(trace_channel, 4,
+            "module '%s' used for authenticating user '%s'", elt->name, name);
+
+          res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
+
+          if (cmd->tmp_pool) {
+            destroy_pool(cmd->tmp_pool);
+            cmd->tmp_pool = NULL;
+          }
+
+          return res;
+        }
+
+        if (MODRET_ISERROR(mr)) {
+          res = MODRET_ERROR(mr);
+
+          if (cmd->tmp_pool) {
+            destroy_pool(cmd->tmp_pool);
+            cmd->tmp_pool = NULL;
+          }
+
+          return res;
+        }
+
+        m = NULL;
       }
-
-      return res;
     }
-
-    if (MODRET_ISERROR(mr)) {
-      res = MODRET_ERROR(mr);
-
-      if (cmd->tmp_pool) {
-        destroy_pool(cmd->tmp_pool);
-        cmd->tmp_pool = NULL;
-      }
-
-      return res;
-    }
-
-    m = NULL;
   }
 
   if (auth_tab) {
@@ -556,41 +571,48 @@ int pr_auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
 
   cmd = make_cmd(p, 3, cpw, name, pw);
 
-  /* First, check for the mod_auth_pam.c module.  
-   *
-   * PAM is a bit of hack in this Auth API, because PAM only provides
-   * yes/no checks, and is not a source of user information.
+  /* First, check for any of the modules in the "authenticating only" list
+   * of modules.  This is usually only mod_auth_pam, but other modules
+   * might also add themselves (e.g. mod_radius under certain conditions).
    */
-  m = pr_module_get("mod_auth_pam.c");
-  if (m) {
-    mr = dispatch_auth(cmd, "check", &m);
+  if (auth_module_list) {
+    struct auth_module_elt *elt;
 
-    if (MODRET_ISHANDLED(mr)) {
-      pr_trace_msg(trace_channel, 4,
-        "module 'mod_auth_pam.c' used for authenticating user '%s'", name);
+    for (elt = (struct auth_module_elt *) auth_module_list->xas_list; elt;
+        elt = elt->next) {
 
-      res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
+      m = pr_module_get(elt->name);
+      if (m) {
+        mr = dispatch_auth(cmd, "check", &m);
 
-      if (cmd->tmp_pool) {
-        destroy_pool(cmd->tmp_pool);
-        cmd->tmp_pool = NULL;
+        if (MODRET_ISHANDLED(mr)) {
+          pr_trace_msg(trace_channel, 4,
+            "module '%s' used for authenticating user '%s'", elt->name, name);
+
+          res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
+
+          if (cmd->tmp_pool) {
+            destroy_pool(cmd->tmp_pool);
+            cmd->tmp_pool = NULL;
+          }
+
+          return res;
+        }
+
+        if (MODRET_ISERROR(mr)) {
+          res = MODRET_ERROR(mr);
+
+          if (cmd->tmp_pool) {
+            destroy_pool(cmd->tmp_pool);
+            cmd->tmp_pool = NULL;
+          }
+
+          return res;
+        }
+
+        m = NULL;
       }
-
-      return res;
     }
-
-    if (MODRET_ISERROR(mr)) {
-      res = MODRET_ERROR(mr);
-
-      if (cmd->tmp_pool) {
-        destroy_pool(cmd->tmp_pool);
-        cmd->tmp_pool = NULL;
-      }
-
-      return res;
-    }
-
-    m = NULL;
   }
 
   if (auth_tab) {
@@ -1229,6 +1251,51 @@ int pr_auth_cache_set(int bool, unsigned int flags) {
     }
   }
 
+  return 0;
+}
+
+int pr_auth_add_auth_only_module(const char *name) {
+  struct auth_module_elt *elt = NULL;
+
+  if (!auth_pool) {
+    /* This means that init_auth() has not been called, which probably
+     * means we are not being called in a session process.
+     */
+    errno = EPERM;
+    return -1;
+  }
+
+  if (!name) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (!(auth_caching & PR_AUTH_CACHE_FL_AUTH_MODULE)) {
+    /* We won't be using the auth-only module cache, so there's no need to
+     * accept this.
+     */
+    errno = EACCES;
+    return 0;
+  }
+
+  if (!auth_module_list)
+    auth_module_list = xaset_create(auth_pool, NULL);
+
+  /* Prevent duplicates; they could lead to a memory leak. */
+  for (elt = (struct auth_module_elt *) auth_module_list->xas_list; elt;
+      elt = elt->next) {
+    if (strcmp(elt->name, name) == 0) {
+      errno = EEXIST;
+      return -1;
+    }
+  }
+
+  elt = pcalloc(auth_pool, sizeof(struct auth_module_elt));
+  elt->name = pstrdup(auth_pool, name);
+  xaset_insert_end(auth_module_list, (xasetmember_t *) elt);
+
+  pr_trace_msg(trace_channel, 5, "added '%s' to auth-only module list",
+    name);
   return 0;
 }
 

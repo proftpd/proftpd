@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.45 2007-10-12 20:40:31 castaglia Exp $
+ * $Id: mod_radius.c,v 1.46 2007-10-13 01:47:57 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9"
@@ -3317,7 +3317,9 @@ static int radius_sess_init(void) {
    * the user -- unless we disable that Auth API behavior.
    */
   if (!radius_have_user_info) {
-    pr_auth_cache_set(0, PR_AUTH_CACHE_FL_AUTH_MODULE);
+    if (pr_auth_add_auth_only_module("mod_radius.c") < 0)
+      pr_log_debug(DEBUG2, "error adding 'mod_radius.c' to auth-only module "
+        "list: %s", strerror(errno));
   }
 
   /* Prepare any configured fake group information. */
