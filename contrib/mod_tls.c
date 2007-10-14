@@ -503,7 +503,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
       case 20:
         /* ChangeCipherSpec message */
         tls_log("[msg] %s %s ChangeCipherSpec message (%u %s)",
-          action_str, version_str, buflen, bytes_str);
+          action_str, version_str, (unsigned int) buflen, bytes_str);
         break;
 
       case 21: {
@@ -525,47 +525,50 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
           switch (((const unsigned char *) buf)[1]) {
             case 0:
               tls_log("[msg] %s %s %s 'close_notify' Alert message (%u %s)",
-                action_str, version_str, severity_str, buflen, bytes_str);
+                action_str, version_str, severity_str, (unsigned int) buflen,
+                bytes_str);
               break;
 
             case 10:
               tls_log("[msg] %s %s %s 'unexpected_message' Alert message "
-                "(%u %s)", action_str, version_str, severity_str, buflen,
-                bytes_str);
+                "(%u %s)", action_str, version_str, severity_str,
+                (unsigned int) buflen, bytes_str);
               break;
 
             case 20:
               tls_log("[msg] %s %s %s 'bad_record_mac' Alert message (%u %s)",
-                action_str, version_str, severity_str, buflen, bytes_str);
+                action_str, version_str, severity_str, (unsigned int) buflen,
+                bytes_str);
               break;
 
             case 21:
               tls_log("[msg] %s %s %s 'decryption_failed' Alert message "
-                "(%u %s)", action_str, version_str, severity_str, buflen,
-                bytes_str);
+                "(%u %s)", action_str, version_str, severity_str,
+                (unsigned int) buflen, bytes_str);
               break;
 
             case 22:
               tls_log("[msg] %s %s %s 'record_overflow' Alert message (%u %s)",
-                action_str, version_str, severity_str, buflen, bytes_str);
+                action_str, version_str, severity_str, (unsigned int) buflen,
+                bytes_str);
               break;
 
             case 30:
               tls_log("[msg] %s %s %s 'decompression_failure' Alert message "
-                "(%u %s)", action_str, version_str, severity_str, buflen,
-                bytes_str);
+                "(%u %s)", action_str, version_str, severity_str,
+                (unsigned int) buflen, bytes_str);
               break;
 
             case 40:
               tls_log("[msg] %s %s %s 'handshake_failure' Alert message "
-                "(%u %s)", action_str, version_str, severity_str, buflen,
-                bytes_str);
+                "(%u %s)", action_str, version_str, severity_str,
+                (unsigned int) buflen, bytes_str);
               break;
           }
 
         } else {
           tls_log("[msg] %s %s Alert message, unknown type (%u %s)", action_str,
-            version_str, buflen, bytes_str);
+            version_str, (unsigned int) buflen, bytes_str);
         }
 
         break;
@@ -578,58 +581,62 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
           switch (((const unsigned char *) buf)[0]) {
             case 0:
               tls_log("[msg] %s %s 'HelloRequest' Handshake message (%u %s)",
-                action_str, version_str, buflen, bytes_str);
+                action_str, version_str, (unsigned int) buflen, bytes_str);
               break;
 
             case 1:
               tls_log("[msg] %s %s 'ClientHello' Handshake message (%u %s)",
-                action_str, version_str, buflen, bytes_str);
+                action_str, version_str, (unsigned int) buflen, bytes_str);
               break;
 
             case 2:
               tls_log("[msg] %s %s 'ServerHello' Handshake message (%u %s)",
-                action_str, version_str, buflen, bytes_str);
+                action_str, version_str, (unsigned int) buflen, bytes_str);
               break;
 
             case 11:
               tls_log("[msg] %s %s 'Certificate' Handshake message (%u %s)",
-                action_str, version_str, buflen, bytes_str);
+                action_str, version_str, (unsigned int) buflen, bytes_str);
               break;
 
             case 12:
               tls_log("[msg] %s %s 'ServerKeyExchange' Handshake message "
-                "(%u %s)", action_str, version_str, buflen, bytes_str);
+                "(%u %s)", action_str, version_str, (unsigned int) buflen,
+                bytes_str);
               break;
 
             case 13:
               tls_log("[msg] %s %s 'CertificateRequest' Handshake message "
-                "(%u %s)", action_str, version_str, buflen, bytes_str);
+                "(%u %s)", action_str, version_str, (unsigned int) buflen,
+                bytes_str);
               break;
 
             case 14:
               tls_log("[msg] %s %s 'ServerHelloDone' Handshake message (%u %s)",
-                action_str, version_str, buflen, bytes_str);
+                action_str, version_str, (unsigned int) buflen, bytes_str);
               break;
 
             case 15:
               tls_log("[msg] %s %s 'CertificateVerify' Handshake message "
-                "(%u %s)", action_str, version_str, buflen, bytes_str);
+                "(%u %s)", action_str, version_str, (unsigned int) buflen,
+                bytes_str);
               break;
 
             case 16:
               tls_log("[msg] %s %s 'ClientKeyExchange' Handshake message "
-                "(%u %s)", action_str, version_str, buflen, bytes_str);
+                "(%u %s)", action_str, version_str, (unsigned int) buflen,
+                bytes_str);
               break;
 
             case 20:
               tls_log("[msg] %s %s 'Finished' Handshake message (%u %s)",
-                action_str, version_str, buflen, bytes_str);
+                action_str, version_str, (unsigned int) buflen, bytes_str);
               break;
           }
 
         } else {
           tls_log("[msg] %s %s Handshake message, unknown type (%u %s)",
-            action_str, version_str, buflen, bytes_str);
+            action_str, version_str, (unsigned int) buflen, bytes_str);
         }
 
         break;
@@ -654,77 +661,79 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
             switch (err_code) {
               case 0x0001:
                 tls_log("[msg] %s %s 'NO-CIPHER-ERROR' Error message (%u %s)",
-                  action_str, version_str, buflen, bytes_str);
+                  action_str, version_str, (unsigned int) buflen, bytes_str);
                 break;
 
               case 0x0002:
                 tls_log("[msg] %s %s 'NO-CERTIFICATE-ERROR' Error message "
-                  "(%u %s)", action_str, version_str, buflen, bytes_str);
+                  "(%u %s)", action_str, version_str, (unsigned int) buflen,
+                  bytes_str);
                 break;
 
               case 0x0004:
                 tls_log("[msg] %s %s 'BAD-CERTIFICATE-ERROR' Error message "
-                  "(%u %s)", action_str, version_str, buflen, bytes_str);
+                  "(%u %s)", action_str, version_str, (unsigned int) buflen,
+                  bytes_str);
                 break;
 
               case 0x0006:
                 tls_log("[msg] %s %s 'UNSUPPORTED-CERTIFICATE-TYPE-ERROR' "
-                  "Error message (%u %s)", action_str, version_str, buflen,
-                  bytes_str);
+                  "Error message (%u %s)", action_str, version_str,
+                  (unsigned int) buflen, bytes_str);
                 break;
             }
 
           } else {
             tls_log("[msg] %s %s Error message, unknown type (%u %s)",
-              action_str, version_str, buflen, bytes_str);
+              action_str, version_str, (unsigned int) buflen, bytes_str);
           }
           break;
         }
 
         case 1:
           tls_log("[msg] %s %s 'CLIENT-HELLO' message (%u %s)", action_str,
-            version_str, buflen, bytes_str);
+            version_str, (unsigned int) buflen, bytes_str);
           break;
 
         case 2:
           tls_log("[msg] %s %s 'CLIENT-MASTER-KEY' message (%u %s)", action_str,
-            version_str, buflen, bytes_str);
+            version_str, (unsigned int) buflen, bytes_str);
           break;
 
         case 3:
           tls_log("[msg] %s %s 'CLIENT-FINISHED' message (%u %s)", action_str,
-            version_str, buflen, bytes_str);
+            version_str, (unsigned int) buflen, bytes_str);
           break;
 
         case 4:
           tls_log("[msg] %s %s 'SERVER-HELLO' message (%u %s)", action_str,
-            version_str, buflen, bytes_str);
+            version_str, (unsigned int) buflen, bytes_str);
           break;
 
         case 5:
           tls_log("[msg] %s %s 'SERVER-VERIFY' message (%u %s)", action_str,
-            version_str, buflen, bytes_str);
+            version_str, (unsigned int) buflen, bytes_str);
           break;
 
         case 6:
           tls_log("[msg] %s %s 'SERVER-FINISHED' message (%u %s)", action_str,
-            version_str, buflen, bytes_str);
+            version_str, (unsigned int) buflen, bytes_str);
           break;
 
         case 7:
           tls_log("[msg] %s %s 'REQUEST-CERTIFICATE' message (%u %s)",
-            action_str, version_str, buflen, bytes_str);
+            action_str, version_str, (unsigned int) buflen, bytes_str);
           break;
 
         case 8:
           tls_log("[msg] %s %s 'CLIENT-CERTIFICATE' message (%u %s)",
-            action_str, version_str, buflen, bytes_str);
+            action_str, version_str, (unsigned int) buflen, bytes_str);
           break;
       }
 
     } else {
-      tls_log("[msg] %s %s message (%u %s)", action_str, version_str, buflen,
-        bytes_str);
+      tls_log("[msg] %s %s message (%u %s)", action_str, version_str,
+        (unsigned int) buflen, bytes_str);
     }
 
   } else {
@@ -734,7 +743,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
      */
 
     tls_log("[msg] %s message of unknown version (%d) (%u %s)", action_str,
-      version, buflen, bytes_str);
+      version, (unsigned int) buflen, bytes_str);
   }
 
 }
