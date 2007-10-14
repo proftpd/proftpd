@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.55 2007-10-13 01:47:57 castaglia Exp $
+ * $Id: auth.c,v 1.56 2007-10-14 00:48:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -76,6 +76,117 @@ static unsigned int gid_hash_cb(const void *key, size_t keysz) {
   res = (unsigned int) (g << 8);
 
   return res;
+}
+
+static void uidcache_create(void) {
+  if ((auth_caching & PR_AUTH_CACHE_FL_UID2NAME) &&
+      !uid_tab &&
+      auth_pool) {
+    int ok = TRUE;
+    uid_tab = pr_table_alloc(auth_pool, 0);
+
+    if (pr_table_ctl(uid_tab, PR_TABLE_CTL_SET_KEY_CMP, uid_keycmp_cb) < 0) {
+      pr_trace_msg(trace_channel, 2,
+        "error setting key comparison callback for uidcache: %s",
+        strerror(errno));
+      ok = FALSE;
+    }
+
+    if (pr_table_ctl(uid_tab, PR_TABLE_CTL_SET_KEY_HASH, uid_hash_cb) < 0) {
+      pr_trace_msg(trace_channel, 2,
+        "error setting key hash callback for uidcache: %s",
+        strerror(errno));
+      ok = FALSE;
+    }
+
+    if (!ok) {
+      pr_trace_msg(trace_channel, 2, "%s",
+        "destroying unusable uidcache table");
+      pr_table_free(uid_tab);
+      uid_tab = NULL;
+    }
+  }
+}
+
+static void uidcache_add(uid_t uid, const char *name) {
+  uidcache_create();
+
+  if (uid_tab) {
+    int count;
+
+    (void) pr_table_rewind(uid_tab);
+    count = pr_table_kexists(uid_tab, (const void *) &uid, sizeof(uid_t));
+    if (count <= 0) {
+      if (pr_table_kadd(uid_tab, (const void *) &uid, sizeof(uid_t),
+          pstrdup(auth_pool, name), strlen(name) + 1) < 0 &&
+          errno != EEXIST) {
+        pr_trace_msg(trace_channel, 3,
+          "error adding name '%s' for UID %lu to the uidcache: %s", name,
+          (unsigned long) uid, strerror(errno));
+
+      } else {
+        pr_trace_msg(trace_channel, 5,
+          "stashed name '%s' for UID %lu in the uidcache", name,
+          (unsigned long) uid);
+      }
+    }
+  }
+}
+
+static void gidcache_create(void) {
+  if ((auth_caching & PR_AUTH_CACHE_FL_GID2NAME) &&
+      !gid_tab &&
+      auth_pool) {
+    int ok = TRUE;
+
+    gid_tab = pr_table_alloc(auth_pool, 0);
+
+    if (pr_table_ctl(gid_tab, PR_TABLE_CTL_SET_KEY_CMP, gid_keycmp_cb) < 0) {
+      pr_trace_msg(trace_channel, 2,
+        "error setting key comparison callback for gidcache: %s",
+        strerror(errno));
+      ok = FALSE;
+    }
+
+    if (pr_table_ctl(gid_tab, PR_TABLE_CTL_SET_KEY_HASH, gid_hash_cb) < 0) {
+      pr_trace_msg(trace_channel, 2,
+        "error setting key hash callback for gidcache: %s",
+        strerror(errno));
+      ok = FALSE;
+    }
+
+    if (!ok) {
+      pr_trace_msg(trace_channel, 2, "%s",
+        "destroying unusable gidcache table");
+      pr_table_free(gid_tab);
+      gid_tab = NULL;
+    }
+  }
+}
+
+static void gidcache_add(gid_t gid, const char *name) {
+  gidcache_create();
+
+  if (gid_tab) {
+    int count;
+
+    (void) pr_table_rewind(gid_tab);
+    count = pr_table_kexists(gid_tab, (const void *) &gid, sizeof(gid_t));
+    if (count <= 0) {
+      if (pr_table_kadd(gid_tab, (const void *) &gid, sizeof(gid_t),
+          pstrdup(auth_pool, name), strlen(name) + 1) < 0 &&
+          errno != EEXIST) {
+        pr_trace_msg(trace_channel, 3,
+          "error adding name '%s' for GID %lu to the gidcache: %s", name,
+          (unsigned long) gid, strerror(errno));
+
+      } else {
+        pr_trace_msg(trace_channel, 5,
+          "stashed name '%s' for GID %lu in the uidcache", name,
+          (unsigned long) gid);
+      }
+    }
+  }
 }
 
 /* The difference between this function, and pr_cmd_alloc(), is that this
@@ -373,6 +484,8 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
     }
   }
 
+  uidcache_add(res->pw_uid, name);
+
   pr_log_debug(DEBUG10, "retrieved UID %lu for user '%s'",
     (unsigned long) res->pw_uid, name);
   return res;
@@ -443,6 +556,8 @@ struct group *pr_auth_getgrnam(pool *p, const char *name) {
     pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
+
+  gidcache_add(res->gr_gid, name);
 
   pr_log_debug(DEBUG10, "retrieved GID %lu for group '%s'",
     (unsigned long) res->gr_gid, name);
@@ -671,33 +786,7 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
 
   memset(namebuf, '\0', sizeof(namebuf));
 
-  if ((auth_caching & PR_AUTH_CACHE_FL_UID2NAME) &&
-      !uid_tab &&
-      auth_pool) {
-    int ok = TRUE;
-    uid_tab = pr_table_alloc(auth_pool, 0);
-
-    if (pr_table_ctl(uid_tab, PR_TABLE_CTL_SET_KEY_CMP, uid_keycmp_cb) < 0) {
-      pr_trace_msg(trace_channel, 2,
-        "error setting key comparison callback for uidcache: %s",
-        strerror(errno));
-      ok = FALSE;
-    }
-
-    if (pr_table_ctl(uid_tab, PR_TABLE_CTL_SET_KEY_HASH, uid_hash_cb) < 0) {
-      pr_trace_msg(trace_channel, 2,
-        "error setting key hash callback for uidcache: %s",
-        strerror(errno));
-      ok = FALSE;
-    }
-
-    if (!ok) {
-      pr_trace_msg(trace_channel, 2, "%s",
-        "destroying unusable uidcache table");
-      pr_table_free(uid_tab);
-      uid_tab = NULL;
-    }
-  }
+  uidcache_create();
 
   if (uid_tab) {
     void *v = NULL;
@@ -729,26 +818,7 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
     sstrncpy(namebuf, res, sizeof(namebuf));
     res = namebuf;
 
-    if (uid_tab) {
-      int count;
-
-      (void) pr_table_rewind(uid_tab);
-      count = pr_table_kexists(uid_tab, (const void *) &uid, sizeof(uid_t));
-      if (count <= 0) {
-        if (pr_table_kadd(uid_tab, (const void *) &uid, sizeof(uid_t),
-            pstrdup(auth_pool, res), strlen(res) + 1) < 0 &&
-            errno != EEXIST) {
-          pr_trace_msg(trace_channel, 3,
-            "error adding name '%s' for UID %lu to the uidcache: %s",
-            res, (unsigned long) uid, strerror(errno));
-
-        } else {
-          pr_trace_msg(trace_channel, 5,
-            "stashed name '%s' for UID %lu in the uidcache", res,
-            (unsigned long) uid);
-        }
-      }
-    }
+    uidcache_add(uid, res);
   }
 
   if (cmd->tmp_pool) {
@@ -767,34 +837,7 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
 
   memset(namebuf, '\0', sizeof(namebuf));
 
-  if ((auth_caching & PR_AUTH_CACHE_FL_GID2NAME) &&
-      !gid_tab &&
-      auth_pool) {
-    int ok = TRUE;
-
-    gid_tab = pr_table_alloc(auth_pool, 0);
-
-    if (pr_table_ctl(gid_tab, PR_TABLE_CTL_SET_KEY_CMP, gid_keycmp_cb) < 0) {
-      pr_trace_msg(trace_channel, 2,
-        "error setting key comparison callback for gidcache: %s",
-        strerror(errno));
-      ok = FALSE;
-    }
-
-    if (pr_table_ctl(gid_tab, PR_TABLE_CTL_SET_KEY_HASH, gid_hash_cb) < 0) {
-      pr_trace_msg(trace_channel, 2,
-        "error setting key hash callback for gidcache: %s",
-        strerror(errno));
-      ok = FALSE;
-    }
-
-    if (!ok) {
-      pr_trace_msg(trace_channel, 2, "%s",
-        "destroying unusable gidcache table");
-      pr_table_free(gid_tab);
-      gid_tab = NULL;
-    }
-  }
+  gidcache_create();
 
   if (gid_tab) {
     void *v = NULL;
@@ -826,26 +869,7 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
     sstrncpy(namebuf, res, sizeof(namebuf));
     res = namebuf;
 
-    if (gid_tab) {
-      int count;
-
-      (void) pr_table_rewind(gid_tab);
-      count = pr_table_kexists(gid_tab, (const void *) &gid, sizeof(gid_t));
-      if (count <= 0) {
-        if (pr_table_kadd(gid_tab, (const void *) &gid, sizeof(gid_t),
-            pstrdup(auth_pool, res), strlen(res) + 1) < 0 &&
-            errno != EEXIST) {
-          pr_trace_msg(trace_channel, 3,
-            "error adding name '%s' for GID %lu to the gidcache: %s",
-            res, (unsigned long) gid, strerror(errno));
-
-        } else {
-          pr_trace_msg(trace_channel, 5,
-            "stashed name '%s' for GID %lu in the uidcache", res,
-            (unsigned long) gid);
-        }
-      }
-    }
+    gidcache_add(gid, res);
   }
 
   if (cmd->tmp_pool) {
