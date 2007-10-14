@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /* Utility module linked to utilities to provide functions normally
  * present in full src tree.
- * $Id: misc.c,v 1.6 2006-11-01 03:11:04 castaglia Exp $
+ * $Id: misc.c,v 1.7 2007-10-14 22:59:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -70,4 +70,77 @@ char *sstrncpy(char *dest, const char *src, size_t n) {
   *d = '\0';
 
   return dest;
+}
+
+const char *util_scan_config(const char *config_path, const char *directive) {
+  FILE *fp = NULL;
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  char *cp, *value = NULL;
+
+  if (!config_path || !directive) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  fp = fopen(config_path, "r");
+  if (fp == NULL)
+    return NULL;
+  
+  while (!value && fgets(buf, sizeof(buf) - 1, fp)) {
+    size_t len = strlen(buf);
+
+    if (len &&
+        buf[len-1] == '\n')
+      buf[len-1] = '\0';
+
+    for (cp = buf; *cp && isspace((int) *cp); cp++);
+
+    if (*cp == '#' ||
+        !*cp)
+      continue;
+
+    len = strlen(directive);
+
+    if (strncasecmp(cp, directive, len) != 0)
+      continue;
+
+    /* Found it! */
+    cp += len;
+
+    /* strip whitespace */
+    while (*cp && isspace((int) *cp))
+      cp++;
+
+    value = cp;
+
+    /* If the value is quoted, dequote. */
+    if (*cp == '"') {
+      char *src = cp;
+
+      cp++;
+      value++;
+
+      while (*++src) {
+        switch (*src) {
+          case '\\':
+            if (*++src)
+              *cp++ = *src;
+            break;
+
+          case '"':
+            src++;
+            break;
+
+          default:
+            *cp++ = *src;
+        }
+      }
+
+      *cp = '\0';
+    }
+  }
+
+  fclose(fp);
+
+  return value;
 }
