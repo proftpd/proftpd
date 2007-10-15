@@ -30634,9 +30634,9 @@ _ACEOF
 
 
 
-echo "$as_me:$LINENO: checking for umode_t" >&5
-echo $ECHO_N "checking for umode_t... $ECHO_C" >&6
-if test "${ac_cv_type_umode_t+set}" = set; then
+echo "$as_me:$LINENO: checking for mode_t" >&5
+echo $ECHO_N "checking for mode_t... $ECHO_C" >&6
+if test "${ac_cv_type_mode_t+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
   cat >conftest.$ac_ext <<_ACEOF
@@ -30649,9 +30649,9 @@ $ac_includes_default
 int
 main ()
 {
-if ((umode_t *) 0)
+if ((mode_t *) 0)
   return 0;
-if (sizeof (umode_t))
+if (sizeof (mode_t))
   return 0;
   ;
   return 0;
@@ -30679,23 +30679,23 @@ if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   ac_status=$?
   echo "$as_me:$LINENO: \$? = $ac_status" >&5
   (exit $ac_status); }; }; then
-  ac_cv_type_umode_t=yes
+  ac_cv_type_mode_t=yes
 else
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
-ac_cv_type_umode_t=no
+ac_cv_type_mode_t=no
 fi
 rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
-echo "$as_me:$LINENO: result: $ac_cv_type_umode_t" >&5
-echo "${ECHO_T}$ac_cv_type_umode_t" >&6
-if test $ac_cv_type_umode_t = yes; then
+echo "$as_me:$LINENO: result: $ac_cv_type_mode_t" >&5
+echo "${ECHO_T}$ac_cv_type_mode_t" >&6
+if test $ac_cv_type_mode_t = yes; then
   :
 else
 
 cat >>confdefs.h <<_ACEOF
-#define umode_t mode_t
+#define mode_t mode_t
 _ACEOF
 
 fi
