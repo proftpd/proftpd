@@ -1,4 +1,4 @@
-<!-- $Id: DSO.html,v 1.5 2006-06-12 16:03:33 castaglia Exp $ -->
+<!-- $Id: DSO.html,v 1.6 2007-10-15 16:23:30 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/DSO.html,v $ -->
 
 <html>
@@ -149,12 +149,11 @@ Once you have your custom module written (<i>e.g.</i>
 be used to compile it as a DSO module.  The following can be used as a template
 for the <code>Makefile</code>:
 <pre>
-  PROFTPD_SRC=/path/to/proftpd
   PROFTPD_INSTALL=/usr/local/proftpd
 
-  top_srcdir=$(PROFTPD_SRC)
-  srcdir=$(PROFTPD_SRC)
-  VPATH=$(PROFTPD_SRC)
+  top_srcdir=$(PROFTPD_INSTALL)
+  srcdir=$(PROFTPD_INSTALL)
+  VPATH=$(PROFTPD_INSTALL)
 
   MODULE_NAME=
   MODULE_CFLAGS=
@@ -164,8 +163,8 @@ for the <code>Makefile</code>:
 
   CC=gcc
   DEFS=-DPR_SHARED_MODULE $(MODULE_DEFS)
-  CFLAGS=$(DEFS) -I. -I$(PROFTPD_SRC)/include -I$(PROFTPD_SRC) $(MODULE_CFLAGS)
-  LDFLAGS=-L$(PROFTPD_SRC)/lib $(MODULE_LDFLAGS)
+  CFLAGS=$(DEFS) -I. -I$(PROFTPD_INSTALL)/include/proftpd $(MODULE_CFLAGS)
+  LDFLAGS=-L$(PROFTPD_INSTALL)/lib $(MODULE_LDFLAGS)
   LIBEXEC_DIR=$(PROFTPD_INSTALL)/libexec
   LIBS=$(MODULE_LIBS)
 
@@ -173,7 +172,8 @@ for the <code>Makefile</code>:
   INSTALL_USER=user
   INSTALL_GROUP=user
   INSTALL_BIN=$(INSTALL) -s -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0755
-  LIBTOOL=$(SHELL) $(PROFTPD_SRC)/libtool
+
+  LIBTOOL=$(SHELL) /usr/bin/libtool
   LTDL_FLAGS=-avoid-version -export-dynamic -module
 
   # Targets
@@ -234,7 +234,7 @@ Then restart <code>proftpd</code>, and your custom module will be in use.
 
 <p>
 <hr>
-<i>$Date: 2006-06-12 16:03:33 $</i><br>
+<i>$Date: 2007-10-15 16:23:30 $</i><br>
 
 </body>
 </html>
