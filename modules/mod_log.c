@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.83 2007-09-11 00:47:51 castaglia Exp $
+ * $Id: mod_log.c,v 1.84 2007-10-15 17:53:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -652,6 +652,19 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       } else if (session.xfer.p &&
                  session.xfer.path) {
         sstrncpy(argp, dir_abs_path(p, session.xfer.path, TRUE), sizeof(arg));
+
+      } else if (strcmp(cmd->argv[0], C_SITE) == 0 &&
+                 (strcasecmp(cmd->argv[1], "CHGRP") == 0 ||
+                  strcasecmp(cmd->argv[1], "CHMOD") == 0)) {
+        register unsigned int i;
+        char *tmp = "";
+
+        for (i = 3; i <= cmd->argc-1; i++) {
+          tmp = pstrcat(cmd->tmp_pool, tmp, *tmp ? " " : "",
+            pr_fs_decode_path(cmd->tmp_pool, cmd->argv[i]), NULL);
+        }
+
+        sstrncpy(argp, dir_abs_path(p, tmp, TRUE), sizeof(arg));
 
       } else {
         /* Some commands (i.e. DELE, MKD, RMD, XMKD, and XRMD) have associated
