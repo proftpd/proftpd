@@ -37459,6 +37459,10 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 cat >>confdefs.h <<_ACEOF
+#define PR_INCLUDE_DIR "`eval echo "${includedir}"`"
+_ACEOF
+
+cat >>confdefs.h <<_ACEOF
 #define PR_LIBEXEC_DIR "`eval echo "${libexecdir}"`"
 _ACEOF
 
