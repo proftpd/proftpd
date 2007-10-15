@@ -741,6 +741,10 @@
 #undef PR_CONFIG_DIR
 #endif /* PR_CONFIG_DIR */
 
+#ifndef PR_INCLUDE_DIR
+#undef PR_INCLUDE_DIR
+#endif /* PR_INCLUDE_DIR */
+
 #ifndef PR_LIBEXEC_DIR
 #undef PR_LIBEXEC_DIR
 #endif /* PR_LIBEXEC_DIR */
