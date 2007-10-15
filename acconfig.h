@@ -12,9 +12,6 @@
 /* Define to `int' if <sys/types.h> doesn't define. */
 #undef ino_t
 
-/* Define to `mode_t' if <sys/types.h> doesn't define. */
-#undef umode_t
-
 /* Define to `int' if <sys/socket.h> doesn't define. */
 #undef socklen_t
 

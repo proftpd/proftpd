@@ -1119,7 +1119,7 @@ AC_CHECK_SIZEOF(size_t, 0)
 AC_CHECK_SIZEOF(time_t, 0)
 
 dnl Check for generic typedefs
-AC_CHECK_TYPE(umode_t, mode_t)
+AC_CHECK_TYPE(mode_t, mode_t)
 AC_CHECK_TYPE(ino_t, ino_t)
 AC_CHECK_TYPE(intptr_t, AC_DEFINE(HAVE_INTPTR_T),, [
   #if HAVE_INTTYPES_H
