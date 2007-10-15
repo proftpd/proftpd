@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.48 2007-01-19 21:59:44 castaglia Exp $
+ * $Id: modules.h,v 1.49 2007-10-15 16:51:28 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -156,7 +156,10 @@ struct module_struc {
 
 unsigned char command_exists(char *);
 int modules_init(void);
-void modules_list(void);
+void modules_list(int);
+#define PR_MODULES_LIST_FL_SHOW_VERSION		0x00001
+#define PR_MODULES_LIST_FL_SHOW_STATIC		0x00002
+
 int modules_session_init(void);
 
 unsigned char pr_module_exists(const char *);

@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.51 2007-01-19 21:59:45 castaglia Exp $
+ * $Id: modules.c,v 1.52 2007-10-15 16:51:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -538,13 +538,48 @@ module *pr_module_get(const char *name) {
   return NULL;
 }
 
-void modules_list(void) {
-  register unsigned int i = 0;
+void modules_list(int flags) {
 
-  printf("Compiled-in modules:\n");
-  for (i = 0; static_modules[i]; i++) {
-    module *m = static_modules[i];
-    printf("  mod_%s.c\n", m->name);
+  if (flags & PR_MODULES_LIST_FL_SHOW_STATIC) {
+    register unsigned int i = 0;
+
+    printf("Compiled-in modules:\n");
+    for (i = 0; static_modules[i]; i++) {
+      module *m = static_modules[i];
+
+      if (flags & PR_MODULES_LIST_FL_SHOW_VERSION) {
+        char *version = m->module_version;
+        if (version) {
+          printf("  %s\n", version);
+
+        } else {
+          printf("  mod_%s.c\n", m->name);
+        }
+
+      } else {
+        printf("  mod_%s.c\n", m->name);
+      }
+    }
+
+  } else {
+    module *m;
+
+    printf("Loaded modules:\n");
+    for (m = loaded_modules; m; m = m->next) {
+
+      if (flags & PR_MODULES_LIST_FL_SHOW_VERSION) {
+        char *version = m->module_version;
+        if (version) {
+          printf("  %s\n", version);
+
+        } else {  
+          printf("  mod_%s.c\n", m->name);
+        }
+
+      } else {
+        printf("  mod_%s.c\n", m->name);
+      }
+    }
   }
 }
 

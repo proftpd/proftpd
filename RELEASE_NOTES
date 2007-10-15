@@ -9,6 +9,41 @@ files.
 1.3.1rc1
 ---------
 
+  + Changed command-line behavior:
+
+      The -vv command-line option currently shows only the static modules,
+      e.g.:
+
+        - ProFTPD Version: 1.3.0 (stable)
+        -   Scoreboard Version: 01040002
+        -   Built: mar gen 2 10:57:47 CET 2007
+        -     Module: mod_core.c
+        -     Module: mod_xfer.c
+        -     Module: mod_auth_unix.c
+        -     Module: mod_auth_file.c
+        ...
+
+      Now, the -vv command-line option will show all modules, static *and*
+      shared:
+
+        ProFTPD Version: 1.3.0 (stable)
+        Scoreboard Version: 01040002
+        Built: Thu Jun 14 14:13:37 UTC 2007
+
+        Loaded modules:
+          mod_ifsession.c
+          mod_tls/2.1.1
+          mod_cap/1.0
+          ...
+
+       Note that the output format has changed slightly (no leading " - ").
+       The -l command-line option can be used to list just the static
+       modules.
+
+       Also note that order of the module listed via -vv shows the order
+       in which the core proftpd engine calls each module, i.e. the modules
+       are listed in module order.
+
   + New configuration directives:
 
       MaxTransferPerHost
@@ -19,7 +54,11 @@ files.
 
       BanOnEvent ClientConnectRate
 
+        See doc/contrib/mod_ban.html#BanOnEvent
+
       TLSOptions EnableDiags
+
+        See doc/contrib/mod_tls.html#TLSOptions
 
       TLSRequired !data, ctrl+!data, auth+!data
 
@@ -48,4 +87,4 @@ files.
 
       doc/howto/ConfigurationTricks.html
 
-Last Updated: $Date: 2007-10-11 17:07:04 $
+Last Updated: $Date: 2007-10-15 16:51:28 $

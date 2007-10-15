@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.307 2007-10-05 17:08:56 castaglia Exp $
+ * $Id: main.c,v 1.308 2007-10-15 16:51:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2659,7 +2659,7 @@ int main(int argc, char *argv[], char **envp) {
       break;
 
     case 'l':
-      modules_list();
+      modules_list(PR_MODULES_LIST_FL_SHOW_STATIC);
       exit(0);
       break;
 
@@ -2708,35 +2708,9 @@ int main(int argc, char *argv[], char **envp) {
     exit(1);
   }
 
-  if (show_version) {
-    if (show_version == 1)
-      pr_log_pri(PR_LOG_NOTICE, "ProFTPD Version " PROFTPD_VERSION_TEXT);
-
-    else {
-      register unsigned int i;
-
-      pr_log_pri(PR_LOG_NOTICE, "ProFTPD Version: %s",
-        PROFTPD_VERSION_TEXT " " PR_STATUS);
-      pr_log_pri(PR_LOG_NOTICE, "  Scoreboard Version: %08x",
-        PR_SCOREBOARD_VERSION);
-      pr_log_pri(PR_LOG_NOTICE, "  Built: %s", BUILD_STAMP);
-
-      for (i = 0; static_modules[i]; i++) {
-        char buf[256];
-        char *desc = static_modules[i]->module_version;
-
-        if (!desc) {
-          memset(buf, '\0', sizeof(buf));
-          snprintf(buf, sizeof(buf), "mod_%s.c", static_modules[i]->name);
-          buf[sizeof(buf)-1] = '\0';
-
-          desc = buf;
-        }
-
-        pr_log_pri(PR_LOG_NOTICE, "    Module: %s", desc);
-      }
-    }
-
+  if (show_version &&
+      show_version == 1) {
+    printf("ProFTPD Version " PROFTPD_VERSION_TEXT "\n");
     exit(0);
   }
 
@@ -2796,6 +2770,17 @@ int main(int argc, char *argv[], char **envp) {
   }
 
   pr_event_generate("core.postparse", NULL);
+
+  if (show_version &&
+      show_version == 2) {
+
+    printf("ProFTPD Version: %s", PROFTPD_VERSION_TEXT " " PR_STATUS "\n");
+    printf("  Scoreboard Version: %08x\n", PR_SCOREBOARD_VERSION); 
+    printf("  Built: %s\n\n", BUILD_STAMP);
+
+    modules_list(PR_MODULES_LIST_FL_SHOW_VERSION);
+    end_login(0);
+  }
 
   /* We're only doing a syntax check of the configuration file. */
   if (syntax_check) {
