@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.310 2007-10-16 06:07:07 castaglia Exp $
+ * $Id: main.c,v 1.311 2007-10-16 06:12:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2662,16 +2662,20 @@ int main(int argc, char *argv[], char **envp) {
 
     case 'h':
       show_usage(0);
+      break;
 
     case 4:
       pr_netaddr_disable_ipv6();
+      break;
 
     case 6:
       pr_netaddr_enable_ipv6();
+      break;
 
     case '?':
       pr_log_pri(PR_LOG_ERR, "unknown option: %c", (char)optopt);
       show_usage(1);
+      break;
     }
   }
 
