@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.305 2007-10-05 17:33:42 castaglia Exp $
+ * $Id: mod_core.c,v 1.306 2007-10-16 16:27:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4152,6 +4152,9 @@ MODRET core_rnto(cmd_rec *cmd) {
       pr_log_debug(DEBUG0, "error unlinking '%s': %s", session.xfer.path,
         strerror(errno));
   }
+
+  /* Change the xfer path to the name of the destination file, for logging. */
+  session.xfer.path = pstrdup(session.xfer.p, path);
 
   pr_response_add(R_250, _("Rename successful"));
   return PR_HANDLED(cmd);
