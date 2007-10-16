@@ -56,6 +56,10 @@ files.
 
         See doc/contrib/mod_ban.html#BanOnEvent
 
+      LogFormat %f
+
+        RNFR/RNTO, SITE CHGRP, SITE CHMOD
+
       TLSOptions EnableDiags
 
         See doc/contrib/mod_tls.html#TLSOptions
@@ -87,4 +91,4 @@ files.
 
       doc/howto/ConfigurationTricks.html
 
-Last Updated: $Date: 2007-10-15 16:51:28 $
+Last Updated: $Date: 2007-10-16 16:29:13 $
