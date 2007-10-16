@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.309 2007-10-15 18:11:39 castaglia Exp $
+ * $Id: main.c,v 1.310 2007-10-16 06:07:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2518,35 +2518,6 @@ int main(int argc, char *argv[], char **envp) {
   mode_t *main_umask = NULL;
   socklen_t peerlen;
   struct sockaddr peer;
-
-#ifdef DEBUG_MEMORY
-  int logfd;
-  extern int EF_PROTECT_BELOW;
-  extern int EF_PROTECT_FREE;
-  extern int EF_ALIGNMENT;
-
-  EF_PROTECT_BELOW = 1;/* */
-  EF_PROTECT_FREE = 1; /* */
-  EF_ALIGNMENT = 0; /* */
-
-  /* Redirect stderr to somewhere appropriate.
-   * Ideally, this would be syslog, but alas...
-   */
-  if ((logfd = open(PR_RUN_DIR "/proftpd-memory.log",
-		   O_WRONLY | O_CREAT | O_APPEND, 0644))< 0) {
-	pr_log_pri(PR_LOG_ERR, "Error opening error logfile: %s",
-          strerror(errno));
-	exit(1);
-  }
-
-  close(fileno(stderr));
-  if (dup2(logfd, fileno(stderr)) == -1) {
-	pr_log_pri(PR_LOG_ERR,
-          "Error converting standard error to a logfile: %s", strerror(errno));
-	exit(1);
-  }
-  close(logfd);
-#endif /* DEBUG_MEMORY */
 
 #ifdef HAVE_SET_AUTH_PARAMETERS
   (void) set_auth_parameters(argc, argv);
