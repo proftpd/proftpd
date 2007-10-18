@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.861 2007-10-17 15:39:31 castaglia Exp $
+$Id: NEWS,v 1.862 2007-10-18 16:22:25 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -181,7 +181,7 @@ CVS
 - Bug 2793 - LogFormat variable for the ProFTPD version.  This adds a
   "%{version}" variable to the LogFormat directive.
 - Bug 2797 - Add ability to force cleaning the scoreboard.  This can now
-  be done using "ftpctl scoreboard scrub".
+  be done using "ftpdctl scoreboard scrub".
 - Bug 2800 - free_proc_title() in developer build tries to free strings from
   pool allocated by mod_tls.
 - Bug 2801 - Error compiling proftpd on NetBSD 3.0/sparc64.
