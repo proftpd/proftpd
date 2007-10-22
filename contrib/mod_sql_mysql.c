@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.46 2007-07-06 22:40:58 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.47 2007-10-22 18:09:17 castaglia Exp $
  */
 
 /*
@@ -447,7 +447,7 @@ MODRET cmd_open(cmd_rec *cmd) {
   /* set up our timer if necessary */
   if (entry->ttl > 0) {
     entry->timer = pr_timer_add(entry->ttl, -1, &sql_mysql_module,
-      _sql_timer_callback);
+      _sql_timer_callback, "mysql connection ttl");
     sql_log(DEBUG_INFO, "connection '%s' - %d second timer started",
       entry->name, entry->ttl);
 

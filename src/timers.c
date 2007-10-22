@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.26 2007-09-30 23:38:34 castaglia Exp $
+ * $Id: timers.c,v 1.27 2007-10-22 18:09:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -45,6 +45,8 @@ struct timer {
   module *mod;                  /* Module owning this timer */
   callback_t callback;          /* Function to callback */
   char remove;                  /* Internal use */
+
+  const char *desc;		/* Description of timer, provided by caller */
 };
 
 static int _current_timeout = 0;
@@ -110,8 +112,8 @@ static int process_timers(int elapsed) {
         /* This timer's interval has elapsed, so trigger its callback. */
 
         pr_trace_msg("timer", 4,
-          "%ld seconds for timer ID %d (for module '%s') elapsed, "
-          "invoking callback (%p)", t->interval, t->timerno,
+          "%ld seconds for timer ID %d ('%s', for module '%s') elapsed, "
+          "invoking callback (%p)", t->interval, t->timerno, t->desc,
           t->mod ? t->mod->name : "[none]", t->callback);
 
         if (t->callback(t->interval, t->timerno, t->interval - t->count,
@@ -127,8 +129,8 @@ static int process_timers(int elapsed) {
           /* A non-zero return value from a timer callback signals that
            * the timer should be reused/restarted.
            */
-          pr_trace_msg("timer", 6, "restarting timer ID %d, as per callback",
-            t->timerno);
+          pr_trace_msg("timer", 6, "restarting timer ID %d ('%s'), as per "
+            "callback", t->timerno, t->desc);
 
           xaset_remove(timers, (xasetmember_t *) t);
           t->count = t->interval;
@@ -296,18 +298,24 @@ int pr_timer_remove(int timerno, module *mod) {
   pr_alarms_unblock();
 
   if (t) {
-    pr_trace_msg("timer", 7, "removed timer ID %d (for module '%s')",
-      t->timerno, t->mod ? t->mod->name : "[none]");
+    pr_trace_msg("timer", 7, "removed timer ID %d ('%s', for module '%s')",
+      t->timerno, t->desc, t->mod ? t->mod->name : "[none]");
     return t->timerno;
   }
 
   return 0;
 }
 
-int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb) {
+int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb,
+    const char *desc) {
   struct timer *t = NULL;
 
   if (seconds < 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (!desc) {
     errno = EINVAL;
     return -1;
   }
@@ -354,6 +362,7 @@ int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb) {
   t->callback = cb;
   t->mod = mod;
   t->remove = 0;
+  t->desc = desc;
 
   /* If called while _indispatch, add to the recycled list to prevent
    * list corruption
@@ -378,9 +387,9 @@ int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb) {
 
   pr_alarms_unblock();
 
-  pr_trace_msg("timer", 7, "added timer ID %d (for module '%s'), "
-    "triggering in %ld seconds", t->timerno, t->mod ? t->mod->name : "[none]",
-    t->interval);
+  pr_trace_msg("timer", 7, "added timer ID %d ('%s', for module '%s'), "
+    "triggering in %ld seconds", t->timerno, t->desc,
+    t->mod ? t->mod->name : "[none]", t->interval);
   return timerno;
 }
 
@@ -419,7 +428,7 @@ int pr_timer_sleep(int seconds) {
     return -1;
   }
 
-  timerno = pr_timer_add(seconds, -1, NULL, sleep_cb);
+  timerno = pr_timer_add(seconds, -1, NULL, sleep_cb, "sleep");
   if (timerno == -1)
     return -1;
 

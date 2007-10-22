@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.311 2007-10-16 06:12:11 castaglia Exp $
+ * $Id: main.c,v 1.312 2007-10-22 18:09:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -635,7 +635,8 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 
   /* Setup the main idle timer */
   if (TimeoutIdle)
-    pr_timer_add(TimeoutIdle, TIMER_IDLE, NULL, idle_timeout_cb);
+    pr_timer_add(TimeoutIdle, TIMER_IDLE, NULL, idle_timeout_cb,
+      "TimeoutIdle");
 
   if ((masq_c = find_config(server->conf, CONF_PARAM, "MasqueradeAddress",
       FALSE)) != NULL) {

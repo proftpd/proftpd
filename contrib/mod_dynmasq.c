@@ -26,7 +26,7 @@
  * This is mod_dynmasq, contrib software for proftpd 1.2.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dynmasq.c,v 1.2 2007-10-11 16:58:19 castaglia Exp $
+ * $Id: mod_dynmasq.c,v 1.3 2007-10-22 18:09:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -134,7 +134,7 @@ static void dynmasq_restart_ev(const void *event_data, void *user_data) {
 static void dynmasq_startup_ev(const void *event_data, void *user_data) {
   if (dynmasq_timer_interval != -1) {
     dynmasq_timer_id = pr_timer_add(dynmasq_timer_interval, -1,
-      &dynmasq_module, dynmasq_update_cb);
+      &dynmasq_module, dynmasq_update_cb, "dynmasq address update");
   }
 }
 

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: timers.h,v 1.14 2006-12-15 00:06:18 castaglia Exp $
+ * $Id: timers.h,v 1.15 2007-10-22 18:09:17 castaglia Exp $
  */
 
 #ifndef PR_TIMERS_H
@@ -40,7 +40,8 @@
  * an error.  In the case of an error, errno will be set to an appropriate
  * reason.
  */
-int pr_timer_add(int secs, int timerno, module *m, callback_t cb);
+int pr_timer_add(int secs, int timerno, module *m, callback_t cb,
+  const char *desc);
 
 /* Remove the timer indicated by the timerno parameter, and owned by the
  * given module.  Note that if the caller does not know the module,

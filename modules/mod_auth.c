@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.225 2007-07-31 22:08:18 castaglia Exp $
+ * $Id: mod_auth.c,v 1.226 2007-10-22 18:09:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -145,7 +145,7 @@ static int auth_sess_init(void) {
   if (TimeoutLogin) {
     pr_timer_remove(TIMER_LOGIN, &auth_module);
     pr_timer_add(TimeoutLogin, TIMER_LOGIN, &auth_module,
-      auth_login_timeout_cb);
+      auth_login_timeout_cb, "TimeoutLogin");
   }
 
   PRIVS_ROOT
@@ -368,7 +368,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
       have_user_timeout ? "user" : have_group_timeout ? "group" :
       have_class_timeout ? "class" : "all");
     pr_timer_add(TimeoutSession, TIMER_SESSION, &auth_module,
-      auth_session_timeout_cb);
+      auth_session_timeout_cb, "TimeoutSession");
   }
 
   /* Handle a DisplayLogin file. */

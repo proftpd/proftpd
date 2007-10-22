@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.11 2007-10-10 03:56:04 castaglia Exp $
+ * $Id: mod_ban.c,v 1.12 2007-10-22 18:09:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2053,7 +2053,8 @@ static void ban_restart_ev(const void *event_data, void *user_data) {
 }
 
 static void ban_startup_ev(const void *event_data, void *user_data) {
-  pr_timer_add(BAN_TIMER_INTERVAL, -1, &ban_module, ban_timer_cb);
+  pr_timer_add(BAN_TIMER_INTERVAL, -1, &ban_module, ban_timer_cb,
+    "ban list expiry");
 }
 
 static void ban_timeoutidle_ev(const void *event_data, void *user_data) {

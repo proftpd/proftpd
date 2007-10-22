@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.221 2007-10-09 17:30:38 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.222 2007-10-22 18:09:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2917,7 +2917,8 @@ static int xfer_sess_init(void) {
 
   /* Setup TimeoutNoXfer timer */
   if (TimeoutNoXfer)
-    pr_timer_add(TimeoutNoXfer, TIMER_NOXFER, &xfer_module, noxfer_timeout_cb);
+    pr_timer_add(TimeoutNoXfer, TIMER_NOXFER, &xfer_module, noxfer_timeout_cb,
+      "TimeoutNoTransfer");
 
   /* Check for a server-specific TimeoutStalled */
   c = find_config(main_server->conf, CONF_PARAM, "TimeoutStalled", FALSE);

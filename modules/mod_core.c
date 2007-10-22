@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.306 2007-10-16 16:27:50 castaglia Exp $
+ * $Id: mod_core.c,v 1.307 2007-10-22 18:09:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4361,7 +4361,7 @@ static void core_startup_ev(const void *event_data, void *user_data) {
 
   /* Add a scoreboard-scrubbing timer. */
   core_scrub_timer_id = pr_timer_add(PR_TUNABLE_SCOREBOARD_SCRUB_TIMER, -1,
-    &core_module, core_scrub_scoreboard_cb);
+    &core_module, core_scrub_scoreboard_cb, "scoreboard scrubbing");
 
   /* Add a restart handler to scrub the scoreboard, too. */
   pr_event_register(&core_module, "core.restart", core_restart_ev, NULL);

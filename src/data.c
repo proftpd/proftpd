@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.94 2007-05-15 00:41:19 castaglia Exp $
+ * $Id: data.c,v 1.95 2007-10-22 18:09:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -243,7 +243,8 @@ static int data_pasv_open(char *reason, off_t size) {
    * open from taking too long
    */
   if (TimeoutStalled)
-    pr_timer_add(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb);
+    pr_timer_add(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb,
+      "TimeoutStalled");
 
   /* We save the state of our current disposition for doing reverse
    * lookups, and then set it to what the configuration wants it to
@@ -340,7 +341,8 @@ static int data_active_open(char *reason, off_t size) {
    * open from taking too long
    */
   if (TimeoutStalled)
-    pr_timer_add(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb);
+    pr_timer_add(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb,
+      "TimeoutStalled");
 
   rev = pr_netaddr_set_reverse_dns(ServerUseReverseDNS);
 

@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /*
  * Ident (RFC1413) protocol support
- * $Id: ident.c,v 1.22 2006-12-18 22:43:28 castaglia Exp $
+ * $Id: ident.c,v 1.23 2007-10-22 18:09:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -68,7 +68,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
 
   /* Set up our timer before going any further. */
   timerno = pr_timer_add(PR_TUNABLE_TIMEOUTIDENT, -1, NULL,
-    (callback_t) ident_timeout_cb);
+    (callback_t) ident_timeout_cb, "ident lookup");
   if (timerno <= 0) {
     destroy_pool(tmp_pool);
     return pstrdup(p, ret);

@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.38 2007-10-13 03:05:27 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.39 2007-10-22 18:09:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1348,7 +1348,8 @@ MODRET set_ctrlsinterval(cmd_rec *cmd) {
   ctrls_interval = nsecs;
 
   pr_timer_remove(CTRLS_TIMER_ID, &ctrls_module);
-  pr_timer_add(ctrls_interval, CTRLS_TIMER_ID, &ctrls_module, ctrls_timer_cb);
+  pr_timer_add(ctrls_interval, CTRLS_TIMER_ID, &ctrls_module, ctrls_timer_cb,
+    "Controls polling");
 
   return PR_HANDLED(cmd);
 }
@@ -1582,7 +1583,8 @@ static void ctrls_startup_ev(const void *event_data, void *user_data) {
 
   /* Start a timer for the checking/processing of the ctrl socket.  */
   pr_timer_remove(CTRLS_TIMER_ID, &ctrls_module);
-  pr_timer_add(ctrls_interval, CTRLS_TIMER_ID, &ctrls_module, ctrls_timer_cb);
+  pr_timer_add(ctrls_interval, CTRLS_TIMER_ID, &ctrls_module, ctrls_timer_cb,
+    "Controls polling");
 }
 
 /* Initialization routines
