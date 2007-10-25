@@ -54,7 +54,7 @@ install:
 	done
 
 clean:
-	$(RM) *.o module_glue.c
+	$(RM) *.a *.o module_glue.c
 	$(LIBTOOL) --mode=clean $(RM) $(SHARED_MODULE_OBJS)
 	$(LIBTOOL) --mode=clean $(RM) `echo $(SHARED_MODULE_OBJS) | sed 's/\.la$\/.lo/g'`
 	@dirs="$(SHARED_MODULE_DIRS) $(STATIC_MODULE_DIRS)"; \
