@@ -1,4 +1,4 @@
-<!-- $Id: mod_lang.html,v 1.1 2006-09-09 01:15:05 castaglia Exp $ -->
+<!-- $Id: mod_lang.html,v 1.2 2007-10-26 16:02:47 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_lang.html,v $ -->
 
 <html>
@@ -20,7 +20,7 @@ RFC2640, LANG, NLS (Native Language Support)
 
 <p>
 The <code>mod_lang</code> module is ProFTPD's module for handling the LANG
-command.  This module is contained in the <code>mod_lang.c</code> file for
+command, in support of <a href="http://www.faqs.org/rfcs/rfc2640.html">RFC 2640</a>.  This module is contained in the <code>mod_lang.c</code> file for
 ProFTPD 1.3.<i>x</i>, and is compiled in whenever the <code>--enable-nls</code>
 configure option is used.  Installation instructions are discussed
 <a href="#Installation">here</a>.
@@ -74,6 +74,14 @@ handling of the LANG command.  If it is set to <em>off</em> this module does no
 localization of responses.
 
 <p>
+<b>Note</b> that setting <code>LangEngine</code> to <em>off</em> also keeps
+<code>proftpd</code> from advertisting "UTF8" in its <code>FEAT</code> response.
+As required by RFC 2640, <code>proftpd</code> can <i>only</i> show "UTF8"
+in response to a <code>FEAT</code> command if the <code>LANG</code> command
+is also supported.  Hence why it is the <code>LangEngine</code> directive,
+and not <code>UseUTF8</code>, which controls the appearance of "UTF8".
+
+<p>
 <hr>
 <h2><a name="LangPath">LangPath</a></h2>
 <strong>Syntax:</strong> LangPath <em>>path</em><br>
@@ -121,7 +129,7 @@ This option causes <code>mod_lang</code> to be compiled into
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2006-09-09 01:15:05 $</i><br>
+Last Updated: <i>$Date: 2007-10-26 16:02:47 $</i><br>
 
 <br><hr>
 
