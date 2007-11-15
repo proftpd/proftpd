@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.26 2007-02-15 17:01:19 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.27 2007-11-15 17:21:19 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -509,15 +509,17 @@ static int quotatab_scan_dir(pool *p, const char *path, uid_t uid,
     return -1;
   }
 
-  if (uid != (uid_t) -1 &&
-      st.st_uid == uid) {
-    *nbytes += st.st_size;
-    *nfiles += 1;
+  if (use_dirs) {
+    if (uid != (uid_t) -1 &&
+        st.st_uid == uid) {
+      *nbytes += st.st_size;
+      *nfiles += 1;
 
-  } else if (gid != (gid_t) -1 &&
-             st.st_gid == gid) {
-    *nbytes += st.st_size;
-    *nfiles += 1;
+    } else if (gid != (gid_t) -1 &&
+               st.st_gid == gid) {
+      *nbytes += st.st_size;
+      *nfiles += 1;
+    }
   }
 
   while ((dent = pr_fsio_readdir(dirh)) != NULL) {
