@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.27 2007-11-15 17:21:19 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.28 2007-11-15 17:33:33 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -1584,38 +1584,38 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
     if (quotatab_lookup(TYPE_TALLY, session.user, USER_QUOTA)) {
       quotatab_log("found tally entry for user '%s'", session.user);
       have_quota_entry = TRUE;
-    }
 
-    if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
-        (quotatab_limit.bytes_in_avail > 0 ||
-         quotatab_limit.files_in_avail > 0)) {
-      double byte_count = 0;
-      unsigned int file_count = 0;
-      time_t then;
+      if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
+          (quotatab_limit.bytes_in_avail > 0 ||
+           quotatab_limit.files_in_avail > 0)) {
+        double byte_count = 0;
+        unsigned int file_count = 0;
+        time_t then;
 
-      quotatab_log("ScanOnLogin enabled, scanning current directory '%s' "
-        "for files owned by user '%s'", pr_fs_getcwd(), session.user);
+        quotatab_log("ScanOnLogin enabled, scanning current directory '%s' "
+          "for files owned by user '%s'", pr_fs_getcwd(), session.user);
 
-      time(&then);
-      if (quotatab_scan_dir(cmd->tmp_pool, pr_fs_getcwd(),
-          session.uid, -1, 0, &byte_count, &file_count) < 0) {
-        quotatab_log("unable to scan '%s': %s", pr_fs_getcwd(),
-          strerror(errno));
+        time(&then);
+        if (quotatab_scan_dir(cmd->tmp_pool, pr_fs_getcwd(),
+            session.uid, -1, 0, &byte_count, &file_count) < 0) {
+          quotatab_log("unable to scan '%s': %s", pr_fs_getcwd(),
+            strerror(errno));
 
-      } else {
-        double bytes_diff = (double)
-          (byte_count - quotatab_tally.bytes_in_used);
-        int files_diff = file_count - quotatab_tally.files_in_used;
+        } else {
+          double bytes_diff = (double)
+            (byte_count - quotatab_tally.bytes_in_used);
+          int files_diff = file_count - quotatab_tally.files_in_used;
 
-        quotatab_log("found %0.2lf bytes in %u files for user '%s' "
-          "in %lu secs", byte_count, file_count, session.user,
-          time(NULL) - then);
+          quotatab_log("found %0.2lf bytes in %u files for user '%s' "
+            "in %lu secs", byte_count, file_count, session.user,
+            time(NULL) - then);
 
-        quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
-          bytes_diff, files_diff);
+          quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
+            bytes_diff, files_diff);
 
-        /* Write out an updated quota entry */
-        QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
+          /* Write out an updated quota entry */
+          QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
+        }
       }
     }
   }
@@ -1654,36 +1654,36 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
       if (quotatab_lookup(TYPE_TALLY, group_name, GROUP_QUOTA)) {
         quotatab_log("found tally entry for group '%s'", group_name);
         have_quota_entry = TRUE;
-      }
 
-      if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
-          (quotatab_limit.bytes_in_avail > 0 ||
-           quotatab_limit.files_in_avail > 0)) {
-        double byte_count = 0;
-        unsigned int file_count = 0;
-        time_t then;
+        if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
+            (quotatab_limit.bytes_in_avail > 0 ||
+             quotatab_limit.files_in_avail > 0)) {
+          double byte_count = 0;
+          unsigned int file_count = 0;
+          time_t then;
 
-        quotatab_log("ScanOnLogin enabled, scanning current directory '%s' "
-          "for files owned by group '%s'", pr_fs_getcwd(), group_name);
+          quotatab_log("ScanOnLogin enabled, scanning current directory '%s' "
+            "for files owned by group '%s'", pr_fs_getcwd(), group_name);
 
-        time(&then);
-        if (quotatab_scan_dir(cmd->tmp_pool, pr_fs_getcwd(), -1,
-            group_id, 0, &byte_count, &file_count) < 0) {
-          quotatab_log("unable to scan '%s': %s", pr_fs_getcwd(),
-            strerror(errno));
+          time(&then);
+          if (quotatab_scan_dir(cmd->tmp_pool, pr_fs_getcwd(), -1,
+              group_id, 0, &byte_count, &file_count) < 0) {
+            quotatab_log("unable to scan '%s': %s", pr_fs_getcwd(),
+              strerror(errno));
 
-        } else {
-          double bytes_diff = byte_count - quotatab_tally.bytes_in_used;
-          int files_diff = file_count - quotatab_tally.files_in_used;
+          } else {
+            double bytes_diff = byte_count - quotatab_tally.bytes_in_used;
+            int files_diff = file_count - quotatab_tally.files_in_used;
 
-          quotatab_log("found %0.2lf bytes in %u files for group '%s'",
-            byte_count, file_count, group_name, time(NULL) - then);
+            quotatab_log("found %0.2lf bytes in %u files for group '%s'",
+              byte_count, file_count, group_name, time(NULL) - then);
 
-          quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
-            bytes_diff, files_diff);
+            quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
+              bytes_diff, files_diff);
 
-          /* Write out an updated quota entry */
-          QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
+            /* Write out an updated quota entry */
+            QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
+          }
         }
       }
     }
