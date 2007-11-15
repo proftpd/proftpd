@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.95 2007-10-22 18:09:17 castaglia Exp $
+ * $Id: data.c,v 1.96 2007-11-15 15:15:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -71,12 +71,14 @@ static int stalled_timeout_cb(CALLBACK_FRAME) {
  * a data transfer is in progress.
  */
 static RETSIGTYPE data_urgent(int signo) {
-  pr_trace_msg(trace_channel, 5, "received SIGURG signal (signal %d), "
-    "setting 'aborted' session flag", signo);
-  session.sf_flags |= SF_ABORT;
+  if (session.sf_flags & SF_XFER) {
+    pr_trace_msg(trace_channel, 5, "received SIGURG signal (signal %d), "
+      "setting 'aborted' session flag", signo);
+    session.sf_flags |= SF_ABORT;
 
-  if (nstrm)
-    pr_netio_abort(nstrm);
+    if (nstrm)
+      pr_netio_abort(nstrm);
+  }
 
   signal(SIGURG, data_urgent);
 }

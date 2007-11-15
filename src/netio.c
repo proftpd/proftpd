@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.28 2007-08-22 14:50:23 castaglia Exp $
+ * $Id: netio.c,v 1.29 2007-11-15 15:15:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -756,9 +756,6 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
         do {
           pr_signals_handle();
 
-          if (XFER_ABORTED)
-            break;
-
           run_schedule();
 
           switch (nstrm->strm_type) {
@@ -768,6 +765,9 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
                 break;
 
             case PR_NETIO_STRM_DATA:
+              if (XFER_ABORTED)
+                break;
+
               bread = data_netio ? (data_netio->read)(nstrm, buf, buflen) :
                 (core_data_netio->read)(nstrm, buf, buflen);
               break;
