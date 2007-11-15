@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.312 2007-10-22 18:09:18 castaglia Exp $
+ * $Id: main.c,v 1.313 2007-11-15 16:38:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1679,7 +1679,11 @@ static void handle_segv(int signo, siginfo_t *info, void *ptr) {
   tracesz = backtrace(trace, PR_TUNABLE_CALLER_DEPTH);
 
   /* Overwrite sigaction with caller's address */
+#if defined(REG_EIP)
   trace[1] = (void *) uc->uc_mcontext.gregs[REG_EIP];
+#elif defined(REG_RIP)
+  trace[1] = (void *) uc->uc_mcontext.gregs[REG_RIP];
+#endif
 
   strings = backtrace_symbols(trace, tracesz);
 
