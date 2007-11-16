@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_site_misc -- a module implementing miscellaneous SITE commands
  *
- * Copyright (c) 2004-2006 The ProFTPD Project
+ * Copyright (c) 2004-2007 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.3 2006-06-16 02:33:43 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.4 2007-11-16 02:15:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -294,14 +294,14 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     src = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[2]);
 
     if (!dir_check(cmd->tmp_pool, "SITE_SYMLINK", G_WRITE, src, NULL)) {
-      pr_response_add_err(R_550, "%s: %s", cmd->arg[2], strerror(EPERM));
+      pr_response_add_err(R_550, "%s: %s", cmd->argv[2], strerror(EPERM));
       return PR_ERROR(cmd);
     }
 
     dst = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[3]);
 
     if (!dir_check(cmd->tmp_pool, "SITE_SYMLINK", G_WRITE, dst, NULL)) {
-      pr_response_add_err(R_550, "%s: %s", cmd->arg[3], strerror(EPERM));
+      pr_response_add_err(R_550, "%s: %s", cmd->argv[3], strerror(EPERM));
       return PR_ERROR(cmd);
     }
 
