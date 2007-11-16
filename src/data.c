@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.96 2007-11-15 15:15:08 castaglia Exp $
+ * $Id: data.c,v 1.97 2007-11-16 03:16:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1016,6 +1016,10 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
        */
       if (XFER_ABORTED) {
         errno = EINTR;
+
+        session.xfer.total_bytes += len;
+        session.total_bytes += len;
+
         return -1;
       }
 
