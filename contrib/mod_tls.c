@@ -4025,7 +4025,7 @@ MODRET tls_prot(cmd_rec *cmd) {
   if (strcmp(cmd->argv[1], "C") == 0) {
     char *mesg = "Protection set to Clear";
 
-    if (tls_required_on_data == 0) {
+    if (tls_required_on_data != 1) {
       /* Only accept this if SSL/TLS is not required, by policy, on data
        * connections.
        */
