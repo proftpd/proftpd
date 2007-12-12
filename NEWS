@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.866 2007-11-16 03:16:48 castaglia Exp $
+$Id: NEWS,v 1.867 2007-12-12 21:23:36 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -61,6 +61,7 @@ CVS
   record.
 - Bug 3001 - Incomplete downloads not logged properly in TransferLog if
   sendfile is used.
+- Bug 3012 - SITE UTIME should support YYYYMMDDhhmmss format.
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------
