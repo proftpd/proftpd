@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.307 2007-10-22 18:09:17 castaglia Exp $
+ * $Id: mod_core.c,v 1.308 2007-12-15 21:47:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3906,16 +3906,8 @@ MODRET core_cdup(cmd_rec *cmd) {
   return _chdir(cmd, "..");
 }
 
-/* Returns the modification time of a file.  This is not in RFC959,
- * but supposedly will be in the future.  Command/response:
- * - MDTM <sp> path-name <crlf>
- * - 213 <sp> YYYYMMDDHHMMSS <crlf>
- *
- * We return the time as GMT, not localtime.  WU-ftpd returns localtime,
- * which seems like a Bad Thing<tm> to me.  However, my reasoning might
- * not be correct.
+/* Returns the modification time of a file, as per RFC3659.
  */
-
 MODRET core_mdtm(cmd_rec *cmd) {
   char *path;
   struct stat st;
@@ -3938,17 +3930,20 @@ MODRET core_mdtm(cmd_rec *cmd) {
       return PR_ERROR(cmd);
 
     } else {
-      char buf[16] = {'\0'};
+      char buf[16];
       struct tm *tm;
 
+      memset(buf, '\0', sizeof(buf));
+
       tm = pr_gmtime(cmd->tmp_pool, &st.st_mtime);
-      if (tm)
+      if (tm) {
         snprintf(buf, sizeof(buf), "%04d%02d%02d%02d%02d%02d",
           tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour,
           tm->tm_min, tm->tm_sec);
 
-      else
+      } else {
         snprintf(buf, sizeof(buf), "00000000000000");
+      }
 
       pr_response_add(R_213, "%s", buf);
     }
