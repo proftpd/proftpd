@@ -3747,11 +3747,16 @@ MODRET tls_any(cmd_rec *cmd) {
 
   if (tls_required_on_auth == 1 &&
       !(tls_flags & TLS_SESS_ON_CTRL)) {
-    if (strcmp(cmd->argv[0], C_USER) == 0 ||
-        strcmp(cmd->argv[0], C_PASS) == 0 ||
-        strcmp(cmd->argv[0], C_ACCT) == 0) {
-      pr_response_add_err(R_550, "SSL/TLS required on the control channel");
-      return PR_ERROR(cmd);
+
+    if (!(tls_opts & TLS_OPT_ALLOW_PER_USER)) {
+      if (strcmp(cmd->argv[0], C_USER) == 0 ||
+          strcmp(cmd->argv[0], C_PASS) == 0 ||
+          strcmp(cmd->argv[0], C_ACCT) == 0) {
+        tls_log("SSL/TLS required but absent for authentication, "
+          "denying %s command", cmd->argv[0]);
+        pr_response_add_err(R_550, "SSL/TLS required on the control channel");
+        return PR_ERROR(cmd);
+      }
     }
   }
 
@@ -3987,6 +3992,19 @@ MODRET tls_post_pass(cmd_rec *cmd) {
       tls_required_on_ctrl = *((int *) c->argv[0]);
       tls_required_on_data = *((int *) c->argv[1]);
       tls_required_on_auth = *((int *) c->argv[2]);
+
+      /* We cannot return PR_ERROR for the PASS command at this point, since
+       * this is a POST_CMD handler.  Instead, we will simply check the
+       * TLSRequired policy, and if the current session does not make the
+       * cut, well, then the session gets cut.
+       */
+      if (tls_required_on_ctrl == 1 &&
+          (!tls_flags & TLS_SESS_ON_CTRL)) {
+        tls_log("SSL/TLS required but absent on control channel, "
+          "disconnecting");
+        pr_response_send(R_530, "%s", _("Login incorrect."));
+        end_login(0);
+      }
     }
   }
 
