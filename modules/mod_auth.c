@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.226 2007-10-22 18:09:17 castaglia Exp $
+ * $Id: mod_auth.c,v 1.227 2007-12-18 02:09:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -98,7 +98,7 @@ static int auth_cmd_chk_cb(cmd_rec *cmd) {
     "authenticated", FALSE);
 
   if (!authenticated || *authenticated == FALSE) {
-    pr_response_send(R_530, "Please login with " C_USER " and " C_PASS);
+    pr_response_send(R_530, _("Please login with USER and PASS"));
     return FALSE;
   }
 
@@ -111,8 +111,8 @@ static int auth_cmd_chk_cb(cmd_rec *cmd) {
 
 static int auth_login_timeout_cb(CALLBACK_FRAME) {
   pr_event_generate("core.timeout-login", NULL);
-  pr_response_send_async(R_421, "Login Timeout (%d seconds): "
-    "closing control connection.", TimeoutLogin);
+  pr_response_send_async(R_421,
+    _("Login Timeout (%d seconds): closing control connection"), TimeoutLogin);
 
   session_exit(PR_LOG_NOTICE, "FTP login timed out, disconnected", 0, NULL);
 
@@ -122,8 +122,9 @@ static int auth_login_timeout_cb(CALLBACK_FRAME) {
 
 static int auth_session_timeout_cb(CALLBACK_FRAME) {
   pr_event_generate("core.timeout-session", NULL);
-  pr_response_send_async(R_421, "Session Timeout (%u seconds): "
-    "closing control connection", TimeoutSession);
+  pr_response_send_async(R_421,
+    _("Session Timeout (%u seconds): closing control connection"),
+    TimeoutSession);
 
   session_exit(PR_LOG_NOTICE, "FTP session timed out, disconnected", 0, NULL);
 
@@ -1224,7 +1225,7 @@ static int setup_env(pool *p, char *user, char *pass) {
 
     if (lockdown(defroot) == -1) {
       pr_log_pri(PR_LOG_ERR, "error: unable to set default root directory");
-      pr_response_send(R_530, "Login incorrect.");
+      pr_response_send(R_530, _("Login incorrect."));
       end_login(1);
     }
 
@@ -1248,7 +1249,7 @@ static int setup_env(pool *p, char *user, char *pass) {
   if (c &&
       lockdown(session.chroot_path) == -1) {
     pr_log_pri(PR_LOG_ERR, "error: unable to set anonymous privileges");
-    pr_response_send(R_530, "Login incorrect.");
+    pr_response_send(R_530, _("Login incorrect."));
     end_login(1);
   }
 
@@ -1282,7 +1283,7 @@ static int setup_env(pool *p, char *user, char *pass) {
     PRIVS_RELINQUISH
     pr_log_pri(PR_LOG_ERR, "error: %s setregid() or setreuid(): %s",
       session.user, strerror(errno));
-    pr_response_send(R_530, "Login incorrect.");
+    pr_response_send(R_530, _("Login incorrect."));
 
     end_login(1);
   }
@@ -1293,7 +1294,7 @@ static int setup_env(pool *p, char *user, char *pass) {
       strcmp(pw->pw_dir, "") == 0) {
     pr_log_pri(PR_LOG_ERR, "error: user %s home directory is NULL or \"\"",
       session.user);
-    pr_response_send(R_530, "Login incorrect.");
+    pr_response_send(R_530, _("Login incorrect."));
     end_login(1);
   }
 
@@ -1329,7 +1330,7 @@ static int setup_env(pool *p, char *user, char *pass) {
       if (pr_fsio_chdir_canon("/", !showsymlinks) == -1) {
         pr_log_pri(PR_LOG_ERR, "%s chdir(\"/\"): %s", session.user,
           strerror(errno));
-        pr_response_send(R_530,"Login incorrect.");
+        pr_response_send(R_530, _("Login incorrect."));
         end_login(1);
       }
 
@@ -1344,7 +1345,7 @@ static int setup_env(pool *p, char *user, char *pass) {
       if (pr_fsio_chdir_canon(pw->pw_dir, !showsymlinks) == -1) {
         pr_log_pri(PR_LOG_ERR, "%s chdir(\"%s\"): %s", session.user,
           session.cwd, strerror(errno));
-        pr_response_send(R_530, "Login incorrect.");
+        pr_response_send(R_530, _("Login incorrect."));
         end_login(1);
       }
 
@@ -1355,7 +1356,7 @@ static int setup_env(pool *p, char *user, char *pass) {
        */
       pr_log_pri(PR_LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
         strerror(errno));
-      pr_response_send(R_530, "Login incorrect.");
+      pr_response_send(R_530, _("Login incorrect."));
       end_login(1);
     }
   }
@@ -1846,7 +1847,7 @@ MODRET auth_user(cmd_rec *cmd) {
 
       pr_log_pri(PR_LOG_NOTICE, "USER %s (Login failed): Not a UserAlias.",
         origuser);
-      pr_response_send(R_530, "Login incorrect.");
+      pr_response_send(R_530, _("Login incorrect."));
 
       end_login(0);
     }
@@ -1868,7 +1869,7 @@ MODRET auth_user(cmd_rec *cmd) {
 
         pr_log_auth(PR_LOG_NOTICE, "ANON %s: Limit access denies login.",
           origuser);
-        pr_response_send(R_530, "Login incorrect.");
+        pr_response_send(R_530, _("Login incorrect."));
 
         end_login(0);
       }
@@ -1880,7 +1881,7 @@ MODRET auth_user(cmd_rec *cmd) {
 
       pr_log_auth(PR_LOG_NOTICE,
         "USER %s: Limit access denies login.", origuser);
-      pr_response_send(R_530, "Login incorrect.");
+      pr_response_send(R_530, _("Login incorrect."));
 
       end_login(0);
     }
@@ -2022,7 +2023,7 @@ MODRET auth_pass(cmd_rec *cmd) {
       if (denymsg)
         pr_response_send(R_530, "%s", denymsg);
       else
-        pr_response_send(R_530, "Login incorrect.");
+        pr_response_send(R_530, _("Login incorrect."));
 
       pr_log_auth(PR_LOG_NOTICE,
         "Maximum login attempts (%u) exceeded, connection refused", max_logins);
