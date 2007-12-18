@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.49 2006-12-11 17:05:43 castaglia Exp $
+ * $Id: mod_site.c,v 1.50 2007-12-18 02:15:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -447,7 +447,7 @@ modret_t *site_dispatch(cmd_rec *cmd) {
     if (strcmp(cmd->argv[0], site_commands[i].command) == 0) {
       if (site_commands[i].requires_auth && cmd_auth_chk &&
           !cmd_auth_chk(cmd)) {
-        pr_response_send(R_530, _("Please login with USER PASS"));
+        pr_response_send(R_530, _("Please login with USER and PASS"));
         return PR_ERROR(cmd);
 
       } else
