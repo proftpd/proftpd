@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.105 2007-05-21 16:10:46 castaglia Exp $
+ * $Id: inet.c,v 1.106 2007-12-22 19:26:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -286,6 +286,12 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *) &one,
         sizeof(one)) < 0)
       pr_log_pri(PR_LOG_NOTICE, "error setting SO_REUSEADDR: %s",
+        strerror(errno));
+
+    /* Allow socket keep-alive messages. */
+    if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void *) &one,
+        sizeof(one)) < 0)
+      pr_log_pri(PR_LOG_NOTICE, "error setting SO_KEEPALIVE: %s",
         strerror(errno));
 
     memset(&na, 0, sizeof(na));
