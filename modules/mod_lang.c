@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.5 2007-01-19 23:01:25 castaglia Exp $
+ * $Id: mod_lang.c,v 1.6 2007-12-22 21:17:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -113,12 +113,12 @@ MODRET lang_lang(cmd_rec *cmd) {
    * users to issue LANG commands while chrooted users cannot, it can
    * constitute an information leak.  Best to avoid that altogether.
    */
-   authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
-   if (authenticated &&
-       *authenticated == TRUE) {
-     pr_response_add_err(R_500, _("Unable to handle command"));
-     return PR_ERROR(cmd);
-   }
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (authenticated &&
+      *authenticated == TRUE) {
+    pr_response_add_err(R_500, _("Unable to handle command"));
+    return PR_ERROR(cmd);
+  }
 
   if (cmd->argc > 2) {
     pr_response_add_err(R_501, _("Invalid number of arguments"));
