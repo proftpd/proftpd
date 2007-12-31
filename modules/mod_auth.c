@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.227 2007-12-18 02:09:08 castaglia Exp $
+ * $Id: mod_auth.c,v 1.228 2007-12-31 17:39:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -374,11 +374,30 @@ MODRET auth_post_pass(cmd_rec *cmd) {
 
   /* Handle a DisplayLogin file. */
   if (displaylogin_fh) {
-    if (pr_display_fh(displaylogin_fh, NULL, auth_pass_resp_code) < 0)
-      pr_log_debug(DEBUG6, "unable to display DisplayLogin file '%s': %s",
-        displaylogin_fh->fh_path, strerror(errno));
-    pr_fsio_close(displaylogin_fh);
-    displaylogin_fh = NULL;
+    if (!(session.sf_flags & SF_ANON)) {
+      if (pr_display_fh(displaylogin_fh, NULL, auth_pass_resp_code) < 0)
+        pr_log_debug(DEBUG6, "unable to display DisplayLogin file '%s': %s",
+          displaylogin_fh->fh_path, strerror(errno));
+      pr_fsio_close(displaylogin_fh);
+      displaylogin_fh = NULL;
+
+    } else {
+      /* We're an <Anonymous> login, but there was a previous DisplayLogin
+       * configured which was picked up earlier.  Close that filehandle,
+       * and look for a new one.
+       */
+      char *displaylogin;
+
+      pr_fsio_close(displaylogin_fh);
+      displaylogin_fh = NULL;
+
+      displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
+      if (displaylogin) {
+        if (pr_display_file(displaylogin, NULL, auth_pass_resp_code) < 0)
+          pr_log_debug(DEBUG6, "unable to display DisplayLogin file '%s': %s",
+            displaylogin, strerror(errno));
+      }
+    }
 
   } else {
     char *displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
@@ -1941,12 +1960,12 @@ MODRET auth_pre_pass(cmd_rec *cmd) {
   pr_auth_endpwent(cmd->tmp_pool);
   pr_auth_endgrent(cmd->tmp_pool);
 
-  /* Look for a DisplayLogin file which has an absolute path.  If we
-   * find one, open a filehandle, such that that file can be displayed
-   * even if the session is chrooted.  DisplayLogin files with
-   * relative paths will be handled after chroot, preserving the old
-   * behavior.
+  /* Look for a DisplayLogin file which has an absolute path.  If we find one,
+   * open a filehandle, such that that file can be displayed even if the
+   * session is chrooted.  DisplayLogin files with relative paths will be
+   * handled after chroot, preserving the old behavior.
    */
+
   displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
   if (displaylogin &&
       *displaylogin == '/') {
