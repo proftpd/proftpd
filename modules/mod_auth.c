@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.228 2007-12-31 17:39:54 castaglia Exp $
+ * $Id: mod_auth.c,v 1.229 2007-12-31 19:12:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2164,8 +2164,8 @@ MODRET add_anonymousgroup(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 0);
   c->argc = argc;
-  c->argv = pcalloc(c->pool,(argc+1) * sizeof(char*));
-  argv = (char **)c->argv;
+  c->argv = pcalloc(c->pool, (argc+1) * sizeof(char *));
+  argv = (char **) c->argv;
 
   if (argc && acl)
     while (argc--) {
@@ -2174,6 +2174,9 @@ MODRET add_anonymousgroup(cmd_rec *cmd) {
     }
 
   *argv = NULL;
+
+  pr_log_pri(PR_LOG_DEBUG, "The '%s' directive has been deprecated, and will "
+    "be removed in future releases", cmd->argv[0]);
 
   return PR_HANDLED(cmd);
 }
