@@ -36,7 +36,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.18 2007-10-13 01:47:57 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.19 2007-12-31 21:37:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,7 +44,7 @@
 
 #ifdef HAVE_PAM
 
-#define MOD_AUTH_PAM_VERSION		"mod_auth_pam/1.0.2"
+#define MOD_AUTH_PAM_VERSION		"mod_auth_pam/1.1"
 
 #ifdef HAVE_SECURITY_PAM_APPL_H
 # ifdef HPUX11
@@ -78,6 +78,9 @@ static char *		pam_pass 		= NULL;
 static size_t		pam_user_len		= 0;
 static size_t		pam_pass_len		= 0;
 static int		pam_conv_error		= 0;
+
+static unsigned long auth_pam_opts = 0UL;
+#define AUTH_PAM_OPT_NO_TTY	0x0001
 
 static const char *trace_channel = "pam";
 
@@ -202,10 +205,7 @@ MODRET pam_auth(cmd_rec *cmd) {
   int pam_error = 0, retval = PR_AUTH_ERROR, success = 0;
   config_rec *c = NULL;
   unsigned char *auth_pam = NULL, pam_authoritative = FALSE;
-
-#ifdef SOLARIS2
   char ttyentry[32];
-#endif /* SOLARIS2 */
 
   /* If we have been explicitly disabled, return now.  Otherwise,
    * the module is considered enabled.
@@ -282,6 +282,22 @@ MODRET pam_auth(cmd_rec *cmd) {
     pr_trace_msg(trace_channel, 8, "using PAM service name '%s'", pamconfig);
   }
 
+  /* Check for minor PAM configuration options such as use of PAM_TTY. */
+  c = find_config(main_server->conf, CONF_PARAM, "AuthPAMOptions", FALSE);
+  if (c != NULL) {
+    auth_pam_opts = *((unsigned long *) c->argv[0]);
+  }
+
+#ifdef SOLARIS2
+  /* For Solaris environments, the TTY environment will always be set,
+   * in order to workaround a bug (Solaris Bug ID 4250887) where
+   * pam_open_session() will crash unless both PAM_RHOST and PAM_TTY are
+   * set, and the PAM_TTY setting is at least greater than the length of
+   * the string "/dev/".
+   */
+  auth_pam_opts &= ~AUTH_PAM_OPT_NO_TTY;
+#endif /* SOLARIS2 */
+
   /* Due to the different types of authentication used, such as shadow
    * passwords, etc. we need root privs for this operation.
    */
@@ -310,20 +326,15 @@ MODRET pam_auth(cmd_rec *cmd) {
   else
     pam_set_item(pamh, PAM_RHOST, "IHaveNoIdeaHowIGotHere");
 
-#ifdef SOLARIS2
-  /* Set our TTY environment.  This is apparently required for Solaris
-   * environments, since unless PAM_RHOST and PAM_TTY are defined, and
-   * the string given to PAM_TTY must be of the form (or at least greater
-   * than the length of) "/dev/", pam_open_session() will crash and burn
-   * a horrible death that took many hours to debug...YUCK.
-   *
-   * This bug is Sun bugid 4250887, and should be fixed in an update for
-   * Solaris.  -- MacGyver
-   */
-  snprintf(ttyentry, sizeof(ttyentry), "/dev/ftp%02lu",
-    (unsigned long) getpid());
-  pam_set_item(pamh, PAM_TTY, ttyentry);
-#endif /* SOLARIS2 */
+  if (!(auth_pam_opts & AUTH_PAM_OPT_NO_TTY)) {
+    memset(ttyentry, '\0', sizeof(ttyentry));
+    snprintf(ttyentry, sizeof(ttyentry), "/dev/ftpd%02lu",
+      (unsigned long) getpid());
+    ttyentry[sizeof(ttyentry)-1] = '\0';
+
+    pr_trace_msg(trace_channel, 9, "setting PAM_TTY to '%s'", ttyentry);
+    pam_set_item(pamh, PAM_TTY, ttyentry);
+  }
 
   /* Authenticate, and get any credentials as needed.
    */
@@ -510,6 +521,34 @@ MODRET set_authpamconfig(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: AuthPAMOptions opt1 opt2 ... */
+MODRET set_authpamoptions(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  register unsigned int i = 0;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "NoTTY") == 0)
+      opts |= AUTH_PAM_OPT_NO_TTY;
+
+    else
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown AuthPAMOption: '",
+        cmd->argv[i], "'", NULL));
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  return PR_HANDLED(cmd);
+}
+
 /* Initialization routines
  */
 
@@ -526,6 +565,7 @@ static authtable auth_pam_authtab[] = {
 static conftable auth_pam_conftab[] = {
   { "AuthPAM",			set_authpam,			NULL },
   { "AuthPAMConfig",		set_authpamconfig,		NULL },
+  { "AuthPAMOptions",		set_authpamoptions,		NULL },
   { NULL, NULL, NULL }
 };
 
