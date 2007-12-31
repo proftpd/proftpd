@@ -21575,7 +21575,7 @@ if test "${enable_transfer_buffer_size+set}" = set; then
 echo "$as_me: WARNING: transfer buffer size defaulting to regular buffer size" >&2;}
 
 cat >>confdefs.h <<_ACEOF
-#define PR_TUNABLE_XFER_BUFFER_SIZE 1024
+#define PR_TUNABLE_XFER_BUFFER_SIZE 8192
 _ACEOF
 
     else
@@ -37035,139 +37035,6 @@ _ACEOF
 
 fi
 rm -f core *.core gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
-fi
-
-if test -z "$enable_transfer_buffer_size" ; then
-  echo "$as_me:$LINENO: checking for default transfer buffer sizes" >&5
-echo $ECHO_N "checking for default transfer buffer sizes... $ECHO_C" >&6;
-  if test "$cross_compiling" = yes; then
-
-      echo "$as_me:$LINENO: result: cross-compiling" >&5
-echo "${ECHO_T}cross-compiling" >&6
-
-
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-      #include <errno.h>
-      #include <stdio.h>
-      #if HAVE_UNISTD_H
-      # include <unistd.h>
-      #endif
-      #if HAVE_SYS_TYPES_H
-      # include <sys/types.h>
-      #endif
-      #if HAVE_NETDB_H
-      # include <netdb.h>
-      #endif
-      #include <sys/socket.h>
-      int main(int argc, char *argv[]) {
-        int proto, sockfd, rcvbufsz = 0, sndbufsz = 0;
-        struct protoent *p;
-        int len;
-        FILE *fp;
-        char rcvbufstr[256], sndbufstr[256], *buf;
-
-        p = getprotobyname("tcp");
-        if (!p) {
-          perror("getprotobyname()");
-          return 1;
-        }
-        proto = p->p_proto;
-
-        sockfd = socket(AF_INET, SOCK_STREAM, proto);
-        if (sockfd < 0) {
-          perror("socket()");
-          return 1;
-        }
-
-        len = sizeof(rcvbufsz);
-        if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (void *) &rcvbufsz,
-            &len) < 0) {
-          perror("getsockopt(SO_RCVBUF)");
-          close(sockfd);
-          return 1;
-        }
-
-        len = sizeof(sndbufsz);
-        if (getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, (void *) &sndbufsz,
-            &len) < 0) {
-          perror("getsockopt(SO_SNDBUF)");
-          close(sockfd);
-          return 1;
-        }
-
-        memset(rcvbufstr, '\0', sizeof(rcvbufstr));
-        snprintf(rcvbufstr, sizeof(rcvbufstr), "%d", rcvbufsz);
-
-        memset(sndbufstr, '\0', sizeof(sndbufstr));
-        snprintf(sndbufstr, sizeof(sndbufstr), "%d", sndbufsz);
-
-        buf = sndbufsz < rcvbufsz ? sndbufstr : rcvbufstr;
-        fp = fopen("conftest.xferbufsz", "w+");
-        fwrite(buf, strlen(buf), 1, fp);
-        fclose(fp);
-
-        fp = fopen("conftest.rcvbufsz", "w+");
-        fwrite(rcvbufstr, strlen(rcvbufstr), 1, fp);
-        fclose(fp);
-
-        fp = fopen("conftest.sndbufsz", "w+");
-        fwrite(sndbufstr, strlen(sndbufstr), 1, fp);
-        fclose(fp);
-
-        return 0;
-      }
-
-_ACEOF
-rm -f conftest$ac_exeext
-if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
-  (eval $ac_link) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; }; then
-
-      rcvbufsz=`cat conftest.rcvbufsz`
-      sndbufsz=`cat conftest.sndbufsz`
-      xferbufsz=`cat conftest.xferbufsz`
-      echo "$as_me:$LINENO: result: $xferbufsz" >&5
-echo "${ECHO_T}$xferbufsz" >&6
-      cat >>confdefs.h <<_ACEOF
-#define PR_TUNABLE_RCVBUFSZ $rcvbufsz
-_ACEOF
-
-      cat >>confdefs.h <<_ACEOF
-#define PR_TUNABLE_SNDBUFSZ $sndbufsz
-_ACEOF
-
-      cat >>confdefs.h <<_ACEOF
-#define PR_TUNABLE_XFER_BUFFER_SIZE $xferbufsz
-_ACEOF
-
-
-else
-  echo "$as_me: program exited with status $ac_status" >&5
-echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-( exit $ac_status )
-
-      echo "$as_me:$LINENO: result: none" >&5
-echo "${ECHO_T}none" >&6
-
-fi
-rm -f core *.core gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
-fi
 fi
 
 LIBS="-lsupp $LIBS"
