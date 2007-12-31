@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.24 2007-05-22 17:45:19 castaglia Exp $
+ * $Id: options.h,v 1.25 2007-12-31 19:30:11 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -71,17 +71,18 @@
 
 #define PR_TUNABLE_DEFAULT_BACKLOG	5
 
-/* The next two define the default receive/send TCP windows.  These can be
- * configured on a per-vhost basis via the SocketOptions directive.
+/* The default TCP send/receive buffer sizes, should explicit sizes not
+ * be defined at compile time, or should the runtime determination process
+ * fail.
  */
 
-#ifndef PR_TUNABLE_RCVBUFSZ
-# define PR_TUNABLE_RCVBUFSZ		8192
-#endif
+#ifndef PR_TUNABLE_DEFAULT_RCVBUFSZ
+# define PR_TUNABLE_DEFAULT_RCVBUFSZ	8192
+#endif /* PR_TUNABLE_DEFAULT_RCVBUFSZ */
 
-#ifndef PR_TUNABLE_SNDBUFSZ
-# define PR_TUNABLE_SNDBUFSZ		8192
-#endif
+#ifndef PR_TUNABLE_DEFAULT_SNDBUFSZ
+# define PR_TUNABLE_DEFAULT_SNDBUFSZ	8192
+#endif /* PR_TUNABLE_DEFAULT_SNDBUFSZ */
 
 /* Default internal buffer size used for data transfers and other
  * miscellaneous tasks.
@@ -90,11 +91,15 @@
 # define PR_TUNABLE_BUFFER_SIZE	1024
 #endif
 
-/* This one is specifically for data transfers.
+/* There is also a definable buffer size used specifically for data
+ * transfers: PR_TUNABLE_XFER_BUFFER_SIZE.  By default, this buffer
+ * size is automatically determined, at runtime, as the smaller of the
+ * TCP receive and send buffer sizes.
+ *
+ * You should manually set the PR_TUNABLE_XFER_BUFFER_SIZE only in
+ * special circumstances, when you need to explicitly control that
+ * buffer size.
  */
-#ifndef PR_TUNABLE_XFER_BUFFER_SIZE
-# define PR_TUNABLE_XFER_BUFFER_SIZE	PR_TUNABLE_BUFFER_SIZE
-#endif
 
 /* Maximum path length.  GNU HURD (and some others) do not define
  * MAXPATHLEN.  POSIX' PATH_MAX is mandated to be at least 256 

@@ -855,16 +855,4 @@
 #undef PR_TUNABLE_TIMEOUTSTALLED
 #undef PR_TUNABLE_XFER_SCOREBOARD_UPDATES
 
-#ifndef PR_TUNABLE_RCVBUFSZ
-# undef PR_TUNABLE_RCVBUFSZ
-#endif
-
-#ifndef PR_TUNABLE_SNDBUFSZ
-# undef PR_TUNABLE_SNDBUFSZ
-#endif
-
-#ifndef PR_TUNABLE_XFER_BUFFER_SIZE
-# undef PR_TUNABLE_XFER_BUFFER_SIZE
-#endif
-
 #endif /* config_h_included */

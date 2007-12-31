@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.97 2007-11-16 03:16:48 castaglia Exp $
+ * $Id: data.c,v 1.98 2007-12-31 19:30:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -228,8 +228,8 @@ static void data_new_xfer(char *filename, int direction) {
 
   session.xfer.filename = pstrdup(session.xfer.p, filename);
   session.xfer.direction = direction;
-  session.xfer.bufsize = PR_TUNABLE_XFER_BUFFER_SIZE;
-  session.xfer.buf = pcalloc(session.xfer.p, PR_TUNABLE_XFER_BUFFER_SIZE + 1);
+  session.xfer.bufsize = pr_config_get_xfer_bufsz();
+  session.xfer.buf = pcalloc(session.xfer.p, session.xfer.bufsize + 1);
   session.xfer.buf++;	/* leave room for ascii translation */
   session.xfer.buflen = 0;
 }
@@ -904,8 +904,8 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
       int buflen = cl_size;
       unsigned int xferbuflen;
 
-      if (buflen > PR_TUNABLE_XFER_BUFFER_SIZE)
-        buflen = PR_TUNABLE_XFER_BUFFER_SIZE;
+      if (buflen > pr_config_get_xfer_bufsz())
+        buflen = pr_config_get_xfer_bufsz();
 
       xferbuflen = buflen;
 

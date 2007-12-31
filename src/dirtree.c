@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.185 2007-07-24 22:09:39 castaglia Exp $
+ * $Id: dirtree.c,v 1.186 2007-12-31 19:30:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -49,6 +49,11 @@ int TimeoutIdle = PR_TUNABLE_TIMEOUTIDLE;
 int TimeoutNoXfer = PR_TUNABLE_TIMEOUTNOXFER;
 int TimeoutStalled = PR_TUNABLE_TIMEOUTSTALLED;
 char MultilineRFC2228 = 0;
+
+/* Default TCP send/receive buffer sizes. */
+static int tcp_rcvbufsz = 0;
+static int tcp_sndbufsz = 0;
+static int xfer_bufsz = 0;
 
 /* From src/pool.c */
 extern pool *global_config_pool;
@@ -2946,13 +2951,13 @@ int fixup_servers(xaset_t *list) {
     }
 
     if (!s->tcp_rcvbuf_len)
-      s->tcp_rcvbuf_len = PR_TUNABLE_RCVBUFSZ;
+      s->tcp_rcvbuf_len = tcp_rcvbufsz;
 
     if (!s->tcp_sndbuf_len)
-      s->tcp_sndbuf_len = PR_TUNABLE_SNDBUFSZ;
+      s->tcp_sndbuf_len = tcp_sndbufsz;
 
-    if ((c = find_config(s->conf, CONF_PARAM, "MasqueradeAddress",
-        FALSE)) != NULL) {
+    c = find_config(s->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
+    if (c != NULL) {
       pr_log_pri(PR_LOG_INFO, "%s:%d masquerading as %s",
         pr_netaddr_get_ipstr(s->addr), s->ServerPort,
         pr_netaddr_get_ipstr((pr_netaddr_t *) c->argv[0]));
@@ -2985,6 +2990,85 @@ int fixup_servers(xaset_t *list) {
 
   pr_inet_clear();
   return 0;
+}
+
+static void set_tcp_bufsz(void) {
+  int sockfd, optlen = 0;
+  struct protoent *p = NULL;
+
+  p = getprotobyname("tcp");
+  if (!p) {
+    tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
+    tcp_sndbufsz = PR_TUNABLE_DEFAULT_SNDBUFSZ;
+
+    pr_log_debug(DEBUG3, "getprotobyname error for 'tcp': %s", strerror(errno));
+    pr_log_debug(DEBUG4, "using default TCP receive/send buffer sizes");
+    return;
+  }
+
+  sockfd = socket(AF_INET, SOCK_STREAM, p->p_proto);
+  if (sockfd < 0) {
+    tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
+    tcp_sndbufsz = PR_TUNABLE_DEFAULT_SNDBUFSZ;
+
+    pr_log_debug(DEBUG3, "socket error: %s", strerror(errno));
+    pr_log_debug(DEBUG4, "using default TCP receive/send buffer sizes");
+  }
+
+#ifndef PR_TUNABLE_RCVBUFSZ
+  /* Determine the optimal size of the TCP receive buffer. */
+  optlen = sizeof(tcp_rcvbufsz);
+  if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (void *) &tcp_rcvbufsz,
+      &optlen) < 0) {
+    tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
+
+    pr_log_debug(DEBUG3, "getsockopt error for SO_RCVBUF: %s", strerror(errno));
+    pr_log_debug(DEBUG4, "using default TCP receive buffer size of %d bytes",
+      tcp_rcvbufsz);
+
+  } else {
+    pr_log_debug(DEBUG5, "using TCP receive buffer size of %d bytes",
+      tcp_rcvbufsz);
+  }
+#else
+  optlen = -1;
+  tcp_sndbufsz = PR_TUNABLE_RCVBUFSZ;
+  pr_log_debug(DEBUG5, "using preset TCP receive buffer size of %d bytes",
+    tcp_rcvbufsz);
+#endif /* PR_TUNABLE_RCVBUFSZ */
+
+#ifndef PR_TUNABLE_SNDBUFSZ
+  /* Determine the optimal size of the TCP send buffer. */
+  optlen = sizeof(tcp_sndbufsz);
+  if (getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, (void *) &tcp_sndbufsz,
+      &optlen) < 0) {
+    tcp_sndbufsz = PR_TUNABLE_DEFAULT_SNDBUFSZ;
+    
+    pr_log_debug(DEBUG3, "getsockopt error for SO_SNDBUF: %s", strerror(errno));
+    pr_log_debug(DEBUG4, "using default TCP send buffer size of %d bytes",
+      tcp_sndbufsz);
+  
+  } else {
+    pr_log_debug(DEBUG5, "using TCP send buffer size of %d bytes",
+      tcp_sndbufsz);
+  }
+#else
+  optlen = -1;
+  tcp_sndbufsz = PR_TUNABLE_SNDBUFSZ;
+  pr_log_debug(DEBUG5, "using preset TCP send buffer size of %d bytes",
+    tcp_sndbufsz);
+#endif /* PR_TUNABLE_SNDBUFSZ */
+
+#ifndef PR_TUNABLE_XFER_BUFFER_SIZE
+  /* Choose the smaller of the two TCP buffer sizes as the overall transfer
+   * size (for use by the data transfer layer).
+   */
+   xfer_bufsz = tcp_sndbufsz < tcp_rcvbufsz ? tcp_sndbufsz : tcp_rcvbufsz;
+#else
+  xfer_bufsz = PR_TUNABLE_XFER_BUFFER_SIZE;
+#endif /* PR_TUNABLE_XFER_BUFFER_SIZE */
+
+  (void) close(sockfd);
 }
 
 void init_config(void) {
@@ -3060,6 +3144,7 @@ void init_config(void) {
   main_server->ServerPort = pr_inet_getservport(main_server->pool,
     "ftp", "tcp");
 
+  set_tcp_bufsz();
   return;
 }
 
@@ -3231,4 +3316,8 @@ unsigned int pr_config_set_id(const char *name) {
   }
 
   return *ptr;
+}
+
+int pr_config_get_xfer_bufsz(void) {
+  return xfer_bufsz;
 }
