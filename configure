@@ -1604,8 +1604,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-ac_core_modules="mod_core.o mod_xfer.o mod_auth_unix.o mod_auth_file.o mod_auth.o mod_ls.o mod_log.o mod_site.o mod_delay.o"
-ac_build_core_modules="modules/mod_core.o modules/mod_xfer.o modules/mod_auth_unix.o modules/mod_auth_file.o modules/mod_auth.o modules/mod_ls.o modules/mod_log.o modules/mod_site.o modules/mod_delay.o"
+ac_core_modules="mod_core.o mod_xfer.o mod_auth_unix.o mod_auth_file.o mod_auth.o mod_ls.o mod_log.o mod_site.o mod_delay.o mod_facts.o"
+ac_build_core_modules="modules/mod_core.o modules/mod_xfer.o modules/mod_auth_unix.o modules/mod_auth_file.o modules/mod_auth.o modules/mod_ls.o modules/mod_log.o modules/mod_site.o modules/mod_delay.o modules/mod_facts.o
 
 ac_aux_dir=
 for ac_dir in ./ $srcdir/./; do
