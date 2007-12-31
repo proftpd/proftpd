@@ -6,7 +6,7 @@ This file contains a description of the major changes to ProFTPD for the
 More information on these changes can be found in the NEWS and ChangeLog
 files.
 
-1.3.1rc1
+1.3.2rc1
 ---------
 
   + Changed command-line behavior:
@@ -67,7 +67,15 @@ files.
       TLSRequired !data, ctrl+!data, auth+!data
 
         See doc/contrib/mod_tls.html#TLSRequired for more information.
-      
+
+  + Deprecated configuration directives
+
+      AnonymousGroup
+
+        This directive is NOT recommended, and relies on a "special
+        dynamic configuration" which is very confusing to users.  It will
+        be removed in the 1.3.3 ProFTPD release cycle.
+
   + New modules:
 
       mod_dynmasq
@@ -78,6 +86,17 @@ files.
         the MasqueradeAddress directive.  See the module documentation at:
 
           doc/contrib/mod_dynmasq.html
+
+      mod_facts
+
+        Implements the MLSD and MLST commands, as per RFC3659.  Also provides
+        the MFF and MFMT commands from:
+
+          http://www.ietf.org/internet-drafts/draft-somers-ftp-mfxx-03.txt
+ 
+        Module documentation is available for mod_facts at:
+
+          doc/modules/mod_facts.html
 
       mod_unique_id
 
@@ -91,4 +110,4 @@ files.
 
       doc/howto/ConfigurationTricks.html
 
-Last Updated: $Date: 2007-10-16 16:29:13 $
+Last Updated: $Date: 2007-12-31 19:13:37 $
