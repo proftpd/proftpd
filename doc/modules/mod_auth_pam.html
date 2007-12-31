@@ -1,4 +1,4 @@
-<!-- $Id: mod_auth_pam.html,v 1.1 2004-04-24 01:13:05 castaglia Exp $ -->
+<!-- $Id: mod_auth_pam.html,v 1.2 2007-12-31 21:45:07 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_auth_pam.html,v $ -->
 
 <html>
@@ -40,6 +40,7 @@ ProFTPD source distribution:
 <ul>
   <li><a href="#AuthPAM">AuthPAM</a>
   <li><a href="#AuthPAMConfig">AuthPAMConfig</a>
+  <li><a href="#AuthPAMOptions">AuthPAMOptions</a>
 </ul>
 
 <hr>
@@ -82,6 +83,46 @@ Here's an example of changing the <em>service</em> used:
 
 <p>
 <hr>
+<h2><a name="AuthPAMOptions">AuthPAMOptions</a></h2>
+<strong>Syntax:</strong> AuthPAMOptions <em>opt1 opt2 ... optN</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_auth_pam<br>
+<strong>Compatibility:</strong> 1.3.2rc1 and later
+
+<p>
+The <code>AuthPAMOptions</code> directive is used to configure various optional
+behavior of <code>mod_auth_pam</code>.
+
+<p>
+Example:
+<pre>
+  &lt;IfModule mod_auth_pam.c&gt;
+    # Do not set the PAM_TTY token when authenticating via PAM
+    AuthPAMOptions NoTTY
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
+The currently implemented options are:
+<ul>
+  <li><code>NoTTY</code><br>
+    <p>
+    By default, <code>mod_auth_pam</code> will use the <code>PAM_TTY</code>
+    PAM API item, and will use a value of "/dev/ftpd<i>PID</i>".  The item
+    can be used by PAM modules for filtering access, for example.  This
+    "NoTTY" option tells <code>mod_auth_pam</code> to <b>not</b> set the
+    <code>PAM_TTY</code> item.
+
+    <p>
+    <b>Note</b>: On Solaris platforms, the use of this <code>PAM_TTY</code>
+    token is <i>mandatory</i>, and cannot be disabled.  This is due to 
+    Solaris Bug ID 4250887.
+  </li>
+</ul>
+
+<p>
+<hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_auth_pam</code> module is automatically included when
 <code>proftpd</code> is built on a system that supports PAM. To disable
@@ -90,7 +131,7 @@ option.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-04-24 01:13:05 $</i><br>
+Last Updated: <i>$Date: 2007-12-31 21:45:07 $</i><br>
 <hr>
 
 </body>

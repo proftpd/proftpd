@@ -46,6 +46,10 @@ files.
 
   + New configuration directives:
 
+      AuthPAMOptions
+
+        "NoTTY"
+
       MaxTransferPerHost
 
       MaxTransfersPerUser
@@ -110,4 +114,4 @@ files.
 
       doc/howto/ConfigurationTricks.html
 
-Last Updated: $Date: 2007-12-31 19:13:37 $
+Last Updated: $Date: 2007-12-31 21:45:07 $
