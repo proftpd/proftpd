@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.222 2007-10-22 18:09:17 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.223 2007-12-31 19:19:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -936,10 +936,18 @@ static long transmit_data(off_t count, off_t *offset, char *buf, long bufsz) {
 
   } else {
     /* There was an error with sendfile(); do NOT attempt to re-send the
-     * data using normal data transmission methods.
+     * data using normal data transmission methods, unless the cause
+     * of the error is one of an accepted few cases.
      */
+# ifdef EOVERFLOW
+    pr_log_debug(DEBUG10, "use of sendfile(2) failed due to %s (%d), "
+      "falling back to normal data transmission", strerror(errno),
+      errno);
+    res = transmit_normal(buf, bufsz);
+# else
     errno = EIO;
     res = -1;
+# endif
   }
 #else
   res = transmit_normal(buf, bufsz);
