@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.98 2007-12-31 19:30:11 castaglia Exp $
+ * $Id: data.c,v 1.99 2007-12-31 22:33:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -54,12 +54,16 @@ static pr_netio_stream_t *nstrm = NULL;
 
 static long timeout_linger = PR_TUNABLE_TIMEOUTLINGER;
 
+static int timeout_idle = PR_TUNABLE_TIMEOUTIDLE;
+static int timeout_noxfer = PR_TUNABLE_TIMEOUTNOXFER;
+static int timeout_stalled = PR_TUNABLE_TIMEOUTSTALLED;
+
 /* Called if the "Stalled" timer goes off
  */
 static int stalled_timeout_cb(CALLBACK_FRAME) {
   pr_event_generate("core.timeout-stalled", NULL);
   pr_log_pri(PR_LOG_NOTICE, "Data transfer stall timeout: %d seconds",
-    TimeoutStalled);
+    timeout_stalled);
   end_login(1);
 
   /* Prevent compiler warning.
@@ -244,8 +248,8 @@ static int data_pasv_open(char *reason, off_t size) {
   /* Set the "stalled" timer, if any, to prevent the connection
    * open from taking too long
    */
-  if (TimeoutStalled)
-    pr_timer_add(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb,
+  if (timeout_stalled)
+    pr_timer_add(timeout_stalled, TIMER_STALLED, NULL, stalled_timeout_cb,
       "TimeoutStalled");
 
   /* We save the state of our current disposition for doing reverse
@@ -342,8 +346,8 @@ static int data_active_open(char *reason, off_t size) {
   /* Set the "stalled" timer, if any, to prevent the connection
    * open from taking too long
    */
-  if (TimeoutStalled)
-    pr_timer_add(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb,
+  if (timeout_stalled)
+    pr_timer_add(timeout_stalled, TIMER_STALLED, NULL, stalled_timeout_cb,
       "TimeoutStalled");
 
   rev = pr_netaddr_set_reverse_dns(ServerUseReverseDNS);
@@ -432,6 +436,38 @@ void pr_data_set_linger(long linger) {
   timeout_linger = linger;
 }
 
+int pr_data_get_timeout(int id) {
+  switch (id) {
+    case PR_DATA_TIMEOUT_IDLE:
+      return timeout_idle;
+
+    case PR_DATA_TIMEOUT_NO_TRANSFER:
+      return timeout_noxfer;
+
+    case PR_DATA_TIMEOUT_STALLED:
+      return timeout_stalled;
+  }
+
+  errno = EINVAL;
+  return -1;
+}
+
+void pr_data_set_timeout(int id, int timeout) {
+  switch (id) {
+    case PR_DATA_TIMEOUT_IDLE:
+      timeout_idle = timeout;
+      break;
+
+    case PR_DATA_TIMEOUT_NO_TRANSFER:
+      timeout_noxfer = timeout;
+      break;
+
+    case PR_DATA_TIMEOUT_STALLED:
+      timeout_stalled = timeout;
+      break;
+  }
+}
+
 void pr_data_reset(void) {
   if (session.d && session.d->pool)
     destroy_pool(session.d->pool);
@@ -515,7 +551,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
 
     session.sf_flags |= SF_XFER;
 
-    if (TimeoutNoXfer)
+    if (timeout_noxfer)
       pr_timer_reset(TIMER_NOXFER, ANY_MODULE);
 
     /* Allow aborts -- set the current NetIO stream to allow interrupted
@@ -567,10 +603,10 @@ void pr_data_close(int quiet) {
   /* Aborts no longer necessary */
   signal(SIGURG, SIG_IGN);
 
-  if (TimeoutNoXfer)
+  if (timeout_noxfer)
     pr_timer_reset(TIMER_NOXFER, ANY_MODULE);
 
-  if (TimeoutStalled)
+  if (timeout_stalled)
     pr_timer_remove(TIMER_STALLED, ANY_MODULE);
 
   session.sf_flags &= (SF_ALL^SF_PASSIVE);
@@ -621,10 +657,10 @@ void pr_data_abort(int err, int quiet) {
     session.d = NULL;
   }
 
-  if (TimeoutNoXfer)
+  if (timeout_noxfer)
     pr_timer_reset(TIMER_NOXFER, ANY_MODULE);
 
-  if (TimeoutStalled)
+  if (timeout_stalled)
     pr_timer_remove(TIMER_STALLED, ANY_MODULE);
 
   session.sf_flags &= (SF_ALL^SF_PASSIVE);
@@ -634,7 +670,7 @@ void pr_data_abort(int err, int quiet) {
   /* Aborts no longer necessary */
   signal(SIGURG, SIG_IGN);
 
-  if (TimeoutNoXfer)
+  if (timeout_noxfer)
     pr_timer_reset(TIMER_NOXFER, ANY_MODULE);
 
   if (!quiet) {
@@ -828,7 +864,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
           if (len > 0) {
 	    buflen += len;
 
-	    if (TimeoutStalled)
+	    if (timeout_stalled)
 	      pr_timer_reset(TIMER_STALLED, ANY_MODULE);
 	  }
 
@@ -891,7 +927,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
           cl_size, 1)) > 0) {
 
         /* Non-ASCII mode doesn't need to use session.xfer.buf */
-        if (TimeoutStalled)
+        if (timeout_stalled)
           pr_timer_reset(TIMER_STALLED, ANY_MODULE);
 
         total += len;
@@ -926,7 +962,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
           xferbuflen) < 0)
         return -1;
 
-      if (TimeoutStalled)
+      if (timeout_stalled)
         pr_timer_reset(TIMER_STALLED, ANY_MODULE);
 
       cl_size -= buflen;
@@ -938,7 +974,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
   }
 
   if (total &&
-      TimeoutIdle)
+      timeout_idle)
     pr_timer_reset(TIMER_IDLE, ANY_MODULE);
 
   session.xfer.total_bytes += total;
@@ -1027,10 +1063,10 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
 
       /* Only reset the timers if data have actually been written out. */
       if (len > 0) {
-        if (TimeoutStalled)
+        if (timeout_stalled)
           pr_timer_reset(TIMER_STALLED, ANY_MODULE);
 
-        if (TimeoutIdle)
+        if (timeout_idle)
           pr_timer_reset(TIMER_IDLE, ANY_MODULE);
       }
 
@@ -1124,10 +1160,10 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
 
 	*offset += len;
 	
-	if (TimeoutStalled)
+	if (timeout_stalled)
 	  pr_timer_reset(TIMER_STALLED, ANY_MODULE);
 	
-	if (TimeoutIdle)
+	if (timeout_idle)
 	  pr_timer_reset(TIMER_IDLE, ANY_MODULE);
 	
 	session.xfer.total_bytes += len;
@@ -1150,10 +1186,10 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
   if (flags & O_NONBLOCK)
     fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags);
 
-  if (TimeoutStalled)
+  if (timeout_stalled)
     pr_timer_reset(TIMER_STALLED, ANY_MODULE);
 
-  if (TimeoutIdle)
+  if (timeout_idle)
     pr_timer_reset(TIMER_IDLE, ANY_MODULE);
 
   session.xfer.total_bytes += len;

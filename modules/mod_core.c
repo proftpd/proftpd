@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.308 2007-12-15 21:47:13 castaglia Exp $
+ * $Id: mod_core.c,v 1.309 2007-12-31 22:33:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -775,7 +775,7 @@ MODRET set_timeoutidle(cmd_rec *cmd) {
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   timeout = (int) strtol(cmd->argv[1], &endp, 10);
 
@@ -785,6 +785,7 @@ MODRET set_timeoutidle(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = timeout;
+  c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
@@ -4283,6 +4284,18 @@ MODRET core_opts(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+MODRET core_post_pass(cmd_rec *cmd) {
+  config_rec *c;
+
+  c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutIdle", FALSE);
+  if (c != NULL) {
+    int timeout = *((int *) c->argv[0]);
+    pr_data_set_timeout(PR_DATA_TIMEOUT_IDLE, timeout);
+  }
+
+  return PR_HANDLED(cmd);
+}
+
 MODRET set_defaulttransfermode(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -4425,11 +4438,6 @@ static int core_sess_init(void) {
   unsigned int *debug_level = NULL;
 
   init_auth();
-
-  /* Check for a server-specific TimeoutIdle. */
-  c = find_config(main_server->conf, CONF_PARAM, "TimeoutIdle", FALSE);
-  if (c != NULL)
-    TimeoutIdle = *((int *) c->argv[0]);
 
   /* Check for a server-specific TimeoutLinger */
   c = find_config(main_server->conf, CONF_PARAM, "TimeoutLinger", FALSE);
@@ -4758,6 +4766,7 @@ static cmdtable core_cmdtab[] = {
   { CMD, C_NOOP, G_NONE,  core_noop,	FALSE,	FALSE,  CL_MISC },
   { CMD, C_FEAT, G_NONE,  core_feat,	FALSE,	FALSE,  CL_INFO },
   { CMD, C_OPTS, G_NONE,  core_opts,    FALSE,	FALSE,	CL_MISC },
+  { POST_CMD, C_PASS, G_NONE, core_post_pass, FALSE, FALSE },
   { 0, NULL }
 };
 

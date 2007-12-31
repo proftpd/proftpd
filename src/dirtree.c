@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.186 2007-12-31 19:30:11 castaglia Exp $
+ * $Id: dirtree.c,v 1.187 2007-12-31 22:33:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -45,9 +45,6 @@ int SocketBindTight = FALSE;
 char ServerType = SERVER_STANDALONE;
 int ServerMaxInstances = 0;
 int ServerUseReverseDNS = TRUE;
-int TimeoutIdle = PR_TUNABLE_TIMEOUTIDLE;
-int TimeoutNoXfer = PR_TUNABLE_TIMEOUTNOXFER;
-int TimeoutStalled = PR_TUNABLE_TIMEOUTSTALLED;
 char MultilineRFC2228 = 0;
 
 /* Default TCP send/receive buffer sizes. */

@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.67 2007-12-31 19:30:11 castaglia Exp $
+ * $Id: dirtree.h,v 1.68 2007-12-31 22:33:30 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -178,9 +178,6 @@ extern int			SocketBindTight;
 extern char			ServerType;
 extern int			ServerMaxInstances;
 extern int			ServerUseReverseDNS;
-extern int			TimeoutIdle;
-extern int			TimeoutNoXfer;
-extern int			TimeoutStalled;
 
 /* These macros are used to help handle configuration in modules */
 #define CONF_ERROR(x, s)	return PR_ERROR_MSG((x),NULL,pstrcat((x)->tmp_pool, \

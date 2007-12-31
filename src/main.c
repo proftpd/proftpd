@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.314 2007-12-31 19:30:11 castaglia Exp $
+ * $Id: main.c,v 1.315 2007-12-31 22:33:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -605,7 +605,8 @@ static int idle_timeout_cb(CALLBACK_FRAME) {
   pr_event_generate("core.timeout-idle", NULL);
 
   pr_response_send_async(R_421,
-    _("Idle timeout (%d seconds): closing control connection"), TimeoutIdle);
+    _("Idle timeout (%d seconds): closing control connection"),
+    pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE));
   session_exit(PR_LOG_INFO, "FTP session idle timeout, disconnected", 0, NULL);
 
   pr_timer_remove(TIMER_LOGIN, ANY_MODULE);
@@ -621,7 +622,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   char *display = NULL;
   const char *serveraddress = NULL;
   config_rec *masq_c = NULL;
-  int i;
+  int i, timeout_idle;
 
   serveraddress = pr_netaddr_get_ipstr(c->local_addr);
 
@@ -634,12 +635,13 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   pr_inet_set_async(session.pool, session.c);
 
   /* Setup the main idle timer */
-  if (TimeoutIdle)
-    pr_timer_add(TimeoutIdle, TIMER_IDLE, NULL, idle_timeout_cb,
+  timeout_idle = pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE);
+  if (timeout_idle > 0)
+    pr_timer_add(timeout_idle, TIMER_IDLE, NULL, idle_timeout_cb,
       "TimeoutIdle");
 
-  if ((masq_c = find_config(server->conf, CONF_PARAM, "MasqueradeAddress",
-      FALSE)) != NULL) {
+  masq_c = find_config(server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
+  if (masq_c != NULL) {
     pr_netaddr_t *masq_addr = (pr_netaddr_t *) masq_c->argv[0];
     serveraddress = pr_netaddr_get_ipstr(masq_addr);
   }
@@ -691,7 +693,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     }
 
     /* Data received, reset idle timer */
-    if (TimeoutIdle)
+    if (timeout_idle > 0)
       pr_timer_reset(TIMER_IDLE, NULL);
 
     if (cmd_buf_size == -1) {
@@ -750,6 +752,8 @@ static void cmd_loop(server_rec *server, conn_t *c) {
       if (cmd) {
         pr_cmd_dispatch(cmd);
         destroy_pool(cmd->pool);
+        cmd->pool = NULL;
+        cmd->notes = NULL;
 
       } else
 	pr_response_send(R_500, _("Invalid command: try being more creative"));

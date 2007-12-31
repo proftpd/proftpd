@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.224 2007-12-31 19:30:11 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.225 2007-12-31 22:33:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1162,6 +1162,8 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path) {
   maxlen = strlen(path) + 6;
 
   if (maxlen > PR_TUNABLE_PATH_MAX) {
+    pr_log_pri(PR_LOG_NOTICE, "making path '%s' a hidden path exceeds max "
+      "path length (%u)", path, PR_TUNABLE_PATH_MAX);
 
     /* This probably shouldn't happen */
     pr_response_add_err(R_451, _("%s: File name too long"), path);
@@ -2292,7 +2294,7 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
   pr_event_generate("core.timeout-no-transfer", NULL);
   pr_response_send_async(R_421,
     _("No transfer timeout (%d seconds): closing control connection"),
-    TimeoutNoXfer);
+    pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER));
 
   pr_timer_remove(TIMER_IDLE, ANY_MODULE);
   pr_timer_remove(TIMER_LOGIN, ANY_MODULE);
@@ -2312,6 +2314,32 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
 
   session_exit(PR_LOG_NOTICE, "FTP no transfer timeout, disconnected", 0, NULL);
   return 0;
+}
+
+MODRET xfer_post_pass(cmd_rec *cmd) {
+  config_rec *c;
+
+  c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutNoTransfer", FALSE);
+  if (c != NULL) {
+    int timeout = *((int *) c->argv[0]);
+    pr_data_set_timeout(PR_DATA_TIMEOUT_NO_TRANSFER, timeout);
+
+    /* Setup timer */
+    if (timeout > 0)
+      pr_timer_add(timeout, TIMER_NOXFER, &xfer_module, noxfer_timeout_cb);
+  }
+
+  c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutStalled", FALSE);
+  if (c != NULL) {
+    int timeout = *((int *) c->argv[0]);
+    pr_data_set_timeout(PR_DATA_TIMEOUT_STALLED, timeout);
+
+    /* Note: timers for handling TimeoutStalled timeouts are handled in the
+     * data transfer routines, not here.
+     */
+  }
+
+  return PR_HANDLED(cmd);
 }
 
 /* Configuration handlers
@@ -2624,7 +2652,7 @@ MODRET set_timeoutnoxfer(cmd_rec *cmd) {
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   timeout = (int) strtol(cmd->argv[1], &endp, 10);
 
@@ -2634,6 +2662,7 @@ MODRET set_timeoutnoxfer(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = timeout;
+  c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
@@ -2644,7 +2673,7 @@ MODRET set_timeoutstalled(cmd_rec *cmd) {
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   timeout = (int) strtol(cmd->argv[1], &endp, 10);
 
@@ -2654,6 +2683,7 @@ MODRET set_timeoutstalled(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = timeout;
+  c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
@@ -2918,25 +2948,6 @@ static int xfer_sess_init(void) {
   char *displayfilexfer = NULL;
   config_rec *c = NULL;
 
-  /* Check for a server-specific TimeoutNoTransfer */
-  c = find_config(main_server->conf, CONF_PARAM, "TimeoutNoTransfer", FALSE);
-  if (c != NULL)
-    TimeoutNoXfer = *((int *) c->argv[0]);
-
-  /* Setup TimeoutNoXfer timer */
-  if (TimeoutNoXfer)
-    pr_timer_add(TimeoutNoXfer, TIMER_NOXFER, &xfer_module, noxfer_timeout_cb,
-      "TimeoutNoTransfer");
-
-  /* Check for a server-specific TimeoutStalled */
-  c = find_config(main_server->conf, CONF_PARAM, "TimeoutStalled", FALSE);
-  if (c != NULL)
-    TimeoutStalled = *((int *) c->argv[0]);
-
-  /* Note: timers for handling TimeoutStalled timeouts are handled in the
-   * data transfer routines, not here.
-   */
-
   /* Check for UseSendfile. */
   c = find_config(main_server->conf, CONF_PARAM, "UseSendfile", FALSE);
   if (c)
@@ -3022,6 +3033,7 @@ static cmdtable xfer_cmdtab[] = {
   { POST_CMD,C_PROT,	G_NONE,  xfer_post_prot,	FALSE,	FALSE },
   { POST_CMD,C_RETR,	G_NONE,	 xfer_post_xfer,	FALSE,	FALSE },
   { POST_CMD,C_STOR,	G_NONE,	 xfer_post_xfer,	FALSE,	FALSE },
+  { POST_CMD,C_PASS,	G_NONE,	 xfer_post_pass,	FALSE, FALSE },
   { 0, NULL }
 };
 

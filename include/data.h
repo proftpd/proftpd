@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2007 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Data connection management prototypes
- * $Id: data.h,v 1.17 2004-11-04 22:48:17 castaglia Exp $
+ * $Id: data.h,v 1.18 2007-12-31 22:33:30 castaglia Exp $
  */
 
 #ifndef PR_DATACONN_H
@@ -39,6 +39,12 @@ void pr_data_abort(int, int);
 int pr_data_xfer(char *, int);
 void pr_data_reset(void);
 void pr_data_set_linger(long);
+
+int pr_data_get_timeout(int);
+void pr_data_set_timeout(int, int);
+#define PR_DATA_TIMEOUT_IDLE			0x001
+#define PR_DATA_TIMEOUT_NO_TRANSFER		0x002
+#define PR_DATA_TIMEOUT_STALLED			0x004
 
 #ifdef HAVE_SENDFILE
 typedef
