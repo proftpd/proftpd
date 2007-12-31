@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.315 2007-12-31 22:33:30 castaglia Exp $
+ * $Id: main.c,v 1.316 2007-12-31 22:47:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -609,8 +609,8 @@ static int idle_timeout_cb(CALLBACK_FRAME) {
     pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE));
   session_exit(PR_LOG_INFO, "FTP session idle timeout, disconnected", 0, NULL);
 
-  pr_timer_remove(TIMER_LOGIN, ANY_MODULE);
-  pr_timer_remove(TIMER_NOXFER, ANY_MODULE);
+  pr_timer_remove(PR_TIMER_LOGIN, ANY_MODULE);
+  pr_timer_remove(PR_TIMER_NOXFER, ANY_MODULE);
   return 0;
 }
 
@@ -637,7 +637,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   /* Setup the main idle timer */
   timeout_idle = pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE);
   if (timeout_idle > 0)
-    pr_timer_add(timeout_idle, TIMER_IDLE, NULL, idle_timeout_cb,
+    pr_timer_add(timeout_idle, PR_TIMER_IDLE, NULL, idle_timeout_cb,
       "TimeoutIdle");
 
   masq_c = find_config(server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
@@ -694,7 +694,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 
     /* Data received, reset idle timer */
     if (timeout_idle > 0)
-      pr_timer_reset(TIMER_IDLE, NULL);
+      pr_timer_reset(PR_TIMER_IDLE, NULL);
 
     if (cmd_buf_size == -1) {
       int *bufsz = get_param_ptr(main_server->conf, "CommandBufferSize", FALSE);

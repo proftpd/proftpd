@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.56 2006-06-22 17:06:27 castaglia Exp $
+ * $Id: proftpd.h,v 1.57 2007-12-31 22:47:38 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -238,11 +238,11 @@ extern char MultilineRFC2228;
 #define RECEIVED_SIG_ALRM	0x0400
 
 /* Timers */
-#define TIMER_LOGIN		1
-#define TIMER_IDLE		2
-#define TIMER_NOXFER		3
-#define TIMER_STALLED		4
-#define TIMER_SESSION		5
+#define PR_TIMER_LOGIN		1
+#define PR_TIMER_IDLE		2
+#define PR_TIMER_NOXFER		3
+#define PR_TIMER_STALLED	4
+#define PR_TIMER_SESSION	5
 
 /* Misc Prototypes */
 

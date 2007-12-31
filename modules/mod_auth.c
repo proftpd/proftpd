@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.229 2007-12-31 19:12:43 castaglia Exp $
+ * $Id: mod_auth.c,v 1.230 2007-12-31 22:47:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -144,8 +144,8 @@ static int auth_sess_init(void) {
 
   /* Start the login timer */
   if (TimeoutLogin) {
-    pr_timer_remove(TIMER_LOGIN, &auth_module);
-    pr_timer_add(TimeoutLogin, TIMER_LOGIN, &auth_module,
+    pr_timer_remove(PR_TIMER_LOGIN, &auth_module);
+    pr_timer_add(TimeoutLogin, PR_TIMER_LOGIN, &auth_module,
       auth_login_timeout_cb, "TimeoutLogin");
   }
 
@@ -368,7 +368,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
       TimeoutSession,
       have_user_timeout ? "user" : have_group_timeout ? "group" :
       have_class_timeout ? "class" : "all");
-    pr_timer_add(TimeoutSession, TIMER_SESSION, &auth_module,
+    pr_timer_add(TimeoutSession, PR_TIMER_SESSION, &auth_module,
       auth_session_timeout_cb, "TimeoutSession");
   }
 
@@ -1440,7 +1440,7 @@ static int setup_env(pool *p, char *user, char *pass) {
 
   session_set_idle();
 
-  pr_timer_remove(TIMER_LOGIN, &auth_module);
+  pr_timer_remove(PR_TIMER_LOGIN, &auth_module);
 
   /* These copies are made from the session.pool, instead of the more
    * volatile pool used originally, in order that the copied data maintain

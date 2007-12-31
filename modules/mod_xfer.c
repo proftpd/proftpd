@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.225 2007-12-31 22:33:30 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.226 2007-12-31 22:47:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2296,8 +2296,8 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
     _("No transfer timeout (%d seconds): closing control connection"),
     pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER));
 
-  pr_timer_remove(TIMER_IDLE, ANY_MODULE);
-  pr_timer_remove(TIMER_LOGIN, ANY_MODULE);
+  pr_timer_remove(PR_TIMER_IDLE, ANY_MODULE);
+  pr_timer_remove(PR_TIMER_LOGIN, ANY_MODULE);
 
   /* If this timeout is encountered and we are expecting a passive transfer,
    * add some logging that suggests things to check and possibly fix
@@ -2326,7 +2326,7 @@ MODRET xfer_post_pass(cmd_rec *cmd) {
 
     /* Setup timer */
     if (timeout > 0)
-      pr_timer_add(timeout, TIMER_NOXFER, &xfer_module, noxfer_timeout_cb);
+      pr_timer_add(timeout, PR_TIMER_NOXFER, &xfer_module, noxfer_timeout_cb);
   }
 
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutStalled", FALSE);
