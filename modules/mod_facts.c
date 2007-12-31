@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.1 2007-12-31 18:28:48 castaglia Exp $
+ * $Id: mod_facts.c,v 1.2 2007-12-31 19:31:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,13 +34,6 @@
 #endif
 
 module facts_module;
-
-/* Docs:
-
-  http://www.faqs.org/rfcs/rfc3659.html
-  http://www.ietf.org/internet-drafts/draft-somers-ftp-mfxx-03.txt
-
- */
 
 static unsigned long facts_opts = 0;
 #define FACTS_OPT_SHOW_MODIFY		0x00001
