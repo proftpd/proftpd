@@ -1,6 +1,6 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
- * Copyright (c) 1999, 2000-7, John Morrissey <jwm@horde.net>
+ * Copyright (c) 1999, 2000-8, John Morrissey <jwm@horde.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.59 2008-01-01 17:29:52 jwm Exp $
+ * $Id: mod_ldap.c,v 1.60 2008-01-01 17:31:59 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
