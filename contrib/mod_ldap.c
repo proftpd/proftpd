@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.17
+ * mod_ldap v2.8.18
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.58 2007-09-07 16:13:41 jwm Exp $
+ * $Id: mod_ldap.c,v 1.59 2008-01-01 17:29:52 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -70,7 +70,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.8.17"
+#define MOD_LDAP_VERSION	"mod_ldap/2.8.18"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001021002
 # error MOD_LDAP_VERSION " requires ProFTPD 1.2.10rc2 or later"
@@ -139,30 +139,6 @@ pr_ldap_set_sizelimit(LDAP *limit_ld, int limit)
 # include <openssl/evp.h>
 #endif
 
-#define HASH_TABLE_SIZE 10
-
-/* FIXME: does proftpd proper have uesr/group caching? remove ours if so? */
-typedef union pr_idauth {
-  uid_t uid;
-  gid_t gid;
-} pr_idauth_t;
-
-typedef struct _idmap {
-  struct _idmap *next, *prev;
-
-  /* This is a union because different OSs may give different types/sizes to
-   * UIDs and GIDs. This presents a far more portable way to deal with this
-   * reality.
-   */
-  pr_idauth_t id;
-
-  char *name;                  /* user or group name */
-  unsigned short int negative; /* have we gotten a negative answer before? */
-} pr_idmap_t;
-
-static xaset_t *uid_table[HASH_TABLE_SIZE];
-static xaset_t *gid_table[HASH_TABLE_SIZE];
-
 /* Config entries */
 static char *ldap_server, *ldap_dn, *ldap_dnpass,
             *ldap_auth_filter, *ldap_uid_filter,
@@ -183,8 +159,8 @@ static char *ldap_server, *ldap_dn, *ldap_dnpass,
             *ldap_attr_ftpquota = "ftpQuota";
 static int ldap_port = LDAP_PORT,
            ldap_doauth = 0, ldap_douid = 0, ldap_dogid = 0, ldap_doquota = 0,
-           ldap_authbinds = 1, ldap_negcache = 1,
-           ldap_querytimeout = 0, ldap_genhdir = 0, ldap_genhdir_prefix_nouname = 0,
+           ldap_authbinds = 1, ldap_querytimeout = 0,
+           ldap_genhdir = 0, ldap_genhdir_prefix_nouname = 0,
            ldap_forcedefaultuid = 0, ldap_forcedefaultgid = 0,
            ldap_forcegenhdir = 0, ldap_protocol_version = 3,
            ldap_dereference = LDAP_DEREF_NEVER,
@@ -202,18 +178,8 @@ static int ldap_use_ssl = 0;
 #endif
 
 static LDAP *ld = NULL;
-static struct passwd *pw = NULL;
-static struct group *gr = NULL;
 array_header *cached_quota = NULL;
 
-
-static int
-pr_ldap_module_init(void)
-{
-  memset(uid_table, 0, sizeof(uid_table));
-  memset(gid_table, 0, sizeof(gid_table));
-  return 0;
-}
 
 static void
 pr_ldap_unbind(void)
@@ -235,7 +201,7 @@ pr_ldap_unbind(void)
 }
 
 static int
-pr_ldap_connect(LDAP **conn_ld, int bind)
+pr_ldap_connect(LDAP **conn_ld, int do_bind)
 {
   int ret, version;
 #ifdef LDAP_OPT_X_TLS_HARD
@@ -295,7 +261,7 @@ pr_ldap_connect(LDAP **conn_ld, int bind)
   }
 #endif /* USE_LDAP_TLS */
 
-  if (bind == TRUE) {
+  if (do_bind == TRUE) {
 #if LDAP_API_VERSION >= 2000
     bindcred.bv_val = ldap_dnpass;
     bindcred.bv_len = ldap_dnpass != NULL ? strlen(ldap_dnpass) : 0;
@@ -370,6 +336,7 @@ pr_ldap_user_lookup(pool *p,
 {
   char *filter, *dn;
   int i = 0, ret;
+  struct passwd *pw;
   LDAPMessage *result, *e;
   LDAP_VALUE_T **values;
 
@@ -430,12 +397,7 @@ pr_ldap_user_lookup(pool *p,
     return NULL; /* No LDAP entries for this user */
   }
 
-  if (!pw) {
-    pw = pcalloc(session.pool, sizeof(struct passwd));
-  } else {
-    memset(pw, '\0', sizeof(struct passwd));
-  }
-
+  pw = pcalloc(session.pool, sizeof(struct passwd));
   while (ldap_attrs[i] != NULL) {
     pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": fetching value(s) for attr %s", ldap_attrs[i]);
 
@@ -596,6 +558,7 @@ pr_ldap_group_lookup(pool *p,
 {
   char *filter, *dn;
   int i = 0, value_count, value_offset, ret;
+  struct group *gr;
   LDAPMessage *result, *e;
   LDAP_VALUE_T **values;
 
@@ -647,12 +610,7 @@ pr_ldap_group_lookup(pool *p,
     return NULL; /* No LDAP entries for this user */
   }
 
-  if (!gr) {
-    gr = pcalloc(session.pool, sizeof(struct group));
-  } else {
-    memset(gr, '\0', sizeof(struct group));
-  }
-
+  gr = pcalloc(session.pool, sizeof(struct group));
   while (ldap_attrs[i] != NULL) {
     pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": fetching value(s) for attr %s", ldap_attrs[i]);
 
@@ -885,77 +843,6 @@ pr_ldap_getpwuid(pool *p, uid_t uid)
     ldap_uid_basedn, uid_attrs, ldap_authbinds ? &ldap_authbind_dn : NULL);
 }
 
-static int
-_compare_uid(pr_idmap_t *m1, pr_idmap_t *m2)
-{
-  if (m1->id.uid < m2->id.uid) {
-    return -1;
-  }
-
-  if (m1->id.uid > m2->id.uid) {
-    return 1;
-  }
-
-  return 0;
-}
-
-static int
-_compare_gid(pr_idmap_t *m1, pr_idmap_t *m2)
-{
-  if (m1->id.gid < m2->id.gid) {
-    return -1;
-  }
-
-  if (m1->id.gid > m2->id.gid) {
-    return 1;
-  }
-
-  return 0;
-}
-
-static int
-_compare_id(xaset_t **table, pr_idauth_t id, pr_idauth_t idcomp)
-{
-  if (table == uid_table) {
-    return id.uid == idcomp.uid;
-  }
-  return id.gid == idcomp.gid;
-}
-
-static pr_idmap_t *
-_auth_lookup_id(xaset_t **id_table, pr_idauth_t id)
-{
-  int hash = ((id_table == uid_table) ? id.uid : id.gid) % HASH_TABLE_SIZE;
-  pr_idmap_t *m;
-
-  if (!id_table[hash]) {
-    id_table[hash] = xaset_create(permanent_pool,
-      (id_table == uid_table) ? (XASET_COMPARE) _compare_uid :
-                                (XASET_COMPARE) _compare_gid);
-  }
-
-  for (m = (pr_idmap_t *) id_table[hash]->xas_list; m; m = m->next) {
-    if (_compare_id(id_table, m->id, id)) {
-      break;
-    }
-  }
-
-  if (!m || !_compare_id(id_table, m->id, id)) {
-    /* Isn't in the table. */
-    m = (pr_idmap_t *) pcalloc(id_table[hash]->pool, sizeof(pr_idmap_t));
-
-    if (id_table == uid_table) {
-      m->id.uid = id.uid;
-    } else {
-      m->id.gid = id.gid;
-    }
-
-    xaset_insert_sort(id_table[hash], (xasetmember_t *) m, FALSE);
-  }
-
-  return m;
-}
-
 MODRET
 handle_ldap_quota_lookup(cmd_rec *cmd)
 {
@@ -992,8 +879,6 @@ handle_ldap_endpwent(cmd_rec *cmd)
 {
   if (ldap_doauth || ldap_douid || ldap_dogid) {
     pr_ldap_unbind();
-    pw = NULL;
-    gr = NULL;
     return PR_HANDLED(cmd);
   }
 
@@ -1003,11 +888,13 @@ handle_ldap_endpwent(cmd_rec *cmd)
 MODRET
 handle_ldap_getpwuid(cmd_rec *cmd)
 {
+  struct passwd *pw;
+
   if (!ldap_douid) {
     return PR_DECLINED(cmd);
   }
 
-  pw = pr_ldap_getpwuid(cmd->tmp_pool, (uid_t)cmd->argv[0]);
+  pw = pr_ldap_getpwuid(cmd->tmp_pool, *((uid_t *) cmd->argv[0]));
   if (pw) {
     return mod_create_data(cmd, pw);
   }
@@ -1018,13 +905,10 @@ handle_ldap_getpwuid(cmd_rec *cmd)
 MODRET
 handle_ldap_getpwnam(cmd_rec *cmd)
 {
+  struct passwd *pw;
+
   if (!ldap_doauth) {
     return PR_DECLINED(cmd);
-  }
-
-  if (pw && pw->pw_name && strcasecmp(pw->pw_name, cmd->argv[0]) == 0) {
-    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": getpwnam: returning cached data for %s", pw->pw_name);
-    return mod_create_data(cmd, pw);
   }
 
   pw = pr_ldap_getpwnam(cmd->tmp_pool, cmd->argv[0]);
@@ -1038,14 +922,12 @@ handle_ldap_getpwnam(cmd_rec *cmd)
 MODRET
 handle_ldap_getgrnam(cmd_rec *cmd)
 {
+  struct group *gr;
+
   if (!ldap_dogid) {
     return PR_DECLINED(cmd);
   }
 
-  if (gr && strcasecmp(gr->gr_name, cmd->argv[0]) == 0) {
-    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": getgrnam: returning cached data for %s", gr->gr_name);
-    return mod_create_data(cmd, gr);
-  }
   gr = pr_ldap_getgrnam(cmd->tmp_pool, cmd->argv[0]);
   if (gr) {
     return mod_create_data(cmd, gr);
@@ -1057,20 +939,18 @@ handle_ldap_getgrnam(cmd_rec *cmd)
 MODRET
 handle_ldap_getgrgid(cmd_rec *cmd)
 {
+  struct group *gr;
+
   if (!ldap_dogid) {
     return PR_DECLINED(cmd);
   }
 
-  if (gr && gr->gr_gid == (gid_t)cmd->argv[0]) {
-    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": getgrgid: returning cached data for %lu", (unsigned long)gr->gr_gid);
-    return mod_create_data(cmd, gr);
-  }
-  gr = pr_ldap_getgrgid(cmd->tmp_pool, (gid_t)cmd->argv[0]);
-  if (gr) {
-    return mod_create_data(cmd, gr);
+  gr = pr_ldap_getgrgid(cmd->tmp_pool, *((gid_t *) cmd->argv[0]));
+  if (!gr) {
+    return PR_DECLINED(cmd);
   }
 
-  return PR_DECLINED(cmd);
+  return mod_create_data(cmd, gr);
 }
 
 MODRET
@@ -1199,6 +1079,7 @@ handle_ldap_is_auth(cmd_rec *cmd)
 {
   const char *username = cmd->argv[0];
   char *pass_attrs[] = {ldap_attr_userpassword, ldap_attr_homedirectory, NULL};
+  struct passwd *pw;
 
   if (!ldap_doauth) {
     return PR_DECLINED(cmd);
@@ -1212,19 +1093,12 @@ handle_ldap_is_auth(cmd_rec *cmd)
    * this way, then by all means, let me know.
    */
 
-  /* If we don't have a cached entry, or if the cached entry isn't for this
-   * user, fetch the entry.
-   */
-  if (!pw || (pw && pw->pw_name && strcasecmp(pw->pw_name, username) != 0)) {
-    if ((pw = pr_ldap_user_lookup(cmd->tmp_pool, ldap_auth_filter, username,
-                                  pr_ldap_generate_filter(cmd->tmp_pool, ldap_auth_basedn, username),
-                                  ldap_authbinds ? pass_attrs + 1 : pass_attrs,
-                                  ldap_authbinds ? &ldap_authbind_dn : NULL)) == NULL)
-    {
-      return PR_DECLINED(cmd); /* Can't find the user in the LDAP directory. */
-    }
-  } else {
-    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": auth: using cached data for %s", pw->pw_name);
+  pw = pr_ldap_user_lookup(cmd->tmp_pool, ldap_auth_filter, username,
+    pr_ldap_generate_filter(cmd->tmp_pool, ldap_auth_basedn, username),
+    ldap_authbinds ? pass_attrs + 1 : pass_attrs,
+    ldap_authbinds ? &ldap_authbind_dn : NULL);
+  if (!pw) {
+    return PR_DECLINED(cmd); /* Can't find the user in the LDAP directory. */
   }
 
   if (!ldap_authbinds && !pw->pw_passwd) {
@@ -1413,117 +1287,71 @@ handle_ldap_check(cmd_rec *cmd)
 MODRET
 handle_ldap_uid_name(cmd_rec *cmd)
 {
-  pr_idmap_t *m;
-  pr_idauth_t id;
+  struct passwd *pw;
 
   if (!ldap_douid) {
     return PR_DECLINED(cmd);
   }
 
-  id.uid = *((uid_t *) cmd->argv[0]);
-  m = _auth_lookup_id(uid_table, id);
-
-  if (m->name) {
-    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": uid2name: returning cached data for %lu (%s)", (unsigned long)id.uid, m->name);
-  } else {
-    if (ldap_negcache && m->negative) {
-      return PR_DECLINED(cmd);
-    }
-
-    /* Wasn't cached and we've haven't seen this one, so perform a lookup.
-     * If we don't have a cached entry, or if the cached entry isn't for
-     * this user, fetch the entry.
-     */
-    if (!pw || pw->pw_uid != id.uid) {
-      if (! (pw = pr_ldap_getpwuid(cmd->tmp_pool, id.uid))) {
-        if (ldap_negcache) {
-          m->negative = 1;
-        }
-        return PR_DECLINED(cmd); /* Can't find the user in the LDAP directory. */
-      }
-    }
-
-    m->name = pstrdup(permanent_pool, pw->pw_name);
+  pw = pr_ldap_getpwuid(cmd->tmp_pool, *((uid_t *) cmd->argv[0]));
+  if (!pw) {
+    /* Can't find the user in the LDAP directory. */
+    return PR_DECLINED(cmd);
   }
 
-  return mod_create_data(cmd, m->name);
+  return mod_create_data(cmd, pstrdup(permanent_pool, pw->pw_name));
 }
 
 MODRET
 handle_ldap_gid_name(cmd_rec *cmd)
 {
-  pr_idmap_t *m;
-  pr_idauth_t id;
+  struct group *gr;
 
   if (!ldap_dogid) {
     return PR_DECLINED(cmd);
   }
 
-  id.gid = *((gid_t *) cmd->argv[0]);
-  m = _auth_lookup_id(gid_table, id);
-
-  if (m->name) {
-    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": uid2name: returning cached data for %lu (%s)", (unsigned long)id.gid, m->name);
-  } else {
-    if (ldap_negcache && m->negative) {
-      return PR_DECLINED(cmd);
-    }
-
-    /* Wasn't cached and we've haven't seen this one, so perform a lookup.
-     * If we don't have a cached entry, or if the cached entry isn't for
-     * this group, fetch the entry.
-     */
-    if (!gr || gr->gr_gid != id.gid) {
-      if (! (gr = pr_ldap_getgrgid(cmd->tmp_pool, id.gid))) {
-        if (ldap_negcache) {
-          m->negative = 1;
-        }
-        return PR_DECLINED(cmd); /* Can't find the user in the LDAP directory. */
-      }
-    }
-
-    m->name = pstrdup(permanent_pool, gr->gr_name);
+  gr = pr_ldap_getgrgid(cmd->tmp_pool, *((gid_t *) cmd->argv[0]));
+  if (!gr) {
+    /* Can't find the user in the LDAP directory. */
+    return PR_DECLINED(cmd);
   }
 
-  return mod_create_data(cmd, m->name);
+  return mod_create_data(cmd, pstrdup(permanent_pool, gr->gr_name));
 }
 
 MODRET
 handle_ldap_name_uid(cmd_rec *cmd)
 {
+  struct passwd *pw;
+
   if (!ldap_doauth) {
     return PR_DECLINED(cmd);
   }
 
-  if (pw && pw->pw_name && strcasecmp(pw->pw_name, cmd->argv[0]) == 0) {
-    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": name2uid: returning cached data for %s", pw->pw_name);
-    return mod_create_data(cmd, (void *) &pw->pw_uid);
-  }
   pw = pr_ldap_getpwnam(cmd->tmp_pool, cmd->argv[0]);
-  if (pw) {
-    return mod_create_data(cmd, (void *) &pw->pw_uid);
+  if (!pw) {
+    return PR_DECLINED(cmd);
   }
 
-  return PR_DECLINED(cmd);
+  return mod_create_data(cmd, (void *) &pw->pw_uid);
 }
 
 MODRET
 handle_ldap_name_gid(cmd_rec *cmd)
 {
+  struct group *gr;
+
   if (!ldap_dogid) {
     return PR_DECLINED(cmd);
   }
 
-  if (gr && strcasecmp(gr->gr_name, cmd->argv[0]) == 0) {
-    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": name2gid: returning cached data for %s", gr->gr_name);
-    return mod_create_data(cmd, (void *) &gr->gr_gid);
-  }
   gr = pr_ldap_getgrnam(cmd->tmp_pool, cmd->argv[0]);
-  if (gr) {
-    return mod_create_data(cmd, (void *) &gr->gr_gid);
+  if (!gr) {
+    return PR_DECLINED(cmd);
   }
 
-  return PR_DECLINED(cmd);
+  return mod_create_data(cmd, (void *) &gr->gr_gid);
 }
 
 
@@ -1854,19 +1682,7 @@ MODRET set_ldap_forcedefaultgid(cmd_rec *cmd)
 MODRET
 set_ldap_negcache(cmd_rec *cmd)
 {
-  int b;
-  config_rec *c;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  if ((b = get_boolean(cmd, 1)) == -1) {
-    CONF_ERROR(cmd, "LDAPNegativeCache: expected a boolean value for first argument.");
-  }
-
-  c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = b;
+  pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": LDAPNegativeCache has no effect and is deprecated; please remove it from your configuration");
   return PR_HANDLED(cmd);
 }
 
@@ -2202,11 +2018,6 @@ ldap_getconf(void)
     ldap_forcegenhdir = *((int *) ptr);
   }
 
-  ptr = get_param_ptr(main_server->conf, "LDAPNegativeCache", FALSE);
-  if (ptr) {
-    ldap_negcache = *((int *) ptr);
-  }
-
   ptr = get_param_ptr(main_server->conf, "LDAPGenerateHomedir", FALSE);
   if (ptr) {
     ldap_genhdir = *((int *) ptr);
@@ -2336,12 +2147,12 @@ static authtable ldap_auth[] = {
 };
 
 module ldap_module = {
-  NULL, NULL,                        /* Always NULL */
-  0x20,                              /* API Version 2.0 */
+  NULL, NULL,          /* Always NULL */
+  0x20,                /* API Version 2.0 */
   "ldap",
-  ldap_config,                       /* Configuration directive table */
-  ldap_cmdtab,                       /* Command handlers */
-  ldap_auth,                         /* Authentication handlers */
-  pr_ldap_module_init, ldap_getconf, /* Initialization functions */
+  ldap_config,         /* Configuration directive table */
+  ldap_cmdtab,         /* Command handlers */
+  ldap_auth,           /* Authentication handlers */
+  NULL, ldap_getconf,  /* Initialization functions */
   MOD_LDAP_VERSION
 };
