@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.227 2008-01-02 23:07:38 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.228 2008-01-02 23:16:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -56,6 +56,18 @@ static unsigned char use_sendfile = TRUE;
 
 static int xfer_check_limit(cmd_rec *);
 
+/* Transfer priority */
+static int xfer_prio_config = 0;
+static int xfer_prio_curr = 0;
+static unsigned long xfer_prio_flags = 0;
+#define PR_XFER_PRIO_FL_APPE  0x0001
+#define PR_XFER_PRIO_FL_RETR  0x0002
+#define PR_XFER_PRIO_FL_STOR  0x0004
+#define PR_XFER_PRIO_FL_STOU  0x0008
+
+static int xfer_prio_adjust(void);
+static int xfer_prio_restore(void);
+
 /* Transfer rate variables */
 static long double xfer_rate_kbps = 0.0, xfer_rate_bps = 0.0;
 static off_t xfer_rate_freebytes = 0.0;
@@ -67,7 +79,7 @@ static void xfer_rate_lookup(cmd_rec *);
 static void xfer_rate_sigmask(unsigned char);
 static void xfer_rate_throttle(off_t, unsigned int);
 
-/* Used for both MaxTransferPerHost and TransferRate */
+/* Used for MaxTransferPerHost and TransferRate */
 static int xfer_parse_cmdlist(const char *, config_rec *, char *);
 
 module xfer_module;
@@ -468,6 +480,78 @@ static int xfer_check_limit(cmd_rec *cmd) {
   return 0;
 }
 
+static int xfer_prio_adjust(void) {
+  int res;
+
+  if (xfer_prio_config == 0) {
+    return 0;
+  }
+
+  errno = 0;
+  res = getpriority(PRIO_PROCESS, 0);
+  if (res < 0 &&
+      errno != 0) {
+    pr_trace_msg(trace_channel, 7, "unable to get current process priority: %s",
+      strerror(errno));
+    return -1;
+  }
+
+  /* No need to adjust anything if the current priority already is the
+   * configured priority.
+   */
+  if (res == xfer_prio_config) {
+    pr_trace_msg(trace_channel, 10,
+      "current process priority matches configured priority");
+    return 0;
+  }
+
+  xfer_prio_curr = res;
+
+  pr_trace_msg(trace_channel, 10, "adjusting process priority to be %d",
+    xfer_prio_config);
+  if (xfer_prio_config > 0) {
+    res = setpriority(PRIO_PROCESS, 0, xfer_prio_config);
+
+  } else {
+    /* Increasing the process priority requires root privs. */
+    PRIVS_ROOT
+    res = setpriority(PRIO_PROCESS, 0, xfer_prio_config);
+    PRIVS_RELINQUISH
+  }
+
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 0, "error adjusting process priority: %s",
+      strerror(errno));
+    return -1;
+  }
+
+  return 0;
+}
+
+static int xfer_prio_restore(void) {
+  int res;
+
+  if (xfer_prio_config == 0 ||
+      xfer_prio_curr == 0) {
+    return 0;
+  }
+
+  pr_trace_msg(trace_channel, 10, "restoring process priority to %d",
+    xfer_prio_curr);
+
+  PRIVS_ROOT
+  res = setpriority(PRIO_PROCESS, 0, xfer_prio_curr);
+  PRIVS_RELINQUISH
+
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 0, "error restoring process priority: %s",
+      strerror(errno));
+  }
+
+  xfer_prio_curr = 0;
+  return 0;
+}
+
 static void xfer_rate_lookup(cmd_rec *cmd) {
   config_rec *c = NULL;
   char *xfer_cmd = NULL;
@@ -610,6 +694,7 @@ static int xfer_parse_cmdlist(const char *name, config_rec *c,
         strcasecmp(cmd, C_STOR) != 0 &&
         strcasecmp(cmd, C_STOU) != 0) {
       pr_log_debug(DEBUG0, "invalid %s command: %s", name, cmd);
+      errno = EINVAL;
       return -1;
     }
 
@@ -1316,6 +1401,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       return PR_ERROR(cmd);
   }
 
+  (void) xfer_prio_adjust();
   return PR_HANDLED(cmd);
 }
 
@@ -1431,6 +1517,8 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
       strerror(errno));
 
   session.xfer.xfer_type = STOR_UNIQUE;
+
+  (void) xfer_prio_adjust();
   return PR_HANDLED(cmd);
 }
 
@@ -1924,6 +2012,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_NOTICE, "notice: error adding 'mod_xfer.retr-path': %s",
       strerror(errno));
 
+  (void) xfer_prio_adjust();
   return PR_HANDLED(cmd);
 }
 
@@ -2238,14 +2327,16 @@ MODRET xfer_smnt(cmd_rec *cmd) {
 }
 
 MODRET xfer_err_cleanup(cmd_rec *cmd) {
-  if (session.xfer.p)
+  if (session.xfer.p) {
     destroy_pool(session.xfer.p);
+  }
 
   memset(&session.xfer, '\0', sizeof(session.xfer));
 
   /* Don't forget to clear any possible REST parameter as well. */
   session.restart_pos = 0;
 
+  (void) xfer_prio_restore();
   return PR_DECLINED(cmd);
 }
 
@@ -2264,6 +2355,7 @@ MODRET xfer_log_stor(cmd_rec *cmd) {
   /* Don't forget to clear any possible REST parameter as well. */
   session.restart_pos = 0;
 
+  (void) xfer_prio_restore();
   return PR_DECLINED(cmd);
 }
 
@@ -2283,6 +2375,7 @@ MODRET xfer_log_retr(cmd_rec *cmd) {
   /* Don't forget to clear any possible REST parameter as well. */
   session.restart_pos = 0;
 
+  (void) xfer_prio_restore();
   return PR_DECLINED(cmd);
 }
 
@@ -2338,6 +2431,13 @@ MODRET xfer_post_pass(cmd_rec *cmd) {
     /* Note: timers for handling TimeoutStalled timeouts are handled in the
      * data transfer routines, not here.
      */
+  }
+
+  /* Check for TransferPriority. */
+  c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TransferPriority", FALSE);
+  if (c) {
+    xfer_prio_flags = *((unsigned long *) c->argv[0]);
+    xfer_prio_config = *((int *) c->argv[1]);
   }
 
   return PR_HANDLED(cmd);
@@ -2689,6 +2789,70 @@ MODRET set_timeoutstalled(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TransferPriority cmds "low"|"medium"|"high"|number
+ */
+MODRET set_transferpriority(cmd_rec *cmd) {
+  config_rec *c;
+  int prio;
+  char *str;
+  unsigned long flags = 0;
+
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  if (strcasecmp(cmd->argv[2], "low") == 0) {
+    prio = 15;
+
+  } else if (strcasecmp(cmd->argv[2], "medium") == 0) {
+    prio = 0;
+
+  } else if (strcasecmp(cmd->argv[2], "high") == 0) {
+    prio = -15;
+
+  } else {
+    int res = atoi(cmd->argv[2]);
+
+    if (res < PRIO_MIN ||
+        res > PRIO_MAX) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": invalid priority '",
+        cmd->argv[2], "'", NULL));
+    }
+
+    prio = res;
+  }
+
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+
+  /* Parse the command list. */
+  while ((str = get_cmd_from_list(&cmd->argv[1])) != NULL) {
+
+    if (strcmp(str, C_APPE) == 0) {
+      flags |= PR_XFER_PRIO_FL_APPE;
+
+    } else if (strcmp(str, C_RETR) == 0) {
+      flags |= PR_XFER_PRIO_FL_RETR;
+
+    } else if (strcmp(str, C_STOR) == 0) {
+      flags |= PR_XFER_PRIO_FL_STOR;
+
+    } else if (strcmp(str, C_STOU) == 0) {
+      flags |= PR_XFER_PRIO_FL_STOU;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": invalid FTP transfer command: '", str, "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = flags;
+  c->argv[1] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = prio;
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
 /* usage: TransferRate cmds kbps[:free-bytes] ["user"|"group"|"class"
  *          expression]
  */
@@ -2797,9 +2961,9 @@ MODRET set_transferrate(cmd_rec *cmd) {
 
     c = add_config_param(cmd->argv[0], 0);
 
-    /* Parse the command list. */
-
-    /* The five additional slots are for: cmd-list, bps, free-bytes,
+    /* Parse the command list.
+     *
+     * The five additional slots are for: cmd-list, bps, free-bytes,
      * precedence, user/group/class.
      */
     c->argc = argc + 5;
@@ -2951,8 +3115,9 @@ static int xfer_sess_init(void) {
 
   /* Check for UseSendfile. */
   c = find_config(main_server->conf, CONF_PARAM, "UseSendfile", FALSE);
-  if (c)
+  if (c) {
     use_sendfile = *((unsigned char *) c->argv[0]);
+  }
 
   /* Exit handlers for HiddenStores cleanup */
   pr_event_register(&xfer_module, "core.exit", xfer_exit_ev, NULL);
@@ -2999,6 +3164,7 @@ static conftable xfer_conftab[] = {
   { "StoreUniquePrefix",	set_storeuniqueprefix,		NULL },
   { "TimeoutNoTransfer",	set_timeoutnoxfer,		NULL },
   { "TimeoutStalled",		set_timeoutstalled,		NULL },
+  { "TransferPriority",		set_transferpriority,		NULL },
   { "TransferRate",		set_transferrate,		NULL },
   { "UseSendfile",		set_usesendfile,		NULL },
 
