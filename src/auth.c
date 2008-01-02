@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.56 2007-10-14 00:48:00 castaglia Exp $
+ * $Id: auth.c,v 1.57 2008-01-02 17:58:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -425,7 +425,7 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
 
   /* Sanity check */
   if (res == NULL) {
-    pr_log_pri(PR_LOG_NOTICE, "no such user '%s'", name);
+    errno = ENOENT;
     return NULL;
   }
 
@@ -509,7 +509,7 @@ struct passwd *pr_auth_getpwuid(pool *p, uid_t uid) {
 
   /* Sanity check */
   if (res == NULL) {
-    pr_log_pri(PR_LOG_NOTICE, "no such UID %lu", (unsigned long) uid);
+    errno = ENOENT;
     return NULL;
   }
 
@@ -547,7 +547,7 @@ struct group *pr_auth_getgrnam(pool *p, const char *name) {
 
   /* Sanity check */
   if (res == NULL) {
-    pr_log_pri(PR_LOG_NOTICE, "no such group '%s'", name);
+    errno = ENOENT;
     return NULL;
   }
 
@@ -582,7 +582,7 @@ struct group *pr_auth_getgrgid(pool *p, gid_t gid) {
 
   /* Sanity check */
   if (res == NULL) {
-    pr_log_pri(PR_LOG_NOTICE, "no such GID %lu", (unsigned long) gid);
+    errno = ENOENT;
     return NULL;
   }
 

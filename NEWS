@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.875 2007-12-31 22:33:30 castaglia Exp $
+$Id: NEWS,v 1.876 2008-01-02 17:58:49 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -77,6 +77,8 @@ CVS
   "AuthPAMOptions NoTTY" to disable this.
 - Bug 2741 - Apply TimeoutNoTransfer, TimeoutStalled, TimeoutIdle to
   <Anonymous> section.
+- Bug 2997 - Uploading files with "~" causes harmless but annoying log
+  message.
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------
