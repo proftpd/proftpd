@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.226 2007-12-31 22:47:38 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.227 2008-01-02 23:07:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2326,7 +2326,8 @@ MODRET xfer_post_pass(cmd_rec *cmd) {
 
     /* Setup timer */
     if (timeout > 0)
-      pr_timer_add(timeout, PR_TIMER_NOXFER, &xfer_module, noxfer_timeout_cb);
+      pr_timer_add(timeout, PR_TIMER_NOXFER, &xfer_module, noxfer_timeout_cb,
+        "TimeoutNoTransfer");
   }
 
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutStalled", FALSE);
