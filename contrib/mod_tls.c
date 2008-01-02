@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2007 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2008 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -1596,7 +1596,7 @@ static int tls_init_ctxt(void) {
 
   SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
 
-  if (tls_seed_prng())
+  if (tls_seed_prng() < 0)
     tls_log("%s", "unable to properly seed PRNG");
 
   /* Add the commands handled by this module to the HELP list. */
@@ -2548,15 +2548,14 @@ static int tls_seed_prng(void) {
   static char rand_file[300];
   FILE *fp = NULL;
   
-  /* Lookup any configured TLSRandomSeed. */
-  tls_rand_file = get_param_ptr(main_server->conf, "TLSRandomSeed", FALSE);
-
 #if OPENSSL_VERSION_NUMBER >= 0x00905100L
-  if (RAND_status())
+  if (RAND_status() == 1)
 
     /* PRNG already well-seeded. */
     return 0;
 #endif
+
+  tls_log("PRNG not seeded with enough data, looking for entropy sources");
 
   /* If the device '/dev/urandom' is present, OpenSSL uses it by default.
    * Check if it's present, else we have to make random data ourselves.
@@ -2564,28 +2563,62 @@ static int tls_seed_prng(void) {
   fp = fopen("/dev/urandom", "r");
   if (fp) {
     fclose(fp);
+
+    tls_log("device /dev/urandom is present, assuming OpenSSL will use that "
+      "for PRNG data");
     return 0;
   }
 
+  /* Lookup any configured TLSRandomSeed. */
+  tls_rand_file = get_param_ptr(main_server->conf, "TLSRandomSeed", FALSE);
+
   if (!tls_rand_file) {
     /* The ftpd's random file is (openssl-dir)/.rnd */
-    snprintf(rand_file, sizeof(rand_file), "%s/.rnd",
+    memset(rand_file, '\0', sizeof(rand_file));
+    snprintf(rand_file, sizeof(rand_file)-1, "%s/.rnd",
       X509_get_default_cert_area());
-    rand_file[sizeof(rand_file)-1] = '\0';
     tls_rand_file = rand_file;
   }
 
-  if (!RAND_load_file(tls_rand_file, 1024)) {
+#if OPENSSL_VERSION_NUMBER >= 0x00905100L
+  /* In OpenSSL 0.9.5 and later, specifying -1 here means "read the entire
+   * file", which is exactly what we want.
+   */
+  if (RAND_load_file(tls_rand_file, -1) == 0) {
+#else
+
+  /* In versions of OpenSSL prior to 0.9.5, we have to specify the amount of
+   * bytes to read in.  Since RAND_write_file(3) typically writes 1K of data
+   * out, we will read 1K bytes in.
+   */
+  if (RAND_load_file(tls_rand_file, 1024) != 1024) {
+#endif
+
+    time_t now;
+    pid_t pid;
+ 
+#if OPENSSL_VERSION_NUMBER >= 0x00905100L
+    tls_log("unable to load PRNG seed data from '%s': %s", tls_rand_file,
+      tls_get_errors());
+#else
+    tls_log("unable to load 1024 bytes of PRNG seed data from '%s': %s",
+      tls_rand_file, tls_get_errors());
+#endif
+ 
     /* No random file found, create new seed. */
-    unsigned int c = time(NULL);
-    RAND_seed(&c, sizeof(c));
-    c = getpid();
-    RAND_seed(&c, sizeof(c));
+    now = time(NULL);
+    RAND_seed(&now, sizeof(time_t));
+
+    pid = getpid();
+    RAND_seed(&pid, sizeof(pid_t));
     RAND_seed(stackdata, sizeof(stackdata));
+
+  } else {
+    tls_log("loaded PRNG seed data from '%s'", tls_rand_file);
   }
 
 #if OPENSSL_VERSION_NUMBER >= 0x00905100L
-  if (!RAND_status()) {
+  if (RAND_status() == 0) {
      /* PRNG still badly seeded. */
      return -1;
   }
@@ -4385,7 +4418,6 @@ MODRET set_tlsrandseed(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  /* NOTE: not yet implemented/used */
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
 }
@@ -4742,6 +4774,20 @@ extern pid_t mpid;
 static void tls_daemon_exit_ev(const void *event_data, void *user_data) {
   if (mpid == getpid())
     tls_scrub_pkeys();
+
+  /* Write out a new RandomSeed file, for use later. */
+  if (tls_rand_file) {
+    int res;
+
+    res = RAND_write_file(tls_rand_file);
+    if (res < 0) {
+      tls_log("error writing PRNG seed data to '%s': %s", tls_rand_file,
+        tls_get_errors());
+
+    } else {
+      tls_log("wrote %d bytes of PRNG seed data to '%s'", res, tls_rand_file);
+    }
+  }
 }
 
 static void tls_restart_ev(const void *event_data, void *user_data) {
@@ -4753,10 +4799,6 @@ static void tls_sess_exit_ev(const void *event_data, void *user_data) {
 
   /* OpenSSL cleanup */
   tls_cleanup(0);
-
-  /* Write out a new RandomSeed file, for use later */
-  if (tls_rand_file)
-    RAND_write_file(tls_rand_file);
 
   /* Done with the NetIO objects */
   if (tls_ctrl_netio) {
