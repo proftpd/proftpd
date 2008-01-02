@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.128 2007-10-05 17:25:32 castaglia Exp $
+ * $Id: mod_sql.c,v 1.129 2008-01-02 18:31:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1889,7 +1889,12 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
   case 'F':
     argp = arg;
-    if (session.xfer.p && session.xfer.path) {
+
+    if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+      sstrncpy(arg, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE), sizeof(arg));
+
+    } else if (session.xfer.p &&
+               session.xfer.path) {
       sstrncpy(argp, session.xfer.path, sizeof(arg));
 
     } else {
@@ -1939,7 +1944,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
   case 'P':
     argp = arg;
-    snprintf(argp, sizeof(arg), "%u",(unsigned int)getpid());
+    snprintf(argp, sizeof(arg), "%lu", (unsigned long) getpid());
     break;
 
   case 'p': 
@@ -1949,8 +1954,10 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
   case 'r':
     argp = arg;
-    if(!strcasecmp(cmd->argv[0], C_PASS) && session.hide_password)
+    if (strcmp(cmd->argv[0], C_PASS) == 0 &&
+        session.hide_password)
       sstrncpy(argp, C_PASS " (hidden)", sizeof(arg));
+
     else
       sstrncpy(argp, get_full_cmd(cmd), sizeof(arg));
     break;
