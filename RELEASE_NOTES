@@ -54,6 +54,8 @@ files.
 
       MaxTransfersPerUser
 
+      TransferPriority
+
   + Enhanced configuration directives:
 
       BanOnEvent ClientConnectRate
@@ -63,6 +65,11 @@ files.
       LogFormat %f
 
         RNFR/RNTO, SITE CHGRP, SITE CHMOD
+
+      TimeoutIdle, TimeoutNoTransfer, TimeoutStalled
+
+        These directives can now be used within <Anonymous> sections to
+        specify different timeouts for anonymous sessions.
 
       TLSOptions EnableDiags
 
@@ -114,4 +121,4 @@ files.
 
       doc/howto/ConfigurationTricks.html
 
-Last Updated: $Date: 2007-12-31 21:45:07 $
+Last Updated: $Date: 2008-01-02 23:17:36 $
