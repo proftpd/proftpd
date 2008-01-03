@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.149 2007-09-28 00:53:59 castaglia Exp $
+ * $Id: mod_ls.c,v 1.150 2008-01-03 01:39:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2176,10 +2176,6 @@ MODRET ls_nlst(cmd_rec *cmd) {
     targetlen = strlen(target);
   }
 
-  if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
-    return PR_ERROR(cmd);
-  session.sf_flags |= SF_ASCII_OVERRIDE;
-
   /* If the target is a glob, get the listing of files/dirs to send. */
   if (use_globbing &&
       strpbrk(target, "{[*?") != NULL) {
@@ -2193,6 +2189,10 @@ MODRET ls_nlst(cmd_rec *cmd) {
       pr_response_add_err(R_450, _("No files found"));
       return PR_ERROR(cmd);
     }
+
+    if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+      return PR_ERROR(cmd);
+    session.sf_flags |= SF_ASCII_OVERRIDE;
 
     /* Iterate through each matching entry */
     path = g.gl_pathv;
@@ -2270,9 +2270,17 @@ MODRET ls_nlst(cmd_rec *cmd) {
     }
 
     if (S_ISREG(st.st_mode)) {
+      if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+        return PR_ERROR(cmd);
+      session.sf_flags |= SF_ASCII_OVERRIDE;
+
       res = nlstfile(cmd, target);
 
     } else if (S_ISDIR(st.st_mode)) {
+      if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+        return PR_ERROR(cmd);
+      session.sf_flags |= SF_ASCII_OVERRIDE;
+
       res = nlstdir(cmd, target);
 
     } else {
