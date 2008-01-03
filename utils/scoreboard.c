@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support (modified for use by external utilities).
  *
- * $Id: scoreboard.c,v 1.8 2006-03-22 18:51:45 castaglia Exp $
+ * $Id: scoreboard.c,v 1.9 2008-01-03 02:13:43 castaglia Exp $
  */
 
 #include "utils.h"
@@ -90,25 +90,6 @@ static int rlock_scoreboard(void) {
 
   util_scoreboard_read_locked = TRUE;
   return 0;
-}
-
-/* "safe" strncpy, saves room for \0 at end of dest, and refuses to copy
- * more than "n" bytes.
- */
-char *util_sstrncpy(char *dest, const char *src, size_t n) {
-  register char *d = dest;
-
-  if(!dest)
-    return NULL;
-
-  if(src && *src) {
-    for(; *src && n > 1; n--)
-      *d++ = *src++;
-  }
-
-  *d = '\0';
-
-  return dest;
 }
 
 static int unlock_scoreboard(void) {
