@@ -330,6 +330,9 @@
 /* Define if you have the inet_pton function.  */
 #undef HAVE_INET_PTON
 
+/* Define if you have the loginrestrictions function.  */
+#undef HAVE_LOGINRESTRICTIONS
+
 /* Define if you have the memcpy function.  */
 #undef HAVE_MEMCPY
 

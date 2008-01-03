@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.33 2007-10-10 02:32:30 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.34 2008-01-03 04:21:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -581,8 +581,8 @@ MODRET pw_auth(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* cmd->argv[0] = hashed password,
- * cmd->argv[1] = user,
+/* cmd->argv[0] = hashed password
+ * cmd->argv[1] = user
  * cmd->argv[2] = cleartext
  */
 
@@ -596,6 +596,11 @@ MODRET pw_check(cmd_rec *cmd) {
   char *info[2];
   struct passwd *pwd;
   char *user = NULL;
+#endif
+
+#ifdef HAVE_LOGINRESTRICTIONS
+  int code = 0;
+  char *reason = NULL;
 #endif
 
 #ifdef COMSEC
@@ -631,7 +636,7 @@ MODRET pw_check(cmd_rec *cmd) {
       PRIVS_RELINQUISH
       pr_log_auth(PR_LOG_NOTICE, "sia_ses_authent() returned %d for user '%s'",
         res, user);
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     res = sia_ses_estab(NULL, ent);
@@ -639,14 +644,14 @@ MODRET pw_check(cmd_rec *cmd) {
       PRIVS_RELINQUISH
       pr_log_auth(PR_LOG_NOTICE, "sia_ses_estab() returned %d for user '%s'",
         res, user);
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     res = sia_ses_release(&ent);
     if (res != SIASUCCESS) {
       PRIVS_RELINQUISH
       pr_log_auth(PR_LOG_NOTICE, "sia_ses_release() returned %d", res);
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
   }
   PRIVS_RELINQUISH
@@ -702,6 +707,46 @@ MODRET pw_check(cmd_rec *cmd) {
 
   } else
 # endif /* CYGWIN */
+
+# ifdef HAVE_LOGINRESTRICTIONS
+
+  /* Check for account login restrictions and such using AIX-specific
+   * functions.
+   */
+  PRIVS_ROOT
+  if (loginrestrictions(cmd->argv[1], S_RLOGIN, NULL, &reason) != 0) {
+    PRIVS_RELINQUISH
+
+    if (reason &&
+        *reason) {
+      pr_log_auth(LOG_WARNING, "login restricted for user '%s': %.100s",
+        cmd->argv[1], reason);
+    }
+
+    return PR_DECLINED(cmd);
+  }
+
+  code = passwdexpired(cmd->argv[1], &reason);
+  PRIVS_RELINQUISH
+
+  switch (code) {
+    case 0:
+      /* Password not expired for user */
+      break;
+
+    case 1:
+      /* Password expired and needs to be changed */
+      pr_log_auth(LOG_WARNING, "password expired for user '%s': %.100s",
+        cmd->argv[1], reason);
+      return PR_DECLINED(cmd);
+
+    default: /* expired too long (2) or other error (-1) */
+      /* Password has been expired for too long, or some other error */
+      pr_log_auth(LOG_WARNING, "password expired too long/system failure for "
+        "user '%s': %.100s", cmd->argv[1], reason);
+      return PR_DECLINED(cmd);
+  }
+# endif /* !HAVE_LOGINRESTRICTIONS */
 
   if (strcmp(crypt(pw, cpw), cpw) != 0) {
     return PR_DECLINED(cmd);
