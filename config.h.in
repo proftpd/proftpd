@@ -606,6 +606,9 @@
 /* Define if you have the <sys/pstat.h> header file.  */
 #undef HAVE_SYS_PSTAT_H
 
+/* Define if you have the <sys/resource.h> header file.  */
+#undef HAVE_SYS_RESOURCE_H
+
 /* Define if you have the <sys/security.h> header file.  */
 #undef HAVE_SYS_SECURITY_H
 

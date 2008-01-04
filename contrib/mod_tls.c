@@ -47,7 +47,6 @@
 #endif
 
 #include <signal.h>
-#include <sys/resource.h>
 
 #ifdef HAVE_MLOCK
 # include <sys/mman.h>
