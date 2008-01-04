@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.34 2008-01-03 04:21:38 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.35 2008-01-04 22:23:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -901,7 +901,7 @@ MODRET pw_getgroups(cmd_rec *cmd) {
 #ifndef HAVE_GETGROUPLIST
     ;
 #else
-    int group_ids[NGROUPS_MAX];
+    gid_t group_ids[NGROUPS_MAX];
     int ngroups = NGROUPS_MAX;
     register unsigned int i;
 
