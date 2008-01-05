@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.228 2008-01-02 23:16:48 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.229 2008-01-05 01:29:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,11 +35,11 @@
 #include <signal.h>
 
 #ifdef HAVE_SYS_SENDFILE_H
-#include <sys/sendfile.h>
+# include <sys/sendfile.h>
 #endif
 
 #ifdef HAVE_REGEX_H
-#include <regex.h>
+# include <regex.h>
 #endif
 
 extern module auth_module;
@@ -1329,7 +1329,7 @@ MODRET xfer_post_mode(cmd_rec *cmd) {
  * the duration of this function.
  */
 MODRET xfer_pre_stor(cmd_rec *cmd) {
-  char *dir;
+  char *path;
   mode_t fmode;
   unsigned char *hidden_stores = NULL, *allow_overwrite = NULL,
     *allow_restart = NULL;
@@ -1339,11 +1339,11 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  dir = dir_best_path(cmd->tmp_pool,
+  path = dir_best_path(cmd->tmp_pool,
     pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
 
-  if (!dir ||
-      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL)) {
+  if (!path ||
+      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL)) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return PR_ERROR(cmd);
   }
@@ -1353,7 +1353,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  fmode = file_mode(dir);
+  fmode = file_mode(path);
 
   allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
 
@@ -1367,8 +1367,15 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   if (fmode &&
       !S_ISREG(fmode) &&
       !S_ISFIFO(fmode)) {
-    pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
-    return PR_ERROR(cmd);
+
+    /* Make an exception for the non-regular /dev/null file.  This will allow
+     * network link testing by uploading as much data as necessary directly
+     * to /dev/null.
+     */
+    if (strcasecmp(path, "/dev/null") != 0) {
+      pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
+      return PR_ERROR(cmd);
+    }
   }
 
   /* If restarting, check permissions on this directory, if
@@ -1389,7 +1396,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
   /* Otherwise everthing is good */
   if (pr_table_add(cmd->notes, "mod_xfer.store-path",
-      pstrdup(cmd->pool, dir), 0) < 0)
+      pstrdup(cmd->pool, path), 0) < 0)
     pr_log_pri(PR_LOG_NOTICE, "notice: error adding 'mod_xfer.store-path': %s",
       strerror(errno));
 
@@ -1397,7 +1404,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   if (hidden_stores!= NULL &&
       *hidden_stores == TRUE) {
 
-    if (get_hidden_store_path(cmd, dir) < 0)
+    if (get_hidden_store_path(cmd, path) < 0)
       return PR_ERROR(cmd);
   }
 
