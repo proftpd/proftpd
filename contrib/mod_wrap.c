@@ -2,7 +2,7 @@
  * ProFTPD: mod_wrap -- use Wietse Venema's TCP wrappers library for
  *                      access control
  *
- * Copyright (c) 2000-2003 TJ Saunders
+ * Copyright (c) 2000-2008 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.16 2006-06-28 16:10:05 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.17 2008-01-05 04:55:05 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.3"
@@ -908,7 +908,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     if (denymsg)
       return PR_ERROR_MSG(cmd, R_530, denymsg);
     else
-      return PR_ERROR_MSG(cmd, R_530, "Access denied.");
+      return PR_ERROR_MSG(cmd, R_530, _("Access denied"));
   }
 
   /* If request is allowable, return DECLINED (for engine to act as if this

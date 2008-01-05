@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.231 2008-01-02 17:58:49 castaglia Exp $
+ * $Id: mod_auth.c,v 1.232 2008-01-05 04:55:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1838,10 +1838,10 @@ MODRET auth_user(cmd_rec *cmd) {
   unsigned char *anon_require_passwd = NULL, *login_passwd_prompt = NULL;
 
   if (logged_in)
-    return PR_ERROR_MSG(cmd, R_503, "You are already logged in!");
+    return PR_ERROR_MSG(cmd, R_503, _("You are already logged in"));
 
   if (cmd->argc < 2)
-    return PR_ERROR_MSG(cmd, R_500, C_USER ": command requires a parameter.");
+    return PR_ERROR_MSG(cmd, R_500, _("USER: command requires a parameter"));
 
   user = cmd->arg;
 
@@ -1988,7 +1988,7 @@ MODRET auth_pass(cmd_rec *cmd) {
   int res = 0;
 
   if (logged_in)
-    return PR_ERROR_MSG(cmd, R_503, "You are already logged in!");
+    return PR_ERROR_MSG(cmd, R_503, _("You are already logged in"));
 
   user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
 
@@ -1996,7 +1996,7 @@ MODRET auth_pass(cmd_rec *cmd) {
     remove_config(cmd->server->conf, C_USER, FALSE);
     remove_config(cmd->server->conf, C_PASS, FALSE);
 
-    return PR_ERROR_MSG(cmd, R_503, "Login with " C_USER " first");
+    return PR_ERROR_MSG(cmd, R_503, _("Login with USER first"));
   }
 
   /* Clear any potentially cached directory config */
@@ -2057,7 +2057,7 @@ MODRET auth_pass(cmd_rec *cmd) {
       end_login(0);
     }
 
-    return PR_ERROR_MSG(cmd, R_530, denymsg ? denymsg : "Login incorrect.");
+    return PR_ERROR_MSG(cmd, R_530, denymsg ? denymsg : _("Login incorrect"));
   }
 
   return PR_HANDLED(cmd);

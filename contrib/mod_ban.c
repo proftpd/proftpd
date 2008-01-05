@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
  *
- * Copyright (c) 2004-2007 TJ Saunders
+ * Copyright (c) 2004-2008 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.12 2007-10-22 18:09:17 castaglia Exp $
+ * $Id: mod_ban.c,v 1.13 2008-01-05 04:55:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1427,7 +1427,7 @@ MODRET ban_pre_pass(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_INFO, MOD_BAN_VERSION
       ": Login denied: user '%s' banned", user);
     ban_send_mesg(cmd->tmp_pool, user);
-    return PR_ERROR_MSG(cmd, R_530, "Login incorrect.");
+    return PR_ERROR_MSG(cmd, R_530, _("Login incorrect"));
   }
 
   return PR_DECLINED(cmd);
