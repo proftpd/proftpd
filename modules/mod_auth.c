@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.232 2008-01-05 04:55:05 castaglia Exp $
+ * $Id: mod_auth.c,v 1.233 2008-01-05 21:21:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1534,9 +1534,6 @@ static void auth_scan_scoreboard(void) {
   *((unsigned int *) c->argv[0]) = cur;
 
   if (session.class) {
-    remove_config(CURRENT_CONF, "CURRENT-CLASS", FALSE);
-    add_config_param_set(&conf, "CURRENT-CLASS", 1, session.class->cls_name);
-
     snprintf(config_class_users, sizeof(config_class_users),
       "CURRENT-CLIENTS-CLASS-%s", session.class->cls_name);
     remove_config(CURRENT_CONF, config_class_users, FALSE);
@@ -1663,10 +1660,6 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   *((int *) c->argv[0]) = cur;
 
   if (session.class) {
-    remove_config(cmd->server->conf, "CURRENT-CLASS", FALSE);
-    add_config_param_set(&cmd->server->conf, "CURRENT-CLASS", 1,
-      session.class->cls_name);
-
     snprintf(config_class_users, sizeof(config_class_users), "%s-%s",
       "CURRENT-CLIENTS-CLASS", session.class->cls_name);
     remove_config(cmd->server->conf, config_class_users, FALSE);
