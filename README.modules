@@ -26,6 +26,9 @@ Modules always included:
     mod_ls
         Implements the FTP LIST, NLST and STAT commands.
 
+    mod_facts
+        Implements the FTP MFF, MFMT, MLSD, and MLST commands.
+
     mod_site
         Implements the FTP SITE command, and the HELP, CHGRP, CHMOD
         subcommands.
@@ -40,6 +43,8 @@ Modules always included:
         Implements FTP file transfer commands (STOR, RETR, APPE, REST,
         ABOR, TYPE, STRU, MODE, ALLO, SMNT, STOU).
 
+    mod_ident
+        Implements RFC1413 identity lookups (IdentLookups).
 
 Modules automatically included when supported by the OS:
 
@@ -114,6 +119,12 @@ Feature modules:
         See doc/contrib/mod_ctrls_admin.html
         Contributed by TJ Saunders <tj@castaglia.org>
 
+    mod_dynmasq
+        Automatic refreshing of IP address for MasqueradeAddress DNS name,
+        for sites that use DynDNS-type services
+        See doc/contrib/mod_dynmasq.html
+        Contributed by TJ Saunders <tj@castaglia.org>
+
     mod_ifsession
         Conditional per-user, per-group, per-class configurations
         See doc/contrib/mod_ifsession.html
@@ -148,6 +159,12 @@ Feature modules:
     mod_site_misc
         Miscellaneous SITE commands (e.g. SITE SYLINK, SITE UTIME)
         See doc/contrib/mod_site_misc.html
+
+    mod_unique_id
+        Provides a unique ID for each FTP session, useful for session
+        tracking in log files and databases
+        See doc/contrib/mod_unique_id.html
+        Contributed by TJ Saunders <tj@castaglia.org>
 
     mod_wrap
         TCP Wrappers.
