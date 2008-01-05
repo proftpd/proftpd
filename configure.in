@@ -24,6 +24,8 @@ AC_INIT(include/conf.h)
 ac_core_modules="mod_core.o mod_xfer.o mod_auth_unix.o mod_auth_file.o mod_auth.o mod_ls.o mod_log.o mod_site.o mod_delay.o mod_facts.o"
 ac_build_core_modules="modules/mod_core.o modules/mod_xfer.o modules/mod_auth_unix.o modules/mod_auth_file.o modules/mod_auth.o modules/mod_ls.o modules/mod_log.o modules/mod_site.o modules/mod_delay.o modules/mod_facts.o"
 
+build_opts="\"$@\""
+
 dnl Get the OS type
 AC_CONFIG_AUX_DIR(./)
 AC_CANONICAL_SYSTEM
@@ -34,7 +36,6 @@ osrel=`echo $build_os | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHI
 OSTYPE="-D$ostype"
 OSREL="-D$osrel"
 platform="\"$ostype ($osrel)\""
-build_opts="\"$@\""
 
 if test "$OSTYPE" = "$OSREL" ; then
   OSTYPE=""
@@ -1150,17 +1151,17 @@ dnl See what type of utmp exists
 AC_CHECK_HEADERS(utmp.h, have_utmp=1, have_utmp=0)
 
 if test $have_utmp; then
-  AC_CACHE_CHECK(whether your struct utmp has ut_user,
+  AC_CACHE_CHECK(whether struct utmp has ut_user,
   		pr_cv_header_utmaxtype,
 	AC_EGREP_HEADER([ *ut_user.*;],utmp.h,
 			pr_cv_header_utmaxtype="yes",
 			pr_cv_header_utmaxtype="no"))
-  AC_CACHE_CHECK(whether your struct utmp has ut_host,
+  AC_CACHE_CHECK(whether struct utmp has ut_host,
   		pr_cv_header_ut_host,
 	AC_EGREP_HEADER([ *ut_host.*;],utmp.h,
 			pr_cv_header_ut_host="yes",
 			pr_cv_header_ut_host="no"))
-  AC_CACHE_CHECK(whether your struct utmp has ut_exit,
+  AC_CACHE_CHECK(whether struct utmp has ut_exit,
 		pr_cv_header_ut_exit,
 	AC_EGREP_HEADER([ *ut_exit.*;],utmp.h,
 			pr_cv_header_ut_exit="yes",
@@ -1180,7 +1181,7 @@ dnl See if various LOG_ macros are defined
 if test "$have_syslog_h" = "yes"; then
   AC_DEFINE(HAVE_SYSLOG_H)
 
-  AC_CACHE_CHECK(whether your syslog.h defines LOG_CRON,
+  AC_CACHE_CHECK(whether syslog.h defines LOG_CRON,
   		pr_cv_header_syslog_log_cron,
   	AC_EGREP_CPP(yes,[
 #include <syslog.h>
@@ -1190,7 +1191,7 @@ if test "$have_syslog_h" = "yes"; then
 	],pr_cv_header_syslog_log_cron="yes",
 	pr_cv_header_syslog_log_cron="no") )
 
-  AC_CACHE_CHECK(whether your syslog.h defines LOG_FTP,
+  AC_CACHE_CHECK(whether syslog.h defines LOG_FTP,
   		pr_cv_header_syslog_log_ftp,
   	AC_EGREP_CPP(yes,[
 #include <syslog.h>
