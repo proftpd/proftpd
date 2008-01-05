@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2007 The ProFTPD Project team
+ * Copyright (c) 2004-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.10 2007-10-05 17:00:50 castaglia Exp $
+ * $Id: table.c,v 1.11 2008-01-05 01:01:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -680,6 +680,9 @@ int pr_table_add_dup(pr_table_t *tab, const char *key_data, void *value_data,
     errno = EINVAL;
     return -1;
   }
+
+  if (value_data && value_datasz == 0)
+    value_datasz = strlen((char *) value_data) + 1;
 
   dup_data = pcalloc(tab->pool, value_datasz);
   memcpy(dup_data, value_data, value_datasz);
