@@ -490,6 +490,13 @@ AC_ARG_ENABLE(dso,
     fi
   ])
 
+dnl ident (RFC1413) support
+AC_ARG_ENABLE(ident,
+  [AC_HELP_STRING(
+    [--disable-ident],
+    [disable use of ident (RFC1413) lookups (default=no)])
+  ])
+
 dnl NLS support
 ENABLE_NLS="\"\""
 AC_ARG_ENABLE(nls,
@@ -1596,6 +1603,11 @@ if test x"$enable_ncurses" != xno ; then
   AC_DEFINE(PR_USE_NCURSES)
 fi
 
+if test x"$enable_ident" != xno ; then
+  ac_static_modules="mod_ident.o $ac_static_modules"
+  ac_build_static_modules="modules/mod_ident.o $ac_build_static_modules"
+fi
+
 dnl Check for various argv[] replacing functions on various OSs
 AC_CHECK_FUNCS(setproctitle)
 AC_CHECK_HEADERS(libutil.h)
@@ -1685,7 +1697,7 @@ dnl Remove any modules in the shared module list from the static module list
 for amodule in $ac_shared_modules; do
   module=`echo "$amodule" | sed -e 's/.la//g'`.o;
   ac_static_modules=`echo "$ac_static_modules" | sed -e "s/$module//g"`;
-  ac_build_static_modules=`echo "$ac_build_static_modules" | sed -e "s/$module//g"`;
+  ac_build_static_modules=`echo "$ac_build_static_modules" | sed -e "s/modules\/$module//g"`;
 done
 
 GLUE_MODULE_OBJS="$ac_core_modules $ac_static_modules"

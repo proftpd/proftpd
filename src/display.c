@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2006 The ProFTPD Project team
+ * Copyright (c) 2004-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.7 2006-12-06 04:29:58 castaglia Exp $
+ * $Id: display.c,v 1.8 2008-01-05 01:12:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -61,6 +61,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
     mg_xfer_bytes[12] = {'\0'}, mg_cur_class[12] = {'\0'};
   char mg_xfer_units[12] = {'\0'}, config_class_users[128] = {'\0'}, *user;
   const char *mg_time;
+  char *rfc1413_ident = NULL;
   unsigned char first = TRUE;
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || \
@@ -177,6 +178,11 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
     session.total_files_xfer);
   total_files_xfer[sizeof(total_files_xfer)-1] = '\0';
 
+  rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident", NULL);
+  if (rfc1413_ident == NULL) {
+    rfc1413_ident = "UNKNOWN";
+  }
+
   while (pr_fsio_gets(buf, sizeof(buf), fh) != NULL) {
     char *tmp;
 
@@ -207,7 +213,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
       "%T", mg_time,
       "%t", total_files_xfer,
       "%U", user,
-      "%u", session.ident_user,
+      "%u", rfc1413_ident,
       "%V", main_server->ServerName,
       "%x", session.class ? session.class->cls_name : "(unknown)",
       "%y", mg_cur_class,

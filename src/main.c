@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.317 2008-01-04 23:18:18 castaglia Exp $
+ * $Id: main.c,v 1.318 2008-01-05 01:12:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -917,7 +917,6 @@ static void set_server_privs(void) {
 
 static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   conn_t *conn = NULL;
-  unsigned char *ident_lookups = NULL;
   int i, rev;
   int semfds[2] = { -1, -1 };
   int xerrno = 0;
@@ -1228,6 +1227,10 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   /* Create a table for modules to use. */
   session.notes = pr_table_alloc(session.pool, 0);
+  if (session.notes == NULL) {
+    pr_log_debug(DEBUG3, "error creating session.notes table: %s",
+      strerror(errno));
+  }
 
   /* Prepare the Timers API. */
   timers_init();
@@ -1236,21 +1239,6 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   pr_log_debug(DEBUG7, "performing module session initializations");
   if (modules_session_init() < 0)
     end_login(1);
-
-  /* Use the ident protocol (RFC1413) to try to get remote ident_user */
-  ident_lookups = get_param_ptr(main_server->conf, "IdentLookups", FALSE);
-  if (ident_lookups == NULL ||
-      *ident_lookups == TRUE) {
-    pr_log_debug(DEBUG6, "performing ident lookup");
-    session.ident_lookups = TRUE;
-    session.ident_user = pr_ident_lookup(session.pool, conn);
-    pr_log_debug(DEBUG6, "ident lookup returned '%s'", session.ident_user);
-
-  } else {
-    pr_log_debug(DEBUG6, "ident lookup disabled");
-    session.ident_lookups = FALSE;
-    session.ident_user = "UNKNOWN";
-  }
 
   pr_log_debug(DEBUG4, "connected - local  : %s:%d",
     pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.882 2008-01-03 04:21:38 castaglia Exp $
+$Id: NEWS,v 1.883 2008-01-05 01:12:21 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -92,6 +92,7 @@ CVS
 - Bug 1896 - Check AIX account status.  The AIX-specific loginrestrictions()
   and passwdexpired() functions, if present, are now used by the mod_auth_unix
   module during login.
+- Bug 2453 - Separate RFC1413 code into mod_ident module.
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------

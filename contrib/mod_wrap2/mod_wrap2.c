@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_wrap2 -- tcpwrappers-like access control
  *
- * Copyright (c) 2000-2007 TJ Saunders
+ * Copyright (c) 2000-2008 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -303,15 +303,17 @@ static wrap2_conn_t *wrap2_conn_set(wrap2_conn_t *conn, ...) {
 static char *wrap2_get_user(wrap2_conn_t *conn) {
 
   if (*conn->user == '\0') {
+    char *rfc1413_ident;
 
-    /* RFC931 lookups may have already been done by the daemon.  Check
-     * to see what session.ident_lookups is.  If TRUE, use the RFC931 name
-     * in session.ident_user.  Otherwise, use the user name issued by the
-     * client, C_USER.
+    /* RFC1413 lookups may have already been done by the mod_ident module.
+     * If so, use the ident name stashed; otherwise, use the user name issued
+     * by the client, C_USER.
      */
 
-    if (session.ident_lookups) {
-      sstrncpy(conn->user, session.ident_user, sizeof(conn->user));
+    rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident",
+      NULL);
+    if (rfc1413_ident) {
+      sstrncpy(conn->user, rfc1413_ident, sizeof(conn->user));
 
     } else {
       char *user = get_param_ptr(main_server->conf, C_USER, FALSE);

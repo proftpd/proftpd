@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2007 TJ Saunders
+ * Copyright (c) 2004-2008 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.129 2008-01-02 18:31:02 castaglia Exp $
+ * $Id: mod_sql.c,v 1.130 2008-01-05 01:12:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1932,10 +1932,18 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       sizeof(arg));
     break;
 
-  case 'l':
+  case 'l': {
+    char *rfc1413_ident;
+
     argp = arg;
-    sstrncpy(argp, session.ident_user, sizeof(arg));
+    rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident",
+      NULL);
+    if (rfc1413_ident == NULL)
+      rfc1413_ident = "UNKNOWN";
+
+    sstrncpy(argp, rfc1413_ident, sizeof(arg));
     break;
+  }
 
   case 'm':
     argp = arg;

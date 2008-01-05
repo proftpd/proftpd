@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.57 2007-12-31 22:47:38 castaglia Exp $
+ * $Id: proftpd.h,v 1.58 2008-01-05 01:12:21 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -72,9 +72,6 @@ typedef struct {
 
   pr_netaddr_t data_addr;		/* Remote data address */
   unsigned short data_port;		/* Remote data port */
-
-  unsigned char ident_lookups;		/* Is RFC931 (ident) protocol used? */
-  char *ident_user;			/* User identified by ident protocol */
 
   const char *auth_mech;		/* Name of the authentication
                                          * module/mechanism that successfully
