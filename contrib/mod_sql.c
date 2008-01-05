@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.130 2008-01-05 01:12:21 castaglia Exp $
+ * $Id: mod_sql.c,v 1.131 2008-01-05 06:40:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3806,25 +3806,6 @@ MODRET add_virtualstr(char *name, cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
   add_config_param_str(name, 1, (void *) cmd->argv[1]);
-  return PR_HANDLED(cmd);
-}
-
-MODRET add_virtualbool(char *name, cmd_rec *cmd) {
-  int bool;
-  config_rec *c;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
-
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
-    CONF_ERROR(cmd, "requires a Boolean parameter");
-
-  c = add_config_param(name, 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
-  c->flags |= CF_MERGEDOWN;
-
   return PR_HANDLED(cmd);
 }
 
