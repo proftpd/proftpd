@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.71 2008-01-04 23:18:18 castaglia Exp $
+ * $Id: conf.h,v 1.72 2008-01-05 06:26:54 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -420,7 +420,6 @@ typedef struct {
 #include "netacl.h"
 #include "class.h"
 #include "bindings.h"
-#include "ident.h"
 #include "help.h"
 #include "feat.h"
 #include "ftp.h"
