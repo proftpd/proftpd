@@ -109,6 +109,24 @@ files.
 
           doc/modules/mod_facts.html
 
+      mod_ident
+
+        The RFC1413 "identification protocol" lookup was separated out of
+        the main proftpd code and into this mod_ident module.  With this
+        change, you can now choose to build proftpd without this support
+        using:
+
+          ./configure --disable-ident ..
+
+        You can also choose to build mod_ident as a shared module, loadable
+        as needed:
+
+          ./configure --enable-dso --with-shared=mod_ident ...
+
+        Module documentation is available for mod_ident at:
+
+          doc/modules/mod_ident.html
+
       mod_unique_id
 
         Generates a unique ID for every FTP session.  This ID can be
@@ -121,4 +139,4 @@ files.
 
       doc/howto/ConfigurationTricks.html
 
-Last Updated: $Date: 2008-01-02 23:17:36 $
+Last Updated: $Date: 2008-01-05 01:22:20 $
