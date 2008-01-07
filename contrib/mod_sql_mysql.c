@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_mysql -- Support for connecting to MySQL databases.
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2007 TJ Saunders
+ * Copyright (c) 2004-2008 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.47 2007-10-22 18:09:17 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.48 2008-01-07 01:44:14 castaglia Exp $
  */
 
 /*
@@ -265,17 +265,16 @@ static void _sql_check_cmd(cmd_rec *cmd, char *msg) {
 }
 
 /*
- * _sql_timer_callback: when a timer goes off, this is the function
- *  that gets called.  This function makes assumptions about the 
- *  db_conn_t members.
+ * sql_timer_cb: when a timer goes off, this is the function that gets called.
+ * This function makes assumptions about the db_conn_t members.
  */
-static int _sql_timer_callback(CALLBACK_FRAME) {
+static int sql_timer_cb(CALLBACK_FRAME) {
   conn_entry_t *entry = NULL;
-  int cnt = 0;
+  int i = 0;
   cmd_rec *cmd = NULL;
  
-  for (cnt=0; cnt < conn_cache->nelts; cnt++) {
-    entry = ((conn_entry_t **) conn_cache->elts)[cnt];
+  for (i = 0; i < conn_cache->nelts; i++) {
+    entry = ((conn_entry_t **) conn_cache->elts)[i];
 
     if (entry->timer == p2) {
       sql_log(DEBUG_INFO, "timer expired for connection '%s'", entry->name);
@@ -447,7 +446,7 @@ MODRET cmd_open(cmd_rec *cmd) {
   /* set up our timer if necessary */
   if (entry->ttl > 0) {
     entry->timer = pr_timer_add(entry->ttl, -1, &sql_mysql_module,
-      _sql_timer_callback, "mysql connection ttl");
+      sql_timer_cb, "mysql connection ttl");
     sql_log(DEBUG_INFO, "connection '%s' - %d second timer started",
       entry->name, entry->ttl);
 
@@ -1229,6 +1228,7 @@ MODRET cmd_query(cmd_rec *cmd) {
 MODRET cmd_escapestring(cmd_rec * cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
+  modret_t *cmr = NULL;
   char *unescaped = NULL;
   char *escaped = NULL;
 
@@ -1249,6 +1249,13 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
   }
 
   conn = (db_conn_t *) entry->data;
+
+  /* Make sure the connection is open. */
+  cmr = cmd_open(cmd);
+  if (MODRET_ERROR(cmr)) {
+    sql_log(DEBUG_FUNC, "%s", "existing \tmysql cmd_escapestring");
+    return cmr;
+  }
 
   unescaped = cmd->argv[1];
   escaped = (char *) pcalloc(cmd->tmp_pool, sizeof(char) *

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.884 2008-01-05 01:29:32 castaglia Exp $
+$Id: NEWS,v 1.885 2008-01-07 01:44:14 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -95,6 +95,7 @@ CVS
 - Bug 2453 - Separate RFC1413 code into mod_ident module.
 - Bug 3023 - Allow uploading to /dev/null.  This allows testing of network
   link speeds by uploading directly to /dev/null on the server.
+- Bug 3022 - Timed SQL connections don't reconnect to database.
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------
