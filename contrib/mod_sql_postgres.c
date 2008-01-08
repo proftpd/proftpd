@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.34 2008-01-07 01:44:14 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.35 2008-01-08 02:21:43 castaglia Exp $
  */
 
 /*
@@ -1127,7 +1127,7 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
   /* Make sure the connection is open. */
   cmr = cmd_open(cmd);
   if (MODRET_ERROR(cmr)) {
-    sql_log(DEBUG_FUNC, "%s", "existing \tpostgres cmd_escapestring");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_escapestring");
     return cmr;
   }
 

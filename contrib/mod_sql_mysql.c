@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.48 2008-01-07 01:44:14 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.49 2008-01-08 02:21:43 castaglia Exp $
  */
 
 /*
@@ -1253,7 +1253,7 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
   /* Make sure the connection is open. */
   cmr = cmd_open(cmd);
   if (MODRET_ERROR(cmr)) {
-    sql_log(DEBUG_FUNC, "%s", "existing \tmysql cmd_escapestring");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_escapestring");
     return cmr;
   }
 
