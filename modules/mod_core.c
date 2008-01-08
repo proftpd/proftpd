@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.310 2008-01-04 23:18:18 castaglia Exp $
+ * $Id: mod_core.c,v 1.311 2008-01-08 23:27:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -333,9 +333,6 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
       (cmd->argv)[0], ": unable to resolve \"", cmd->argv[1], "\"",
       NULL));
 
-  pr_log_pri(PR_LOG_INFO, "setting default address to %s",
-    pr_netaddr_get_ipstr(main_addr));
-
   main_server->ServerAddress = pr_netaddr_get_ipstr(main_addr);
   main_server->addr = main_addr;
 
@@ -371,6 +368,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
    */
   if (cmd->argc-1 > 1) {
     register unsigned int i;
+    char *addrs_str = pr_netaddr_get_ipstr(main_addr);
 
     for (i = 2; i < cmd->argc; i++) {
       pr_netaddr_t *addr;
@@ -384,6 +382,9 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
 
       add_config_param_str("_bind", 1, pr_netaddr_get_ipstr(addr));
 
+      addrs_str = pstrcat(cmd->tmp_pool, addrs_str, ", ",
+        pr_netaddr_get_ipstr(addr), NULL);
+
       if (addrs) {
         register unsigned int j;
         pr_netaddr_t **elts = addrs->elts;
@@ -393,6 +394,12 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
           add_config_param_str("_bind", 1, pr_netaddr_get_ipstr(elts[j]));
       }
     }
+
+    pr_log_pri(PR_LOG_INFO, "setting default addresses to %s", addrs_str);
+
+  } else {
+    pr_log_pri(PR_LOG_INFO, "setting default address to %s",
+      pr_netaddr_get_ipstr(main_addr));
   }
 
   return PR_HANDLED(cmd);
