@@ -1845,14 +1845,14 @@ for module in $ac_shared_modules; do
   srcinc=`echo "$module" | sed -e 's/\.la$//'`.h;
 
   if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
-    if test ! -f $srcdir/modules/$src; then
+    if test ! -e $srcdir/modules/$src; then
       olddir=`pwd`
       cd $srcdir/modules
       ln -s ../contrib/$src $src
       cd $olddir
     fi
 
-    if test ! -f $srcdir/include/$srcinc -a -f $srcdir/contrib/$srcinc ; then
+    if test ! -e $srcdir/include/$srcinc -a -f $srcdir/contrib/$srcinc ; then
       olddir=`pwd`
       cd $srcdir/include
       ln -s ../contrib/$srcinc $srcinc
@@ -1874,7 +1874,7 @@ for module in $ac_static_modules; do
   srcinc=`echo "$module" | sed -e 's/\.o$//'`.h;
 
   if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
-    if test ! -f $srcdir/modules/$src; then
+    if test ! -e $srcdir/modules/$src; then
       olddir=`pwd`
       cd $srcdir/modules
       ln -s ../contrib/$src $src
@@ -2059,8 +2059,8 @@ for moduledir in $ac_shared_module_dirs $ac_static_module_dirs; do
   srcinc=`echo "$moduledir" | sed -e 's/^.*\///'`.h;
 
   if test -d $srcdir/$moduledir ; then
-    if test ! -f $srcdir/include/$srcinc ; then
-      if test -f $srcdir/$moduledir/$srcinc ; then
+    if test ! -e $srcdir/include/$srcinc ; then
+      if test -e $srcdir/$moduledir/$srcinc ; then
         olddir=`pwd`
         cd $srcdir/include
         ln -s ../$moduledir/$srcinc $srcinc
