@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_odbc.c,v 1.1 2008-01-08 04:15:06 castaglia Exp $
+ * $Id: mod_sql_odbc.c,v 1.2 2008-01-08 17:59:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1623,6 +1623,36 @@ static int sqlodbc_sess_init(void) {
   if (!conn_cache)
     conn_cache = make_array(make_sub_pool(session.pool), DEF_CONN_POOL_SIZE,
       sizeof(conn_entry_t));
+
+  /* There is a very specific reason for using square brackets, rather than
+   * parentheses, here.
+   *
+   * Users of the mod_sql_odbc module for talking to an Oracle database
+   * via ODBC encountered a bug (IMHO) in the Oracle client library, where
+   * the Oracle client library tries to find the name of the process calling
+   * the client, and adds that name to the connection string used.  However,
+   * that process name parsing will fail if the process name uses parentheses.
+   * The workaround, then is to use square brackets.
+   *
+   * For those curious, this is Oracle Bug 3807408.  More discussions on
+   * problem can be found at:
+   *
+   *  http://forums.oracle.com/forums/thread.jspa?threadID=296725
+   *
+   * The following comment indicates that more recent versions of Oracle
+   * have this issue fixed; there is also a patch available:
+   *
+   *  "This issue is Oracle bug 3807408 and can be fixed by applying 10.2.0.1
+   *   Patch 6. This can be downloaded from MetaLink if you have an account:
+   *
+   *   http://updates.oracle.com/ARULink/PatchDetails/process_form?patch_num=5059238"
+   * This comment was found at:
+   *
+   *
+   *  http://www.topxml.com/forum/Database_Adapter_for_Oracle_on_64bit_Windows/m_3448/tm.htm
+   */
+
+  pr_proctitle_set("[accepting connections]");
 
   return 0;
 }
