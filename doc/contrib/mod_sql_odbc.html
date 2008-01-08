@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql_odbc.html,v 1.1 2008-01-08 04:15:06 castaglia Exp $ -->
+<!-- $Id: mod_sql_odbc.html,v 1.2 2008-01-08 04:21:06 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql_odbc.html,v $ -->
 
 <html>
@@ -33,16 +33,13 @@ databases that may already provide APIs for native connectivity, but for
 which a specific <code>mod_sql</code> has not yet been developed.
 
 <p>
-This module is contained in the <code>mod_sql_odbc.h</code> and
-<code>mod_sql_odbc.c</code> files for ProFTPD 1.2, and is not compiled by
-default.  Installation instructions are discussed
-<a href="#Installation">here</a>.
+This module is contained in the <code>mod_sql_odbc.c</code> file for
+ProFTPD 1.3.<i>x</i>, and is not compiled by default.  Installation
+instructions are discussed <a href="#Installation">here</a>.
 
 <p>
-The most current version of <code>mod_sql_odbc</code> can be found at:
-<pre>
-  <a href="http://www.castaglia.org/proftpd/">http://www.castaglia.org/proftpd/</a>
-</pre>
+The most current version of <code>mod_sql_odbc</code> is distributed with
+ProFTPD.
 
 <h2>Author</h2>
 <p>
@@ -62,38 +59,31 @@ One of these ODBC libraries must be installed prior to using
 <code>mod_sql_odbc</code>.
 
 <p>
-After installing an ODBC library, unpack the <code>mod_sql_odbc</code>
-tarball:
+Follow the usual steps for using contrib modules in proftpd, making sure to
+list <code>mod_sql</code>.  Note that you will need to use the
+<code>LIBS</code> environment variable for indicating which ODBC library
+to link against.
+
+<p>
+For example, if you wish to use the unixODBC library, you would use:
 <pre>
-  tar zxvf proftpd-mod-sql-odbc-<i>version</i>.tar.gz
-  cd mod_sql_odbc/
-</pre>
-Then, configure the <code>mod_sql_odbc</code> to use either the iODBC or the
-unixODBC library:
-<pre>
-  ./configure --enable-iodbc
-</pre>
-or:
-<pre>
-  ./configure --enable-unixodbc
-</pre>
-Now, copy the <code>mod_sql_odbc.h</code> and <code>mod_sql_odbc.c</code>
-files into the ProFTPD contrib module area:
-<pre>
-  cp mod_sql_odbc.[ch] <i>proftpd-dir</i>/contrib/
-</pre>
-After that, follow the usual steps for using contrib modules in proftpd,
-making sure to list <code>mod_sql</code>:
-<pre>
-  cd <i>proftpd-dir</i>/
-  ./configure --with-modules=mod_sql:mod_sql_odbc
+  ./configure LIBS=-lodbc --with-modules=mod_sql:mod_sql_odbc ...
   make
   make install
 </pre>
+On the other hand, for using the iODBC library, the invocation is slightly
+different, specifying a different library name:
+<pre>
+  ./configure LIBS=-liodbc --with-modules=mod_sql:mod_sql_odbc ...
+  make
+  make install
+</pre>
+
+<p>
 You may need to specify the location of the ODBC header and library files in
 your <code>configure</code> command, <i>e.g.</i>:
 <pre>
-  ./configure --with-modules=mod_sql:mod_sql_odbc \
+  ./configure LIBS=-lodbc --with-modules=mod_sql:mod_sql_odbc \
     --with-includes=/usr/local/odbc/include \
     --with-libraries=/usr/local/odbc/lib
 </pre>
@@ -254,12 +244,12 @@ Please contact the author directly with any questions or comments.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2008-01-08 04:15:06 $</i><br>
+Last Updated: <i>$Date: 2008-01-08 04:21:06 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2003 TJ Saunders<br>
+&copy; Copyright 2003-2008 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
