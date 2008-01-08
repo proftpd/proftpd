@@ -24,8 +24,6 @@ AC_INIT(include/conf.h)
 ac_core_modules="mod_core.o mod_xfer.o mod_auth_unix.o mod_auth_file.o mod_auth.o mod_ls.o mod_log.o mod_site.o mod_delay.o mod_facts.o"
 ac_build_core_modules="modules/mod_core.o modules/mod_xfer.o modules/mod_auth_unix.o modules/mod_auth_file.o modules/mod_auth.o modules/mod_ls.o modules/mod_log.o modules/mod_site.o modules/mod_delay.o modules/mod_facts.o"
 
-build_opts="\"$@\""
-
 dnl Get the OS type
 AC_CONFIG_AUX_DIR(./)
 AC_CANONICAL_SYSTEM
@@ -41,7 +39,8 @@ if test "$OSTYPE" = "$OSREL" ; then
   OSTYPE=""
   platform="\"$ostype\""
 fi
-AC_DEFINE_UNQUOTED(PR_BUILD_OPTS, $build_opts)
+
+AC_DEFINE_UNQUOTED(PR_BUILD_OPTS, "`echo "$ $0 $ac_configure_args"`")
 AC_DEFINE_UNQUOTED(PR_PLATFORM, $platform)
 AC_SUBST(OSREL)
 AC_SUBST(OSTYPE)
