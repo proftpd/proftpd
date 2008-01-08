@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.319 2008-01-08 17:37:38 castaglia Exp $
+ * $Id: main.c,v 1.320 2008-01-08 17:58:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1290,17 +1290,7 @@ static void daemon_loop(void) {
   struct timeval tv;
   static int running = 0;
 
-  /* There is a very specific reason for using square brackets, rather than
-   * parentheses, here.
-   *
-   * Users of the mod_sql_odbc module for talking to an Oracle database
-   * via ODBC encountered a bug (IMHO) in the Oracle client library, where
-   * the Oracle client library tries to find the name of the process calling
-   * the client, and adds that name to the connection string used.  However,
-   * that process name parsing will fail if the process name uses parentheses.
-   * The workaround, then is to use square brackets.
-   */
-  pr_proctitle_set("[accepting connections]");
+  pr_proctitle_set("(accepting connections)");
 
   time(&last_error);
 
