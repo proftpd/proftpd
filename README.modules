@@ -94,13 +94,11 @@ Authentication modules:
         See README.LDAP.
         Contributed by John Morrissey <jwm@horde.net>.
 
-    mod_sql, mod_sql_mysql, mod_sql_postgres
-        (formerly known as mod_sqlpw, mod_mysql, mod_pgsql)
+    mod_sql, mod_sql_mysql, mod_sql_postgres, mod_sql_odbc, mod_sql_sqlite
         SQL (Structured Query Language) database authentication and
-        other functions, with backends for MySQL and PostgreSQL.
+        other functions, with backends for MySQL, PostgreSQL, ODBC, and SQLite.
         See doc/contrib/mod_sql.html
         Contributed by Johnie Ingram <johnie@netgod.net>.
-        Maintained by Andrew Houghton <aah@acm.org>.
 
     mod_radius
        RADIUS (RFC2865) authentication and accounting
