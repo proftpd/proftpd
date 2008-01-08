@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.2 2008-01-08 02:38:15 castaglia Exp $
+ * $Id: mod_sql_sqlite.c,v 1.3 2008-01-08 04:15:58 castaglia Exp $
  * $Libraries: -lsqlite3 $
  */
 
@@ -922,7 +922,6 @@ static void sql_sqlite_mod_load_ev(const void *event_data, void *user_data) {
   }
 }
 
-#if defined(PR_SHARED_MODULE)
 static void sql_sqlite_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_sql_sqlite.c", (const char *) event_data) == 0) {
     /* Unegister ourselves with mod_sql. */
@@ -935,7 +934,6 @@ static void sql_sqlite_mod_unload_ev(const void *event_data, void *user_data) {
     pr_event_unregister(&sql_sqlite_module, NULL, NULL);
   }
 }
-#endif /* PR_SHARED_MODULE */
 
 /* Initialization routines
  */
@@ -945,10 +943,8 @@ static int sql_sqlite_init(void) {
   /* Register listeners for the load and unload events. */
   pr_event_register(&sql_sqlite_module, "core.module-load",
     sql_sqlite_mod_load_ev, NULL);
-#if defined(PR_SHARED_MODULE)
   pr_event_register(&sql_sqlite_module, "core.module-unload",
     sql_sqlite_mod_unload_ev, NULL);
-#endif /* PR_SHARED_MODULE */
 
   pr_log_debug(DEBUG3, MOD_SQL_SQLITE_VERSION ": using %s",
     sqlite3_libversion());
