@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.85 2008-01-05 01:12:21 castaglia Exp $
+ * $Id: mod_log.c,v 1.86 2008-01-09 18:56:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -97,6 +97,9 @@ struct logfile_struc {
 #define META_CMD_PARAMS		25
 #define META_RESPONSE_STR	26
 #define META_VERSION		27
+
+/* For tracking the size of deleted files. */
+static off_t log_dele_filesz = 0;
 
 static pool			*log_pool;
 static logformat_t		*formats = NULL;
@@ -566,10 +569,14 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
     case META_BYTES_SENT:
       argp = arg;
-      if (session.xfer.p)
+      if (session.xfer.p) {
         snprintf(argp, sizeof(arg), "%" PR_LU,
           (pr_off_t) session.xfer.total_bytes);
-      else
+
+      } else if (strcmp(cmd->argv[0], C_DELE) == 0) {
+        snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) log_dele_filesz);
+
+      } else
         sstrncpy(argp, "-", sizeof(arg));
 
       m++;
@@ -688,8 +695,16 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
     case META_XFER_PATH:
       argp = arg;
-      if (session.xfer.p &&
-          session.xfer.path) {
+
+      if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+        char *path;
+
+        path = dir_best_path(cmd->tmp_pool,
+          pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+        sstrncpy(arg, path, sizeof(arg));
+
+      } else if (session.xfer.p &&
+                 session.xfer.path) {
         sstrncpy(argp, session.xfer.path, sizeof(arg));
 
       } else {
@@ -697,10 +712,14 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
          * stored in the session.xfer structure; these should be expanded
          * properly as well.
          */
-        if (strcmp(cmd->argv[0], C_DELE) == 0)
-          sstrncpy(arg, cmd->arg, sizeof(arg));
+        if (strcmp(cmd->argv[0], C_DELE) == 0) {
+          char *path;
 
-        else
+          path = dir_best_path(cmd->tmp_pool,
+            pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+          sstrncpy(arg, path, sizeof(arg));
+
+        } else
           sstrncpy(argp, "-", sizeof(arg));
       }
 
@@ -1138,6 +1157,27 @@ loop_extendedlogs:
   }
 }
 
+MODRET log_pre_dele(cmd_rec *cmd) {
+  char *path;
+
+  log_dele_filesz = 0;
+
+  path = dir_canonical_path(cmd->tmp_pool,
+    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+  if (path) {
+    struct stat st;
+
+    /* Briefly cache the size of the file being deleted, so that it can be
+     * logged properly using %b.
+     */
+    pr_fs_clear_cache();
+    if (pr_fsio_stat(path, &st) == 0)
+      log_dele_filesz = st.st_size;
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 MODRET log_post_pass(cmd_rec *cmd) {
   logfile_t *lf;
 
@@ -1284,6 +1324,7 @@ static conftable log_conftab[] = {
 };
 
 static cmdtable log_cmdtab[] = {
+  { PRE_CMD,		C_DELE,	G_NONE,	log_pre_dele,	FALSE, FALSE },
   { LOG_CMD,		C_ANY,	G_NONE,	log_any,		FALSE, FALSE },
   { LOG_CMD_ERR,	C_ANY,	G_NONE,	log_any,		FALSE, FALSE },
   { POST_CMD,		C_PASS,	G_NONE,	log_post_pass,		FALSE, FALSE },
