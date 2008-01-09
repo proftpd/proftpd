@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.28 2007-11-15 17:33:33 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.29 2008-01-09 00:06:50 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -1489,21 +1489,35 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
 }
 
 MODRET quotatab_pre_dele(cmd_rec *cmd) {
-  struct stat sbuf;
+  char *path;
 
   /* sanity check */
   if (!use_quotas)
     return PR_DECLINED(cmd);
 
-  /* Briefly cache the size (in bytes) of the file to be deleted, so that
-   * if successful, the byte counts can be adjusted correctly.
+  /* The real DELE handler makes sure that, if a symlink is being deleted,
+   * only the symlink (and not the pointed-to file) is deleted.  We need
+   * to do the same here, so that the bytes are correct.
    */
-  pr_fs_clear_cache();
-  if (pr_fsio_lstat(cmd->arg, &sbuf) < 0)
-    quotatab_disk_bytes = 0;
+  path = dir_canonical_path(cmd->tmp_pool,
+    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
 
-  else
-    quotatab_disk_bytes = sbuf.st_size;
+  if (path) {
+    struct stat st;
+
+    /* Briefly cache the size (in bytes) of the file to be deleted, so that
+     * if successful, the byte counts can be adjusted correctly.
+     */
+    pr_fs_clear_cache();
+    if (pr_fsio_lstat(path, &st) < 0)
+      quotatab_disk_bytes = 0;
+
+    else
+      quotatab_disk_bytes = st.st_size;
+
+  } else {
+    quotatab_disk_bytes = 0;
+  }
 
   return PR_DECLINED(cmd);
 }
@@ -1526,6 +1540,18 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
   /* NOTE: if use_dirs is TRUE, also take into consideration the decreased
    * disk usage caused by any decrease in the size of the containing directory.
    */
+
+  /* Clear the cached bytes. */
+  quotatab_disk_bytes = 0;
+
+  return PR_DECLINED(cmd);
+}
+
+MODRET quotatab_post_dele_err(cmd_rec *cmd) {
+
+  /* sanity check */
+  if (!use_quotas)
+    return PR_DECLINED(cmd); 
 
   /* Clear the cached bytes. */
   quotatab_disk_bytes = 0;
@@ -2768,6 +2794,7 @@ static cmdtable quotatab_cmdtab[] = {
   { POST_CMD_ERR,	C_APPE,	G_NONE,	quotatab_post_appe_err,	FALSE,	FALSE },
   { PRE_CMD,		C_DELE,	G_NONE,	quotatab_pre_dele,	FALSE,	FALSE },
   { POST_CMD,		C_DELE,	G_NONE,	quotatab_post_dele,	FALSE,	FALSE },
+  { POST_CMD_ERR,	C_DELE,	G_NONE,	quotatab_post_dele_err,	FALSE,	FALSE },
   { PRE_CMD,		C_MKD,	G_NONE,	quotatab_pre_mkd,	FALSE,	FALSE },
   { POST_CMD,		C_MKD,	G_NONE,	quotatab_post_mkd,	FALSE,	FALSE },
   { POST_CMD_ERR,	C_MKD,	G_NONE,	quotatab_post_mkd_err,	FALSE,	FALSE },
