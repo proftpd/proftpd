@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.131 2008-01-05 06:40:45 castaglia Exp $
+ * $Id: mod_sql.c,v 1.132 2008-01-09 16:06:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -103,6 +103,9 @@
 extern pr_response_t *resp_list,*resp_err_list;
 
 module sql_module;
+
+/* For tracking the size of deleted files. */
+static off_t sql_dele_filesz = 0;
 
 #define SQL_MAX_STMT_LEN	4096
 
@@ -1682,6 +1685,34 @@ static int _sql_getgroups(cmd_rec *cmd) {
 /* Command handlers
  */
 
+MODRET sql_pre_dele(cmd_rec *cmd) {
+  char *path;
+
+  if (cmap.engine == 0)
+    return PR_DECLINED(cmd);
+
+  sql_dele_filesz = 0;
+
+  path = dir_canonical_path(cmd->tmp_pool,
+    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+  if (path) {
+    struct stat st;
+
+    /* Briefly cache the size of the file being deleted, so that it can be
+     * logged properly using %b.
+     */
+    pr_fs_clear_cache();
+    if (pr_fsio_stat(path, &st) < 0) {
+      sql_log(DEBUG_INFO, "%s: unable to stat '%s': %s", cmd->argv[0],
+        path, strerror(errno));
+    
+    } else
+      sql_dele_filesz = st.st_size;
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 MODRET sql_pre_pass(cmd_rec *cmd) {
   config_rec *c = NULL, *anon_config = NULL;
   char *user = NULL;
@@ -1787,11 +1818,16 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
   case 'b':
     argp = arg;
-    if (session.xfer.p)
+    if (session.xfer.p) {
       snprintf(argp, sizeof(arg), "%" PR_LU,
         (pr_off_t) session.xfer.total_bytes);
-    else
+
+    } else if (strcmp(cmd->argv[0], C_DELE) == 0) {
+      snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) sql_dele_filesz);
+
+    } else
       sstrncpy(argp, "0", sizeof(arg));
+
     break;
 
   case 'c':
@@ -4974,6 +5010,7 @@ static conftable sql_conftab[] = {
 
 static cmdtable sql_cmdtab[] = {
   { PRE_CMD,		C_PASS,	G_NONE, sql_pre_pass,	FALSE, 	FALSE },
+  { PRE_CMD,		C_DELE,	G_NONE, sql_pre_dele,	FALSE,	FALSE },
   { POST_CMD,		C_RETR,	G_NONE,	sql_post_retr,	FALSE,	FALSE },
   { POST_CMD,		C_STOR,	G_NONE,	sql_post_stor,	FALSE,	FALSE },
   { POST_CMD,		C_ANY,	G_NONE,	info_master,	FALSE,	FALSE },
