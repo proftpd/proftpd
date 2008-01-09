@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_odbc.c,v 1.2 2008-01-08 17:59:18 castaglia Exp $
+ * $Id: mod_sql_odbc.c,v 1.3 2008-01-09 15:28:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1628,11 +1628,11 @@ static int sqlodbc_sess_init(void) {
    * parentheses, here.
    *
    * Users of the mod_sql_odbc module for talking to an Oracle database
-   * via ODBC encountered a bug (IMHO) in the Oracle client library, where
-   * the Oracle client library tries to find the name of the process calling
-   * the client, and adds that name to the connection string used.  However,
-   * that process name parsing will fail if the process name uses parentheses.
-   * The workaround, then is to use square brackets.
+   * via ODBC encountered a bug in the Oracle client library, where the Oracle
+   * client library tries to find the name of the process calling the client,
+   * and adds that name to the connection string used.  However, that process
+   * name parsing will fail if the process name uses parentheses.  The
+   * workaround, then, is to use square brackets.
    *
    * For those curious, this is Oracle Bug 3807408.  More discussions on
    * problem can be found at:
