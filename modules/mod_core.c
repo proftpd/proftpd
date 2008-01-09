@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.311 2008-01-08 23:27:50 castaglia Exp $
+ * $Id: mod_core.c,v 1.312 2008-01-09 00:04:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -368,7 +368,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
    */
   if (cmd->argc-1 > 1) {
     register unsigned int i;
-    char *addrs_str = pr_netaddr_get_ipstr(main_addr);
+    char *addrs_str = (char *) pr_netaddr_get_ipstr(main_addr);
 
     for (i = 2; i < cmd->argc; i++) {
       pr_netaddr_t *addr;
