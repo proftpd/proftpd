@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.132 2008-01-09 16:06:42 castaglia Exp $
+ * $Id: mod_sql.c,v 1.133 2008-01-09 16:13:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1927,7 +1927,11 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
     argp = arg;
 
     if (strcmp(cmd->argv[0], C_RNTO) == 0) {
-      sstrncpy(arg, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE), sizeof(arg));
+      char *path;
+
+      path = dir_best_path(cmd->tmp_pool,
+        pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+      sstrncpy(arg, path, sizeof(arg));
 
     } else if (session.xfer.p &&
                session.xfer.path) {
@@ -1938,10 +1942,14 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
        * stored in the session.xfer structure; these should be expanded
        * properly as well.
        */
-      if (strcmp(cmd->argv[0], C_DELE) == 0)
-        sstrncpy(arg, cmd->arg, sizeof(arg));
+      if (strcmp(cmd->argv[0], C_DELE) == 0) {
+        char *path;
 
-      else
+        path = dir_best_path(cmd->tmp_pool,
+          pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+        sstrncpy(arg, path, sizeof(arg));
+
+      } else
         sstrncpy(argp, "-", sizeof(arg));
     }
     break;
