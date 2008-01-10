@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.133 2008-01-09 16:13:41 castaglia Exp $
+ * $Id: mod_sql.c,v 1.134 2008-01-10 04:24:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -183,7 +183,6 @@ static struct {
 
   array_header *authlist;       /* auth handler list */
   char *defaulthomedir;         /* default homedir if no field specified */
-  int buildhomedir;             /* create homedir if it doesn't exist? */
 
   unsigned long opts;
 
@@ -987,123 +986,12 @@ static void show_passwd(struct passwd *p) {
   sql_log(DEBUG_INFO, "+ pwd.pw_name  : %s", p->pw_name);
   sql_log(DEBUG_INFO, "+ pwd.pw_uid   : %lu", (unsigned long) p->pw_uid);
   sql_log(DEBUG_INFO, "+ pwd.pw_gid   : %lu", (unsigned long) p->pw_gid);
-  sql_log(DEBUG_INFO, "+ pwd.pw_dir   : %s", p->pw_dir);
-  sql_log(DEBUG_INFO, "+ pwd.pw_shell : %s", p->pw_shell);
+  sql_log(DEBUG_INFO, "+ pwd.pw_dir   : %s", p->pw_dir ?
+    p->pw_dir : "(null)");
+  sql_log(DEBUG_INFO, "+ pwd.pw_shell : %s", p->pw_shell ?
+    p->pw_shell : "(null)");
 
   return;
-}
-
-static int build_homedir(cmd_rec *cmd, char *path, mode_t omode, uid_t uid,
-    gid_t gid) {
-  struct stat st;
-  mode_t old_umask;
-  int retval = 0;
-  char *local_ptr;
-  char *local_path;
-  int userdir_flag = 0;
-  gid_t p_gid;
-  uid_t p_uid;
-
-  sql_log(DEBUG_FUNC, ">>> build_homedir(%s,omode,%i,%i)", path, uid, gid);
-
-  /* we assume we're handed a null-terminated string defining the
-   * user's home directory. we walk it, directory by directory,
-   * creating it if it doesn't exist.  path must start with '/'
-   */
-
-  if (path[0] != '/') {
-    sql_log(DEBUG_WARN, "%s", "no '/' at start of user's homedir");
-    sql_log(DEBUG_FUNC, "%s", "<<< build_homedir");
-    return -1;
-  }
-
-  /* sanity check -- make sure the path doesn't exist */
-  if (!pr_fsio_stat(path, &st)) {
-    sql_log(DEBUG_WARN, "%s", "user's homedir already exists");
-    sql_log(DEBUG_FUNC, "%s", "<<< build_homedir");
-    return 0;
-
-  } else if (errno != ENOENT) {
-    sql_log(DEBUG_WARN, "problem with stat of user's homedir: %s",
-      strerror(errno));
-    sql_log(DEBUG_FUNC, "%s", "<<< build_homedir");
-    return -1;
-  }
-
-  /* Make our local copy of path, adding a '/' if necessary..
-   * after this call, we're *guaranteed* a terminating '/'.  We use
-   * this info later.
-   */
-
-  if (path[(strlen(path) - 1)] == '/')
-    local_path = pstrdup(cmd->tmp_pool, path);
-
-  else
-    local_path = pstrcat(cmd->tmp_pool, path, "/", NULL);
-
-  /* gain root for dir creation process */
-  p_gid = getegid();
-  p_uid = geteuid();
-  PRIVS_ROOT
-
-  /* skip the leading '/' */
-  local_ptr = local_path + 1;
-
-  while ((local_ptr = strchr(local_ptr, '/')) != NULL) {
-    *local_ptr = '\0';
-
-    if (*(local_ptr + 1) == '\0')
-      userdir_flag = 1;
-
-    if (pr_fsio_stat(local_path, &st)) {
-      /* if the stat failed.. */
-      if (errno == ENOENT) {
-	/* and it's 'cause the directory doesn't exist */
-	if (!userdir_flag) {
-	  /* if it's an intermediate dir */
-	  if (pr_fsio_mkdir(local_path, S_IRWXU|S_IRWXG|S_IRWXO)) {
-            PRIVS_RELINQUISH
-	    return -1;
-
-	  } else {
-	    pr_fsio_chown(local_path, p_uid, p_gid);
-	  }
-
-	} else {
-	  /* this is the user's homedir, and the final directory  */
-	  old_umask = umask(0);
-	  umask(old_umask & ~(S_IWUSR|S_IXUSR|S_IRUSR));
-	  if (pr_fsio_mkdir(local_path, omode)) {
-	    umask(old_umask);
-            PRIVS_RELINQUISH
-	    return -1;
-
-	  } else {
-	    pr_fsio_chown(local_path, uid, gid);
-	  }
-
-	  umask(old_umask);
-	}
-
-      } else {
-	/* we failed for a reason other than no such
-	 * directory, so we return an error
-         */
-        PRIVS_RELINQUISH
-	return -1;
-      }
-    }
-    
-    /* fix local_ptr, and bump it */
-    *local_ptr = '/';
-    local_ptr++;
-  }
-
-  /* relinquish root privileges */
-  PRIVS_RELINQUISH
-
-  sql_log(DEBUG_FUNC, "%s", "<<< build_homedir");
-  return (retval);
 }
 
 /* _sql_addpasswd: creates a passwd and adds it to the passwd struct
@@ -1192,7 +1080,9 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     /* Check for negatively cached passwds, which will have NULL
      * passwd/home/shell.
      */
-    if (!pwd->pw_dir) {
+    if (pwd->pw_passwd == NULL &&
+        pwd->pw_shell == NULL &&
+        pwd->pw_dir == NULL) {
       sql_log(DEBUG_AUTH, "negative cache entry for user '%s'", pwd->pw_name);
       return NULL;
     }
@@ -1330,18 +1220,19 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
       /* Make sure that, if configured, the shell value is valid, and scream
        * if it is not.
        */
-      sql_log(DEBUG_WARN, "NULL shell column value, setting to \"\"");
-      shell = "";
+      sql_log(DEBUG_WARN, "NULL shell column value");
+      shell = NULL;
 
     } else {
       shell = sd->data[i];
     }
 
   } else
-    shell = "";
+    shell = NULL;
   
   if (uid < cmap.minuseruid)
     uid = cmap.defaultuid;
+
   if (gid < cmap.minusergid)
     gid = cmap.defaultgid;
 
@@ -3428,7 +3319,6 @@ MODRET cmd_check(cmd_rec *cmd) {
   int success = 0;
   int cnt = 0;
   struct passwd lpw;
-  struct stat st;
   modret_t *mr = NULL;
 
   if (!SQL_USERS ||
@@ -3484,18 +3374,6 @@ MODRET cmd_check(cmd_rec *cmd) {
     lpw.pw_name = cmd->argv[1];
     cmap.authpasswd = _sql_getpasswd(cmd, &lpw);
 
-    /*
-     * finally, build the user's homedir if necessary 
-     */
-    
-    if (cmap.buildhomedir && cmap.authpasswd &&
-	(stat(cmap.authpasswd->pw_dir, &st) == -1 && errno == ENOENT)) {
-      build_homedir(cmd, cmap.authpasswd->pw_dir, 
-		    S_IRWXU | S_IRWXG | S_IRWXO, 
-		    cmap.authpasswd->pw_uid,
-		    cmap.authpasswd->pw_gid);
-    }
-    
     session.auth_mech = "mod_sql.c";
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_check");
     return PR_HANDLED(cmd);
@@ -4681,14 +4559,6 @@ static int sql_sess_init(void) {
     FALSE);
   cmap.negative_cache = negative_cache ? *negative_cache : FALSE;
 
-  /* SQLHomedirOnDemand defaults to NO */
-  temp_ptr = get_param_ptr(main_server->conf, "SQLHomedirOnDemand", FALSE);
-
-  if (temp_ptr && (*((unsigned char *) temp_ptr) == TRUE))
-    cmap.buildhomedir = TRUE;
-  else
-    cmap.buildhomedir = FALSE;
-
   cmap.defaulthomedir = get_param_ptr(main_server->conf, "SQLDefaultHomedir",
     FALSE);
 
@@ -4930,8 +4800,6 @@ static int sql_sess_init(void) {
       sql_log(DEBUG_INFO, "homedir(default)   : '%s'", cmap.defaulthomedir);
     sql_log(DEBUG_INFO, "shell field        : %s",
       (cmap.shellfield ? cmap.shellfield : "NULL"));
-    sql_log(DEBUG_INFO, "homedirondemand    : %s",
-      (cmap.buildhomedir ? "true" : "false"));
   }
 
   if (SQL_GROUPS) {
