@@ -40,7 +40,7 @@ if test "$OSTYPE" = "$OSREL" ; then
   platform="\"$ostype\""
 fi
 
-AC_DEFINE_UNQUOTED(PR_BUILD_OPTS, "`echo "$0 $ac_configure_args"`")
+AC_DEFINE_UNQUOTED(PR_BUILD_OPTS, "`echo "$ac_configure_args"`")
 AC_DEFINE_UNQUOTED(PR_PLATFORM, $platform)
 AC_SUBST(OSREL)
 AC_SUBST(OSTYPE)
