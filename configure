@@ -2212,7 +2212,7 @@ if test "$OSTYPE" = "$OSREL" ; then
 fi
 
 cat >>confdefs.h <<_ACEOF
-#define PR_BUILD_OPTS "`echo "$0 $ac_configure_args"`"
+#define PR_BUILD_OPTS "`echo "$ac_configure_args"`"
 _ACEOF
 
 cat >>confdefs.h <<_ACEOF
