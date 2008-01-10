@@ -2,7 +2,7 @@
  * ProFTPD: mod_ifsession -- a module supporting conditional
  *                            per-user/group/class configuration contexts.
  *
- * Copyright (c) 2002-2006 TJ Saunders
+ * Copyright (c) 2002-2008 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,12 +26,12 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.20 2007-06-07 00:30:04 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.21 2008-01-10 18:22:32 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_IFSESSION_VERSION	"mod_ifsession/0.9"
+#define MOD_IFSESSION_VERSION	"mod_ifsession/1.0"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001
@@ -53,9 +53,14 @@ static int ifsess_merged = FALSE;
 static void ifsess_remove_param(xaset_t *set, const char *name) {
   config_rec *c = NULL;
 
-  while ((c = find_config(set, -1, name, TRUE)) != NULL) {
+  c = find_config(set, -1, name, TRUE);
+  while (c != NULL) {
+    pr_signals_handle();
+
     xaset_t *fset = c->set;
     xaset_remove(fset, (xasetmember_t *) c);
+
+    c = find_config(set, -1, name, TRUE);
   }
 }
 
@@ -286,8 +291,10 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
   while (c) {
     config_rec *list = NULL;
 
-    if ((list = find_config(c->subset, IFSESS_GROUP_NUMBER, NULL,
-        FALSE)) != NULL) {
+    pr_signals_handle();
+
+    list = find_config(c->subset, IFSESS_GROUP_NUMBER, NULL, FALSE);
+    if (list != NULL) {
       unsigned char mergein = FALSE;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
@@ -362,8 +369,10 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
   while (c) {
     config_rec *list = NULL;
 
-    if ((list = find_config(c->subset, IFSESS_USER_NUMBER, NULL,
-        FALSE)) != NULL) {
+    pr_signals_handle();
+
+    list = find_config(c->subset, IFSESS_USER_NUMBER, NULL, FALSE);
+    if (list != NULL) {
       unsigned char mergein = FALSE;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
@@ -442,8 +451,10 @@ static int ifsess_sess_init(void) {
   while (c) {
     config_rec *list = NULL;
 
-    if ((list = find_config(c->subset, IFSESS_CLASS_NUMBER, NULL,
-        FALSE)) != NULL) {
+    pr_signals_handle();
+
+    list = find_config(c->subset, IFSESS_CLASS_NUMBER, NULL, FALSE);
+    if (list != NULL) {
       unsigned char mergein = FALSE;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
