@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
  *
- * Copyright (c) 2001-2007 TJ Saunders
+ * Copyright (c) 2001-2008 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.28 2007-06-07 00:30:04 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.29 2008-01-11 21:55:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -422,7 +422,10 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
       if (pr_fsio_lstat(cond_str, &st) >= 0 && S_ISDIR(st.st_mode))
         return TRUE;
 
-      return FALSE;
+      if (!negated)
+        return FALSE;
+      else
+        return TRUE;
     }
 
     case REWRITE_COND_OP_TEST_FILE: {
@@ -433,7 +436,10 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
       if (pr_fsio_lstat(cond_str, &st) >= 0 && S_ISREG(st.st_mode))
         return TRUE;
 
-      return FALSE;
+      if (!negated)
+        return FALSE;
+      else
+        return TRUE;
     }
 
     case REWRITE_COND_OP_TEST_SYMLINK: {
@@ -444,7 +450,10 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
       if (pr_fsio_lstat(cond_str, &st) >= 0 && S_ISLNK(st.st_mode))
         return TRUE;
 
-      return FALSE;
+      if (!negated)
+        return FALSE;
+      else
+        return TRUE;
     }
 
     case REWRITE_COND_OP_TEST_SIZE: {
@@ -456,7 +465,10 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
           st.st_size > 0)
         return TRUE;
 
-      return FALSE;
+      if (!negated)
+        return FALSE;
+      else
+        return TRUE;
     }
 
     default:
