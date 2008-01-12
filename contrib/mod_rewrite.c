@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.29 2008-01-11 21:55:25 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.30 2008-01-12 22:59:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -415,60 +415,68 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
     }
 
     case REWRITE_COND_OP_TEST_DIR: {
+      int res = FALSE;
       struct stat st;
       rewrite_log("rewrite_match_cond(): checking dir test cond");
 
       pr_fs_clear_cache();
-      if (pr_fsio_lstat(cond_str, &st) >= 0 && S_ISDIR(st.st_mode))
-        return TRUE;
+      if (pr_fsio_lstat(cond_str, &st) >= 0 &&
+          S_ISDIR(st.st_mode))
+        res = TRUE;
 
       if (!negated)
-        return FALSE;
+        return res;
       else
-        return TRUE;
+        return (res == TRUE ? FALSE : TRUE);
     }
 
     case REWRITE_COND_OP_TEST_FILE: {
+      int res = FALSE;
       struct stat st;
       rewrite_log("rewrite_match_cond(): checking file test cond");
 
       pr_fs_clear_cache();
-      if (pr_fsio_lstat(cond_str, &st) >= 0 && S_ISREG(st.st_mode))
-        return TRUE;
+      if (pr_fsio_lstat(cond_str, &st) >= 0 &&
+          S_ISREG(st.st_mode))
+        res = TRUE;
 
       if (!negated)
-        return FALSE;
+        return res;
       else
-        return TRUE;
+        return (res == TRUE ? FALSE : TRUE);
     }
 
     case REWRITE_COND_OP_TEST_SYMLINK: {
+      int res = FALSE;
       struct stat st;
       rewrite_log("rewrite_match_cond(): checking symlink test cond");
 
       pr_fs_clear_cache();
-      if (pr_fsio_lstat(cond_str, &st) >= 0 && S_ISLNK(st.st_mode))
-        return TRUE;
+      if (pr_fsio_lstat(cond_str, &st) >= 0 &&
+          S_ISLNK(st.st_mode))
+        res = TRUE;
 
       if (!negated)
-        return FALSE;
+        return res;
       else
-        return TRUE;
+        return (res == TRUE ? FALSE : TRUE);
     }
 
     case REWRITE_COND_OP_TEST_SIZE: {
+      int res = FALSE;
       struct stat st;
       rewrite_log("rewrite_match_cond(): checking size test cond");
 
       pr_fs_clear_cache();
-      if (pr_fsio_lstat(cond_str, &st) >= 0 && S_ISREG(st.st_mode) &&
+      if (pr_fsio_lstat(cond_str, &st) >= 0 &&
+          S_ISREG(st.st_mode) &&
           st.st_size > 0)
-        return TRUE;
+        res = TRUE;
 
       if (!negated)
-        return FALSE;
+        return res;
       else
-        return TRUE;
+        return (res == TRUE ? FALSE : TRUE);
     }
 
     default:
