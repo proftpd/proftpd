@@ -24607,8 +24607,7 @@ _ACEOF
 
       if test `echo $ac_static_modules | grep -c mod_auth_pam` = "0"; then
         ac_static_modules="mod_auth_pam.o $ac_static_modules"
-        ac_build_static_modules="modules/mod_auth_pam.o $ac_build_static_modules
-"
+        ac_build_static_modules="modules/mod_auth_pam.o $ac_build_static_modules"
       fi
 
 fi
