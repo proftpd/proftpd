@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.229 2008-01-05 01:29:32 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.230 2008-01-12 03:00:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -40,6 +40,16 @@
 
 #ifdef HAVE_REGEX_H
 # include <regex.h>
+#endif
+
+/* Minimum priority a process can have. */
+#ifndef PRIO_MIN
+# define PRIO_MIN	-20
+#endif
+
+/* Maximum priority a process can have.  */
+#ifndef PRIO_MAX
+# define PRIO_MAX	20
 #endif
 
 extern module auth_module;
