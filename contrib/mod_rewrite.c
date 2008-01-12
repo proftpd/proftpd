@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.30 2008-01-12 22:59:29 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.31 2008-01-12 23:01:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -742,43 +742,62 @@ static char *rewrite_subst(cmd_rec *cmd, char *pattern) {
 static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
     rewrite_match_t *matches) {
   register unsigned int i = 0;
-  char *new_pattern = NULL;
+  char *replacement_pattern = NULL;
 
   for (i = 0; i < REWRITE_MAX_MATCHES; i++) {
+    char buf[3] = {'\0'};
+
+    memset(buf, '\0', sizeof(buf));
+
+    if (matches == &rewrite_rule_matches)
+      /* Substitute "$N" backreferences for RewriteRule matches */
+      snprintf(buf, sizeof(buf), "$%u", i);
+
+    else if (matches == &rewrite_cond_matches)
+      /* Substitute "%N" backreferences for RewriteCondition matches */
+      snprintf(buf, sizeof(buf), "%%%u", i);
+
+    if (!replacement_pattern)
+      replacement_pattern = pstrdup(cmd->pool, pattern);
+
+    /* Make sure there's a backreference for this in the substitution
+     * pattern.  Otherwise, just continue on.
+     */
+    if (strstr(replacement_pattern, buf) == NULL)
+      continue;
+
     if (matches->match_groups[i].rm_so != -1) {
-      char buf[3] = {'\0'}, tmp;
+      char tmp;
 
-      if (matches == &rewrite_rule_matches)
-        /* Substitute "$N" backreferences for RewriteRule matches */
-        snprintf(buf, sizeof(buf), "$%u", i);
-
-      else if (matches == &rewrite_cond_matches)
-        /* Substitute "%N" backreferences for RewriteCondition matches */
-        snprintf(buf, sizeof(buf), "%%%u", i);
-
-      if (!new_pattern)
-        new_pattern = pstrdup(cmd->pool, pattern);
-
-      /* Make sure there's a backreference for this in the substitution
-       * pattern.  Otherwise, just continue on.
+      /* There's a match for the backref in the string, substitute in
+       * the backreferenced value.
        */
-      if (!strstr(new_pattern, buf))
-        continue;
 
       tmp = (matches->match_string)[matches->match_groups[i].rm_eo];
       (matches->match_string)[matches->match_groups[i].rm_eo] = '\0';
 
       rewrite_log("rewrite_subst_backrefs(): replacing backref '%s' with '%s'",
         buf, &(matches->match_string)[matches->match_groups[i].rm_so]);
-      new_pattern = sreplace(cmd->pool, new_pattern, buf,
+      replacement_pattern = sreplace(cmd->pool, replacement_pattern, buf,
         &(matches->match_string)[matches->match_groups[i].rm_so], NULL);
    
       /* Undo the twiddling of the NUL character. */ 
       (matches->match_string)[matches->match_groups[i].rm_eo] = tmp;
+
+    } else {
+      /* There's backreference in the string, but there no matching
+       * group (i.e. backreferenced value).  Substitute in an empty string
+       * for the backref.
+       */
+
+      rewrite_log("rewrite_subst_backrefs(): replacing backref '%s' with "
+        "empty string", buf);
+      replacement_pattern = sreplace(cmd->pool, replacement_pattern, buf,
+        "", NULL);
     }
   }
 
-  return (new_pattern ? new_pattern : pattern);
+  return (replacement_pattern ? replacement_pattern : pattern);
 }
 
 static char *rewrite_subst_maps(cmd_rec *cmd, char *pattern) {

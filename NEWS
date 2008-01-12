@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.889 2008-01-11 21:55:25 castaglia Exp $
+$Id: NEWS,v 1.890 2008-01-12 23:01:47 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -103,6 +103,8 @@ CVS
 - Bug 3025 - Using %b in a SQLNamedQuery does not properly log the file size
   for DELE.
 - Bug 3026 - RewriteCondition does not negate -d -f -s tests.
+- Bug 3027 - Unmatched backreferences are not handled properly in RewriteRules.
+  Unmatched backreferences are now replaced with empty strings.
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------
