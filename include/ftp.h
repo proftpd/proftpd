@@ -26,7 +26,7 @@
 
 /* FTP commands and responses (may not all be implemented)
  *
- * $Id: ftp.h,v 1.11 2004-10-30 20:44:41 castaglia Exp $
+ * $Id: ftp.h,v 1.12 2008-01-14 15:38:22 castaglia Exp $
  */
 
 #ifndef PR_FTP_H
@@ -64,6 +64,8 @@
 #define C_RMD	"RMD"		/* Remove a directory */
 #define C_XRMD	"XRMD"		/* Remove a directory */
 #define C_MKD	"MKD"		/* Create a directory */
+#define C_MLSD	"MLSD"		/* List a directory (RFC3659) */
+#define C_MLST	"MLST"		/* List a path (RFC3659) */
 #define C_XMKD	"XMKD"		/* Create a directory */
 #define C_PWD	"PWD"		/* Return current working directory */
 #define C_XPWD	"XPWD"		/* Return current working directory */

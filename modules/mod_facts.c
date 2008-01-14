@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.3 2008-01-03 02:00:23 castaglia Exp $
+ * $Id: mod_facts.c,v 1.4 2008-01-14 15:38:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -430,7 +430,7 @@ static void facts_mlst_feat_remove(void) {
   while (feat) {
     pr_signals_handle();
 
-    if (strncmp(feat, "MLST", 4) == 0) {
+    if (strncmp(feat, C_MLST, 4) == 0) {
       mlst_feat = feat;
       break;
     }
@@ -817,7 +817,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
   /* Open data connection */
   session.sf_flags |= SF_ASCII_OVERRIDE;
-  if (pr_data_open(NULL, "MLSD", PR_NETIO_IO_WR, 0) < 0) {
+  if (pr_data_open(NULL, C_MLSD, PR_NETIO_IO_WR, 0) < 0) {
     pr_fsio_closedir(dirh);
     return PR_ERROR(cmd);
   }
@@ -1049,10 +1049,10 @@ static conftable facts_conftab[] = {
 static cmdtable facts_cmdtab[] = {
   { CMD,	"MFF",		G_WRITE,facts_mff,  TRUE, FALSE, CL_WRITE },
   { CMD,	"MFMT",		G_WRITE,facts_mfmt, TRUE, FALSE, CL_WRITE },
-  { CMD,	"MLSD",		G_DIRS,	facts_mlsd, TRUE, FALSE, CL_DIRS },
-  { LOG_CMD,	"MLSD",		G_NONE, facts_mlsd_cleanup, FALSE, FALSE },
-  { LOG_CMD_ERR,"MLSD",		G_NONE, facts_mlsd_cleanup, FALSE, FALSE },
-  { CMD,	"MLST",		G_DIRS,	facts_mlst, TRUE, FALSE, CL_DIRS },
+  { CMD,	C_MLSD,		G_DIRS,	facts_mlsd, TRUE, FALSE, CL_DIRS },
+  { LOG_CMD,	C_MLSD,		G_NONE, facts_mlsd_cleanup, FALSE, FALSE },
+  { LOG_CMD_ERR,C_MLSD,		G_NONE, facts_mlsd_cleanup, FALSE, FALSE },
+  { CMD,	C_MLST,		G_DIRS,	facts_mlst, TRUE, FALSE, CL_DIRS },
   { CMD,	C_OPTS "_MLST", G_NONE, facts_opts_mlst, FALSE, FALSE },
   { 0, NULL }
 };
