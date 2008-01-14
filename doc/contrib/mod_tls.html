@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.13 2007-10-11 16:45:07 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.14 2008-01-14 22:42:32 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -484,6 +484,11 @@ the main server and all configured virtual hosts.
 The <code>TLSLog</code> directive is used to specify a log file for
 <code>mod_tls</code>'s reporting on a per-server basis.  The <em>file</em>
 parameter given must be the full path to the file to use for logging.
+
+<p>
+Note that this path must <b>not</b> be to a world-writable directory and,
+unless <code>AllowLogSymlinks</code> is explicitly set to <em>on</em>
+(generally a bad idea), the path must <b>not</b> be a symbolic link.
 
 <p>
 <hr>
@@ -1201,7 +1206,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2007-10-11 16:45:07 $</i><br>
+Last Updated: <i>$Date: 2008-01-14 22:42:32 $</i><br>
 
 <br><hr>
 
