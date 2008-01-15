@@ -387,10 +387,10 @@ log_ratios (cmd_rec * cmd)
 static void
 update_stats (void)
 {
-    FILE *usrfile,*newfile;
+    FILE *usrfile = NULL, *newfile = NULL;
     char usrstr[256] = {'\0'}, *ratname;
     int ulfiles,dlfiles,cpc;
-    off_t ulbytes, dlbytes;
+    off_t ulbytes = 0, dlbytes = 0;
 
     if (!fileerr) {
         newfile = fopen(g.ratiotmp, "w");
@@ -605,12 +605,12 @@ cmd_cwd (cmd_rec * cmd)
 MODRET
 ratio_cmd (cmd_rec * cmd)
 {
-  FILE *usrfile,*newfile;
+  FILE *usrfile = NULL, *newfile = NULL;
   char sbuf1[128] = {'\0'},sbuf2[128] = {'\0'},
        sbuf3[128] = {'\0'},usrstr[256] = {'\0'};
   char *ratname;
   int ulfiles,dlfiles,cpc;
-  off_t ulbytes, dlbytes;
+  off_t ulbytes = 0, dlbytes = 0;
 
   if (!gotratuser && g.save) {
 	usrfile = fopen(g.ratiofile, "r");
