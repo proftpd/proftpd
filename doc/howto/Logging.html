@@ -1,4 +1,4 @@
-<!-- $Id: Logging.html,v 1.1 2004-04-10 17:59:58 castaglia Exp $ -->
+<!-- $Id: Logging.html,v 1.2 2008-01-15 18:27:41 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Logging.html,v $ -->
 
 <html>
@@ -28,17 +28,21 @@ Anyone who can write to the directory where ProFTPD is writing a log file can
 almost certainly gain access to the UID that the server is started under, which
 is normally <code>root</code>. <b>Do not</b> give people write access to the
 directory where the logs are stored without being aware of the consequences:
-if the logs directory is writeable (by a non-<code>root</code> user), someone
+if the logs directory is writable (by a non-<code>root</code> user), someone
 could replace a log file with a symlink to some other system file, and then
 <code>root</code> might overwrite that file with arbitrary data. If the log
-files themselves are writeable (by a non-<code>root</code> user), then someone
+files themselves are writable (by a non-<code>root</code> user), then someone
 may be able to overwrite the log itself with bogus data.
 
 <p>
-When opening log files, <code>proftpd</code> will by default error if the
-file being opened for logging is in a directory that does not exist, or
-is world-writeable.  It will also, by default, error if the file given is
-a symlink; this symlink check can be configured via the <a href="http://www.proftpd.org/docs/directives/linked/config_ref_AllowLogSymlinks.html"><code>AllowLogSymlinks</code></a> directive.
+When opening log files, <code>proftpd</code> will by default log a warning if
+the file being opened for logging is in a directory that does not exist, or
+is world-writable.  The log file will <b>not</b> be written in world-writable
+directories; there are no exceptions.  (If you have configured log files in
+your <code>proftpd.conf</code> that are not appearing, check for the warnings
+about world-writable directories.)  The <code>proftpd</code> process will also,
+by default, log a warning if the file given is a symlink; this symlink check
+can be configured via the <a href="http://www.proftpd.org/docs/directives/linked/config_ref_AllowLogSymlinks.html"><code>AllowLogSymlinks</code></a> directive.
 
 <p>
 In addition, log files may contain information supplied directly by the client,
@@ -192,7 +196,7 @@ scoreboard file is determined by the
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-04-10 17:59:58 $</i><br>
+Last Updated: <i>$Date: 2008-01-15 18:27:41 $</i><br>
 <hr>
 
 </body>
