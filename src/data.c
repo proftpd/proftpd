@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.100 2007-12-31 22:47:38 castaglia Exp $
+ * $Id: data.c,v 1.101 2008-01-15 01:21:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -525,7 +525,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
     struct sigaction act;
 
     if (pr_netio_postopen(session.d->instrm) < 0) {
-      pr_response_add_err(R_425, "Unable to build data connection: %s",
+      pr_response_add_err(R_425, _("Unable to build data connection: %s"),
         strerror(session.d->xerrno));
       destroy_pool(session.d->pool);
       session.d = NULL;
@@ -533,7 +533,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
     }
 
     if (pr_netio_postopen(session.d->outstrm) < 0) {
-      pr_response_add_err(R_425, "Unable to build data connection: %s",
+      pr_response_add_err(R_425, _("Unable to build data connection: %s"),
         strerror(session.d->xerrno));
       destroy_pool(session.d->pool);
       session.d = NULL;
