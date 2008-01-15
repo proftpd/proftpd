@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.320 2008-01-08 17:58:34 castaglia Exp $
+ * $Id: main.c,v 1.321 2008-01-15 17:56:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -130,6 +130,8 @@ static void handle_xcpu(void);
 static void handle_terminate(void);
 static void handle_terminate_other(void);
 static void finish_terminate(void);
+
+static cmd_rec *make_ftp_cmd(pool *, char *, int);
 
 static const char *config_filename = PR_CONFIG_FILE_PATH;
 
@@ -480,6 +482,95 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
   return success;
 }
 
+/* Returns the appropriate maximum buffer length to use for FTP commands
+ * from the client, taking the CommandBufferSize directive into account.
+ */
+static long get_max_cmd_len(size_t buflen) {
+  long res;
+  int *bufsz = NULL;
+
+  bufsz = get_param_ptr(main_server->conf, "CommandBufferSize", FALSE);
+  if (bufsz == NULL) {
+    res = PR_DEFAULT_CMD_BUFSZ;
+
+  } else if (*bufsz <= 0) {
+    pr_log_pri(PR_LOG_WARNING, "invalid CommandBufferSize size (%d) given, "
+      "using default buffer size (%u) instead", *bufsz, PR_DEFAULT_CMD_BUFSZ);
+    res = PR_DEFAULT_CMD_BUFSZ;
+
+  } else if (*bufsz + 1 > buflen) {
+    pr_log_pri(PR_LOG_WARNING, "invalid CommandBufferSize size (%d) given, "
+      "using default buffer size (%u) instead", *bufsz, PR_DEFAULT_CMD_BUFSZ);
+    res = PR_DEFAULT_CMD_BUFSZ;
+
+  } else {
+    pr_log_debug(DEBUG1, "setting CommandBufferSize to %d", *bufsz);
+    res = (long) *bufsz;
+  }
+
+  return res;
+}
+
+int pr_cmd_read(cmd_rec **res) {
+  static long cmd_bufsz = -1;
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  char *cp;
+  size_t buflen;
+
+  if (res == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  memset(buf, '\0', sizeof(buf));
+
+  if (pr_netio_telnet_gets(buf, sizeof(buf)-1, session.c->instrm,
+      session.c->outstrm) == NULL)
+    return -1;
+
+  if (cmd_bufsz == -1)
+    cmd_bufsz = get_max_cmd_len(sizeof(buf));
+
+  buf[cmd_bufsz - 1] = '\0';
+  buflen = strlen(buf);
+
+  if (buflen &&
+      (buf[buflen-1] == '\n' || buf[buflen-1] == '\r')) {
+    buf[buflen-1] = '\0';
+    buflen--;
+
+    if (buflen &&
+        (buf[buflen-1] == '\n' || buf[buflen-1] =='\r'))
+      buf[buflen-1] = '\0';
+  }
+
+  cp = buf;
+  if (*cp == '\r')
+    cp++;
+
+  if (*cp) {
+    int flags = 0;
+    cmd_rec *cmd;
+
+    /* If this is a SITE command, preserve embedded whitespace in the
+     * command parameters, in order to handle file names that have multiple
+     * spaces in the names.  Arguably this should be handled in the SITE
+     * command handlers themselves, via cmd->arg.  This small hack
+     * reduces the burden on SITE module developers, however.
+     */
+    if (strncasecmp(cp, C_SITE, 4) == 0)
+      flags |= PR_STR_FL_PRESERVE_WHITESPACE;
+
+    cmd = make_ftp_cmd(session.pool, cp, flags);
+
+    if (cmd) {
+      *res = cmd;
+    } 
+  }
+
+  return 0;
+}
+
 int pr_cmd_dispatch(cmd_rec *cmd) {
   char *cp = NULL;
   int success = 0;
@@ -613,22 +704,53 @@ static int idle_timeout_cb(CALLBACK_FRAME) {
   return 0;
 }
 
-static void cmd_loop(server_rec *server, conn_t *c) {
-  static long cmd_buf_size = -1;
-  config_rec *id = NULL;
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  char *cp;
+static void send_session_banner(server_rec *server) {
+  config_rec *c = NULL;
   char *display = NULL;
   const char *serveraddress = NULL;
-  config_rec *masq_c = NULL;
-  int i, timeout_idle;
+  config_rec *masq = NULL;
 
-  serveraddress = pr_netaddr_get_ipstr(c->local_addr);
+  display = get_param_ptr(server->conf, "DisplayConnect", FALSE);
+  if (display != NULL) {
+    if (pr_display_file(display, NULL, R_220) < 0)
+      pr_log_debug(DEBUG6, "unable to display DisplayConnect file '%s': %s",
+        display, strerror(errno));
+  }
 
-  pr_proctitle_set("connected: %s (%s:%d)",
-    c->remote_name ? c->remote_name : "?",
-    c->remote_addr ? pr_netaddr_get_ipstr(c->remote_addr) : "?",
-    c->remote_port ? c->remote_port : 0);
+  serveraddress = pr_netaddr_get_ipstr(session.c->local_addr);
+
+  masq = find_config(server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
+  if (masq != NULL) {
+    pr_netaddr_t *masq_addr = (pr_netaddr_t *) masq->argv[0];
+    serveraddress = pr_netaddr_get_ipstr(masq_addr);
+  }
+
+  if ((c = find_config(server->conf, CONF_PARAM, "ServerIdent",
+      FALSE)) == NULL || *((unsigned char *) c->argv[0]) == FALSE) {
+    unsigned char *defer_welcome = get_param_ptr(main_server->conf,
+      "DeferWelcome", FALSE);
+
+    if (c &&
+        c->argc > 1) {
+      pr_response_send(R_220, "%s", (char *) c->argv[1]);
+
+    } else if (defer_welcome &&
+               *defer_welcome == TRUE) {
+      pr_response_send(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
+        " Server ready.");
+
+    } else {
+      pr_response_send(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
+        " Server (%s) [%s]", server->ServerName, serveraddress);
+    }
+
+  } else
+    pr_response_send(R_220, _("%s FTP server ready"), serveraddress);
+
+}
+
+static void cmd_loop(server_rec *server, conn_t *c) {
+  int timeout_idle;
 
   /* Make sure we can receive OOB data */
   pr_inet_set_async(session.pool, session.c);
@@ -639,49 +761,17 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     pr_timer_add(timeout_idle, PR_TIMER_IDLE, NULL, idle_timeout_cb,
       "TimeoutIdle");
 
-  masq_c = find_config(server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
-  if (masq_c != NULL) {
-    pr_netaddr_t *masq_addr = (pr_netaddr_t *) masq_c->argv[0];
-    serveraddress = pr_netaddr_get_ipstr(masq_addr);
-  }
-
-  display = get_param_ptr(server->conf, "DisplayConnect", FALSE);
-  if (display != NULL) {
-    if (pr_display_file(display, NULL, R_220) < 0)
-      pr_log_debug(DEBUG6, "unable to display DisplayConnect file '%s': %s",
-        display, strerror(errno));
-  }
-
-  if ((id = find_config(server->conf, CONF_PARAM, "ServerIdent",
-      FALSE)) == NULL || *((unsigned char *) id->argv[0]) == FALSE) {
-    unsigned char *defer_welcome = get_param_ptr(main_server->conf,
-      "DeferWelcome", FALSE);
-
-    if (id && id->argc > 1)
-      pr_response_send(R_220, "%s", (char *) id->argv[1]);
-
-    else if (defer_welcome && *defer_welcome == TRUE)
-      pr_response_send(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
-        " Server ready.");
-
-    else
-      pr_response_send(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
-        " Server (%s) [%s]", server->ServerName, serveraddress);
-
-  } else
-    pr_response_send(R_220, _("%s FTP server ready"), serveraddress);
-
-  pr_log_pri(PR_LOG_INFO, "FTP session opened.");
-
   while (TRUE) {
+    int res = 0; 
+    cmd_rec *cmd = NULL;
+
     pr_signals_handle();
 
-    if (pr_netio_telnet_gets(buf, sizeof(buf)-1, session.c->instrm,
-        session.c->outstrm) == NULL) {
-
+    res = pr_cmd_read(&cmd);
+    if (res < 0) {
       if (PR_NETIO_ERRNO(session.c->instrm) == EINTR)
         /* Simple interrupted syscall */
-	continue;
+        continue;
 
 #ifndef PR_DEVEL_NO_DAEMON
       /* Otherwise, EOF */
@@ -695,70 +785,15 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     if (timeout_idle > 0)
       pr_timer_reset(PR_TIMER_IDLE, NULL);
 
-    if (cmd_buf_size == -1) {
-      int *bufsz = get_param_ptr(main_server->conf, "CommandBufferSize", FALSE);
-      if (bufsz == NULL) {
-        cmd_buf_size = PR_DEFAULT_CMD_BUFSZ;
+    if (cmd) {
+      pr_cmd_dispatch(cmd);
+      destroy_pool(cmd->pool);
 
-      } else if (*bufsz <= 0) {
-        pr_log_pri(PR_LOG_WARNING, "invalid CommandBufferSize size (%d) "
-          "given, using default buffer size (%u) instead",
-          *bufsz, PR_DEFAULT_CMD_BUFSZ);
-        cmd_buf_size = PR_DEFAULT_CMD_BUFSZ;
-
-      } else if (*bufsz + 1 > sizeof(buf)) {
-        pr_log_pri(PR_LOG_WARNING, "invalid CommandBufferSize size (%d) "
-          "given, using default buffer size (%u) instead",
-          *bufsz, PR_DEFAULT_CMD_BUFSZ);
-        cmd_buf_size = PR_DEFAULT_CMD_BUFSZ;
-
-      } else {
-        pr_log_debug(DEBUG1, "setting CommandBufferSize to %d", *bufsz);
-        cmd_buf_size = (long) *bufsz;
-      }
+    } else {
+      pr_response_send(R_500, _("Invalid command: try being more creative"));
     }
 
-    buf[cmd_buf_size - 1] = '\0';
-    i = strlen(buf);
-
-    if (i && (buf[i-1] == '\n' || buf[i-1] == '\r')) {
-      buf[i-1] = '\0';
-      i--;
-
-      if (i && (buf[i-1] == '\n' || buf[i-1] =='\r'))
-        buf[i-1] = '\0';
-    }
-
-    cp = buf;
-    if (*cp == '\r')
-      cp++;
-
-    if (*cp) {
-      cmd_rec *cmd;
-      int flags = 0;
-
-      /* If this is a SITE command, preserve embedded whitespace in the
-       * command parameters, in order to handle file names that have multiple
-       * spaces in the names.  Arguably this should be handled in the SITE
-       * command handlers themselves, via cmd->arg.  This small hack
-       * reduces the burden on SITE module developers, however.
-       */
-      if (strncasecmp(cp, C_SITE, 4) == 0)
-        flags |= PR_STR_FL_PRESERVE_WHITESPACE;
-
-      cmd = make_ftp_cmd(session.pool, cp, flags);
-
-      if (cmd) {
-        pr_cmd_dispatch(cmd);
-        destroy_pool(cmd->pool);
-        cmd->pool = NULL;
-        cmd->notes = NULL;
-
-      } else
-	pr_response_send(R_500, _("Invalid command: try being more creative"));
-    }
-
-    /* release any working memory allocated in inet */
+    /* Release any working memory allocated in inet */
     pr_inet_clear();
   }
 }
@@ -1245,8 +1280,16 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   pr_log_debug(DEBUG4, "connected - remote : %s:%d",
     pr_netaddr_get_ipstr(session.c->remote_addr), session.c->remote_port);
 
+  pr_proctitle_set("connected: %s (%s:%d)",
+    session.c->remote_name ? session.c->remote_name : "?",
+    session.c->remote_addr ? pr_netaddr_get_ipstr(session.c->remote_addr) : "?",
+    session.c->remote_port ? session.c->remote_port : 0);
+  pr_log_pri(PR_LOG_INFO, "FTP session opened.");
+
   /* Set the per-child resource limits. */
   set_session_rlimits();
+
+  send_session_banner(main_server);
 
   cmd_loop(main_server, conn);
 

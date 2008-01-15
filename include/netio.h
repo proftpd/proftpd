@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project
+ * Copyright (c) 2001-2008 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Network IO stream layer
- * $Id: netio.h,v 1.9 2004-10-09 20:46:21 castaglia Exp $
+ * $Id: netio.h,v 1.10 2008-01-15 17:56:33 castaglia Exp $
  */
 
 #ifndef PR_NETIO_H
@@ -204,6 +204,7 @@ int pr_netio_write(pr_netio_stream_t *, char *, size_t);
  */
 int pr_netio_write_async(pr_netio_stream_t *, char *, size_t);
 
+void pr_netio_reset_poll_interval(pr_netio_stream_t *);
 void pr_netio_set_poll_interval(pr_netio_stream_t *, unsigned int);
 
 /* Allocate a NetIO object, and set all of its NetIO callbacks to their

@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.101 2008-01-15 01:21:46 castaglia Exp $
+ * $Id: data.c,v 1.102 2008-01-15 17:56:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -844,6 +844,38 @@ void pr_data_abort(int err, int quiet) {
 int pr_data_xfer(char *cl_buf, int cl_size) {
   int len = 0;
   int total = 0;
+  int res = 0;
+
+  /* Poll the control channel for any commands we should handle, like
+   * QUIT or ABOR.
+   */
+  pr_trace_msg(trace_channel, 4, "polling for commands on control channel");
+  pr_netio_set_poll_interval(session.c->instrm, 0);
+  res = pr_netio_poll(session.c->instrm);
+  pr_netio_reset_poll_interval(session.c->instrm);
+
+  if (res == 0 &&
+      !(session.sf_flags & SF_ABORT)) {
+    cmd_rec *cmd = NULL;
+
+    pr_trace_msg(trace_channel, 1,
+      "data available for reading on control channel during data transfer, "
+      "reading control data");
+    res = pr_cmd_read(&cmd);
+    if (res >= 0 &&
+        cmd) {
+      pr_trace_msg(trace_channel, 5,
+        "client sent '%s' command during data transfer, dispatching",
+        cmd->argv[0]);
+      pr_cmd_dispatch(cmd);
+      destroy_pool(cmd->pool);
+
+    } else {
+      pr_trace_msg(trace_channel, 3,
+        "invalid command sent, sending error response");
+      pr_response_send(R_500, _("Invalid command: try being more creative"));
+    }
+  }
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
     char *buf = session.xfer.buf;

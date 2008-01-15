@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.29 2007-11-15 15:15:08 castaglia Exp $
+ * $Id: netio.c,v 1.30 2008-01-15 17:56:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -438,6 +438,16 @@ pr_netio_stream_t *pr_netio_reopen(pr_netio_stream_t *nstrm, int fd, int mode) {
   return NULL;
 }
 
+void pr_netio_reset_poll_interval(pr_netio_stream_t *nstrm) {
+  if (!nstrm) {
+    errno = EINVAL;
+    return;
+  }
+
+  /* Simply clear the "interruptible" flag. */
+  nstrm->strm_flags &= ~PR_NETIO_SESS_INTR;
+}
+
 void pr_netio_set_poll_interval(pr_netio_stream_t *nstrm, unsigned int secs) {
 
   if (!nstrm) {
@@ -505,6 +515,20 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
 
         /* Some other error occured */
         nstrm->strm_errno = errno;
+
+        /* If this is the control stream, and the error indicates a
+         * broken pipe (i.e. the client went away), AND there is a data
+         * transfer is progress, abort the transfer.
+         */
+        if (errno == EPIPE &&
+            nstrm->strm_type == PR_NETIO_STRM_CTRL &&
+            (session.sf_flags & SF_XFER)) {
+          pr_trace_msg(trace_channel, 5,
+            "received EPIPE on control connection, setting 'aborted' "
+            "session flag");
+          session.sf_flags |= SF_ABORT;
+        }
+
         return -1;
 
       case 0:
@@ -512,6 +536,16 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
         if (nstrm->strm_flags & PR_NETIO_SESS_ABORT) {
           nstrm->strm_flags &= ~PR_NETIO_SESS_ABORT;
           return 1;
+        }
+
+        /* If the stream has been marked as "interruptible", AND the
+         * poll interval is zero seconds (meaning a true poll, not blocking),
+         * then return here.
+         */
+        if ((nstrm->strm_flags & PR_NETIO_SESS_INTR) &&
+            nstrm->strm_interval == 0) {
+          errno = EOF;
+          return -1;
         }
 
         continue;
