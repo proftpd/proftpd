@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.321 2008-01-15 17:56:33 castaglia Exp $
+ * $Id: main.c,v 1.322 2008-01-16 00:38:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1516,15 +1516,16 @@ void pr_signals_handle(void) {
 
   if (errno == EINTR &&
       PR_TUNABLE_EINTR_RETRY_INTERVAL > 0) {
-
     struct timeval tv;
+    unsigned long interval_usecs = PR_TUNABLE_EINTR_RETRY_INTERVAL * 1000000;
 
-    tv.tv_sec = PR_TUNABLE_EINTR_RETRY_INTERVAL;
-    tv.tv_usec = 0;
+    tv.tv_sec = (interval_usecs / 1000000);
+    tv.tv_usec = (interval_usecs - (tv.tv_sec * 1000000));
 
-    pr_log_debug(DEBUG10, "interrupted system call, delaying for %u sec%s",
-      PR_TUNABLE_EINTR_RETRY_INTERVAL,
-      PR_TUNABLE_EINTR_RETRY_INTERVAL != 1 ? "s" : "");
+    pr_log_debug(DEBUG10, "interrupted system call, "
+      "delaying for %lu %s, %lu %s",
+      (unsigned long) tv.tv_sec, tv.tv_sec != 1 ? "secs" : "sec",
+      (unsigned long) tv.tv_usec, tv.tv_usec != 1 ? "usecs" : "usec");
 
     pr_signals_block();
     (void) select(0, NULL, NULL, NULL, &tv);
