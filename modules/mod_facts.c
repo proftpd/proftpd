@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.4 2008-01-14 15:38:22 castaglia Exp $
+ * $Id: mod_facts.c,v 1.5 2008-01-16 01:21:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -314,7 +314,12 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path) {
   } else {
     info->type = "dir";
 
-    if (path[0] == '.') {
+    if (path[0] != '.') {
+      if (strcmp(path, pr_fs_getcwd()) == 0) {
+        info->type = "cdir";
+      }
+
+    } else {
       if (path[1] == '\0') {
         info->type = "cdir";
       }
@@ -781,12 +786,11 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
   if (cmd->argc != 1) {
     path = cmd->argv[1];
+    decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
   } else {
-    path = pr_fs_getcwd();
+    decoded_path = path = pr_fs_getcwd();
   }
-
-  decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
   if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, (char *) decoded_path,
       NULL)) {
@@ -877,12 +881,11 @@ MODRET facts_mlst(cmd_rec *cmd) {
 
   if (cmd->argc != 1) {
     path = cmd->argv[1];
+    decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
   } else {
-    path = pr_fs_getcwd();
+    decoded_path = path = pr_fs_getcwd();
   }
-
-  decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
   if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, (char *) decoded_path,
       NULL)) {
