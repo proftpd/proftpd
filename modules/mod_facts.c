@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.5 2008-01-16 01:21:00 castaglia Exp $
+ * $Id: mod_facts.c,v 1.6 2008-01-17 02:19:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -157,14 +157,18 @@ static time_t facts_mktime(unsigned int year, unsigned int month,
 
 static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
   char *ptr;
-  size_t buflen;
+  size_t buflen = 0;
 
   memset(buf, '\0', bufsz);
 
-  /* Make sure the first byte is a leading space character, as per RFC. */
-  buf[0] = ' ';
+  /* Make sure the first byte is a leading space character, as per RFC,
+   * if the command is MLST.  MLSD entries do not have the leading space.
+   */
+  if (strcmp(session.curr_cmd, C_MLST) == 0) {
+    buf[0] = ' ';
+    buflen = 1;
+  }
 
-  buflen = 1;
   ptr = buf + buflen;
 
   if (facts_opts & FACTS_OPT_SHOW_MODIFY) {
@@ -223,7 +227,7 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
     ptr = buf + buflen;
   }
 
-  snprintf(ptr, bufsz - buflen, " %s", info->path);
+  snprintf(ptr, bufsz - buflen, " %s\n", info->path);
 
   buf[bufsz-1] = '\0';
   buflen = strlen(buf);
@@ -915,11 +919,6 @@ MODRET facts_mlst(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET facts_mlsd_cleanup(cmd_rec *cmd) {
-  pr_data_cleanup();
-  return PR_DECLINED(cmd);
-}
-
 MODRET facts_opts_mlst(cmd_rec *cmd) {
   register unsigned int i;
   char *method, *facts, *ptr, *resp_str = "";
@@ -1053,8 +1052,6 @@ static cmdtable facts_cmdtab[] = {
   { CMD,	"MFF",		G_WRITE,facts_mff,  TRUE, FALSE, CL_WRITE },
   { CMD,	"MFMT",		G_WRITE,facts_mfmt, TRUE, FALSE, CL_WRITE },
   { CMD,	C_MLSD,		G_DIRS,	facts_mlsd, TRUE, FALSE, CL_DIRS },
-  { LOG_CMD,	C_MLSD,		G_NONE, facts_mlsd_cleanup, FALSE, FALSE },
-  { LOG_CMD_ERR,C_MLSD,		G_NONE, facts_mlsd_cleanup, FALSE, FALSE },
   { CMD,	C_MLST,		G_DIRS,	facts_mlst, TRUE, FALSE, CL_DIRS },
   { CMD,	C_OPTS "_MLST", G_NONE, facts_opts_mlst, FALSE, FALSE },
   { 0, NULL }
