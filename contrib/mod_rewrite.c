@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.31 2008-01-12 23:01:47 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.32 2008-01-18 19:23:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2107,8 +2107,37 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
       new_arg = rewrite_subst(cmd, (char *) c->argv[1]);
 
       if (strlen(new_arg) > 0) {
+        int flags = PR_STR_FL_PRESERVE_COMMENTS;
+        char *param, *dup;
+        array_header *list;
+
         cmd->arg = new_arg;
         rewrite_log("rewrite_fixup(): %s arg now '%s'", cmd->argv[0], cmd->arg);
+
+        /* Be sure to overwrite the entire cmd->argv array, not just
+         * cmd->arg.
+         */
+        cmd->argc = 0;
+        list = make_array(cmd->pool, 2, sizeof(char *));
+
+        *((char **) push_array(list)) = pstrdup(cmd->pool, cmd->argv[0]);
+        cmd->argc++;
+
+        if (strcmp(cmd->argv[0], C_SITE) == 0)
+          flags |= PR_STR_FL_PRESERVE_WHITESPACE;
+
+        dup = pstrdup(cmd->tmp_pool, new_arg);
+        while ((param = pr_str_get_word(&dup, flags)) != NULL) {
+          pr_signals_handle();
+
+          *((char **) push_array(list)) = pstrdup(cmd->pool, param);
+          cmd->argc++;
+        }
+
+        /* NULL-terminate the list. */
+        *((char **) push_array(list)) = NULL;
+
+        cmd->argv = (char **) list->elts;
 
       } else
         rewrite_log("rewrite_fixup(): error processing RewriteRule");
