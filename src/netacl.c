@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2006 The ProFTPD Project team
+ * Copyright (c) 2003-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.14 2006-12-18 23:09:42 castaglia Exp $
+ * $Id: netacl.c,v 1.15 2008-01-18 16:17:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -46,27 +46,43 @@ pr_netacl_type_t pr_netacl_get_type(pr_netacl_t *acl) {
   return acl->type;
 }
 
+/* Returns 1 if there was a positive match, -1 if there was a negative
+ * match, -2 if there was an error, and zero if there was no match at all.
+ */
 int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
+  pool *tmp_pool;
 
   if (!acl || !addr)
     return -2;
 
+tmp_pool = make_sub_pool(permanent_pool);
+
   switch (acl->type) {
     case PR_NETACL_TYPE_ALL:
-      pr_trace_msg(trace_channel, 10, "addr '%s' matched rule 'ALL'",
-        pr_netaddr_get_ipstr(addr));
-      return 1;
+      pr_trace_msg(trace_channel, 10, "addr '%s' matched rule 'ALL' ('%s')",
+        pr_netaddr_get_ipstr(addr), pr_netacl_get_str(tmp_pool, acl));
+      if (!acl->negated)
+        return 1;
+      else
+        return -1;
 
     case PR_NETACL_TYPE_NONE:
       pr_trace_msg(trace_channel, 10, "addr '%s' matched rule 'NONE'",
         pr_netaddr_get_ipstr(addr));
-      return -1;
+      if (!acl->negated)
+        return -1;
+      else
+        return 1;
 
     case PR_NETACL_TYPE_IPMASK:
       if (pr_netaddr_ncmp(addr, acl->addr, acl->masklen) == 0) {
         pr_trace_msg(trace_channel, 10, "addr '%s' matched IP mask rule '%s'",
           pr_netaddr_get_ipstr(addr), acl->aclstr);
         return 1;
+
+      } else {
+        if (acl->negated)
+          return 1;
       }
       break;
 
@@ -76,6 +92,10 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
           "addr '%s' matched IP address rule '%s'",
           pr_netaddr_get_ipstr(addr), acl->aclstr);
         return 1;
+
+      } else {
+        if (acl->negated)
+          return 1;
       }
       break;
  
@@ -86,6 +106,10 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
           pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
           acl->aclstr);
         return 1;
+
+      } else {
+        if (acl->negated)
+          return 1;
       }
       break;
 
@@ -96,6 +120,10 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
           "addr '%s' matched IP glob rule '%s'",
           pr_netaddr_get_ipstr(addr), acl->aclstr);
         return 1;
+
+      } else {
+        if (acl->negated)
+          return 1;
       }
       break;
 
@@ -108,6 +136,10 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
             pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
             acl->aclstr);
           return 1;
+
+        } else {
+          if (acl->negated)
+            return 1;
         }
 
       } else {
@@ -317,3 +349,53 @@ int pr_netacl_get_negated(pr_netacl_t *acl) {
 
   return acl->negated;
 }
+
+const char *pr_netacl_get_str(pool *p, pr_netacl_t *acl) {
+  char *res = "";
+
+  if (!p || !acl) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  res = pstrcat(p, res, acl->aclstr, NULL);
+
+  switch (acl->type) {
+    case PR_NETACL_TYPE_ALL:
+      res = pstrcat(p, res, " <all>", NULL);
+      break;
+
+    case PR_NETACL_TYPE_NONE:
+      res = pstrcat(p, res, " <none>", NULL);
+      break;
+
+    case PR_NETACL_TYPE_IPMASK:
+      res = pstrcat(p, res, " <IP address mask, ", acl->masklen, "-bit mask, ",
+        NULL);
+      break;
+
+    case PR_NETACL_TYPE_IPMATCH:
+      res = pstrcat(p, res, " <IP address match", NULL);
+      break;
+
+    case PR_NETACL_TYPE_DNSMATCH:
+      res = pstrcat(p, res, " <DNS hostname match", NULL);
+      break;
+
+    case PR_NETACL_TYPE_IPGLOB:
+      res = pstrcat(p, res, " <IP address glob", NULL);
+      break;
+
+    case PR_NETACL_TYPE_DNSGLOB:
+      res = pstrcat(p, res, " <DNS hostname glob", NULL);
+      break;
+  }
+
+  if (!acl->negated)
+    res = pstrcat(p, res, ">", NULL);
+  else
+    res = pstrcat(p, res, ", inverted>", NULL);
+
+  return res;
+}
+

@@ -23,10 +23,12 @@
  */
 
 /* Class routines
- * $Id: class.c,v 1.5 2004-06-30 02:42:13 castaglia Exp $
+ * $Id: class.c,v 1.6 2008-01-18 16:17:37 castaglia Exp $
  */
 
 #include "conf.h"
+
+static const char *trace_channel = "class";
 
 /* Store the defined Classes in a linked list.  If many Classes are defined,
  * this may need to be redefined to be a collision-chained hash.
@@ -42,12 +44,15 @@ pr_class_t *pr_class_get(pr_class_t *prev) {
 }
 
 pr_class_t *pr_class_match_addr(pr_netaddr_t *addr) {
-  pr_class_t *cls;
+  pr_class_t *cls, *res = NULL;
+  pool *tmp_pool;
 
   if (!addr) {
     errno = EINVAL;
     return NULL;
   }
+
+  tmp_pool = make_sub_pool(permanent_pool);
 
   for (cls = class_list; cls; cls = cls->cls_next) {
     array_header *acl_list = cls->cls_acls;
@@ -66,11 +71,25 @@ pr_class_t *pr_class_match_addr(pr_netaddr_t *addr) {
 
       switch (cls->cls_satisfy) {
         case PR_CLASS_SATISFY_ANY:
+          if (acls[i]) {
+            pr_trace_msg(trace_channel, 6,
+              "checking addr '%s' against class '%s', ACL %s "
+              "(requires any ACL matching)", pr_netaddr_get_ipstr(addr),
+              cls->cls_name, pr_netacl_get_str(tmp_pool, acls[i]));
+          }
+
           if (pr_netacl_match(acls[i], addr) == 1)
-            return cls;
+            res = cls;
           break;
 
         case PR_CLASS_SATISFY_ALL:
+          if (acls[i]) {
+            pr_trace_msg(trace_channel, 6,
+              "checking addr '%s' against class '%s', ACL %s "
+              "(requires all ACLs matching)", pr_netaddr_get_ipstr(addr),
+              cls->cls_name, pr_netacl_get_str(tmp_pool, acls[i]));
+          }
+
           if (pr_netacl_match(acls[i], addr) == 0)
             next_class = TRUE;
           break;
@@ -78,8 +97,12 @@ pr_class_t *pr_class_match_addr(pr_netaddr_t *addr) {
     }
   }
 
-  errno = ENOENT;
-  return NULL;
+  destroy_pool(tmp_pool);
+
+  if (res == NULL)
+    errno = ENOENT;
+
+  return res;
 }
 
 pr_class_t *pr_class_find(const char *name) {
