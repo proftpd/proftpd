@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.322 2008-01-16 00:38:00 castaglia Exp $
+ * $Id: main.c,v 1.323 2008-01-18 01:01:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1240,14 +1240,6 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     main_server->listen = NULL;
   }
 
-  /* Check config tree for <Limit LOGIN> directives */
-  if (!login_check_limits(main_server->conf, TRUE, FALSE, &i)) {
-    pr_log_pri(PR_LOG_NOTICE, "Connection from %s [%s] denied.",
-      session.c->remote_name,
-      pr_netaddr_get_ipstr(session.c->remote_addr));
-    exit(0);
-  }
-
   /* Set the ID/privs for the User/Group in this server */
   set_server_privs();
 
@@ -1259,6 +1251,18 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   else
     pr_log_debug(DEBUG5, "FTP session requested from unknown class");
+
+  /* Check config tree for <Limit LOGIN> directives.  Do not perform
+   * this check until after the class of the session has been determined,
+   * in order to properly handle any AllowClass/DenyClass directives
+   * within the <Limit> section.
+   */
+  if (!login_check_limits(main_server->conf, TRUE, FALSE, &i)) {
+    pr_log_pri(PR_LOG_NOTICE, "Connection from %s [%s] denied.",
+      session.c->remote_name,
+      pr_netaddr_get_ipstr(session.c->remote_addr));
+    exit(0);
+  }
 
   /* Create a table for modules to use. */
   session.notes = pr_table_alloc(session.pool, 0);
