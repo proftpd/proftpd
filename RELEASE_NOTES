@@ -9,6 +9,16 @@ files.
 1.3.2rc1
 ---------
 
+  + IPv6 support is enabled by default.  To disable at build time, use:
+
+      ./configure --disable-ipv6 ...
+
+    And to disable IPv6 support at runtime, use:
+
+      UseIPv6 off
+
+    in your proftpd.conf
+
   + Changed command-line behavior:
 
       The -vv command-line option currently shows only the static modules,
@@ -147,4 +157,4 @@ files.
 
       doc/howto/ConfigurationTricks.html
 
-Last Updated: $Date: 2008-01-08 04:23:33 $
+Last Updated: $Date: 2008-01-21 17:50:21 $
