@@ -1,36 +1,25 @@
-The support for IPv6 in ProFTPD is fairly new, and still under development.
-As such, it's very possible that there are bugs related to IPv6 functionality.
-In particular, here are some things that may be affected:
-
-  ServerType (IPv4/IPv6 inetd, xinetd)
-  AllowForeignAddress
-  PassivePorts
-  MasqueradeAddress (IPv6)
-  UseReverseDNS
-  SocketBindTight
-  Allow
-  Deny
+ProFTPD has stable support for IPv6 connections; this support is now enabled
+by default.
 
 Please report any IPv6-related problems with the above to the bug tracking
 system as soon as possible, so that we may fix it:
 
   http://bugs.proftpd.org
 
-To enable IPv6 functionality, you need to explicitly configure proftpd using
-the proper configure option:
+To disable IPv6 functionality at build time, use the proper configure option,
+e.g.:
 
-  ./configure --enable-ipv6 ...
+  ./configure --disable-ipv6 ...
 
-The functionality of the following configuration directives has been 
-changed slightly with the addition of IPv6 support:
+To disable IPv6 support at runtime, simply use the UseIPv6 directive in your
+proftpd.conf:
 
-  DefaultAddress
-  MasqueradeAddress
-  <VirtualHost>
+  UseIPv6 off
 
-These directives can take both IP address and DNS names as parameters.
-If given IP addresses, either IPv4 or IPv6, they work as one expects.  The
-case that is now different is when a DNS name is given as a parameter.
+The DefaultAddress, MasqueradeAddress, and <VirtualHost> directives can take
+both IP address and DNS names as parameters.  If IP addresses are used,
+either IPv4 or IPv6, they work as one expects.  The case that is now different
+is when a DNS name is given as a parameter.
 
 It's possible for a DNS name to have multiple IP addresses, both A and AAAA
 records.  Thus DefaultAddress and <VirtualHost> will resolve a DNS name to its
