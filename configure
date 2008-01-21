@@ -1516,7 +1516,7 @@ Optional Features:
   --enable-force-setpassent
                           force use of setpassent (default=no on FreeBSD)
 
-  --enable-ipv6           enable IPv6 support (default=no)
+  --disable-ipv6          disable IPv6 support (default=no)
 
   --enable-openssl        enable OpenSSL support (default=no)
 
@@ -21206,7 +21206,7 @@ fi
 # Check whether --enable-ipv6 was given.
 if test "${enable_ipv6+set}" = set; then
   enableval=$enable_ipv6;
-    if test x"$enableval" = xyes ; then
+    if test x"$enableval" != xyes ; then
 
 cat >>confdefs.h <<\_ACEOF
 #define PR_USE_IPV6 1
