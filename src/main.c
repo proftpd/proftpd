@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.323 2008-01-18 01:01:12 castaglia Exp $
+ * $Id: main.c,v 1.324 2008-01-21 18:05:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -143,9 +143,9 @@ static int semaphore_fds(fd_set *rfd, int maxfd) {
 
     for (ch = child_get(NULL); ch; ch = child_get(ch)) {
       if (ch->ch_pipefd != -1) {
-	FD_SET(ch->ch_pipefd, rfd);
-	if (ch->ch_pipefd > maxfd)
-	  maxfd = ch->ch_pipefd;
+        FD_SET(ch->ch_pipefd, rfd);
+        if (ch->ch_pipefd > maxfd)
+          maxfd = ch->ch_pipefd;
       }
     }
   }
