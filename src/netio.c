@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.30 2008-01-15 17:56:33 castaglia Exp $
+ * $Id: netio.c,v 1.31 2008-01-23 04:26:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -254,7 +254,7 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
 
   if (nstrm->strm_fd >= 0) {
     struct timeval tv;
-    fd_set rs;
+    fd_set rfds;
     time_t when = time(NULL) + linger;
 
     tv.tv_sec = linger;
@@ -267,14 +267,14 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
     while (TRUE) {
       run_schedule();
 
-      FD_ZERO(&rs);
-      FD_SET(nstrm->strm_fd, &rs);
+      FD_ZERO(&rfds);
+      FD_SET(nstrm->strm_fd, &rfds);
 
       pr_trace_msg(trace_channel, 8,
         "lingering %lu secs before closing fd %d", (unsigned long) tv.tv_sec,
         nstrm->strm_fd);
 
-      res = select(nstrm->strm_fd+1, &rs, NULL, NULL, &tv);
+      res = select(nstrm->strm_fd+1, &rfds, NULL, NULL, &tv);
       if (res == -1) {
         if (errno == EINTR) {
           time_t now = time(NULL);
@@ -293,6 +293,24 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
         } else {
           nstrm->strm_errno = errno;
           return -1;
+        }
+
+      } else {
+        time_t now = time(NULL);
+
+        if (FD_ISSET(nstrm->strm_fd, &rfds)) {
+          pr_trace_msg(trace_channel, 8,
+            "received data for reading on fd %d, ignoring", nstrm->strm_fd);
+        }
+
+        /* Reset the timeval struct's fields to linger for the interval
+         * remaining.
+         */
+
+        if (now < when) {
+          tv.tv_sec = when - now;
+          tv.tv_usec = 0L;
+          continue;
         }
       }
 
