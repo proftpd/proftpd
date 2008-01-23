@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.31 2008-01-23 04:26:29 castaglia Exp $
+ * $Id: netio.c,v 1.32 2008-01-23 16:59:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -296,21 +296,9 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
         }
 
       } else {
-        time_t now = time(NULL);
-
         if (FD_ISSET(nstrm->strm_fd, &rfds)) {
           pr_trace_msg(trace_channel, 8,
             "received data for reading on fd %d, ignoring", nstrm->strm_fd);
-        }
-
-        /* Reset the timeval struct's fields to linger for the interval
-         * remaining.
-         */
-
-        if (now < when) {
-          tv.tv_sec = when - now;
-          tv.tv_usec = 0L;
-          continue;
         }
       }
 
