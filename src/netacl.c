@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.15 2008-01-18 16:17:37 castaglia Exp $
+ * $Id: netacl.c,v 1.16 2008-01-24 17:11:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -369,10 +369,15 @@ const char *pr_netacl_get_str(pool *p, pr_netacl_t *acl) {
       res = pstrcat(p, res, " <none>", NULL);
       break;
 
-    case PR_NETACL_TYPE_IPMASK:
-      res = pstrcat(p, res, " <IP address mask, ", acl->masklen, "-bit mask, ",
+    case PR_NETACL_TYPE_IPMASK: {
+      char masklenstr[64];
+
+      memset(masklenstr, '\0', sizeof(masklenstr));
+      snprintf(masklenstr, sizeof(masklenstr)-1, "%u", acl->masklen);
+      res = pstrcat(p, res, " <IP address mask, ", masklenstr, "-bit mask, ",
         NULL);
       break;
+    }
 
     case PR_NETACL_TYPE_IPMATCH:
       res = pstrcat(p, res, " <IP address match", NULL);
