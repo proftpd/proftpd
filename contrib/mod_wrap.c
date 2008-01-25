@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.17 2008-01-05 04:55:05 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.18 2008-01-25 01:53:34 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.3"
@@ -58,7 +58,7 @@ static int wrap_eval_expression(char **config_expr,
     array_header *session_expr) {
 
   unsigned char found = FALSE;
-  int index = 0;
+  int i = 0;
   char *elem = NULL, **list = NULL;
 
   /* sanity check */
@@ -76,9 +76,9 @@ static int wrap_eval_expression(char **config_expr,
       elem++;
     }
 
-    for (index = 0; index < session_expr->nelts; index++) {
-      if (list[index] &&
-          strcmp(list[index], elem) == 0) {
+    for (i = 0; i < session_expr->nelts; i++) {
+      if (list[i] &&
+          strcmp(list[i], elem) == 0) {
         found = !found;
         break;
       }
@@ -103,7 +103,7 @@ static int wrap_eval_expression(char **config_expr,
 static char *wrap_get_user_table(cmd_rec *cmd, char *user,
     char *path) {
 
-  char *realpath = NULL;
+  char *real_path = NULL;
   struct passwd *pw = NULL;
 
   pw = pr_auth_getpwnam(cmd->pool, user);
@@ -115,11 +115,11 @@ static char *wrap_get_user_table(cmd_rec *cmd, char *user,
   session.login_uid = pw->pw_uid;
 
   PRIVS_USER
-  realpath = dir_realpath(cmd->pool, path);
+  real_path = dir_realpath(cmd->pool, path);
   PRIVS_RELINQUISH
 
-  if (realpath)
-    path = realpath;
+  if (real_path)
+    path = real_path;
 
   return path;
 }
@@ -175,7 +175,7 @@ static void wrap_log_request_denied(int priority,
  * _true_ sense of the world]. =) hmmm...I wonder if it'd be feasible
  * to make some of mod_auth's functions visible from src/auth.c?
  */
-static config_rec *wrap_resolve_user(pool *pool, char **user) {
+static config_rec *wrap_resolve_user(pool *p, char **user) {
   config_rec *conf = NULL, *top_conf;
   char *ourname = NULL, *anonname = NULL;
   unsigned char is_alias = FALSE, force_anon = FALSE;
