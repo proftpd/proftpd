@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.21 2008-01-10 18:22:32 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.22 2008-01-28 15:38:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -329,7 +329,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
       if (mergein) {
         pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
           ": merging <IfGroup> directives in");
-        ifsess_dup_set(main_server->pool, main_server->conf, c->subset);
+        ifsess_dup_set(session.pool, main_server->conf, c->subset);
 
         /* Add this config_rec pointer to the list of pointers to be
          * removed later.
@@ -396,7 +396,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
       if (mergein) {
         pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
           ": merging <IfUser> directives in");
-        ifsess_dup_set(main_server->pool, main_server->conf, c->subset);
+        ifsess_dup_set(session.pool, main_server->conf, c->subset);
 
         /* Add this config_rec pointer to the list of pointers to be
          * removed later.
@@ -479,7 +479,7 @@ static int ifsess_sess_init(void) {
       if (mergein) {
         pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
           ": merging <IfClass> directives in");
-        ifsess_dup_set(main_server->pool, main_server->conf, c->subset);
+        ifsess_dup_set(session.pool, main_server->conf, c->subset);
 
         /* Add this config_rec pointer to the list of pointers to be
          * removed later.
