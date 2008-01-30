@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.102 2008-01-15 17:56:33 castaglia Exp $
+ * $Id: data.c,v 1.103 2008-01-30 17:26:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -834,6 +834,9 @@ void pr_data_abort(int err, int quiet) {
     session.sf_flags |= SF_POST_ABORT;
 }
 
+/* From response.c.  XXX Need to provide these symbols another way. */
+extern pr_response_t *resp_list, *resp_err_list;
+
 /* pr_data_xfer() actually transfers the data on the data connection ..
  * ASCII translation is performed if necessary.  direction set
  * when data connection was opened determine if the client buffer
@@ -864,11 +867,48 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
     res = pr_cmd_read(&cmd);
     if (res >= 0 &&
         cmd) {
-      pr_trace_msg(trace_channel, 5,
-        "client sent '%s' command during data transfer, dispatching",
-        cmd->argv[0]);
-      pr_cmd_dispatch(cmd);
-      destroy_pool(cmd->pool);
+      char *ch;
+
+      for (ch = cmd->argv[0]; *ch; ch++)
+        *ch = toupper(*ch);
+
+      /* Only handle commands which do not involve data transfers; we
+       * already have a data transfer in progress.  For any data transfer
+       * command, send a 450 ("busy") reply.  Looks like almost all of the
+       * data transfer commands accept that response, as per RFC959.
+       */
+      if (strcmp(cmd->argv[0], C_APPE) == 0 ||
+          strcmp(cmd->argv[0], C_LIST) == 0 ||
+          strcmp(cmd->argv[0], C_MLSD) == 0 ||
+          strcmp(cmd->argv[0], C_NLST) == 0 ||
+          strcmp(cmd->argv[0], C_RETR) == 0 ||
+          strcmp(cmd->argv[0], C_STOR) == 0 ||
+          strcmp(cmd->argv[0], C_STOU) == 0) {
+        pool *resp_pool;
+
+        pr_trace_msg(trace_channel, 5,
+          "client sent '%s' command during data transfer, denying",
+          cmd->argv[0]);
+
+        resp_list = resp_err_list = NULL;
+        resp_pool = pr_response_get_pool();
+        pr_response_set_pool(cmd->pool);
+
+        pr_response_add_err(R_450, _("%s: data tranfer in progress"),
+          cmd->argv[0]);
+
+        pr_response_flush(&resp_err_list);
+
+        destroy_pool(cmd->pool);
+        pr_response_set_pool(resp_pool);
+
+      } else {
+        pr_trace_msg(trace_channel, 5,
+          "client sent '%s' command during data transfer, dispatching",
+          cmd->argv[0]);
+        pr_cmd_dispatch(cmd);
+        destroy_pool(cmd->pool);
+      }
 
     } else {
       pr_trace_msg(trace_channel, 3,

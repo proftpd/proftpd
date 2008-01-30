@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.324 2008-01-21 18:05:49 castaglia Exp $
+ * $Id: main.c,v 1.325 2008-01-30 17:26:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -574,11 +574,23 @@ int pr_cmd_read(cmd_rec **res) {
 int pr_cmd_dispatch(cmd_rec *cmd) {
   char *cp = NULL;
   int success = 0;
+  pool *resp_pool = NULL;
 
   cmd->server = main_server;
   resp_list = resp_err_list = NULL;
 
-  /* Set the pool used for the response lists for this command. */
+  /* Get any previous pool that may be being used by the Response API.
+   *
+   * In most cases, this will be NULL.  However, if proftpd is in the
+   * midst of a data transfer when a command comes in on the control
+   * connection, then the pool in use will be that of the data transfer
+   * instigating command.  We want to stash that pool, so that after this
+   * command is dispatched, we can return the pool of the old command.
+   * Otherwise, Bad Things (segfaults) happen.
+   */
+  resp_pool = pr_response_get_pool();
+
+  /* Set the pool used by the Response API for this command. */
   pr_response_set_pool(cmd->pool);
 
   for (cp = cmd->argv[0]; *cp; cp++)
@@ -635,6 +647,9 @@ int pr_cmd_dispatch(cmd_rec *cmd) {
 
     pr_response_flush(&resp_err_list);
   }
+
+  /* Restore any previous pool to the Response API. */
+  pr_response_set_pool(resp_pool);
 
   return success;
 }

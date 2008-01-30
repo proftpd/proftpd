@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.8 2006-05-18 15:38:44 castaglia Exp $
+ * $Id: response.c,v 1.9 2008-01-30 17:26:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -60,6 +60,10 @@ static char *(*resp_handler_cb)(pool *, const char *, ...) = NULL;
       (msg))); \
   else \
     pr_netio_printf_async((strm), (fmt), (msg));
+
+pool *pr_response_get_pool(void) {
+  return resp_pool;
+}
 
 void pr_response_set_pool(pool *p) {
   resp_pool = p;
