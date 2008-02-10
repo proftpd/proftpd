@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.13 2008-01-05 04:55:05 castaglia Exp $
+ * $Id: mod_ban.c,v 1.14 2008-02-10 20:14:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -310,7 +310,7 @@ static int ban_disconnect_class(const char *class) {
       "error rewinding scoreboard: %s", strerror(errno));
   }
 
-  while ((score = pr_scoreboard_read_entry()) != NULL) {
+  while ((score = pr_scoreboard_entry_read()) != NULL) {
     pr_signals_handle();
 
     if (strcmp(class, score->sce_class) == 0) {
@@ -372,7 +372,7 @@ static int ban_disconnect_host(const char *host) {
       "error rewinding scoreboard: %s", strerror(errno));
   }
 
-  while ((score = pr_scoreboard_read_entry()) != NULL) {
+  while ((score = pr_scoreboard_entry_read()) != NULL) {
     pr_signals_handle();
 
     if (strcmp(host, score->sce_client_addr) == 0) {
@@ -434,7 +434,7 @@ static int ban_disconnect_user(const char *user) {
       "error rewinding scoreboard: %s", strerror(errno));
   }
 
-  while ((score = pr_scoreboard_read_entry()) != NULL) {
+  while ((score = pr_scoreboard_entry_read()) != NULL) {
     pr_signals_handle();
 
     if (strcmp(user, score->sce_user) == 0) {

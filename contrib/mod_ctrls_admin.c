@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.30 2008-01-18 16:26:17 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.31 2008-02-10 20:14:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -394,7 +394,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
       if (pr_rewind_scoreboard() < 0)
         ctrls_log("error rewinding scoreboard: %s", strerror(errno));
 
-      while ((score = pr_scoreboard_read_entry()) != NULL) {
+      while ((score = pr_scoreboard_entry_read()) != NULL) {
         if (strcmp(reqargv[i], score->sce_user) == 0) {
           res = 0;
 
@@ -455,7 +455,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
       if (pr_rewind_scoreboard() < 0)
         ctrls_log("error rewinding scoreboard: %s", strerror(errno));
 
-      while ((score = pr_scoreboard_read_entry()) != NULL) {
+      while ((score = pr_scoreboard_entry_read()) != NULL) {
         if (strcmp(score->sce_client_addr, addr) == 0) {
           PRIVS_ROOT
           if (kill(score->sce_pid, SIGTERM) == 0)
@@ -494,7 +494,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
       if (pr_rewind_scoreboard() < 0)
         ctrls_log("error rewinding scoreboard: %s", strerror(errno));
 
-      while ((score = pr_scoreboard_read_entry()) != NULL) {
+      while ((score = pr_scoreboard_entry_read()) != NULL) {
         if (strcmp(reqargv[i], score->sce_class) == 0) {
           res = 0;
 
