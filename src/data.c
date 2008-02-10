@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.103 2008-01-30 17:26:41 castaglia Exp $
+ * $Id: data.c,v 1.104 2008-02-10 01:17:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -892,6 +892,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 
         resp_list = resp_err_list = NULL;
         resp_pool = pr_response_get_pool();
+
         pr_response_set_pool(cmd->pool);
 
         pr_response_add_err(R_450, _("%s: data tranfer in progress"),
@@ -903,10 +904,25 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
         pr_response_set_pool(resp_pool);
 
       } else {
+        char *title_buf = NULL;
+        int title_len = -1;
+
         pr_trace_msg(trace_channel, 5,
           "client sent '%s' command during data transfer, dispatching",
           cmd->argv[0]);
+
+        title_len = pr_proctitle_get(NULL, 0);
+        if (title_len > 0) {
+          title_buf = pcalloc(cmd->pool, title_len + 1);
+          pr_proctitle_get(title_buf, title_len + 1); 
+        }
+
         pr_cmd_dispatch(cmd);
+
+        if (title_len > 0) {
+          pr_proctitle_set_str(title_buf);
+        }
+
         destroy_pool(cmd->pool);
       }
 

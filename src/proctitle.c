@@ -24,7 +24,7 @@
 
 /*
  * Proctitle management
- * $Id: proctitle.c,v 1.6 2008-01-25 01:11:36 castaglia Exp $
+ * $Id: proctitle.c,v 1.7 2008-02-10 01:17:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -59,6 +59,7 @@ static char *prog_last_argv = NULL;
 #endif /* PR_DEVEL_STACK_TRACE */
 
 static int prog_argc = -1;
+static char proc_title_buf[BUFSIZ];
 
 void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
 #ifndef PR_DEVEL_STACK_TRACE
@@ -105,6 +106,7 @@ void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
    */
   prog_argc = -1;
 #endif /* !PR_DEVEL_STACK_TRACE */
+  memset(proc_title_buf, '\0', sizeof(proc_title_buf));
 }
 
 void pr_proctitle_free(void) {
@@ -129,17 +131,63 @@ void pr_proctitle_free(void) {
 #endif /* PR_USE_DEVEL */
 }
 
+void pr_proctitle_set_str(const char *str) {
+#ifndef PR_DEVEL_STACK_TRACE
+
+# ifndef HAVE_SETPROCTITLE
+  char *p;
+  int i, procbuflen, maxlen = (prog_last_argv - prog_argv[0]) - 2;
+
+#  if PF_ARGV_TYPE == PF_ARGV_PSTAT
+  union pstun pst;
+#  endif /* PF_ARGV_PSTAT */
+
+  sstrncpy(proc_title_buf, str, sizeof(proc_title_buf));
+  procbuflen = strlen(proc_title_buf);
+
+#  if PF_ARGV_TYPE == PF_ARGV_NEW
+  /* We can just replace argv[] arguments.  Nice and easy. */
+  prog_argv[0] = proc_title_buf;
+  for (i = 1; i < prog_argc; i++) {
+    prog_argv[i] = "";
+  }
+#  endif /* PF_ARGV_NEW */
+
+#  if PF_ARGV_TYPE == PF_ARGV_WRITEABLE
+  /* We can overwrite individual argv[] arguments.  Semi-nice. */
+  snprintf(prog_argv[0], maxlen, "%s", proc_title_buf);
+  p = &prog_argv[0][procbuflen];
+
+  while (p < prog_last_argv)
+    *p++ = '\0';
+
+  for (i = 1; i < prog_argc; i++) {
+    prog_argv[i] = "";
+  }
+
+#  endif /* PF_ARGV_WRITEABLE */
+
+#  if PF_ARGV_TYPE == PF_ARGV_PSSTRINGS
+  PS_STRINGS->ps_nargvstr = 1;
+  PS_STRINGS->ps_argvstr = proc_title_buf;
+#  endif /* PF_ARGV_PSSTRINGS */
+
+# else
+  setproctitle("%s", str);
+# endif /* HAVE_SETPROCTITLE */
+#endif /* PR_DEVEL_STACK_TRACE */
+}
+
 void pr_proctitle_set(const char *fmt, ...) {
 #ifndef PR_DEVEL_STACK_TRACE
   va_list msg;
-  static char statbuf[BUFSIZ];
 
 # ifndef HAVE_SETPROCTITLE
 #  if PF_ARGV_TYPE == PF_ARGV_PSTAT
   union pstun pst;
 #  endif /* PF_ARGV_PSTAT */
   char *p;
-  int i, statbuflen, maxlen = (prog_last_argv - prog_argv[0]) - 2;
+  int i, procbuflen, maxlen = (prog_last_argv - prog_argv[0]) - 2;
 # endif /* HAVE_SETPROCTITLE */
 
   if (!fmt)
@@ -147,27 +195,27 @@ void pr_proctitle_set(const char *fmt, ...) {
 
   va_start(msg, fmt);
 
-  memset(statbuf, 0, sizeof(statbuf));
+  memset(proc_title_buf, 0, sizeof(proc_title_buf));
 
 # ifdef HAVE_SETPROCTITLE
 #  if __FreeBSD__ >= 4 && !defined(FREEBSD4_0) && !defined(FREEBSD4_1)
   /* FreeBSD's setproctitle() automatically prepends the process name. */
-  vsnprintf(statbuf, sizeof(statbuf), fmt, msg);
+  vsnprintf(proc_title_buf, sizeof(proc_title_buf), fmt, msg);
 
 #  else /* FREEBSD4 */
   /* Manually append the process name for non-FreeBSD platforms. */
-  snprintf(statbuf, sizeof(statbuf), "%s", "proftpd: ");
-  vsnprintf(statbuf + strlen(statbuf), sizeof(statbuf) - strlen(statbuf),
-    fmt, msg);
+  snprintf(proc_title_buf, sizeof(proc_title_buf), "%s", "proftpd: ");
+  vsnprintf(proc_title_buf + strlen(proc_title_buf),
+    sizeof(proc_title_buf) - strlen(proc_title_buf), fmt, msg);
 
 #  endif /* FREEBSD4 */
-  setproctitle("%s", statbuf);
+  setproctitle("%s", proc_title_buf);
 
 # else /* HAVE_SETPROCTITLE */
   /* Manually append the process name for non-setproctitle() platforms. */
-  snprintf(statbuf, sizeof(statbuf), "%s", "proftpd: ");
-  vsnprintf(statbuf + strlen(statbuf), sizeof(statbuf) - strlen(statbuf),
-    fmt, msg);
+  snprintf(proc_title_buf, sizeof(proc_title_buf), "%s", "proftpd: ");
+  vsnprintf(proc_title_buf + strlen(proc_title_buf),
+    sizeof(proc_title_buf) - strlen(proc_title_buf), fmt, msg);
 
 # endif /* HAVE_SETPROCTITLE */
 
@@ -176,11 +224,11 @@ void pr_proctitle_set(const char *fmt, ...) {
 # ifdef HAVE_SETPROCTITLE
   return;
 # else
-  statbuflen = strlen(statbuf);
+  procbuflen = strlen(proc_title_buf);
 
 #  if PF_ARGV_TYPE == PF_ARGV_NEW
   /* We can just replace argv[] arguments.  Nice and easy. */
-  prog_argv[0] = statbuf;
+  prog_argv[0] = proc_title_buf;
   for (i = 1; i < prog_argc; i++) {
     prog_argv[i] = "";
   }
@@ -188,8 +236,8 @@ void pr_proctitle_set(const char *fmt, ...) {
 
 #  if PF_ARGV_TYPE == PF_ARGV_WRITEABLE
   /* We can overwrite individual argv[] arguments.  Semi-nice. */
-  snprintf(prog_argv[0], maxlen, "%s", statbuf);
-  p = &prog_argv[0][statbuflen];
+  snprintf(prog_argv[0], maxlen, "%s", proc_title_buf);
+  p = &prog_argv[0][procbuflen];
 
   while (p < prog_last_argv)
     *p++ = '\0';
@@ -201,15 +249,31 @@ void pr_proctitle_set(const char *fmt, ...) {
 #  endif /* PF_ARGV_WRITEABLE */
 
 #  if PF_ARGV_TYPE == PF_ARGV_PSTAT
-  pst.pst_command = statbuf;
-  pstat(PSTAT_SETCMD, pst, statbuflen, 0, 0);
+  pst.pst_command = proc_title_buf;
+  pstat(PSTAT_SETCMD, pst, procbuflen, 0, 0);
+
 #  endif /* PF_ARGV_PSTAT */
 
 #  if PF_ARGV_TYPE == PF_ARGV_PSSTRINGS
   PS_STRINGS->ps_nargvstr = 1;
-  PS_STRINGS->ps_argvstr = statbuf;
+  PS_STRINGS->ps_argvstr = proc_title_buf;
 #  endif /* PF_ARGV_PSSTRINGS */
 
 # endif /* HAVE_SETPROCTITLE */
 #endif /* !PR_DEVEL_STACK_TRACE */
+}
+
+int pr_proctitle_get(char *buf, size_t bufsz) {
+  if (buf == NULL ||
+      bufsz == 0) {
+
+    /* If the caller didn't provide an input buffer, they are simply
+     * querying for the length of the current process title.  Easy enough
+     * to acquiesce to that request.
+     */
+    return strlen(proc_title_buf);
+  }
+
+  sstrncpy(buf, proc_title_buf, bufsz);
+  return strlen(buf);
 }
