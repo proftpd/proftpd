@@ -1,7 +1,7 @@
 /*
  * ProFTPD - ftptop: a utility for monitoring proftpd sessions
  * Copyright (c) 2000-2002 TJ Saunders <tj@castaglia.org>
- * Copyright (c) 2003-2007 The ProFTPD Project team
+ * Copyright (c) 2003-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.34 2007-10-14 22:59:45 castaglia Exp $
+ * $Id: ftptop.c,v 1.35 2008-02-10 02:29:22 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.9"
@@ -327,13 +327,14 @@ static void read_scoreboard(void) {
     return;
 
   /* Iterate through the scoreboard. */
-  while ((score = util_scoreboard_read_entry()) != NULL) {
+  while ((score = util_scoreboard_entry_read()) != NULL) {
 
     /* Default status: "A" for "authenticating" */
     char *status = "A";
 
     /* If a ServerName was given, skip unless the scoreboard entry matches. */
-    if (server_name && strcmp(server_name, score->sce_server_label) != 0)
+    if (server_name &&
+        strcmp(server_name, score->sce_server_label) != 0)
       continue;
 
     /* Clear the buffer for this run. */
@@ -367,7 +368,9 @@ static void read_scoreboard(void) {
         continue;
 
     } else if (strcmp(score->sce_cmd, "LIST") == 0 ||
-        strcmp(score->sce_cmd, "NLST") == 0)
+        strcmp(score->sce_cmd, "NLST") == 0 ||
+        strcmp(score->sce_cmd, "MLST") == 0 ||
+        strcmp(score->sce_cmd, "MLSD") == 0)
       status = "L";
 
     if (display_mode != FTPTOP_SHOW_RATES) {

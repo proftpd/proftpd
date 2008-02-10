@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2005-2006 The ProFTPD Project team
+ * Copyright (c) 2005-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Compatibility
- * $Id: compat.h,v 1.6 2007-01-11 04:05:07 castaglia Exp $
+ * $Id: compat.h,v 1.7 2008-02-10 02:29:21 castaglia Exp $
  */
 
 #ifndef PR_COMPAT_H
@@ -66,6 +66,11 @@
 #define	ERROR_INT		PR_ERROR_INT
 #define	ERROR_MSG		PR_ERROR_MSG
 #define HANDLED			PR_HANDLED
+
+#define pr_scoreboard_add_entry		pr_scoreboard_entry_add
+#define pr_scoreboard_del_entry		pr_scoreboard_entry_del
+#define pr_scoreboard_read_entry	pr_scoreboard_entry_read
+#define pr_scoreboard_update_entry	pr_scoreboard_entry_update
 
 #define make_named_sub_pool(p, s)	make_sub_pool((p))
 

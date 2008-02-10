@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.104 2008-02-10 01:17:09 castaglia Exp $
+ * $Id: data.c,v 1.105 2008-02-10 02:29:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -906,6 +906,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
       } else {
         char *title_buf = NULL;
         int title_len = -1;
+        const char *sce_cmd = NULL, *sce_cmd_arg = NULL;
 
         pr_trace_msg(trace_channel, 5,
           "client sent '%s' command during data transfer, dispatching",
@@ -917,7 +918,15 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
           pr_proctitle_get(title_buf, title_len + 1); 
         }
 
+        sce_cmd = pr_scoreboard_entry_get(PR_SCORE_CMD);
+        sce_cmd_arg = pr_scoreboard_entry_get(PR_SCORE_CMD_ARG);
+
         pr_cmd_dispatch(cmd);
+
+        pr_scoreboard_entry_update(getpid(),
+          PR_SCORE_CMD, "%s", sce_cmd, NULL, NULL);
+        pr_scoreboard_entry_update(getpid(),
+          PR_SCORE_CMD_ARG, "%s", sce_cmd_arg, NULL, NULL);
 
         if (title_len > 0) {
           pr_proctitle_set_str(title_buf);

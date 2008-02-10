@@ -26,7 +26,7 @@
 
 /* Shows a count of "who" is online via proftpd.  Uses the scoreboard file.
  *
- * $Id: ftpwho.c,v 1.25 2008-01-03 02:13:43 castaglia Exp $
+ * $Id: ftpwho.c,v 1.26 2008-02-10 02:29:22 castaglia Exp $
  */
 
 #include "utils.h"
@@ -181,11 +181,12 @@ int main(int argc, char **argv) {
 
   memset(classes, 0, MAX_CLASSES * sizeof(struct scoreboard_class));
 
-  if((cp = strrchr(progname,'/')) != NULL)
+  cp = strrchr(progname, '/');
+  if (cp != NULL)
     progname = cp+1;
 
   opterr = 0;
-  while((c =
+  while ((c =
 #ifdef HAVE_GETOPT_LONG
 	 getopt_long(argc, argv, cmdopts, opts, NULL)
 #else /* HAVE_GETOPT_LONG */
@@ -210,11 +211,11 @@ int main(int argc, char **argv) {
 
       case 'o':
         /* Check the given outform parameter. */
-        if (!strcmp(optarg, "compat")) {
+        if (strcmp(optarg, "compat") == 0) {
           outform |= OF_COMPAT;
           break;
 
-        } else if (!strcmp(optarg, "oneline")) {
+        } else if (strcmp(optarg, "oneline") == 0) {
           outform |= OF_ONELINE;
           break;
         }
@@ -227,8 +228,8 @@ int main(int argc, char **argv) {
         break;
 
       case '?':
-        fprintf(stderr, "unknown option: %c\n", (char)optopt);
-        show_usage(progname,1);
+        fprintf(stderr, "unknown option: %c\n", (char) optopt);
+        show_usage(progname, 1);
     }
   }
 
@@ -282,12 +283,13 @@ int main(int argc, char **argv) {
   if (server_name)
     printf("ProFTPD Server '%s'\n", server_name);
 
-  while ((score = util_scoreboard_read_entry()) != NULL) {
-    unsigned char uploading = FALSE;
+  while ((score = util_scoreboard_entry_read()) != NULL) {
+    int downloading = FALSE, uploading = FALSE;
     register unsigned int i = 0;
 
     /* If a ServerName was given, skip unless the scoreboard entry matches. */
-    if (server_name && strcmp(server_name, score->sce_server_label) != 0)
+    if (server_name &&
+        strcmp(server_name, score->sce_server_label) != 0)
       continue;
 
     if (!count++) {
@@ -313,28 +315,36 @@ int main(int argc, char **argv) {
 
     total++;
 
-    if (strcmp(score->sce_cmd, "STOR") == 0 ||
-        strcmp(score->sce_cmd, "STOU") == 0 ||
-        strcmp(score->sce_cmd, "APPE") == 0)
-      uploading = TRUE;
+    if (strcmp(score->sce_cmd, "RETR") == 0) {
+      downloading = TRUE;
+
+    } else {
+      if (strcmp(score->sce_cmd, "STOR") == 0 ||
+          strcmp(score->sce_cmd, "STOU") == 0 ||
+          strcmp(score->sce_cmd, "APPE") == 0) {
+        uploading = TRUE;
+      }
+    }
 
     if (outform & OF_COMPAT) {
-      if (score->sce_xfer_size) {
-        if (uploading)
-          printf("%5d %-6s (n/a) %s %s\n", (int) score->sce_pid,
-            show_time(&score->sce_begin_idle), score->sce_cmd,
-            score->sce_cmd_arg);
-
-        else
+      if ((downloading || uploading) &&
+          score->sce_xfer_size > 0) {
+        if (downloading)
           printf("%5d %-6s (%s%%) %s %s\n", (int) score->sce_pid,
             show_time(&score->sce_begin_idle),
             percent_complete(score->sce_xfer_size, score->sce_xfer_done),
             score->sce_cmd, score->sce_cmd_arg);
 
-      } else
+        else
+          printf("%5d %-6s (n/a) %s %s\n", (int) score->sce_pid,
+            show_time(&score->sce_begin_idle), score->sce_cmd,
+            score->sce_cmd_arg);
+
+      } else {
         printf("%5d %-6s %s %s\n", (int) score->sce_pid,
           show_time(&score->sce_begin_idle), score->sce_cmd,
           score->sce_cmd_arg);
+      }
 
       if (verbose) {
         if (score->sce_client_addr[0])
@@ -367,16 +377,17 @@ int main(int argc, char **argv) {
           printf("\n");
 
       } else {
-        if (uploading)
-          printf("%5d %-8s [%6s] (n/a) %s %s", (int) score->sce_pid,
-            score->sce_user, show_time(&score->sce_begin_session),
-            score->sce_cmd, score->sce_cmd_arg);
-
-        else
+        if (downloading) {
           printf("%5d %-8s [%6s] (%3s%%) %s %s", (int) score->sce_pid,
             score->sce_user, show_time(&score->sce_begin_session),
             percent_complete(score->sce_xfer_size, score->sce_xfer_done),
             score->sce_cmd, score->sce_cmd_arg);
+
+        } else {
+          printf("%5d %-8s [%6s] (n/a) %s %s", (int) score->sce_pid,
+            score->sce_user, show_time(&score->sce_begin_session),
+            score->sce_cmd, score->sce_cmd_arg);
+        }
 
         if (verbose) {
           printf("%sKB/s: %3.2f%s",

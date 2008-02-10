@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.312 2008-01-09 00:04:42 castaglia Exp $
+ * $Id: mod_core.c,v 1.313 2008-02-10 02:29:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3696,7 +3696,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
   sstrncpy(session.cwd, pr_fs_getcwd(), sizeof(session.cwd));
   sstrncpy(session.vwd, pr_fs_getvwd(), sizeof(session.vwd));
 
-  pr_scoreboard_update_entry(getpid(),
+  pr_scoreboard_entry_update(getpid(),
     PR_SCORE_CWD, session.cwd,
     NULL);
 

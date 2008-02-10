@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.325 2008-01-30 17:26:41 castaglia Exp $
+ * $Id: main.c,v 1.326 2008-02-10 02:29:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -154,11 +154,11 @@ static int semaphore_fds(fd_set *rfd, int maxfd) {
 }
 
 void session_set_idle(void) {
-  pr_scoreboard_update_entry(getpid(),
+  pr_scoreboard_entry_update(getpid(),
     PR_SCORE_BEGIN_IDLE, time(NULL),
     PR_SCORE_CMD, "%s", "idle", NULL, NULL);
 
-  pr_scoreboard_update_entry(getpid(),
+  pr_scoreboard_entry_update(getpid(),
     PR_SCORE_CMD_ARG, "%s", "", NULL, NULL);
 
   pr_proctitle_set("%s - %s: IDLE", session.user, session.proc_prefix);
@@ -177,14 +177,14 @@ static void end_login_noexit(void) {
      * an exiting child process.
      */
     if (!is_master &&
-        pr_scoreboard_del_entry(TRUE) < 0 &&
+        pr_scoreboard_entry_del(TRUE) < 0 &&
         errno != EINVAL)
       pr_log_debug(DEBUG1, "error deleting scoreboard entry: %s",
         strerror(errno));
 
   } else if (ServerType == SERVER_INETD) {
     /* For inetd-spawned daemons, we always clear the scoreboard slot. */
-    if (pr_scoreboard_del_entry(TRUE) < 0 &&
+    if (pr_scoreboard_entry_del(TRUE) < 0 &&
         errno != EINVAL)
       pr_log_debug(DEBUG1, "error deleting scoreboard entry: %s",
         strerror(errno));
@@ -378,9 +378,9 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
         if (session.user) {
           char *args = strchr(cmdargstr, ' ');
 
-          pr_scoreboard_update_entry(getpid(),
+          pr_scoreboard_entry_update(getpid(),
             PR_SCORE_CMD, "%s", cmd->argv[0], NULL, NULL);
-          pr_scoreboard_update_entry(getpid(),
+          pr_scoreboard_entry_update(getpid(),
             PR_SCORE_CMD_ARG, "%s", args ? (args+1) : "", NULL, NULL);
 
           pr_proctitle_set("%s - %s: %s", session.user, session.proc_prefix,
@@ -1758,7 +1758,7 @@ static RETSIGTYPE sig_terminate(int signo) {
     recvd_signal_flags |= RECEIVED_SIG_ABORT;
 
     /* Make sure the scoreboard slot is properly cleared. */
-    pr_scoreboard_del_entry(FALSE);
+    pr_scoreboard_entry_del(FALSE);
 
     /* This is probably not the safest thing to be doing, but since the
      * process is terminating anyway, why not?  It helps when knowing/logging

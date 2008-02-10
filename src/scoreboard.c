@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.33 2006-06-13 22:14:41 castaglia Exp $
+ * $Id: scoreboard.c,v 1.34 2008-02-10 02:29:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -469,7 +469,7 @@ int pr_set_scoreboard(const char *path) {
   return 0;
 }
 
-int pr_scoreboard_add_entry(void) {
+int pr_scoreboard_entry_add(void) {
   unsigned char found_slot = FALSE;
 
   if (scoreboard_fd < 0) {
@@ -529,7 +529,7 @@ int pr_scoreboard_add_entry(void) {
   return 0;
 }
 
-int pr_scoreboard_del_entry(unsigned char verbose) {
+int pr_scoreboard_entry_del(unsigned char verbose) {
 
   if (scoreboard_fd < 0) {
     errno = EINVAL;
@@ -556,7 +556,7 @@ time_t pr_scoreboard_get_daemon_uptime(void) {
   return header.sch_uptime;
 }
 
-pr_scoreboard_entry_t *pr_scoreboard_read_entry(void) {
+pr_scoreboard_entry_t *pr_scoreboard_entry_read(void) {
   static pr_scoreboard_entry_t scan_entry;
   int res = 0;
 
@@ -600,10 +600,45 @@ pr_scoreboard_entry_t *pr_scoreboard_read_entry(void) {
   return NULL;
 }
 
-/* We get clever with this function, so that it can be used to update
+/* We get clever with the next functions, so that they can be used for
  * various entry attributes.
  */
-int pr_scoreboard_update_entry(pid_t pid, ...) {
+
+const char *pr_scoreboard_entry_get(int field) {
+
+  if (scoreboard_fd < 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  switch (field) {
+    case PR_SCORE_USER:
+      return entry.sce_user;
+
+    case PR_SCORE_CLIENT_ADDR:
+      return entry.sce_client_addr;
+
+    case PR_SCORE_CLIENT_NAME:
+      return entry.sce_client_name;
+
+    case PR_SCORE_CLASS:
+      return entry.sce_class;
+
+    case PR_SCORE_CWD:
+      return entry.sce_cwd;
+
+    case PR_SCORE_CMD:
+      return entry.sce_cmd;
+
+    case PR_SCORE_CMD_ARG:
+      return entry.sce_cmd_arg;
+  }
+
+  errno = ENOENT;
+  return NULL;
+}
+
+int pr_scoreboard_entry_update(pid_t pid, ...) {
   va_list ap;
   char *tmp = NULL;
   int entry_tag = 0;

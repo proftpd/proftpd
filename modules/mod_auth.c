@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.233 2008-01-05 21:21:31 castaglia Exp $
+ * $Id: mod_auth.c,v 1.234 2008-02-10 02:29:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -174,11 +174,11 @@ static int auth_sess_init(void) {
   }
 
   /* Create an entry in the scoreboard for this session. */
-  if (pr_scoreboard_add_entry() < 0)
+  if (pr_scoreboard_entry_add() < 0)
     pr_log_pri(PR_LOG_NOTICE, "notice: unable to add scoreboard entry: %s",
       strerror(errno));
 
-  pr_scoreboard_update_entry(getpid(),
+  pr_scoreboard_entry_update(getpid(),
     PR_SCORE_USER, "(none)",
     PR_SCORE_SERVER_PORT, main_server->ServerPort,
     PR_SCORE_SERVER_ADDR, main_server->addr, main_server->ServerPort,
@@ -1437,7 +1437,7 @@ static int setup_env(pool *p, char *user, char *pass) {
    */
 
   /* Update the scoreboard entry */
-  pr_scoreboard_update_entry(getpid(),
+  pr_scoreboard_entry_update(getpid(),
     PR_SCORE_USER, session.user,
     PR_SCORE_CWD, session.cwd,
     NULL);
@@ -1501,7 +1501,7 @@ static void auth_scan_scoreboard(void) {
     pr_log_pri(PR_LOG_NOTICE, "error rewinding scoreboard: %s",
       strerror(errno));
 
-  while ((score = pr_scoreboard_read_entry()) != NULL) {
+  while ((score = pr_scoreboard_entry_read()) != NULL) {
 
     /* Make sure it matches our current server */
     if (strcmp(score->sce_server_addr, curr_server_addr) == 0) {
@@ -1597,7 +1597,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
       pr_log_pri(PR_LOG_NOTICE, "error rewinding scoreboard: %s",
         strerror(errno));
 
-    while ((score = pr_scoreboard_read_entry()) != NULL) {
+    while ((score = pr_scoreboard_entry_read()) != NULL) {
       unsigned char same_host = FALSE;
 
       /* Make sure it matches our current server. */

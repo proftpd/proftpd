@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.230 2008-01-12 03:00:28 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.231 2008-02-10 02:29:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -379,7 +379,7 @@ static int xfer_check_limit(cmd_rec *cmd) {
      */
 
     (void) pr_rewind_scoreboard();
-    while ((score = pr_scoreboard_read_entry()) != NULL) {
+    while ((score = pr_scoreboard_entry_read()) != NULL) {
       /* Scoreboard entry must match local server address and remote client
        * address to be counted.
        */
@@ -450,7 +450,7 @@ static int xfer_check_limit(cmd_rec *cmd) {
      */
 
     (void) pr_rewind_scoreboard();
-    while ((score = pr_scoreboard_read_entry()) != NULL) {
+    while ((score = pr_scoreboard_entry_read()) != NULL) {
       if (strcmp(score->sce_server_addr, server_addr) != 0)
         continue;
 
@@ -791,7 +791,7 @@ static void xfer_rate_throttle(off_t xferlen, unsigned int xfer_ending) {
     if (xfer_ending ||
         xfer_rate_scoreboard_updates % PR_TUNABLE_XFER_SCOREBOARD_UPDATES == 0) {
       /* Update the scoreboard. */
-      pr_scoreboard_update_entry(getpid(),
+      pr_scoreboard_entry_update(getpid(),
         PR_SCORE_XFER_LEN, orig_xferlen,
         PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
         NULL);
@@ -821,7 +821,7 @@ static void xfer_rate_throttle(off_t xferlen, unsigned int xfer_ending) {
 
       if (xfer_ending ||
           xfer_rate_scoreboard_updates % PR_TUNABLE_XFER_SCOREBOARD_UPDATES == 0) {
-        pr_scoreboard_update_entry(getpid(),
+        pr_scoreboard_entry_update(getpid(),
           PR_SCORE_XFER_LEN, orig_xferlen,
           PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
           NULL);
@@ -868,7 +868,7 @@ static void xfer_rate_throttle(off_t xferlen, unsigned int xfer_ending) {
     pr_signals_handle();
 
     /* Update the scoreboard. */
-    pr_scoreboard_update_entry(getpid(),
+    pr_scoreboard_entry_update(getpid(),
       PR_SCORE_XFER_LEN, orig_xferlen,
       PR_SCORE_XFER_ELAPSED, (unsigned long) ideal,
       NULL);
@@ -876,7 +876,7 @@ static void xfer_rate_throttle(off_t xferlen, unsigned int xfer_ending) {
   } else {
 
     /* Update the scoreboard. */
-    pr_scoreboard_update_entry(getpid(),
+    pr_scoreboard_entry_update(getpid(),
       PR_SCORE_XFER_LEN, orig_xferlen,
       PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
       NULL);
@@ -2145,7 +2145,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
   nbytes_sent = curr_pos;
 
-  pr_scoreboard_update_entry(getpid(),
+  pr_scoreboard_entry_update(getpid(),
     PR_SCORE_XFER_SIZE, session.xfer.file_size,
     PR_SCORE_XFER_DONE, (off_t) 0,
     NULL);
@@ -2171,7 +2171,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     if ((nbytes_sent / cnt_steps) != cnt_next) {
       cnt_next = nbytes_sent / cnt_steps;
 
-      pr_scoreboard_update_entry(getpid(),
+      pr_scoreboard_entry_update(getpid(),
         PR_SCORE_XFER_DONE, nbytes_sent,
         NULL);
     }

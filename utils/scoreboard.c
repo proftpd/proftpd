@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support (modified for use by external utilities).
  *
- * $Id: scoreboard.c,v 1.9 2008-01-03 02:13:43 castaglia Exp $
+ * $Id: scoreboard.c,v 1.10 2008-02-10 02:29:22 castaglia Exp $
  */
 
 #include "utils.h"
@@ -202,7 +202,7 @@ time_t util_scoreboard_get_daemon_uptime(void) {
   return util_header.sch_uptime;
 }
 
-pr_scoreboard_entry_t *util_scoreboard_read_entry(void) {
+pr_scoreboard_entry_t *util_scoreboard_entry_read(void) {
   static pr_scoreboard_entry_t scan_entry;
   int res = 0;
 

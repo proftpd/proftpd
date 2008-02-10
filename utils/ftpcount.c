@@ -26,7 +26,7 @@
 
 /* Shows a count of "who" is online via proftpd.  Uses the scoreboard file.
  *
- * $Id: ftpcount.c,v 1.16 2008-01-03 02:13:43 castaglia Exp $
+ * $Id: ftpcount.c,v 1.17 2008-02-10 02:29:22 castaglia Exp $
  */
 
 #include "utils.h"
@@ -176,7 +176,7 @@ int main(int argc, char **argv) {
   uptime = util_scoreboard_get_daemon_uptime();
 
   errno = 0;
-  while ((score = util_scoreboard_read_entry()) != NULL) {
+  while ((score = util_scoreboard_entry_read()) != NULL) {
     i = 0;
 
     if (errno)
