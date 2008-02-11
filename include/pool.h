@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 /* Memory allocation/anti-leak system.  Yes, this *IS* stolen from Apache
  * also.  What can I say?  It makes sense, and it's safe (more overhead
  * though)
- * $Id: pool.h,v 1.20 2007-01-11 04:05:07 castaglia Exp $
+ * $Id: pool.h,v 1.21 2008-02-11 04:37:49 castaglia Exp $
  */
 
 #ifndef PR_POOL_H
@@ -50,10 +50,6 @@ void *palloc(struct pool *, int);
 void *pallocsz(struct pool *, int);
 void *pcalloc(struct pool *, int);
 void *pcallocsz(struct pool *, int);
-extern char *pstrdup(struct pool *, const char *);
-extern char *pstrndup(struct pool *, const char *, int);
-char *pstrcat(struct pool *, ...);       /* Must be char * */
-char *pdircat(struct pool *, ...);	/* Must be char * */
 void pr_pool_tag(struct pool *, const char *);
 
 #ifdef PR_USE_DEVEL

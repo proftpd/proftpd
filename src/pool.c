@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.47 2007-01-11 04:09:37 castaglia Exp $
+ * $Id: pool.c,v 1.48 2008-02-11 04:37:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -485,107 +485,6 @@ void *pcalloc(struct pool *p, int sz) {
 void *pcallocsz(struct pool *p, int sz) {
   void *res = pallocsz(p, sz);
   memset(res, '\0', sz);
-  return res;
-}
-
-char *pstrdup(struct pool *p, const char *s) {
-  char *res;
-  size_t len;
-
-  if (!p || !s) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  len = strlen(s) + 1;
-
-  res = palloc(p, len);
-  sstrncpy(res, s, len);
-  return res;
-}
-
-char *pstrndup(struct pool *p, const char *s, int n) {
-  char *res;
-
-  if (!p || !s) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  res = palloc(p, n + 1);
-  sstrncpy(res, s, n + 1);
-  return res;
-}
-
-char *pdircat(pool *p, ...) {
-  char *argp, *res;
-  char last;
-
-  int len = 0, count = 0;
-  va_list dummy;
-
-  va_start(dummy, p);
-
-  last = 0;
-
-  while ((res = va_arg(dummy, char *)) != NULL) {
-    /* If the first argument is "", we have to account for a leading /
-     * which must be added.
-     */
-    if (!count++ && !*res)
-      len++;
-    else if (last && last != '/' && *res != '/')
-      len++;
-    else if (last && last == '/' && *res == '/')
-      len--;
-    len += strlen(res);
-    last = (*res ? res[strlen(res) - 1] : 0);
-  }
-
-  va_end(dummy);
-  res = (char *) pcalloc(p, len + 1);
-
-  va_start(dummy, p);
-
-  last = 0;
-
-  while ((argp = va_arg(dummy, char *)) != NULL) {
-    if (last && last == '/' && *argp == '/')
-      argp++;
-    else if (last && last != '/' && *argp != '/')
-      sstrcat(res, "/", len + 1);
-
-    sstrcat(res, argp, len + 1);
-    last = (*res ? res[strlen(res) - 1] : 0);
-  }
-
-  va_end(dummy);
-
-  return res;
-}
-
-char *pstrcat(pool *p, ...) {
-  char *argp, *res;
-
-  size_t len = 0;
-  va_list dummy;
-
-  va_start(dummy, p);
-
-  while ((res = va_arg(dummy, char *)) != NULL)
-    len += strlen(res);
-
-  va_end(dummy);
-
-  res = (char *) pcalloc(p, len + 1);
-
-  va_start(dummy, p);
-
-  while ((argp = va_arg(dummy, char *)) != NULL)
-    sstrcat(res, argp, len + 1);
-
-  va_end(dummy);
-
   return res;
 }
 

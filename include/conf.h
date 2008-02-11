@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.72 2008-01-05 06:26:54 castaglia Exp $
+ * $Id: conf.h,v 1.73 2008-02-11 04:37:49 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -403,6 +403,7 @@ typedef struct {
 } pr_netaddr_t;
 
 #include "pool.h"
+#include "str.h"
 #include "regexp.h"
 #include "table.h"
 #include "proftpd.h"

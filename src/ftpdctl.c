@@ -1,8 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +24,7 @@
 
 /* ProFTPD Controls command-line client
  *
- * $Id: ftpdctl.c,v 1.9 2007-10-05 17:08:56 castaglia Exp $
+ * $Id: ftpdctl.c,v 1.10 2008-02-11 04:37:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -114,23 +112,6 @@ struct tm *pr_localtime(pool *p, const time_t *t) {
 int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
   errno = ENOSYS;
   return -1;
-}
-
-char *sstrcat(char *dest, const char *src, size_t n) {
-  register char *d;
-
-  if (!dest || !src || n == 0) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  for (d = dest; *d && n > 1; d++, n--) ;
-
-  while (n-- > 1 && *src)
-    *d++ = *src++;
-
-  *d = 0;
-  return dest;
 }
 
 char *sstrncpy(char *dest, const char *src, size_t n) {

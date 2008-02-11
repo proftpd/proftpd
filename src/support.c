@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.92 2007-02-15 17:54:58 castaglia Exp $
+ * $Id: support.c,v 1.93 2008-02-11 04:37:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -636,145 +636,6 @@ char *make_arg_str(pool *p, int argc, char **argv) {
   return res;
 }
 
-char *sreplace(pool *p, char *s, ...) {
-  va_list args;
-  char *m,*r,*src = s,*cp;
-  char **mptr,**rptr;
-  char *marr[33],*rarr[33];
-  char buf[PR_TUNABLE_PATH_MAX] = {'\0'}, *pbuf = NULL;
-  size_t mlen = 0, rlen = 0;
-  int blen;
-  int dyn = TRUE;
-
-  cp = buf;
-  *cp = '\0';
-
-  memset(marr, '\0', sizeof(marr));
-  memset(rarr, '\0', sizeof(rarr));
-  blen = strlen(src) + 1;
-
-  va_start(args, s);
-
-  while ((m = va_arg(args, char *)) != NULL && mlen < sizeof(marr)-1) {
-    char *tmp = NULL;
-    int count = 0;
-
-    if ((r = va_arg(args, char *)) == NULL)
-      break;
-
-    /* Increase the length of the needed buffer by the difference between
-     * the given match and replacement strings, multiplied by the number
-     * of times the match string occurs in the source string.
-     */
-    tmp = strstr(s, m);
-    while (tmp) {
-      pr_signals_handle();
-      count++;
-      if (count > 8) {
-        /* More than eight instances of the same escape on the same line?
-         * Give me a break.
-         */
-        return s;
-      }
-
-      /* Be sure to increment the pointer returned by strstr(3), to
-       * advance past the beginning of the substring for which we are
-       * looking.  Otherwise, we just loop endlessly, seeing the same
-       * value for tmp over and over.
-       */
-      tmp += strlen(m);
-      tmp = strstr(tmp, m);
-    }
-
-    /* We are only concerned about match/replacement strings that actually
-     * occur in the given string.
-     */
-    if (count) {
-      blen += count * (strlen(r) - strlen(m));
-      if (blen < 0) {
-        /* Integer overflow. In order to overflow this, somebody must be
-         * doing something very strange. The possibility still exists that
-         * we might not catch this overflow in extreme corner cases, but
-         * massive amounts of data (gigabytes) would need to be in s to
-         * trigger this, easily larger than any buffer we might use.
-         */
-        return s;
-      }
-      marr[mlen] = m;
-      rarr[mlen++] = r;
-    }
-  }
-
-  va_end(args);
-
-  /* Try to handle large buffer situations (i.e. escaping of PR_TUNABLE_PATH_MAX
-   * (>2048) correctly, but do not allow very big buffer sizes, that may
-   * be dangerous (BUFSIZ may be defined in stdio.h) in some library
-   * functions.
-   */
-#ifndef BUFSIZ
-# define BUFSIZ 8192
-#endif
-
-  if (blen < BUFSIZ)
-    cp = pbuf = (char *) pcalloc(p, ++blen);
-
-  if (!pbuf) {
-    cp = pbuf = buf;
-    dyn = FALSE;
-    blen = sizeof(buf);
-  }
-
-  while (*src) {
-    for (mptr = marr, rptr = rarr; *mptr; mptr++, rptr++) {
-      mlen = strlen(*mptr);
-      rlen = strlen(*rptr);
-
-      if (strncmp(src, *mptr, mlen) == 0) {
-        sstrncpy(cp, *rptr, blen - strlen(pbuf));
-	if (((cp + rlen) - pbuf + 1) > blen) {
-	  pr_log_pri(PR_LOG_ERR,
-		  "WARNING: attempt to overflow internal ProFTPD buffers");
-	  cp = pbuf;
-          if (blen >= BUFSIZ)
-            blen = BUFSIZ;
-          cp += (blen - 1);
-
-	  goto done;
-
-	} else {
-	  cp += rlen;
-	}
-	
-        src += mlen;
-        break;
-      }
-    }
-
-    if (!*mptr) {
-      if ((cp - pbuf + 1) >= blen) {
-	pr_log_pri(PR_LOG_ERR,
-		"WARNING: attempt to overflow internal ProFTPD buffers");
-	cp = pbuf;
-        if (blen >= BUFSIZ)
-          blen = BUFSIZ;
-        cp += (blen - 1);
-
-	goto done;
-      }
-      *cp++ = *src++;
-    }
-  }
-
- done:
-  *cp = '\0';
-
-  if (dyn)
-    return pbuf;
-
-  return pstrdup(p, buf);
-}
-
 /* "safe" memset() (code borrowed from OpenSSL).  This function should be
  * used to clear/scrub sensitive memory areas instead of memset() for the
  * reasons mentioned in this BugTraq thread:
@@ -802,26 +663,6 @@ void pr_memscrub(void *ptr, size_t ptrlen) {
 
   if (memchr(ptr, memscrub_ctr, ptrlen))
     memscrub_ctr += 63;
-}
-
-/* "safe" strcat, saves room for \0 at end of dest, and refuses to copy
- * more than "n" bytes.
- */
-char *sstrcat(char *dest, const char *src, size_t n) {
-  register char *d;
-
-  if (!dest || !src || n == 0) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  for (d = dest; *d && n > 1; d++, n--) ;
-
-  while (n-- > 1 && *src)
-    *d++ = *src++;
-
-  *d = 0;
-  return dest;
 }
 
 struct tm *pr_gmtime(pool *p, const time_t *t) {
