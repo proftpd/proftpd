@@ -459,6 +459,9 @@
 /* Define if you have the <bstring.h> header file.  */
 #undef HAVE_BSTRING_H
 
+/* Define if you have the <check.h> header file.  */
+#undef HAVE_CHECK_H
+
 /* Define if you have the <crypt.h> header file.  */
 #undef HAVE_CRYPT_H
 
@@ -683,6 +686,9 @@
 
 /* Define if you have the crypt library (-lcrypt).  */
 #undef HAVE_LIBCRYPT
+
+/* Define if you have the check library (-lcheck).  */
+#undef HAVE_LIBCHECK
 
 /* Define if you have the curses library (-lcurses).  */
 #undef HAVE_LIBCURSES

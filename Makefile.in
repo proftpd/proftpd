@@ -69,6 +69,8 @@ ftptop$(EXEEXT): lib utils
 ftpwho$(EXEEXT): lib utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPWHO_OBJS) $(UTILS_LIBS)
 
+check: proftpd$(EXEEXT)
+	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check)
 
 # BSD install -d doesn't work, so ...
 $(DESTDIR)$(datadir) $(DESTDIR)$(datadir)/locale $(DESTDIR)$(includedir) $(DESTDIR)$(includedir)/proftpd $(DESTDIR)$(libexecdir) $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(rundir) $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir) $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8:
@@ -138,6 +140,7 @@ clean:
 	cd lib/     && $(MAKE) clean
 	cd utils/   && $(MAKE) clean
 	cd locale/  && $(MAKE) clean
+	cd tests/   && $(MAKE) clean
 
 	@dirs="$(DIRS)"; \
 	for dir in $$dirs; do \

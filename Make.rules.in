@@ -34,6 +34,7 @@ RM=rm -f
 SHELL=/bin/sh
 
 ENABLE_NLS=@ENABLE_NLS@
+ENABLE_TESTS=@ENABLE_TESTS@
 
 # Directory include paths.
 #
