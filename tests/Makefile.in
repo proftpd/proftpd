@@ -1,0 +1,44 @@
+CC=@CC@
+@SET_MAKE@
+
+top_builddir=..
+top_srcdir=..
+srcdir=@srcdir@
+VPATH=@srcdir@
+
+include $(top_srcdir)/Make.rules
+
+EXEEXT=@EXEEXT@
+
+TEST_DEPS=\
+  $(top_srcdir)/src/pool.o \
+  $(top_srcdir)/src/str.o 
+
+TEST_LIBS=-lcheck
+
+TEST_OBJS=\
+  pool.o \
+  str.o \
+  stubs.o \
+  tests.o
+
+
+all:
+	@echo "Running make from top level directory."
+	cd ../; $(MAKE) all
+
+dummy:
+
+Makefile: Makefile.in ../config.status
+	cd ../ && ./config.status
+
+
+.c.o:
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
+
+check$(EXEEXT): $(TEST_DEPS) $(TEST_OBJS) dummy
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o $@ $(TEST_DEPS) $(TEST_OBJS) $(LIBS) $(TEST_LIBS)
+	./$@
+
+clean:
+	$(LIBTOOL) --mode=clean $(RM) *.o check$(EXEEXT)
