@@ -1531,7 +1531,7 @@ Optional Features:
 
   --disable-trace         disable trace support (default=no)
 
-  --enable-devel          enable code of interest to developers
+  --enable-devel          enable developer-only code (default=no)
 
   --enable-buffer-size    tune the the size (in bytes) of internal buffers
                           (default=1024)
