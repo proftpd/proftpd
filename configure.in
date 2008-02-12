@@ -649,7 +649,7 @@ pr_devel_libs=""
 AC_ARG_ENABLE(devel,
   [AC_HELP_STRING(
     [--enable-devel],
-    [enable code of interest to developers])
+    [enable developer-only code (default=no)])
   ],
   [
     if test x"$enableval" != xno ; then
