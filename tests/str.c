@@ -24,7 +24,7 @@
 
 /*
  * String API tests
- * $Id: str.c,v 1.1 2008-02-11 04:44:28 castaglia Exp $
+ * $Id: str.c,v 1.2 2008-02-13 16:16:50 castaglia Exp $
  */
 
 #include "tests.h"
@@ -105,22 +105,211 @@ START_TEST (sstrcat_test) {
 END_TEST
 
 START_TEST (sreplace_test) {
+  pool *p;
+  char *fmt = NULL, *res, *ok;
+
+  p = make_sub_pool(NULL);
+  fail_if(p == NULL, "Failed to allocate pool");
+
+  res = sreplace(NULL, NULL, 0);
+  fail_unless(res == NULL, "Failed to handle invalid arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = sreplace(NULL, "", 0);
+  fail_unless(res == NULL, "Failed to handle invalid arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = sreplace(p, NULL, 0);
+  fail_unless(res == NULL, "Failed to handle invalid arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  fmt = "%a";
+  res = sreplace(p, fmt, "foo", NULL);
+  fail_unless(strcmp(res, fmt) == 0, "Expected '%s', got '%s'", fmt, res);
+
+  fmt = "foo %a";
+  res = sreplace(p, fmt, "%b", NULL);
+  fail_unless(strcmp(res, fmt) == 0, "Expected '%s', got '%s'", fmt, res);
+
+  fmt = "foo %a";
+  res = sreplace(p, fmt, "%a", "bar", NULL);
+  fail_unless(strcmp(res, "foo bar") == 0, "Expected '%s', got '%s'", fmt, res);
+
+  fmt = "foo %a %a";
+  ok = "foo bar bar";
+  res = sreplace(p, fmt, "%a", "bar", NULL);
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  fmt = "foo %a %a %a %a %a %a %a %a";
+  ok = "foo bar bar bar bar bar bar bar bar";
+  
+  res = sreplace(p, fmt, "%a", "bar", NULL);
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  /* sreplace() will not handle more than 8 occurrences of the same escape
+   * sequence in the same line.  Make sure this happens.
+   */
+  fmt = "foo %a %a %a %a %a %a %a %a %a";
+  ok = "foo bar bar bar bar bar bar bar bar bar";
+
+  res = sreplace(p, fmt, "%a", "bar", NULL);
+  fail_unless(strcmp(res, fmt) == 0, "Expected '%s', got '%s'", fmt, res);
+
+  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (pdircat_test) {
+  pool *p;
+  char *res, *ok;
+
+  p = make_sub_pool(NULL);
+
+  res = pdircat(NULL, 0);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pdircat(p, 0);
+  fail_unless(res != NULL,
+    "Failed to handle empty arguments (expected '', got '%s')", res);
+  fail_unless(strcmp(res, "") == 0, "Expected '%s', got '%s'", "", res);
+
+  /* Comments in the pdircat() function suggest that an empty string
+   * should be treated as a leading slash.  However, that never got
+   * implemented.  Is this a bug, or just an artifact?  I doubt that it
+   * is causing problems at present.
+   */
+  res = pdircat(p, "", NULL);
+  ok = "";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pdircat(p, "foo", "bar", NULL);
+  ok = "foo/bar";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pdircat(p, "", "foo", "bar", NULL);
+  ok = "foo/bar";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pdircat(p, "/", "/foo/", "/bar/", NULL);
+  ok = "/foo/bar/";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  /* Sadly, pdircat() only handles single leading/trailing slashes, not
+   * an arbitrary number of leading/trailing slashes.
+   */
+  res = pdircat(p, "//", "//foo//", "//bar//", NULL);
+  ok = "///foo///bar//";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (pstrcat_test) {
+  pool *p;
+  char *res, *ok;
+
+  p = make_sub_pool(NULL);
+
+  res = pstrcat(NULL, 0);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pstrcat(p, 0);
+  fail_unless(res != NULL,
+    "Failed to handle empty arguments (expected '', got '%s')", res);
+  fail_unless(strcmp(res, "") == 0, "Expected '%s', got '%s'", "", res);
+
+  res = pstrcat(p, "", NULL);
+  ok = "";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pstrcat(p, "foo", "bar", NULL);
+  ok = "foobar";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pstrcat(p, "", "foo", "bar", NULL);
+  ok = "foobar";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pstrcat(p, "/", "/foo/", "/bar/", NULL);
+  ok = "//foo//bar/";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pdircat(p, "//", "//foo//", NULL, "//bar//", NULL);
+  ok = "///foo//";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (pstrdup_test) {
+  pool *p;
+  char *res, *ok;
+
+  p = make_sub_pool(NULL);
+
+  res = pstrdup(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pstrdup(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pstrdup(NULL, "");
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pstrdup(p, "foo");
+  ok = "foo";
+  fail_unless(strlen(res) == strlen(ok), "Expected len %u, got len %u",
+    strlen(ok), strlen(res));
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (pstrndup_test) {
+  pool *p;
+  char *res, *ok;
+
+  p = make_sub_pool(NULL);
+
+  res = pstrndup(NULL, NULL, 0);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pstrndup(p, NULL, 0);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pstrndup(NULL, "", 0);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pstrndup(p, "foo", 0);
+  ok = "";
+  fail_unless(strlen(res) == strlen(ok), "Expected len %u, got len %u",
+    strlen(ok), strlen(res));
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pstrndup(p, "foo", 1);
+  ok = "f";
+  fail_unless(strlen(res) == strlen(ok), "Expected len %u, got len %u",
+    strlen(ok), strlen(res));
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pstrndup(p, "foo", 10);
+  ok = "foo";
+  fail_unless(strlen(res) == strlen(ok), "Expected len %u, got len %u",
+    strlen(ok), strlen(res));
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  destroy_pool(p);
 }
 END_TEST
 
