@@ -855,6 +855,9 @@
 /* Define if use of system getopt is desired.  */
 #undef PR_USE_SYSTEM_GETOPT
 
+/* Define if using testsuite support.  */
+#undef PR_USE_TESTS
+
 /* Define if using trace support.  */
 #undef PR_USE_TRACE
 
