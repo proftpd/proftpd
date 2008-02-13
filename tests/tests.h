@@ -24,7 +24,7 @@
 
 /*
  * Testsuite management
- * $Id: tests.h,v 1.1 2008-02-11 04:44:28 castaglia Exp $
+ * $Id: tests.h,v 1.2 2008-02-13 07:21:40 castaglia Exp $
  */
 
 #ifndef PR_TESTS_H
@@ -40,6 +40,7 @@
 #endif
 
 Suite *tests_get_pool_suite(void);
+Suite *tests_get_array_suite(void);
 Suite *tests_get_str_suite(void);
 
 #endif /* PR_TESTS_H */

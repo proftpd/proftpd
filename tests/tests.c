@@ -26,6 +26,7 @@
 
 static const char *suites[] = {
   "pool",
+  "array",
   "str",
 
   NULL
@@ -35,6 +36,9 @@ static Suite *tests_get_suite(const char *suite) {
   if (strcmp(suite, "pool") == 0) { 
     return tests_get_pool_suite();
  
+  } else if (strcmp(suite, "array") == 0) {
+    return tests_get_array_suite(); 
+
   } else if (strcmp(suite, "str") == 0) {
     return tests_get_str_suite(); 
   }
