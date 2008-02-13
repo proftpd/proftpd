@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.1 2008-02-11 04:37:49 castaglia Exp $
+ * $Id: str.c,v 1.2 2008-02-13 03:45:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -37,6 +37,11 @@ char *sreplace(pool *p, char *s, ...) {
   size_t mlen = 0, rlen = 0;
   int blen;
   int dyn = TRUE;
+
+  if (!p || !s) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   cp = buf;
   *cp = '\0';
