@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.2 2008-02-13 03:45:57 castaglia Exp $
+ * $Id: str.c,v 1.3 2008-02-13 16:16:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -129,19 +129,21 @@ char *sreplace(pool *p, char *s, ...) {
 
       if (strncmp(src, *mptr, mlen) == 0) {
         sstrncpy(cp, *rptr, blen - strlen(pbuf));
-	if (((cp + rlen) - pbuf + 1) > blen) {
-	  pr_log_pri(PR_LOG_ERR,
-		  "WARNING: attempt to overflow internal ProFTPD buffers");
-	  cp = pbuf;
+
+        if (((cp + rlen) - pbuf + 1) > blen) {
+          pr_log_pri(PR_LOG_ERR,
+            "WARNING: attempt to overflow internal ProFTPD buffers");
+          cp = pbuf;
+
           if (blen >= BUFSIZ)
             blen = BUFSIZ;
+
           cp += (blen - 1);
+          goto done;
 
-	  goto done;
-
-	} else {
-	  cp += rlen;
-	}
+        } else {
+          cp += rlen;
+        }
 	
         src += mlen;
         break;
@@ -150,15 +152,17 @@ char *sreplace(pool *p, char *s, ...) {
 
     if (!*mptr) {
       if ((cp - pbuf + 1) >= blen) {
-	pr_log_pri(PR_LOG_ERR,
-		"WARNING: attempt to overflow internal ProFTPD buffers");
-	cp = pbuf;
+        pr_log_pri(PR_LOG_ERR,
+          "WARNING: attempt to overflow internal ProFTPD buffers");
+        cp = pbuf;
+
         if (blen >= BUFSIZ)
           blen = BUFSIZ;
-        cp += (blen - 1);
 
-	goto done;
+        cp += (blen - 1);
+        goto done;
       }
+
       *cp++ = *src++;
     }
   }
@@ -229,6 +233,11 @@ char *pdircat(pool *p, ...) {
   size_t len = 0;
   va_list ap;
 
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   va_start(ap, p);
 
   last = 0;
@@ -278,6 +287,11 @@ char *pstrcat(pool *p, ...) {
 
   size_t len = 0;
   va_list ap;
+
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   va_start(ap, p);
 
