@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.48 2008-02-11 04:37:49 castaglia Exp $
+ * $Id: pool.c,v 1.49 2008-02-13 07:24:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -492,10 +492,19 @@ void *pcallocsz(struct pool *p, int sz) {
  * Array functions
  */
 
-array_header *make_array(pool *p, int nelts, int elt_size) {
-  array_header *res = (array_header *) palloc(p, sizeof(array_header));
+array_header *make_array(pool *p, unsigned int nelts, size_t elt_size) {
+  array_header *res;
 
-  if (nelts < 1) nelts = 1;
+  if (p == NULL ||
+      elt_size == 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  res = palloc(p, sizeof(array_header));
+
+  if (nelts < 1)
+    nelts = 1;
 
   res->elts = pcalloc(p, nelts * elt_size);
   res->pool = p;
@@ -507,6 +516,11 @@ array_header *make_array(pool *p, int nelts, int elt_size) {
 }
 
 void *push_array(array_header *arr) {
+  if (arr == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   if (arr->nelts == arr->nalloc) {
     char *new_data = pcalloc(arr->pool, arr->nalloc * arr->elt_size * 2);
 
@@ -516,19 +530,27 @@ void *push_array(array_header *arr) {
   }
 
   ++arr->nelts;
-  return ((char *)arr->elts) + (arr->elt_size * (arr->nelts - 1));
+  return ((char *) arr->elts) + (arr->elt_size * (arr->nelts - 1));
 }
 
 void array_cat(array_header *dst, const array_header *src) {
-  int elt_size = dst->elt_size;
+  size_t elt_size;
+
+  if (dst == NULL ||
+      src == NULL) {
+    return;
+  }
+
+  elt_size = dst->elt_size;
 
   if (dst->nelts + src->nelts > dst->nalloc) {
     int new_size = dst->nalloc * 2;
     char *new_data;
 
-    if (new_size == 0) ++new_size;
+    if (new_size == 0)
+      ++new_size;
 
-    while (dst->nelts + src->nelts > new_size)
+    while ((dst->nelts + src->nelts) > new_size)
       new_size *= 2;
 
     new_data = pcalloc(dst->pool, elt_size * new_size);
@@ -538,13 +560,21 @@ void array_cat(array_header *dst, const array_header *src) {
     dst->nalloc = new_size;
   }
 
-  memcpy(((char *)dst->elts) + dst->nelts * elt_size, (char *)src->elts,
+  memcpy(((char *) dst->elts) + (dst->nelts * elt_size), (char *) src->elts,
          elt_size * src->nelts);
   dst->nelts += src->nelts;
 }
 
 array_header *copy_array(pool *p, const array_header *arr) {
-  array_header *res = make_array(p,arr->nalloc,arr->elt_size);
+  array_header *res;
+
+  if (p == NULL ||
+      arr == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  res = make_array(p, arr->nalloc, arr->elt_size);
 
   memcpy(res->elts, arr->elts, arr->elt_size * arr->nelts);
   res->nelts = arr->nelts;
@@ -553,17 +583,33 @@ array_header *copy_array(pool *p, const array_header *arr) {
 
 /* copy an array that is assumed to consist solely of strings */
 array_header *copy_array_str(pool *p, const array_header *arr) {
-  array_header *res = copy_array(p,arr);
-  int i;
+  register unsigned int i;
+  array_header *res;
+
+  if (p == NULL ||
+      arr == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  res = copy_array(p, arr);
 
   for (i = 0; i < arr->nelts; i++)
-    ((char **)res->elts)[i] = pstrdup(p, ((char **)res->elts)[i]);
+    ((char **) res->elts)[i] = pstrdup(p, ((char **) res->elts)[i]);
 
   return res;
 }
 
 array_header *copy_array_hdr(pool *p, const array_header *arr) {
-  array_header *res = (array_header *)palloc(p,sizeof(array_header));
+  array_header *res;
+
+  if (p == NULL ||
+      arr == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  res = palloc(p, sizeof(array_header));
 
   res->elts = arr->elts;
   res->pool = p;
@@ -576,7 +622,16 @@ array_header *copy_array_hdr(pool *p, const array_header *arr) {
 
 array_header *append_arrays(pool *p, const array_header *first,
     const array_header *second) {
-  array_header *res = copy_array_hdr(p, first);
+  array_header *res;
+
+  if (p == NULL ||
+      first == NULL ||
+      second == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  res = copy_array_hdr(p, first);
 
   array_cat(res, second);
   return res;
