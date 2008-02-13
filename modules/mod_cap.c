@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2003-2006 The ProFTPD Project team
+ * Copyright (c) 2003-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,9 +29,9 @@
  * security-consious admins. See README.capabilities for more information.
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
- * $Libraries: -Llib/libcap -lcap$
- * $Directories: lib/libcap$
- * $Id: mod_cap.c,v 1.14 2006-06-16 01:40:15 castaglia Exp $
+ * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
+ * $Directories: $(top_srcdir)/lib/libcap$
+ * $Id: mod_cap.c,v 1.15 2008-02-13 17:10:49 castaglia Exp $
  */
 
 #include <stdio.h>

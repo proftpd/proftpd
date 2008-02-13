@@ -1017,6 +1017,7 @@ if test x"$enable_auth_pam" != xno ; then
 fi
 
 ac_add_mod_cap="no"
+ac_have_libcap="no"
 if test x"$enable_cap" != xno; then
   case "$host" in
     [*-linux-*])
@@ -1028,6 +1029,11 @@ if test x"$enable_cap" != xno; then
         if test $ac_cv_header_linux_capability_h = "yes"; then
           ac_add_mod_cap="yes"
         fi
+
+        AC_CHECK_LIB(cap, cap_init,
+          [ac_have_libcap="yes"
+           AC_DEFINE(HAVE_LIBCAP, 1, [Define if libcap is present.])
+          ])
       fi
   esac
 fi
@@ -1952,6 +1958,14 @@ for module in $ac_static_modules; do
     AC_MSG_ERROR([source file '$srcdir/modules/$src' cannot be found -- aborting])
   fi
 done
+
+dnl This is a nasty, cap-specific hack.  If we will be using the system
+dnl libcap (i.e. ac_have_libcap is "yes"), then we want to remove the
+dnl hackish stuff that mod_cap added to the library and directory strings.
+if test x"$ac_have_libcap" = xyes; then
+  ac_addl_libs=`echo "$ac_addl_libs" | sed -e 's/-L\$(top_srcdir)\/lib\/libcap//g'`
+  ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/\$(top_srcdir)\/lib\/libcap//g'`
+fi
 
 ac_addl_libs=`echo "$ac_addl_libs" | sed -e 's/ *\$//'`
 ac_addl_libs=`echo "$ac_addl_libs" | sed -e 's/^ *//'`

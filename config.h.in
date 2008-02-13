@@ -684,6 +684,9 @@
 /* Define if you have the bind library (-lbind).  */
 #undef HAVE_LIBBIND
 
+/* Define if you have the cap library (-lcap).  */
+#undef HAVE_LIBCAP
+
 /* Define if you have the crypt library (-lcrypt).  */
 #undef HAVE_LIBCRYPT
 
