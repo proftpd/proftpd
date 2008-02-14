@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.135 2008-01-11 17:12:39 castaglia Exp $
+ * $Id: mod_sql.c,v 1.136 2008-02-14 02:23:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1231,11 +1231,19 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   } else
     shell = NULL;
   
-  if (uid < cmap.minuseruid)
+  if (uid < cmap.minuseruid) {
+    sql_log(DEBUG_INFO, "user UID %lu below SQLMinUserUID %lu, using "
+      "SQLDefaultUID %lu", (unsigned long) uid, (unsigned long) cmap.minuseruid,
+      (unsigned long) cmap.defaultuid);
     uid = cmap.defaultuid;
+  }
 
-  if (gid < cmap.minusergid)
+  if (gid < cmap.minusergid) {
+    sql_log(DEBUG_INFO, "user GID %lu below SQLMinUserGID %lu, using "
+      "SQLDefaultGID %lu", (unsigned long) gid, (unsigned long) cmap.minusergid,
+      (unsigned long) cmap.defaultgid);
     gid = cmap.defaultgid;
+  }
 
   return _sql_addpasswd(cmd, username, password, uid, gid, shell, dir);
 }
@@ -2940,14 +2948,24 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
 	shell = sd->data[i++];
       else
 	shell =  "";
+
+      if (uid < cmap.minuseruid) {
+        sql_log(DEBUG_INFO, "user UID %lu below SQLMinUserUID %lu, using "
+          "SQLDefaultUID %lu", (unsigned long) uid,
+          (unsigned long) cmap.minuseruid, (unsigned long) cmap.defaultuid);
+        uid = cmap.defaultuid;
+      }
       
-      if (uid < cmap.minuseruid)
-	uid = cmap.defaultuid;
-      if (gid < cmap.minusergid)
-	gid = cmap.defaultgid;
-      
+      if (gid < cmap.minusergid) {
+        sql_log(DEBUG_INFO, "user GID %lu below SQLMinUserGID %lu, using "
+          "SQLDefaultGID %lu", (unsigned long) gid,
+          (unsigned long) cmap.minusergid, (unsigned long) cmap.defaultgid);
+        gid = cmap.defaultgid;
+      }
+
       _sql_addpasswd(cmd, username, password, uid, gid, shell, dir);
     } 
+
   } else {
     /* retrieve our list of passwds */
     where = sql_prepare_where(0, cmd, 1, cmap.userwhere, NULL);
