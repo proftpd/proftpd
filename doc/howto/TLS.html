@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.14 2007-10-02 22:29:18 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.15 2008-02-14 15:15:47 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -431,9 +431,19 @@ And when using Fetch, the error message displayed by that client was:
 In <b>both</b> causes, using "TLSOptions NoCertRequest" appeared to make
 those clients happy.
 
+<p><a name="TLSNoPassphrasePrompt">
+<font color=red>Question</font>: When <code>proftpd</code> starts up, I am
+prompted to enter the passphrases for my certificates.  How can I get the
+daemon to start without having to enter passphrases?<br>
+<font color=blue>Answer</font>: You can either remove the passphrase from
+the certificate key file (as mentioned in the Apache <code>mod_ssl</code>
+<a href="http://www.modssl.org/docs/2.7/ssl_faq.html#remove-passphrase">FAQ</a>), or you can use the <code>TLSPassPhraseProvider</code> directive to configure
+a program will which provide the passphrases to <code>proftpd</code>
+automatically.
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2007-10-02 22:29:18 $</i><br>
+Last Updated: <i>$Date: 2008-02-14 15:15:47 $</i><br>
 <hr>
 
 </body>
