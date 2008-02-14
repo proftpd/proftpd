@@ -1,4 +1,4 @@
-<!-- $Id: CreateHome.html,v 1.1 2006-04-17 18:52:35 castaglia Exp $ -->
+<!-- $Id: CreateHome.html,v 1.2 2008-02-14 17:07:06 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/CreateHome.html,v $ -->
 
 <html>
@@ -41,7 +41,7 @@ configuration directive.
 <b>How to use <code>CreateHome</code></b><br>
 The description for this configuration directive shows its parameters to be:
 <pre>
-  CreateHome off|on [&lt;mode&gt;] [skel &lt;path&gt;] [dirmode &lt;mode&gt;]
+  CreateHome off|on [&lt;mode&gt;] [skel &lt;path&gt;] [dirmode &lt;mode&gt;] [uid &lt;uid&gt;] [gid &lt;gid&gt;]
 </pre>
 The first parameter is a simple Boolean, enabling or disabling the
 <code>proftpd</code> daemon's run-time support for home directory creation.
@@ -98,6 +98,12 @@ for there are some restrictions and caveats to both the <code>dirmode</code>
 and <code>skel</code> parameters.
 
 <p>
+The <code>uid</code> and <code>gid</code> parameters can be used to set the
+ownership of the newly created parent directories, up to be <b>not</b>
+including the home directory.  By default, those created parent directories
+are owned by root (UID 0 and GID 0).
+
+<p>
 Here are some examples (from the documentation) to help illustrate how one
 might use the <code>CreateHome</code> configuration directive:
 <pre>
@@ -138,7 +144,7 @@ desired from the FTP daemon.
 
 <p>
 <hr>
-<i>$Date: 2006-04-17 18:52:35 $</i><br>
+<i>$Date: 2008-02-14 17:07:06 $</i><br>
 
 </body>
 </html>
