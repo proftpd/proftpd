@@ -24,20 +24,32 @@
 
 /*
  * Array API tests
- * $Id: array.c,v 1.1 2008-02-13 07:21:40 castaglia Exp $
+ * $Id: array.c,v 1.2 2008-02-16 05:18:27 castaglia Exp $
  */
 
 #include "tests.h"
 
+static pool *p = NULL;
+
+static void set_up(void) {
+  if (p == NULL) {
+    p = make_sub_pool(NULL);
+  }
+}
+
+static void tear_down(void) {
+  if (p) {
+    destroy_pool(p);
+    p = NULL;
+  }
+}
+
 START_TEST (make_array_test) {
-  pool *p;
   array_header *list;
 
   list = make_array(NULL, 0, 0);
   fail_unless(list == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
-
-  p = make_sub_pool(NULL);
 
   list = make_array(p, 0, 0);
   fail_unless(list == NULL, "Failed to handle null arguments");
@@ -66,13 +78,10 @@ START_TEST (make_array_test) {
     0, list->nelts);
   fail_unless(list->elt_size == 1, "Expect list element size of %u, got %d",
     1, list->elt_size);
-
-  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (push_array_test) {
-  pool *p;
   array_header *list;
   void *res;
 
@@ -80,7 +89,6 @@ START_TEST (push_array_test) {
   fail_unless(res == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL for null args");
 
-  p = make_sub_pool(NULL);
   list = make_array(p, 0, 1);
 
   res = push_array(list);
@@ -110,21 +118,16 @@ START_TEST (push_array_test) {
     "(expected %u, got %d)", 4, list->nalloc);
   fail_unless(list->nelts == 4, "Failed to increment element count "
     "(expected %u, got %d)", 4, list->nelts);
-
-  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (array_cat_test) {
-  pool *p;
   array_header *src, *dst;
 
   mark_point();
 
   /* This should not segfault. */
   array_cat(NULL, NULL);
-
-  p = make_sub_pool(NULL);
 
   dst = make_array(p, 0, 1);
   mark_point();
@@ -159,20 +162,16 @@ START_TEST (array_cat_test) {
     8, dst->nalloc);
   fail_unless(dst->nelts == 5, "Wrong dst item count (expected %u, got %d)",
     5, dst->nelts);
-
-  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (copy_array_test) {
-  pool *p;
   array_header *list, *src;
 
   list = copy_array(NULL, NULL);
   fail_unless(list == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
-  p = make_sub_pool(NULL);
   src = make_array(p, 0, 1);
 
   list = copy_array(NULL, src);
@@ -194,17 +193,13 @@ START_TEST (copy_array_test) {
     "Copy nalloc wrong (expected %d, got %d)", src->nalloc, list->nalloc);
   fail_unless(list->nelts == src->nelts,
     "Copy nelts wrong (expected %d, got %d)", src->nelts, list->nelts);
-
-  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (copy_array_str_test) {
-  pool *p;
   array_header *list, *src;
   char *elt, **elts;
 
-  p = make_sub_pool(NULL);
   src = make_array(p, 0, sizeof(char *));
 
   list = copy_array_str(NULL, NULL);
@@ -241,17 +236,13 @@ START_TEST (copy_array_str_test) {
   elt = elts[1];
   fail_unless(strcmp(elt, "bar") == 0,
     "Improper copy (expected '%s', got '%s')", "bar", elt);
-
-  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (copy_array_hdr_test) {
-  pool *p;
   array_header *list, *src;
   int elt, *elts;
 
-  p = make_sub_pool(NULL);
   src = make_array(p, 0, sizeof(int));
 
   list = copy_array_hdr(NULL, NULL);
@@ -295,13 +286,10 @@ START_TEST (copy_array_hdr_test) {
 
   elt = elts[2];
   fail_unless(elt == 2476, "Improper copy (expected %d, got %d)", 2476, elt);
-
-  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (append_arrays_test) {
-  pool *p;
   array_header *a, *b, *res;
   int elt, *elts;
 
@@ -369,8 +357,6 @@ START_TEST (append_arrays_test) {
 
   elt = elts[4];
   fail_unless(elt == 7642, "Improper append (expected %d, got %d)", 7642, elt);
-
-  destroy_pool(p);
 }
 END_TEST
 
@@ -381,6 +367,9 @@ Suite *tests_get_array_suite(void) {
   suite = suite_create("array");
 
   testcase = tcase_create("base");
+
+  tcase_add_checked_fixture(testcase, set_up, tear_down);
+
   tcase_add_test(testcase, make_array_test);
   tcase_add_test(testcase, push_array_test);
   tcase_add_test(testcase, array_cat_test);

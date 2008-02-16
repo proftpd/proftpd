@@ -24,17 +24,29 @@
 
 /*
  * Env API tests
- * $Id: env.c,v 1.1 2008-02-13 07:49:08 castaglia Exp $
+ * $Id: env.c,v 1.2 2008-02-16 05:18:27 castaglia Exp $
  */
 
 #include "tests.h"
 
+static pool *p = NULL;
+
+static void set_up(void) {
+  if (p == NULL) {
+    p = make_sub_pool(NULL);
+  }
+}
+
+static void tear_down(void) {
+  if (p) {
+    destroy_pool(p);
+    p = NULL;
+  } 
+}
+
 START_TEST (env_get_test) {
-  pool *p;
   const char *key = "foo";
   char *res;
-
-  p = make_sub_pool(NULL);
 
   res = pr_env_get(NULL, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
@@ -63,19 +75,14 @@ START_TEST (env_get_test) {
   fail_unless(errno == ENOSYS, "Failed to set errno to ENOSYS");
   fail_unless(res == NULL);
 #endif
-
-  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (env_set_test) {
-  pool *p;
   const char *key = "PR_TEST_FOO", *value = "bar";
   char *v;
   int res;
  
-  p = make_sub_pool(NULL);
-
   res = pr_env_set(NULL, NULL, NULL);
   fail_unless(res == -1, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
@@ -109,19 +116,14 @@ START_TEST (env_set_test) {
 
   v = pr_env_get(p, key);
   fail_unless(strcmp(v, value) == 0, "Expected '%s', got '%s'", value, v);
-
-  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (env_unset_test) {
-  pool *p;
   const char *key = "PR_TEST_FOO", *value = "bar";
   char *v;
   int res;
 
-  p = make_sub_pool(NULL);
-  
   res = pr_env_unset(NULL, NULL);
   fail_unless(res == -1, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
@@ -151,8 +153,6 @@ START_TEST (env_unset_test) {
   fail_unless(errno == ENOSYS, "Failed to set errno to ENOSYS");
   fail_unless(res == -1);
 #endif
-
-  destroy_pool(p);
 }
 END_TEST
 
@@ -163,6 +163,8 @@ Suite *tests_get_env_suite(void) {
   suite = suite_create("env");
 
   testcase = tcase_create("base");
+
+  tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, env_get_test);
   tcase_add_test(testcase, env_set_test);

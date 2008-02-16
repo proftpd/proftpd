@@ -24,10 +24,25 @@
 
 /*
  * String API tests
- * $Id: str.c,v 1.2 2008-02-13 16:16:50 castaglia Exp $
+ * $Id: str.c,v 1.3 2008-02-16 05:18:27 castaglia Exp $
  */
 
 #include "tests.h"
+
+static pool *p = NULL;
+
+static void set_up(void) {
+  if (p == NULL) {
+    p = make_sub_pool(NULL);
+  }
+}
+
+static void tear_down(void) {
+  if (p) {
+    destroy_pool(p);
+    p = NULL;
+  }
+}
 
 START_TEST (sstrncpy_test) {
 }
@@ -105,11 +120,7 @@ START_TEST (sstrcat_test) {
 END_TEST
 
 START_TEST (sreplace_test) {
-  pool *p;
   char *fmt = NULL, *res, *ok;
-
-  p = make_sub_pool(NULL);
-  fail_if(p == NULL, "Failed to allocate pool");
 
   res = sreplace(NULL, NULL, 0);
   fail_unless(res == NULL, "Failed to handle invalid arguments");
@@ -154,16 +165,11 @@ START_TEST (sreplace_test) {
 
   res = sreplace(p, fmt, "%a", "bar", NULL);
   fail_unless(strcmp(res, fmt) == 0, "Expected '%s', got '%s'", fmt, res);
-
-  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (pdircat_test) {
-  pool *p;
   char *res, *ok;
-
-  p = make_sub_pool(NULL);
 
   res = pdircat(NULL, 0);
   fail_unless(res == NULL, "Failed to handle null arguments");
@@ -201,16 +207,11 @@ START_TEST (pdircat_test) {
   res = pdircat(p, "//", "//foo//", "//bar//", NULL);
   ok = "///foo///bar//";
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
-
-  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (pstrcat_test) {
-  pool *p;
   char *res, *ok;
-
-  p = make_sub_pool(NULL);
 
   res = pstrcat(NULL, 0);
   fail_unless(res == NULL, "Failed to handle null arguments");
@@ -240,16 +241,11 @@ START_TEST (pstrcat_test) {
   res = pdircat(p, "//", "//foo//", NULL, "//bar//", NULL);
   ok = "///foo//";
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
-
-  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (pstrdup_test) {
-  pool *p;
   char *res, *ok;
-
-  p = make_sub_pool(NULL);
 
   res = pstrdup(NULL, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
@@ -268,16 +264,11 @@ START_TEST (pstrdup_test) {
   fail_unless(strlen(res) == strlen(ok), "Expected len %u, got len %u",
     strlen(ok), strlen(res));
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
-
-  destroy_pool(p);
 }
 END_TEST
 
 START_TEST (pstrndup_test) {
-  pool *p;
   char *res, *ok;
-
-  p = make_sub_pool(NULL);
 
   res = pstrndup(NULL, NULL, 0);
   fail_unless(res == NULL, "Failed to handle null arguments");
@@ -308,8 +299,6 @@ START_TEST (pstrndup_test) {
   fail_unless(strlen(res) == strlen(ok), "Expected len %u, got len %u",
     strlen(ok), strlen(res));
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
-
-  destroy_pool(p);
 }
 END_TEST
 
@@ -320,6 +309,8 @@ Suite *tests_get_str_suite(void) {
   suite = suite_create("str");
 
   testcase = tcase_create("base");
+
+  tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, sstrncpy_test);
   tcase_add_test(testcase, sstrcat_test);

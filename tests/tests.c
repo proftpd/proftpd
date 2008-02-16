@@ -57,6 +57,8 @@ int main(int argc, char *argv[]) {
 
   runner = srunner_create(NULL);
 
+  srunner_set_log(runner, "tests.log");
+
   for (i = 0; suites[i]; i++) {
     Suite *suite;
 
