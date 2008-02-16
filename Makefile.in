@@ -140,7 +140,7 @@ clean:
 	cd lib/     && $(MAKE) clean
 	cd utils/   && $(MAKE) clean
 	cd locale/  && $(MAKE) clean
-	cd tests/   && $(MAKE) clean
+	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) clean)
 
 	@dirs="$(DIRS)"; \
 	for dir in $$dirs; do \
