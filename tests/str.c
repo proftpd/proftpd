@@ -24,7 +24,7 @@
 
 /*
  * String API tests
- * $Id: str.c,v 1.3 2008-02-16 05:18:27 castaglia Exp $
+ * $Id: str.c,v 1.4 2008-02-16 05:36:25 castaglia Exp $
  */
 
 #include "tests.h"
@@ -45,6 +45,59 @@ static void tear_down(void) {
 }
 
 START_TEST (sstrncpy_test) {
+  char *res, *ok, *dst;
+  size_t len, sz = 32;
+
+  res = sstrncpy(NULL, NULL, 0);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+
+  dst = "";
+  res = sstrncpy(dst, "foo", 0);
+  fail_unless(res == NULL, "Failed to handle zero length");
+
+  dst = pcalloc(p, sz);
+  memset(dst, 'A', sz);
+
+  res = sstrncpy(dst, NULL, 1);
+  fail_unless(res == dst, "Expected %p, got %p", dst, res);
+  fail_unless(*res == '\0', "Expected NUL, got '%c'", *res);
+
+  ok = "Therefore, all progress depends on the unreasonable man";
+
+  memset(dst, 'A', sz);
+  len = 1;
+
+  res = sstrncpy(dst, ok, len);
+  fail_unless(res == dst, "Expected %p, got %p", dst, res);
+  fail_unless(strlen(res) == (len - 1), "Expected len %u, got len %u", len - 1,
+    strlen(res));
+  fail_unless(res[len-1] == '\0', "Expected NUL, got '%c'", res[len-1]);
+
+  memset(dst, 'A', sz);
+  len = 7;
+
+  res = sstrncpy(dst, ok, len);
+  fail_unless(res == dst, "Expected %p, got %p", dst, res);
+  fail_unless(strlen(res) == (len - 1), "Expected len %u, got len %u", len - 1,
+    strlen(res));
+  fail_unless(res[len-1] == '\0', "Expected NUL, got '%c'", res[len-1]);
+
+  memset(dst, 'A', sz);
+  len = sz;
+
+  res = sstrncpy(dst, ok, len);
+  fail_unless(res == dst, "Expected %p, got %p", dst, res);
+  fail_unless(strlen(res) == (len - 1), "Expected len %u, got len %u", len - 1,
+    strlen(res));
+  fail_unless(res[len-1] == '\0', "Expected NUL, got '%c'", res[len-1]);
+
+  memset(dst, 'A', sz);
+  len = sz;
+
+  res = sstrncpy(dst, "", len);
+  fail_unless(res == dst, "Expected %p, got %p", dst, res);
+  fail_unless(strlen(res) == 0, "Expected len %u, got len %u", 0, strlen(res));
+  fail_unless(*res == '\0', "Expected NUL, got '%c'", *res);
 }
 END_TEST
 
