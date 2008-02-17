@@ -59,20 +59,38 @@ static Suite *tests_get_suite(const char *suite) {
 }
 
 int main(int argc, char *argv[]) {
-  register unsigned int i;
   int nfailed = 0;
   SRunner *runner = NULL;
+  char *requested = NULL;
 
   runner = srunner_create(NULL);
 
   srunner_set_log(runner, "tests.log");
 
-  for (i = 0; suites[i]; i++) {
+  requested = getenv("PR_TEST_SUITE");
+  if (requested) {
     Suite *suite;
 
-    suite = tests_get_suite(suites[i]);
+    suite = tests_get_suite(requested);
     if (suite) {
       srunner_add_suite(runner, suite);
+
+    } else {
+      fprintf(stderr, "No such test suite ('%s') requested via PR_TEST_SUITE\n",
+        requested);
+      return EXIT_FAILURE;
+    }
+
+  } else {
+    register unsigned int i;
+
+    for (i = 0; suites[i]; i++) {
+      Suite *suite;
+
+      suite = tests_get_suite(suites[i]);
+      if (suite) {
+        srunner_add_suite(runner, suite);
+      }
     }
   }
 
@@ -92,6 +110,7 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, " containing the `tests.log' file and the output\n");
     fprintf(stderr, " from running `proftpd -V'\n");
     fprintf(stderr, "-------------------------------------------------\n");
+
     return EXIT_FAILURE;
   }
 
