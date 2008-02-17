@@ -24,16 +24,21 @@
 
 #include "tests.h"
 
-static const char *suites[] = {
-  "pool",
-  "array",
-  "str",
-  "sets",
-  "timers",
-  "table",
-  "env",
+struct testsuite_info {
+  const char *name;
+  Suite *(*get_suite)(void);
+};
 
-  NULL
+static struct testsuite_info suites[] = {
+  { "pool", 	tests_get_pool_suite },
+  { "array", 	tests_get_array_suite },
+  { "str", 	tests_get_str_suite },
+  { "sets", 	tests_get_sets_suite },
+  { "timers", 	tests_get_timers_suite },
+  { "table", 	tests_get_table_suite },
+  { "env", 	tests_get_env_suite },
+
+  { NULL, NULL }
 };
 
 static Suite *tests_get_suite(const char *suite) { 
@@ -88,10 +93,10 @@ int main(int argc, char *argv[]) {
   } else {
     register unsigned int i;
 
-    for (i = 0; suites[i]; i++) {
+    for (i = 0; suites[i].name; i++) {
       Suite *suite;
 
-      suite = tests_get_suite(suites[i]);
+      suite = (suites[i].get_suite)();
       if (suite) {
         srunner_add_suite(runner, suite);
       }
