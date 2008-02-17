@@ -24,7 +24,7 @@
 
 /*
  * Testsuite management
- * $Id: tests.h,v 1.4 2008-02-17 01:01:11 castaglia Exp $
+ * $Id: tests.h,v 1.5 2008-02-17 02:11:37 castaglia Exp $
  */
 
 #ifndef PR_TESTS_H
@@ -43,6 +43,12 @@ Suite *tests_get_pool_suite(void);
 Suite *tests_get_array_suite(void);
 Suite *tests_get_str_suite(void);
 Suite *tests_get_sets_suite(void);
+Suite *tests_get_timers_suite(void);
 Suite *tests_get_env_suite(void);
+
+/* Temporary hack/placement for this variable, until we get to testing
+ * the Signals API.
+ */
+unsigned int recvd_signal_flags;
 
 #endif /* PR_TESTS_H */

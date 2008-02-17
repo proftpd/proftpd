@@ -26,14 +26,12 @@
 
 /* Stubs */
 
-void pr_alarms_block(void) {
-}
-
-void pr_alarms_unblock(void) {
-}
-
 void pr_log_pri(int priority, const char *fmt, ...) {
 }
 
 void pr_signals_handle(void) {
+}
+
+int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
+  return 0;
 }
