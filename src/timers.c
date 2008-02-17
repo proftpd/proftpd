@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.27 2007-10-22 18:09:18 castaglia Exp $
+ * $Id: timers.c,v 1.28 2008-02-17 02:06:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -99,7 +99,7 @@ static int process_timers(int elapsed) {
   _indispatch++;
 
   if (elapsed) {
-    for (t = (struct timer *) timers->xas_list; t; t=next) {
+    for (t = (struct timer *) timers->xas_list; t; t = next) {
       /* If this timer has already been handled, skip */
       next = t->next;
 
@@ -239,19 +239,27 @@ void handle_alarm(void) {
 int pr_timer_reset(int timerno, module *mod) {
   struct timer *t = NULL;
 
-  if (_indispatch)
+  if (!timers) {
+    errno = EPERM;
     return -1;
+  }
+
+  if (_indispatch) {
+    errno = EINTR;
+    return -1;
+  }
 
   pr_alarms_block();
 
   if (!recycled)
     recycled = xaset_create(NULL, NULL);
 
-  for (t = (struct timer *) timers->xas_list; t; t=t->next)
-    if (t->timerno == timerno && (t->mod == mod || mod == ANY_MODULE)) {
+  for (t = (struct timer *) timers->xas_list; t; t = t->next) {
+    if (t->timerno == timerno &&
+        (t->mod == mod || mod == ANY_MODULE)) {
       t->count = t->interval;
-      xaset_remove(timers, (xasetmember_t*)t);
-      xaset_insert(recycled, (xasetmember_t*)t);
+      xaset_remove(timers, (xasetmember_t *) t);
+      xaset_insert(recycled, (xasetmember_t *) t);
       nalarms++;
 
       /* The handle_alarm() function also readjusts the timers lists
@@ -261,6 +269,7 @@ int pr_timer_reset(int timerno, module *mod) {
       handle_alarm();
       break;
     }
+  }
 
   pr_alarms_unblock();
 
@@ -276,14 +285,15 @@ int pr_timer_remove(int timerno, module *mod) {
 
   pr_alarms_block();
 
-  for (t = (struct timer *) timers->xas_list; t; t = t->next)
-    if (t->timerno == timerno && (t->mod == mod || mod == ANY_MODULE)) {
+  for (t = (struct timer *) timers->xas_list; t; t = t->next) {
+    if (t->timerno == timerno &&
+        (t->mod == mod || mod == ANY_MODULE)) {
       if (_indispatch) {
         t->remove++;
 
       } else {
-        xaset_remove(timers, (xasetmember_t*)t);
-        xaset_insert(free_timers, (xasetmember_t*)t);
+        xaset_remove(timers, (xasetmember_t *) t);
+        xaset_insert(free_timers, (xasetmember_t *) t);
 	nalarms++;
 
         /* The handle_alarm() function also readjusts the timers lists
@@ -294,6 +304,7 @@ int pr_timer_remove(int timerno, module *mod) {
       }
       break;
     }
+  }
 
   pr_alarms_unblock();
 
@@ -303,19 +314,17 @@ int pr_timer_remove(int timerno, module *mod) {
     return t->timerno;
   }
 
-  return 0;
+  errno = ENOENT;
+  return -1;
 }
 
 int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb,
     const char *desc) {
   struct timer *t = NULL;
 
-  if (seconds < 0) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  if (!desc) {
+  if (seconds <= 0 ||
+      cb == NULL ||
+      desc == NULL) {
     errno = EINVAL;
     return -1;
   }
