@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.11 2008-01-05 01:01:51 castaglia Exp $
+ * $Id: table.c,v 1.12 2008-02-17 21:17:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -286,7 +286,9 @@ int pr_table_kadd(pr_table_t *tab, const void *key_data, size_t key_datasz,
   unsigned int h, idx;
   pr_table_entry_t *e, *n;
 
-  if (!tab || !key_data) {
+  if (tab == NULL ||
+      key_data == NULL ||
+      (value_datasz > 0 && value_data == NULL)) {
     errno = EINVAL;
     return -1;
   }
@@ -578,7 +580,9 @@ int pr_table_kset(pr_table_t *tab, const void *key_data, size_t key_datasz,
 
   /* XXX Should callers be allowed to set NULL values for keys? */
 
-  if (!tab || !key_data || !value_data) {
+  if (tab == NULL ||
+      key_data == NULL ||
+      (value_datasz > 0 && value_data == NULL)) {
     errno = EINVAL;
     return -1;
   }
@@ -655,12 +659,14 @@ int pr_table_kset(pr_table_t *tab, const void *key_data, size_t key_datasz,
 int pr_table_add(pr_table_t *tab, const char *key_data, void *value_data,
     size_t value_datasz) {
 
-  if (!tab || !key_data) {
+  if (tab == NULL ||
+      key_data == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  if (value_data && value_datasz == 0)
+  if (value_data &&
+      value_datasz == 0)
     value_datasz = strlen((char *) value_data) + 1;
 
   return pr_table_kadd(tab, key_data, strlen(key_data) + 1, value_data,
@@ -694,7 +700,8 @@ pr_table_t *pr_table_nalloc(pool *p, int flags, unsigned int nchains) {
   pr_table_t *tab;
   pool *tab_pool;
 
-  if (!p) {
+  if (p == NULL ||
+      nchains == 0) {
     errno = EINVAL;
     return NULL;
   }
@@ -895,6 +902,10 @@ int pr_table_set(pr_table_t *tab, const char *key_data, void *value_data,
     return -1;
   }
 
+  if (value_data &&
+      value_datasz == 0)
+    value_datasz = strlen((char *) value_data) + 1;
+
   return pr_table_kset(tab, key_data, strlen(key_data) + 1, value_data,
     value_datasz);
 }
@@ -946,8 +957,21 @@ int pr_table_ctl(pr_table_t *tab, int cmd, void *arg) {
         (void (*)(pr_table_entry_t **, pr_table_entry_t *)) entry_remove;
       return 0;
 
-    case PR_TABLE_CTL_SET_NCHAINS:
-      tab->nchains = *((unsigned int *) arg);
+    case PR_TABLE_CTL_SET_NCHAINS: {
+      unsigned int new_nchains;
+
+      if (arg == NULL) {
+        errno = EINVAL;
+        return -1;
+      }
+
+      new_nchains = *((unsigned int *) arg);
+      if (new_nchains == 0) {
+        errno = EINVAL;
+        return -1;
+      }
+
+      tab->nchains = new_nchains;
       
       /* Note: by not freeing the memory of the previously allocated
        * chains, this constitutes a minor leak of the table's memory pool.
@@ -955,6 +979,7 @@ int pr_table_ctl(pr_table_t *tab, int cmd, void *arg) {
       tab->chains = pcalloc(tab->pool,
         sizeof(pr_table_entry_t *) * tab->nchains);
       return 0;
+    }
 
     default:
       errno = EINVAL;
@@ -978,7 +1003,8 @@ void *pr_table_pcalloc(pr_table_t *tab, size_t sz) {
 void pr_table_dump(void (*dumpf)(const char *fmt, ...), pr_table_t *tab) {
   register unsigned int i;
 
-  if (!tab)
+  if (tab == NULL ||
+      dumpf == NULL)
     return;
 
   if (tab->flags == 0)
