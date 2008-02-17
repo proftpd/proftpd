@@ -83,8 +83,17 @@ int main(int argc, char *argv[]) {
   if (runner)
     srunner_free(runner);
 
-  if (nfailed != 0)
+  if (nfailed != 0) {
+    fprintf(stderr, "-------------------------------------------------\n");
+    fprintf(stderr, " FAILED %d %s\n\n", nfailed,
+      nfailed != 1 ? "tests" : "test");
+    fprintf(stderr, " Please send email to:\n\n");
+    fprintf(stderr, "   proftp-devel@lists.sourceforge.net\n\n");
+    fprintf(stderr, " containing the `tests.log' file and the output\n");
+    fprintf(stderr, " from running `proftpd -V'\n");
+    fprintf(stderr, "-------------------------------------------------\n");
     return EXIT_FAILURE;
+  }
 
   return EXIT_SUCCESS;
 }
