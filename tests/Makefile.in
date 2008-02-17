@@ -13,6 +13,7 @@ EXEEXT=@EXEEXT@
 TEST_DEPS=\
   $(top_srcdir)/src/pool.o \
   $(top_srcdir)/src/str.o \
+  $(top_srcdir)/src/sets.o \
   $(top_srcdir)/src/env.o
 
 TEST_LIBS=-lcheck
@@ -21,6 +22,7 @@ TEST_OBJS=\
   pool.o \
   array.o \
   str.o \
+  sets.o \
   env.o \
   stubs.o \
   tests.o

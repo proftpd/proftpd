@@ -28,6 +28,7 @@ static const char *suites[] = {
   "pool",
   "array",
   "str",
+  "sets",
   "env",
 
   NULL
@@ -42,6 +43,9 @@ static Suite *tests_get_suite(const char *suite) {
 
   } else if (strcmp(suite, "str") == 0) {
     return tests_get_str_suite(); 
+
+  } else if (strcmp(suite, "sets") == 0) {
+    return tests_get_sets_suite(); 
 
   } else if (strcmp(suite, "env") == 0) {
     return tests_get_env_suite(); 
