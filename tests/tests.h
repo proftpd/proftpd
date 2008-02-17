@@ -24,7 +24,7 @@
 
 /*
  * Testsuite management
- * $Id: tests.h,v 1.5 2008-02-17 02:11:37 castaglia Exp $
+ * $Id: tests.h,v 1.6 2008-02-17 21:19:59 castaglia Exp $
  */
 
 #ifndef PR_TESTS_H
@@ -44,6 +44,7 @@ Suite *tests_get_array_suite(void);
 Suite *tests_get_str_suite(void);
 Suite *tests_get_sets_suite(void);
 Suite *tests_get_timers_suite(void);
+Suite *tests_get_table_suite(void);
 Suite *tests_get_env_suite(void);
 
 /* Temporary hack/placement for this variable, until we get to testing

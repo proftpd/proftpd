@@ -15,6 +15,7 @@ TEST_DEPS=\
   $(top_srcdir)/src/str.o \
   $(top_srcdir)/src/sets.o \
   $(top_srcdir)/src/timers.o \
+  $(top_srcdir)/src/table.o \
   $(top_srcdir)/src/env.o
 
 TEST_LIBS=-lcheck
@@ -25,6 +26,7 @@ TEST_OBJS=\
   str.o \
   sets.o \
   timers.o \
+  table.o \
   env.o \
   stubs.o \
   tests.o

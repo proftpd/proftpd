@@ -30,6 +30,7 @@ static const char *suites[] = {
   "str",
   "sets",
   "timers",
+  "table",
   "env",
 
   NULL
@@ -50,6 +51,9 @@ static Suite *tests_get_suite(const char *suite) {
 
   } else if (strcmp(suite, "timers") == 0) {
     return tests_get_timers_suite(); 
+
+  } else if (strcmp(suite, "table") == 0) {
+    return tests_get_table_suite(); 
 
   } else if (strcmp(suite, "env") == 0) {
     return tests_get_env_suite(); 
