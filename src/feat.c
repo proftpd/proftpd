@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * Feature management code
- * $Id: feat.c,v 1.7 2006-04-21 02:02:21 castaglia Exp $
+ * $Id: feat.c,v 1.8 2008-02-18 02:56:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -51,19 +51,19 @@ int pr_feat_add(const char *feat) {
     return -1;
   }
 
-  return pr_table_add(feat_tab, pstrdup(feat_pool, feat), NULL, 0);
+  return pr_table_add(feat_tab, pstrdup(feat_pool, feat), "", 0);
 }
 
 int pr_feat_remove(const char *feat) {
   void *res;
 
-  if (!feat) {
-    errno = EINVAL;
+  if (!feat_tab) {
+    errno = EPERM;
     return -1;
   }
 
-  if (!feat_tab) {
-    errno = EPERM;
+  if (!feat) {
+    errno = EINVAL;
     return -1;
   }
 
