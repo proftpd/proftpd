@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004 The ProFTPD Project team
+ * Copyright (c) 2004-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Variables API implementation
- * $Id: var.c,v 1.4 2006-12-11 23:11:34 castaglia Exp $
+ * $Id: var.c,v 1.5 2008-02-18 02:13:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -45,13 +45,13 @@ typedef const char *(*var_vstr_cb)(void *, size_t);
  */
 
 int pr_var_delete(const char *name) {
-  if (!name) {
-    errno = EINVAL;
+  if (!var_tab) {
+    errno = EPERM;
     return -1;
   }
 
-  if (!var_tab) {
-    errno = EPERM;
+  if (!name) {
+    errno = EINVAL;
     return -1;
   }
 
@@ -59,13 +59,13 @@ int pr_var_delete(const char *name) {
 }
 
 int pr_var_exists(const char *name) {
-  if (!name) {
-    errno = EINVAL;
+  if (!var_tab) {
+    errno = EPERM;
     return -1;
   }
 
-  if (!var_tab) {
-    errno = EPERM;
+  if (!name) {
+    errno = EINVAL;
     return -1;
   }
 
@@ -75,13 +75,13 @@ int pr_var_exists(const char *name) {
 const char *pr_var_get(const char *name) {
   struct var *v;
 
-  if (!name) {
-    errno = EINVAL;
+  if (!var_tab) {
+    errno = EPERM;
     return NULL;
   }
 
-  if (!var_tab) {
-    errno = EPERM;
+  if (!name) {
+    errno = EINVAL;
     return NULL;
   }
 
@@ -127,20 +127,6 @@ const char *pr_var_next(const char **desc) {
   return name;
 }
 
-int pr_var_remove(const char *name) {
-  if (!name) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  if (!var_tab) {
-    errno = EPERM;
-    return -1;
-  }
-
-  return pr_table_remove(var_tab, name, NULL) ? 0 : -1;
-}
-
 void pr_var_rewind(void) {
   if (var_tab)
     pr_table_rewind(var_tab);
@@ -150,13 +136,36 @@ int pr_var_set(pool *p, const char *name, const char *desc, int type,
     void *val, void *data, size_t datasz) {
   struct var *v;
 
-  if (!p || !name || !val) {
+  if (var_tab == NULL) {
+    errno = EPERM;
+    return -1;
+  }
+
+  if (p == NULL ||
+      name == NULL ||
+      val == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* The length of the key must be greater than 3 characters (for "%{}"). */
+  if (strlen(name) < 4) {
     errno = EINVAL;
     return -1;
   }
 
   /* Specifying data, but no length for that data, is an error. */
-  if (data && datasz == 0) {
+  if (data != NULL &&
+      datasz == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Specifying no data, but providing a non-zero length for that data, is an
+   * error.
+   */
+  if (data == NULL &&
+      datasz > 0) {
     errno = EINVAL;
     return -1;
   }

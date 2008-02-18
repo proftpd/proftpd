@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004 The ProFTPD Project team
+ * Copyright (c) 2004-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Variables API definition
- * $Id: var.h,v 1.2 2004-11-01 17:12:27 castaglia Exp $
+ * $Id: var.h,v 1.3 2008-02-18 02:13:41 castaglia Exp $
  */
 
 #ifndef PR_VAR_H
@@ -53,11 +53,6 @@ const char *pr_var_get(const char *name);
  * names, for informational purposes.
  */
 const char *pr_var_next(const char **desc);
-
-/* Remove the given variable name from the table.  Returns 0 on success, -1
- * if there was an error.
- */
-int pr_var_remove(const char *name);
 
 /* Rewinds the iterator used by pr_var_next() to the start of the list.
  */
