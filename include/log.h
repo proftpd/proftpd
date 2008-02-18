@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.27 2007-01-18 02:48:32 castaglia Exp $
+ * $Id: log.h,v 1.28 2008-02-18 21:45:20 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -125,9 +125,6 @@ void log_closesyslog(void);
 int log_opensyslog(const char *);
 void log_setfacility(int);
 
-/* Utilize gcc's __attribute__ pragma for signalling that it should perform
- * printf-style checking of this function's arguments.
- */
 void pr_log_pri(int, const char *, ...)
 #ifdef __GNUC__
        __attribute__ ((format (printf, 2, 3)));
@@ -135,11 +132,13 @@ void pr_log_pri(int, const char *, ...)
        ;
 #endif
 
-void pr_log_auth(int, const char *, ...);
+void pr_log_auth(int, const char *, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 2, 3)));
+#else
+       ;
+#endif
 
-/* Utilize gcc's __attribute__ pragma for signalling that it should perform
- * printf-style checking of this function's arguments.
- */
 void pr_log_debug(int, const char *, ...)
 #ifdef __GNUC__
        __attribute__ ((format (printf, 2, 3)));
