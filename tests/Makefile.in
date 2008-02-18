@@ -17,6 +17,7 @@ TEST_DEPS=\
   $(top_srcdir)/src/timers.o \
   $(top_srcdir)/src/table.o \
   $(top_srcdir)/src/var.o \
+  $(top_srcdir)/src/event.o \
   $(top_srcdir)/src/env.o \
   $(top_srcdir)/src/feat.o
 
@@ -30,6 +31,7 @@ TEST_OBJS=\
   timers.o \
   table.o \
   var.o \
+  event.o \
   env.o \
   feat.o \
   stubs.o \
