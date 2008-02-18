@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2006 The ProFTPD Project team
+ * Copyright (c) 2003-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.15 2006-12-19 01:29:59 castaglia Exp $
+ * $Id: event.c,v 1.16 2008-02-18 21:25:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -95,8 +95,18 @@ int pr_event_register(module *m, const char *event,
         /* Make sure this event handler is added to the end of the list,
          * in order to preserve module load order handling of events.
          */ 
-        while (evhi && evhi->next)
+        while (evhi) {
+          if (evhi->cb == evh->cb) {
+            /* Duplicate callback */
+            errno = EEXIST;
+            return -1;
+          }
+
+          if (evhi->next == NULL)
+            break;
+
           evhi = evhi->next;
+       }
 
         evh->prev = evhi;
         evhi->next = evh;
@@ -130,6 +140,7 @@ int pr_event_register(module *m, const char *event,
 int pr_event_unregister(module *m, const char *event,
     void (*cb)(const void *, void *)) {
   struct event_list *evl;
+  int unregistered = FALSE;
 
   if (!events)
     return 0;
@@ -171,6 +182,7 @@ int pr_event_unregister(module *m, const char *event,
             evh->next->prev = evh->prev;
 
           evh = tmp;
+          unregistered = TRUE;
   
         } else
           evh = evh->next;
@@ -181,6 +193,11 @@ int pr_event_unregister(module *m, const char *event,
   /* Clear any cached data. */
   curr_event = NULL;
   curr_evl = NULL;
+
+  if (!unregistered) {
+    errno = ENOENT;
+    return -1;
+  }
 
   return 0;
 }
@@ -238,6 +255,10 @@ void pr_event_generate(const char *event, const void *event_data) {
 
 void pr_event_dump(void (*dumpf)(const char *, ...)) {
   struct event_list *evl;
+
+  if (!dumpf) {
+    return;
+  }
 
   if (!events) {
     dumpf("%s", "No events registered");
