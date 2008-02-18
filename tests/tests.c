@@ -38,6 +38,7 @@ static struct testsuite_info suites[] = {
   { "table", 	tests_get_table_suite },
   { "var", 	tests_get_var_suite },
   { "env", 	tests_get_env_suite },
+  { "feat", 	tests_get_feat_suite },
 
   { NULL, NULL }
 };
@@ -66,6 +67,9 @@ static Suite *tests_get_suite(const char *suite) {
 
   } else if (strcmp(suite, "env") == 0) {
     return tests_get_env_suite(); 
+
+  } else if (strcmp(suite, "feat") == 0) {
+    return tests_get_feat_suite(); 
   }
  
   return NULL;
