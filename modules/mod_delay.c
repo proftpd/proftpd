@@ -2,7 +2,7 @@
  * ProFTPD: mod_delay -- a module for adding arbitrary delays to the FTP
  *                       session lifecycle
  *
- * Copyright (c) 2004-2007 TJ Saunders
+ * Copyright (c) 2004-2008 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.26 2007-10-01 21:41:28 castaglia Exp $
+ * $Id: mod_delay.c,v 1.27 2008-02-19 16:42:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -388,12 +388,17 @@ static int delay_table_init(void) {
     MAP_SHARED, delay_tab.dt_fd, 0);
 
   if (delay_tab.dt_data == MAP_FAILED) {
+    delay_tab.dt_data = NULL;
+
     pr_log_pri(PR_LOG_ERR, MOD_DELAY_VERSION
       ": error mapping DelayTable '%s' into memory: %s", delay_tab.dt_path,
       strerror(errno));
     pr_trace_msg("delay", 1, "error mapping DelayTable '%s' into memory: %s",
       delay_tab.dt_path, strerror(errno));
+
     pr_fsio_close(fh);
+    delay_tab.dt_fd = -1;
+
     return -1;
   }
 
@@ -492,6 +497,7 @@ static int delay_table_init(void) {
   }
 
   delay_tab.dt_data = NULL;
+  delay_tab.dt_fd = -1;
 
   if (pr_fsio_close(fh) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
@@ -502,7 +508,6 @@ static int delay_table_init(void) {
     return -1;
   }
 
-  delay_tab.dt_fd = -1;
   return 0;
 }
 
@@ -527,15 +532,17 @@ static int delay_table_load(int lock_table) {
     }
   }
 
-  if (!delay_tab.dt_data) {
+  if (delay_tab.dt_data == NULL) {
     pr_trace_msg("delay", 8, "mapping DelayTable '%s' (%" PR_LU
       " bytes, fd %d) into memory", delay_tab.dt_path,
       (pr_off_t) delay_tab.dt_size, delay_tab.dt_fd);
     delay_tab.dt_data = mmap(NULL, delay_tab.dt_size, PROT_READ|PROT_WRITE,
       MAP_SHARED, delay_tab.dt_fd, 0);
 
-    if (delay_tab.dt_data == MAP_FAILED)
+    if (delay_tab.dt_data == MAP_FAILED) {
+      delay_tab.dt_data = NULL;
       return -1;
+    }
   }
 
   return 0;
@@ -947,7 +954,7 @@ MODRET delay_post_pass(cmd_rec *cmd) {
   /* Prepare for manipulating the table. */
   if (delay_table_load(FALSE) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      "warning: unable to load DelayTable '%s' into memory: %s",
+      ": unable to load DelayTable '%s' into memory: %s",
       delay_tab.dt_path, strerror(errno));
     pr_trace_msg("delay", 1, "unable to load DelayTable '%s' into memory: %s",
       delay_tab.dt_path, strerror(errno));
@@ -1020,7 +1027,7 @@ MODRET delay_post_user(cmd_rec *cmd) {
   /* Prepare for manipulating the table. */
   if (delay_table_load(FALSE) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      "warning: unable to load DelayTable '%s' into memory: %s",
+      ": unable to load DelayTable '%s' into memory: %s",
       delay_tab.dt_path, strerror(errno));
     pr_trace_msg("delay", 1, "unable to load DelayTable '%s' into memory: %s",
       delay_tab.dt_path, strerror(errno));
@@ -1112,7 +1119,7 @@ static void delay_exit_ev(const void *event_data, void *user_data) {
 
     errno = xerrno;
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      "warning: unable to load DelayTable '%s' into memory: %s",
+      ": unable to load DelayTable '%s' into memory: %s",
       delay_tab.dt_path, strerror(errno));
     pr_trace_msg("delay", 1, "unable to load DelayTable '%s' into memory: %s",
       delay_tab.dt_path, strerror(errno));
@@ -1135,6 +1142,7 @@ static void delay_exit_ev(const void *event_data, void *user_data) {
       strerror(errno));
   }
 
+  delay_tab.dt_fd = -1;
   if (pr_fsio_close(fh) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": warning: error writing DelayTable '%s': %s", delay_tab.dt_path,
