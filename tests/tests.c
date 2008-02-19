@@ -39,6 +39,7 @@ static struct testsuite_info suites[] = {
   { "var", 	tests_get_var_suite },
   { "event", 	tests_get_event_suite },
   { "env", 	tests_get_env_suite },
+  { "version", 	tests_get_version_suite },
   { "feat", 	tests_get_feat_suite },
 
   { NULL, NULL }
@@ -68,6 +69,9 @@ static Suite *tests_get_suite(const char *suite) {
 
   } else if (strcmp(suite, "event") == 0) {
     return tests_get_event_suite(); 
+
+  } else if (strcmp(suite, "version") == 0) {
+    return tests_get_version_suite(); 
 
   } else if (strcmp(suite, "env") == 0) {
     return tests_get_env_suite(); 
