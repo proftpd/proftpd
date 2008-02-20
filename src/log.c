@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.82 2007-09-11 00:49:44 castaglia Exp $
+ * $Id: log.c,v 1.83 2008-02-20 22:09:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -169,11 +169,15 @@ int log_wtmp(char *line, const char *name, const char *host,
 #endif /* HAVE_UT_UT_HOST */
 
     time(&ut.ut_time);
-    if (write(fd, (char *)&ut, sizeof(ut)) != sizeof(ut))
-      ftruncate(fd, buf.st_size);
+    if (write(fd, (char *)&ut, sizeof(ut)) != sizeof(ut)) {
+      if (ftruncate(fd, buf.st_size) < 0) {
+        pr_log_debug(DEBUG0, "error truncating '%s': %s", WTMP_FILE,
+          strerror(errno));
+      }
+    }
 
   } else {
-    pr_log_debug(DEBUG0, "%s fstat(): %s",WTMP_FILE,strerror(errno));
+    pr_log_debug(DEBUG0, "%s fstat(): %s", WTMP_FILE, strerror(errno));
     res = -1;
   }
 #endif /* SVR4 */
