@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.65 2008-02-20 18:47:21 castaglia Exp $
+ * $Id: fsio.c,v 1.66 2008-02-20 21:59:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -574,7 +574,7 @@ void pr_fs_clear_cache(void) {
 
 int pr_fs_copy_file(const char *src, const char *dst) {
   pr_fh_t *src_fh, *dst_fh;
-  struct stat st;
+  struct stat src_st, dst_st;
   char *buf;
   size_t bufsz;
   int res;
@@ -583,13 +583,6 @@ int pr_fs_copy_file(const char *src, const char *dst) {
       dst == NULL) {
     errno = EINVAL;
     return -1;
-  }
-
-  /* If the source and destination paths are the same, then there's no need
-   * for any copying.
-   */
-  if (strcmp(src, dst) == 0) {
-    return 0;
   }
 
   src_fh = pr_fsio_open(src, O_RDONLY);
@@ -605,8 +598,8 @@ int pr_fs_copy_file(const char *src, const char *dst) {
    */
 
   /* This should never fail. */
-  (void) pr_fsio_fstat(src_fh, &st);
-  if (S_ISDIR(st.st_mode)) {
+  (void) pr_fsio_fstat(src_fh, &src_st);
+  if (S_ISDIR(src_st.st_mode)) {
     pr_fsio_close(src_fh);
 
     errno = EISDIR;
@@ -628,7 +621,7 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   }
 
   /* Stat the source file to find its optimal copy block size. */
-  if (pr_fsio_fstat(src_fh, &st) < 0) {
+  if (pr_fsio_fstat(src_fh, &src_st) < 0) {
     int xerrno = errno;
     pr_log_pri(PR_LOG_WARNING, "error checking source file '%s' "
       "for copying: %s", src, strerror(errno));
@@ -641,7 +634,29 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     return -1;
   }
 
-  bufsz = st.st_blksize;
+  if (pr_fsio_fstat(dst_fh, &dst_st) == 0) {
+
+    /* Check to see if the source and destination paths are identical.
+     * We wait until now, rather than simply comparing the path strings
+     * earlier, in order to do stats on the paths and compare things like
+     * file size, mtime, inode, etc.
+     */
+
+    if (strcmp(src, dst) == 0 &&
+        src_st.st_dev == dst_st.st_dev &&
+        src_st.st_ino == dst_st.st_ino &&
+        src_st.st_size == dst_st.st_size &&
+        src_st.st_mtime == dst_st.st_mtime) {
+
+      pr_fsio_close(src_fh);
+      pr_fsio_close(dst_fh);
+
+      /* No need to copy the same file. */
+      return 0;
+    }
+  }
+
+  bufsz = src_st.st_blksize;
   buf = malloc(bufsz);
   if (!buf) {
     pr_log_pri(PR_LOG_CRIT, "Out of memory!");
