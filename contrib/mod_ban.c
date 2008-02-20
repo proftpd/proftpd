@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.14 2008-02-10 20:14:33 castaglia Exp $
+ * $Id: mod_ban.c,v 1.15 2008-02-20 22:01:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -504,7 +504,7 @@ static void ban_send_mesg(pool *p, const char *user) {
     if (strstr(mesg, "%u"))
       mesg = sreplace(p, mesg, "%u", user, NULL);
 
-    pr_response_send(R_530, mesg);
+    pr_response_send(R_530, "%s", mesg);
   }
 
   return;
