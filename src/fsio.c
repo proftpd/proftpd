@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (C) 2001-2007 The ProFTPD Project
+ * Copyright (C) 2001-2008 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.64 2007-08-22 14:50:23 castaglia Exp $
+ * $Id: fsio.c,v 1.65 2008-02-20 18:47:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -578,6 +578,19 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   char *buf;
   size_t bufsz;
   int res;
+
+  if (src == NULL ||
+      dst == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* If the source and destination paths are the same, then there's no need
+   * for any copying.
+   */
+  if (strcmp(src, dst) == 0) {
+    return 0;
+  }
 
   src_fh = pr_fsio_open(src, O_RDONLY);
   if (!src_fh) {
