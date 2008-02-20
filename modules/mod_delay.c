@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.27 2008-02-19 16:42:58 castaglia Exp $
+ * $Id: mod_delay.c,v 1.28 2008-02-20 22:07:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -351,7 +351,7 @@ static int delay_table_init(void) {
 
       } else {
         pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-          "warning: unable to obtain write lock on DelayTable '%s': %s",
+          ": unable to obtain write lock on DelayTable '%s': %s",
           fh->fh_path, strerror(errno));
         pr_trace_msg("delay", 1,
           "unable to obtain write lock on DelayTable '%s': %s", fh->fh_path,
@@ -367,7 +367,21 @@ static int delay_table_init(void) {
      * mmap() call.
      */
     lseek(fh->fh_fd, tab_size-1, SEEK_SET);
-    (void) write(fh->fh_fd, "", 1);
+    if (write(fh->fh_fd, "", 1) != 1) {
+      int xerrno = errno;
+
+      pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+        ": error writing single byte to DelayTable '%s': %s", fh->fh_path,
+        strerror(errno));
+      pr_trace_msg("delay", 1,
+        "error writing single byte to DelayTable '%s': %s", fh->fh_path,
+        strerror(errno));
+
+      pr_fsio_close(fh);
+
+      errno = xerrno;
+      return -1;
+    }
 
     /* Truncate the table, in case we're shrinking an existing table. */
     pr_fsio_ftruncate(fh, tab_size);
@@ -450,7 +464,7 @@ static int delay_table_init(void) {
 
       } else {
         pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-          "warning: unable to obtain write lock on DelayTable '%s': %s",
+          ": unable to obtain write lock on DelayTable '%s': %s",
           fh->fh_path, strerror(errno));
         pr_trace_msg("delay", 1,
           "unable to obtain write lock on DelayTable '%s': %s", fh->fh_path,
@@ -466,7 +480,21 @@ static int delay_table_init(void) {
      * mmap() call.
      */
     lseek(fh->fh_fd, tab_size-1, SEEK_SET);
-    (void) write(fh->fh_fd, "", 1);
+    if (write(fh->fh_fd, "", 1) != 1) {
+      int xerrno = errno;
+
+      pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+        ": error writing single byte to DelayTable '%s': %s", fh->fh_path,
+        strerror(errno));
+      pr_trace_msg("delay", 1,
+        "error writing single byte to DelayTable '%s': %s", fh->fh_path,
+        strerror(errno));
+
+      pr_fsio_close(fh);
+
+      errno = xerrno;
+      return -1;
+    }
 
     /* Truncate the table, in case we're shrinking an existing table. */
     pr_fsio_ftruncate(fh, tab_size);
@@ -990,7 +1018,7 @@ MODRET delay_post_pass(cmd_rec *cmd) {
   delay_table_unlock(rownum);
   if (delay_table_unload(FALSE) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      "warning: unable to unload DelayTable '%s' from memory: %s",
+      ": unable to unload DelayTable '%s' from memory: %s",
       delay_tab.dt_path, strerror(errno));
   }
 
@@ -1063,7 +1091,7 @@ MODRET delay_post_user(cmd_rec *cmd) {
   delay_table_unlock(rownum);
   if (delay_table_unload(FALSE) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      "warning: unable to unload DelayTable '%s' from memory: %s",
+      ": unable to unload DelayTable '%s' from memory: %s",
       delay_tab.dt_path, strerror(errno));
   }
 
@@ -1105,7 +1133,7 @@ static void delay_exit_ev(const void *event_data, void *user_data) {
 
   if (!fh) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      ": warning: unable to open DelayTable '%s': %s", delay_tab.dt_path,
+      ": unable to open DelayTable '%s': %s", delay_tab.dt_path,
       strerror(errno));
     return;
   }
@@ -1132,20 +1160,20 @@ static void delay_exit_ev(const void *event_data, void *user_data) {
 
   if (delay_table_unload(TRUE) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      ": warning: error unloading DelayTable '%s' from memory: %s",
+      ": error unloading DelayTable '%s' from memory: %s",
       delay_tab.dt_path, strerror(errno));
   }
 
   if (pr_fsio_write(fh, data, datalen) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      ": warning: error updating DelayTable '%s': %s", delay_tab.dt_path,
+      ": error updating DelayTable '%s': %s", delay_tab.dt_path,
       strerror(errno));
   }
 
   delay_tab.dt_fd = -1;
   if (pr_fsio_close(fh) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      ": warning: error writing DelayTable '%s': %s", delay_tab.dt_path,
+      ": error writing DelayTable '%s': %s", delay_tab.dt_path,
       strerror(errno));
   }
 
@@ -1243,7 +1271,7 @@ static int delay_sess_init(void) {
 
   if (!fh) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      ": warning: unable to open DelayTable '%s': %s", delay_tab.dt_path,
+      ": unable to open DelayTable '%s': %s", delay_tab.dt_path,
       strerror(errno));
     pr_trace_msg("delay", 1, "unable to open DelayTable '%s': %s",
       delay_tab.dt_path, strerror(errno));
