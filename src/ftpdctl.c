@@ -24,7 +24,7 @@
 
 /* ProFTPD Controls command-line client
  *
- * $Id: ftpdctl.c,v 1.10 2008-02-11 04:37:49 castaglia Exp $
+ * $Id: ftpdctl.c,v 1.11 2008-02-24 20:35:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -43,10 +43,6 @@ session_t session;
 server_rec *main_server = NULL;
 
 void *get_param_ptr(xaset_t *set, const char *name, int recurse) {
-  return NULL;
-}
-
-char *pr_inet_validate(char *buf) {
   return NULL;
 }
 

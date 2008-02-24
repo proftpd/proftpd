@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.62 2008-01-17 01:42:23 castaglia Exp $
+ * $Id: netaddr.c,v 1.63 2008-02-24 20:35:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -309,6 +309,35 @@ static void *get_v4inaddr(const pr_netaddr_t *na) {
    */
 
   return (((char *) pr_netaddr_get_inaddr(na)) + 12);
+}
+
+/* Validate anything returned from the 'outside', since it's untrusted
+ * information.
+ */
+char *pr_netaddr_validate_dns_str(char *buf) {
+  char *p;
+
+  /* Validate anything returned from a DNS.
+   */
+  for (p = buf; p && *p; p++) {
+
+    /* Per RFC requirements, these are all that are valid from a DNS. */
+    if (!isalnum((int) *p) &&
+        *p != '.' &&
+        *p != '-'
+#ifdef PR_USE_IPV6
+        && *p != ':'
+#endif /* PR_USE_IPV6 */
+        ) {
+
+      /* We set it to _ because we know that's an invalid, yet safe, option
+       * for a DNS entry.
+       */
+      *p = '_';
+    }
+  }
+
+  return buf;
 }
 
 int pr_netaddr_set_reverse_dns(int enable) {
@@ -1330,7 +1359,7 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
       "UseReverseDNS off, returning IP address instead of DNS name");
 
   if (name) {
-    name = pr_inet_validate(name);
+    name = pr_netaddr_validate_dns_str(name);
 
   } else {
     name = (char *) pr_netaddr_get_ipstr(na);
@@ -1365,9 +1394,9 @@ const char *pr_netaddr_get_localaddr_str(pool *p) {
     host = gethostbyname(buf);
 
     if (host)
-      return pr_inet_validate(pstrdup(p, host->h_name));
+      return pr_netaddr_validate_dns_str(pstrdup(p, host->h_name));
 
-    return pr_inet_validate(pstrdup(p, buf));
+    return pr_netaddr_validate_dns_str(pstrdup(p, buf));
   }
 
   pr_trace_msg(trace_channel, 1,  "gethostname(2) error: %s",

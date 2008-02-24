@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2004 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* BSD socket manipulation tools.
- * $Id: inet.h,v 1.27 2005-02-07 18:15:49 castaglia Exp $
+ * $Id: inet.h,v 1.28 2008-02-24 20:35:56 castaglia Exp $
  */
 
 #ifndef PR_INET_H
@@ -133,8 +133,6 @@ typedef struct conn_struc {
 void pr_inet_clear(void);
 int pr_inet_reverse_dns(pool *, int);
 int pr_inet_getservport(pool *, const char *, const char *);
-char *pr_inet_validate(char *);
-char *pr_inet_fqdn(pool *, const char *);
 pr_netaddr_t *pr_inet_getaddr(pool *, const char *, array_header **);
 conn_t *pr_inet_copy_connection(pool *, conn_t*);
 conn_t *pr_inet_create_dup_connection(pool *, xaset_t *, int, pr_netaddr_t *);

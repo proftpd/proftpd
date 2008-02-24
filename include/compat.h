@@ -23,7 +23,7 @@
  */
 
 /* Compatibility
- * $Id: compat.h,v 1.7 2008-02-10 02:29:21 castaglia Exp $
+ * $Id: compat.h,v 1.8 2008-02-24 20:35:56 castaglia Exp $
  */
 
 #ifndef PR_COMPAT_H
@@ -71,6 +71,8 @@
 #define pr_scoreboard_del_entry		pr_scoreboard_entry_del
 #define pr_scoreboard_read_entry	pr_scoreboard_entry_read
 #define pr_scoreboard_update_entry	pr_scoreboard_entry_update
+
+#define pr_inet_validate		pr_netaddr_validate_dns_str
 
 #define make_named_sub_pool(p, s)	make_sub_pool((p))
 

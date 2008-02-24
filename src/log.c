@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.84 2008-02-24 01:53:27 castaglia Exp $
+ * $Id: log.c,v 1.85 2008-02-24 20:35:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -651,7 +651,7 @@ void init_log(void) {
   if (gethostname(buf, sizeof(buf)) == -1)
     sstrncpy(buf, "localhost", sizeof(buf));
 
-  sstrncpy(systemlog_host, (char *) pr_inet_validate(buf),
+  sstrncpy(systemlog_host, (char *) pr_netaddr_validate_dns_str(buf),
     sizeof(systemlog_host));
   memset(systemlog_fn, '\0', sizeof(systemlog_fn));
   log_closesyslog();
