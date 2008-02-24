@@ -24,7 +24,7 @@
 
 /*
  * Testsuite management
- * $Id: tests.h,v 1.10 2008-02-19 02:31:25 castaglia Exp $
+ * $Id: tests.h,v 1.11 2008-02-24 22:25:28 castaglia Exp $
  */
 
 #ifndef PR_TESTS_H
@@ -50,6 +50,7 @@ Suite *tests_get_event_suite(void);
 Suite *tests_get_env_suite(void);
 Suite *tests_get_version_suite(void);
 Suite *tests_get_feat_suite(void);
+Suite *tests_get_netaddr_suite(void);
 
 /* Temporary hack/placement for this variable, until we get to testing
  * the Signals API.

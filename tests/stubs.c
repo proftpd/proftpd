@@ -26,7 +26,12 @@
 
 /* Stubs */
 
-void pr_log_pri(int priority, const char *fmt, ...) {
+session_t session;
+
+void pr_log_debug(int level, const char *fmt, ...) {
+}
+
+void pr_log_pri(int prio, const char *fmt, ...) {
 }
 
 void pr_signals_handle(void) {

@@ -41,6 +41,7 @@ static struct testsuite_info suites[] = {
   { "env", 	tests_get_env_suite },
   { "version", 	tests_get_version_suite },
   { "feat", 	tests_get_feat_suite },
+  { "netaddr", 	tests_get_netaddr_suite },
 
   { NULL, NULL }
 };
@@ -78,6 +79,9 @@ static Suite *tests_get_suite(const char *suite) {
 
   } else if (strcmp(suite, "feat") == 0) {
     return tests_get_feat_suite(); 
+
+  } else if (strcmp(suite, "netaddr") == 0) {
+    return tests_get_netaddr_suite(); 
   }
  
   return NULL;

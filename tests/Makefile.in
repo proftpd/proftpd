@@ -20,7 +20,8 @@ TEST_DEPS=\
   $(top_srcdir)/src/event.o \
   $(top_srcdir)/src/env.o \
   $(top_srcdir)/src/version.o \
-  $(top_srcdir)/src/feat.o
+  $(top_srcdir)/src/feat.o \
+  $(top_srcdir)/src/netaddr.o
 
 TEST_LIBS=-lcheck
 
@@ -36,6 +37,7 @@ TEST_OBJS=\
   env.o \
   version.o \
   feat.o \
+  netaddr.o \
   stubs.o \
   tests.o
 
