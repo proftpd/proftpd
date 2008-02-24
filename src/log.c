@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.83 2008-02-20 22:09:24 castaglia Exp $
+ * $Id: log.c,v 1.84 2008-02-24 01:53:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -619,6 +619,7 @@ int pr_log_str2sysloglevel(const char *name) {
   else if (strcasecmp(name, "debug") == 0)
     return PR_LOG_DEBUG;
 
+  errno = ENOENT;
   return -1;
 }
 
@@ -627,6 +628,9 @@ void pr_log_debug(int level, const char *fmt, ...) {
   va_list msg;
 
   if (debug_level < level)
+    return;
+
+  if (fmt == NULL)
     return;
 
   memset(buf, '\0', sizeof(buf));
@@ -641,8 +645,9 @@ void pr_log_debug(int level, const char *fmt, ...) {
 }
 
 void init_log(void) {
-  char buf[256] = {'\0'};
+  char buf[256];
 
+  memset(buf, '\0', sizeof(buf));
   if (gethostname(buf, sizeof(buf)) == -1)
     sstrncpy(buf, "localhost", sizeof(buf));
 
