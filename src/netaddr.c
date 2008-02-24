@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.63 2008-02-24 20:35:56 castaglia Exp $
+ * $Id: netaddr.c,v 1.64 2008-02-24 22:23:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -405,11 +405,17 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     name);
 
   /* First, check our cache to see if this name has already been
-   * resolved.
+   * resolved.  We only want to use the cache, though, if the caller did not
+   * provide the `addrs' pointer, indicating that the caller wants to know
+   * about any additional addresses for the given name.  The netaddr cache
+   * is a simple cache, hidden from callers, and thus is unable to populate
+   * that `addrs' pointer if the name is in the cache.
    */
-  na = netaddr_cache_get(p, name);
-  if (na)
-    return na;
+  if (addrs == NULL) {
+    na = netaddr_cache_get(p, name);
+    if (na)
+      return na;
+  }
 
   /* Attempt to translate the given name into a pr_netaddr_t using
    * pr_inet_pton() first.
@@ -812,7 +818,7 @@ int pr_netaddr_set_port(pr_netaddr_t *na, unsigned int port) {
   }
 
   errno = EPERM;
-  return 0;
+  return -1;
 }
 
 int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
@@ -1241,7 +1247,7 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
       cache->na_have_dnsstr) {
     memset(na->na_dnsstr, '\0', sizeof(na->na_dnsstr));
     sstrncpy(na->na_dnsstr, cache->na_dnsstr, sizeof(na->na_dnsstr));
-    na->na_have_ipstr = TRUE;
+    na->na_have_dnsstr = TRUE;
 
     return na->na_dnsstr;
   }
@@ -1384,6 +1390,11 @@ const char *pr_netaddr_get_localaddr_str(pool *p) {
   char buf[256] = {'\0'};
   struct hostent *host;
 
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   if (gethostname(buf, sizeof(buf)-1) != -1) {
     buf[sizeof(buf)-1] = '\0';
 
@@ -1399,8 +1410,7 @@ const char *pr_netaddr_get_localaddr_str(pool *p) {
     return pr_netaddr_validate_dns_str(pstrdup(p, buf));
   }
 
-  pr_trace_msg(trace_channel, 1,  "gethostname(2) error: %s",
-    strerror(errno));
+  pr_trace_msg(trace_channel, 1, "gethostname(2) error: %s", strerror(errno));
   return NULL;
 }
 
