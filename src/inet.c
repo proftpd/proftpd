@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.106 2007-12-22 19:26:09 castaglia Exp $
+ * $Id: inet.c,v 1.107 2008-02-25 19:05:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -77,33 +77,6 @@ int pr_inet_getservport(pool *p, const char *serv, const char *proto) {
 
   /* getservbyname returns the port in network byte order. */
   return (servent ? ntohs(servent->s_port) : -1);
-}
-
-/* Validate anything returned from the 'outside', since it's untrusted
- * information.
- */
-char *pr_inet_validate(char *buf) {
-  char *p;
-
-  /* Validate anything returned from a DNS.
-   */
-  for (p = buf; p && *p; p++) {
-
-    /* Per RFC requirements, these are all that are valid from a DNS. */
-    if (!isalnum((int) *p) && *p != '.' && *p != '-'
-#ifdef PR_USE_IPV6
-        && *p != ':'
-#endif /* PR_USE_IPV6 */
-        ) {
-
-      /* We set it to _ because we know that's an invalid, yet safe, option
-       * for a DNS entry.
-       */
-      *p = '_';
-    }
-  }
-
-  return buf;
 }
 
 static void conn_cleanup_cb(void *cv) {
