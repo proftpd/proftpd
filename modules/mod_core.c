@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.313 2008-02-10 02:29:22 castaglia Exp $
+ * $Id: mod_core.c,v 1.314 2008-03-03 16:21:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4552,8 +4552,9 @@ static int core_sess_init(void) {
           }
 
         } else
-          pr_log_debug(DEBUG0, "AuthOrder: warning: module '%s' has no "
-            "auth handlers", modulev[i]);
+          pr_log_debug(DEBUG0, "AuthOrder: warning: module '%s' is not a valid "
+            "auth module (no auth handlers), authentication may fail",
+            modulev[i]);
 
       } else
         pr_log_debug(DEBUG0, "AuthOrder: warning: module '%s' not loaded",
