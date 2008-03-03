@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
  *
- * Copyright (c) 2001-2007 TJ Saunders
+ * Copyright (c) 2001-2008 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.29 2008-01-09 00:06:50 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.30 2008-03-03 17:13:24 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -510,13 +510,21 @@ static int quotatab_scan_dir(pool *p, const char *path, uid_t uid,
   }
 
   if (use_dirs) {
-    if (uid != (uid_t) -1 &&
-        st.st_uid == uid) {
-      *nbytes += st.st_size;
-      *nfiles += 1;
+    if (uid != (uid_t) -1 ||
+        gid != (gid_t) -1) {
 
-    } else if (gid != (gid_t) -1 &&
-               st.st_gid == gid) {
+      if (uid != (uid_t) -1 &&
+          st.st_uid == uid) {
+        *nbytes += st.st_size;
+        *nfiles += 1;
+
+      } else if (gid != (gid_t) -1 &&
+                 st.st_gid == gid) {
+        *nbytes += st.st_size;
+        *nfiles += 1;
+      }
+
+    } else {
       *nbytes += st.st_size;
       *nfiles += 1;
     }
@@ -543,13 +551,20 @@ static int quotatab_scan_dir(pool *p, const char *path, uid_t uid,
     if (S_ISREG(st.st_mode) ||
         S_ISLNK(st.st_mode)) {
 
-      if (uid != (uid_t) -1 &&
-          st.st_uid == uid) {
-        *nbytes += st.st_size;
-        *nfiles += 1;
+      if (uid != (uid_t) -1 ||
+          gid != (gid_t) -1) {
+        if (uid != (uid_t) -1 &&
+            st.st_uid == uid) {
+          *nbytes += st.st_size;
+          *nfiles += 1;
   
-      } else if (gid != (gid_t) -1 &&
-                 st.st_gid == gid) {
+        } else if (gid != (gid_t) -1 &&
+                   st.st_gid == gid) {
+          *nbytes += st.st_size;
+          *nfiles += 1;
+        }
+
+      } else {
         *nbytes += st.st_size;
         *nfiles += 1;
       }
@@ -1622,8 +1637,8 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
           "for files owned by user '%s'", pr_fs_getcwd(), session.user);
 
         time(&then);
-        if (quotatab_scan_dir(cmd->tmp_pool, pr_fs_getcwd(),
-            session.uid, -1, 0, &byte_count, &file_count) < 0) {
+        if (quotatab_scan_dir(cmd->tmp_pool, pr_fs_getcwd(), session.uid, -1,
+            0, &byte_count, &file_count) < 0) {
           quotatab_log("unable to scan '%s': %s", pr_fs_getcwd(),
             strerror(errno));
 
@@ -1692,8 +1707,8 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
             "for files owned by group '%s'", pr_fs_getcwd(), group_name);
 
           time(&then);
-          if (quotatab_scan_dir(cmd->tmp_pool, pr_fs_getcwd(), -1,
-              group_id, 0, &byte_count, &file_count) < 0) {
+          if (quotatab_scan_dir(cmd->tmp_pool, pr_fs_getcwd(), -1, group_id,
+              0, &byte_count, &file_count) < 0) {
             quotatab_log("unable to scan '%s': %s", pr_fs_getcwd(),
               strerror(errno));
 
@@ -1726,6 +1741,40 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
         quotatab_log("found tally entry for class '%s'",
           session.class->cls_name);
         have_quota_entry = TRUE;
+
+        if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
+            (quotatab_limit.bytes_in_avail > 0 ||
+             quotatab_limit.files_in_avail > 0)) {
+          double byte_count = 0;
+          unsigned int file_count = 0;
+          time_t then;
+
+          quotatab_log("ScanOnLogin enabled, scanning current directory '%s' "
+            "for files owned by class '%s'", pr_fs_getcwd(),
+            session.class->cls_name);
+
+          time(&then);
+          if (quotatab_scan_dir(cmd->tmp_pool, pr_fs_getcwd(), -1, -1, 0,
+              &byte_count, &file_count) < 0) {
+            quotatab_log("unable to scan '%s': %s", pr_fs_getcwd(),
+            strerror(errno));
+
+          } else {
+            double bytes_diff = (double)
+              (byte_count - quotatab_tally.bytes_in_used);
+            int files_diff = file_count - quotatab_tally.files_in_used;
+
+            quotatab_log("found %0.2lf bytes in %u files for class '%s' "
+              "in %lu secs", byte_count, file_count, session.class->cls_name,
+              time(NULL) - then);
+
+            quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
+              bytes_diff, files_diff);
+
+            /* Write out an updated quota entry */
+            QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
+          }
+        }
       }
     }
   }
@@ -1739,6 +1788,38 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
       if (quotatab_lookup(TYPE_TALLY, NULL, ALL_QUOTA)) {
         quotatab_log("found tally entry for all");
         have_quota_entry = TRUE;
+
+        if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
+            (quotatab_limit.bytes_in_avail > 0 ||
+             quotatab_limit.files_in_avail > 0)) {
+          double byte_count = 0;
+          unsigned int file_count = 0;
+          time_t then;
+
+          quotatab_log("ScanOnLogin enabled, scanning current directory '%s' "
+            "for files owned by all", pr_fs_getcwd());
+
+          time(&then);
+          if (quotatab_scan_dir(cmd->tmp_pool, pr_fs_getcwd(), -1, -1, 0,
+              &byte_count, &file_count) < 0) {
+            quotatab_log("unable to scan '%s': %s", pr_fs_getcwd(),
+            strerror(errno));
+
+          } else {
+            double bytes_diff = (double)
+              (byte_count - quotatab_tally.bytes_in_used);
+            int files_diff = file_count - quotatab_tally.files_in_used;
+
+            quotatab_log("found %0.2lf bytes in %u files for all "
+              "in %lu secs", byte_count, file_count, time(NULL) - then);
+
+            quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
+              bytes_diff, files_diff);
+
+            /* Write out an updated quota entry */
+            QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
+          }
+        }
       }
     }
   }
