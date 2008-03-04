@@ -1,4 +1,4 @@
-<!-- $Id: mod_ban.html,v 1.3 2007-10-05 18:36:22 castaglia Exp $ -->
+<!-- $Id: mod_ban.html,v 1.4 2008-03-04 02:05:06 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_ban.html,v $ -->
 
 <html>
@@ -152,7 +152,7 @@ Example:
 <p>
 <hr>
 <h3><a name="BanOnEvent">BanOnEvent</a></h3>
-<strong>Syntax:</strong> BanOnEvent <em>event freq expires</em><br>
+<strong>Syntax:</strong> BanOnEvent <em>event freq expires [mesg]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_ban<br>
@@ -204,6 +204,11 @@ bans added via the <a href="#ban">ban</a> <code>ftpdctl</code> control
 action, automatic bans do not have infinite lifetimes.
 
 <p>
+An optional message, to be displayed to banned clients, can be configured.
+If no such optional message is configured using the <code>BanOnEvent</code>
+directive, then any <code>BanMessage</code> message will be displayed.
+
+<p>
 For example:
 <pre>
   # Configure a rule to automatically ban scripts looking for anonymous
@@ -211,9 +216,13 @@ For example:
   BanOnEvent AnonRejectPasswords 1/01:00:00 99:99:99
 
   # Ban clients which connect too frequently.  This rule bans clients
-  # which connect more than 5 times within one minute.
-  BanOnEvent ClientConnectRate 5/00:01:00 04:00:00
+  # which connect more than 5 times within one minute.  Include a special
+  # message just for them.
+  BanOnEvent ClientConnectRate 5/00:01:00 04:00:00 "Stop connecting frequently"
 </pre>
+
+<p>
+See also: <a href="#BanMessage"><code>BanMessage</code></a>
 
 <p>
 <hr>
@@ -392,12 +401,12 @@ eventually tying up your available system resources with waiting
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2007-10-05 18:36:22 $</i><br>
+Last Updated: <i>$Date: 2008-03-04 02:05:06 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2004-2007 TJ Saunders<br>
+&copy; Copyright 2004-2008 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
