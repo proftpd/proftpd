@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.899 2008-03-03 17:13:24 castaglia Exp $
+$Id: NEWS,v 1.900 2008-03-04 02:01:29 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -125,6 +125,9 @@ CVS
 - Bug 3048 - mod_wrap2_file should support comma-delimited lists of clients.
 - Bug 3045 - "QuotaOptions ScanOnLogin" does not work for 'class' or
   'all' limits.
+- Bug 3047 - BanOnEvent should support optional ban message.  Now messages
+  for individual ban rules can be configured, in addition to the BanMessage
+  directive.
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------

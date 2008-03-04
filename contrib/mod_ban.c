@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.15 2008-02-20 22:01:16 castaglia Exp $
+ * $Id: mod_ban.c,v 1.16 2008-03-04 02:01:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#define MOD_BAN_VERSION			"mod_ban/0.5.2"
+#define MOD_BAN_VERSION			"mod_ban/0.5.3"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030101
@@ -59,7 +59,7 @@
 /* Maximum length of user name/reason/event strings.
  */
 #ifndef BAN_STRING_MAXSZ
-# define BAN_STRING_MAXSZ	PR_TUNABLE_LOGIN_MAX
+# define BAN_STRING_MAXSZ	128
 #endif
 
 #ifndef BAN_LIST_MAXSZ
@@ -83,6 +83,7 @@ struct ban_entry {
   unsigned int be_type;
   char be_name[BAN_STRING_MAXSZ];
   char be_reason[BAN_STRING_MAXSZ];
+  char be_mesg[BAN_STRING_MAXSZ];
   time_t be_expires;
   unsigned int be_sid;
 };
@@ -105,6 +106,7 @@ struct ban_event_entry {
   time_t bee_start;
   time_t bee_window;
   time_t bee_expires;
+  char bee_mesg[BAN_STRING_MAXSZ];
   unsigned int bee_sid;
 };
 
@@ -488,18 +490,35 @@ static time_t ban_parse_timestr(const char *str) {
   return (hours * 60 * 60) + (mins * 60) + secs;
 }
 
-/* Send a configured BanMessage to the client. */
-static void ban_send_mesg(pool *p, const char *user) {
-  if (ban_mesg) {
-    char *mesg = pstrdup(p, ban_mesg);
-    const char *class = session.class ? session.class->cls_name : "(none)";
-    const char *remote_ip = pr_netaddr_get_ipstr(session.c->remote_addr);
+/* Send a configured rule-specific message (from the BanOnEvent configuration)
+ * or, if there isn't a rule-specific message, the BanMessage to the client.
+ */
+static void ban_send_mesg(pool *p, const char *user, const char *rule_mesg) {
+  char *mesg = NULL;
 
-    if (strstr(mesg, "%c"))
+  if (rule_mesg) {
+    mesg = pstrdup(p, rule_mesg);
+
+  } else if (ban_mesg) {
+    mesg = pstrdup(p, ban_mesg);
+  }
+
+  if (mesg) {
+    mesg = pstrdup(p, mesg);
+
+    if (strstr(mesg, "%c")) {
+      const char *class;
+
+      class = session.class ? session.class->cls_name : "(none)";
       mesg = sreplace(p, mesg, "%c", class, NULL);
+    }
 
-    if (strstr(mesg, "%a"))
+    if (strstr(mesg, "%a")) {
+      const char *remote_ip;
+
+      remote_ip = pr_netaddr_get_ipstr(session.c->remote_addr);
       mesg = sreplace(p, mesg, "%a", remote_ip, NULL);
+    }
 
     if (strstr(mesg, "%u"))
       mesg = sreplace(p, mesg, "%u", user, NULL);
@@ -515,7 +534,7 @@ static void ban_send_mesg(pool *p, const char *user) {
 
 /* Add an entry to the ban list. */
 static int ban_list_add(unsigned int type, unsigned int sid,
-    const char *name, const char *reason, time_t lasts) {
+    const char *name, const char *reason, time_t lasts, const char *rule_mesg) {
   unsigned int old_slot;
   int seen = FALSE;
 
@@ -540,9 +559,14 @@ static int ban_list_add(unsigned int type, unsigned int sid,
       be->be_type = type;
       be->be_sid = sid;
 
-      memcpy(be->be_name, name, strlen(name) + 1);
-      memcpy(be->be_reason, reason, strlen(reason) + 1);
+      sstrncpy(be->be_name, name, sizeof(be->be_name));
+      sstrncpy(be->be_reason, reason, sizeof(be->be_reason));
       be->be_expires = lasts ? time(NULL) + lasts : 0;
+
+      memset(be->be_mesg, '\0', sizeof(be->be_mesg));
+      if (rule_mesg) {
+        sstrncpy(be->be_mesg, rule_mesg, sizeof(be->be_mesg));
+      }
 
       switch (type) {
         case BAN_TYPE_USER:
@@ -595,9 +619,12 @@ static int ban_list_add(unsigned int type, unsigned int sid,
 
 /* Check if a ban of the specified type, for the given server ID and name,
  * is present in the ban list.
+ *
+ * If the caller provides a `mesg' pointer, then if a ban exists, that
+ * pointer will point to any custom client-displayable message.
  */
 static int ban_list_exists(unsigned int type, unsigned int sid,
-    const char *name) {
+    const char *name, char **mesg) {
 
   if (!ban_lists) {
     errno = EPERM;
@@ -614,6 +641,12 @@ static int ban_list_exists(unsigned int type, unsigned int sid,
           (ban_lists->bans.bl_entries[i].be_sid == 0 ||
            ban_lists->bans.bl_entries[i].be_sid == sid) &&
           strcmp(ban_lists->bans.bl_entries[i].be_name, name) == 0) {
+
+        if (mesg != NULL &&
+            strlen(ban_lists->bans.bl_entries[i].be_mesg) > 0) {
+          *mesg = ban_lists->bans.bl_entries[i].be_mesg;
+        }
+
         return 0;
       }
     }
@@ -768,7 +801,7 @@ static int ban_event_list_add(unsigned int type, unsigned int sid,
       bee->bee_type = type;
       bee->bee_sid = sid;
 
-      memcpy(bee->bee_src, src, strlen(src) + 1);
+      sstrncpy(bee->bee_src, src, sizeof(bee->bee_src));
       bee->bee_count_max = max;
       time(&bee->bee_start);
       bee->bee_window = window;
@@ -845,7 +878,7 @@ static int ban_event_list_remove(unsigned int type, unsigned int sid,
           ban_lists->events.bel_entries[i].bee_sid == sid &&
           (src ? strcmp(ban_lists->events.bel_entries[i].bee_src, src) == 0 :
            TRUE)) {
-        memset(&(ban_lists->events.bel_entries[i]), '\0',
+        memset(&(ban_lists->events.bel_entries[i]), 0,
           sizeof(struct ban_event_entry));
 
         ban_lists->events.bel_listlen--;
@@ -940,13 +973,13 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     for (i = 1; i < reqargc; i++) {
      
       /* Check for duplicates. */
-      if (ban_list_exists(BAN_TYPE_USER, 0, reqargv[i]) < 0) {
+      if (ban_list_exists(BAN_TYPE_USER, 0, reqargv[i], NULL) < 0) {
 
         if (ban_lists->bans.bl_listlen < BAN_LIST_MAXSZ) {
           const char *reason = pstrcat(ctrl->ctrls_tmp_pool, "requested by '",
             ctrl->ctrls_cl->cl_user, "' on ", pr_strtime(time(NULL)), NULL);
 
-          ban_list_add(BAN_TYPE_USER, 0, reqargv[i], reason, 0);
+          ban_list_add(BAN_TYPE_USER, 0, reqargv[i], reason, 0, NULL);
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
             "added '%s' to banned users list", reqargv[i]);
           pr_ctrls_add_response(ctrl, "user %s banned", reqargv[i]);
@@ -988,13 +1021,14 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
       }
  
       /* Check for duplicates. */
-      if (ban_list_exists(BAN_TYPE_HOST, 0, pr_netaddr_get_ipstr(site)) < 0) {
+      if (ban_list_exists(BAN_TYPE_HOST, 0, pr_netaddr_get_ipstr(site),
+          NULL) < 0) {
 
         if (ban_lists->bans.bl_listlen < BAN_LIST_MAXSZ) {
           ban_list_add(BAN_TYPE_HOST, 0, pr_netaddr_get_ipstr(site),
             pstrcat(ctrl->ctrls_tmp_pool, "requested by '",
               ctrl->ctrls_cl->cl_user, "' on ",
-              pr_strtime(time(NULL)), NULL), 0);
+              pr_strtime(time(NULL)), NULL), 0, NULL);
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
             "added '%s' to banned hosts list", reqargv[i]);
           pr_ctrls_add_response(ctrl, "host %s banned", reqargv[i]);
@@ -1027,13 +1061,13 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     for (i = 1; i < reqargc; i++) {
 
       /* Check for duplicates. */
-      if (ban_list_exists(BAN_TYPE_CLASS, 0, reqargv[i]) < 0) {
+      if (ban_list_exists(BAN_TYPE_CLASS, 0, reqargv[i], NULL) < 0) {
 
         if (ban_lists->bans.bl_listlen < BAN_LIST_MAXSZ) {
           const char *reason = pstrcat(ctrl->ctrls_tmp_pool, "requested by '",
             ctrl->ctrls_cl->cl_user, "' on ", pr_strtime(time(NULL)), NULL);
 
-          ban_list_add(BAN_TYPE_CLASS, 0, reqargv[i], reason, 0);
+          ban_list_add(BAN_TYPE_CLASS, 0, reqargv[i], reason, 0, NULL);
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
             "added '%s' to banned classes list", reqargv[i]);
           pr_ctrls_add_response(ctrl, "class %s banned", reqargv[i]);
@@ -1412,6 +1446,7 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
 
 MODRET ban_pre_pass(cmd_rec *cmd) {
   char *user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
+  char *rule_mesg = NULL;
 
   if (!ban_engine)
     return PR_DECLINED(cmd);
@@ -1423,10 +1458,10 @@ MODRET ban_pre_pass(cmd_rec *cmd) {
   ban_list_expire();
 
   /* Check banned user list */
-  if (ban_list_exists(BAN_TYPE_USER, main_server->sid, user) == 0) {
+  if (ban_list_exists(BAN_TYPE_USER, main_server->sid, user, &rule_mesg) == 0) {
     pr_log_pri(PR_LOG_INFO, MOD_BAN_VERSION
       ": Login denied: user '%s' banned", user);
-    ban_send_mesg(cmd->tmp_pool, user);
+    ban_send_mesg(cmd->tmp_pool, user, rule_mesg);
     return PR_ERROR_MSG(cmd, R_530, _("Login incorrect"));
   }
 
@@ -1505,7 +1540,7 @@ MODRET set_banmessage(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: BanOnEvent event freq duration */
+/* usage: BanOnEvent event freq duration [mesg] */
 MODRET set_banonevent(cmd_rec *cmd) {
   struct ban_event_entry *bee;
   int n;
@@ -1547,6 +1582,11 @@ MODRET set_banonevent(cmd_rec *cmd) {
       "badly formatted duration parameter: '", cmd->argv[2], "'", NULL));
   if (bee->bee_expires == 0)
     CONF_ERROR(cmd, "duration parameter cannot be '00:00:00'");
+
+  /* If present, the next parameter is a custom ban message. */
+  if (cmd->argc == 5) {
+    sstrncpy(bee->bee_mesg, cmd->argv[4], sizeof(bee->bee_mesg));
+  }
 
   if (strcasecmp(cmd->argv[1], "AnonRejectPasswords") == 0) {
     bee->bee_type = BAN_EV_TYPE_ANON_REJECT_PASSWORDS;
@@ -1716,13 +1756,13 @@ static void ban_handle_event(unsigned int ev_type, int ban_type,
        * Check for an existing entry first, though.
        */
 
-      if (ban_list_exists(ban_type, main_server->sid, src) < 0) {
+      if (ban_list_exists(ban_type, main_server->sid, src, NULL) < 0) {
         const char *reason = pstrcat(tmp_pool, event, " autoban at ",
           pr_strtime(time(NULL)), NULL);
 
         ban_list_expire();
         if (ban_list_add(ban_type, main_server->sid, src, reason,
-            tmpl->bee_expires) < 0) {
+            tmpl->bee_expires, tmpl->bee_mesg) < 0) {
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
             "error adding %s-triggered autoban for %s '%s': %s", event,
             ban_type == BAN_TYPE_USER ? "user" :
@@ -1752,7 +1792,7 @@ static void ban_handle_event(unsigned int ev_type, int ban_type,
       "%s autoban threshold reached, ending session", event);
     pr_log_debug(DEBUG3, MOD_BAN_VERSION
       ": autoban threshold reached, ending session");
-    ban_send_mesg(tmp_pool, ban_type == BAN_TYPE_USER ? src : "(none)");
+    ban_send_mesg(tmp_pool, ban_type == BAN_TYPE_USER ? src : "(none)", NULL);
     end_login(0);
   }
 
@@ -1764,7 +1804,7 @@ static void ban_anonrejectpasswords_ev(const void *event_data,
 
   /* For this event, event_data is the client. */
   conn_t *c = (conn_t *) event_data;
-  const char *ipstr = pr_netaddr_get_ipstr(c->remote_addr);
+  const char *ipstr;
 
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
@@ -1772,6 +1812,7 @@ static void ban_anonrejectpasswords_ev(const void *event_data,
   if (!ban_engine)
     return;
 
+  ipstr = pr_netaddr_get_ipstr(c->remote_addr);
   ban_handle_event(BAN_EV_TYPE_ANON_REJECT_PASSWORDS, BAN_TYPE_HOST,
     ipstr, tmpl);
 }
@@ -1780,7 +1821,7 @@ static void ban_clientconnectrate_ev(const void *event_data, void *user_data) {
 
   /* For this event, event_data is the client. */
   conn_t *c = (conn_t *) event_data;
-  const char *ipstr = pr_netaddr_get_ipstr(c->remote_addr);
+  const char *ipstr;
 
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
@@ -1788,6 +1829,7 @@ static void ban_clientconnectrate_ev(const void *event_data, void *user_data) {
   if (!ban_engine)
     return;
 
+  ipstr = pr_netaddr_get_ipstr(c->remote_addr);
   ban_handle_event(BAN_EV_TYPE_CLIENT_CONNECT_RATE, BAN_TYPE_HOST, ipstr, tmpl);
 }
 
@@ -1812,7 +1854,7 @@ static void ban_maxclientsperhost_ev(const void *event_data, void *user_data) {
 
   /* For this event, event_data is the client. */
   conn_t *c = (conn_t *) event_data;
-  const char *ipstr = pr_netaddr_get_ipstr(c->remote_addr);
+  const char *ipstr;
 
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
@@ -1820,6 +1862,7 @@ static void ban_maxclientsperhost_ev(const void *event_data, void *user_data) {
   if (!ban_engine)
     return;
 
+  ipstr = pr_netaddr_get_ipstr(c->remote_addr);
   ban_handle_event(BAN_EV_TYPE_MAX_CLIENTS_PER_HOST, BAN_TYPE_HOST,
     ipstr, tmpl);
 }
@@ -1843,7 +1886,7 @@ static void ban_maxconnperhost_ev(const void *event_data, void *user_data) {
 
   /* For this event, event_data is the client. */
   conn_t *c = (conn_t *) event_data;
-  const char *ipstr = pr_netaddr_get_ipstr(c->remote_addr);
+  const char *ipstr;
 
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
@@ -1851,6 +1894,7 @@ static void ban_maxconnperhost_ev(const void *event_data, void *user_data) {
   if (!ban_engine)
     return;
 
+  ipstr = pr_netaddr_get_ipstr(c->remote_addr);
   ban_handle_event(BAN_EV_TYPE_MAX_CONN_PER_HOST, BAN_TYPE_HOST,
     ipstr, tmpl);
 }
@@ -1874,7 +1918,7 @@ static void ban_maxloginattempts_ev(const void *event_data, void *user_data) {
 
   /* For this event, event_data is the client. */
   conn_t *c = (conn_t *) event_data;
-  const char *ipstr = pr_netaddr_get_ipstr(c->remote_addr);
+  const char *ipstr;
 
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
@@ -1882,6 +1926,7 @@ static void ban_maxloginattempts_ev(const void *event_data, void *user_data) {
   if (!ban_engine)
     return;
 
+  ipstr = pr_netaddr_get_ipstr(c->remote_addr);
   ban_handle_event(BAN_EV_TYPE_MAX_LOGIN_ATTEMPTS, BAN_TYPE_HOST, ipstr,
     tmpl);
 }
@@ -2119,35 +2164,40 @@ static int ban_init(void) {
 
 static int ban_sess_init(void) {
   pool *tmp_pool = make_sub_pool(ban_pool);
-  const char *class = session.class ? session.class->cls_name : "";
-  const char *remote_ip = pr_netaddr_get_ipstr(session.c->remote_addr);
+  const char *class, *remote_ip;
+  char *rule_mesg = NULL;
 
   if (!ban_engine)
     return 0;
+
+  class = session.class ? session.class->cls_name : "";
+  remote_ip = pr_netaddr_get_ipstr(session.c->remote_addr);
 
   /* Make sure the list is up-to-date. */
   ban_list_expire();
 
   /* Check banned host list */
-  if (ban_list_exists(BAN_TYPE_HOST, main_server->sid, remote_ip) == 0) {
+  if (ban_list_exists(BAN_TYPE_HOST, main_server->sid, remote_ip,
+      &rule_mesg) == 0) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "login from host '%s' denied due to host ban", remote_ip);
     pr_log_pri(PR_LOG_INFO, MOD_BAN_VERSION
       ": Login denied: host '%s' banned", remote_ip);
 
-    ban_send_mesg(tmp_pool, "(none)");
+    ban_send_mesg(tmp_pool, "(none)", rule_mesg);
     destroy_pool(tmp_pool);
     end_login(0);
   }
 
   /* Check banned class list */
-  if (ban_list_exists(BAN_TYPE_CLASS, main_server->sid, class) == 0) {
+  if (ban_list_exists(BAN_TYPE_CLASS, main_server->sid, class,
+      &rule_mesg) == 0) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "login from class '%s' denied due to class ban", class);
     pr_log_pri(PR_LOG_INFO, MOD_BAN_VERSION
       ": Login denied: class '%s' banned", class);
 
-    ban_send_mesg(tmp_pool, "(none)"); 
+    ban_send_mesg(tmp_pool, "(none)", rule_mesg); 
     destroy_pool(tmp_pool);
     end_login(0);
   }
