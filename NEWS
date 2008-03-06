@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.900 2008-03-04 02:01:29 castaglia Exp $
+$Id: NEWS,v 1.901 2008-03-06 03:08:31 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -128,6 +128,9 @@ CVS
 - Bug 3047 - BanOnEvent should support optional ban message.  Now messages
   for individual ban rules can be configured, in addition to the BanMessage
   directive.
+- Added contrib/ftpmail, a Perl script which reads a TransferLog FIFO and
+  sends automatic email notifications whenever uploads occur.  See
+  doc/contrib/ftpmail.html for more details.
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------

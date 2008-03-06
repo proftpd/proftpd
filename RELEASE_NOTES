@@ -66,6 +66,12 @@ files.
 
       TransferPriority
 
+  + New contrib scripts:
+
+      Added contrib/ftpmail, a Perl script which reads a TransferLog FIFO and
+      sends automatic email notifications whenever uploads occur.  See
+      doc/contrib/ftpmail.html for more details.
+
   + Enhanced configuration directives:
 
       BanOnEvent ClientConnectRate
@@ -157,4 +163,4 @@ files.
 
       doc/howto/ConfigurationTricks.html
 
-Last Updated: $Date: 2008-01-21 17:50:21 $
+Last Updated: $Date: 2008-03-06 03:08:31 $
