@@ -1557,11 +1557,8 @@ static void tls_blinding_on(SSL *ssl) {
 static int tls_init_ctxt(void) {
   SSL_load_error_strings();
 
-#ifdef OPENSSL_FIPS
-  /* Make sure that we are not already running in FIPS mode, as via the
-   * OpenSSL config file.
-   */
   if (pr_define_exists("TLS_USE_FIPS")) {
+#ifdef OPENSSL_FIPS
     /* Make sure OpenSSL is set to use the default RNG, as per an email
      * discussion on the OpenSSL developer list:
      *
@@ -1580,8 +1577,10 @@ static int tls_init_ctxt(void) {
     } else {
       pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION ": FIPS mode enabled");
     }
-  }
+#else
+    pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION ": FIPS mode requested, but " OPENSSL_VERSION_TEXT " not built with FIPS support");
 #endif /* OPENSSL_FIPS */
+  }
 
   SSL_library_init();
 
