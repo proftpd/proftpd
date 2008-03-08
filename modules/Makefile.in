@@ -26,8 +26,8 @@ Makefile: Makefile.in ../config.status
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 .c.la:
-	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $*.c
-	$(LIBTOOL) --mode=link $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $*.lo `cat $(top_srcdir)/modules/$*.c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
+	$(LIBTOOL) --mode=compile --tag=CC $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $*.c
+	$(LIBTOOL) --mode=link --tag=CC $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $*.lo `cat $(top_srcdir)/modules/$*.c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
 
 module_glue.c: module_glue.c.tmpl $(STATIC_MODULE_OBJS)
 	srcdir=$(srcdir) $(srcdir)/glue.sh $(GLUE_MODULE_OBJS)
@@ -47,7 +47,7 @@ static: $(STATIC_MODULE_OBJS) module_glue.o
 	done
 
 install:
-	test -z "$(SHARED_MODULE_OBJS)" || $(LIBTOOL) --mode=install $(INSTALL_BIN) $(SHARED_MODULE_OBJS) $(DESTDIR)$(LIBEXECDIR)
+	test -z "$(SHARED_MODULE_OBJS)" || $(LIBTOOL) --mode=install --tag=CC $(INSTALL_BIN) $(SHARED_MODULE_OBJS) $(DESTDIR)$(LIBEXECDIR)
 	@dirs="$(SHARED_MODULE_DIRS)"; \
 	for dir in $$dirs; do\
 		(cd $(top_srcdir)/$$dir/ && $(MAKE) install); \

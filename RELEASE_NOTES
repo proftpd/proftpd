@@ -163,4 +163,11 @@ files.
 
       doc/howto/ConfigurationTricks.html
 
-Last Updated: $Date: 2008-03-06 03:08:31 $
+  + Updated documentation:
+
+      doc/howto/TLS.html
+
+        Added instructions on how to use OpenSSL in FIPS mode.
+
+
+Last Updated: $Date: 2008-03-08 05:12:38 $

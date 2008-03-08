@@ -1556,6 +1556,33 @@ static void tls_blinding_on(SSL *ssl) {
 
 static int tls_init_ctxt(void) {
   SSL_load_error_strings();
+
+#ifdef OPENSSL_FIPS
+  /* Make sure that we are not already running in FIPS mode, as via the
+   * OpenSSL config file.
+   */
+  if (pr_define_exists("TLS_USE_FIPS")) {
+    /* Make sure OpenSSL is set to use the default RNG, as per an email
+     * discussion on the OpenSSL developer list:
+     *
+     *  "The internal FIPS logic uses the default RNG to see the FIPS RNG
+     *   as part of the self test process..."
+     */
+    RAND_set_rand_method(NULL);
+
+    if (!FIPS_mode_set(1)) {
+      tls_log("unable to use FIPS mode: %s", tls_get_errors());
+      pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use FIPS mode: %s",
+        tls_get_errors());
+
+      return -1;
+
+    } else {
+      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION ": FIPS mode enabled");
+    }
+  }
+#endif /* OPENSSL_FIPS */
+
   SSL_library_init();
 
 #ifdef ZLIB
@@ -4333,31 +4360,31 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strcmp(cmd->argv[i], "AllowDotLogin") == 0)
+    if (strcmp(cmd->argv[i], "AllowDotLogin") == 0) {
       opts |= TLS_OPT_ALLOW_DOT_LOGIN;
 
-    else if (strcmp(cmd->argv[i], "AllowPerUser") == 0)
+    } else if (strcmp(cmd->argv[i], "AllowPerUser") == 0) {
       opts |= TLS_OPT_ALLOW_PER_USER;
 
-    else if (strcmp(cmd->argv[i], "EnableDiags") == 0)
+    } else if (strcmp(cmd->argv[i], "EnableDiags") == 0) {
       opts |= TLS_OPT_ENABLE_DIAGS;
 
-    else if (strcmp(cmd->argv[i], "ExportCertData") == 0)
+    } else if (strcmp(cmd->argv[i], "ExportCertData") == 0) {
       opts |= TLS_OPT_EXPORT_CERT_DATA;
 
-    else if (strcmp(cmd->argv[i], "NoCertRequest") == 0)
+    } else if (strcmp(cmd->argv[i], "NoCertRequest") == 0) {
       opts |= TLS_OPT_NO_CERT_REQUEST;
 
-    else if (strcmp(cmd->argv[i], "StdEnvVars") == 0)
+    } else if (strcmp(cmd->argv[i], "StdEnvVars") == 0) {
       opts |= TLS_OPT_STD_ENV_VARS;
 
-    else if (strcmp(cmd->argv[i], "dNSNameRequired") == 0)
+    } else if (strcmp(cmd->argv[i], "dNSNameRequired") == 0) {
       opts |= TLS_OPT_VERIFY_CERT_FQDN;
  
-    else if (strcmp(cmd->argv[i], "iPAddressRequired") == 0)
+    } else if (strcmp(cmd->argv[i], "iPAddressRequired") == 0) {
       opts |= TLS_OPT_VERIFY_CERT_IP_ADDR;
 
-    else
+    } else
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TLSOption: '",
         cmd->argv[i], "'", NULL));
   }
@@ -4823,7 +4850,6 @@ static void tls_sess_exit_ev(const void *event_data, void *user_data) {
  */
 
 static int tls_init(void) {
-  int res = 0;
 
   /* Check that the OpenSSL headers used match the version of the
    * OpenSSL library used.
@@ -4850,7 +4876,8 @@ static int tls_init(void) {
   tls_netio_install_ctrl();
 
   /* Initialize the OpenSSL context. */
-  res = tls_init_ctxt();
+  if (tls_init_ctxt() < 0)
+    return -1;
 
   pr_log_debug(DEBUG2, MOD_TLS_VERSION ": using " OPENSSL_VERSION_TEXT);
 

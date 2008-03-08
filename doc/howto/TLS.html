@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.15 2008-02-14 15:15:47 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.16 2008-03-08 05:12:38 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -441,9 +441,82 @@ the certificate key file (as mentioned in the Apache <code>mod_ssl</code>
 a program will which provide the passphrases to <code>proftpd</code>
 automatically.
 
+<p><a name="TLSFIPS">
+<font color=red>Question</font>: How can I configure <code>mod_tls</code> to
+use OpenSSL in FIPS mode?<br>
+<font color=blue>Answer</font>: Using OpenSSL in FIPS mode requires quite
+a few steps.  First, you would configure <code>proftpd</code> to use the
+<code>mod_tls</code> module as normal, assuming your OpenSSL installation
+has been compiled with FIPS support:
+<pre>
+  ./configure --with-modules=mod_tls ...
+</pre>
+
+<p>
+Compiling <code>proftpd</code> requires the following, for FIPS support
+to work properly:
+<pre>
+  make CC=<em>/path/to/openssl/bin/</em>fipsld FIPSLD_CC=<em>gcc</em>
+</pre>
+The <code>FIPSLD_CC</code> variable should point to your normal C compiler,
+<i>e.g.</i> <code>gcc</code>.  The use of this <code>fipsld</code> program
+is <b>mandatory</b>.  The FIPS standard requires that the linking process
+happen a very specific way, involving verification of calculated and expected
+checksums of compiled code, <i>etc</i>.  The OpenSSL packages with FIPS
+support supply this <code>fipsld</code> program which will link the compiled
+code according to the FIPS specifications.  <i>If you do not use
+<code>fipsld</code>, then attempts to use OpenSSL in FIPS mode will fail.</i>
+For example, you would see the following if starting a <code>proftpd</code>
+daemon which has not been linked using <code>fipsld</code> while requesting
+use of FIPS:
+<pre>
+  - mod_tls/2.1.2: unable to use FIPS mode: (unknown)
+  - Fatal: unable to load module 'mod_tls.c': Operation not permitted
+</pre>
+
+<p>
+Now, assuming you have compiled and installed your <code>proftpd</code>
+properly, <i>e.g.</i>:
+<pre>
+  make CC=<em>/path/to/openssl/bin/</em>fipsld FIPSLD_CC=<em>gcc</em>
+  make CC=<em>/path/to/openssl/bin/</em>fipsld FIPSLD_CC=<em>gcc</em> install
+</pre>
+you will now be ready to start <code>proftpd</code>.
+
+<p>
+In order for FIPS mode to be effective, OpenSSL must be told to run in FIPS
+mode from the very beginning.  The <code>mod_tls</code> module initializes the
+OpenSSL library when the <code>mod_tls</code> module is loaded, <i>before the
+<code>proftpd.conf</code> file is parsed</i>.  Thus the requesting of FIPS mode
+<b>cannot</b> be done via a setting in <code>proftpd.conf</code>.  (Annoying,
+I know.)
+
+<p>
+Instead, you must use the -D command-line parameter when starting
+<code>proftpd</code> (see the docs for the <code>&lt;IfDefine&gt;</code> and
+<code>Define</code> directives) to define a specific variable, which the
+<code>mod_tls</code> module will look for.  Specifically, you will need to
+start <code>proftpd</code> like thus:
+<pre>
+  /path/to/proftpd -DTLS_USE_FIPS ...
+</pre>
+This will define the <code>TLS_USE_FIPS</code> variable; this tells
+<code>mod_tls</code> to initialize OpenSSL using FIPS mode.  When this works,
+you will see the following when <code>proftpd</code> starts up:
+<pre>
+  - mod_tls/2.1.2: FIPS mode enabled
+</pre>
+
+<p>
+For additional reading on OpenSSL and FIPS, see:
+<pre>
+  <a href="http://www.openssl.org/docs/fips/SecurityPolicy-1.1.1.pdf">http://www.openssl.org/docs/fips/SecurityPolicy-1.1.1.pdf</a>
+  <a href="http://www.openssl.org/docs/fips/UserGuide-1.1.1.pdf">http://www.openssl.org/docs/fips/UserGuide-1.1.1.pdf</a>
+</pre>
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2008-02-14 15:15:47 $</i><br>
+Last Updated: <i>$Date: 2008-03-08 05:12:38 $</i><br>
 <hr>
 
 </body>

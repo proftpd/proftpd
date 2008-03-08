@@ -56,7 +56,7 @@ Makefile: Makefile.in ../config.status
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 check$(EXEEXT): $(TEST_DEPS) $(TEST_OBJS) dummy
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o $@ $(TEST_DEPS) $(TEST_OBJS) $(LIBS) $(TEST_LIBS)
+	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) -o $@ $(TEST_DEPS) $(TEST_OBJS) $(LIBS) $(TEST_LIBS)
 	./$@
 
 clean:

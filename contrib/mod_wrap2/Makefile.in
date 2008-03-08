@@ -21,15 +21,15 @@ LDFLAGS=-L../../lib
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 .c.la:
-	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $*.c
-	$(LIBTOOL) --mode=link $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $*.lo $(SHARED_MODULE_LIBS) `cat $*.c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
+	$(LIBTOOL) --mode=compile --tag=CC $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $*.c
+	$(LIBTOOL) --mode=link --tag=CC $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $*.lo $(SHARED_MODULE_LIBS) `cat $*.c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
 
 shared: $(MODULE_NAME).la
 
 static: $(MODULE_NAME).o
 
 install:
-	$(LIBTOOL) --mode=install $(INSTALL_BIN) $(MODULE_NAME).la $(DESTDIR)$(LIBEXECDIR)
+	$(LIBTOOL) --mode=install --tag=CC $(INSTALL_BIN) $(MODULE_NAME).la $(DESTDIR)$(LIBEXECDIR)
 
 clean:
 	$(RM) *.o
