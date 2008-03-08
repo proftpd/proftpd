@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.93 2008-02-11 04:37:49 castaglia Exp $
+ * $Id: support.c,v 1.94 2008-03-08 19:52:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -45,6 +45,10 @@
 #ifdef AIX3
 # include <sys/statfs.h>
 #endif
+
+#ifdef PR_USE_OPENSSL
+# include <openssl/crypto.h>
+#endif /* PR_USE_OPENSSL */
 
 typedef struct sched_obj {
   struct sched_obj *next, *prev;
@@ -646,6 +650,13 @@ char *make_arg_str(pool *p, int argc, char **argv) {
 unsigned char memscrub_ctr = 0;
 
 void pr_memscrub(void *ptr, size_t ptrlen) {
+#if defined(PR_USE_OPENSSL) && OPENSSL_VERSION_NUMBER > 0x000907000L
+  /* Just use OpenSSL's function for this.  They have optimized it for
+   * performance in later OpenSSL releases.
+   */
+  OPENSSL_cleanse(ptr, ptrlen);
+
+#else 
   unsigned char *p;
   size_t loop;
 
@@ -663,6 +674,7 @@ void pr_memscrub(void *ptr, size_t ptrlen) {
 
   if (memchr(ptr, memscrub_ctr, ptrlen))
     memscrub_ctr += 63;
+#endif
 }
 
 struct tm *pr_gmtime(pool *p, const time_t *t) {
