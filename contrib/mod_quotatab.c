@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.30 2008-03-03 17:13:24 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.31 2008-03-11 22:28:23 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -82,11 +82,12 @@ static const char *quota_exclude_filter = NULL;
 
 static quota_units_t byte_units = BYTE;
 
-/* For transmitting number of bytes from PRE_CMD to POST_CMD handlers
+/* For transmitting number of bytes/files from PRE_CMD to POST_CMD handlers
  * (for use by APPE, DELE, MKD, RMD, RNTO, STOR, STOU, XMKD, and XRMD
  * commands)
  */
-static off_t quotatab_disk_bytes;
+static off_t quotatab_disk_nbytes;
+static unsigned int quotatab_disk_nfiles;
 
 /* It is the case where sometimes a command may be denied by a PRE_CMD
  * handler of this module, in which case an appropriate error response is
@@ -1372,7 +1373,7 @@ static const char *quota_get_files_str(void *data, size_t datasz) {
  */
 
 MODRET quotatab_pre_appe(cmd_rec *cmd) {
-  struct stat sbuf;
+  struct stat st;
 
   /* Sanity check */
   if (!use_quotas)
@@ -1385,16 +1386,18 @@ MODRET quotatab_pre_appe(cmd_rec *cmd) {
    * if successful, the byte counts can be adjusted correctly.
    */
   pr_fs_clear_cache();
-  if (pr_fsio_lstat(cmd->arg, &sbuf) < 0)
-    quotatab_disk_bytes = 0;
-  else
-    quotatab_disk_bytes = sbuf.st_size;
+  if (pr_fsio_lstat(cmd->arg, &st) < 0) {
+    quotatab_disk_nbytes = 0;
+
+  } else {
+    quotatab_disk_nbytes = st.st_size;
+  }
 
   return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_post_appe(cmd_rec *cmd) {
-  struct stat sbuf;
+  struct stat st;
   off_t append_bytes = session.xfer.total_bytes;
 
   /* sanity check */
@@ -1412,10 +1415,10 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
    * mess with the stat.
    */
   pr_fs_clear_cache();
-  if (pr_fsio_lstat(cmd->arg, &sbuf) >= 0)
-    append_bytes = sbuf.st_size - quotatab_disk_bytes;
+  if (pr_fsio_lstat(cmd->arg, &st) >= 0) {
+    append_bytes = st.st_size - quotatab_disk_nbytes;
 
-  else {
+  } else {
     if (errno == ENOENT)
       append_bytes = 0;
 
@@ -1449,7 +1452,7 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
 }
 
 MODRET quotatab_post_appe_err(cmd_rec *cmd) {
-  struct stat sbuf;
+  struct stat st;
   off_t append_bytes = session.xfer.total_bytes;
 
   /* sanity check */
@@ -1467,10 +1470,10 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
    * mess with the stat.
    */
   pr_fs_clear_cache();
-  if (pr_fsio_lstat(cmd->arg, &sbuf) >= 0)
-    append_bytes = sbuf.st_size - quotatab_disk_bytes;
+  if (pr_fsio_lstat(cmd->arg, &st) >= 0) {
+    append_bytes = st.st_size - quotatab_disk_nbytes;
 
-  else {
+  } else {
     if (errno == ENOENT)
       append_bytes = 0;
 
@@ -1524,14 +1527,15 @@ MODRET quotatab_pre_dele(cmd_rec *cmd) {
      * if successful, the byte counts can be adjusted correctly.
      */
     pr_fs_clear_cache();
-    if (pr_fsio_lstat(path, &st) < 0)
-      quotatab_disk_bytes = 0;
+    if (pr_fsio_lstat(path, &st) < 0) {
+      quotatab_disk_nbytes = 0;
 
-    else
-      quotatab_disk_bytes = st.st_size;
+    } else {
+      quotatab_disk_nbytes = st.st_size;
+    }
 
   } else {
-    quotatab_disk_bytes = 0;
+    quotatab_disk_nbytes = 0;
   }
 
   return PR_DECLINED(cmd);
@@ -1550,14 +1554,14 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
   }
 
   /* Write out an updated quota entry. */
-  QUOTATAB_TALLY_WRITE(-quotatab_disk_bytes, 0, 0, -1, 0, 0)
+  QUOTATAB_TALLY_WRITE(-quotatab_disk_nbytes, 0, 0, -1, 0, 0)
 
   /* NOTE: if use_dirs is TRUE, also take into consideration the decreased
    * disk usage caused by any decrease in the size of the containing directory.
    */
 
   /* Clear the cached bytes. */
-  quotatab_disk_bytes = 0;
+  quotatab_disk_nbytes = 0;
 
   return PR_DECLINED(cmd);
 }
@@ -1569,7 +1573,7 @@ MODRET quotatab_post_dele_err(cmd_rec *cmd) {
     return PR_DECLINED(cmd); 
 
   /* Clear the cached bytes. */
-  quotatab_disk_bytes = 0;
+  quotatab_disk_nbytes = 0;
 
   return PR_DECLINED(cmd);
 }
@@ -2194,7 +2198,7 @@ MODRET quotatab_post_retr_err(cmd_rec *cmd) {
 }
 
 MODRET quotatab_pre_rmd(cmd_rec *cmd) {
-  struct stat sbuf;
+  struct stat st;
 
   /* Sanity check. */
   if (!use_quotas || !use_dirs)
@@ -2204,10 +2208,12 @@ MODRET quotatab_pre_rmd(cmd_rec *cmd) {
    * if successful, the byte counts can be adjusted correctly.
    */
   pr_fs_clear_cache();
-  if (pr_fsio_lstat(cmd->arg, &sbuf) < 0)
-    quotatab_disk_bytes = 0;
-  else
-    quotatab_disk_bytes = sbuf.st_size;
+  if (pr_fsio_lstat(cmd->arg, &st) < 0) {
+    quotatab_disk_nbytes = 0;
+
+  } else {
+    quotatab_disk_nbytes = st.st_size;
+  }
 
   return PR_DECLINED(cmd);
 }
@@ -2225,16 +2231,16 @@ MODRET quotatab_post_rmd(cmd_rec *cmd) {
   }
 
   /* Write out an updated quota entry. */
-  QUOTATAB_TALLY_WRITE(-quotatab_disk_bytes, 0, 0, -1, 0, -1)
+  QUOTATAB_TALLY_WRITE(-quotatab_disk_nbytes, 0, 0, -1, 0, -1)
 
   /* Clear the cached bytes. */
-  quotatab_disk_bytes = 0;
+  quotatab_disk_nbytes = 0;
 
   return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_pre_rnto(cmd_rec *cmd) {
-  struct stat sbuf;
+  struct stat st;
 
   /* Sanity check */
   if (!use_quotas)
@@ -2244,10 +2250,14 @@ MODRET quotatab_pre_rnto(cmd_rec *cmd) {
    * if successful, the byte counts can be adjusted correctly.
    */
   pr_fs_clear_cache();
-  if (pr_fsio_lstat(cmd->arg, &sbuf) < 0)
-    quotatab_disk_bytes = 0;
-  else
-    quotatab_disk_bytes = sbuf.st_size;
+  if (pr_fsio_lstat(cmd->arg, &st) < 0) {
+    quotatab_disk_nbytes = 0;
+    quotatab_disk_nfiles = 0;
+
+  } else {
+    quotatab_disk_nbytes = st.st_size;
+    quotatab_disk_nfiles = 1;
+  }
 
   return PR_DECLINED(cmd);
 }
@@ -2265,17 +2275,18 @@ MODRET quotatab_post_rnto(cmd_rec *cmd) {
   }
 
   /* Write out an updated quota entry. */
-  QUOTATAB_TALLY_WRITE(-quotatab_disk_bytes, 0, -quotatab_disk_bytes,
-    -1, 0, -1)
+  QUOTATAB_TALLY_WRITE(-quotatab_disk_nbytes, 0, -quotatab_disk_nbytes,
+    -quotatab_disk_nfiles, 0, -quotatab_disk_nfiles)
 
-  /* Clear the cached bytes. */
-  quotatab_disk_bytes = 0;
-
+  /* Clear the cached bytes/files. */
+  quotatab_disk_nbytes = 0;
+  quotatab_disk_nfiles = 0;
+  
   return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_pre_stor(cmd_rec *cmd) {
-  struct stat sbuf;
+  struct stat st;
  
   /* Sanity check */
   if (!use_quotas)
@@ -2339,19 +2350,19 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
   /* Briefly cache the size (in bytes) of the file being appended to, so that
    * if successful, the byte counts can be adjusted correctly.  If the
    * stat fails, it means that a new file is being uploaded, so set the
-   * disk_bytes to be zero. 
+   * disk_nbytes to be zero. 
    */
   pr_fs_clear_cache();
-  if (pr_fsio_lstat(cmd->arg, &sbuf) < 0)
-    quotatab_disk_bytes = 0;
+  if (pr_fsio_lstat(cmd->arg, &st) < 0)
+    quotatab_disk_nbytes = 0;
   else
-    quotatab_disk_bytes = sbuf.st_size;
+    quotatab_disk_nbytes = st.st_size;
 
   return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_post_stor(cmd_rec *cmd) {
-  struct stat sbuf;
+  struct stat st;
   off_t store_bytes = session.xfer.total_bytes;
 
   /* Sanity check */
@@ -2369,8 +2380,8 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
    * mess with the stat.
    */
   pr_fs_clear_cache();
-  if (pr_fsio_lstat(cmd->arg, &sbuf) >= 0) 
-    store_bytes = sbuf.st_size - quotatab_disk_bytes;
+  if (pr_fsio_lstat(cmd->arg, &st) >= 0) 
+    store_bytes = st.st_size - quotatab_disk_nbytes;
 
   else {
     if (errno == ENOENT)
@@ -2387,7 +2398,7 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
 
   /* Write out an updated quota entry */
   QUOTATAB_TALLY_WRITE(store_bytes, 0, session.xfer.total_bytes,
-    quotatab_disk_bytes ? 0 : 1, 0, 1)
+    quotatab_disk_nbytes ? 0 : 1, 0, 1)
 
   /* Check quotas to see if bytes upload or total quota has been reached.
    * Report this to user if so.  If it is a hard bytes limit, delete the
@@ -2472,7 +2483,7 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
 }
 
 MODRET quotatab_post_stor_err(cmd_rec *cmd) {
-  struct stat sbuf;
+  struct stat st;
   off_t store_bytes = session.xfer.total_bytes;
 
   /* Sanity check */
@@ -2490,8 +2501,8 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
    * mess with the stat.
    */
   pr_fs_clear_cache();
-  if (pr_fsio_lstat(cmd->arg, &sbuf) >= 0) 
-    store_bytes = sbuf.st_size - quotatab_disk_bytes;
+  if (pr_fsio_lstat(cmd->arg, &st) >= 0) 
+    store_bytes = st.st_size - quotatab_disk_nbytes;
 
   else {
     if (errno == ENOENT)
