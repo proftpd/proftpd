@@ -9,6 +9,15 @@ files.
 1.3.2rc1
 ---------
 
+  + Added pkgconfig file
+
+    As part of the process of installing proftpd from source, a proftpd.pc
+    file, suitable for use by the common `pkg-config' tool, is provided.
+    This proftpd.pc file is installed into the <install-dir>/lib/pkgconfig/
+    directory.
+
+    See http://pkgconfig.freedesktop.org/ for more details.
+
   + IPv6 support is enabled by default.  To disable at build time, use:
 
       ./configure --disable-ipv6 ...
@@ -170,4 +179,4 @@ files.
         Added instructions on how to use OpenSSL in FIPS mode.
 
 
-Last Updated: $Date: 2008-03-08 05:12:38 $
+Last Updated: $Date: 2008-03-11 17:35:56 $
