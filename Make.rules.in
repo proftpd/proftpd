@@ -2,6 +2,7 @@ prefix=@prefix@
 exec_prefix=@exec_prefix@
 bindir=@bindir@
 datadir=@datadir@
+libdir=@libdir@
 datarootdir=@datarootdir@
 sbindir=@sbindir@
 sysconfdir=@sysconfdir@
@@ -35,6 +36,8 @@ SHELL=/bin/sh
 
 ENABLE_NLS=@ENABLE_NLS@
 ENABLE_TESTS=@ENABLE_TESTS@
+
+VERSION=@VERSION@
 
 # Directory include paths.
 #

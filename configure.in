@@ -1994,7 +1994,7 @@ BUILD_SHARED_MODULE_OBJS="$ac_build_shared_modules"
 BUILD_STATIC_MODULE_ARCHIVES="$ac_build_static_module_archives"
 BUILD_STATIC_MODULE_OBJS="$ac_build_core_modules $ac_build_static_modules"
 SHARED_MODULE_LIBS="$ac_orig_libs"
-VERSION=`cat $srcdir/include/version.h | grep "#define VERSION " | sed -e 's/^.*\"\(.*\)\"/\1/'`
+VERSION=`cat $srcdir/include/version.h | grep "#define PROFTPD_VERSION_TEXT" | sed -e 's/^.*\"\(.*\)\"/\1/'`
 
 dnl Substitute in our configuration paths as appropriate.  We also have to
 dnl sweet talk the environment into helping us get this right, like so...
@@ -2086,17 +2086,25 @@ AC_SUBST(VERSION)
 
 AC_CONFIG_HEADER(config.h)
 
-AC_OUTPUT(include/Makefile
-          lib/Makefile
-          locale/Makefile
-          modules/Makefile
-          src/Makefile
-          src/ftpdctl.8 src/proftpd.8 src/xferlog.5
-          tests/Makefile
-          utils/Makefile utils/ftpcount.1 utils/ftpshut.8 utils/ftptop.1
-            utils/ftpwho.1
-          Makefile Make.rules,
-          [echo timestamp > stamp-h])
+AC_OUTPUT(
+  include/Makefile
+  lib/Makefile
+  locale/Makefile
+  modules/Makefile
+  src/Makefile
+  src/ftpdctl.8
+  src/proftpd.8
+  src/xferlog.5
+  tests/Makefile
+  utils/Makefile
+  utils/ftpcount.1
+  utils/ftpshut.8
+  utils/ftptop.1
+  utils/ftpwho.1
+  Makefile
+  Make.rules,
+  [echo timestamp > stamp-h]
+)
 
 dnl After everything has been generated, we need to double-check for
 dnl header files in the module directories.

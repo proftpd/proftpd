@@ -33,6 +33,9 @@ libsupp.a: $(LIB_OBJS)
 
 lib: libsupp.a $(LIB_DEPS)
 
+install: libsupp.a
+	$(INSTALL_BIN) libsupp.a $(DESTDIR)$(libdir)/proftpd/libsupp.a
+
 clean:
 	rm -f *.o libsupp.a
 	test -z $(LIB_DEPS) || (cd libltdl/ && $(MAKE) clean)

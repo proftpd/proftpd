@@ -73,7 +73,7 @@ check: proftpd$(EXEEXT)
 	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check)
 
 # BSD install -d doesn't work, so ...
-$(DESTDIR)$(datadir) $(DESTDIR)$(datadir)/locale $(DESTDIR)$(includedir) $(DESTDIR)$(includedir)/proftpd $(DESTDIR)$(libexecdir) $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(rundir) $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir) $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8:
+$(DESTDIR)$(datadir) $(DESTDIR)$(datadir)/locale $(DESTDIR)$(includedir) $(DESTDIR)$(includedir)/proftpd $(DESTDIR)$(libdir) $(DESTDIR)$(libdir)/pkgconfig $(DESTDIR)$(libdir)/proftpd $(DESTDIR)$(libexecdir) $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(rundir) $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir) $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8:
 	@if [ ! -d $@ ]; then \
 		mkdir -p $@; \
 		chown $(INSTALL_USER):$(INSTALL_GROUP) $@; \
@@ -88,9 +88,26 @@ install-proftpd: proftpd $(DESTDIR)$(includedir) $(DESTDIR)$(localstatedir) $(DE
 	ln -s proftpd $(DESTDIR)$(sbindir)/in.proftpd
 	-chown -h $(INSTALL_USER):$(INSTALL_GROUP) $(DESTDIR)$(sbindir)/in.proftpd
 
+install-libs: $(DESTDIR)$(libdir)/proftpd
+	cd lib/ && $(MAKE) install
+
 install-headers: $(DESTDIR)$(includedir)/proftpd
 	$(INSTALL_MAN) config.h $(DESTDIR)$(includedir)/proftpd/config.h
 	cd include/ && $(MAKE) install
+
+install-pkgconfig: $(DESTDIR)$(libdir)/pkgconfig
+	@echo 'prefix=$(prefix)' > proftpd.pc
+	@echo 'exec_prefix=$${prefix}' >> proftpd.pc
+	@echo 'libdir=$${prefix}/lib/proftpd' >> proftpd.pc
+	@echo 'includedir=$${prefix}/include/proftpd' >> proftpd.pc
+	@echo '' >> proftpd.pc
+	@echo 'Name: ProFTPD' >> proftpd.pc
+	@echo 'Description: Professional FTP Daemon' >> proftpd.pc
+	@echo 'Version: $(VERSION)' >> proftpd.pc
+	@echo 'Requires: ' >> proftpd.pc
+	@echo 'Libs: -L$${libdir} -lsupp' >> proftpd.pc
+	@echo 'Cflags: -I$${includedir}' >> proftpd.pc
+	$(INSTALL_MAN) proftpd.pc $(DESTDIR)$(libdir)/pkgconfig/proftpd.pc
 
 install-locales: $(DESTDIR)$(datadir) $(DESTDIR)$(datadir)/locale
 	test -z "$(ENABLE_NLS)" || (cd locale/ && $(MAKE) install)
@@ -124,7 +141,7 @@ install-man: $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/ma
 	$(INSTALL_MAN) $(top_srcdir)/utils/ftpwho.1   $(DESTDIR)$(mandir)/man1
 	$(INSTALL_MAN) $(top_srcdir)/src/xferlog.5    $(DESTDIR)$(mandir)/man5
 
-install-all: install-proftpd install-modules install-utils install-conf install-man install-headers install-locales $(INSTALL_DEPS)
+install-all: install-proftpd install-modules install-utils install-conf install-man install-libs install-headers install-pkgconfig install-locales $(INSTALL_DEPS)
 
 install: all install-all
 
@@ -147,7 +164,7 @@ clean:
 		if [ -d "$$dir" ]; then cd $$dir/ && $(MAKE) clean; fi; \
 	done
 
-	rm -f include/buildstamp.h
+	rm -f proftpd.pc include/buildstamp.h
 	rm -f $(BUILD_BIN)
 
 distclean: clean
