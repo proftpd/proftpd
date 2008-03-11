@@ -36878,7 +36878,7 @@ BUILD_SHARED_MODULE_OBJS="$ac_build_shared_modules"
 BUILD_STATIC_MODULE_ARCHIVES="$ac_build_static_module_archives"
 BUILD_STATIC_MODULE_OBJS="$ac_build_core_modules $ac_build_static_modules"
 SHARED_MODULE_LIBS="$ac_orig_libs"
-VERSION=`cat $srcdir/include/version.h | grep "#define VERSION " | sed -e 's/^.*\"\(.*\)\"/\1/'`
+VERSION=`cat $srcdir/include/version.h | grep "#define PROFTPD_VERSION_TEXT" | sed -e 's/^.*\"\(.*\)\"/\1/'`
 
 pr_saved_prefix="$prefix"
 pr_saved_exec_prefix="$exec_prefix"
@@ -38223,7 +38223,8 @@ echo "$as_me: executing $ac_file commands" >&6;}
 
 
   case $ac_file$ac_mode in
-    "default":C) echo timestamp > stamp-h ;;
+    "default":C) echo timestamp > stamp-h
+ ;;
 
   esac
 done # for ac_tag
