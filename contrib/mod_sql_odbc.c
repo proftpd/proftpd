@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_odbc.c,v 1.3 2008-01-09 15:28:28 castaglia Exp $
+ * $Id: mod_sql_odbc.c,v 1.4 2008-03-13 16:43:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -297,6 +297,35 @@ static const char *sqlodbc_typestr(SQLSMALLINT type) {
   return "[unknown]";
 }
 
+static const char *sqlodbc_strerror(SQLSMALLINT odbc_error) {
+  switch (odbc_error) {
+    case SQL_SUCCESS:
+      return "Success";
+
+    case SQL_SUCCESS_WITH_INFO:
+      return "Success with info";
+
+#ifdef SQL_NO_DATA
+    case SQL_NO_DATA:
+      return "No data";
+#endif
+
+    case SQL_ERROR:
+      return "Error";
+
+    case SQL_INVALID_HANDLE:
+      return "Invalid handle";
+
+    case SQL_STILL_EXECUTING:
+      return "Still executing";
+
+    case SQL_NEED_DATA:
+      return "Need data";
+  }
+
+  return "(unknown)";
+}
+
 static modret_t *sqlodbc_get_error(cmd_rec *cmd, SQLSMALLINT handle_type,
     SQLHANDLE handle) {
   SQLCHAR state[6], odbc_errstr[SQL_MAX_MESSAGE_LENGTH];
@@ -310,7 +339,6 @@ static modret_t *sqlodbc_get_error(cmd_rec *cmd, SQLSMALLINT handle_type,
 
   res = SQLGetDiagRec(handle_type, handle, 1, state, &odbc_errno,
     odbc_errstr, sizeof(odbc_errstr), &odbc_errlen);
-
   if (res != SQL_NO_DATA) {
     char numstr[20] = {'\0'};
 
@@ -739,6 +767,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
 MODRET sqlodbc_open(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
+  SQLSMALLINT res;
 
   sql_log(DEBUG_FUNC, "%s", "entering \todbc cmd_open");
 
@@ -772,16 +801,19 @@ MODRET sqlodbc_open(cmd_rec *cmd) {
   }
 
   if (!(conn->state & SQLODBC_HAVE_ENV_HANDLE)) {
-    if (SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &conn->envh) !=
-        SQL_SUCCESS) {
-      sql_log(DEBUG_WARN, "%s", "error allocating environment handle");
+    res = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &conn->envh);
+    if (res != SQL_SUCCESS) {
+      sql_log(DEBUG_WARN, "error allocating environment handle: %s",
+        sqlodbc_strerror(res));
       sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_open");
       return sqlodbc_get_error(cmd, SQL_HANDLE_ENV, conn->envh);
     }
 
-    if (SQLSetEnvAttr(conn->envh, SQL_ATTR_ODBC_VERSION,
-        (SQLPOINTER) SQL_OV_ODBC3, 0) != SQL_SUCCESS) {
-      sql_log(DEBUG_WARN, "%s", "error setting SQL_ATTR_ODBC_VERSION ODBC3");
+    res = SQLSetEnvAttr(conn->envh, SQL_ATTR_ODBC_VERSION,
+      (SQLPOINTER) SQL_OV_ODBC3, 0);
+    if (res != SQL_SUCCESS) {
+      sql_log(DEBUG_WARN, "error setting SQL_ATTR_ODBC_VERSION ODBC3: %s",
+        sqlodbc_strerror(res));
       sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_open");
       return sqlodbc_get_error(cmd, SQL_HANDLE_ENV, conn->envh);
     }
@@ -790,8 +822,10 @@ MODRET sqlodbc_open(cmd_rec *cmd) {
   }
 
   if (!(conn->state & SQLODBC_HAVE_DBC_HANDLE)) {
-    if (SQLAllocHandle(SQL_HANDLE_DBC, conn->envh, &conn->dbh) != SQL_SUCCESS) {
-      sql_log(DEBUG_WARN, "%s", "error allocating database handle");
+    res = SQLAllocHandle(SQL_HANDLE_DBC, conn->envh, &conn->dbh);
+    if (res != SQL_SUCCESS) {
+      sql_log(DEBUG_WARN, "error allocating database handle: %s",
+        sqlodbc_strerror(res));
       sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_open");
       return sqlodbc_get_error(cmd, SQL_HANDLE_DBC, conn->dbh);
     }
@@ -799,10 +833,12 @@ MODRET sqlodbc_open(cmd_rec *cmd) {
     conn->state |= SQLODBC_HAVE_DBC_HANDLE;
   }
 
-  if (SQLConnect(conn->dbh,
-      (SQLCHAR *) conn->dsn, strlen(conn->dsn),
-      (SQLCHAR *) conn->user, strlen(conn->user),
-      (SQLCHAR *) conn->pass, strlen(conn->pass)) != SQL_SUCCESS) {
+  res = SQLConnect(conn->dbh, (SQLCHAR *) conn->dsn, strlen(conn->dsn),
+    (SQLCHAR *) conn->user, strlen(conn->user), (SQLCHAR *) conn->pass,
+    strlen(conn->pass));
+  if (res != SQL_SUCCESS) {
+    sql_log(DEBUG_FUNC, "error connecting to dsn '%s': %s", conn->dsn,
+      sqlodbc_strerror(res));
     sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_open");
     return sqlodbc_get_error(cmd, SQL_HANDLE_DBC, conn->dbh);
   }
@@ -814,8 +850,8 @@ MODRET sqlodbc_open(cmd_rec *cmd) {
     SQLCHAR info[SQL_MAX_MESSAGE_LENGTH];
     SQLSMALLINT infolen;
 
-    if (SQLGetInfo(conn->dbh, SQL_DBMS_NAME, info, sizeof(info),
-        &infolen) == SQL_SUCCESS) {
+    res = SQLGetInfo(conn->dbh, SQL_DBMS_NAME, info, sizeof(info), &infolen);
+    if (res == SQL_SUCCESS) {
       info[infolen] = '\0';
       sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION ": Product name: %s", info);
 
@@ -828,55 +864,62 @@ MODRET sqlodbc_open(cmd_rec *cmd) {
         use_limit = FALSE;
       }
 
-    } else
+    } else {
       sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION
         ": Product name: (unavailable)");
+    }
 
-    if (SQLGetInfo(conn->dbh, SQL_DBMS_VER, info, sizeof(info),
-        &infolen) == SQL_SUCCESS) {
+    res = SQLGetInfo(conn->dbh, SQL_DBMS_VER, info, sizeof(info), &infolen);
+    if (res == SQL_SUCCESS) {
       info[infolen] = '\0';
       sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION ": Product version: %s", info);
 
-    } else
+    } else {
       sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION
         ": Product version: (unavailable)");
+    }
 
-    if (SQLGetInfo(conn->dbh, SQL_DM_VER, info, sizeof(info),
-        &infolen) == SQL_SUCCESS) {
+    res = SQLGetInfo(conn->dbh, SQL_DM_VER, info, sizeof(info), &infolen);
+    if (res == SQL_SUCCESS) {
       info[infolen] = '\0';
       sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION ": Driver Manager version: %s",
         info);
 
-    } else
+    } else {
       sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION
         ": Driver Manager version: (unavailable)");
+    }
 
-    if (SQLGetInfo(conn->dbh, SQL_DRIVER_NAME, info, sizeof(info),
-        &infolen) == SQL_SUCCESS) {
+    res = SQLGetInfo(conn->dbh, SQL_DRIVER_NAME, info, sizeof(info), &infolen);
+    if (res == SQL_SUCCESS) {
       info[infolen] = '\0';
       sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION ": Driver name: %s", info);
 
-    } else
+    } else {
       sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION ": Driver name: (unavailable)");
+    }
 
-    if (SQLGetInfo(conn->dbh, SQL_DRIVER_VER, info, sizeof(info),
-        &infolen) == SQL_SUCCESS) {
+    res = SQLGetInfo(conn->dbh, SQL_DRIVER_VER, info, sizeof(info), &infolen);
+    if (res == SQL_SUCCESS) {
       info[infolen] = '\0';
       sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION ": Driver version: %s", info);
 
-    } else
+    } else {
       sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION
         ": Driver version: (unavailable)");
+    }
 
-    if (SQLGetInfo(conn->dbh, SQL_DRIVER_ODBC_VER, info, sizeof(info),
-        &infolen) == SQL_SUCCESS) {
+    res = SQLGetInfo(conn->dbh, SQL_DRIVER_ODBC_VER, info, sizeof(info),
+      &infolen);
+    if (res == SQL_SUCCESS) {
       info[infolen] = '\0';
       sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION ": Driver ODBC version: %s",
         info);
 
-    } else
+    } else {
       sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION
         ": Driver ODBC version: (unavailable)");
+    }
 
     conn->state |= SQLODBC_HAVE_INFO;
   }
@@ -991,7 +1034,7 @@ MODRET sqlodbc_def_conn(cmd_rec *cmd) {
     return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION, "badly formed request");
   }
 
-  conn = (db_conn_t *) palloc(conn_pool, sizeof(db_conn_t));
+  conn = (db_conn_t *) pcalloc(conn_pool, sizeof(db_conn_t));
 
   name = pstrdup(conn_pool, cmd->argv[0]);
   conn->user = pstrdup(conn_pool, cmd->argv[1]);
