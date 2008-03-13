@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.35 2008-01-08 02:21:43 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.36 2008-03-13 22:44:46 castaglia Exp $
  */
 
 /*
@@ -142,7 +142,7 @@ static void *_sql_add_connection(pool *p, char *name, db_conn_t *conn)
     return NULL;
   }
 
-  entry = (conn_entry_t *) pcalloc( p, sizeof( conn_entry_t ));
+  entry = (conn_entry_t *) pcalloc(p, sizeof(conn_entry_t));
   entry->name = name;
   entry->data = conn;
 
@@ -227,8 +227,8 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
   sd->rnum = (unsigned long) PQntuples(result);
   sd->fnum = (unsigned long) PQnfields(result);
 
-  data = (char **) pcalloc( cmd->tmp_pool, sizeof(char *) * 
-			    ((sd->rnum * sd->fnum) + 1) );
+  data = (char **) pcalloc(cmd->tmp_pool, sizeof(char *) * 
+			    ((sd->rnum * sd->fnum) + 1));
   
   for (row = 0; row < sd->rnum; row++) {
     for (field = 0; field < sd->fnum; field++) {
@@ -473,7 +473,7 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
     return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "uninitialized module");
   }
 
-  conn = (db_conn_t *) palloc(conn_pool, sizeof(db_conn_t));
+  conn = (db_conn_t *) pcalloc(conn_pool, sizeof(db_conn_t));
 
   name = pstrdup(conn_pool, cmd->argv[0]);
   conn->user = pstrdup(conn_pool, cmd->argv[1]);
@@ -1221,8 +1221,8 @@ MODRET cmd_identify(cmd_rec * cmd) {
 
   _sql_check_cmd(cmd, "cmd_identify");
 
-  sd = (sql_data_t *) pcalloc( cmd->tmp_pool, sizeof(sql_data_t));
-  sd->data = (char **) pcalloc( cmd->tmp_pool, sizeof(char *) * 2);
+  sd = (sql_data_t *) pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+  sd->data = (char **) pcalloc(cmd->tmp_pool, sizeof(char *) * 2);
 
   sd->rnum = 1;
   sd->fnum = 2;

@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.49 2008-01-08 02:21:43 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.50 2008-03-13 22:44:46 castaglia Exp $
  */
 
 /*
@@ -238,7 +238,7 @@ static void *_sql_add_connection(pool *p, char *name, db_conn_t *conn)
     return NULL;
   }
 
-  entry = (conn_entry_t *) pcalloc( p, sizeof( conn_entry_t ));
+  entry = (conn_entry_t *) pcalloc(p, sizeof(conn_entry_t));
   entry->name = name;
   entry->data = conn;
 
