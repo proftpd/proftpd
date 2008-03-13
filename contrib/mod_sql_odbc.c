@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_odbc.c,v 1.4 2008-03-13 16:43:37 castaglia Exp $
+ * $Id: mod_sql_odbc.c,v 1.5 2008-03-13 22:35:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -330,23 +330,32 @@ static modret_t *sqlodbc_get_error(cmd_rec *cmd, SQLSMALLINT handle_type,
     SQLHANDLE handle) {
   SQLCHAR state[6], odbc_errstr[SQL_MAX_MESSAGE_LENGTH];
   SQLSMALLINT odbc_errlen;
-  SQLINTEGER odbc_errno;
+  SQLINTEGER odbc_errno = 0;
   SQLRETURN res;
+  unsigned int recno = 1;
+  char numstr[20];
 
-  /* Ideally, we'd keep calling SQLGetDiagRec() until it returned SQL_NO_DATA,
-   * in order to capture the entire error message stack.
-   */
+  memset(odbc_errstr, '\0', sizeof(odbc_errstr));
+  snprintf((char *) odbc_errstr, sizeof(odbc_errstr)-1, "%s", "(no data)");
 
-  res = SQLGetDiagRec(handle_type, handle, 1, state, &odbc_errno,
+  res = SQLGetDiagRec(handle_type, handle, recno++, state, &odbc_errno,
     odbc_errstr, sizeof(odbc_errstr), &odbc_errlen);
-  if (res != SQL_NO_DATA) {
-    char numstr[20] = {'\0'};
+  while (res != SQL_NO_DATA) {
+    pr_signals_handle();
 
-    snprintf(numstr, 20, "%d", (int) odbc_errno);
-    return PR_ERROR_MSG(cmd, numstr, (char *) odbc_errstr);
+    sql_log(DEBUG_FUNC, "odbc error: [%d] %s", odbc_errno, odbc_errstr);
+    
+    res = SQLGetDiagRec(handle_type, handle, recno++, state, &odbc_errno,
+      odbc_errstr, sizeof(odbc_errstr), &odbc_errlen);
   }
 
-  return PR_ERROR_MSG(cmd, "0", "(no data)");
+  /* This will return the last error retrieved.  This is OK, since we
+   * have logged all the previous errors.
+   */
+  memset(numstr, '\0', sizeof(numstr));
+  snprintf(numstr, 20, "%d", (int) odbc_errno);
+
+  return PR_ERROR_MSG(cmd, numstr, (char *) odbc_errstr);
 }
 
 static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
