@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_odbc.c,v 1.5 2008-03-13 22:35:05 castaglia Exp $
+ * $Id: mod_sql_odbc.c,v 1.6 2008-03-14 22:27:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -75,10 +75,12 @@ typedef struct conn_entry_struct {
 static pool *conn_pool = NULL;
 static array_header *conn_cache = NULL;
 
-/* Some databases (e.g. Oracle) do not support the LIMIT clause.  For
- * such databases, the ROWNUM clause will be used instead.
+/* Default to using the LIMIT clause.  Some database drivers prefer
+ * ROWNUM (e.g. Oracle), and others prefer TOP (e.g. TDS).
  */
-static int use_limit = TRUE;
+static int use_limit_clause = TRUE;
+static int use_rownum_clause = FALSE;
+static int use_top_clause = FALSE;
 
 MODRET sqlodbc_close(cmd_rec *);
 
@@ -870,7 +872,20 @@ MODRET sqlodbc_open(cmd_rec *cmd) {
       if (strcasecmp((char *) info, "Oracle") == 0) {
         sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION
           ": %s does not support LIMIT, using ROWNUM instead", info);
-        use_limit = FALSE;
+        use_limit_clause = FALSE;
+        use_rownum_clause = TRUE;
+        use_top_clause = FALSE;
+      }
+
+      /* FreeTDS does not like either LIMIT or ROWNUM, and prefers TOP.
+       * So we need to check for this as well.
+       */
+      if (strcasecmp((char *) info, "FreeTDS") == 0) {
+        sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION
+          ": %s does not support LIMIT, using TOP instead", info);
+        use_limit_clause = FALSE;
+        use_rownum_clause = FALSE;
+        use_top_clause = TRUE;
       }
 
     } else {
@@ -1117,12 +1132,19 @@ MODRET sqlodbc_select(cmd_rec *cmd) {
     if (cmd->argc > 4 &&
         cmd->argv[4]) {
 
-      if (use_limit) 
+      if (use_limit_clause) {
         query = pstrcat(cmd->tmp_pool, query, " LIMIT ", cmd->argv[4], NULL);
 
-      else
+      } else if (use_rownum_clause) {
         query = pstrcat(cmd->tmp_pool, query, " AND ROWNUM = ", cmd->argv[4],
           NULL);
+
+      } else if (use_top_clause) {
+        /* Note that the TOP clause must be at the start of the query, not
+         * the end.
+         */
+        query = pstrcat(cmd->tmp_pool, "TOP ", cmd->argv[4], " ", query, NULL);
+      }
     }
 
     if (cmd->argc > 5) {
@@ -1135,9 +1157,9 @@ MODRET sqlodbc_select(cmd_rec *cmd) {
        */
     
       for (i = 5; i < cmd->argc; i++) {
-	if (cmd->argv[i] &&
+        if (cmd->argv[i] &&
             strcasecmp("DISTINCT", cmd->argv[i]) == 0)
-	  query = pstrcat(cmd->tmp_pool, "DISTINCT ", query, NULL);
+          query = pstrcat(cmd->tmp_pool, "DISTINCT ", query, NULL);
       }
     }
 
