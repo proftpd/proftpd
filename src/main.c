@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.326 2008-02-10 02:29:22 castaglia Exp $
+ * $Id: main.c,v 1.327 2008-03-15 19:12:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -60,6 +60,7 @@
 #include "privs.h"
 
 int (*cmd_auth_chk)(cmd_rec *);
+void (*cmd_handler)(server_rec *, conn_t *);
 
 #ifdef NEED_PERSISTENT_PASSWD
 unsigned char persistent_passwd = TRUE;
@@ -105,6 +106,9 @@ static int nodaemon  = 0;
 static int quiet     = 0;
 static int shutdownp = 0;
 static int syntax_check = 0;
+
+/* Command handling */
+static void cmd_loop(server_rec *, conn_t *);
 
 /* Signal handling */
 static RETSIGTYPE sig_disconnect(int);
@@ -166,6 +170,15 @@ void session_set_idle(void) {
 
 void set_auth_check(int (*chk)(cmd_rec*)) {
   cmd_auth_chk = chk;
+}
+
+void pr_cmd_set_handler(void (*handler)(server_rec *, conn_t *)) {
+  if (handler == NULL) {
+    cmd_handler = cmd_loop;
+
+  } else {
+    cmd_handler = handler;
+  }
 }
 
 static void end_login_noexit(void) {
@@ -1310,7 +1323,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   send_session_banner(main_server);
 
-  cmd_loop(main_server, conn);
+  cmd_handler(main_server, conn);
 
 #ifdef PR_DEVEL_NO_DAEMON
   /* Cleanup */
@@ -2356,7 +2369,7 @@ static void standalone_main(void) {
 }
 
 extern char *optarg;
-extern int optind,opterr,optopt;
+extern int optind, opterr, optopt;
 
 #ifdef HAVE_GETOPT_LONG
 static struct option opts[] = {

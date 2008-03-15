@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.314 2008-03-03 16:21:31 castaglia Exp $
+ * $Id: mod_core.c,v 1.315 2008-03-15 19:12:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4385,6 +4385,8 @@ static void core_startup_ev(const void *event_data, void *user_data) {
  */
 
 static int core_init(void) {
+  /* Set the default (i.e. FTP) command handler. */
+  pr_cmd_set_handler(NULL);
 
   /* Add the commands handled by this module to the HELP list. */
   pr_help_add(C_CWD,  "<sp> pathname", TRUE);
