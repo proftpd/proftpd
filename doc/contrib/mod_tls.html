@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.14 2008-01-14 22:42:32 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.15 2008-03-17 16:15:47 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -67,6 +67,7 @@ is based.  His module can be found here:
   <li><a href="#TLSTimeoutHandshake">TLSTimeoutHandshake</a>
   <li><a href="#TLSVerifyClient">TLSVerifyClient</a>
   <li><a href="#TLSVerifyDepth">TLSVerifyDepth</a>
+  <li><a href="#TLSVerifyOrder">TLSVerifyOrder</a>
 </ul>
 
 <hr>
@@ -1161,6 +1162,52 @@ Example:
 
 <p>
 <hr>
+<h2><a name="TLSVerifyOrder">TLSVerifyOrder</a></h2>
+<strong>Syntax:</strong> TLSVerifyOrder <em>crl|ocsp</em><br>
+<strong>Default:</strong> crl<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.2rc1 and later
+
+<p>
+The <code>TLSVerifyOrder</code> directive configures how the
+<code>mod_tls</code> will verify the certificates presented by clients, if
+at all.  Unless <code>TLSVerifyClient</code> is <em>on</em>, the
+<code>TLSVerifyOrder</code> directive is not needed.
+
+<p>
+By default, the <code>mod_tls</code> module will include any CRLs (Certificate
+Revocation List) that may have been configured via the
+<code>TLSCARevocationFile</code> and/or <code>TLSCARevocationPath</code>
+directives.  This default behavior is the equivalent of configuring the
+<code>TLSVerifyOrder</code> to use CRLs, <i>e.g.</i>:
+<pre>
+  TLSVerifyOrder crl
+</pre>
+
+<p>
+Another way of checking the validity of the client certificate is to use
+the Online Certificate Status Protocol (OCSP), defined in
+<a href="http://www.faqs.org/rfcs/rfc2560.html">RFC 2560</a>.  To configure
+the <code>mod_tls</code> module to use OCSP when verifying, use:
+<pre>
+  TLSVerifyOrder ocsp
+</pre>
+Note that at is possible for <code>mod_tls</code> to use both CRLs <i>and</i>
+OCSP when verifying certificates.  Simply use <code>TLSVerifyOrder</code>
+to configure the order in which <code>mod_tls</code> should use the various
+verification mechanisms:
+<pre>
+  TLSVerifyOrder ocsp crl
+</pre>
+Verification ends when a mechanism can successfully verify the certificate.
+
+<p>
+See also: <a href="#TLSCARevocationFile"><code>TLSCARevocationFile</code></a>,
+<a href="#TLSCARevocationPath"><code>TLSCARevocationPath</code></a>
+
+<p>
+<hr>
 <h2><a name="Usage">Usage</a></h2>
 Much of the documentation for Apache's <code>mod_ssl</code>, concerning
 certificates, OpenSSL usage, <i>etc</i> applies to this module as well:
@@ -1206,7 +1253,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2008-01-14 22:42:32 $</i><br>
+Last Updated: <i>$Date: 2008-03-17 16:15:47 $</i><br>
 
 <br><hr>
 
