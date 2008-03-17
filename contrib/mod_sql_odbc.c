@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_odbc.c,v 1.6 2008-03-14 22:27:39 castaglia Exp $
+ * $Id: mod_sql_odbc.c,v 1.7 2008-03-17 15:19:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -877,10 +877,11 @@ MODRET sqlodbc_open(cmd_rec *cmd) {
         use_top_clause = FALSE;
       }
 
-      /* FreeTDS does not like either LIMIT or ROWNUM, and prefers TOP.
-       * So we need to check for this as well.
+      /* FreeTDS (and SQL Server) does not like either LIMIT or ROWNUM, and
+       * prefers TOP. So we need to check for this as well.
        */
-      if (strcasecmp((char *) info, "FreeTDS") == 0) {
+      if (strcasecmp((char *) info, "FreeTDS") == 0 ||
+          strstr((char *) info, "SQL Server") != NULL) {
         sql_log(DEBUG_INFO, MOD_SQL_ODBC_VERSION
           ": %s does not support LIMIT, using TOP instead", info);
         use_limit_clause = FALSE;
