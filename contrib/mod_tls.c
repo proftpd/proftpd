@@ -44,6 +44,7 @@
 #include <openssl/rand.h>
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 # include <openssl/engine.h>
+# include <openssl/ocsp.h>
 #endif
 
 #include <signal.h>
@@ -52,7 +53,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.1.2"
+#define MOD_TLS_VERSION		"mod_tls/2.2"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001 
@@ -429,6 +430,7 @@ static int tls_seed_prng(void);
 static void tls_setup_environ(SSL *);
 static int tls_verify_cb(int, X509_STORE_CTX *);
 static int tls_verify_crl(int, X509_STORE_CTX *);
+static int tls_verify_ocsp(int, X509_STORE_CTX *);
 static char *tls_x509_name_oneline(X509_NAME *);
 
 static void tls_diags_cb(const SSL *ssl, int where, int ret) {
@@ -3044,14 +3046,42 @@ static void tls_setup_environ(SSL *ssl) {
 }
 
 static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
-
-  /* TODO: Make up my mind on what to accept or not.*/
+  config_rec *c;
 
   /* We can configure the server to skip the peer's cert verification */
   if (!(tls_flags & TLS_SESS_VERIFY_CLIENT))
      return 1;
 
-  ok = tls_verify_crl(ok, ctx);
+  c = find_config(main_server->conf, CONF_PARAM, "TLSVerifyOrder", FALSE);
+  if (c) {
+    register unsigned int i;
+
+    for (i = 0; i < c->argc; i++) {
+      char *mech = c->argv[i];
+
+      if (strcmp(mech, "crl") == 0) {
+        if (!ok)
+          ok = tls_verify_crl(ok, ctx);
+
+        else
+          break;
+
+      } else if (strcmp(mech, "ocsp") == 0) {
+        if (!ok)
+          ok = tls_verify_ocsp(ok, ctx);
+
+        else
+          break;
+      }
+    }
+
+  } else {
+    /* If no TLSVerifyOrder was specified, default to the old behavior of
+     * always checking CRLs, if configured, and not paying attention to
+     * any AIA attributes (i.e. no use of OCSP).
+     */
+    ok = tls_verify_crl(ok, ctx);
+  }
 
   if (!ok) {
     X509 *cert = X509_STORE_CTX_get_current_cert(ctx);
@@ -3074,6 +3104,7 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
       case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
       case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
       case X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE:
+      case X509_V_ERR_APPLICATION_VERIFICATION:
         tls_log("client certificate failed verification: %s",
           X509_verify_cert_error_string(ctx->error));
         ok = 0;
@@ -3303,6 +3334,385 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   }
 
   return ok;
+}
+
+static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
+    const char *url) {
+  BIO *conn;
+  X509 *issuing_cert = NULL;
+  X509_NAME *subj = NULL;
+  const char *subj_name;
+  char *host = NULL, *port = NULL, *uri = NULL;
+  int res = 0, use_ssl = 0, ocsp_status, ocsp_reason;
+  OCSP_REQUEST *req = NULL;
+  OCSP_CERTID *cert_id = NULL;
+  OCSP_RESPONSE *resp = NULL;
+  OCSP_BASICRESP *basic_resp = NULL;
+
+  if (cert == NULL ||
+      url == NULL) {
+    return res;
+  }
+
+  subj = X509_get_subject_name(cert);
+  subj_name = tls_x509_name_oneline(subj);
+
+  tls_log("checking OCSP URL '%s' for client cert '%s'", url, subj_name);
+
+  if (OCSP_parse_url((char *) url, &host, &port, &uri, &use_ssl) != 1) {
+    tls_log("error parsing OCSP URL '%s': %s", url, tls_get_errors());
+    return res;
+  }
+
+  tls_log("connecting to OCSP responder at host '%s', port '%s', URI '%s'%s",
+    host, port, uri, use_ssl ? ", using SSL/TLS" : "");
+
+  /* Connect to the OCSP responder indicated */
+  conn = BIO_new_connect(host);
+  if (conn == NULL) {
+    tls_log("error creating connection BIO: %s", tls_get_errors());
+
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+
+    return res;
+  }
+
+  BIO_set_conn_port(conn, port);
+
+  if (BIO_do_connect(conn) != 1) {
+    tls_log("error connecting to OCSP URL '%s': %s", url, tls_get_errors());
+
+    BIO_free_all(conn);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+
+    return res;
+  }
+
+  if (X509_STORE_CTX_get1_issuer(&issuing_cert, ctx, cert) != 1) {
+    tls_log("error retrieving issuing cert for client cert '%s': %s",
+      subj_name, tls_get_errors());
+
+    BIO_free_all(conn);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+
+    return res;
+  }
+
+  /* Note that the cert_id value will be freed when the request is freed. */
+  cert_id = OCSP_cert_to_id(NULL, cert, issuing_cert);
+  if (cert_id == NULL) {
+    const char *issuer_subj_name = tls_x509_name_oneline(
+      X509_get_subject_name(issuing_cert));
+
+    tls_log("error converting client cert '%s' and its issuing cert '%s' "
+      "to an OCSP cert ID: %s", subj_name, issuer_subj_name, tls_get_errors());
+
+    X509_free(issuing_cert);
+    BIO_free_all(conn);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+
+    return res;
+  }
+
+  req = OCSP_REQUEST_new();
+  if (req == NULL) {
+    tls_log("unable to allocate OCSP request: %s", tls_get_errors());
+
+    X509_free(issuing_cert);
+    BIO_free_all(conn);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+
+    return res;
+  }
+
+  if (OCSP_request_add0_id(req, cert_id) == NULL) {
+    tls_log("error adding cert ID to OCSP request: %s", tls_get_errors());
+
+    OCSP_REQUEST_free(req);
+    X509_free(issuing_cert);
+    BIO_free_all(conn);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+
+    return res;
+  }
+
+#if 0
+  /* XXX ideally we would set the requestor name to the subject name of the
+   * cert configured via TLS{DSA,RSA}CertificateFile here.
+   */
+  if (OCSP_request_set1_name(req, /* server cert X509_NAME subj name */) != 1) {
+    tls_log("error adding requestor name '%s' to OCSP request: %s",
+      requestor_name, tls_get_errors());
+
+    OCSP_REQUEST_free(req);
+    X509_free(issuing_cert);
+    BIO_free_all(conn);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+    return res;
+  }
+#endif
+
+  if (OCSP_request_add1_nonce(req, NULL, 0) != 1) {
+    tls_log("error adding nonce to OCSP request: %s", tls_get_errors());
+
+    OCSP_REQUEST_free(req);
+    X509_free(issuing_cert);
+    BIO_free_all(conn);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+
+    return res;
+  }
+
+  if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+    BIO *mem;
+
+    mem = BIO_new(BIO_s_mem());
+    if (OCSP_REQUEST_print(mem, req, 0) == 1) {
+      char *data = NULL;
+      long datalen;
+
+      datalen = BIO_get_mem_data(mem, &data);
+      if (data) {
+        data[datalen] = '\0';
+        tls_log("sending OCSP request:\n%s", data);
+      }
+    }
+
+    BIO_free(mem);
+  }
+
+  resp = OCSP_sendreq_bio(conn, uri, req);
+
+  /* Done with the connection BIO now. */
+  BIO_free_all(conn);
+
+  if (resp == NULL) {
+    tls_log("error receiving response from OCSP responder at '%s': %s", url,
+      tls_get_errors());
+
+    OCSP_REQUEST_free(req);
+    X509_free(issuing_cert);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+
+    return res;
+  }
+
+  if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+    BIO *mem;
+
+    mem = BIO_new(BIO_s_mem());
+    if (OCSP_RESPONSE_print(mem, resp, 0) == 1) {
+      char *data = NULL;
+      long datalen;
+
+      datalen = BIO_get_mem_data(mem, &data);
+      if (data) {
+        data[datalen] = '\0';
+        tls_log("received OCSP response:\n%s", data);
+      }
+    }
+
+    BIO_free(mem);
+  }
+
+  tls_log("checking response from OCSP responder at URL '%s' for client cert "
+    "'%s'", url, subj_name);
+
+  ocsp_status = OCSP_response_status(resp);
+  if (ocsp_status != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
+    tls_log("unable to verify client cert '%s' via OCSP responder at '%s': "
+      "response status '%s'", subj_name, url,
+      OCSP_response_status_str(ocsp_status));
+
+    OCSP_RESPONSE_free(resp);
+    OCSP_REQUEST_free(req);
+    X509_free(issuing_cert);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+
+    return res;
+  }
+
+  basic_resp = OCSP_response_get1_basic(resp);
+  if (basic_resp == NULL) {
+    tls_log("error retrieving basic response from OCSP responder at '%s': %s",
+      url, tls_get_errors());
+
+    OCSP_RESPONSE_free(resp);
+    OCSP_REQUEST_free(req);
+    X509_free(issuing_cert);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+
+    return res;
+  }
+
+  if (OCSP_check_nonce(req, basic_resp) != 1) {
+    tls_log("unable to use response from OCSP responder at '%s': bad nonce",
+      url);
+
+    OCSP_BASICRESP_free(basic_resp);
+    OCSP_RESPONSE_free(resp);
+    OCSP_REQUEST_free(req);
+    X509_free(issuing_cert);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+
+    return res;
+  }
+
+  /* Done with the request now. */
+  OCSP_REQUEST_free(req);
+
+  if (OCSP_basic_verify(basic_resp, NULL, ctx->ctx, 0) != 1) {
+    tls_log("error verifying basic response from OCSP responder at '%s': %s",
+      url, tls_get_errors());
+
+    OCSP_BASICRESP_free(basic_resp);
+    OCSP_RESPONSE_free(resp);
+    X509_free(issuing_cert);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+
+    return res;
+  }
+
+  if (OCSP_resp_find_status(basic_resp, cert_id, &ocsp_status,
+      &ocsp_reason, NULL, NULL, NULL) != 1) {
+    tls_log("unable to retrieve cert status from OCSP response: %s",
+      tls_get_errors());
+
+    OCSP_BASICRESP_free(basic_resp);
+    OCSP_RESPONSE_free(resp);
+    X509_free(issuing_cert);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+
+    return res;
+  }
+
+  tls_log("client cert '%s' has '%s' status according to OCSP responder at "
+    "'%s'", subj_name, OCSP_cert_status_str(ocsp_status), url);
+
+  if (ocsp_status == V_OCSP_CERTSTATUS_GOOD) {
+    res = 1;
+  }
+
+  if (ocsp_status == V_OCSP_CERTSTATUS_REVOKED) {
+    tls_log("client cert '%s' has '%s' status due to: %s", subj_name,
+      OCSP_cert_status_str(ocsp_status), OCSP_crl_reason_str(ocsp_reason));
+  }
+
+  OCSP_BASICRESP_free(basic_resp);
+  OCSP_RESPONSE_free(resp);
+  X509_free(issuing_cert);
+  OPENSSL_free(host);
+  OPENSSL_free(port);
+  OPENSSL_free(uri);
+
+  return res;
+}
+
+static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+  register unsigned int i;
+  X509 *cert;
+  const char *subj;
+  STACK_OF(ACCESS_DESCRIPTION) *descs;
+  pool *tmp_pool = NULL;
+  array_header *ocsp_urls = NULL;
+
+  /* Set a default verification error here; it will be superceded as needed
+   * later during the verification process.
+   */
+  X509_STORE_CTX_set_error(ctx, X509_V_ERR_APPLICATION_VERIFICATION);
+
+  cert = X509_STORE_CTX_get_current_cert(ctx);
+  if (cert == NULL) {
+    return ok;
+  }
+
+  subj = tls_x509_name_oneline(X509_get_subject_name(cert));
+
+  descs = X509_get_ext_d2i(cert, NID_info_access, NULL, NULL);
+  if (descs == NULL) {
+    tls_log("Client cert '%s' contained no AuthorityInfoAccess attribute, "
+      "unable to verify via OCSP", subj);
+    return ok;
+  }
+
+  for (i = 0; i < sk_ACCESS_DESCRIPTION_num(descs); i++) {
+    ACCESS_DESCRIPTION *desc = sk_ACCESS_DESCRIPTION_value(descs, i);
+
+    if (OBJ_obj2nid(desc->method) == NID_ad_OCSP) {
+      /* Found an OCSP AuthorityInfoAccess attribute */
+
+      if (desc->location->type != GEN_URI) {
+        /* Not a valid URI, ignore it. */
+        continue;
+      }
+
+      /* Add this URL to the list of OCSP URLs to check. */
+      if (ocsp_urls == NULL) {
+        tmp_pool = make_sub_pool(session.pool);
+        ocsp_urls = make_array(tmp_pool, 1, sizeof(char *));
+      }
+
+      *((char **) push_array(ocsp_urls)) = pstrdup(tmp_pool,
+        desc->location->d.uniformResourceIdentifier->data);
+    }
+  }
+
+  if (ocsp_urls) {
+    tls_log("Found %u OCSP URLs in AuthorityInfoAccess attribute for client "
+      "cert '%s'", ocsp_urls->nelts, subj);
+
+  } else {
+    tls_log("Found no OCSP URLs in AuthorityInfoAccess attribute for client "
+      "cert '%s', unable to verify via OCSP", subj);
+    AUTHORITY_INFO_ACCESS_free(descs);
+    return ok;
+  }
+
+  /* Check each of the URLs. */
+  for (i = 0; i < ocsp_urls->nelts; i++) {
+    char *url = ((char **) ocsp_urls->elts)[i];
+
+    ok = tls_verify_ocsp_url(ctx, cert, url);
+    if (ok)
+      break;
+  }
+
+  destroy_pool(tmp_pool);
+  AUTHORITY_INFO_ACCESS_free(descs);
+
+  return ok;
+#else
+  return ok;
+#endif
 }
 
 static ssize_t tls_write(SSL *ssl, const void *buf, size_t len) {
@@ -4697,6 +5107,51 @@ MODRET set_tlsverifydepth(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSVerifyOrder mech1 ... */
+MODRET set_tlsverifyorder(cmd_rec *cmd) {
+  register unsigned int i = 0;
+  config_rec *c = NULL;
+
+  /* We only support two client cert verification mechanisms at the moment:
+   * CRLs and OCSP.
+   */
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 2) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    char *mech = cmd->argv[i];
+
+    if (strcasecmp(mech, "crl") != 0
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+        && strcasecmp(mech, "ocsp") != 0) {
+#else
+        ) {
+#endif
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unsupported verification mechanism '", mech, "' requested", NULL));
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], cmd->argc-1, NULL, NULL);
+  for (i = 1; i < cmd->argc; i++) {
+    char *mech = cmd->argv[i];
+
+    if (strcasecmp(mech, "crl") == 0)
+      c->argv[i-1] = pstrdup(c->pool, "crl");
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+    if (strcasecmp(mech, "ocsp") == 0)
+      c->argv[i-1] = pstrdup(c->pool, "ocsp");
+#endif
+  }
+
+  return PR_HANDLED(cmd);
+}
+
 /* Event handlers
  */
 
@@ -5113,6 +5568,7 @@ static conftable tls_conftab[] = {
   { "TLSTimeoutHandshake",	set_tlstimeouthandshake,NULL },
   { "TLSVerifyClient",		set_tlsverifyclient,	NULL },
   { "TLSVerifyDepth",		set_tlsverifydepth,	NULL },
+  { "TLSVerifyOrder",		set_tlsverifyorder,	NULL },
   { NULL , NULL, NULL}
 };
 
