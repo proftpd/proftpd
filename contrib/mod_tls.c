@@ -3336,6 +3336,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   return ok;
 }
 
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
 static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     const char *url) {
   BIO *conn;
@@ -3448,7 +3449,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     return res;
   }
 
-#if 0
+# if 0
   /* XXX ideally we would set the requestor name to the subject name of the
    * cert configured via TLS{DSA,RSA}CertificateFile here.
    */
@@ -3464,7 +3465,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     OPENSSL_free(uri);
     return res;
   }
-#endif
+# endif
 
   if (OCSP_request_add1_nonce(req, NULL, 0) != 1) {
     tls_log("error adding nonce to OCSP request: %s", tls_get_errors());
@@ -3635,6 +3636,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
 
   return res;
 }
+#endif
 
 static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
