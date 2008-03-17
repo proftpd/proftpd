@@ -3059,14 +3059,14 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
     for (i = 0; i < c->argc; i++) {
       char *mech = c->argv[i];
 
-      if (strcmp(mech, "crl") == 0) {
+      if (strcasecmp(mech, "crl") == 0) {
         if (!ok)
           ok = tls_verify_crl(ok, ctx);
 
         else
           break;
 
-      } else if (strcmp(mech, "ocsp") == 0) {
+      } else if (strcasecmp(mech, "ocsp") == 0) {
         if (!ok)
           ok = tls_verify_ocsp(ok, ctx);
 
