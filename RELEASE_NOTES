@@ -73,6 +73,8 @@ files.
 
       MaxTransfersPerUser
 
+      TLSVerifyOrder
+
       TransferPriority
 
   + New contrib scripts:
@@ -179,4 +181,4 @@ files.
         Added instructions on how to use OpenSSL in FIPS mode.
 
 
-Last Updated: $Date: 2008-03-11 17:35:56 $
+Last Updated: $Date: 2008-03-17 16:32:53 $
