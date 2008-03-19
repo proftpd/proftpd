@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.136 2008-02-14 02:23:37 castaglia Exp $
+ * $Id: mod_sql.c,v 1.137 2008-03-19 21:16:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -379,8 +379,14 @@ static int check_response(modret_t *mr) {
   sql_log(DEBUG_WARN, "error: '%s'", mr->mr_numeric);
   sql_log(DEBUG_WARN, "message: '%s'", mr->mr_message);
 
-  if (!(cmap.opts & SQL_OPT_NO_DISCONNECT_ON_ERROR))
+  pr_log_debug(DEBUG2, MOD_SQL_VERSION
+    ": unrecoverable backend error: (%s) %s", mr->mr_numeric, mr->mr_message);
+  pr_log_debug(DEBUG2, MOD_SQL_VERSION
+    ": check the SQLLogFile for more details");
+
+  if (!(cmap.opts & SQL_OPT_NO_DISCONNECT_ON_ERROR)) {
     end_login(1);
+  }
 
   return -1;
 }
