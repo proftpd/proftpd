@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.35 2008-01-04 22:23:41 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.36 2008-03-19 20:59:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -49,6 +49,10 @@
 # include <krb.h>
 #endif
 
+#ifdef HAVE_LOGIN_H
+# include <login.h>
+#endif
+
 #if defined(HAVE_HPSECURITY_H) || defined(HPUX10) || defined(HPUX11)
 # include <hpsecurity.h>
 # ifndef COMSEC
@@ -58,6 +62,10 @@
 
 #if defined(HAVE_PROT_H) || defined(COMSEC)
 # include <prot.h>
+#endif
+
+#ifdef HAVE_USERSEC_H
+# include <usersec.h>
 #endif
 
 #ifdef PR_USE_SIA
@@ -723,6 +731,9 @@ MODRET pw_check(cmd_rec *cmd) {
         cmd->argv[1], reason);
     }
 
+    pr_log_debug(DEBUG2, "AIX loginrestrictions() failed for user '%s': %s",
+      cmd->argv[1], strerror(errno));
+
     return PR_DECLINED(cmd);
   }
 
@@ -740,10 +751,17 @@ MODRET pw_check(cmd_rec *cmd) {
         cmd->argv[1], reason);
       return PR_DECLINED(cmd);
 
-    default: /* expired too long (2) or other error (-1) */
-      /* Password has been expired for too long, or some other error */
-      pr_log_auth(LOG_WARNING, "password expired too long/system failure for "
-        "user '%s': %.100s", cmd->argv[1], reason);
+    case 2:
+      /* Password expired, requires sysadmin to change it */
+      pr_log_auth(LOG_WARNING,
+        "password expired for user '%s', requires sysadmin intervention: "
+        "%.100s", cmd->argv[1], reason);
+      return PR_DECLINED(cmd);
+
+    default:
+      /* Other error */
+      pr_log_auth(LOG_WARNING, "AIX passwdexpired() failed for user '%s': "
+        "%.100s", cmd->argv[1], reason);
       return PR_DECLINED(cmd);
   }
 # endif /* !HAVE_LOGINRESTRICTIONS */

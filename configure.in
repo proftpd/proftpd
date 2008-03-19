@@ -195,7 +195,7 @@ AC_ARG_WITH(lastlog,
 
     elif test -n "$withval" ; then
       AC_DEFINE(PR_USE_LASTLOG, 1, [Define if enabling lastlog support.])
-      AC_CHECK_HEADERS(lastlog.h login.h paths.h)
+      AC_CHECK_HEADERS(lastlog.h paths.h)
 
       if test "x${withval}" != "xyes" ; then
         pr_lastlog_path="$withval"
@@ -913,8 +913,7 @@ if test "$pr_cv_var__pw_stayopen" = "yes"; then
   AC_DEFINE(HAVE__PW_STAYOPEN)
 fi
 
-AC_CHECK_HEADERS(krb.h)
-AC_CHECK_HEADERS(prot.h)
+AC_CHECK_HEADERS(krb.h login.h prot.h usersec.h)
 
 dnl HP-UX's hpsecurity.h can multiply define MAXINT and confuse configure
 AC_CHECK_HEADERS(hpsecurity.h, [

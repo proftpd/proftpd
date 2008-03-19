@@ -666,8 +666,11 @@
 /* Define if you have the <unistd.h> header file.  */
 #undef HAVE_UNISTD_H
 
+/* Define if you have the <usersec.h> header file.  */
+#undef HAVE_USERSEC_H
+
 /* Define if you have the <utime.h> header file.  */
-#define HAVE_UTIME_H
+#undef HAVE_UTIME_H
 
 /* Define if you have the <utmp.h> header file.  */
 #undef HAVE_UTMP_H
