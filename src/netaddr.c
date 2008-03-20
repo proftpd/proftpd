@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.64 2008-02-24 22:23:26 castaglia Exp $
+ * $Id: netaddr.c,v 1.65 2008-03-20 21:56:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -317,8 +317,12 @@ static void *get_v4inaddr(const pr_netaddr_t *na) {
 char *pr_netaddr_validate_dns_str(char *buf) {
   char *p;
 
-  /* Validate anything returned from a DNS.
-   */
+  if (buf == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  /* Validate anything returned from a DNS. */
   for (p = buf; p && *p; p++) {
 
     /* Per RFC requirements, these are all that are valid from a DNS. */
