@@ -4,6 +4,7 @@ config.cache
 config.status
 autom4te.cache
 proftpd
+proftpd.pc
 ftpshut
 ftpwho
 ftpcount
