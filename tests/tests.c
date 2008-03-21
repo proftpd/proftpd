@@ -136,8 +136,8 @@ int main(int argc, char *argv[]) {
       nfailed != 1 ? "tests" : "test");
     fprintf(stderr, " Please send email to:\n\n");
     fprintf(stderr, "   proftp-devel@lists.sourceforge.net\n\n");
-    fprintf(stderr, " containing the `tests.log' file and the output\n");
-    fprintf(stderr, " from running `proftpd -V'\n");
+    fprintf(stderr, " containing the `tests.log' file (in the tests/ directory)\n");
+    fprintf(stderr, " and the output from running `proftpd -V'\n");
     fprintf(stderr, "-------------------------------------------------\n");
 
     return EXIT_FAILURE;
