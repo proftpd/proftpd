@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006 The ProFTPD Project team
+ * Copyright (c) 2006-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* UTF8 encoding/decoding
- * $Id: utf8.c,v 1.5 2006-12-15 18:51:50 castaglia Exp $
+ * $Id: utf8.c,v 1.6 2008-03-25 22:20:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -115,11 +115,11 @@ int utf8_init(void) {
 
 # ifdef HAVE_ICONV
   /* Get the iconv handles. */
-  encode_conv = iconv_open(local_charset, "UTF-8");
+  encode_conv = iconv_open("UTF-8", local_charset);
   if (encode_conv == (iconv_t) -1)
     return -1;
  
-  decode_conv = iconv_open("UTF-8", local_charset);
+  decode_conv = iconv_open(local_charset, "UTF-8");
   if (decode_conv == (iconv_t) -1)
     return -1;
 
