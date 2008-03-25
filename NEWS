@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.904 2008-03-17 16:02:12 castaglia Exp $
+$Id: NEWS,v 1.905 2008-03-25 17:14:40 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -135,6 +135,7 @@ CVS
   details on how to use FIPS mode.
 - Bug 3051 - mod_quotatab incorrectly reduces file count on rename.
 - Bug 2840 - Online Certificate Status Protocol (OCSP) support.
+- Bug 3058 - Handling of OPTS command results in badly set values in code.
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------

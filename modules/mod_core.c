@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.315 2008-03-15 19:12:45 castaglia Exp $
+ * $Id: mod_core.c,v 1.316 2008-03-25 17:14:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4273,6 +4273,7 @@ MODRET core_feat(cmd_rec *cmd) {
 MODRET core_opts(cmd_rec *cmd) {
   register unsigned int i;
   int res;
+  char *arg = "";
   cmd_rec *subcmd;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
@@ -4280,8 +4281,13 @@ MODRET core_opts(cmd_rec *cmd) {
   subcmd = pr_cmd_alloc(cmd->tmp_pool, cmd->argc-1, NULL);
   subcmd->argv[0] = pstrcat(cmd->tmp_pool, "OPTS_", cmd->argv[1], NULL);
 
-  for (i = 2; i < cmd->argc; i++)
+  for (i = 2; i < cmd->argc; i++) {
     subcmd->argv[i-1] = cmd->argv[i];
+
+    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", cmd->argv[i], NULL);
+  }
+
+  subcmd->arg = arg;
 
   res = pr_cmd_dispatch(subcmd);
   if (res < 0)
