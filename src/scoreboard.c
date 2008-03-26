@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.35 2008-03-26 21:13:19 castaglia Exp $
+ * $Id: scoreboard.c,v 1.36 2008-03-26 22:33:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -117,14 +117,22 @@ static int rlock_scoreboard(void) {
   lock.l_start = 0;
   lock.l_len = 0;
 
+  pr_trace_msg("lock", 9, "attempting to read-lock scoreboard fd %d",
+    scoreboard_fd);
+
   while (fcntl(scoreboard_fd, F_SETLKW, &lock) < 0) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
+    pr_trace_msg("lock", 3, "read-lock of scoreboard fd %d failed: %s",
+      scoreboard_fd, strerror(errno));
     return -1;
   }
+
+  pr_trace_msg("lock", 9, "read-lock of scoreboard fd %d successful",
+    scoreboard_fd);
 
   scoreboard_read_locked = TRUE;
   return 0;
@@ -136,14 +144,23 @@ static int unlock_entry(void) {
   entry_lock.l_whence = SEEK_CUR;
   entry_lock.l_len = sizeof(pr_scoreboard_entry_t);
 
+  pr_trace_msg("lock", 9, "attempting to unlock scoreboard fd %d entry, "
+    "offset %" PR_LU, scoreboard_fd, (pr_off_t) entry_lock.l_start);
+
   while (fcntl(scoreboard_fd, F_SETLKW, &entry_lock) < 0) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
+    pr_trace_msg("lock", 3, "unlock of scoreboard fd %d entry failed: %s",
+      scoreboard_fd, strerror(errno));
     return -1;
   }
+
+  pr_trace_msg("lock", 9, "unlock of scoreboard fd %d entry, "
+    "offset %" PR_LU " succeeded", scoreboard_fd,
+    (pr_off_t) entry_lock.l_start);
 
   return 0;
 }
@@ -158,14 +175,22 @@ static int unlock_scoreboard(void) {
 
   scoreboard_read_locked = scoreboard_write_locked = FALSE;
 
+  pr_trace_msg("lock", 9, "attempting to unlock scoreboard fd %d",
+    scoreboard_fd);
+
   while (fcntl(scoreboard_fd, F_SETLK, &lock) < 0) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
+    pr_trace_msg("lock", 3, "unlock of scoreboard fd %d failed: %s",
+      scoreboard_fd, strerror(errno));
     return -1;
   }
+
+  pr_trace_msg("lock", 9, "unlock of scoreboard fd %d successful",
+    scoreboard_fd);
 
   return 0;
 }
@@ -175,14 +200,23 @@ static int wlock_entry(void) {
   entry_lock.l_whence = SEEK_CUR;
   entry_lock.l_len = sizeof(pr_scoreboard_entry_t);
 
+  pr_trace_msg("lock", 9, "attempting to write-lock scoreboard fd %d entry, "
+    "offset %" PR_LU, scoreboard_fd, (pr_off_t) entry_lock.l_start);
+
   while (fcntl(scoreboard_fd, F_SETLKW, &entry_lock) < 0) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
+    pr_trace_msg("lock", 3, "write-lock of scoreboard fd %d entry failed: %s",
+      scoreboard_fd, strerror(errno));
     return -1;
   }
+
+  pr_trace_msg("lock", 9, "write-lock of scoreboard fd %d entry, "
+    "offset %" PR_LU " succeeded", scoreboard_fd,
+    (pr_off_t) entry_lock.l_start);
 
   return 0;
 }
@@ -195,14 +229,22 @@ static int wlock_scoreboard(void) {
   lock.l_start = 0;
   lock.l_len = 0;
 
+  pr_trace_msg("lock", 9, "attempting to write-lock scoreboard fd %d",
+    scoreboard_fd);
+
   while (fcntl(scoreboard_fd, F_SETLKW, &lock) < 0) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
+    pr_trace_msg("lock", 3, "write-lock of scoreboard fd %d failed: %s",
+      scoreboard_fd, strerror(errno));
     return -1;
   }
+
+  pr_trace_msg("lock", 9, "write-lock of scoreboard fd %d successful",
+    scoreboard_fd);
 
   scoreboard_write_locked = TRUE;
   return 0;
