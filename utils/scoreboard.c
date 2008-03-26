@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support (modified for use by external utilities).
  *
- * $Id: scoreboard.c,v 1.10 2008-02-10 02:29:22 castaglia Exp $
+ * $Id: scoreboard.c,v 1.11 2008-03-26 21:13:19 castaglia Exp $
  */
 
 #include "utils.h"
@@ -53,8 +53,8 @@ static int read_scoreboard_header(pr_scoreboard_header_t *header) {
 
     if (errno == EINTR)
       continue;
-    else
-      return -1;
+
+    return -1;
   }
 
   /* Note: these errors will most likely occur only for inetd-run daemons.
@@ -82,10 +82,18 @@ static int rlock_scoreboard(void) {
   lock.l_len = 0;
 
   while (fcntl(util_scoreboard_fd, F_SETLKW, &lock) < 0) {
-    if (errno == EINTR)
+
+    /* It would be nice to try to restart the fcntl(2) in cases where
+     * it is interrupted.  However, that could possibly lead to a tight
+     * loop which leaves the scoreboard file locked, which in turn causes
+     * problems for the proftpd daemon trying to read that scoreboard.
+     *
+     * Instead, only retry the fcntl(2) on EAGAIN, and NOT on EINTR.
+     */
+    if (errno == EAGAIN)
       continue;
-    else
-      return -1;
+
+    return -1;
   }
 
   util_scoreboard_read_locked = TRUE;
@@ -101,7 +109,15 @@ static int unlock_scoreboard(void) {
   lock.l_len = 0;
 
   util_scoreboard_read_locked = FALSE;
-  return fcntl(util_scoreboard_fd, F_SETLK, &lock);
+
+  while (fcntl(util_scoreboard_fd, F_SETLK, &lock) < 0) {
+    if (errno == EAGAIN)
+      continue;
+
+    return -1;
+  }
+
+  return 0;
 }
 
 /* Public routines
@@ -133,7 +149,8 @@ int util_open_scoreboard(int flags) {
    * If so, close the file and error out.  If not, truncate as necessary,
    * and continue.
    */
-  if ((util_scoreboard_fd = open(util_scoreboard_file, flags)) < 0)
+  util_scoreboard_fd = open(util_scoreboard_file, flags);
+  if (util_scoreboard_fd < 0)
     return -1;
 
   if (fstat(util_scoreboard_fd, &st) < 0) {
@@ -150,7 +167,8 @@ int util_open_scoreboard(int flags) {
   }
 
   /* Check the header of this scoreboard file. */
-  if ((res = read_scoreboard_header(&util_header)) < 0)
+  res = read_scoreboard_header(&util_header);
+  if (res < 0)
     return res;
 
   return 0;

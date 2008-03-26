@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.34 2008-02-10 02:29:22 castaglia Exp $
+ * $Id: scoreboard.c,v 1.35 2008-03-26 21:13:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -121,9 +121,9 @@ static int rlock_scoreboard(void) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
+    }
 
-    } else
-      return -1;
+    return -1;
   }
 
   scoreboard_read_locked = TRUE;
@@ -140,9 +140,9 @@ static int unlock_entry(void) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
+    }
 
-    } else
-      return -1;
+    return -1;
   }
 
   return 0;
@@ -157,7 +157,17 @@ static int unlock_scoreboard(void) {
   lock.l_len = 0;
 
   scoreboard_read_locked = scoreboard_write_locked = FALSE;
-  return fcntl(scoreboard_fd, F_SETLK, &lock);
+
+  while (fcntl(scoreboard_fd, F_SETLK, &lock) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+    }
+
+    return -1;
+  }
+
+  return 0;
 }
 
 static int wlock_entry(void) {
@@ -169,9 +179,9 @@ static int wlock_entry(void) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
+    }
 
-    } else
-      return -1;
+    return -1;
   }
 
   return 0;
@@ -189,9 +199,9 @@ static int wlock_scoreboard(void) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
+    }
 
-    } else
-      return -1;
+    return -1;
   }
 
   scoreboard_write_locked = TRUE;
@@ -211,9 +221,9 @@ static int write_entry(void) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
+    }
 
-    } else
-      return -1;
+    return -1;
   }
 
   /* Rewind. */
@@ -222,8 +232,7 @@ static int write_entry(void) {
   return 0;
 }
 
-/* Public routines
- */
+/* Public routines */
 
 int pr_close_scoreboard(void) {
   if (scoreboard_fd == -1)
@@ -236,9 +245,9 @@ int pr_close_scoreboard(void) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
+    }
 
-    } else
-      break;
+    break;
   }
 
   scoreboard_fd = -1;
@@ -253,9 +262,9 @@ void pr_delete_scoreboard(void) {
       if (errno == EINTR) {
         pr_signals_handle();
         continue;
+      }
 
-      } else
-        break;
+      break;
     }
   }
 
@@ -303,9 +312,9 @@ int pr_open_scoreboard(int flags) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
+    }
 
-    } else
-      return -1;
+    return -1;
   }
 
   /* Make certain that the scoreboard mode will be read-only for everyone
@@ -316,9 +325,9 @@ int pr_open_scoreboard(int flags) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
+    }
 
-    } else
-      break;
+    break;
   }
 
   while (fstat(scoreboard_fd, &st) < 0) {
@@ -333,9 +342,9 @@ int pr_open_scoreboard(int flags) {
       if (errno == EINTR) {
         pr_signals_handle();
         continue;
+      }
 
-      } else
-        break;
+      break;
     }
 
     /* Either way, the scoreboard fd should be marked as closed. */
@@ -350,9 +359,9 @@ int pr_open_scoreboard(int flags) {
       if (errno == EINTR) {
         pr_signals_handle();
         continue;
+      }
 
-      } else
-        break;
+      break;
     }
 
     errno = EPERM;
@@ -654,6 +663,8 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
   va_start(ap, pid);
 
   while ((entry_tag = va_arg(ap, int)) != 0) {
+    pr_signals_handle();
+
     switch (entry_tag) {
       case PR_SCORE_USER:
         tmp = va_arg(ap, char *);
@@ -813,9 +824,9 @@ int pr_scoreboard_scrub(void) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
+    }
 
-    } else
-      return -1;
+    return -1;
   }
 
   /* Skip past the scoreboard header. */
@@ -825,6 +836,7 @@ int pr_scoreboard_scrub(void) {
 
   PRIVS_ROOT
   while (read(fd, &sce, sizeof(sce)) == sizeof(sce)) {
+    pr_signals_handle();
 
     /* Check to see if the PID in this entry is valid.  If not, erase
      * the slot.
@@ -845,9 +857,10 @@ int pr_scoreboard_scrub(void) {
         if (errno == EINTR) {
           pr_signals_handle();
           continue;
-        } else
-          pr_log_debug(DEBUG0, "error scrubbing scoreboard: %s",
-            strerror(errno));
+        }
+
+        pr_log_debug(DEBUG0, "error scrubbing scoreboard: %s",
+          strerror(errno));
       }
     }
 
