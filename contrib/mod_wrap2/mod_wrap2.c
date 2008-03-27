@@ -611,7 +611,8 @@ static unsigned char wrap2_match_daemon(char *tok, wrap2_conn_t *conn) {
 }
 
 static unsigned char wrap2_match_list(array_header *list, wrap2_conn_t *conn,
-    unsigned char (*match_token)(), unsigned int list_idx) {
+    unsigned char (*match_token)(char *, wrap2_conn_t *),
+    unsigned int list_idx) {
   register unsigned int i;
   char **tokens = NULL;
 
