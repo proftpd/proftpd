@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.38 2008-03-27 06:24:00 castaglia Exp $
+ * $Id: scoreboard.c,v 1.39 2008-03-27 18:28:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -102,6 +102,29 @@ static int read_scoreboard_header(pr_scoreboard_header_t *sch) {
   return 0;
 }
 
+static const char *get_lock_type(struct flock *lock) {
+  const char *lock_type;
+
+  switch (lock->l_type) {
+    case F_RDLCK:
+      lock_type = "read";
+      break;
+
+    case F_WRLCK:
+      lock_type = "write";
+      break;
+
+    case F_UNLCK:
+      lock_type = "unlock";
+      break;
+
+    default:
+      lock_type = "[unknown]";
+  }
+
+  return lock_type;
+}
+
 static int rlock_scoreboard(void) {
   struct flock lock;
 
@@ -124,8 +147,9 @@ static int rlock_scoreboard(void) {
     if (errno == EACCES) {
       /* Get the PID of the process blocking this lock. */
       if (fcntl(scoreboard_fd, F_GETLK, &lock) == 0) {
-        pr_trace_msg("lock", 3, "process ID %lu has blocking lock on "
-          "scoreboard fd %d", (unsigned long) lock.l_pid, scoreboard_fd);
+        pr_trace_msg("lock", 3, "process ID %lu has blocking %s lock on "
+          "scoreboard fd %d", (unsigned long) lock.l_pid, get_lock_type(&lock),
+          scoreboard_fd);
       }
     }
 
@@ -244,8 +268,9 @@ static int wlock_scoreboard(void) {
     if (errno == EACCES) {
       /* Get the PID of the process blocking this lock. */
       if (fcntl(scoreboard_fd, F_GETLK, &lock) == 0) {
-        pr_trace_msg("lock", 3, "process ID %lu has blocking lock on "
-          "scoreboard fd %d", (unsigned long) lock.l_pid, scoreboard_fd);
+        pr_trace_msg("lock", 3, "process ID %lu has blocking %s lock on "
+          "scoreboard fd %d", (unsigned long) lock.l_pid, get_lock_type(&lock),
+          scoreboard_fd);
       }
     }
 
