@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.36 2008-03-26 22:33:59 castaglia Exp $
+ * $Id: scoreboard.c,v 1.37 2008-03-27 01:00:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -61,16 +61,12 @@ static char *handle_score_str(const char *fmt, va_list cmdap) {
 static int read_scoreboard_header(pr_scoreboard_header_t *sch) {
   int res = 0;
 
-  /* No interruptions, please. */
-  pr_signals_block();
- 
   /* NOTE: reading a struct from a file using read(2) -- bad (in general). */
   while ((res = read(scoreboard_fd, sch, sizeof(pr_scoreboard_header_t))) !=
       sizeof(pr_scoreboard_header_t)) {
     int rd_errno = errno;
 
     if (res == 0) {
-      pr_signals_unblock();
       errno = EIO;
       return -1;
     }
@@ -80,12 +76,9 @@ static int read_scoreboard_header(pr_scoreboard_header_t *sch) {
       continue;
     }
 
-    pr_signals_unblock();
     errno = rd_errno;
     return -1;
   }
-
-  pr_signals_unblock();
 
   /* Note: these errors will most likely occur only for inetd-run daemons.
    * Standalone daemons erase the scoreboard on startup.
