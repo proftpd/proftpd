@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_sql.c,v 1.3 2008-03-27 02:06:55 castaglia Exp $
+ * $Id: mod_wrap2_sql.c,v 1.4 2008-03-27 02:30:21 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -284,7 +284,7 @@ static wrap2_table_t *sqltab_open_cb(pool *parent_pool, char *srcinfo) {
 
   tab->tab_name = pstrcat(tab->tab_pool, "SQL(", srcinfo, ")", NULL);
 
-  tab->tab_data = pcalloc(tab->tab_pool, 2 * sizeof(char));
+  tab->tab_data = pcalloc(tab->tab_pool, 2 * sizeof(char **));
   ((char **) tab->tab_data)[0] = pstrdup(tab->tab_pool, clients_query);
 
   ((char **) tab->tab_data)[1] =
