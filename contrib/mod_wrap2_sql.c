@@ -2,7 +2,7 @@
  * ProFTPD: mod_wrap2_sql -- a mod_wrap2 sub-module for supplying IP-based
  *                           access control data via SQL tables
  *
- * Copyright (c) 2002-2007 TJ Saunders
+ * Copyright (c) 2002-2008 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_sql.c,v 1.2 2007-08-03 14:52:06 castaglia Exp $
+ * $Id: mod_wrap2_sql.c,v 1.3 2008-03-27 02:06:55 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -154,8 +154,10 @@ static array_header *sqltab_fetch_options_cb(wrap2_table_t *sqltab,
   query = ((char **) sqltab->tab_data)[1];
 
   /* The options-query is not necessary.  Skip if not present. */
-  if (!query)
+  if (!query) {
+    destroy_pool(tmp_pool);
     return NULL;
+  }
 
   /* Find the cmdtable for the sql_lookup command. */
   sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_lookup", NULL, NULL);
