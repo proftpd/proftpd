@@ -22,13 +22,17 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_sql.c,v 1.4 2008-03-27 02:30:21 castaglia Exp $
+ * $Id: mod_wrap2_sql.c,v 1.5 2008-03-27 06:04:26 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
 #include "mod_sql.h"
 
 #define MOD_WRAP2_SQL_VERSION		"mod_wrap2_sql/1.0"
+
+#define WRAP2_SQL_NSLOTS		2
+#define WRAP2_SQL_CLIENT_QUERY_IDX	0
+#define WRAP2_SQL_OPTION_QUERY_IDX	1
 
 static cmd_rec *sql_cmd_create(pool *parent_pool, int argc, ...) {
   pool *cmd_pool = NULL;
@@ -71,7 +75,7 @@ static array_header *sqltab_fetch_clients_cb(wrap2_table_t *sqltab,
   /* Allocate a temporary pool for the duration of this read. */
   tmp_pool = make_sub_pool(sqltab->tab_pool);
 
-  query = ((char **) sqltab->tab_data)[0];
+  query = ((char **) sqltab->tab_data)[WRAP2_SQL_CLIENT_QUERY_IDX];
 
   /* Find the cmdtable for the sql_lookup command. */
   sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_lookup", NULL, NULL);
@@ -151,7 +155,7 @@ static array_header *sqltab_fetch_options_cb(wrap2_table_t *sqltab,
   /* Allocate a temporary pool for the duration of this read. */
   tmp_pool = make_sub_pool(sqltab->tab_pool);
 
-  query = ((char **) sqltab->tab_data)[1];
+  query = ((char **) sqltab->tab_data)[WRAP2_SQL_OPTION_QUERY_IDX];
 
   /* The options-query is not necessary.  Skip if not present. */
   if (!query) {
@@ -284,10 +288,11 @@ static wrap2_table_t *sqltab_open_cb(pool *parent_pool, char *srcinfo) {
 
   tab->tab_name = pstrcat(tab->tab_pool, "SQL(", srcinfo, ")", NULL);
 
-  tab->tab_data = pcalloc(tab->tab_pool, 2 * sizeof(char **));
-  ((char **) tab->tab_data)[0] = pstrdup(tab->tab_pool, clients_query);
+  tab->tab_data = pcalloc(tab->tab_pool, WRAP2_SQL_NSLOTS * sizeof(char *));
+  ((char **) tab->tab_data)[WRAP2_SQL_CLIENT_QUERY_IDX] =
+    pstrdup(tab->tab_pool, clients_query);
 
-  ((char **) tab->tab_data)[1] =
+  ((char **) tab->tab_data)[WRAP2_SQL_OPTION_QUERY_IDX] =
     (options_query ? pstrdup(tab->tab_pool, options_query) : NULL);
 
   /* Set the necessary callbacks. */
