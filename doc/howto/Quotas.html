@@ -1,4 +1,4 @@
-<!-- $Id: Quotas.html,v 1.4 2007-06-18 21:45:47 castaglia Exp $ -->
+<!-- $Id: Quotas.html,v 1.5 2008-04-01 01:15:57 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Quotas.html,v $ -->
 
 <html>
@@ -263,8 +263,9 @@ to handle the specifics of storage formats.  Every backend module
 
 <p><a name="QuotasGroupQuotas" title="#QuotasGroupQuotas"></a>
 <font color=red>Question</font>: How do group quotas work?  If a user is in multiple groups, what happens?<br>
-<font color=blue>Answer</font>: The <code>mod_quotatab</code> module searches
-for applicable quotas, by type, in the following order:
+<font color=blue>Answer</font>: The <code>mod_quotatab</code> module
+<a href="../contrib/mod_quotatab.html#QuotaLookup">searches</a> for applicable
+quotas, by type, in the following order:
 <ul>
   <li>user quotas
   <li>group quotas
@@ -288,7 +289,7 @@ from the auth module providing them, <i>e.g.</i> <code>mod_sql</code>,
 
 <p>
 <hr>
-<i>$Date: 2007-06-18 21:45:47 $</i><br>
+<i>$Date: 2008-04-01 01:15:57 $</i><br>
 
 </body>
 </html>
