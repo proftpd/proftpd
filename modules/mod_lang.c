@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.7 2008-04-03 01:34:18 castaglia Exp $
+ * $Id: mod_lang.c,v 1.8 2008-04-03 02:33:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -360,9 +360,24 @@ static void lang_restart_ev(const void *event_data, void *user_data) {
  */
 
 static int lang_init(void) {
+  char *curr_locale;
+
+  curr_locale = setlocale(LC_ALL, NULL);
+
   if (setlocale(LC_ALL, "") == NULL) {
-    pr_log_pri(PR_LOG_NOTICE, "unable to set LC_ALL: %s", strerror(errno));
-    return -1;
+    if (errno == ENOENT) {
+      /* The site may have an unknown/bad LC_ALL environment variable set.
+       * Report this, and fall back to using "C" as the locale.
+       */
+      pr_log_pri(PR_LOG_NOTICE,
+        "unknown/unsupported LC_ALL '%s' in effect, switching to LC_ALL 'C'",
+        curr_locale);
+      setlocale(LC_ALL, "C");
+
+    } else {
+      pr_log_pri(PR_LOG_NOTICE, "unable to set LC_ALL: %s", strerror(errno));
+      return -1;
+    }
   }
 
   /* Preserve the POSIX/portable handling of number formatting; local
