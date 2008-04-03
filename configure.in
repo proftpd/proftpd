@@ -2006,7 +2006,7 @@ test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
 AC_DEFINE_UNQUOTED(PR_CONFIG_DIR, "`eval echo "${sysconfdir}"`")
 AC_DEFINE_UNQUOTED(PR_INCLUDE_DIR, "`eval echo "${includedir}"`")
 AC_DEFINE_UNQUOTED(PR_LIBEXEC_DIR, "`eval echo "${libexecdir}"`")
-AC_DEFINE_UNQUOTED(PR_LOCALE_DIR, "`eval echo "${datadir}/locale"`")
+AC_DEFINE_UNQUOTED(PR_LOCALE_DIR, "`eval echo "${datadir}"`/locale")
 AC_DEFINE_UNQUOTED(PR_RUN_DIR, "`eval echo "${localstatedir}/proftpd"`")
 AC_DEFINE_UNQUOTED(PR_CONFIG_FILE_PATH, "`eval echo "${sysconfdir}/proftpd.conf"`")
 AC_DEFINE_UNQUOTED(PR_PID_FILE_PATH, "`eval echo "${localstatedir}/proftpd.pid"`")
