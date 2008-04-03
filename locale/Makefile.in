@@ -51,5 +51,4 @@ clean:
 
 # Specific languages
 en_US:
-	-$(MSGINIT) --no-translator --sort-by-file -i $(PACKAGE).pot -o $@.po -l $@
-	-$(MSGFMT) $@.po -o $@.mo
+	-$(MSGINIT) --no-translator -i $(PACKAGE).pot -o $@.po -l $@ && $(MSGFMT) $@.po -o $@.mo
