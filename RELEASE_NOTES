@@ -77,6 +77,8 @@ files.
 
       TransferPriority
 
+      UseEncoding
+
   + New contrib scripts:
 
       Added contrib/ftpmail, a Perl script which reads a TransferLog FIFO and
@@ -113,6 +115,8 @@ files.
         This directive is NOT recommended, and relies on a "special
         dynamic configuration" which is very confusing to users.  It will
         be removed in the 1.3.3 ProFTPD release cycle.
+
+      UseUTF8
 
   + New modules:
 
@@ -181,4 +185,4 @@ files.
         Added instructions on how to use OpenSSL in FIPS mode.
 
 
-Last Updated: $Date: 2008-03-17 16:32:53 $
+Last Updated: $Date: 2008-04-03 01:54:13 $
