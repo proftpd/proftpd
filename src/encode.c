@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.3 2008-04-03 03:18:31 castaglia Exp $
+ * $Id: encode.c,v 1.4 2008-04-03 03:21:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -93,7 +93,7 @@ static void set_supports_telnet_iac(const char *codeset) {
     supports_telnet_iac = FALSE;
   }
 
-  supports_telnet_iac = FALSE;
+  supports_telnet_iac = TRUE;
 }
 
 int encode_free(void) {
