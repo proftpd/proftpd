@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.2 2008-04-03 03:14:31 castaglia Exp $
+ * $Id: encode.c,v 1.3 2008-04-03 03:18:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -79,8 +79,17 @@ static int str_convert(iconv_t conv, char *inbuf, size_t *inbuflen,
 #endif /* !HAVE_ICONV_H */
 
 static void set_supports_telnet_iac(const char *codeset) {
+
+  /* The full list of character sets which use 0xFF could be obtained from
+   * the libiconv sources; for now, this list should contain the most
+   * commonly used character sets.
+   */
+
   if (strcasecmp(codeset, "CP1251") == 0 ||
-      strcasecmp(codeset, "CP866") == 0) {
+      strcasecmp(codeset, "CP866") == 0 ||
+      strcasecmp(codeset, "ISO-8859-1") == 0 ||
+      strcasecmp(codeset, "KOI8-R") == 0 ||
+      strcasecmp(codeset, "WINDOWS-1251") == 0) {
     supports_telnet_iac = FALSE;
   }
 
