@@ -36761,7 +36761,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 cat >>confdefs.h <<_ACEOF
-#define PR_LOCALE_DIR "`eval echo "${datadir}/locale"`"
+#define PR_LOCALE_DIR "`eval echo "${datadir}"`/locale"
 _ACEOF
 
 cat >>confdefs.h <<_ACEOF
