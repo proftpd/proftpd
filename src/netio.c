@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.32 2008-01-23 16:59:04 castaglia Exp $
+ * $Id: netio.c,v 1.33 2008-04-03 03:14:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -947,17 +947,20 @@ char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
 
 char *pr_netio_telnet_gets(char *buf, size_t buflen,
     pr_netio_stream_t *in_nstrm, pr_netio_stream_t *out_nstrm) {
-
   char *bp = buf;
   unsigned char cp;
   static unsigned char mode = 0;
-  int toread;
+  int toread, handle_iac = TRUE;
   pr_buffer_t *pbuf = NULL;
 
   if (buflen == 0) {
     errno = EINVAL;
     return NULL;
   }
+
+#ifdef PR_USE_NLS
+  handle_iac = pr_encode_supports_telnet_iac();
+#endif /* PR_USE_NLS */
 
   buflen--;
 
@@ -994,45 +997,47 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
       cp = *pbuf->current++;
       pbuf->remaining++;
 
-      switch (mode) {
-        case IAC:
-          switch (cp) {
-            case WILL:
-            case WONT:
-            case DO:
-            case DONT:
+      if (handle_iac == TRUE) {
+        switch (mode) {
+          case IAC:
+            switch (cp) {
+              case WILL:
+              case WONT:
+              case DO:
+              case DONT:
+                mode = cp;
+                continue;
+
+              case IAC:
+                mode = 0;
+                break;
+
+              default:
+                /* Ignore */
+                mode = 0;
+                continue;
+            }
+            break;
+
+          case WILL:
+          case WONT:
+            pr_netio_printf(out_nstrm, "%c%c%c", IAC, DONT, cp);
+            mode = 0;
+            continue;
+
+          case DO:
+          case DONT:
+            pr_netio_printf(out_nstrm, "%c%c%c", IAC, WONT, cp);
+            mode = 0;
+            continue;
+
+          default:
+            if (cp == IAC) {
               mode = cp;
               continue;
-
-            case IAC:
-              mode = 0;
-              break;
-
-            default:
-              /* Ignore */
-              mode = 0;
-              continue;
-          }
-          break;
-
-        case WILL:
-        case WONT:
-          pr_netio_printf(out_nstrm, "%c%c%c", IAC, DONT, cp);
-          mode = 0;
-          continue;
-
-        case DO:
-        case DONT:
-          pr_netio_printf(out_nstrm, "%c%c%c", IAC, WONT, cp);
-          mode = 0;
-          continue;
-
-        default:
-          if (cp == IAC) {
-            mode = cp;
-            continue;
-          }
-          break;
+            }
+            break;
+        }
       }
 
       *bp++ = cp;

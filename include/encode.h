@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.h,v 1.1 2008-04-03 01:34:18 castaglia Exp $
+ * $Id: encode.h,v 1.2 2008-04-03 03:14:31 castaglia Exp $
  */
 
 #ifndef PR_ENCODE_H
@@ -65,6 +65,15 @@ const char *pr_encode_get_encoding(void);
  * Note that -1 will be returned if there was an error (e.g. NULL arguments).
  */
 int pr_encode_is_utf8(const char *codeset);
+
+/* Convenience function which returns TRUE if the current encoding
+ * (i.e. from pr_encode_get_encoding()) supports the Telnet IAC (0xFF)
+ * character, FALSE otherwise.
+ *
+ * Some character sets (e.g. CP1251 for Cyrillic character sets) use that
+ * value for a character.  This breaks RFC959 compliance, unfortunately.
+ */
+int pr_encode_supports_telnet_iac(void);
 
 /* Change the local charset AND encoding being used. */
 int pr_encode_set_charset_encoding(const char *charset, const char *encoding);

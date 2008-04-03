@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.1 2008-04-03 01:34:18 castaglia Exp $
+ * $Id: encode.c,v 1.2 2008-04-03 03:14:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,6 +44,7 @@ static iconv_t encode_conv = (iconv_t) -1;
 
 static const char *local_charset = NULL;
 static const char *encoding = "UTF-8";
+static int supports_telnet_iac = TRUE;
 
 static const char *trace_channel = "encode";
 
@@ -76,6 +77,15 @@ static int str_convert(iconv_t conv, char *inbuf, size_t *inbuflen,
 # endif /* HAVE_ICONV */
 }
 #endif /* !HAVE_ICONV_H */
+
+static void set_supports_telnet_iac(const char *codeset) {
+  if (strcasecmp(codeset, "CP1251") == 0 ||
+      strcasecmp(codeset, "CP866") == 0) {
+    supports_telnet_iac = FALSE;
+  }
+
+  supports_telnet_iac = FALSE;
+}
 
 int encode_free(void) {
 # ifdef HAVE_ICONV
@@ -152,6 +162,7 @@ int encode_init(void) {
     return -1;
   }
 
+  set_supports_telnet_iac(encoding);
   return 0;
 # else
   errno = ENOSYS;
@@ -360,6 +371,10 @@ int pr_encode_is_utf8(const char *codeset) {
   }
 
   return FALSE;
+}
+
+int pr_encode_supports_telnet_iac(void) {
+  return supports_telnet_iac;
 }
 
 #endif /* PR_USE_NLS */

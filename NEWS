@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.908 2008-04-03 02:02:21 castaglia Exp $
+$Id: NEWS,v 1.909 2008-04-03 03:14:30 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -141,6 +141,12 @@ CVS
   bytes/files values.
 - Bug 3056 - Support non-UTF8 encoding and character sets.  See
   doc/modules/mod_lang.html for more information on the UseEncoding directive.
+- Bug 3064 - Better handling of 0xFF character for Cyrillic, non-UTF8 charsets.
+  These character sets use the same value as the Telnet IAC character in
+  the alphabet.  RFC959 states that FTP control messages must support Telnet
+  characters; this requirement causes problems for the character sets.
+  This the RFC959 requirement is relaxed if --enable-nls is used, and if
+  one of the problematic character sets is configured.
 
 1.3.1 - Released 5-Oct-2007
 --------------------------------
