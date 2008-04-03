@@ -9,6 +9,7 @@
 ../include/default_paths.h
 ../include/dirtree.h
 ../include/display.h
+../include/encode.h
 ../include/env.h
 ../include/event.h
 ../include/feat.h
@@ -16,7 +17,6 @@
 ../include/ftp.h
 ../include/glibc-glob.h
 ../include/help.h
-../include/ident.h
 ../include/inet.h
 ../include/libsupp.h
 ../include/log.h
@@ -38,11 +38,11 @@
 ../include/response.h
 ../include/scoreboard.h
 ../include/sets.h
+../include/str.h
 ../include/support.h
 ../include/table.h
 ../include/timers.h
 ../include/trace.h
-../include/utf8.h
 ../include/var.h
 ../include/version.h
 ../include/xferlog.h
@@ -58,6 +58,8 @@
 ../modules/mod_delay.c
 ../modules/mod_dso.c
 ../modules/mod_facl.c
+../modules/mod_facts.c
+../modules/mod_ident.c
 ../modules/mod_lang.c
 ../modules/mod_log.c
 ../modules/mod_ls.c
@@ -72,13 +74,13 @@
 ../src/data.c
 ../src/dirtree.c
 ../src/display.c
+../src/encode.c
 ../src/env.c
 ../src/event.c
 ../src/feat.c
 ../src/fsio.c
 ../src/ftpdctl.c
 ../src/help.c
-../src/ident.c
 ../src/inet.c
 ../src/lastlog.c
 ../src/log.c
@@ -96,10 +98,11 @@
 ../src/response.c
 ../src/scoreboard.c
 ../src/sets.c
+../src/str.c
 ../src/support.c
 ../src/table.c
 ../src/timers.c
 ../src/trace.c
-../src/utf8.c
 ../src/var.c
+../src/version.c
 ../src/xferlog.c
