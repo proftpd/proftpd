@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.15 2007-09-27 16:04:11 castaglia Exp $
+ * $Id: trace.c,v 1.16 2008-04-03 01:34:18 castaglia Exp $
  */
 
 
@@ -46,6 +46,7 @@ static const char *trace_channels[] = {
   "delay",
   "dns",
   "dso",
+  "encode",
   "event",
   "facl",
   "fsio",
@@ -61,7 +62,6 @@ static const char *trace_channels[] = {
   "response",
   "site",
   "timer",
-  "utf8",
   "var",
   "xfer",
   NULL

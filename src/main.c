@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.327 2008-03-15 19:12:45 castaglia Exp $
+ * $Id: main.c,v 1.328 2008-04-03 01:34:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -868,10 +868,6 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
 
     free_bindings();
 
-#ifdef PR_USE_NLS
-    utf8_free();
-#endif /* PR_USE_NLS */
-
     /* Run through the list of registered restart callbacks. */
     pr_event_generate("core.restart", NULL);
 
@@ -879,11 +875,11 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
     init_class();
     init_config();
 
-    pr_netaddr_clear_cache();
-
 #ifdef PR_USE_NLS
-    utf8_init();
+    encode_free();
 #endif /* PR_USE_NLS */
+
+    pr_netaddr_clear_cache();
 
     pr_parser_prepare(NULL, NULL);
 
@@ -896,11 +892,16 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
       end_login(1);
     }
     PRIVS_RELINQUISH
+
     if (pr_parser_cleanup() < 0) {
       pr_log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s': "
        "unclosed configuration section", config_filename);
       end_login(1);
     }
+
+#ifdef PR_USE_NLS
+    encode_init();
+#endif /* PR_USE_NLS */
 
     /* After configuration is complete, make sure that passwd, group
      * aren't held open (unnecessary fds for master daemon)
@@ -2777,10 +2778,6 @@ int main(int argc, char *argv[], char **envp) {
   init_ctrls();
 #endif /* PR_USE_CTRLS */
 
-#ifdef PR_USE_NLS
-  utf8_init();
-#endif /* PR_USE_NLS */
-
   var_init();
   modules_init();
 
@@ -2814,6 +2811,10 @@ int main(int argc, char *argv[], char **envp) {
       config_filename);
     exit(1);
   }
+
+#ifdef PR_USE_NLS
+  encode_init();
+#endif /* PR_USE_NLS */
 
   pr_event_generate("core.postparse", NULL);
 

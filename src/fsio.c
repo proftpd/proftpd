@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.66 2008-02-20 21:59:38 castaglia Exp $
+ * $Id: fsio.c,v 1.67 2008-04-03 01:34:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -84,8 +84,8 @@ static unsigned char chk_fs_map = FALSE;
 static char vwd[PR_TUNABLE_PATH_MAX + 1] = "/";
 static char cwd[PR_TUNABLE_PATH_MAX + 1] = "/";
 
-/* Runtime enabling/disabling of UTF8 handling of paths. */
-static int use_utf8 = TRUE;
+/* Runtime enabling/disabling of encoding of paths. */
+static int use_encoding = TRUE;
 
 /* The following static functions are simply wrappers for system functions
  */
@@ -1928,9 +1928,9 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
   sstrncpy(buf, workpath, buflen);
 }
 
-int pr_fs_use_utf8(int bool) {
-  int curr_setting = use_utf8;
-  use_utf8 = bool;
+int pr_fs_use_encoding(int bool) {
+  int curr_setting = use_encoding;
+  use_encoding = bool;
 
   return curr_setting;
 }
@@ -1940,18 +1940,18 @@ char *pr_fs_decode_path(pool *p, const char *path) {
   size_t outlen;
   char *res;
 
-  if (!use_utf8) {
+  if (!use_encoding) {
     return (char *) path;
   }
 
-  res = pr_utf8_decode(p, path, strlen(path) + 1, &outlen);
+  res = pr_decode_str(p, path, strlen(path) + 1, &outlen);
   if (!res) {
-    pr_trace_msg("utf8", 0, "error UTF8 decoding path '%s': %s", path,
+    pr_trace_msg("encode", 0, "error decoding path '%s': %s", path,
       strerror(errno));
     return (char *) path;
   }
 
-  pr_trace_msg("utf8", 5, "UTF8-decoded '%s' into '%s'", path, res);
+  pr_trace_msg("encode", 5, "decoded '%s' into '%s'", path, res);
   return res;
 #else
   return (char *) path;
@@ -1963,18 +1963,18 @@ char *pr_fs_encode_path(pool *p, const char *path) {
   size_t outlen;
   char *res;
 
-  if (!use_utf8) {
+  if (!use_encoding) {
     return (char *) path;
   }
 
-  res = pr_utf8_encode(p, path, strlen(path) + 1, &outlen);
+  res = pr_encode_str(p, path, strlen(path) + 1, &outlen);
   if (!res) {
-    pr_trace_msg("utf8", 0, "error UTF8 encoding path '%s': %s", path,
+    pr_trace_msg("encode", 0, "error encoding path '%s': %s", path,
       strerror(errno));
     return (char *) path;
   }
 
-  pr_trace_msg("utf8", 5, "UTF8-encoded '%s' into '%s'", path, res);
+  pr_trace_msg("encode", 5, "encoded '%s' into '%s'", path, res);
   return res;
 #else
   return (char *) path;
