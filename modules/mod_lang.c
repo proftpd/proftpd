@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.10 2008-04-04 01:12:12 castaglia Exp $
+ * $Id: mod_lang.c,v 1.11 2008-04-04 17:21:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -67,7 +67,7 @@ static int lang_set_locale(const char *locale) {
 
   } else {
     pr_log_debug(DEBUG4, MOD_LANG_VERSION ": using messages from '%s' locale",
-      locale);
+      *locale ? locale : curr_locale);
   }
 
   /* Preserve the POSIX/portable handling of number formatting; local
@@ -400,6 +400,16 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
         end_login(1);
       }
     }
+
+  } else {
+    /* No explicit default language configured; rely on the environment
+     * variables.
+     */
+    if (lang_set_locale("") < 0) {
+      pr_log_pri(PR_LOG_WARNING, MOD_LANG_VERSION
+        ": unable to use LC_ALL value for locale: %s", strerror(errno));
+      end_login(1);
+    }
   }
 }
 
@@ -415,11 +425,6 @@ static void lang_restart_ev(const void *event_data, void *user_data) {
  */
 
 static int lang_init(void) {
-
-  /* By default, honor the LC_ALL environment variable et al. */
-  if (lang_set_locale("") < 0)
-    return -1;
-
   lang_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(lang_pool, MOD_LANG_VERSION);
 
