@@ -1551,7 +1551,7 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
     if (msg != NULL)
       msg = sreplace(cmd->tmp_pool, msg, "%u", user, NULL);
 
-    pr_response_send(R_530, msg ? msg : "Access denied");
+    pr_response_send(R_530, msg ? msg : _("Access denied"));
     end_login(0);
   }
 

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -71,9 +71,9 @@ static void add_readme_response(pool *p, const char *file) {
       *tptr = '\0';
     }
     
-    pr_response_add(R_DUP, "Please read the file %s", file);
-    pr_response_add(R_DUP, "   it was last modified on %.26s - %i day%s ago",
-		 ctime_str, days, days == 1 ? "" : "s" );
+    pr_response_add(R_DUP, _("Please read the file %s"), file);
+    pr_response_add(R_DUP, _("   it was last modified on %.26s - %i %s ago"),
+		 ctime_str, days, days == 1 ? _("day") : _("days"));
   }
 }
 
@@ -89,13 +89,13 @@ static void add_pattern_response(pool *p, const char *pattern) {
       path++;
     }
   } else if (a == GLOB_NOSPACE)
-    pr_response_add(R_226, "Out of memory during globbing of %s", pattern);
+    pr_response_add(R_226, _("Out of memory during globbing of %s"), pattern);
 
   else if (a == GLOB_ABORTED)
-    pr_response_add(R_226, "Read error during globbing of %s", pattern);
+    pr_response_add(R_226, _("Read error during globbing of %s"), pattern);
 
   else if (a != GLOB_NOMATCH)
-    pr_response_add(R_226, "Unknown error during globbing of %s", pattern);
+    pr_response_add(R_226, _("Unknown error during globbing of %s"), pattern);
   
   pr_fs_globfree(&g);
 }

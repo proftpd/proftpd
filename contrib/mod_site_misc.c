@@ -22,7 +22,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.5 2007-12-12 21:23:36 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.6 2008-04-04 17:47:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -249,7 +249,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
     authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
 
     if (!authenticated || *authenticated == FALSE) {
-      pr_response_add_err(R_530, "Please login with USER and PASS");
+      pr_response_add_err(R_530, _("Please login with USER and PASS"));
       return PR_ERROR(cmd);
     }
 
@@ -273,7 +273,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    pr_response_add(R_200, "SITE %s command successful", cmd->argv[1]);
+    pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[1]);
     return PR_HANDLED(cmd);
   }
 
@@ -298,7 +298,7 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
     authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
 
     if (!authenticated || *authenticated == FALSE) {
-      pr_response_add_err(R_530, "Please login with USER and PASS");
+      pr_response_add_err(R_530, _("Please login with USER and PASS"));
       return PR_ERROR(cmd);
     }
 
@@ -317,7 +317,7 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    pr_response_add(R_200, "SITE %s command successful", cmd->argv[1]);
+    pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[1]);
     return PR_HANDLED(cmd);
   } 
 
@@ -341,7 +341,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
 
     if (!authenticated || *authenticated == FALSE) {
-      pr_response_add_err(R_530, "Please login with USER and PASS");
+      pr_response_add_err(R_530, _("Please login with USER and PASS"));
       return PR_ERROR(cmd);
     }
 
@@ -369,7 +369,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    pr_response_add(R_200, "SITE %s command successful", cmd->argv[1]);
+    pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[1]);
     return PR_HANDLED(cmd);
   } 
 
@@ -398,7 +398,7 @@ MODRET site_misc_utime(cmd_rec *cmd) {
 
     if (!authenticated ||
         *authenticated == FALSE) {
-      pr_response_add_err(R_530, "Please login with USER and PASS");
+      pr_response_add_err(R_530, _("Please login with USER and PASS"));
       return PR_ERROR(cmd);
     }
 
@@ -514,7 +514,7 @@ MODRET site_misc_utime(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
  
-    pr_response_add(R_200, "SITE %s command successful", cmd->argv[1]);
+    pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[1]);
     return PR_HANDLED(cmd);
   }
 

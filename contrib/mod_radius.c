@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_radius -- a module for RADIUS authentication and accounting
  *
- * Copyright (c) 2001-2007 TJ Saunders
+ * Copyright (c) 2001-2008 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.46 2007-10-13 01:47:57 castaglia Exp $
+ * $Id: mod_radius.c,v 1.47 2008-04-04 17:47:50 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9"
@@ -2653,7 +2653,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
   if (!user) {
     radius_log("missing prerequisite USER command, declining to handle PASS");
-    pr_response_add_err(R_503, "Login with " C_USER " first");
+    pr_response_add_err(R_503, _("Login with USER first"));
     return PR_ERROR(cmd);
   }
 

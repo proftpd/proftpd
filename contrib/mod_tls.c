@@ -4224,7 +4224,8 @@ MODRET tls_any(cmd_rec *cmd) {
           strcmp(cmd->argv[0], C_ACCT) == 0) {
         tls_log("SSL/TLS required but absent for authentication, "
           "denying %s command", cmd->argv[0]);
-        pr_response_add_err(R_550, "SSL/TLS required on the control channel");
+        pr_response_add_err(R_550,
+          _("SSL/TLS required on the control channel"));
         return PR_ERROR(cmd);
       }
     }
@@ -4236,7 +4237,7 @@ MODRET tls_any(cmd_rec *cmd) {
     if (!(tls_opts & TLS_OPT_ALLOW_PER_USER)) {
       tls_log("SSL/TLS required but absent on control channel, "
         "denying %s command", cmd->argv[0]);
-      pr_response_add_err(R_550, "SSL/TLS required on the control channel");
+      pr_response_add_err(R_550, _("SSL/TLS required on the control channel"));
       return PR_ERROR(cmd);
 
     } else {
@@ -4245,7 +4246,8 @@ MODRET tls_any(cmd_rec *cmd) {
           *tls_authenticated == TRUE) {
         tls_log("SSL/TLS required but absent on control channel, "
           "denying %s command", cmd->argv[0]);
-        pr_response_add_err(R_550, "SSL/TLS required on the control channel");
+        pr_response_add_err(R_550,
+          _("SSL/TLS required on the control channel"));
         return PR_ERROR(cmd);
       }
     }
@@ -4261,7 +4263,7 @@ MODRET tls_any(cmd_rec *cmd) {
         strcmp(cmd->argv[0], C_STOU) == 0) {
       tls_log("SSL/TLS required but absent on data channel, "
         "denying %s command", cmd->argv[0]);
-      pr_response_add_err(R_550, "SSL/TLS required on the data channel");
+      pr_response_add_err(R_550, _("SSL/TLS required on the data channel"));
       return PR_ERROR(cmd);
     }
   }
@@ -4280,13 +4282,13 @@ MODRET tls_auth(cmd_rec *cmd) {
    */
 
   if (cmd->argc < 2) {
-    pr_response_add_err(R_504, "AUTH requires at least one argument");
+    pr_response_add_err(R_504, _("AUTH requires at least one argument"));
     return PR_ERROR(cmd);
   }
 
   if (tls_flags & TLS_SESS_HAVE_CCC) {
     tls_log("Unwilling to accept AUTH after CCC for this session");
-    pr_response_add_err(R_534, "Unwilling to accept security parameters");
+    pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
     return PR_ERROR(cmd);
   }
 
@@ -4296,7 +4298,7 @@ MODRET tls_auth(cmd_rec *cmd) {
 
   if (strcmp(cmd->argv[1], "TLS") == 0 ||
       strcmp(cmd->argv[1], "TLS-C") == 0) {
-    pr_response_send(R_234, "AUTH %s successful", cmd->argv[1]);
+    pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
 
     tls_log("%s", "TLS/TLS-C requested, starting TLS handshake");
     if (tls_accept(session.c, FALSE) < 0) {
@@ -4309,7 +4311,7 @@ MODRET tls_auth(cmd_rec *cmd) {
        * commands from the client.  In reality, this gibberish is probably
        * more encrypted data from the client.
        */
-      pr_response_add_err(R_550, "TLS handshake failed");
+      pr_response_add_err(R_550, _("TLS handshake failed"));
       return PR_ERROR(cmd);
     }
 
@@ -4324,7 +4326,7 @@ MODRET tls_auth(cmd_rec *cmd) {
 
   } else if (strcmp(cmd->argv[1], "SSL") == 0 ||
      strcmp(cmd->argv[1], "TLS-P") == 0) {
-    pr_response_send(R_234, "AUTH %s successful", cmd->argv[1]);
+    pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
 
     tls_log("%s", "SSL/TLS-P requested, starting TLS handshake");
     if (tls_accept(session.c, FALSE) < 0) {
@@ -4337,7 +4339,7 @@ MODRET tls_auth(cmd_rec *cmd) {
        * commands from the client.  In reality, this gibberish is probably
        * more encrypted data from the client.
        */
-      pr_response_add_err(R_550, "TLS handshake failed");
+      pr_response_add_err(R_550, _("TLS handshake failed"));
       return PR_ERROR(cmd);
     }
 
@@ -4371,12 +4373,12 @@ MODRET tls_ccc(cmd_rec *cmd) {
 
   if (!(tls_flags & TLS_SESS_ON_CTRL)) {
     pr_response_add_err(R_533,
-      "CCC not allowed on insecure control connection");
+      _("CCC not allowed on insecure control connection"));
     return PR_ERROR(cmd);
   }
 
   if (tls_required_on_ctrl == 1) {
-    pr_response_add_err(R_534, "Unwilling to accept security parameters");
+    pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
     tls_log("%s: unwilling to accept security parameters: "
       "TLSRequired setting does not allow for unprotected control channel",
       cmd->argv[0]);
@@ -4385,7 +4387,7 @@ MODRET tls_ccc(cmd_rec *cmd) {
 
   /* Check for <Limit> restrictions. */
   if (!dir_check(cmd->tmp_pool, C_CCC, G_NONE, session.cwd, NULL)) {
-    pr_response_add_err(R_534, "Unwilling to accept security parameters");
+    pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
     tls_log("%s: unwilling to accept security parameters", cmd->argv[0]);
     return PR_ERROR(cmd);
   }
@@ -4395,7 +4397,7 @@ MODRET tls_ccc(cmd_rec *cmd) {
   /* Send the OK response asynchronously; the spec dictates that the
    * response be sent prior to performing the SSL session shutdown.
    */
-  pr_response_send_async(R_200, "Clearing control channel protection");
+  pr_response_send_async(R_200, _("Clearing control channel protection"));
 
   /* Close the SSL session, but only one the control channel.
    * The data channel, if protected, should remain so.
@@ -4424,15 +4426,15 @@ MODRET tls_pbsz(cmd_rec *cmd) {
 
   if (!(tls_flags & TLS_SESS_ON_CTRL)) {
     pr_response_add_err(R_503,
-      "PBSZ not allowed on insecure control connection");
+      _("PBSZ not allowed on insecure control connection"));
     return PR_ERROR(cmd);
   }
 
   /* We expect "PBSZ 0" */
   if (strcmp(cmd->argv[1], "0") == 0)
-    pr_response_add(R_200, "PBSZ 0 successful");
+    pr_response_add(R_200, _("PBSZ 0 successful"));
   else
-    pr_response_add(R_200, "PBSZ=0 successful");
+    pr_response_add(R_200, _("PBSZ=0 successful"));
 
   tls_flags |= TLS_SESS_PBSZ_OK;
   return PR_HANDLED(cmd);
@@ -4493,18 +4495,19 @@ MODRET tls_prot(cmd_rec *cmd) {
   if (!(tls_flags & TLS_SESS_ON_CTRL) &&
       !(tls_flags & TLS_SESS_HAVE_CCC)) {
     pr_response_add_err(R_503,
-      "PROT not allowed on insecure control connection");
+      _("PROT not allowed on insecure control connection"));
     return PR_ERROR(cmd);
   }
 
   if (!(tls_flags & TLS_SESS_PBSZ_OK)) {
-    pr_response_add_err(R_503, "You must issue the PBSZ command prior to PROT");
+    pr_response_add_err(R_503,
+      _("You must issue the PBSZ command prior to PROT"));
     return PR_ERROR(cmd);
   }
 
   /* Check for <Limit> restrictions. */
   if (!dir_check(cmd->tmp_pool, C_PROT, G_NONE, session.cwd, NULL)) {
-    pr_response_add_err(R_534, "Unwilling to accept security parameters");
+    pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
     tls_log("%s: denied by <Limit> configuration", cmd->argv[0]);
     return PR_ERROR(cmd);
   }
@@ -4522,7 +4525,7 @@ MODRET tls_prot(cmd_rec *cmd) {
       tls_log("%s", mesg);
 
     } else {
-      pr_response_add_err(R_534, "Unwilling to accept security parameters");
+      pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
       tls_log("%s: TLSRequired requires protection for data transfers",
         cmd->argv[0]);
       tls_log("%s: unwilling to accept security parameter (%s)", cmd->argv[0],
@@ -4542,7 +4545,7 @@ MODRET tls_prot(cmd_rec *cmd) {
       tls_log("%s", mesg);
 
     } else {
-      pr_response_add_err(R_534, "Unwilling to accept security parameters");
+      pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
       tls_log("%s: TLSRequired does not allow protection for data transfers",
         cmd->argv[0]);
       tls_log("%s: unwilling to accept security parameter (%s)", cmd->argv[0],
@@ -4552,7 +4555,7 @@ MODRET tls_prot(cmd_rec *cmd) {
 
   } else if (strcmp(cmd->argv[1], "S") == 0 ||
              strcmp(cmd->argv[1], "E") == 0) {
-    pr_response_add_err(R_536, "PROT %s unsupported", cmd->argv[1]);
+    pr_response_add_err(R_536, _("PROT %s unsupported"), cmd->argv[1]);
 
     /* By the time the logic reaches this point, there must have been
      * an SSL/TLS session negotiated; other AUTH mechanisms will handle
@@ -4565,7 +4568,7 @@ MODRET tls_prot(cmd_rec *cmd) {
     return PR_ERROR(cmd);
 
   } else {
-    pr_response_add_err(R_504, "PROT %s unsupported", cmd->argv[1]);
+    pr_response_add_err(R_504, _("PROT %s unsupported"), cmd->argv[1]);
     return PR_ERROR(cmd);
   }
 
