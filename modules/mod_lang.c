@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.8 2008-04-03 02:33:29 castaglia Exp $
+ * $Id: mod_lang.c,v 1.9 2008-04-04 01:01:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,6 +44,39 @@ static pr_table_t *lang_tab = NULL;
 
 /* Support routines
  */
+
+static int lang_set_locale(const char *locale) {
+  char *curr_locale;
+
+  curr_locale = setlocale(LC_ALL, NULL);
+
+  if (setlocale(LC_ALL, "") == NULL) {
+    if (errno == ENOENT) {
+      /* The site may have an unknown/bad LC_ALL environment variable set.
+       * Report this, and fall back to using "C" as the locale.
+       */
+      pr_log_pri(PR_LOG_NOTICE,
+        "unknown/unsupported LC_ALL '%s' in effect, switching to LC_ALL 'C'",
+        curr_locale);
+      setlocale(LC_ALL, "C");
+
+    } else {
+      pr_log_pri(PR_LOG_NOTICE, "unable to set LC_ALL: %s", strerror(errno));
+      return -1;
+    }
+  }
+
+  /* Preserve the POSIX/portable handling of number formatting; local
+   * formatting of decimal points, for example, can cause problems with
+   * numbers in SQL queries.
+   */
+  if (setlocale(LC_NUMERIC, "C") == NULL) {
+    pr_log_pri(PR_LOG_NOTICE, "unable to set LC_NUMERIC: %s",
+      strerror(errno));
+  }
+
+  return 0;
+}
 
 static int lang_supported(const char *lang) {
   if (strcmp(lang, "en") != 0)
@@ -85,7 +118,15 @@ MODRET set_langengine(cmd_rec *cmd) {
 
 /* usage: LangPath path */
 MODRET set_langpath(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
+
+  if (pr_fs_valid_path(cmd->argv[1]) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use path '",
+      cmd->argv[1], "' for locale files", NULL));
+  }
+
+  (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
 
   return PR_HANDLED(cmd);
 }
@@ -311,12 +352,6 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
 
   c = find_config(main_server->conf, CONF_PARAM, "LangPath", FALSE);
   if (c) {
-
-    /* XXX How to make the configured path exported to any interested
-     * callers, e.g. modules that need to call bindtextdomain() for
-     * their own catalogs?
-     */
-
     lang_path = c->argv[0];
   }
 
@@ -328,7 +363,12 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
     pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
       ": unable to bind to text domain 'proftpd' using locale path '%s': %s",
       lang_path, strerror(errno));
+
+  } else {
+    pr_log_debug(DEBUG4, MOD_LANG_VERSION ": using locale files in '%s'",
+      locale_path);
   }
+
 #else
   pr_log_debug(DEBUG2, MOD_LANG_VERSION
     ": unable to bind to text domain 'proftpd', lacking libintl support");
@@ -341,10 +381,25 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
 
   c = find_config(main_server->conf, CONF_PARAM, "LangDefault", FALSE);
   if (c) {
+    char *locale = c->argv[0];
 
-    /* If the selected default language is not in LangPath,
-     * default to "en".
-     */
+    /* If the selected default language is not in LangPath, use the default. */
+    if (lang_set_locale(locale) < 0) {
+      pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
+        ": unable to use LangDefault '%s': %s", locale, strerror(errno));
+      pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
+        ": using LC_ALL environment variable value instead");
+
+      if (lang_set_locale("") < 0) {
+        pr_log_pri(PR_LOG_WARNING, MOD_LANG_VERSION
+          ": unable to use LC_ALL value for locale: %s", strerror(errno));
+        end_login(1);
+      }
+
+    } else {
+      pr_log_debug(DEBUG5, MOD_LANG_VERSION
+        ": using messages for '%s' locale", locale);
+    }
   }
 }
 
@@ -360,34 +415,10 @@ static void lang_restart_ev(const void *event_data, void *user_data) {
  */
 
 static int lang_init(void) {
-  char *curr_locale;
 
-  curr_locale = setlocale(LC_ALL, NULL);
-
-  if (setlocale(LC_ALL, "") == NULL) {
-    if (errno == ENOENT) {
-      /* The site may have an unknown/bad LC_ALL environment variable set.
-       * Report this, and fall back to using "C" as the locale.
-       */
-      pr_log_pri(PR_LOG_NOTICE,
-        "unknown/unsupported LC_ALL '%s' in effect, switching to LC_ALL 'C'",
-        curr_locale);
-      setlocale(LC_ALL, "C");
-
-    } else {
-      pr_log_pri(PR_LOG_NOTICE, "unable to set LC_ALL: %s", strerror(errno));
-      return -1;
-    }
-  }
-
-  /* Preserve the POSIX/portable handling of number formatting; local
-   * formatting of decimal points, for example, can cause problems with
-   * numbers in SQL queries.
-   */
-  if (setlocale(LC_NUMERIC, "C") == NULL) {
-    pr_log_pri(PR_LOG_NOTICE, "unable to set LC_NUMERIC: %s",
-      strerror(errno));
-  }
+  /* By default, honor the LC_ALL environment variable et al. */
+  if (lang_set_locale("") < 0)
+    return -1;
 
   lang_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(lang_pool, MOD_LANG_VERSION);
