@@ -1,4 +1,7 @@
 configure
 Makefile
+config.log
+config.status
+mod_wrap2.h
 *.o
 *~
