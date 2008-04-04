@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.32 2008-04-04 17:47:50 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.33 2008-04-04 21:13:38 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -160,15 +160,15 @@ static char *quota_display_bytes(pool *p, double bytes_used,
 
   switch (xfer_type) {
     case IN:
-      xferstr = "upload";
+      xferstr = _("upload");
       break;
 
     case OUT:
-      xferstr = "download";
+      xferstr = _("download");
       break;
 
     case XFER:
-      xferstr = "transfer";
+      xferstr = _("transfer");
       break;
 
     default:
@@ -179,15 +179,15 @@ static char *quota_display_bytes(pool *p, double bytes_used,
 
     case BYTE:
       /* no manipulation needed */
-      sprintf(display, "%.2f of %.2f %s byte%s", bytes_used, bytes_avail,
-        xferstr, bytes_avail != 1.0 ? "s" : "");
+      sprintf(display, _("%.2f of %.2f %s %s"), bytes_used, bytes_avail,
+        xferstr, bytes_avail != 1.0 ? _("bytes") : _("byte"));
       break;
 
     case KILO:
       /* divide by 1024.0 */
       adj_used = (bytes_used / 1024.0);
       adj_avail = (bytes_avail / 1024.0);
-      sprintf(display, "%.2f of %.2f %s Kb", adj_used, adj_avail, xferstr);
+      sprintf(display, _("%.2f of %.2f %s Kb"), adj_used, adj_avail, xferstr);
 
       break;
 
@@ -195,7 +195,7 @@ static char *quota_display_bytes(pool *p, double bytes_used,
       /* divide by 1024.0 * 1024.0 */
       adj_used = (bytes_used / (1024.0 * 1024.0));
       adj_avail = (bytes_avail / (1024.0 * 1024.0));
-      sprintf(display, "%.2f of %.2f %s Mb", adj_used, adj_avail, xferstr);
+      sprintf(display, _("%.2f of %.2f %s Mb"), adj_used, adj_avail, xferstr);
 
       break;
 
@@ -203,7 +203,7 @@ static char *quota_display_bytes(pool *p, double bytes_used,
       /* divide by 1024.0 * 1024.0 * 1024.0 */
       adj_used = (bytes_used / (1024.0 * 1024.0 * 1024.0));
       adj_avail = (bytes_avail / (1024.0 * 1024.0 * 1024.0));
-      sprintf(display, "%.2f of %.2f %s Gb", adj_used, adj_avail, xferstr);
+      sprintf(display, _("%.2f of %.2f %s Gb"), adj_used, adj_avail, xferstr);
 
       break;
 
@@ -224,23 +224,23 @@ static char *quota_display_files(pool *p, unsigned int files_used,
 
   switch (xfer_type) {
     case IN:
-      xferstr = "upload";
+      xferstr = _("upload");
       break;
 
     case OUT:
-      xferstr = "download";
+      xferstr = _("download");
       break;
 
     case XFER:
-      xferstr = "transfer";
+      xferstr = _("transfer");
       break;
 
     default:
       break;
   }
 
-  sprintf(display, "%u of %u %s %s", files_used, files_avail, xferstr,
-    files_avail != 1.0 ? "files" : "file");
+  sprintf(display, _("%u of %u %s %s"), files_used, files_avail, xferstr,
+    files_avail != 1.0 ? _("files") : _("file"));
 
   return display;
 }
@@ -255,9 +255,9 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
       /* no calculation needed */
 
       if (bytes_avail > 0.0)
-        sprintf(display, "bytes:\t%.2f/%.2f", bytes_used, bytes_avail);
+        sprintf(display, _("bytes:\t%.2f/%.2f"), bytes_used, bytes_avail);
       else
-        sprintf(display, "bytes:\tunlimited");
+        sprintf(display, _("bytes:\tunlimited"));
       break;
 
     case KILO:
@@ -266,10 +266,10 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
       adj_avail = (bytes_avail / 1024.0);
 
       if (adj_avail > 0.0)
-        sprintf(display, "Kb:\t%s%.2f/%.2f", xfer_type != IN ? "" : "\t",
+        sprintf(display, _("Kb:\t%s%.2f/%.2f"), xfer_type != IN ? "" : "\t",
           adj_used, adj_avail);
       else
-        sprintf(display, "Kb:\tunlimited");
+        sprintf(display, _("Kb:\tunlimited"));
       break;
 
     case MEGA:
@@ -278,10 +278,10 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
       adj_avail = (bytes_avail / (1024.0 * 1024.0));
 
       if (adj_avail > 0.0)
-        sprintf(display, "Mb:\t%s%.2f/%.2f", xfer_type != IN ? "" : "\t",
+        sprintf(display, _("Mb:\t%s%.2f/%.2f"), xfer_type != IN ? "" : "\t",
           adj_used, adj_avail);
       else
-        sprintf(display, "Mb:\tunlimited");
+        sprintf(display, _("Mb:\tunlimited"));
       break;
 
     case GIGA:
@@ -290,10 +290,10 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
       adj_avail = (bytes_avail / (1024.0 * 1024.0 * 1024.0));
 
       if (adj_avail > 0.0)
-        sprintf(display, "Gb:\t%s%.2f/%.2f", xfer_type != IN ? "" : "\t",
+        sprintf(display, _("Gb:\t%s%.2f/%.2f"), xfer_type != IN ? "" : "\t",
           adj_used, adj_avail);
       else
-        sprintf(display, "Gb:\tunlimited");
+        sprintf(display, _("Gb:\tunlimited"));
       break;
 
     default:
@@ -309,9 +309,9 @@ static char *quota_display_site_files(pool *p, unsigned int files_used,
   char *display = (char *) pcalloc(p, 80);
 
   if (files_avail != 0)
-    sprintf(display, "files:\t%u/%u", files_used, files_avail);
+    sprintf(display, _("files:\t%u/%u"), files_used, files_avail);
   else
-    sprintf(display, "files:\tunlimited");
+    sprintf(display, _("files:\tunlimited"));
 
   return display;
 }
