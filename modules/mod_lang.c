@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.9 2008-04-04 01:01:13 castaglia Exp $
+ * $Id: mod_lang.c,v 1.10 2008-04-04 01:12:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,20 +50,24 @@ static int lang_set_locale(const char *locale) {
 
   curr_locale = setlocale(LC_ALL, NULL);
 
-  if (setlocale(LC_ALL, "") == NULL) {
+  if (setlocale(LC_ALL, locale) == NULL) {
     if (errno == ENOENT) {
       /* The site may have an unknown/bad LC_ALL environment variable set.
        * Report this, and fall back to using "C" as the locale.
        */
       pr_log_pri(PR_LOG_NOTICE,
-        "unknown/unsupported LC_ALL '%s' in effect, switching to LC_ALL 'C'",
-        curr_locale);
+        "unknown/unsupported locale '%s' for LC_ALL, switching LC_ALL from "
+        "'%s' to 'C'", locale, curr_locale);
       setlocale(LC_ALL, "C");
 
     } else {
       pr_log_pri(PR_LOG_NOTICE, "unable to set LC_ALL: %s", strerror(errno));
       return -1;
     }
+
+  } else {
+    pr_log_debug(DEBUG4, MOD_LANG_VERSION ": using messages from '%s' locale",
+      locale);
   }
 
   /* Preserve the POSIX/portable handling of number formatting; local
@@ -395,10 +399,6 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
           ": unable to use LC_ALL value for locale: %s", strerror(errno));
         end_login(1);
       }
-
-    } else {
-      pr_log_debug(DEBUG5, MOD_LANG_VERSION
-        ": using messages for '%s' locale", locale);
     }
   }
 }
