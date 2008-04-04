@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.74 2008-04-03 01:34:18 castaglia Exp $
+ * $Id: conf.h,v 1.75 2008-04-04 17:16:56 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -249,7 +249,7 @@ char *strchr(),*strrchr();
 # ifdef HAVE_LIBINTL_H
 #  include <libintl.h>
 # endif
-# define _(str) gettext(str)
+# define _(str) dgettext("proftpd", str)
 # ifdef HAVE_LOCALE_H
 #  include <locale.h>
 # endif
