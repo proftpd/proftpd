@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: core@proftpd.org\n"
-"POT-Creation-Date: 2008-04-04 10:49-0800\n"
+"POT-Creation-Date: 2008-04-04 14:12-0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,6 +18,109 @@ msgstr ""
 
 #: ../contrib/mod_ban.c:1465 ../modules/mod_auth.c:2053
 msgid "Login incorrect"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:163 ../contrib/mod_quotatab.c:227
+msgid "upload"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:167 ../contrib/mod_quotatab.c:231
+msgid "download"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:171 ../contrib/mod_quotatab.c:235
+msgid "transfer"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:182
+#, c-format
+msgid "%.2f of %.2f %s %s"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:183
+msgid "byte"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:183
+msgid "bytes"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:190
+#, c-format
+msgid "%.2f of %.2f %s Kb"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:198
+#, c-format
+msgid "%.2f of %.2f %s Mb"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:206
+#, c-format
+msgid "%.2f of %.2f %s Gb"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:242
+#, c-format
+msgid "%u of %u %s %s"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:243
+msgid "file"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:243
+msgid "files"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:258
+#, c-format
+msgid "bytes:\t%.2f/%.2f"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:260
+#, c-format
+msgid "bytes:\tunlimited"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:269
+#, c-format
+msgid "Kb:\t%s%.2f/%.2f"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:272
+#, c-format
+msgid "Kb:\tunlimited"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:281
+#, c-format
+msgid "Mb:\t%s%.2f/%.2f"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:284
+#, c-format
+msgid "Mb:\tunlimited"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:293
+#, c-format
+msgid "Gb:\t%s%.2f/%.2f"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:296
+#, c-format
+msgid "Gb:\tunlimited"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:312
+#, c-format
+msgid "files:\t%u/%u"
+msgstr ""
+
+#: ../contrib/mod_quotatab.c:314
+#, c-format
+msgid "files:\tunlimited"
 msgstr ""
 
 #: ../contrib/mod_quotatab.c:1440 ../contrib/mod_quotatab.c:1447
