@@ -1,4 +1,4 @@
-<!-- $Id: mod_lang.html,v 1.3 2008-04-03 01:54:13 castaglia Exp $ -->
+<!-- $Id: mod_lang.html,v 1.4 2008-04-05 01:39:10 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_lang.html,v $ -->
 
 <html>
@@ -43,20 +43,26 @@ ProFTPD source distribution:
 <hr>
 <h2><a name="LangDefault">LangDefault</a></h2>
 <strong>Syntax:</strong> LangDefault <em>language</em><br>
-<strong>Default:</strong> LangDefault en<br>
+<strong>Default:</strong> LangDefault en_US<br>
 <strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_lang<br>
 <strong>Compatibility:</strong> 1.3.1rc1
 
 <p>
 The <code>LangDefault</code> directive is used to specify the default
-language of specific server configuration.
+language of specific server configuration.  Note that the specified language
+must be listed in the output from:
+<pre>
+  $ locale -a
+</pre>
 
 <p>
 Example:
 <pre>
-  # Set the default to be Italian
-  LangDefault it_IT
+  &lt;IfModule mod_lang.c&gt;
+    # Set the default to be Italian
+    LangDefault it_IT
+  &lt;/IfModule&gt;
 </pre>
 
 <p>
@@ -174,7 +180,7 @@ This option causes <code>mod_lang</code> to be compiled into
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2008-04-03 01:54:13 $</i><br>
+Last Updated: <i>$Date: 2008-04-05 01:39:10 $</i><br>
 
 <br><hr>
 

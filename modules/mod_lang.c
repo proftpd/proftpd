@@ -22,12 +22,12 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.12 2008-04-05 01:01:28 castaglia Exp $
+ * $Id: mod_lang.c,v 1.13 2008-04-05 01:39:11 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_LANG_VERSION		"mod_lang/0.8"
+#define MOD_LANG_VERSION		"mod_lang/0.9"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030101
 # error "ProFTPD 1.3.1rc1 or later required"
@@ -39,7 +39,7 @@ extern xaset_t *server_list;
 
 module lang_module;
 
-static const char *lang_curr = "en", *lang_default = "en";
+static const char *lang_curr = "en_US", *lang_default = "en_US";
 static int lang_engine = TRUE;
 static pool *lang_pool = NULL;
 static array_header *lang_list = NULL;
@@ -115,19 +115,19 @@ static void lang_feat_remove(void) {
     pr_feat_remove(lang_feat);
 }
 
-static int lang_set_locale(const char *locale) {
+static int lang_set_lang(const char *lang) {
   char *curr_locale;
 
   curr_locale = setlocale(LC_ALL, NULL);
 
-  if (setlocale(LC_ALL, locale) == NULL) {
+  if (setlocale(LC_ALL, lang) == NULL) {
     if (errno == ENOENT) {
       /* The site may have an unknown/bad LC_ALL environment variable set.
        * Report this, and fall back to using "C" as the locale.
        */
       pr_log_pri(PR_LOG_NOTICE,
-        "unknown/unsupported locale '%s' for LC_ALL, switching LC_ALL from "
-        "'%s' to 'C'", locale, curr_locale);
+        "unknown/unsupported language '%s' for LC_ALL, switching LC_ALL from "
+        "'%s' to 'C'", lang, curr_locale);
       setlocale(LC_ALL, "C");
 
     } else {
@@ -136,8 +136,8 @@ static int lang_set_locale(const char *locale) {
     }
 
   } else {
-    pr_log_debug(DEBUG4, MOD_LANG_VERSION ": using messages from '%s' locale",
-      *locale ? locale : curr_locale);
+    pr_log_debug(DEBUG4, MOD_LANG_VERSION ": using %s messages",
+      *lang ? lang : curr_locale);
   }
 
   /* Preserve the POSIX/portable handling of number formatting; local
@@ -302,13 +302,13 @@ MODRET lang_lang(cmd_rec *cmd) {
     pr_log_debug(DEBUG7, MOD_LANG_VERSION
       ": resetting to default language '%s'", lang_default);
 
-    if (lang_set_locale(lang_default) < 0) {
+    if (lang_set_lang(lang_default) < 0) {
       pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
         ": unable to use LangDefault '%s': %s", lang_default, strerror(errno));
       pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
         ": using LC_ALL environment variable value instead");
 
-      if (lang_set_locale("") < 0) {
+      if (lang_set_lang("") < 0) {
         pr_log_pri(PR_LOG_WARNING, MOD_LANG_VERSION
           ": unable to use LC_ALL value for locale: %s", strerror(errno));
         end_login(1);
@@ -327,14 +327,14 @@ MODRET lang_lang(cmd_rec *cmd) {
   pr_log_debug(DEBUG7, MOD_LANG_VERSION
     ": setting to client-requested language '%s'", cmd->argv[1]);
 
-  if (lang_set_locale(cmd->argv[1]) < 0) {
+  if (lang_set_lang(cmd->argv[1]) < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
       ": unable to use client-requested language '%s': %s", cmd->argv[1],
       strerror(errno));
     pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
       ": using LangDefault '%s' instead", lang_default);
 
-    if (lang_set_locale(lang_default) < 0) {
+    if (lang_set_lang(lang_default) < 0) {
       pr_log_pri(PR_LOG_WARNING, MOD_LANG_VERSION
         ": unable to use LangDefault '%s': %s", lang_default, strerror(errno));
       end_login(1);
@@ -640,14 +640,13 @@ static int lang_sess_init(void) {
 
     lang = c->argv[0];
 
-    /* If the selected default language is not in LangPath, use the default. */
-    if (lang_set_locale(lang) < 0) {
+    if (lang_set_lang(lang) < 0) {
       pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
         ": unable to use LangDefault '%s': %s", lang, strerror(errno));
       pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
         ": using LC_ALL environment variable value instead");
 
-      if (lang_set_locale("") < 0) {
+      if (lang_set_lang("") < 0) {
         pr_log_pri(PR_LOG_WARNING, MOD_LANG_VERSION
           ": unable to use LC_ALL value for locale: %s", strerror(errno));
         end_login(1);
@@ -660,7 +659,7 @@ static int lang_sess_init(void) {
     /* No explicit default language configured; rely on the environment
      * variables.
      */
-    if (lang_set_locale("") < 0) {
+    if (lang_set_lang("") < 0) {
       pr_log_pri(PR_LOG_WARNING, MOD_LANG_VERSION
         ": unable to use LC_ALL value for locale: %s", strerror(errno));
       end_login(1);
