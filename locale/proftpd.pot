@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: core@proftpd.org\n"
-"POT-Creation-Date: 2008-04-04 14:12-0800\n"
+"POT-Creation-Date: 2008-04-04 18:00-0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -371,7 +371,7 @@ msgstr ""
 #: ../include/dirtree.h:202 ../include/dirtree.h:208
 #: ../modules/mod_facts.c:601 ../modules/mod_facts.c:728
 #: ../modules/mod_facts.c:787 ../modules/mod_facts.c:882
-#: ../modules/mod_lang.c:197
+#: ../modules/mod_lang.c:297
 msgid "Invalid number of arguments"
 msgstr ""
 
@@ -582,8 +582,8 @@ msgstr ""
 
 #: ../modules/mod_facts.c:614 ../modules/mod_facts.c:741
 #: ../modules/mod_facts.c:803 ../modules/mod_facts.c:811
-#: ../modules/mod_facts.c:898 ../modules/mod_lang.c:177
-#: ../modules/mod_lang.c:192
+#: ../modules/mod_facts.c:898 ../modules/mod_lang.c:277
+#: ../modules/mod_lang.c:292
 msgid "Unable to handle command"
 msgstr ""
 
@@ -612,8 +612,8 @@ msgstr ""
 msgid "%s End of list"
 msgstr ""
 
-#: ../modules/mod_facts.c:935 ../modules/mod_lang.c:248
-#: ../modules/mod_lang.c:254 ../modules/mod_xfer.c:1348
+#: ../modules/mod_facts.c:935 ../modules/mod_lang.c:377
+#: ../modules/mod_lang.c:383 ../modules/mod_xfer.c:1348
 #: ../modules/mod_xfer.c:1442 ../modules/mod_xfer.c:1916
 #: ../modules/mod_xfer.c:1985 ../modules/mod_xfer.c:2211
 #: ../modules/mod_xfer.c:2232 ../modules/mod_xfer.c:2253
@@ -622,33 +622,33 @@ msgstr ""
 msgid "'%s' not understood"
 msgstr ""
 
-#: ../modules/mod_lang.c:207
+#: ../modules/mod_lang.c:318
 #, c-format
 msgid "Using default language %s"
 msgstr ""
 
-#: ../modules/mod_lang.c:212
+#: ../modules/mod_lang.c:323
 #, c-format
 msgid "Language %s not supported"
 msgstr ""
 
-#: ../modules/mod_lang.c:227
+#: ../modules/mod_lang.c:356
 #, c-format
 msgid "Using language %s"
 msgstr ""
 
-#: ../modules/mod_lang.c:265
+#: ../modules/mod_lang.c:394
 msgid "UTF8 set to on"
 msgstr ""
 
-#: ../modules/mod_lang.c:283 ../modules/mod_lang.c:314
-#: ../modules/mod_lang.c:325
+#: ../modules/mod_lang.c:412 ../modules/mod_lang.c:443
+#: ../modules/mod_lang.c:454
 #, c-format
 msgid "Unable to accept %s"
 msgstr ""
 
-#: ../modules/mod_lang.c:294 ../modules/mod_lang.c:330
-#: ../modules/mod_lang.c:338
+#: ../modules/mod_lang.c:423 ../modules/mod_lang.c:459
+#: ../modules/mod_lang.c:467
 msgid "UTF8 set to off"
 msgstr ""
 
