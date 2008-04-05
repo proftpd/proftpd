@@ -27,7 +27,7 @@ LANGS=en_US it_IT $(EXTRA_LANGS)
 
 # gettext utilities.  Note that this assumes gettext is installed and
 # available on the system.
-MSGFMT=msgfmt
+MSGFMT=msgfmt --check-format
 MSGINIT=msginit
 XGETTEXT=xgettext
 
