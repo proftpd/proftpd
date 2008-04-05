@@ -27,6 +27,7 @@ LANGS=en_US it_IT $(EXTRA_LANGS)
 
 # gettext utilities.  Note that this assumes gettext is installed and
 # available on the system.
+MSGCMP=msgcmp
 MSGFMT=msgfmt --check-format
 MSGINIT=msginit
 XGETTEXT=xgettext
@@ -58,6 +59,15 @@ install: $(LANGS)
 			$(INSTALL_MAN) $$lang.mo $(DESTDIR)$(LOCALEDIR)/$$lang/LC_MESSAGES/$(PACKAGE).mo; \
 		fi; \
 	done
+
+check:
+	-for lang in $(LANGS); do \
+		if [ -e $$lang.po ]; then \
+			echo "Checking $$lang.po...."; \
+			$(MSGCMP) $$lang.po $(PACKAGE).pot; \
+			echo "----------------------"; \
+		fi; \
+        done
 
 clean:
 	$(RM) *.po *.gmo *.mo 
