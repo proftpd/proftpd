@@ -36760,9 +36760,13 @@ cat >>confdefs.h <<_ACEOF
 #define PR_LIBEXEC_DIR "`eval echo "${libexecdir}"`"
 _ACEOF
 
+
+locale_dir="`eval echo ${datadir}`"
+locale_dir="`eval echo ${locale_dir}`"
 cat >>confdefs.h <<_ACEOF
-#define PR_LOCALE_DIR "`eval echo "${datadir}"`/locale"
+#define PR_LOCALE_DIR "`eval echo "${locale_dir}/locale"`"
 _ACEOF
+
 
 cat >>confdefs.h <<_ACEOF
 #define PR_RUN_DIR "`eval echo "${localstatedir}/proftpd"`"
