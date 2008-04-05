@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.13 2008-04-05 01:39:11 castaglia Exp $
+ * $Id: mod_lang.c,v 1.14 2008-04-05 03:22:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -39,7 +39,10 @@ extern xaset_t *server_list;
 
 module lang_module;
 
-static const char *lang_curr = "en_US", *lang_default = "en_US";
+#define LANG_DEFAULT_LANG	"en_US"
+
+static const char *lang_curr = LANG_DEFAULT_LANG;
+static const char *lang_default = LANG_DEFAULT_LANG;
 static int lang_engine = TRUE;
 static pool *lang_pool = NULL;
 static array_header *lang_list = NULL;
@@ -667,7 +670,7 @@ static int lang_sess_init(void) {
 
     lang_curr = setlocale(LC_ALL, NULL);
     if (strcasecmp(lang_curr, "C") == 0) {
-      lang_curr = "en";
+      lang_curr = LANG_DEFAULT_LANG;
     }
   }
 
