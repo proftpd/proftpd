@@ -23,7 +23,7 @@ PACKAGE=proftpd
 # and is then checked into CVS.
 FILES=files.txt
 
-LANGS=en it $(EXTRA_LANGS)
+LANGS=en_US it_IT $(EXTRA_LANGS)
 
 # gettext utilities.  Note that this assumes gettext is installed and
 # available on the system.
