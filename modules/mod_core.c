@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.317 2008-04-03 01:34:18 castaglia Exp $
+ * $Id: mod_core.c,v 1.318 2008-04-05 19:46:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4413,9 +4413,6 @@ static int core_init(void) {
   pr_feat_add("MDTM");
   pr_feat_add("REST STREAM");
   pr_feat_add("SIZE");
-#ifdef PR_USE_NLS
-  pr_feat_add("UTF8");
-#endif /* PR_USE_NLS */
 
   pr_event_register(&core_module, "core.startup", core_startup_ev, NULL);
 
