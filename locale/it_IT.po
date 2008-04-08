@@ -1,14 +1,16 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR The ProFTPD Project
-# This file is distributed under the same license as the PACKAGE package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# Italian Translation for the ProFTPD locale template.
+# Based on proftpd.pot 1.4
+#
+# Copyright (C) 2008 The ProFTPD Project
+# This file is distributed under the same license as the ProFTPD package.
+# Francesco P. Lovergine <frankie@debian.org>, 2008.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: proftpd 1.3.2\n"
 "Report-Msgid-Bugs-To: core@proftpd.org\n"
-"POT-Creation-Date: 2008-04-04 10:49-0800\n"
-"PO-Revision-Date: 2008-04-04 20:32+0100\n"
+"POT-Creation-Date: 2008-04-04 18:00-0800\n"
+"PO-Revision-Date: 2008-04-05 09:41+0100\n"
 "Last-Translator: Francesco Paolo Lovergine <frankie@debian.org>\n"
 "Language-Team: Francesco Paolo Lovergine <frankie@debian.org>\n"
 "MIME-Version: 1.0\n"
@@ -22,6 +24,112 @@ msgstr ""
 #: ../modules/mod_auth.c:2053
 msgid "Login incorrect"
 msgstr "Accesso non valido"
+
+#: ../contrib/mod_quotatab.c:163
+#: ../contrib/mod_quotatab.c:227
+msgid "upload"
+msgstr "invio"
+
+#: ../contrib/mod_quotatab.c:167
+#: ../contrib/mod_quotatab.c:231
+msgid "download"
+msgstr "download"
+
+#: ../contrib/mod_quotatab.c:171
+#: ../contrib/mod_quotatab.c:235
+msgid "transfer"
+msgstr "trasmissione"
+
+#: ../contrib/mod_quotatab.c:182
+#, c-format
+msgid "%.2f of %.2f %s %s"
+msgstr "%.2f di %.2f %s %s"
+
+#: ../contrib/mod_quotatab.c:183
+msgid "byte"
+msgstr " byte"
+
+#: ../contrib/mod_quotatab.c:183
+msgid "bytes"
+msgstr "bytes"
+
+#: ../contrib/mod_quotatab.c:190
+#, c-format
+msgid "%.2f of %.2f %s Kb"
+msgstr "%.2f di %.2f %s Kb"
+
+#: ../contrib/mod_quotatab.c:198
+#, c-format
+msgid "%.2f of %.2f %s Mb"
+msgstr "%.2f di %.2f %s Mb"
+
+#: ../contrib/mod_quotatab.c:206
+#, c-format
+msgid "%.2f of %.2f %s Gb"
+msgstr "%.2f di %.2f %s Gb"
+
+#: ../contrib/mod_quotatab.c:242
+#, c-format
+msgid "%u of %u %s %s"
+msgstr "%u di %u %s %s"
+
+#: ../contrib/mod_quotatab.c:243
+msgid "file"
+msgstr "file"
+
+#: ../contrib/mod_quotatab.c:243
+msgid "files"
+msgstr "file"
+
+#: ../contrib/mod_quotatab.c:258
+#, c-format
+msgid "bytes:\t%.2f/%.2f"
+msgstr "byte:\t%.2f/%.2f"
+
+#: ../contrib/mod_quotatab.c:260
+#, c-format
+msgid "bytes:\tunlimited"
+msgstr "byte:\tillimitato"
+
+#: ../contrib/mod_quotatab.c:269
+#, c-format
+msgid "Kb:\t%s%.2f/%.2f"
+msgstr "Kb:\t%s%.2f/%.2f"
+
+#: ../contrib/mod_quotatab.c:272
+#, c-format
+msgid "Kb:\tunlimited"
+msgstr "Kb:\tillimitato"
+
+#: ../contrib/mod_quotatab.c:281
+#, c-format
+msgid "Mb:\t%s%.2f/%.2f"
+msgstr "Mb:\t%s%.2f/%.2f"
+
+#: ../contrib/mod_quotatab.c:284
+#, c-format
+msgid "Mb:\tunlimited"
+msgstr "Mb:\tillimitato"
+
+#: ../contrib/mod_quotatab.c:293
+#, c-format
+msgid "Gb:\t%s%.2f/%.2f"
+msgstr "Gb:\t%s%.2f/%.2f"
+
+#: ../contrib/mod_quotatab.c:296
+#, c-format
+msgid "Gb:\tunlimited"
+msgstr "Gb:\tillimitato"
+
+#: ../contrib/mod_quotatab.c:312
+#, c-format
+msgid "files:\t%u/%u"
+msgstr "file:\t%u/%u"
+
+#: ../contrib/mod_quotatab.c:314
+#, c-format
+msgid "files:\tunlimited"
+msgstr "file:\tillimitato"
 
 #: ../contrib/mod_quotatab.c:1440
 #: ../contrib/mod_quotatab.c:1447
@@ -187,7 +295,7 @@ msgstr "Si legga il file %s"
 #: ../contrib/mod_readme.c:75
 #, c-format
 msgid "   it was last modified on %.26s - %i %s ago"
-msgstr " è stato modificato %.26s - %i %s fa"
+msgstr "   è stato modificato %.26s - %i %s fa"
 
 #: ../contrib/mod_readme.c:76
 msgid "day"
@@ -223,7 +331,7 @@ msgstr "Errore sconosciuto espandendo %s"
 #: ../modules/mod_site.c:380
 #, c-format
 msgid "SITE %s command successful"
-msgstr "Comando 'SITE %s' eseguito con successo"
+msgstr "Comando SITE %s eseguito con successo"
 
 #: ../contrib/mod_tls.c:4228
 #: ../contrib/mod_tls.c:4240
@@ -292,7 +400,7 @@ msgstr "PBSZ=0 riuscito"
 #: ../modules/mod_auth.c:1900
 #: ../modules/mod_auth.c:2042
 msgid "Login incorrect."
-msgstr "Login scorretto."
+msgstr "Login non corretto."
 
 #: ../contrib/mod_tls.c:4498
 msgid "PROT not allowed on insecure control connection"
@@ -319,14 +427,14 @@ msgstr "Accesso negato"
 #: ../modules/mod_facts.c:728
 #: ../modules/mod_facts.c:787
 #: ../modules/mod_facts.c:882
-#: ../modules/mod_lang.c:197
+#: ../modules/mod_lang.c:297
 msgid "Invalid number of arguments"
 msgstr "Numero di argomenti errato"
 
 #: ../modules/mod_auth.c:115
 #, c-format
 msgid "Login Timeout (%d seconds): closing control connection"
-msgstr "Timeout di autenticazione (% secondi): chiusura della connessione di controllo"
+msgstr "Timeout di autenticazione (%d secondi): chiusura della connessione di controllo"
 
 #: ../modules/mod_auth.c:126
 #, c-format
@@ -345,7 +453,7 @@ msgstr "Utente %s collegato"
 #: ../modules/mod_auth.c:1834
 #: ../modules/mod_auth.c:1984
 msgid "You are already logged in"
-msgstr "Utente già collegato"
+msgstr "Utente già connesso"
 
 #: ../modules/mod_auth.c:1837
 msgid "USER: command requires a parameter"
@@ -366,13 +474,13 @@ msgstr "Comand ACCT non implementato"
 
 #: ../modules/mod_auth.c:2065
 msgid "REIN command not implemented"
-msgstr "Comand REIN non implementato"
+msgstr "Comando REIN non implementato"
 
 #: ../modules/mod_core.c:2840
 #: ../modules/mod_core.c:2851
 #, c-format
 msgid "%s: Forbidden command argument"
-msgstr "%s: argomento di comando proibito"
+msgstr "%s: Argomento di comando proibito"
 
 #: ../modules/mod_core.c:2891
 msgid "Goodbye."
@@ -385,7 +493,7 @@ msgstr "\"%s\" è la directory corrente"
 
 #: ../modules/mod_core.c:2943
 msgid "Illegal PASV command, EPSV ALL in effect"
-msgstr "comand PASV illegale, EPSV ALL in uso"
+msgstr "Comando PASV illegale, EPSV ALL in uso"
 
 #: ../modules/mod_core.c:2988
 #: ../modules/mod_core.c:3511
@@ -483,12 +591,12 @@ msgstr "comando %s eseguito con successo"
 #: ../modules/mod_xfer.c:1658
 #, c-format
 msgid "%s: Forbidden filename"
-msgstr "%s: nome di file proibito"
+msgstr "%s: Nome di file proibito"
 
 #: ../modules/mod_core.c:3797
 #, c-format
 msgid "%s: Invalid directory name"
-msgstr "%s: nome di directory non valido"
+msgstr "%s: Nome di directory non valido"
 
 #: ../modules/mod_core.c:3873
 #, c-format
@@ -541,7 +649,8 @@ msgstr "Comando NOOP eseguito con successo"
 msgid ""
 "Features:\n"
 " "
-msgstr "Funzionalità:\n"
+msgstr ""
+"Funzionalità:\n"
 " "
 
 #: ../modules/mod_core.c:4240
@@ -557,15 +666,15 @@ msgstr "Funzionlità non supportata"
 #: ../modules/mod_facts.c:803
 #: ../modules/mod_facts.c:811
 #: ../modules/mod_facts.c:898
-#: ../modules/mod_lang.c:177
-#: ../modules/mod_lang.c:192
+#: ../modules/mod_lang.c:277
+#: ../modules/mod_lang.c:292
 msgid "Unable to handle command"
 msgstr "Impossibile gestire il comando"
 
 #: ../modules/mod_facts.c:706
 #, c-format
 msgid "Cannot modify fact '%s'"
-msgstr "Impossibille modificare '%s'"
+msgstr "Impossibile modificare '%s'"
 
 #: ../modules/mod_facts.c:816
 #, c-format
@@ -581,16 +690,16 @@ msgstr "'%s' non può essere interrogato"
 #: ../modules/mod_facts.c:915
 #, c-format
 msgid "%s- Start of list for %s"
-msgstr "%s- Inizio della lista per %s"
+msgstr "%s- Inizio dell'elenco per %s"
 
 #: ../modules/mod_facts.c:917
 #, c-format
 msgid "%s End of list"
-msgstr "%s Fine della lista"
+msgstr "%s Fine dell'elenco"
 
 #: ../modules/mod_facts.c:935
-#: ../modules/mod_lang.c:248
-#: ../modules/mod_lang.c:254
+#: ../modules/mod_lang.c:377
+#: ../modules/mod_lang.c:383
 #: ../modules/mod_xfer.c:1348
 #: ../modules/mod_xfer.c:1442
 #: ../modules/mod_xfer.c:1916
@@ -604,37 +713,37 @@ msgstr "%s Fine della lista"
 msgid "'%s' not understood"
 msgstr "'%s' non comprenso"
 
-#: ../modules/mod_lang.c:207
+#: ../modules/mod_lang.c:318
 #, c-format
 msgid "Using default language %s"
 msgstr "In uso la lingua predefinita %s"
 
-#: ../modules/mod_lang.c:212
+#: ../modules/mod_lang.c:323
 #, c-format
 msgid "Language %s not supported"
 msgstr "Lingua %s non supportata"
 
-#: ../modules/mod_lang.c:227
+#: ../modules/mod_lang.c:356
 #, c-format
 msgid "Using language %s"
 msgstr "In uso la lingua %s"
 
-#: ../modules/mod_lang.c:265
+#: ../modules/mod_lang.c:394
 msgid "UTF8 set to on"
-msgstr "UTF-8 attivato"
+msgstr "UTF8 attivato"
 
-#: ../modules/mod_lang.c:283
-#: ../modules/mod_lang.c:314
-#: ../modules/mod_lang.c:325
+#: ../modules/mod_lang.c:412
+#: ../modules/mod_lang.c:443
+#: ../modules/mod_lang.c:454
 #, c-format
 msgid "Unable to accept %s"
 msgstr "Impossibile accettare %s"
 
-#: ../modules/mod_lang.c:294
-#: ../modules/mod_lang.c:330
-#: ../modules/mod_lang.c:338
+#: ../modules/mod_lang.c:423
+#: ../modules/mod_lang.c:459
+#: ../modules/mod_lang.c:467
 msgid "UTF8 set to off"
-msgstr "UTF-8 disattivato"
+msgstr "UTF8 disattivato"
 
 #: ../modules/mod_ls.c:1158
 #, c-format
@@ -824,7 +933,7 @@ msgstr "%s: Restart non consentito, riprovare"
 
 #: ../modules/mod_xfer.c:2226
 msgid "Abort successful"
-msgstr "Abortito con successo"
+msgstr "Interrotto con successo"
 
 #: ../modules/mod_xfer.c:2257
 #, c-format
@@ -870,7 +979,7 @@ msgstr "Comando SMNT non implementato"
 #: ../modules/mod_xfer.c:2406
 #, c-format
 msgid "No transfer timeout (%d seconds): closing control connection"
-msgstr "Nessun timeout di trasferimento (%s secondi): chiusura della connessione di controllo"
+msgstr "Timeout di trasmissione (%d secondi): chiusura della connessione di controllo"
 
 #: ../src/data.c:291
 #: ../src/data.c:392
@@ -880,7 +989,7 @@ msgstr "Apertura della connessione dati in modalità %s per %s (%"
 #: ../src/data.c:292
 #: ../src/data.c:393
 msgid " bytes)"
-msgstr "bytes)"
+msgstr " bytes)"
 
 #: ../src/data.c:294
 #: ../src/data.c:395
