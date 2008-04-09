@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.25 2007-12-31 19:30:11 castaglia Exp $
+ * $Id: options.h,v 1.26 2008-04-09 17:03:50 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -206,9 +206,9 @@
 /* Define the time to delay, in seconds, after a system call has been
  * interrupted (errno is EINTR) before retrying that call.
  *
- * The default behavior is not to delay between retries.
+ * The default behavior is delay 0.2 secs between retries.
  */
-# define PR_TUNABLE_EINTR_RETRY_INTERVAL	0
+# define PR_TUNABLE_EINTR_RETRY_INTERVAL	0.2
 #endif
 
 #endif /* PR_OPTIONS_H */
