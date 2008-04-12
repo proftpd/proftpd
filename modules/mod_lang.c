@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.14 2008-04-05 03:22:10 castaglia Exp $
+ * $Id: mod_lang.c,v 1.15 2008-04-12 01:07:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -535,6 +535,9 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
    * in the directories:
    *
    *  $lang/LC_MESSAGES/proftpd.mo
+   *
+   * In addition, make sure the directory name is an locale acceptable to
+   * setlocale(3).
    */
 
   tmp_pool = make_sub_pool(lang_pool);
@@ -559,10 +562,31 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
         "proftpd.mo", NULL);
 
       if (stat(mo, &st) == 0) {
-        /* Assume the dent->d_name is a valid language name, and add it to
-         * the list.
+        char *curr_locale;
+
+        /* Check that dent->d_name is a valid language name according to
+         * setlocale(3) before adding it to the list.
          */
-        *((char **) push_array(lang_list)) = pstrdup(lang_pool, dent->d_name);
+        curr_locale = setlocale(LC_MESSAGES, NULL);
+
+        if (setlocale(LC_MESSAGES, dent->d_name) != NULL) {
+          *((char **) push_array(lang_list)) = pstrdup(lang_pool, dent->d_name);
+
+        } else {
+          if (errno == ENOENT) {
+            pr_log_debug(DEBUG5, MOD_LANG_VERSION
+              ": skipping possible language '%s': not supported by "
+              "setlocale(3); see `locale -a'", dent->d_name);
+
+          } else {
+            pr_log_debug(DEBUG5, MOD_LANG_VERSION
+              ": skipping possible language '%s': %s", dent->d_name,
+              strerror(errno));
+          }
+        }
+
+        /* Restore the current locale. */
+        setlocale(LC_MESSAGES, curr_locale);
       }
     }
 
