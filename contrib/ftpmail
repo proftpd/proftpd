@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
 #
-#  $Id: ftpmail,v 1.1 2008-03-06 03:06:13 castaglia Exp $
+#  $Id: ftpmail,v 1.2 2008-04-15 22:38:56 castaglia Exp $
 #
 # ---------------------------------------------------------------------------
 
@@ -25,6 +25,7 @@ use strict;
 use File::Basename qw(basename);
 use Getopt::Long;
 use Mail::Sendmail;
+use MIME::Base64 qw(encode_base64);
 use Time::HiRes qw(usleep);
 
 my $program = basename($0);
@@ -235,23 +236,28 @@ EOT
       if (open(my $fh, "< $file")) {
         binmode($fh);
 
+        # Note: this reads the entire file into memory, and can fail if
+        # the file is too big.
+
+        local $/;
+        my $attach;
+        while (my $data = <$fh>) {
+          $attach .= $data;
+        }
+        close($fh);
+
         $email_info->{Body} .= "$boundary\n";
 
+        $email_info->{Body} .= "Content-Disposition: attachment; filename=\"$file\"\n";
         if ($upload_info->{transfer_type} eq 'a') {
-          $email_info->{Body} .= "Content-Type: text/plain; charset=\"iso-8859-1\"\n";
+          $email_info->{Body} .= "Content-Type: text/plain; charset=\"iso-8859-1\"\n\n";
+          $email_info->{Body} .= $attach;
 
         } else {
           $email_info->{Body} .= "Content-Type: application/octet-stream\n";
+          $email_info->{Body} .= "Content-Transfer-Encoding: base64\n\n";
+          $email_info->{Body} .= encode_base64($attach);
         }
-
-        $email_info->{Body} .= "Content-Disposition: attachment; filename=\"$file\"\n\n";
-
-        local $/;
-        while (my $data = <$fh>) {
-          $email_info->{Body} .= $data;
-        }
-
-        close($fh);
 
         $email_info->{Body} .= "\n";
 
