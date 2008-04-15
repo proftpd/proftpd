@@ -67,17 +67,45 @@ files.
 
       AuthPAMOptions
 
-        "NoTTY"
+        Some PAM modules need the PAM_TTY item to be set; the mod_auth_pam
+        module now sets the PAM_TTY item, unless the following configuration
+        is used:
+
+          AuthPAMOptions NoTTY
+
+        This configuration should not be necessary, and is only supported
+        as a safeguard.
 
       MaxTransferPerHost
 
+        This directive configures a limit on the maximum number of
+        simultaneous data transfers (uploads/downloads) for a given
+        host.
+
       MaxTransfersPerUser
+
+        This directive configures a limit on the maximum number of
+        simultaneous data transfers (uploads/downloads) for a given
+        user name, regardless of the number of clients using that user name.
 
       TLSVerifyOrder
 
+        This directive is part of the support for the Online Certificate
+        Status Protocol (OCSP) in the mod_tls module.  See
+        doc/contrib/mod_tls.html#TLSVerifyOrder for details.
+
       TransferPriority
 
+        This directive can be used to change the process priority while
+        the session process is handling a data transfer.  Using this
+        directive, data transfers can be given lower/higher priorities
+        than other processes on the system, depending on the site needs.
+
       UseEncoding
+
+        The mod_lang module can how support encodings other than just
+        UTF8 for the control connection FTP commands and responses.  See
+        doc/modules/mod_lang.html#UseEncoding for additional information.
 
   + New contrib scripts:
 
@@ -89,11 +117,13 @@ files.
 
       BanOnEvent ClientConnectRate
 
-        See doc/contrib/mod_ban.html#BanOnEvent
+        Clients can now be banned if they connect too frequently; see
+        doc/contrib/mod_ban.html#BanOnEvent
 
       LogFormat %f
 
-        RNFR/RNTO, SITE CHGRP, SITE CHMOD
+        The %f LogFormat variable is now properly substituted for the
+        RNFR, RNTO, SITE CHGRP, and SITE CHMOD commands.
 
       TimeoutIdle, TimeoutNoTransfer, TimeoutStalled
 
@@ -102,11 +132,15 @@ files.
 
       TLSOptions EnableDiags
 
+        The EnableDiags option configures mod_tls to be *much* more verbose,
+        and to print diagnostics about the SSL/TLS protocol to the TLSLog.
         See doc/contrib/mod_tls.html#TLSOptions
 
       TLSRequired !data, ctrl+!data, auth+!data
 
-        See doc/contrib/mod_tls.html#TLSRequired for more information.
+        The various combinations for requiring SSL/TLS protection on
+        control and data connections have increased.  More details can be
+        found here: doc/contrib/mod_tls.html#TLSRequired
 
   + Deprecated configuration directives
 
@@ -117,6 +151,19 @@ files.
         be removed in the 1.3.3 ProFTPD release cycle.
 
       UseUTF8
+
+        This directive has been replaced by the UseEncoding directive.
+
+  + New translations
+
+      The FTP response messages used by proftpd have been translated into
+      Italian.  To use translations, compile proftpd using:
+
+        ./configure --enable-nls ...
+
+      This builds the mod_lang module, in addition to installing the
+      translated message catalogs for proftpd's use.  See
+      doc/modules/mod_lang.html for more information.
 
   + New modules:
 
@@ -140,6 +187,8 @@ files.
 
           doc/modules/mod_facts.html
 
+        This module is compiled in by default.
+
       mod_ident
 
         The RFC1413 "identification protocol" lookup was separated out of
@@ -158,13 +207,17 @@ files.
 
           doc/modules/mod_ident.html
 
+        This module is compiled in by default.
+
       mod_sql_odbc
 
-        doc/contrib/mod_sql_odbc.html
+        This module is a mod_sql backend module which supports ODBC
+        drivers.  See doc/contrib/mod_sql_odbc.html for more information.
 
       mod_sql_sqlite
 
-        doc/contrib/mod_sql_sqlite.html
+        This module is a mod_sql backend module which uses SQLite as its
+        backend database.  See doc/contrib/mod_sql_sqlite.html for details.
 
       mod_unique_id
 
@@ -182,7 +235,8 @@ files.
 
       doc/howto/TLS.html
 
-        Added instructions on how to use OpenSSL in FIPS mode.
+        Added instructions on how to use OpenSSL in FIPS mode; see
+        doc/howto/TLS.html#TLSFIPS
 
 
-Last Updated: $Date: 2008-04-03 01:54:13 $
+Last Updated: $Date: 2008-04-15 20:51:15 $
