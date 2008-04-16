@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.909 2008-04-03 03:14:30 castaglia Exp $
+$Id: NEWS,v 1.910 2008-04-16 16:27:18 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -9,7 +9,7 @@ $Id: NEWS,v 1.909 2008-04-03 03:14:30 castaglia Exp $
   where `N' is the bug number.
 -----------------------------------------------------------------------------
 
-CVS
+1.3.2rc1 - Released 15-Apr-2008
 --------------------------------
 - Bug 2978 - Support more verbose OpenSSL diagnostic logging.  There is now
   support for an "EnableDiags" TLSOptions setting, which logs a lot of
