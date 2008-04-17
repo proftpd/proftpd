@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.910 2008-04-16 16:27:18 castaglia Exp $
+$Id: NEWS,v 1.911 2008-04-17 02:13:22 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -110,7 +110,7 @@ $Id: NEWS,v 1.910 2008-04-16 16:27:18 castaglia Exp $
   glob ACLs.
 - Bug 3033 - Class rules not honoring '!' negation character.
 - Bug 3034 - Rewritten command parameters need to be set in multiple places.
-- Bug 2755 - IPv6 support should be enabled by default.  IPv6 support is
+- Bug 2577 - IPv6 support should be enabled by default.  IPv6 support is
   now enabled by default in the proftpd build, but the shipping
   proftpd.conf has:
 
