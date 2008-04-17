@@ -21208,14 +21208,6 @@ fi
 # Check whether --enable-ipv6 was given.
 if test "${enable_ipv6+set}" = set; then
   enableval=$enable_ipv6;
-    if test x"$enableval" != xyes ; then
-
-cat >>confdefs.h <<\_ACEOF
-#define PR_USE_IPV6 1
-_ACEOF
-
-    fi
-
 fi
 
 
@@ -34903,6 +34895,14 @@ _ACEOF
       ac_build_addl_libs="-lsec $ac_build_addl_libs"
       ;;
   esac
+fi
+
+if test x"$enable_ipv6" != xno ; then
+
+cat >>confdefs.h <<\_ACEOF
+#define PR_USE_IPV6 1
+_ACEOF
+
 fi
 
 if test x"$enable_sendfile" != xno ; then
