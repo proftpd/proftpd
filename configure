@@ -36492,6 +36492,7 @@ cat >>confdefs.h <<\_ACEOF
 #define PR_USE_OPENSSL 1
 _ACEOF
 
+      ac_build_addl_libs="$ac_build_addl_libs -lssl -lcrypto"
   fi
 
   for j in $all_modules; do
