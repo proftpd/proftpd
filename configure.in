@@ -1750,6 +1750,7 @@ for i in $all_modules; do
   dnl Make sure the OpenSSL define is set if mod_tls is being used
   if test x"$i" = x"mod_tls"; then
       AC_DEFINE(PR_USE_OPENSSL, 1, [Define if using OpenSSL support.])
+      ac_build_addl_libs="$ac_build_addl_libs -lssl -lcrypto"
   fi
 
   for j in $all_modules; do
