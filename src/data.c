@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.105 2008-02-10 02:29:22 castaglia Exp $
+ * $Id: data.c,v 1.106 2008-04-26 00:20:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1243,8 +1243,12 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
        * For obvious reasons, HP/UX sendfile is not supported yet.
        */
       if (errno == EINTR) {
-        if (XFER_ABORTED)
+        if (XFER_ABORTED) {
+          session.xfer.total_bytes += len;
+          session.total_bytes += len;
+
           return -1;
+        }
 
         pr_signals_handle();
 
