@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.86 2008-01-09 18:56:13 castaglia Exp $
+ * $Id: mod_log.c,v 1.87 2008-04-28 15:14:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -600,9 +600,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
           strcmp(cmd->argv[0], C_XCUP) == 0 ||
           strcmp(cmd->argv[0], C_XMKD) == 0 ||
           strcmp(cmd->argv[0], C_XRMD) == 0) {
-        char *tmp = strrchr(cmd->arg, '/');
+        char *path, *tmp;
 
-        sstrncpy(argp, tmp ? tmp : cmd->arg, sizeof(arg));
+        path = pr_fs_decode_path(p, cmd->arg);
+        tmp = strrchr(path, '/');
+
+        sstrncpy(argp, tmp ? tmp : path, sizeof(arg));
 
       } else {
         sstrncpy(argp, "", sizeof(arg));
@@ -620,7 +623,8 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
           strcmp(cmd->argv[0], C_XCUP) == 0 ||
           strcmp(cmd->argv[0], C_XMKD) == 0 ||
           strcmp(cmd->argv[0], C_XRMD) == 0) {
-        sstrncpy(argp, dir_abs_path(p, cmd->arg, TRUE), sizeof(arg));
+        sstrncpy(argp, dir_abs_path(p, pr_fs_decode_path(p, cmd->arg), TRUE),
+          sizeof(arg));
 
       } else if (strcmp(cmd->argv[0], C_CWD) == 0 ||
                  strcmp(cmd->argv[0], C_XCWD) == 0) {
@@ -654,7 +658,8 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       argp = arg;
 
       if (strcmp(cmd->argv[0], C_RNTO) == 0) {
-        sstrncpy(argp, dir_abs_path(p, cmd->arg, TRUE), sizeof(arg));
+        sstrncpy(argp, dir_abs_path(p, pr_fs_decode_path(p, cmd->arg), TRUE),
+          sizeof(arg));
 
       } else if (session.xfer.p &&
                  session.xfer.path) {
@@ -683,7 +688,8 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
             strcmp(cmd->argv[0], C_RMD) == 0 ||
             strcmp(cmd->argv[0], C_XMKD) == 0 ||
             strcmp(cmd->argv[0], C_XRMD) == 0)
-          sstrncpy(arg, dir_abs_path(p, cmd->arg, TRUE), sizeof(arg));
+          sstrncpy(arg, dir_abs_path(p, pr_fs_decode_path(p, cmd->arg), TRUE),
+            sizeof(arg));
 
         else
           /* All other situations get a "-".  */
@@ -893,7 +899,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
         sstrncpy(argp, "(hidden)", sizeof(arg));
 
       } else {
-        sstrncpy(argp, cmd->arg, sizeof(arg));
+        sstrncpy(argp, pr_fs_decode_path(p, cmd->arg), sizeof(arg));
       }
 
       m++;
@@ -909,7 +915,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       argp = arg;
 
       if (!session.user) {
-        char *u = get_param_ptr(cmd->server->conf,"UserName",FALSE);
+        char *u = get_param_ptr(cmd->server->conf, "UserName", FALSE);
         if (!u)
           u = "root";
 

@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.94 2008-03-08 19:52:57 castaglia Exp $
+ * $Id: support.c,v 1.95 2008-04-28 15:14:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -632,9 +632,9 @@ char *make_arg_str(pool *p, int argc, char **argv) {
 
   while (argc--) {
     if (*res)
-      res = pstrcat(p, res, " ", *argv++, NULL);
+      res = pstrcat(p, res, " ", pr_fs_decode_path(p, *argv++), NULL);
     else
-      res = pstrcat(p, res, *argv++, NULL);
+      res = pstrcat(p, res, pr_fs_decode_path(p, *argv++), NULL);
   }
 
   return res;

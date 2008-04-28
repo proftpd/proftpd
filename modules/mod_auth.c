@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.234 2008-02-10 02:29:22 castaglia Exp $
+ * $Id: mod_auth.c,v 1.235 2008-04-28 15:14:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2010,7 +2010,8 @@ MODRET auth_pass(cmd_rec *cmd) {
 
     if (session.sf_flags & SF_ANON)
       add_config_param_set(&cmd->server->conf, C_PASS, 1,
-        pstrdup(cmd->server->pool, cmd->arg));
+        pstrdup(cmd->server->pool,
+          pr_fs_decode_path(cmd->server->pool, cmd->arg)));
 
     logged_in = 1;
     return PR_HANDLED(cmd);

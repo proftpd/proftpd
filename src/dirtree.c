@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.188 2008-01-04 22:22:01 castaglia Exp $
+ * $Id: dirtree.c,v 1.189 2008-04-28 15:14:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3246,14 +3246,14 @@ char *get_full_cmd(cmd_rec *cmd) {
   char *res = "";
 
   if (cmd->arg && *cmd->arg)
-    res = pstrcat(p, cmd->argv[0], " ", cmd->arg, NULL);
+    res = pstrcat(p, cmd->argv[0], " ", pr_fs_decode_path(p, cmd->arg), NULL);
 
   else if (cmd->argc > 1) {
     register unsigned int i = 0;
     res = cmd->argv[0];
 
     for (i = 1; i < cmd->argc; i++)
-      res = pstrcat(p, res, cmd->argv[i], " ", NULL);
+      res = pstrcat(p, res, pr_fs_decode_path(p, cmd->argv[i]), " ", NULL);
 
     while (res[strlen(res)-1] == ' ' && *res)
       res[strlen(res)-1] = '\0';
