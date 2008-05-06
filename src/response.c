@@ -23,12 +23,14 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.10 2008-05-06 05:19:54 castaglia Exp $
+ * $Id: response.c,v 1.11 2008-05-06 17:42:49 castaglia Exp $
  */
 
 #include "conf.h"
 
 pr_response_t *resp_list = NULL, *resp_err_list = NULL;
+
+static int resp_blocked = FALSE;
 
 static pool *resp_pool = NULL;
 
@@ -74,6 +76,17 @@ void pr_response_register_handler(char *(*handler_cb)(pool *, const char *,
   resp_handler_cb = handler_cb;
 }
 
+int pr_response_block(int bool) {
+  if (bool == TRUE ||
+      bool == FALSE) {
+    resp_blocked = bool;
+    return 0;
+  }
+
+  errno = EINVAL;
+  return -1;
+}
+
 void pr_response_clear(pr_response_t **head) {
   *head = NULL;
 }
@@ -82,6 +95,9 @@ void pr_response_flush(pr_response_t **head) {
   unsigned char ml = FALSE;
   char *last_numeric = NULL;
   pr_response_t *resp = NULL;
+
+  if (resp_blocked)
+    return;
 
   for (resp = *head; resp; resp = resp->next) {
     if (ml) {
@@ -175,6 +191,9 @@ void pr_response_send_async(const char *resp_numeric, const char *fmt, ...) {
   va_list msg;
   int maxlen;
 
+  if (resp_blocked)
+    return;
+
   sstrncpy(buf, resp_numeric, sizeof(buf));
   sstrcat(buf, " ", sizeof(buf));
   
@@ -193,6 +212,9 @@ void pr_response_send_async(const char *resp_numeric, const char *fmt, ...) {
 void pr_response_send(const char *resp_numeric, const char *fmt, ...) {
   va_list msg;
 
+  if (resp_blocked)
+    return;
+
   va_start(msg, fmt);
   vsnprintf(resp_buf, sizeof(resp_buf), fmt, msg);
   va_end(msg);
@@ -205,6 +227,9 @@ void pr_response_send(const char *resp_numeric, const char *fmt, ...) {
 
 void pr_response_send_ml_start(const char *resp_numeric, const char *fmt, ...) {
   va_list msg;
+
+  if (resp_blocked)
+    return;
 
   va_start(msg, fmt);
   vsnprintf(resp_buf, sizeof(resp_buf), fmt, msg);
@@ -220,6 +245,9 @@ void pr_response_send_ml_start(const char *resp_numeric, const char *fmt, ...) {
 void pr_response_send_ml(const char *fmt, ...) {
   va_list msg;
 
+  if (resp_blocked)
+    return;
+
   va_start(msg, fmt);
   vsnprintf(resp_buf, sizeof(resp_buf), fmt, msg);
   va_end(msg);
@@ -231,6 +259,9 @@ void pr_response_send_ml(const char *fmt, ...) {
 
 void pr_response_send_ml_end(const char *fmt, ...) {
   va_list msg;
+
+  if (resp_blocked)
+    return;
  
   va_start(msg, fmt);
   vsnprintf(resp_buf, sizeof(resp_buf), fmt, msg);
@@ -244,6 +275,9 @@ void pr_response_send_ml_end(const char *fmt, ...) {
 
 void pr_response_send_raw(const char *fmt, ...) {
   va_list msg;
+
+  if (resp_blocked)
+    return;
 
   va_start(msg, fmt);
   vsnprintf(resp_buf, sizeof(resp_buf), fmt, msg);
