@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.231 2008-02-10 02:29:22 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.232 2008-05-06 05:13:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -77,17 +77,6 @@ static unsigned long xfer_prio_flags = 0;
 
 static int xfer_prio_adjust(void);
 static int xfer_prio_restore(void);
-
-/* Transfer rate variables */
-static long double xfer_rate_kbps = 0.0, xfer_rate_bps = 0.0;
-static off_t xfer_rate_freebytes = 0.0;
-static unsigned char have_xfer_rate = FALSE;
-static unsigned int xfer_rate_scoreboard_updates = 0;
-
-/* Transfer rate functions */
-static void xfer_rate_lookup(cmd_rec *);
-static void xfer_rate_sigmask(unsigned char);
-static void xfer_rate_throttle(off_t, unsigned int);
 
 /* Used for MaxTransferPerHost and TransferRate */
 static int xfer_parse_cmdlist(const char *, config_rec *, char *);
@@ -562,129 +551,6 @@ static int xfer_prio_restore(void) {
   return 0;
 }
 
-static void xfer_rate_lookup(cmd_rec *cmd) {
-  config_rec *c = NULL;
-  char *xfer_cmd = NULL;
-  unsigned char have_user_rate = FALSE, have_group_rate = FALSE,
-    have_class_rate = FALSE, have_all_rate = FALSE;
-  unsigned int precedence = 0;
-
-  /* Make sure the variables are (re)initialized */
-  xfer_rate_kbps = xfer_rate_bps = 0.0;
-  xfer_rate_freebytes = 0;
-  xfer_rate_scoreboard_updates = 0;
-  have_xfer_rate = FALSE;
-
-  c = find_config(CURRENT_CONF, CONF_PARAM, "TransferRate", FALSE);
-
-  /* Note: need to cycle through all the matching config_recs, and using
-   * the information from the current config_rec only if it matches
-   * the target *and* has a higher precedence than any of the previously
-   * found config_recs.
-   */
-  while (c) {
-    char **cmdlist = (char **) c->argv[0];
-    unsigned char matched_cmd = FALSE;
-
-    /* Does this TransferRate apply to the current command?  Note: this
-     * could be made more efficient by using bitmasks rather than string
-     * comparisons.
-     */
-    for (xfer_cmd = *cmdlist; xfer_cmd; xfer_cmd = *(cmdlist++)) {
-      if (!strcasecmp(xfer_cmd, cmd->argv[0])) {
-        matched_cmd = TRUE;
-        break;
-      }
-    }
-
-    /* No -- continue on to the next TransferRate. */
-    if (!matched_cmd) {
-      c = find_config_next(c, c->next, CONF_PARAM, "TransferRate", FALSE);
-      continue;
-    }
-
-    if (c->argc > 4) {
-      if (strcmp(c->argv[4], "user") == 0) {
-
-        if (pr_expr_eval_user_or((char **) &c->argv[5]) &&
-            *((unsigned int *) c->argv[3]) > precedence) {
-
-          /* Set the precedence. */
-          precedence = *((unsigned int *) c->argv[3]);
-
-          xfer_rate_kbps = *((long double *) c->argv[1]);
-          xfer_rate_freebytes = *((off_t *) c->argv[2]);
-          have_xfer_rate = TRUE;
-          have_user_rate = TRUE;
-          have_group_rate = have_class_rate = have_all_rate = FALSE;
-        }
-
-      } else if (strcmp(c->argv[4], "group") == 0) {
-
-        if (pr_expr_eval_group_and((char **) &c->argv[5]) &&
-            *((unsigned int *) c->argv[3]) > precedence) {
-
-          /* Set the precedence. */
-          precedence = *((unsigned int *) c->argv[3]);
-
-          xfer_rate_kbps = *((long double *) c->argv[1]);
-          xfer_rate_freebytes = *((off_t *) c->argv[2]);
-          have_xfer_rate = TRUE;
-          have_group_rate = TRUE;
-          have_user_rate = have_class_rate = have_all_rate = FALSE;
-        }
-
-      } else if (strcmp(c->argv[4], "class") == 0) {
-
-        if (pr_expr_eval_class_or((char **) &c->argv[5]) &&
-          *((unsigned int *) c->argv[3]) > precedence) {
-
-          /* Set the precedence. */
-          precedence = *((unsigned int *) c->argv[3]);
-
-          xfer_rate_kbps = *((long double *) c->argv[1]);
-          xfer_rate_freebytes = *((off_t *) c->argv[2]);
-          have_xfer_rate = TRUE;
-          have_class_rate = TRUE;
-          have_user_rate = have_group_rate = have_all_rate = FALSE;
-        }
-      }
-
-    } else {
-
-      if (*((unsigned int *) c->argv[3]) > precedence) {
-
-        /* Set the precedence. */
-        precedence = *((unsigned int *) c->argv[3]);
-
-        xfer_rate_kbps = *((long double *) c->argv[1]);
-        xfer_rate_freebytes = *((off_t *) c->argv[2]);
-        have_xfer_rate = TRUE;
-        have_all_rate = TRUE;
-        have_user_rate = have_group_rate = have_class_rate = FALSE;
-      }
-    }
-
-    c = find_config_next(c, c->next, CONF_PARAM, "TransferRate", FALSE);
-  }
-
-  /* Print out a helpful debugging message. */
-  if (have_xfer_rate) {
-    pr_log_debug(DEBUG3, "TransferRate (%.3Lf KB/s, %" PR_LU
-        " bytes free) in effect%s", xfer_rate_kbps,
-      (pr_off_t) xfer_rate_freebytes,
-      have_user_rate ? " for current user" :
-      have_group_rate ? " for current group" :
-      have_class_rate ? " for current class" : "");
-
-    /* Convert the configured Kbps to bytes per usec, for use later.
-     * The 1024.0 factor converts for Kbytes to bytes, and the
-     * 1000000.0 factor converts from secs to usecs.
-     */
-    xfer_rate_bps = xfer_rate_kbps * 1024.0;
-  }
-}
-
 static int xfer_parse_cmdlist(const char *name, config_rec *c,
     char *cmdlist) {
   char *cmd = NULL;
@@ -720,171 +586,6 @@ static int xfer_parse_cmdlist(const char *name, config_rec *c,
   return 0;
 }
 
-/* Very similar to the {block,unblock}_signals() function, this masks most
- * of the same signals -- except for TERM.  This allows a throttling process
- * to be killed by the admin.
- */
-static void xfer_rate_sigmask(unsigned char block) {
-  static sigset_t sig_set;
-
-  if (block) {
-    sigemptyset(&sig_set);
-
-    sigaddset(&sig_set, SIGCHLD);
-    sigaddset(&sig_set, SIGUSR1);
-    sigaddset(&sig_set, SIGINT);
-    sigaddset(&sig_set, SIGQUIT);
-#ifdef SIGIO
-    sigaddset(&sig_set, SIGIO);
-#endif /* SIGIO */
-#ifdef SIGBUS
-    sigaddset(&sig_set, SIGBUS);
-#endif /* SIGBUS */
-    sigaddset(&sig_set, SIGHUP);
-
-    while (sigprocmask(SIG_BLOCK, &sig_set, NULL) < 0) {
-      if (errno == EINTR) {
-        pr_signals_handle();
-        continue;
-      }
-
-      break;
-    }
-
-  } else {
-    while (sigprocmask(SIG_UNBLOCK, &sig_set, NULL) < 0) {
-      if (errno == EINTR) {
-        pr_signals_handle();
-        continue;
-      }
-
-      break;
-    }
-  }
-}
-
-/* Returns the difference, in milliseconds, between the given timeval and
- * now.
- */
-static long xfer_rate_since(struct timeval *then) {
-  struct timeval now;
-  gettimeofday(&now, NULL);
-
-  return (((now.tv_sec - then->tv_sec) * 1000L) +
-    ((now.tv_usec - then->tv_usec) / 1000L));
-}
-
-static void xfer_rate_throttle(off_t xferlen, unsigned int xfer_ending) {
-  long ideal = 0, elapsed = 0;
-  off_t orig_xferlen = xferlen;
-
-  if (XFER_ABORTED)
-    return;
-
-  /* Calculate the time interval since the transfer of data started. */
-  elapsed = xfer_rate_since(&session.xfer.start_time);
-
-  /* Perform no throttling if no throttling has been configured. */
-  if (!have_xfer_rate) {
-    xfer_rate_scoreboard_updates++;
-
-    if (xfer_ending ||
-        xfer_rate_scoreboard_updates % PR_TUNABLE_XFER_SCOREBOARD_UPDATES == 0) {
-      /* Update the scoreboard. */
-      pr_scoreboard_entry_update(getpid(),
-        PR_SCORE_XFER_LEN, orig_xferlen,
-        PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
-        NULL);
-
-      xfer_rate_scoreboard_updates = 0;
-    }
-
-    return;
-  }
-
-  /* Give credit for any configured freebytes. */
-  if (xferlen && xfer_rate_freebytes) {
-
-    if (xferlen > xfer_rate_freebytes)
-
-      /* Decrement the number of bytes transferred by the freebytes, so that
-       * any throttling does not take into account the freebytes.
-       */
-      xferlen -= xfer_rate_freebytes;
-
-    else {
-      xfer_rate_scoreboard_updates++;
-
-      /* The number of bytes transferred is less than the freebytes.  Just
-       * update the scoreboard -- no throttling needed.
-       */
-
-      if (xfer_ending ||
-          xfer_rate_scoreboard_updates % PR_TUNABLE_XFER_SCOREBOARD_UPDATES == 0) {
-        pr_scoreboard_entry_update(getpid(),
-          PR_SCORE_XFER_LEN, orig_xferlen,
-          PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
-          NULL);
-
-        xfer_rate_scoreboard_updates = 0;
-      }
-
-      return;
-    }
-  }
-
-  ideal = xferlen * 1000L / xfer_rate_bps;
-
-  if (ideal > elapsed) {
-    struct timeval tv;
-
-    /* Setup for the select.  We use select() instead of usleep() because it
-     * seems to be far more portable across platforms.
-     *
-     * ideal and elapsed are in milleconds, but tv_usec will be microseconds,
-     * so be sure to convert properly.
-     */
-    tv.tv_usec = (ideal - elapsed) * 1000;
-    tv.tv_sec = tv.tv_usec / 1000000L;
-    tv.tv_usec = tv.tv_usec % 1000000L;
-
-    pr_log_debug(DEBUG7, "transferring too fast, delaying %ld sec%s, %ld usecs",
-      (long int) tv.tv_sec, tv.tv_sec == 1 ? "" : "s", (long int) tv.tv_usec);
-
-    /* No interruptions, please... */
-    xfer_rate_sigmask(TRUE);
-
-    if (select(0, NULL, NULL, NULL, &tv) < 0) {
-      if (XFER_ABORTED) {
-        pr_log_pri(PR_LOG_NOTICE, "throttling interrupted, transfer aborted");
-        return;
-      }
-
-      pr_log_pri(PR_LOG_WARNING, "warning: unable to throttle bandwidth: %s",
-        strerror(errno));
-    }
-
-    xfer_rate_sigmask(FALSE);
-    pr_signals_handle();
-
-    /* Update the scoreboard. */
-    pr_scoreboard_entry_update(getpid(),
-      PR_SCORE_XFER_LEN, orig_xferlen,
-      PR_SCORE_XFER_ELAPSED, (unsigned long) ideal,
-      NULL);
-
-  } else {
-
-    /* Update the scoreboard. */
-    pr_scoreboard_entry_update(getpid(),
-      PR_SCORE_XFER_LEN, orig_xferlen,
-      PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
-      NULL);
-  }
-
-  return;
-}
-
 static int transmit_normal(char *buf, long bufsz) {
   long sz = pr_fsio_read(retr_fh, buf, bufsz);
 
@@ -906,13 +607,13 @@ static int transmit_sendfile(off_t count, off_t *offset,
    * - There's no data left to transmit.
    * - UseSendfile is set to off.
    */
-  if (have_xfer_rate ||
+  if (pr_throttle_have_rate() ||
      !(session.xfer.file_size - count) ||
      (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) ||
      have_prot || have_zmode ||
      !use_sendfile) {
 
-    if (have_xfer_rate) {
+    if (pr_throttle_have_rate()) {
       pr_log_debug(DEBUG10, "declining use of sendfile due to TransferRate "
         "restrictions");
 
@@ -1622,8 +1323,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
   int ret;
 #endif /* REGEX */
 
-  /* This function sets static module variables for later throttling */
-  xfer_rate_lookup(cmd);
+  /* Prepare for any potential throttling. */
+  pr_throttle_init(cmd);
 
   session.xfer.path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
   session.xfer.path_hidden = pr_table_get(cmd->notes,
@@ -1838,7 +1539,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
 
     /* If no throttling is configured, this does nothing. */
-    xfer_rate_throttle(nbytes_stored, FALSE);
+    pr_throttle_pause(nbytes_stored, FALSE);
   }
 
   if (XFER_ABORTED) {
@@ -1854,7 +1555,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   } else {
 
     /* If no throttling is configured, this does nothing. */
-    xfer_rate_throttle(nbytes_stored, TRUE);
+    pr_throttle_pause(nbytes_stored, TRUE);
 
     if (stor_complete() < 0) {
       /* Check errno for EDQOUT (or the most appropriate alternative).
@@ -2041,10 +1742,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
   long bufsz, len = 0;
   off_t curr_pos = 0, nbytes_sent = 0, cnt_steps = 0, cnt_next = 0;
 
-  /* This function sets static module variables for later potential
-   * throttling of the transfer.
-   */
-  xfer_rate_lookup(cmd);
+  /* Prepare for any potential throttling. */
+  pr_throttle_init(cmd);
 
   dir = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
 
@@ -2182,7 +1881,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
      * former does not.  (When handling STOR, this is not an issue: different
      * end-of-loop conditions).
      */
-    xfer_rate_throttle(session.xfer.total_bytes, FALSE);
+    pr_throttle_pause(session.xfer.total_bytes, FALSE);
   }
 
   if (XFER_ABORTED) {
@@ -2197,7 +1896,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
      * former does not.  (When handling STOR, this is not an issue: different
      * end-of-loop conditions).
      */
-    xfer_rate_throttle(session.xfer.total_bytes, TRUE);
+    pr_throttle_pause(session.xfer.total_bytes, TRUE);
 
     retr_complete();
     pr_data_close(FALSE);
@@ -3056,7 +2755,7 @@ static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
      * changes.
      */
     pr_log_debug(DEBUG2, "rechecking TransferRates");
-    xfer_rate_lookup(cmd);
+    pr_throttle_init(cmd);
 
     destroy_pool(p);
   }

@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.75 2008-04-04 17:16:56 castaglia Exp $
+ * $Id: conf.h,v 1.76 2008-05-06 05:13:06 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -436,6 +436,7 @@ typedef struct {
 #include "ctrls.h"
 #include "event.h"
 #include "var.h"
+#include "throttle.h"
 #include "trace.h"
 #include "encode.h"
 #include "compat.h"
