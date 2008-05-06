@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.67 2008-04-03 01:34:18 castaglia Exp $
+ * $Id: fsio.c,v 1.68 2008-05-06 07:23:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -167,8 +167,16 @@ static int sys_chmod(pr_fs_t *fs, const char *path, mode_t mode) {
   return chmod(path, mode);
 }
 
+static int sys_fchmod(pr_fh_t *fh, int fd, mode_t mode) {
+  return fchmod(fd, mode);
+}
+
 static int sys_chown(pr_fs_t *fs, const char *path, uid_t uid, gid_t gid) {
   return chown(path, uid, gid);
+}
+
+static int sys_fchown(pr_fh_t *fh, int fd, uid_t uid, gid_t gid) {
+  return fchown(fd, uid, gid);
 }
 
 /* We provide our own equivalent of access(2) here, rather than using
@@ -2996,6 +3004,32 @@ int pr_fsio_chmod(const char *name, mode_t mode) {
   return res;
 }
 
+int pr_fsio_fchmod(pr_fh_t *fh, mode_t mode) {
+  int res;
+  pr_fs_t *fs;
+
+  if (!fh) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom fchmod handler.  If there are none, use
+   * the system fchmod.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->fchmod)
+    fs = fs->fs_next;
+
+  pr_trace_msg(trace_channel, 8, "using %s fchmod() for path '%s'",
+    fs->fs_name, fh->fh_path);
+  res = (fs->fchmod)(fh, fh->fh_fd, mode);
+
+  if (res == 0)
+    pr_fs_clear_cache();
+
+  return res;
+}
+
 int pr_fsio_chown_canon(const char *name, uid_t uid, gid_t gid) {
   int res;
   pr_fs_t *fs = lookup_file_canon_fs(name, NULL, FSIO_FILE_CHOWN);
@@ -3029,6 +3063,32 @@ int pr_fsio_chown(const char *name, uid_t uid, gid_t gid) {
   pr_trace_msg(trace_channel, 8, "using %s chown() for path '%s'",
     fs->fs_name, name);
   res = (fs->chown)(fs, name, uid, gid);
+
+  if (res == 0)
+    pr_fs_clear_cache();
+
+  return res;
+}
+
+int pr_fsio_fchown(pr_fh_t *fh, uid_t uid, gid_t gid) {
+  int res;
+  pr_fs_t *fs;
+
+  if (!fh) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom fchown handler.  If there are none, use
+   * the system fchown.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->fchown)
+    fs = fs->fs_next;
+
+  pr_trace_msg(trace_channel, 8, "using %s fchown() for path '%s'",
+    fs->fs_name, fh->fh_path);
+  res = (fs->fchown)(fh, fh->fh_fd, uid, gid);
 
   if (res == 0)
     pr_fs_clear_cache();
@@ -3445,7 +3505,9 @@ int init_fs(void) {
   root_fs->ftruncate = sys_ftruncate;
   root_fs->truncate = sys_truncate;
   root_fs->chmod = sys_chmod;
+  root_fs->fchmod = sys_fchmod;
   root_fs->chown = sys_chown;
+  root_fs->fchown = sys_fchown;
   root_fs->access = sys_access;
   root_fs->faccess = sys_faccess;
 

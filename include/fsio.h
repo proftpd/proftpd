@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2006 The ProFTPD Project
+ * Copyright (c) 2001-2008 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.16 2008-04-03 01:34:18 castaglia Exp $
+ * $Id: fsio.h,v 1.17 2008-05-06 07:23:52 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -125,7 +125,9 @@ struct fs_rec {
   int (*ftruncate)(pr_fh_t *, int, off_t);
   int (*truncate)(pr_fs_t *, const char *, off_t);
   int (*chmod)(pr_fs_t *, const char *, mode_t);
+  int (*fchmod)(pr_fh_t *, int, mode_t);
   int (*chown)(pr_fs_t *, const char *, uid_t, gid_t);
+  int (*fchown)(pr_fh_t *, int, uid_t, gid_t);
   int (*access)(pr_fs_t *, const char *, int, uid_t, gid_t, array_header *);
   int (*faccess)(pr_fh_t *, int, uid_t, gid_t, array_header *);
 
@@ -235,8 +237,10 @@ int pr_fsio_ftruncate(pr_fh_t *, off_t);
 int pr_fsio_truncate(const char *, off_t);
 int pr_fsio_truncate_canon(const char *, off_t);
 int pr_fsio_chmod(const char *, mode_t);
+int pr_fsio_fchmod(pr_fh_t *, mode_t);
 int pr_fsio_chmod_canon(const char *, mode_t);
 int pr_fsio_chown(const char *, uid_t, gid_t);
+int pr_fsio_fchown(pr_fh_t *, uid_t, gid_t);
 int pr_fsio_chown_canon(const char *, uid_t, gid_t);
 int pr_fsio_chroot(const char *);
 int pr_fsio_access(const char *, int, uid_t, gid_t, array_header *);
