@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.330 2008-05-06 04:31:58 castaglia Exp $
+ * $Id: main.c,v 1.331 2008-05-06 05:17:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -691,8 +691,14 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int send_response) {
         return -1;
     }
 
-    if (send_response)
-      pr_response_flush(&resp_list);
+    if (send_response) {
+      if (success == 1) {
+        pr_response_flush(&resp_list);
+
+      } else if (success < 0) {
+        pr_response_flush(&resp_err_list);
+      }
+    }
   }
 
   /* Restore any previous pool to the Response API. */
