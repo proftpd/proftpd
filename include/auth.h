@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2007 The ProFTPD Project team
+ * Copyright (c) 2004-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /* ProFTPD Auth API
  *
- * $Id: auth.h,v 1.8 2007-10-13 01:47:57 castaglia Exp $
+ * $Id: auth.h,v 1.9 2008-05-06 04:11:47 castaglia Exp $
  */
 
 #ifndef PR_AUTH_H
@@ -84,6 +84,11 @@ int pr_auth_requires_pass(pool *, const char *);
  * an anonymous login, NULL is returned.
  */
 config_rec *pr_auth_get_anon_config(pool *p, char **, char **, char **);
+
+/* Wrapper function around the chroot(2) system call, handles setting of
+ * appropriate environment variables if necessary.
+ */
+int pr_auth_chroot(const char *);
 
 /* Add to the list of authenticating-only modules (e.g. PAM). */
 int pr_auth_add_auth_only_module(const char *);

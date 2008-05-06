@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.235 2008-04-28 15:14:27 castaglia Exp $
+ * $Id: mod_auth.c,v 1.236 2008-05-06 04:11:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -55,40 +55,6 @@ static unsigned int TimeoutSession = 0;
 
 static void auth_scan_scoreboard(void);
 static void auth_count_scoreboard(cmd_rec *, char *);
-
-/* Perform a chroot or equivalent action to lockdown the process into a
- * particular directory.
- */
-static int lockdown(char *newroot) {
-#if defined(HAVE_SETENV) && defined(__GLIBC__) && defined(__GLIBC_MINOR__) && \
-  __GLIBC__ == 2 && __GLIBC_MINOR__ >= 3
-  char *tz = pr_env_get(session.pool, "TZ");
-  if (tz == NULL) {
-    if (pr_env_set(session.pool, "TZ", pstrdup(permanent_pool,
-        tzname[0])) < 0) {
-      pr_log_debug(DEBUG0, "error setting TZ environment variable to "
-        "'%s': %s", tzname[0], strerror(errno));
-
-    } else {
-      pr_log_debug(DEBUG10, "set TZ environment variable to '%s'", tzname[0]);
-    }
-  }
-#endif
-
-  pr_log_pri(PR_LOG_INFO, "Preparing to chroot to directory '%s'", newroot);
-
-  PRIVS_ROOT
-  if (pr_fsio_chroot(newroot) == -1) {
-    PRIVS_RELINQUISH
-    pr_log_pri(PR_LOG_ERR, "%s chroot(\"%s\"): %s", session.user, newroot,
-      strerror(errno));
-    return -1;
-  }
-  PRIVS_RELINQUISH
-
-  pr_log_debug(DEBUG1, "Environment successfully chroot()ed.");
-  return 0;
-}
 
 /* auth_cmd_chk_cb() is hooked into the main server's auth_hook function,
  * so that we can deny all commands until authentication is complete.
@@ -1246,7 +1212,7 @@ static int setup_env(pool *p, char *user, char *pass) {
 
     ensure_open_passwd(p);
 
-    if (lockdown(defroot) == -1) {
+    if (pr_auth_chroot(defroot) == -1) {
       pr_log_pri(PR_LOG_ERR, "error: unable to set default root directory");
       pr_response_send(R_530, _("Login incorrect."));
       end_login(1);
@@ -1270,7 +1236,7 @@ static int setup_env(pool *p, char *user, char *pass) {
     ensure_open_passwd(p);
 
   if (c &&
-      lockdown(session.chroot_path) == -1) {
+      pr_auth_chroot(session.chroot_path) == -1) {
     pr_log_pri(PR_LOG_ERR, "error: unable to set anonymous privileges");
     pr_response_send(R_530, _("Login incorrect."));
     end_login(1);

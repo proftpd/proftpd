@@ -25,10 +25,11 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.57 2008-01-02 17:58:49 castaglia Exp $
+ * $Id: auth.c,v 1.58 2008-05-06 04:11:47 castaglia Exp $
  */
 
 #include "conf.h"
+#include "privs.h"
 
 static pool *auth_pool = NULL;
 static pr_table_t *auth_tab = NULL, *uid_tab = NULL, *gid_tab = NULL;
@@ -1143,6 +1144,42 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
   }
 
   return c;
+}
+
+int pr_auth_chroot(const char *path) {
+  int res;
+
+#if defined(HAVE_SETENV) && defined(__GLIBC__) && defined(__GLIBC_MINOR__) && \
+  __GLIBC__ == 2 && __GLIBC_MINOR__ >= 3
+  char *tz;
+
+  tz = pr_env_get(session.pool, "TZ"); 
+  if (tz == NULL) {
+    if (pr_env_set(session.pool, "TZ", pstrdup(permanent_pool,
+        tzname[0])) < 0) { 
+      pr_log_debug(DEBUG0, "error setting TZ environment variable to " 
+        "'%s': %s", tzname[0], strerror(errno));
+
+    } else {
+      pr_log_debug(DEBUG10, "set TZ environment variable to '%s'", tzname[0]);
+    }
+  }
+#endif
+
+  pr_log_pri(PR_LOG_INFO, "Preparing to chroot to directory '%s'", path);
+
+  PRIVS_ROOT
+  res = pr_fsio_chroot(path);
+  PRIVS_RELINQUISH
+
+  if (res < 0) {
+    pr_log_pri(PR_LOG_ERR, "chroot to '%s' failed for user '%s': %s", path,
+      session.user, strerror(errno));
+    return -1;
+  }
+
+  pr_log_debug(DEBUG1, "Environment successfully chroot()ed");
+  return 0;
 }
 
 int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
