@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.329 2008-04-16 00:26:25 castaglia Exp $
+ * $Id: main.c,v 1.330 2008-05-06 04:31:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -394,7 +394,8 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
           pr_scoreboard_entry_update(getpid(),
             PR_SCORE_CMD, "%s", cmd->argv[0], NULL, NULL);
           pr_scoreboard_entry_update(getpid(),
-            PR_SCORE_CMD_ARG, "%s", args ? (args+1) : "", NULL, NULL);
+            PR_SCORE_CMD_ARG, "%s", args ?
+              pr_fs_decode_path(cmd->tmp_pool, (args+1)) : "", NULL, NULL);
 
           pr_proctitle_set("%s - %s: %s", session.user, session.proc_prefix,
             cmdargstr);
@@ -584,7 +585,7 @@ int pr_cmd_read(cmd_rec **res) {
   return 0;
 }
 
-int pr_cmd_dispatch(cmd_rec *cmd) {
+int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int send_response) {
   char *cp = NULL;
   int success = 0;
   pool *resp_pool = NULL;
@@ -612,59 +613,96 @@ int pr_cmd_dispatch(cmd_rec *cmd) {
   if (!cmd->class)
     cmd->class = get_command_class(cmd->argv[0]);
 
-  /* First, dispatch to wildcard PRE_CMD handlers. */
-  success = _dispatch(cmd, PRE_CMD, FALSE, C_ANY);
+  if (phase == 0) {
+        
+    /* First, dispatch to wildcard PRE_CMD handlers. */
+    success = _dispatch(cmd, PRE_CMD, FALSE, C_ANY);
 
-  if (!success)	/* run other pre_cmd */
-    success = _dispatch(cmd, PRE_CMD, FALSE, NULL);
+    if (!success)	/* run other pre_cmd */
+      success = _dispatch(cmd, PRE_CMD, FALSE, NULL);
 
-  if (success < 0) {
+    if (success < 0) {
 
-    /* Dispatch to POST_CMD_ERR handlers as well. */
+      /* Dispatch to POST_CMD_ERR handlers as well. */
 
-    _dispatch(cmd, POST_CMD_ERR, FALSE, C_ANY);
-    _dispatch(cmd, POST_CMD_ERR, FALSE, NULL);
+      _dispatch(cmd, POST_CMD_ERR, FALSE, C_ANY);
+      _dispatch(cmd, POST_CMD_ERR, FALSE, NULL);
 
-    _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
-    _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
+      _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
+      _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
 
-    pr_response_flush(&resp_err_list);
-    return success;
-  }
+      pr_response_flush(&resp_err_list);
+      return success;
+    }
 
-  success = _dispatch(cmd, CMD, FALSE, C_ANY);
+    success = _dispatch(cmd, CMD, FALSE, C_ANY);
 
-  if (!success)
-    success = _dispatch(cmd, CMD, TRUE, NULL);
-
-  if (success == 1) {
-    success = _dispatch(cmd, POST_CMD, FALSE, C_ANY);
     if (!success)
-      success = _dispatch(cmd, POST_CMD, FALSE, NULL);
+      success = _dispatch(cmd, CMD, TRUE, NULL);
 
-    _dispatch(cmd, LOG_CMD, FALSE, C_ANY);
-    _dispatch(cmd, LOG_CMD, FALSE, NULL);
+    if (success == 1) {
+      success = _dispatch(cmd, POST_CMD, FALSE, C_ANY);
+      if (!success)
+        success = _dispatch(cmd, POST_CMD, FALSE, NULL);
 
-    pr_response_flush(&resp_list);
+      _dispatch(cmd, LOG_CMD, FALSE, C_ANY);
+      _dispatch(cmd, LOG_CMD, FALSE, NULL);
 
-  } else if (success < 0) {
+      pr_response_flush(&resp_list);
 
-    /* Allow for non-logging command handlers to be run if CMD fails. */
+    } else if (success < 0) {
 
-    success = _dispatch(cmd, POST_CMD_ERR, FALSE, C_ANY);
-    if (!success)
-      success = _dispatch(cmd, POST_CMD_ERR, FALSE, NULL);
+      /* Allow for non-logging command handlers to be run if CMD fails. */
 
-    _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
-    _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
+      success = _dispatch(cmd, POST_CMD_ERR, FALSE, C_ANY);
+      if (!success)
+        success = _dispatch(cmd, POST_CMD_ERR, FALSE, NULL);
 
-    pr_response_flush(&resp_err_list);
+      _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
+      _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
+
+      pr_response_flush(&resp_err_list);
+    }
+
+  } else {
+    switch (phase) {
+      case PRE_CMD:
+      case POST_CMD:
+      case POST_CMD_ERR:
+        success = _dispatch(cmd, phase, FALSE, C_ANY);
+        if (!success)
+          success = _dispatch(cmd, phase, FALSE, NULL);
+        break;
+
+      case CMD:
+        success = _dispatch(cmd, phase, FALSE, C_ANY);
+        if (!success)
+          success = _dispatch(cmd, phase, TRUE, NULL);
+        break;
+
+      case LOG_CMD:
+      case LOG_CMD_ERR:
+        (void) _dispatch(cmd, phase, FALSE, C_ANY);
+        (void) _dispatch(cmd, phase, FALSE, NULL);
+        break;
+
+      default:
+        errno = EINVAL;
+        return -1;
+    }
+
+    if (send_response)
+      pr_response_flush(&resp_list);
   }
 
   /* Restore any previous pool to the Response API. */
   pr_response_set_pool(resp_pool);
 
   return success;
+}
+
+int pr_cmd_dispatch(cmd_rec *cmd) {
+  return pr_cmd_dispatch_phase(cmd, 0, TRUE);
 }
 
 static cmd_rec *make_ftp_cmd(pool *p, char *buf, int flags) {

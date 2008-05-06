@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.50 2008-01-15 17:56:33 castaglia Exp $
+ * $Id: modules.h,v 1.51 2008-05-06 04:31:58 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -196,6 +196,7 @@ modret_t *mod_create_data(cmd_rec *, void *);
 /* Implemented in main.c */
 int pr_cmd_read(cmd_rec **);
 int pr_cmd_dispatch(cmd_rec *);
+int pr_cmd_dispatch_phase(cmd_rec *, int, int);
 
 /* Implemented in mod_core.c */
 int core_chgrp(cmd_rec *, char *, uid_t, gid_t);
