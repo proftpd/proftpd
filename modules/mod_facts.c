@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.6 2008-01-17 02:19:35 castaglia Exp $
+ * $Id: mod_facts.c,v 1.7 2008-05-06 16:30:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -454,7 +454,7 @@ static void facts_mlst_feat_remove(void) {
 static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
   char c, *ptr;
   unsigned int year, month, day, hour, min, sec;
-  struct utimbuf tmbuf;
+  struct timeval tvs[2];
 
   (void) p;
 
@@ -531,10 +531,11 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
     return -1;
   }
 
-  tmbuf.actime = tmbuf.modtime = facts_mktime(year, month, day, hour, min,
+  tvs[1].tv_usec = tvs[1].tv_usec = 0;
+  tvs[0].tv_sec = tvs[1].tv_sec = facts_mktime(year, month, day, hour, min,
     sec);
 
-  if (utime(path, &tmbuf) < 0) {
+  if (pr_fsio_utimes(path, tvs) < 0) {
     pr_log_debug(DEBUG2, MOD_FACTS_VERSION
       ": error modifying modify fact for '%s': %s", path, strerror(errno));
     return -1;

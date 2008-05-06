@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.68 2008-05-06 07:23:52 castaglia Exp $
+ * $Id: fsio.c,v 1.69 2008-05-06 16:30:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -258,6 +258,18 @@ static int sys_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
 static int sys_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
     array_header *suppl_gids) {
   return sys_access(fh->fh_fs, fh->fh_path, mode, uid, gid, suppl_gids);
+}
+
+static int sys_utimes(pr_fs_t *fs, const char *path, struct timeval *tvs) {
+  return utimes(path, tvs);
+}
+
+static int sys_futimes(pr_fh_t *fh, int fd, struct timeval *tvs) {
+#ifdef HAVE_FUTIMES
+  return futimes(fd, tvs);
+#else
+  return sys_utimes(fh->fh_fs, fh->fh_path, tvs);
+#endif
 }
 
 static int sys_chroot(pr_fs_t *fs, const char *path) {
@@ -3139,6 +3151,49 @@ int pr_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
   return (fh->fh_fs->faccess)(fh, mode, uid, gid, suppl_gids);
 }
 
+int pr_fsio_utimes(const char *path, struct timeval *tvs) {
+  pr_fs_t *fs;
+
+  if (path == NULL ||
+      tvs == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_UTIMES);
+
+  /* Find the first non-NULL custom utimes handler.  If there are none,
+   * use the system utimes.
+   */
+  while (fs && fs->fs_next && !fs->utimes)
+    fs = fs->fs_next;
+
+  pr_trace_msg(trace_channel, 8, "using %s utimes() for path '%s'",
+    fs->fs_name, path);
+  return (fs->utimes)(fs, path, tvs);
+}
+
+int pr_fsio_futimes(pr_fh_t *fh, struct timeval *tvs) {
+  pr_fs_t *fs;
+
+  if (fh == NULL ||
+      tvs == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom futimes handler.  If there are none,
+   * use the system futimes.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->futimes)
+    fs = fs->fs_next;
+
+  pr_trace_msg(trace_channel, 8, "using %s futimes() for path '%s'",
+    fs->fs_name, fh->fh_path);
+  return (fh->fh_fs->futimes)(fh, fh->fh_fd, tvs);
+}
+
 /* If the wrapped chroot() function suceeds (eg returns 0), then all
  * pr_fs_ts currently registered in the fs_map will have their paths
  * rewritten to reflect the new root.
@@ -3510,6 +3565,8 @@ int init_fs(void) {
   root_fs->fchown = sys_fchown;
   root_fs->access = sys_access;
   root_fs->faccess = sys_faccess;
+  root_fs->utimes = sys_utimes;
+  root_fs->futimes = sys_futimes;
 
   root_fs->chdir = sys_chdir;
   root_fs->chroot = sys_chroot;

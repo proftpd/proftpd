@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_site_misc -- a module implementing miscellaneous SITE commands
  *
- * Copyright (c) 2004-2007 The ProFTPD Project
+ * Copyright (c) 2004-2008 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.6 2008-04-04 17:47:50 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.7 2008-05-06 16:30:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -387,7 +387,7 @@ MODRET site_misc_utime(cmd_rec *cmd) {
     register unsigned int i;
     char c, *p, *path = "";
     unsigned int year, month, day, hour, min, sec = 0;
-    struct utimbuf tmbuf;
+    struct timeval tvs[2];
     unsigned char *authenticated;
     int have_secs_value = FALSE;
 
@@ -506,10 +506,11 @@ MODRET site_misc_utime(cmd_rec *cmd) {
       }
     }
 
-    tmbuf.actime = tmbuf.modtime = site_misc_mktime(year, month, day, hour,
+    tvs[0].tv_usec = tvs[1].tv_usec = 0;
+    tvs[0].tv_sec = tvs[1].tv_sec = site_misc_mktime(year, month, day, hour,
       min, sec);
 
-    if (utime(path, &tmbuf) < 0) {
+    if (pr_fsio_utimes(path, tvs) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
       return PR_ERROR(cmd);
     }

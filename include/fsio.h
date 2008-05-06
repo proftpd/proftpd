@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.17 2008-05-06 07:23:52 castaglia Exp $
+ * $Id: fsio.h,v 1.18 2008-05-06 16:30:07 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -62,6 +62,7 @@
 #define FSIO_FILE_CHMOD		(1 << 13)
 #define FSIO_FILE_CHOWN		(1 << 14)
 #define FSIO_FILE_ACCESS	(1 << 15)
+#define FSIO_FILE_UTIMES	(1 << 23)
 
 /* Macro that defines the most common file ops */
 #define FSIO_FILE_COMMON	(FSIO_FILE_OPEN|FSIO_FILE_READ|FSIO_FILE_WRITE|\
@@ -130,6 +131,8 @@ struct fs_rec {
   int (*fchown)(pr_fh_t *, int, uid_t, gid_t);
   int (*access)(pr_fs_t *, const char *, int, uid_t, gid_t, array_header *);
   int (*faccess)(pr_fh_t *, int, uid_t, gid_t, array_header *);
+  int (*utimes)(pr_fs_t *, const char *, struct timeval *);
+  int (*futimes)(pr_fh_t *, int, struct timeval *);
 
   /* For actual operations on the directory (or subdirs)
    * we cast the return from opendir to DIR* in src/fs.c, so
@@ -245,6 +248,8 @@ int pr_fsio_chown_canon(const char *, uid_t, gid_t);
 int pr_fsio_chroot(const char *);
 int pr_fsio_access(const char *, int, uid_t, gid_t, array_header *);
 int pr_fsio_faccess(pr_fh_t *, int, uid_t, gid_t, array_header *);
+int pr_fsio_utimes(const char *, struct timeval *);
+int pr_fsio_futimes(pr_fh_t *, struct timeval *);
 off_t pr_fsio_lseek(pr_fh_t *, off_t, int);
 
 /* FS-related functions */

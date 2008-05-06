@@ -273,6 +273,9 @@
 /* Define if you have the freeaddrinfo function.  */
 #undef HAVE_FREEADDRINFO
 
+/* Define if you have the futimes function.  */
+#undef HAVE_FUTIMES
+
 /* Define if you have the gai_strerror function.  */
 #undef HAVE_GAI_STRERROR
 
