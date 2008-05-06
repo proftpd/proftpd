@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.h,v 1.4 2008-01-30 17:26:41 castaglia Exp $
+ * $Id: response.h,v 1.5 2008-05-06 05:19:54 castaglia Exp $
  */
 
 #ifndef PR_RESPONSE_H
@@ -55,6 +55,7 @@ void pr_response_add_err(const char *, const char *, ...)
        ;
 #endif
 
+void pr_response_clear(pr_response_t **);
 void pr_response_flush(pr_response_t **);
 
 void pr_response_send(const char *, const char *, ...)

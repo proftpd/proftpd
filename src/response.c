@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.9 2008-01-30 17:26:41 castaglia Exp $
+ * $Id: response.c,v 1.10 2008-05-06 05:19:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -74,6 +74,10 @@ void pr_response_register_handler(char *(*handler_cb)(pool *, const char *,
   resp_handler_cb = handler_cb;
 }
 
+void pr_response_clear(pr_response_t **head) {
+  *head = NULL;
+}
+
 void pr_response_flush(pr_response_t **head) {
   unsigned char ml = FALSE;
   char *last_numeric = NULL;
@@ -115,7 +119,7 @@ void pr_response_flush(pr_response_t **head) {
     }
   }
 
-  *head = NULL;
+  pr_response_clear(head);
 }
 
 void pr_response_add_err(const char *numeric, const char *fmt, ...) {
