@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.54 2008-04-16 00:29:43 castaglia Exp $
+# $Id: proftpd.spec,v 1.55 2008-05-07 15:14:47 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -214,6 +214,7 @@ CFLAGS="$RPM_OPT_FLAGS" ./configure \
 %install
   rm -rf $RPM_BUILD_ROOT
   make DESTDIR=$RPM_BUILD_ROOT \
+	libdir=%{_libdir} \
 	prefix=%{prefix} \
 	exec_prefix=%{_exec_prefix} \
 	sysconfdir=%{_sysconfdir} \
@@ -333,6 +334,8 @@ rm -rf %{_builddir}/%{name}-%{version}
 %exclude %{_libexecdir}/mod_sql_mysql.so
 %exclude %{_libexecdir}/mod_sql_postgres.so
 %exclude %{_libexecdir}/mod_wrap.so
+%{_libdir}/pkgconfig/*.pc
+%{_libdir}/proftpd/*.a
 %{_libexecdir}/*.a
 %{_libexecdir}/*.so
 %dir %{_localstatedir}/run/proftpd
