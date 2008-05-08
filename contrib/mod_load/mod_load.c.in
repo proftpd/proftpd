@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_load -- a module for refusing connections based on system load
  *
- * Copyright (c) 2001-2005 TJ Saunders
+ * Copyright (c) 2001-2008 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
  *   Copyright (C) 1985, 86, 87, 88, 89, 91, 92, 93, 1994, 1995, 1997
  *     Free Software Foundation, Inc.
  * 
- * $Id: mod_load.c.in,v 1.4 2006-06-16 02:10:39 castaglia Exp $
+ * $Id: mod_load.c.in,v 1.5 2008-05-08 15:06:30 castaglia Exp $
  * $Libraries: @MODULE_LIBS@ $
  */
 
@@ -1029,7 +1029,7 @@ static int load_sess_init(void) {
     if (c->argc == 2)
       pr_response_send(R_421, "%s", (const char *) c->argv[1]);
     else
-      pr_response_send(R_421, "System busy, try again later");
+      pr_response_send(R_421, _("System busy, try again later"));
 
     end_login(1);
   }
