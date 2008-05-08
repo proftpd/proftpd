@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.318 2008-04-05 19:46:30 castaglia Exp $
+ * $Id: mod_core.c,v 1.319 2008-05-08 15:28:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2307,7 +2307,7 @@ MODRET add_limit(cmd_rec *cmd) {
   char **argv,**cargv;
 
   if (cmd->argc < 2)
-    CONF_ERROR(cmd, "directive requires one or more FTP commands");
+    CONF_ERROR(cmd, "directive requires one or more commands");
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_DIR|CONF_ANON|CONF_DYNDIR|CONF_GLOBAL);
 
   c = pr_parser_config_ctxt_open("Limit");
@@ -2915,7 +2915,6 @@ MODRET core_log_quit(cmd_rec *cmd) {
  * "dir_name" (w/ quote).  For directories that CONTAIN quotes,
  * the add'l quotes must be duplicated.
  */
-
 static const char *quote_dir(cmd_rec *cmd, char *dir) {
   return sreplace(cmd->tmp_pool, dir, "\"", "\"\"", NULL);
 }
