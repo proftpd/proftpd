@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.332 2008-05-08 05:29:57 castaglia Exp $
+ * $Id: main.c,v 1.333 2008-05-08 06:16:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -403,10 +403,11 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
             cmdargstr);
 
         /* ...else the client has not yet authenticated */
-        } else
+        } else {
           pr_proctitle_set("%s:%d: %s", session.c->remote_addr ?
             pr_netaddr_get_ipstr(session.c->remote_addr) : "?",
             session.c->remote_port ? session.c->remote_port : 0, cmdargstr);
+        }
       }
 
       pr_log_debug(DEBUG4, "dispatching %s command '%s' to mod_%s",
@@ -441,10 +442,10 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
       mr = call_module(c->m, c->handler, cmd);
       kludge_enable_umask();
 
-      if (MODRET_ISHANDLED(mr))
+      if (MODRET_ISHANDLED(mr)) {
         success = 1;
 
-      else if (MODRET_ISERROR(mr)) {
+      } else if (MODRET_ISERROR(mr)) {
         if (cmd_type == POST_CMD ||
             cmd_type == LOG_CMD ||
             cmd_type == LOG_CMD_ERR) {
@@ -452,24 +453,30 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
             pr_log_pri(PR_LOG_NOTICE, "%s", MODRET_ERRMSG(mr));
 
         } else if (send_error) {
-          if (MODRET_ERRNUM(mr) && MODRET_ERRMSG(mr))
+          if (MODRET_ERRNUM(mr) &&
+              MODRET_ERRMSG(mr)) {
             pr_response_add_err(MODRET_ERRNUM(mr), "%s", MODRET_ERRMSG(mr));
 
-          else if (MODRET_ERRMSG(mr))
+          } else if (MODRET_ERRMSG(mr)) {
             pr_response_send_raw("%s", MODRET_ERRMSG(mr));
+          }
         }
 
         success = -1;
       }
 
-      if (session.user && !(session.sf_flags & SF_XFER) && cmd_type == CMD)
+      if (session.user &&
+          !(session.sf_flags & SF_XFER) &&
+          cmd_type == CMD) {
         session_set_idle();
+      }
 
       destroy_pool(cmd->tmp_pool);
     }
 
-    if (!success)
+    if (!success) {
       c = pr_stash_get_symbol(PR_SYM_CMD, match, c, index_cache);
+    }
   }
 
   if (!c &&
