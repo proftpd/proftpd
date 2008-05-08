@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.331 2008-05-06 05:17:31 castaglia Exp $
+ * $Id: main.c,v 1.332 2008-05-08 05:29:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -371,6 +371,8 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
   c = pr_stash_get_symbol(PR_SYM_CMD, match, NULL, index_cache);
 
   while (c && !success) {
+    pr_signals_handle();
+
     session.curr_cmd = cmd->argv[0];
     session.curr_phase = cmd_type;
 
