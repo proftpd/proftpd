@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.333 2008-05-08 06:16:43 castaglia Exp $
+ * $Id: main.c,v 1.334 2008-05-08 06:49:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -106,6 +106,8 @@ static int nodaemon  = 0;
 static int quiet     = 0;
 static int shutdownp = 0;
 static int syntax_check = 0;
+
+static const char *protocol_name = "FTP";
 
 /* Command handling */
 static void cmd_loop(server_rec *, conn_t *);
@@ -235,7 +237,7 @@ static void end_login_noexit(void) {
 
   if (!is_master ||
       (ServerType == SERVER_INETD && !syntax_check)) {
-    pr_log_pri(PR_LOG_INFO, "FTP session closed.");
+    pr_log_pri(PR_LOG_INFO, "%s session closed.", protocol_name);
   }
 
   log_closesyslog();
@@ -534,6 +536,16 @@ static long get_max_cmd_len(size_t buflen) {
   return res;
 }
 
+int set_protocol_name(const char *name) {
+  if (name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  protocol_name = name;
+  return 0;
+}
+
 int pr_cmd_read(cmd_rec **res) {
   static long cmd_bufsz = -1;
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
@@ -778,7 +790,8 @@ static int idle_timeout_cb(CALLBACK_FRAME) {
   pr_response_send_async(R_421,
     _("Idle timeout (%d seconds): closing control connection"),
     pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE));
-  session_exit(PR_LOG_INFO, "FTP session idle timeout, disconnected", 0, NULL);
+  session_exit(PR_LOG_INFO, "Client session idle timeout, disconnected", 0,
+    NULL);
 
   pr_timer_remove(PR_TIMER_LOGIN, ANY_MODULE);
   pr_timer_remove(PR_TIMER_NOXFER, ANY_MODULE);
@@ -1327,12 +1340,13 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   /* Find the class for this session. */
   session.class = pr_class_match_addr(session.c->remote_addr);
-  if (session.class != NULL)
-    pr_log_debug(DEBUG2, "FTP session requested from class '%s'",
+  if (session.class != NULL) {
+    pr_log_debug(DEBUG2, "session requested from client in '%s' class",
       session.class->cls_name);
 
-  else
-    pr_log_debug(DEBUG5, "FTP session requested from unknown class");
+  } else {
+    pr_log_debug(DEBUG5, "session requested from client in unknown class");
+  }
 
   /* Check config tree for <Limit LOGIN> directives.  Do not perform
    * this check until after the class of the session has been determined,
@@ -1370,7 +1384,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     session.c->remote_name ? session.c->remote_name : "?",
     session.c->remote_addr ? pr_netaddr_get_ipstr(session.c->remote_addr) : "?",
     session.c->remote_port ? session.c->remote_port : 0);
-  pr_log_pri(PR_LOG_INFO, "FTP session opened.");
+  pr_log_pri(PR_LOG_INFO, "%s session opened.", protocol_name);
 
   /* Set the per-child resource limits. */
   set_session_rlimits();
@@ -1832,7 +1846,7 @@ static RETSIGTYPE sig_terminate(int signo) {
      * that a segfault happened...
      */
     pr_log_pri(PR_LOG_NOTICE, "ProFTPD terminating (signal 11)");
-    pr_log_pri(PR_LOG_INFO, "FTP session closed.");
+    pr_log_pri(PR_LOG_INFO, "%s session closed.", protocol_name);
 
     /* Restore the default signal handler. */
 #ifdef PR_DEVEL_STACK_TRACE
