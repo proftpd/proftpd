@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.334 2008-05-08 06:49:21 castaglia Exp $
+ * $Id: main.c,v 1.335 2008-05-11 02:36:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -108,6 +108,7 @@ static int shutdownp = 0;
 static int syntax_check = 0;
 
 static const char *protocol_name = "FTP";
+static const char *protocol_name_lc = "ftp";
 
 /* Command handling */
 static void cmd_loop(server_rec *, conn_t *);
@@ -208,9 +209,9 @@ static void end_login_noexit(void) {
   /* If session.user is set, we have a valid login */
   if (session.user) {
 #if (defined(BSD) && (BSD >= 199103))
-    snprintf(sbuf, sizeof(sbuf), "ftp%ld",(long)getpid());
+    snprintf(sbuf, sizeof(sbuf), "%s%ld", protocol_name_lc, (long) getpid());
 #else
-    snprintf(sbuf, sizeof(sbuf), "ftpd%d",(int)getpid());
+    snprintf(sbuf, sizeof(sbuf), "%s%d", protocol_name_lc, (int) getpid());
 #endif
     sbuf[sizeof(sbuf) - 1] = '\0';
 
@@ -537,12 +538,29 @@ static long get_max_cmd_len(size_t buflen) {
 }
 
 int set_protocol_name(const char *name) {
+  register unsigned int i;
+  size_t namelen;
+  char *lc;
+
   if (name == NULL) {
     errno = EINVAL;
     return -1;
   }
 
   protocol_name = name;
+
+  /* Also make a lowercased version of the protocol name, for other logs
+   * (e.g. the WtmpLog).
+   */
+  namelen = strlen(name);
+  lc = pstrdup(permanent_pool, name);
+
+  for (i = 0; i < namelen; i++) {
+    lc[i] = tolower((int) lc[i]);
+  }
+
+  protocol_name_lc = lc;
+
   return 0;
 }
 
