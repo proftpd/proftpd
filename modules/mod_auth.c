@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.236 2008-05-06 04:11:47 castaglia Exp $
+ * $Id: mod_auth.c,v 1.237 2008-05-11 20:40:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -258,11 +258,12 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   have_user_timeout = have_group_timeout = have_class_timeout =
     have_all_timeout = FALSE;
 
-  if ((c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutSession",
-      FALSE)) != NULL) {
+  c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutSession", FALSE);
+  while (c != NULL) {
+    pr_signals_handle();
 
     if (c->argc == 3) {
-      if (!strcmp(c->argv[1], "user")) {
+      if (strcmp(c->argv[1], "user") == 0) {
         if (pr_expr_eval_user_or((char **) &c->argv[2])) {
 
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
@@ -277,7 +278,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
           }
         }
 
-      } else if (!strcmp(c->argv[1], "group")) {
+      } else if (strcmp(c->argv[1], "group") == 0) {
         if (pr_expr_eval_group_and((char **) &c->argv[2])) {
 
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
@@ -292,7 +293,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
           }
         }
 
-      } else if (!strcmp(c->argv[1], "class")) {
+      } else if (strcmp(c->argv[1], "class") == 0) {
         if (session.class &&
             strcmp(session.class->cls_name, c->argv[2]) == 0) {
 
@@ -393,8 +394,9 @@ MODRET auth_post_pass(cmd_rec *cmd) {
      pr_response_add(auth_pass_resp_code, "%s", grantmsg);
   }
 
-  if ((privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke",
-      FALSE)) != NULL && *privsdrop == TRUE) {
+  privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke", FALSE);
+  if (privsdrop != NULL &&
+      *privsdrop == TRUE) {
     pr_signals_block();
     PRIVS_ROOT
     PRIVS_REVOKE
@@ -414,7 +416,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
     pr_log_debug(DEBUG0, "RootRevoke in effect, dropped root privs");
   }
 
-  return PR_HANDLED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Handle group based authentication, only checked if pw

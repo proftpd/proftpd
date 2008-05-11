@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.319 2008-05-08 15:28:39 castaglia Exp $
+ * $Id: mod_core.c,v 1.320 2008-05-11 20:40:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -116,6 +116,27 @@ static ssize_t get_num_bytes(char *nbytes_str) {
   /* Default return value: the given argument was badly formatted.
    */
   return PR_BYTES_BAD_FORMAT;
+}
+
+static int core_idle_timeout_cb(CALLBACK_FRAME) {
+  /* We don't want to quit in the middle of a transfer */
+  if (session.sf_flags & SF_XFER) { 
+ 
+    /* Restart the timer. */
+    return 1; 
+  }
+ 
+  pr_event_generate("core.timeout-idle", NULL);
+ 
+  pr_response_send_async(R_421,
+    _("Idle timeout (%d seconds): closing control connection"),
+    pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE));
+  session_exit(PR_LOG_INFO, "Client session idle timeout, disconnected", 0,
+    NULL);
+
+  pr_timer_remove(PR_TIMER_LOGIN, ANY_MODULE);
+  pr_timer_remove(PR_TIMER_NOXFER, ANY_MODULE);
+  return 0;
 }
 
 static int core_scrub_scoreboard_cb(CALLBACK_FRAME) {
@@ -4276,10 +4297,32 @@ MODRET core_post_pass(cmd_rec *cmd) {
 
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutIdle", FALSE);
   if (c != NULL) {
-    int timeout = *((int *) c->argv[0]);
-    pr_data_set_timeout(PR_DATA_TIMEOUT_IDLE, timeout);
+    int prev_timeout, timeout;
+
+    prev_timeout = pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE);
+    timeout = *((int *) c->argv[0]);
+
+    if (timeout != prev_timeout) {
+      pr_data_set_timeout(PR_DATA_TIMEOUT_IDLE, timeout);
+
+      /* Remove the old timer, and add a new one with the changed
+       * timeout value.
+       */
+      pr_timer_remove(PR_TIMER_IDLE, &core_module);
+
+      if (timeout > 0) {
+        pr_timer_add(timeout, PR_TIMER_IDLE, NULL, core_idle_timeout_cb,
+          "TimeoutIdle");
+      }
+    }
   }
 
+  /* Note: we MUST return HANDLED here, not DECLINED, to indicate that at
+   * least one POST_CMD handler of the PASS command succeeded.  Since
+   * mod_core is always the last module to which commands are dispatched,
+   * we can rest assured that we are not causing problems for any other
+   * PASS POST_CMD handlers by returning HANDLED here.
+   */
   return PR_HANDLED(cmd);
 }
 
@@ -4419,11 +4462,19 @@ static int core_init(void) {
 }
 
 static int core_sess_init(void) {
+  int timeout_idle;
   char *displayquit = NULL;
   config_rec *c = NULL;
   unsigned int *debug_level = NULL;
 
   init_auth();
+
+  /* Start the idle timer. */
+  timeout_idle = pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE);
+  if (timeout_idle) {
+    pr_timer_add(timeout_idle, PR_TIMER_IDLE, NULL, core_idle_timeout_cb,
+      "TimeoutIdle");
+  }
 
   /* Check for a server-specific TimeoutLinger */
   c = find_config(main_server->conf, CONF_PARAM, "TimeoutLinger", FALSE);

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.335 2008-05-11 02:36:12 castaglia Exp $
+ * $Id: main.c,v 1.336 2008-05-11 20:40:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -795,27 +795,6 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, int flags) {
   return cmd;
 }
 
-static int idle_timeout_cb(CALLBACK_FRAME) {
-  /* We don't want to quit in the middle of a transfer */
-  if (session.sf_flags & SF_XFER) {
-
-    /* Restart the timer. */
-    return 1;
-  }
-
-  pr_event_generate("core.timeout-idle", NULL);
-
-  pr_response_send_async(R_421,
-    _("Idle timeout (%d seconds): closing control connection"),
-    pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE));
-  session_exit(PR_LOG_INFO, "Client session idle timeout, disconnected", 0,
-    NULL);
-
-  pr_timer_remove(PR_TIMER_LOGIN, ANY_MODULE);
-  pr_timer_remove(PR_TIMER_NOXFER, ANY_MODULE);
-  return 0;
-}
-
 static void send_session_banner(server_rec *server) {
   config_rec *c = NULL;
   char *display = NULL;
@@ -862,16 +841,9 @@ static void send_session_banner(server_rec *server) {
 }
 
 static void cmd_loop(server_rec *server, conn_t *c) {
-  int timeout_idle;
 
   /* Make sure we can receive OOB data */
   pr_inet_set_async(session.pool, session.c);
-
-  /* Setup the main idle timer */
-  timeout_idle = pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE);
-  if (timeout_idle > 0)
-    pr_timer_add(timeout_idle, PR_TIMER_IDLE, NULL, idle_timeout_cb,
-      "TimeoutIdle");
 
   while (TRUE) {
     int res = 0; 
@@ -894,8 +866,9 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     }
 
     /* Data received, reset idle timer */
-    if (timeout_idle > 0)
-      pr_timer_reset(PR_TIMER_IDLE, NULL);
+    if (pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE) > 0) {
+      pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
+    }
 
     if (cmd) {
       pr_cmd_dispatch(cmd);

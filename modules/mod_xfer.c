@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.232 2008-05-06 05:13:06 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.233 2008-05-11 20:40:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2134,9 +2134,10 @@ MODRET xfer_post_pass(cmd_rec *cmd) {
     pr_data_set_timeout(PR_DATA_TIMEOUT_NO_TRANSFER, timeout);
 
     /* Setup timer */
-    if (timeout > 0)
+    if (timeout > 0) {
       pr_timer_add(timeout, PR_TIMER_NOXFER, &xfer_module, noxfer_timeout_cb,
         "TimeoutNoTransfer");
+    }
   }
 
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutStalled", FALSE);
@@ -2156,7 +2157,7 @@ MODRET xfer_post_pass(cmd_rec *cmd) {
     xfer_prio_config = *((int *) c->argv[1]);
   }
 
-  return PR_HANDLED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Configuration handlers
