@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.14 2008-05-12 17:11:41 castaglia Exp $
+ * $Id: mod_dso.c,v 1.15 2008-05-12 17:22:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -599,6 +599,17 @@ static void dso_restart_ev(const void *event_data, void *user_data) {
 /* Initialization routines
  */
 
+/* We should be using the LTDL_SET_PRELOADED_SYMBOLS macro provided by
+ * the ltdl.h header.  However, doing so resulted in compiler warnings
+ * about "nested extern declaraction of lt_preloaded_symbols".  To
+ * work around these warnings, we will use the expanded version of the
+ * macro directly.
+ *
+ * By the way, it appears that this lt_preloaded_symbols list is defined
+ * at link-time by the libtool script.
+ */
+extern const lt_dlsymlist lt_preloaded_symbols[];
+
 static int dso_init(void) {
 #ifdef PR_USE_CTRLS
   register unsigned int i = 0;
@@ -608,7 +619,7 @@ static int dso_init(void) {
   dso_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(dso_pool, MOD_DSO_VERSION);
 
-  LTDL_SET_PRELOADED_SYMBOLS();
+  lt_dlpreload_default(lt_preloaded_symbols);
 
   /* Initialize libltdl. */
   if (lt_dlinit() < 0) {
