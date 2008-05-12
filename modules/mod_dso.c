@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_dso -- support for loading/unloading modules at run-time
  *
- * Copyright (c) 2004-2007 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2004-2008 TJ Saunders <tj@castaglia.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,12 +25,14 @@
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.13 2007-09-13 14:57:59 castaglia Exp $
+ * $Id: mod_dso.c,v 1.14 2008-05-12 17:11:41 castaglia Exp $
  */
 
 #include "conf.h"
 #include "mod_ctrls.h"
-#include "ltdl.h"
+
+/* Make sure we use the libltdl shipped with proftpd, not the system libltdl. */
+#include "lib/libltdl/ltdl.h"
 
 #define MOD_DSO_VERSION		"mod_dso/0.4"
 
