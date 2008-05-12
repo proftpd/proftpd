@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.233 2008-05-11 20:40:55 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.234 2008-05-12 01:23:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -344,6 +344,8 @@ static int xfer_check_limit(cmd_rec *cmd) {
     unsigned int curr = 0, max = 0;
     pr_scoreboard_entry_t *score = NULL;
 
+    pr_signals_handle();
+
     /* Does this MaxTransfersPerHost apply to the current command?  Note: this
      * could be made more efficient by using bitmasks rather than string
      * comparisons.
@@ -369,6 +371,8 @@ static int xfer_check_limit(cmd_rec *cmd) {
 
     (void) pr_rewind_scoreboard();
     while ((score = pr_scoreboard_entry_read()) != NULL) {
+      pr_signals_handle();
+
       /* Scoreboard entry must match local server address and remote client
        * address to be counted.
        */
@@ -415,6 +419,8 @@ static int xfer_check_limit(cmd_rec *cmd) {
     unsigned int curr = 0, max = 0;
     pr_scoreboard_entry_t *score = NULL;
 
+    pr_signals_handle();
+
     /* Does this MaxTransfersPerUser apply to the current command?  Note: this
      * could be made more efficient by using bitmasks rather than string
      * comparisons.
@@ -440,6 +446,8 @@ static int xfer_check_limit(cmd_rec *cmd) {
 
     (void) pr_rewind_scoreboard();
     while ((score = pr_scoreboard_entry_read()) != NULL) {
+      pr_signals_handle();
+
       if (strcmp(score->sce_server_addr, server_addr) != 0)
         continue;
 
