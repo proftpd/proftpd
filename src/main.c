@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.336 2008-05-11 20:40:55 castaglia Exp $
+ * $Id: main.c,v 1.337 2008-05-13 05:41:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1604,6 +1604,7 @@ static void daemon_loop(void) {
  */
 
 void pr_signals_handle(void) {
+  table_handling_signal(TRUE);
 
   if (errno == EINTR &&
       PR_TUNABLE_EINTR_RETRY_INTERVAL > 0) {
@@ -1686,6 +1687,8 @@ void pr_signals_handle(void) {
       recvd_signal_flags &= ~RECEIVED_SIG_SHUTDOWN;
     }
   }
+
+  table_handling_signal(FALSE);
 }
 
 /* sig_restart occurs in the master daemon when manually "kill -HUP"

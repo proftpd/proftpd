@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2007 The ProFTPD Project team
+ * Copyright (c) 2004-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Table management
- * $Id: table.h,v 1.6 2007-10-04 01:46:58 castaglia Exp $
+ * $Id: table.h,v 1.7 2008-05-13 05:41:47 castaglia Exp $
  */
 
 #ifndef PR_TABLE_H
@@ -270,5 +270,8 @@ pr_table_t *pr_table_nalloc(pool *p, int flags, unsigned int nchains);
  * from the table's pool.
  */
 void *pr_table_pcalloc(pr_table_t *tab, size_t sz);
+
+/* Internal use only. */
+int table_handling_signal(int bool);
 
 #endif /* PR_TABLE_H */

@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.12 2008-02-17 21:17:34 castaglia Exp $
+ * $Id: table.c,v 1.13 2008-05-13 05:41:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -63,6 +63,8 @@ struct table_rec {
   void (*entremove)(pr_table_entry_t **, pr_table_entry_t *);
 };
 
+static int handling_signal = FALSE;
+
 /* Default table callbacks
  */
 
@@ -81,8 +83,10 @@ static unsigned int key_hash(const void *key, size_t keysz) {
     unsigned int c = *k;
     k++;
 
-    /* Always handle signals in potentially long-running while loops. */
-    pr_signals_handle();
+    if (!handling_signal) {
+      /* Always handle signals in potentially long-running while loops. */
+      pr_signals_handle();
+    }
 
     i = (i * 33) + c;
   }
@@ -155,7 +159,10 @@ static void tab_key_free(pr_table_t *tab, pr_table_key_t *k) {
 
     /* Scan to the end of the list. */
     while (i->next != NULL) {
-      pr_signals_handle();
+      if (!handling_signal) {
+        pr_signals_handle();
+      }
+
       i = i->next;
     }
 
@@ -196,7 +203,10 @@ static void tab_entry_free(pr_table_t *tab, pr_table_entry_t *e) {
 
     /* Scan to the end of the list. */
     while (i->next != NULL) {
-      pr_signals_handle();
+      if (!handling_signal) {
+        pr_signals_handle();
+      }
+
       i = i->next;
     }
 
@@ -755,8 +765,10 @@ int pr_table_do(pr_table_t *tab, int (*cb)(const void *key_data,
 
     while (ent) {
       int res;
- 
-      pr_signals_handle();
+
+      if (!handling_signal) { 
+        pr_signals_handle();
+      }
 
       res = cb(ent->key->key_data, ent->key->key_datasz, ent->value_data,
         ent->value_datasz, user_data);
@@ -788,7 +800,9 @@ int pr_table_empty(pr_table_t *tab) {
     pr_table_entry_t *e = tab->chains[i];
 
     while (e) {
-      pr_signals_handle();
+      if (!handling_signal) {
+        pr_signals_handle();
+      }
 
       tab_entry_remove(tab, e);
       tab_entry_free(tab, e);
@@ -854,7 +868,9 @@ void *pr_table_next(pr_table_t *tab) {
 
   ent = tab_entry_next(tab);
   while (ent) {
-    pr_signals_handle();
+    if (!handling_signal) {
+      pr_signals_handle();
+    }
 
     if (prev &&
         ent->key == prev->key) {
@@ -1036,7 +1052,9 @@ void pr_table_dump(void (*dumpf)(const char *fmt, ...), pr_table_t *tab) {
     pr_table_entry_t *ent = tab->chains[i];
 
     while (ent) {
-      pr_signals_handle();
+      if (!handling_signal) {
+        pr_signals_handle();
+      }
 
       dumpf("[chain %u#%u] '%s' => '%s' (%u)", i, j++, ent->key->key_data,
         ent->value_data, ent->value_datasz);
@@ -1045,4 +1063,15 @@ void pr_table_dump(void (*dumpf)(const char *fmt, ...), pr_table_t *tab) {
   }
 
   return;
+}
+
+int table_handling_signal(int bool) {
+  if (bool == TRUE ||
+      bool == FALSE) {
+    handling_signal = bool;
+    return 0;
+  }
+
+  errno = EINVAL;
+  return -1;
 }
