@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.58 2008-05-06 04:11:47 castaglia Exp $
+ * $Id: auth.c,v 1.59 2008-05-14 05:51:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1144,6 +1144,99 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
   }
 
   return c;
+}
+
+int pr_auth_banned_by_ftpusers(xaset_t *ctx, const char *user) {
+  int res = FALSE;
+  unsigned char *use_ftp_users;
+
+  use_ftp_users = get_param_ptr(ctx, "UseFtpUsers", FALSE);
+
+  if (use_ftp_users == NULL ||
+      *use_ftp_users == TRUE) {
+    FILE *fh = NULL;
+    char buf[256];
+
+    PRIVS_ROOT
+    fh = fopen(PR_FTPUSERS_PATH, "r");
+    PRIVS_RELINQUISH
+
+    if (fh == NULL)
+      return res;
+
+    memset(buf, '\0', sizeof(buf));
+
+    while (fgets(buf, sizeof(buf)-1, fh)) {
+      char *ptr;
+
+      pr_signals_handle();
+
+      buf[sizeof(buf)-1] = '\0';
+      CHOP(buf);
+
+      ptr = buf;
+      while (isspace((int) *ptr) && *ptr) {
+        ptr++;
+      }
+
+      if (!*ptr ||
+          *ptr == '#') {
+        continue;
+      }
+
+      if (strcmp(ptr, user) == 0 ) {
+        res = TRUE;
+        break;
+      }
+
+      memset(buf, '\0', sizeof(buf));
+    }
+
+    fclose(fh);
+  }
+
+  return res;
+}
+
+int pr_auth_is_valid_shell(xaset_t *ctx, const char *shell) {
+  int res = TRUE;
+  unsigned char *require_valid_shell;
+
+  if (shell == NULL)
+    return res;
+
+  require_valid_shell = get_param_ptr(ctx, "RequireValidShell", FALSE);
+
+  if (require_valid_shell == NULL ||
+      *require_valid_shell == TRUE) {
+    FILE *fh = NULL;
+    char buf[256];
+
+    fh = fopen(PR_VALID_SHELL_PATH, "r");
+    if (fh == NULL)
+      return res;
+
+    res = FALSE;
+    memset(buf, '\0', sizeof(buf));
+
+    while (fgets(buf, sizeof(buf)-1, fh)) {
+      pr_signals_handle();
+
+      buf[sizeof(buf)-1] = '\0';
+      CHOP(buf);
+
+      if (strcmp(buf, shell) == 0) {
+        res = TRUE;
+        break;
+      }
+
+      memset(buf, '\0', sizeof(buf));
+    }
+
+    fclose(fh);
+  }
+
+  return res;
 }
 
 int pr_auth_chroot(const char *path) {

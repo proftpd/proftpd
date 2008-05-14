@@ -24,7 +24,7 @@
 
 /* ProFTPD Auth API
  *
- * $Id: auth.h,v 1.9 2008-05-06 04:11:47 castaglia Exp $
+ * $Id: auth.h,v 1.10 2008-05-14 05:51:38 castaglia Exp $
  */
 
 #ifndef PR_AUTH_H
@@ -89,6 +89,18 @@ config_rec *pr_auth_get_anon_config(pool *p, char **, char **, char **);
  * appropriate environment variables if necessary.
  */
 int pr_auth_chroot(const char *);
+
+/* Check the /etc/ftpusers file, as per the UseFtpUsers directive, to see
+ * if the given user is allowed.  Returns TRUE if the user is banned by
+ * /etc/ftpusers, FALSE if not banned, and -1 if there was an error.
+ */
+int pr_auth_banned_by_ftpusers(xaset_t *, const char *);
+
+/* Check the /etc/shells file, as per the RequireValidShell directive, to
+ * ensure that the given shell is valid.  Returns TRUE if the user has
+ * a valid shell, FALSE if an invalid shell, and -1 if there was an error.
+ */
+int pr_auth_is_valid_shell(xaset_t *, const char *);
 
 /* Add to the list of authenticating-only modules (e.g. PAM). */
 int pr_auth_add_auth_only_module(const char *);

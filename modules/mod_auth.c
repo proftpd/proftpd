@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.237 2008-05-11 20:40:55 castaglia Exp $
+ * $Id: mod_auth.c,v 1.238 2008-05-14 05:51:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -470,79 +470,6 @@ static config_rec *_auth_group(pool *p, char *user, char **group,
   return c;
 }
 
-static unsigned char auth_check_ftpusers(xaset_t *s, const char *user) {
-  unsigned char res = TRUE;
-  FILE *ftpusersf = NULL;
-  char *u, buf[256] = {'\0'};
-  unsigned char *use_ftp_users = get_param_ptr(s, "UseFtpUsers", FALSE);
-
-  if (!use_ftp_users || *use_ftp_users == TRUE) {
-    PRIVS_ROOT
-    ftpusersf = fopen(PR_FTPUSERS_PATH, "r");
-    PRIVS_RELINQUISH
-
-    if (!ftpusersf)
-      return res;
-
-    while (fgets(buf, sizeof(buf)-1, ftpusersf)) {
-      pr_signals_handle();
-
-      buf[sizeof(buf)-1] = '\0';
-      CHOP(buf);
-
-      u = buf;
-      while (isspace((int) *u) && *u)
-        u++;
-
-      if (!*u || *u == '#')
-        continue;
-
-      if (!strcmp(u, user)) {
-        res = FALSE;
-        break;
-      }
-    }
-
-    fclose(ftpusersf);
-  }
-
-  return res;
-}
-
-static unsigned char auth_check_shell(xaset_t *s, const char *shell) {
-  unsigned char res = TRUE;
-  FILE *shellf = NULL;
-  char buf[256] = {'\0'};
-  unsigned char *require_valid_shell = get_param_ptr(s, "RequireValidShell",
-    FALSE);
-
-  if (!shell)
-    return res;
-
-  if (!require_valid_shell || *require_valid_shell == TRUE) {
-    if ((shellf = fopen(PR_VALID_SHELL_PATH, "r")) == NULL)
-      return res;
-
-    res = FALSE;
-
-    while (fgets(buf, sizeof(buf)-1, shellf)) {
-      pr_signals_handle();
-
-      buf[sizeof(buf)-1] = '\0';
-      CHOP(buf);
-
-      if (!strcmp(shell, buf)) {
-        res = TRUE;
-        break;
-      }
-    }
-
-    fclose(shellf);
-  }
-
-  return res;
-}
-
 /* Determine any applicable chdirs
  */
 
@@ -961,13 +888,17 @@ static int setup_env(pool *p, char *user, char *pass) {
 
   pr_auth_setgrent(p);
 
-  if (!auth_check_shell((c ? c->subset : main_server->conf), pw->pw_shell)) {
+  res = pr_auth_is_valid_shell(c ? c->subset : main_server->conf,
+    pw->pw_shell);
+  if (res == FALSE) {
     pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Invalid shell: '%s'",
       user, pw->pw_shell);
     goto auth_failure;
   }
 
-  if (!auth_check_ftpusers((c ? c->subset : main_server->conf), pw->pw_name)) {
+  res = pr_auth_banned_by_ftpusers(c ? c->subset : main_server->conf,
+    pw->pw_name);
+  if (res == TRUE) {
     pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): User in "
       PR_FTPUSERS_PATH, user);
     goto auth_failure;
