@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.320 2008-05-11 20:40:55 castaglia Exp $
+ * $Id: mod_core.c,v 1.321 2008-05-15 02:51:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4470,6 +4470,13 @@ static int core_sess_init(void) {
   init_auth();
 
   /* Start the idle timer. */
+
+  c = find_config(main_server->conf, CONF_PARAM, "TimeoutIdle", FALSE);
+  if (c != NULL) {
+    int timeout = *((int *) c->argv[0]);
+    pr_data_set_timeout(PR_DATA_TIMEOUT_IDLE, timeout);
+  }
+
   timeout_idle = pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE);
   if (timeout_idle) {
     pr_timer_add(timeout_idle, PR_TIMER_IDLE, NULL, core_idle_timeout_cb,
