@@ -23,10 +23,12 @@
  */
 
 /* TransferRate throttling
- * $Id: throttle.c,v 1.1 2008-05-06 05:13:06 castaglia Exp $
+ * $Id: throttle.c,v 1.2 2008-05-17 20:05:44 castaglia Exp $
  */
 
 #include "conf.h"
+
+#include <signal.h>
 
 /* Transfer rate variables */
 static long double xfer_rate_kbps = 0.0, xfer_rate_bps = 0.0;
