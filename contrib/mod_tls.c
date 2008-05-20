@@ -1559,25 +1559,35 @@ static void tls_blinding_on(SSL *ssl) {
 static int tls_init_ctxt(void) {
   SSL_load_error_strings();
 
-  if (pr_define_exists("TLS_USE_FIPS")) {
+  if (pr_define_exists("TLS_USE_FIPS") &&
+      ServerType == SERVER_INETD) {
 #ifdef OPENSSL_FIPS
-    /* Make sure OpenSSL is set to use the default RNG, as per an email
-     * discussion on the OpenSSL developer list:
-     *
-     *  "The internal FIPS logic uses the default RNG to see the FIPS RNG
-     *   as part of the self test process..."
-     */
-    RAND_set_rand_method(NULL);
+    if (!FIPS_mode()) {
+      /* Make sure OpenSSL is set to use the default RNG, as per an email
+       * discussion on the OpenSSL developer list:
+       *
+       *  "The internal FIPS logic uses the default RNG to see the FIPS RNG
+       *   as part of the self test process..."
+       */
+      RAND_set_rand_method(NULL);
 
-    if (!FIPS_mode_set(1)) {
-      tls_log("unable to use FIPS mode: %s", tls_get_errors());
-      pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use FIPS mode: %s",
-        tls_get_errors());
+      if (!FIPS_mode_set(1)) {
+        const char *errstr;
 
-      return -1;
+        errstr = tls_get_errors();
+        tls_log("unable to use FIPS mode: %s", errstr);
+        pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use FIPS mode: %s",
+          errstr);
+
+        errno = EPERM;
+        return -1;
+
+      } else {
+        pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION ": FIPS mode enabled");
+      }
 
     } else {
-      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION ": FIPS mode enabled");
+      pr_log_pri(PR_LOG_DEBUG, MOD_TLS_VERSION ": FIPS mode already enabled");
     }
 #else
     pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION ": FIPS mode requested, but " OPENSSL_VERSION_TEXT " not built with FIPS support");
@@ -5305,6 +5315,25 @@ static void tls_sess_exit_ev(const void *event_data, void *user_data) {
   return;
 }
 
+static void tls_startup_ev(const void *event_data, void *user_data) {
+
+  /* Install our control channel NetIO handlers.  This is done here
+   * specifically because we need to cache a pointer to the nstrm that
+   * is passed to the open callback().  Ideally we'd only install our
+   * custom NetIO handlers if the appropriate AUTH command was given.
+   * But by then, the open() callback will have already been called, and
+   * we will not have a chance to get that nstrm pointer.
+   */
+  tls_netio_install_ctrl();
+
+  /* Initialize the OpenSSL context. */
+  if (tls_init_ctxt() < 0) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+      ": error initialising OpenSSL context");
+    end_login(1);
+  }
+}
+
 /* Initialization routines
  */
 
@@ -5325,19 +5354,6 @@ static int tls_init(void) {
       SSLeay_version(SSLEAY_VERSION));
   }
 
-  /* Install our control channel NetIO handlers.  This is done here
-   * specifically because we need to cache a pointer to the nstrm that
-   * is passed to the open callback().  Ideally we'd only install our
-   * custom NetIO handlers if the appropriate AUTH command was given.
-   * But by then, the open() callback will have already been called, and
-   * we will not have a chance to get that nstrm pointer.
-   */
-  tls_netio_install_ctrl();
-
-  /* Initialize the OpenSSL context. */
-  if (tls_init_ctxt() < 0)
-    return -1;
-
   pr_log_debug(DEBUG2, MOD_TLS_VERSION ": using " OPENSSL_VERSION_TEXT);
 
   pr_event_register(&tls_module, "core.exit", tls_daemon_exit_ev, NULL);
@@ -5346,6 +5362,7 @@ static int tls_init(void) {
 #endif /* PR_SHARED_MODULE */
   pr_event_register(&tls_module, "core.postparse", tls_postparse_ev, NULL);
   pr_event_register(&tls_module, "core.restart", tls_restart_ev, NULL);
+  pr_event_register(&tls_module, "core.startup", tls_startup_ev, NULL);
 
   return 0;
 }
@@ -5446,6 +5463,46 @@ static int tls_sess_init(void) {
   if ((tls_opts & TLS_OPT_VERIFY_CERT_FQDN) && !ServerUseReverseDNS) {
     tls_opts &= ~TLS_OPT_VERIFY_CERT_FQDN;
     tls_log("%s", "reverse DNS off, disabling TLSOption dNSNameRequired");
+  }
+
+  /* We need to check for FIPS mode in the child process as well, in order
+   * to re-seed the FIPS PRNG for this process ID.  Annoying, isn't it?
+   */
+  if (pr_define_exists("TLS_USE_FIPS") &&
+      ServerType == SERVER_STANDALONE) {
+#ifdef OPENSSL_FIPS
+    if (!FIPS_mode()) {
+      /* Make sure OpenSSL is set to use the default RNG, as per an email
+       * discussion on the OpenSSL developer list:
+       *
+       *  "The internal FIPS logic uses the default RNG to see the FIPS RNG
+       *   as part of the self test process..."
+       */
+      RAND_set_rand_method(NULL);
+
+      if (!FIPS_mode_set(1)) {
+        const char *errstr;
+
+        errstr = tls_get_errors();
+
+        tls_log("unable to use FIPS mode: %s", errstr);
+        pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use FIPS mode: %s",
+          errstr);
+
+        errno = EPERM;
+        return -1;
+
+      } else {
+        tls_log("FIPS mode enabled");
+        pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION ": FIPS mode enabled");
+      }
+
+    } else {
+      tls_log("FIPS mode already enabled");
+    }
+#else
+    pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION ": FIPS mode requested, but " OPENSSL_VERSION_TEXT " not built with FIPS support");
+#endif /* OPENSSL_FIPS */
   }
 
   /* Install our data channel NetIO handlers. */
