@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2007 The ProFTPD Project team
+ * Copyright (c) 2006-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.17 2008-04-16 00:26:26 castaglia Exp $
+ * $Id: trace.c,v 1.18 2008-06-02 22:29:44 castaglia Exp $
  */
 
 
@@ -224,7 +224,7 @@ int pr_trace_set_level(const char *channel, int level) {
     void *value = palloc(trace_pool, sizeof(int));
     memcpy(value, &level, sizeof(int));
 
-    if (strcmp(channel, "ALL") != 0) {
+    if (strcmp(channel, "DEFAULT") != 0) {
       int count = pr_table_exists(trace_tab, channel);
 
       if (count <= 0) {
@@ -248,7 +248,7 @@ int pr_trace_set_level(const char *channel, int level) {
     }
 
   } else {
-    if (strcmp(channel, "ALL") != 0) {
+    if (strcmp(channel, "DEFAULT") != 0) {
       (void) pr_table_remove(trace_tab, channel, NULL);
 
     } else {

@@ -1,4 +1,4 @@
-<!-- $Id: Tracing.html,v 1.4 2008-04-16 00:26:25 castaglia Exp $ -->
+<!-- $Id: Tracing.html,v 1.5 2008-06-02 22:29:44 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Tracing.html,v $ -->
 
 <html>
@@ -73,11 +73,12 @@ This directive lets you set each log channel and its level differently,
 <pre>
   Trace command:5 response:8 timer:2 config:9
 </pre>
-There is also support for a special "ALL" keyword:
+There is also support for a special "DEFAULT" keyword:
 <pre>
-  Trace ALL:10
+  Trace DEFAULT:10
 </pre>
-The following is the list of channels which are covered by the "ALL" keyword:
+The following is the list of channels which are covered by the "DEFAULT"
+keyword:
 <ul>
   <li>auth
   <li>binding
@@ -110,17 +111,22 @@ This means that if you use the following in your <code>proftpd.conf</code>
 file, at the very top:
 <pre>
   TraceLog /path/to/ftpd/trace.log
-  Trace ALL:10
+  Trace DEFAULT:10
 </pre>
 Then <b>all</b> of the above channels, up to log level 10, will have their
-messages logged.  Any custom channels, such as those used by modules, are
-<b>not</b> covered by the "ALL" keyword.  For example, the <code>mod_tls</code>
-module may log to a "tls" channel.  Any messages to that "tls" channel would
-not appear in the Trace log file, using the above configuration.  Instead,
+messages logged.
+
+<p>
+Note that there are trace channel names that are <b>not</b> part of the
+"DEFAULT" channel name list (<i>e.g.</i> "class"); any custom channel names,
+such as might be used by a third-party module, are also not covered in the
+"DEFAULT" list.  For example, the <code>mod_tls</code> module may log to a
+"tls" channel.  Any messages to that "tls" channel would not appear in the
+<code>TraceLog</code> file, using the above configuration.  Instead,
 you would need to explicitly mention the "tls" channel, <i>i.e.</i>:
 <pre>
   TraceLog /path/to/ftpd/trace.log
-  Trace ALL:10 tls:10
+  Trace DEFAULT:10 tls:10
 </pre>
 
 <p>
@@ -159,7 +165,7 @@ ever be used for debugging and development purposes; once your
 
 <p>
 <hr>
-<i>$Date: 2008-04-16 00:26:25 $</i><br>
+<i>$Date: 2008-06-02 22:29:44 $</i><br>
 
 </body>
 </html>
