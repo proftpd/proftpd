@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.16 2008-01-24 17:11:12 castaglia Exp $
+ * $Id: netacl.c,v 1.17 2008-06-04 22:43:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -52,35 +52,37 @@ pr_netacl_type_t pr_netacl_get_type(pr_netacl_t *acl) {
 int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
   pool *tmp_pool;
 
-  if (!acl || !addr)
+  if (acl == NULL ||
+      addr == NULL) {
+    errno = EINVAL;
     return -2;
+  }
 
-tmp_pool = make_sub_pool(permanent_pool);
+  tmp_pool = make_sub_pool(permanent_pool);
 
   switch (acl->type) {
     case PR_NETACL_TYPE_ALL:
       pr_trace_msg(trace_channel, 10, "addr '%s' matched rule 'ALL' ('%s')",
         pr_netaddr_get_ipstr(addr), pr_netacl_get_str(tmp_pool, acl));
-      if (!acl->negated)
-        return 1;
-      else
-        return -1;
+      destroy_pool(tmp_pool);
+      return 1;
 
     case PR_NETACL_TYPE_NONE:
       pr_trace_msg(trace_channel, 10, "addr '%s' matched rule 'NONE'",
         pr_netaddr_get_ipstr(addr));
-      if (!acl->negated)
-        return -1;
-      else
-        return 1;
+      destroy_pool(tmp_pool);
+      return -1;
 
     case PR_NETACL_TYPE_IPMASK:
       if (pr_netaddr_ncmp(addr, acl->addr, acl->masklen) == 0) {
         pr_trace_msg(trace_channel, 10, "addr '%s' matched IP mask rule '%s'",
           pr_netaddr_get_ipstr(addr), acl->aclstr);
+        destroy_pool(tmp_pool);
         return 1;
 
       } else {
+        destroy_pool(tmp_pool);
+
         if (acl->negated)
           return 1;
       }
@@ -91,9 +93,12 @@ tmp_pool = make_sub_pool(permanent_pool);
         pr_trace_msg(trace_channel, 10,
           "addr '%s' matched IP address rule '%s'",
           pr_netaddr_get_ipstr(addr), acl->aclstr);
+        destroy_pool(tmp_pool);
         return 1;
 
       } else {
+        destroy_pool(tmp_pool);
+
         if (acl->negated)
           return 1;
       }
@@ -105,9 +110,12 @@ tmp_pool = make_sub_pool(permanent_pool);
           "addr '%s' (%s) matched DNS name rule '%s'",
           pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
           acl->aclstr);
+        destroy_pool(tmp_pool);
         return 1;
 
       } else {
+        destroy_pool(tmp_pool);
+
         if (acl->negated)
           return 1;
       }
@@ -119,9 +127,12 @@ tmp_pool = make_sub_pool(permanent_pool);
         pr_trace_msg(trace_channel, 10,
           "addr '%s' matched IP glob rule '%s'",
           pr_netaddr_get_ipstr(addr), acl->aclstr);
+        destroy_pool(tmp_pool);
         return 1;
 
       } else {
+        destroy_pool(tmp_pool);
+
         if (acl->negated)
           return 1;
       }
@@ -135,9 +146,12 @@ tmp_pool = make_sub_pool(permanent_pool);
             "addr '%s' (%s) matched DNS glob rule '%s'",
             pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
             acl->aclstr);
+          destroy_pool(tmp_pool);
           return 1;
 
         } else {
+          destroy_pool(tmp_pool);
+
           if (acl->negated)
             return 1;
         }
@@ -154,6 +168,7 @@ tmp_pool = make_sub_pool(permanent_pool);
      break; 
   }
 
+  destroy_pool(tmp_pool);
   return 0;
 }
 
@@ -161,7 +176,13 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
   pr_netacl_t *acl;
   char *cp, *aclstr_dup;
 
-  if (!p || !aclstr) {
+  if (p == NULL ||
+      aclstr == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (strlen(aclstr) == 0) {
     errno = EINVAL;
     return NULL;
   }
@@ -172,9 +193,11 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
   aclstr_dup = pstrdup(p, aclstr);
 
   if (strcasecmp(aclstr, "all") == 0) {
+    aclstr_dup = pstrdup(p, "all");
     acl->type = PR_NETACL_TYPE_ALL;
 
   } else if (strcasecmp(aclstr, "none") == 0) {
+    aclstr_dup = pstrdup(p, "none");
     acl->type = PR_NETACL_TYPE_NONE;
 
   } else if ((cp = strchr(aclstr, '/')) != NULL) {
@@ -358,40 +381,46 @@ const char *pr_netacl_get_str(pool *p, pr_netacl_t *acl) {
     return NULL;
   }
 
-  res = pstrcat(p, res, acl->aclstr, NULL);
 
   switch (acl->type) {
     case PR_NETACL_TYPE_ALL:
+      res = pstrcat(p, res, acl->aclstr, NULL);
       res = pstrcat(p, res, " <all>", NULL);
-      break;
+      return res;
 
     case PR_NETACL_TYPE_NONE:
+      res = pstrcat(p, res, acl->aclstr, NULL);
       res = pstrcat(p, res, " <none>", NULL);
-      break;
+      return res;
 
     case PR_NETACL_TYPE_IPMASK: {
       char masklenstr[64];
 
+      res = pstrcat(p, res, acl->aclstr, NULL);
       memset(masklenstr, '\0', sizeof(masklenstr));
       snprintf(masklenstr, sizeof(masklenstr)-1, "%u", acl->masklen);
-      res = pstrcat(p, res, " <IP address mask, ", masklenstr, "-bit mask, ",
+      res = pstrcat(p, res, " <IP address mask, ", masklenstr, "-bit mask",
         NULL);
       break;
     }
 
     case PR_NETACL_TYPE_IPMATCH:
+      res = pstrcat(p, res, acl->aclstr, NULL);
       res = pstrcat(p, res, " <IP address match", NULL);
       break;
 
     case PR_NETACL_TYPE_DNSMATCH:
+      res = pstrcat(p, res, acl->aclstr, NULL);
       res = pstrcat(p, res, " <DNS hostname match", NULL);
       break;
 
     case PR_NETACL_TYPE_IPGLOB:
+      res = pstrcat(p, res, acl->pattern, NULL);
       res = pstrcat(p, res, " <IP address glob", NULL);
       break;
 
     case PR_NETACL_TYPE_DNSGLOB:
+      res = pstrcat(p, res, acl->pattern, NULL);
       res = pstrcat(p, res, " <DNS hostname glob", NULL);
       break;
   }
