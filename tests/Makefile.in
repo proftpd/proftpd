@@ -51,13 +51,14 @@ dummy:
 Makefile: Makefile.in ../config.status
 	cd ../ && ./config.status
 
-
 .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
-check$(EXEEXT): $(TEST_DEPS) $(TEST_OBJS) dummy
+test$(EXEEXT): $(TEST_DEPS) $(TEST_OBJS)
 	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) -o $@ $(TEST_DEPS) $(TEST_OBJS) $(LIBS) $(TEST_LIBS)
-	./$@
+
+check: test$($EXEEXT) dummy
+	./test$(EXEEXT)
 
 clean:
-	$(LIBTOOL) --mode=clean $(RM) *.o check$(EXEEXT)
+	$(LIBTOOL) --mode=clean $(RM) *.o test$(EXEEXT)
