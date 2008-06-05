@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.17 2008-06-04 22:43:21 castaglia Exp $
+ * $Id: netacl.c,v 1.18 2008-06-05 01:57:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -81,10 +81,10 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
         return 1;
 
       } else {
-        destroy_pool(tmp_pool);
-
-        if (acl->negated)
+        if (acl->negated) {
+          destroy_pool(tmp_pool);
           return 1;
+        }
       }
       break;
 
@@ -97,10 +97,10 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
         return 1;
 
       } else {
-        destroy_pool(tmp_pool);
-
-        if (acl->negated)
+        if (acl->negated) {
+          destroy_pool(tmp_pool);
           return 1;
+        }
       }
       break;
  
@@ -114,10 +114,10 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
         return 1;
 
       } else {
-        destroy_pool(tmp_pool);
-
-        if (acl->negated)
+        if (acl->negated) {
+          destroy_pool(tmp_pool);
           return 1;
+        }
       }
       break;
 
@@ -131,10 +131,10 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
         return 1;
 
       } else {
-        destroy_pool(tmp_pool);
-
-        if (acl->negated)
+        if (acl->negated) {
+          destroy_pool(tmp_pool);
           return 1;
+        }
       }
       break;
 
@@ -150,10 +150,10 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
           return 1;
 
         } else {
-          destroy_pool(tmp_pool);
-
-          if (acl->negated)
+          if (acl->negated) {
+            destroy_pool(tmp_pool);
             return 1;
+          }
         }
 
       } else {
@@ -163,9 +163,6 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
           pr_netaddr_get_dnsstr(addr), acl->aclstr);
       }
       break;
-
-    default:
-     break; 
   }
 
   destroy_pool(tmp_pool);
