@@ -23,45 +23,65 @@
  */
 
 /*
- * Testsuite management
- * $Id: tests.h,v 1.13 2008-06-05 07:42:55 castaglia Exp $
+ * Env API tests
+ * $Id: regexp.c,v 1.1 2008-06-05 07:42:55 castaglia Exp $
  */
 
-#ifndef PR_TESTS_H
-#define PR_TESTS_H
+#include "tests.h"
 
-#include "conf.h"
-#include "privs.h"
+static pool *p = NULL;
 
-#ifdef HAVE_CHECK_H
-# include <check.h>
-#else
-# error "Missing Check installation; necessary for ProFTPD testsuite"
-#endif
+static void set_up(void) {
+  if (p == NULL) {
+    p = permanent_pool = make_sub_pool(NULL);
+  }
 
-Suite *tests_get_pool_suite(void);
-Suite *tests_get_array_suite(void);
-Suite *tests_get_str_suite(void);
-Suite *tests_get_sets_suite(void);
-Suite *tests_get_timers_suite(void);
-Suite *tests_get_table_suite(void);
-Suite *tests_get_var_suite(void);
-Suite *tests_get_event_suite(void);
-Suite *tests_get_env_suite(void);
-Suite *tests_get_version_suite(void);
-Suite *tests_get_feat_suite(void);
-Suite *tests_get_netaddr_suite(void);
-Suite *tests_get_netacl_suite(void);
-Suite *tests_get_class_suite(void);
-Suite *tests_get_regexp_suite(void);
-Suite *tests_get_expr_suite(void);
+  init_regexp();
+}
 
-/* Temporary hack/placement for this variable, until we get to testing
- * the Signals API.
- */
-unsigned int recvd_signal_flags;
+static void tear_down(void) {
+  if (p) {
+    destroy_pool(p);
+    p = NULL;
+    permanent_pool = NULL;
+  } 
+}
 
-extern int ServerUseReverseDNS;
-extern server_rec *main_server;
+START_TEST (regexp_alloc_test) {
+  regex_t *res;
 
-#endif /* PR_TESTS_H */
+  res = pr_regexp_alloc();
+  fail_unless(res != NULL, "Failed to allocate regex");
+}
+END_TEST
+
+START_TEST (regexp_free_test) {
+  regex_t *res = NULL;
+
+  pr_regexp_free(NULL);
+
+  res = pr_regexp_alloc();
+  fail_unless(res != NULL, "Failed to allocate regex");
+
+  pr_regexp_free(NULL);
+  pr_regexp_free(res);
+}
+END_TEST
+
+Suite *tests_get_regexp_suite(void) {
+  Suite *suite;
+  TCase *testcase;
+
+  suite = suite_create("regexp");
+
+  testcase = tcase_create("base");
+
+  tcase_add_checked_fixture(testcase, set_up, tear_down);
+
+  tcase_add_test(testcase, regexp_alloc_test);
+  tcase_add_test(testcase, regexp_free_test);
+
+  suite_add_tcase(suite, testcase);
+
+  return suite;
+}

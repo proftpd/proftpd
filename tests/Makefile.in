@@ -23,7 +23,9 @@ TEST_DEPS=\
   $(top_srcdir)/src/feat.o \
   $(top_srcdir)/src/netaddr.o \
   $(top_srcdir)/src/netacl.o \
-  $(top_srcdir)/src/class.o
+  $(top_srcdir)/src/class.o \
+  $(top_srcdir)/src/regexp.o \
+  $(top_srcdir)/src/expr.o
 
 TEST_LIBS=-lcheck
 
@@ -42,6 +44,8 @@ TEST_OBJS=\
   netaddr.o \
   netacl.o \
   class.o \
+  regexp.o \
+  expr.o \
   stubs.o \
   tests.o
 
