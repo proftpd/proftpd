@@ -28,6 +28,9 @@
 
 session_t session;
 
+int ServerUseReverseDNS = 1;
+server_rec *main_server = NULL;
+
 void pr_log_debug(int level, const char *fmt, ...) {
 }
 
