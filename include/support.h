@@ -25,15 +25,13 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.30 2008-05-08 06:49:21 castaglia Exp $
+ * $Id: support.h,v 1.31 2008-06-05 08:01:39 castaglia Exp $
  */
 
 #ifndef PR_SUPPORT_H
 #define PR_SUPPORT_H
 
 #include <time.h>
-
-#define CHOP(s)		strip_end((s),"\r\n")
 
 #if defined(NAME_MAX)
 # define NAME_MAX_GUESS		(NAME_MAX)
@@ -86,9 +84,6 @@ int dir_exists(char *);
 int exists(char *);
 char *make_arg_str(pool *, int, char **);
 
-char *pr_str_strip(pool *, char *);
-char *strip_end(char *, char *);
-char *get_token(char **, char *);
 char *safe_token(char **);
 int check_shutmsg(time_t *, time_t *, time_t *, char *, size_t);
 

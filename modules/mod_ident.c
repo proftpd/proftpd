@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_ident.c,v 1.1 2008-01-05 01:12:21 castaglia Exp $
+ * $Id: mod_ident.c,v 1.2 2008-06-05 08:01:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -215,20 +215,20 @@ static char *ident_lookup(pool *p, conn_t *conn) {
   if (pr_netio_gets(buf, sizeof(buf), ident_io->instrm)) {
     char *tok = NULL, *tmp = NULL;
 
-    strip_end(buf, "\r\n");
+    pr_str_strip_end(buf, "\r\n");
 
     pr_trace_msg(trace_channel, 6, "received '%s' from ident server", buf);
 
     tmp = buf;
-    tok = get_token(&tmp, ":");
+    tok = pr_str_get_token(&tmp, ":");
     if (tok &&
-        (tok = get_token(&tmp, ":"))) {
+        (tok = pr_str_get_token(&tmp, ":"))) {
       while (*tok && isspace((int) *tok)) {
         pr_signals_handle();
         tok++;
       }
 
-      strip_end(tok, " \t");
+      pr_str_strip_end(tok, " \t");
 
       if (strcasecmp(tok, "ERROR") == 0) {
         if (tmp) {
@@ -237,7 +237,7 @@ static char *ident_lookup(pool *p, conn_t *conn) {
             tmp++;
           }
 
-          strip_end(tmp, " \t");
+          pr_str_strip_end(tmp, " \t");
 
           if (strcasecmp(tmp, "HIDDEN-USER") == 0)
             ident = "HIDDEN-USER";
@@ -245,14 +245,14 @@ static char *ident_lookup(pool *p, conn_t *conn) {
 
       } else if (strcasecmp(tok, "USERID") == 0) {
         if (tmp &&
-            (tok = get_token(&tmp, ":"))) {
+            (tok = pr_str_get_token(&tmp, ":"))) {
           if (tmp) {
             while (*tmp && isspace((int) *tmp)) {
               pr_signals_handle();
               tmp++;
             }
 
-            strip_end(tmp, " \t");
+            pr_str_strip_end(tmp, " \t");
             ident = tmp;
           }
         }

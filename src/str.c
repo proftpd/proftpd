@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.3 2008-02-13 16:16:10 castaglia Exp $
+ * $Id: str.c,v 1.4 2008-06-05 08:01:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -308,6 +308,83 @@ char *pstrcat(pool *p, ...) {
     sstrcat(res, argp, len + 1);
 
   va_end(ap);
+
+  return res;
+}
+
+char *pr_str_strip(pool *p, char *str) {
+  char c, *dupstr, *start, *finish;
+ 
+  if (!p || !str) {
+    errno = EINVAL;
+    return NULL;
+  }
+ 
+  /* First, find the non-whitespace start of the given string */
+  for (start = str; isspace((int) *start); start++);
+ 
+  /* Now, find the non-whitespace end of the given string */
+  for (finish = &str[strlen(str)-1]; isspace((int) *finish); finish--);
+
+  /* finish is now pointing to a non-whitespace character.  So advance one
+   * character forward, and set that to NUL.
+   */
+  c = *++finish;
+  *finish = '\0';
+
+  /* The space-stripped string is, then, everything from start to finish. */
+  dupstr = pstrdup(p, start);
+
+  /* Restore the given string buffer contents. */
+  *finish = c;
+
+  return dupstr;
+}
+
+char *pr_str_strip_end(char *s, char *ch) {
+  size_t len;
+
+  if (s == NULL ||
+      ch == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  len = strlen(s);
+
+  while (len && strchr(ch, *(s+len - 1))) {
+    pr_signals_handle();
+
+    *(s+len - 1) = '\0';
+    len--;
+  }
+
+  return s;
+}
+
+/* get_token tokenizes a string, increments the src pointer to the next
+ * non-separator in the string.  If the src string is empty or NULL, the next
+ * token returned is NULL.
+ */
+char *pr_str_get_token(char **s, char *sep) {
+  char *res;
+
+  if (s == NULL ||
+      *s == NULL ||
+      **s == '\0' ||
+      sep == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  res = *s;
+
+  while (**s && !strchr(sep, **s)) {
+    (*s)++;
+  }
+
+  if (**s)
+    *(*s)++ = '\0';
 
   return res;
 }

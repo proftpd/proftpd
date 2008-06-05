@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.h,v 1.1 2008-02-11 04:37:49 castaglia Exp $
+ * $Id: str.h,v 1.2 2008-06-05 08:01:39 castaglia Exp $
  */
 
 #ifndef PR_STR_H
@@ -36,5 +36,11 @@ char *pdircat(pool *, ...);
 char *pstrcat(pool *, ...);
 char *pstrdup(pool *, const char *);
 char *pstrndup(pool *, const char *, size_t);
+
+char *pr_str_strip(pool *, char *);
+char *pr_str_strip_end(char *, char *);
+char *pr_str_get_token(char **, char *);
+
+#define CHOP(s)		pr_str_strip_end((s), "\r\n")
 
 #endif /* PR_STR_H */

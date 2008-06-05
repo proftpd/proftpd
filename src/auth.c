@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.59 2008-05-14 05:51:38 castaglia Exp $
+ * $Id: auth.c,v 1.60 2008-06-05 08:01:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1010,7 +1010,7 @@ static config_rec *auth_anonymous_group(pool *p, char *user) {
     do {
       ret = pr_expr_eval_group_and((char **) c->argv);
 
-    } while (!ret &&
+    } while (ret == FALSE &&
       (c = find_config_next(c, c->next, CONF_PARAM, "AnonymousGroup",
         FALSE)) != NULL);
 

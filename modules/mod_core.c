@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.321 2008-05-15 02:51:17 castaglia Exp $
+ * $Id: mod_core.c,v 1.322 2008-06-05 08:01:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1006,7 +1006,7 @@ MODRET add_from(cmd_rec *cmd) {
     char *ent = NULL;
     char *str = pstrdup(cmd->tmp_pool, *cargv);
 
-    while ((ent = get_token(&str, ",")) != NULL) {
+    while ((ent = pr_str_get_token(&str, ",")) != NULL) {
       if (*ent) {
         pr_netacl_t *acl;
 
@@ -2526,7 +2526,7 @@ MODRET set_allowdeny(cmd_rec *cmd) {
     char *s = pstrdup(cmd->tmp_pool, *argv);
 
     /* Parse the string into comma-delimited entries */
-    while ((ent = get_token(&s, ",")) != NULL) {
+    while ((ent = pr_str_get_token(&s, ",")) != NULL) {
       if (*ent) {
         pr_netacl_t *acl;
 

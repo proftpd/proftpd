@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.234 2008-05-12 01:23:57 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.235 2008-06-05 08:01:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -109,7 +109,7 @@ static unsigned long find_max_nbytes(char *directive) {
     if (c->argc > 3) {
       if (strcmp(c->argv[2], "user") == 0) {
 
-        if (pr_expr_eval_user_or((char **) &c->argv[3])) {
+        if (pr_expr_eval_user_or((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence */
@@ -124,7 +124,7 @@ static unsigned long find_max_nbytes(char *directive) {
 
       } else if (strcmp(c->argv[2], "group") == 0) {
 
-        if (pr_expr_eval_group_or((char **) &c->argv[3])) {
+        if (pr_expr_eval_group_or((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence */
@@ -139,7 +139,7 @@ static unsigned long find_max_nbytes(char *directive) {
 
       } else if (strcmp(c->argv[2], "class") == 0) {
 
-        if (pr_expr_eval_class_or((char **) &c->argv[3])) {
+        if (pr_expr_eval_class_or((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence */

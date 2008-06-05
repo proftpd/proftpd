@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.189 2008-04-28 15:14:27 castaglia Exp $
+ * $Id: dirtree.c,v 1.190 2008-06-05 08:01:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -86,7 +86,7 @@ static int allow_dyn_config(void) {
     if (c->argc == 3) {
       if (!strcmp(c->argv[2], "user")) {
 
-        if (pr_expr_eval_user_or((char **) &c->argv[3])) {
+        if (pr_expr_eval_user_or((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence. */
@@ -101,7 +101,7 @@ static int allow_dyn_config(void) {
 
       } else if (!strcmp(c->argv[2], "group")) {
 
-        if (pr_expr_eval_group_and((char **) &c->argv[3])) {
+        if (pr_expr_eval_group_and((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence. */
@@ -116,7 +116,7 @@ static int allow_dyn_config(void) {
 
       } else if (!strcmp(c->argv[2], "class")) {
 
-        if (pr_expr_eval_class_or((char **) &c->argv[3])) {
+        if (pr_expr_eval_class_or((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence. */
@@ -394,7 +394,7 @@ unsigned char dir_hide_file(const char *path) {
 
       /* check for a specified "user" classifier first... */
       if (strcmp(c->argv[3], "user") == 0) {
-        if (pr_expr_eval_user_or((char **) &c->argv[4])) {
+        if (pr_expr_eval_user_or((char **) &c->argv[4]) == TRUE) {
 
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
@@ -409,7 +409,7 @@ unsigned char dir_hide_file(const char *path) {
 
       /* ...then for a "group" classifier... */
       } else if (strcmp(c->argv[3], "group") == 0) {
-        if (pr_expr_eval_group_and((char **) &c->argv[4])) {
+        if (pr_expr_eval_group_and((char **) &c->argv[4]) == TRUE) {
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
 
@@ -427,7 +427,7 @@ unsigned char dir_hide_file(const char *path) {
        * need to be updated to process class-expressions.
        */
       } else if (strcmp(c->argv[3], "class") == 0) {
-        if (pr_expr_eval_class_or((char **) &c->argv[4])) {
+        if (pr_expr_eval_class_or((char **) &c->argv[4]) == TRUE) {
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
 
@@ -709,211 +709,6 @@ config_rec *add_config(server_rec *s, const char *name) {
   return c;
 }
 
-array_header *pr_expr_create(pool *p, int *argc, char **argv) {
-  array_header *acl = NULL;
-  int cnt = *argc;
-  char *s, *ent;
-
-  if (cnt) {
-    acl = make_array(p, cnt, sizeof(char *));
-
-    while (cnt-- && *(++argv)) {
-      s = pstrdup(p, *argv);
-
-      while ((ent = get_token(&s, ",")) != NULL)
-        if (*ent)
-          *((char **) push_array(acl)) = ent;
-    }
-
-    *argc = acl->nelts;
-
-  } else
-    *argc = 0;
-
-  return acl;
-}
-
-/* Boolean "class-expression" AND matching, returns TRUE if the expression
- * evaluates to TRUE.
- */
-unsigned char pr_expr_eval_class_and(char **expr) {
-  unsigned char found;
-  char *class;
-
-  for (; *expr; expr++) {
-    class = *expr;
-    found = FALSE;
-
-    if (*class == '!') {
-      found = !found;
-      class++;
-    }
-
-    if (!session.class && !found)
-      return FALSE;
-
-    if (session.class && strcmp(session.class->cls_name, class) == 0)
-      found = !found;
-
-    if (!found)
-      return FALSE;
-  }
-
-  return TRUE;
-}
-
-/* Boolean "class-expression" OR matching, returns TRUE if the expression
- * evaluates to TRUE.
- */
-unsigned char pr_expr_eval_class_or(char **expr) {
-  unsigned char found;
-  char *class;
-
-  for (; *expr; expr++) {
-    class = *expr;
-    found = FALSE;
-
-    if (*class == '!') {
-      found = !found;
-      class++;
-    }
-
-    if (!session.class)
-      return found;
-
-    if (strcmp(session.class->cls_name, class) == 0)
-      found = !found;
-
-    if (found)
-      return TRUE;
-  }
-
-  return FALSE;
-}
-
-/* Boolean "group-expression" AND matching, returns TRUE if the expression
- * evaluates to TRUE.
- */
-unsigned char pr_expr_eval_group_and(char **expr) {
-  unsigned char found;
-  char *grp;
-
-  for (; *expr; expr++) {
-    grp = *expr;
-    found = FALSE;
-
-    if (*grp == '!') {
-      found = !found;
-      grp++;
-    }
-
-    if (session.group && strcmp(session.group, grp) == 0)
-      found = !found;
-
-    else if (session.groups) {
-      register int i = 0;
-
-      for (i = session.groups->nelts-1; i >= 0; i--)
-        if (strcmp(*(((char **) session.groups->elts) + i), grp) == 0) {
-          found = !found;
-          break;
-        }
-    }
-
-    if (!found)
-      return FALSE;
-  }
-
-  return TRUE;
-}
-
-/* Boolean "group-expression" OR matching, returns TRUE if the expression
- * evaluates to TRUE.
- */
-unsigned char pr_expr_eval_group_or(char **expr) {
-  unsigned char found;
-  char *grp;
-
-  for (; *expr; expr++) {
-    grp = *expr;
-    found = FALSE;
-
-    if (*grp == '!') {
-      found = !found;
-      grp++;
-    }
-
-    if (session.group && strcmp(session.group, grp) == 0)
-      found = !found;
-
-    else if (session.groups) {
-      register int i = 0;
-
-      for (i = session.groups->nelts-1; i >= 0; i--)
-        if (strcmp(*(((char **) session.groups->elts) + i), grp) == 0) {
-          found = !found;
-          break;
-        }
-    }
-
-    if (found)
-      return TRUE;
-  }
-
-  return FALSE;
-}
-
-/* Boolean "user-expression" AND matching, returns TRUE if the expression
- * evaluates to TRUE.
- */
-unsigned char pr_expr_eval_user_and(char **expr) {
-  unsigned char found;
-  char *user;
-
-  for (; *expr; expr++) {
-    user = *expr;
-    found = FALSE;
-
-    if (*user == '!') {
-      found = !found;
-      user++;
-    }
-
-    if (strcmp(session.user, user) == 0)
-      found = !found;
-
-    if (!found) 
-      return FALSE;
-  }
-
-  return TRUE;
-}
-
-/* Boolean "user-expression" OR matching, returns TRUE if the expression
- * evaluates to TRUE.
- */
-unsigned char pr_expr_eval_user_or(char **expr) {
-  unsigned char found;
-  char *user;
-
-  for (; *expr; expr++) {
-    user = *expr;
-    found = FALSE;
-
-    if (*user == '!') {
-      found = !found;
-      user++;
-    }
-
-    if (strcmp(session.user, user) == 0)
-      found = !found;
-
-    if (found)
-      return TRUE;
-  }
-
-  return FALSE;
-}
 /* Per-directory configuration */
 
 static size_t _strmatch(register char *s1, register char *s2) {
@@ -1111,13 +906,13 @@ static int _check_user_access(xaset_t *set, char *name) {
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
       res = pr_expr_eval_user_or((char **) &c->argv[1]);
 
-      if (res)
+      if (res == TRUE)
         break;
 
     } else if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_AND) {
       res = pr_expr_eval_user_and((char **) &c->argv[1]);
 
-      if (res)
+      if (res == TRUE)
         break;
     }
 
@@ -1157,13 +952,13 @@ static int _check_group_access(xaset_t *set, char *name) {
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
       res = pr_expr_eval_group_or((char **) &c->argv[1]);
 
-      if (res)
+      if (res == TRUE)
         break;
 
     } else if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_AND) {
       res = pr_expr_eval_group_and((char **) &c->argv[1]);
 
-      if (res)
+      if (res == TRUE)
         break;
     }
 
@@ -1194,13 +989,13 @@ static int _check_class_access(xaset_t *set, char *name) {
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
       res = pr_expr_eval_class_or((char **) &c->argv[1]);
 
-      if (res)
+      if (res == TRUE)
         break;
 
     } else if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_AND) {
       res = pr_expr_eval_class_and((char **) &c->argv[1]);
 
-      if (res)
+      if (res == TRUE)
         break;
     }
 

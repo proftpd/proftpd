@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.238 2008-05-14 05:51:38 castaglia Exp $
+ * $Id: mod_auth.c,v 1.239 2008-06-05 08:01:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -264,7 +264,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
 
     if (c->argc == 3) {
       if (strcmp(c->argv[1], "user") == 0) {
-        if (pr_expr_eval_user_or((char **) &c->argv[2])) {
+        if (pr_expr_eval_user_or((char **) &c->argv[2]) == TRUE) {
 
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
@@ -279,7 +279,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
         }
 
       } else if (strcmp(c->argv[1], "group") == 0) {
-        if (pr_expr_eval_group_and((char **) &c->argv[2])) {
+        if (pr_expr_eval_group_and((char **) &c->argv[2]) == TRUE) {
 
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 

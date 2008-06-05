@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.68 2007-12-31 22:33:30 castaglia Exp $
+ * $Id: dirtree.h,v 1.69 2008-06-05 08:01:39 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -157,11 +157,6 @@ struct config_struc {
 #define ORDER_ALLOWDENY		0
 #define ORDER_DENYALLOW		1
 
-/* For the different types of expressions: AND, OR, and REGEX. */
-#define PR_EXPR_EVAL_AND	0
-#define PR_EXPR_EVAL_OR		1
-#define PR_EXPR_EVAL_REGEX	2
-
 /* The following macro determines the "highest" level available for
  * configuration directives.  If a current dir_config is available, it's
  * subset is used, otherwise anon config or main server
@@ -257,15 +252,6 @@ int pr_config_get_xfer_bufsz(void);
 unsigned int pr_config_set_id(const char *name);
 
 cmd_rec *pr_cmd_alloc(pool *, int, ...);
-
-/* Expression API.  (XXX These should be in their own header/src files). */
-array_header *pr_expr_create(pool *, int *, char **);
-unsigned char pr_expr_eval_class_and(char **);
-unsigned char pr_expr_eval_class_or(char **);
-unsigned char pr_expr_eval_group_and(char **);
-unsigned char pr_expr_eval_group_or(char **);
-unsigned char pr_expr_eval_user_and(char **);
-unsigned char pr_expr_eval_user_or(char **);
 
 void *get_param_ptr(xaset_t *, const char *, int);
 void *get_param_ptr_next(const char *, int);

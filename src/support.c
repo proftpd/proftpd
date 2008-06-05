@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.95 2008-04-28 15:14:27 castaglia Exp $
+ * $Id: support.c,v 1.96 2008-06-05 08:01:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -450,67 +450,6 @@ int dir_exists(char *path) {
 
 int exists(char *path) {
   return _exists(path, -1);
-}
-
-char *pr_str_strip(pool *p, char *str) {
-  char c, *dupstr, *start, *finish;
-
-  if (!p || !str) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  /* First, find the non-whitespace start of the given string */
-  for (start = str; isspace((int) *start); start++);
-
-  /* Now, find the non-whitespace end of the given string */
-  for (finish = &str[strlen(str)-1]; isspace((int) *finish); finish--);
-
-  /* finish is now pointing to a non-whitespace character.  So advance one
-   * character forward, and set that to NUL.
-   */
-  c = *++finish;
-  *finish = '\0';
-
-  /* The space-stripped string is, then, everything from start to finish. */
-  dupstr = pstrdup(p, start);
- 
-  /* Restore the given string buffer contents. */
-  *finish = c;
-
-  return dupstr;
-}
-
-char *strip_end(char *s, char *ch) {
-  int i = strlen(s);
-
-  while (i && strchr(ch,*(s+i-1))) {
-    *(s+i-1) = '\0';
-    i--;
-  }
-
-  return s;
-}
-
-/* get_token tokenizes a string, increments the src pointer to
- * the next non-separator in the string.  If the src string is
- * empty or NULL, the next token returned is NULL.
- */
-char *get_token(char **s, char *sep) {
-  char *res;
-
-  if (!s || !*s || !**s)
-    return NULL;
-
-  res = *s;
-
-  while (**s && !strchr(sep,**s))
-    (*s)++;
-
-  if (**s)
-    *(*s)++ = '\0';
-
-  return res;
 }
 
 /* safe_token tokenizes a string, and increments the pointer to
