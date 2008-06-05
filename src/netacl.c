@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.18 2008-06-05 01:57:13 castaglia Exp $
+ * $Id: netacl.c,v 1.19 2008-06-05 04:13:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -78,6 +78,10 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
         pr_trace_msg(trace_channel, 10, "addr '%s' matched IP mask rule '%s'",
           pr_netaddr_get_ipstr(addr), acl->aclstr);
         destroy_pool(tmp_pool);
+
+        if (acl->negated)
+          return -1;
+
         return 1;
 
       } else {
@@ -94,6 +98,10 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
           "addr '%s' matched IP address rule '%s'",
           pr_netaddr_get_ipstr(addr), acl->aclstr);
         destroy_pool(tmp_pool);
+
+        if (acl->negated)
+          return -1;
+
         return 1;
 
       } else {
@@ -111,6 +119,10 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
           pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
           acl->aclstr);
         destroy_pool(tmp_pool);
+
+        if (acl->negated)
+          return -1;
+
         return 1;
 
       } else {
@@ -128,6 +140,10 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
           "addr '%s' matched IP glob rule '%s'",
           pr_netaddr_get_ipstr(addr), acl->aclstr);
         destroy_pool(tmp_pool);
+
+        if (acl->negated)
+          return -1;
+
         return 1;
 
       } else {
@@ -147,6 +163,10 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
             pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
             acl->aclstr);
           destroy_pool(tmp_pool);
+
+          if (acl->negated)
+            return -1;
+
           return 1;
 
         } else {
@@ -275,9 +295,9 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
 
 #ifdef PR_USE_IPV6
   } else if (pr_netaddr_use_ipv6() &&
-             strspn(aclstr, "0123456789ABCDEFabcdef.:") != strlen(aclstr)) {
+             strspn(aclstr, "0123456789ABCDEFabcdef.:!") != strlen(aclstr)) {
 #else
-  } else if (strspn(aclstr, "0123456789.") != strlen(aclstr)) {
+  } else if (strspn(aclstr, "0123456789.!") != strlen(aclstr)) {
 #endif /* PR_USE_IPV6 */
 
     /* Check if the given rule is negated. */

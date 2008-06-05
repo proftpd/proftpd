@@ -23,7 +23,7 @@
  */
 
 /* Class routines
- * $Id: class.c,v 1.6 2008-01-18 16:17:37 castaglia Exp $
+ * $Id: class.c,v 1.7 2008-06-05 04:13:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,7 +44,7 @@ pr_class_t *pr_class_get(pr_class_t *prev) {
 }
 
 pr_class_t *pr_class_match_addr(pr_netaddr_t *addr) {
-  pr_class_t *cls, *res = NULL;
+  pr_class_t *cls;
   pool *tmp_pool;
 
   if (!addr) {
@@ -66,43 +66,57 @@ pr_class_t *pr_class_match_addr(pr_netaddr_t *addr) {
      * if "all", the class matches only if _all_ rules match.
      */
     for (i = 0; i < acl_list->nelts; i++) {
+      int res;
+
       if (next_class)
         break;
 
+      if (acls[i] == NULL)
+        continue;
+
       switch (cls->cls_satisfy) {
         case PR_CLASS_SATISFY_ANY:
-          if (acls[i]) {
-            pr_trace_msg(trace_channel, 6,
-              "checking addr '%s' against class '%s', ACL %s "
-              "(requires any ACL matching)", pr_netaddr_get_ipstr(addr),
-              cls->cls_name, pr_netacl_get_str(tmp_pool, acls[i]));
-          }
+          pr_trace_msg(trace_channel, 6,
+            "checking addr '%s' against class '%s', ACL %s "
+            "(requires any ACL matching)", pr_netaddr_get_ipstr(addr),
+            cls->cls_name, pr_netacl_get_str(tmp_pool, acls[i]));
 
-          if (pr_netacl_match(acls[i], addr) == 1)
-            res = cls;
+          res = pr_netacl_match(acls[i], addr);
+          if (res == 1) {
+            destroy_pool(tmp_pool);
+            return cls;
+          }
           break;
 
         case PR_CLASS_SATISFY_ALL:
-          if (acls[i]) {
-            pr_trace_msg(trace_channel, 6,
-              "checking addr '%s' against class '%s', ACL %s "
-              "(requires all ACLs matching)", pr_netaddr_get_ipstr(addr),
-              cls->cls_name, pr_netacl_get_str(tmp_pool, acls[i]));
-          }
+          pr_trace_msg(trace_channel, 6,
+            "checking addr '%s' against class '%s', ACL %s "
+            "(requires all ACLs matching)", pr_netaddr_get_ipstr(addr),
+            cls->cls_name, pr_netacl_get_str(tmp_pool, acls[i]));
 
-          if (pr_netacl_match(acls[i], addr) == 0)
+          res = pr_netacl_match(acls[i], addr);
+
+          if (res <= 0)
             next_class = TRUE;
           break;
       }
+    }
+
+    /* If this is a "Satisfy all" class, and all rules have matched
+     * (positively or negatively), then it matches the address.
+     */
+    if (next_class == FALSE &&
+        cls->cls_satisfy == PR_CLASS_SATISFY_ALL &&
+        i == acl_list->nelts) {
+      destroy_pool(tmp_pool);
+      return cls;
     }
   }
 
   destroy_pool(tmp_pool);
 
-  if (res == NULL)
-    errno = ENOENT;
-
-  return res;
+  errno = ENOENT;
+  return NULL;
 }
 
 pr_class_t *pr_class_find(const char *name) {
@@ -148,6 +162,12 @@ int pr_class_set_satisfy(int satisfy) {
 
   if (!curr_cls) {
     errno = EPERM;
+    return -1;
+  }
+
+  if (satisfy != PR_CLASS_SATISFY_ANY &&
+      satisfy != PR_CLASS_SATISFY_ALL) {
+    errno = EINVAL;
     return -1;
   }
 
