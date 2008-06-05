@@ -23,12 +23,10 @@
  */
 
 /* TransferRate throttling
- * $Id: throttle.c,v 1.2 2008-05-17 20:05:44 castaglia Exp $
+ * $Id: throttle.c,v 1.3 2008-06-05 07:48:54 castaglia Exp $
  */
 
 #include "conf.h"
-
-#include <signal.h>
 
 /* Transfer rate variables */
 static long double xfer_rate_kbps = 0.0, xfer_rate_bps = 0.0;
@@ -138,7 +136,7 @@ void pr_throttle_init(cmd_rec *cmd) {
     if (c->argc > 4) {
       if (strcmp(c->argv[4], "user") == 0) {
 
-        if (pr_expr_eval_user_or((char **) &c->argv[5]) &&
+        if (pr_expr_eval_user_or((char **) &c->argv[5]) == TRUE &&
             *((unsigned int *) c->argv[3]) > precedence) {
 
           /* Set the precedence. */
@@ -153,7 +151,7 @@ void pr_throttle_init(cmd_rec *cmd) {
 
       } else if (strcmp(c->argv[4], "group") == 0) {
 
-        if (pr_expr_eval_group_and((char **) &c->argv[5]) &&
+        if (pr_expr_eval_group_and((char **) &c->argv[5]) == TRUE &&
             *((unsigned int *) c->argv[3]) > precedence) {
 
           /* Set the precedence. */
@@ -168,7 +166,7 @@ void pr_throttle_init(cmd_rec *cmd) {
 
       } else if (strcmp(c->argv[4], "class") == 0) {
 
-        if (pr_expr_eval_class_or((char **) &c->argv[5]) &&
+        if (pr_expr_eval_class_or((char **) &c->argv[5]) == TRUE &&
           *((unsigned int *) c->argv[3]) > precedence) {
 
           /* Set the precedence. */
