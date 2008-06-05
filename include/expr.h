@@ -23,7 +23,7 @@
  */
 
 /* Expression API definition
- * $Id: expr.h,v 1.1 2008-06-05 08:01:39 castaglia Exp $
+ * $Id: expr.h,v 1.2 2008-06-05 21:34:24 castaglia Exp $
  */
 
 #ifndef PR_EXPR_H
@@ -36,7 +36,19 @@
 #define PR_EXPR_EVAL_OR		1
 #define PR_EXPR_EVAL_REGEX	2
 
-array_header *pr_expr_create(pool *, int *, char **);
+/* Parses the strings in argv, a NULL-terminated list of count argc,
+ * into an array header.  If a given string is comma-delimited, then it
+ * it is tokenized into the individual elements in the returned array.
+ * Note that NULL is returned if there is an error (with errno set
+ * appropriately), or if argc is less than or equal to zero.
+ *
+ * IMPORTANT: The first string in argv is automatically skipped, on the
+ * assumption that it is a configuration directive.  This is NOT what
+ * would expect from the API.  Callers of this function MUST take this
+ * into account.
+ */
+array_header *pr_expr_create(pool *p, int *argc, char **argv);
+
 int pr_expr_eval_class_and(char **);
 int pr_expr_eval_class_or(char **);
 int pr_expr_eval_group_and(char **);
