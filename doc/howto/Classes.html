@@ -1,4 +1,4 @@
-<!-- $Id: Classes.html,v 1.2 2005-07-19 00:30:02 castaglia Exp $ -->
+<!-- $Id: Classes.html,v 1.3 2008-06-05 04:02:19 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Classes.html,v $ -->
 
 <html>
@@ -21,6 +21,9 @@ connection-based groupings in ProFTPD terms.  A class is defined to have
 a <em>name</em>, and as having certain criteria such as IP addresses, IP
 subnets/masks, and DNS hostnames.  A client that connects to the daemon
 that has matching characteristics is then labeled as belonging to that class.
+<b>Note</b> that a connecting client can belong to only <b>one</b> class;
+see the description below for how the winning class is selected for a session
+from among multiple possible matches.
 
 <p>
 <b>How are Classes Defined?</b><br>
@@ -75,7 +78,8 @@ Which one will be used for the connecting client?  This will depend on the
 order in which classes are defined in the <code>proftpd.conf</code> file.
 When searching the list of classes for the one that matches the client,
 <code>proftpd</code> checks each class in the order in which they are defined.
-The first class definition that matches is used.
+The first class definition (in order of appearance in
+<code>proftpd.conf</code>) that matches is used.
 
 <p>
 How do you define a class that includes all clients from a certain
@@ -88,6 +92,39 @@ directive:
     From !bad.example.com
     Satisfy all
   &lt;/Class&gt;
+</pre>
+
+<p>
+<b>Using <code>Satisfy</code></b><br>
+The <code>Satisfy</code> directive, when used within a
+<code>&lt;Class&gt;</code> section, indicates whether <i>any</i> of the
+<code>From</code> rules in the section need to match, or whether <i>all</i> of
+the <code>From</code> rules in the section need to match.  The default
+<code>Satisfy</code> setting for a <code>&lt;Class&gt;</code> section is
+"any".
+
+<p>
+To illustrate, the following class definition will never match:
+<pre>
+  &lt;Class impossible&gt;
+    From 127.0.0.1
+    From !127.0.0.1
+    Satisfy all
+  &lt/Class&gt;
+</pre>
+It is impossible to both an address and <b>not</b> match that same address,
+but that is what is demanded by the "Satisfy all" setting in the above
+class definition.
+
+<p>
+Now, where the use of "Satisfy all" comes in handy is when you have a general
+rule with exceptions:
+<pre>
+  &lt;Class customers&gt;
+    From .domain.com
+    From !host1.domain.com !host2.domain.com
+    Satisfy all
+  &lt/Class&gt;
 </pre>
 
 <p>
@@ -132,7 +169,7 @@ This allows clients from class &quot;internal&quot; to see an effective
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2005-07-19 00:30:02 $</i><br>
+Last Updated: <i>$Date: 2008-06-05 04:02:19 $</i><br>
 <hr>
 
 </body>
