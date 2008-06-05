@@ -24,7 +24,7 @@
 
 /*
  * String API tests
- * $Id: str.c,v 1.4 2008-02-16 05:36:25 castaglia Exp $
+ * $Id: str.c,v 1.5 2008-06-05 08:02:36 castaglia Exp $
  */
 
 #include "tests.h"
@@ -355,6 +355,138 @@ START_TEST (pstrndup_test) {
 }
 END_TEST
 
+START_TEST (strip_test) {
+  char *ok, *res, *str;
+
+  res = pr_str_strip(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pr_str_strip(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null str argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pr_str_strip(NULL, "foo");
+  fail_unless(res == NULL, "Failed to handle null pool argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = pstrdup(p, "foo");
+  res = pr_str_strip(p, str);
+  fail_unless(res != NULL, "Failed to strip '%s': %s", str, strerror(errno));
+
+  ok = "foo";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  str = pstrdup(p, " \n \t foo");
+  res = pr_str_strip(p, str);
+  fail_unless(res != NULL, "Failed to strip '%s': %s", str, strerror(errno));
+
+  ok = "foo";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  str = pstrdup(p, "foo  \n \t \r");
+  res = pr_str_strip(p, str);
+  fail_unless(res != NULL, "Failed to strip '%s': %s", str, strerror(errno));
+
+  ok = "foo";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  str = pstrdup(p, "\r \n\n\t    foo  \n \t \r");
+  res = pr_str_strip(p, str);
+  fail_unless(res != NULL, "Failed to strip '%s': %s", str, strerror(errno));
+
+  ok = "foo";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+}
+END_TEST
+
+START_TEST (strip_end_test) {
+  char *ch, *ok, *res, *str;
+
+  res = pr_str_strip_end(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = pstrdup(p, "foo");
+
+  res = pr_str_strip_end(str, NULL);
+  fail_unless(res == NULL, "Failed to handle null char argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  ch = "\r\n";
+
+  res = pr_str_strip_end(NULL, ch);
+  fail_unless(res == NULL, "Failed to handle null str argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pr_str_strip_end(str, ch);
+  fail_unless(res != NULL, "Failed to strip '%s' from end of '%s': %s",
+    ch, str, strerror(errno));
+
+  ok = "foo";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  str = pstrdup(p, "foo\r\n");
+  res = pr_str_strip_end(str, ch);
+  fail_unless(res != NULL, "Failed to strip '%s' from end of '%s': %s",
+    ch, str, strerror(errno));
+
+  ok = "foo";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  str = pstrdup(p, "foo\r\n\r\n\r\n");
+  res = pr_str_strip_end(str, ch);
+  fail_unless(res != NULL, "Failed to strip '%s' from end of '%s': %s",
+    ch, str, strerror(errno));
+
+  ok = "foo";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+}
+END_TEST
+
+START_TEST (get_token_test) {
+  char *ok, *res, *str;
+
+  res = pr_str_get_token(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = NULL;
+  res = pr_str_get_token(&str, NULL);
+  fail_unless(res == NULL, "Failed to handle null str argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = pstrdup(p, "foo,bar,baz");
+  res = pr_str_get_token(&str, NULL);
+  fail_unless(res == NULL, "Failed to handle null sep argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pr_str_get_token(&str, ",");
+  fail_unless(res != NULL, "Failed to get token from '%s': %s", str,
+    strerror(errno));
+
+  ok = "foo";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pr_str_get_token(&str, ",");
+  fail_unless(res != NULL, "Failed to get token from '%s': %s", str,
+    strerror(errno));
+
+  ok = "bar";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pr_str_get_token(&str, ",");
+  fail_unless(res != NULL, "Failed to get token from '%s': %s", str,
+    strerror(errno));
+
+  ok = "baz";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pr_str_get_token(&str, ",");
+  fail_unless(res == NULL, "Unexpectedly got token '%s'", res);
+}
+END_TEST
+
 Suite *tests_get_str_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -372,6 +504,9 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, pstrcat_test);
   tcase_add_test(testcase, pstrdup_test);
   tcase_add_test(testcase, pstrndup_test);
+  tcase_add_test(testcase, strip_test);
+  tcase_add_test(testcase, strip_end_test);
+  tcase_add_test(testcase, get_token_test);
 
   suite_add_tcase(suite, testcase);
 
