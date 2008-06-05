@@ -24,7 +24,7 @@
 
 /*
  * Testsuite management
- * $Id: tests.h,v 1.11 2008-02-24 22:25:28 castaglia Exp $
+ * $Id: tests.h,v 1.12 2008-06-05 04:11:45 castaglia Exp $
  */
 
 #ifndef PR_TESTS_H
@@ -51,10 +51,15 @@ Suite *tests_get_env_suite(void);
 Suite *tests_get_version_suite(void);
 Suite *tests_get_feat_suite(void);
 Suite *tests_get_netaddr_suite(void);
+Suite *tests_get_netacl_suite(void);
+Suite *tests_get_class_suite(void);
 
 /* Temporary hack/placement for this variable, until we get to testing
  * the Signals API.
  */
 unsigned int recvd_signal_flags;
+
+extern int ServerUseReverseDNS;
+extern server_rec *main_server;
 
 #endif /* PR_TESTS_H */
