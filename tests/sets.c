@@ -24,7 +24,7 @@
 
 /*
  * Sets API tests
- * $Id: sets.c,v 1.1 2008-02-17 01:01:11 castaglia Exp $
+ * $Id: sets.c,v 1.2 2008-06-06 00:43:56 castaglia Exp $
  */
 
 #include "tests.h"
@@ -81,13 +81,13 @@ static int item_cmp(struct test_item *a, struct test_item *b) {
 }
 
 static struct test_item *item_cpy(struct test_item *a) {
-  struct test_item *dup;
+  struct test_item *a_dup;
 
-  dup = pcalloc(p, sizeof(struct test_item));
-  dup->num = a->num;
-  dup->str = pstrdup(p, a->str);
+  a_dup = pcalloc(p, sizeof(struct test_item));
+  a_dup->num = a->num;
+  a_dup->str = pstrdup(p, a->str);
 
-  return dup;
+  return a_dup;
 }
 
 /* Tests */
