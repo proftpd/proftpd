@@ -28,6 +28,7 @@
 
 session_t session;
 
+char ServerType = SERVER_STANDALONE;
 int ServerUseReverseDNS = 1;
 server_rec *main_server = NULL;
 
@@ -38,6 +39,12 @@ void pr_log_pri(int prio, const char *fmt, ...) {
 }
 
 void pr_signals_handle(void) {
+}
+
+void pr_signals_block(void) {
+}
+
+void pr_signals_unblock(void) {
 }
 
 int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {

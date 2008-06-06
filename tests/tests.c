@@ -46,6 +46,7 @@ static struct testsuite_info suites[] = {
   { "class",	tests_get_class_suite },
   { "regexp",	tests_get_regexp_suite },
   { "expr",	tests_get_expr_suite },
+  { "scoreboard",	tests_get_scoreboard_suite },
 
   { NULL, NULL }
 };
@@ -98,6 +99,9 @@ static Suite *tests_get_suite(const char *suite) {
 
   } else if (strcmp(suite, "expr") == 0) {
     return tests_get_expr_suite();
+
+  } else if (strcmp(suite, "scoreboard") == 0) {
+    return tests_get_scoreboard_suite();
   }
 
   return NULL;
