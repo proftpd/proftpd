@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.39 2008-03-27 18:28:10 castaglia Exp $
+ * $Id: scoreboard.c,v 1.40 2008-06-06 00:47:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -284,7 +284,6 @@ static int wlock_scoreboard(void) {
   return 0;
 }
 
-
 static int write_entry(void) {
   if (scoreboard_fd < 0) {
     errno = EINVAL;
@@ -527,15 +526,26 @@ int pr_set_scoreboard(const char *path) {
   struct stat st;
   char *tmp = NULL;
 
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (*path != '/') {
+    errno = EINVAL;
+    return -1;
+  }
+
   sstrncpy(dir, path, sizeof(dir));
 
-  if ((tmp = strrchr(dir, '/')) == NULL) {
+  tmp = strrchr(dir, '/');
+  if (tmp == NULL) {
     errno = EINVAL;
     return -1;
   }
   *tmp = '\0';
 
-  /* Parent directory must not be world-writeable */
+  /* Parent directory must not be world-writable */
 
   if (stat(dir, &st) < 0)
     return -1;
