@@ -1,4 +1,4 @@
-<!-- $Id: Classes.html,v 1.3 2008-06-05 04:02:19 castaglia Exp $ -->
+<!-- $Id: Classes.html,v 1.4 2008-06-10 16:29:07 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Classes.html,v $ -->
 
 <html>
@@ -126,6 +126,9 @@ rule with exceptions:
     Satisfy all
   &lt/Class&gt;
 </pre>
+Specifically, the use of "Satisfy all" is necessary when you have multiple
+<i>not</i> matches (<i>i.e.</i> using the <code>!</code> prefix), <i>all</i>
+of which need to be evaluated.
 
 <p>
 <b>How are Classes Used?</b><br>
@@ -169,7 +172,7 @@ This allows clients from class &quot;internal&quot; to see an effective
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2008-06-05 04:02:19 $</i><br>
+Last Updated: <i>$Date: 2008-06-10 16:29:07 $</i><br>
 <hr>
 
 </body>
