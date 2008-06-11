@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.40 2008-06-06 00:47:17 castaglia Exp $
+ * $Id: scoreboard.c,v 1.41 2008-06-11 03:47:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -353,7 +353,7 @@ void pr_delete_scoreboard(void) {
       pr_log_debug(DEBUG3, "deleting existing scoreboard '%s'",
         scoreboard_file);
 
-    unlink(scoreboard_file);
+    (void) unlink(scoreboard_file);
   }
 }
 
@@ -365,23 +365,32 @@ int pr_open_scoreboard(int flags) {
   int res;
   struct stat st;
 
+  if (flags != O_RDWR) {
+    errno = EINVAL;
+    return -1;
+  }
+
   /* Try to prevent a file descriptor leak by only opening the scoreboard
    * file if the scoreboard file descriptor is not already positive, i.e.
    * if the scoreboard has not already been opened.
    */
-  if (scoreboard_fd >= 0 && scoreboard_opener == getpid()) {
+  if (scoreboard_fd >= 0 &&
+      scoreboard_opener == getpid()) {
     pr_log_debug(DEBUG7, "scoreboard already opened");
     return 0;
   }
 
+  /* Check for symlinks prior to opening the file. */
+  if (lstat(scoreboard_file, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      scoreboard_fd = -1;
+      errno = EPERM;
+      return -1;
+    }
+  }
+
   pr_log_debug(DEBUG7, "opening scoreboard '%s'", scoreboard_file);
 
-  /* Prevent writing to a symlink while avoiding a race condition: open
-   * the file name O_RDWR|O_CREAT first, then check to see if it's a symlink.
-   * If so, close the file and error out.  If not, truncate as necessary,
-   * and continue.
-   */
-  
   while ((scoreboard_fd = open(scoreboard_file, flags|O_CREAT,
       PR_SCOREBOARD_MODE)) < 0) {
     if (errno == EINTR) {
@@ -405,49 +414,11 @@ int pr_open_scoreboard(int flags) {
     break;
   }
 
-  while (fstat(scoreboard_fd, &st) < 0) {
-    int st_errno = errno;
-
-    if (errno == EINTR) {
-      pr_signals_handle();
-      continue;
-    }
-
-    while (close(scoreboard_fd) < 0) {
-      if (errno == EINTR) {
-        pr_signals_handle();
-        continue;
-      }
-
-      break;
-    }
-
-    /* Either way, the scoreboard fd should be marked as closed. */
-    scoreboard_fd = -1;
-
-    errno = st_errno;
-    return -1;
-  }
-
-  if (S_ISLNK(st.st_mode)) {
-    while (close(scoreboard_fd) < 0) {
-      if (errno == EINTR) {
-        pr_signals_handle();
-        continue;
-      }
-
-      break;
-    }
-
-    errno = EPERM;
-    scoreboard_fd = -1;
-    return -1;
-  }
-
   scoreboard_opener = getpid();
 
   /* Check the header of this scoreboard file. */
-  if ((res = read_scoreboard_header(&header)) == -1) {
+  res = read_scoreboard_header(&header);
+  if (res == -1) {
 
     /* If this file is newly created, it needs to have the header
      * written.
@@ -538,12 +509,22 @@ int pr_set_scoreboard(const char *path) {
 
   sstrncpy(dir, path, sizeof(dir));
 
-  tmp = strrchr(dir, '/');
+  tmp = strrchr(dir + 1, '/');
   if (tmp == NULL) {
     errno = EINVAL;
     return -1;
   }
+
   *tmp = '\0';
+
+  /* Check for the possibility that the '/' just found is at the end
+   * of the given string.
+   */
+  if (*(tmp + 1) == '\0') {
+    *tmp = '/';
+    errno = EINVAL;
+    return -1;
+  }
 
   /* Parent directory must not be world-writable */
 
