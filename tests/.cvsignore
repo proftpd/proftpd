@@ -1,4 +1,5 @@
 check
+test
 Makefile
 tests.log
 *.o
