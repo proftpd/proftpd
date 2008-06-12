@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.41 2008-06-11 03:47:28 castaglia Exp $
+ * $Id: scoreboard.c,v 1.42 2008-06-12 21:19:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -43,6 +43,7 @@ static char scoreboard_file[PR_TUNABLE_PATH_MAX] = PR_RUN_DIR "/proftpd.scoreboa
 static off_t current_pos = 0;
 static pr_scoreboard_header_t header;
 static pr_scoreboard_entry_t entry;
+static int have_entry = FALSE;
 static struct flock entry_lock;
 
 static unsigned char scoreboard_read_locked = FALSE;
@@ -553,6 +554,11 @@ int pr_scoreboard_entry_add(void) {
     return -1;
   }
 
+  if (have_entry) {
+    errno = EPERM;
+    return -1;
+  }
+
   /* Write-lock the scoreboard file. */
   if (wlock_scoreboard() < 0)
     return -1;
@@ -593,6 +599,8 @@ int pr_scoreboard_entry_add(void) {
   entry.sce_uid = geteuid();
   entry.sce_gid = getegid();
 
+  have_entry = TRUE;
+
   if (write_entry() < 0)
     pr_log_pri(PR_LOG_NOTICE, "error writing scoreboard entry: %s",
       strerror(errno));
@@ -612,13 +620,22 @@ int pr_scoreboard_entry_del(unsigned char verbose) {
     return -1;
   }
 
+  if (!have_entry) {
+    errno = EPERM;
+    return -1;
+  }
+
   memset(&entry, '\0', sizeof(entry));
 
   /* Write-lock this entry */
   wlock_entry();
-  if (write_entry() < 0 && verbose)
+  if (write_entry() < 0 &&
+      verbose) {
     pr_log_pri(PR_LOG_NOTICE, "error deleting scoreboard entry: %s",
       strerror(errno));
+  }
+
+  have_entry = FALSE;
   unlock_entry();
 
   return 0;
@@ -687,6 +704,11 @@ const char *pr_scoreboard_entry_get(int field) {
     return NULL;
   }
 
+  if (!have_entry) {
+    errno = EPERM;
+    return NULL;
+  }
+
   switch (field) {
     case PR_SCORE_USER:
       return entry.sce_user;
@@ -721,6 +743,11 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
 
   if (scoreboard_fd < 0) {
     errno = EINVAL;
+    return -1;
+  }
+
+  if (!have_entry) {
+    errno = EPERM;
     return -1;
   }
 
@@ -845,16 +872,17 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
         break;
 
       default:
-        errno = EINVAL;
+        errno = ENOENT;
         return -1;
     }
   }
 
   /* Write-lock this entry */
   wlock_entry();
-  if (write_entry() < 0)
+  if (write_entry() < 0) {
     pr_log_pri(PR_LOG_NOTICE, "error writing scoreboard entry: %s",
       strerror(errno));
+  }
   unlock_entry();
 
   return 0;
