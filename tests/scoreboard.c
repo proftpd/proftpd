@@ -23,7 +23,7 @@
  */
 
 /* Scoreboard API tests
- * $Id: scoreboard.c,v 1.2 2008-06-11 03:48:00 castaglia Exp $
+ * $Id: scoreboard.c,v 1.3 2008-06-12 21:29:48 castaglia Exp $
  */
 
 #include "tests.h"
@@ -112,8 +112,7 @@ START_TEST (scoreboard_set_test) {
     int xerrno = errno;
 
     (void) rmdir("/tmp/prt-scoreboard");
-    fail_unless(res == 0,
-      "Failed to set 0775 perms on '/tmp/prt-scoreboard/': %s",
+    fail("Failed to set 0775 perms on '/tmp/prt-scoreboard/': %s",
       strerror(xerrno));
   }
 
@@ -143,8 +142,7 @@ START_TEST (scoreboard_open_close_test) {
     int xerrno = errno;
 
     (void) rmdir(dir);
-    fail_unless(res == 0, "Failed to set perms on '%s' to 0775': %s", dir,
-      strerror(xerrno));
+    fail("Failed to set perms on '%s' to 0775': %s", dir, strerror(xerrno));
   }
 
   res = pr_set_scoreboard(path);
@@ -152,8 +150,7 @@ START_TEST (scoreboard_open_close_test) {
     int xerrno = errno;
 
     (void) rmdir(dir);
-    fail_unless(res == 0, "Failed to set scoreboard to '%s': %s", path,
-      strerror(xerrno));
+    fail("Failed to set scoreboard to '%s': %s", path, strerror(xerrno));
   }
 
   (void) unlink(path);
@@ -166,7 +163,7 @@ START_TEST (scoreboard_open_close_test) {
       (void) unlink(symlink_path);
       (void) rmdir(dir);
 
-      fail_unless(res == 0, "Unexpectedly opened symlink scoreboard");
+      fail("Unexpectedly opened symlink scoreboard");
     }
 
     if (errno != EPERM) {
@@ -176,8 +173,7 @@ START_TEST (scoreboard_open_close_test) {
       (void) unlink(path);
       (void) rmdir(dir);
 
-      fail_unless(xerrno == EPERM, "Failed to set errno to EPERM (got %d)",
-        xerrno);
+      fail("Failed to set errno to EPERM (got %d)", xerrno);
     }
 
     (void) unlink(path);
@@ -189,7 +185,17 @@ START_TEST (scoreboard_open_close_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(res == -1, "Unexpectedly opened scoreboard using O_RDONLY");
+    fail("Unexpectedly opened scoreboard using O_RDONLY");
+  }
+
+  if (errno != EINVAL) {
+    int xerrno = errno;
+
+    (void) unlink(symlink_path);
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to EINVAL (got %d)", xerrno);
   }
 
   res = pr_open_scoreboard(O_RDWR);
@@ -199,7 +205,7 @@ START_TEST (scoreboard_open_close_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(res == 0, "Failed to open scoreboard: %s", strerror(xerrno));
+    fail("Failed to open scoreboard: %s", strerror(xerrno));
   }
 
   /* Now that we have a scoreboard, try opening it again using O_RDONLY. */
@@ -210,7 +216,7 @@ START_TEST (scoreboard_open_close_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(res == -1, "Unexpectedly opened scoreboard using O_RDONLY");
+    fail("Unexpectedly opened scoreboard using O_RDONLY");
   }
 
   if (errno != EINVAL) {
@@ -219,8 +225,7 @@ START_TEST (scoreboard_open_close_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(xerrno == EINVAL, "Failed to set errno to EINVAL (got %d)",
-      xerrno);
+    fail("Failed to set errno to EINVAL (got %d)", xerrno);
   }
 
   (void) unlink(path);
@@ -242,8 +247,7 @@ START_TEST (scoreboard_delete_test) {
     int xerrno = errno;
 
     (void) rmdir(dir);
-    fail_unless(res == 0, "Failed to set perms on '%s' to 0775': %s", dir,
-      strerror(xerrno));
+    fail("Failed to set perms on '%s' to 0775': %s", dir, strerror(xerrno));
   }
 
   res = pr_set_scoreboard(path);
@@ -251,8 +255,7 @@ START_TEST (scoreboard_delete_test) {
     int xerrno = errno;
 
     (void) rmdir(dir);
-    fail_unless(res == 0, "Failed to set scoreboard to '%s': %s", path,
-      strerror(xerrno));
+    fail("Failed to set scoreboard to '%s': %s", path, strerror(xerrno));
   }
 
   (void) unlink(path);
@@ -264,7 +267,7 @@ START_TEST (scoreboard_delete_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(res == 0, "Failed to open scoreboard: %s", strerror(xerrno));
+    fail("Failed to open scoreboard: %s", strerror(xerrno));
   }
 
   res = stat(pr_get_scoreboard(), &st);
@@ -274,7 +277,7 @@ START_TEST (scoreboard_delete_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(res == 0, "Failed to stat scoreboard: %s", strerror(xerrno));
+    fail("Failed to stat scoreboard: %s", strerror(xerrno));
   }
 
   pr_delete_scoreboard();
@@ -284,7 +287,7 @@ START_TEST (scoreboard_delete_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(res == -1, "Unexpectedly found deleted scoreboard");
+    fail("Unexpectedly found deleted scoreboard");
   }
 
   (void) unlink(path);
@@ -293,14 +296,206 @@ START_TEST (scoreboard_delete_test) {
 END_TEST
 
 START_TEST (scoreboard_restore_test) {
+  int res;
+  const char *dir = "/tmp/prt-scoreboard/", *path = "/tmp/prt-scoreboard/test";
+
+  res = mkdir(dir, 0775);
+  fail_unless(res == 0, "Failed to create directory '%s': %s", dir,
+    strerror(errno));
+
+  res = chmod(dir, 0775);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set perms on '%s' to 0775': %s", dir, strerror(xerrno));
+  }
+
+  res = pr_set_scoreboard(path);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set scoreboard to '%s': %s", path, strerror(xerrno));
+  }
+
+  (void) unlink(path);
+
+  res = pr_restore_scoreboard();
+  if (res == 0) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly restored scoreboard");
+  }
+
+  if (errno != EINVAL) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to EINVAL (got %d)", xerrno);
+  }
+
+  res = pr_open_scoreboard(O_RDWR);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to open scoreboard: %s", strerror(xerrno));
+  }
+
+  res = pr_restore_scoreboard();
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to restore scoreboard: %s", strerror(xerrno));
+  }
+
+  (void) unlink(path);
+  (void) rmdir(dir);
 }
 END_TEST
 
 START_TEST (scoreboard_rewind_test) {
+  int res;
+  const char *dir = "/tmp/prt-scoreboard/", *path = "/tmp/prt-scoreboard/test";
+
+  res = mkdir(dir, 0775);
+  fail_unless(res == 0, "Failed to create directory '%s': %s", dir,
+    strerror(errno));
+
+  res = chmod(dir, 0775);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set perms on '%s' to 0775': %s", dir, strerror(xerrno));
+  }
+
+  res = pr_set_scoreboard(path);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set scoreboard to '%s': %s", path, strerror(xerrno));
+  }
+
+  (void) unlink(path);
+
+  res = pr_rewind_scoreboard();
+  if (res == 0) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly rewound scoreboard");
+  }
+
+  if (errno != EINVAL) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to EINVAL (got %d)", xerrno);
+  }
+
+  res = pr_open_scoreboard(O_RDWR);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to open scoreboard: %s", strerror(xerrno));
+  }
+
+  res = pr_rewind_scoreboard();
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to rewind scoreboard: %s", strerror(xerrno));
+  }
+
+  (void) unlink(path);
+  (void) rmdir(dir);
 }
 END_TEST
 
 START_TEST (scoreboard_scrub_test) {
+  int res;
+  const char *dir = "/tmp/prt-scoreboard/", *path = "/tmp/prt-scoreboard/test";
+
+  res = mkdir(dir, 0775);
+  fail_unless(res == 0, "Failed to create directory '%s': %s", dir,
+    strerror(errno));
+
+  res = chmod(dir, 0775);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set perms on '%s' to 0775': %s", dir, strerror(xerrno));
+  }
+
+  res = pr_set_scoreboard(path);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set scoreboard to '%s': %s", path, strerror(xerrno));
+  }
+
+  (void) unlink(path);
+
+  res = pr_scoreboard_scrub();
+  if (res == 0) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly scrubbed scoreboard");
+  }
+
+  if (errno != EPERM) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to EPERM (got %d)", xerrno);
+  }
+
+  res = pr_open_scoreboard(O_RDWR);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to open scoreboard: %s", strerror(xerrno));
+  }
+
+  res = pr_scoreboard_scrub();
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to scrub scoreboard: %s", strerror(xerrno));
+  }
+
+  (void) unlink(path);
+  (void) rmdir(dir);
 }
 END_TEST
 
@@ -318,8 +513,7 @@ START_TEST (scoreboard_get_daemon_pid_test) {
     int xerrno = errno;
 
     (void) rmdir(dir);
-    fail_unless(res == 0, "Failed to set perms on '%s' to 0775': %s", dir,
-      strerror(xerrno));
+    fail("Failed to set perms on '%s' to 0775': %s", dir, strerror(xerrno));
   }
 
   res = pr_set_scoreboard(path);
@@ -327,8 +521,7 @@ START_TEST (scoreboard_get_daemon_pid_test) {
     int xerrno = errno;
 
     (void) rmdir(dir);
-    fail_unless(res == 0, "Failed to set scoreboard to '%s': %s", path,
-      strerror(xerrno));
+    fail("Failed to set scoreboard to '%s': %s", path, strerror(xerrno));
   }
 
   (void) unlink(path);
@@ -340,7 +533,7 @@ START_TEST (scoreboard_get_daemon_pid_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(res == 0, "Failed to open scoreboard: %s", strerror(xerrno));
+    fail("Failed to open scoreboard: %s", strerror(xerrno));
   }
 
   daemon_pid = pr_scoreboard_get_daemon_pid();
@@ -348,8 +541,8 @@ START_TEST (scoreboard_get_daemon_pid_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(daemon_pid == getpid(), "Expected %lu, got %lu",
-      (unsigned long) getpid(), (unsigned long) daemon_pid);
+    fail("Expected %lu, got %lu", (unsigned long) getpid(),
+      (unsigned long) daemon_pid);
   }
 
   pr_delete_scoreboard();
@@ -363,7 +556,7 @@ START_TEST (scoreboard_get_daemon_pid_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(res == 0, "Failed to open scoreboard: %s", strerror(xerrno));
+    fail("Failed to open scoreboard: %s", strerror(xerrno));
   }
 
   daemon_pid = pr_scoreboard_get_daemon_pid();
@@ -371,8 +564,8 @@ START_TEST (scoreboard_get_daemon_pid_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(daemon_pid == 0, "Expected %lu, got %lu",
-      (unsigned long) 0, (unsigned long) daemon_pid);
+    fail("Expected %lu, got %lu", (unsigned long) 0,
+      (unsigned long) daemon_pid);
   }
 
   (void) unlink(path);
@@ -394,8 +587,7 @@ START_TEST (scoreboard_get_daemon_uptime_test) {
     int xerrno = errno;
 
     (void) rmdir(dir);
-    fail_unless(res == 0, "Failed to set perms on '%s' to 0775': %s", dir,
-      strerror(xerrno));
+    fail("Failed to set perms on '%s' to 0775': %s", dir, strerror(xerrno));
   }
 
   res = pr_set_scoreboard(path);
@@ -403,8 +595,7 @@ START_TEST (scoreboard_get_daemon_uptime_test) {
     int xerrno = errno;
 
     (void) rmdir(dir);
-    fail_unless(res == 0, "Failed to set scoreboard to '%s': %s", path,
-      strerror(xerrno));
+    fail("Failed to set scoreboard to '%s': %s", path, strerror(xerrno));
   }
 
   (void) unlink(path);
@@ -416,7 +607,7 @@ START_TEST (scoreboard_get_daemon_uptime_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(res == 0, "Failed to open scoreboard: %s", strerror(xerrno));
+    fail("Failed to open scoreboard: %s", strerror(xerrno));
   }
 
   daemon_uptime = pr_scoreboard_get_daemon_uptime();
@@ -426,8 +617,8 @@ START_TEST (scoreboard_get_daemon_uptime_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(daemon_uptime <= now, "Expected %lu, got %lu",
-      (unsigned long) now, (unsigned long) daemon_uptime);
+    fail("Expected %lu, got %lu", (unsigned long) now,
+      (unsigned long) daemon_uptime);
   }
 
   pr_delete_scoreboard();
@@ -441,7 +632,7 @@ START_TEST (scoreboard_get_daemon_uptime_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(res == 0, "Failed to open scoreboard: %s", strerror(xerrno));
+    fail("Failed to open scoreboard: %s", strerror(xerrno));
   }
 
   daemon_uptime = pr_scoreboard_get_daemon_uptime();
@@ -449,8 +640,8 @@ START_TEST (scoreboard_get_daemon_uptime_test) {
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail_unless(daemon_uptime == 0, "Expected %lu, got %lu",
-      (unsigned long) 0, (unsigned long) daemon_uptime);
+    fail("Expected %lu, got %lu", (unsigned long) 0,
+      (unsigned long) daemon_uptime);
   }
 
   (void) unlink(path);
@@ -459,22 +650,538 @@ START_TEST (scoreboard_get_daemon_uptime_test) {
 END_TEST
 
 START_TEST (scoreboard_entry_add_test) {
+  int res;
+  const char *dir = "/tmp/prt-scoreboard/", *path = "/tmp/prt-scoreboard/test";
+
+  res = mkdir(dir, 0775);
+  fail_unless(res == 0, "Failed to create directory '%s': %s", dir,
+    strerror(errno));
+
+  res = chmod(dir, 0775);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set perms on '%s' to 0775': %s", dir, strerror(xerrno));
+  }
+
+  res = pr_set_scoreboard(path);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set scoreboard to '%s': %s", path, strerror(xerrno));
+  }
+
+  (void) unlink(path);
+
+  res = pr_scoreboard_entry_add();
+  if (res == 0) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly added entry to scoreboard");
+  }
+
+  if (errno != EINVAL) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to EINVAL (got %d)", xerrno);
+  }
+
+  res = pr_open_scoreboard(O_RDWR);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to open scoreboard: %s", strerror(xerrno));
+  }
+
+  res = pr_scoreboard_entry_add();
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to add entry to scoreboard: %s", strerror(xerrno));
+  }
+
+  res = pr_scoreboard_entry_add();
+  if (res == 0) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly added entry to scoreboard");
+  }
+
+  if (errno != EPERM) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to EPERM (got %d)", xerrno);
+  }
+
+  (void) unlink(path);
+  (void) rmdir(dir);
 }
 END_TEST
 
 START_TEST (scoreboard_entry_del_test) {
+  int res;
+  const char *dir = "/tmp/prt-scoreboard/", *path = "/tmp/prt-scoreboard/test";
+
+  res = mkdir(dir, 0775);
+  fail_unless(res == 0, "Failed to create directory '%s': %s", dir,
+    strerror(errno));
+
+  res = chmod(dir, 0775);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set perms on '%s' to 0775': %s", dir, strerror(xerrno));
+  }
+
+  res = pr_set_scoreboard(path);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set scoreboard to '%s': %s", path, strerror(xerrno));
+  }
+
+  (void) unlink(path);
+
+  res = pr_scoreboard_entry_del(FALSE);
+  if (res == 0) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly deleted entry from scoreboard");
+  }
+
+  if (errno != EINVAL) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to EINVAL (got %d)", xerrno);
+  }
+
+  res = pr_open_scoreboard(O_RDWR);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to open scoreboard: %s", strerror(xerrno));
+  }
+
+  res = pr_scoreboard_entry_del(FALSE);
+  if (res == 0) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly deleted entry from scoreboard");
+  }
+
+  if (errno != EPERM) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to EPERM (got %d)", xerrno);
+  }
+
+  res = pr_scoreboard_entry_add();
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to add entry to scoreboard: %s", strerror(xerrno));
+  }
+
+  res = pr_scoreboard_entry_del(FALSE);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to delete entry from scoreboard: %s", strerror(xerrno));
+  }
+
+  res = pr_scoreboard_entry_del(FALSE);
+  if (res == 0) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly deleted entry from scoreboard");
+  }
+
+  if (errno != EPERM) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to EPERM (got %d)", xerrno);
+  }
+
+  (void) unlink(path);
+  (void) rmdir(dir);
 }
 END_TEST
 
 START_TEST (scoreboard_entry_read_test) {
+  int res;
+  const char *dir = "/tmp/prt-scoreboard/", *path = "/tmp/prt-scoreboard/test";
+  pr_scoreboard_entry_t *score;
+
+  res = mkdir(dir, 0775);
+  fail_unless(res == 0, "Failed to create directory '%s': %s", dir,
+    strerror(errno));
+
+  res = chmod(dir, 0775);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set perms on '%s' to 0775': %s", dir, strerror(xerrno));
+  }
+
+  res = pr_set_scoreboard(path);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set scoreboard to '%s': %s", path, strerror(xerrno));
+  }
+
+  (void) unlink(path);
+
+  score = pr_scoreboard_entry_read();
+  if (score != NULL) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly read scoreboard entry");
+  }
+
+  if (errno != EINVAL) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to EINVAL (got %d)", xerrno);
+  }
+
+  res = pr_open_scoreboard(O_RDWR);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to open scoreboard: %s", strerror(xerrno));
+  }
+
+  /* We expect NULL here because the scoreboard file should be empty. */
+  score = pr_scoreboard_entry_read();
+  if (score != NULL) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly read scoreboard entry");
+  }
+
+  res = pr_scoreboard_entry_add();
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to add entry to scoreboard: %s", strerror(xerrno));
+  }
+
+  score = pr_scoreboard_entry_read();
+  if (score == NULL) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to read scoreboard entry: %s", strerror(xerrno));
+  }
+
+  if (score->sce_pid != getpid()) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to read expected scoreboard entry (expected PID %lu, got %lu)",
+      (unsigned long) getpid(), (unsigned long) score->sce_pid);
+  }
+
+  score = pr_scoreboard_entry_read();
+  if (score != NULL) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly read scoreboard entry");
+  }
+
+  (void) unlink(path);
+  (void) rmdir(dir);
 }
 END_TEST
 
 START_TEST (scoreboard_entry_get_test) {
+  int res;
+  const char *dir = "/tmp/prt-scoreboard/", *path = "/tmp/prt-scoreboard/test";
+  const char *val;
+
+  res = mkdir(dir, 0775);
+  fail_unless(res == 0, "Failed to create directory '%s': %s", dir,
+    strerror(errno));
+
+  res = chmod(dir, 0775);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set perms on '%s' to 0775': %s", dir, strerror(xerrno));
+  }
+
+  res = pr_set_scoreboard(path);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set scoreboard to '%s': %s", path, strerror(xerrno));
+  }
+
+  (void) unlink(path);
+
+  val = pr_scoreboard_entry_get(-1);
+  if (val != NULL) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly read value from scoreboard entry");
+  }
+
+  if (errno != EINVAL) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to EINVAL (got %d)", xerrno);
+  }
+
+  res = pr_open_scoreboard(O_RDWR);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to open scoreboard: %s", strerror(xerrno));
+  }
+
+  val = pr_scoreboard_entry_get(-1);
+  if (val != NULL) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly read value from scoreboard entry");
+  }
+
+  if (errno != EPERM) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to EPERM (got %d)", xerrno);
+  }
+
+  res = pr_scoreboard_entry_add();
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to add entry to scoreboard: %s", strerror(xerrno));
+  }
+
+  val = pr_scoreboard_entry_get(-1);
+  if (val != NULL) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly read value from scoreboard entry");
+  }
+
+  if (errno != ENOENT) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to ENOENT (got %d)", xerrno);
+  }
+
+  (void) unlink(path);
+  (void) rmdir(dir);
 }
 END_TEST
 
 START_TEST (scoreboard_entry_update_test) {
+  int res;
+  const char *val;
+  const char *dir = "/tmp/prt-scoreboard/", *path = "/tmp/prt-scoreboard/test";
+  pid_t pid = getpid();
+
+  res = mkdir(dir, 0775);
+  fail_unless(res == 0, "Failed to create directory '%s': %s", dir,
+    strerror(errno));
+
+  res = chmod(dir, 0775);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set perms on '%s' to 0775': %s", dir, strerror(xerrno));
+  }
+
+  res = pr_set_scoreboard(path);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(dir);
+    fail("Failed to set scoreboard to '%s': %s", path, strerror(xerrno));
+  }
+
+  (void) unlink(path);
+
+  res = pr_scoreboard_entry_update(pid, 0);
+  if (res == 0) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly updated scoreboard entry");
+  }
+
+  if (errno != EINVAL) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to EINVAL (got %d)", xerrno);
+  }
+
+  res = pr_open_scoreboard(O_RDWR);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to open scoreboard: %s", strerror(xerrno));
+  }
+
+  res = pr_scoreboard_entry_update(pid, 0);
+  if (res == 0) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly updated scoreboard entry");
+  }
+
+  if (errno != EPERM) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to EPERM (got %d)", xerrno);
+  }
+
+  res = pr_scoreboard_entry_add();
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to add entry to scoreboard: %s", strerror(xerrno));
+  }
+
+  res = pr_scoreboard_entry_update(pid, -1);
+  if (res == 0) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Unexpectedly updated scoreboard entry");
+  }
+
+  if (errno != ENOENT) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to set errno to ENOENT (got %d)", xerrno);
+  }
+
+  val = "cwd";
+  res = pr_scoreboard_entry_update(pid, PR_SCORE_CWD, val, NULL);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to update PR_SCORE_CWD: %s", strerror(xerrno));
+  }
+ 
+  val = pr_scoreboard_entry_get(PR_SCORE_CWD); 
+  if (val == NULL) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Failed to get entry PR_SCORE_CWD: %s", strerror(xerrno));
+  }
+
+  if (strcmp(val, "cwd") != 0) {
+    (void) unlink(path);
+    (void) rmdir(dir);
+
+    fail("Expected '%s', got '%s'", "cwd", val);
+  }
+
+  (void) unlink(path);
+  (void) rmdir(dir);
 }
 END_TEST
 
