@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2007 The ProFTPD Project team
+ * Copyright (c) 2004-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * Configuration parser
- * $Id: parser.c,v 1.16 2007-03-28 03:49:33 castaglia Exp $
+ * $Id: parser.c,v 1.17 2008-06-12 22:57:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -334,7 +334,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
           "dispatching directive '%s' to module mod_%s", conftab->directive,
           conftab->m->name);
 
-        mr = call_module(conftab->m, conftab->handler, cmd);
+        mr = pr_module_call(conftab->m, conftab->handler, cmd);
         if (mr != NULL) {
           if (MODRET_ISERROR(mr)) {
 

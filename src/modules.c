@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.52 2007-10-15 16:51:28 castaglia Exp $
+ * $Id: modules.c,v 1.53 2008-06-12 22:57:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -426,13 +426,14 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
   return count;
 }
 
-modret_t *call_module(module *m, modret_t *(*func)(cmd_rec *), cmd_rec *cmd) {
+modret_t *pr_module_call(module *m, modret_t *(*func)(cmd_rec *),
+    cmd_rec *cmd) {
   modret_t *res;
   module *prev_module = curr_module;
 
   if (!cmd->tmp_pool) {
     cmd->tmp_pool = make_sub_pool(cmd->pool);
-    pr_pool_tag(cmd->tmp_pool, "call_module() cmd tmp_pool");
+    pr_pool_tag(cmd->tmp_pool, "Module call tmp_pool");
   }
 
   curr_module = m;

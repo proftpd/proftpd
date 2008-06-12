@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab_radius -- a mod_quotatab sub-module for obtaining
  *                                 quota information from RADIUS servers.
  *
- * Copyright (c) 2005-2007 TJ Saunders
+ * Copyright (c) 2005-2008 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ static unsigned char radiustab_lookup(quota_table_t *radiustab,
 
   /* Prepare the command and call the handler. */
   cmd = pr_cmd_alloc(tmp_pool, 1, name);
-  res = call_module(cmdtab->m, cmdtab->handler, cmd);
+  res = pr_module_call(cmdtab->m, cmdtab->handler, cmd);
 
   destroy_pool(tmp_pool);
 

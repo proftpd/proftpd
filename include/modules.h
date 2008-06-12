@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.51 2008-05-06 04:31:58 castaglia Exp $
+ * $Id: modules.h,v 1.52 2008-06-12 22:57:01 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -167,7 +167,7 @@ module *pr_module_get(const char *);
 int pr_module_load(module *m);
 int pr_module_unload(module *m);
 
-modret_t *call_module(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
+modret_t *pr_module_call(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 
 /* Symbol table hash ("stash") support. */
 typedef enum {

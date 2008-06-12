@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.322 2008-06-05 08:01:39 castaglia Exp $
+ * $Id: mod_core.c,v 1.323 2008-06-12 22:57:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3579,7 +3579,7 @@ MODRET core_help(cmd_rec *cmd) {
       *cp = toupper(*cp);
 
     if (strcasecmp(cmd->argv[1], "SITE") == 0)
-      return call_module(&site_module, site_dispatch, cmd);
+      return pr_module_call(&site_module, site_dispatch, cmd);
 
     if (pr_help_add_response(cmd, cmd->argv[1]) == 0)
       return PR_HANDLED(cmd);

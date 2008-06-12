@@ -60,7 +60,7 @@ static unsigned char ldaptab_lookup(quota_table_t *ldaptab, const char *name,
 
   /* Prepare the command and call the handler. */
   ldap_cmd = pr_cmd_alloc(tmp_pool, 1, name);
-  ldap_res = call_module(ldap_cmdtab->m, ldap_cmdtab->handler, ldap_cmd);
+  ldap_res = pr_module_call(ldap_cmdtab->m, ldap_cmdtab->handler, ldap_cmd);
 
   destroy_pool(tmp_pool);
 

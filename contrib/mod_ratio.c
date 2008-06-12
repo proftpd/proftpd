@@ -147,7 +147,7 @@ _dispatch_ratio (cmd_rec * cmd, char *match)
   m = pr_stash_get_symbol (PR_SYM_AUTH, match, NULL, &cmd->stash_index);
   while (m)
     {
-      mr = call_module (m->m, m->handler, cmd);
+      mr = pr_module_call (m->m, m->handler, cmd);
       if (MODRET_ISHANDLED (mr) || MODRET_ISERROR (mr))
 	break;
       m = pr_stash_get_symbol (PR_SYM_AUTH, match, m, &cmd->stash_index);

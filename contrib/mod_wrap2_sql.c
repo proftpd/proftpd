@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_sql.c,v 1.5 2008-03-27 06:04:26 castaglia Exp $
+ * $Id: mod_wrap2_sql.c,v 1.6 2008-06-12 22:57:01 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -89,7 +89,7 @@ static array_header *sqltab_fetch_clients_cb(wrap2_table_t *sqltab,
   sql_cmd = sql_cmd_create(tmp_pool, 3, "sql_lookup", query, name);
 
   /* Call the handler. */
-  sql_res = call_module(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
+  sql_res = pr_module_call(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
 
   /* Check the results. */
   if (!sql_res) {
@@ -175,7 +175,7 @@ static array_header *sqltab_fetch_options_cb(wrap2_table_t *sqltab,
   sql_cmd = sql_cmd_create(tmp_pool, 3, "sql_lookup", query, name);
 
   /* Call the handler. */
-  sql_res = call_module(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
+  sql_res = pr_module_call(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
 
   /* Check the results. */
   if (!sql_res) {

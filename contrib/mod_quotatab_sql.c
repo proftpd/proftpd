@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_quotatab_sql.c,v 1.8 2008-03-27 01:47:35 castaglia Exp $
+ * $Id: mod_quotatab_sql.c,v 1.9 2008-06-12 22:57:01 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -78,7 +78,7 @@ static char *sqltab_get_name(pool *p, char *name) {
   cmd = sqltab_cmd_create(p, 1, pr_str_strip(p, name));
 
   /* Call the handler. */
-  res = call_module(cmdtab->m, cmdtab->handler, cmd);
+  res = pr_module_call(cmdtab->m, cmdtab->handler, cmd);
 
   /* Check the results. */
   if (MODRET_ISERROR(res)) {
@@ -185,7 +185,7 @@ static int sqltab_create(quota_table_t *sqltab) {
   }
 
   /* Call the handler. */
-  sql_res = call_module(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
+  sql_res = pr_module_call(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
 
   /* Check the results. */
   if (MODRET_ISERROR(sql_res)) {
@@ -233,7 +233,7 @@ static unsigned char sqltab_lookup(quota_table_t *sqltab, const char *name,
     quota_type == CLASS_QUOTA ? "class" : "all");
 
   /* Call the handler. */
-  sql_res = call_module(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
+  sql_res = pr_module_call(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
 
   /* Check the results. */
   if (!sql_res || MODRET_ISERROR(sql_res)) {
@@ -523,7 +523,7 @@ static int sqltab_write(quota_table_t *sqltab) {
   }
 
   /* Call the handler. */
-  sql_res = call_module(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
+  sql_res = pr_module_call(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
 
   /* Check the results. */
   if (MODRET_ISERROR(sql_res)) {

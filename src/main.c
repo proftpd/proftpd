@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.337 2008-05-13 05:41:48 castaglia Exp $
+ * $Id: main.c,v 1.338 2008-06-12 22:57:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -442,7 +442,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
 
       if (!c->group || strcmp(c->group, G_WRITE) != 0)
         kludge_disable_umask();
-      mr = call_module(c->m, c->handler, cmd);
+      mr = pr_module_call(c->m, c->handler, cmd);
       kludge_enable_umask();
 
       if (MODRET_ISHANDLED(mr)) {
