@@ -63,14 +63,14 @@ dummy:
 Makefile: Makefile.in ../config.status
 	cd ../ && ./config.status
 
-.c.o: $(TEST_DEPS)
+.c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
-test$(EXEEXT): $(TEST_OBJS)
+tests$(EXEEXT): $(TEST_OBJS) $(TEST_DEPS)
 	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) -o $@ $(TEST_DEPS) $(TEST_OBJS) $(LIBS) $(TEST_LIBS)
 
-check: test$($EXEEXT) dummy
-	./test$(EXEEXT)
+check: tests$($EXEEXT) dummy
+	./tests$(EXEEXT)
 
 clean:
 	$(LIBTOOL) --mode=clean $(RM) *.o test$(EXEEXT)
