@@ -147,6 +147,11 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  requested = getenv("PR_TEST_NOFORK");
+  if (requested) {
+    srunner_set_fork_status(runner, CK_NOFORK);
+  }
+
   srunner_run_all(runner, CK_NORMAL);
 
   nfailed = srunner_ntests_failed(runner);
