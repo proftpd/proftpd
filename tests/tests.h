@@ -24,7 +24,7 @@
 
 /*
  * Testsuite management
- * $Id: tests.h,v 1.14 2008-06-06 00:46:25 castaglia Exp $
+ * $Id: tests.h,v 1.15 2008-06-13 01:30:43 castaglia Exp $
  */
 
 #ifndef PR_TESTS_H
@@ -56,6 +56,7 @@ Suite *tests_get_class_suite(void);
 Suite *tests_get_regexp_suite(void);
 Suite *tests_get_expr_suite(void);
 Suite *tests_get_scoreboard_suite(void);
+Suite *tests_get_modules_suite(void);
 
 /* Temporary hack/placement for this variable, until we get to testing
  * the Signals API.

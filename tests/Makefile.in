@@ -26,7 +26,8 @@ TEST_DEPS=\
   $(top_srcdir)/src/class.o \
   $(top_srcdir)/src/regexp.o \
   $(top_srcdir)/src/expr.o \
-  $(top_srcdir)/src/scoreboard.o
+  $(top_srcdir)/src/scoreboard.o \
+  $(top_srcdir)/src/modules.o
 
 TEST_LIBS=-lcheck
 
@@ -48,6 +49,7 @@ TEST_OBJS=\
   regexp.o \
   expr.o \
   scoreboard.o \
+  modules.o \
   stubs.o \
   tests.o
 
@@ -61,10 +63,10 @@ dummy:
 Makefile: Makefile.in ../config.status
 	cd ../ && ./config.status
 
-.c.o:
+.c.o: $(TEST_DEPS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
-test$(EXEEXT): $(TEST_DEPS) $(TEST_OBJS)
+test$(EXEEXT): $(TEST_OBJS)
 	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) -o $@ $(TEST_DEPS) $(TEST_OBJS) $(LIBS) $(TEST_LIBS)
 
 check: test$($EXEEXT) dummy
