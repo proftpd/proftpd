@@ -24,7 +24,7 @@
 
 /*
  * String API tests
- * $Id: str.c,v 1.5 2008-06-05 08:02:36 castaglia Exp $
+ * $Id: str.c,v 1.6 2008-06-14 01:26:39 castaglia Exp $
  */
 
 #include "tests.h"
@@ -487,6 +487,79 @@ START_TEST (get_token_test) {
 }
 END_TEST
 
+START_TEST (get_word_test) {
+  char *ok, *res, *str;
+
+  res = pr_str_get_word(NULL, 0);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = NULL;
+  res = pr_str_get_word(&str, 0);
+  fail_unless(res == NULL, "Failed to handle null str argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = pstrdup(p, "  ");
+  res = pr_str_get_word(&str, 0);
+  fail_unless(res == NULL, "Failed to handle whitespace argument");
+
+  str = pstrdup(p, " foo");
+  res = pr_str_get_word(&str, PR_STR_FL_PRESERVE_WHITESPACE);
+  fail_unless(res != NULL, "Failed to handle whitespace argument: %s",
+    strerror(errno));
+
+  ok = "";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pr_str_get_word(&str, PR_STR_FL_PRESERVE_WHITESPACE);
+  fail_unless(res != NULL, "Failed to handle whitespace argument: %s",
+    strerror(errno));
+
+  ok = "foo";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  str = pstrdup(p, "  # foo");
+  res = pr_str_get_word(&str, 0);
+  fail_unless(res == NULL, "Failed to handle commented argument");
+
+  res = pr_str_get_word(&str, PR_STR_FL_PRESERVE_COMMENTS);
+  fail_unless(res != NULL, "Failed to handle commented argument: %s",
+    strerror(errno));
+
+  ok = "#";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pr_str_get_word(&str, PR_STR_FL_PRESERVE_COMMENTS);
+  fail_unless(res != NULL, "Failed to handle commented argument: %s",
+    strerror(errno));
+
+  ok = "foo";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  str = pstrdup(p, "foo \"bar\" baz");
+  res = pr_str_get_word(&str, 0);
+  fail_unless(res != NULL, "Failed to handle quoted argument: %s",
+    strerror(errno));
+
+  ok = "foo";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pr_str_get_word(&str, 0);
+  fail_unless(res != NULL, "Failed to handle quoted argument: %s",
+    strerror(errno));
+
+  ok = "bar";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pr_str_get_word(&str, 0);
+  fail_unless(res != NULL, "Failed to handle quoted argument: %s",
+    strerror(errno));
+
+  ok = "baz";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+}
+END_TEST
+
 Suite *tests_get_str_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -507,6 +580,7 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, strip_test);
   tcase_add_test(testcase, strip_end_test);
   tcase_add_test(testcase, get_token_test);
+  tcase_add_test(testcase, get_word_test);
 
   suite_add_tcase(suite, testcase);
 
