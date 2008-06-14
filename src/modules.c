@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.54 2008-06-13 23:22:46 castaglia Exp $
+ * $Id: modules.c,v 1.55 2008-06-14 00:27:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -481,6 +481,13 @@ modret_t *pr_module_call(module *m, modret_t *(*func)(cmd_rec *),
   modret_t *res;
   module *prev_module = curr_module;
 
+  if (m == NULL ||
+      func == NULL ||
+      cmd == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   if (!cmd->tmp_pool) {
     cmd->tmp_pool = make_sub_pool(cmd->pool);
     pr_pool_tag(cmd->tmp_pool, "Module call tmp_pool");
@@ -496,37 +503,41 @@ modret_t *pr_module_call(module *m, modret_t *(*func)(cmd_rec *),
   return res;
 }
 
-modret_t *mod_create_data(cmd_rec *cmd,void *d) {
-  modret_t *ret;
+modret_t *mod_create_data(cmd_rec *cmd, void *d) {
+  modret_t *res;
 
-  ret = pcalloc(cmd->tmp_pool, sizeof(modret_t));
-  ret->data = d;
+  res = pcalloc(cmd->tmp_pool, sizeof(modret_t));
+  res->data = d;
 
-  return ret;
+  return res;
 }
 
 modret_t *mod_create_ret(cmd_rec *cmd, unsigned char err, char *n, char *m) {
-  modret_t *ret;
+  modret_t *res;
 
-  ret = pcalloc(cmd->tmp_pool, sizeof(modret_t));
-  ret->mr_handler_module = curr_module;
-  ret->mr_error = err;
-  if (n)
-    ret->mr_numeric = pstrdup(cmd->tmp_pool, n);
-  if (m)
-    ret->mr_message = pstrdup(cmd->tmp_pool, m);
+  res = pcalloc(cmd->tmp_pool, sizeof(modret_t));
+  res->mr_handler_module = curr_module;
+  res->mr_error = err;
 
-  return ret;
+  if (n) {
+    res->mr_numeric = pstrdup(cmd->tmp_pool, n);
+  }
+
+  if (m) {
+    res->mr_message = pstrdup(cmd->tmp_pool, m);
+  }
+
+  return res;
 }
 
 modret_t *mod_create_error(cmd_rec *cmd, int mr_errno) {
-  modret_t *ret;
+  modret_t *res;
 
-  ret = pcalloc(cmd->tmp_pool, sizeof(modret_t));
-  ret->mr_handler_module = curr_module;
-  ret->mr_error = mr_errno;
+  res = pcalloc(cmd->tmp_pool, sizeof(modret_t));
+  res->mr_handler_module = curr_module;
+  res->mr_error = mr_errno;
 
-  return ret;
+  return res;
 }
 
 /* Called after forking in order to inform/initialize modules
@@ -637,7 +648,8 @@ void modules_list(int flags) {
 int pr_module_load(module *m) {
   char buf[256];
 
-  if (!m) {
+  if (m == NULL ||
+      m->name == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -731,7 +743,8 @@ int pr_module_load(module *m) {
 int pr_module_unload(module *m) {
   char buf[256];
 
-  if (!m) {
+  if (m == NULL ||
+      m->name == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -753,14 +766,15 @@ int pr_module_unload(module *m) {
   pr_event_generate("core.module-unload", buf);
 
   /* Remove the module from the loaded_modules list. */
-  if (m->prev)
+  if (m->prev) {
     m->prev->next = m->next;
 
-  else
+  } else {
     /* This module is the start of the loaded_modules list (prev is NULL),
      * so we need to update that pointer, too.
      */
     loaded_modules = m->next;
+  }
 
   if (m->next)
     m->next->prev = m->prev;
@@ -771,28 +785,31 @@ int pr_module_unload(module *m) {
   if (m->conftable) {
     conftable *conftab;
 
-    for (conftab = m->conftable; conftab->directive; conftab++)
+    for (conftab = m->conftable; conftab->directive; conftab++) {
       pr_stash_remove_symbol(PR_SYM_CONF, conftab->directive, conftab->m);
+    }
   }
 
   if (m->cmdtable) {
     cmdtable *cmdtab;
 
     for (cmdtab = m->cmdtable; cmdtab->command; cmdtab++) {
-      if (cmdtab->cmd_type == HOOK)
+      if (cmdtab->cmd_type == HOOK) {
         pr_stash_remove_symbol(PR_SYM_HOOK, cmdtab->command, cmdtab->m);
 
-      else
+      } else {
         /* All other cmd_types are for CMDs: PRE_CMD, CMD, POST_CMD, etc. */
         pr_stash_remove_symbol(PR_SYM_CMD, cmdtab->command, cmdtab->m);
+      }
     }
   }
 
   if (m->authtable) {
     authtable *authtab;
 
-    for (authtab = m->authtable; authtab->name; authtab++)
+    for (authtab = m->authtable; authtab->name; authtab++) {
       pr_stash_remove_symbol(PR_SYM_AUTH, authtab->name, authtab->m);
+    }
   }
 
   return 0;
