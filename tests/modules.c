@@ -23,7 +23,7 @@
  */
 
 /* Modules API tests
- * $Id: modules.c,v 1.2 2008-06-13 23:23:30 castaglia Exp $
+ * $Id: modules.c,v 1.3 2008-06-14 00:28:53 castaglia Exp $
  */
 
 #include "tests.h"
@@ -270,22 +270,208 @@ START_TEST (stash_remove_symbol_test) {
 END_TEST
 
 START_TEST (module_exists_test) {
+  unsigned char res;
+  module m;
+
+  res = pr_module_exists(NULL);
+  fail_unless(res == FALSE, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+
+  res = pr_module_exists("mod_foo.c");
+  fail_unless(res == FALSE, "Failed to handle nonexistent module");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
+    errno);
+
+  memset(&m, 0, sizeof(m));
+  m.name = "bar";
+
+  loaded_modules = &m;
+
+  res = pr_module_exists("mod_foo.c");
+  fail_unless(res == FALSE, "Failed to handle nonexistent module");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
+    errno);
+
+  res = pr_module_exists("mod_bar.c");
+  fail_unless(res == TRUE, "Failed to detect existing module");
+
+  res = pr_module_exists("mod_BAR.c");
+  fail_unless(res == FALSE, "Failed to handle nonexistent module");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
+    errno);
 }
 END_TEST
 
 START_TEST (module_get_test) {
+  module m, *res;
+
+  res = pr_module_get(NULL);
+  fail_unless(res == NULL, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+
+  res = pr_module_get("mod_foo.c");
+  fail_unless(res == NULL, "Failed to handle nonexistent module");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
+    errno);
+
+  memset(&m, 0, sizeof(m));
+  m.name = "bar";
+
+  loaded_modules = &m;
+
+  res = pr_module_get("mod_foo.c");
+  fail_unless(res == NULL, "Failed to handle nonexistent module");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
+    errno);
+
+  res = pr_module_get("mod_bar.c");
+  fail_unless(res != NULL, "Failed to detect existing module");
+  fail_unless(res == &m, "Expected %p, got %p", &m, res);
+
+  res = pr_module_get("mod_BAR.c");
+  fail_unless(res == NULL, "Failed to handle nonexistent module");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
+    errno);
 }
 END_TEST
 
+static int init_cb(void) {
+  errno = EACCES;
+  return -1;
+}
+
 START_TEST (module_load_test) {
+  int res;
+  module m;
+
+  res = pr_module_load(NULL);
+  fail_unless(res == -1, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+
+  memset(&m, 0, sizeof(m));
+
+  res = pr_module_load(&m);
+  fail_unless(res == -1, "Failed to handle null name");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+
+  m.name = "foo";
+
+  res = pr_module_load(&m);
+  fail_unless(res == -1, "Failed to handle badly versioned module");
+  fail_unless(errno == EACCES, "Failed to set errno to EACCES (got %d)",
+    errno);
+
+  m.api_version = PR_MODULE_API_VERSION;
+  m.init = init_cb;
+
+  res = pr_module_load(&m);
+  fail_unless(res == -1, "Failed to handle bad module init callback");
+  fail_unless(errno == EPERM, "Failed to set errno to EPERM (got %d)",
+    errno);
+
+  m.init = NULL;
+
+  res = pr_module_load(&m);
+  fail_unless(res == 0, "Failed to load module: %s", strerror(errno));
+
+  res = pr_module_load(&m);
+  fail_unless(res == -1, "Failed to handle duplicate module load");
+  fail_unless(errno == EEXIST, "Failed to set errno to EEXIST (got %d)",
+    errno);
 }
 END_TEST
 
 START_TEST (module_unload_test) {
+  int res;
+  module m;
+
+  res = pr_module_unload(NULL);
+  fail_unless(res == -1, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+
+  memset(&m, 0, sizeof(m));
+
+  res = pr_module_unload(&m);
+  fail_unless(res == -1, "Failed to handle null module name");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+
+  m.name = "bar";
+
+  res = pr_module_unload(&m);
+  fail_unless(res == -1, "Failed to handle nonexistent module");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
+    errno);
+
+  loaded_modules = &m;
+
+  res = pr_module_unload(&m);
+  fail_unless(res == 0, "Failed to unload module: %s", strerror(errno));
+
+  res = pr_module_unload(&m);
+  fail_unless(res == -1, "Failed to handle nonexistent module");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
+    errno);
 }
 END_TEST
 
+static modret_t *call_cb(cmd_rec *cmd) {
+  return PR_HANDLED(cmd);
+}
+
 START_TEST (module_call_test) {
+  modret_t *res;
+  module m;
+  cmd_rec *cmd;
+
+  res = pr_module_call(NULL, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+
+  memset(&m, 0, sizeof(m));
+
+  res = pr_module_call(&m, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null callback, cmd arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+
+  res = pr_module_call(NULL, call_cb, NULL);
+  fail_unless(res == NULL, "Failed to handle null module, cmd arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+
+  cmd = pcalloc(p, sizeof(cmd_rec));
+  cmd->pool = p;
+
+  res = pr_module_call(NULL, NULL, cmd);
+  fail_unless(res == NULL, "Failed to handle null module, callback arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+
+  res = pr_module_call(&m, call_cb, NULL);
+  fail_unless(res == NULL, "Failed to handle null cmd argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+
+  res = pr_module_call(&m, NULL, cmd);
+  fail_unless(res == NULL, "Failed to handle null callback argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+
+  res = pr_module_call(NULL, call_cb, cmd);
+  fail_unless(res == NULL, "Failed to handle null module argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+
+  res = pr_module_call(&m, call_cb, cmd);
+  fail_unless(res != NULL, "Failed to call function: %s", strerror(errno));
+  fail_unless(MODRET_ISHANDLED(res), "Expected HANDLED result");
 }
 END_TEST
 
@@ -314,6 +500,10 @@ Suite *tests_get_modules_suite(void) {
   tcase_add_test(testcase, module_call_test);
 
   suite_add_tcase(suite, testcase);
+
+  /* XXX At some point, unit tests for the mod_create_*() functions
+   * should be written.
+   */
 
   return suite;
 }

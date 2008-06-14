@@ -24,7 +24,7 @@
 
 /*
  * Testsuite management
- * $Id: tests.h,v 1.15 2008-06-13 01:30:43 castaglia Exp $
+ * $Id: tests.h,v 1.16 2008-06-14 00:28:53 castaglia Exp $
  */
 
 #ifndef PR_TESTS_H
@@ -66,5 +66,7 @@ unsigned int recvd_signal_flags;
 extern char ServerType;
 extern int ServerUseReverseDNS;
 extern server_rec *main_server;
+extern module *loaded_modules;
+extern module *static_modules[];
 
 #endif /* PR_TESTS_H */
