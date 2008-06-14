@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.190 2008-06-05 08:01:39 castaglia Exp $
+ * $Id: dirtree.c,v 1.191 2008-06-14 01:13:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -543,53 +543,6 @@ void kludge_disable_umask(void) {
 
 void kludge_enable_umask(void) {
   _kludge_disable_umask = FALSE;
-}
-
-char *pr_str_get_word(char **cp, int flags) {
-  char *ret, *dst;
-  char quote_mode = 0;
-
-  if (!cp || !*cp || !**cp)
-    return NULL;
-
-  if (!(flags & PR_STR_FL_PRESERVE_WHITESPACE)) {
-    while (**cp && isspace((int) **cp))
-      (*cp)++;
-  }
-
-  if (!**cp)
-    return NULL;
-
-  ret = dst = *cp;
-
-  if (!(flags & PR_STR_FL_PRESERVE_COMMENTS)) {
-    /* Stop processing at start of an inline comment. */
-    if (**cp == '#')
-      return NULL;
-  }
-
-  if (**cp == '\"') {
-    quote_mode++;
-    (*cp)++;
-  }
-
-  while (**cp && (quote_mode ? (**cp != '\"') : !isspace((int) **cp))) {
-    if (**cp == '\\' && quote_mode) {
-
-      /* Escaped char */
-      if (*((*cp)+1))
-        *dst = *(++(*cp));
-    }
-
-    *dst++ = **cp;
-    ++(*cp);
-  }
-
-  if (**cp)
-    (*cp)++;
-  *dst = '\0';
-
-  return ret;
 }
 
 cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {

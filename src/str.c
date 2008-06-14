@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.4 2008-06-05 08:01:39 castaglia Exp $
+ * $Id: str.c,v 1.5 2008-06-14 01:13:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -360,6 +360,57 @@ char *pr_str_strip_end(char *s, char *ch) {
   }
 
   return s;
+}
+
+char *pr_str_get_word(char **cp, int flags) {
+  char *res, *dst;
+  char quote_mode = 0;
+
+  if (cp == NULL ||
+     !*cp ||
+     !**cp) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (!(flags & PR_STR_FL_PRESERVE_WHITESPACE)) {
+    while (**cp && isspace((int) **cp))
+      (*cp)++;
+  }
+
+  if (!**cp)
+    return NULL;
+
+  res = dst = *cp;
+
+  if (!(flags & PR_STR_FL_PRESERVE_COMMENTS)) {
+    /* Stop processing at start of an inline comment. */
+    if (**cp == '#')
+      return NULL;
+  }
+
+  if (**cp == '\"') {
+    quote_mode++;
+    (*cp)++;
+  }
+
+  while (**cp && (quote_mode ? (**cp != '\"') : !isspace((int) **cp))) {
+    if (**cp == '\\' && quote_mode) {
+
+      /* Escaped char */
+      if (*((*cp)+1))
+        *dst = *(++(*cp));
+    }
+
+    *dst++ = **cp;
+    ++(*cp);
+  }
+
+  if (**cp)
+    (*cp)++;
+  *dst = '\0';
+
+  return res;
 }
 
 /* get_token tokenizes a string, increments the src pointer to the next
