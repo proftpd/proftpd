@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.191 2008-06-14 01:13:24 castaglia Exp $
+ * $Id: dirtree.c,v 1.192 2008-06-14 02:40:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2951,42 +2951,10 @@ char *get_context_name(cmd_rec *cmd) {
   }
 }
 
-/* Boolean string can be "on", "off", "yes", "no", "true", "false",
- * "1" or "0."
- */
-int pr_is_boolean(const char *str) {
-  if (strcasecmp(str, "on") == 0)
-    return 1;
-
-  if (strcasecmp(str, "off") == 0)
-    return 0;
-
-  if (strcasecmp(str, "yes") == 0)
-    return 1;
-
-  if (strcasecmp(str, "no") == 0)
-    return 0;
-
-  if (strcasecmp(str, "true") == 0)
-    return 1;
-
-  if (strcasecmp(str, "false") == 0)
-    return 0;
-
-  if (strcasecmp(str, "1") == 0)
-    return 1;
-
-  if (strcasecmp(str, "0") == 0)
-    return 0;
-
-  errno = EINVAL;
-  return -1;
-}
-
 int get_boolean(cmd_rec *cmd, int av) {
   char *cp = cmd->argv[av];
 
-  return pr_is_boolean(cp);
+  return pr_str_is_boolean(cp);
 }
 
 char *get_full_cmd(cmd_rec *cmd) {

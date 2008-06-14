@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.h,v 1.3 2008-06-14 01:13:24 castaglia Exp $
+ * $Id: str.h,v 1.4 2008-06-14 02:40:04 castaglia Exp $
  */
 
 #ifndef PR_STR_H
@@ -45,6 +45,12 @@ char *pr_str_get_word(char **, int);
 #define PR_STR_FL_PRESERVE_WHITESPACE		0x0002
 
 char *pr_str_get_token(char **, char *);
+
+/* Returns TRUE if the given string is "on", "yes", "true", or "1"; returns
+ * FALSE if the string is "off", "false", "no", or "0".  Otherwise, -1
+ * is returned, with errno set to EINVAL.
+ */
+int pr_str_is_boolean(const char *);
 
 #define CHOP(s)		pr_str_strip_end((s), "\r\n")
 

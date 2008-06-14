@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.70 2008-06-14 01:13:24 castaglia Exp $
+ * $Id: dirtree.h,v 1.71 2008-06-14 02:40:04 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -273,7 +273,6 @@ void resolve_deferred_dirs(server_rec *);
 void fixup_dirs(server_rec *, int);
 unsigned char check_context(cmd_rec *, int);
 char *get_context_name(cmd_rec *);
-int pr_is_boolean(const char *);
 int get_boolean(cmd_rec *, int);
 char *get_full_cmd(cmd_rec *);
 

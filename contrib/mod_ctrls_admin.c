@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.31 2008-02-10 20:14:33 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.32 2008-06-14 02:40:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -169,7 +169,7 @@ static int ctrls_handle_dns(pr_ctrls_t *ctrl, int reqargc,
     pr_ctrls_add_response(ctrl, "dns: netaddr cache cleared");
     
   } else {
-    bool = pr_is_boolean(reqargv[0]);
+    bool = pr_str_is_boolean(reqargv[0]);
     if (bool == -1) {
       pr_ctrls_add_response(ctrl,
         "dns: error: expected Boolean parameter: '%s'", reqargv[0]);

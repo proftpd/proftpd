@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.5 2008-06-14 01:13:25 castaglia Exp $
+ * $Id: str.c,v 1.6 2008-06-14 02:40:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -438,5 +438,39 @@ char *pr_str_get_token(char **s, char *sep) {
     *(*s)++ = '\0';
 
   return res;
+}
+
+int pr_str_is_boolean(const char *str) {
+  if (str == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (strcasecmp(str, "on") == 0)
+    return TRUE;
+
+  if (strcasecmp(str, "off") == 0)
+    return FALSE;
+
+  if (strcasecmp(str, "yes") == 0)
+    return TRUE;
+ 
+  if (strcasecmp(str, "no") == 0) 
+    return FALSE;
+
+  if (strcasecmp(str, "true") == 0)
+    return TRUE;
+
+  if (strcasecmp(str, "false") == 0)
+    return FALSE;
+
+  if (strcasecmp(str, "1") == 0)
+    return TRUE;
+
+  if (strcasecmp(str, "0") == 0)
+    return FALSE;
+
+  errno = EINVAL;
+  return -1;
 }
 

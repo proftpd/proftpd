@@ -24,7 +24,7 @@
 
 /*
  * String API tests
- * $Id: str.c,v 1.6 2008-06-14 01:26:39 castaglia Exp $
+ * $Id: str.c,v 1.7 2008-06-14 02:40:04 castaglia Exp $
  */
 
 #include "tests.h"
@@ -560,6 +560,45 @@ START_TEST (get_word_test) {
 }
 END_TEST
 
+START_TEST (is_boolean_test) {
+  int res;
+
+  res = pr_str_is_boolean(NULL);
+  fail_unless(res == -1, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+
+  res = pr_str_is_boolean("on");
+  fail_unless(res == TRUE, "Expected TRUE, got FALSE");
+
+  res = pr_str_is_boolean("Yes");
+  fail_unless(res == TRUE, "Expected TRUE, got FALSE");
+
+  res = pr_str_is_boolean("TrUe");
+  fail_unless(res == TRUE, "Expected TRUE, got FALSE");
+
+  res = pr_str_is_boolean("1");
+  fail_unless(res == TRUE, "Expected TRUE, got FALSE");
+
+  res = pr_str_is_boolean("oFF");
+  fail_unless(res == FALSE, "Expected FALSE, got TRUE");
+
+  res = pr_str_is_boolean("no");
+  fail_unless(res == FALSE, "Expected FALSE, got TRUE");
+
+  res = pr_str_is_boolean("false");
+  fail_unless(res == FALSE, "Expected FALSE, got TRUE");
+
+  res = pr_str_is_boolean("0");
+  fail_unless(res == FALSE, "Expected FALSE, got TRUE");
+
+  res = pr_str_is_boolean("foo");
+  fail_unless(res == -1, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
+    errno);
+}
+END_TEST
+
 Suite *tests_get_str_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -581,6 +620,7 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, strip_end_test);
   tcase_add_test(testcase, get_token_test);
   tcase_add_test(testcase, get_word_test);
+  tcase_add_test(testcase, is_boolean_test);
 
   suite_add_tcase(suite, testcase);
 
