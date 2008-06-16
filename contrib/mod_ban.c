@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.16 2008-03-04 02:01:29 castaglia Exp $
+ * $Id: mod_ban.c,v 1.17 2008-06-16 16:21:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2082,12 +2082,12 @@ static void ban_restart_ev(const void *event_data, void *user_data) {
           ban_log, strerror(errno));
         break;
 
-      case LOG_SYMLINK:
+      case PR_LOG_SYMLINK:
         pr_log_debug(DEBUG1, MOD_BAN_VERSION ": unable to open BanLog '%s': %s",
           ban_log, "is a symlink");
         break;
 
-      case LOG_WRITEABLE_DIR:
+      case PR_LOG_WRITABLE_DIR:
         pr_log_debug(DEBUG1, MOD_BAN_VERSION ": unable to open BanLog '%s': %s",
           ban_log, "parent directory is world-writable");
         break;
