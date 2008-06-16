@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.339 2008-06-16 16:43:32 castaglia Exp $
+ * $Id: main.c,v 1.340 2008-06-16 21:56:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1777,19 +1777,18 @@ static char *prepare_core(void) {
 static RETSIGTYPE sig_abort(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_ABORT;
   signal(SIGABRT, SIG_DFL);
-}
-
-static void handle_abort(void) {
 
 #ifdef PR_DEVEL_COREDUMP
   pr_log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, generating core "
     "file in %s", prepare_core());
-#else
-  pr_log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, no core dump");
-#endif /* PR_DEVEL_COREDUMP */
-
   end_login_noexit();
   abort();
+#endif /* PR_DEVEL_COREDUMP */
+}
+
+static void handle_abort(void) {
+  pr_log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, no core dump");
+  end_login_noexit();
 }
 
 #ifdef PR_DEVEL_STACK_TRACE
