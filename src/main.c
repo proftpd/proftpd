@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.338 2008-06-12 22:57:01 castaglia Exp $
+ * $Id: main.c,v 1.339 2008-06-16 16:43:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1829,11 +1829,11 @@ static void handle_segv(int signo, siginfo_t *info, void *ptr) {
 
 static RETSIGTYPE sig_terminate(int signo) {
 
+  /* Make sure the scoreboard slot is properly cleared. */
+  pr_scoreboard_entry_del(FALSE);
+
   if (signo == SIGSEGV) {
     recvd_signal_flags |= RECEIVED_SIG_ABORT;
-
-    /* Make sure the scoreboard slot is properly cleared. */
-    pr_scoreboard_entry_del(FALSE);
 
     /* This is probably not the safest thing to be doing, but since the
      * process is terminating anyway, why not?  It helps when knowing/logging
