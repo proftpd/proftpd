@@ -23,7 +23,7 @@
  */
 
 /* Compatibility
- * $Id: compat.h,v 1.10 2008-06-16 16:25:58 castaglia Exp $
+ * $Id: compat.h,v 1.11 2008-06-17 01:01:01 castaglia Exp $
  */
 
 #ifndef PR_COMPAT_H
@@ -31,8 +31,7 @@
 
 /* Legacy redefines, for compatibility (for a while). */
 
-/* The following macros all first appeared in 1.3.0rc2.
- */
+/* The following macros all first appeared in 1.3.0rc2. */
 #define USE_AUTO_SHADOW		PR_USE_AUTO_SHADOW
 #define USE_CTRLS		PR_USE_CTRLS
 #define USE_CURSES		PR_USE_CURSES
@@ -58,16 +57,14 @@
 #define pr_user_and_expression  pr_expr_eval_user_and
 #define pr_user_or_expression   pr_expr_eval_user_or
 
-/* The following macros first appeared in 1.3.1rc1.
- */
+/* The following macros first appeared in 1.3.1rc1. */
 #define DECLINED		PR_DECLINED
 #define	ERROR			PR_ERROR
 #define	ERROR_INT		PR_ERROR_INT
 #define	ERROR_MSG		PR_ERROR_MSG
 #define HANDLED			PR_HANDLED
 
-/* The following macros first appeared in 1.3.1rc2.
- */
+/* The following macros first appeared in 1.3.1rc2. */
 #define add_timer               pr_timer_add
 #define remove_timer            pr_timer_remove
 #define reset_timer             pr_timer_reset
@@ -75,17 +72,14 @@
 
 #define make_named_sub_pool(p, s)	make_sub_pool((p))
 
-/* The following macros first appeared in 1.3.2rc1.
- */
+/* The following macros first appeared in 1.3.2rc1. */
 #define pr_scoreboard_add_entry		pr_scoreboard_entry_add
 #define pr_scoreboard_del_entry		pr_scoreboard_entry_del
 #define pr_scoreboard_read_entry	pr_scoreboard_entry_read
 #define pr_scoreboard_update_entry	pr_scoreboard_entry_update
 
-/* The following macros first appeared in 1.3.2rc2.
- */
+/* The following macros first appeared in 1.3.2rc2. */
 #define pr_inet_validate			pr_netaddr_validate_dns_str
-
 #define call_module					pr_module_call
 
 #endif /* PR_COMPAT_H */
