@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.323 2008-06-12 22:57:01 castaglia Exp $
+ * $Id: mod_core.c,v 1.324 2008-06-18 17:29:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2943,8 +2943,9 @@ static const char *quote_dir(cmd_rec *cmd, char *dir) {
 MODRET core_pwd(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 1);
 
-  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.vwd, NULL)) {
-    pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(errno));
+  if (!dir_check(cmd->tmp_pool, C_PWD, cmd->group, session.vwd, NULL) ||
+      !dir_check(cmd->tmp_pool, C_XPWD, cmd->group, session.vwd, NULL)) {
+    pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(EACCES));
     return PR_ERROR(cmd);
   }
 
@@ -3611,7 +3612,7 @@ int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
 }
 
 MODRET _chdir(cmd_rec *cmd, char *ndir) {
-  char *dir,*odir,*cdir;
+  char *dir, *odir, *cdir;
   config_rec *c = NULL, *cdpath;
   unsigned char show_symlinks = TRUE, *tmp = NULL;
 
@@ -3623,12 +3624,42 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
     show_symlinks = *tmp;
 
   if (show_symlinks) {
+    int use_cdpath = FALSE;
+
     dir = dir_realpath(cmd->tmp_pool, ndir);
 
-    if (!dir ||
-        !dir_check_full(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) ||
-        pr_fsio_chdir(dir, 0) == -1) {
+    if (!dir) {
+      use_cdpath = TRUE;
+    }
 
+    if (!use_cdpath) {
+      int allowed_access = TRUE;
+
+      allowed_access = dir_check_full(cmd->tmp_pool, cmd->argv[0], cmd->group,
+        dir, NULL);
+
+      if (allowed_access &&
+          strcmp(cmd->argv[0], C_XCWD) == 0) {
+        allowed_access = (allowed_access && dir_check_full(cmd->tmp_pool,
+                          C_CWD, cmd->group, dir, NULL));
+      }
+
+      if (allowed_access &&
+          strcmp(cmd->argv[0], C_XCUP) == 0) {
+        allowed_access = (allowed_access && dir_check_full(cmd->tmp_pool,
+                          C_CDUP, cmd->group, dir, NULL));
+      }
+
+      if (!allowed_access)
+        use_cdpath = TRUE;
+    }
+
+    if (!use_cdpath &&
+        pr_fsio_chdir(dir, 0) < 0) {
+      use_cdpath = TRUE;
+    }
+
+    if (use_cdpath) {
       for (cdpath = find_config(main_server->conf, CONF_PARAM, "CDPath", TRUE);
           cdpath != NULL; cdpath =
             find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
@@ -3642,7 +3673,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
 
         if (dir &&
             dir_check_full(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) &&
-            pr_fsio_chdir(dir, 0) != -1) {
+            pr_fsio_chdir(dir, 0) == 0) {
           break;
         }
       }
@@ -3654,15 +3685,44 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
     }
 
   } else {
+    int use_cdpath = FALSE;
 
     /* Virtualize the chdir */
     ndir = dir_canonical_vpath(cmd->tmp_pool, ndir);
     dir = dir_realpath(cmd->tmp_pool, ndir);
 
-    if (!dir ||
-        !dir_check_full(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) ||
-        pr_fsio_chdir_canon(ndir, 1) == -1) {
+    if (!dir) {
+      use_cdpath = TRUE;
+    }
 
+    if (!use_cdpath) {
+      int allowed_access = TRUE;
+
+      allowed_access = dir_check_full(cmd->tmp_pool, cmd->argv[0], cmd->group,
+        dir, NULL);
+
+      if (allowed_access &&
+          strcmp(cmd->argv[0], C_XCWD) == 0) {
+        allowed_access = (allowed_access && dir_check_full(cmd->tmp_pool,
+                          C_CWD, cmd->group, dir, NULL));
+      }
+
+      if (allowed_access &&
+          strcmp(cmd->argv[0], C_XCUP) == 0) {
+        allowed_access = (allowed_access && dir_check_full(cmd->tmp_pool,
+                          C_CDUP, cmd->group, dir, NULL));
+      }
+
+      if (!allowed_access)
+        use_cdpath = TRUE;
+    }
+
+    if (!use_cdpath &&
+        pr_fsio_chdir_canon(ndir, 1) < 0) {
+      use_cdpath = TRUE;
+    }            
+
+    if (use_cdpath) {
       for (cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
           cdpath != NULL; cdpath =
             find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
@@ -3792,15 +3852,23 @@ MODRET core_rmd(cmd_rec *cmd) {
    */
   dir = dir_canonical_path(cmd->tmp_pool, dir);
 
-  if (!dir ||
-      !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) ||
-      pr_fsio_rmdir(dir) == -1) {
+  if (!dir) {
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EINVAL));
+    return PR_ERROR(cmd);
+  }
+
+  if (!dir_check_canon(cmd->tmp_pool, C_RMD, cmd->group, dir, NULL) ||
+      !dir_check_canon(cmd->tmp_pool, C_XRMD, cmd->group, dir, NULL)) {
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
+    return PR_ERROR(cmd);
+  }
+
+  if (pr_fsio_rmdir(dir) < 0) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return PR_ERROR(cmd);
+  }
 
-  } else
-    pr_response_add(R_250, _("%s command successful"), cmd->argv[0]);
-
+  pr_response_add(R_250, _("%s command successful"), cmd->argv[0]);
   return PR_HANDLED(cmd);
 }
 
@@ -3844,9 +3912,18 @@ MODRET core_mkd(cmd_rec *cmd) {
 
   dir = dir_canonical_path(cmd->tmp_pool, dir);
 
-  if (!dir ||
-      !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) ||
-      pr_fsio_mkdir(dir, 0777) == -1) {
+  if (!dir) {
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EINVAL));
+    return PR_ERROR(cmd);
+  }
+   
+  if (!dir_check_canon(cmd->tmp_pool, C_MKD, cmd->group, dir, NULL) ||
+      !dir_check_canon(cmd->tmp_pool, C_XMKD, cmd->group, dir, NULL)) {
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
+    return PR_ERROR(cmd);
+  }
+
+  if (pr_fsio_mkdir(dir, 0777) < 0) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return PR_ERROR(cmd);
   }
