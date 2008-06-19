@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.239 2008-06-05 08:01:39 castaglia Exp $
+ * $Id: mod_auth.c,v 1.240 2008-06-19 03:22:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -80,7 +80,7 @@ static int auth_login_timeout_cb(CALLBACK_FRAME) {
   pr_response_send_async(R_421,
     _("Login Timeout (%d seconds): closing control connection"), TimeoutLogin);
 
-  session_exit(PR_LOG_NOTICE, "FTP login timed out, disconnected", 0, NULL);
+  session_exit(PR_LOG_NOTICE, "Session timed out, disconnected", 0, NULL);
 
   /* Do not restart the timer (should never be reached). */
   return 0;
