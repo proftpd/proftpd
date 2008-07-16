@@ -1,4 +1,4 @@
-<!-- $Id: mod_cap.html,v 1.1 2004-04-16 00:36:57 castaglia Exp $ -->
+<!-- $Id: mod_cap.html,v 1.2 2008-07-16 21:38:36 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_cap.html,v $ -->
 
 <html>
@@ -141,20 +141,37 @@ Example:
 <p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
-<code>mod_cap</code> is automatically included when <code>proftpd</code> is
-built on a Linux system that supports capabilities; to disable this automatic
-inclusion, use the <code>--disable-cap</code> configure option.
+The <code>mod_cap</code> module is automatically included when
+<code>proftpd</code> is built on a Linux system that supports capabilities; to
+disable this automatic inclusion, use the <code>--disable-cap</code> configure
+option.
+
+<p>
+<hr>
+<h2><a name="FAQ">FAQ</a></h2>
+
+<p>
+<font color=red>Question</font>: Why do I see the following in my system logs?
+<pre>
+  warning: `proftpd' uses 32-bit capabilities (legacy support in use)
+</pre>
+<font color=blue>Answer</font>: This warning is coming from the use of the
+libcap library.  A newer version of the libcap library (called the
+"libcap2-dev" package on some Linux distributions) is now available.
+
+<p>
+To remove the above warning, you will need to update/install the newer libcap2
+package on your system, and re-build proftpd (using version 1.3.2rc1 or later)
+in order to compile and link against the newer libcap library.
 
 <p>
 <hr><br>
-
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2004-04-16 00:36:57 $</i><br>
-
+Last Updated: <i>$Date: 2008-07-16 21:38:36 $</i><br>
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2002 TJ Saunders<br>
+&copy; Copyright 2000-2008 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
