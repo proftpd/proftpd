@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.33 2008-04-04 21:13:38 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.34 2008-07-17 21:01:36 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -75,6 +75,11 @@ static unsigned char have_quota_entry = FALSE;
 static unsigned char have_quota_limit_table = FALSE;
 static unsigned char have_quota_tally_table = FALSE;
 static unsigned char have_quota_lock = FALSE;
+
+static unsigned long have_quota_update = 0;
+#define QUOTA_HAVE_READ_UPDATE			10000
+#define QUOTA_HAVE_WRITE_UPDATE			20000
+
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
 static regex_t *quota_exclude_re = NULL;
 static const char *quota_exclude_filter = NULL;
@@ -126,13 +131,18 @@ static unsigned char have_err_response = FALSE;
 
 #define QUOTATAB_TALLY_READ \
   if (!quotatab_limit.quota_per_session) { \
-    if (quotatab_read() < 0) \
+    if (quotatab_read() < 0) { \
       quotatab_log("error: unable to read tally: %s", strerror(errno)); \
+    } \
   }
 
 #define QUOTATAB_TALLY_WRITE(bi, bo, bx, fi, fo, fx) \
-  if (quotatab_write((bi), (bo), (bx), (fi), (fo), (fx)) < 0) \
-    quotatab_log("error: unable to write tally: %s", strerror(errno));
+  { \
+    if (quotatab_write((bi), (bo), (bx), (fi), (fo), (fx)) < 0) { \
+      quotatab_log("error: unable to write tally: %s", strerror(errno)); \
+    } \
+    have_quota_update = 0; \
+  }
 
 static unsigned long quotatab_opts = 0UL;
 #define QUOTA_OPT_SCAN_ON_LOGIN		0x0001
@@ -452,8 +462,9 @@ static quota_regtab_t *quotatab_get_backend(const char *backend,
 
   for (regtab = quotatab_backends; regtab; regtab = regtab->next) {
     if ((regtab->regtab_srcs & srcs) &&
-        strcmp(regtab->regtab_name, backend) == 0)
+        strcmp(regtab->regtab_name, backend) == 0) {
       return regtab;
+    }
   }
 
   errno = ENOENT;
@@ -664,7 +675,8 @@ int quotatab_read(void) {
   /* Read from the current point in the stream enough information to populate
    * the quota structs.
    */
-  if ((bread = tally_tab->tab_read(tally_tab)) < 0) {
+  bread = tally_tab->tab_read(tally_tab);
+  if (bread < 0) {
     quotatab_unlock(TYPE_TALLY);
     return -1;
   }
@@ -1253,7 +1265,8 @@ MODRET set_quotatable(cmd_rec *cmd) {
   /* Separate the parameter into the separate pieces.  The parameter is 
    * given as one string to enhance its similarity to URL syntax.
    */
-  if ((tmp = strchr(cmd->argv[1], ':')) == NULL)
+  tmp = strchr(cmd->argv[1], ':');
+  if (tmp == NULL)
     CONF_ERROR(cmd, "badly formatted parameter");
 
   *tmp++ = '\0';
@@ -2000,6 +2013,12 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
   if (!use_quotas)
     return PR_DECLINED(cmd);
 
+  if (quotatab_ignore_path(cmd->arg)) {
+    quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
+      cmd->argv[0], cmd->arg, quota_exclude_filter);
+    return PR_DECLINED(cmd);
+  }
+
   /* Refresh the tally */
   QUOTATAB_TALLY_READ
 
@@ -2055,6 +2074,7 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  have_quota_update = QUOTA_HAVE_READ_UPDATE;
   return PR_DECLINED(cmd);
 }
 
@@ -2292,6 +2312,12 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
   if (!use_quotas)
     return PR_DECLINED(cmd);
 
+  if (quotatab_ignore_path(cmd->arg)) {
+    quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
+      cmd->argv[0], cmd->arg, quota_exclude_filter);
+    return PR_DECLINED(cmd);
+  }
+
   /* Refresh the tally */
   QUOTATAB_TALLY_READ
 
@@ -2358,6 +2384,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
   else
     quotatab_disk_nbytes = st.st_size;
 
+  have_quota_update = QUOTA_HAVE_WRITE_UPDATE;
   return PR_DECLINED(cmd);
 }
 
@@ -2380,10 +2407,10 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
    * mess with the stat.
    */
   pr_fs_clear_cache();
-  if (pr_fsio_lstat(cmd->arg, &st) >= 0) 
+  if (pr_fsio_lstat(cmd->arg, &st) >= 0) {
     store_bytes = st.st_size - quotatab_disk_nbytes;
 
-  else {
+  } else {
     if (errno == ENOENT)
       store_bytes = 0;
 
@@ -2501,10 +2528,10 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
    * mess with the stat.
    */
   pr_fs_clear_cache();
-  if (pr_fsio_lstat(cmd->arg, &st) >= 0) 
+  if (pr_fsio_lstat(cmd->arg, &st) >= 0) {
     store_bytes = st.st_size - quotatab_disk_nbytes;
 
-  else {
+  } else {
     if (errno == ENOENT)
       store_bytes = 0;
 
@@ -2710,10 +2737,32 @@ MODRET quotatab_site(cmd_rec *cmd) {
 
 static void quotatab_exit_ev(const void *event_data, void *user_data) {
 
-  if (use_quotas && have_quota_tally_table)
+  if (have_quota_update) {
+    /* The session may be ending abruptly, aborted or somesuch in mid-transfer,
+     * before the change of quota state has been persisted.
+     */
+
+    switch (have_quota_update) {
+      case QUOTA_HAVE_READ_UPDATE:
+        QUOTATAB_TALLY_WRITE(0, session.xfer.total_bytes,
+          session.xfer.total_bytes, 0, 1, 1)
+        break;
+
+      case QUOTA_HAVE_WRITE_UPDATE:
+        QUOTATAB_TALLY_WRITE(session.xfer.total_bytes, 0,
+          session.xfer.total_bytes, 1, 0, 1)
+        break;
+    }
+
+    have_quota_update = 0;
+  }
+
+  if (use_quotas &&
+      have_quota_tally_table) {
     if (quotatab_close(TYPE_TALLY) < 0)
       quotatab_log("error: unable to close QuotaTallyTable: %s",
         strerror(errno));
+  }
 
   quotatab_closelog();
   return;
