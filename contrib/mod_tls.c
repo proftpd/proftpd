@@ -411,6 +411,8 @@ static RSA *tls_tmp_rsa = NULL;
 /* SSL/TLS support functions */
 static void tls_closelog(void);
 static void tls_end_sess(SSL *, int, int);
+#define TLS_SHUTDOWN_BIDIRECTIONAL	0x0001
+
 static void tls_fatal_error(int, int);
 static const char *tls_get_errors(void);
 static char *tls_get_page(size_t, void **);
@@ -1428,7 +1430,7 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
     } else if (tls_renegotiate_required) {
       tls_log("%s", "requested TLS renegotiation timed out on control channel");
       tls_log("%s", "shutting down control channel TLS session");
-      tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, TRUE);
+      tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, 0);
       tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
         ctrl_ssl = NULL;
     }
@@ -1444,8 +1446,7 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
     } else if (tls_renegotiate_required) {
       tls_log("%s", "requested TLS renegotiation timed out on data channel");
       tls_log("%s", "shutting down data channel TLS session");
-      tls_end_sess((SSL *) tls_data_wr_nstrm->strm_data, PR_NETIO_STRM_DATA,
-        TRUE);
+      tls_end_sess((SSL *) tls_data_wr_nstrm->strm_data, PR_NETIO_STRM_DATA, 0);
       tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = NULL;
     }
   }
@@ -1996,8 +1997,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
     if (tls_handshake_timed_out) {
       tls_log("TLS negotiation timed out (%u seconds)", tls_handshake_timeout);
-      tls_end_sess(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL,
-        TRUE);
+      tls_end_sess(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL, 0);
       return -4;
     }
 
@@ -2043,8 +2043,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         break;
     }
 
-    tls_end_sess(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL,
-      TRUE);
+    tls_end_sess(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL, 0);
     return -3;
   }
 
@@ -2154,40 +2153,32 @@ static void tls_cleanup(int flags) {
   }
 }
 
-static void tls_end_sess(SSL *ssl, int strms, int use_shutdown) {
-  int res;
+static void tls_end_sess(SSL *ssl, int strms, int flags) {
+  int res = 0;
   int shutdown_state;
 
   if (!ssl)
     return;
 
-  res = SSL_shutdown(ssl);
+  /* A 'close_notify' alert (SSL shutdown message) may have been previously
+   * sent to the client via tls_netio_shutdown_cb().
+   */
+
+  shutdown_state = SSL_get_shutdown(ssl);
+  if (!(shutdown_state & SSL_SENT_SHUTDOWN)) {
+    /* 'close_notify' not already sent; send it now. */
+    res = SSL_shutdown(ssl);
+  }
+
   if (res == 0) {
-    if (use_shutdown) {
-      /* Try calling SSL_shutdown() again.  First, though, send a TCP FIN
-       * to trigger the remote end's close_notify SSL message, via shutdown().
-       */
-      if (strms & PR_NETIO_STRM_CTRL) {
-        pr_netio_shutdown(session.c->outstrm, 1);
-
-        if (session.c->instrm != session.c->outstrm)
-          pr_netio_shutdown(session.c->instrm, 1);
-      }
-
-      if (strms & PR_NETIO_STRM_DATA) {
-        pr_netio_shutdown(session.d->outstrm, 1);
-
-        if (session.d->instrm != session.d->outstrm)
-          pr_netio_shutdown(session.d->instrm, 1);
-      }
-    }
-
-    shutdown_state = SSL_get_shutdown(ssl);
-
     /* Now call SSL_shutdown() again, but only if necessary. */
-    res = 1;
-    if (!(shutdown_state & SSL_RECEIVED_SHUTDOWN)) {
-      res = SSL_shutdown(ssl);
+    if (flags & TLS_SHUTDOWN_BIDIRECTIONAL) {
+      shutdown_state = SSL_get_shutdown(ssl);
+
+      res = 1;
+      if (!(shutdown_state & SSL_RECEIVED_SHUTDOWN)) {
+        res = SSL_shutdown(ssl);
+      }
     }
 
     if (res == 0) {
@@ -2216,7 +2207,8 @@ static void tls_end_sess(SSL *ssl, int strms, int use_shutdown) {
           if (errno != 0 &&
               errno != EOF &&
               errno != EBADF &&
-              errno != EPIPE) {
+              errno != EPIPE &&
+              errno != EPERM) {
             tls_log("SSL_shutdown syscall error: %s", strerror(errno));
             pr_log_debug(DEBUG0, MOD_TLS_VERSION
               ": SSL_shutdown syscall error: %s", strerror(errno));
@@ -3811,7 +3803,7 @@ static int tls_netio_close_cb(pr_netio_stream_t *nstrm) {
 
     if (nstrm->strm_type == PR_NETIO_STRM_CTRL &&
         nstrm->strm_mode == PR_NETIO_IO_WR) {
-      tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type, TRUE);
+      tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type, 0);
       tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
         nstrm->strm_data = NULL;
       tls_ctrl_netio = NULL;
@@ -3820,7 +3812,7 @@ static int tls_netio_close_cb(pr_netio_stream_t *nstrm) {
 
     if (nstrm->strm_type == PR_NETIO_STRM_DATA &&
         nstrm->strm_mode == PR_NETIO_IO_WR) {
-      tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type, TRUE);
+      tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type, 0);
       tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data =
         nstrm->strm_data = NULL;
       tls_data_netio = NULL;
@@ -3931,7 +3923,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
           X509_free(data_cert);
 
           /* Properly shutdown the SSL session. */
-          tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type, TRUE);
+          tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type, 0);
 
           tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data =
             nstrm->strm_data = NULL;
@@ -3987,6 +3979,29 @@ static pr_netio_stream_t *tls_netio_reopen_cb(pr_netio_stream_t *nstrm, int fd,
 }
 
 static int tls_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
+
+  if (how == 1 ||
+      how == 2) {
+    /* Closing this stream for writing; we need to send the 'close_notify'
+     * alert first, so that the client knows, at the application layer,
+     * that the SSL/TLS session is shutting down.
+     */
+
+    if (nstrm->strm_mode == PR_NETIO_IO_WR &&
+        (nstrm->strm_type == PR_NETIO_STRM_CTRL ||
+         nstrm->strm_type == PR_NETIO_STRM_DATA)) {
+      SSL *ssl;
+
+      ssl = (SSL *) nstrm->strm_data;
+      if (ssl) {
+        if (!(SSL_get_shutdown(ssl) & SSL_SENT_SHUTDOWN)) {
+          /* We haven't sent a 'close_notify' alert yet; do so now. */
+          SSL_shutdown(ssl);
+        }
+      }
+    }
+  }
+
   return shutdown(nstrm->strm_fd, how);
 }
 
@@ -4413,7 +4428,7 @@ MODRET tls_ccc(cmd_rec *cmd) {
    * The data channel, if protected, should remain so.
    */
 
-  tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, FALSE);
+  tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, TLS_SHUTDOWN_BIDIRECTIONAL);
   ctrl_ssl = tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data = NULL;
 
   /* Remove our NetIO for the control channel. */
