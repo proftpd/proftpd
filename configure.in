@@ -1018,7 +1018,7 @@ if test x"$enable_cap" != xno; then
       rev=`uname -r | awk -F'[[.-]]' '{printf "%03d%03d%03d", $1, $2, $3}'`
 
       if test $rev -ge 002001097; then
-        AC_CHECK_HEADER(linux/capability.h)
+        AC_CHECK_HEADERS(linux/capability.h)
  
         if test $ac_cv_header_linux_capability_h = "yes"; then
           ac_add_mod_cap="yes"
