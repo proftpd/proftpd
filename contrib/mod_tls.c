@@ -3686,7 +3686,7 @@ static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
       }
 
       *((char **) push_array(ocsp_urls)) = pstrdup(tmp_pool,
-        desc->location->d.uniformResourceIdentifier->data);
+        (char *) desc->location->d.uniformResourceIdentifier->data);
     }
   }
 
