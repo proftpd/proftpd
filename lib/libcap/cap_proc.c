@@ -1,5 +1,5 @@
 /*
- * $Id: cap_proc.c,v 1.1 2003-01-03 02:16:17 jwm Exp $
+ * $Id: cap_proc.c,v 1.2 2008-08-06 17:00:41 castaglia Exp $
  *
  * Copyright (c) 1997-8 Andrew G Morgan <morgan@linux.kernel.org>
  *
@@ -40,7 +40,7 @@ int cap_set_proc(cap_t cap_d)
     _cap_debug("setting process capabilities");
     retval = capset(&cap_d->head, &cap_d->set);
 
-    cap_d->head.version = _LINUX_CAPABILITY_VERSION;
+    cap_d->head.version = _LINUX_CAPABILITY_VERSION_1;
     return retval;
 }
 
@@ -61,7 +61,7 @@ int capgetp(pid_t pid, cap_t cap_d)
 
     cap_d->head.pid = pid;
     error = capget(&cap_d->head, &cap_d->set);
-    cap_d->head.version = _LINUX_CAPABILITY_VERSION;
+    cap_d->head.version = _LINUX_CAPABILITY_VERSION_1;
     cap_d->head.pid = 0;
 
     return error;
@@ -81,7 +81,7 @@ int capsetp(pid_t pid, cap_t cap_d)
     _cap_debug("setting process capabilities for proc %d", pid);
     cap_d->head.pid = pid;
     error = capset(&cap_d->head, &cap_d->set);
-    cap_d->head.version = _LINUX_CAPABILITY_VERSION;
+    cap_d->head.version = _LINUX_CAPABILITY_VERSION_1;
     cap_d->head.pid = 0;
 
     return error;
@@ -89,7 +89,14 @@ int capsetp(pid_t pid, cap_t cap_d)
 
 /*
  * $Log: cap_proc.c,v $
- * Revision 1.1  2003-01-03 02:16:17  jwm
+ * Revision 1.2  2008-08-06 17:00:41  castaglia
+ *
+ * Bug#3096 - libcap version errors on newer Linux kernel.  Newer Linux kernels
+ * have a _LINUX_CAPABILITY_VERSION_2 macro, and redefine the old
+ * _LINUX_CAPABILITY_VERSION macro.  To play better with such kernels, redefine
+ * the bundled libcap to use _LINUX_CAPABILITY_VERSION_1.
+ *
+ * Revision 1.1  2003/01/03 02:16:17  jwm
  *
  * Turning mod_linuxprivs into a core module, mod_cap. This is by no means
  * complete.

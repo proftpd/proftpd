@@ -1,5 +1,5 @@
 /*
- * $Id: cap_alloc.c,v 1.2 2003-05-15 00:49:13 castaglia Exp $
+ * $Id: cap_alloc.c,v 1.3 2008-08-06 17:00:41 castaglia Exp $
  *
  * Copyright (c) 1997-8 Andrew G Morgan <morgan@linux.kernel.org>
  *
@@ -33,7 +33,7 @@ cap_t cap_init(void)
     result = (cap_t) (raw_data + 1);
     memset(result, 0, sizeof(*result));
 
-    result->head.version = _LINUX_CAPABILITY_VERSION;
+    result->head.version = _LINUX_CAPABILITY_VERSION_1;
 
     return result;
 }
@@ -123,7 +123,14 @@ int cap_free(void *data_p)
 
 /*
  * $Log: cap_alloc.c,v $
- * Revision 1.2  2003-05-15 00:49:13  castaglia
+ * Revision 1.3  2008-08-06 17:00:41  castaglia
+ *
+ * Bug#3096 - libcap version errors on newer Linux kernel.  Newer Linux kernels
+ * have a _LINUX_CAPABILITY_VERSION_2 macro, and redefine the old
+ * _LINUX_CAPABILITY_VERSION macro.  To play better with such kernels, redefine
+ * the bundled libcap to use _LINUX_CAPABILITY_VERSION_1.
+ *
+ * Revision 1.2  2003/05/15 00:49:13  castaglia
  *
  * Bug#2000 - mod_cap should not use bundled libcap.  This patch updates the
  * bundled libcap; I won't be closing the bug report just yet.

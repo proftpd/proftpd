@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.919 2008-07-30 16:37:38 castaglia Exp $
+$Id: NEWS,v 1.920 2008-08-06 17:00:40 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -22,6 +22,7 @@ CVS
   <Limit> permissions.
 - Bug 3036 - Quota information not persisted if session ends abruptly.
 - Bug 3094 - Perform unidirectional SSL/TLS shutdown on data connections.
+- Bug 3096 - libcap version errors on newer Linux kernel.
 
 1.3.2rc1 - Released 15-Apr-2008
 --------------------------------

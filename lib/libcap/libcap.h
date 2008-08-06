@@ -1,5 +1,5 @@
 /*
- * $Id: libcap.h,v 1.2 2003-05-15 00:49:13 castaglia Exp $
+ * $Id: libcap.h,v 1.3 2008-08-06 17:00:41 castaglia Exp $
  *
  * Copyright (c) 1997 Andrew G Morgan <morgan@linux.kernel.org>
  *
@@ -51,8 +51,8 @@ struct _cap_struct {
  * Do we match the local kernel?
  */
 
-#if !defined(_LINUX_CAPABILITY_VERSION) || \
-            (_LINUX_CAPABILITY_VERSION != 0x19980330)
+#if !defined(_LINUX_CAPABILITY_VERSION_1) || \
+            (_LINUX_CAPABILITY_VERSION_1 != 0x19980330)
 
 # error "Kernel <linux/capability.h> does not match library"
 # error "file "libcap.h" --> fix and recompile libcap"
@@ -120,7 +120,14 @@ extern int capsetp(pid_t pid, cap_t cap_d);
 
 /*
  * $Log: libcap.h,v $
- * Revision 1.2  2003-05-15 00:49:13  castaglia
+ * Revision 1.3  2008-08-06 17:00:41  castaglia
+ *
+ * Bug#3096 - libcap version errors on newer Linux kernel.  Newer Linux kernels
+ * have a _LINUX_CAPABILITY_VERSION_2 macro, and redefine the old
+ * _LINUX_CAPABILITY_VERSION macro.  To play better with such kernels, redefine
+ * the bundled libcap to use _LINUX_CAPABILITY_VERSION_1.
+ *
+ * Revision 1.2  2003/05/15 00:49:13  castaglia
  *
  * Bug#2000 - mod_cap should not use bundled libcap.  This patch updates the
  * bundled libcap; I won't be closing the bug report just yet.
