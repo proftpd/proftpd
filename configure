@@ -36831,7 +36831,8 @@ else
     INSTALL_STRIP="-s"
 fi
 
-{ echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wno-long-double" >&5
+if test "$OSTYPE" = "-DDARWIN6" -o "$OSTYPE" = "-DDARWIN7" -o "$OSTYPE" = "-DDARWIN8"; then
+            { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wno-long-double" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wno-long-double... $ECHO_C" >&6; }
    echo 'void f(){}' > conftest.c
    if test -z "`${CC-cc} -c -Wno-long-double conftest.c 2>&1`"; then
@@ -36844,6 +36845,7 @@ echo "${ECHO_T}no" >&6; }
    fi
    rm -f conftest*
 
+fi
 
 my_cflags="\"$CFLAGS\""
 cat >>confdefs.h <<_ACEOF
