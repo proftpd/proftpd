@@ -21,13 +21,14 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.3 2008-01-08 04:15:58 castaglia Exp $
+ * $Id: mod_sql_sqlite.c,v 1.4 2008-08-10 19:02:27 castaglia Exp $
  * $Libraries: -lsqlite3 $
  */
 
-#define MOD_SQL_SQLITE_VERSION		"mod_sql_sqlite/0.2"
+#define MOD_SQL_SQLITE_VERSION		"mod_sql_sqlite/0.3"
 
 #include "conf.h"
+#include "privs.h"
 #include "mod_sql.h"
 
 #include <sqlite3.h>
@@ -189,6 +190,7 @@ static modret_t *sql_sqlite_get_data(cmd_rec *cmd) {
 MODRET sql_sqlite_open(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
+  int res;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tsqlite cmd_open");
 
@@ -222,7 +224,11 @@ MODRET sql_sqlite_open(cmd_rec *cmd) {
     return PR_HANDLED(cmd);
   }
 
-  if (sqlite3_open(conn->dsn, &(conn->dbh)) != SQLITE_OK) {
+  PRIVS_ROOT
+  res = sqlite3_open(conn->dsn, &(conn->dbh));
+  PRIVS_RELINQUISH
+
+  if (res != SQLITE_OK) {
     char *errstr = pstrdup(cmd->pool, sqlite3_errmsg(conn->dbh));
 
     sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_open");
