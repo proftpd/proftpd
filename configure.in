@@ -2045,12 +2045,14 @@ else
   INSTALL_STRIP="-s"
 fi
 
-dnl Check whether the C compiler accepts -Wno-long-double. This helps to
-dnl quell unnecessary OSX compiler complaints.  Use of this macro should
-dnl be as late in the configure script as possible, for it changes the
-dnl CFLAGS environment variable (which may possible cause other autoconf
-dnl tests to fail).
-PR_CHECK_CC_OPT(Wno-long-double)
+if test "$OSTYPE" = "-DDARWIN6" -o "$OSTYPE" = "-DDARWIN7" -o "$OSTYPE" = "-DDARWIN8"; then
+  dnl Check whether the C compiler accepts -Wno-long-double. This helps to
+  dnl quell unnecessary OSX compiler complaints.  Use of this macro should
+  dnl be as late in the configure script as possible, for it changes the
+  dnl CFLAGS environment variable (which may possible cause other autoconf
+  dnl tests to fail).
+  PR_CHECK_CC_OPT(Wno-long-double)
+fi
 
 my_cflags="\"$CFLAGS\""
 AC_DEFINE_UNQUOTED(PR_BUILD_CFLAGS, $my_cflags)
