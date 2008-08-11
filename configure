@@ -857,6 +857,7 @@ subdirs
 install_user
 install_group
 ALLOCA
+pkgconfigdir
 ENABLE_NLS
 ENABLE_TESTS
 GLUE_MODULE_OBJS
@@ -1600,6 +1601,9 @@ Optional Packages:
   --with-shared=LIST      build DSO modules for proftpd. LIST is a
                           colon-separated list of modules to build as DSOs
                           e.g. --with-shared=mod_rewrite:mod_ifsession
+
+  --with-pkgconfig=PATH   configure directory that will contain the proftpd.pc
+                          pkgconfig file (default=lib/pkgconfig)
 
 
 Some influential environment variables:
@@ -3981,7 +3985,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 3984 "configure"' > conftest.$ac_ext
+  echo '#line 3988 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -6563,11 +6567,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:6566: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:6570: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:6570: \$? = $ac_status" >&5
+   echo "$as_me:6574: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings
@@ -6806,11 +6810,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:6809: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:6813: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:6813: \$? = $ac_status" >&5
+   echo "$as_me:6817: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings
@@ -6866,11 +6870,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:6869: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:6873: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:6873: \$? = $ac_status" >&5
+   echo "$as_me:6877: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -9014,7 +9018,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 9017 "configure"
+#line 9021 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -9112,7 +9116,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 9115 "configure"
+#line 9119 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11301,11 +11305,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:11304: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:11308: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:11308: \$? = $ac_status" >&5
+   echo "$as_me:11312: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings
@@ -11361,11 +11365,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:11364: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:11368: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:11368: \$? = $ac_status" >&5
+   echo "$as_me:11372: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -12689,7 +12693,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 12692 "configure"
+#line 12696 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12787,7 +12791,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 12790 "configure"
+#line 12794 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13624,11 +13628,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13627: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13631: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:13631: \$? = $ac_status" >&5
+   echo "$as_me:13635: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings
@@ -13684,11 +13688,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13687: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13691: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:13691: \$? = $ac_status" >&5
+   echo "$as_me:13695: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -15718,11 +15722,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15721: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15725: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:15725: \$? = $ac_status" >&5
+   echo "$as_me:15729: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings
@@ -15961,11 +15965,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15964: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15968: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:15968: \$? = $ac_status" >&5
+   echo "$as_me:15972: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings
@@ -16021,11 +16025,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:16024: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:16028: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:16028: \$? = $ac_status" >&5
+   echo "$as_me:16032: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -18169,7 +18173,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 18172 "configure"
+#line 18176 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -18267,7 +18271,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 18270 "configure"
+#line 18274 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -20861,6 +20865,16 @@ echo "$as_me: error: cannot build $amodule as a shared module" >&2;}
     for amodule in $ac_shared_modules; do
       ac_build_shared_modules="modules/$amodule $ac_build_shared_modules"
     done
+
+fi
+
+
+pkgconfigdir=NONE
+
+# Check whether --with-pkgconfig was given.
+if test "${with_pkgconfig+set}" = set; then
+  withval=$with_pkgconfig;
+    pkgconfigdir=`echo "$withval"`
 
 fi
 
@@ -36797,6 +36811,13 @@ _ACEOF
 prefix="$pr_saved_prefix"
 exec_prefix="$pr_saved_exec_prefix"
 
+if test x"$pkgconfigdir" = xNONE ; then
+  pkgconfigdir="${libdir}/pkgconfig"
+else
+  pkgconfigdir="${prefix}/$pkgconfigdir"
+fi
+
+
 if test x"$devel" = xyes ; then
 
 cat >>confdefs.h <<\_ACEOF
@@ -37626,13 +37647,13 @@ subdirs!$subdirs$ac_delim
 install_user!$install_user$ac_delim
 install_group!$install_group$ac_delim
 ALLOCA!$ALLOCA$ac_delim
+pkgconfigdir!$pkgconfigdir$ac_delim
 ENABLE_NLS!$ENABLE_NLS$ac_delim
 ENABLE_TESTS!$ENABLE_TESTS$ac_delim
 GLUE_MODULE_OBJS!$GLUE_MODULE_OBJS$ac_delim
 INSTALL_STRIP!$INSTALL_STRIP$ac_delim
 INSTALL_DEPS!$INSTALL_DEPS$ac_delim
 LIB_DEPS!$LIB_DEPS$ac_delim
-LIB_OBJS!$LIB_OBJS$ac_delim
 _ACEOF
 
   if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 97; then
@@ -37674,6 +37695,7 @@ _ACEOF
 ac_delim='%!_!# '
 for ac_last_try in false false false false false :; do
   cat >conf$$subs.sed <<_ACEOF
+LIB_OBJS!$LIB_OBJS$ac_delim
 LIBTOOL_DEPS!$LIBTOOL_DEPS$ac_delim
 LIBLTDL!$LIBLTDL$ac_delim
 MAIN_LDFLAGS!$MAIN_LDFLAGS$ac_delim
@@ -37699,7 +37721,7 @@ LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 23; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 24; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
