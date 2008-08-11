@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.49 2008-02-13 07:24:36 castaglia Exp $
+ * $Id: pool.c,v 1.50 2008-08-11 20:52:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -105,13 +105,15 @@ static union block_hdr *malloc_block(int size) {
   return blok;
 }
 
-static void chk_on_blk_list(union block_hdr *blok, union block_hdr *free_blk) {
+static void chk_on_blk_list(union block_hdr *blok, union block_hdr *free_blk,
+    const char *pool_tag) {
+
   /* Debug code */
 
   while (free_blk) {
     if (free_blk == blok) {
       pr_log_pri(PR_LOG_ERR, "Fatal: DEBUG: Attempt to free already free block "
-       "in chk_on_blk_list()");
+       "in pool '%s'", pool_tag ? pool_tag : "(unnamed)");
       exit(1);
     }
 
@@ -121,7 +123,7 @@ static void chk_on_blk_list(union block_hdr *blok, union block_hdr *free_blk) {
 
 /* Free a chain of blocks -- _must_ call with alarms blocked. */
 
-static void free_blocks(union block_hdr *blok) {
+static void free_blocks(union block_hdr *blok, const char *pool_tag) {
   /* Puts new blocks at head of block list, point next pointer of
    * last block in chain to free blocks we already had.
    */
@@ -136,12 +138,12 @@ static void free_blocks(union block_hdr *blok) {
   /* Adjust first_avail pointers */
 
   while (blok->h.next) {
-    chk_on_blk_list(blok, old_free_list);
+    chk_on_blk_list(blok, old_free_list, pool_tag);
     blok->h.first_avail = (char *) (blok + 1);
     blok = blok->h.next;
   }
 
-  chk_on_blk_list(blok, old_free_list);
+  chk_on_blk_list(blok, old_free_list, pool_tag);
   blok->h.first_avail = (char *) (blok + 1);
   blok->h.next = old_free_list;
 }
@@ -396,7 +398,7 @@ static void clear_pool(struct pool *p) {
     destroy_pool(p->sub_pools);
   p->sub_pools = NULL;
 
-  free_blocks(p->first->h.next);
+  free_blocks(p->first->h.next, p->tag);
   p->first->h.next = NULL;
 
   p->last = p->first;
@@ -422,7 +424,7 @@ void destroy_pool(pool *p) {
       p->sub_next->sub_prev = p->sub_prev;
   }
   clear_pool(p);
-  free_blocks(p->first);
+  free_blocks(p->first, p->tag);
 
   pr_alarms_unblock();
 }
