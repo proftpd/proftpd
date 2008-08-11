@@ -9,6 +9,7 @@ sysconfdir=@sysconfdir@
 includedir=@includedir@
 libexecdir=@libexecdir@
 localstatedir=@localstatedir@
+pkgconfigdir=@pkgconfigdir@
 rundir=@localstatedir@/proftpd
 mandir=@mandir@
 

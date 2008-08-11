@@ -347,6 +347,17 @@ AC_ARG_WITH(shared,
     done
   ])
 
+dnl Configurable location of the pkgconfig file
+pkgconfigdir=NONE
+AC_ARG_WITH(pkgconfig,
+  [AC_HELP_STRING(
+    [--with-pkgconfig=PATH],
+    [configure directory that will contain the proftpd.pc pkgconfig file (default=lib/pkgconfig)])
+  ],
+  [
+    pkgconfigdir=`echo "$withval"`
+  ])
+
 dnl --enable/--disable options.
 
 AC_ARG_ENABLE(auth-file,
@@ -2020,6 +2031,13 @@ AC_DEFINE_UNQUOTED(PR_PID_FILE_PATH, "`eval echo "${localstatedir}/proftpd.pid"`
 
 prefix="$pr_saved_prefix"
 exec_prefix="$pr_saved_exec_prefix"
+
+if test x"$pkgconfigdir" = xNONE ; then
+  pkgconfigdir="${libdir}/pkgconfig"
+else
+  pkgconfigdir="${prefix}/$pkgconfigdir"
+fi
+AC_SUBST(pkgconfigdir)
 
 if test x"$devel" = xyes ; then
   AC_DEFINE(PR_USE_DEVEL, 1, [Define if enabling developer support])
