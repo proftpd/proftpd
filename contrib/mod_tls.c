@@ -983,7 +983,7 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
     status = -1;
 
   } else if (pid == 0) {
-    char nbuf[32] = {'\0'};
+    char nbuf[32];
     pool *tmp_pool;
     char *stdin_argv[4];
 
@@ -1006,7 +1006,8 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
 
     stdin_argv[0] = pstrdup(tmp_pool, tls_passphrase_provider);
 
-    snprintf(nbuf, sizeof(buf)-1, "%u", s->ServerPort);
+    memset(nbuf, '\0', sizeof(nbuf));
+    snprintf(nbuf, sizeof(nbuf)-1, "%u", (unsigned int) s->ServerPort);
     nbuf[sizeof(nbuf)-1] = '\0';
     stdin_argv[1] = pstrcat(tmp_pool, s->ServerName, ":", nbuf, NULL);
 
