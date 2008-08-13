@@ -5201,7 +5201,59 @@ static void tls_mod_unload_ev(const void *event_data, void *user_data) {
 }
 #endif /* PR_SHARED_MODULE */
 
-static void tls_postparse_ev(const void *event_data, void *user_data) {
+/* Daemon PID */
+extern pid_t mpid;
+
+static void tls_daemon_exit_ev(const void *event_data, void *user_data) {
+  if (mpid == getpid())
+    tls_scrub_pkeys();
+
+  /* Write out a new RandomSeed file, for use later. */
+  if (tls_rand_file) {
+    int res;
+
+    res = RAND_write_file(tls_rand_file);
+    if (res < 0) {
+      tls_log("error writing PRNG seed data to '%s': %s", tls_rand_file,
+        tls_get_errors());
+
+    } else {
+      tls_log("wrote %d bytes of PRNG seed data to '%s'", res, tls_rand_file);
+    }
+  }
+}
+
+static void tls_restart_ev(const void *event_data, void *user_data) {
+  tls_scrub_pkeys();
+  tls_closelog();
+}
+
+static void tls_sess_exit_ev(const void *event_data, void *user_data) {
+
+  /* OpenSSL cleanup */
+  tls_cleanup(0);
+
+  /* Done with the NetIO objects */
+  if (tls_ctrl_netio) {
+    pr_unregister_netio(PR_NETIO_STRM_CTRL);
+    destroy_pool(tls_ctrl_netio->pool);
+    tls_ctrl_netio = NULL;
+  }
+
+  if (tls_data_netio) {
+    pr_unregister_netio(PR_NETIO_STRM_DATA);
+    destroy_pool(tls_data_netio->pool);
+    tls_data_netio = NULL;
+  }
+
+  if (mpid != getpid())
+    tls_scrub_pkeys();
+
+  tls_closelog();
+  return;
+}
+
+static void tls_get_passphrases(void) {
   server_rec *s = NULL;
   char buf[256];
 
@@ -5275,60 +5327,6 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
     tls_pkey_list = k;
     tls_npkeys++;
   }
-
-  return;
-}
-
-/* Daemon PID */
-extern pid_t mpid;
-
-static void tls_daemon_exit_ev(const void *event_data, void *user_data) {
-  if (mpid == getpid())
-    tls_scrub_pkeys();
-
-  /* Write out a new RandomSeed file, for use later. */
-  if (tls_rand_file) {
-    int res;
-
-    res = RAND_write_file(tls_rand_file);
-    if (res < 0) {
-      tls_log("error writing PRNG seed data to '%s': %s", tls_rand_file,
-        tls_get_errors());
-
-    } else {
-      tls_log("wrote %d bytes of PRNG seed data to '%s'", res, tls_rand_file);
-    }
-  }
-}
-
-static void tls_restart_ev(const void *event_data, void *user_data) {
-  tls_scrub_pkeys();
-  tls_closelog();
-}
-
-static void tls_sess_exit_ev(const void *event_data, void *user_data) {
-
-  /* OpenSSL cleanup */
-  tls_cleanup(0);
-
-  /* Done with the NetIO objects */
-  if (tls_ctrl_netio) {
-    pr_unregister_netio(PR_NETIO_STRM_CTRL);
-    destroy_pool(tls_ctrl_netio->pool);
-    tls_ctrl_netio = NULL;
-  }
-
-  if (tls_data_netio) {
-    pr_unregister_netio(PR_NETIO_STRM_DATA);
-    destroy_pool(tls_data_netio->pool);
-    tls_data_netio = NULL;
-  }
-
-  if (mpid != getpid())
-    tls_scrub_pkeys();
-
-  tls_closelog();
-  return;
 }
 
 static void tls_startup_ev(const void *event_data, void *user_data) {
@@ -5348,6 +5346,11 @@ static void tls_startup_ev(const void *event_data, void *user_data) {
       ": error initialising OpenSSL context");
     end_login(1);
   }
+
+  /* We can only get the passphrases from certs once OpenSSL has been
+   * initialized.
+   */
+  tls_get_passphrases();
 }
 
 /* Initialization routines
@@ -5376,7 +5379,6 @@ static int tls_init(void) {
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&tls_module, "core.module-unload", tls_mod_unload_ev, NULL);
 #endif /* PR_SHARED_MODULE */
-  pr_event_register(&tls_module, "core.postparse", tls_postparse_ev, NULL);
   pr_event_register(&tls_module, "core.restart", tls_restart_ev, NULL);
   pr_event_register(&tls_module, "core.startup", tls_startup_ev, NULL);
 
