@@ -5329,16 +5329,7 @@ static void tls_get_passphrases(void) {
   }
 }
 
-static void tls_startup_ev(const void *event_data, void *user_data) {
-
-  /* Install our control channel NetIO handlers.  This is done here
-   * specifically because we need to cache a pointer to the nstrm that
-   * is passed to the open callback().  Ideally we'd only install our
-   * custom NetIO handlers if the appropriate AUTH command was given.
-   * But by then, the open() callback will have already been called, and
-   * we will not have a chance to get that nstrm pointer.
-   */
-  tls_netio_install_ctrl();
+static void tls_postparse_ev(const void *event_data, void *user_data) {
 
   /* Initialize the OpenSSL context. */
   if (tls_init_ctxt() < 0) {
@@ -5351,6 +5342,18 @@ static void tls_startup_ev(const void *event_data, void *user_data) {
    * initialized.
    */
   tls_get_passphrases();
+}
+
+static void tls_startup_ev(const void *event_data, void *user_data) {
+
+  /* Install our control channel NetIO handlers.  This is done here
+   * specifically because we need to cache a pointer to the nstrm that
+   * is passed to the open callback().  Ideally we'd only install our
+   * custom NetIO handlers if the appropriate AUTH command was given.
+   * But by then, the open() callback will have already been called, and
+   * we will not have a chance to get that nstrm pointer.
+   */
+  tls_netio_install_ctrl();
 }
 
 /* Initialization routines
@@ -5379,6 +5382,7 @@ static int tls_init(void) {
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&tls_module, "core.module-unload", tls_mod_unload_ev, NULL);
 #endif /* PR_SHARED_MODULE */
+  pr_event_register(&tls_module, "core.postparse", tls_postparse_ev, NULL);
   pr_event_register(&tls_module, "core.restart", tls_restart_ev, NULL);
   pr_event_register(&tls_module, "core.startup", tls_startup_ev, NULL);
 
