@@ -2076,7 +2076,7 @@ my_cflags="\"$CFLAGS\""
 AC_DEFINE_UNQUOTED(PR_BUILD_CFLAGS, $my_cflags)
 my_ldflags="\"$LDFLAGS\""
 AC_DEFINE_UNQUOTED(PR_BUILD_LDFLAGS, $my_ldflags)
-my_libs="\"$LIBS\""
+my_libs="\"$LIBRARIES $LIBS\""
 AC_DEFINE_UNQUOTED(PR_BUILD_LIBS, $my_libs)
 
 dnl And finally, generate the appropriate Make* and config.h
