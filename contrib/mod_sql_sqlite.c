@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.4 2008-08-10 19:02:27 castaglia Exp $
+ * $Id: mod_sql_sqlite.c,v 1.5 2008-08-15 16:14:23 castaglia Exp $
  * $Libraries: -lsqlite3 $
  */
 
@@ -498,6 +498,8 @@ MODRET sql_sqlite_select(cmd_rec *cmd) {
     errstr = pstrdup(cmd->pool, tmp);
     sqlite3_free(tmp);
 
+    sql_log(DEBUG_FUNC, "error executing '%s': %s", query, errstr);
+
     close_cmd = pr_cmd_alloc(cmd->tmp_pool, 1, entry->name);
     sql_sqlite_close(close_cmd);
     destroy_pool(close_cmd->pool);
@@ -589,6 +591,8 @@ MODRET sql_sqlite_insert(cmd_rec *cmd) {
 
     errstr = pstrdup(cmd->pool, tmp);
     sqlite3_free(tmp);
+
+    sql_log(DEBUG_FUNC, "error executing '%s': %s", query, errstr);
 
     close_cmd = pr_cmd_alloc(cmd->tmp_pool, 1, entry->name);
     sql_sqlite_close(close_cmd);
@@ -688,6 +692,8 @@ MODRET sql_sqlite_update(cmd_rec *cmd) {
 
     errstr = pstrdup(cmd->pool, tmp);
     sqlite3_free(tmp);
+
+    sql_log(DEBUG_FUNC, "error executing '%s': %s", query, errstr);
 
     close_cmd = pr_cmd_alloc(cmd->tmp_pool, 1, entry->name);
     sql_sqlite_close(close_cmd);
@@ -801,6 +807,8 @@ MODRET sql_sqlite_query(cmd_rec *cmd) {
 
     errstr = pstrdup(cmd->pool, tmp);
     sqlite3_free(tmp);
+
+    sql_log(DEBUG_FUNC, "error executing '%s': %s", query, errstr);
 
     close_cmd = pr_cmd_alloc(cmd->tmp_pool, 1, entry->name);
     sql_sqlite_close(close_cmd);
