@@ -36878,7 +36878,7 @@ cat >>confdefs.h <<_ACEOF
 #define PR_BUILD_LDFLAGS $my_ldflags
 _ACEOF
 
-my_libs="\"$LIBS\""
+my_libs="\"$LIBRARIES $LIBS\""
 cat >>confdefs.h <<_ACEOF
 #define PR_BUILD_LIBS $my_libs
 _ACEOF
