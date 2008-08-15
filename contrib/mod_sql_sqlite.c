@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.5 2008-08-15 16:14:23 castaglia Exp $
+ * $Id: mod_sql_sqlite.c,v 1.6 2008-08-15 18:12:12 castaglia Exp $
  * $Libraries: -lsqlite3 $
  */
 
@@ -230,6 +230,9 @@ MODRET sql_sqlite_open(cmd_rec *cmd) {
 
   if (res != SQLITE_OK) {
     char *errstr = pstrdup(cmd->pool, sqlite3_errmsg(conn->dbh));
+
+    sql_log(DEBUG_FUNC, "error opening SQLite database '%s': %s",
+      conn->dsn, errstr);
 
     sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_open");
     return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION, errstr);
