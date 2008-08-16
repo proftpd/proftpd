@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.235 2008-06-05 08:01:39 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.236 2008-08-16 03:56:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -84,6 +84,8 @@ static int xfer_parse_cmdlist(const char *, config_rec *, char *);
 module xfer_module;
 
 static int xfer_errno;
+static int xfer_logged_sendfile_decline_msg = FALSE;
+
 static const char *trace_channel = "xfer";
 
 static unsigned long find_max_nbytes(char *directive) {
@@ -621,28 +623,32 @@ static int transmit_sendfile(off_t count, off_t *offset,
      have_prot || have_zmode ||
      !use_sendfile) {
 
-    if (pr_throttle_have_rate()) {
-      pr_log_debug(DEBUG10, "declining use of sendfile due to TransferRate "
-        "restrictions");
+    if (!xfer_logged_sendfile_decline_msg) {
+      if (pr_throttle_have_rate()) {
+        pr_log_debug(DEBUG10, "declining use of sendfile due to TransferRate "
+          "restrictions");
+    
+      } else if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
+        pr_log_debug(DEBUG10, "declining use of sendfile for ASCII data");
 
-    } else if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
-      pr_log_debug(DEBUG10, "declining use of sendfile for ASCII data");
+      } else if (have_prot) {
+        pr_log_debug(DEBUG10, "declining use of sendfile due to RFC2228 data "
+          "channel protections");
 
-    } else if (have_prot) {
-      pr_log_debug(DEBUG10, "declining use of sendfile due to RFC2228 data "
-        "channel protections");
+      } else if (have_zmode) {
+        pr_log_debug(DEBUG10, "declining use of sendfile due to MODE Z "
+          "restrictions");
 
-    } else if (have_zmode) {
-      pr_log_debug(DEBUG10, "declining use of sendfile due to MODE Z "
-        "restrictions");
+      } else if (!use_sendfile) {
+        pr_log_debug(DEBUG10, "declining use of sendfile due to UseSendfile "
+          "configuration setting");
 
-    } else if (!use_sendfile) {
-      pr_log_debug(DEBUG10, "declining use of sendfile due to UseSendfile "
-        "configuration setting");
+      } else {
+        pr_log_debug(DEBUG10, "declining use of sendfile due to lack of data "
+          "to transmit");
+      }
 
-    } else {
-      pr_log_debug(DEBUG10, "declining use of sendfile due to lack of data "
-        "to transmit");
+      xfer_logged_sendfile_decline_msg = TRUE;
     }
 
     return 0;
@@ -1689,6 +1695,8 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   char *dir = NULL;
   mode_t fmode;
   unsigned char *allow_restart = NULL;
+
+  xfer_logged_sendfile_decline_msg = FALSE;
 
   if (cmd->argc < 2) {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
