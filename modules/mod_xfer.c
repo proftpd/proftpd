@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.236 2008-08-16 03:56:30 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.237 2008-08-18 18:48:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -599,8 +599,17 @@ static int xfer_parse_cmdlist(const char *name, config_rec *c,
 static int transmit_normal(char *buf, long bufsz) {
   long sz = pr_fsio_read(retr_fh, buf, bufsz);
 
-  if (sz <= 0)
+  if (sz < 0) {
+    (void) pr_trace_msg("fileperms", 1, "RETR, user '%s' (UID %lu, GID %lu): "
+      "error reading from '%s': %s", session.user,
+      (unsigned long) session.uid, (unsigned long) session.gid,
+      retr_fh->fh_path, strerror(errno));
     return 0;
+  }
+
+  if (sz == 0) {
+    return 0;
+  }
 
   return pr_data_xfer(buf, sz);
 }
@@ -1390,6 +1399,12 @@ MODRET xfer_stor(cmd_rec *cmd) {
   if (session.xfer.xfer_type == STOR_HIDDEN) {
     stor_fh = pr_fsio_open(session.xfer.path_hidden,
       O_WRONLY|(session.restart_pos ? 0 : O_CREAT|O_EXCL));
+    if (stor_fh == NULL) {
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+        "error opening '%s': %s", cmd->argv[0], session.user,
+        (unsigned long) session.uid, (unsigned long) session.gid,
+        session.xfer.path_hidden, strerror(errno));
+    }
 
   } else if (session.xfer.xfer_type == STOR_APPEND) {
     stor_fh = pr_fsio_open(session.xfer.path, O_CREAT|O_WRONLY);
@@ -1401,12 +1416,24 @@ MODRET xfer_stor(cmd_rec *cmd) {
         (void) pr_fsio_close(stor_fh);
         stor_fh = NULL;
       }
+
+    } else {
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+        "error opening '%s': %s", cmd->argv[0], session.user,
+        (unsigned long) session.uid, (unsigned long) session.gid,
+        session.xfer.path, strerror(errno));
     }
 
   } else {
     /* Normal session */
     stor_fh = pr_fsio_open(dir,
         O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT));
+    if (stor_fh == NULL) {
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+        "error opening '%s': %s", cmd->argv[0], session.user,
+        (unsigned long) session.uid, (unsigned long) session.gid, dir,
+        strerror(errno));
+    }
   }
 
   if (stor_fh &&
@@ -1546,6 +1573,11 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
       if (res < 0)
         xerrno = errno;
+
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+        "error writing to '%s': %s", cmd->argv[0], session.user,
+        (unsigned long) session.uid, (unsigned long) session.gid,
+        stor_fh->fh_path, strerror(xerrno));
 
       stor_abort();
       pr_data_abort(xerrno, FALSE);
@@ -1765,7 +1797,11 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
   retr_fh = pr_fsio_open(dir, O_RDONLY);
   if (retr_fh == NULL) {
-    /* Error opening the file. */
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      "error opening '%s': %s", cmd->argv[0], session.user,
+      (unsigned long) session.uid, (unsigned long) session.gid,
+      dir, strerror(errno));
+
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return PR_ERROR(cmd);
   }
@@ -1800,6 +1836,11 @@ MODRET xfer_retr(cmd_rec *cmd) {
       pr_fsio_close(retr_fh);
       errno = xerrno;
       retr_fh = NULL;
+
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+        "error seeking to byte %" PR_LU " of '%s': %s", cmd->argv[0],
+        session.user, (unsigned long) session.uid, (unsigned long) session.gid,
+        (pr_off_t) session.restart_pos, dir, strerror(errno));
 
       pr_log_debug(DEBUG0, "error seeking to offset %" PR_LU
         "for file %s: %s", (pr_off_t) session.restart_pos, dir,
