@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
 #
-#  $Id: ftpmail,v 1.2 2008-04-15 22:38:56 castaglia Exp $
+#  $Id: ftpmail,v 1.3 2008-08-18 20:50:51 castaglia Exp $
 #
 # ---------------------------------------------------------------------------
 
@@ -31,8 +31,9 @@ use Time::HiRes qw(usleep);
 my $program = basename($0);
 
 my $opts = {};
-GetOptions($opts, 'attach-file', 'fifo=s', 'from=s', 'help', 'log=s',
-  'recipient=s@', 'sleep=s', 'smtp-server=s', 'subject=s');
+GetOptions($opts, 'attach-file', 'fifo=s', 'from=s', 'help', 'ignore-users=s',
+  'log=s', 'recipient=s@', 'sleep=s', 'smtp-server=s', 'subject=s',
+  'watch-users=s');
 
 if ($opts->{help}) {
   usage();
@@ -109,8 +110,32 @@ if (open($fifoh, "< $fifo")) {
         my $user_name = $10;
         my $completion_status = $11;
 
+        my $send_email = 0;
+
         if ($xfer_direction eq 'i') {
-          # It's an upload; send the email.
+          $send_email = 1;
+        }
+
+        if ($send_email) {
+
+          # First, check for any specific --watch-users filter.  If configured,
+          # and if the user name does NOT match the --watch-users filter, then
+          # don't send email.  Otherwise, check for an --ignore-users filter,
+          # and see if the user matches that ignore filter.
+
+          if ($opts->{'watch-users'}) {
+            if ($user_name !~ /$opts->{'watch-users'}/) {
+              $send_email = 0;
+            }
+
+          } elsif ($opts->{'ignore-users'}) {
+            if ($user_name =~ /$opts->{'ignore-users'}/) {
+              $send_email = 0;
+            }
+          }
+        }
+
+        if ($send_email) {
           send_email({
             timestamp => $curr_time,
             duration => $xfer_nsecs,

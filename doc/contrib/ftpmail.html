@@ -1,4 +1,4 @@
-<!-- $Id: ftpmail.html,v 1.1 2008-03-06 03:06:14 castaglia Exp $ -->
+<!-- $Id: ftpmail.html,v 1.2 2008-08-18 20:50:51 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/ftpmail.html,v $ -->
 
 <html>
@@ -98,7 +98,7 @@ can also be obtained by running:
 
   usage: ftpmail [--help] [--fifo $path] [--from $addr] [--log $path]
     [--recipient $addr] [--subject $string] [--smtp-server $addr]
-    [--attach-file]
+    [--attach-file] [--ignore-users $regex | --watch-users $regex]
 
   The purpose of this script is to monitor the TransferLog written by proftpd
   for uploaded files.  Whenever a file is uploaded by a user, an email
@@ -123,6 +123,11 @@ can also be obtained by running:
 
     --help                Displays this message.
 
+    --ignore-users $regex Specifies a Perl regular expression.  If the
+                          uploading user name matches this regular expression,
+                          then an email notification is NOT sent; otherwise,
+                          an email is sent.
+
     --log $path           Since this script reads the TransferLog using FIFOs,
                           the actual TransferLog file is not written by default.
                           Use this option to write the normal TransferLog file,
@@ -140,13 +145,51 @@ can also be obtained by running:
                           The default Subject is:
 
                             User '$user' uploaded file '$file' via FTP
+
+    --watch-users $regex  Specifies a Perl regular expression.  If the
+                          uploading user name matches this regular expression,
+                          then an email notification is sent; otherwise,
+                          no email is sent.
 </pre>
+
+<p><a name="FAQ"></a>
+<b>FAQ</b><br>
+
+<p>
+<font color=red>Question</font>: I would like to use <code>ftpmail</code>
+to send emails, but only for files uploaded to specific domains.  How do
+I do this?<br>
+<font color=blue>Answer</font>: To do this, you will need to configure
+different <code>TransferLog</code> files in your different
+<code>&lt;VirtualHost&gt;</code> sections in your <code>proftpd.conf</code>.
+
+<p>
+The TransferLog file format does not include a field indicating the IP
+address (or DNS name) of the server on which the file transfer is occurring.
+This means that <code>ftpmail</code> does not know which server is handling
+the transfer.  So, in order to have <code>ftpmail</code> send emails only
+for certain domains/servers, you will have to do something like:
+<pre>
+ &lt;VirtualHost a.b.c.d&gt;
+    ...
+    TransferLog /path/to/vhost1.xferlog
+    ..
+  &lt;/VirtualHost&gt;
+
+  &lt;VirtualHost e.f.g.h&gt;
+    ...
+    TransferLog /path/to/vhost2.xferlog
+    ...
+  &lt;/VirtualHost&gt;
+</pre>
+Then start instances of <code>ftpmail</code> running, but only for the
+<code>TransferLog</code> files of the domains/virtual servers to be monitored.
 
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2008-03-06 03:06:14 $</i><br>
+Last Updated: <i>$Date: 2008-08-18 20:50:51 $</i><br>
 
 <br><hr>
 

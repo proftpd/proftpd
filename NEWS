@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.923 2008-08-18 18:48:13 castaglia Exp $
+$Id: NEWS,v 1.924 2008-08-18 20:50:51 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -29,6 +29,8 @@ CVS
 - Bug 3099 - Add trace logging of filesystem permission errors.  To see
   this additional logging, use Trace logging, and configure it to log
   the "fileperms" log channel.
+- Bug 3100 - Support ftpmail options for sending emails only for specific
+  users.  See doc/contrib/ftpmail.html for more details.
 
 1.3.2rc1 - Released 15-Apr-2008
 --------------------------------
