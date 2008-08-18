@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
 #
-#  $Id: ftpmail,v 1.3 2008-08-18 20:50:51 castaglia Exp $
+#  $Id: ftpmail,v 1.4 2008-08-18 20:55:17 castaglia Exp $
 #
 # ---------------------------------------------------------------------------
 
@@ -315,7 +315,7 @@ sub usage {
 
 usage: $program [--help] [--fifo \$path] [--from \$addr] [--log \$path]
   [--recipient \$addr] [--subject \$string] [--smtp-server \$addr]
-  [--attach-file]
+  [--attach-file] [--ignore-users \$regex | --watch-users \$regex]
 
 The purpose of this script is to monitor the TransferLog written by proftpd
 for uploaded files.  Whenever a file is uploaded by a user, an email will be
@@ -339,6 +339,12 @@ Command-line options:
 
   --help		Displays this message.
 
+  --ignore-users \$regex
+			Specifies a Perl regular expression.  If the uploading
+			user name matches this regular expression, then NO
+			email notification is sent; otherwise, an email is
+			sent.
+
   --log \$path		Since this script reads the TransferLog using FIFOs,
 			the actual TransferLog file is not written by default.
 			Use this option to write the normal TransferLog file,
@@ -356,6 +362,11 @@ Command-line options:
 			The default Subject is:
 
 			  User '\$user' uploaded file '\$file' via FTP
+
+  --watch-users \$regex	Specifies a Perl regular expression.  If the uploading
+			user name matches this regular expression, then an
+			email notification is sent; otherwise, no email is
+			sent.
 
 EOH
 }
