@@ -1,4 +1,4 @@
-<!-- $Id: Tracing.html,v 1.5 2008-06-02 22:29:44 castaglia Exp $ -->
+<!-- $Id: Tracing.html,v 1.6 2008-08-18 18:52:41 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Tracing.html,v $ -->
 
 <html>
@@ -130,6 +130,20 @@ you would need to explicitly mention the "tls" channel, <i>i.e.</i>:
 </pre>
 
 <p>
+<b>Optional Trace Log Channels</b><br>
+In addition to the default trace log channels listed above, there are
+optional trace log channels:
+<ul>
+  <li><code>fileperms</code>
+    <p>
+    The "fileperms" log channel is used whenever a user action involving
+    the filesystem (<i>e.g.</i> opening/closing/writing/renaming/deleting
+    files or directories) fails.  This channel will log the relevant FTP
+    command, user name, UID/GID, filesystem path, and the error.
+  </li>
+</ul>
+
+<p>
 <b>Trace Log Format</b><br>
 Every log message in a <code>TraceLog</code> uses the following format:
 <pre>
@@ -165,7 +179,7 @@ ever be used for debugging and development purposes; once your
 
 <p>
 <hr>
-<i>$Date: 2008-06-02 22:29:44 $</i><br>
+<i>$Date: 2008-08-18 18:52:41 $</i><br>
 
 </body>
 </html>
