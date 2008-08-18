@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.237 2008-08-18 18:48:13 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.238 2008-08-18 22:05:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -826,7 +826,7 @@ static void stor_chown(void) {
        * the S{U,G}ID bits on some files (namely, directories); the subsequent
        * chmod is used to restore those dropped bits.  This makes it
        * necessary to use root privs when doing the chmod as well (at least
-       * in the case of chown'ing the file via root privs) in order to insure
+       * in the case of chown'ing the file via root privs) in order to ensure
        * that the mode can be set (a file might be being "given away", and if
        * root privs aren't used, the chmod() will fail because the old owner/
        * session user doesn't have the necessary privileges to do so).
@@ -846,22 +846,55 @@ static void stor_chown(void) {
     }
 
   } else if ((session.fsgid != (gid_t) -1) && xfer_path) {
+    register unsigned int i;
+    int res, use_root_privs = TRUE;
 
-    if (pr_fsio_chown(xfer_path, (uid_t) -1, session.fsgid) == -1)
-      pr_log_pri(PR_LOG_WARNING, "chown(%s) failed: %s", xfer_path,
-        strerror(errno));
+    /* Check if session.fsgid is in session.gids.  If not, use root privs. */
+    for (i = 0; i < session.gids->nelts; i++) {
+      gid_t *group_ids = session.gids->elts;
+
+      if (group_ids[i] == session.fsgid) {
+        use_root_privs = FALSE;
+        break;
+      }
+    }
+
+    if (use_root_privs) {
+      PRIVS_ROOT
+    }
+
+    res = pr_fsio_chown(xfer_path, (uid_t) -1, session.fsgid);
+
+    if (use_root_privs) {
+      PRIVS_RELINQUISH
+    }
+
+    if (res == -1)
+      pr_log_pri(PR_LOG_WARNING, "%schown(%s) failed: %s",
+        use_root_privs ? "root " : "", xfer_path, strerror(errno));
 
     else {
-
-      pr_log_debug(DEBUG2, "chown(%s) to gid %lu successful", xfer_path,
+      pr_log_debug(DEBUG2, "%schown(%s) to gid %lu successful",
+        use_root_privs ? "root " : "", xfer_path,
         (unsigned long) session.fsgid);
 
       pr_fs_clear_cache();
       pr_fsio_stat(xfer_path, &st);
 
-      if (pr_fsio_chmod(xfer_path, st.st_mode) < 0)
-        pr_log_debug(DEBUG0, "chmod(%s) to %04o failed: %s", xfer_path,
-          (unsigned int) st.st_mode, strerror(errno));
+      if (use_root_privs) {
+        PRIVS_ROOT
+      }
+
+      res = pr_fsio_chmod(xfer_path, st.st_mode);
+
+      if (use_root_privs) {
+        PRIVS_RELINQUISH
+      }
+
+      if (res < 0)
+        pr_log_debug(DEBUG0, "%schmod(%s) to %04o failed: %s",
+          use_root_privs ? "root " : "", xfer_path, (unsigned int) st.st_mode,
+          strerror(errno));
     }
   }
 }

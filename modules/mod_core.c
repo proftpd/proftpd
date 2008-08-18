@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.325 2008-08-18 18:48:13 castaglia Exp $
+ * $Id: mod_core.c,v 1.326 2008-08-18 22:05:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3967,14 +3967,39 @@ MODRET core_mkd(cmd_rec *cmd) {
     }
 
   } else if (session.fsgid != (gid_t) -1) {
+    register unsigned int i;
+    int res, use_root_privs = TRUE;
+
     pr_fsio_stat(dir, &sbuf);
 
-    if (pr_fsio_chown(dir, (uid_t) -1, session.fsgid) == -1)
-      pr_log_pri(PR_LOG_WARNING, "chown() failed: %s", strerror(errno));
+    /* Check if session.fsgid is in session.gids.  If not, use root privs.  */
+    for (i = 0; i < session.gids->nelts; i++) {
+      gid_t *group_ids = session.gids->elts;
 
-    else
-      pr_log_debug(DEBUG2, "chown(%s) to gid %lu successful", dir,
-        (unsigned long) session.fsgid);
+      if (group_ids[i] == session.fsgid) {
+        use_root_privs = FALSE;
+        break;
+      }
+    }
+
+    if (use_root_privs) {
+      PRIVS_ROOT
+    }
+
+    res = pr_fsio_chown(dir, (uid_t) -1, session.fsgid);
+
+    if (use_root_privs) {
+      PRIVS_RELINQUISH
+    }
+
+    if (res == -1) {
+      pr_log_pri(PR_LOG_WARNING, "%schown() failed: %s",
+        use_root_privs ? "root " : "", strerror(errno));
+
+    } else { 
+      pr_log_debug(DEBUG2, "%schown(%s) to gid %lu successful",
+        use_root_privs ? "root " : "", dir, (unsigned long) session.fsgid);
+    }
   }
 
   pr_response_add(R_257, _("\"%s\" - Directory successfully created"),
