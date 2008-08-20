@@ -22,7 +22,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.7 2008-05-06 16:30:07 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.8 2008-08-20 18:23:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -91,9 +91,13 @@ static int site_misc_create_path(pool *p, const char *path) {
   dup_path = pstrdup(p, path);
   curr_path = session.cwd;
  
-  while (dup_path && *dup_path) {
-    char *curr_dir = strsep(&dup_path, "/");
- 
+  while (dup_path &&
+         *dup_path) {
+    char *curr_dir;
+
+    pr_signals_handle();
+
+    curr_dir = strsep(&dup_path, "/");
     curr_path = pdircat(p, curr_path, curr_dir, NULL);
    
     if (site_misc_create_dir(curr_path) < 0)
