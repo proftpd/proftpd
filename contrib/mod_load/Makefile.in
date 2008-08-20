@@ -11,10 +11,10 @@ SHARED_LDFLAGS=-avoid-version -export-dynamic -module
 VPATH=@srcdir@
 
 MODULE_NAME=mod_load
+MODULE_INCLUDES=-I. -I../../ $(INCLUDES)
 
 # Necessary redefinitions
-INCLUDES=-I. -I../.. -I../../include
-CPPFLAGS= -DHAVE_CONFIG_H $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
+CPPFLAGS= -DHAVE_CONFIG_H $(DEFAULT_PATHS) $(PLATFORM) $(MODULE_INCLUDES)
 LDFLAGS=-L../../lib
 
 .c.o:

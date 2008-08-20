@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.925 2008-08-18 22:05:16 castaglia Exp $
+$Id: NEWS,v 1.926 2008-08-20 18:00:02 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -36,6 +36,7 @@ CVS
   the specified group.  Now proftpd will automatically detect, when
   handling GroupOwner, when root privileges need to be used for the
   configured group.
+- Bug 3101 - mod_wrap2 does not compile on FreeBSD with custom includes.
 
 1.3.2rc1 - Released 15-Apr-2008
 --------------------------------
