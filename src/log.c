@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.85 2008-02-24 20:35:56 castaglia Exp $
+ * $Id: log.c,v 1.86 2008-08-21 07:03:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -410,9 +410,10 @@ int log_opensyslog(const char *fn) {
     /* The child may have inherited a valid socket from the parent. */
     pr_closelog(syslog_sockfd);
 
-    if ((syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID,
-        facility)) < 0)
+    syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, facility);
+    if (syslog_sockfd < 0)
       return -1;
+
     systemlog_fd = -1;
 
   } else if ((res = pr_log_openfile(systemlog_fn, &systemlog_fd,
@@ -426,14 +427,11 @@ int log_opensyslog(const char *fn) {
 }
 
 void log_closesyslog(void) {
-  if (systemlog_fd != -1) {
-    close(systemlog_fd);
-    systemlog_fd = -1;
+  (void) close(systemlog_fd);
+  systemlog_fd = -1;
 
-  } else {
-    pr_closelog(syslog_sockfd);
-    syslog_sockfd = -1;
-  }
+  (void) pr_closelog(syslog_sockfd);
+  syslog_sockfd = -1;
 
   syslog_open = FALSE;
 }
@@ -517,6 +515,7 @@ static void log_write(int priority, int f, char *s) {
 
   if (!syslog_open) {
     syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, f);
+    syslog_open = TRUE;
 
   } else if (f != facility) {
     (void) pr_setlogfacility(f);
@@ -531,14 +530,6 @@ static void log_write(int priority, int f, char *s) {
     pr_syslog(syslog_sockfd, priority, "%s - %s\n", serverinfo, s);
   else
     pr_syslog(syslog_sockfd, priority, "%s\n", s);
-
-  if (!syslog_open) {
-    pr_closelog(syslog_sockfd);
-    syslog_sockfd = -1;
-
-  } else if (f != facility) {
-    (void) pr_setlogfacility(f);
-  }
 }
 
 void pr_log_pri(int priority, const char *fmt, ...) {
