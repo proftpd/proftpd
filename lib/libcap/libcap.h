@@ -1,5 +1,5 @@
 /*
- * $Id: libcap.h,v 1.3 2008-08-06 17:00:41 castaglia Exp $
+ * $Id: libcap.h,v 1.4 2008-08-22 16:35:52 castaglia Exp $
  *
  * Copyright (c) 1997 Andrew G Morgan <morgan@linux.kernel.org>
  *
@@ -46,6 +46,19 @@ struct _cap_struct {
 
 /* string magic for cap_free */
 #define CAP_S_MAGIC 0xCA95D0
+
+/* Older Linux kernels only define _LINUX_CAPABILITY_VERSION.  Newer Linux
+ * kernels use _LINUX_CAPABILITY_VERSION_1 and _LINUX_CAPABILITY_VERSION_2,
+ * and define _LINUX_CAPABILITY_VERSION to be _LINUX_CAPABILITY_VERSION_2.
+ * This means that, for proper compilation and functioning on the newer
+ * kernels, we need to use _LINUX_CAPABILITY_VERSION_1.  But to make sure
+ * we still compile on the older Linux kernels, we need to make define
+ * our own _LINUX_CAPABILITY_VERSION_1 to be _LINUX_CAPABILITY_VERSION.
+ */
+#if !defined(_LINUX_CAPABILITY_VERSION_1) &&
+     defined(_LINUX_CAPABILITY_VERSION)
+# define _LINUX_CAPABILITY_VERSION_1		_LINUX_CAPABILITY_VERSION
+#endif
 
 /*
  * Do we match the local kernel?
@@ -120,7 +133,12 @@ extern int capsetp(pid_t pid, cap_t cap_d);
 
 /*
  * $Log: libcap.h,v $
- * Revision 1.3  2008-08-06 17:00:41  castaglia
+ * Revision 1.4  2008-08-22 16:35:52  castaglia
+ *
+ * Try to handle the change in Linux capability version macro names for
+ * older kernels (which don't define/use the new names).
+ *
+ * Revision 1.3  2008/08/06 17:00:41  castaglia
  *
  * Bug#3096 - libcap version errors on newer Linux kernel.  Newer Linux kernels
  * have a _LINUX_CAPABILITY_VERSION_2 macro, and redefine the old
