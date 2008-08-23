@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.9 2008-08-23 01:18:15 castaglia Exp $
+ * $Id: display.c,v 1.10 2008-08-23 02:57:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -196,6 +196,74 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
       len--;
     }
 
+    /* Check for any Variable-type strings. */
+    tmp = strstr(buf, "%{");
+    while (tmp) {
+      char *key, *tmp2;
+      const char *val;
+
+      pr_signals_handle();
+
+      tmp2 = strchr(tmp, '}');
+      if (!tmp2) {
+        tmp = strstr(tmp + 1, "%{");
+        continue;
+      }
+
+      key = pstrndup(p, tmp, tmp2 - tmp + 1);
+
+      /* There are a couple of special-case keys to watch for:
+       *
+       *   env:$var
+       *   time:$fmt
+       *
+       * The Var API does not easily support returning values for keys
+       * where part of the value depends on part of the key.  That's why
+       * these keys are handled here, instead of in pr_var_get().
+       */
+
+      if (strncmp(key, "%{time:", 7) == 0) {
+        char time_str[128], *fmt;
+        time_t now;
+        struct tm *time_info;
+
+        fmt = pstrndup(p, key + 7, strlen(key) - 8);
+
+        now = time(NULL);
+        time_info = pr_localtime(NULL, &now);
+
+        memset(time_str, 0, sizeof(time_str));
+        strftime(time_str, sizeof(time_str), fmt, time_info);
+
+        val = pstrdup(p, time_str);
+
+      } else if (strncmp(key, "%{env:", 6) == 0) {
+        char *env_var;
+
+        env_var = pstrndup(p, key + 6, strlen(key) - 7);
+        val = pr_env_get(p, env_var);
+        if (val == NULL) {
+          pr_trace_msg("var", 4,
+            "no value set for environment variable '%s', using \"(none)\"",
+            env_var);
+          val = "(none)";
+        }
+
+      } else {
+        val = pr_var_get(key);
+        if (val == NULL) {
+          pr_trace_msg("var", 4,
+            "no value set for name '%s', using \"(none)\"", key);
+          val = "(none)";
+        }
+      }
+
+      outs = sreplace(p, buf, key, val, NULL);
+      sstrncpy(buf, outs, sizeof(buf));
+
+      tmp = strstr(outs, "%{");
+    }
+
     outs = sreplace(p, buf,
       "%C", (session.cwd[0] ? session.cwd : "(none)"),
       "%E", main_server->ServerAdmin,
@@ -221,39 +289,6 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
       NULL);
 
     sstrncpy(buf, outs, sizeof(buf));
-
-    /* Check for any Variable-type strings. */
-    tmp = strstr(outs, "%{");
-    while (tmp) {
-      char t, *key, *tmp2;
-      const char *val;
-
-      pr_signals_handle();
-
-      tmp2 = strchr(tmp, '}');
-      if (!tmp2) {
-        tmp = strstr(tmp + 1, "%{");
-        continue;
-      }
-
-      key = tmp;
-      t = *(tmp2 + 1);
-      *(tmp2 + 1) = '\0';
-
-      val = pr_var_get(key);
-
-      if (!val) {
-        pr_trace_msg("var", 4,
-          "no value set for name '%s', using \"(none)\"", key);
-        val = "(none)";
-      }
-
-      outs = sreplace(p, buf, key, val, NULL);
-      sstrncpy(buf, outs, sizeof(buf));
-
-      *(tmp2 + 1) = t;
-      tmp = strstr(outs, "%{");
-    }
 
     if (first) {
       pr_response_send_raw("%s-%s", code, outs);
