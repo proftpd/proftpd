@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.8 2008-01-05 01:12:21 castaglia Exp $
+ * $Id: display.c,v 1.9 2008-08-23 01:18:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -267,6 +267,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
     }
   }
 
+  destroy_pool(p);
   return 0;
 }
 
