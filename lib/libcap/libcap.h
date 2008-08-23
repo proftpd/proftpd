@@ -1,5 +1,5 @@
 /*
- * $Id: libcap.h,v 1.4 2008-08-22 16:35:52 castaglia Exp $
+ * $Id: libcap.h,v 1.5 2008-08-23 02:49:48 castaglia Exp $
  *
  * Copyright (c) 1997 Andrew G Morgan <morgan@linux.kernel.org>
  *
@@ -55,7 +55,7 @@ struct _cap_struct {
  * we still compile on the older Linux kernels, we need to make define
  * our own _LINUX_CAPABILITY_VERSION_1 to be _LINUX_CAPABILITY_VERSION.
  */
-#if !defined(_LINUX_CAPABILITY_VERSION_1) &&
+#if !defined(_LINUX_CAPABILITY_VERSION_1) && \
      defined(_LINUX_CAPABILITY_VERSION)
 # define _LINUX_CAPABILITY_VERSION_1		_LINUX_CAPABILITY_VERSION
 #endif
@@ -133,7 +133,11 @@ extern int capsetp(pid_t pid, cap_t cap_d);
 
 /*
  * $Log: libcap.h,v $
- * Revision 1.4  2008-08-22 16:35:52  castaglia
+ * Revision 1.5  2008-08-23 02:49:48  castaglia
+ *
+ * Fix typo (missing backslash).
+ *
+ * Revision 1.4  2008/08/22 16:35:52  castaglia
  *
  * Try to handle the change in Linux capability version macro names for
  * older kernels (which don't define/use the new names).
