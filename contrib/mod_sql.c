@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.137 2008-03-19 21:16:51 castaglia Exp $
+ * $Id: mod_sql.c,v 1.138 2008-08-23 20:05:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1681,6 +1681,22 @@ static char *resolve_long_tag(cmd_rec *cmd, char *tag) {
       strncmp(tag, "env:", 4) == 0) {
     char *env = pr_env_get(cmd->pool, tag + 4);
     return pstrdup(cmd->tmp_pool, env ? env : "");
+  }
+
+  if (strlen(tag) > 6 &&
+      strncmp(tag, "time:", 5) == 0) {
+    char time_str[128], *fmt;
+    time_t now;
+    struct tm *time_info;
+
+    fmt = pstrdup(cmd->tmp_pool, tag + 5);
+    now = time(NULL);
+    time_info = pr_localtime(NULL, &now);
+
+    memset(time_str, 0, sizeof(time_str));
+    strftime(time_str, sizeof(time_str), fmt, time_info);
+
+    return pstrdup(cmd->tmp_pool, time_str);
   }
 
   return NULL;

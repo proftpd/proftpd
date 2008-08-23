@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.928 2008-08-23 02:57:45 castaglia Exp $
+$Id: NEWS,v 1.929 2008-08-23 20:05:54 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -41,6 +41,9 @@ CVS
   SyslogLevel 'notice' or higher.
 - Bug 3055 - Support Display variable for specifying the timestamp format.
   See doc/howto/DisplayFiles.html for more information.
+- Bug 2537 - mod_sql does not support %{...}t variable.  SQLNamedQuery
+  statements can now use "%{time:...}" variables for formatting time strings
+  using strftime(3).
 
 1.3.2rc1 - Released 15-Apr-2008
 --------------------------------
