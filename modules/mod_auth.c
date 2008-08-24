@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.240 2008-06-19 03:22:09 castaglia Exp $
+ * $Id: mod_auth.c,v 1.241 2008-08-24 00:23:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -238,6 +238,18 @@ MODRET auth_err_pass(cmd_rec *cmd) {
   remove_config(cmd->server->conf, C_USER, FALSE);
 
   return PR_HANDLED(cmd);
+}
+
+MODRET auth_log_pass(cmd_rec *cmd) {
+
+  /* Only log, to the syslog, that the login has succeeded here, where we
+   * know that the login has definitely succeeded.
+   */
+
+  pr_log_auth(PR_LOG_NOTICE, "%s %s: Login successful.",
+    (session.anon_config != NULL) ? "ANON" : C_USER, session.user);
+
+  return PR_DECLINED(cmd);
 }
 
 MODRET auth_post_pass(cmd_rec *cmd) {
@@ -1076,9 +1088,6 @@ static int setup_env(pool *p, char *user, char *pass) {
    */
   if (c && c->subset)
     resolve_anonymous_dirs(c->subset);
-
-  pr_log_auth(PR_LOG_NOTICE, "%s %s: Login successful.",
-    (c != NULL) ? "ANON" : C_USER, origuser);
 
   /* Write the login to wtmp.  This must be done here because we won't
    * have access after we give up root.  This can result in falsified
@@ -2953,6 +2962,7 @@ static cmdtable auth_cmdtab[] = {
   { PRE_CMD,	C_PASS,	G_NONE,	auth_pre_pass,	FALSE,	FALSE,	CL_AUTH },
   { CMD,	C_PASS,	G_NONE,	auth_pass,	FALSE,	FALSE,	CL_AUTH },
   { POST_CMD,	C_PASS,	G_NONE,	auth_post_pass,	FALSE,	FALSE,	CL_AUTH },
+  { LOG_CMD,	C_PASS,	G_NONE,	auth_log_pass,  FALSE,  FALSE },
   { LOG_CMD_ERR,C_PASS,	G_NONE,	auth_err_pass,  FALSE,  FALSE },
   { CMD,	C_ACCT,	G_NONE,	auth_acct,	FALSE,	FALSE,	CL_AUTH },
   { CMD,	C_REIN,	G_NONE,	auth_rein,	FALSE,	FALSE,	CL_AUTH },
