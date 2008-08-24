@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-/* $Id: pr-syslog.c,v 1.20 2007-02-15 17:54:58 castaglia Exp $
+/* $Id: pr-syslog.c,v 1.21 2008-08-24 00:30:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -209,14 +209,42 @@ int pr_openlog(const char *ident, int opts, int facility) {
 
 #ifndef HAVE_DEV_LOG_STREAMS
   while (1) {
+    socklen_t addrlen = 0;
+
     if (sockfd == -1) {
       syslog_addr.sa_family = AF_UNIX;
+
+# ifndef DARWIN8
       strncpy(syslog_addr.sa_data, PR_PATH_LOG, sizeof(syslog_addr.sa_data));
       syslog_addr.sa_data[sizeof(syslog_addr.sa_data)-1] = '\0';
+      addrlen = sizeof(syslog_addr);
+# else
+      /* On Mac OSX, the sockaddr.sa_data field is 14 bytes.  It is possible
+       * that PR_PATH_LOG exceeds that field length (which would truncate
+       * the field, and ensure that proftpd cannot log via syslog).
+       *
+       * So, if we're on a Mac OSX, check the sa_data field size against
+       * PR_PATH_LOG.  The man pages for Mac OSX say that sa_data can actually
+       * hold more data than 14 bytes, so...
+       */
+      if (sizeof(syslog_addr.sa_data) >= (strlen(PR_PATH_LOG) + 1)) {
+        strncpy(syslog_addr.sa_data, PR_PATH_LOG, sizeof(syslog_addr.sa_data));
+        syslog_addr.sa_data[sizeof(syslog_addr.sa_data)-1] = '\0';
+        addrlen = sizeof(syslog_addr);
+
+      } else {
+        strncpy(syslog_addr.sa_data, PR_PATH_LOG, strlen(PR_PATH_LOG) + 1);
+        addrlen = sizeof(syslog_addr) +
+          ((strlen(PR_PATH_LOG) + 1) - sizeof(syslog_addr.sa_data));
+      }
+# endif /* !Mac OSX */
 
       if (log_opts & LOG_NDELAY) {
-        if ((sockfd = socket(AF_UNIX, sock_type, 0)) == -1)
+        sockfd = socket(AF_UNIX, sock_type, 0);
+        if (sockfd < 0) {
           return -1;
+        }
+
         fcntl(sockfd, F_SETFD, 1);
       }
     }
@@ -224,7 +252,7 @@ int pr_openlog(const char *ident, int opts, int facility) {
     if (sockfd != -1) {
       int old_errno = errno;
 
-      if (connect(sockfd, &syslog_addr, sizeof(syslog_addr)) == -1) {
+      if (connect(sockfd, &syslog_addr, addrlen) == -1) {
         int saved_errno = errno;
         close(sockfd);
         sockfd = -1;

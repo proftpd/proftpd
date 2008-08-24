@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.930 2008-08-24 00:23:06 castaglia Exp $
+$Id: NEWS,v 1.931 2008-08-24 00:30:59 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -47,6 +47,7 @@ CVS
 - Bug 2564 - Improper logging of "max connections per host".  The issue was
   one of the timing of the logging of the "Login successful" message.  Now
   it happens as part of a LOG_CMD handler for the PASS command.
+- Bug 3104 - Syslog logging does not work on Mac OS X.
 
 1.3.2rc1 - Released 15-Apr-2008
 --------------------------------
