@@ -33,8 +33,7 @@ libsupp.a: $(LIB_OBJS)
 
 lib: libsupp.a $(LIB_DEPS)
 
-install: libsupp.a
-	$(INSTALL_BIN) libsupp.a $(DESTDIR)$(libdir)/proftpd/libsupp.a
+install:
 
 clean:
 	rm -f *.o libsupp.a
