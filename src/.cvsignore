@@ -1,6 +1,7 @@
 Makefile
 *.o
 *~
+prxs
 proftpd.8
 xferlog.5
 ftpdctl.8

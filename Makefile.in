@@ -121,6 +121,7 @@ install-utils: $(DESTDIR)$(sbindir) $(DESTDIR)$(bindir)
 	$(INSTALL_SBIN) ftpshut  $(DESTDIR)$(sbindir)/ftpshut
 	$(INSTALL_BIN)  ftptop   $(DESTDIR)$(bindir)/ftptop
 	$(INSTALL_BIN)  ftpwho   $(DESTDIR)$(bindir)/ftpwho
+	$(INSTALL_BIN)  src/prxs   $(DESTDIR)$(bindir)/prxs
 
 install-conf: $(DESTDIR)$(sysconfdir)
 	if [ ! -f $(DESTDIR)$(sysconfdir)/proftpd.conf ] ; then \
