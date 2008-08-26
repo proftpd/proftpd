@@ -1,4 +1,23 @@
 #!/usr/bin/env perl
+ ---------------------------------------------------------------------------
+# Copyright (C) 2008 TJ Saunders <tj@castaglia.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+#
+#  $Id: prxs.in,v 1.2 2008-08-26 02:47:21 castaglia Exp $
+# ---------------------------------------------------------------------------
 
 use strict;
 
@@ -12,15 +31,21 @@ my $prog = basename($0);
 my $compiler = q(@CC@);
 my $cflags = q(@OSTYPE@ @OSREL@ @CFLAGS@ -DPR_SHARED_MODULE);
 my $cppflags = q(@CPPFLAGS@);
-my $module_ldflags = q(@MODULE_LDFLAGS@);
+my $ltdl_ldflags = q(@MODULE_LDFLAGS@);
 my $sbindir = q(@SBINDIR@);
 my $includedir = q(@INCLUDEDIR@);
 my $installer = q(@INSTALL@);
 my $install_strip = q(@INSTALL_STRIP@);
 my $libexecdir = q(@LIBEXECDIR@);
 my $libtool = 'libtool';
-if ($^O eq 'darwin') {
-  $libtool = 'glibtool';
+
+if (!defined($ENV{LIBTOOL})) {
+  if ($^O eq 'darwin') {
+    $libtool = 'glibtool';
+  }
+
+} else {
+  $libtool = $ENV{LIBTOOL};
 }
 
 my $shell = q(@SHELL@);
@@ -40,9 +65,9 @@ unless (-x $proftpd) {
 }
 
 unless (grep /mod_dso/, `$proftpd -l`) {
-  print STDERR "Your installed proftpd does not support shared modules/DSOs.\n";
+  print STDERR "\nYour installed proftpd does not support shared modules/DSOs.\n";
   print STDERR "Make sure the --enable-dso configure option is used when\n";
-  print STDERR "compiling proftpd.\n";
+  print STDERR "compiling proftpd.\n\n";
   exit 1;
 }
 
@@ -96,7 +121,7 @@ if (defined($opts->{c})) {
     $objlist .= " $obj";
   }
 
-  my $ldflags .= " $module_ldflags";
+  my $ldflags .= " $ltdl_ldflags";
 
   foreach my $libdir (@{ $opts->{L} }) {
     $ldflags .= " -L$libdir";
