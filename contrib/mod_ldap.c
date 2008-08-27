@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.19-20080429
+ * mod_ldap v2.8.19-20080808
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.63 2008-08-27 17:08:37 jwm Exp $
+ * $Id: mod_ldap.c,v 1.64 2008-08-27 17:09:00 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1396,11 +1396,10 @@ set_ldap_server(cmd_rec *cmd)
       CONF_ERROR(cmd, "A base DN may not be specified by an LDAPServer URL, only by LDAPDoAuth, LDAPDoUIDLookups, LDAPDoGIDLookups, or LDAPDoQuotaLookups.");
     }
 
-    add_config_param_str(cmd->argv[0], 2, "url", url);
-  } else {
-    add_config_param_str(cmd->argv[0], 2, "host", cmd->argv[1]);
+    ldap_free_urldesc(url);
   }
 
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
 }
 
@@ -2061,38 +2060,34 @@ ldap_getconf(void)
    * ldap_init() will connect to the LDAP SDK's default.
    */
   if ((c = find_config(main_server->conf, CONF_PARAM, "LDAPServer", FALSE)) != NULL) {
-    if (strcmp(c->argv[0], "url") == 0) {
-      url = c->argv[1];
-      if (url) {
+    if (ldap_is_ldap_url(c->argv[0])) {
+      if (ldap_url_parse(c->argv[0], &url) != LDAP_SUCCESS) {
+        pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": ldap_getconf(): url %s was valid during ProFTPD startup, but is no longer valid?!", (char *)c->argv[0]);
+        return -1;
+      }
+
 #ifdef LDAP_OPT_X_TLS_HARD
-        if (strcmp(url->lud_scheme, "ldaps") == 0) {
-          ldap_use_ssl = 1;
-        }
+      if (strcmp(url->lud_scheme, "ldaps") == 0) {
+        ldap_use_ssl = 1;
+      }
 #endif /* LDAP_OPT_X_TLS_HARD */
 
-        if (url->lud_host != NULL) {
-          ldap_server = pstrdup(session.pool, url->lud_host);
-        }
-        if (url->lud_port != 0) {
-          ldap_port = url->lud_port;
-        }
-        if (url->lud_scope != LDAP_SCOPE_DEFAULT) {
-          ldap_search_scope = url->lud_scope;
-        }
-
-        /* We intentionally avoid ldap_free_urldesc()ing url, since it's
-         * attached to the LDAPServer configuration directive and will be used
-         * by other/future callers.
-         */
+      if (url->lud_host != NULL) {
+        ldap_server = pstrdup(session.pool, url->lud_host);
       }
-    } else if (strcmp(c->argv[0], "host") == 0) {
-      ldap_server = c->argv[1];
-    } else {
-      /* This should never happen, since the configuration handler for
-       * LDAPServer only passes url or host, but we'll be defensive.
+      if (url->lud_port != 0) {
+        ldap_port = url->lud_port;
+      }
+      if (url->lud_scope != LDAP_SCOPE_DEFAULT) {
+        ldap_search_scope = url->lud_scope;
+      }
+
+      /* We intentionally avoid ldap_free_urldesc()ing url, since it's
+       * attached to the LDAPServer configuration directive and will be used
+       * by other/future callers.
        */
-      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": unexpected LDAPServer type.");
-      return -1;
+    } else {
+      ldap_server = c->argv[0];
     }
   }
 
