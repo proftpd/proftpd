@@ -48,23 +48,12 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.64 2008-08-27 17:09:00 jwm Exp $
+ * $Id: mod_ldap.c,v 1.65 2008-08-27 17:09:14 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
 /* To verify non-crypt() password hashes locally with OpenSSL, build ProFTPD
  * with the --enable-openssl argument to configure.
- */
-
-/* Uncomment this to use LDAP TLS. If enabled, we will try to enable TLS
- * after connecting to the LDAP server. If TLS cannot be enabled, the LDAP
- * connection will fail.
- */
-/* #define USE_LDAP_TLS */
-
-/*
- * If you have to edit anything below this line, it's a bug. Report it
- * at http://bugs.proftpd.org/.
  */
 
 #include "conf.h"
@@ -175,7 +164,7 @@ static struct timeval ldap_querytimeout_tp;
 static uid_t ldap_defaultuid = -1;
 static gid_t ldap_defaultgid = -1;
 
-#ifdef USE_LDAP_TLS
+#ifdef LDAP_OPT_X_TLS
 static int ldap_use_tls = 0;
 #endif
 #ifdef LDAP_OPT_X_TLS_HARD
@@ -254,7 +243,7 @@ pr_ldap_connect(LDAP **conn_ld, int do_bind)
   }
 #endif /* LDAP_OPT_X_TLS_HARD */
 
-#ifdef USE_LDAP_TLS
+#ifdef LDAP_OPT_X_TLS
   if (ldap_use_tls == 1) {
     ret = ldap_start_tls_s(*conn_ld, NULL, NULL);
     if (ret != LDAP_SUCCESS) {
@@ -264,7 +253,7 @@ pr_ldap_connect(LDAP **conn_ld, int do_bind)
     }
     pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": enabled TLS.");
   }
-#endif /* USE_LDAP_TLS */
+#endif /* LDAP_OPT_X_TLS */
 
   if (do_bind == TRUE) {
 #if LDAP_API_VERSION >= 2000
@@ -1769,9 +1758,9 @@ set_ldap_defaultauthscheme(cmd_rec *cmd)
 MODRET
 set_ldap_usetls(cmd_rec *cmd)
 {
-#ifndef USE_LDAP_TLS
-  CONF_ERROR(cmd, "LDAPUseTLS: You must edit mod_ldap.c and recompile with USE_LDAP_TLS enabled in order to use TLS.");
-#else /* USE_LDAP_TLS */
+#ifndef LDAP_OPT_X_TLS
+  CONF_ERROR(cmd, "LDAPUseTLS: Your LDAP libraries do not appear to support TLS.");
+#else /* LDAP_OPT_X_TLS */
   int b;
   config_rec *c;
 
@@ -1790,7 +1779,7 @@ set_ldap_usetls(cmd_rec *cmd)
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = b;
   return PR_HANDLED(cmd);
-#endif /* USE_LDAP_TLS */
+#endif /* LDAP_OPT_X_TLS */
 }
 
 MODRET
@@ -2042,12 +2031,12 @@ ldap_getconf(void)
     ldap_protocol_version = *((int *) ptr);
   }
 
-#ifdef USE_LDAP_TLS
+#ifdef LDAP_OPT_X_TLS
   ptr = get_param_ptr(main_server->conf, "LDAPUseTLS", FALSE);
   if (ptr) {
     ldap_use_tls = *((int *) ptr);
   }
-#endif /* LDAP_USE_TLS */
+#endif /* LDAP_OPT_X_TLS */
 
 #ifdef LDAP_OPT_X_TLS_HARD
   ptr = get_param_ptr(main_server->conf, "LDAPUseSSL", FALSE);
