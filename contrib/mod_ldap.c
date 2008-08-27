@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.19-20080313
+ * mod_ldap v2.8.19-20080429
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.61 2008-08-27 17:08:07 jwm Exp $
+ * $Id: mod_ldap.c,v 1.62 2008-08-27 17:08:21 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -135,6 +135,9 @@ LDAP_SEARCH(LDAP *ld, char *base, int scope, char *filter, char *attrs[],
 /* Thanks, Sun. */
 #ifndef LDAP_OPT_SUCCESS
 # define LDAP_OPT_SUCCESS LDAP_SUCCESS
+#endif
+#ifndef LDAP_SCOPE_DEFAULT
+# define LDAP_SCOPE_DEFAULT LDAP_SCOPE_SUBTREE
 #endif
 
 #if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
