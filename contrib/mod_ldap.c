@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.62 2008-08-27 17:08:21 jwm Exp $
+ * $Id: mod_ldap.c,v 1.63 2008-08-27 17:08:37 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -221,7 +221,7 @@ pr_ldap_connect(LDAP **conn_ld, int do_bind)
     pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_connect(): ldap_init() to %s failed: %s", ldap_server, strerror(errno));
     return -1;
   }
-  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": connected to %s:%d", ldap_server, LDAP_PORT);
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": connected to %s:%d", ldap_server, ldap_port);
 
   version = -1;
   switch (ldap_protocol_version) {
