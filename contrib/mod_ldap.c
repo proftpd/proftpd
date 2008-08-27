@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.18
+ * mod_ldap v2.8.19-20080313
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.60 2008-01-01 17:31:59 jwm Exp $
+ * $Id: mod_ldap.c,v 1.61 2008-08-27 17:08:07 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -100,13 +100,13 @@
 # define LDAP_SEARCH(ld, base, scope, filter, attrs, timeout, sizelimit, res) \
    ldap_search_ext_s(ld, base, scope, filter, attrs, 0, NULL, NULL, \
                      timeout, sizelimit, res)
-#else
+#else /* LDAP_API_VERSION >= 2000 */
 # define LDAP_VALUE_T char
 # define LDAP_GET_VALUES(ld, entry, attr) ldap_get_values(ld, entry, attr)
 # define LDAP_VALUE(values, i) (values[i])
 # define LDAP_COUNT_VALUES(values) (ldap_count_values(values))
 # define LDAP_VALUE_FREE(values) (ldap_value_free(values))
-# define LDAP_UNBIND(ld) (ldap_unbind_s(ld, NULL, NULL))
+# define LDAP_UNBIND(ld) (ldap_unbind_s(ld))
 
 static void
 pr_ldap_set_sizelimit(LDAP *limit_ld, int limit)
@@ -123,12 +123,14 @@ pr_ldap_set_sizelimit(LDAP *limit_ld, int limit)
   pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": set search size limit to %d", limit);
 }
 
-# define LDAP_SEARCH(ld, base, scope, filter, attrs, timeout, sizelimit, res) \
-   { \
-     pr_ldap_set_sizelimit(sizelimit);
-     ldap_search_s(ld, base, scope, filter, attrs, 0, res); \
-   }
-#endif
+static int
+LDAP_SEARCH(LDAP *ld, char *base, int scope, char *filter, char *attrs[],
+            struct timeval *timeout, int sizelimit, LDAPMessage **res)
+{
+  pr_ldap_set_sizelimit(ld, sizelimit);
+  return ldap_search_st(ld, base, scope, filter, attrs, 0, timeout, res);
+}
+#endif /* LDAP_API_VERSION >= 2000 */
 
 /* Thanks, Sun. */
 #ifndef LDAP_OPT_SUCCESS
