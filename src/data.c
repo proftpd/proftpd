@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.106 2008-04-26 00:20:09 castaglia Exp $
+ * $Id: data.c,v 1.107 2008-08-28 00:05:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1100,9 +1100,10 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
     return -1;
 
   /* Set fd to blocking-mode for sendfile() */
-  if (flags & O_NONBLOCK)
+  if (flags & O_NONBLOCK) {
     if (fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags^O_NONBLOCK) == -1)
       return -1;
+  }
 
   for (;;) {
 #if defined(HAVE_LINUX_SENDFILE) || defined(HAVE_SOLARIS_SENDFILE)
@@ -1212,6 +1213,20 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
     if (sendfile(retr_fd, PR_NETIO_FD(session.d->outstrm), *offset, count,
         NULL, &len, 0) == -1) {
 
+#elif defined(HAVE_MACOSX_SENDFILE)
+    off_t orig_len = count;
+    int res;
+
+    /* Since Mac OSX uses the fourth argument as a value-return parameter,
+     * success or failure, we need to put the result into len after the
+     * call.
+     */
+
+    res = sendfile(retr_fd, PR_NETIO_FD(session.d->outstrm), *offset, &orig_len,
+        NULL, 0);
+    len = orig_len;
+
+    if (res == -1) {
 #elif defined(HAVE_AIX_SENDFILE)
 
     memset(&parms, 0, sizeof(parms));

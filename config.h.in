@@ -52,6 +52,9 @@
 /* Define if you have Linux sendfile() semantics. */
 #undef HAVE_LINUX_SENDFILE
 
+/* Define if you have Mac OSX sendfile() semantics.  */
+#undef HAVE_MACOSX_SENDFILE
+
 /* Define if you have Solaris POSIX ACLs. */
 #undef HAVE_SOLARIS_POSIX_ACL
 

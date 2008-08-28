@@ -25,7 +25,7 @@
  */
 
 /* Data connection management prototypes
- * $Id: data.h,v 1.18 2007-12-31 22:33:30 castaglia Exp $
+ * $Id: data.h,v 1.19 2008-08-28 00:05:58 castaglia Exp $
  */
 
 #ifndef PR_DATACONN_H
@@ -52,7 +52,7 @@ typedef
 #if defined(HAVE_AIX_SENDFILE) || defined(HAVE_HPUX_SENDFILE) || \
     defined(HAVE_LINUX_SENDFILE) || defined(HAVE_SOLARIS_SENDFILE)
 ssize_t
-#elif defined(HAVE_BSD_SENDFILE)
+#elif defined(HAVE_BSD_SENDFILE) || defined(HAVE_MACOSX_SENDFILE)
 off_t
 #else
 #error "You have an unknown sendfile implementation."

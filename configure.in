@@ -1585,6 +1585,20 @@ if test x"$enable_sendfile" != xno ; then
         ], pr_cv_func_sendfile="Solaris")
       LDFLAGS=$old_ldflags
     fi
+
+    dnl Mac OSX (10.5 and later)
+    if test "$pr_cv_func_sendfile" = "none"; then
+      AC_TRY_LINK(
+        [ #include <sys/types.h>
+          #include <sys/socket.h>
+          #include <sys/uio.h>
+        ],
+        [ int i;
+          off_t o, n;
+          struct sf_hdtr h;
+          (void)sendfile(i,i,o,&n,&h,i);
+        ], pr_cv_func_sendfile="Mac OSX")
+    fi
   )
 
   dnl Now, set the appropriate defines based on our investigations...
@@ -1612,6 +1626,10 @@ if test x"$enable_sendfile" != xno ; then
       AC_CHECK_HEADERS(sys/sendfile.h)
       AC_DEFINE(HAVE_SOLARIS_SENDFILE)
       ac_build_addl_libs="-lsendfile $ac_build_addl_libs"
+      ;;
+
+    "Mac OSX")
+      AC_DEFINE(HAVE_MACOSX_SENDFILE)
       ;;
   esac
 fi
