@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.15 2008-03-17 16:15:47 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.16 2008-08-30 00:04:40 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -829,8 +829,8 @@ Example:
 <p>
 <hr>
 <h2><a name="TLSProtocol">TLSProtocol</a></h2>
-<strong>Syntax:</strong> TLSProtocol <em>protocol</em><br>
-<strong>Default:</strong> SSLv23<br>
+<strong>Syntax:</strong> TLSProtocol <em>protocol1</em> ... <em>protocolN</em><br>
+<strong>Default:</strong> SSLv3 TLSv1<br>
 <strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_tls<br>
 <strong>Compatibility:</strong> 1.2.7rc1 and later
@@ -851,11 +851,6 @@ The allowed protocols are:
 <p>
 <table>
   <tr>
-    <td><code>SSLv23</code></td>
-    <td>Compatibility mode, used to allow both SSLv3 and TLSv1</td>
-  </tr>
-
-  <tr>
     <td><code>SSLv3</code></td>
     <td>Allow only SSLv3</td>
   </tr>
@@ -865,6 +860,15 @@ The allowed protocols are:
     <td>Allow only TLSv1</td>
   </tr>
 </table>
+To support both SSLv3 and TLSv1, simply list both parameters for the
+<code>TLSProtocol</code> directive, <i>e.g.</i>:
+<pre>
+  TLSProtocol SSLv3 TLSv1
+</pre>
+
+<p>
+Note that the parameter "SSLv23" is supported as a legacy style for saying
+"all versions".
 
 <p>
 All use of SSLv2 is disabled.  SSLv2 <b>should not</b> be used.
@@ -1253,7 +1257,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2008-03-17 16:15:47 $</i><br>
+Last Updated: <i>$Date: 2008-08-30 00:04:40 $</i><br>
 
 <br><hr>
 

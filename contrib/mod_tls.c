@@ -314,7 +314,6 @@ static tls_pkey_t *tls_pkey_list = NULL;
 static unsigned int tls_npkeys = 0;
 
 #define TLS_DEFAULT_CIPHER_SUITE	"ALL:!ADH"
-#define TLS_DEFAULT_PROTOCOL		"SSLv23"
 
 /* Module variables */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
@@ -331,7 +330,10 @@ static char *tls_passphrase_provider = NULL;
 #define TLS_PASSPHRASE_FL_RSA_KEY	0x0001
 #define TLS_PASSPHRASE_FL_DSA_KEY	0x0002
 
-static char *tls_protocol = TLS_DEFAULT_PROTOCOL;
+#define TLS_PROTO_SSL_V3		0x0001
+#define TLS_PROTO_TLS_V1		0x0002
+static unsigned int tls_protocol = TLS_PROTO_SSL_V3|TLS_PROTO_TLS_V1;
+
 static int tls_required_on_auth = 0;
 static int tls_required_on_ctrl = 0;
 static int tls_required_on_data = 0;
@@ -1652,15 +1654,19 @@ static int tls_init_server(void) {
 #endif
   char *tls_ca_cert = NULL, *tls_ca_path = NULL;
 
-  if (strcasecmp(tls_protocol, "SSLv23") == 0)
+  if ((tls_protocol & TLS_PROTO_SSL_V3) &&
+      (tls_protocol & TLS_PROTO_TLS_V1)) {
     /* This is the default, so there is no need to do anything. */
-    ;
+    pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting SSLv3, TLSv1 protocols");
 
-  else if (strcasecmp(tls_protocol, "SSLv3") == 0)
+  } else if (tls_protocol & TLS_PROTO_SSL_V3) {
     SSL_CTX_set_ssl_version(ssl_ctx, SSLv3_server_method());
+    pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting SSLv3 protocol only");
 
-  else if (strcasecmp(tls_protocol, "TLSv1") == 0)
+  } else if (tls_protocol & TLS_PROTO_TLS_V1) {
     SSL_CTX_set_ssl_version(ssl_ctx, TLSv1_server_method());
+    pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting TLSv1 protocol only");
+  }
 
   tls_ca_cert = get_param_ptr(main_server->conf, "TLSCACertificateFile", FALSE);
   tls_ca_path = get_param_ptr(main_server->conf, "TLSCACertificatePath", FALSE);
@@ -4858,23 +4864,33 @@ MODRET set_tlspassphraseprovider(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: TLSProtocol protocol */
+/* usage: TLSProtocol version1 ... versionN */
 MODRET set_tlsprotocol(cmd_rec *cmd) {
-  CHECK_ARGS(cmd, 1);
+  register unsigned int i;
+
+  if (cmd->argc-1 == 0)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if (strcasecmp(cmd->argv[1], "SSLv23") == 0)
-    tls_protocol = "SSLv23";
+  tls_protocol = 0;
 
-  else if (strcasecmp(cmd->argv[1], "SSLv3") == 0)
-    tls_protocol = "SSLv3";
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcasecmp(cmd->argv[1], "SSLv23") == 0) {
+      tls_protocol |= TLS_PROTO_SSL_V3;
+      tls_protocol |= TLS_PROTO_TLS_V1;
 
-  else if (strcasecmp(cmd->argv[1], "TLSv1") == 0)
-    tls_protocol = "TLSv1";
+    } else if (strcasecmp(cmd->argv[1], "SSLv3") == 0) {
+      tls_protocol |= TLS_PROTO_SSL_V3;
 
-  else
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown protocol: '",
-      cmd->argv[1], "'", NULL));
+    } else if (strcasecmp(cmd->argv[1], "TLSv1") == 0) {
+      tls_protocol |= TLS_PROTO_TLS_V1;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown protocol: '",
+        cmd->argv[1], "'", NULL));
+    }
+  }
 
   return PR_HANDLED(cmd);
 }
