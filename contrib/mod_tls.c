@@ -4876,19 +4876,19 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
   tls_protocol = 0;
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strcasecmp(cmd->argv[1], "SSLv23") == 0) {
+    if (strcasecmp(cmd->argv[i], "SSLv23") == 0) {
       tls_protocol |= TLS_PROTO_SSL_V3;
       tls_protocol |= TLS_PROTO_TLS_V1;
 
-    } else if (strcasecmp(cmd->argv[1], "SSLv3") == 0) {
+    } else if (strcasecmp(cmd->argv[i], "SSLv3") == 0) {
       tls_protocol |= TLS_PROTO_SSL_V3;
 
-    } else if (strcasecmp(cmd->argv[1], "TLSv1") == 0) {
+    } else if (strcasecmp(cmd->argv[i], "TLSv1") == 0) {
       tls_protocol |= TLS_PROTO_TLS_V1;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown protocol: '",
-        cmd->argv[1], "'", NULL));
+        cmd->argv[i], "'", NULL));
     }
   }
 
