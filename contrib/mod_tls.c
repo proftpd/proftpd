@@ -4887,7 +4887,7 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
       tls_protocol |= TLS_PROTO_TLS_V1;
 
     } else {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown protocol: '",
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown protocol: '",
         cmd->argv[i], "'", NULL));
     }
   }
@@ -4938,9 +4938,8 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
         *((int *) c->argv[0]) = secs;
 
       else
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": ", 
-          cmd->argv[i], " must be greater than zero: '", cmd->argv[i+1], "'",
-          NULL));
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[i],
+          " must be greater than zero: '", cmd->argv[i+1], "'", NULL));
 
       i += 2;
 
@@ -4952,9 +4951,8 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
         *((off_t *) c->argv[1]) = (off_t) kbytes * 1024;
 
       else
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": ",
-          cmd->argv[i], " must be greater than zero: '", cmd->argv[i+1], "'",
-          NULL));
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[i],
+          " must be greater than zero: '", cmd->argv[i+1], "'", NULL));
 
       i += 2;
 
@@ -4965,9 +4963,8 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
         *((unsigned char *) c->argv[3]) = bool;
 
       else
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": ",
-          cmd->argv[i], " must be a Boolean value: '", cmd->argv[i+1], "'",
-          NULL));
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[i],
+          " must be a Boolean value: '", cmd->argv[i+1], "'", NULL));
 
       i += 2;
 
@@ -4978,9 +4975,8 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
         *((int *) c->argv[2]) = secs;
 
       else
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": ", 
-          cmd->argv[i], " must be greater than zero: '", cmd->argv[i+1], "'",
-          NULL));
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[i],
+          " must be greater than zero: '", cmd->argv[i+1], "'", NULL));
 
       i += 2;
     }
