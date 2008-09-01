@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.241 2008-08-24 00:23:06 castaglia Exp $
+ * $Id: mod_auth.c,v 1.242 2008-09-01 21:10:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -144,7 +144,7 @@ static int auth_sess_init(void) {
     pr_log_pri(PR_LOG_NOTICE, "notice: unable to add scoreboard entry: %s",
       strerror(errno));
 
-  pr_scoreboard_entry_update(getpid(),
+  pr_scoreboard_entry_update(session.pid,
     PR_SCORE_USER, "(none)",
     PR_SCORE_SERVER_PORT, main_server->ServerPort,
     PR_SCORE_SERVER_ADDR, main_server->addr, main_server->ServerPort,
@@ -1345,7 +1345,7 @@ static int setup_env(pool *p, char *user, char *pass) {
    */
 
   /* Update the scoreboard entry */
-  pr_scoreboard_entry_update(getpid(),
+  pr_scoreboard_entry_update(session.pid,
     PR_SCORE_USER, session.user,
     PR_SCORE_CWD, session.cwd,
     NULL);

@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.238 2008-08-18 22:05:16 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.239 2008-09-01 21:10:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1934,7 +1934,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
   nbytes_sent = curr_pos;
 
-  pr_scoreboard_entry_update(getpid(),
+  pr_scoreboard_entry_update(session.pid,
     PR_SCORE_XFER_SIZE, session.xfer.file_size,
     PR_SCORE_XFER_DONE, (off_t) 0,
     NULL);
@@ -1960,7 +1960,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     if ((nbytes_sent / cnt_steps) != cnt_next) {
       cnt_next = nbytes_sent / cnt_steps;
 
-      pr_scoreboard_entry_update(getpid(),
+      pr_scoreboard_entry_update(session.pid,
         PR_SCORE_XFER_DONE, nbytes_sent,
         NULL);
     }

@@ -23,7 +23,7 @@
  */
 
 /* TransferRate throttling
- * $Id: throttle.c,v 1.4 2008-08-15 23:41:41 castaglia Exp $
+ * $Id: throttle.c,v 1.5 2008-09-01 21:10:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -233,7 +233,7 @@ void pr_throttle_pause(off_t xferlen, int xfer_ending) {
     if (xfer_ending ||
         xfer_rate_scoreboard_updates % PR_TUNABLE_XFER_SCOREBOARD_UPDATES == 0) {
       /* Update the scoreboard. */
-      pr_scoreboard_entry_update(getpid(),
+      pr_scoreboard_entry_update(session.pid,
         PR_SCORE_XFER_LEN, orig_xferlen,
         PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
         NULL);
@@ -263,7 +263,7 @@ void pr_throttle_pause(off_t xferlen, int xfer_ending) {
 
       if (xfer_ending ||
           xfer_rate_scoreboard_updates % PR_TUNABLE_XFER_SCOREBOARD_UPDATES == 0) {
-        pr_scoreboard_entry_update(getpid(),
+        pr_scoreboard_entry_update(session.pid,
           PR_SCORE_XFER_LEN, orig_xferlen,
           PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
           NULL);
@@ -310,7 +310,7 @@ void pr_throttle_pause(off_t xferlen, int xfer_ending) {
     pr_signals_handle();
 
     /* Update the scoreboard. */
-    pr_scoreboard_entry_update(getpid(),
+    pr_scoreboard_entry_update(session.pid,
       PR_SCORE_XFER_LEN, orig_xferlen,
       PR_SCORE_XFER_ELAPSED, (unsigned long) ideal,
       NULL);
@@ -318,7 +318,7 @@ void pr_throttle_pause(off_t xferlen, int xfer_ending) {
   } else {
 
     /* Update the scoreboard. */
-    pr_scoreboard_entry_update(getpid(),
+    pr_scoreboard_entry_update(session.pid,
       PR_SCORE_XFER_LEN, orig_xferlen,
       PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
       NULL);

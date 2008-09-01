@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.58 2008-01-05 01:12:21 castaglia Exp $
+ * $Id: proftpd.h,v 1.59 2008-09-01 21:10:38 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -88,6 +88,9 @@ typedef struct {
   struct config_struc *dir_config;	/* Closest matching configuration
                                          * for current operation
                                          */
+
+  /* Process ID of the session */
+  pid_t pid;
 
   /* The uid/gids are manipulated by the PRIVS macros in
    * privs.h

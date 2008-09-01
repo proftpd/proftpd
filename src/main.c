@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.340 2008-06-16 21:56:38 castaglia Exp $
+ * $Id: main.c,v 1.341 2008-09-01 21:10:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -161,11 +161,11 @@ static int semaphore_fds(fd_set *rfd, int maxfd) {
 }
 
 void session_set_idle(void) {
-  pr_scoreboard_entry_update(getpid(),
+  pr_scoreboard_entry_update(session.pid,
     PR_SCORE_BEGIN_IDLE, time(NULL),
     PR_SCORE_CMD, "%s", "idle", NULL, NULL);
 
-  pr_scoreboard_entry_update(getpid(),
+  pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", "", NULL, NULL);
 
   pr_proctitle_set("%s - %s: IDLE", session.user, session.proc_prefix);
@@ -396,9 +396,9 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
         if (session.user) {
           char *args = strchr(cmdargstr, ' ');
 
-          pr_scoreboard_entry_update(getpid(),
+          pr_scoreboard_entry_update(session.pid,
             PR_SCORE_CMD, "%s", cmd->argv[0], NULL, NULL);
-          pr_scoreboard_entry_update(getpid(),
+          pr_scoreboard_entry_update(session.pid,
             PR_SCORE_CMD_ARG, "%s", args ?
               pr_fs_decode_path(cmd->tmp_pool, (args+1)) : "", NULL, NULL);
 
@@ -1117,6 +1117,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
       return;
     }
   }
+
+  session.pid = getpid();
 
   /* No longer need any listening fds. */
   pr_ipbind_close_listeners();

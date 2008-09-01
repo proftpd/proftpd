@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.107 2008-08-28 00:05:58 castaglia Exp $
+ * $Id: data.c,v 1.108 2008-09-01 21:10:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -923,9 +923,9 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 
         pr_cmd_dispatch(cmd);
 
-        pr_scoreboard_entry_update(getpid(),
+        pr_scoreboard_entry_update(session.pid,
           PR_SCORE_CMD, "%s", sce_cmd, NULL, NULL);
-        pr_scoreboard_entry_update(getpid(),
+        pr_scoreboard_entry_update(session.pid,
           PR_SCORE_CMD_ARG, "%s", sce_cmd_arg, NULL, NULL);
 
         if (title_len > 0) {
