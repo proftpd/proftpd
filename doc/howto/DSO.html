@@ -1,4 +1,4 @@
-<!-- $Id: DSO.html,v 1.6 2007-10-15 16:23:30 castaglia Exp $ -->
+<!-- $Id: DSO.html,v 1.7 2008-09-01 19:26:30 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/DSO.html,v $ -->
 
 <html>
@@ -169,9 +169,7 @@ for the <code>Makefile</code>:
   LIBS=$(MODULE_LIBS)
 
   INSTALL=/usr/bin/install -c
-  INSTALL_USER=user
-  INSTALL_GROUP=user
-  INSTALL_BIN=$(INSTALL) -s -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0755
+  INSTALL_BIN=$(INSTALL) -s -m 0755
 
   LIBTOOL=$(SHELL) /usr/bin/libtool
   LTDL_FLAGS=-avoid-version -export-dynamic -module
@@ -190,9 +188,7 @@ for the <code>Makefile</code>:
           $(LIBTOOL) --mode=install $(INSTALL_BIN) $(MODULE_NAME).la $(DESTDIR)$(LIBEXEC_DIR)
 
   clean:
-          $(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).la
-          $(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).lo
-          $(RM) config.*
+          $(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).la $(MODULE_NAME).lo config.*
 
   distclean:
           $(RM) Makefile config.*
@@ -219,10 +215,7 @@ Place the <code>Makefile</code> in a directory with your
   make install
 </pre>
 The <code>make install</code> step will install the DSO module into the
-<code>libexec/</code> directory of your ProFTPD install location.  Note that
-you may need to tweak the <code>INSTALL_USER</code> and
-<code>INSTALL_GROUP</code> variables with the necessary user/group names for
-installing the DSO module.
+<code>libexec/</code> directory of your ProFTPD install location.
 
 <p>
 Once installed, update your <code>proftpd.conf</code> to make sure your
@@ -232,9 +225,101 @@ module is loaded:
 </pre>
 Then restart <code>proftpd</code>, and your custom module will be in use.
 
+<p><a name="prxs"></a>
+<b>Using <code>prxs</code></b><br>
+You may find yourself wanting to compile some third-party module, for which
+you have the source code, as a DSO module for proftpd.  But you may not have
+the source code for proftpd, <i>e.g.</i> you might have installed proftpd
+as a binary package.  The build system for proftpd would let you compile
+your third-party module as a DSO module, but what do you do if you don't have
+access to the proftpd build system?
+
+<p>
+The answer is to use the <code>prxs</code> script, which comes with proftpd.
+The <code>prxs</code> (<b>PR</b>oFTPD E<b>X</b>tension<b>S</b>) tool will
+compile and install third-party modules, from source code, as DSO modules
+for your installed proftpd.
+
+<p>
+The <code>prxs</code> tool supports the following actions:
+<pre>
+ -c, --compile          Compiles the listed <code>.c</code> source files
+                        into a proftpd DSO module.
+
+ -i, --install          Installs a compiled proftpd DSO module into the
+                        directory where proftpd expects to find loadable
+                        DSO modules.
+
+ -d, --clean            Removes any generated files, returning the build
+                        directory to a clean state.
+</pre>
+At least one of the above actions must be specified when using
+<code>prxs</code>.  More than one action can be specified at the same time.
+
+<p>
+To use <code>prxs</code> all in one step, you could do:
+<pre>
+  # prxs -c -i -d mod_custom.c
+</pre>
+which will do the compile, install, and clean actions in order.  Once
+installed, update your <code>proftpd.conf</code> to make sure your module is
+loaded:
+<pre>
+  LoadModule mod_custom.c
+</pre>
+Then restart <code>proftpd</code>, and your custom module will be in use.
+
+<p>
+The following options are also supported:
+<pre>
+ -n, --name             Tells prxs the name of the module being compiled.
+                        By default, prxs determines the module name from
+                        the list of .c files listed, expecting to see a
+                        "mod_<i>name</i>.c" file.
+
+ -D key                 Passes these macros through to the compilation step.
+ -D key=value           Note that the space before the key is important.
+
+ -I <em>includedir</em> Specify additional include file search directories.
+                        Note that the space before the directory is important.
+
+ -L <em>libdir</em>     Specify additional library file search directories.
+                        Note that the space before the directory is important.
+
+ -l <em>library</em>    Specify additional libraries for linking.
+                        Note that the space before the library name is important.
+</pre>
+
+<p>
+Using <code>prxs</code>, the above <code>mod_custom</code> example would
+become:
+<pre>
+  # cd /path/to/mod_custom/dir
+  # prxs -c -i -D USE_CUSTOM -I /path/to/custom/include -L /path/to/custom/lib -l custom mod_custom.c
+</pre>
+That's it!  No need for a special Makefile, and no need to edit/replace any
+variables.
+
+<p>
+The <code>prxs</code> tool uses the <code>libtool</code> command that your
+system should support.  If you need to tell <code>prxs</code> to use a
+different <code>libtool</code> for any reason (such as using a specially
+installed <code>libtool</code>), you can use the <code>LIBTOOL</code>
+environment variable to point <code>prxs</code> to the <code>libtool</code>
+to use.  For example:
+<pre>
+  # LIBTOOL=/path/to/custom/libtool prxs -c -i -d mod_custom.c
+</pre>
+
+<p>
+When should you use <code>prxs</code> for compiling DSO modules, and when
+should you use a Makefile?  In general, if the third-party module comes with
+its own <code>configure</code> script and <code>Makefile</code>, then you
+should use those.  Otherwise, <code>prxs</code> should suffice.
+
 <p>
 <hr>
-<i>$Date: 2007-10-15 16:23:30 $</i><br>
+<i>$Date: 2008-09-01 19:26:30 $</i><br>
 
 </body>
 </html>
