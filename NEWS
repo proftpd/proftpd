@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.934 2008-08-30 00:04:40 castaglia Exp $
+$Id: NEWS,v 1.935 2008-09-01 19:05:03 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -52,6 +52,9 @@ CVS
   shared modules without proftpd source.
 - Bug 3106 - Add support for Mac OSX 10.5 sendfile.
 - Bug 3107 - TLSProtocol supports misleading "SSLv23" parameter.
+- Bug 3108 - Support removing MLST from FEAT list.  The mod_facts module
+  now supports a FactsAdvertise directive; see doc/modules/mod_facts.html
+  for details.
 
 1.3.2rc1 - Released 15-Apr-2008
 --------------------------------

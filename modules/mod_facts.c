@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.7 2008-05-06 16:30:07 castaglia Exp $
+ * $Id: mod_facts.c,v 1.8 2008-09-01 19:05:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1014,6 +1014,28 @@ MODRET facts_opts_mlst(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* Configuration handlers
+ */
+
+/* usage: FactsAdvertise on|off */
+MODRET set_factsadvertise(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = bool;
+
+  return PR_HANDLED(cmd);
+}
+
 /* Initialization functions
  */
 
@@ -1025,6 +1047,16 @@ static int facts_init(void) {
 }
 
 static int facts_sess_init(void) {
+  config_rec *c;
+  int advertise = TRUE;
+
+  c = find_config(main_server->conf, CONF_PARAM, "FactsAdvertise", FALSE);
+  if (c) {
+    advertise = *((int *) c->argv[0]);
+  }
+
+  if (advertise == FALSE)
+    return 0;
 
   facts_opts = FACTS_OPT_SHOW_MODIFY|FACTS_OPT_SHOW_PERM|FACTS_OPT_SHOW_SIZE|
     FACTS_OPT_SHOW_TYPE|FACTS_OPT_SHOW_UNIQUE|FACTS_OPT_SHOW_UNIX_GROUP|
@@ -1046,6 +1078,7 @@ static int facts_sess_init(void) {
  */
 
 static conftable facts_conftab[] = {
+  { "FactsAdvertise",	set_factsadvertise,	NULL },
   { NULL }
 };
 
