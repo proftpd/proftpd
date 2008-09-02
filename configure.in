@@ -1300,6 +1300,30 @@ AC_CHECK_FUNC(gai_strerror,
   LIB_OBJS="$LIB_OBJS glibc-gai_strerror.o"
 )
 
+AC_MSG_CHECKING([for dirfd])
+AC_TRY_LINK(
+  [
+    #include <stdio.h>
+    #include <sys/types.h>
+    #if HAVE_DIRENT_H
+    # include <dirent.h>
+    #endif
+  ],
+  [
+    DIR *dirh = NULL;
+    int fd;
+
+    fd = dirfd(dirh);
+  ],
+  [
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_DIRFD, 1, [Define if you have dirfd])
+  ],
+  [
+    AC_MSG_RESULT(no)
+  ]
+)
+
 dnl getaddrinfo is a #define on Tru64 Unix.  How annoying.
 AC_MSG_CHECKING([for getaddrinfo])
 AC_TRY_LINK(

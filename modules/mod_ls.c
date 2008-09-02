@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.150 2008-01-03 01:39:33 castaglia Exp $
+ * $Id: mod_ls.c,v 1.151 2008-09-02 15:54:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -825,7 +825,8 @@ static char **sreaddir(const char *dirname, const int sort) {
     return NULL;
   }
 
-  if ((d = pr_fsio_opendir(dirname)) == NULL)
+  d = pr_fsio_opendir(dirname);
+  if (d == NULL)
     return NULL;
 
   /* It doesn't matter if the following guesses are wrong, but it slows
@@ -837,12 +838,13 @@ static char **sreaddir(const char *dirname, const int sort) {
    */
   dsize = (st.st_size / 4) + 10;	 /* Guess number of entries in dir */
 
-  /*
-  ** The directory has been opened already, but portably accessing the file
-  ** descriptor inside the DIR struct isn't easy.  Some systems use "dd_fd" or
-  ** "__dd_fd" rather than "d_fd".  Still others work really hard at opacity.
-  */
-#if defined(HAVE_STRUCT_DIR_D_FD)
+  /* The directory has been opened already, but portably accessing the file
+   * descriptor inside the DIR struct isn't easy.  Some systems use "dd_fd" or
+   * "__dd_fd" rather than "d_fd".  Still others work really hard at opacity.
+   */
+#if defined(HAVE_DIRFD) 
+  dir_fd = dirfd(d);
+#elif defined(HAVE_STRUCT_DIR_D_FD)
   dir_fd = d->d_fd;
 #elif defined(HAVE_STRUCT_DIR_DD_FD)
   dir_fd = d->dd_fd;
@@ -851,7 +853,9 @@ static char **sreaddir(const char *dirname, const int sort) {
 #else
   dir_fd = 0;
 #endif
-  if ((ssize = get_name_max((char *) dirname, dir_fd)) < 1 ) {
+
+  ssize = get_name_max((char *) dirname, dir_fd);
+  if (ssize < 1) {
     pr_log_debug(DEBUG1, "get_name_max(%s, %d) = %d, using %d", dirname,
       dir_fd, ssize, NAME_MAX_GUESS);
     ssize = NAME_MAX_GUESS;
