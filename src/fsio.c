@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.70 2008-08-16 05:26:50 castaglia Exp $
+ * $Id: fsio.c,v 1.71 2008-09-03 16:49:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -934,6 +934,37 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
   chk_fs_map = TRUE;
 
   return TRUE;
+}
+
+/* Returns a registered FS by name. */
+pr_fs_t *pr_find_fs(const char *name) {
+  pr_fs_t **fs_objs = NULL;
+  register unsigned int i;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (fs_map == NULL) {
+    errno = EACCES;
+    return NULL;
+  }
+
+  fs_objs = (pr_fs_t **) fs_map->elts;
+
+  for (i = 0; i < fs_map->nelts; i++) {
+    pr_fs_t *fsi;
+
+    fsi = fs_objs[i];
+
+    if (strcmp(fsi->fs_name, name) == 0) {
+      return fsi;
+    }
+  }
+
+  errno = ENOENT;
+  return NULL;
 }
 
 pr_fs_t *pr_unmount_fs(const char *path, const char *name) {
