@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.4 2008-04-03 03:21:25 castaglia Exp $
+ * $Id: encode.c,v 1.5 2008-09-04 16:42:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -91,6 +91,7 @@ static void set_supports_telnet_iac(const char *codeset) {
       strcasecmp(codeset, "KOI8-R") == 0 ||
       strcasecmp(codeset, "WINDOWS-1251") == 0) {
     supports_telnet_iac = FALSE;
+    return;
   }
 
   supports_telnet_iac = TRUE;
