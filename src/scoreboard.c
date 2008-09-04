@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.42 2008-06-12 21:19:48 castaglia Exp $
+ * $Id: scoreboard.c,v 1.43 2008-09-04 00:30:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -595,7 +595,7 @@ int pr_scoreboard_entry_add(void) {
 
   memset(&entry, '\0', sizeof(entry));
 
-  entry.sce_pid = getpid();
+  entry.sce_pid = session.pid ? session.pid : getpid();
   entry.sce_uid = geteuid();
   entry.sce_gid = getegid();
 

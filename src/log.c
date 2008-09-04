@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.86 2008-08-21 07:03:34 castaglia Exp $
+ * $Id: log.c,v 1.87 2008-09-04 00:30:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -94,7 +94,7 @@ int log_wtmp(char *line, const char *name, const char *host,
     sstrncpy(utx.ut_id, "ftp", sizeof(utx.ut_user));
     sstrncpy(utx.ut_line, line, sizeof(utx.ut_line));
     sstrncpy(utx.ut_host, host, sizeof(utx.ut_host));
-    utx.ut_pid = getpid();
+    utx.ut_pid = session.pid ? session.pid : getpid();
 #if defined(__NetBSD__) && defined(HAVE_UTMPX_H)
     memcpy(&utx.ut_ss, pr_netaddr_get_inaddr(ip), sizeof(utx.ut_ss));
     gettimeofday(&utx.ut_tv, NULL);
@@ -152,7 +152,7 @@ int log_wtmp(char *line, const char *name, const char *host,
     sstrncpy(ut.ut_line, line, sizeof(ut.ut_line));
     if (name && *name)
       sstrncpy(ut.ut_user, name, sizeof(ut.ut_user));
-    ut.ut_pid = getpid();
+    ut.ut_pid = session.pid ? session.pid : getpid();
     if (name && *name)
       ut.ut_type = USER_PROCESS;
     else
@@ -371,7 +371,7 @@ int pr_log_writefile(int logfd, const char *ident, const char *fmt, ...) {
 
   /* Prepend a small header */
   snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "%s[%u]: ",
-    ident, (unsigned int) getpid());
+    ident, (unsigned int) session.pid ? session.pid : getpid());
   buf[sizeof(buf)-1] = '\0';
 
   /* Affix the message */
@@ -491,11 +491,12 @@ static void log_write(int priority, int f, char *s) {
     if (*serverinfo) {
       snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
 	       "%s proftpd[%u] %s: %s\n", systemlog_host,
-	       (unsigned int) getpid(), serverinfo, s);
+	       (unsigned int) session.pid ? session.pid : getpid(),
+               serverinfo, s);
     } else {
       snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
 	       "%s proftpd[%u]: %s\n", systemlog_host,
-	       (unsigned int) getpid(), s);
+	       (unsigned int) session.pid ? session.pid : getpid(), s);
     }
 
     buf[sizeof(buf) - 1] = '\0';

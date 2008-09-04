@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.108 2008-08-25 22:32:54 castaglia Exp $
+ * $Id: inet.c,v 1.109 2008-09-04 00:30:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -705,7 +705,7 @@ static void set_oobinline(int fd) {
 #ifdef F_SETOWN
 static void set_owner(int fd) {
   if (fd != -1)
-    fcntl(fd, F_SETOWN, getpid());
+    fcntl(fd, F_SETOWN, session.pid ? session.pid : getpid());
 }
 #endif
 
