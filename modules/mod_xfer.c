@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.239 2008-09-01 21:10:38 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.240 2008-09-04 16:27:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -919,9 +919,15 @@ static void stor_abort(void) {
   unsigned char *delete_stores = NULL;
 
   if (stor_fh) {
-    if (pr_fsio_close(stor_fh) != 0)
+    if (pr_fsio_close(stor_fh) < 0) {
+      int xerrno = errno;
+
       pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s",
-        stor_fh->fh_path, strerror(errno));
+        stor_fh->fh_path, strerror(xerrno));
+ 
+      errno = xerrno;
+    }
+
     stor_fh = NULL;
   }
 
@@ -954,9 +960,13 @@ static void stor_abort(void) {
 static int stor_complete(void) {
   int res = 0;
 
-  if (pr_fsio_close(stor_fh) != 0) {
+  if (pr_fsio_close(stor_fh) < 0) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s",
-      stor_fh->fh_path, strerror(errno));
+      stor_fh->fh_path, strerror(xerrno));
+
+    errno = xerrno;
     res = -1;
   }
 
