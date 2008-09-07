@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.342 2008-09-04 00:30:14 castaglia Exp $
+ * $Id: main.c,v 1.343 2008-09-07 23:40:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -210,10 +210,10 @@ static void end_login_noexit(void) {
   if (session.user) {
 #if (defined(BSD) && (BSD >= 199103))
     snprintf(sbuf, sizeof(sbuf), "%s%ld", protocol_name_lc,
-      (long) session.pid ? session.pid : getpid());
+      (long) (session.pid ? session.pid : getpid()));
 #else
     snprintf(sbuf, sizeof(sbuf), "%s%d", protocol_name_lc,
-      (int) session.pid ? session.pid : getpid());
+      (int) (session.pid ? session.pid : getpid()));
 #endif
     sbuf[sizeof(sbuf) - 1] = '\0';
 
