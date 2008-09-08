@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.108 2008-09-01 21:10:38 castaglia Exp $
+ * $Id: data.c,v 1.109 2008-09-08 23:49:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -899,6 +899,32 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
           cmd->argv[0]);
 
         pr_response_flush(&resp_err_list);
+
+        destroy_pool(cmd->pool);
+        pr_response_set_pool(resp_pool);
+
+      /* We don't want to actually dispatch the NOOP command, since that
+       * would overwrite the scoreboard with the NOOP state; admins probably
+       * want to see the command that caused the data transfer.  And since
+       * NOOP doesn't take a 450 response (as per RFC959), we will simply
+       * return 200.
+       */
+      } else if (strcmp(cmd->argv[0], C_NOOP) == 0) {
+        pool *resp_pool;
+
+        pr_trace_msg(trace_channel, 5,
+          "client sent '%s' command during data transfer, ignoring",
+          cmd->argv[0]);
+
+        resp_list = resp_err_list = NULL;
+        resp_pool = pr_response_get_pool();
+
+        pr_response_set_pool(cmd->pool);
+
+        pr_response_add(R_200, _("%s: data tranfer in progress"),
+          cmd->argv[0]);
+
+        pr_response_flush(&resp_list);
 
         destroy_pool(cmd->pool);
         pr_response_set_pool(resp_pool);
