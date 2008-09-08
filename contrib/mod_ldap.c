@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.19-20080808
+ * mod_ldap v2.8.19-20080827
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.65 2008-08-27 17:09:14 jwm Exp $
+ * $Id: mod_ldap.c,v 1.66 2008-09-08 19:26:10 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -59,7 +59,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.8.18"
+#define MOD_LDAP_VERSION	"mod_ldap/2.8.19-20080827"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001021002
 # error MOD_LDAP_VERSION " requires ProFTPD 1.2.10rc2 or later"
@@ -90,6 +90,9 @@
    ldap_search_ext_s(ld, base, scope, filter, attrs, 0, NULL, NULL, \
                      timeout, sizelimit, res)
 #else /* LDAP_API_VERSION >= 2000 */
+static char *ldap_server;
+static int ldap_port = LDAP_PORT;
+
 # define LDAP_VALUE_T char
 # define LDAP_GET_VALUES(ld, entry, attr) ldap_get_values(ld, entry, attr)
 # define LDAP_VALUE(values, i) (values[i])
@@ -134,7 +137,7 @@ LDAP_SEARCH(LDAP *ld, char *base, int scope, char *filter, char *attrs[],
 #endif
 
 /* Config entries */
-static char *ldap_server, *ldap_dn, *ldap_dnpass,
+static char *ldap_server_url, *ldap_dn, *ldap_dnpass,
             *ldap_auth_filter, *ldap_uid_filter,
             *ldap_group_gid_filter, *ldap_group_name_filter,
             *ldap_group_member_filter, *ldap_quota_filter,
@@ -151,8 +154,7 @@ static char *ldap_server, *ldap_dn, *ldap_dnpass,
             *ldap_attr_cn = "cn",
             *ldap_attr_memberuid = "memberUid",
             *ldap_attr_ftpquota = "ftpQuota";
-static int ldap_port = LDAP_PORT,
-           ldap_doauth = 0, ldap_douid = 0, ldap_dogid = 0, ldap_doquota = 0,
+static int ldap_doauth = 0, ldap_douid = 0, ldap_dogid = 0, ldap_doquota = 0,
            ldap_authbinds = 1, ldap_querytimeout = 0,
            ldap_genhdir = 0, ldap_genhdir_prefix_nouname = 0,
            ldap_forcedefaultuid = 0, ldap_forcedefaultgid = 0,
@@ -205,12 +207,23 @@ pr_ldap_connect(LDAP **conn_ld, int do_bind)
   struct berval bindcred;
 #endif
 
+#if LDAP_API_VERSION >= 2000
+  ret = ldap_initialize(conn_ld, ldap_server_url);
+  if (ret != LDAP_SUCCESS) {
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_connect(): ldap_initialize() to %s failed: %s", ldap_server_url, ldap_err2string(ret));
+    *conn_ld = NULL;
+    return -1;
+  }
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": connected to %s", ldap_server_url);
+#else /* LDAP_API_VERSION >= 2000 */
   *conn_ld = ldap_init(ldap_server, ldap_port);
   if (!conn_ld) {
-    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_connect(): ldap_init() to %s failed: %s", ldap_server, strerror(errno));
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_connect(): ldap_init() to %s:%d failed: %s", ldap_server, ldap_port, strerror(errno));
     return -1;
   }
   pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": connected to %s:%d", ldap_server, ldap_port);
+#endif
+
 
   version = -1;
   switch (ldap_protocol_version) {
@@ -2045,8 +2058,8 @@ ldap_getconf(void)
   }
 #endif /* LDAP_OPT_X_TLS_HARD */
 
-  /* If LDAPServer isn't present, we'll leave ldap_server NULL, and
-   * ldap_init() will connect to the LDAP SDK's default.
+  /* If LDAPServer isn't present, we'll leave ldap_server_url NULL, and
+   * ldap_initialize() will connect to the LDAP SDK's default.
    */
   if ((c = find_config(main_server->conf, CONF_PARAM, "LDAPServer", FALSE)) != NULL) {
     if (ldap_is_ldap_url(c->argv[0])) {
@@ -2055,18 +2068,24 @@ ldap_getconf(void)
         return -1;
       }
 
+      ldap_server_url = pstrdup(session.pool, c->argv[0]);
+
 #ifdef LDAP_OPT_X_TLS_HARD
       if (strcmp(url->lud_scheme, "ldaps") == 0) {
         ldap_use_ssl = 1;
       }
 #endif /* LDAP_OPT_X_TLS_HARD */
 
+#if LDAP_API_VERSION < 2000
+      /* Need to keep parsed host and port for pre-2000 ldap_init(). */
       if (url->lud_host != NULL) {
         ldap_server = pstrdup(session.pool, url->lud_host);
       }
       if (url->lud_port != 0) {
         ldap_port = url->lud_port;
       }
+#endif /* LDAP_API_VERSION < 2000 */
+
       if (url->lud_scope != LDAP_SCOPE_DEFAULT) {
         ldap_search_scope = url->lud_scope;
       }
@@ -2076,7 +2095,13 @@ ldap_getconf(void)
        * by other/future callers.
        */
     } else {
-      ldap_server = c->argv[0];
+      ldap_server_url = pstrcat(session.pool,
+        "ldap://", c->argv[0], "/", NULL);
+
+#if LDAP_API_VERSION < 2000
+      ldap_server = pstrdup(session.pool, c->argv[0]);
+      ldap_port = LDAP_PORT;
+#endif /* LDAP_API_VERSION < 2000 */
     }
   }
 
