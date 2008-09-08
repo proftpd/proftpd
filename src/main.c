@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.343 2008-09-07 23:40:20 castaglia Exp $
+ * $Id: main.c,v 1.344 2008-09-08 00:47:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1144,7 +1144,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    */
 
   /* Reseed pseudo-randoms */
-  srand(time(NULL));
+  srand((unsigned int) (time(NULL) * getpid()));
 
 #endif /* PR_DEVEL_NO_FORK */
 
@@ -2668,7 +2668,7 @@ int main(int argc, char *argv[], char **envp) {
   pr_proctitle_init(argc, argv, envp);
 
   /* Seed rand */
-  srand(time(NULL));
+  srand((unsigned int) (time(NULL) * getpid()));
 
   /* getpeername() fails if the fd isn't a socket */
   peerlen = sizeof(peer);
