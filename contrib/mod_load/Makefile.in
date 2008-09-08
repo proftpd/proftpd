@@ -29,7 +29,9 @@ shared: $(MODULE_NAME).la
 static: $(MODULE_NAME).o
 
 install:
-	$(LIBTOOL) --mode=install --tag=CC $(INSTALL_BIN) $(MODULE_NAME).la $(DESTDIR)$(LIBEXECDIR)
+	if [ -f $(MODULE_NAME).la ] ; then \
+		$(LIBTOOL) --mode=install --tag=CC $(INSTALL_BIN) $(MODULE_NAME).la $(DESTDIR)$(LIBEXECDIR) ; \
+	fi
 
 clean:
 	$(RM) *.o

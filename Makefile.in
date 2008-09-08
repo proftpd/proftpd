@@ -112,8 +112,8 @@ install-pkgconfig: $(DESTDIR)$(pkgconfigdir)
 install-locales: $(DESTDIR)$(datadir) $(DESTDIR)$(datadir)/locale
 	test -z "$(ENABLE_NLS)" || (cd locale/ && $(MAKE) install)
 
-install-modules: $(DESTDIR)$(libexecdir)
-	test -z "$(SHARED_MODULE_OBJS)" -a -z "$(SHARED_MODULE_DIRS)" || (cd modules/ && $(MAKE) install)
+install-modules: $(DESTDIR)$(libexecdir) $(DESTDIR)$(sysconfdir)
+	test -z "$(SHARED_MODULE_OBJS)" -a -z "$(SHARED_MODULE_DIRS)" -a -z "$(STATIC_MODULE_DIRS)" || (cd modules/ && $(MAKE) install)
 
 install-utils: $(DESTDIR)$(sbindir) $(DESTDIR)$(bindir)
 	$(INSTALL_BIN)  ftpcount $(DESTDIR)$(bindir)/ftpcount
