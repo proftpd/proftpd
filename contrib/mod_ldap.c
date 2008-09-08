@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.19-20080827
+ * mod_ldap v2.8.19-20080908
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.66 2008-09-08 19:26:10 jwm Exp $
+ * $Id: mod_ldap.c,v 1.67 2008-09-08 19:40:56 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -59,7 +59,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.8.19-20080827"
+#define MOD_LDAP_VERSION	"mod_ldap/2.8.19-20080908"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001021002
 # error MOD_LDAP_VERSION " requires ProFTPD 1.2.10rc2 or later"
@@ -1395,7 +1395,7 @@ set_ldap_server(cmd_rec *cmd)
       CONF_ERROR(cmd, "A base DN may not be specified by an LDAPServer URL, only by LDAPDoAuth, LDAPDoUIDLookups, LDAPDoGIDLookups, or LDAPDoQuotaLookups.");
     }
     if (url->lud_filter && strcmp(url->lud_filter, "") != 0) {
-      CONF_ERROR(cmd, "A base DN may not be specified by an LDAPServer URL, only by LDAPDoAuth, LDAPDoUIDLookups, LDAPDoGIDLookups, or LDAPDoQuotaLookups.");
+      CONF_ERROR(cmd, "A search filter may not be specified by an LDAPServer URL, only by LDAPDoAuth, LDAPDoUIDLookups, LDAPDoGIDLookups, or LDAPDoQuotaLookups.");
     }
 
     ldap_free_urldesc(url);
