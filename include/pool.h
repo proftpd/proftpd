@@ -27,7 +27,7 @@
 /* Memory allocation/anti-leak system.  Yes, this *IS* stolen from Apache
  * also.  What can I say?  It makes sense, and it's safe (more overhead
  * though)
- * $Id: pool.h,v 1.22 2008-02-13 07:24:36 castaglia Exp $
+ * $Id: pool.h,v 1.23 2008-09-08 06:52:06 castaglia Exp $
  */
 
 #ifndef PR_POOL_H
@@ -67,6 +67,7 @@ typedef struct {
 } array_header;
 
 array_header *make_array(pool *, unsigned int, size_t);
+void clear_array(array_header *);
 void *push_array(array_header *);
 void array_cat(array_header *, const array_header *);
 array_header *append_arrays(pool *, const array_header *, const array_header *);

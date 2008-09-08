@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.50 2008-08-11 20:52:14 castaglia Exp $
+ * $Id: pool.c,v 1.51 2008-09-08 06:52:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -515,6 +515,15 @@ array_header *make_array(pool *p, unsigned int nelts, size_t elt_size) {
   res->nalloc = nelts;
 
   return res;
+}
+
+void clear_array(array_header *arr) {
+  if (arr == NULL) {
+    return;
+  }
+
+  arr->elts = pcalloc(arr->pool, arr->nalloc * arr->elt_size);
+  arr->nelts = 0;
 }
 
 void *push_array(array_header *arr) {
