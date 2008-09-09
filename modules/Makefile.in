@@ -48,12 +48,8 @@ static: $(STATIC_MODULE_OBJS) module_glue.o
 
 install:
 	test -z "$(SHARED_MODULE_OBJS)" || $(LIBTOOL) --mode=install --tag=CC $(INSTALL_BIN) $(SHARED_MODULE_OBJS) $(DESTDIR)$(LIBEXECDIR)
-	@dirs="$(SHARED_MODULE_DIRS)"; \
-	for dir in $$dirs; do\
-		(cd $(top_srcdir)/$$dir/ && $(MAKE) install); \
-	done
-	@dirs="$(STATIC_MODULE_DIRS)"; \
-	for dir in $$dirs; do\
+	@dirs="$(SHARED_MODULE_DIRS) $(STATIC_MODULE_DIRS)"; \
+	for dir in $$dirs; do \
 		(cd $(top_srcdir)/$$dir/ && $(MAKE) install); \
 	done
 
@@ -62,7 +58,7 @@ clean:
 	$(LIBTOOL) --mode=clean $(RM) $(SHARED_MODULE_OBJS)
 	$(LIBTOOL) --mode=clean $(RM) `echo $(SHARED_MODULE_OBJS) | sed 's/\.la$\/.lo/g'`
 	@dirs="$(SHARED_MODULE_DIRS) $(STATIC_MODULE_DIRS)"; \
-	for dir in $$dirs; do\
+	for dir in $$dirs; do \
 		(cd $(top_srcdir)/$$dir/ && $(MAKE) clean); \
 	done
 
