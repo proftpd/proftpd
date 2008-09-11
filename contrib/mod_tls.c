@@ -1333,6 +1333,16 @@ static int tls_get_passphrase(server_rec *s, const char *path,
   if (pkey == NULL)
     return -1;
 
+#if OPENSSL_VERSION_NUMBER >= 0x000905000L
+  /* Use the obtained passphrase as additional entropy, ostensibly
+   * unknown to attackers who may be watching the network, for
+   * OpenSSL's PRNG.
+   *
+   * Human language gives about 2-3 bits of entropy per byte (RFC1750).
+   */
+  RAND_add(buf, buflen, buflen * 0.25);
+#endif
+
 #ifdef HAVE_MLOCK
    PRIVS_ROOT
    if (mlock(buf, buflen) < 0) 
