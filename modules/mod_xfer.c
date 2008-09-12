@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.240 2008-09-04 16:27:55 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.241 2008-09-12 17:08:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -966,6 +966,17 @@ static int stor_complete(void) {
     pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s",
       stor_fh->fh_path, strerror(xerrno));
 
+    /* We will unlink failed writes, but only if it's a HiddenStores file.
+     * Other files will need to be explicitly deleted/removed by the client.
+     */
+    if (session.xfer.xfer_type == STOR_HIDDEN) {
+      if (session.xfer.path_hidden) {
+        pr_log_debug(DEBUG5, "failed to close HiddenStores file '%s', removing",
+          session.xfer.path_hidden);
+        pr_fsio_unlink(session.xfer.path_hidden);
+      }
+    }
+
     errno = xerrno;
     res = -1;
   }
@@ -1592,9 +1603,6 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
       pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " bytes) reached: "
         "aborting transfer of '%s'", (pr_off_t) nbytes_max_store, dir);
-
-      /* Unlink the file being written. */
-      pr_fsio_unlink(dir);
 
       /* Abort the transfer. */
       stor_abort();
