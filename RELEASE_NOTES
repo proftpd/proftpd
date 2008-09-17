@@ -6,6 +6,33 @@ This file contains a description of the major changes to ProFTPD for the
 More information on these changes can be found in the NEWS and ChangeLog
 files.
 
+1.3.2rc2
+---------
+
+  + Added Chinese translation.
+
+  + Fixed handling of SSL/TLS session shutdowns on data connections.  This
+    issue was causing problems for users of recent FileZilla versions which
+    insisted on proper SSL/TLS session shutdowns.
+
+  + Fixed file descriptor leak when using syslog logging.
+
+  + Fixed syslog logging on Mac OSX platforms.
+
+  + Attempted to address the following message in system log files:
+
+      warning: `proftpd' uses 32-bit capabilities (legacy support in use)
+
+    by having mod_cap use the libcap version numbers provided by newer
+    Linux kernels.  See doc/modules/mod_cap.html for more details.
+
+  + Added new `prxs' tool, for compiling and installing third-party
+    modules without needing the proftpd source code.  See
+    doc/howto/DSO.html for more information.
+
+  + Added sendfile support for Mac OSX 10.5.
+
+
 1.3.2rc1
 ---------
 
@@ -239,4 +266,4 @@ files.
         doc/howto/TLS.html#TLSFIPS
 
 
-Last Updated: $Date: 2008-04-15 20:51:15 $
+Last Updated: $Date: 2008-09-17 00:15:51 $
