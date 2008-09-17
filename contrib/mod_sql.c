@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.138 2008-08-23 20:05:54 castaglia Exp $
+ * $Id: mod_sql.c,v 1.139 2008-09-17 21:45:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -643,10 +643,9 @@ static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
   EVP_MD_CTX md_ctxt;
   EVP_ENCODE_CTX base64_ctxt;
   const EVP_MD *md;
-  unsigned char mdval[EVP_MAX_MD_SIZE];
-  int mdlen, res;
-
-  char buf[EVP_MAX_KEY_LENGTH];
+  unsigned char buf[EVP_MAX_KEY_LENGTH], mdval[EVP_MAX_MD_SIZE];
+  size_t mdlen;
+  int res;
 
   char *digestname;             /* ptr to name of the digest function */
   char *hashvalue;              /* ptr to hashed value we're comparing to */
@@ -685,7 +684,7 @@ static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
   EVP_DigestFinal(&md_ctxt, mdval, &mdlen);
 
   EVP_EncodeInit(&base64_ctxt);
-  EVP_EncodeBlock(buf, mdval, mdlen);
+  EVP_EncodeBlock(buf, mdval, (int) mdlen);
 
   res = strcmp(buf, hashvalue);
 
