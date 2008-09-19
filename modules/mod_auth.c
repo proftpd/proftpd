@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.243 2008-09-12 17:35:50 castaglia Exp $
+ * $Id: mod_auth.c,v 1.244 2008-09-19 15:39:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2196,6 +2196,7 @@ MODRET set_createhome(cmd_rec *cmd) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", skel_path,
             "' is world-writable", NULL));
 
+        /* Move the index past the skel parameter */
         i++;
 
       } else if (strcasecmp(cmd->argv[i], "dirmode") == 0) {
@@ -2207,6 +2208,7 @@ MODRET set_createhome(cmd_rec *cmd) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad mode parameter: '",
             cmd->argv[i], "'", NULL));
 
+        /* Move the index past the dirmode parameter */
         i++;
 
       } else if (strcasecmp(cmd->argv[i], "uid") == 0) {
@@ -2219,6 +2221,9 @@ MODRET set_createhome(cmd_rec *cmd) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad UID parameter: '",
             cmd->argv[i], "'", NULL));
 
+        /* Move the index past the uid parameter */
+        i++;
+
       } else if (strcasecmp(cmd->argv[i], "gid") == 0) {
         char *tmp = NULL;
         gid_t gid;
@@ -2229,9 +2234,13 @@ MODRET set_createhome(cmd_rec *cmd) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad GID parameter: '",
             cmd->argv[i], "'", NULL));
 
-      } else
+        /* Move the index past the gid parameter */
+        i++;
+
+      } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown parameter: '",
           cmd->argv[i], "'", NULL));
+      }
     }
   }
 
