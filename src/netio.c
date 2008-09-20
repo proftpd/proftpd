@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,26 +23,26 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.33 2008-04-03 03:14:31 castaglia Exp $
+ * $Id: netio.c,v 1.34 2008-09-20 20:18:28 castaglia Exp $
  */
 
 #include "conf.h"
 #include <signal.h>
 
 #ifndef IAC
-#define IAC	255
+# define IAC	255
 #endif
 #ifndef DONT
-#define DONT	254
+# define DONT	254
 #endif
 #ifndef DO
-#define DO	253
+# define DO	253
 #endif
 #ifndef WONT
-#define WONT	252
+# define WONT	252
 #endif
 #ifndef WILL
-#define WILL	251
+# define WILL	251
 #endif
 
 static const char *trace_channel = "netio";
@@ -50,6 +50,17 @@ static const char *trace_channel = "netio";
 static pr_netio_t *core_ctrl_netio = NULL, *ctrl_netio = NULL;
 static pr_netio_t *core_data_netio = NULL, *data_netio = NULL;
 static pr_netio_t *core_othr_netio = NULL, *othr_netio = NULL;
+
+/* Used to track whether the previous text read from the client's control
+ * connection was a properly-terminated command.  If so, then read in the
+ * next/current text as per normal.  If NOT (e.g. the client sent a too-long
+ * command), then read in the next/current text, but ignore it.  Only clear
+ * this flag if the next/current command can be read as per normal.
+ *
+ * The pr_netio_telnet_gets() uses this variable, in conjunction with its
+ * saw_newline flag, for handling too-long commands from clients.
+ */
+static int properly_terminated_prev_command = TRUE;
 
 static pr_netio_stream_t *netio_stream_alloc(pool *parent_pool) {
   pool *netio_pool = NULL;
@@ -950,7 +961,7 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
   char *bp = buf;
   unsigned char cp;
   static unsigned char mode = 0;
-  int toread, handle_iac = TRUE;
+  int toread, handle_iac = TRUE, saw_newline = FALSE;
   pr_buffer_t *pbuf = NULL;
 
   if (buflen == 0) {
@@ -983,8 +994,9 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
           *bp = '\0';
           return buf;
 
-        } else
+        } else {
           return NULL;
+        }
       }
 
       pbuf->remaining = pbuf->buflen - toread;
@@ -1049,6 +1061,8 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
       toread--;
       *bp++ = *pbuf->current++;
       pbuf->remaining++;
+
+      saw_newline = TRUE;
       break;
     }
 
@@ -1056,6 +1070,25 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
       pbuf->current = NULL;
   }
 
+  if (!saw_newline) {
+    /* If we haven't seen a newline, then assume the client is deliberately
+     * sending a too-long command, trying to exploit buffer sizes and make
+     * the server make some possibly bad assumptions.
+     */
+
+    properly_terminated_prev_command = FALSE;
+    errno = E2BIG;
+    return NULL;
+  }
+
+  if (!properly_terminated_prev_command) {
+    properly_terminated_prev_command = TRUE;
+    pr_log_pri(PR_LOG_NOTICE, "client sent too-long command, ignoring");
+    errno = E2BIG;
+    return NULL;
+  }
+
+  properly_terminated_prev_command = TRUE;
   *bp = '\0';
   return buf;
 }

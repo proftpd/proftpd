@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.344 2008-09-08 00:47:11 castaglia Exp $
+ * $Id: main.c,v 1.345 2008-09-20 20:18:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -516,20 +516,32 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
 static long get_max_cmd_len(size_t buflen) {
   long res;
   int *bufsz = NULL;
+  size_t default_cmd_bufsz;
 
+  /* It's possible for the admin to select a PR_TUNABLE_BUFFER_SIZE which
+   * is smaller than PR_DEFAULT_CMD_BUFSZ.  We need to handle such cases
+   * properly.
+   */
+  default_cmd_bufsz = PR_DEFAULT_CMD_BUFSZ;
+  if (default_cmd_bufsz > buflen) {
+    default_cmd_bufsz = buflen;
+  }
+ 
   bufsz = get_param_ptr(main_server->conf, "CommandBufferSize", FALSE);
   if (bufsz == NULL) {
-    res = PR_DEFAULT_CMD_BUFSZ;
+    res = default_cmd_bufsz;
 
   } else if (*bufsz <= 0) {
     pr_log_pri(PR_LOG_WARNING, "invalid CommandBufferSize size (%d) given, "
-      "using default buffer size (%u) instead", *bufsz, PR_DEFAULT_CMD_BUFSZ);
-    res = PR_DEFAULT_CMD_BUFSZ;
+      "using default buffer size (%lu) instead", *bufsz,
+      (unsigned long) default_cmd_bufsz);
+    res = default_cmd_bufsz;
 
   } else if (*bufsz + 1 > buflen) {
     pr_log_pri(PR_LOG_WARNING, "invalid CommandBufferSize size (%d) given, "
-      "using default buffer size (%u) instead", *bufsz, PR_DEFAULT_CMD_BUFSZ);
-    res = PR_DEFAULT_CMD_BUFSZ;
+      "using default buffer size (%lu) instead", *bufsz,
+      (unsigned long) default_cmd_bufsz);
+    res = default_cmd_bufsz;
 
   } else {
     pr_log_debug(DEBUG1, "setting CommandBufferSize to %d", *bufsz);
@@ -577,11 +589,26 @@ int pr_cmd_read(cmd_rec **res) {
     return -1;
   }
 
-  memset(buf, '\0', sizeof(buf));
+  while (TRUE) {
+    pr_signals_handle();
 
-  if (pr_netio_telnet_gets(buf, sizeof(buf)-1, session.c->instrm,
-      session.c->outstrm) == NULL)
-    return -1;
+    memset(buf, '\0', sizeof(buf));
+
+    if (pr_netio_telnet_gets(buf, sizeof(buf)-1, session.c->instrm,
+        session.c->outstrm) == NULL) {
+
+      if (errno == E2BIG) {
+        /* The client sent a too-long command which was ignored; give
+         * them another chance?
+         */
+       continue;
+      }
+
+      return -1;
+    }
+
+    break;
+  }
 
   if (cmd_bufsz == -1)
     cmd_bufsz = get_max_cmd_len(sizeof(buf));
