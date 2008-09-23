@@ -22,9 +22,8 @@
  * OpenSSL in the source distribution.
  */
 
-/*
- * Array API tests
- * $Id: array.c,v 1.2 2008-02-16 05:18:27 castaglia Exp $
+/* Array API tests
+ * $Id: array.c,v 1.3 2008-09-23 04:40:17 castaglia Exp $
  */
 
 #include "tests.h"
@@ -162,6 +161,32 @@ START_TEST (array_cat_test) {
     8, dst->nalloc);
   fail_unless(dst->nelts == 5, "Wrong dst item count (expected %u, got %d)",
     5, dst->nelts);
+}
+END_TEST
+
+START_TEST (clear_array_test) {
+  array_header *list;
+
+  mark_point();
+
+  /* This should not segfault. */
+  clear_array(NULL);
+
+  list = make_array(p, 0, 1);
+  push_array(list);
+  push_array(list);
+
+  fail_unless(list->nalloc == 2, "Wrong list alloc count (expected %u, got %d)",
+    2, list->nalloc);
+  fail_unless(list->nelts == 2, "Wrong list item count (expected %u, got %d)",
+    2, list->nelts);
+
+  clear_array(list);
+
+  fail_unless(list->nalloc == 2, "Wrong list alloc count (expected %u, got %d)",
+    2, list->nalloc);
+  fail_unless(list->nelts == 0, "Wrong list item count (expected %u, got %d)",
+    0, list->nelts);
 }
 END_TEST
 
@@ -373,6 +398,7 @@ Suite *tests_get_array_suite(void) {
   tcase_add_test(testcase, make_array_test);
   tcase_add_test(testcase, push_array_test);
   tcase_add_test(testcase, array_cat_test);
+  tcase_add_test(testcase, clear_array_test);
   tcase_add_test(testcase, copy_array_test);
   tcase_add_test(testcase, copy_array_str_test);
   tcase_add_test(testcase, copy_array_hdr_test);
