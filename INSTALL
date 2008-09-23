@@ -532,18 +532,18 @@ R2. ProFTPD Documentation Project.
 R3. E-Mail Lists.
 
        End User List
-     (subscriptions): proftpd-users-request@proftpd.org
-       (submissions): proftpd-users@proftpd.org
-          (archives): http://www.geocrawler.com/redir-sf.php3?list=proftp-user
+       (submissions): proftp-user@lists.sourceforge.net
+         (subscribe): proftp-user-request@lists.sourceforge.net
+          (archives): http://sourceforge.net/mailarchive/forum.php?forum_name=proftp-user
 
       Developer List
-     (subscriptions): proftpd-devel-request@proftpd.org
-       (submissions): proftpd-devel@proftpd.org
-          (archives): http://www.geocrawler.com/redir-sf.php3?list=proftp-devel
+       (submissions): proftp-devel@lists.sourceforge.net
+         (subscribe): proftp-devel-request@lists.sourceforge.net
+          (archives): http://sourceforge.net/mailarchive/forum.php?forum_name=proftp-devel
 
    Announcement List
-     (subscriptions): proftpd-announce-request@proftpd.org
-          (archives): http://www.geocrawler.com/redir-sf.php3?list=proftp-announce
+         (subscribe): proftp-announce-request@lists.sourceforge.net
+          (archives): ttp://sourceforge.net/mailarchive/forum.php?forum_name=proftp-announce
 
     Security Reports: security@proftpd.org
 
@@ -551,7 +551,7 @@ R3. E-Mail Lists.
 R4. Bug Tracking System (Bugzilla).
 
  Bug Reports/Patches: http://bugs.proftpd.org
-                      proftpd-devel@proftpd.org
+                      proftp-devel@lists.sourceforge.net
 
 
 R5. CVS Repositories.
