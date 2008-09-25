@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.345 2008-09-20 20:18:27 castaglia Exp $
+ * $Id: main.c,v 1.346 2008-09-25 22:24:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2486,8 +2486,9 @@ static struct option opts[] = {
 
 static void show_settings(void) {
   printf("Compile-time Settings:\n");
-  printf("  Version: " PROFTPD_VERSION_TEXT "\n");
+  printf("  Version: " PROFTPD_VERSION_TEXT " " PR_STATUS "\n");
   printf("  Platform: " PR_PLATFORM "\n");
+  printf("  Built: " BUILD_STAMP "\n");
   printf("  Built With:\n    configure " PR_BUILD_OPTS "\n\n");
 
   printf("  CFLAGS: " PR_BUILD_CFLAGS "\n");
