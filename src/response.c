@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.11 2008-05-06 17:42:49 castaglia Exp $
+ * $Id: response.c,v 1.12 2008-09-26 20:57:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -39,8 +39,10 @@ static char resp_ml_numeric[4] = {'\0'};
 
 static char *(*resp_handler_cb)(pool *, const char *, ...) = NULL;
 
+static const char *trace_channel = "response";
+
 #define RESPONSE_WRITE_NUM_STR(strm, fmt, numeric, msg) \
-  pr_trace_msg("response", 1, (fmt), (numeric), (msg)); \
+  pr_trace_msg(trace_channel, 1, (fmt), (numeric), (msg)); \
   if (resp_handler_cb) \
     pr_netio_printf((strm), "%s", resp_handler_cb(resp_pool, (fmt), (numeric), \
       (msg))); \
@@ -48,14 +50,14 @@ static char *(*resp_handler_cb)(pool *, const char *, ...) = NULL;
     pr_netio_printf((strm), (fmt), (numeric), (msg));
 
 #define RESPONSE_WRITE_STR(strm, fmt, msg) \
-  pr_trace_msg("response", 1, (fmt), (msg)); \
+  pr_trace_msg(trace_channel, 1, (fmt), (msg)); \
   if (resp_handler_cb) \
     pr_netio_printf((strm), "%s", resp_handler_cb(resp_pool, (fmt), (msg))); \
   else \
     pr_netio_printf((strm), (fmt), (msg));
 
 #define RESPONSE_WRITE_STR_ASYNC(strm, fmt, msg) \
-  pr_trace_msg("response", 1, pstrcat(session.pool, "async: ", (fmt), NULL), \
+  pr_trace_msg(trace_channel, 1, pstrcat(session.pool, "async: ", (fmt), NULL), \
     (msg)); \
   if (resp_handler_cb) \
     pr_netio_printf_async((strm), "%s", resp_handler_cb(resp_pool, (fmt), \
@@ -151,7 +153,10 @@ void pr_response_add_err(const char *numeric, const char *fmt, ...) {
   resp = (pr_response_t *) pcalloc(resp_pool, sizeof(pr_response_t));
   resp->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
   resp->msg = pstrdup(resp_pool, resp_buf);
-  
+
+  pr_trace_msg(trace_channel, 7, "error response added to pending list: %s %s",
+    resp->num ? resp->num : "(null)", resp->msg);
+
   for (head = &resp_err_list;
     *head &&
     (!numeric || !(*head)->num || strcmp((*head)->num, numeric) <= 0) &&
@@ -176,6 +181,9 @@ void pr_response_add(const char *numeric, const char *fmt, ...) {
   resp->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
   resp->msg = pstrdup(resp_pool, resp_buf);
   
+  pr_trace_msg(trace_channel, 7, "response added to pending list: %s %s",
+    resp->num ? resp->num : "(null)", resp->msg);
+
   for (head = &resp_list;
     *head &&
     (!numeric || !(*head)->num || strcmp((*head)->num, numeric) <= 0) &&
