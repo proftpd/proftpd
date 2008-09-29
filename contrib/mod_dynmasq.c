@@ -2,7 +2,7 @@
  * ProFTPD: mod_dynmasq -- a module for dynamically updating MasqueradeAddress
  *                         configurations, as when DynDNS names are used
  *
- * Copyright (c) 2004-2007 TJ Saunders
+ * Copyright (c) 2004-2008 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,12 +26,12 @@
  * This is mod_dynmasq, contrib software for proftpd 1.2.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dynmasq.c,v 1.3 2007-10-22 18:09:17 castaglia Exp $
+ * $Id: mod_dynmasq.c,v 1.4 2008-09-29 16:07:38 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_DYNMASQ_VERSION		"mod_dynmasq/0.2"
+#define MOD_DYNMASQ_VERSION		"mod_dynmasq/0.2.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030005
@@ -79,7 +79,7 @@ static int dynmasq_update_cb(CALLBACK_FRAME) {
         /* Compare the obtained netaddr with the one already present.
          * Only update the "live" netaddr if they differ.
          */
-        pr_log_pri(PR_LOG_DEBUG, MOD_DYNMASQ_VERSION
+        pr_log_debug(DEBUG2, MOD_DYNMASQ_VERSION
           ": resolved MasqueradeAddress '%s' to IP address %s",
           (const char *) c->argv[1], pr_netaddr_get_ipstr(na));
 
@@ -96,7 +96,7 @@ static int dynmasq_update_cb(CALLBACK_FRAME) {
           c->argv[0] = na;
 
         } else
-          pr_log_pri(PR_LOG_DEBUG, MOD_DYNMASQ_VERSION
+          pr_log_debug(DEBUG2, MOD_DYNMASQ_VERSION
             ": MasqueradeAddress '%s' has not changed addresses",
             (const char *) c->argv[1]);
  
