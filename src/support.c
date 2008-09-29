@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.96 2008-06-05 08:01:39 castaglia Exp $
+ * $Id: support.c,v 1.97 2008-09-29 23:02:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -563,17 +563,22 @@ char *make_arg_str(pool *p, int argc, char **argv) {
   char *res = "";
 
   /* Check for "sensitive" commands. */
-  if (!strcmp(argv[0], C_PASS) ||
-      !strcmp(argv[0], C_ADAT)) {
+  if (strcmp(argv[0], C_PASS) == 0 ||
+      strcmp(argv[0], C_ADAT) == 0) {
     argc = 2;
     argv[1] = "(hidden)";
   }
 
-  while (argc--) {
-    if (*res)
-      res = pstrcat(p, res, " ", pr_fs_decode_path(p, *argv++), NULL);
-    else
-      res = pstrcat(p, res, pr_fs_decode_path(p, *argv++), NULL);
+  if (argc > 0) {
+    while (argc--) {
+      if (*res)
+        res = pstrcat(p, res, " ", pr_fs_decode_path(p, *argv++), NULL);
+      else
+        res = pstrcat(p, res, pr_fs_decode_path(p, *argv++), NULL);
+    }
+
+  } else {
+    res = pstrdup(p, res);
   }
 
   return res;
