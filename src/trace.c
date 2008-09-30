@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.19 2008-09-04 00:30:14 castaglia Exp $
+ * $Id: trace.c,v 1.20 2008-09-30 20:43:43 castaglia Exp $
  */
 
 
@@ -71,9 +71,12 @@ static const char *trace_channels[] = {
  * possibility of it colliding with a "real" fd.  That's why it's so 
  * arbitrarily high.
  */
-static const int trace_log_fallback_fd = 777;
+static const int trace_log_fallback_fd = 255;
 
 static void trace_restart_ev(const void *event_data, void *user_data) {
+  close(trace_logfd);
+  trace_logfd = -1;
+
   if (trace_pool) {
     destroy_pool(trace_pool);
     trace_pool = NULL;

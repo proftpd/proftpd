@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.346 2008-09-25 22:24:53 castaglia Exp $
+ * $Id: main.c,v 1.347 2008-09-30 20:43:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1659,45 +1659,56 @@ void pr_signals_handle(void) {
 
     if (recvd_signal_flags & RECEIVED_SIG_ALRM) {
       recvd_signal_flags &= ~RECEIVED_SIG_ALRM;
+      pr_trace_msg("signal", 9, "handling SIGALRM");
       handle_alarm();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_CHLD) {
       recvd_signal_flags &= ~RECEIVED_SIG_CHLD;
+      pr_trace_msg("signal", 9, "handling SIGCHLD");
       handle_chld();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_EVENT) {
       recvd_signal_flags &= ~RECEIVED_SIG_EVENT;
+
+      /* The "event" signal is SIGUSR2 in proftpd. */
+      pr_trace_msg("signal", 9, "handling SIGUSR2");
       handle_evnt();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_SEGV) {
       recvd_signal_flags &= ~RECEIVED_SIG_SEGV;
+      pr_trace_msg("signal", 9, "handling SIGSEGV");
       handle_terminate_other();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_TERMINATE) {
       recvd_signal_flags &= ~RECEIVED_SIG_TERMINATE;
+      pr_trace_msg("signal", 9, "handling signal %d", term_signo);
       handle_terminate();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_TERM_OTHER) {
       recvd_signal_flags &= ~RECEIVED_SIG_TERM_OTHER;
+      pr_trace_msg("signal", 9, "handling signal %d", term_signo);
       handle_terminate_other();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_XCPU) {
       recvd_signal_flags &= ~RECEIVED_SIG_XCPU;
+      pr_trace_msg("signal", 9, "handling SIGXCPU");
       handle_xcpu();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_ABORT) {
       recvd_signal_flags &= RECEIVED_SIG_ABORT;
+      pr_trace_msg("signal", 9, "handling SIGABRT");
       handle_abort();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_RESTART) {
+      pr_trace_msg("signal", 9, "handling SIGHUP");
 
       /* NOTE: should this be done here, rather than using a schedule? */
       schedule(core_restart_cb, 0, NULL, NULL, NULL, NULL);
@@ -1706,11 +1717,13 @@ void pr_signals_handle(void) {
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_EXIT) {
+      pr_trace_msg("signal", 9, "handling SIGUSR1");
       session_exit(PR_LOG_NOTICE, "Parent process requested shutdown", 0, NULL);
       recvd_signal_flags &= ~RECEIVED_SIG_EXIT;
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_SHUTDOWN) {
+      pr_trace_msg("signal", 9, "handling SIGUSR1");
 
       /* NOTE: should this be done here, rather than using a schedule? */
       schedule(shutdown_exit, 0, NULL, NULL, NULL, NULL);
