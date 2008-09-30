@@ -26,7 +26,7 @@
  * This is mod_dynmasq, contrib software for proftpd 1.2.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dynmasq.c,v 1.4 2008-09-29 16:07:38 castaglia Exp $
+ * $Id: mod_dynmasq.c,v 1.5 2008-09-30 08:00:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -65,7 +65,7 @@ MODRET set_dynmasqrefresh(cmd_rec *cmd) {
 static int dynmasq_update_cb(CALLBACK_FRAME) {
   server_rec *s;
 
-  pr_log_pri(PR_LOG_DEBUG, MOD_DYNMASQ_VERSION
+  pr_log_debug(DEBUG2, MOD_DYNMASQ_VERSION
     ": resolving all MasqueradeAddress directives (could take a little while)");
 
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
