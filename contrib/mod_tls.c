@@ -931,13 +931,16 @@ static void tls_prepare_provider_fds(int stdout_fd, int stderr_fd) {
     tls_log("getrlimit error: %s", strerror(errno));
 
     /* Pick some arbitrary high number. */
-    nfiles = 1024;
+    nfiles = 255;
 
   } else
     nfiles = rlim.rlim_max;
 #else /* no RLIMIT_NOFILE or RLIMIT_OFILE */
-   nfiles = 1024;
+   nfiles = 255;
 #endif
+
+  if (nfiles > 255)
+    nfiles = 255;
 
   /* Close the "non-standard" file descriptors. */
   for (i = 3; i < nfiles; i++)
