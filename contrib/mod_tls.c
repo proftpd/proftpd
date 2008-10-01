@@ -5265,11 +5265,13 @@ static void tls_daemon_exit_ev(const void *event_data, void *user_data) {
 
     res = RAND_write_file(tls_rand_file);
     if (res < 0) {
-      tls_log("error writing PRNG seed data to '%s': %s", tls_rand_file,
+      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+        ": error writing PRNG seed data to '%s': %s", tls_rand_file,
         tls_get_errors());
 
     } else {
-      tls_log("wrote %d bytes of PRNG seed data to '%s'", res, tls_rand_file);
+      pr_log_debug(DEBUG2, MOD_TLS_VERSION
+        ": wrote %d bytes of PRNG seed data to '%s'", res, tls_rand_file);
     }
   }
 }
