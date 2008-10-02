@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.244 2008-09-19 15:39:49 castaglia Exp $
+ * $Id: mod_auth.c,v 1.245 2008-10-02 17:06:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -669,6 +669,8 @@ static int setup_env(pool *p, char *user, char *pass) {
   if (pw->pw_uid == PR_ROOT_UID) {
     unsigned char *root_allow = NULL;
 
+    pr_event_generate("mod_auth.root-login", NULL);
+
     /* If RootLogin is set to true, we allow this... even though we
      * still log a warning. :)
      */
@@ -829,6 +831,8 @@ static int setup_env(pool *p, char *user, char *pass) {
     } else {
       auth_code = PR_AUTH_OK_NO_PASS;
     }
+
+    pr_event_generate("mod_auth.authentication-code", &auth_code);
 
     if (auth_code < 0) {
       /* Normal authentication has failed, see if group authentication
