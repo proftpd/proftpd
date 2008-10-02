@@ -24,9 +24,8 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/*
- * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.245 2008-10-02 17:06:33 castaglia Exp $
+/* Authentication module for ProFTPD
+ * $Id: mod_auth.c,v 1.246 2008-10-02 20:53:39 castaglia Exp $
  */
 
 #include "conf.h"
