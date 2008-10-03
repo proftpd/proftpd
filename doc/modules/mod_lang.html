@@ -1,4 +1,4 @@
-<!-- $Id: mod_lang.html,v 1.4 2008-04-05 01:39:10 castaglia Exp $ -->
+<!-- $Id: mod_lang.html,v 1.5 2008-10-03 23:10:17 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_lang.html,v $ -->
 
 <html>
@@ -22,7 +22,9 @@ sets other than UTF8, for those sites which do no require RFC2640 support, but
 <i>do</i> use character sets other than ASCII.  This module is contained in the
 <code>mod_lang.c</code> file for ProFTPD 1.3.<i>x</i>, and is compiled in
 whenever the <code>--enable-nls</code> configure option is used.  Installation
-instructions are discussed <a href="#Installation">here</a>.
+instructions are discussed <a href="#Installation">here</a>.  Examples
+of using <code>mod_lang</code> for various encodings and character sets can
+be seen <a href="#Usage">here</a>.
 
 <p>
 The most current version of <code>mod_lang</code> can be found in the
@@ -177,11 +179,49 @@ This option causes <code>mod_lang</code> to be compiled into
 <code>proftpd</code>.
 
 <p>
+<hr>
+<h2><a name="Usage">Usage</a></h2>
+
+<p>
+One common request of <code>proftpd</code> is to properly handle Cyrillic
+characters in file and directory names.  The usual character sets which
+contain Cyrillic characters use the same codes as used for Telnet
+control codes, unfortunately.  RFC959 (which defines FTP) mandates that the
+Telnet control codes be supported in FTP implementations.
+
+<p>
+The <code>mod_lang</code> module, however, can be used to deal with this
+situation.  <b><i>If</i></b> the <a href="#UseEncoding">UseEncoding</code></a>
+directive is used to translate between local and client character sets,
+<i>and</i> the client character set is one of the known Cyrillic character
+sets, then <code>proftpd</code> will disable support of the Telnet control
+codes.
+
+<p>
+To make a long explanation short, if you want to use Cyrillic characters
+in paths with <code>proftpd</code>, compile your <code>proftpd</code>
+using the <code>--enable-nls</code> configure option (to enable the use
+of <code>mod_lang</code>), then use something like the following in your
+<code>proftpd.conf</code>:
+<pre>
+  &lt;IfModule mod_lang.c&gt;
+    UseEncoding utf8 cp1251
+  &lt;/IfModule&gt;
+</pre>
+The current list of character sets for which Telnet code support is disabled
+is listed below; the names are <b>not</b> case-sensitive:
+<ul>
+  <li>cp866
+  <li>cp1251
+  <li>iso-8859-1
+  <li>koi8-r
+  <li>windows-1251
+</ul>
+
+<p>
 <hr><br>
-
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2008-04-05 01:39:10 $</i><br>
-
+Last Updated: <i>$Date: 2008-10-03 23:10:17 $</i><br>
 <br><hr>
 
 <font size=2><b><i>
