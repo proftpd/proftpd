@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.327 2008-09-01 21:10:38 castaglia Exp $
+ * $Id: mod_core.c,v 1.328 2008-10-04 23:23:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4687,7 +4687,7 @@ static int core_sess_init(void) {
         if (m->authtable) {
           authtable *authtab;
 
-          /* Twiddle the module's priority field be insertion into the
+          /* Twiddle the module's priority field before insertion into the
            * symbol table, as the insertion operation does so based on that
            * priority.  This has no effect other than during symbol
            * insertion.
