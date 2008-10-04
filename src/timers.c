@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.28 2008-02-17 02:06:47 castaglia Exp $
+ * $Id: timers.c,v 1.29 2008-10-04 05:23:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -52,7 +52,7 @@ struct timer {
 static int _current_timeout = 0;
 static int _total_time = 0;
 static int _sleep_sem = 0;
-static int alarms_blocked = 0,alarm_pending = 0;
+static int alarms_blocked = 0, alarm_pending = 0;
 static xaset_t *timers = NULL;
 static xaset_t *recycled = NULL;
 static xaset_t *free_timers = NULL;
@@ -60,6 +60,8 @@ static int _indispatch = 0;
 static int dynamic_timerno = 1024;
 static unsigned int nalarms = 0;
 static time_t _alarmed_time = 0;
+
+static pool *timer_pool = NULL;
 
 static int timer_cmp(struct timer *t1, struct timer *t2) {
   if (t1->count < t2->count)
@@ -80,7 +82,7 @@ static int process_timers(int elapsed) {
   struct timer *t = NULL, *next = NULL;
 
   if (!recycled)
-    recycled = xaset_create(NULL, NULL);
+    recycled = xaset_create(timer_pool, NULL);
 
   if (!elapsed &&
       !recycled->xas_list) {
@@ -252,7 +254,7 @@ int pr_timer_reset(int timerno, module *mod) {
   pr_alarms_block();
 
   if (!recycled)
-    recycled = xaset_create(NULL, NULL);
+    recycled = xaset_create(timer_pool, NULL);
 
   for (t = (struct timer *) timers->xas_list; t; t = t->next) {
     if (t->timerno == timerno &&
@@ -330,7 +332,7 @@ int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb,
   }
 
   if (!timers)
-    timers = xaset_create(NULL, (XASET_COMPARE) timer_cmp);
+    timers = xaset_create(timer_pool, (XASET_COMPARE) timer_cmp);
 
   /* Check to see that, if specified, the timerno is not already in use. */
   if (timerno != -1) {
@@ -343,21 +345,24 @@ int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb,
   }
 
   if (!free_timers)
-    free_timers = xaset_create(NULL, NULL);
+    free_timers = xaset_create(timer_pool, NULL);
 
   /* Try to use an old timer first */
   pr_alarms_block();
   t = (struct timer *) free_timers->xas_list;
-  if (t != NULL)
+  if (t != NULL) {
     xaset_remove(free_timers, (xasetmember_t *) t);
 
-  else
-    /* XXX The Timer API uses the permanent pool when it should be using
-     * its own subpool.
-     */
+  } else {
+
+    if (timer_pool == NULL) {
+      timer_pool = make_sub_pool(permanent_pool);
+      pr_pool_tag(timer_pool, "Timer Pool");
+    }
 
     /* Must allocate a new one */
-    t = palloc(permanent_pool, sizeof(struct timer));
+    t = palloc(timer_pool, sizeof(struct timer));
+  }
 
   if (timerno == -1) {
     /* Dynamic timer */
@@ -379,7 +384,7 @@ int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb,
 
   if (_indispatch) {
     if (!recycled)
-      recycled = xaset_create(NULL, NULL);
+      recycled = xaset_create(timer_pool, NULL);
     xaset_insert(recycled, (xasetmember_t *) t);
 
   } else {
@@ -463,5 +468,12 @@ void timers_init(void) {
   recycled = NULL;
   free_timers = NULL;
 
- return;
+  /* Reset the timer pool. */
+  if (timer_pool)
+    destroy_pool(timer_pool);
+
+  timer_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(timer_pool, "Timer Pool");
+
+  return;
 }
