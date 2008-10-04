@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.32 2008-06-14 02:40:04 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.33 2008-10-04 05:03:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -87,6 +87,23 @@ static int respcmp(const void *a, const void *b) {
   return strcmp(*((char **) a), *((char **) b));
 }
 
+static pr_ctrls_t *mem_ctrl = NULL;
+
+static void mem_printf(const char *fmt, ...) {
+  char buf[PR_TUNABLE_BUFFER_SIZE];
+  va_list msg;
+
+  memset(buf, '\0', sizeof(buf)); 
+
+  va_start(msg, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, msg);
+  va_end(msg);
+ 
+  buf[sizeof(buf)-1] = '\0';
+ 
+  pr_ctrls_add_response(mem_ctrl, "pool: %s", buf);
+}
+
 /* Controls handlers
  */
 
@@ -124,6 +141,24 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
     pr_log_setdebuglevel(level);
     ctrls_log(MOD_CTRLS_ADMIN_VERSION, "debug: level set to %d", level);
     pr_ctrls_add_response(ctrl, "debug level set to %d", level);
+
+#ifdef PR_USE_DEVEL
+  /* Handle 'debug memory' requests */
+  } else if (strcmp(reqargv[0], "mem") == 0 ||
+             strcmp(reqargv[0], "memory") == 0) {
+
+    if (reqargc != 1) {
+      pr_ctrls_add_response(ctrl, "debug: too many parameters");
+      return -1;
+    }
+
+    mem_ctrl = ctrl;
+    pr_pool_debug_memory(mem_printf);
+    mem_ctrl = NULL;
+
+    ctrls_log(MOD_CTRLS_ADMIN_VERSION, "debug: dumped memory info");
+
+#endif /* PR_USE_DEVEL */
 
   } else {
     pr_ctrls_add_response(ctrl, "unknown debug action: '%s'", reqargv[0]);
