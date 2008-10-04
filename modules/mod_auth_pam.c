@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_pam -- Support for PAM-style authentication.
  * Copyright (c) 1998, 1999, 2000 Habeeb J. Dihu aka
  *   MacGyver <macgyver@tos.net>, All Rights Reserved.
- * Copyright 2000-2007 The ProFTPD Project
+ * Copyright 2000-2008 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.19 2007-12-31 21:37:19 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.20 2008-10-04 23:55:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -535,12 +535,13 @@ MODRET set_authpamoptions(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strcmp(cmd->argv[i], "NoTTY") == 0)
+    if (strcasecmp(cmd->argv[i], "NoTTY") == 0) {
       opts |= AUTH_PAM_OPT_NO_TTY;
 
-    else
+    } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown AuthPAMOption: '",
         cmd->argv[i], "'", NULL));
+    }
   }
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
