@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.139 2008-09-17 21:45:53 castaglia Exp $
+ * $Id: mod_sql.c,v 1.140 2008-10-04 01:10:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1619,7 +1619,7 @@ MODRET sql_pre_dele(cmd_rec *cmd) {
 }
 
 MODRET sql_pre_pass(cmd_rec *cmd) {
-  config_rec *c = NULL, *anon_config = NULL;
+  config_rec *c = NULL;
   char *user = NULL;
 
   if (cmap.engine == 0)
@@ -1628,21 +1628,27 @@ MODRET sql_pre_pass(cmd_rec *cmd) {
   sql_log(DEBUG_FUNC, "%s", ">>> sql_pre_pass");
 
   user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
-  if (!user) {
-    sql_log(DEBUG_FUNC, "%s", "Missing user name, skipping");
-    sql_log(DEBUG_FUNC, "%s", "<<< sql_pre_pass");
-    return PR_DECLINED(cmd);
+  if (user) {
+    config_rec *anon_config;
+
+    /* Use the looked-up user name to determine whether this is to be
+     * an anonymous session.
+     */
+    anon_config = pr_auth_get_anon_config(cmd->pool, &user, NULL, NULL);
+
+    c = find_config(anon_config ? anon_config->subset : main_server->conf,
+      CONF_PARAM, "SQLEngine", FALSE);
+    if (c) {
+      cmap.engine = *((int *) c->argv[0]);
+    }
+
+  } else {
+    /* Just assume the vhost config. */
+    c = find_config(main_server->conf, CONF_PARAM, "SQLEngine", FALSE);
+    if (c) {
+      cmap.engine = *((int *) c->argv[0]);
+    }
   }
-
-  /* Use the looked-up user name to determine whether this is to be
-   * an anonymous session.
-   */
-  anon_config = pr_auth_get_anon_config(cmd->pool, &user, NULL, NULL);
-
-  c = find_config(anon_config ? anon_config->subset : main_server->conf,
-    CONF_PARAM, "SQLEngine", FALSE);
-  if (c)
-    cmap.engine = *((int *) c->argv[0]);
 
   sql_log(DEBUG_FUNC, "%s", "<<< sql_pre_pass");
   return PR_DECLINED(cmd);
