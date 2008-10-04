@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003 The ProFTPD Project team
+ * Copyright (c) 2003-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Class routines
- * $Id: class.c,v 1.7 2008-06-05 04:13:38 castaglia Exp $
+ * $Id: class.c,v 1.8 2008-10-04 05:43:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -190,6 +190,8 @@ int pr_class_open(pool *p, const char *name) {
    * be allocated.
    */
   cls_pool = make_sub_pool(p);
+  pr_pool_tag(cls_pool, "<Class> Pool");
+
   cls = pcalloc(cls_pool, sizeof(pr_class_t));
   cls->cls_pool = cls_pool;
   cls->cls_name = pstrdup(cls->cls_pool, name);
