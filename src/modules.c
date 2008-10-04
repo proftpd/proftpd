@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.55 2008-06-14 00:27:54 castaglia Exp $
+ * $Id: modules.c,v 1.56 2008-10-04 04:53:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -73,10 +73,15 @@ static struct stash *sym_alloc(void) {
   pool *sub_pool;
   struct stash *sym;
 
-  sub_pool = make_sub_pool(symbol_pool);
+  /* XXX Use a smaller pool size, since there are lots of sub-pools allocated
+   * for Stash symbols.  The default pool size (PR_TUNABLE_POOL_SIZE, 512
+   * by default) is a bit large for symbols.
+   */
+  sub_pool = pr_pool_create_sz(symbol_pool, 128);
+
   sym = pcalloc(sub_pool, sizeof(struct stash));
   sym->sym_pool = sub_pool; 
-  pr_pool_tag(sub_pool, "symbol subpool");
+  pr_pool_tag(sub_pool, "symbol");
 
   return sym;
 }
