@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.348 2008-10-04 05:00:21 castaglia Exp $
+ * $Id: main.c,v 1.349 2008-10-04 17:14:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2432,8 +2432,6 @@ static void standalone_main(void) {
     daemonize();
   }
 
-  mpid = getpid();
-
   PRIVS_ROOT
   pr_delete_scoreboard();
   if ((res = pr_open_scoreboard(O_RDWR)) < 0) {
@@ -2867,6 +2865,8 @@ int main(int argc, char *argv[], char **envp) {
     exit(0);
   }
 
+  mpid = getpid();
+
   /* Initialize sub-systems */
   init_pools();
   init_regexp();
@@ -3020,6 +3020,10 @@ int main(int argc, char *argv[], char **envp) {
       break;
 
     case SERVER_INETD:
+      /* Reset the variable containing the pid of the master/daemon process;
+       * it should only be non-zero in the case of standalone daemons.
+       */
+      mpid = 0;
       inetd_main();
       break;
   }

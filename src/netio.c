@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.34 2008-09-20 20:18:28 castaglia Exp $
+ * $Id: netio.c,v 1.35 2008-10-04 17:14:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1154,6 +1154,8 @@ int pr_unregister_netio(int strm_types) {
   return 0;
 }
 
+extern pid_t mpid;
+
 pr_netio_t *pr_alloc_netio(pool *parent_pool) {
   pr_netio_t *netio = NULL;
   pool *netio_pool = NULL;
@@ -1164,6 +1166,22 @@ pr_netio_t *pr_alloc_netio(pool *parent_pool) {
   }
 
   netio_pool = make_sub_pool(parent_pool);
+
+  /* If this is the daemon process, we are allocating a sub-pool from the
+   * permanent_pool.  You might wonder why the daemon process needs netio
+   * objects.  It doesn't, really -- but it's for use by all of the session
+   * processes that will be forked.  They will be able to reuse the memory
+   * already allocated for the main ctrl/data/other netios, as is.
+   *
+   * This being the case, we should label the sub-pool accordingly.
+   */
+  if (mpid == getpid()) {
+    pr_pool_tag(netio_pool, "Shared Netio Pool");
+
+  } else {
+    pr_pool_tag(netio_pool, "netio pool");
+  }
+
   netio = pcalloc(netio_pool, sizeof(pr_netio_t));
   netio->pool = netio_pool;
 
