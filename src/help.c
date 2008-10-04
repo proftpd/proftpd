@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2007 The ProFTPD Project team
+ * Copyright (c) 2004-2008 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,8 @@
  * OpenSSL in the source distribution.
  */
 
-/*
- * HELP management code
- * $Id: help.c,v 1.3 2007-05-24 15:47:47 castaglia Exp $
+/* HELP management code
+ * $Id: help.c,v 1.4 2008-10-04 04:01:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -47,7 +46,7 @@ void pr_help_add(const char *cmd, const char *syntax, int impl) {
   /* If no list has been allocated, create one. */
   if (!help_pool) {
     help_pool = make_sub_pool(permanent_pool);
-    pr_pool_tag(help_pool, "HELP Pool");
+    pr_pool_tag(help_pool, "Help Pool");
     help_list = make_array(help_pool, 0, sizeof(struct help_rec));
   }
 
