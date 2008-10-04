@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.52 2008-10-04 05:01:53 castaglia Exp $
+ * $Id: pool.c,v 1.53 2008-10-04 05:38:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -240,6 +240,21 @@ static unsigned long bytes_in_block_list(union block_hdr *blok) {
   return size;
 }
 
+static unsigned int subpools_in_pool(pool *p) {
+  unsigned int count = 0;
+  pool *iter;
+
+  if (p->sub_pools == NULL)
+    return 0;
+
+  for (iter = p->sub_pools; iter; iter = iter->sub_next) {
+    /* Count one for the current subpool (iter). */
+    count += (subpools_in_pool(iter) + 1);
+  }
+
+  return count;
+}
+
 /* Walk all pools, starting with top level permanent pool, displaying a
  * tree.
  */
@@ -247,19 +262,9 @@ static long walk_pools(pool *p, int level,
     void (*debugf)(const char *, ...)) {
   char _levelpad[80] = "";
   long total = 0;
-  unsigned int sub_pools = 0;
 
   if (!p)
     return 0;
-
-  /* Iterate through the list of subpools first to get a count. */
-  if (p->sub_pools) {
-    pool *iter;
-
-    for (iter = p->sub_pools->sub_next; iter; iter = iter->sub_next) {
-      sub_pools++;
-    }
-  }
 
   if (level > 1) {
     memset(_levelpad, ' ', sizeof(_levelpad)-1);
@@ -282,12 +287,12 @@ static long walk_pools(pool *p, int level,
     if (level == 0) {
       debugf("%s (%lu B, %lu L, %u P)",
         p->tag ? p->tag : "<unnamed>", bytes_in_block_list(p->first),
-        blocks_in_block_list(p->first), sub_pools);
+        blocks_in_block_list(p->first), subpools_in_pool(p));
 
     } else {
       debugf("%s + %s (%lu B, %lu L, %u P)", _levelpad,
         p->tag ? p->tag : "<unnamed>", bytes_in_block_list(p->first),
-        blocks_in_block_list(p->first), sub_pools);
+        blocks_in_block_list(p->first), subpools_in_pool(p));
     }
 
     /* Recurse */
