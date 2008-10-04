@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.140 2008-10-04 01:10:21 castaglia Exp $
+ * $Id: mod_sql.c,v 1.141 2008-10-04 22:15:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -959,21 +959,25 @@ static int _passwdcmp(const void *val1, const void *val2) {
 }
 
 static void show_group(pool *p, struct group *g) {
-  char **member = NULL, *members = "";
+  char *members = "";
 
   if (g == NULL) {
     sql_log(DEBUG_INFO, "%s", "NULL group to show_group()");
     return;
   }
 
-  member = g->gr_mem;
+  if (g->gr_mem != NULL) {
+    char **member;
 
-  while (*member != NULL) {
-    pr_signals_handle();
+    member = g->gr_mem;
 
-    members = pstrcat(p, members, *members ? ", " : "", *member, NULL);
-    member++;
-  } 
+    while (*member != NULL) {
+      pr_signals_handle();
+
+      members = pstrcat(p, members, *members ? ", " : "", *member, NULL);
+      member++;
+    } 
+  }
 
   sql_log(DEBUG_INFO, "+ grp.gr_name : %s", g->gr_name);
   sql_log(DEBUG_INFO, "+ grp.gr_gid  : %lu", (unsigned long) g->gr_gid);
@@ -1284,14 +1288,17 @@ static struct group *_sql_addgroup(cmd_rec *cmd, char *groupname, gid_t gid,
 
     grp->gr_gid = gid;
 
-    /* finish filling in the group */
-    grp->gr_mem = (char **) pcalloc(sql_pool, sizeof(char *) * (ah->nelts + 1));
+    if (ah) {
+      /* finish filling in the group */
+      grp->gr_mem = (char **) pcalloc(sql_pool,
+        sizeof(char *) * (ah->nelts + 1));
 
-    for (cnt = 0; cnt < ah->nelts; cnt++) {
-      grp->gr_mem[cnt] = pstrdup(sql_pool, ((char **) ah->elts)[cnt]);
+      for (cnt = 0; cnt < ah->nelts; cnt++) {
+        grp->gr_mem[cnt] = pstrdup(sql_pool, ((char **) ah->elts)[cnt]);
+      }
+
+      grp->gr_mem[ah->nelts] = '\0';
     }
-
-    grp->gr_mem[ah->nelts] = '\0';
 
     cache_addentry(group_name_cache, grp);
     cache_addentry(group_gid_cache, grp);
