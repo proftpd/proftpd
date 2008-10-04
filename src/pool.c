@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.51 2008-09-08 06:52:06 castaglia Exp $
+ * $Id: pool.c,v 1.52 2008-10-04 05:01:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -113,7 +113,7 @@ static void chk_on_blk_list(union block_hdr *blok, union block_hdr *free_blk,
   while (free_blk) {
     if (free_blk == blok) {
       pr_log_pri(PR_LOG_ERR, "Fatal: DEBUG: Attempt to free already free block "
-       "in pool '%s'", pool_tag ? pool_tag : "(unnamed)");
+       "in pool '%s'", pool_tag ? pool_tag : "<unnamed>");
       exit(1);
     }
 
@@ -218,6 +218,17 @@ pool *global_config_pool = NULL;
 
 #ifdef PR_USE_DEVEL
 
+static unsigned long blocks_in_block_list(union block_hdr *blok) {
+  unsigned long count = 0;
+
+  while (blok) {
+    count++;
+    blok = blok->h.next;
+  }
+
+  return count;
+}
+
 static unsigned long bytes_in_block_list(union block_hdr *blok) {
   unsigned long size = 0;
 
@@ -236,9 +247,19 @@ static long walk_pools(pool *p, int level,
     void (*debugf)(const char *, ...)) {
   char _levelpad[80] = "";
   long total = 0;
+  unsigned int sub_pools = 0;
 
   if (!p)
     return 0;
+
+  /* Iterate through the list of subpools first to get a count. */
+  if (p->sub_pools) {
+    pool *iter;
+
+    for (iter = p->sub_pools->sub_next; iter; iter = iter->sub_next) {
+      sub_pools++;
+    }
+  }
 
   if (level > 1) {
     memset(_levelpad, ' ', sizeof(_levelpad)-1);
@@ -248,19 +269,31 @@ static long walk_pools(pool *p, int level,
       _levelpad[(level - 1) * 3] = '\0';
   }
 
+  /* The emitted message is:
+   *
+   *  <pool-tag> (n B, m L, r P)
+   *
+   * where n is the number of bytes (B), m is the number of allocated blocks
+   * in the pool list (L), and r is the number of sub-pools (P).
+   */
+
   for (; p; p = p->sub_next) {
     total += bytes_in_block_list(p->first);
-    if (level == 0)
-      debugf("%s (%lu bytes)", p->tag ? p->tag : "[none]",
-        bytes_in_block_list(p->first));
+    if (level == 0) {
+      debugf("%s (%lu B, %lu L, %u P)",
+        p->tag ? p->tag : "<unnamed>", bytes_in_block_list(p->first),
+        blocks_in_block_list(p->first), sub_pools);
 
-    else
-      debugf("%s\\- %s (%lu bytes)", _levelpad,
-        p->tag ? p->tag : "[none]", bytes_in_block_list(p->first));
+    } else {
+      debugf("%s + %s (%lu B, %lu L, %u P)", _levelpad,
+        p->tag ? p->tag : "<unnamed>", bytes_in_block_list(p->first),
+        blocks_in_block_list(p->first), sub_pools);
+    }
 
     /* Recurse */
-    if (p->sub_pools)
+    if (p->sub_pools) {
       total += walk_pools(p->sub_pools, level+1, debugf);
+    }
   }
 
   return total;
@@ -271,7 +304,7 @@ static void debug_pool_info(void (*debugf)(const char *, ...)) {
     debugf("Free block list: %lu bytes",
       bytes_in_block_list(block_freelist));
   else
-    debugf("Free block list: EMPTY");
+    debugf("Free block list: empty");
 
   debugf("%u count blocks allocated", stat_malloc);
   debugf("%u count blocks reused", stat_freehit);
