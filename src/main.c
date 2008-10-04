@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.347 2008-09-30 20:43:42 castaglia Exp $
+ * $Id: main.c,v 1.348 2008-10-04 05:00:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -958,6 +958,7 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
     pr_event_generate("core.restart", NULL);
 
     init_log();
+    init_netaddr();
     init_class();
     init_config();
 
