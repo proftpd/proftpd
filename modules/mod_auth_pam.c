@@ -36,7 +36,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.20 2008-10-04 23:55:58 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.21 2008-10-05 01:48:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -106,7 +106,7 @@ static int pam_exchange(num_msg, msg, resp, appdata_ptr)
 
     switch (msg[i]->msg_style) {
     case PAM_PROMPT_ECHO_ON:
-      pr_trace_msg(trace_channel, 9, "received PAM_PROMPT_ECHO_ON response");
+      pr_trace_msg(trace_channel, 9, "received PAM_PROMPT_ECHO_ON message");
 
       /* PAM frees response and resp.  If you don't believe this, please read
        * the actual PAM RFCs as well as have a good look at libpam.
@@ -115,7 +115,7 @@ static int pam_exchange(num_msg, msg, resp, appdata_ptr)
       break;
 
     case PAM_PROMPT_ECHO_OFF:
-      pr_trace_msg(trace_channel, 9, "received PAM_PROMPT_ECHO_OFF response");
+      pr_trace_msg(trace_channel, 9, "received PAM_PROMPT_ECHO_OFF message");
 
       /* PAM frees response and resp.  If you don't believe this, please read
        * the actual PAM RFCs as well as have a good look at libpam.
@@ -125,8 +125,9 @@ static int pam_exchange(num_msg, msg, resp, appdata_ptr)
 
     case PAM_TEXT_INFO:
     case PAM_ERROR_MSG:
-      pr_trace_msg(trace_channel, 9, "received %s response",
-        msg[i]->msg_style == PAM_TEXT_INFO ? "PAM_TEXT_INFO" : "PAM_ERROR_MSG");
+      pr_trace_msg(trace_channel, 9, "received %s response: %s",
+        msg[i]->msg_style == PAM_TEXT_INFO ? "PAM_TEXT_INFO" : "PAM_ERROR_MSG",
+        msg[i]->msg);
 
       /* Ignore it, but pam still wants a NULL response... */
       response[i].resp = NULL;
