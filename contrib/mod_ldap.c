@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.19
+ * mod_ldap v2.8.20-20081006
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.68 2008-09-08 19:51:05 jwm Exp $
+ * $Id: mod_ldap.c,v 1.69 2008-10-06 15:11:53 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -59,7 +59,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.8.19"
+#define MOD_LDAP_VERSION	"mod_ldap/2.8.19-20081006"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001021002
 # error MOD_LDAP_VERSION " requires ProFTPD 1.2.10rc2 or later"
@@ -71,10 +71,6 @@
 
 #include <errno.h>
 #include <ctype.h>     /* isdigit()   */
-#include <stdio.h>     /* snprintf()  */
-#include <string.h>    /* various :-) */
-#include <sys/types.h> /* seteuid()   */
-#include <unistd.h>    /* seteuid()   */
 
 #include <lber.h>
 #include <ldap.h>
@@ -1379,6 +1375,13 @@ set_ldap_server(cmd_rec *cmd)
       CONF_ERROR(cmd, "LDAPServer: must be supplied with a valid LDAP URL.");
     }
 
+    if (find_config(main_server->conf, CONF_PARAM, "LDAPSearchScope", FALSE)) {
+      CONF_ERROR(cmd, "LDAPSearchScope cannot be used when LDAPServer specifies a URL; specify a search scope in the LDAPServer URL instead.");
+    }
+    if (find_config(main_server->conf, CONF_PARAM, "LDAPUseSSL", FALSE)) {
+      CONF_ERROR(cmd, "LDAPUseSSL cannot be used when LDAPServer specifies a URL; specify the desired scheme (ldap:// or ldaps://) in the LDAPServer URL instead.");
+    }
+
 #ifdef LDAP_OPT_X_TLS_HARD
     if (strncasecmp(cmd->argv[1], "ldap:", strlen("ldap:")) != 0 &&
         strncasecmp(cmd->argv[1], "ldaps:", strlen("ldaps:")) != 0) {
@@ -1459,8 +1462,15 @@ set_ldap_querytimeout(cmd_rec *cmd)
 MODRET
 set_ldap_searchscope(cmd_rec *cmd)
 {
+  config_rec *c;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = find_config(main_server->conf, CONF_PARAM, "LDAPServer", FALSE);
+  if (c && ldap_is_ldap_url(c->argv[0])) {
+    CONF_ERROR(cmd, "LDAPSearchScope cannot be used when LDAPServer specifies a URL; specify a search scope in the LDAPServer URL instead.");
+  }
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
@@ -1810,6 +1820,10 @@ set_ldap_usessl(cmd_rec *cmd)
   if (find_config(main_server->conf, CONF_PARAM, "LDAPUseTLS", FALSE)) {
     CONF_ERROR(cmd, "LDAPUseSSL: cannot be used with LDAPUseTLS.");
   }
+  c = find_config(main_server->conf, CONF_PARAM, "LDAPServer", FALSE);
+  if (c && ldap_is_ldap_url(c->argv[0])) {
+    CONF_ERROR(cmd, "LDAPUseSSL cannot be used when LDAPServer specifies a URL; specify the desired scheme (ldap:// or ldaps://) in the LDAPServer URL instead.");
+  }
 
   if ((b = get_boolean(cmd, 1)) == -1) {
     CONF_ERROR(cmd, "LDAPUseSSL: expected a boolean value for first argument.");
@@ -2090,10 +2104,7 @@ ldap_getconf(void)
         ldap_search_scope = url->lud_scope;
       }
 
-      /* We intentionally avoid ldap_free_urldesc()ing url, since it's
-       * attached to the LDAPServer configuration directive and will be used
-       * by other/future callers.
-       */
+      ldap_free_urldesc(url);
     } else {
       ldap_server_url = pstrcat(session.pool,
         "ldap://", c->argv[0], "/", NULL);
