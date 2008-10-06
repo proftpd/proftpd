@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.70 2008-10-06 15:19:08 jwm Exp $
+ * $Id: mod_ldap.c,v 1.71 2008-10-06 15:47:24 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -2119,6 +2119,14 @@ ldap_getconf(void)
   return 0;
 }
 
+static int ldap_mod_init(void) {
+  pr_log_debug(DEBUG2, MOD_LDAP_VERSION
+    ": compiled using LDAP vendor '%s', LDAP API version %lu",
+    LDAP_VENDOR_NAME, (unsigned long) LDAP_API_VERSION);
+
+  return 0;
+}
+
 static conftable ldap_config[] = {
   { "LDAPServer",                          set_ldap_server,               NULL },
   { "LDAPDNInfo",                          set_ldap_dninfo,               NULL },
@@ -2178,6 +2186,7 @@ module ldap_module = {
   ldap_config,         /* Configuration directive table */
   ldap_cmdtab,         /* Command handlers */
   ldap_auth,           /* Authentication handlers */
-  NULL, ldap_getconf,  /* Initialization functions */
+  ldap_mod_init,       /* Initialization functions */
+  ldap_getconf,
   MOD_LDAP_VERSION
 };
