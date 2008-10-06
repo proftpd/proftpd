@@ -36,7 +36,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.21 2008-10-05 01:48:40 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.22 2008-10-06 18:36:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -555,7 +555,13 @@ MODRET set_authpamoptions(cmd_rec *cmd) {
  */
 
 static int auth_pam_sess_init(void) {
-  pr_auth_add_auth_only_module("mod_auth_pam.c");
+  if (pr_auth_add_auth_only_module("mod_auth_pam.c") < 0) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
+      ": unable to add 'mod_auth_pam.c' as an auth-only module: %s",
+      strerror(errno));
+    return -1;
+  }
+
   return 0;
 }
 
