@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.192 2008-06-14 02:40:04 castaglia Exp $
+ * $Id: dirtree.c,v 1.193 2008-10-06 01:44:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -591,8 +591,11 @@ config_rec *add_config_set(xaset_t **set, const char *name) {
     *set = xaset_create(set_pool, NULL);
     (*set)->pool = set_pool;
 
-    /* Now, make a subpool for the config_rec to be allocated. */
-    conf_pool = make_sub_pool(set_pool);
+    /* Now, make a subpool for the config_rec to be allocated.  The default
+     * pool size (PR_TUNABLE_NEW_POOL_SIZE, 512 by default) is a bit large
+     * for config_rec pools; use a smaller size.
+     */
+    conf_pool = pr_pool_create_sz(set_pool, 128);
 
   } else {
 
@@ -600,11 +603,15 @@ config_rec *add_config_set(xaset_t **set, const char *name) {
     if ((*set)->xas_list)
       parent = ((config_rec*)((*set)->xas_list))->parent;
 
-    /* Allocate a subpool for the config_rec from the parent's pool. */
-    conf_pool = make_sub_pool((*set)->pool);
+    /* Now, make a subpool for the config_rec to be allocated.  The default
+     * pool size (PR_TUNABLE_NEW_POOL_SIZE, 512 by default) is a bit large
+     * for config_rec pools; use a smaller size.  Allocate the subpool
+     * from the parent's pool.
+     */
+    conf_pool = pr_pool_create_sz((*set)->pool, 128);
   }
 
-  pr_pool_tag(conf_pool, "config_rec subpool");
+  pr_pool_tag(conf_pool, "config_rec pool");
 
   c = (config_rec *) pcalloc(conf_pool, sizeof(config_rec));
 
