@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.7 2008-08-15 18:18:57 castaglia Exp $
+ * $Id: mod_sql_sqlite.c,v 1.8 2008-10-06 15:54:12 castaglia Exp $
  * $Libraries: -lsqlite3 $
  */
 
@@ -967,7 +967,18 @@ static int sql_sqlite_init(void) {
   pr_event_register(&sql_sqlite_module, "core.module-unload",
     sql_sqlite_mod_unload_ev, NULL);
 
-  pr_log_debug(DEBUG3, MOD_SQL_SQLITE_VERSION ": using %s",
+  /* Check that the SQLite headers used match the version of the SQLite
+   * library used.
+   *
+   * For now, we only log if there is a difference.
+   */
+  if (strcmp(sqlite3_libversion(), SQLITE_VERSION) != 0) {
+    pr_log_pri(PR_LOG_ERR, MOD_SQL_SQLITE_VERSION
+      ": compiled using SQLite version '%s' headers, but linked to "
+      "SQLite version '%s' library", SQLITE_VERSION, sqlite3_libversion());
+  }
+
+  pr_log_debug(DEBUG3, MOD_SQL_SQLITE_VERSION ": using SQLite %s",
     sqlite3_libversion());
 
   return 0;
