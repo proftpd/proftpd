@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.61 2008-06-12 22:57:01 castaglia Exp $
+ * $Id: auth.c,v 1.62 2008-10-06 17:20:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -442,7 +442,6 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
   }
 
   if ((auth_caching & PR_AUTH_CACHE_FL_AUTH_MODULE) &&
-      auth_module_list != NULL &&
       !auth_tab &&
       auth_pool) {
     auth_tab = pr_table_alloc(auth_pool, 0);
@@ -615,6 +614,9 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
 
     for (elt = (struct auth_module_elt *) auth_module_list->xas_list; elt;
         elt = elt->next) {
+
+      pr_trace_msg(trace_channel, 7, "checking with auth-only module '%s'",
+        elt->name);
 
       m = pr_module_get(elt->name);
       if (m) {
@@ -1411,24 +1413,22 @@ int pr_auth_cache_set(int bool, unsigned int flags) {
 int pr_auth_add_auth_only_module(const char *name) {
   struct auth_module_elt *elt = NULL;
 
-  if (!auth_pool) {
-    /* This means that init_auth() has not been called, which probably
-     * means we are not being called in a session process.
-     */
-    errno = EPERM;
-    return -1;
-  }
-
   if (!name) {
     errno = EINVAL;
     return -1;
+  }
+
+  if (!auth_pool) {
+    auth_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(auth_pool, "Auth API");
   }
 
   if (!(auth_caching & PR_AUTH_CACHE_FL_AUTH_MODULE)) {
     /* We won't be using the auth-only module cache, so there's no need to
      * accept this.
      */
-    errno = EACCES;
+    pr_trace_msg(trace_channel, 9, "not adding '%s' to the auth-only list: "
+      "caching of auth-only modules disabled", name);
     return 0;
   }
 
@@ -1455,8 +1455,10 @@ int pr_auth_add_auth_only_module(const char *name) {
 
 /* Internal use only.  To be called in the session process. */
 int init_auth(void) {
-  auth_pool = make_sub_pool(permanent_pool);
-  pr_pool_tag(auth_pool, "Auth API");
+  if (!auth_pool) {
+    auth_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(auth_pool, "Auth API");
+  }
 
   return 0;
 }
