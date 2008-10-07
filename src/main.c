@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.349 2008-10-04 17:14:00 castaglia Exp $
+ * $Id: main.c,v 1.350 2008-10-07 06:17:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2932,7 +2932,7 @@ int main(int argc, char *argv[], char **envp) {
     printf("  Built: %s\n\n", BUILD_STAMP);
 
     modules_list(PR_MODULES_LIST_FL_SHOW_VERSION);
-    end_login(0);
+    exit(0);
   }
 
   /* We're only doing a syntax check of the configuration file. */
