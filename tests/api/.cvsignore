@@ -1,6 +1,6 @@
 check
-tests
-tests.log
+api-tests
+api-tests.log
 *.o
 *~
 .libs

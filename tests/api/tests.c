@@ -118,7 +118,10 @@ int main(int argc, char *argv[]) {
 
   runner = srunner_create(NULL);
 
-  srunner_set_log(runner, "tests.log");
+  /* XXX This log name should be set outside this code, e.g. via environment
+   * variable or command-line option.
+   */
+  srunner_set_log(runner, "api-tests.log");
 
   requested = getenv("PR_TEST_SUITE");
   if (requested) {

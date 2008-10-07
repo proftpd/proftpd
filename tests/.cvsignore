@@ -1,7 +1,7 @@
+api-tests
+api-tests.log
 check
-tests
 Makefile
-tests.log
 *.o
 *~
 .libs
