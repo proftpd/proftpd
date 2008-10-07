@@ -1,0 +1,6 @@
+check
+tests
+tests.log
+*.o
+*~
+.libs
