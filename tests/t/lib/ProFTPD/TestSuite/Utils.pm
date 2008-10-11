@@ -86,6 +86,36 @@ sub config_write {
   $config->{User} = $user_name;
   $config->{Group} = $group_name;
 
+  # Set a bunch of defaults, unless overridden by the caller
+
+  unless (defined($config->{DefaultAddress})) {
+    $config->{DefaultAddress} = '127.0.0.1';
+  }
+
+  unless (defined($config->{DefaultServer})) {
+    $config->{DefaultServer} = 'on';
+  }
+
+  unless (defined($config->{IdentLookups})) {
+    $config->{IdentLookups} = 'off';
+  }
+
+  unless (defined($config->{ServerType})) {
+    $config->{ServerType} = 'standalone';
+  }
+
+  unless (defined($config->{TransferLog})) {
+    $config->{TransferLog} = 'none';
+  }
+
+  unless (defined($config->{UseReverseDNS})) {
+    $config->{UseReverseDNS} = 'off';
+  }
+
+  unless (defined($config->{WtmpLog})) {
+    $config->{WtmpLog} = 'off';
+  }
+
   my $abs_path = File::Spec->rel2abs($path);
 
   if (open(my $fh, "> $abs_path")) {
@@ -217,6 +247,9 @@ sub server_start {
   if ($debug_level) {
     $cmd .= " -d $debug_level";
 
+  } elsif ($ENV{TEST_VERBOSE}) {
+    $cmd .= " -d 10";
+
   } else {
     $cmd .= " > /dev/null 2>&1";
   }
@@ -257,6 +290,29 @@ sub testsuite_get_runnable_tests {
   my $tests = shift;
   return undef unless $tests;
 
+  # Special handling of the 'rootprivs' test class: unless we are running
+  # as root, we should exclude those test cases.
+  unless ($< == 0) {
+    my $skip_tests = [];
+    foreach my $test (keys(%$tests)) {
+      my $ok = 1;
+      foreach my $test_class (@{ $tests->{$test}->{test_class} }) {
+        if ($test_class eq 'rootprivs') {
+          $ok = 0;
+          last;
+        }
+      }
+
+      unless ($ok) {
+        push(@$skip_tests, $test);
+      }
+    }
+ 
+    foreach my $skip_test (@$skip_tests) {
+      delete($tests->{$skip_test});
+    }
+  }
+ 
   my $runnables = [];
 
   if (defined($ENV{PROFTPD_TEST_ENABLE_CLASS})) {

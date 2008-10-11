@@ -18,12 +18,17 @@ my $order = 0;
 my $TESTS = {
   login_plaintext_fails => {
     order => ++$order,
-    test_class => qw(forking),
+    test_class => [qw(forking)],
   },
 
   login_anonymous_ok => {
     order => ++$order,
-    test_class => qw(forking),
+    test_class => [qw(forking rootprivs)],
+  },
+
+  login_anonymous_fails => {
+    order => ++$order,
+    test_class => [qw(forking)],
   },
 };
 
@@ -60,16 +65,12 @@ sub login_plaintext_fails {
   my $config_file = 'tmp/login.conf';
   my $pid_file = File::Spec->rel2abs('tmp/login.pid');
   my $scoreboard_file = File::Spec->rel2abs('tmp/login.scoreboard');
+  my $log_file = File::Spec->rel2abs("login.log");
 
   my $config = {
-    DefaultAddress => '127.0.0.1',
-    DefaultServer => 'on',
-    IdentLookups => 'off',
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
-    ServerType => 'standalone',
-    UseReverseDNS => 'off',
-    WtmpLog => 'off',
+    SystemLog => $log_file,
 
     IfModules => {
       'mod_delay.c' => {
@@ -127,6 +128,7 @@ sub login_plaintext_fails {
   server_stop($pid_file);
 
   $self->assert_child_ok($pid);
+  unlink($log_file);
 }
 
 sub login_anonymous_ok {
@@ -135,20 +137,16 @@ sub login_anonymous_ok {
   my $config_file = 'tmp/login.conf';
   my $pid_file = File::Spec->rel2abs('tmp/login.pid');
   my $scoreboard_file = File::Spec->rel2abs('tmp/login.scoreboard');
+  my $log_file = File::Spec->rel2abs('login.log');
 
   my $anon_dir = File::Spec->rel2abs('tmp');
 
   my ($config_user, $config_group) = config_get_identity();
 
   my $config = {
-    DefaultAddress => '127.0.0.1',
-    DefaultServer => 'on',
-    IdentLookups => 'off',
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
-    ServerType => 'standalone',
-    UseReverseDNS => 'off',
-    WtmpLog => 'off',
+    SystemLog => $log_file,
 
     IfModules => {
       'mod_delay.c' => {
@@ -160,7 +158,92 @@ sub login_anonymous_ok {
       $anon_dir => {
         User => $config_user,
         Group => $config_group,
-        UserAlias => 'anonymous $config_user',
+        UserAlias => "anonymous $config_user",
+        RequireValidShell => 'off',
+      },
+    },
+  };
+
+  my ($port, $user, $group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($readh, $writeh);
+  unless (pipe($readh, $writeh)) {
+    die("Can't open pipe: $!");
+  }
+
+  $writeh->autoflush(1);
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+    # In parent process, login anonymously to server using a plaintext password
+    # which SHOULD work.
+    eval { $client->login('anonymous', 'ftp@nospam.org') };
+    if ($@) {
+      print $writeh "done\n";
+      die("Failed to log in anonymously: $@");
+    }
+
+    print $writeh "done\n";
+
+  } else {
+    # Start server
+    server_start($config_file);
+
+    # Wait until we receive word from the child that it has finished its
+    # test.
+    while (my $msg = <$readh>) {
+      chomp($msg);
+
+      if ($msg eq 'done') {
+        last;
+      }
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+  unlink($log_file);
+}
+
+sub login_anonymous_fails {
+  my $self = shift;
+
+  my $config_file = 'tmp/login.conf';
+  my $pid_file = File::Spec->rel2abs('tmp/login.pid');
+  my $scoreboard_file = File::Spec->rel2abs('tmp/login.scoreboard');
+  my $log_file = File::Spec->rel2abs('login.log');
+
+  my $anon_dir = File::Spec->rel2abs('tmp');
+
+  my ($config_user, $config_group) = config_get_identity();
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+
+    Anonymous => {
+      $anon_dir => {
+        User => $config_user,
+        Group => $config_group,
+        UserAlias => "anonymous $config_user",
         RequireValidShell => 'off',
       },
     },
@@ -189,7 +272,7 @@ sub login_anonymous_ok {
     eval { $client->login('anonymous', 'ftp@nospam.org') };
     unless ($@) {
       print $writeh "done\n";
-      die("Logged in unexpectedly");
+      die("Unexpectedly logged in anonymously");
     }
 
     print $writeh "done\n";
@@ -215,6 +298,7 @@ sub login_anonymous_ok {
   server_stop($pid_file);
 
   $self->assert_child_ok($pid);
+  unlink($log_file);
 }
 
 1;
