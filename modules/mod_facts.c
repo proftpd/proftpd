@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.8 2008-09-01 19:05:04 castaglia Exp $
+ * $Id: mod_facts.c,v 1.9 2008-10-11 15:58:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -531,7 +531,7 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
     return -1;
   }
 
-  tvs[1].tv_usec = tvs[1].tv_usec = 0;
+  tvs[0].tv_usec = tvs[1].tv_usec = 0;
   tvs[0].tv_sec = tvs[1].tv_sec = facts_mktime(year, month, day, hour, min,
     sec);
 
