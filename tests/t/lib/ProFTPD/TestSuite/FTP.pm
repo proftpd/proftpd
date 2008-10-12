@@ -80,4 +80,54 @@ sub pwd {
   }
 }
 
+sub xpwd {
+  my $self = shift;
+
+  unless ($self->{ftp}->quot('XPWD')) {
+    croak("XPWD command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub cwd {
+  my $self = shift;
+  my $dir = shift;
+
+  unless ($self->{ftp}->cwd($dir)) {
+    croak("CWD command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub xcwd {
+  my $self = shift;
+  my $dir = shift;
+
+  unless ($self->{ftp}->quot('XCWD', $dir)) {
+    croak("XCWD command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
 1;

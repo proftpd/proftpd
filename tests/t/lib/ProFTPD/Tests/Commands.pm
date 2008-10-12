@@ -20,6 +20,21 @@ my $TESTS = {
     order => ++$order,
     test_class => [qw(forking)],
   },
+
+  cmds_xpwd => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  cmds_cwd => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  cmds_xcwd => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
 };
 
 sub new {
@@ -121,17 +136,374 @@ sub cmds_pwd {
       my $expected;
 
       $expected = 257;
-      $self->assert_equals($expected, $resp_code);
+      $self->assert($expected == $resp_code,
+        "Expected $expected, got $resp_code");
 
       $expected = "\"$home_dir\" is the current directory";
-      $self->assert_str_equals($expected, $resp_msg);
+      chomp($resp_msg);
+      $self->assert($expected eq $resp_msg,
+        "Expected '$expected', got '$resp_msg'");
     };
-
-    print $writeh "done\n";
 
     if ($@) {
       $ex = $@;
     }
+
+    print $writeh "done\n";
+
+  } else {
+    # Start server
+    server_start($config_file);
+
+    # Wait until we receive word from the child that it has finished its
+    # test.
+    while (my $msg = <$readh>) {
+      chomp($msg);
+
+      if ($msg eq 'done') {
+        last;
+      }
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub cmds_xpwd {
+  my $self = shift;
+
+  my $config_file = 'tmp/cmds.conf';
+  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
+  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
+  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs('tmp');
+
+  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($readh, $writeh);
+  unless (pipe($readh, $writeh)) {
+    die("Can't open pipe: $!");
+  }
+
+  $writeh->autoflush(1);
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      # In parent process, login and send the PWD command.
+      eval { $client->login($user, $passwd) };
+      if ($@) {
+        print $writeh "done\n";
+        die("Failed to log in: $@");
+      }
+
+      my ($resp_code, $resp_msg);
+      eval { ($resp_code, $resp_msg) = $client->xpwd() };
+      if ($@) {
+        print $writeh "done\n";
+        die("Failed to XPWD: $@");
+      }
+
+      my $expected;
+
+      $expected = 257;
+      $self->assert($expected == $resp_code,
+        "Expected $expected, got $resp_code");
+
+      $expected = "\"$home_dir\" is the current directory";
+      chomp($resp_msg);
+      $self->assert($expected eq $resp_msg,
+        "Expected '$expected', got '$resp_msg'");
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    print $writeh "done\n";
+
+  } else {
+    # Start server
+    server_start($config_file);
+
+    # Wait until we receive word from the child that it has finished its
+    # test.
+    while (my $msg = <$readh>) {
+      chomp($msg);
+
+      if ($msg eq 'done') {
+        last;
+      }
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub cmds_cwd {
+  my $self = shift;
+
+  my $config_file = 'tmp/cmds.conf';
+  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
+  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
+  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs('tmp');
+
+  my $sub_dir = File::Spec->rel2abs('tmp/foo');
+  mkpath($sub_dir);
+  
+  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($readh, $writeh);
+  unless (pipe($readh, $writeh)) {
+    die("Can't open pipe: $!");
+  }
+
+  $writeh->autoflush(1);
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      # In parent process, login and send the PWD command.
+      eval { $client->login($user, $passwd) };
+      if ($@) {
+        print $writeh "done\n";
+        die("Failed to log in: $@");
+      }
+
+      my ($resp_code, $resp_msg);
+      eval { ($resp_code, $resp_msg) = $client->cwd($sub_dir) };
+      if ($@) {
+        print $writeh "done\n";
+        die("Failed to CWD: $@");
+      }
+
+      my $expected;
+
+      $expected = 250;
+      $self->assert($expected == $resp_code,
+        "Expected $expected, got $resp_code");
+
+      $expected = "CWD command successful";
+      chomp($resp_msg);
+      $self->assert($expected eq $resp_msg,
+        "Expected '$expected', got '$resp_msg'");
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    print $writeh "done\n";
+
+  } else {
+    # Start server
+    server_start($config_file);
+
+    # Wait until we receive word from the child that it has finished its
+    # test.
+    while (my $msg = <$readh>) {
+      chomp($msg);
+
+      if ($msg eq 'done') {
+        last;
+      }
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub cmds_xcwd {
+  my $self = shift;
+
+  my $config_file = 'tmp/cmds.conf';
+  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
+  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
+  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs('tmp');
+
+  my $sub_dir = File::Spec->rel2abs('tmp/foo');
+  mkpath($sub_dir);
+  
+  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($readh, $writeh);
+  unless (pipe($readh, $writeh)) {
+    die("Can't open pipe: $!");
+  }
+
+  $writeh->autoflush(1);
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      # In parent process, login and send the PWD command.
+      eval { $client->login($user, $passwd) };
+      if ($@) {
+        print $writeh "done\n";
+        die("Failed to log in: $@");
+      }
+
+      my ($resp_code, $resp_msg);
+      eval { ($resp_code, $resp_msg) = $client->xcwd($sub_dir) };
+      if ($@) {
+        print $writeh "done\n";
+        die("Failed to XCWD: $@");
+      }
+
+      my $expected;
+
+      $expected = 250;
+      $self->assert($expected == $resp_code,
+        "Expected $expected, got $resp_code");
+
+      $expected = "XCWD command successful";
+      chomp($resp_msg);
+      $self->assert($expected eq $resp_msg,
+        "Expected '$expected', got '$resp_msg'");
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    print $writeh "done\n";
 
   } else {
     # Start server
