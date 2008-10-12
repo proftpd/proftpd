@@ -62,9 +62,10 @@ sub cmds_pwd {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs('tmp');
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500,
-    File::Spec->rel2abs('tmp'), '/bin/bash');
+  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+    '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', 500, $user);
 
   my $config = {
@@ -94,31 +95,43 @@ sub cmds_pwd {
 
   $writeh->autoflush(1);
 
-  my $error;
+  my $ex;
 
   # Fork child
   $self->handle_sigchld();
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
-    my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-    # In parent process, login and send the PWD command.
-    eval { $client->login($user, $passwd) };
-    if ($@) {
-      print $writeh "done\n";
-      $error = "Failed to log in: $@";
-    }
+      # In parent process, login and send the PWD command.
+      eval { $client->login($user, $passwd) };
+      if ($@) {
+        print $writeh "done\n";
+        die("Failed to log in: $@");
+      }
 
-    unless ($error) {
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->pwd() };
       if ($@) {
         print $writeh "done\n";
-        $error = "Failed to PWD: $@";
+        die("Failed to PWD: $@");
       }
-    }
- 
+
+      my $expected;
+
+      $expected = 257;
+      $self->assert_equals($expected, $resp_code);
+
+      $expected = "\"$home_dir\" is the current directory";
+      $self->assert_str_equals($expected, $resp_msg);
+    };
+
     print $writeh "done\n";
+
+    if ($@) {
+      $ex = $@;
+    }
 
   } else {
     # Start server
@@ -142,8 +155,8 @@ sub cmds_pwd {
 
   $self->assert_child_ok($pid);
 
-  if ($error) {
-    die($error);
+  if ($ex) {
+    die($ex);
   }
 
   unlink($log_file);
