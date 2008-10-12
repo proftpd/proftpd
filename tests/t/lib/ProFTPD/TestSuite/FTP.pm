@@ -130,4 +130,53 @@ sub xcwd {
   }
 }
 
+sub cdup {
+  my $self = shift;
+  my $dir = shift;
+
+  unless ($self->{ftp}->cdup()) {
+    croak("CDUP command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub xcup {
+  my $self = shift;
+
+  unless ($self->{ftp}->quot('XCUP')) {
+    croak("XCUP command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub syst {
+  my $self = shift;
+
+  unless ($self->{ftp}->quot('SYST')) {
+    croak("SYST command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
 1;

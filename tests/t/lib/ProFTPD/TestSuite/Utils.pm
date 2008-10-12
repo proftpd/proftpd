@@ -30,19 +30,24 @@ our @RUNNING = qw(
   server_stop
 );
 
+our @TEST = qw(
+  test_msg
+);
+
 our @TESTSUITE = qw(
   testsuite_empty_test
   testsuite_get_runnable_tests
   testsuite_get_tmp_dir
 );
 
-our @EXPORT_OK = (@AUTH, @CONFIG, @MODULE, @RUNNING, @TESTSUITE);
+our @EXPORT_OK = (@AUTH, @CONFIG, @MODULE, @RUNNING, @TEST, @TESTSUITE);
 
 our %EXPORT_TAGS = (
   auth => [@AUTH],
   config => [@CONFIG],
   module => [@MODULE],
   running => [@RUNNING],
+  test => [@TEST],
   testsuite => [@TESTSUITE],
 );
 
@@ -402,6 +407,14 @@ sub server_stop {
   }
 
   `$cmd`;
+}
+
+sub test_msg {
+  my $msg = shift;
+
+  my ($pkg, $file, $lineno) = caller();
+
+  return "$msg (at $file:$lineno)";
 }
 
 sub testsuite_empty_test {

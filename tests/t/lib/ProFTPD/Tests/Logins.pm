@@ -91,18 +91,26 @@ sub login_plaintext_fails {
 
   $writeh->autoflush(1);
 
+  my $ex;
+
   # Fork child
   $self->handle_sigchld();
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
-    my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-    # In parent process, login to server using a plaintext password which
-    # should NOT work.
-    eval { $client->login('daemon', '*') };
-    unless ($@) {
-      print $writeh "done\n";
-      die("Logged in unexpectedly");
+      # In parent process, login to server using a plaintext password which
+      # should NOT work.
+      eval { $client->login('daemon', '*') };
+      unless ($@) {
+        print $writeh "done\n";
+        die("Logged in unexpectedly");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
     }
 
     print $writeh "done\n";
@@ -128,6 +136,11 @@ sub login_plaintext_fails {
   server_stop($pid_file);
 
   $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
   unlink($log_file);
 }
 
@@ -176,18 +189,26 @@ sub login_anonymous_ok {
 
   $writeh->autoflush(1);
 
+  my $ex;
+
   # Fork child
   $self->handle_sigchld();
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
-    my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-    # In parent process, login anonymously to server using a plaintext password
-    # which SHOULD work.
-    eval { $client->login('anonymous', 'ftp@nospam.org') };
+      # In parent process, login anonymously to server using a plaintext
+      # password which SHOULD work.
+      eval { $client->login('anonymous', 'ftp@nospam.org') };
+      if ($@) {
+        print $writeh "done\n";
+        die("Failed to log in anonymously: $@");
+      }
+    };
+
     if ($@) {
-      print $writeh "done\n";
-      die("Failed to log in anonymously: $@");
+      $ex = $@;
     }
 
     print $writeh "done\n";
@@ -213,6 +234,11 @@ sub login_anonymous_ok {
   server_stop($pid_file);
 
   $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
   unlink($log_file);
 }
 
@@ -261,18 +287,26 @@ sub login_anonymous_fails {
 
   $writeh->autoflush(1);
 
+  my $ex;
+
   # Fork child
   $self->handle_sigchld();
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
-    my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-    # In parent process, login anonymously to server using a plaintext password
-    # which SHOULD work.
-    eval { $client->login('anonymous', 'ftp@nospam.org') };
-    unless ($@) {
-      print $writeh "done\n";
-      die("Unexpectedly logged in anonymously");
+      # In parent process, login anonymously to server using a plaintext
+      # password which SHOULD work.
+      eval { $client->login('anonymous', 'ftp@nospam.org') };
+      unless ($@) {
+        print $writeh "done\n";
+        die("Unexpectedly logged in anonymously");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
     }
 
     print $writeh "done\n";
@@ -298,6 +332,11 @@ sub login_anonymous_fails {
   server_stop($pid_file);
 
   $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
   unlink($log_file);
 }
 
