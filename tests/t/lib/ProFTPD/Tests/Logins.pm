@@ -202,8 +202,9 @@ sub login_anonymous_ok {
       # password which SHOULD work.
       eval { $client->login('anonymous', 'ftp@nospam.org') };
       if ($@) {
+        my $err = $@;
         print $writeh "done\n";
-        die("Failed to log in anonymously: $@");
+        die("Failed to log in anonymously: $err");
       }
     };
 

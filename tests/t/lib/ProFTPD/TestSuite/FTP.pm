@@ -44,6 +44,16 @@ sub new {
   return $self;
 }
 
+sub response_code {
+  my $self = shift;
+  return $self->{ftp}->code;
+}
+
+sub response_msg {
+  my $self = shift;
+  return $self->{ftp}->message;
+}
+
 sub login {
   my $self = shift;
   my $user = shift;
