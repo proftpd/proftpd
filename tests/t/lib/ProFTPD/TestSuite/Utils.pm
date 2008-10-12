@@ -10,6 +10,11 @@ use IO::Socket::INET;
 require Exporter;
 our @ISA = qw(Exporter);
 
+our @AUTH = qw(
+  auth_group_write
+  auth_user_write
+);
+
 our @CONFIG = qw(
   config_get_identity
   config_write
@@ -31,9 +36,10 @@ our @TESTSUITE = qw(
   testsuite_get_tmp_dir
 );
 
-our @EXPORT_OK = (@CONFIG, @MODULE, @RUNNING, @TESTSUITE);
+our @EXPORT_OK = (@AUTH, @CONFIG, @MODULE, @RUNNING, @TESTSUITE);
 
 our %EXPORT_TAGS = (
+  auth => [@AUTH],
   config => [@CONFIG],
   module => [@MODULE],
   running => [@RUNNING],
@@ -63,6 +69,85 @@ sub get_high_numbered_port {
   return $port;
 }
 
+sub get_passwd {
+  my $user_passwd = shift;
+
+  # First, try to use MD5 hashing for passwords
+  my $md5_salt = '$1$' . join('', (0..9, 'A'..'Z', 'a'..'z')[rand(62), rand(62), rand(62), rand(62), rand(62), rand(62), rand(62), rand(62)]);
+
+  my $hash = crypt($user_passwd, $md5_salt);
+
+  # If the first three characters of the hash are not "$1$", the crypt()
+  # implementation doesn't support MD5.  Some crypt()s will happily use
+  # "$1" as a salt even though this is not a valid DES salt.  Humf.
+
+  my @string = split('', $hash);
+  my $prefix = $string[0] . $string[1] . $string[2];
+
+  if ($prefix ne '$1$') {
+    # OK, fall back to using a DES hash.
+    my $des_salt = join('', ('.', '/', 0..9, 'A'..'Z', 'a'..'z')[rand(64), rand(64)]);
+
+    $hash = crypt($user_passwd, $des_salt);
+  }
+
+  return $hash;
+
+}
+
+sub auth_group_write {
+  my $group_file = shift;
+  croak("Missing group file argument") unless $group_file;
+  my $group_name = shift;
+  croak("Missing group name argument") unless $group_name;
+  my $group_id = shift;
+  croak("Missing group ID argument") unless $group_id;
+
+  my @member_names = @_;
+
+  if (open(my $fh, "> $group_file")) {
+    print $fh "$group_name:*:$group_id:" . join(',', @member_names) . "\n";
+
+    unless (close($fh)) {
+      croak("Can't write $group_file: $!");
+    }
+
+  } else {
+    croak("Can't open $group_file: $!");
+  }
+}
+
+sub auth_user_write {
+  my $user_file = shift;
+  croak("Missing user file argument") unless $user_file;
+  my $user_name = shift;
+  croak("Missing user name argument") unless $user_name;
+  my $user_passwd = shift;
+  croak("Missing user password argument") unless $user_passwd;
+  my $user_id = shift;
+  croak("Missing user ID argument") unless $user_id;
+  my $group_id = shift;
+  croak("Missing group ID argument") unless $group_id;
+  my $home = shift;
+  croak("Missing home directory argument") unless $home;
+  my $shell = shift;
+  croak("Missing shell argument") unless $shell;
+
+  my $passwd = get_passwd($user_passwd);
+
+  if (open(my $fh, "> $user_file")) {
+    print $fh join(':', ($user_name, $passwd, $user_id, $group_id, '', $home,
+      $shell)), "\n";
+
+    unless (close($fh)) {
+      croak("Can't write $user_file: $!");
+    }
+
+  } else {
+    croak("Can't open $user_file: $!");
+  }
+}
+
 sub config_get_identity {
   my ($user, $group);
 
@@ -79,8 +164,9 @@ sub config_get_identity {
     # If the real user ID is root, try to use some non-root user
     my $users = [qw(daemon www ftp adm nobody)];
     my $groups = [qw(daemon www ftp staff adm nogroup)];
+    my $candidate;
 
-    foreach my $candidate (@$users) {
+    foreach $candidate (@$users) {
       my $candidate_uid = (getpwnam($candidate))[2];
 
       if ($candidate_uid != 0) {
@@ -89,7 +175,7 @@ sub config_get_identity {
       }
     }
 
-    foreach my $candidate (@$groups) {
+    foreach $candidate (@$groups) {
       my $candidate_gid = (getgrnam($candidate))[2];
 
       if ($candidate_gid != 0) {
@@ -125,6 +211,10 @@ sub config_write {
 
   unless (defined($config->{IdentLookups})) {
     $config->{IdentLookups} = 'off';
+  }
+
+  unless (defined($config->{RequireValidShell})) {
+    $config->{RequireValidShell} = 'off';
   }
 
   unless (defined($config->{ServerType})) {

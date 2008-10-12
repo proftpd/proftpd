@@ -64,4 +64,20 @@ sub login {
   }
 }
 
+sub pwd {
+  my $self = shift;
+
+  unless ($self->{ftp}->pwd()) {
+    croak("PWD command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
 1;
