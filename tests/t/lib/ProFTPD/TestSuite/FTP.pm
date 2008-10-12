@@ -179,4 +179,72 @@ sub syst {
   }
 }
 
+sub mkd {
+  my $self = shift;
+  my $dir = shift;
+
+  unless ($self->{ftp}->mkdir($dir)) {
+    croak("MKD command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub xmkd {
+  my $self = shift;
+  my $dir = shift;
+
+  unless ($self->{ftp}->quot('XMKD', $dir)) {
+    croak("XMKD command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub rmd {
+  my $self = shift;
+  my $dir = shift;
+
+  unless ($self->{ftp}->rmdir($dir)) {
+    croak("RMD command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub xrmd {
+  my $self = shift;
+  my $dir = shift;
+
+  unless ($self->{ftp}->quot('XRMD', $dir)) {
+    croak("XRMD command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
 1;
