@@ -64,15 +64,42 @@ sub get_high_numbered_port {
 }
 
 sub config_get_identity {
-  # Use $> (effective UID) rather than $< (real UID)
-  my $ruid = $>;
-  my $user_name = (getpwuid($ruid))[0];
+  my ($user, $group);
 
-  # Similarly, use $) (effective GID) rather than $( (real GID)
-  my $rgid = (split/\s+/, $))[0];
-  my $group_name = (getgrgid($rgid))[0];
+  unless ($< == 0) {
+    # Use $> (effective UID) rather than $< (real UID)
+    my $ruid = $>;
+    $user = (getpwuid($ruid))[0];
 
-  return ($user_name, $group_name);
+    # Similarly, use $) (effective GID) rather than $( (real GID)
+    my $rgid = (split/\s+/, $))[0];
+    $group = (getgrgid($rgid))[0];
+
+  } else {
+    # If the real user ID is root, try to use some non-root user
+    my $users = [qw(daemon www ftp adm nobody)];
+    my $groups = [qw(daemon www ftp staff adm nogroup)];
+
+    foreach my $candidate (@$users) {
+      my $candidate_uid = (getpwnam($candidate))[2];
+
+      if ($candidate_uid != 0) {
+        $user = $candidate;
+        last;
+      }
+    }
+
+    foreach my $candidate (@$groups) {
+      my $candidate_gid = (getgrnam($candidate))[2];
+
+      if ($candidate_gid != 0) {
+        $group = $candidate;
+        last;
+      }
+    }
+  }
+
+  return ($user, $group);
 }
 
 sub config_write {
@@ -106,6 +133,10 @@ sub config_write {
 
   unless (defined($config->{TransferLog})) {
     $config->{TransferLog} = 'none';
+  }
+
+  unless (defined($config->{UseFtpUsers})) {
+    $config->{UseFtpUsers} = 'off';
   }
 
   unless (defined($config->{UseReverseDNS})) {

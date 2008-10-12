@@ -53,14 +53,14 @@ sub login {
 
   unless ($self->{ftp}->login($user, $pass)) {
     croak("Failed to login to $self->{addr}:$self->{port}: " .
-      $self->{ftp}->code() . ' ' . $self->{ftp}->message());
+      $self->{ftp}->code . ' ' . $self->{ftp}->message);
   }
 
   if (wantarray()) {
-    return ($self->{ftp}->code(), $self->{ftp}->message());
+    return ($self->{ftp}->code, $self->{ftp}->message);
 
   } else {
-    return $self->{ftp}->message();
+    return $self->{ftp}->message;
   }
 }
 
