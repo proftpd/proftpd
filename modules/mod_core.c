@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.328 2008-10-04 23:23:28 castaglia Exp $
+ * $Id: mod_core.c,v 1.329 2008-10-13 22:36:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4248,14 +4248,15 @@ MODRET core_rnto(cmd_rec *cmd) {
   if (!path ||
       !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
       pr_fsio_rename(session.xfer.path, path) == -1) {
+    int xerrno = errno;
 
-    if (errno != EXDEV) {
+    if (xerrno != EXDEV) {
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
         "error renaming '%s' to '%s': %s", cmd->argv[0], session.user,
         (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path, path, strerror(errno));
+        session.xfer.path, path, strerror(xerrno));
 
-      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg, strerror(errno));
+      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg, strerror(xerrno));
       return PR_ERROR(cmd);
     }
 
@@ -4263,12 +4264,14 @@ MODRET core_rnto(cmd_rec *cmd) {
      * to the destination paths.
      */
     if (pr_fs_copy_file(session.xfer.path, path) < 0) {
+      xerrno = errno;
+
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
         "error copying '%s' to '%s': %s", cmd->argv[0], session.user,
         (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path, path, strerror(errno));
+        session.xfer.path, path, strerror(xerrno));
 
-      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg, strerror(errno));
+      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg, strerror(xerrno));
       return PR_ERROR(cmd);
     }
 
