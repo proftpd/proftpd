@@ -92,8 +92,15 @@ sub pwd {
 
 sub xpwd {
   my $self = shift;
+  my $code;
 
-  unless ($self->{ftp}->quot('XPWD')) {
+  $code = $self->{ftp}->quot('XPWD');
+  unless ($code) {
+    croak("XPWD command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if ($code == 4 || $code == 5) {
     croak("XPWD command failed: " .  $self->{ftp}->code . ' ' .
       $self->{ftp}->message);
   }
@@ -126,8 +133,15 @@ sub cwd {
 sub xcwd {
   my $self = shift;
   my $dir = shift;
+  my $code;
 
-  unless ($self->{ftp}->quot('XCWD', $dir)) {
+  $code = $self->{ftp}->quot('XCWD', $dir);
+  unless ($code) {
+    croak("XCWD command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if ($code == 4 || $code == 5) {
     croak("XCWD command failed: " .  $self->{ftp}->code . ' ' .
       $self->{ftp}->message);
   }
@@ -159,8 +173,15 @@ sub cdup {
 
 sub xcup {
   my $self = shift;
+  my $code;
 
-  unless ($self->{ftp}->quot('XCUP')) {
+  $code = $self->{ftp}->quot('XCUP');
+  unless ($code) {
+    croak("XCUP command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if ($code == 4 || $code == 5) {
     croak("XCUP command failed: " .  $self->{ftp}->code . ' ' .
       $self->{ftp}->message);
   }
@@ -175,8 +196,15 @@ sub xcup {
 
 sub syst {
   my $self = shift;
+  my $code;
 
-  unless ($self->{ftp}->quot('SYST')) {
+  $code = $self->{ftp}->quot('SYST');
+  unless ($code) {
+    croak("SYST command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if ($code == 4 || $code == 5) {
     croak("SYST command failed: " .  $self->{ftp}->code . ' ' .
       $self->{ftp}->message);
   }
@@ -209,8 +237,15 @@ sub mkd {
 sub xmkd {
   my $self = shift;
   my $dir = shift;
+  my $code;
 
-  unless ($self->{ftp}->quot('XMKD', $dir)) {
+  $code = $self->{ftp}->quot('XMKD', $dir);
+  unless ($code) {
+    croak("XMKD command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if ($code == 4 || $code == 5) {
     croak("XMKD command failed: " .  $self->{ftp}->code . ' ' .
       $self->{ftp}->message);
   }
@@ -243,8 +278,15 @@ sub rmd {
 sub xrmd {
   my $self = shift;
   my $dir = shift;
+  my $code;
 
-  unless ($self->{ftp}->quot('XRMD', $dir)) {
+  $code = $self->{ftp}->quot('XRMD', $dir);
+  unless ($code) {
+    croak("XRMD command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if ($code == 4 || $code == 5) {
     croak("XRMD command failed: " .  $self->{ftp}->code . ' ' .
       $self->{ftp}->message);
   }
@@ -263,6 +305,79 @@ sub dele {
 
   unless ($self->{ftp}->delete($path)) {
     croak("DELE command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub type {
+  my $self = shift;
+  my $type = shift;
+
+  if ($type =~ /^ascii$/i) {
+    unless ($self->{ftp}->ascii()) {
+      croak("TYPE command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+  } elsif ($type =~ /^binary$/i) {
+    unless ($self->{ftp}->binary()) {
+      croak("TYPE command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+  } else {
+    my $code;
+
+    $code = $self->{ftp}->quot('TYPE', $type);
+    unless ($code) {
+      croak("TYPE command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+    if ($code == 4 || $code == 5) {
+      croak("TYPE command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub mdtm {
+  my $self = shift;
+  my $path = shift;
+
+  unless ($self->{ftp}->mdtm($path)) {
+    croak("MDTM command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub size {
+  my $self = shift;
+  my $path = shift;
+
+  unless ($self->{ftp}->size($path)) {
+    croak("SIZE command failed: " .  $self->{ftp}->code . ' ' .
       $self->{ftp}->message);
   }
 
