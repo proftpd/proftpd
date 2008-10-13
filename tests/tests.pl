@@ -33,6 +33,7 @@ my $test_files = [qw(
   t/commands/size.t 
   t/commands/mode.t
   t/commands/stru.t
+  t/commands/allo.t
   t/commands/pasv.t
 )];
 

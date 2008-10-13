@@ -20,15 +20,21 @@ sub new {
   # not yet be completely up, retry this connect, once a second, up to the
   # given timeout.
 
+  my %opts = (
+      Host => $addr,
+      Port => $port,
+  );
+
+  if ($ENV{TEST_VERBOSE}) {
+    $opts{Debug} = 10;
+  }
+
   while (1) {
     if (time() - $now > $timeout) {
       croak("Unable to connect to $addr:$port: Timed out after $timeout secs");
     }
 
-    $ftp = Net::FTP->new(
-      Host => $addr,
-      Port => $port,
-    );
+    $ftp = Net::FTP->new(%opts);
 
     last if $ftp;
     sleep(1);
@@ -534,6 +540,33 @@ sub stru {
       croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
         $self->{ftp}->message);
     }
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub allo {
+  my $self = shift;
+  my $size = shift;
+
+  # XXX Net::FTP has a bug with its alloc() method, where a 202 response
+  # code is incorrectly handled as an error.
+  my $code;
+
+  $self->{ftp}->alloc($size);
+
+  if ($self->{ftp}->code =~ /^\d/) {
+    $code = $1;
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("ALLO command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
   }
 
   if (wantarray()) {
