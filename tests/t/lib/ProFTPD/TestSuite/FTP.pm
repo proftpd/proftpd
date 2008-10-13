@@ -593,4 +593,27 @@ sub allo {
   }
 }
 
+sub noop {
+  my $self = shift;
+  my $code;
+
+  $code = $self->{ftp}->quot('NOOP');
+  unless ($code) {
+    croak("NOOP command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("NOOP command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
 1;
