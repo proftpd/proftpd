@@ -397,10 +397,26 @@ sub size {
 
 sub pasv {
   my $self = shift;
-  my $res;
 
   unless ($self->{ftp}->pasv()) {
     croak("PASV command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub port {
+  my $self = shift;
+  my $port = shift;
+
+  unless ($self->{ftp}->port($port)) {
+    croak("PORT command failed: " .  $self->{ftp}->code . ' ' .
       $self->{ftp}->message);
   }
 
