@@ -21,7 +21,16 @@ $| = 1;
 
 my $test_files = [qw(
   t/logins.t
-  t/commands.t
+  t/commands/pwd.t
+  t/commands/cwd.t
+  t/commands/cdup.t
+  t/commands/syst.t
+  t/commands/type.t
+  t/commands/mkd.t
+  t/commands/rmd.t
+  t/commands/dele.t
+  t/commands/mdtm.t
+  t/commands/size.t 
 )];
 
 $test_files = [@ARGV] if scalar(@ARGV) > 0;
