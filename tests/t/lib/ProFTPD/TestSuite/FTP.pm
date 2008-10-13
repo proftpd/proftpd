@@ -664,4 +664,20 @@ sub rnto {
   }
 }
 
+sub quit {
+  my $self = shift;
+
+  unless ($self->{ftp}->quit()) {
+    croak("QUIT command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
 1;

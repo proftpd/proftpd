@@ -35,6 +35,7 @@ my $test_files = [qw(
   t/commands/stru.t
   t/commands/allo.t
   t/commands/noop.t
+  t/commands/quit.t
   t/commands/rnfr.t
   t/commands/rnto.t
   t/commands/pasv.t
