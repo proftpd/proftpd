@@ -31,6 +31,7 @@ my $test_files = [qw(
   t/commands/dele.t
   t/commands/mdtm.t
   t/commands/size.t 
+  t/commands/pasv.t
 )];
 
 $test_files = [@ARGV] if scalar(@ARGV) > 0;
