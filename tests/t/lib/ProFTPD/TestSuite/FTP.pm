@@ -406,4 +406,73 @@ sub pasv {
   }
 }
 
+sub mode {
+  my $self = shift;
+  my $mode = shift;
+
+  if ($mode =~ /^stream$/i) {
+    my $code;
+
+    $code = $self->{ftp}->quot('MODE', 'S');
+    unless ($code) {
+      croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+    if ($code == 4 || $code == 5) {
+      croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+  } elsif ($mode =~ /^block$/i) {
+    my $code;
+
+    $code = $self->{ftp}->quot('MODE', 'B');
+    unless ($code) {
+      croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+    if ($code == 4 || $code == 5) {
+      croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+  } elsif ($mode =~ /^compress(ed)?$/i) {
+    my $code;
+
+    $code = $self->{ftp}->quot('MODE', 'C');
+    unless ($code) {
+      croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+    if ($code == 4 || $code == 5) {
+      croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+  } else {
+    my $code;
+
+    $code = $self->{ftp}->quot('MODE', $mode);
+    unless ($code) {
+      croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+    if ($code == 4 || $code == 5) {
+      croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
 1;
