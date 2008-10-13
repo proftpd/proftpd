@@ -680,4 +680,28 @@ sub quit {
   }
 }
 
+sub rest {
+  my $self = shift;
+  my $offset = shift;
+  my $code;
+
+  $code = $self->{ftp}->quot('REST', $offset);
+  unless ($code) {
+    croak("REST command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("REST command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
 1;

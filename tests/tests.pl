@@ -38,6 +38,7 @@ my $test_files = [qw(
   t/commands/quit.t
   t/commands/rnfr.t
   t/commands/rnto.t
+  t/commands/rest.t
   t/commands/pasv.t
   t/commands/port.t
 )];
