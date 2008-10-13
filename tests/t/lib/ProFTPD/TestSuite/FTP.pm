@@ -257,4 +257,21 @@ sub xrmd {
   }
 }
 
+sub dele {
+  my $self = shift;
+  my $path = shift;
+
+  unless ($self->{ftp}->delete($path)) {
+    croak("DELE command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
 1;
