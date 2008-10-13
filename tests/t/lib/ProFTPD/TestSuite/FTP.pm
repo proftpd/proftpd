@@ -616,4 +616,52 @@ sub noop {
   }
 }
 
+sub rnfr {
+  my $self = shift;
+  my $path = shift;
+  my $code;
+
+  $code = $self->{ftp}->quot('RNFR', $path);
+  unless ($code) {
+    croak("RNFR command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("RNFR command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub rnto {
+  my $self = shift;
+  my $path = shift;
+  my $code;
+
+  $code = $self->{ftp}->quot('RNTO', $path);
+  unless ($code) {
+    croak("RNTO command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("RNTO command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
 1;
