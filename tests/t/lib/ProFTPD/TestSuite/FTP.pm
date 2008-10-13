@@ -556,11 +556,11 @@ sub allo {
 
   # XXX Net::FTP has a bug with its alloc() method, where a 202 response
   # code is incorrectly handled as an error.
-  my $code;
+  my $code = 0;
 
   $self->{ftp}->alloc($size);
 
-  if ($self->{ftp}->code =~ /^\d/) {
+  if ($self->{ftp}->code =~ /^(\d)/) {
     $code = $1;
   }
 
