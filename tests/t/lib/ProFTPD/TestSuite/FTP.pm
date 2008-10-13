@@ -475,4 +475,73 @@ sub mode {
   }
 }
 
+sub stru {
+  my $self = shift;
+  my $stru = shift;
+
+  if ($stru =~ /^file$/i) {
+    my $code;
+
+    $code = $self->{ftp}->quot('STRU', 'F');
+    unless ($code) {
+      croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+    if ($code == 4 || $code == 5) {
+      croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+  } elsif ($stru =~ /^record$/i) {
+    my $code;
+
+    $code = $self->{ftp}->quot('STRU', 'R');
+    unless ($code) {
+      croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+    if ($code == 4 || $code == 5) {
+      croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+  } elsif ($stru =~ /^page$/i) {
+    my $code;
+
+    $code = $self->{ftp}->quot('STRU', 'P');
+    unless ($code) {
+      croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+    if ($code == 4 || $code == 5) {
+      croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+  } else {
+    my $code;
+
+    $code = $self->{ftp}->quot('STRU', $stru);
+    unless ($code) {
+      croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+
+    if ($code == 4 || $code == 5) {
+      croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
+        $self->{ftp}->message);
+    }
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
 1;
