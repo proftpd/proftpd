@@ -704,4 +704,28 @@ sub rest {
   }
 }
 
+sub nlst {
+  my $self = shift;
+  my $path = shift;
+
+  unless ($self->{ftp}->nlst($path)) {
+    croak("NLST command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub nlst_raw {
+  my $self = shift;
+  my $path = shift;
+
+  return $self->{ftp}->nlst($path);
+}
+
 1;
