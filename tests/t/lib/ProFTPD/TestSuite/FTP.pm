@@ -8,7 +8,8 @@ use POSIX qw(:sys_wait_h);
 
 sub new {
   my $class = shift;
-  my ($addr, $port, $timeout) = @_;
+  my ($addr, $port, $use_pasv, $timeout) = @_;
+  $use_pasv = 0 unless defined($use_pasv);
   $timeout = 10 unless defined($timeout);
  
   my $ftp;
@@ -24,6 +25,13 @@ sub new {
       Host => $addr,
       Port => $port,
   );
+
+  if ($use_pasv) {
+    $opts{Passive} = 1;
+
+  } else {
+    $opts{Passive} = 0;
+  }
 
   if ($ENV{TEST_VERBOSE}) {
     $opts{Debug} = 10;
