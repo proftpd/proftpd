@@ -226,6 +226,10 @@ sub config_write {
     $config->{ServerType} = 'standalone';
   }
 
+  unless (defined($config->{TimeoutIdle})) {
+    $config->{TimeoutIdle} = '2';
+  }
+
   unless (defined($config->{TransferLog})) {
     $config->{TransferLog} = 'none';
   }
