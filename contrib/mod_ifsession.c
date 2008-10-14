@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.23 2008-06-05 08:01:39 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.24 2008-10-14 22:28:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -55,9 +55,11 @@ static void ifsess_remove_param(xaset_t *set, const char *name) {
 
   c = find_config(set, -1, name, TRUE);
   while (c != NULL) {
+    xaset_t *fset;
+
     pr_signals_handle();
 
-    xaset_t *fset = c->set;
+    fset = c->set;
     xaset_remove(fset, (xasetmember_t *) c);
 
     c = find_config(set, -1, name, TRUE);
