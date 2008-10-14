@@ -28,6 +28,7 @@ our @MODULE = qw(
 our @RUNNING = qw(
   server_start
   server_stop
+  server_wait
 );
 
 our @TEST = qw(
@@ -227,7 +228,7 @@ sub config_write {
   }
 
   unless (defined($config->{TimeoutIdle})) {
-    $config->{TimeoutIdle} = '2';
+    $config->{TimeoutIdle} = '10';
   }
 
   unless (defined($config->{TransferLog})) {
@@ -411,6 +412,37 @@ sub server_stop {
   }
 
   `$cmd`;
+}
+
+sub server_wait {
+  my $config_file = shift;
+  my $rfh = shift;
+  my $timeout = shift;
+  $timeout = 10 unless defined($timeout);
+
+  # Start server
+  server_start($config_file);
+
+  alarm($timeout);
+
+  # Wait until we receive word from the child that it has finished its test.
+  my $done = 0;
+  while (my $msg = <$rfh>) {
+    chomp($msg);
+
+    if ($msg eq 'done') {
+      $done = 1;
+      last;
+    }
+  }
+
+  alarm(0);
+
+  unless ($done) {
+    croak("Test timed out after $timeout secs");
+  }
+
+  return 1;
 }
 
 sub test_msg {
