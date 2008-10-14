@@ -549,9 +549,9 @@ sub rnto_fails_enoent_no_file {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Rename $dst_file: No such file or directory";
+      $expected = "Rename $dst_file: (No such file or directory|Operation not permitted)";
       chomp($resp_msg);
-      $self->assert($expected eq $resp_msg,
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
@@ -686,9 +686,9 @@ sub rnto_fails_enoent_no_dir {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Rename $dst_file: No such file or directory";
+      $expected = "Rename $dst_file: (No such file or directory|Operation not permitted)";
       chomp($resp_msg);
-      $self->assert($expected eq $resp_msg,
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
@@ -825,9 +825,9 @@ sub rnto_fails_eperm {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Rename $dst_file: Permission denied";
+      $expected = "Rename $dst_file: (Permission denied|Operation not permitted)";
       chomp($resp_msg);
-      $self->assert($expected eq $resp_msg,
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
