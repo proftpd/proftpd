@@ -699,6 +699,9 @@
 /* Define if you have the cap library (-lcap).  */
 #undef HAVE_LIBCAP
 
+/* Define if you have the cap (v2) library (-lcap2).  */
+#undef HAVE_LIBCAP2
+
 /* Define if you have the crypt library (-lcrypt).  */
 #undef HAVE_LIBCRYPT
 

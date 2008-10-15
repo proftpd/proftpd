@@ -1035,9 +1035,14 @@ if test x"$enable_cap" != xno; then
           ac_add_mod_cap="yes"
         fi
 
-        AC_CHECK_LIB(cap, cap_init,
+        AC_CHECK_LIB(cap2, cap_init,
           [ac_have_libcap="yes"
-           AC_DEFINE(HAVE_LIBCAP, 1, [Define if libcap is present.])
+           AC_DEFINE(HAVE_LIBCAP2, 1, [Define if libcap2 is present.])
+
+          ],[AC_CHECK_LIB(cap, cap_init,
+              [ac_have_libcap="yes"
+               AC_DEFINE(HAVE_LIBCAP, 1, [Define if libcap is present.])
+              ])
           ])
       fi
   esac
