@@ -129,12 +129,10 @@ sub rnto_ok {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -145,27 +143,11 @@ sub rnto_ok {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->rnfr($src_file) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to RNFR: $err");
-      }
-
-      eval { ($resp_code, $resp_msg) = $client->rnto($dst_file) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to RNTO: $err");
-      }
+      ($resp_code, $resp_msg) = $client->rnfr($src_file);
+      ($resp_code, $resp_msg) = $client->rnto($dst_file);
 
       my $expected;
 
@@ -183,20 +165,14 @@ sub rnto_ok {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -255,12 +231,10 @@ sub rnto_fails_login_required {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -274,7 +248,6 @@ sub rnto_fails_login_required {
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->rnfr($dst_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("RNFR succeeded unexpectedly");
 
       } else {
@@ -298,20 +271,14 @@ sub rnto_fails_login_required {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -370,12 +337,10 @@ sub rnto_fails_no_rnfr {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -386,17 +351,11 @@ sub rnto_fails_no_rnfr {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->rnto($dst_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("RNFR succeeded unexpectedly");
 
       } else {
@@ -420,20 +379,14 @@ sub rnto_fails_no_rnfr {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -500,12 +453,10 @@ sub rnto_fails_enoent_no_file {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -516,26 +467,15 @@ sub rnto_fails_enoent_no_file {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->rnfr($src_file) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to RNFR: $err");
-      }
+      ($resp_code, $resp_msg) = $client->rnfr($src_file);
 
       unlink($src_file);
 
       eval { ($resp_code, $resp_msg) = $client->rnto($dst_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("RNTO succeeded unexpectedly");
 
       } else {
@@ -559,20 +499,14 @@ sub rnto_fails_enoent_no_file {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -639,12 +573,10 @@ sub rnto_fails_enoent_no_dir {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -655,24 +587,13 @@ sub rnto_fails_enoent_no_dir {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->rnfr($src_file) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to RNFR: $err");
-      }
+      ($resp_code, $resp_msg) = $client->rnfr($src_file);
 
       eval { ($resp_code, $resp_msg) = $client->rnto($dst_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("RNTO succeeded unexpectedly");
 
       } else {
@@ -696,20 +617,14 @@ sub rnto_fails_enoent_no_dir {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -776,12 +691,10 @@ sub rnto_fails_eperm {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -792,26 +705,15 @@ sub rnto_fails_eperm {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->rnfr($src_file) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to RNFR: $err");
-      }
+      ($resp_code, $resp_msg) = $client->rnfr($src_file);
 
       chmod(0550, $home_dir);
 
       eval { ($resp_code, $resp_msg) = $client->rnto($dst_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("RNTO succeeded unexpectedly");
 
       } else {
@@ -835,20 +737,14 @@ sub rnto_fails_eperm {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -921,12 +817,10 @@ sub rnto_fails_allow_overwrite {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -937,24 +831,13 @@ sub rnto_fails_allow_overwrite {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->rnfr($src_file) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to RNFR: $err");
-      }
+      ($resp_code, $resp_msg) = $client->rnfr($src_file);
 
       eval { ($resp_code, $resp_msg) = $client->rnto($dst_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("RNTO succeeded unexpectedly");
 
       } else {
@@ -978,20 +861,14 @@ sub rnto_fails_allow_overwrite {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -1008,4 +885,5 @@ sub rnto_fails_allow_overwrite {
 
   unlink($log_file);
 }
+
 1;

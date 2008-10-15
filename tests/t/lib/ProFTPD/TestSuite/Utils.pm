@@ -389,7 +389,7 @@ sub server_start {
     print STDERR "Starting server: $cmd\n";
   }
 
-  `$cmd`;
+  my @output = `$cmd`;
 }
 
 sub server_stop {
@@ -411,7 +411,7 @@ sub server_stop {
     print STDERR "Stopping server: $cmd\n";
   }
 
-  `$cmd`;
+  my @output = `$cmd`;
 }
 
 sub server_wait {

@@ -716,9 +716,20 @@ sub nlst {
   my $self = shift;
   my $path = shift;
 
-  unless ($self->{ftp}->nlst($path)) {
+  my $res;
+
+  $res = $self->{ftp}->nlst($path);
+  unless ($res) {
     croak("NLST command failed: " .  $self->{ftp}->code . ' ' .
       $self->{ftp}->message);
+  }
+
+  if (ref($res)) {
+    my $buf;
+    while ($res->read($buf, 8192) > 0) {
+    }
+
+    $res->close();
   }
 
   if (wantarray()) {
