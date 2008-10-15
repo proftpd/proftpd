@@ -1,4 +1,4 @@
-<!-- $Id: mod_cap.html,v 1.2 2008-07-16 21:38:36 castaglia Exp $ -->
+<!-- $Id: mod_cap.html,v 1.3 2008-10-15 16:31:27 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_cap.html,v $ -->
 
 <html>
@@ -157,17 +157,19 @@ option.
 </pre>
 <font color=blue>Answer</font>: This warning is coming from the use of the
 libcap library.  A newer version of the libcap library (called the
-"libcap2-dev" package on some Linux distributions) is now available.
+"libcap2" or "libcap2-dev" package on some Linux distributions) is now
+available.
 
 <p>
 To remove the above warning, you will need to update/install the newer libcap2
-package on your system, and re-build proftpd (using version 1.3.2rc1 or later)
-in order to compile and link against the newer libcap library.
+or libcap2-dev package on your system, and re-build proftpd (using version
+1.3.2rc1 or later) in order to compile and link against the newer libcap
+library.
 
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2008-07-16 21:38:36 $</i><br>
+Last Updated: <i>$Date: 2008-10-15 16:31:27 $</i><br>
 <br><hr>
 
 <font size=2><b><i>
