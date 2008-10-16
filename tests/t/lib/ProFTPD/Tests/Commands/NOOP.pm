@@ -75,12 +75,10 @@ sub noop_ok {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -92,12 +90,7 @@ sub noop_ok {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->noop() };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to NOOP: $err");
-      }
+      ($resp_code, $resp_msg) = $client->noop();
 
       my $expected;
 
@@ -115,20 +108,14 @@ sub noop_ok {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;

@@ -114,12 +114,10 @@ sub port_ok {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -129,21 +127,10 @@ sub port_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->port() };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to PORT: $err");
-      }
+      ($resp_code, $resp_msg) = $client->port();
 
       my $expected;
 
@@ -161,20 +148,14 @@ sub port_ok {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -217,12 +198,10 @@ sub port_fails_login_required {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -236,7 +215,6 @@ sub port_fails_login_required {
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->port() };
       unless ($@) {
-        print $writeh "done\n";
         die("PORT succeeded unexpectedly");
 
       } else {
@@ -260,20 +238,14 @@ sub port_fails_login_required {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -330,12 +302,10 @@ sub port_fails_bad_format {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -346,17 +316,11 @@ sub port_fails_bad_format {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->port('1,2,3') };
       unless ($@) {
-        print $writeh "done\n";
         die("PORT succeeded unexpectedly");
 
       } else {
@@ -380,20 +344,14 @@ sub port_fails_bad_format {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -450,12 +408,10 @@ sub port_fails_bad_values {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -465,18 +421,11 @@ sub port_fails_bad_values {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->port('100,200,300,400,1,2') };
       unless ($@) {
-        print $writeh "done\n";
         die("PORT succeeded unexpectedly");
 
       } else {
@@ -500,20 +449,14 @@ sub port_fails_bad_values {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -570,12 +513,10 @@ sub port_fails_bad_addr {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -585,20 +526,13 @@ sub port_fails_bad_addr {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
 
       # XXX Hopefully this address is NOT configured on this box.
       eval { ($resp_code, $resp_msg) = $client->port('127,77,88,99,10,10') };
       unless ($@) {
-        print $writeh "done\n";
         die("PORT succeeded unexpectedly");
 
       } else {
@@ -622,20 +556,14 @@ sub port_fails_bad_addr {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -692,12 +620,10 @@ sub port_fails_bad_port {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -707,20 +633,13 @@ sub port_fails_bad_port {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
 
       # XXX Hopefully this address is NOT configured on this box.
       eval { ($resp_code, $resp_msg) = $client->port('127,0,0,1,1,2') };
       unless ($@) {
-        print $writeh "done\n";
         die("PORT succeeded unexpectedly");
 
       } else {
@@ -744,20 +663,14 @@ sub port_fails_bad_port {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;

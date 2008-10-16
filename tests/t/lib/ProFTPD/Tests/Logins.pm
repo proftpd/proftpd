@@ -84,12 +84,10 @@ sub login_plaintext_fails {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -104,7 +102,6 @@ sub login_plaintext_fails {
       # should NOT work.
       eval { $client->login('daemon', '*') };
       unless ($@) {
-        print $writeh "done\n";
         die("Logged in unexpectedly");
       }
     };
@@ -113,20 +110,14 @@ sub login_plaintext_fails {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -182,12 +173,10 @@ sub login_anonymous_ok {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -200,32 +189,21 @@ sub login_anonymous_ok {
 
       # In parent process, login anonymously to server using a plaintext
       # password which SHOULD work.
-      eval { $client->login('anonymous', 'ftp@nospam.org') };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in anonymously: $err");
-      }
+      $client->login('anonymous', 'ftp@nospam.org');
     };
 
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -253,7 +231,7 @@ sub login_anonymous_fails {
 
   my $anon_dir = File::Spec->rel2abs('tmp');
 
-  my ($config_user, $config_group) = config_get_identity();
+  my ($user, $group) = config_get_identity();
 
   my $config = {
     PidFile => $pid_file,
@@ -268,25 +246,23 @@ sub login_anonymous_fails {
 
     Anonymous => {
       $anon_dir => {
-        User => $config_user,
-        Group => $config_group,
-        UserAlias => "anonymous $config_user",
+        User => $user,
+        Group => $group,
+        UserAlias => "anonymous $user",
         RequireValidShell => 'off',
       },
     },
   };
 
-  my ($port, $user, $group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -297,33 +273,29 @@ sub login_anonymous_fails {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      # In parent process, login anonymously to server using a plaintext
-      # password which SHOULD work.
+      my $perms = (stat($anon_dir))[2];
+      chmod(0660, $anon_dir);
+
       eval { $client->login('anonymous', 'ftp@nospam.org') };
       unless ($@) {
-        print $writeh "done\n";
         die("Unexpectedly logged in anonymously");
       }
+
+      chmod($perms, $anon_dir);
     };
 
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;

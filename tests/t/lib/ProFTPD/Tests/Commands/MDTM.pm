@@ -107,12 +107,10 @@ sub mdtm_ok {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -122,21 +120,10 @@ sub mdtm_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->mdtm($test_file) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to MDTM: $err");
-      }
+      ($resp_code, $resp_msg) = $client->mdtm($test_file);
 
       my $expected;
 
@@ -152,20 +139,14 @@ sub mdtm_ok {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -224,12 +205,10 @@ sub mdtm_fails_enoent {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -239,18 +218,11 @@ sub mdtm_fails_enoent {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->mdtm($test_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("MDTM succeeded unexpectedly");
 
       } else {
@@ -274,20 +246,14 @@ sub mdtm_fails_enoent {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -352,12 +318,10 @@ sub mdtm_fails_eperm {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -367,26 +331,17 @@ sub mdtm_fails_eperm {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       # Make it such that perms on the home do to not allow reads
       my $perms = (stat($home_dir))[2];
       unless (chmod(0220, $home_dir)) {
-        my $err = $!;
-        print $writeh "done\n";
-        die("Failed to change perms on $home_dir: $err");
+        die("Failed to change perms on $home_dir: $!");
       }
 
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->mdtm($test_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("MDTM succeeded unexpectedly");
 
       } else {
@@ -412,20 +367,14 @@ sub mdtm_fails_eperm {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;

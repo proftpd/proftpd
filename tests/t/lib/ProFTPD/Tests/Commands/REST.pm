@@ -109,12 +109,10 @@ sub rest_ok {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -125,20 +123,10 @@ sub rest_ok {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->rest(0) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to REST: $err");
-      }
+      ($resp_code, $resp_msg) = $client->rest(0);
 
       my $expected;
 
@@ -156,20 +144,14 @@ sub rest_ok {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -212,12 +194,10 @@ sub rest_fails_login_required {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -231,7 +211,6 @@ sub rest_fails_login_required {
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->rest() };
       unless ($@) {
-        print $writeh "done\n";
         die("REST succeeded unexpectedly");
 
       } else {
@@ -255,20 +234,14 @@ sub rest_fails_login_required {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -325,12 +298,10 @@ sub rest_fails_negative_offset {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -341,17 +312,11 @@ sub rest_fails_negative_offset {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->rest(-1) };
       unless ($@) {
-        print $writeh "done\n";
         die("REST succeeded unexpectedly");
 
       } else {
@@ -375,20 +340,14 @@ sub rest_fails_negative_offset {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -445,12 +404,10 @@ sub rest_fails_bad_offset {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -461,17 +418,11 @@ sub rest_fails_bad_offset {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->rest("100f") };
       unless ($@) {
-        print $writeh "done\n";
         die("REST succeeded unexpectedly");
 
       } else {
@@ -495,20 +446,14 @@ sub rest_fails_bad_offset {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -565,12 +510,10 @@ sub rest_fails_offset_and_ascii {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -581,24 +524,12 @@ sub rest_fails_offset_and_ascii {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
-
-      eval { $client->type('ascii') };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to TYPE: $err");
-      }
+      $client->login($user, $passwd);
+      $client->type('ascii');
 
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->rest("100") };
       unless ($@) {
-        print $writeh "done\n";
         die("REST succeeded unexpectedly");
 
       } else {
@@ -622,20 +553,14 @@ sub rest_fails_offset_and_ascii {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;

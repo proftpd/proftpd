@@ -113,12 +113,10 @@ sub size_ok {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -128,28 +126,12 @@ sub size_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
-
-      eval { $client->type('binary') };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to TYPE: $err");
-      }
+      $client->type('binary');
     
       my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->size($test_file) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to SIZE: $err");
-      }
+      ($resp_code, $resp_msg) = $client->size($test_file);
 
       my $expected;
 
@@ -167,20 +149,14 @@ sub size_ok {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -239,12 +215,10 @@ sub size_fails_ascii {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -254,25 +228,13 @@ sub size_fails_ascii {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
-
-      eval { $client->type('ascii') };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to TYPE: $err");
-      }
+      $client->type('ascii');
     
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->size($test_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("SIZE succeeded unexpectedly");
 
       } else {
@@ -296,20 +258,14 @@ sub size_fails_ascii {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -368,12 +324,10 @@ sub size_fails_enoent {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -383,25 +337,12 @@ sub size_fails_enoent {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
-
-      eval { $client->type('binary') };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to TYPE: $err");
-      }
+      $client->login($user, $passwd);
+      $client->type('binary');
     
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->size($test_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("SIZE succeeded unexpectedly");
 
       } else {
@@ -425,20 +366,14 @@ sub size_fails_enoent {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
@@ -503,12 +438,10 @@ sub size_fails_eperm {
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -518,33 +451,18 @@ sub size_fails_eperm {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
-
-      eval { $client->type('binary') };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to TYPE: $err");
-      }
+      $client->login($user, $passwd);
+      $client->type('binary');
     
       # Make it such that perms on the home dir do not allow reads
       my $perms = (stat($home_dir))[2];
       unless (chmod(0220, $home_dir)) {
-        my $err = $!;
-        print $writeh "done\n";
-        die("Failed to change perms on $home_dir: $err");
+        die("Failed to change perms on $home_dir: $!");
       }
 
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->mdtm($test_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("MDTM succeeded unexpectedly");
 
       } else {
@@ -570,20 +488,14 @@ sub size_fails_eperm {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
