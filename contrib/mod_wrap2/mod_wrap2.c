@@ -1200,27 +1200,31 @@ MODRET set_wrapgrouptables(cmd_rec *cmd) {
   array_header *acl = NULL;
 
   CHECK_ARGS(cmd, 3);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   /* Verify that the requested source types have been registered. */
   for (i = 2; i < cmd->argc-1; i++) {
     char *tmp = NULL;
 
-    if ((tmp = strchr(cmd->argv[i], ':')) == NULL)
+    tmp = strchr(cmd->argv[i], ':');
+    if (tmp == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "badly table parameter: '",
         cmd->argv[i], "'", NULL));
+    }
 
     *tmp = '\0';
 
-    for (regtab = wrap2_regtab_list; regtab; regtab = regtab->next)
-      if (!strcmp(regtab->regtab_name, cmd->argv[i])) {
+    for (regtab = wrap2_regtab_list; regtab; regtab = regtab->next) {
+      if (strcmp(regtab->regtab_name, cmd->argv[i]) == 0) {
         have_registration = TRUE;
         break;
       }
+    }
 
-    if (!have_registration)
+    if (!have_registration) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported table source type: '",
         cmd->argv[1], "'", NULL));
+    }
 
     *tmp = ':';
   }
@@ -1239,17 +1243,17 @@ MODRET set_wrapgrouptables(cmd_rec *cmd) {
   *argv++ = pstrdup(c->pool, cmd->argv[3]);
 
   /* Now populate the group-expression names */
-  if (argc && acl)
+  if (argc && acl) {
     while (argc--) {
       *argv++ = pstrdup(c->pool, *((char **) acl->elts));
       acl->elts = ((char **) acl->elts) + 1;
     }
+  }
 
   /* Do not forget the terminating NULL */
   *argv = NULL;
 
   c->flags |= CF_MERGEDOWN;
-
   return PR_HANDLED(cmd);
 }
 
@@ -1286,21 +1290,25 @@ MODRET set_wraptables(cmd_rec *cmd) {
   for (i = 1; i < cmd->argc-1; i++) {
     char *tmp = NULL;
 
-    if ((tmp = strchr(cmd->argv[i], ':')) == NULL)
+    tmp = strchr(cmd->argv[i], ':');
+    if (tmp == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "badly table parameter: '",
         cmd->argv[i], "'", NULL));
+    }
 
     *tmp = '\0';
 
-    for (regtab = wrap2_regtab_list; regtab; regtab = regtab->next)
-      if (!strcmp(regtab->regtab_name, cmd->argv[i])) {
+    for (regtab = wrap2_regtab_list; regtab; regtab = regtab->next) {
+      if (strcmp(regtab->regtab_name, cmd->argv[i]) == 0) {
         have_registration = TRUE;
         break;
       }
+    }
 
-    if (!have_registration)
+    if (!have_registration) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported table source type: '",
         cmd->argv[1], "'", NULL));
+    }
 
     *tmp = ':'; 
   }
@@ -1323,27 +1331,31 @@ MODRET set_wrapusertables(cmd_rec *cmd) {
   array_header *acl = NULL;
 
   CHECK_ARGS(cmd, 3);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   /* Verify that the requested source types have been registered. */
   for (i = 2; i < cmd->argc-1; i++) {
     char *tmp = NULL;
 
-    if ((tmp = strchr(cmd->argv[i], ':')) == NULL)
+    tmp = strchr(cmd->argv[i], ':');
+    if (tmp == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "badly table parameter: '",
         cmd->argv[i], "'", NULL));
+    }
 
     *tmp = '\0';
 
-    for (regtab = wrap2_regtab_list; regtab; regtab = regtab->next)
-      if (!strcmp(regtab->regtab_name, cmd->argv[i])) {
+    for (regtab = wrap2_regtab_list; regtab; regtab = regtab->next) {
+      if (strcmp(regtab->regtab_name, cmd->argv[i]) == 0) {
         have_registration = TRUE;
         break;
       }
+    }
 
-    if (!have_registration)
+    if (!have_registration) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported table source type: '",
         cmd->argv[1], "'", NULL));
+    }
 
     *tmp = ':';
   }
