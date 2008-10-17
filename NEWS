@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.943 2008-10-15 17:12:31 castaglia Exp $
+$Id: NEWS,v 1.944 2008-10-17 15:16:39 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -16,6 +16,7 @@ CVS
 - Bug 3116 - SQLNegativeCache with no group info can cause segfault.
 - Bug 3117 - Authentication improperly allowed (Bug#2922 regression).
 - Bug 3119 - Search for libcap2 in addition to libcap for mod_cap support.
+- Bug 3120 - WrapTables not allowed in <Anonymous> context.
 
 1.3.2rc2 - Released 17-Sep-2008
 --------------------------------

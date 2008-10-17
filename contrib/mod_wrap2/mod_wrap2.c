@@ -1280,7 +1280,7 @@ MODRET set_wraptables(cmd_rec *cmd) {
   config_rec *c = NULL;
   
   CHECK_ARGS(cmd, 2);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   /* Verify that the requested source types have been registered. */
   for (i = 1; i < cmd->argc-1; i++) {
