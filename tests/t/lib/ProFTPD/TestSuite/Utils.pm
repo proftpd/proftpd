@@ -379,7 +379,7 @@ sub server_start {
     $cmd .= " -d $debug_level";
 
   } elsif ($ENV{TEST_VERBOSE}) {
-    $cmd .= " -d 10";
+    $cmd .= " -d10";
 
   } else {
     $cmd .= " > /dev/null 2>&1";
