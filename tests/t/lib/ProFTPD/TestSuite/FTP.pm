@@ -68,15 +68,44 @@ sub response_msg {
   if (defined($self->{mesg})) {
     my $msg = $self->{mesg};
     delete($self->{mesg});
+    chomp($msg);
     return $msg;
   }
 
   my @msgs = $self->{ftp}->message;
   if (scalar(@msgs) > 1) {
+    chomp($msgs[1]);
     return $msgs[1];
   }
 
+  chomp($msgs[0]);
   return $msgs[0];
+}
+
+sub response_uniq {
+  my $self = shift;
+
+  my $uniq;
+  if (defined($self->{uniq})) {
+    $uniq = $self->{uniq};
+    delete($self->{uniq});
+
+  } else {
+    $uniq = $self->{ftp}->unique_name();
+    unless ($uniq) {
+      my @msgs = $self->{ftp}->message;
+      if (scalar(@msgs) > 1) {
+        my $tmp = $msgs[0];
+
+        if ($tmp =~ /^FILE:\s+(\S+)$/) {
+          $uniq = $1;
+        }
+      }
+    }
+  }
+
+  chomp($uniq);
+  return $uniq;
 }
 
 sub login {
@@ -91,11 +120,12 @@ sub login {
       $self->{ftp}->code . ' ' . $self->{ftp}->message);
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -104,14 +134,15 @@ sub pwd {
 
   unless ($self->{ftp}->pwd()) {
     croak("PWD command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -122,19 +153,20 @@ sub xpwd {
   $code = $self->{ftp}->quot('XPWD');
   unless ($code) {
     croak("XPWD command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   if ($code == 4 || $code == 5) {
     croak("XPWD command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -144,14 +176,15 @@ sub cwd {
 
   unless ($self->{ftp}->cwd($dir)) {
     croak("CWD command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -163,19 +196,20 @@ sub xcwd {
   $code = $self->{ftp}->quot('XCWD', $dir);
   unless ($code) {
     croak("XCWD command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   if ($code == 4 || $code == 5) {
     croak("XCWD command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -185,14 +219,15 @@ sub cdup {
 
   unless ($self->{ftp}->cdup()) {
     croak("CDUP command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -203,19 +238,20 @@ sub xcup {
   $code = $self->{ftp}->quot('XCUP');
   unless ($code) {
     croak("XCUP command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   if ($code == 4 || $code == 5) {
     croak("XCUP command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -226,19 +262,20 @@ sub syst {
   $code = $self->{ftp}->quot('SYST');
   unless ($code) {
     croak("SYST command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   if ($code == 4 || $code == 5) {
     croak("SYST command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -248,14 +285,15 @@ sub mkd {
 
   unless ($self->{ftp}->mkdir($dir)) {
     croak("MKD command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -267,19 +305,20 @@ sub xmkd {
   $code = $self->{ftp}->quot('XMKD', $dir);
   unless ($code) {
     croak("XMKD command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   if ($code == 4 || $code == 5) {
     croak("XMKD command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -289,14 +328,15 @@ sub rmd {
 
   unless ($self->{ftp}->rmdir($dir)) {
     croak("RMD command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -308,19 +348,20 @@ sub xrmd {
   $code = $self->{ftp}->quot('XRMD', $dir);
   unless ($code) {
     croak("XRMD command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   if ($code == 4 || $code == 5) {
     croak("XRMD command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -330,14 +371,15 @@ sub dele {
 
   unless ($self->{ftp}->delete($path)) {
     croak("DELE command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -348,13 +390,13 @@ sub type {
   if ($type =~ /^ascii$/i) {
     unless ($self->{ftp}->ascii()) {
       croak("TYPE command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
   } elsif ($type =~ /^binary$/i) {
     unless ($self->{ftp}->binary()) {
       croak("TYPE command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
   } else {
@@ -363,20 +405,21 @@ sub type {
     $code = $self->{ftp}->quot('TYPE', $type);
     unless ($code) {
       croak("TYPE command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
     if ($code == 4 || $code == 5) {
       croak("TYPE command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -386,14 +429,15 @@ sub mdtm {
 
   unless ($self->{ftp}->mdtm($path)) {
     croak("MDTM command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -403,14 +447,15 @@ sub size {
 
   unless ($self->{ftp}->size($path)) {
     croak("SIZE command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -419,14 +464,15 @@ sub pasv {
 
   unless ($self->{ftp}->pasv()) {
     croak("PASV command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -436,14 +482,15 @@ sub port {
 
   unless ($self->{ftp}->port($port)) {
     croak("PORT command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -457,12 +504,12 @@ sub mode {
     $code = $self->{ftp}->quot('MODE', 'S');
     unless ($code) {
       croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
     if ($code == 4 || $code == 5) {
       croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
   } elsif ($mode =~ /^block$/i) {
@@ -471,12 +518,12 @@ sub mode {
     $code = $self->{ftp}->quot('MODE', 'B');
     unless ($code) {
       croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
     if ($code == 4 || $code == 5) {
       croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
   } elsif ($mode =~ /^compress(ed)?$/i) {
@@ -485,12 +532,12 @@ sub mode {
     $code = $self->{ftp}->quot('MODE', 'C');
     unless ($code) {
       croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
     if ($code == 4 || $code == 5) {
       croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
   } else {
@@ -499,20 +546,21 @@ sub mode {
     $code = $self->{ftp}->quot('MODE', $mode);
     unless ($code) {
       croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
     if ($code == 4 || $code == 5) {
       croak("MODE command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -526,12 +574,12 @@ sub stru {
     $code = $self->{ftp}->quot('STRU', 'F');
     unless ($code) {
       croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
     if ($code == 4 || $code == 5) {
       croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
   } elsif ($stru =~ /^record$/i) {
@@ -540,12 +588,12 @@ sub stru {
     $code = $self->{ftp}->quot('STRU', 'R');
     unless ($code) {
       croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
     if ($code == 4 || $code == 5) {
       croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
   } elsif ($stru =~ /^page$/i) {
@@ -554,12 +602,12 @@ sub stru {
     $code = $self->{ftp}->quot('STRU', 'P');
     unless ($code) {
       croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
     if ($code == 4 || $code == 5) {
       croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
   } else {
@@ -568,20 +616,21 @@ sub stru {
     $code = $self->{ftp}->quot('STRU', $stru);
     unless ($code) {
       croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
 
     if ($code == 4 || $code == 5) {
       croak("STRU command failed: " .  $self->{ftp}->code . ' ' .
-        $self->{ftp}->message);
+        $self->response_msg());
     }
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -601,14 +650,15 @@ sub allo {
 
   if ($code == 4 || $code == 5) {
     croak("ALLO command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -619,19 +669,20 @@ sub noop {
   $code = $self->{ftp}->quot('NOOP');
   unless ($code) {
     croak("NOOP command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   if ($code == 4 || $code == 5) {
     croak("NOOP command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -643,19 +694,20 @@ sub rnfr {
   $code = $self->{ftp}->quot('RNFR', $path);
   unless ($code) {
     croak("RNFR command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   if ($code == 4 || $code == 5) {
     croak("RNFR command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -667,19 +719,20 @@ sub rnto {
   $code = $self->{ftp}->quot('RNTO', $path);
   unless ($code) {
     croak("RNTO command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   if ($code == 4 || $code == 5) {
     croak("RNTO command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -688,38 +741,41 @@ sub quit {
 
   unless ($self->{ftp}->quit()) {
     croak("QUIT command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
 sub rest {
   my $self = shift;
   my $offset = shift;
+  $offset = '' unless defined($offset);
   my $code;
 
   $code = $self->{ftp}->quot('REST', $offset);
   unless ($code) {
     croak("REST command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   if ($code == 4 || $code == 5) {
     croak("REST command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -733,7 +789,7 @@ sub nlst {
   $res = $self->{ftp}->nlst($path);
   unless ($res) {
     croak("NLST command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   if (ref($res)) {
@@ -744,11 +800,12 @@ sub nlst {
     $res->close();
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -770,7 +827,7 @@ sub list {
   $res = $self->{ftp}->list($path);
   unless ($res) {
     croak("LIST command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   if (ref($res)) {
@@ -791,26 +848,18 @@ sub list {
   }
 
   if ($code == 4 || $code == 5) {
-    # In this case, due to Net::FTP's bugs, the response message will
-    # contain messages from both the successful 1x response and the failure
-    # 4x/5x response.
-    #
-    # To get just the failure message, we call message() in a list context,
-    # and return the second element.
-    my @msgs = $self->{ftp}->message;
-
-    my $msg = $msgs[1];
-    chomp($msg);
+    my $msg = $self->response_msg();
     $self->{mesg} = $msg;
 
     croak("LIST command failed: " .  $self->{ftp}->code . ' ' . $msg);
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -855,26 +904,18 @@ sub retr {
   }
 
   if ($code == 4 || $code == 5) {
-    # In this case, due to Net::FTP's bugs, the response message will
-    # contain messages from both the successful 1x response and the failure
-    # 4x/5x response.
-    #
-    # To get just the failure message, we call message() in a list context,
-    # and return the second element.
-    my @msgs = $self->{ftp}->message;
-
-    my $msg = $msgs[1];
-    chomp($msg);
+    my $msg = $self->response_msg();
     $self->{mesg} = $msg;
 
     croak("RETR command failed: " .  $self->{ftp}->code . ' ' . $msg);
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
@@ -901,13 +942,54 @@ sub stor {
       $self->{ftp}->message);
   }
 
-  if (ref($res)) {
-    my $buf;
-    while ($res->read($buf, 8192) > 0) {
-    }
+  # XXX Work around bug in Net::FTP which fails to handle the case where,
+  # for data transfers, a 150 response code may be sent (to open the data
+  # connection), followed by an error response code.
+  my $code = 0;
 
-    $res->close();
+  if ($self->{ftp}->code =~ /^(\d)/) {
+    $code = $1;
   }
+
+  if ($code == 4 || $code == 5) {
+    my $msg = $self->response_msg();
+    $self->{mesg} = $msg;
+
+    croak("STOR command failed: " .  $self->{ftp}->code . ' ' . $msg);
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
+sub stor_raw {
+  my $self = shift;
+  my $path = shift;
+  $path = '' unless defined($path);
+
+  return $self->{ftp}->stor($path);
+}
+
+sub stou {
+  my $self = shift;
+  my $src_path = shift;
+  $src_path = '' unless defined($src_path);
+  my $dst_path = shift;
+
+  my $res;
+
+  $res = $self->{ftp}->put_unique($src_path, $dst_path);
+  unless ($res) {
+    croak("STOU command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  $self->{uniq} = $res;
 
   # XXX Work around bug in Net::FTP which fails to handle the case where,
   # for data transfers, a 150 response code may be sent (to open the data
@@ -919,35 +1001,27 @@ sub stor {
   }
 
   if ($code == 4 || $code == 5) {
-    # In this case, due to Net::FTP's bugs, the response message will
-    # contain messages from both the successful 1x response and the failure
-    # 4x/5x response.
-    #
-    # To get just the failure message, we call message() in a list context,
-    # and return the second element.
-    my @msgs = $self->{ftp}->message;
-
-    my $msg = $msgs[1];
-    chomp($msg);
+    my $msg = $self->response_msg();
     $self->{mesg} = $msg;
 
-    croak("STOR command failed: " .  $self->{ftp}->code . ' ' . $msg);
+    croak("STOU command failed: " .  $self->{ftp}->code . ' ' . $msg);
   }
 
+  my $msg = $self->response_msg();
   if (wantarray()) {
-    return ($self->{ftp}->code, $self->{ftp}->message);
+    return ($self->{ftp}->code, $msg);
 
   } else {
-    return $self->{ftp}->message;
+    return $msg;
   }
 }
 
-sub stor_raw {
+sub stou_raw {
   my $self = shift;
   my $path = shift;
   $path = '' unless defined($path);
 
-  return $self->{ftp}->stor($path);
+  return $self->{ftp}->stou($path);
 }
 
 1;

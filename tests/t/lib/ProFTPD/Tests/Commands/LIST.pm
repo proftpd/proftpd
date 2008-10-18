@@ -848,7 +848,6 @@ sub list_fails_login_required {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Please login with USER and PASS";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -958,7 +957,6 @@ sub list_fails_enoent {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "$test_file: No such file or directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -1062,8 +1060,7 @@ sub list_fails_enoent_glob {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Opening ASCII mode data connection for file list";
-      chomp($resp_msg);
+      $expected = "Transfer complete";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -1183,7 +1180,6 @@ sub list_fails_eperm {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "$test_file: Permission denied";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

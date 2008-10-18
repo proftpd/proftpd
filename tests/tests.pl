@@ -45,6 +45,7 @@ my $test_files = [qw(
   t/commands/list.t
   t/commands/retr.t
   t/commands/stor.t
+  t/commands/stou.t
 )];
 
 $test_files = [@ARGV] if scalar(@ARGV) > 0;
