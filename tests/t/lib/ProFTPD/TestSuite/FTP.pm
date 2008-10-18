@@ -721,6 +721,7 @@ sub rest {
 sub nlst {
   my $self = shift;
   my $path = shift;
+  $path = '' unless defined($path);
 
   my $res;
 
@@ -749,6 +750,7 @@ sub nlst {
 sub nlst_raw {
   my $self = shift;
   my $path = shift;
+  $path = '' unless defined($path);
 
   return $self->{ftp}->nlst($path);
 }
@@ -756,6 +758,7 @@ sub nlst_raw {
 sub list {
   my $self = shift;
   my $path = shift;
+  $path = '' unless defined($path);
 
   my $res;
 
@@ -809,6 +812,7 @@ sub list {
 sub list_raw {
   my $self = shift;
   my $path = shift;
+  $path = '' unless defined($path);
 
   return $self->{ftp}->list($path);
 }
@@ -816,6 +820,7 @@ sub list_raw {
 sub retr {
   my $self = shift;
   my $path = shift;
+  $path = '' unless defined($path);
 
   my $res;
 
@@ -869,6 +874,7 @@ sub retr {
 sub retr_raw {
   my $self = shift;
   my $path = shift;
+  $path = '' unless defined($path);
 
   return $self->{ftp}->retr($path);
 }
