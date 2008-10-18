@@ -60,8 +60,6 @@ my $TESTS = {
     order => ++$order,
     test_class => [qw(forking)],
   },
-
-  # XXX Plenty of other tests needed: params, maxfiles, maxdirs, depth, etc
 };
 
 sub new {
@@ -158,37 +156,20 @@ sub retr_ok_raw_active {
       $conn->read($buf, 8192);
       $conn->close();
 
-      # We have to be careful of the fact that readdir returns directory
-      # entries in an unordered fashion.
-      my $res = {};
-      my $lines = [split(/\n/, $buf)];
-      foreach my $line (@$lines) {
-        if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
-          $res->{$1} = 1;
-        }
-      }
+      my ($resp_code, $resp_msg);
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
 
-      my $expected = {
-        'cmds.conf' => 1,
-        'cmds.group' => 1,
-        'cmds.passwd' => 1,
-        'cmds.pid' => 1,
-        'cmds.scoreboard' => 1,
-      };
+      my $expected;
 
-      my $ok = 1;
-      my $mismatch;
-      foreach my $name (keys(%$res)) {
-        unless (defined($expected->{$name})) {
-          $mismatch = $name;
-          $ok = 0;
-          last;
-        }
-      }
+      $expected = 226;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
 
-      unless ($ok) {
-        die("Unexpected name '$mismatch' appeared in RETR data")
-      }
+      $expected = "Transfer complete";
+      chomp($resp_msg);
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -287,37 +268,20 @@ sub retr_ok_raw_passive {
       $conn->read($buf, 8192);
       $conn->close();
 
-      # We have to be careful of the fact that readdir returns directory
-      # entries in an unordered fashion.
-      my $res = {};
-      my $lines = [split(/\n/, $buf)];
-      foreach my $line (@$lines) {
-        if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
-          $res->{$1} = 1;
-        }
-      }
+      my ($resp_code, $resp_msg);
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
 
-      my $expected = {
-        'cmds.conf' => 1,
-        'cmds.group' => 1,
-        'cmds.passwd' => 1,
-        'cmds.pid' => 1,
-        'cmds.scoreboard' => 1,
-      };
+      my $expected;
 
-      my $ok = 1;
-      my $mismatch;
-      foreach my $name (keys(%$res)) {
-        unless (defined($expected->{$name})) {
-          $mismatch = $name;
-          $ok = 0;
-          last;
-        }
-      }
+      $expected = 226;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
 
-      unless ($ok) {
-        die("Unexpected name '$mismatch' appeared in RETR data")
-      }
+      $expected = "Transfer complete";
+      chomp($resp_msg);
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -368,6 +332,18 @@ sub retr_ok_file {
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', 500, $user);
 
+  my $test_file = File::Spec->rel2abs('tmp/foo');
+  if (open(my $fh, "> $test_file")) {
+    print $fh "Foo!\n";
+
+    unless (close($fh)) {
+      die("Unable to write $test_file: $!");
+    }
+
+  } else {
+    die("Unable to open $test_file: $!");
+  }
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -404,8 +380,6 @@ sub retr_ok_file {
 
       $client->login($user, $passwd);
 
-      my $test_file = File::Spec->rel2abs($config_file);
-
       my $conn = $client->retr_raw($test_file);
       unless ($conn) {
         die("RETR failed: " . $client->response_code() . " " .
@@ -417,7 +391,7 @@ sub retr_ok_file {
       my $size = $conn->bytes_read();
       $conn->close();
 
-      my $expected = 727;
+      my $expected = 6;
       $self->assert($expected == $size,
         test_msg("Expected $expected, got $size"));
     };
