@@ -813,4 +813,64 @@ sub list_raw {
   return $self->{ftp}->list($path);
 }
 
+sub retr {
+  my $self = shift;
+  my $path = shift;
+
+  my $res;
+
+  $res = $self->{ftp}->get($path);
+  unless ($res) {
+    croak("RETR command failed: " .  $self->{ftp}->code . ' ' .
+      $self->{ftp}->message);
+  }
+
+  if (ref($res)) {
+    my $buf;
+    while ($res->read($buf, 8192) > 0) {
+    }
+
+    $res->close();
+  }
+
+  # XXX Work around bug in Net::FTP which fails to handle the case where,
+  # for data transfers, a 150 response code may be sent (to open the data
+  # connection), followed by an error response code.
+  my $code = 0;
+
+  if ($self->{ftp}->code =~ /^(\d)/) {
+    $code = $1;
+  }
+
+  if ($code == 4 || $code == 5) {
+    # In this case, due to Net::FTP's bugs, the response message will
+    # contain messages from both the successful 1x response and the failure
+    # 4x/5x response.
+    #
+    # To get just the failure message, we call message() in a list context,
+    # and return the second element.
+    my @msgs = $self->{ftp}->message;
+
+    my $msg = $msgs[1];
+    chomp($msg);
+    $self->{mesg} = $msg;
+
+    croak("RETR command failed: " .  $self->{ftp}->code . ' ' . $msg);
+  }
+
+  if (wantarray()) {
+    return ($self->{ftp}->code, $self->{ftp}->message);
+
+  } else {
+    return $self->{ftp}->message;
+  }
+}
+
+sub retr_raw {
+  my $self = shift;
+  my $path = shift;
+
+  return $self->{ftp}->retr($path);
+}
+
 1;

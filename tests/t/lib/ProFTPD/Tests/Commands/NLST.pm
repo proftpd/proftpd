@@ -153,7 +153,7 @@ sub nlst_ok_raw_active {
       my $conn = $client->nlst_raw();
       unless ($conn) {
         die("Failed to NLST: " . $client->response_code() . " " .
-          $client->reponse_msg());
+          $client->response_msg());
       }
 
       my $buf;
@@ -278,7 +278,7 @@ sub nlst_ok_raw_passive {
       my $conn = $client->nlst_raw();
       unless ($conn) {
         die("Failed to NLST: " . $client->response_code() . " " .
-          $client->reponse_msg());
+          $client->response_msg());
       }
 
       my $buf;
