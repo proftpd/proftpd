@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.241 2008-09-12 17:08:36 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.242 2008-10-18 21:48:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1389,7 +1389,7 @@ MODRET xfer_pre_appe(cmd_rec *cmd) {
 MODRET xfer_stor(cmd_rec *cmd) {
   char *dir;
   char *lbuf;
-  int bufsz,len;
+  int bufsz, len, ferrno = 0;
   off_t nbytes_stored, nbytes_max_store = 0;
   unsigned char have_limit = FALSE;
   struct stat st;
@@ -1454,6 +1454,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
     stor_fh = pr_fsio_open(session.xfer.path_hidden,
       O_WRONLY|(session.restart_pos ? 0 : O_CREAT|O_EXCL));
     if (stor_fh == NULL) {
+      ferrno = errno;
+
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
         "error opening '%s': %s", cmd->argv[0], session.user,
         (unsigned long) session.uid, (unsigned long) session.gid,
@@ -1472,6 +1474,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
       }
 
     } else {
+      ferrno = errno;
+
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
         "error opening '%s': %s", cmd->argv[0], session.user,
         (unsigned long) session.uid, (unsigned long) session.gid,
@@ -1483,6 +1487,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
     stor_fh = pr_fsio_open(dir,
         O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT));
     if (stor_fh == NULL) {
+      ferrno = errno;
+
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
         "error opening '%s': %s", cmd->argv[0], session.user,
         (unsigned long) session.uid, (unsigned long) session.gid, dir,
@@ -1528,8 +1534,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
   if (!stor_fh) {
     pr_log_debug(DEBUG4, "unable to open '%s' for writing: %s", cmd->arg,
-      strerror(errno));
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+      strerror(ferrno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(ferrno));
     return PR_ERROR(cmd);
   }
 
