@@ -883,7 +883,7 @@ sub retr {
   $res = $self->{ftp}->get($src_path, $dst_path);
   unless ($res) {
     croak("RETR command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   if (ref($res)) {
@@ -939,7 +939,7 @@ sub stor {
   $res = $self->{ftp}->put($src_path, $dst_path);
   unless ($res) {
     croak("STOR command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   # XXX Work around bug in Net::FTP which fails to handle the case where,
@@ -986,7 +986,7 @@ sub stou {
   $res = $self->{ftp}->put_unique($src_path, $dst_path);
   unless ($res) {
     croak("STOU command failed: " .  $self->{ftp}->code . ' ' .
-      $self->{ftp}->message);
+      $self->response_msg());
   }
 
   $self->{uniq} = $res;
@@ -1022,6 +1022,54 @@ sub stou_raw {
   $path = '' unless defined($path);
 
   return $self->{ftp}->stou($path);
+}
+
+sub appe {
+  my $self = shift;
+  my $src_path = shift;
+  $src_path = '' unless defined($src_path);
+  my $dst_path = shift;
+  $dst_path = '/dev/null' unless defined($dst_path);
+
+  my $res;
+
+  $res = $self->{ftp}->append($src_path, $dst_path);
+  unless ($res) {
+    croak("APPE command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  # XXX Work around bug in Net::FTP which fails to handle the case where,
+  # for data transfers, a 150 response code may be sent (to open the data
+  # connection), followed by an error response code.
+  my $code = 0;
+
+  if ($self->{ftp}->code =~ /^(\d)/) {
+    $code = $1;
+  }
+
+  if ($code == 4 || $code == 5) {
+    my $msg = $self->response_msg();
+    $self->{mesg} = $msg;
+
+    croak("APPE command failed: " .  $self->{ftp}->code . ' ' . $msg);
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
+sub appe_raw {
+  my $self = shift;
+  my $path = shift;
+  $path = '' unless defined($path);
+
+  return $self->{ftp}->appe($path);
 }
 
 1;
