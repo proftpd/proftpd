@@ -48,6 +48,7 @@ my $test_files = [qw(
   t/commands/stou.t
   t/commands/appe.t
   t/config/displayconnect.t
+  t/config/displaylogin.t
   t/config/serverident.t
 )];
 
