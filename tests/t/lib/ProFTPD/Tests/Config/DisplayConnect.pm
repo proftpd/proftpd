@@ -246,6 +246,8 @@ sub displayconnect_rel_path {
     exit 0;
   }
 
+  unlink($connect_path);
+
   # Stop server
   server_stop($pid_file);
 
