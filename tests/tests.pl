@@ -47,6 +47,7 @@ my $test_files = [qw(
   t/commands/stor.t
   t/commands/stou.t
   t/commands/appe.t
+  t/config/serverident.t
 )];
 
 $test_files = [@ARGV] if scalar(@ARGV) > 0;
