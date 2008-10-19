@@ -544,6 +544,30 @@ sub pasv {
   }
 }
 
+sub epsv {
+  my $self = shift;
+  my $code;
+
+  $code = $self->{ftp}->quot('EPSV');
+  unless ($code) {
+    croak("EPSV command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("EPSV command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
 sub port {
   my $self = shift;
   my $port = shift;
