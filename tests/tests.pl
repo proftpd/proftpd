@@ -21,6 +21,8 @@ $| = 1;
 
 my $test_files = [qw(
   t/logins.t
+  t/commands/user.t
+  t/commands/pass.t
   t/commands/pwd.t
   t/commands/cwd.t
   t/commands/cdup.t

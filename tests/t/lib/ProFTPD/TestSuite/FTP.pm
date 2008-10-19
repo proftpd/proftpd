@@ -132,6 +132,58 @@ sub login {
   }
 }
 
+sub user {
+  my $self = shift;
+  my $user = shift;
+  $user = '' unless defined($user);
+  my $code;
+
+  $code = $self->{ftp}->quot('USER', $user);
+  unless ($code) {
+    croak("USER command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("USER command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
+sub pass {
+  my $self = shift;
+  my $passwd = shift;
+  $passwd = '' unless defined($passwd);
+  my $code;
+
+  $code = $self->{ftp}->quot('PASS', $passwd);
+  unless ($code) {
+    croak("PASS command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("PASS command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
 sub pwd {
   my $self = shift;
 
