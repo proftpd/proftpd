@@ -65,6 +65,9 @@ sub response_code {
 
 sub response_msg {
   my $self = shift;
+  my $index = shift;
+  $index = 1 unless defined($index);
+
   if (defined($self->{mesg})) {
     my $msg = $self->{mesg};
     delete($self->{mesg});
@@ -74,8 +77,8 @@ sub response_msg {
 
   my @msgs = $self->{ftp}->message;
   if (scalar(@msgs) > 1) {
-    chomp($msgs[1]);
-    return $msgs[1];
+    chomp($msgs[$index]);
+    return $msgs[$index];
   }
 
   chomp($msgs[0]);
