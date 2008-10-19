@@ -118,7 +118,7 @@ sub epsv_ok {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = '^Entering Extended Passive Mode \(\|';
+      $expected = '^Entering Extended Passive Mode \(\|\|\|\d+\|\)';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
