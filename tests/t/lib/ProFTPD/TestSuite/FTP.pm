@@ -85,6 +85,19 @@ sub response_msg {
   return $msgs[0];
 }
 
+sub response_msgs {
+  my $self = shift;
+
+  my @msgs = $self->{ftp}->message;
+  my $msgs = [];
+  foreach my $msg (@msgs) {
+    chomp($msg);
+    push(@$msgs, $msg);
+  }
+
+  return $msgs;
+}
+
 sub response_uniq {
   my $self = shift;
 
@@ -1125,6 +1138,54 @@ sub appe_raw {
   $path = '' unless defined($path);
 
   return $self->{ftp}->appe($path);
+}
+
+sub feat {
+  my $self = shift;
+  my $code;
+
+  $code = $self->{ftp}->quot('FEAT');
+  unless ($code) {
+    croak("FEAT command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("FEAT command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
+sub help {
+  my $self = shift;
+  my $code;
+
+  $code = $self->{ftp}->quot('HELP');
+  unless ($code) {
+    croak("HELP command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("HELP command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
 }
 
 1;
