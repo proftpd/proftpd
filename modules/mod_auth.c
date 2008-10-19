@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.246 2008-10-02 20:53:39 castaglia Exp $
+ * $Id: mod_auth.c,v 1.247 2008-10-19 23:59:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1962,7 +1962,7 @@ MODRET auth_pass(cmd_rec *cmd) {
       end_login(0);
     }
 
-    return PR_ERROR_MSG(cmd, R_530, denymsg ? denymsg : _("Login incorrect"));
+    return PR_ERROR_MSG(cmd, R_530, denymsg ? denymsg : _("Login incorrect."));
   }
 
   return PR_HANDLED(cmd);
