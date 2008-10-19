@@ -46,6 +46,7 @@ my $test_files = [qw(
   t/commands/pasv.t
   t/commands/epsv.t
   t/commands/port.t
+  t/commands/eprt.t
   t/commands/nlst.t
   t/commands/list.t
   t/commands/retr.t

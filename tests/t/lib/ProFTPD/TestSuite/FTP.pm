@@ -586,6 +586,32 @@ sub port {
   }
 }
 
+sub eprt {
+  my $self = shift;
+  my $port = shift;
+  $port = '' unless defined($port);
+  my $code;
+
+  $code = $self->{ftp}->quot('EPRT', $port);
+  unless ($code) {
+    croak("EPRT command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("EPRT command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
 sub mode {
   my $self = shift;
   my $mode = shift;
