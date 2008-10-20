@@ -16,10 +16,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: ../contrib/mod_ban.c:1465 ../modules/mod_auth.c:2053
-msgid "Login incorrect"
-msgstr "Login incorrect"
-
 #: ../contrib/mod_quotatab.c:1440 ../contrib/mod_quotatab.c:1447
 #: ../contrib/mod_quotatab.c:1495 ../contrib/mod_quotatab.c:1502
 #: ../contrib/mod_quotatab.c:2086 ../contrib/mod_quotatab.c:2095

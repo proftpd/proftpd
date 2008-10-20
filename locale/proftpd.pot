@@ -16,10 +16,6 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../contrib/mod_ban.c:1465 ../modules/mod_auth.c:2053
-msgid "Login incorrect"
-msgstr ""
-
 #: ../contrib/mod_quotatab.c:163 ../contrib/mod_quotatab.c:227
 msgid "upload"
 msgstr ""
