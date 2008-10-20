@@ -55,6 +55,7 @@ my $test_files = [qw(
   t/commands/appe.t
   t/config/displayconnect.t
   t/config/displaylogin.t
+  t/config/maxloginattempts.t
   t/config/serverident.t
 )];
 
