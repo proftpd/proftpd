@@ -333,7 +333,7 @@ sub pass_fails_no_passwd {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Login incorrect";
+      $expected = "Login incorrect.";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
