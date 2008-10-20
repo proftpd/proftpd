@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.18 2008-09-11 01:20:10 castaglia Exp $
+ * $Id: mod_ban.c,v 1.19 2008-10-20 00:01:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1463,7 +1463,7 @@ MODRET ban_pre_pass(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_INFO, MOD_BAN_VERSION
       ": Login denied: user '%s' banned", user);
     ban_send_mesg(cmd->tmp_pool, user, rule_mesg);
-    return PR_ERROR_MSG(cmd, R_530, _("Login incorrect"));
+    return PR_ERROR_MSG(cmd, R_530, _("Login incorrect."));
   }
 
   return PR_DECLINED(cmd);
