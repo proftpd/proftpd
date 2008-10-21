@@ -714,6 +714,9 @@
 /* Define if you have the UnixWare gen library (-lgen).  */
 #undef HAVE_LIBGEN
 
+/* Define if you have the iconv library (-liconv).  */
+#undef HAVE_LIBICONV
+
 /* Define if you have the intl library (-lintl).  */
 #undef HAVE_LIBINTL
 

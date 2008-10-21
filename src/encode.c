@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.5 2008-09-04 16:42:26 castaglia Exp $
+ * $Id: encode.c,v 1.6 2008-10-21 18:01:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,24 +48,35 @@ static int supports_telnet_iac = TRUE;
 
 static const char *trace_channel = "encode";
 
-static int str_convert(iconv_t conv, char *inbuf, size_t *inbuflen,
+static int str_convert(iconv_t conv, const char *inbuf, size_t *inbuflen,
     char *outbuf, size_t *outbuflen) {
 # ifdef HAVE_ICONV
-  char *start = inbuf;
+  char *start = (char *) inbuf;
 
   while (inbuflen > 0) {
     size_t nconv;
 
     pr_signals_handle();
 
+    /* Solari/FreeBSD's iconv(3) takes a const char ** for the input buffer,
+     * whereas Linux/Mac OSX iconv(3) use char ** for the input buffer.
+     */
+#if defined(LINUX) || defined(DARWIN6) || defined(DARWIN7) || \
+    defined(DARWIN8) || defined(DARWIN9)
+
+    nconv = iconv(conv, (char **) &inbuf, inbuflen, &outbuf, outbuflen);
+#else
     nconv = iconv(conv, &inbuf, inbuflen, &outbuf, outbuflen);
+#endif
+
     if (nconv == (size_t) -1) {
       if (errno == EINVAL) {
         memmove(start, inbuf, *inbuflen);
         continue;
 
-      } else
+      } else {
         return -1;
+      }
     }
 
     break;
@@ -287,7 +298,8 @@ int pr_encode_enable_encoding(const char *codeset) {
   res = encode_init();
   if (res < 0) {
     pr_trace_msg(trace_channel, 1,
-      "failed to initialize encoding for %s, disabling encoding", codeset);
+      "failed to initialize encoding for %s, disabling encoding: %s", codeset,
+      strerror(errno));
     encoding = NULL;
   }
 

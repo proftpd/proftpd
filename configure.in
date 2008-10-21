@@ -533,6 +533,22 @@ AC_ARG_ENABLE(nls,
           [AC_MSG_ERROR([libintl support, required for NLS, not present -- aborting])]
         ])
       )
+
+      dnl Similarly, the libiconv library is only needed on some non-GNU
+      dnl systems.
+      AC_CHECK_LIB(iconv, iconv_open,
+        [LIBS="$LIBS -liconv"
+         AC_DEFINE(HAVE_LIBICONV, 1, [Define if libiconv is present.])
+         AC_DEFINE(PR_USE_NLS, 1, [Define if using NLS support.])
+         ENABLE_NLS="1"
+        ],
+        [AC_CHECK_LIB(c, iconv_open,
+          [AC_DEFINE(PR_USE_NLS, 1, [Define if using NLS support.])
+           ENABLE_NLS="1"
+          ],
+          [AC_MSG_ERROR([libiconv support, required for NLS, not present -- aborting])]
+        ])
+      )
     fi
   ])
 
@@ -1299,10 +1315,33 @@ AC_PROG_GCC_TRADITIONAL
 AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(bcopy crypt fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo futimes iconv nl_langinfo)
+AC_CHECK_FUNCS(bcopy crypt fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo futimes nl_langinfo)
 AC_CHECK_FUNC(gai_strerror,
   AC_DEFINE(HAVE_GAI_STRERROR),
   LIB_OBJS="$LIB_OBJS glibc-gai_strerror.o"
+)
+
+AC_MSG_CHECKING([for iconv])
+AC_TRY_LINK(
+  [ #include <stdlib.h>
+    #include <sys/types.h>
+    #ifdef HAVE_ICONV_H
+    # include <iconv.h>
+    #endif
+  ],
+  [ 
+    size_t res, in_len = 0, out_len = 0;
+    const char *in = NULL;
+    char *out = NULL;
+    res = iconv((iconv_t)-1, &in, &in_len, &out, &out_len);
+  ],
+  [
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_ICONV, 1, [Define if you have iconv])
+  ],
+  [
+    AC_MSG_RESULT(no)
+  ]
 )
 
 AC_MSG_CHECKING([for dirfd])
