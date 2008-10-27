@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.141 2008-10-04 22:15:05 castaglia Exp $
+ * $Id: mod_sql.c,v 1.142 2008-10-27 22:35:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1108,7 +1108,6 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
       return NULL;
 
     username = (char *) mr->data;
-
     usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, "='", username, "'", NULL);
 
     sql_log(DEBUG_WARN, "cache miss for user '%s'", realname);
@@ -1133,7 +1132,8 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   }
 
   if (!cmap.usercustom) { 
-    where = sql_prepare_where(0, cmd, 2, usrwhere, cmap.userwhere, NULL);
+    where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, usrwhere,
+      sql_prepare_where(0, cmd, 1, cmap.userwhere, NULL), NULL);
 
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5, "default",
       cmap.usrtable, cmap.usrfields, where, "1"), "sql_select");
@@ -1372,7 +1372,8 @@ static struct group *_sql_getgroup(cmd_rec *cmd, struct group *g) {
       return NULL;
     }
 
-    where = sql_prepare_where(0, cmd, 2, grpwhere, cmap.groupwhere, NULL);
+    where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, grpwhere,
+      sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL), NULL);
 
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5, "default",
       cmap.grptable, cmap.grpfield, where, "1"), "sql_select");
@@ -1391,7 +1392,8 @@ static struct group *_sql_getgroup(cmd_rec *cmd, struct group *g) {
   grpwhere = pstrcat(cmd->tmp_pool, cmap.grpfield, " = '", groupname, "'",
     NULL);
 
-  where = sql_prepare_where(0, cmd, 2, grpwhere, cmap.groupwhere, NULL);
+  where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, grpwhere,
+    sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL), NULL);
 
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default",
     cmap.grptable, cmap.grpfields, where), "sql_select");
@@ -1466,7 +1468,8 @@ static void _setstats(cmd_rec *cmd, int fstor, int fretr, int bstor,
   usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", _sql_realuser(cmd),
     "'", NULL);
 
-  where = sql_prepare_where(0, cmd, 2, usrwhere, cmap.userwhere, NULL);
+  where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, usrwhere,
+    sql_prepare_where(0, cmd, 1, cmap.userwhere, NULL), NULL);
 
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default", cmap.usrtable,
     query, where), "sql_update");
@@ -1691,7 +1694,9 @@ static char *resolve_long_tag(cmd_rec *cmd, char *tag) {
 
   if (strlen(tag) > 5 &&
       strncmp(tag, "env:", 4) == 0) {
-    char *env = pr_env_get(cmd->pool, tag + 4);
+    char *env;
+
+    env = pr_env_get(cmd->pool, tag + 4);
     return pstrdup(cmd->tmp_pool, env ? env : "");
   }
 
@@ -2130,6 +2135,7 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name) {
 
         } else {
           argp = resolve_short_tag(cmd, *tmp);
+
           mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default",
             argp), "sql_escapestring");
           if (check_response(mr) < 0)
@@ -3609,8 +3615,9 @@ MODRET cmd_getstats(cmd_rec *cmd) {
   usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", _sql_realuser(cmd),
     "'", NULL);
 
-  where = sql_prepare_where(0, cmd, 2, usrwhere, cmap.userwhere, NULL);
- 
+  where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, usrwhere,
+    sql_prepare_where(0, cmd, 1, cmap.userwhere, NULL), NULL);
+
   query = pstrcat(cmd->tmp_pool, cmap.sql_fstor, ", ",
 		  cmap.sql_fretr, ", ", cmap.sql_bstor, ", ",
 		  cmap.sql_bretr, NULL);
@@ -3644,7 +3651,8 @@ MODRET cmd_getratio(cmd_rec *cmd) {
   usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", _sql_realuser(cmd),
     "'", NULL);
 
-  where = sql_prepare_where(0, cmd, 2, usrwhere, cmap.userwhere, NULL);
+  where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, usrwhere,
+    sql_prepare_where(0, cmd, 1, cmap.userwhere, NULL), NULL);
 
   query = pstrcat(cmd->tmp_pool, cmap.sql_frate, ", ",
 		  cmap.sql_fcred, ", ", cmap.sql_brate, ", ",
