@@ -25,7 +25,7 @@
  */
 
 /* Data connection management prototypes
- * $Id: data.h,v 1.20 2008-08-28 00:06:29 castaglia Exp $
+ * $Id: data.h,v 1.21 2008-10-28 17:19:03 castaglia Exp $
  */
 
 #ifndef PR_DATACONN_H
@@ -39,6 +39,11 @@ void pr_data_abort(int, int);
 int pr_data_xfer(char *, int);
 void pr_data_reset(void);
 void pr_data_set_linger(long);
+
+/* Clear the session.xfer.p pool, if present, and reset any associated
+ * state.
+ */
+void pr_data_clear_xfer_pool(void);
 
 int pr_data_get_timeout(int);
 void pr_data_set_timeout(int, int);
