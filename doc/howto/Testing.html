@@ -1,4 +1,4 @@
-<!-- $Id: Testing.html,v 1.1 2008-02-17 04:15:32 castaglia Exp $ -->
+<!-- $Id: Testing.html,v 1.2 2008-10-28 01:02:31 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Testing.html,v $ -->
 
 <html>
@@ -12,24 +12,31 @@
 <center><h2><b>ProFTPD Testsuite</b></h2></center>
 <hr>
 
-Requires:
+API Tests
+  Written in C, uses the libcheck library
 
-  gcc
+  The --enable-tests configure option
+  gcc support of variadic macros (4.0 or later recommended)
   check (see http://check.sourceforge.net)
 
-The --enable-tests configure option
+  PR_TEST_SUITE environment variable
 
-PR_TEST_SUITE environment variable
+  Examples of running it
 
-Test coverage
+  api-tests.log file
 
-For more information on running the testsuite, see:
+Integration Tests
+  Written in Perl, uses <code>Test-Unit-0.14</code> (<b>not</b> <code>Test-Unit-0.25</code>)
 
-  doc/howto/Testing.html
+  No special configure option needed
+
+  Examples of running it
+
+  Test classes
 
 <p>
 <hr>
-Last updated: <i>$Date: 2008-02-17 04:15:32 $</i><br>
+Last updated: <i>$Date: 2008-10-28 01:02:31 $</i><br>
 <hr>
 
 </body>
