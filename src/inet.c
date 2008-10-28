@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.109 2008-09-04 00:30:14 castaglia Exp $
+ * $Id: inet.c,v 1.110 2008-10-28 00:46:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1078,59 +1078,6 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
     return -1;
 
   return 0;
-}
-
-/* Associate already open streams with the connection, returns NULL if either
- * stream points to a non-socket descriptor.  If addr is non-NULL, remote
- * address discovery is attempted. If resolve is non-zero, the remote address
- * is reverse resolved.
- */
-conn_t *pr_inet_associate(pool *p, conn_t *c, pr_netaddr_t *addr,
-    pr_netio_stream_t *in, pr_netio_stream_t *out, int resolve) {
-  int rfd, wfd;
-  int socktype;
-  socklen_t socktype_len = sizeof(socktype);
-  conn_t *res;
-
-  rfd = PR_NETIO_FD(in);
-  wfd = PR_NETIO_FD(out);
-
-  if (getsockopt(rfd, SOL_SOCKET, SO_TYPE, (void *) &socktype,
-      &socktype_len) == -1 || socktype != SOCK_STREAM)
-    return NULL;
-
-  if (getsockopt(wfd, SOL_SOCKET, SO_TYPE, (void *) &socktype,
-      &socktype_len) == -1 || socktype != SOCK_STREAM)
-    return NULL;
-
-  res = pr_inet_copy_connection(p, c);
-
-  res->rfd = rfd;
-  res->wfd = wfd;
-  res->instrm = in;
-  res->outstrm = out;
-  res->mode = CM_OPEN;
-
-  if (pr_inet_get_conn_info(res, wfd) < 0)
-    return NULL;
-
-  /* Get the remote address */
-
-  if (addr) {
-    if (!res->remote_addr)
-      res->remote_addr = pr_netaddr_alloc(res->pool);
-
-    memcpy(res->remote_addr, addr, sizeof(pr_netaddr_t));
-  }
-
-  if (resolve && res->remote_addr)
-    res->remote_name = pr_netaddr_get_dnsstr(res->remote_addr);
-
-  if (!res->remote_name)
-    res->remote_name = pr_netaddr_get_ipstr(res->remote_addr);
-
-  pr_inet_set_socket_opts(res->pool, res, 0, 0);
-  return res;
 }
 
 /* Open streams for a new socket. If rfd and wfd != -1, two new fds are duped
