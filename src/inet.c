@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.110 2008-10-28 00:46:11 castaglia Exp $
+ * $Id: inet.c,v 1.111 2008-10-28 00:48:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -108,7 +108,7 @@ conn_t *pr_inet_copy_connection(pool *p, conn_t *c) {
   sub_pool = make_sub_pool(p);
   pr_pool_tag(sub_pool, "pr_inet_copy_connection() subpool");
 
-  res = (conn_t *) pcalloc(sub_pool,sizeof(conn_t));
+  res = (conn_t *) pcalloc(sub_pool, sizeof(conn_t));
 
   memcpy(res, c, sizeof(conn_t));
   res->pool = sub_pool;

@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.242 2008-10-18 21:48:02 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.243 2008-10-28 00:48:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2159,6 +2159,12 @@ MODRET xfer_smnt(cmd_rec *cmd) {
 MODRET xfer_err_cleanup(cmd_rec *cmd) {
   if (session.xfer.p) {
     destroy_pool(session.xfer.p);
+
+    /* Data connections are allocated out of the transfer pool; since we
+     * just destroyed that pool, make sure the data connection pointer is
+     * NULL (and avoid a double-free).
+     */
+    session.d = NULL;
   }
 
   memset(&session.xfer, '\0', sizeof(session.xfer));

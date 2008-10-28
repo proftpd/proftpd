@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.109 2008-09-08 23:49:00 castaglia Exp $
+ * $Id: data.c,v 1.110 2008-10-28 00:48:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -225,6 +225,12 @@ static void data_new_xfer(char *filename, int direction) {
   if (session.xfer.p) {
     destroy_pool(session.xfer.p);
     memset(&session.xfer, 0, sizeof(session.xfer));
+
+    /* Data connections are allocated out of the transfer pool; since we
+     * just destroyed that pool, make sure the data connection pointer is
+     * NULL (and avoid a double-free).
+     */
+    session.d = NULL;
   }
 
   session.xfer.p = make_sub_pool(session.pool);
@@ -637,6 +643,12 @@ void pr_data_cleanup(void) {
     destroy_pool(session.xfer.p);
 
   memset(&session.xfer, 0, sizeof(session.xfer));
+
+  /* Data connections are allocated out of the transfer pool; since we
+   * just destroyed that pool, make sure the data connection pointer is
+   * NULL (and avoid a double-free).
+   */
+  session.d = NULL;
 }
 
 /* In order to avoid clearing the transfer counters in session.xfer, we don't

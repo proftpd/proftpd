@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.946 2008-10-27 22:35:11 castaglia Exp $
+$Id: NEWS,v 1.947 2008-10-28 00:48:08 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -19,6 +19,8 @@ CVS
 - Bug 3120 - WrapTables not allowed in <Anonymous> context.
 - Bug 3122 - iconv() not detected properly on FreeBSD when --enable-nls is used.
 - Bug 3124 - mod_sql improperly substitutes variables in user/group names.
+- Bug 3089 - Memory pool double-free on session exit after aborted data
+  transfer.
 
 1.3.2rc2 - Released 17-Sep-2008
 --------------------------------
