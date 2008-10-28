@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.142 2008-10-27 22:35:11 castaglia Exp $
+ * $Id: mod_sql.c,v 1.143 2008-10-28 17:22:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1132,6 +1132,16 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   }
 
   if (!cmap.usercustom) { 
+
+    /* The following nested function calls may look a little strange, but
+     * it is deliberate.  We want to handle any tags/variables within the
+     * cmap.userwhere string (i.e. the SQLUserWhereClause directive, if
+     * configured), but we do NOT want to handle any tags/variables in
+     * the usrwhere variable (a string we concatenated ourselves).  The
+     * usrwhere variable contains the user name, and we need to handle that
+     * string as-is, lest we corrupt/change the user name.
+     */
+
     where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, usrwhere,
       sql_prepare_where(0, cmd, 1, cmap.userwhere, NULL), NULL);
 
