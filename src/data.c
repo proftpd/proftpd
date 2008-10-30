@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.111 2008-10-28 17:19:04 castaglia Exp $
+ * $Id: data.c,v 1.112 2008-10-30 23:38:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -225,7 +225,7 @@ static void data_new_xfer(char *filename, int direction) {
   pr_data_clear_xfer_pool();
 
   session.xfer.p = make_sub_pool(session.pool);
-  pr_pool_tag(session.xfer.p, "session.xfer pool");
+  pr_pool_tag(session.xfer.p, "data transfer pool");
 
   session.xfer.filename = pstrdup(session.xfer.p, filename);
   session.xfer.direction = direction;
@@ -270,7 +270,7 @@ static int data_pasv_open(char *reason, off_t size) {
       0, 1, 1);
   }
 
-  c = pr_inet_accept(session.xfer.p, session.d, session.c, -1, -1, TRUE);
+  c = pr_inet_accept(session.pool, session.d, session.c, -1, -1, TRUE);
   pr_netaddr_set_reverse_dns(rev);
 
   if (c && c->mode != CM_ERROR) {
@@ -470,24 +470,20 @@ void pr_data_clear_xfer_pool(void) {
     destroy_pool(session.xfer.p);
 
   memset(&session.xfer, 0, sizeof(session.xfer));
-
-  /* Data connections are allocated out of the transfer pool; since we
-   * just destroyed that pool, make sure the data connection pointer is
-   * NULL (and avoid a double-free).
-   */
-  session.d = NULL;
 }
 
 void pr_data_reset(void) {
-  if (session.d && session.d->pool)
+  if (session.d &&
+      session.d->pool) {
     destroy_pool(session.d->pool);
+  }
 
   session.d = NULL;
   session.sf_flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE|SF_EPSV_ALL));
 }
 
 void pr_data_init(char *filename, int direction) {
-  if (!session.xfer.p) {
+  if (session.xfer.p == NULL) {
     data_new_xfer(filename, direction);
 
   } else {
@@ -502,8 +498,9 @@ void pr_data_init(char *filename, int direction) {
 int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   int res = 0;
 
-  if (!session.xfer.p)
+  if (session.xfer.p == NULL)
     data_new_xfer(filename, direction);
+
   else
     session.xfer.direction = direction;
 

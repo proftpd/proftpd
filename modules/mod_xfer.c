@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.244 2008-10-28 17:19:04 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.245 2008-10-30 23:38:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1668,20 +1668,17 @@ MODRET xfer_stor(cmd_rec *cmd) {
        */
 #if defined(EDQUOT)
       if (errno == EDQUOT) {
-        pr_response_add_err(R_552, "%s: %s", session.xfer.path,
-          strerror(errno));
+        pr_response_add_err(R_552, "%s: %s", cmd->arg, strerror(errno));
         return PR_ERROR(cmd);
       }
 #elif defined(EFBIG)
       if (errno == EFBIG) {
-        pr_response_add_err(R_552, "%s: %s", session.xfer.path,
-          strerror(errno));
+        pr_response_add_err(R_552, "%s: %s", cmd->arg, strerror(errno));
         return PR_ERROR(cmd);
       }
 #endif
 
-      pr_response_add_err(R_550, "%s: %s", session.xfer.path,
-        strerror(errno));
+      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
       return PR_ERROR(cmd);
     }
 
