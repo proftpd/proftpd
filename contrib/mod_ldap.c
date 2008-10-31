@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.71 2008-10-06 15:47:24 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.72 2008-10-31 20:15:32 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1146,10 +1146,10 @@ handle_ldap_check(cmd_rec *cmd)
 #if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
   EVP_MD_CTX EVP_Context;
   const EVP_MD *md;
-  int md_len;
+  unsigned int md_len;
   unsigned char md_value[EVP_MAX_MD_SIZE];
   EVP_ENCODE_CTX EVP_Encode;
-  char buff[EVP_MAX_KEY_LENGTH];
+  unsigned char buff[EVP_MAX_KEY_LENGTH];
 #endif /* !HAVE_OPENSSL and !PR_USE_OPENSSL */
 
   if (!ldap_doauth) {
@@ -1271,9 +1271,9 @@ handle_ldap_check(cmd_rec *cmd)
 
     /* Base64 Encoding */
     EVP_EncodeInit(&EVP_Encode);
-    EVP_EncodeBlock(buff, md_value, md_len);
+    EVP_EncodeBlock(buff, md_value, (int) md_len);
 
-    if (strcmp(buff, cryptpass + encname_len + 2) != 0) {
+    if (strcmp((char *) buff, cryptpass + encname_len + 2) != 0) {
       return PR_ERROR(cmd);
     }
   }

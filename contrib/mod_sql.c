@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.143 2008-10-28 17:22:26 castaglia Exp $
+ * $Id: mod_sql.c,v 1.144 2008-10-31 20:15:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -644,7 +644,7 @@ static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
   EVP_ENCODE_CTX base64_ctxt;
   const EVP_MD *md;
   unsigned char buf[EVP_MAX_KEY_LENGTH], mdval[EVP_MAX_MD_SIZE];
-  size_t mdlen;
+  unsigned int mdlen;
   int res;
 
   char *digestname;             /* ptr to name of the digest function */
@@ -686,7 +686,7 @@ static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
   EVP_EncodeInit(&base64_ctxt);
   EVP_EncodeBlock(buf, mdval, (int) mdlen);
 
-  res = strcmp(buf, hashvalue);
+  res = strcmp((char *) buf, hashvalue);
 
   return res ? PR_ERROR_INT(cmd, PR_AUTH_BADPWD) : PR_HANDLED(cmd);
 }
@@ -3275,7 +3275,7 @@ MODRET cmd_getpwuid(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getpwuid");
 
-  lpw.pw_uid = (uid_t) cmd->argv[0];
+  lpw.pw_uid = *((uid_t *) cmd->argv[0]);
   lpw.pw_name = NULL;
   pw = _sql_getpasswd(cmd, &lpw);
 
@@ -3323,7 +3323,7 @@ MODRET cmd_getgrgid(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getgrgid");
 
-  lgr.gr_gid = (gid_t) cmd->argv[0];
+  lgr.gr_gid = *((gid_t *) cmd->argv[0]);
   lgr.gr_name = NULL;
   gr = _sql_getgroup(cmd, &lgr);
 
@@ -4401,6 +4401,7 @@ MODRET set_sqlminusergid(cmd_rec *cmd) {
 }
 
 MODRET set_sqldefaultuid(cmd_rec *cmd) {
+  int xerrno;
   config_rec *c;
   uid_t val;
   char *endptr = NULL;
@@ -4408,14 +4409,15 @@ MODRET set_sqldefaultuid(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
+  errno = 0;
   val = strtoul(cmd->argv[1], &endptr, 10);
+  xerrno = errno;
 
   if (*endptr != '\0')
     CONF_ERROR(cmd, "requires a numeric argument");
 
   /* Whee! need to check is in the legal range for uid_t. */
-  if (val == ULONG_MAX &&
-      errno == ERANGE) {
+  if (xerrno == ERANGE) {
     CONF_ERROR(cmd, "the value given is outside the legal range");
   }
 
@@ -4428,6 +4430,7 @@ MODRET set_sqldefaultuid(cmd_rec *cmd) {
 }
 
 MODRET set_sqldefaultgid(cmd_rec *cmd) {
+  int xerrno;
   config_rec *c;
   gid_t val;
   char *endptr = NULL;
@@ -4435,14 +4438,15 @@ MODRET set_sqldefaultgid(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
+  errno = 0;
   val = strtoul(cmd->argv[1], &endptr, 10);
+  xerrno = errno;
 
   if (*endptr != '\0')
     CONF_ERROR(cmd, "requires a numeric argument");
 
   /* Whee! need to check is in the legal range for gid_t. */
-  if (val == ULONG_MAX &&
-      errno == ERANGE) {
+  if (xerrno == ERANGE) {
     CONF_ERROR(cmd, "the value given is outside the legal range");
   }
 

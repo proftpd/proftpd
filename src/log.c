@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.87 2008-09-04 00:30:14 castaglia Exp $
+ * $Id: log.c,v 1.88 2008-10-31 20:15:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -168,7 +168,7 @@ int log_wtmp(char *line, const char *name, const char *host,
       sstrncpy(ut.ut_host, host, sizeof(ut.ut_host));
 #endif /* HAVE_UT_UT_HOST */
 
-    time(&ut.ut_time);
+    ut.ut_time = time(NULL);
     if (write(fd, (char *)&ut, sizeof(ut)) != sizeof(ut)) {
       if (ftruncate(fd, buf.st_size) < 0) {
         pr_log_debug(DEBUG0, "error truncating '%s': %s", WTMP_FILE,
