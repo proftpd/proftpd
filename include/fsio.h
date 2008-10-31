@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.20 2008-09-03 18:19:37 castaglia Exp $
+ * $Id: fsio.h,v 1.21 2008-10-31 17:38:55 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -146,6 +146,29 @@ struct fs_rec {
   struct dirent *(*readdir)(pr_fs_t *, void *);
   int (*mkdir)(pr_fs_t *, const char *, mode_t);
   int (*rmdir)(pr_fs_t *, const char *);
+
+  /* This flag determines whether this FS handler allows cross-FS hardlinks,
+   * either from this FS to another FS, or from another FS to this FS.
+   *
+   * If the flag is set to FALSE by the FS registrant, then a hardlink
+   * across FS handlers will fail, with errno set to EXDEV.  The caller
+   * will then have to handle the EXDEV error appropriately.
+   */
+  int allow_xdev_link;
+
+  /* This flag determines whether this FS handler allows cross-FS renames,
+   * either from this FS to another FS, or from another FS to this FS.
+   *
+   * If the flag is set to FALSE by the FS registrant, then a rename
+   * across FS handlers will fail, with errno set to EXDEV.  The caller
+   * will then have to handle the EXDEV error appropriately.
+   *
+   * In the core engine, a RNFR/RNTO sequence which encounters an EXDEV
+   * error will cause a copy/delete of the file.  This can be more IO
+   * intensive than expected, and lead to longer times for the RNTO
+   * command to complete.
+   */
+  int allow_xdev_rename;
 };
 
 struct fh_rec {

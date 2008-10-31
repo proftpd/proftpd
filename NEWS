@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.947 2008-10-28 00:48:08 castaglia Exp $
+$Id: NEWS,v 1.948 2008-10-31 17:38:55 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -21,6 +21,8 @@ CVS
 - Bug 3124 - mod_sql improperly substitutes variables in user/group names.
 - Bug 3089 - Memory pool double-free on session exit after aborted data
   transfer.
+- Bug 3092 - FSIO API needs mechanism for allowing registered FS handlers to
+  permit atomic renames.
 
 1.3.2rc2 - Released 17-Sep-2008
 --------------------------------

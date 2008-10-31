@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.72 2008-09-03 18:19:37 castaglia Exp $
+ * $Id: fsio.c,v 1.73 2008-10-31 17:38:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -844,6 +844,8 @@ pr_fs_t *pr_create_fs(pool *p, const char *name) {
   fs->fs_next = fs->fs_prev = NULL;
   fs->fs_name = pstrdup(fs->fs_pool, name);
   fs->fs_next = root_fs;
+  fs->allow_xdev_link = TRUE;
+  fs->allow_xdev_rename = TRUE;
 
   /* This is NULL until set by pr_insert_fs() */
   fs->fs_path = NULL;
@@ -2525,12 +2527,20 @@ void pr_fs_globfree(glob_t *pglob) {
 
 int pr_fsio_rename_canon(const char *rfrom, const char *rto) {
   int res;
-  pr_fs_t *fs = lookup_file_canon_fs(rfrom, NULL, FSIO_FILE_RENAME);
+  pr_fs_t *from_fs, *to_fs, *fs;
 
-  if (fs != lookup_file_canon_fs(rto, NULL, FSIO_FILE_RENAME)) {
-    errno = EXDEV;
-    return -1;
+  from_fs = lookup_file_canon_fs(rfrom, NULL, FSIO_FILE_RENAME);
+  to_fs = lookup_file_canon_fs(rto, NULL, FSIO_FILE_RENAME);
+
+  if (from_fs->allow_xdev_rename == FALSE ||
+      to_fs->allow_xdev_rename == FALSE) {
+    if (from_fs != to_fs) {
+      errno = EXDEV;
+      return -1;
+    }
   }
+
+  fs = to_fs;
 
   /* Find the first non-NULL custom rename handler.  If there are none,
    * use the system rename.
@@ -2547,12 +2557,20 @@ int pr_fsio_rename_canon(const char *rfrom, const char *rto) {
 
 int pr_fsio_rename(const char *rnfm, const char *rnto) {
   int res;
-  pr_fs_t *fs = lookup_file_fs(rnfm, NULL, FSIO_FILE_RENAME);
+  pr_fs_t *from_fs, *to_fs, *fs;
 
-  if (fs != lookup_file_fs(rnto, NULL, FSIO_FILE_RENAME)) {
-    errno = EXDEV;
-    return -1;
+  from_fs = lookup_file_fs(rnfm, NULL, FSIO_FILE_RENAME);
+  to_fs = lookup_file_fs(rnto, NULL, FSIO_FILE_RENAME);
+
+  if (from_fs->allow_xdev_rename == FALSE ||
+      to_fs->allow_xdev_rename == FALSE) {
+    if (from_fs != to_fs) {
+      errno = EXDEV;
+      return -1;
+    }
   }
+
+  fs = to_fs;
 
   /* Find the first non-NULL custom rename handler.  If there are none,
    * use the system rename.
@@ -2842,12 +2860,20 @@ off_t pr_fsio_lseek(pr_fh_t *fh, off_t offset, int whence) {
 
 int pr_fsio_link_canon(const char *lfrom, const char *lto) {
   int res;
-  pr_fs_t *fs = lookup_file_canon_fs(lfrom, NULL, FSIO_FILE_LINK);
+  pr_fs_t *from_fs, *to_fs, *fs;
 
-  if (fs != lookup_file_canon_fs(lto, NULL, FSIO_FILE_LINK)) {
-    errno = EXDEV;
-    return -1;
+  from_fs = lookup_file_fs(lfrom, NULL, FSIO_FILE_LINK);
+  to_fs = lookup_file_fs(lto, NULL, FSIO_FILE_LINK);
+
+  if (from_fs->allow_xdev_link == FALSE ||
+      to_fs->allow_xdev_link == FALSE) {
+    if (from_fs != to_fs) {
+      errno = EXDEV;
+      return -1;
+    }
   }
+
+  fs = to_fs;
 
   /* Find the first non-NULL custom link handler.  If there are none,
    * use the system link.
@@ -2864,12 +2890,21 @@ int pr_fsio_link_canon(const char *lfrom, const char *lto) {
 
 int pr_fsio_link(const char *lfrom, const char *lto) {
   int res;
-  pr_fs_t *fs = lookup_file_fs(lfrom, NULL, FSIO_FILE_LINK);
 
-  if (fs != lookup_file_fs(lto, NULL, FSIO_FILE_LINK)) {
-    errno = EXDEV;
-    return -1;
+  pr_fs_t *from_fs, *to_fs, *fs;
+
+  from_fs = lookup_file_fs(lfrom, NULL, FSIO_FILE_LINK);
+  to_fs = lookup_file_fs(lto, NULL, FSIO_FILE_LINK);
+
+  if (from_fs->allow_xdev_link == FALSE ||
+      to_fs->allow_xdev_link == FALSE) {
+    if (from_fs != to_fs) {
+      errno = EXDEV;
+      return -1;
+    }
   }
+
+  fs = to_fs;
 
   /* Find the first non-NULL custom link handler.  If there are none,
    * use the system link.
