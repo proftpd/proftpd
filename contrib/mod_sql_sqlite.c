@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.10 2008-11-03 18:46:03 castaglia Exp $
+ * $Id: mod_sql_sqlite.c,v 1.11 2008-11-03 19:27:24 castaglia Exp $
  * $Libraries: -lsqlite3 $
  */
 
@@ -953,6 +953,10 @@ static void sql_sqlite_mod_unload_ev(const void *event_data, void *user_data) {
     }
 
     pr_event_unregister(&sql_sqlite_module, NULL, NULL);
+
+    /* Note that we do NOT call sqlite3_shutdown() here, as SQLite may
+     * also be being used by other modules.
+     */
   }
 }
 
