@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.8 2008-10-06 15:54:12 castaglia Exp $
+ * $Id: mod_sql_sqlite.c,v 1.9 2008-11-03 17:55:17 castaglia Exp $
  * $Libraries: -lsqlite3 $
  */
 
@@ -139,7 +139,7 @@ static int exec_cb(void *n, int ncols, char **cols,
 
   if (!result_list) {
     result_ncols = ncols;
-    result_list = make_array(cmd->tmp_pool, 1, sizeof(char **) * ncols);
+    result_list = make_array(cmd->tmp_pool, ncols, sizeof(char **));
   }
 
   row = push_array(result_list);
