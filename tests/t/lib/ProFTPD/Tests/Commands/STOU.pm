@@ -370,6 +370,8 @@ sub stou_ok_file {
         test_msg("Expected '$expected', got '$resp_msg'"));
 
       my $uniq_file = $client->response_uniq();
+      $self->assert($uniq_file, test_msg("Expected non-null unique file"));
+
       my $test_file = File::Spec->rel2abs("tmp/$uniq_file");
 
       $expected = -s $test_file;

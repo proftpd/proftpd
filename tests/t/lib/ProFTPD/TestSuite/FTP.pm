@@ -120,7 +120,10 @@ sub response_uniq {
     }
   }
 
-  chomp($uniq);
+  if ($uniq) {
+    chomp($uniq);
+  }
+
   return $uniq;
 }
 
@@ -1098,6 +1101,7 @@ sub stou {
   my $src_path = shift;
   $src_path = '' unless defined($src_path);
   my $dst_path = shift;
+  $dst_path = '' unless defined($dst_path);
 
   my $res;
 
