@@ -316,15 +316,13 @@ sub module_have_compiled {
       $line =~ s/^\s+//;
 
       push(@$mod_list, $line);
-
-      if (grep { /^$module$/ } @$mod_list) {
-        return 1;
-      }
-
-      return 0;
     }
 
     close($cmdh);
+
+    my $matches = grep { /^$module$/ } @$mod_list;
+
+    return $matches;
 
   } else {
     croak("Error listing compiled modules");
@@ -460,10 +458,35 @@ sub testsuite_get_runnable_tests {
   my $tests = shift;
   return undef unless $tests;
 
+  # Special handling of any 'mod_*' test classes; if the compiled proftpd
+  # has these as static modules, include those tests.
+
+  my $skip_tests = [];
+  foreach my $test (keys(%$tests)) {
+    foreach my $class (@{ $tests->{$test}->{test_class} }) {
+      if ($class =~ /^mod_\S+$/) {
+        my $module = $class;
+
+        if ($module !~ /\.c$/) {
+          $module .= '.c';
+        }
+
+        unless (module_have_compiled($module)) {
+          push(@$skip_tests, $test);
+          last;
+        }
+      }
+    }
+
+    foreach my $skip_test (@$skip_tests) {
+      delete($tests->{$skip_test});
+    }
+  }
+
   # Special handling of the 'rootprivs' test class: unless we are running
   # as root, we should exclude those test cases.
   unless ($< == 0) {
-    my $skip_tests = [];
+    $skip_tests = [];
     foreach my $test (keys(%$tests)) {
       my $ok = 1;
       foreach my $test_class (@{ $tests->{$test}->{test_class} }) {
@@ -482,27 +505,21 @@ sub testsuite_get_runnable_tests {
       delete($tests->{$skip_test});
     }
   }
- 
+
   my $runnables = [];
 
   if (defined($ENV{PROFTPD_TEST_ENABLE_CLASS})) {
     my $test_classes = [split(':', $ENV{PROFTPD_TEST_ENABLE_CLASS})];
-    my $have_test = 0;
 
     foreach my $test_class (@$test_classes) {
       foreach my $test (keys(%$tests)) {
         foreach my $class (@{ $tests->{$test}->{test_class} }) {
           if ($class eq $test_class) {
-            $have_test = 1;
             push(@$runnables, $test);
             last;
           }
         }
       }
-    }
-
-    unless ($have_test) {
-      $runnables = [qw(testsuite_empty_test)];
     }
 
   } else {
@@ -537,7 +554,12 @@ sub testsuite_get_runnable_tests {
     $runnables = $new_runnables;
   }
 
-  $runnables = [sort { $tests->{$a}->{order} <=> $tests->{$b}->{order} } @$runnables];
+  if (scalar(@$runnables) > 0) {
+    $runnables = [sort { $tests->{$a}->{order} <=> $tests->{$b}->{order} } @$runnables];
+  } else { 
+    $runnables = [qw(testsuite_empty_test)];
+  }
+
   return @$runnables;
 }
 

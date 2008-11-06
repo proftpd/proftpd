@@ -6,6 +6,8 @@ use strict;
 use Getopt::Long;
 use Test::Harness;
 
+use ProFTPD::TestSuite::Utils qw(:testsuite);
+
 my $opts = {};
 GetOptions($opts, 'h|help', 'C|class=s@');
 
@@ -15,51 +17,73 @@ if ($opts->{h}) {
 
 $| = 1;
 
-# XXX At some point, it might be nice to apply the concept of "test classes"
-# to these test files, as well as to the individual tests defined within each
-# file.
+my $test_files;
 
-my $test_files = [qw(
-  t/logins.t
-  t/commands/user.t
-  t/commands/pass.t
-  t/commands/pwd.t
-  t/commands/cwd.t
-  t/commands/cdup.t
-  t/commands/syst.t
-  t/commands/type.t
-  t/commands/mkd.t
-  t/commands/rmd.t
-  t/commands/dele.t
-  t/commands/mdtm.t
-  t/commands/size.t 
-  t/commands/mode.t
-  t/commands/stru.t
-  t/commands/allo.t
-  t/commands/noop.t
-  t/commands/feat.t
-  t/commands/help.t
-  t/commands/quit.t
-  t/commands/rnfr.t
-  t/commands/rnto.t
-  t/commands/rest.t
-  t/commands/pasv.t
-  t/commands/epsv.t
-  t/commands/port.t
-  t/commands/eprt.t
-  t/commands/nlst.t
-  t/commands/list.t
-  t/commands/retr.t
-  t/commands/stor.t
-  t/commands/stou.t
-  t/commands/appe.t
-  t/config/displayconnect.t
-  t/config/displaylogin.t
-  t/config/maxloginattempts.t
-  t/config/serverident.t
-)];
+if (scalar(@ARGV) > 0) {
+  $test_files = [@ARGV];
 
-$test_files = [@ARGV] if scalar(@ARGV) > 0;
+} else {
+  $test_files = [qw(
+    t/logins.t
+    t/commands/user.t
+    t/commands/pass.t
+    t/commands/pwd.t
+    t/commands/cwd.t
+    t/commands/cdup.t
+    t/commands/syst.t
+    t/commands/type.t
+    t/commands/mkd.t
+    t/commands/rmd.t
+    t/commands/dele.t
+    t/commands/mdtm.t
+    t/commands/size.t 
+    t/commands/mode.t
+    t/commands/stru.t
+    t/commands/allo.t
+    t/commands/noop.t
+    t/commands/feat.t
+    t/commands/help.t
+    t/commands/quit.t
+    t/commands/rnfr.t
+    t/commands/rnto.t
+    t/commands/rest.t
+    t/commands/pasv.t
+    t/commands/epsv.t
+    t/commands/port.t
+    t/commands/eprt.t
+    t/commands/nlst.t
+    t/commands/list.t
+    t/commands/retr.t
+    t/commands/stor.t
+    t/commands/stou.t
+    t/commands/appe.t
+    t/config/displayconnect.t
+    t/config/displaylogin.t
+    t/config/maxloginattempts.t
+    t/config/serverident.t
+  )];
+
+  # Now interrogate the build to see which module/feature-specific test files
+  # should be added to the list.
+  my $order = 0;
+
+  my $FEATURE_TESTS = {
+    't/modules/mod_sql.t' => {
+      order => ++$order,
+      test_class => [qw(mod_sql)],
+    },
+
+    't/modules/mod_sql_sqlite.t' => {
+      order => ++$order,
+      test_class => [qw(mod_sql_sqlite)],
+    },
+  };
+
+  my @feature_tests = testsuite_get_runnable_tests($FEATURE_TESTS);
+  if (scalar(@feature_tests) > 0) {
+    push(@$test_files, @feature_tests);
+  }
+}
 
 $ENV{PROFTPD_TEST} = 1;
 
