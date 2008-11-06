@@ -112,6 +112,7 @@ static Suite *tests_get_suite(const char *suite) {
 }
 
 int main(int argc, char *argv[]) {
+  const char *log_file = "api-tests.log";
   int nfailed = 0;
   SRunner *runner = NULL;
   char *requested = NULL;
@@ -121,7 +122,7 @@ int main(int argc, char *argv[]) {
   /* XXX This log name should be set outside this code, e.g. via environment
    * variable or command-line option.
    */
-  srunner_set_log(runner, "api-tests.log");
+  srunner_set_log(runner, log_file);
 
   requested = getenv("PR_TEST_SUITE");
   if (requested) {
@@ -168,7 +169,7 @@ int main(int argc, char *argv[]) {
       nfailed != 1 ? "tests" : "test");
     fprintf(stderr, " Please send email to:\n\n");
     fprintf(stderr, "   proftp-devel@lists.sourceforge.net\n\n");
-    fprintf(stderr, " containing the `tests.log' file (in the tests/ directory)\n");
+    fprintf(stderr, " containing the `%s' file (in the tests/ directory)\n", log_file);
     fprintf(stderr, " and the output from running `proftpd -V'\n");
     fprintf(stderr, "-------------------------------------------------\n");
 
