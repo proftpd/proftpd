@@ -1,4 +1,4 @@
-<!-- $Id: Testing.html,v 1.3 2008-11-06 02:27:01 castaglia Exp $ -->
+<!-- $Id: Testing.html,v 1.4 2008-11-06 02:46:39 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Testing.html,v $ -->
 
 <html>
@@ -76,10 +76,9 @@ To run the testsuite, use the <code>make check</code> target:
    modules
   100%: Checks: 140, Failures: 0, Errors: 0
 </pre>
-The <code>make check</code>
+The <code>make check</code> will also go on to run the integration tests,
+if the API tests all pass.
 </pre>
-Note that the <code>make check</code> target does <i>not</i> automatically
-run the integration tests -- yet.
 
 <p>
 If one of the API tests fails, you will see an error message like:
@@ -113,7 +112,7 @@ command:
 </pre>
 
 <p>
-To run the integration tests, use the <code>tests.pl</code> script:
+To run the integration tests manually, use the <code>tests.pl</code> script:
 <pre>
   # cd tests/
   # perl tests.pl
@@ -182,7 +181,7 @@ to run your changes.
 
 <p>
 <hr>
-Last updated: <i>$Date: 2008-11-06 02:27:01 $</i><br>
+Last updated: <i>$Date: 2008-11-06 02:46:39 $</i><br>
 <hr>
 
 </body>
