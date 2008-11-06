@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.193 2008-10-06 01:44:33 castaglia Exp $
+ * $Id: dirtree.c,v 1.194 2008-11-06 21:47:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -378,8 +378,9 @@ unsigned char dir_hide_file(const char *path) {
   /* Separate the given path into directory and file components. */
   dir_name = pstrdup(tmp_pool, path);
 
-  if ((file_name = strrchr(dir_name, '/')) != NULL) {
-    file_name = '\0';
+  file_name = strrchr(dir_name, '/');
+  if (file_name != NULL) {
+    *file_name = '\0';
     file_name++;
 
   } else
@@ -460,7 +461,6 @@ unsigned char dir_hide_file(const char *path) {
 
     c = find_config_next(c, c->next, CONF_PARAM, "HideFiles", FALSE);
   }
-
 
   if (have_user_regex || have_group_regex ||
       have_class_regex || have_all_regex) {
