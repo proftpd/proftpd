@@ -283,6 +283,19 @@ sub config_write {
           print $fh "</Anonymous>\n";
         }
 
+      } elsif ($k eq 'Directory') {
+        my $sections = $v;
+
+        foreach my $dir (keys(%$sections)) {
+          print $fh "<Directory $dir>\n";
+
+          while (my ($dir_k, $dir_v) = each(%{ $sections->{$dir} })) {
+            print $fh "  $dir_k $dir_v\n";
+          }
+
+          print $fh "</Directory>\n";
+        }
+
       } else {
         print $fh "$k $v\n";
       }
