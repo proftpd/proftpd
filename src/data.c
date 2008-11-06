@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.112 2008-10-30 23:38:14 castaglia Exp $
+ * $Id: data.c,v 1.113 2008-11-06 02:23:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -466,10 +466,19 @@ void pr_data_set_timeout(int id, int timeout) {
 }
 
 void pr_data_clear_xfer_pool(void) {
+  int xfer_type;
+
   if (session.xfer.p)
     destroy_pool(session.xfer.p);
 
+  /* Note that session.xfer.xfer_type may have been set already, e.g.
+   * for STOR_UNIQUE uploads.  To support this, we need to preserve that
+   * value.
+   */
+  xfer_type = session.xfer.xfer_type;
+
   memset(&session.xfer, 0, sizeof(session.xfer));
+  session.xfer.xfer_type = xfer_type;  
 }
 
 void pr_data_reset(void) {

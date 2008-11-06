@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.245 2008-10-30 23:38:14 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.246 2008-11-06 02:23:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1023,6 +1023,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path) {
   }
 
   if (!basenamestart) {
+    session.xfer.xfer_type = STOR_DEFAULT;
 
     /* This probably shouldn't happen */
     pr_response_add_err(R_451, _("%s: Bad file name"), path);
@@ -1035,6 +1036,8 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path) {
   maxlen = strlen(path) + 6;
 
   if (maxlen > PR_TUNABLE_PATH_MAX) {
+    session.xfer.xfer_type = STOR_DEFAULT;
+
     pr_log_pri(PR_LOG_NOTICE, "making path '%s' a hidden path exceeds max "
       "path length (%u)", path, PR_TUNABLE_PATH_MAX);
 
@@ -1070,6 +1073,8 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path) {
   }
 
   if (file_mode(hidden_path)) {
+    session.xfer.xfer_type = STOR_DEFAULT;
+
     pr_log_debug(DEBUG3, "HiddenStore path '%s' already exists",
       hidden_path);
 
@@ -1211,6 +1216,8 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   mode_t mode;
   unsigned char *allow_overwrite = NULL;
 
+  session.xfer.xfer_type = STOR_DEFAULT;
+
   /* Some FTP clients are "broken" in that they will send a filename
    * along with STOU.  Technically this violates RFC959, but for now, just
    * ignore that filename.  Stupid client implementors.
@@ -1273,13 +1280,15 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
 
   if (!filename || !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group,
       filename, NULL)) {
+    int xerrno = errno;
 
     /* Do not forget to delete the file created by mkstemp(3) if there is
      * an error.
      */
     (void) pr_fsio_unlink(cmd->arg);
 
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -1377,6 +1386,8 @@ MODRET xfer_post_stou(cmd_rec *cmd) {
  * simply sets xfer_type to STOR_APPEND and calls xfer_pre_stor().
  */
 MODRET xfer_pre_appe(cmd_rec *cmd) {
+  session.xfer.xfer_type = STOR_DEFAULT;
+
   if (xfer_check_limit(cmd) < 0) {
     pr_response_add_err(R_451, _("%s: Too many transfers"), cmd->arg);
     return PR_ERROR(cmd);
