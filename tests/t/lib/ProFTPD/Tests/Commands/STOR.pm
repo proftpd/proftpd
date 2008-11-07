@@ -9,7 +9,7 @@ use File::Spec;
 use IO::Handle;
 
 use ProFTPD::TestSuite::FTP;
-use ProFTPD::TestSuite::Utils qw(:auth :config :module :running :test :testsuite);
+use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
 
 $| = 1;
 
@@ -93,10 +93,24 @@ sub stor_ok_raw_active {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -203,10 +217,24 @@ sub stor_ok_raw_passive {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -313,10 +341,26 @@ sub stor_ok_file {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $test_file = File::Spec->rel2abs('tmp/bar');
 
   my $config = {
     PidFile => $pid_file,
@@ -379,7 +423,6 @@ sub stor_ok_file {
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
-      my $test_file = File::Spec->rel2abs('tmp/bar');
       $expected = -s $test_file;
       my $size = length($buf);
       $self->assert($expected == $size,
@@ -429,10 +472,24 @@ sub stor_fails_not_reg {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     AllowOverwrite => 'on',
@@ -627,10 +684,24 @@ sub stor_fails_no_path {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -733,6 +804,8 @@ sub stor_fails_eperm {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
   my $sub_dir = File::Spec->rel2abs('tmp/foo');
   mkpath($sub_dir);
@@ -745,9 +818,23 @@ sub stor_fails_eperm {
     die("Can't open $src_file: $!");
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  my $dst_file = File::Spec->rel2abs('tmp/foo/bar.txt');
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -787,8 +874,6 @@ sub stor_fails_eperm {
       $client->port();
 
       chmod(0660, $sub_dir);
-
-      my $dst_file = File::Spec->rel2abs('tmp/foo/bar.txt');
 
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->stor($src_file, $dst_file) };
