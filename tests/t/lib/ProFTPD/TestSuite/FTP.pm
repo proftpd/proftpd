@@ -127,17 +127,33 @@ sub response_uniq {
   return $uniq;
 }
 
+my $login_timeout = 0;
+sub login_alarm {
+  croak("Login timed out after $login_timeout secs");
+}
+
 sub login {
   my $self = shift;
   my $user = shift;
   croak("Missing required user argument") unless $user;
   my $pass = shift;
   croak("Missing required password argument") unless $pass;
+  $login_timeout = shift;
+  $login_timeout = 30 unless defined($login_timeout);
+
+  $SIG{ALRM} = \&login_alarm;
+  alarm($login_timeout);
 
   unless ($self->{ftp}->login($user, $pass)) {
+    alarm(0);
+    $SIG{ALRM} = 'DEFAULT';
+
     croak("Failed to login to $self->{addr}:$self->{port}: " .
       $self->{ftp}->code . ' ' . $self->{ftp}->message);
   }
+
+  alarm(0);
+  $SIG{ALRM} = 'DEFAULT';
 
   my $msg = $self->response_msg();
   if (wantarray()) {

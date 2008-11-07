@@ -8,4 +8,4 @@ use Test::Unit::HarnessUnit;
 $| = 1;
 
 my $r = Test::Unit::HarnessUnit->new();
-$r->start("ProFTPD::Tests::Modules::mod_sql");
+$r->start("ProFTPD::Tests::Modules::mod_sql_sqlite");

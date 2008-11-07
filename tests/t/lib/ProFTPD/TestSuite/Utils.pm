@@ -425,34 +425,34 @@ sub server_stop {
   my @output = `$cmd`;
 }
 
+my $server_wait_timeout = 0;
+sub server_wait_alarm {
+  croak("Test timed out after $server_wait_timeout secs");
+}
+
 sub server_wait {
   my $config_file = shift;
   my $rfh = shift;
-  my $timeout = shift;
-  $timeout = 10 unless defined($timeout);
+  $server_wait_timeout = shift;
+  $server_wait_timeout = 10 unless defined($server_wait_timeout);
 
   # Start server
   server_start($config_file);
 
-  alarm($timeout);
+  $SIG{ALRM} = \&server_wait_alarm;
+  alarm($server_wait_timeout);
 
   # Wait until we receive word from the child that it has finished its test.
-  my $done = 0;
   while (my $msg = <$rfh>) {
     chomp($msg);
 
     if ($msg eq 'done') {
-      $done = 1;
       last;
     }
   }
 
   alarm(0);
-
-  unless ($done) {
-    croak("Test timed out after $timeout secs");
-  }
-
+  $SIG{ALRM} = 'DEFAULT';
   return 1;
 }
 
