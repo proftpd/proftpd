@@ -9,7 +9,7 @@ use File::Spec;
 use IO::Handle;
 
 use ProFTPD::TestSuite::FTP;
-use ProFTPD::TestSuite::Utils qw(:auth :config :module :running :test :testsuite);
+use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
 
 $| = 1;
 
@@ -94,6 +94,8 @@ sub rnto_ok {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
   my $src_file = File::Spec->rel2abs('tmp/foo');
   if (open(my $fh, "> $src_file")) {
@@ -105,9 +107,21 @@ sub rnto_ok {
 
   my $dst_file = File::Spec->rel2abs('tmp/bar');
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -204,12 +218,26 @@ sub rnto_fails_login_required {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
   my $dst_file = File::Spec->rel2abs('tmp/bar');
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -310,12 +338,26 @@ sub rnto_fails_no_rnfr {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
   my $dst_file = File::Spec->rel2abs('tmp/foo');
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -418,6 +460,8 @@ sub rnto_fails_enoent_no_file {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
   my $src_file = File::Spec->rel2abs('tmp/foo');
   if (open(my $fh, "> $src_file")) {
@@ -429,9 +473,21 @@ sub rnto_fails_enoent_no_file {
 
   my $dst_file = File::Spec->rel2abs('tmp/bar');
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -538,6 +594,8 @@ sub rnto_fails_enoent_no_dir {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
   my $src_file = File::Spec->rel2abs('tmp/foo');
   if (open(my $fh, "> $src_file")) {
@@ -549,9 +607,21 @@ sub rnto_fails_enoent_no_dir {
 
   my $dst_file = File::Spec->rel2abs('tmp/bar/baz');
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -656,6 +726,8 @@ sub rnto_fails_eperm {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
   my $src_file = File::Spec->rel2abs('tmp/foo');
   if (open(my $fh, "> $src_file")) {
@@ -667,9 +739,21 @@ sub rnto_fails_eperm {
 
   my $dst_file = File::Spec->rel2abs('tmp/bar');
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -776,6 +860,8 @@ sub rnto_fails_allow_overwrite {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
   my $src_file = File::Spec->rel2abs('tmp/foo');
   if (open(my $fh, "> $src_file")) {
@@ -793,9 +879,21 @@ sub rnto_fails_allow_overwrite {
     die("Can't open $dst_file: $!");
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
