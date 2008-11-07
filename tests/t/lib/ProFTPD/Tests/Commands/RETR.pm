@@ -100,6 +100,8 @@ sub retr_ok_raw_active {
   my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
   my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
 
+  my $test_file = File::Spec->rel2abs($config_file);
+
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
@@ -121,8 +123,6 @@ sub retr_ok_raw_active {
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
-  my $test_file = File::Spec->rel2abs($config_file);
 
   my $config = {
     PidFile => $pid_file,
