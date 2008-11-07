@@ -93,10 +93,24 @@ sub appe_ok_raw_active {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -136,7 +150,7 @@ sub appe_ok_raw_active {
 
       my $conn = $client->appe_raw('bar');
       unless ($conn) {
-        die("Failed to STOR: " . $client->response_code() . " " .
+        die("Failed to APPE: " . $client->response_code() . " " .
           $client->response_msg());
       }
 
@@ -168,7 +182,7 @@ sub appe_ok_raw_active {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 2) };
+    eval { server_wait($config_file, $rfh, 4) };
     if ($@) {
       warn($@);
       exit 1;
@@ -203,10 +217,24 @@ sub appe_ok_raw_passive {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+  
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -246,7 +274,7 @@ sub appe_ok_raw_passive {
 
       my $conn = $client->appe_raw('bar');
       unless ($conn) {
-        die("Failed to STOR: " . $client->response_code() . " " .
+        die("Failed to APPE: " . $client->response_code() . " " .
           $client->response_msg());
       }
 
@@ -278,7 +306,7 @@ sub appe_ok_raw_passive {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 2) };
+    eval { server_wait($config_file, $rfh, 4) };
     if ($@) {
       warn($@);
       exit 1;
@@ -313,10 +341,26 @@ sub appe_ok_file {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  my $test_file = File::Spec->rel2abs('tmp/bar');
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+  
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -356,7 +400,7 @@ sub appe_ok_file {
 
       my $conn = $client->appe_raw('bar');
       unless ($conn) {
-        die("STOR failed: " . $client->response_code() . " " .
+        die("APPE failed: " . $client->response_code() . " " .
           $client->response_msg());
       }
 
@@ -379,7 +423,6 @@ sub appe_ok_file {
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
-      my $test_file = File::Spec->rel2abs('tmp/bar');
       $expected = -s $test_file;
       my $size = length($buf);
       $self->assert($expected == $size,
@@ -394,7 +437,7 @@ sub appe_ok_file {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 2) };
+    eval { server_wait($config_file, $rfh, 4) };
     if ($@) {
       warn($@);
       exit 1;
@@ -429,10 +472,24 @@ sub appe_fails_not_reg {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+  
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     AllowOverwrite => 'on',
@@ -479,7 +536,7 @@ sub appe_fails_not_reg {
       $resp_msg = $client->response_msg();
 
       if ($conn) {
-        die("STOR succeeded unexpectedly ($resp_code $resp_msg)");
+        die("APPE succeeded unexpectedly ($resp_code $resp_msg)");
       }
 
       my $expected;
@@ -565,7 +622,7 @@ sub appe_fails_login_required {
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->appe($config_file, '/dev/null') };
       unless ($@) {
-        die("STOR succeeded unexpectedly ($resp_code $resp_msg)");
+        die("APPE succeeded unexpectedly ($resp_code $resp_msg)");
 
       } else {
         $resp_code = $client->response_code();
@@ -627,10 +684,24 @@ sub appe_fails_no_path {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+  
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -672,7 +743,7 @@ sub appe_fails_no_path {
 
       eval { ($resp_code, $resp_msg) = $client->appe($config_file, '') };
       unless ($@) {
-        die("STOR succeeded unexpectedly ($resp_code $resp_msg)");
+        die("APPE succeeded unexpectedly ($resp_code $resp_msg)");
 
       } else {
         $resp_code = $client->response_code();
@@ -733,6 +804,8 @@ sub appe_fails_eperm {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
   my $sub_dir = File::Spec->rel2abs('tmp/foo');
   mkpath($sub_dir);
@@ -745,9 +818,23 @@ sub appe_fails_eperm {
     die("Can't open $src_file: $!");
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  my $dst_file = File::Spec->rel2abs('tmp/foo/bar.txt');
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir, $sub_dir)) {
+      die("Can't set perms on $home_dir, $sub_dir to 0755: $!");
+    }
+  
+    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
+      die("Can't set owner of $home_dir, $sub_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -781,6 +868,7 @@ sub appe_fails_eperm {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       $client->login($user, $passwd);
@@ -788,12 +876,10 @@ sub appe_fails_eperm {
 
       chmod(0660, $sub_dir);
 
-      my $dst_file = File::Spec->rel2abs('tmp/foo/bar.txt');
-
       my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->appe($src_file, $dst_file) };
       unless ($@) {
-        die("STOR succeeded unexpectedly ($resp_code $resp_msg)");
+        die("APPE succeeded unexpectedly ($resp_code $resp_msg)");
 
       } else {
         $resp_code = $client->response_code();
@@ -820,7 +906,7 @@ sub appe_fails_eperm {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 2) };
+    eval { server_wait($config_file, $rfh, 5) };
     if ($@) {
       warn($@);
       exit 1;
