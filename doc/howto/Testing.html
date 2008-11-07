@@ -1,4 +1,4 @@
-<!-- $Id: Testing.html,v 1.4 2008-11-06 02:46:39 castaglia Exp $ -->
+<!-- $Id: Testing.html,v 1.5 2008-11-07 19:35:59 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Testing.html,v $ -->
 
 <html>
@@ -157,6 +157,14 @@ To run the integration tests manually, use the <code>tests.pl</code> script:
 </pre>
 
 <p>
+Some of the integration require root privileges in order to perform the
+test properly, <i>e.g.</i> for
+<code>&lt;Anonymous&gt;</code>/<code>DefaultRoot</code> logins, <i>etc</i>.
+If you do <i>not</i> run `make check' as root, those tests which require
+root privileges are automatically skipped.  Thus for doing a full regression,
+run the integration tests as the root user.
+
+<p>
 <b>Adding New Tests</b><br>
 The following information is for those who are interested in adding new
 tests, updating existing tests, or otherwise helping with the testsuite
@@ -181,7 +189,7 @@ to run your changes.
 
 <p>
 <hr>
-Last updated: <i>$Date: 2008-11-06 02:46:39 $</i><br>
+Last updated: <i>$Date: 2008-11-07 19:35:59 $</i><br>
 <hr>
 
 </body>
