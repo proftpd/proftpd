@@ -9,7 +9,7 @@ use File::Spec;
 use IO::Handle;
 
 use ProFTPD::TestSuite::FTP;
-use ProFTPD::TestSuite::Utils qw(:auth :config :module :running :test :testsuite);
+use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
 
 $| = 1;
 
@@ -79,13 +79,27 @@ sub rmd_ok {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
   my $sub_dir = File::Spec->rel2abs('tmp/foo');
   mkpath($sub_dir);
-  
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -180,12 +194,26 @@ sub rmd_fails_enoent {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
   my $sub_dir = File::Spec->rel2abs('tmp/foo');
-  
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -287,12 +315,26 @@ sub rmd_fails_eperm {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
   my $sub_dir = File::Spec->rel2abs('tmp/foo');
-  
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -403,13 +445,27 @@ sub xrmd_ok {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs('tmp');
+  my $uid = 500;
+  my $gid = 500;
 
   my $sub_dir = File::Spec->rel2abs('tmp/foo');
   mkpath($sub_dir);
-  
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
