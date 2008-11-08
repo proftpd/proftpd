@@ -61,12 +61,14 @@ if (scalar(@ARGV) > 0) {
     t/config/displaylogin.t
     t/config/hidefiles.t
     t/config/maxloginattempts.t
+    t/config/requirevalidshell.t
     t/config/serverident.t
     t/config/timeoutidle.t
     t/config/timeoutlogin.t
     t/config/timeoutnotransfer.t
     t/config/timeoutsession.t
     t/config/timeoutstalled.t
+    t/config/useftpusers.t
   )];
 
   # Now interrogate the build to see which module/feature-specific test files
