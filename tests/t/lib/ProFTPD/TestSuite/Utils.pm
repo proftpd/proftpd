@@ -20,9 +20,10 @@ our @CONFIG = qw(
   config_write
 );
 
-our @MODULE = qw(
-  module_have_compiled
-  module_have_loaded
+our @FEATURES = qw(
+  feature_have_feature_enabled
+  feature_have_module_compiled
+  feature_have_module_loaded
 );
 
 our @RUNNING = qw(
@@ -41,12 +42,12 @@ our @TESTSUITE = qw(
   testsuite_get_tmp_dir
 );
 
-our @EXPORT_OK = (@AUTH, @CONFIG, @MODULE, @RUNNING, @TEST, @TESTSUITE);
+our @EXPORT_OK = (@AUTH, @CONFIG, @FEATURES, @RUNNING, @TEST, @TESTSUITE);
 
 our %EXPORT_TAGS = (
   auth => [@AUTH],
   config => [@CONFIG],
-  module => [@MODULE],
+  features => [@FEATURES],
   running => [@RUNNING],
   test => [@TEST],
   testsuite => [@TESTSUITE],
@@ -239,6 +240,12 @@ sub config_write {
     $config->{UseFtpUsers} = 'off';
   }
 
+  if (feature_have_feature_enabled('ipv6')) {
+    unless (defined($config->{UseIPv6})) {
+      $config->{UseIPv6} = 'off';
+    }
+  }
+
   unless (defined($config->{UseReverseDNS})) {
     $config->{UseReverseDNS} = 'off';
   }
@@ -316,7 +323,37 @@ sub config_write {
   return 1;
 }
 
-sub module_have_compiled {
+sub feature_have_feature_enabled {
+  my $feat = shift;
+
+  if (open(my $cmdh, "$proftpd_bin -V |")) {
+    my $feat_list;
+
+    while (my $line = <$cmdh>) {
+      chomp($line);
+
+      next unless $line =~ /\s+(\-|\+)\s+(\S+)\s+support/;
+
+      my $flag = $1;
+      my $feature = $2;
+
+      if ($flag eq '+') {
+        push(@$feat_list, $feature);
+      }
+    }
+
+    close($cmdh);
+
+    my $matches = grep { /^$feat$/i } @$feat_list;
+
+    return $matches;
+
+  } else {
+    croak("Error listing features");
+  }
+}
+
+sub feature_have_module_compiled {
   my $module = shift;
 
   if (open(my $cmdh, "$proftpd_bin -l |")) {
@@ -342,7 +379,7 @@ sub module_have_compiled {
   }
 }
 
-sub module_have_loaded {
+sub feature_have_module_loaded {
   my $module = shift;;
   my $config_file = shift;
 
@@ -471,6 +508,27 @@ sub testsuite_get_runnable_tests {
   my $tests = shift;
   return undef unless $tests;
 
+  # Special handling of any 'feature_*' test classes; if the compiled proftpd
+  # has these features enabled, include those tests.
+
+  my $skip_tests = [];
+  foreach my $test (keys(%$tests)) {
+    foreach my $class (@{ $tests->{$test}->{test_class} }) {
+      if ($class =~ /^feature_\S+$/) {
+        my $feat = $class;
+
+        unless (feature_have_feature_enabled($feat)) {
+          push(@$skip_tests, $test);
+          last;
+        }
+      }
+    }
+
+    foreach my $skip_test (@$skip_tests) {
+      delete($tests->{$skip_test});
+    }
+  }
+
   # Special handling of any 'mod_*' test classes; if the compiled proftpd
   # has these as static modules, include those tests.
 
@@ -484,7 +542,7 @@ sub testsuite_get_runnable_tests {
           $module .= '.c';
         }
 
-        unless (module_have_compiled($module)) {
+        unless (feature_have_module_compiled($module)) {
           push(@$skip_tests, $test);
           last;
         }
