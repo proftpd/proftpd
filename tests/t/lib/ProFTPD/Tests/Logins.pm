@@ -9,7 +9,7 @@ use File::Spec;
 use IO::Handle;
 
 use ProFTPD::TestSuite::FTP;
-use ProFTPD::TestSuite::Utils qw(:config :module :running :testsuite);
+use ProFTPD::TestSuite::Utils qw(:config :running :testsuite);
 
 $| = 1;
 
