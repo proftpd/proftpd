@@ -1074,10 +1074,10 @@ static unsigned char wrap2_eval_and_expression(char **acl, array_header *creds) 
     }
 
     if (!found) 
-      return TRUE;
+      return FALSE;
   }
 
-  return FALSE;
+  return TRUE;
 }
 
 int wrap2_register(const char *srcname,
@@ -1488,10 +1488,10 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
     array_header *gid_array = make_array(cmd->pool, 0, sizeof(gid_t));
     array_header *group_array = make_array(cmd->pool, 0, sizeof(char *));
 
-    if (pr_auth_getgroups(cmd->pool, user, &gid_array, &group_array) < 1)
+    if (pr_auth_getgroups(cmd->pool, user, &gid_array, &group_array) < 1) {
       wrap2_log("no supplemental groups found for user '%s'", user);
 
-    else {
+    } else {
 
       /* Check the group AND expression.  Do not forget the offset, to skip
        * the table names strings in c->argv.
