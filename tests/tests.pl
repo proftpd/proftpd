@@ -92,6 +92,11 @@ if (scalar(@ARGV) > 0) {
       order => ++$order,
       test_class => [qw(mod_wrap2_file)],
     },
+
+    't/modules/mod_wrap2_sql.t' => {
+      order => ++$order,
+      test_class => [qw(mod_sql_sqlite mod_wrap2_sql)],
+    },
   };
 
   my @feature_tests = testsuite_get_runnable_tests($FEATURE_TESTS);
