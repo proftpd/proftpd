@@ -87,15 +87,16 @@ if (scalar(@ARGV) > 0) {
       order => ++$order,
       test_class => [qw(mod_sql_sqlite)],
     },
+
+    't/modules/mod_wrap2_file.t' => {
+      order => ++$order,
+      test_class => [qw(mod_wrap2_file)],
+    },
   };
 
   my @feature_tests = testsuite_get_runnable_tests($FEATURE_TESTS);
-  my $feature_ntests = scalar(@feature_tests);
-  if ($feature_ntests > 0) {
-    if ($feature_ntests != 1 ||
-        ($feature_ntests == 1 && ($feature_tests[0] ne 'testsuite_empty_test'))) {
-      push(@$test_files, @feature_tests);
-    }
+  if (scalar(@feature_tests) > 0) {
+    push(@$test_files, @feature_tests);
   }
 }
 
