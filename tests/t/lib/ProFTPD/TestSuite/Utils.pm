@@ -345,7 +345,6 @@ sub feature_have_feature_enabled {
     close($cmdh);
 
     my $matches = grep { /^$feat$/i } @$feat_list;
-
     return $matches;
 
   } else {
@@ -514,8 +513,8 @@ sub testsuite_get_runnable_tests {
   my $skip_tests = [];
   foreach my $test (keys(%$tests)) {
     foreach my $class (@{ $tests->{$test}->{test_class} }) {
-      if ($class =~ /^feature_\S+$/) {
-        my $feat = $class;
+      if ($class =~ /^feature_(\S+)$/) {
+        my $feat = $1;
 
         unless (feature_have_feature_enabled($feat)) {
           push(@$skip_tests, $test);
