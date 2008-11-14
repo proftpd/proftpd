@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.350 2008-10-07 06:17:20 castaglia Exp $
+ * $Id: main.c,v 1.351 2008-11-14 18:25:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -601,7 +601,12 @@ int pr_cmd_read(cmd_rec **res) {
         /* The client sent a too-long command which was ignored; give
          * them another chance?
          */
-       continue;
+        continue;
+      }
+
+      if (session.c->instrm->strm_errno == 0) {
+        pr_trace_msg("command", 6,
+          "client sent EOF, closing control connection");
       }
 
       return -1;

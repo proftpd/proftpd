@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.35 2008-10-04 17:14:00 castaglia Exp $
+ * $Id: netio.c,v 1.36 2008-11-14 18:25:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -135,20 +135,25 @@ static pr_netio_stream_t *core_netio_open_cb(pr_netio_stream_t *nstrm, int fd,
 }
 
 static int core_netio_poll_cb(pr_netio_stream_t *nstrm) {
-  fd_set rfds, wfds;
+  int res;
+  fd_set rfds, *rfdsp, wfds, *wfdsp;
   struct timeval tval;
 
   FD_ZERO(&rfds);
+  rfdsp = NULL;
   FD_ZERO(&wfds);
+  wfdsp = NULL;
 
   if (nstrm->strm_mode == PR_NETIO_IO_RD) {
     if (nstrm->strm_fd >= 0) {
       FD_SET(nstrm->strm_fd, &rfds);
+      rfdsp = &rfds;
     }
 
   } else {
     if (nstrm->strm_fd >= 0) {
       FD_SET(nstrm->strm_fd, &wfds);
+      wfdsp = &wfds;
     }
   }
 
@@ -156,7 +161,8 @@ static int core_netio_poll_cb(pr_netio_stream_t *nstrm) {
     nstrm->strm_interval: 60);
   tval.tv_usec = 0;
 
-  return select(nstrm->strm_fd + 1, &rfds, &wfds, NULL, &tval);
+  res = select(nstrm->strm_fd + 1, rfdsp, wfdsp, NULL, &tval);
+  return res;
 }
 
 static int core_netio_postopen_cb(pr_netio_stream_t *nstrm) {
@@ -844,7 +850,11 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
     }
 
     /* EOF? */
-    if (bread == 0) {
+    if (bread == 0 &&
+        nstrm->strm_type == PR_NETIO_STRM_CTRL) {
+      pr_trace_msg(trace_channel, 7,
+        "read %d bytes from control stream fd %d, handling as EOF", bread,
+        nstrm->strm_fd);
       nstrm->strm_errno = 0;
       break;
     }
