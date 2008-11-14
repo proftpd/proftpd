@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.15 2008-04-12 01:07:24 castaglia Exp $
+ * $Id: mod_lang.c,v 1.16 2008-11-14 19:58:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -692,7 +692,7 @@ static int lang_sess_init(void) {
       end_login(1);
     }
 
-    lang_curr = setlocale(LC_ALL, NULL);
+    lang_curr = setlocale(LC_MESSAGES, NULL);
     if (strcasecmp(lang_curr, "C") == 0) {
       lang_curr = LANG_DEFAULT_LANG;
     }
