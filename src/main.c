@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.351 2008-11-14 18:25:10 castaglia Exp $
+ * $Id: main.c,v 1.352 2008-11-14 19:35:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1708,7 +1708,7 @@ void pr_signals_handle(void) {
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_ABORT) {
-      recvd_signal_flags &= RECEIVED_SIG_ABORT;
+      recvd_signal_flags &= ~RECEIVED_SIG_ABORT;
       pr_trace_msg("signal", 9, "handling SIGABRT");
       handle_abort();
     }
