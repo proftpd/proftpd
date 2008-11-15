@@ -583,6 +583,11 @@ sub epsv {
       $self->response_msg());
   }
 
+  # Naughtily invade the Net::FTP internals; it makes for less confusion
+  # when writing the unit tests.
+  my $ftp = $self->{ftp};
+  ${*$ftp}{net_ftp_passive} = 1;
+
   my $msg = $self->response_msg();
   if (wantarray()) {
     return ($self->{ftp}->code, $msg);
@@ -631,6 +636,11 @@ sub eprt {
     croak("EPRT command failed: " .  $self->{ftp}->code . ' ' .
       $self->response_msg());
   }
+
+  # Naughtily invade the Net::FTP internals; it makes for less confusion
+  # when writing the unit tests.
+  my $ftp = $self->{ftp};
+  delete(${*$ftp}{net_ftp_passive});
 
   my $msg = $self->response_msg();
   if (wantarray()) {
