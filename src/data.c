@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.113 2008-11-06 02:23:51 castaglia Exp $
+ * $Id: data.c,v 1.114 2008-11-15 02:01:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -506,6 +506,9 @@ void pr_data_init(char *filename, int direction) {
 
 int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   int res = 0;
+
+  /* Make sure that any abort flags have been cleared. */
+  session.sf_flags &= ~SF_ABORT;
 
   if (session.xfer.p == NULL)
     data_new_xfer(filename, direction);
@@ -1074,6 +1077,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
   } else { /* PR_NETIO_IO_WR */
 
     while (cl_size) {
+      int bwrote = 0;
       int buflen = cl_size;
       unsigned int xferbuflen;
 
@@ -1095,16 +1099,19 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
         xfrm_ascii_write(&session.xfer.buf, &xferbuflen, session.xfer.bufsize);
       }
 
-      if (pr_netio_write(session.d->outstrm, session.xfer.buf,
-          xferbuflen) < 0)
+      bwrote = pr_netio_write(session.d->outstrm, session.xfer.buf, xferbuflen);
+
+      if (bwrote < 0)
         return -1;
 
-      if (timeout_stalled)
-        pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+      if (bwrote > 0) {
+        if (timeout_stalled)
+          pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
 
-      cl_size -= buflen;
-      cl_buf += buflen;
-      total += buflen;
+        cl_size -= buflen;
+        cl_buf += buflen;
+        total += buflen;
+      }
     }
 
     len = total;

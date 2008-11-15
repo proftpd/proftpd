@@ -23,26 +23,43 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.36 2008-11-14 18:25:10 castaglia Exp $
+ * $Id: netio.c,v 1.37 2008-11-15 02:01:10 castaglia Exp $
  */
 
 #include "conf.h"
 #include <signal.h>
 
-#ifndef IAC
-# define IAC	255
+/* See RFC 854 for the definition of these Telnet values */
+
+/* Telnet "Interpret As Command" indicator */
+#ifndef TELNET_IAC
+# define TELNET_IAC	255
 #endif
-#ifndef DONT
-# define DONT	254
+
+#ifndef TELNET_DONT
+# define TELNET_DONT	254
 #endif
-#ifndef DO
-# define DO	253
+
+#ifndef TELNET_DO
+# define TELNET_DO	253
 #endif
-#ifndef WONT
-# define WONT	252
+
+#ifndef TELNET_WONT
+# define TELNET_WONT	252
 #endif
-#ifndef WILL
-# define WILL	251
+
+#ifndef TELNET_WILL
+# define TELNET_WILL	251
+#endif
+
+/* Telnet "Interrupt Process" code */
+#ifndef TELNET_IP
+# define TELNET_IP	244
+#endif
+
+/* Telnet "Data Mark" code */
+#ifndef TELNET_DM
+# define TELNET_DM	242
 #endif
 
 static const char *trace_channel = "netio";
@@ -665,10 +682,6 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
         /* We have to potentially restart here as well, in case we get EINTR. */
         do {
           pr_signals_handle(); 
-
-          if (XFER_ABORTED)
-            break;
-
           run_schedule();
 
           switch (nstrm->strm_type) {
@@ -678,6 +691,9 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
                 break;
 
             case PR_NETIO_STRM_DATA:
+              if (XFER_ABORTED)
+                break;
+
               bwritten = data_netio ? (data_netio->write)(nstrm, buf, buflen) :
                 (core_data_netio->write)(nstrm, buf, buflen);
               break;
@@ -966,11 +982,12 @@ char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
   return buf;
 }
 
+static int telnet_mode = 0;
+
 char *pr_netio_telnet_gets(char *buf, size_t buflen,
     pr_netio_stream_t *in_nstrm, pr_netio_stream_t *out_nstrm) {
   char *bp = buf;
   unsigned char cp;
-  static unsigned char mode = 0;
   int toread, handle_iac = TRUE, saw_newline = FALSE;
   pr_buffer_t *pbuf = NULL;
 
@@ -1020,42 +1037,59 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
       pbuf->remaining++;
 
       if (handle_iac == TRUE) {
-        switch (mode) {
-          case IAC:
+        switch (telnet_mode) {
+          case TELNET_IAC:
             switch (cp) {
-              case WILL:
-              case WONT:
-              case DO:
-              case DONT:
-                mode = cp;
-                continue;
+              case TELNET_WILL:
+              case TELNET_WONT:
+              case TELNET_DO:
+              case TELNET_DONT:
+              case TELNET_IP:
+              case TELNET_DM:
 
-              case IAC:
-                mode = 0;
-                break;
+                /* Why do we do this crazy thing where we set the "telnet mode"
+                 * to be the action, and let the while loop, on the next pass,
+                 * handle that action?  It's because we don't know, right now,
+                 * whether there actually a "next byte" in the input buffer.
+                 * There _should_ be -- but we can't be sure.  And that next
+                 * byte is needed for properly responding with WONT/DONT
+                 * responses.
+                 */
+                telnet_mode = cp;
+                continue;
 
               default:
-                /* Ignore */
-                mode = 0;
-                continue;
+                /* In this case, we know that the previous byte was TELNET_IAC,
+                 * but the current byte is not a value we care about.  So
+                 * write the TELNET_IAC into the output buffer, break out of
+                 * of the switch, and let that handle the writing of the
+                 * current byte into the output buffer.
+                 */
+                *bp++ = TELNET_IAC;
+                buflen--;
+
+                telnet_mode = 0;
+                break;
             }
             break;
 
-          case WILL:
-          case WONT:
-            pr_netio_printf(out_nstrm, "%c%c%c", IAC, DONT, cp);
-            mode = 0;
+          case TELNET_WILL:
+          case TELNET_WONT:
+            pr_netio_printf(out_nstrm, "%c%c%c", TELNET_IAC, TELNET_DONT, cp);
+            telnet_mode = 0;
             continue;
 
-          case DO:
-          case DONT:
-            pr_netio_printf(out_nstrm, "%c%c%c", IAC, WONT, cp);
-            mode = 0;
+          case TELNET_DO:
+          case TELNET_DONT:
+            pr_netio_printf(out_nstrm, "%c%c%c", TELNET_IAC, TELNET_WONT, cp);
+            telnet_mode = 0;
             continue;
 
+          case TELNET_IP:
+          case TELNET_DM:
           default:
-            if (cp == IAC) {
-              mode = cp;
+            if (cp == TELNET_IAC) {
+              telnet_mode = cp;
               continue;
             }
             break;
