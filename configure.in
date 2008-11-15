@@ -803,12 +803,12 @@ AC_ARG_ENABLE(timeout-idle,
 AC_ARG_ENABLE(timeout-linger,
   [AC_HELP_STRING(
     [--enable-timeout-linger],
-    [set the default timeout (in secs) for lingering closes (default=180)])
+    [set the default timeout (in secs) for lingering closes (default=30)])
   ],
   [
     if test "$enableval" = "yes" || test "$enableval" = "no" ; then
-      AC_MSG_WARN(linger timeout defaulting to 180 secs)
-      AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTLINGER, 180,
+      AC_MSG_WARN(linger timeout defaulting to 30 secs)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTLINGER, 30,
       [Default linger timeout])
     else
       AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTLINGER, $enableval,

@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.26 2008-04-09 17:03:50 castaglia Exp $
+ * $Id: options.h,v 1.27 2008-11-15 22:34:11 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -127,8 +127,14 @@
 # define PR_TUNABLE_TIMEOUTIDLE		600
 #endif
 
+/* The default command timeout in many command-line FTP clients (e.g.
+ * lukemftp, used on BSDs and maybe Linux?) is 60 seconds.  To avoid having
+ * those clients close the control connection because proftpd takes too
+ * long, while performing lingering closes, to send a response, keep the
+ * default linger timeout under 60 seconds.
+ */
 #ifndef PR_TUNABLE_TIMEOUTLINGER
-# define PR_TUNABLE_TIMEOUTLINGER	180
+# define PR_TUNABLE_TIMEOUTLINGER	30
 #endif
 
 #ifndef PR_TUNABLE_TIMEOUTLOGIN
