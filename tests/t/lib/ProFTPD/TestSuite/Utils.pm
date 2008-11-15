@@ -531,7 +531,7 @@ sub testsuite_get_runnable_tests {
   # Special handling of any 'mod_*' test classes; if the compiled proftpd
   # has these as static modules, include those tests.
 
-  my $skip_tests = [];
+  $skip_tests = [];
   foreach my $test (keys(%$tests)) {
     foreach my $class (@{ $tests->{$test}->{test_class} }) {
       if ($class =~ /^mod_\S+$/) {
