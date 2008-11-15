@@ -570,9 +570,11 @@ sub pasv {
 
 sub epsv {
   my $self = shift;
+  my $proto = shift;
+  $proto = '' unless defined($proto);
   my $code;
 
-  $code = $self->{ftp}->quot('EPSV');
+  $code = $self->{ftp}->quot('EPSV', $proto);
   unless ($code) {
     croak("EPSV command failed: " .  $self->{ftp}->code . ' ' .
       $self->response_msg());
