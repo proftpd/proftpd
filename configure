@@ -1554,7 +1554,7 @@ Optional Features:
                           connections (default=600)
 
   --enable-timeout-linger set the default timeout (in secs) for lingering
-                          closes (default=180)
+                          closes (default=30)
 
   --enable-timeout-login  set the default timeout (in secs) for logging in
                           after connecting (default=300)
@@ -22321,11 +22321,11 @@ fi
 if test "${enable_timeout_linger+set}" = set; then
   enableval=$enable_timeout_linger;
     if test "$enableval" = "yes" || test "$enableval" = "no" ; then
-      { echo "$as_me:$LINENO: WARNING: linger timeout defaulting to 180 secs" >&5
-echo "$as_me: WARNING: linger timeout defaulting to 180 secs" >&2;}
+      { echo "$as_me:$LINENO: WARNING: linger timeout defaulting to 30 secs" >&5
+echo "$as_me: WARNING: linger timeout defaulting to 30 secs" >&2;}
 
 cat >>confdefs.h <<_ACEOF
-#define PR_TUNABLE_TIMEOUTLINGER 180
+#define PR_TUNABLE_TIMEOUTLINGER 30
 _ACEOF
 
     else
