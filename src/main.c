@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.352 2008-11-14 19:35:03 castaglia Exp $
+ * $Id: main.c,v 1.353 2008-11-16 20:35:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -401,8 +401,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
           pr_scoreboard_entry_update(session.pid,
             PR_SCORE_CMD, "%s", cmd->argv[0], NULL, NULL);
           pr_scoreboard_entry_update(session.pid,
-            PR_SCORE_CMD_ARG, "%s", args ?
-              pr_fs_decode_path(cmd->tmp_pool, (args+1)) : "", NULL, NULL);
+            PR_SCORE_CMD_ARG, "%s", args ? (args + 1) : "", NULL, NULL);
 
           pr_proctitle_set("%s - %s: %s", session.user, session.proc_prefix,
             cmdargstr);
