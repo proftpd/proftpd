@@ -221,6 +221,8 @@ sub abor_retr_binary_ok {
   if ($ex) {
     die($ex);
   }
+
+  unlink($log_file);
 }
 
 sub abor_retr_ascii_ok {
@@ -364,6 +366,8 @@ sub abor_retr_ascii_ok {
   if ($ex) {
     die($ex);
   }
+
+  unlink($log_file);
 }
 
 sub abor_retr_ascii_largefile_ok {
@@ -517,6 +521,8 @@ sub abor_retr_ascii_largefile_ok {
   if ($ex) {
     die($ex);
   }
+
+  unlink($log_file);
 }
 
 sub abor_retr_ascii_largefile_followed_by_list_ok {
@@ -713,6 +719,8 @@ sub abor_retr_ascii_largefile_followed_by_list_ok {
   if ($ex) {
     die($ex);
   }
+
+  unlink($log_file);
 }
 
 sub abor_stor_binary_ok {
@@ -856,6 +864,8 @@ sub abor_stor_binary_ok {
   if ($ex) {
     die($ex);
   }
+
+  unlink($log_file);
 }
 
 sub abor_stor_ascii_ok {
@@ -999,6 +1009,8 @@ sub abor_stor_ascii_ok {
   if ($ex) {
     die($ex);
   }
+
+  unlink($log_file);
 }
 
 sub abor_with_cyrillic_encoding_ok {
@@ -1153,6 +1165,8 @@ sub abor_with_cyrillic_encoding_ok {
   if ($ex) {
     die($ex);
   }
+
+  unlink($log_file);
 }
 
 1;
