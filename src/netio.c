@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.37 2008-11-15 02:01:10 castaglia Exp $
+ * $Id: netio.c,v 1.38 2008-11-17 01:42:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -866,11 +866,13 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
     }
 
     /* EOF? */
-    if (bread == 0 &&
-        nstrm->strm_type == PR_NETIO_STRM_CTRL) {
-      pr_trace_msg(trace_channel, 7,
-        "read %d bytes from control stream fd %d, handling as EOF", bread,
-        nstrm->strm_fd);
+    if (bread == 0) {
+      if (nstrm->strm_type == PR_NETIO_STRM_CTRL) {
+        pr_trace_msg(trace_channel, 7,
+          "read %d bytes from control stream fd %d, handling as EOF", bread,
+          nstrm->strm_fd);
+      }
+
       nstrm->strm_errno = 0;
       break;
     }
