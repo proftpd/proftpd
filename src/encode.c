@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.6 2008-10-21 18:01:36 castaglia Exp $
+ * $Id: encode.c,v 1.7 2008-11-18 19:29:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -113,11 +113,27 @@ int encode_free(void) {
   int res = 0;
 
   /* Close the iconv handles. */
-  if (iconv_close(encode_conv) < 0)
-    res = -1;
+  if (encode_conv != (iconv_t) -1) {
+    if (iconv_close(encode_conv) < 0) {
+      pr_trace_msg(trace_channel, 1,
+        "error closing conversion handle from '%s' to '%s': %s",
+        local_charset, encoding, strerror(errno));
+      res = -1;
+    }
 
-  if (iconv_close(decode_conv) < 0)
-    res = -1;
+    encode_conv = (iconv_t) -1;
+  }
+
+  if (decode_conv != (iconv_t) -1) {
+    if (iconv_close(decode_conv) < 0) {
+      pr_trace_msg(trace_channel, 1,
+        "error closing conversion handle from '%s' to '%s': %s",
+        encoding, local_charset, strerror(errno));
+      res = -1;
+    }
+
+    decode_conv = (iconv_t) -1;
+  }
 
   return res;
 # else
