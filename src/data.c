@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.114 2008-11-15 02:01:10 castaglia Exp $
+ * $Id: data.c,v 1.115 2008-11-19 18:07:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -985,97 +985,115 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
     }
   }
 
+  /* If we don't have a data connection here (e.g. might have been closed
+   * by an ABOR, then return zero (no data transferred).
+   */
+  if (session.d == NULL) {
+    int xerrno;
+
+#if defined(ECONNABORTED)
+    xerrno = ECONNABORTED;
+#elif defined(ENOTCONN)
+    xerrno = ENOTCONN;
+#else
+    xerrno = EIO;
+#endif
+    pr_trace_msg(trace_channel, 1,
+      "data connection is null prior to data transfer (possibly from "
+      "aborted transfer), returning '%s' error", strerror(xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
   if (session.xfer.direction == PR_NETIO_IO_RD) {
     char *buf = session.xfer.buf;
 
-    if (session.d) {
-      if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
-        int adjlen, buflen;
+    if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
+      int adjlen, buflen;
 
-	do {
-	  buflen = session.xfer.buflen;        /* how much remains in buf */
-	  adjlen = 0;
+      do {
+        buflen = session.xfer.buflen;        /* how much remains in buf */
+        adjlen = 0;
 
-          len = pr_netio_read(session.d->instrm, buf + buflen,
-            session.xfer.bufsize - buflen, 1);
-          if (len < 0)
-            return -1;
+        len = pr_netio_read(session.d->instrm, buf + buflen,
+          session.xfer.bufsize - buflen, 1);
+        if (len < 0)
+          return -1;
 
-          if (len > 0) {
-	    buflen += len;
+        if (len > 0) {
+          buflen += len;
 
-	    if (timeout_stalled)
-	      pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
-	  }
+          if (timeout_stalled)
+            pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+        }
 
-	  /* If buflen > 0, data remains in the buffer to be copied. */
-	  if (len >= 0 &&
-              buflen > 0) {
+        /* If buflen > 0, data remains in the buffer to be copied. */
+        if (len >= 0 &&
+            buflen > 0) {
 
-	    /* Perform translation:
-             *
-	     * buflen is returned as the modified buffer length after
-	     *        translation
-	     * adjlen is returned as the number of characters unprocessed in
-	     *        the buffer (to be dealt with later)
-	     *
-	     * We skip the call to xfrm_ascii_read() in one case:
-	     * when we have one character in the buffer and have reached
-	     * end of data, this is so that xfrm_ascii_read() won't sit
-	     * forever waiting for the next character after a final '\r'.
-	     */
-	    if (len > 0 || buflen > 1)
-	      xfrm_ascii_read(buf, &buflen, &adjlen);
-	
-	    /* Now copy everything we can into cl_buf */
-	    if (buflen > cl_size) {
-	      /* Because we have to cut our buffer short, make sure this
-	       * is made up for later by increasing adjlen.
-	       */
-	      adjlen += (buflen - cl_size);
-	      buflen = cl_size;
-	    }
-  	    memcpy(cl_buf, buf, buflen);
-	
-	    /* Copy whatever remains at the end of session.xfer.buf to the
-	     * head of the buffer and adjust buf accordingly.
-	     *
-	     * adjlen is now the total bytes still waiting in buf, if
-	     * anything remains, copy it to the start of the buffer.
-	     */
-	
-	    if (adjlen > 0)
-	      memcpy(buf, buf+buflen, adjlen);
-
-	    /* Store everything back in session.xfer. */
-	    session.xfer.buflen = adjlen;
-	    total += buflen;
-	  }
-	
-	  /* Restart if data was returned by pr_netio_read() (len > 0) but
-	   * no data was copied to the client buffer (buflen = 0).
-	   * This indicates that xfrm_ascii_read() needs more data
-	   * in order to translate, so we need to call pr_netio_read() again.
+          /* Perform translation:
+           *
+           * buflen is returned as the modified buffer length after
+           *        translation
+           * adjlen is returned as the number of characters unprocessed in
+           *        the buffer (to be dealt with later)
+           *
+           * We skip the call to xfrm_ascii_read() in one case:
+           * when we have one character in the buffer and have reached
+           * end of data, this is so that xfrm_ascii_read() won't sit
+           * forever waiting for the next character after a final '\r'.
            */
-	} while (len > 0 && buflen == 0);
+          if (len > 0 || buflen > 1)
+            xfrm_ascii_read(buf, &buflen, &adjlen);
+	
+          /* Now copy everything we can into cl_buf */
+          if (buflen > cl_size) {
+            /* Because we have to cut our buffer short, make sure this
+             * is made up for later by increasing adjlen.
+             */
+            adjlen += (buflen - cl_size);
+            buflen = cl_size;
+          }
 
-        /* Return how much data we actually copied into the client buffer.
+          memcpy(cl_buf, buf, buflen);
+
+          /* Copy whatever remains at the end of session.xfer.buf to the
+           * head of the buffer and adjust buf accordingly.
+           *
+           * adjlen is now the total bytes still waiting in buf, if
+           * anything remains, copy it to the start of the buffer.
+           */
+
+          if (adjlen > 0)
+            memcpy(buf, buf+buflen, adjlen);
+
+          /* Store everything back in session.xfer. */
+          session.xfer.buflen = adjlen;
+          total += buflen;
+        }
+	
+        /* Restart if data was returned by pr_netio_read() (len > 0) but no
+         * data was copied to the client buffer (buflen = 0).  This indicates
+         * that xfrm_ascii_read() needs more data in order to translate, so we
+         * need to call pr_netio_read() again.
          */
-        len = buflen;
+      } while (len > 0 && buflen == 0);
 
-      } else if ((len = pr_netio_read(session.d->instrm, cl_buf,
-          cl_size, 1)) > 0) {
+      /* Return how much data we actually copied into the client buffer. */
+      len = buflen;
 
-        /* Non-ASCII mode doesn't need to use session.xfer.buf */
-        if (timeout_stalled)
-          pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+    } else if ((len = pr_netio_read(session.d->instrm, cl_buf,
+        cl_size, 1)) > 0) {
 
-        total += len;
-      }
+      /* Non-ASCII mode doesn't need to use session.xfer.buf */
+      if (timeout_stalled)
+        pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+
+      total += len;
     }
 
   } else { /* PR_NETIO_IO_WR */
-
+  
     while (cl_size) {
       int bwrote = 0;
       int buflen = cl_size;
