@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.353 2008-11-16 20:35:05 castaglia Exp $
+ * $Id: main.c,v 1.354 2008-11-19 08:58:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2370,6 +2370,12 @@ static void daemonize(void) {
   setpgrp(0, getpid());
 # endif
 #endif
+
+  /* Reset the cached "master PID" value to that of the daemon process;
+   * there are places in the code which check this value to see if they
+   * are the daemon process, e.g. at shutdown.
+   */
+  mpid = getpid();
 
   pr_fsio_chdir("/", 0);
 }
