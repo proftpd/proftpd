@@ -73,7 +73,7 @@ check: proftpd$(EXEEXT)
 	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check)
 
 # BSD install -d doesn't work, so ...
-$(DESTDIR)$(datadir) $(DESTDIR)$(datadir)/locale $(DESTDIR)$(includedir) $(DESTDIR)$(includedir)/proftpd $(DESTDIR)$(libdir) $(DESTDIR)$(pkgconfigdir) $(DESTDIR)$(libdir)/proftpd $(DESTDIR)$(libexecdir) $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(rundir) $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir) $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8:
+$(DESTDIR)$(localedir) $(DESTDIR)$(includedir) $(DESTDIR)$(includedir)/proftpd $(DESTDIR)$(libdir) $(DESTDIR)$(pkgconfigdir) $(DESTDIR)$(libdir)/proftpd $(DESTDIR)$(libexecdir) $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(rundir) $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir) $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8:
 	@if [ ! -d $@ ]; then \
 		mkdir -p $@; \
 		chown $(INSTALL_USER):$(INSTALL_GROUP) $@; \
@@ -109,7 +109,7 @@ install-pkgconfig: $(DESTDIR)$(pkgconfigdir)
 	@echo 'Cflags: -I$${includedir}' >> proftpd.pc
 	$(INSTALL_MAN) proftpd.pc $(DESTDIR)$(pkgconfigdir)/proftpd.pc
 
-install-locales: $(DESTDIR)$(datadir) $(DESTDIR)$(datadir)/locale
+install-locales: $(DESTDIR)$(localedir)
 	test -z "$(ENABLE_NLS)" || (cd locale/ && $(MAKE) install)
 
 install-modules: $(DESTDIR)$(libexecdir) $(DESTDIR)$(sysconfdir)

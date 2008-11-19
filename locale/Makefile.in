@@ -10,8 +10,6 @@ VPATH=@srcdir@
 
 include ../Make.rules
 
-LOCALEDIR=$(datadir)/locale
-
 CONTACT_ADDRESS=core@proftpd.org
 COPYRIGHT_HOLDER="The ProFTPD Project"
 PACKAGE=proftpd
@@ -51,12 +49,12 @@ locale: $(LANGS)
 install: $(LANGS)
 	for lang in $(LANGS); do \
 		if [ -e $$lang.mo ]; then \
- 			if [ ! -d $(DESTDIR)$(LOCALEDIR)/$$lang/LC_MESSAGES ]; then \
-				mkdir -p $(DESTDIR)$(LOCALEDIR)/$$lang/LC_MESSAGES; \
-				chown $(INSTALL_USER):$(INSTALL_GROUP) $(DESTDIR)$(LOCALEDIR)/$$lang/LC_MESSAGES; \
-				chmod 0755 $(DESTDIR)$(LOCALEDIR)/$$lang/LC_MESSAGES; \
+ 			if [ ! -d $(DESTDIR)$(localedir)/$$lang/LC_MESSAGES ]; then \
+				mkdir -p $(DESTDIR)$(localedir)/$$lang/LC_MESSAGES; \
+				chown $(INSTALL_USER):$(INSTALL_GROUP) $(DESTDIR)$(localedir)/$$lang/LC_MESSAGES; \
+				chmod 0755 $(DESTDIR)$(localedir)/$$lang/LC_MESSAGES; \
 			fi; \
-			$(INSTALL_MAN) $$lang.mo $(DESTDIR)$(LOCALEDIR)/$$lang/LC_MESSAGES/$(PACKAGE).mo; \
+			$(INSTALL_MAN) $$lang.mo $(DESTDIR)$(localedir)/$$lang/LC_MESSAGES/$(PACKAGE).mo; \
 		fi; \
 	done
 
