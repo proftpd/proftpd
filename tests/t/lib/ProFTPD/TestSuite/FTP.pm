@@ -6,6 +6,8 @@ use Carp;
 use Net::FTP;
 use POSIX qw(:sys_wait_h);
 
+my $conn_ex;
+
 sub new {
   my $class = shift;
   my ($addr, $port, $use_pasv, $timeout) = @_;
@@ -43,8 +45,12 @@ sub new {
     }
 
     $ftp = Net::FTP->new(%opts);
+    if ($ftp) {
+      last;
+    }
 
-    last if $ftp;
+    $conn_ex = $@;
+    chomp($conn_ex);
     sleep(1);
   }
 
@@ -53,6 +59,8 @@ sub new {
     ftp => $ftp,
     port => $port,
   };
+
+  $conn_ex = undef;
 
   bless($self, $class);
   return $self;
@@ -1278,6 +1286,10 @@ sub help {
   } else {
     return $msg;
   }
+}
+
+sub get_connect_exception {
+  return $conn_ex;
 }
 
 1;
