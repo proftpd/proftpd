@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.7 2008-11-18 19:29:40 castaglia Exp $
+ * $Id: encode.c,v 1.8 2008-11-19 03:31:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -58,7 +58,7 @@ static int str_convert(iconv_t conv, const char *inbuf, size_t *inbuflen,
 
     pr_signals_handle();
 
-    /* Solari/FreeBSD's iconv(3) takes a const char ** for the input buffer,
+    /* Solaris/FreeBSD's iconv(3) takes a const char ** for the input buffer,
      * whereas Linux/Mac OSX iconv(3) use char ** for the input buffer.
      */
 #if defined(LINUX) || defined(DARWIN6) || defined(DARWIN7) || \
