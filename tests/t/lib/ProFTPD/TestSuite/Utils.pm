@@ -633,9 +633,27 @@ sub testsuite_get_runnable_tests {
   return @$runnables;
 }
 
+my $testno = 0;
+
 sub testsuite_get_tmp_dir {
-  my $tmpdir = '/tmp';
-  $tmpdir = $ENV{TMPDIR} if defined($ENV{TMPDIR});
+  my $use_global_dir = shift;
+  $use_global_dir = 0 unless defined($use_global_dir);
+
+  my $tmpdir;
+  unless ($use_global_dir) {
+    # Construct a local tmp dir, using the PID in the name in order to
+    # prevent collisions between processes, and a counter to prevent collisions
+    # between tests within the same process.
+    my $num = ++$testno;
+    $tmpdir = "tmp-pid$$-test$num";
+
+  } else {
+    $tmpdir = '/tmp';
+
+    if (defined($ENV{TMPDIR})) {
+      $tmpdir = $ENV{TMPDIR};
+    }
+  }
 
   return $tmpdir;
 }
