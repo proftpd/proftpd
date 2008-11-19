@@ -72,6 +72,7 @@ if (scalar(@ARGV) > 0) {
     t/config/timeoutsession.t
     t/config/timeoutstalled.t
     t/config/useftpusers.t
+    t/signals/term.t
   )];
 
   # Now interrogate the build to see which module/feature-specific test files
