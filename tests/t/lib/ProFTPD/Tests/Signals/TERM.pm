@@ -76,6 +76,9 @@ sub parent_term_ok {
   # Start server
   server_start($config_file); 
 
+  # Allow a short interval between startup and shutdown
+  sleep(1);
+
   # Stop server
   server_stop($pid_file);
 
