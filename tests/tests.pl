@@ -80,6 +80,11 @@ if (scalar(@ARGV) > 0) {
   my $order = 0;
 
   my $FEATURE_TESTS = {
+    't/modules/mod_ban.t' => {
+      order => ++$order,
+      test_class => [qw(mod_ban)],
+    },
+
     't/modules/mod_sql.t' => {
       order => ++$order,
       test_class => [qw(mod_sql)],
