@@ -121,7 +121,7 @@ if (defined($opts->{C})) {
 
 } else {
   # Disable all 'inprogress' tests by default
-  $ENV{PROFTPD_TEST_DIABLE_CLASS} = 'inprogress';
+  $ENV{PROFTPD_TEST_DISABLE_CLASS} = 'inprogress';
 }
 
 runtests(@$test_files) if scalar(@$test_files) > 0;

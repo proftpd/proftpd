@@ -62,38 +62,43 @@ sub list_tests {
 
 sub set_up {
   my $self = shift;
+  $self->{tmpdir} = testsuite_get_tmp_dir();
 
   # Create temporary scratch dir
-  eval { mkpath('tmp') };
+  eval { mkpath($self->{tmpdir}) };
   if ($@) {
-    my $abs_path = File::Spec->rel2abs('tmp');
+    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
 }
 
 sub tear_down {
   my $self = shift;
-  undef $self;
 
   # Remove temporary scratch dir
-  eval { rmtree('tmp') };
+  if ($self->{tmpdir}) {
+    eval { rmtree($self->{tmpdir}) };
+  }
+
+  undef $self;
 };
 
 sub wrap2_allow_msg {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
-  my $db_file = File::Spec->rel2abs('tmp/wrap2.db');
+  my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
   # Build up sqlite3 command to create allow, deny tables and populate them
-  my $db_script = File::Spec->rel2abs('tmp/wrap2.sql');
+  my $db_script = File::Spec->rel2abs("$tmpdir/wrap2.sql");
 
   my $fh;
   if (open($fh, "> $db_script")) {
@@ -130,7 +135,7 @@ EOS
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -245,19 +250,20 @@ EOS
 
 sub wrap2_deny_msg {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
-  my $db_file = File::Spec->rel2abs('tmp/wrap2.db');
+  my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
   # Build up sqlite3 command to create allow, deny tables and populate them
-  my $db_script = File::Spec->rel2abs('tmp/wrap2.sql');
+  my $db_script = File::Spec->rel2abs("$tmpdir/wrap2.sql");
 
   my $fh;
   if (open($fh, "> $db_script")) {
@@ -295,7 +301,7 @@ EOS
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -417,19 +423,20 @@ EOS
 
 sub wrap2_engine {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
-  my $db_file = File::Spec->rel2abs('tmp/wrap2.db');
+  my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
   # Build up sqlite3 command to create allow, deny tables and populate them
-  my $db_script = File::Spec->rel2abs('tmp/wrap2.sql');
+  my $db_script = File::Spec->rel2abs("$tmpdir/wrap2.sql");
 
   my $fh;
   if (open($fh, "> $db_script")) {
@@ -467,7 +474,7 @@ EOS
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -581,19 +588,20 @@ EOS
 
 sub wrap2_sql_allow_table {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
-  my $db_file = File::Spec->rel2abs('tmp/wrap2.db');
+  my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
   # Build up sqlite3 command to create allow, deny tables and populate them
-  my $db_script = File::Spec->rel2abs('tmp/wrap2.sql');
+  my $db_script = File::Spec->rel2abs("$tmpdir/wrap2.sql");
 
   my $fh;
   if (open($fh, "> $db_script")) {
@@ -630,7 +638,7 @@ EOS
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -814,19 +822,20 @@ EOS
 
 sub wrap2_sql_deny_table {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
-  my $db_file = File::Spec->rel2abs('tmp/wrap2.db');
+  my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
   # Build up sqlite3 command to create allow, deny tables and populate them
-  my $db_script = File::Spec->rel2abs('tmp/wrap2.sql');
+  my $db_script = File::Spec->rel2abs("$tmpdir/wrap2.sql");
 
   my $fh;
   if (open($fh, "> $db_script")) {
@@ -864,7 +873,7 @@ EOS
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -1065,25 +1074,26 @@ EOS
 
 sub wrap2_sql_user_tables {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
-  my $db_file = File::Spec->rel2abs('tmp/wrap2.db');
+  my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
   # Build up sqlite3 command to create allow, deny tables and populate them
-  my $db_script = File::Spec->rel2abs('tmp/wrap2.sql');
+  my $db_script = File::Spec->rel2abs("$tmpdir/wrap2.sql");
 
   my $fh;
   if (open($fh, "> $db_script")) {
@@ -1229,6 +1239,8 @@ EOS
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
 
+  sleep(1);
+
   # Fork child
   $self->handle_sigchld();
   defined($pid = fork()) or die("Can't fork: $!");
@@ -1289,26 +1301,27 @@ EOS
 
 sub wrap2_sql_group_tables {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
   my $user = 'proftpd';
   my $group = 'ftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
-  my $db_file = File::Spec->rel2abs('tmp/wrap2.db');
+  my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
   # Build up sqlite3 command to create allow, deny tables and populate them
-  my $db_script = File::Spec->rel2abs('tmp/wrap2.sql');
+  my $db_script = File::Spec->rel2abs("$tmpdir/wrap2.sql");
 
   my $fh;
   if (open($fh, "> $db_script")) {
@@ -1453,6 +1466,8 @@ EOS
   $config->{IfModules}->{'mod_wrap2_sql.c'}->{WrapGroupTables} = "ftpd sql:/get-allowed-clients sql:/get-denied-clients";
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  sleep(1);
 
   # Fork child
   $self->handle_sigchld();

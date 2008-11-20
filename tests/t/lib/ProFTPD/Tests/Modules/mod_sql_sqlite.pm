@@ -47,29 +47,34 @@ sub list_tests {
 
 sub set_up {
   my $self = shift;
+  $self->{tmpdir} = testsuite_get_tmp_dir();
 
   # Create temporary scratch dir
-  eval { mkpath('tmp') };
+  eval { mkpath($self->{tmpdir}) };
   if ($@) {
-    my $abs_path = File::Spec->rel2abs('tmp');
+    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
 }
 
 sub tear_down {
   my $self = shift;
-  undef $self;
 
   # Remove temporary scratch dir
-  eval { rmtree('tmp') };
+  if ($self->{tmpdir}) {
+    eval { rmtree($self->{tmpdir}) };
+  }
+
+  undef $self;
 };
 
 sub sql_bug2922 {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/sqlite.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/sqlite.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/sqlite.scoreboard');
+  my $config_file = "$tmpdir/sqlite.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
   my $log_file = File::Spec->rel2abs('sqlite.log');
   my $sql_log_file = File::Spec->rel2abs('sql.log');
 
@@ -77,10 +82,10 @@ sub sql_bug2922 {
   # password (if configured to do so) of a user whose info did NOT come from
   # mod_sql.
 
-  my $db_file = File::Spec->rel2abs('tmp/proftpd.db');
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
   # Build up sqlite3 command to create users, groups tables and populate them
-  my $db_script = File::Spec->rel2abs('tmp/proftpd.sql');
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
 
   if (open(my $fh, "> $db_script")) {
     print $fh <<EOS;
@@ -210,10 +215,11 @@ EOS
 
 sub sql_bug3116 {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/sqlite.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/sqlite.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/sqlite.scoreboard');
+  my $config_file = "$tmpdir/sqlite.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
   my $log_file = File::Spec->rel2abs('sqlite.log');
   my $sql_log_file = File::Spec->rel2abs('sql.log');
 
@@ -222,12 +228,12 @@ sub sql_bug3116 {
 
   my $user = 'proftpd%proftpd.org';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
 
-  my $db_file = File::Spec->rel2abs('tmp/proftpd.db');
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
   # Build up sqlite3 command to create users, groups tables and populate them
-  my $db_script = File::Spec->rel2abs('tmp/proftpd.sql');
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
 
   if (open(my $fh, "> $db_script")) {
     print $fh <<EOS;
@@ -341,21 +347,22 @@ EOS
 
 sub sql_bug3124 {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/sqlite.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/sqlite.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/sqlite.scoreboard');
+  my $config_file = "$tmpdir/sqlite.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
   my $log_file = File::Spec->rel2abs('sqlite.log');
   my $sql_log_file = File::Spec->rel2abs('sql.log');
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
 
-  my $db_file = File::Spec->rel2abs('tmp/proftpd.db');
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
   # Build up sqlite3 command to create users, groups tables and populate them
-  my $db_script = File::Spec->rel2abs('tmp/proftpd.sql');
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
 
   if (open(my $fh, "> $db_script")) {
     print $fh <<EOS;
@@ -471,21 +478,22 @@ EOS
 
 sub sql_sqlite_bug3126 {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/sqlite.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/sqlite.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/sqlite.scoreboard');
+  my $config_file = "$tmpdir/sqlite.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
   my $log_file = File::Spec->rel2abs('sqlite.log');
   my $sql_log_file = File::Spec->rel2abs('sql.log');
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
 
-  my $db_file = File::Spec->rel2abs('tmp/proftpd.db');
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
   # Build up sqlite3 command to create users, groups tables and populate them
-  my $db_script = File::Spec->rel2abs('tmp/proftpd.sql');
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
 
   if (open(my $fh, "> $db_script")) {
     print $fh <<EOS;

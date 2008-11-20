@@ -38,38 +38,43 @@ sub list_tests {
 
 sub set_up {
   my $self = shift;
+  $self->{tmpdir} = testsuite_get_tmp_dir();
 
   # Create temporary scratch dir
-  eval { mkpath('tmp') };
+  eval { mkpath($self->{tmpdir}) };
   if ($@) {
-    my $abs_path = File::Spec->rel2abs('tmp');
+    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
 }
 
 sub tear_down {
   my $self = shift;
-  undef $self;
 
   # Remove temporary scratch dir
-  eval { rmtree('tmp') };
+  if ($self->{tmpdir}) {
+    eval { rmtree($self->{tmpdir}) };
+  }
+
+  undef $self;
 };
 
 sub ban_on_event_max_login_attempts {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/ban.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/ban.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/ban.scoreboard');
+  my $config_file = "$tmpdir/ban.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/ban.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ban.scoreboard");
   my $log_file = File::Spec->rel2abs('ban.log');
-  my $ban_tab = File::Spec->rel2abs('tmp/ban.tab');
+  my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/ban.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/ban.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ban.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ban.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
   
@@ -204,19 +209,20 @@ sub ban_on_event_max_login_attempts {
 
 sub ban_message {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/ban.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/ban.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/ban.scoreboard');
+  my $config_file = "$tmpdir/ban.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/ban.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ban.scoreboard");
   my $log_file = File::Spec->rel2abs('ban.log');
-  my $ban_tab = File::Spec->rel2abs('tmp/ban.tab');
+  my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/ban.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/ban.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ban.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ban.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
   

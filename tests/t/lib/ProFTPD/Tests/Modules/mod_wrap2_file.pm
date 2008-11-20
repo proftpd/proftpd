@@ -67,36 +67,41 @@ sub list_tests {
 
 sub set_up {
   my $self = shift;
+  $self->{tmpdir} = testsuite_get_tmp_dir();
 
   # Create temporary scratch dir
-  eval { mkpath('tmp') };
+  eval { mkpath($self->{tmpdir}) };
   if ($@) {
-    my $abs_path = File::Spec->rel2abs('tmp');
+    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
 }
 
 sub tear_down {
   my $self = shift;
-  undef $self;
 
   # Remove temporary scratch dir
-  eval { rmtree('tmp') };
+  if ($self->{tmpdir}) {
+    eval { rmtree($self->{tmpdir}) };
+  }
+
+  undef $self;
 };
 
 sub wrap2_allow_msg {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
   my $fh;
-  my $allow_file = File::Spec->rel2abs('tmp/wrap2.allow');
+  my $allow_file = File::Spec->rel2abs("$tmpdir/wrap2.allow");
   if (open($fh, "> $allow_file")) {
     close($fh);
 
@@ -104,7 +109,7 @@ sub wrap2_allow_msg {
     die("Can't open $allow_file: $!");
   }
 
-  my $deny_file = File::Spec->rel2abs('tmp/wrap2.deny');
+  my $deny_file = File::Spec->rel2abs("$tmpdir/wrap2.deny");
   if (open($fh, "> $deny_file")) {
     close($fh);
 
@@ -114,7 +119,7 @@ sub wrap2_allow_msg {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -220,17 +225,18 @@ sub wrap2_allow_msg {
 
 sub wrap2_deny_msg {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
   my $fh;
-  my $allow_file = File::Spec->rel2abs('tmp/wrap2.allow');
+  my $allow_file = File::Spec->rel2abs("$tmpdir/wrap2.allow");
   if (open($fh, "> $allow_file")) {
     close($fh);
 
@@ -238,7 +244,7 @@ sub wrap2_deny_msg {
     die("Can't open $allow_file: $!");
   }
 
-  my $deny_file = File::Spec->rel2abs('tmp/wrap2.deny');
+  my $deny_file = File::Spec->rel2abs("$tmpdir/wrap2.deny");
   if (open($fh, "> $deny_file")) {
     print $fh "ALL: ALL\n";
 
@@ -252,7 +258,7 @@ sub wrap2_deny_msg {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -365,17 +371,18 @@ sub wrap2_deny_msg {
 
 sub wrap2_engine {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
   my $fh;
-  my $allow_file = File::Spec->rel2abs('tmp/wrap2.allow');
+  my $allow_file = File::Spec->rel2abs("$tmpdir/wrap2.allow");
   if (open($fh, "> $allow_file")) {
     close($fh);
 
@@ -383,7 +390,7 @@ sub wrap2_engine {
     die("Can't open $allow_file: $!");
   }
 
-  my $deny_file = File::Spec->rel2abs('tmp/wrap2.deny');
+  my $deny_file = File::Spec->rel2abs("$tmpdir/wrap2.deny");
   if (open($fh, "> $deny_file")) {
     print $fh "ALL: ALL\n";
 
@@ -397,7 +404,7 @@ sub wrap2_engine {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -504,17 +511,18 @@ sub wrap2_engine {
 
 sub wrap2_file_allow_table {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
   my $fh;
-  my $allow_file = File::Spec->rel2abs('tmp/wrap2.allow');
+  my $allow_file = File::Spec->rel2abs("$tmpdir/wrap2.allow");
   if (open($fh, "> $allow_file")) {
     print $fh "ALL: ALL\n";
     unless (close($fh)) {
@@ -525,7 +533,7 @@ sub wrap2_file_allow_table {
     die("Can't open $allow_file: $!");
   }
 
-  my $deny_file = File::Spec->rel2abs('tmp/wrap2.deny');
+  my $deny_file = File::Spec->rel2abs("$tmpdir/wrap2.deny");
   if (open($fh, "> $deny_file")) {
     print $fh "ALL: ALL\n";
 
@@ -539,7 +547,7 @@ sub wrap2_file_allow_table {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -651,6 +659,8 @@ sub wrap2_file_allow_table {
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
 
+  sleep(1);
+
   # Fork child
   $self->handle_sigchld();
   defined($pid = fork()) or die("Can't fork: $!");
@@ -704,17 +714,18 @@ sub wrap2_file_allow_table {
 
 sub wrap2_file_deny_table {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
   my $fh;
-  my $allow_file = File::Spec->rel2abs('tmp/wrap2.allow');
+  my $allow_file = File::Spec->rel2abs("$tmpdir/wrap2.allow");
   if (open($fh, "> $allow_file")) {
     unless (close($fh)) {
       die("Can't write $allow_file: $!");
@@ -724,7 +735,7 @@ sub wrap2_file_deny_table {
     die("Can't open $allow_file: $!");
   }
 
-  my $deny_file = File::Spec->rel2abs('tmp/wrap2.deny');
+  my $deny_file = File::Spec->rel2abs("$tmpdir/wrap2.deny");
   if (open($fh, "> $deny_file")) {
     print $fh "ALL: ALL\n";
 
@@ -738,7 +749,7 @@ sub wrap2_file_deny_table {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -858,6 +869,8 @@ sub wrap2_file_deny_table {
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
 
+  sleep(1);
+
   # Fork child
   $self->handle_sigchld();
   defined($pid = fork()) or die("Can't fork: $!");
@@ -918,17 +931,18 @@ sub wrap2_file_deny_table {
 
 sub wrap2_file_service_name {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
   my $fh;
-  my $allow_file = File::Spec->rel2abs('tmp/wrap2.allow');
+  my $allow_file = File::Spec->rel2abs("$tmpdir/wrap2.allow");
   if (open($fh, "> $allow_file")) {
     print $fh "ftpd: ALL\n";
     unless (close($fh)) {
@@ -939,7 +953,7 @@ sub wrap2_file_service_name {
     die("Can't open $allow_file: $!");
   }
 
-  my $deny_file = File::Spec->rel2abs('tmp/wrap2.deny');
+  my $deny_file = File::Spec->rel2abs("$tmpdir/wrap2.deny");
   if (open($fh, "> $deny_file")) {
     print $fh "ALL: ALL\n";
 
@@ -953,7 +967,7 @@ sub wrap2_file_service_name {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -1073,6 +1087,8 @@ sub wrap2_file_service_name {
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
 
+  sleep(1);
+
   # Fork child
   $self->handle_sigchld();
   defined($pid = fork()) or die("Can't fork: $!");
@@ -1126,17 +1142,18 @@ sub wrap2_file_service_name {
 
 sub wrap2_file_user_tables {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
   my $fh;
-  my $allow_file = File::Spec->rel2abs('tmp/wrap2.allow');
+  my $allow_file = File::Spec->rel2abs("$tmpdir/wrap2.allow");
   if (open($fh, "> $allow_file")) {
     unless (close($fh)) {
       die("Can't write $allow_file: $!");
@@ -1146,7 +1163,7 @@ sub wrap2_file_user_tables {
     die("Can't open $allow_file: $!");
   }
 
-  my $deny_file = File::Spec->rel2abs('tmp/wrap2.deny');
+  my $deny_file = File::Spec->rel2abs("$tmpdir/wrap2.deny");
   if (open($fh, "> $deny_file")) {
     print $fh "ALL: ALL\n";
 
@@ -1160,7 +1177,7 @@ sub wrap2_file_user_tables {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -1266,6 +1283,8 @@ sub wrap2_file_user_tables {
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
 
+  sleep(1);
+
   # Fork child
   $self->handle_sigchld();
   defined($pid = fork()) or die("Can't fork: $!");
@@ -1326,17 +1345,18 @@ sub wrap2_file_user_tables {
 
 sub wrap2_file_group_tables {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/wrap2.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/wrap2.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/wrap2.scoreboard');
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
   my $log_file = File::Spec->rel2abs('wrap2.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/wrap2.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/wrap2.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
   my $fh;
-  my $allow_file = File::Spec->rel2abs('tmp/wrap2.allow');
+  my $allow_file = File::Spec->rel2abs("$tmpdir/wrap2.allow");
   if (open($fh, "> $allow_file")) {
     unless (close($fh)) {
       die("Can't write $allow_file: $!");
@@ -1346,7 +1366,7 @@ sub wrap2_file_group_tables {
     die("Can't open $allow_file: $!");
   }
 
-  my $deny_file = File::Spec->rel2abs('tmp/wrap2.deny');
+  my $deny_file = File::Spec->rel2abs("$tmpdir/wrap2.deny");
   if (open($fh, "> $deny_file")) {
     print $fh "ALL: ALL\n";
 
@@ -1360,7 +1380,7 @@ sub wrap2_file_group_tables {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -1465,6 +1485,8 @@ sub wrap2_file_group_tables {
   $config->{IfModules}->{'mod_wrap2.c'}->{WrapGroupTables} = "ftpd file:$allow_file file:$deny_file";
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  sleep(1);
 
   # Fork child
   $self->handle_sigchld();
