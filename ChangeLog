@@ -1,3 +1,1347 @@
+2008-11-20 14:26  castaglia
+
+	* NEWS, contrib/dist/rpm/proftpd.spec, include/version.h: 
+	Preparing for RC3 release.
+
+2008-11-20 14:23  castaglia
+
+	* RELEASE_NOTES: 
+	Updating release notes, preparing for release.
+
+2008-11-20 13:59  castaglia
+
+	* tests/t/lib/ProFTPD/TestSuite/FTP.pm: 
+	Use the two-argument form of the Net::FTP constructor -- it works
+	better with older Perls.
+
+2008-11-20 11:50  castaglia
+
+	* tests/t/lib/ProFTPD/: TestSuite/Utils.pm,
+	Tests/Modules/mod_wrap2_file.pm, Tests/Modules/mod_wrap2_sql.pm,
+	Tests/Signals/TERM.pm: 
+	Get rid of a few places where we needed to use sleep() to delay
+	between server shutdown and server startup, in order to make sure
+	that the new server's PidFile and ScoreboardFile weren't deleted by
+	the previous server while it was shutting down.  Instead, the
+	server_stop() function will not return until it sees that the
+	PidFile has been deleted.
+
+2008-11-20 01:11  castaglia
+
+	* tests/: tests.pl, t/lib/ProFTPD/Tests/Modules/mod_ban.pm,
+	t/lib/ProFTPD/Tests/Modules/mod_sql_sqlite.pm,
+	t/lib/ProFTPD/Tests/Modules/mod_wrap2_file.pm,
+	t/lib/ProFTPD/Tests/Modules/mod_wrap2_sql.pm: 
+	Retrofit the module-specific unit tests to use test-specific
+	scratch directories.  That should be all of the existing tests.
+
+2008-11-20 00:27  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/ABOR.pm: 
+	Quell Perl warnings about redeclared variables.
+
+2008-11-20 00:18  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/: Logins.pm, Commands/ABOR.pm,
+	Commands/APPE.pm, Commands/LIST.pm, Commands/NLST.pm,
+	Commands/RETR.pm, Commands/STOR.pm, Commands/STOU.pm,
+	Config/DisplayConnect.pm, Config/DisplayLogin.pm,
+	Config/HideFiles.pm, Config/MaxLoginAttempts.pm,
+	Config/MaxRetrieveFileSize.pm, Config/MaxStoreFileSize.pm,
+	Config/RequireValidShell.pm, Config/ServerIdent.pm,
+	Config/TimeoutIdle.pm, Config/TimeoutLogin.pm,
+	Config/TimeoutNoTransfer.pm, Config/TimeoutSession.pm,
+	Config/TimeoutStalled.pm, Config/UseFtpUsers.pm, Signals/TERM.pm: 
+	Retrofitted more of the testsuite to use more individualized
+	per-test scratch directories.
+
+2008-11-19 20:19  castaglia
+
+	* contrib/mod_ban.c: 
+	Minor nits and improvements to mod_ban; no real functional changes.
+
+2008-11-19 16:35  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/: Logins.pm, Commands/ALLO.pm,
+	Commands/CDUP.pm, Commands/CWD.pm, Commands/DELE.pm,
+	Commands/EPRT.pm, Commands/EPSV.pm, Commands/FEAT.pm,
+	Commands/HELP.pm, Commands/MDTM.pm, Commands/MKD.pm,
+	Commands/MODE.pm, Commands/NOOP.pm, Commands/PASS.pm,
+	Commands/PASV.pm, Commands/PORT.pm, Commands/PWD.pm,
+	Commands/QUIT.pm, Commands/REST.pm, Commands/RMD.pm,
+	Commands/RNFR.pm, Commands/RNTO.pm, Commands/SIZE.pm,
+	Commands/STRU.pm, Commands/SYST.pm, Commands/TYPE.pm,
+	Commands/USER.pm: 
+	Update some (but not all, yet) of the tests to use the new scratch
+	directory function.  Will need to finish the rest later tonight.
+
+2008-11-19 11:13  castaglia
+
+	* tests/t/lib/ProFTPD/: TestSuite/Utils.pm, Tests/Commands/ABOR.pm:
+	
+	By fixing the daemon shutdown bug, I introduced some race
+	conditions into the unit tests.  Each unit test would use the same
+	'tmp/' directory; and sometimes the next test would have started
+	(and used the same path for PidFile, ScoreboardFile) before the
+	server may have removed those files.
+	
+	To address this, each unit test will get its own unique scratch
+	directory whose name will include the PID and a counter.  This will
+	require retrofitting most of the existing tests, but is cleaner in
+	the long run.
+
+2008-11-19 10:21  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Signals/TERM.pm: 
+	Slight tweak to the shutdown test, to ensure that the server has
+	enough time between startup and shutdown to write out the
+	appropriate files.
+
+2008-11-19 10:07  castaglia
+
+	* NEWS, src/data.c: 
+	Bug#3135 - Aborting a download can lead to segfault in some cases.
+
+2008-11-19 01:44  castaglia
+
+	* tests/: tests.pl, t/lib/ProFTPD/Tests/Modules/mod_ban.pm,
+	t/modules/mod_ban.t: 
+	Added start of unit tests for the mod_ban module.
+
+2008-11-19 01:42  castaglia
+
+	* tests/t/lib/ProFTPD/TestSuite/FTP.pm: 
+	Provide a function for obtaining the reason, given by the server,
+	why the initial connection might be denied.
+
+2008-11-19 01:13  castaglia
+
+	* tests/: tests.pl, t/lib/ProFTPD/Tests/Signals/TERM.pm,
+	t/signals/term.t: 
+	Add a test for the SIGTERM signal handling of the daemon process,
+	to ensure that the shutdown procedures (PidFile removal,
+	ScoreboardFile removal) are indeed happening properly.
+
+2008-11-19 00:58  castaglia
+
+	* src/main.c: 
+	While working on unit tests for mod_ban, I noticed that mod_ban's
+	shared memory segments were not being cleaned up.  I tracked it
+	down to the fact that the check to see if you're the "master"
+	process (assuming a ServerType of 'standalone') was failing,
+	because the cached "master PID" value was for the process _prior to
+	daemonizing_.  I suspect that many shutdown cleanups, such as
+	PidFile removal and such, have not been happening for a while.
+
+2008-11-18 19:54  castaglia
+
+	* configure: 
+	Updated configure.
+
+2008-11-18 19:51  castaglia
+
+	* Make.rules.in, Makefile.in, configure.in, locale/Makefile.in: 
+	Properly honor the --localedir configure option.
+
+2008-11-18 19:31  castaglia
+
+	* src/encode.c: 
+	Comment typo.
+
+2008-11-18 11:29  castaglia
+
+	* src/encode.c: 
+	Check in some of the fixes found while investigating Bug#3134,
+	particularly ones which can cause segfaults (e.g. on FreeBSD) when
+	an iconv_t handle is closed multiple times erroneously.
+
+2008-11-17 09:31  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/ABOR.pm: 
+	Be sure to clean up the generated log file.
+
+2008-11-17 08:59  castaglia
+
+	* tests/: tests.pl, t/lib/ProFTPD/Tests/Commands/ABOR.pm: 
+	After all the work done on Bug#3131, these ABOR unit tests should
+	definitely be checked in and added to the testsuite.
+
+2008-11-16 18:32  castaglia
+
+	* NEWS: 
+	Remove duplicate bug entry.
+
+2008-11-16 17:49  castaglia
+
+	* tests/tests.pl: 
+	Don't add the 'testsuite_empty_test' to the list of files, if that
+	is what is returned by filtering for feature-based test files.
+
+2008-11-16 17:42  castaglia
+
+	* src/netio.c: 
+	Fix uploads; it had been inadvertently broken when trace logging of
+	EOF was added.	The testsuite caught this regression; the testsuite
+	is coming in handy!
+
+2008-11-16 12:35  castaglia
+
+	* NEWS, src/main.c: 
+	Bug#3073 - Command arguments not decoded properly in some places.
+
+2008-11-15 14:53  castaglia
+
+	* configure: 
+	Updated configure.
+
+2008-11-15 14:37  castaglia
+
+	* RELEASE_NOTES: 
+	Mention the change in TimeoutLinger default value in the release
+	notes.
+
+2008-11-15 14:34  castaglia
+
+	* configure.in, include/options.h: 
+	Change the default linger timeout from 1.5 minutes (180 secs) to 30
+	secs.  Many command-line FTP clients have a timeout of 60 secs,
+	after which they think the server has timed out, and will close the
+	control connection.  We want to make sure that proftpd's lingering
+	closes do not linger past that 60 secs mark.
+
+2008-11-14 20:26  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/: EPRT.pm, EPSV.pm: 
+	Make sure the EPRT tests are sensitive to whether the built proftpd
+	supports IPv6.	Did the same for the EPSV tests, and added more
+	tests for the optional EPSV arguments.
+
+2008-11-14 20:23  castaglia
+
+	* tests/t/lib/ProFTPD/TestSuite/FTP.pm: 
+	Allow the epsv() method to take an optional protocol number, as
+	allowed in the EPSV command.
+
+2008-11-14 19:31  castaglia
+
+	* tests/t/lib/ProFTPD/TestSuite/FTP.pm: 
+	Apply the same Net::FTP internals muck to the epsv() and eprt()
+	methods as used in the pasv() and port() methods.
+
+2008-11-14 19:23  castaglia
+
+	* tests/t/lib/ProFTPD/TestSuite/Utils.pm: 
+	Quell Perl warning about redeclared variable.
+
+2008-11-14 19:21  castaglia
+
+	* tests/t/lib/ProFTPD/TestSuite/FTP.pm: 
+	Make the pasv() and port() methods actually cause the client to use
+	passive and active data transfers, respectively, rather than having
+	to rely on a constructor-time setting.	Yuck.
+
+2008-11-14 18:01  castaglia
+
+	* NEWS, src/data.c, src/netio.c: 
+	Bug#3131 - Session process uses 100% CPU after aborted transfer.
+
+2008-11-14 14:40  castaglia
+
+	* tests/Makefile.in: 
+	Fix typo.
+
+2008-11-14 11:58  castaglia
+
+	* modules/mod_lang.c: 
+	When calling setlocale(3) to get the LANG to advertise in the FEAT
+	response, use LC_MESSAGES rather than LC_ALL; the latter can result
+	in a string which includes the locales for every category when we
+	just want the LC_MESSAGES category.
+
+2008-11-14 11:35  castaglia
+
+	* NEWS, src/main.c: 
+	Bug#3132 - Handling of SIGABRT signal leads to endless loop.
+
+2008-11-14 10:25  castaglia
+
+	* src/: main.c, netio.c: 
+	Add trace logging of the handling of EOF, i.e. when a client closes
+	(or shuts down) its control connection, causing proftpd to close
+	that connection.
+	
+	Also make the implementation of the poll callback a little nicer;
+	rather than calling select(2) on an empty fd_set, pass NULL if that
+	fd_set is empty.
+
+2008-11-13 12:00  castaglia
+
+	* tests/t/lib/ProFTPD/TestSuite/Utils.pm: 
+	Fix the feature-checking code so that tests using a "feature_X"
+	class are properly handled.
+
+2008-11-13 00:15  castaglia
+
+	* tests/t/: commands/abor.t, lib/ProFTPD/Tests/Commands/ABOR.pm: 
+	Check in some of the in-progress unit tests on the ABOR command
+	(being driven by investigations for Bug#3131).	The tests are not
+	part of the full testsuite yet.
+
+2008-11-12 08:33  castaglia
+
+	* tests/: tests.pl, t/lib/ProFTPD/Tests/Modules/mod_wrap2_sql.pm,
+	t/modules/mod_wrap2_sql.t: 
+	Added unit tests for mod_wrap2_sql.
+
+2008-11-11 22:45  castaglia
+
+	* tests/: tests.pl, t/lib/ProFTPD/Tests/Modules/mod_wrap2_file.pm,
+	t/modules/mod_wrap2_file.t: 
+	Add unit tests for mod_wrap2_file.
+
+2008-11-11 09:42  castaglia
+
+	* tests/t/lib/ProFTPD/TestSuite/Utils.pm: 
+	Add routine for checking the enabled features in the proftpd build.
+	 Use this for disabling IPv6 support in the unit tests, if IPv6
+	support is enabled, unless explicitly requested otherwise in the
+	test.
+
+2008-11-11 09:25  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/: Logins.pm, Commands/ALLO.pm,
+	Commands/APPE.pm, Commands/CDUP.pm, Commands/CWD.pm,
+	Commands/DELE.pm, Commands/EPRT.pm, Commands/EPSV.pm,
+	Commands/FEAT.pm, Commands/HELP.pm, Commands/LIST.pm,
+	Commands/MDTM.pm, Commands/MKD.pm, Commands/MODE.pm,
+	Commands/NOOP.pm, Commands/PASS.pm, Commands/PASV.pm,
+	Commands/PORT.pm, Commands/PWD.pm, Commands/QUIT.pm,
+	Commands/REST.pm, Commands/RNFR.pm, Commands/SIZE.pm,
+	Commands/STRU.pm, Commands/SYST.pm, Commands/TYPE.pm,
+	Commands/USER.pm, Config/DisplayConnect.pm, Config/DisplayLogin.pm,
+	Config/MaxLoginAttempts.pm, Config/ServerIdent.pm: 
+	Remove unnecessary import of module-related functions.
+
+2008-11-10 21:35  castaglia
+
+	* contrib/mod_wrap2/mod_wrap2.c: 
+	Fix bug, found by unit tests, with evaluation of conditions for
+	applying WrapGroupTables directive.  The logic was incorrectly
+	inverted.
+
+2008-11-10 14:14  castaglia
+
+	* tests/tests.pl: 
+	If there are no additional feature/module-specific test files to
+	add, then don't add them, not even the 'testsuite_empty_test' stub
+	test.
+
+2008-11-10 14:13  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Config/: MaxRetrieveFileSize.pm,
+	MaxStoreFileSize.pm: 
+	Quell Perl compiler warnings about re-declared variables.
+
+2008-11-08 14:56  castaglia
+
+	* tests/: tests.pl, t/config/maxretrievefilesize.t,
+	t/config/maxstorefilesize.t,
+	t/lib/ProFTPD/Tests/Config/MaxRetrieveFileSize.pm,
+	t/lib/ProFTPD/Tests/Config/MaxStoreFileSize.pm: 
+	Added unit tests for the MaxRetrieveFileSize and MaxStoreFileSize
+	directives.
+
+2008-11-08 13:32  castaglia
+
+	* tests/: tests.pl, t/config/requirevalidshell.t,
+	t/config/useftpusers.t,
+	t/lib/ProFTPD/Tests/Config/RequireValidShell.pm,
+	t/lib/ProFTPD/Tests/Config/UseFtpUsers.pm: 
+	Added unit tests for the RequireValidShell and UseFtpUsers
+	directives.
+
+2008-11-08 12:58  castaglia
+
+	* tests/: tests.pl, t/config/timeoutidle.t,
+	t/config/timeoutlogin.t, t/config/timeoutnotransfer.t,
+	t/config/timeoutsession.t, t/config/timeoutstalled.t,
+	t/lib/ProFTPD/Tests/Config/TimeoutIdle.pm,
+	t/lib/ProFTPD/Tests/Config/TimeoutLogin.pm,
+	t/lib/ProFTPD/Tests/Config/TimeoutNoTransfer.pm,
+	t/lib/ProFTPD/Tests/Config/TimeoutSession.pm,
+	t/lib/ProFTPD/Tests/Config/TimeoutStalled.pm: 
+	Added unit tests for the various Timeout directives.
+
+2008-11-07 15:31  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/RETR.pm: 
+	Minor adjustment to make a RETR test pass; the
+	File::Spec::rel2abs() Perl function can take *a lot* longer to run,
+	than expected, in some cases.  Not sure why yet.
+
+2008-11-07 15:25  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/STOU.pm: 
+	The STOU tests now pass when run both as root and as non-root.
+
+2008-11-07 15:21  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/STOR.pm: 
+	Update the STOR tests to pass when run as root and as non-root.
+
+2008-11-07 15:17  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/RNTO.pm: 
+	Make sure the RNTO tests pass when run as root and as non-root.
+
+2008-11-07 15:13  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/RMD.pm: 
+	Adjust the RMD tests to pass when run as root and as non-root.
+
+2008-11-07 15:10  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/RETR.pm: 
+	Make the RETR tests pass when run as both root and non-root.
+
+2008-11-07 15:06  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/NLST.pm: 
+	Update the NLST tests to pass when run as root and as non-root.
+
+2008-11-07 15:00  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/MKD.pm: 
+	Adjust the MKD tests so that using root and non-root users work,
+	and the tests pass.
+
+2008-11-07 14:57  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/LIST.pm: 
+	Adjust the LIST tests so that they pass when run both as root and
+	as non-root.
+
+2008-11-07 14:50  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/DELE.pm: 
+	Rework the DELE unit tests so that they pass when run both as root
+	and as non-root.
+
+2008-11-07 14:43  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/APPE.pm: 
+	Rework the APPE tests so that they always pass, whether run as root
+	or not.
+
+2008-11-07 11:35  castaglia
+
+	* doc/howto/Testing.html: 
+	Mention that some integration tests are skipped if not run with
+	root privs.
+
+2008-11-07 11:23  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_sql_sqlite.pm: 
+	Add a regression test for Bug#2922.
+
+2008-11-07 10:37  castaglia
+
+	* tests/t/: lib/ProFTPD/TestSuite/FTP.pm,
+	lib/ProFTPD/TestSuite/Utils.pm,
+	lib/ProFTPD/Tests/Modules/mod_sql_sqlite.pm,
+	modules/mod_sql_sqlite.t: 
+	Adding some regressions tests for Bugs #3116, #3124, and #3126.
+
+2008-11-06 13:47  castaglia
+
+	* NEWS, src/dirtree.c: 
+	Bug#3130 - HideFiles can cause segfault.
+
+2008-11-06 13:46  castaglia
+
+	* tests/: tests.pl, t/config/hidefiles.t,
+	t/lib/ProFTPD/TestSuite/Utils.pm,
+	t/lib/ProFTPD/Tests/Config/HideFiles.pm: 
+	Added unit test for reproducing Bug#3130 (and preventing
+	regressions).
+
+2008-11-05 23:46  castaglia
+
+	* tests/: tests.pl, t/lib/ProFTPD/TestSuite/Utils.pm,
+	t/lib/ProFTPD/Tests/Modules/mod_sql.pm,
+	t/lib/ProFTPD/Tests/Modules/mod_sql_sqlite.pm, t/modules/mod_sql.t,
+	t/modules/mod_sql_sqlite.t: 
+	Make the tests.pl script "interrogate" the compiled proftpd, and
+	start adding tests based on the compiled features (e.g. modules
+	included, features enabled, etc).
+	
+	Add stub module files for mod_sql and mod_sql_sqlite; these will be
+	the first module-specific test files; they will be
+	demonstrations/examples for creating test files for other modules.
+
+2008-11-05 18:46  castaglia
+
+	* doc/howto/Testing.html: 
+	Update the Testing howto to reflect changes made to the 'make
+	check' target.
+
+2008-11-05 18:45  castaglia
+
+	* tests/: .cvsignore, Makefile.in, t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/STOU.pm: 
+	Run the integration tests after the API tests, as part of the 'make
+	check' target.
+	
+	Fix some Perl warnings in the STOU tests.  Make sure that the cvs
+	commands ignore all generated log files (e.g. cvs diff won't
+	complain about unknown .log files).
+
+2008-11-05 18:28  castaglia
+
+	* doc/howto/index.html: 
+	Add a link to the Testing howto in the howto index.
+
+2008-11-05 18:27  castaglia
+
+	* doc/howto/Testing.html: 
+	The Testing howto is now in a mostly usable form.
+
+2008-11-05 18:23  castaglia
+
+	* modules/mod_xfer.c, src/data.c: 
+	Fix a problem with the handling of STOU.  This problem was detected
+	by the testsuite, as it should.
+
+2008-11-05 17:38  castaglia
+
+	* tests/api/tests.c: 
+	Make sure that the testsuite log name is kept in sync with what is
+	displayed in the error message.
+
+2008-11-03 11:27  castaglia
+
+	* contrib/mod_sql_sqlite.c: 
+	Explain why sqlite3_shutdown() is not called when the
+	mod_sql_sqlite module is being unloaded.
+
+2008-11-03 10:46  castaglia
+
+	* contrib/mod_sql_sqlite.c: 
+	Stylistic nits; no functional change.
+
+2008-11-03 09:55  castaglia
+
+	* NEWS, contrib/mod_sql_sqlite.c: 
+	Bug#3126 - Segfault in mod_sql_sqlite when user belongs to multiple
+	groups.
+
+2008-10-31 12:15  castaglia
+
+	* NEWS, contrib/mod_ldap.c, contrib/mod_sql.c, src/log.c: 
+	Bug#2767 - gcc 4.0/amd64 warnings.
+
+2008-10-31 09:38  castaglia
+
+	* NEWS, include/fsio.h, src/fsio.c: 
+	Bug#3092 - FSIO API needs mechanism for allowing registered FS
+	handlers to permit atomic renames.
+
+2008-10-30 15:38  castaglia
+
+	* modules/mod_xfer.c, src/data.c: 
+	Turns out that not _all_ data connections are allocated from
+	session.xfer.p; some are allocated from session.pool.  The previous
+	changes had inadvertently broken passive data transfers.  For
+	passive data transfers, then, use session.pool for allocating the
+	connection object (session.d), rather than session.xfer.p; thus
+	making consistent the pool that is used for allocating session.d.
+	
+	Also clean up some of the error responses for failed uploads; they
+	might have referenced NULL pointers, which would subsequently cause
+	segfaults/crashes on platforms whose printf(3) functions don't
+	handle the case well.
+
+2008-10-29 14:07  castaglia
+
+	* RELEASE_NOTES: 
+	Start prepping the RC3 release notes.
+
+2008-10-28 09:22  castaglia
+
+	* contrib/mod_sql.c: 
+	Add a comment about why the nested sql_prepare_where() function
+	calls are the way they are (to prevent future developers from
+	regressing Bug#3124).
+
+2008-10-28 09:19  castaglia
+
+	* include/data.h, modules/mod_xfer.c, src/data.c: 
+	Improve on the fix for Bug#3089 by creating a new function
+	specifically to clear the session.xfer.p pool and any associated
+	structures; this function refactors all of the associated code into
+	a single location.
+
+2008-10-27 17:02  castaglia
+
+	* doc/howto/Testing.html: 
+	Adding slightly more substance to the Testing howto; hopefully I
+	can muster the motivation to finish it later tonight.
+
+2008-10-27 16:48  castaglia
+
+	* NEWS, modules/mod_xfer.c, src/data.c, src/inet.c: 
+	Bug#3089 - Memory pool double-free on session exit after aborted
+	data transfer.
+
+2008-10-27 16:46  castaglia
+
+	* include/inet.h, src/inet.c: 
+	Remove the pr_inet_associate() function; nothing was using it.
+
+2008-10-27 14:35  castaglia
+
+	* NEWS, contrib/mod_sql.c: 
+	Bug#3124 - mod_sql improperly substitutes variables in user/group
+	names.
+
+2008-10-21 11:03  castaglia
+
+	* configure: 
+	Updated configure.
+
+2008-10-21 11:01  castaglia
+
+	* NEWS, config.h.in, configure.in, src/encode.c: 
+	Bug#3122: iconv() not detected properly on FreeBSD when
+	--enable-nls is used.
+
+2008-10-20 09:08  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/PASS.pm: 
+	Make sure that the PASS unit tests expected the proper response
+	message.
+
+2008-10-20 08:14  castaglia
+
+	* include/glibc-glob.h: 
+	Fix compiler detection to deal with other compilers.
+
+2008-10-19 17:45  castaglia
+
+	* tests/: tests.pl, t/config/maxloginattempts.t,
+	t/lib/ProFTPD/Tests/Config/MaxLoginAttempts.pm: 
+	Added unit tests for the MaxLoginAttempts directive.
+
+2008-10-19 17:02  castaglia
+
+	* locale/: en_US.po, it_IT.po, proftpd.pot, zh_CN.po: 
+	Removing redundant (and now absent) entry for "Login incorrect";
+	there is already a "Login incorrect." (note the period) entry.
+
+2008-10-19 17:01  castaglia
+
+	* contrib/mod_ban.c: 
+	Make mod_ban use the same "Login incorrect." string, including
+	period, like the rest of mod_auth.  Inconsistencies in responses
+	constitute information leaks, albeit minor.
+
+2008-10-19 16:59  castaglia
+
+	* modules/mod_auth.c: 
+	Fixed failed login message to be consistent with other instances of
+	the "Login incorrect" string.
+
+2008-10-19 16:41  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/: EPSV.pm, PASV.pm: 
+	Make the regexes tigher for checking the expected EPSV and PASV
+	responses.
+
+2008-10-19 12:48  castaglia
+
+	* tests/: tests.pl, t/commands/eprt.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/EPRT.pm: 
+	Added tests for the EPRT command.
+
+2008-10-19 12:31  castaglia
+
+	* tests/: tests.pl, t/commands/epsv.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/EPSV.pm: 
+	Added tests for the EPSV command.
+
+2008-10-19 12:23  castaglia
+
+	* tests/: tests.pl, t/commands/feat.t, t/commands/help.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/FEAT.pm,
+	t/lib/ProFTPD/Tests/Commands/HELP.pm: 
+	Added tests for the FEAT and HELP commands.
+
+2008-10-19 12:02  castaglia
+
+	* tests/: tests.pl, t/commands/pass.t, t/commands/user.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/PASS.pm,
+	t/lib/ProFTPD/Tests/Commands/USER.pm: 
+	Added tests for the USER and PASS commands.
+
+2008-10-19 11:36  castaglia
+
+	* tests/: tests.pl, t/config/displaylogin.t,
+	t/lib/ProFTPD/Tests/Config/DisplayLogin.pm: 
+	Added tests for the DisplayLogin directive.
+
+2008-10-18 19:04  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Config/DisplayConnect.pm: 
+	Forgot to clean up a test file that's outside of the tmp/
+	directory.
+
+2008-10-18 18:50  castaglia
+
+	* tests/: tests.pl, t/config/displayconnect.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Config/DisplayConnect.pm: 
+	Added tests for the DisplayConnect directive.
+
+2008-10-18 17:38  castaglia
+
+	* tests/: tests.pl, t/config/serverident.t,
+	t/lib/ProFTPD/Tests/Config/ServerIdent.pm: 
+	Added first unit tests for config directives; we're starting with
+	ServerIdent.
+
+2008-10-18 16:20  castaglia
+
+	* tests/: tests.pl, t/commands/appe.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/APPE.pm: 
+	Added tests for the APPE command.
+
+2008-10-18 16:12  castaglia
+
+	* tests/: tests.pl, t/commands/stou.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/LIST.pm,
+	t/lib/ProFTPD/Tests/Commands/NLST.pm,
+	t/lib/ProFTPD/Tests/Commands/RETR.pm,
+	t/lib/ProFTPD/Tests/Commands/STOR.pm,
+	t/lib/ProFTPD/Tests/Commands/STOU.pm: 
+	Added tests for the STOU command.  Cleaned up handling of FTP
+	response messages.
+
+2008-10-18 14:58  castaglia
+
+	* tests/: tests.pl, t/commands/stor.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/STOR.pm: 
+	Added some tests for the STOR command.
+
+2008-10-18 14:48  castaglia
+
+	* modules/mod_xfer.c: 
+	Preserve the error code for a failing to open the file to be
+	uploaded; errno was being overwritten by subsequent function calls
+	before being reported back to the client.
+
+2008-10-18 13:43  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/RETR.pm: 
+	Remove copy-n-pasted code from the RETR tests, and make them work
+	more reliably.
+
+2008-10-18 12:59  castaglia
+
+	* tests/t/lib/ProFTPD/TestSuite/FTP.pm: 
+	Quell some annoying Perl warnings (coming from Net::Cmd and
+	Net::FTP) by providing an initialized default value.  Makes running
+	the testsuite using tests.pl much prettier.
+
+2008-10-17 17:24  castaglia
+
+	* tests/: tests.pl, t/commands/retr.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/LIST.pm,
+	t/lib/ProFTPD/Tests/Commands/NLST.pm,
+	t/lib/ProFTPD/Tests/Commands/RETR.pm: 
+	Add some basic tests of the RETR command.
+
+2008-10-17 14:27  castaglia
+
+	* tests/: tests.pl, t/commands/list.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm, t/lib/ProFTPD/TestSuite/Utils.pm,
+	t/lib/ProFTPD/Tests/Commands/LIST.pm: 
+	Start of tests for the LIST command; expect more in the future.
+
+2008-10-17 08:25  castaglia
+
+	* contrib/mod_wrap2/mod_wrap2.c: 
+	Fix Bug#3120 for the WrapGroupTables and WrapUserTables directives
+	as well.
+
+2008-10-17 08:16  castaglia
+
+	* NEWS, contrib/mod_wrap2/mod_wrap2.c: 
+	Bug#3120 - WrapTables not allowed in <Anonymous> context.
+
+2008-10-15 19:04  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/: Logins.pm, Commands/ALLO.pm,
+	Commands/CDUP.pm, Commands/CWD.pm, Commands/DELE.pm,
+	Commands/MDTM.pm, Commands/MKD.pm, Commands/MODE.pm,
+	Commands/NOOP.pm, Commands/PASV.pm, Commands/PORT.pm,
+	Commands/PWD.pm, Commands/QUIT.pm, Commands/REST.pm,
+	Commands/RMD.pm, Commands/SIZE.pm, Commands/STRU.pm,
+	Commands/SYST.pm, Commands/TYPE.pm: 
+	Updated tests to use server_wait().
+
+2008-10-15 16:55  castaglia
+
+	* tests/t/lib/ProFTPD/: TestSuite/FTP.pm, TestSuite/Utils.pm,
+	Tests/Commands/NLST.pm, Tests/Commands/RNFR.pm,
+	Tests/Commands/RNTO.pm: 
+	Retrofit some of the test classes to use server_wait().  Fixed up
+	some of the NLST tests (due to the vagaries of the Perl Net::FTP
+	class).
+
+2008-10-15 10:18  castaglia
+
+	* configure: 
+	Updated configure.
+
+2008-10-15 10:12  castaglia
+
+	* NEWS, config.h.in, configure.in: 
+	Bug#3119 - Search for libcap2 in addition to libcap for mod_cap
+	support.
+
+2008-10-15 09:31  castaglia
+
+	* doc/modules/mod_cap.html: 
+	Mention the fact that some Linux distros use a package name of
+	"libcap2-dev" as well as (or instead of) "libcap2".
+
+2008-10-14 16:23  castaglia
+
+	* modules/mod_dso.c: 
+	Log, at debug level 7, when we are loading a module.  This message
+	is symmetric with the similar message when a module is unloaded.
+
+2008-10-14 15:28  castaglia
+
+	* contrib/mod_ifsession.c: 
+	Fix compilation error.
+
+2008-10-13 23:24  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/RNTO.pm: 
+	Revert the response message check changes made earlier; the
+	discrepancy was caused by stale source code, not by
+	platform/version differences.
+
+2008-10-13 23:20  castaglia
+
+	* tests/t/lib/ProFTPD/TestSuite/FTP.pm: 
+	As per the Net::FTP documentation, the use of PASV vs PORT is done
+	at instantiation time, oddly enough.  Make sure this feature is
+	exposed in the testsuite.
+
+2008-10-13 23:03  castaglia
+
+	* tests/t/lib/ProFTPD/TestSuite/Utils.pm: 
+	Add a function that encapsulates the server-wait part of the tests,
+	including a timeout.
+
+2008-10-13 21:25  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/RNTO.pm: 
+	Looks like some of the errno strings differ across platforms and
+	versions.
+
+2008-10-13 18:11  castaglia
+
+	* tests/: tests.pl, t/commands/nlst.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/NLST.pm: 
+	Added tests for NLST; still more tests to be added.
+
+2008-10-13 17:35  castaglia
+
+	* tests/t/lib/ProFTPD/TestSuite/Utils.pm: 
+	Make sure that lingering processes, if not killed properly, are
+	timed out quickly.
+
+2008-10-13 16:24  castaglia
+
+	* tests/: tests.pl, t/commands/rest.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/REST.pm: 
+	Added tests for the REST command.
+
+2008-10-13 16:06  castaglia
+
+	* tests/: tests.pl, t/commands/quit.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/QUIT.pm: 
+	Added test for the QUIT command.
+
+2008-10-13 15:52  castaglia
+
+	* tests/: tests.pl, t/commands/rnfr.t, t/commands/rnto.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/RNFR.pm,
+	t/lib/ProFTPD/Tests/Commands/RNTO.pm: 
+	Added tests for the RNFR, RNTO commands.
+
+2008-10-13 15:36  castaglia
+
+	* modules/mod_core.c: 
+	Preserve the actual errno value if the renaming fails; it was
+	getting trounced in subsequent function calls.
+
+2008-10-13 14:57  castaglia
+
+	* tests/: tests.pl, t/commands/noop.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/NOOP.pm: 
+	Added test for the NOOP command.
+
+2008-10-13 14:50  castaglia
+
+	* tests/: tests.pl, t/commands/port.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/PORT.pm: 
+	Add tests for the PORT command.
+
+2008-10-13 13:05  castaglia
+
+	* tests/t/lib/ProFTPD/TestSuite/FTP.pm: 
+	Fixed regex matching of ALLO response code leading digit.
+
+2008-10-13 13:02  castaglia
+
+	* tests/: tests.pl, t/commands/allo.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/ALLO.pm: 
+	Added test for the ALLO command.
+
+2008-10-13 12:38  castaglia
+
+	* tests/: tests.pl, t/commands/stru.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/STRU.pm: 
+	Added tests for the STRU command.
+
+2008-10-13 10:59  castaglia
+
+	* tests/: tests.pl, t/commands/mode.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/MODE.pm: 
+	Add tests for the MODE command.
+
+2008-10-13 10:13  castaglia
+
+	* tests/: tests.pl, t/commands/pasv.t,
+	t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/Tests/Commands/PASV.pm: 
+	Added tests for the PASV command.
+
+2008-10-13 08:49  castaglia
+
+	* tests/: tests.pl, t/commands.t, t/commands/cdup.t,
+	t/commands/cwd.t, t/commands/dele.t, t/commands/mdtm.t,
+	t/commands/mkd.t, t/commands/pwd.t, t/commands/rmd.t,
+	t/commands/size.t, t/commands/syst.t, t/commands/type.t,
+	t/lib/ProFTPD/Tests/Commands.pm,
+	t/lib/ProFTPD/Tests/Commands/CDUP.pm,
+	t/lib/ProFTPD/Tests/Commands/CWD.pm,
+	t/lib/ProFTPD/Tests/Commands/DELE.pm,
+	t/lib/ProFTPD/Tests/Commands/MDTM.pm,
+	t/lib/ProFTPD/Tests/Commands/MKD.pm,
+	t/lib/ProFTPD/Tests/Commands/PWD.pm,
+	t/lib/ProFTPD/Tests/Commands/RMD.pm,
+	t/lib/ProFTPD/Tests/Commands/SIZE.pm,
+	t/lib/ProFTPD/Tests/Commands/SYST.pm,
+	t/lib/ProFTPD/Tests/Commands/TYPE.pm: 
+	Split the unit tests for FTP commands into separate files, one file
+	per set of tests of a command.	The previous files were getting too
+	large and unwieldy.
+
+2008-10-12 18:03  castaglia
+
+	* tests/t/lib/ProFTPD/: TestSuite/FTP.pm, Tests/Commands.pm: 
+	Added tests for the TYPE, MDTM, and SIZE commands.
+
+2008-10-12 17:07  castaglia
+
+	* tests/t/lib/ProFTPD/: TestSuite/FTP.pm, Tests/Commands.pm: 
+	Added tests for the DELE command.
+
+2008-10-12 16:55  castaglia
+
+	* tests/t/lib/ProFTPD/: TestSuite/FTP.pm, Tests/Commands.pm,
+	Tests/Logins.pm: 
+	Added command test cases where failures (for different reasons) are
+	expected.
+
+2008-10-12 15:27  castaglia
+
+	* tests/t/lib/ProFTPD/: TestSuite/FTP.pm, Tests/Commands.pm: 
+	Added tests for the MKD, XMKD, RMD, and XRMD commands.
+
+2008-10-12 15:14  castaglia
+
+	* tests/t/lib/ProFTPD/: TestSuite/FTP.pm, TestSuite/Utils.pm,
+	Tests/Commands.pm, Tests/Logins.pm: 
+	Added tests for CDUP, XCUP, and SYST commands.	Added better error
+	messages (with location now) for failed assertions.  Fixed cases
+	where failed login tests might allow the server to continue
+	running.
+
+2008-10-12 14:00  castaglia
+
+	* tests/t/lib/ProFTPD/: TestSuite/FTP.pm, Tests/Commands.pm: 
+	Fixed use of assertions when checking response codes and messages.
+	
+	Added tests for the XPWD, CWD, and XCWD commands.
+
+2008-10-12 13:30  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands.pm: 
+	Fix the PWD test so that it actually checks that the FTP response
+	code and message are as expected, not just that they exist.
+
+2008-10-12 13:18  castaglia
+
+	* tests/: tests.pl, t/commands.t, t/lib/ProFTPD/TestSuite/FTP.pm,
+	t/lib/ProFTPD/TestSuite/Utils.pm, t/lib/ProFTPD/Tests/Commands.pm: 
+	Start of test cases for the various FTP commands; PWD is simple, so
+	it was first.
+	
+	Also add support for writing AuthUserFiles and AuthGroupFiles; this
+	makes it easier to log into the running proftpd without requiring
+	root privs.
+
+2008-10-12 12:12  castaglia
+
+	* tests/t/lib/ProFTPD/TestSuite/: FTP.pm, Utils.pm: 
+	Fix the anonymous login unit test such that it passes (requires
+	root privs).  Fix the FTP client wrapper so that it properly
+	retrieves the FTP response code and message.  Update Utils so that
+	the server identity (User/Group) retrieved are always non-root
+	accounts.
+
+2008-10-11 14:35  castaglia
+
+	* tests/t/lib/ProFTPD/: TestSuite/Utils.pm, Tests/Logins.pm: 
+	Fix the anonymous login test (it should fail, unless run with root
+	privs).
+	
+	Have defaults for the common config directives.  Exclude tests
+	which require root privs unless we are being run with root privs.
+
+2008-10-11 13:37  castaglia
+
+	* tests/: tests.pl, t/logins.t, t/lib/ProFTPD/TestSuite/Child.pm,
+	t/lib/ProFTPD/TestSuite/FTP.pm, t/lib/ProFTPD/TestSuite/Utils.pm,
+	t/lib/ProFTPD/Tests/Logins.pm: 
+	Start of a collection of unit tests against a running proftpd
+	server, using Perl.
+
+2008-10-11 08:58  castaglia
+
+	* modules/mod_facts.c: 
+	Fixed bug handling the MFMT command; found by a user in the online
+	forums.
+
+2008-10-08 09:55  castaglia
+
+	* doc/howto/: Translations.html, index.html: 
+	Adding a Translation mini-howto.
+
+2008-10-07 15:48  castaglia
+
+	* doc/modules/mod_lang.html: 
+	Typo.
+
+2008-10-07 10:43  castaglia
+
+	* tests/: .cvsignore, Makefile.in, api/.cvsignore, api/tests.c: 
+	Rename the executable used for testing the API (and the log file
+	that executable generates) to be "api-tests", to differentiate it
+	from the other tests I am working on.
+
+2008-10-07 10:10  castaglia
+
+	* tests/api/.cvsignore: 
+	Add .cvsignore file for the new tests/api/ directory.
+
+2008-10-06 23:17  castaglia
+
+	* src/main.c: 
+	Need to use exit(), rather than end_login().  Something about the
+	latter makes it impossible to read stdout programmatically when
+	using -vv.
+
+2008-10-06 11:36  castaglia
+
+	* modules/mod_auth_pam.c: 
+	Make mod_auth_pam reject the connection if it is unable to register
+	itself as an auth-only module with the Auth API.  This check would
+	have caught the Bug#2922 regression much earlier.  Ah, hindsight.
+
+2008-10-06 11:16  castaglia
+
+	* tests/: Makefile.in, array.c, class.c, env.c, event.c, expr.c,
+	feat.c, modules.c, netacl.c, netaddr.c, pool.c, regexp.c,
+	scoreboard.c, sets.c, str.c, stubs.c, table.c, tests.c, tests.h,
+	timers.c, var.c, version.c, api/array.c, api/class.c, api/env.c,
+	api/event.c, api/expr.c, api/feat.c, api/modules.c, api/netacl.c,
+	api/netaddr.c, api/pool.c, api/regexp.c, api/scoreboard.c,
+	api/sets.c, api/str.c, api/stubs.c, api/table.c, api/tests.c,
+	api/tests.h, api/timers.c, api/var.c, api/version.c: 
+	Moving the current API unit test source files into an api/
+	directory, to make room for a directory for integration unit tests
+	(i.e. login tests, command tests, configuration tests, etc) which
+	require an FTP client and a running proftpd.
+
+2008-10-06 10:20  castaglia
+
+	* NEWS, src/auth.c: 
+	Bug#3117 - Authentication improperly allowed (Bug#2922 regression).
+
+2008-10-06 08:54  castaglia
+
+	* contrib/mod_sql_sqlite.c: 
+	Add a header-vs-lib version check to mod_sql_sqlite, similar to the
+	one that is in mod_tls.  Hopefully any discrepancies will get
+	sysadmins to correct the software installations on their system.
+
+2008-10-06 08:47  castaglia
+
+	* contrib/mod_ldap.c: 
+	When mod_ldap is initialized, print out the LDAP vendor and LDAP
+	API version.
+
+2008-10-06 08:19  jwm
+
+	* contrib/mod_ldap.c: mod_ldap bzr r58:   typo
+
+2008-10-06 08:11  jwm
+
+	* contrib/mod_ldap.c: mod_ldap bzr r57:   * Prevent the use of
+	LDAPSearchScope or LDAPUseSSL when LDAPServer	  specifies a URL.
+	Instead, the desired search scope and SSL setting     should be
+	specified by the URL.
+	
+	mod_ldap bzr r56:   - remove extraneous includes   - free the
+	LDAPURLDesc in ldap_getconf(), since we don't attach it to     the
+	configuration directive any more
+
+2008-10-05 18:44  castaglia
+
+	* src/dirtree.c: 
+	Reduce the size of the pool allocated for config_recs; should
+	reduce the memory footprint more without (hopefully) any adverse
+	side effects.
+
+2008-10-04 18:48  castaglia
+
+	* modules/mod_auth_pam.c: 
+	Correct some of the terms in the trace messages from the PAM
+	conversation callback.
+
+2008-10-04 16:55  castaglia
+
+	* modules/mod_auth_pam.c: 
+	Be less strict about AuthPAMOptions, and use case-insensitive
+	checks.
+
+2008-10-04 16:23  castaglia
+
+	* modules/mod_core.c: 
+	Fix typo which made for a rather confusing comment.
+
+2008-10-04 15:15  castaglia
+
+	* NEWS, contrib/mod_sql.c: 
+	Bug#3116 - SQLNegativeCache with no group info can cause segfault.
+
+2008-10-04 10:14  castaglia
+
+	* src/: main.c, netio.c: 
+	Apply a tag to the one unnamed subpool of permanent_pool.  Add
+	comments about why that subpool (which isn't needed in the daemon
+	process) is allocated.
+
+2008-10-03 22:43  castaglia
+
+	* src/class.c: 
+	Tag any pools allocated for class definitions.
+
+2008-10-03 22:38  castaglia
+
+	* src/pool.c: 
+	Fix the mechanism used to count the number of sub-pools in a pool;
+	it was not recursing properly.
+
+2008-10-03 22:23  castaglia
+
+	* src/timers.c: 
+	It's high time the Timers API had its own memory pool, rather than
+	using permanent_pool directly.
+
+2008-10-03 22:03  castaglia
+
+	* contrib/mod_ctrls_admin.c: 
+	Check in the control action which helps me to find pool use
+	misbehaviors.  If proftpd is compiled using --enable-devel, and the
+	mod_ctrs_admin module is used (which itself requires
+	--enable-ctrls), then a 'debug memory' control action (via ftpdctl)
+	is supported.
+
+2008-10-03 22:01  castaglia
+
+	* src/pool.c: 
+	Prettify, and update, the messages emitted when debugging pool
+	usage.
+
+2008-10-03 22:00  castaglia
+
+	* src/main.c: 
+	Fix an egregious memory leak in the daemon process (but not in
+	session processes).  On startup, proftpd would allocate a memory
+	pool for the Netaddr API.  This pool was used, but never cleared. 
+	And every restart would cause more allocations (for the netaddr
+	objects used in the bindings) from this pool.  Thus a long-running
+	proftpd, restarted occasionally (as is done for log rolling) would
+	gradually leak quite a bit.  Slowly, to be sure, but noticeable for
+	long-lived daemons.
+
+2008-10-03 21:53  castaglia
+
+	* src/modules.c: 
+	Reduce the size of the sub-pool used for symbols in the stash. 
+	This reduces the memory footprint of the proftpd daemon process
+	(and session processes) by quite a bit, given that there are quite
+	a few symbols allocated.  Hopefully this won't cause any issues.
+
+2008-10-03 21:01  castaglia
+
+	* src/help.c: 
+	Minor label nit.
+
+2008-10-03 18:10  castaglia
+
+	* contrib/mod_sql.c: 
+	Allow the SQLEngine directive to be processed even if, for some
+	reason, the user name config_rec can't be found.
+
+2008-10-03 16:10  castaglia
+
+	* doc/modules/mod_lang.html: 
+	Add a Usage section containing, for now, a description of the
+	Cyrillic/Telnet issue, and how to use mod_lang to work around it.
+
+2008-10-02 13:53  castaglia
+
+	* modules/mod_auth.c: 
+	Minor change to test SourceForge's commit mail.
+
+2008-10-02 10:06  castaglia
+
+	* modules/mod_auth.c: 
+	Generate a few new events: one for when a root login is attempted,
+	and one containing the authentication code value.  These events are
+	added first for the use by mod_audit, a third-party module for
+	auditing certain application events.
+
+2008-10-01 16:30  castaglia
+
+	* contrib/mod_tls.c: 
+	Minor tweaks to allow TLSPassPhraseProvider to work properly on Mac
+	OSX.  Shouldn't harm anything.
+
+2008-09-30 22:49  castaglia
+
+	* contrib/mod_tls.c: 
+	When handling the exit event in the daemon process, the TLSLog is
+	not open.  Thus use pr_log_pri() and pr_log_debug() rather than
+	tls_log() there.
+
+2008-09-30 13:43  castaglia
+
+	* src/: main.c, trace.c: 
+	Add trace logging of when the various signals are handled.
+	
+	When handling a restart, be sure to close any open trace log fd. 
+	Also, to prevent issues with Solaris' stupid stdio fd limit of 256,
+	make sure that the fallback fd used for the TraceLog is 255.
+
+2008-09-30 01:00  castaglia
+
+	* contrib/mod_dynmasq.c: 
+	Reduce the log verbosity of mod_dynmasq more, as per user request.
+
+2008-09-29 16:02  castaglia
+
+	* src/support.c: [no log message]
+
+2008-09-29 09:07  castaglia
+
+	* contrib/mod_dynmasq.c: 
+	Change the logging of mod_dynmasq slightly, so that it does not
+	spam the system log with messages.
+
+2008-09-26 13:57  castaglia
+
+	* src/response.c: 
+	Add trace logging of the responses that are added, not just when
+	the responses are flushed to the client.
+
+2008-09-25 15:24  castaglia
+
+	* src/main.c: 
+	Include the version status (e.g. "CVS", "devel", "stable") in the
+	-V output, as well as the build timestamp.
+
+2008-09-22 22:52  castaglia
+
+	* INSTALL: 
+	Update the mailing list info in the INSTALL file.
+
+2008-09-22 21:40  castaglia
+
+	* tests/array.c: 
+	Add unit test for the clear_array() function added in 1.3.2rc2.
+
+2008-09-20 13:18  castaglia
+
+	* NEWS, src/main.c, src/netio.c: 
+	Bug#3115 - Cross-site request forgery.
+
+2008-09-19 08:39  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Bug#3114 - Bad handling of uid/gid parameters for CreateHome.
+
+2008-09-17 14:45  castaglia
+
+	* contrib/mod_sql.c: 
+	Quell a few more compiler warnings about signedness.
+
+2008-09-17 11:36  castaglia
+
+	* include/version.h: 
+	Bump to RC3 in CVS.
+
+2008-09-17 09:48  castaglia
+
+	* ChangeLog: 
+	Updated ChangeLog.
+
 2008-09-17 09:47  castaglia
 
 	* NEWS: 
@@ -15028,7 +16372,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c: 
-	Missing $Id: ChangeLog,v 1.137 2008-09-17 16:48:11 castaglia Exp $ keyword.
+	Missing $Id: ChangeLog,v 1.138 2008-11-20 22:28:03 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -16199,7 +17543,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.137 2008-09-17 16:48:11 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.138 2008-11-20 22:28:03 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -16716,12 +18060,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.137 2008-09-17 16:48:11 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.138 2008-11-20 22:28:03 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.137 2008-09-17 16:48:11 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.138 2008-11-20 22:28:03 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
