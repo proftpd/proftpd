@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.19 2008-10-20 00:01:58 castaglia Exp $
+ * $Id: mod_ban.c,v 1.20 2008-11-20 04:19:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -186,28 +186,36 @@ static struct ban_data *ban_get_shm(pr_fh_t *tabfh) {
 
       shmid = shmget(key, 0, 0);
 
-    } else
+    } else {
       return NULL;
+    }
   }
 
   /* Attach to the shm. */
   data = (struct ban_data *) shmat(shmid, NULL, 0);
   if (data == NULL) {
+    int xerrno = errno;
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "unable to attached to shm: %s", strerror(errno));
+      "unable to attached to shm: %s", strerror(xerrno));
+
+    errno = xerrno;
     return NULL;
   }
 
   if (!shm_existed) {
 
     /* Make sure the memory is initialized. */
-    if (ban_lock_shm(LOCK_EX) < 0)
+    if (ban_lock_shm(LOCK_EX) < 0) {
       (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
         "error write-locking shm: %s", strerror(errno));
+    }
+
     memset(data, '\0', sizeof(struct ban_data));
-    if (ban_lock_shm(LOCK_UN) < 0)
+
+    if (ban_lock_shm(LOCK_UN) < 0) {
       (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
         "error unlocking shm: %s", strerror(errno));
+    }
   }
 
   ban_shmid = shmid;
@@ -523,7 +531,7 @@ static void ban_send_mesg(pool *p, const char *user, const char *rule_mesg) {
     if (strstr(mesg, "%u"))
       mesg = sreplace(p, mesg, "%u", user, NULL);
 
-    pr_response_send(R_530, "%s", mesg);
+    pr_response_send_async(R_530, "%s", mesg);
   }
 
   return;
@@ -1700,10 +1708,10 @@ static void ban_exit_ev(const void *event_data, void *user_data) {
     res = shmctl(ban_shmid, IPC_RMID, &ds);
     PRIVS_RELINQUISH
 
-    if (res < 0 &&
-        errno != EINVAL)
-      pr_log_debug(DEBUG1, MOD_BAN_VERSION ": error removing shm %d: %s",
+    if (res < 0) {
+      pr_log_debug(DEBUG1, MOD_BAN_VERSION ": error removing shmid %d: %s",
         ban_shmid, strerror(errno));
+    }
   }
 }
 
@@ -2187,7 +2195,9 @@ static int ban_sess_init(void) {
 
     ban_send_mesg(tmp_pool, "(none)", rule_mesg);
     destroy_pool(tmp_pool);
-    end_login(0);
+
+    errno = EPERM;
+    return -1;
   }
 
   /* Check banned class list */
@@ -2200,7 +2210,9 @@ static int ban_sess_init(void) {
 
     ban_send_mesg(tmp_pool, "(none)", rule_mesg); 
     destroy_pool(tmp_pool);
-    end_login(0);
+
+    errno = EPERM;
+    return -1;
   }
 
   pr_event_generate("mod_ban.client-connect-rate", session.c);
