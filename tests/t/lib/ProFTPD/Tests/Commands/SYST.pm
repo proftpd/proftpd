@@ -33,29 +33,34 @@ sub list_tests {
 
 sub set_up {
   my $self = shift;
+  $self->{tmpdir} = testsuite_get_tmp_dir();
 
   # Create temporary scratch dir
-  eval { mkpath('tmp') };
+  eval { mkpath($self->{tmpdir}) };
   if ($@) {
-    my $abs_path = File::Spec->rel2abs('tmp');
+    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
 }
 
 sub tear_down {
   my $self = shift;
-  undef $self;
 
   # Remove temporary scratch dir
-  eval { rmtree('tmp') };
+  if ($self->{tmpdir}) {
+    eval { rmtree($self->{tmpdir}) };
+  }
+
+  undef $self;
 };
 
 sub syst_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
   my $config = {

@@ -68,37 +68,42 @@ sub list_tests {
 
 sub set_up {
   my $self = shift;
+  $self->{tmpdir} = testsuite_get_tmp_dir();
 
   # Create temporary scratch dir
-  eval { mkpath('tmp') };
+  eval { mkpath($self->{tmpdir}) };
   if ($@) {
-    my $abs_path = File::Spec->rel2abs('tmp');
+    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
 }
 
 sub tear_down {
   my $self = shift;
-  undef $self;
 
   # Remove temporary scratch dir
-  eval { rmtree('tmp') };
+  if ($self->{tmpdir}) {
+    eval { rmtree($self->{tmpdir}) };
+  }
+
+  undef $self;
 };
 
 sub eprt_ipv4_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -199,18 +204,19 @@ sub eprt_ipv4_ok {
 
 sub eprt_ipv6_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -313,10 +319,11 @@ sub eprt_ipv6_ok {
 
 sub eprt_fails_login_required {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
   my $config = {
@@ -403,18 +410,19 @@ sub eprt_fails_login_required {
 
 sub eprt_fails_bad_format {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -523,18 +531,19 @@ sub eprt_fails_bad_format {
 
 sub eprt_fails_bad_values {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -642,18 +651,19 @@ sub eprt_fails_bad_values {
 
 sub eprt_fails_bad_proto {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -773,18 +783,19 @@ sub eprt_fails_bad_proto {
 
 sub eprt_fails_bad_addr {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
@@ -894,18 +905,19 @@ sub eprt_fails_bad_addr {
 
 sub eprt_fails_bad_port {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 

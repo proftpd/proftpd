@@ -9,7 +9,7 @@ use File::Spec;
 use IO::Handle;
 
 use ProFTPD::TestSuite::FTP;
-use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
+use ProFTPD::TestSuite::Utils qw(:auth :config :features :running :test :testsuite);
 
 $| = 1;
 
@@ -33,41 +33,60 @@ sub list_tests {
 
 sub set_up {
   my $self = shift;
+  $self->{tmpdir} = testsuite_get_tmp_dir();
 
   # Create temporary scratch dir
-  eval { mkpath('tmp') };
+  eval { mkpath($self->{tmpdir}) };
   if ($@) {
-    my $abs_path = File::Spec->rel2abs('tmp');
+    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
 }
 
 sub tear_down {
   my $self = shift;
-  undef $self;
 
   # Remove temporary scratch dir
-  eval { rmtree('tmp') };
+  if ($self->{tmpdir}) {
+    eval { rmtree($self->{tmpdir}) };
+  }
+
+  undef $self;
 };
 
 sub feat_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -83,6 +102,8 @@ sub feat_ok {
       },
     },
   };
+
+  my $have_nls = feature_have_feature_enabled('nls');
 
   my ($port, $config_user, $config_group) = config_write($config_file, $config);
 
@@ -114,25 +135,33 @@ sub feat_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = 8;
+      if ($have_nls) {
+        $expected += 2;
+      }
+
       my $nfeat = scalar(@$resp_msgs);
       $self->assert($expected == $nfeat,
         test_msg("Expected $expected, got $nfeat"));
 
-      my $feats = [(
-        'Features:',
-        ' MDTM',
-        ' MFMT',
-        ' MFF modify;UNIX.group;UNIX.mode;',
-        ' MLST modify*;perm*;size*;type*;unique*;UNIX.group*;UNIX.mode*;UNIX.owner*;',
-        ' REST STREAM',
-        ' SIZE',
-        'End'
-      )];
+      my $feats = { 
+        'Features:' => 1,
+        ' MDTM' => 1,
+        ' MFMT' => 1,
+        ' MFF modify;UNIX.group;UNIX.mode;' => 1,
+        ' MLST modify*;perm*;size*;type*;unique*;UNIX.group*;UNIX.mode*;UNIX.owner*;' => 1,
+        ' REST STREAM' => 1,
+        ' SIZE' => 1,
+        'End' => 1,
+      };
+
+      if ($have_nls) {
+        $feats->{' UTF8'} = 1;
+        $feats->{' LANG en_US.UTF-8'} = 1;
+      }
 
       for (my $i = 0; $i < $nfeat; $i++) {
-        $expected = $feats->[$i];
-        $self->assert($expected eq $resp_msgs->[$i],
-          test_msg("Expected '$expected', got '$resp_msgs->[$i]'"));
+        $self->assert(defined($feats->{$resp_msgs->[$i]}), ,
+          test_msg("Unexpected FEAT '$resp_msgs->[$i]'"));
       }
     };
 

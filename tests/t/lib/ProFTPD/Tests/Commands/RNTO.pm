@@ -63,41 +63,46 @@ sub list_tests {
 
 sub set_up {
   my $self = shift;
+  $self->{tmpdir} = testsuite_get_tmp_dir();
 
   # Create temporary scratch dir
-  eval { mkpath('tmp') };
+  eval { mkpath($self->{tmpdir}) };
   if ($@) {
-    my $abs_path = File::Spec->rel2abs('tmp');
+    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
 }
 
 sub tear_down {
   my $self = shift;
-  undef $self;
 
   # Remove temporary scratch dir
-  eval { rmtree('tmp') };
+  if ($self->{tmpdir}) {
+    eval { rmtree($self->{tmpdir}) };
+  }
+
+  undef $self;
 };
 
 sub rnto_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
-  my $src_file = File::Spec->rel2abs('tmp/foo');
+  my $src_file = File::Spec->rel2abs("$tmpdir/foo");
   if (open(my $fh, "> $src_file")) {
     close($fh);
 
@@ -105,7 +110,19 @@ sub rnto_ok {
     die("Can't open $src_file: $!");
   }
 
-  my $dst_file = File::Spec->rel2abs('tmp/bar');
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  my $dst_file = File::Spec->rel2abs("$tmpdir/bar");
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
@@ -206,22 +223,23 @@ sub rnto_ok {
 
 sub rnto_fails_login_required {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
-  my $dst_file = File::Spec->rel2abs('tmp/bar');
+  my $dst_file = File::Spec->rel2abs("$tmpdir/bar");
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
@@ -326,22 +344,23 @@ sub rnto_fails_login_required {
 
 sub rnto_fails_no_rnfr {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
-  my $dst_file = File::Spec->rel2abs('tmp/foo');
+  my $dst_file = File::Spec->rel2abs("$tmpdir/foo");
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
@@ -448,22 +467,23 @@ sub rnto_fails_no_rnfr {
 
 sub rnto_fails_enoent_no_file {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
-  my $src_file = File::Spec->rel2abs('tmp/foo');
+  my $src_file = File::Spec->rel2abs("$tmpdir/foo");
   if (open(my $fh, "> $src_file")) {
     close($fh);
 
@@ -471,7 +491,7 @@ sub rnto_fails_enoent_no_file {
     die("Can't open $src_file: $!");
   }
 
-  my $dst_file = File::Spec->rel2abs('tmp/bar');
+  my $dst_file = File::Spec->rel2abs("$tmpdir/bar");
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
@@ -582,22 +602,23 @@ sub rnto_fails_enoent_no_file {
 
 sub rnto_fails_enoent_no_dir {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
-  my $src_file = File::Spec->rel2abs('tmp/foo');
+  my $src_file = File::Spec->rel2abs("$tmpdir/foo");
   if (open(my $fh, "> $src_file")) {
     close($fh);
 
@@ -605,7 +626,7 @@ sub rnto_fails_enoent_no_dir {
     die("Can't open $src_file: $!");
   }
 
-  my $dst_file = File::Spec->rel2abs('tmp/bar/baz');
+  my $dst_file = File::Spec->rel2abs("$tmpdir/bar/baz");
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
@@ -714,22 +735,23 @@ sub rnto_fails_enoent_no_dir {
 
 sub rnto_fails_eperm {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
-  my $src_file = File::Spec->rel2abs('tmp/foo');
+  my $src_file = File::Spec->rel2abs("$tmpdir/foo");
   if (open(my $fh, "> $src_file")) {
     close($fh);
 
@@ -737,7 +759,7 @@ sub rnto_fails_eperm {
     die("Can't open $src_file: $!");
   }
 
-  my $dst_file = File::Spec->rel2abs('tmp/bar');
+  my $dst_file = File::Spec->rel2abs("$tmpdir/bar");
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
@@ -848,22 +870,23 @@ sub rnto_fails_eperm {
 
 sub rnto_fails_allow_overwrite {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
   my $log_file = File::Spec->rel2abs('cmds.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 
-  my $src_file = File::Spec->rel2abs('tmp/foo');
+  my $src_file = File::Spec->rel2abs("$tmpdir/foo");
   if (open(my $fh, "> $src_file")) {
     close($fh);
 
@@ -871,7 +894,7 @@ sub rnto_fails_allow_overwrite {
     die("Can't open $src_file: $!");
   }
 
-  my $dst_file = File::Spec->rel2abs('tmp/bar');
+  my $dst_file = File::Spec->rel2abs("$tmpdir/bar");
   if (open(my $fh, "> $dst_file")) {
     close($fh);
 

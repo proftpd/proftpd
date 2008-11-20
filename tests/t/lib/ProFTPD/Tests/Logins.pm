@@ -40,13 +40,16 @@ sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
 }
 
+my $tmpdir;
+
 sub set_up {
   my $self = shift;
+  $tmpdir = testsuite_get_tmp_dir();
 
   # Create temporary scratch dir
-  eval { mkpath('tmp') };
+  eval { mkpath($tmpdir) };
   if ($@) {
-    my $abs_path = File::Spec->rel2abs('tmp');
+    my $abs_path = File::Spec->rel2abs($tmpdir);
     die("Can't create dir $abs_path: $@");
   }
 }
@@ -56,15 +59,18 @@ sub tear_down {
   undef $self;
 
   # Remove temporary scratch dir
-  eval { rmtree('tmp') };
+  if ($tmpdir) {
+    eval { rmtree($tmpdir) };
+    $tmpdir = undef;
+  }
 };
 
 sub login_plaintext_fails {
   my $self = shift;
 
-  my $config_file = 'tmp/login.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/login.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/login.scoreboard');
+  my $config_file = "$tmpdir/login.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/login.scoreboard");
   my $log_file = File::Spec->rel2abs("login.log");
 
   my $config = {
@@ -138,12 +144,12 @@ sub login_plaintext_fails {
 sub login_anonymous_ok {
   my $self = shift;
 
-  my $config_file = 'tmp/login.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/login.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/login.scoreboard');
+  my $config_file = "$tmpdir/login.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/login.scoreboard");
   my $log_file = File::Spec->rel2abs('login.log');
 
-  my $anon_dir = File::Spec->rel2abs('tmp');
+  my $anon_dir = File::Spec->rel2abs($tmpdir);
 
   my ($config_user, $config_group) = config_get_identity();
 
@@ -224,12 +230,12 @@ sub login_anonymous_ok {
 sub login_anonymous_fails {
   my $self = shift;
 
-  my $config_file = 'tmp/login.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/login.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/login.scoreboard');
+  my $config_file = "$tmpdir/login.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/login.scoreboard");
   my $log_file = File::Spec->rel2abs('login.log');
 
-  my $anon_dir = File::Spec->rel2abs('tmp');
+  my $anon_dir = File::Spec->rel2abs($tmpdir);
 
   my ($user, $group) = config_get_identity();
 
