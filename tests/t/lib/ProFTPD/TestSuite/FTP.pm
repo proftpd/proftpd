@@ -24,7 +24,6 @@ sub new {
   # given timeout.
 
   my %opts = (
-      Host => $addr,
       Port => $port,
   );
 
@@ -44,7 +43,7 @@ sub new {
       croak("Unable to connect to $addr:$port: Timed out after $timeout secs");
     }
 
-    $ftp = Net::FTP->new(%opts);
+    $ftp = Net::FTP->new($addr, %opts);
     if ($ftp) {
       last;
     }
