@@ -39,32 +39,37 @@ sub list_tests {
 
 sub set_up {
   my $self = shift;
+  $self->{tmpdir} = testsuite_get_tmp_dir();
 
   # Create temporary scratch dir
-  eval { mkpath('tmp') };
+  eval { mkpath($self->{tmpdir}) };
   if ($@) {
-    my $abs_path = File::Spec->rel2abs('tmp');
+    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
 }
 
 sub tear_down {
   my $self = shift;
-  undef $self;
 
   # Remove temporary scratch dir
-  eval { rmtree('tmp') };
+  if ($self->{tmpdir}) {
+    eval { rmtree($self->{tmpdir}) };
+  }
+
+  undef $self;
 };
 
 sub displayconnect_abs_path {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/config.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/config.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/config.scoreboard');
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
   my $log_file = File::Spec->rel2abs('config.log');
 
-  my $connect_file = File::Spec->rel2abs('tmp/connect.txt');
+  my $connect_file = File::Spec->rel2abs("$tmpdir/connect.txt");
 
   if (open(my $fh, "> $connect_file")) {
     print $fh "Hello client!\n";
@@ -157,16 +162,21 @@ sub displayconnect_abs_path {
 
 sub displayconnect_rel_path {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/config.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/config.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/config.scoreboard');
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
   my $log_file = File::Spec->rel2abs('config.log');
 
   my $connect_file = 'connect.txt';
 
   # Turns out that when a relative DisplayConnect path is used, proftpd
   # looks for it in /, contrary to the docs.
+  #
+  # This is probably due to the fact that src/main.c:daemonize() does
+  # a chdir("/").
+
   my $connect_path = "/$connect_file";
 
   if (open(my $fh, "> $connect_path")) {

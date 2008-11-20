@@ -53,29 +53,34 @@ sub list_tests {
 
 sub set_up {
   my $self = shift;
+  $self->{tmpdir} = testsuite_get_tmp_dir();
 
   # Create temporary scratch dir
-  eval { mkpath('tmp') };
+  eval { mkpath($self->{tmpdir}) };
   if ($@) {
-    my $abs_path = File::Spec->rel2abs('tmp');
+    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
 }
 
 sub tear_down {
   my $self = shift;
-  undef $self;
 
   # Remove temporary scratch dir
-  eval { rmtree('tmp') };
+  if ($self->{tmpdir}) {
+    eval { rmtree($self->{tmpdir}) };
+  }
+
+  undef $self;
 };
 
 sub serverident_absent {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/config.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/config.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/config.scoreboard');
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
   my $log_file = File::Spec->rel2abs('config.log');
 
   my $config = {
@@ -156,10 +161,11 @@ sub serverident_absent {
 
 sub serverident_off {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/config.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/config.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/config.scoreboard');
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
   my $log_file = File::Spec->rel2abs('config.log');
 
   my $config = {
@@ -242,10 +248,11 @@ sub serverident_off {
 
 sub serverident_on {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/config.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/config.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/config.scoreboard');
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
   my $log_file = File::Spec->rel2abs('config.log');
 
   my $config = {
@@ -328,10 +335,11 @@ sub serverident_on {
 
 sub serverident_on_with_servername {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/config.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/config.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/config.scoreboard');
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
   my $log_file = File::Spec->rel2abs('config.log');
 
   my $server_name = '"Meat Loaf"';
@@ -418,10 +426,11 @@ sub serverident_on_with_servername {
 
 sub serverident_on_with_ident {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/config.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/config.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/config.scoreboard');
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
   my $log_file = File::Spec->rel2abs('config.log');
 
   my $server_name = '"Meat Loaf"';

@@ -38,37 +38,42 @@ sub list_tests {
 
 sub set_up {
   my $self = shift;
+  $self->{tmpdir} = testsuite_get_tmp_dir();
 
   # Create temporary scratch dir
-  eval { mkpath('tmp') };
+  eval { mkpath($self->{tmpdir}) };
   if ($@) {
-    my $abs_path = File::Spec->rel2abs('tmp');
+    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
 }
 
 sub tear_down {
   my $self = shift;
-  undef $self;
 
   # Remove temporary scratch dir
-  eval { rmtree('tmp') };
+  if ($self->{tmpdir}) {
+    eval { rmtree($self->{tmpdir}) };
+  }
+
+  undef $self;
 };
 
 sub maxloginattempts_one {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/config.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/config.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/config.scoreboard');
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
   my $log_file = File::Spec->rel2abs('config.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/config.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/config.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
 
   auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
     '/bin/bash');
@@ -174,18 +179,19 @@ sub maxloginattempts_one {
 
 sub maxloginattempts_absent {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
-  my $config_file = 'tmp/config.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/config.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/config.scoreboard');
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
   my $log_file = File::Spec->rel2abs('config.log');
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/config.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/config.group');
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
 
   auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
     '/bin/bash');

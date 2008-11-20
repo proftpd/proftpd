@@ -66,35 +66,32 @@ sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
 }
 
-my $tmpdir;
-
 sub set_up {
   my $self = shift;
-
-  # Get a new local scratch directory for each test
-  $tmpdir = testsuite_get_tmp_dir();
+  $self->{tmpdir} = testsuite_get_tmp_dir();
 
   # Create temporary scratch dir
-  eval { mkpath($tmpdir) };
+  eval { mkpath($self->{tmpdir}) };
   if ($@) {
-    my $abs_path = File::Spec->rel2abs($tmpdir);
+    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
 }
 
 sub tear_down {
   my $self = shift;
-  undef $self;
 
   # Remove temporary scratch dir
-  if ($tmpdir) {
-    eval { rmtree($tmpdir) };
-    $tmpdir = undef;
+  if ($self->{tmpdir}) {
+    eval { rmtree($self->{tmpdir}) };
   }
+
+  undef $self;
 };
 
 sub abor_retr_binary_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
@@ -240,6 +237,7 @@ sub abor_retr_binary_ok {
 
 sub abor_retr_ascii_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
@@ -385,6 +383,7 @@ sub abor_retr_ascii_ok {
 
 sub abor_retr_ascii_largefile_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
@@ -540,6 +539,7 @@ sub abor_retr_ascii_largefile_ok {
 
 sub abor_retr_ascii_largefile_followed_by_list_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
@@ -659,7 +659,12 @@ sub abor_retr_ascii_largefile_followed_by_list_ok {
           $client->response_msg());
       }
 
-      $conn->read($buf, 8192);
+      my $buf = '';
+      my $info;
+      while ($conn->read($info, 8192)) {
+        $buf .= $info;
+      }
+
       $conn->close();
 
       # We have to be careful of the fact that readdir returns directory
@@ -738,6 +743,7 @@ sub abor_retr_ascii_largefile_followed_by_list_ok {
 
 sub abor_retr_binary_largefile_followed_by_retr_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
@@ -927,6 +933,7 @@ sub abor_retr_binary_largefile_followed_by_retr_ok {
 
 sub abor_stor_binary_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
@@ -1072,6 +1079,7 @@ sub abor_stor_binary_ok {
 
 sub abor_stor_ascii_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
@@ -1217,6 +1225,7 @@ sub abor_stor_ascii_ok {
 
 sub abor_with_cyrillic_encoding_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");

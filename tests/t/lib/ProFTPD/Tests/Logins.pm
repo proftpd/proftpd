@@ -40,33 +40,32 @@ sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
 }
 
-my $tmpdir;
-
 sub set_up {
   my $self = shift;
-  $tmpdir = testsuite_get_tmp_dir();
+  $self->{tmpdir} = testsuite_get_tmp_dir();
 
   # Create temporary scratch dir
-  eval { mkpath($tmpdir) };
+  eval { mkpath($self->{tmpdir}) };
   if ($@) {
-    my $abs_path = File::Spec->rel2abs($tmpdir);
+    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
 }
 
 sub tear_down {
   my $self = shift;
-  undef $self;
 
   # Remove temporary scratch dir
-  if ($tmpdir) {
-    eval { rmtree($tmpdir) };
-    $tmpdir = undef;
+  if ($self->{tmpdir}) {
+    eval { rmtree($self->{tmpdir}) };
   }
+
+  undef $self;
 };
 
 sub login_plaintext_fails {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
   my $config_file = "$tmpdir/login.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
@@ -143,6 +142,7 @@ sub login_plaintext_fails {
 
 sub login_anonymous_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
   my $config_file = "$tmpdir/login.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
@@ -229,6 +229,7 @@ sub login_anonymous_ok {
 
 sub login_anonymous_fails {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
   my $config_file = "$tmpdir/login.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
