@@ -659,8 +659,6 @@ sub wrap2_file_allow_table {
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
 
-  sleep(1);
-
   # Fork child
   $self->handle_sigchld();
   defined($pid = fork()) or die("Can't fork: $!");
@@ -868,8 +866,6 @@ sub wrap2_file_deny_table {
   }
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
-
-  sleep(1);
 
   # Fork child
   $self->handle_sigchld();
@@ -1087,8 +1083,6 @@ sub wrap2_file_service_name {
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
 
-  sleep(1);
-
   # Fork child
   $self->handle_sigchld();
   defined($pid = fork()) or die("Can't fork: $!");
@@ -1282,8 +1276,6 @@ sub wrap2_file_user_tables {
   $config->{IfModules}->{'mod_wrap2.c'}->{WrapUserTables} = "$user file:$allow_file file:$deny_file";
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
-
-  sleep(1);
 
   # Fork child
   $self->handle_sigchld();
@@ -1485,8 +1477,6 @@ sub wrap2_file_group_tables {
   $config->{IfModules}->{'mod_wrap2.c'}->{WrapGroupTables} = "ftpd file:$allow_file file:$deny_file";
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
-
-  sleep(1);
 
   # Fork child
   $self->handle_sigchld();

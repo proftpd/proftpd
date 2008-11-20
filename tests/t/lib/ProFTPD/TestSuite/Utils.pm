@@ -441,6 +441,8 @@ sub server_start {
 
 sub server_stop {
   my $pid_file = shift;
+  my $nowait = shift;
+  $nowait = 0 unless defined($nowait);
 
   my $pid;
   if (open(my $fh, "< $pid_file")) {
@@ -459,6 +461,19 @@ sub server_stop {
   }
 
   my @output = `$cmd`;
+
+  unless ($nowait) {
+    # Wait until the PidFile has been deleted by the shutting-down server.
+    # We use select(), rather than alarm(), to do sub-second waits.
+    #
+    # We will wait for a period of up to 2 seconds, but not longer.
+    my $now = time();
+
+    while ((time() - $now) < 2 &&
+           -e $pid_file) {
+      select(undef, undef, undef, 0.5);
+    }
+  }
 }
 
 my $server_wait_timeout = 0;

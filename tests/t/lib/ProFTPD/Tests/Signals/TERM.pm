@@ -85,7 +85,7 @@ sub parent_term_ok {
   sleep(1);
 
   # Stop server
-  server_stop($pid_file);
+  server_stop($pid_file, 1);
 
   # Make sure that the pid file has been removed by the server as part of
   # its shutdown procedures.  We need the delay since proftpd handles

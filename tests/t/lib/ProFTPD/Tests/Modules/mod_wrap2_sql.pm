@@ -1239,8 +1239,6 @@ EOS
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
 
-  sleep(1);
-
   # Fork child
   $self->handle_sigchld();
   defined($pid = fork()) or die("Can't fork: $!");
@@ -1466,8 +1464,6 @@ EOS
   $config->{IfModules}->{'mod_wrap2_sql.c'}->{WrapGroupTables} = "ftpd sql:/get-allowed-clients sql:/get-denied-clients";
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
-
-  sleep(1);
 
   # Fork child
   $self->handle_sigchld();
