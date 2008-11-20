@@ -659,7 +659,7 @@ sub abor_retr_ascii_largefile_followed_by_list_ok {
           $client->response_msg());
       }
 
-      my $buf = '';
+      $buf = '';
       my $info;
       while ($conn->read($info, 8192)) {
         $buf .= $info;
@@ -677,7 +677,7 @@ sub abor_retr_ascii_largefile_followed_by_list_ok {
         }
       }
 
-      my $expected = {
+      $expected = {
         'cmds.conf' => 1,
         'cmds.group' => 1,
         'cmds.passwd' => 1,
@@ -881,8 +881,6 @@ sub abor_retr_binary_largefile_followed_by_retr_ok {
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-
-      my $expected;
 
       $expected = 226;
       $self->assert($expected == $resp_code,
