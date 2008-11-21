@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.144 2008-10-31 20:15:32 castaglia Exp $
+ * $Id: mod_sql.c,v 1.145 2008-11-21 05:54:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2389,6 +2389,8 @@ MODRET info_master(cmd_rec *cmd) {
      */
 
     do {
+      pr_signals_handle();
+
       memset(outs, '\0', sizeof(outs));
       outsp = outs;
 
@@ -2417,19 +2419,39 @@ MODRET info_master(cmd_rec *cmd) {
 			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
 	      mr = _process_named_query(cmd, query);
 	      
-	      if (MODRET_ISERROR(mr)) {
-		argp = "{null}";
+              if (MODRET_ISERROR(mr)) {
+                memset(outs, '\0', sizeof(outs));
+                break;
 
 	      } else {
 		sd = (sql_data_t *) mr->data;
-		if ((sd->rnum == 0) || (!sd->data[0]))
-		  argp = "{null}";
-		else
-		  argp = sd->data[0];
-	      }
+                if (sd->rnum == 0 ||
+                    sd->data[0] == NULL) {
+                  /* If no data was returned, show nothing.  Just continue
+                   * on to the next SQLShowInfo.
+                   */
+                  memset(outs, '\0', sizeof(outs));
+                  break;
+
+                } else {
+                  if (strcasecmp(sd->data[0], "null") == 0) {
+                    /* Treat the text "null" the same as a real null; just
+                     * continue on.
+                     */
+                    memset(outs, '\0', sizeof(outs));
+                    break;
+                  }
+
+                  argp = sd->data[0];
+                }
+              }
 
 	    } else {
-	      argp = "{null}";
+              /* Can't use an INSERT/UPDATE query for retrieving info.  Skip
+               * to the next SQLShowInfo.
+               */
+              memset(outs, '\0', sizeof(outs));
+              break;
 	    }
 
 	  } else {
@@ -2449,10 +2471,12 @@ MODRET info_master(cmd_rec *cmd) {
       
       *outsp++ = 0;
 
-      /* add the response */
-      pr_response_add(c->argv[0], "%s", outs);
+      /* Add the response, if we have one. */
+      if (strlen(outs) > 0) {
+        pr_response_add(c->argv[0], "%s", outs);
+      }
 
-    } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
+    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
     sql_log(DEBUG_FUNC, "%s", "<<< info_master");
   }
@@ -2470,6 +2494,8 @@ MODRET info_master(cmd_rec *cmd) {
      */
 
     do {
+      pr_signals_handle();
+
       memset(outs, '\0', sizeof(outs));
       outsp = outs;
 
@@ -2498,19 +2524,40 @@ MODRET info_master(cmd_rec *cmd) {
 			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
 	      mr = _process_named_query(cmd, query);
 	      
-	      if (MODRET_ISERROR(mr)) {
-		argp = "{null}";
+              if (MODRET_ISERROR(mr)) {
+                memset(outs, '\0', sizeof(outs));
+                break;
 
 	      } else {
 		sd = (sql_data_t *) mr->data;
-		if ((sd->rnum == 0) || (!sd->data[0]))
-		  argp = "{null}";
-		else
-		  argp = sd->data[0];
-	      }
-	    } else {
-	      argp = "{null}";
-	    }
+                if (sd->rnum == 0 ||
+                    sd->data[0] == NULL) {
+                  /* If no data was returned, show nothing.  Just continue
+                   * on to the next SQLShowInfo.
+                   */
+                  memset(outs, '\0', sizeof(outs));
+                  break;
+
+                } else {
+                  if (strcasecmp(sd->data[0], "null") == 0) {
+                    /* Treat the text "null" the same as a real null; just
+                     * continue on.
+                     */
+                    memset(outs, '\0', sizeof(outs));
+                    break;
+                  }
+
+                  argp = sd->data[0];
+                }
+              }
+
+            } else {
+              /* Can't use an INSERT/UPDATE query for retrieving info.  Skip
+               * to the next SQLShowInfo.
+               */
+              memset(outs, '\0', sizeof(outs));
+              break;
+            }
 
 	  } else {
 	    argp = resolve_short_tag(cmd, *tmp);
@@ -2529,10 +2576,12 @@ MODRET info_master(cmd_rec *cmd) {
       
       *outsp++ = 0;
 
-      /* add the response */
-      pr_response_add(c->argv[0], "%s", outs);
+      /* Add the response, if we have one. */
+      if (strlen(outs) > 0) {
+        pr_response_add(c->argv[0], "%s", outs);
+      }
 
-    } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
+    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
     sql_log(DEBUG_FUNC, "%s", "<<< info_master");
   }
@@ -2594,19 +2643,40 @@ MODRET errinfo_master(cmd_rec *cmd) {
 			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
 	      mr = _process_named_query(cmd, query);
 	      
-	      if (MODRET_ISERROR(mr)) {
-		argp = "{null}";
+              if (MODRET_ISERROR(mr)) {
+                memset(outs, '\0', sizeof(outs));
+                break;
 
 	      } else {
 		sd = (sql_data_t *) mr->data;
-		if ((sd->rnum == 0) || (!sd->data[0]))
-		  argp = "{null}";
-		else
-		  argp = sd->data[0];
-	      }
-	    } else {
-	      argp = "{null}";
-	    }
+                if (sd->rnum == 0 ||
+                    sd->data[0] == NULL) {
+                  /* If no data was returned, show nothing.  Just continue
+                   * on to the next SQLShowInfo.
+                   */
+                  memset(outs, '\0', sizeof(outs));
+                  break;
+
+                } else {
+                  if (strcasecmp(sd->data[0], "null") == 0) {
+                    /* Treat the text "null" the same as a real null; just
+                     * continue on.
+                     */
+                    memset(outs, '\0', sizeof(outs));
+                    break;
+                  }
+
+                  argp = sd->data[0];
+                }
+              }
+
+            } else {
+              /* Can't use an INSERT/UPDATE query for retrieving info.  Skip
+               * to the next SQLShowInfo.
+               */
+              memset(outs, '\0', sizeof(outs));
+              break;
+            }
 
 	  } else {
 	    argp = resolve_short_tag(cmd, *tmp);
@@ -2625,10 +2695,12 @@ MODRET errinfo_master(cmd_rec *cmd) {
       
       *outsp++ = 0;
 
-      /* add the response */
-      pr_response_add_err(c->argv[0], "%s", outs);
+      /* Add the response, if we have one. */
+      if (strlen(outs) > 0) {
+        pr_response_add_err(c->argv[0], "%s", outs);
+      }
 
-    } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
+    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
     sql_log(DEBUG_FUNC, "%s", "<<< errinfo_master");
   }
@@ -2646,6 +2718,8 @@ MODRET errinfo_master(cmd_rec *cmd) {
      */
 
     do {
+      pr_signals_handle();
+
       memset(outs, '\0', sizeof(outs));
       outsp = outs;
 
@@ -2674,19 +2748,41 @@ MODRET errinfo_master(cmd_rec *cmd) {
 			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
 	      mr = _process_named_query(cmd, query);
 	      
-	      if (MODRET_ISERROR(mr)) {
-		argp = "{null}";
+              if (MODRET_ISERROR(mr)) {
+                memset(outs, '\0', sizeof(outs));
+                break;
 
 	      } else {
 		sd = (sql_data_t *) mr->data;
-		if ((sd->rnum == 0) || (!sd->data[0]))
-		  argp = "{null}";
-		else
-		  argp = sd->data[0];
-	      }
-	    } else {
-	      argp = "{null}";
-	    }
+                if (sd->rnum == 0 ||
+                    sd->data[0] == NULL) {
+                  /* If no data was returned, show nothing.  Just continue
+                   * on to the next SQLShowInfo.
+                   */
+                  memset(outs, '\0', sizeof(outs));
+                  break;
+
+                } else {
+                  if (strcasecmp(sd->data[0], "null") == 0) {
+                    /* Treat the text "null" the same as a real null; just
+                     * continue on.
+                     */
+                    memset(outs, '\0', sizeof(outs));
+                    break;
+                  }
+
+                  argp = sd->data[0];
+                }
+              }
+
+            } else {
+              /* Can't use an INSERT/UPDATE query for retrieving info.  Skip
+               * to the next SQLShowInfo.
+               */
+              memset(outs, '\0', sizeof(outs));
+              break;
+              continue;
+            }
 
 	  } else {
 	    argp = resolve_short_tag(cmd, *tmp);
@@ -2705,10 +2801,12 @@ MODRET errinfo_master(cmd_rec *cmd) {
       
       *outsp++ = 0;
 
-      /* add the response */
-      pr_response_add(c->argv[0], "%s", outs);
+      /* Add the response, if we have one. */
+      if (strlen(outs) > 0) {
+        pr_response_add(c->argv[0], "%s", outs);
+      }
 
-    } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
+    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
     sql_log(DEBUG_FUNC, "%s", "<<< errinfo_master");
   }
