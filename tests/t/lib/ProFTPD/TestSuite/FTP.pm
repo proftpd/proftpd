@@ -1287,6 +1287,32 @@ sub help {
   }
 }
 
+sub site {
+  my $self = shift;
+  my $cmd = shift;
+  $cmd = '' unless defined($cmd);
+  my $code;
+
+  $code = $self->{ftp}->quot('SITE', $cmd);
+  unless ($code) {
+    croak("SITE command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("SITE command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
 sub get_connect_exception {
   return $conn_ex;
 }
