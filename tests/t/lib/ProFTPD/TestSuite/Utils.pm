@@ -56,6 +56,9 @@ our %EXPORT_TAGS = (
 # XXX Assume that the proftpd executable to use is one directory up;
 # assume that tests are always run from the tests/ directory.
 my $proftpd_bin = "../proftpd";
+if ($ENV{PROFTPD_TEST_BIN}) {
+  $proftpd_bin = $ENV{PROFTPD_TEST_BIN};
+}
 
 sub get_high_numbered_port {
 
@@ -270,8 +273,17 @@ sub config_write {
         foreach my $mod (keys(%$modules)) {
           print $fh "<IfModule $mod>\n";
 
-          while (my ($mod_k, $mod_v) = each(%{ $modules->{$mod} })) {
-            print $fh "  $mod_k $mod_v\n";
+          my $section = $modules->{$mod};
+
+          if (ref($section) eq 'HASH') {
+            while (my ($mod_k, $mod_v) = each(%$section)) {
+              print $fh "  $mod_k $mod_v\n";
+            }
+
+          } elsif (ref($section) eq 'ARRAY') {
+            foreach my $line (@$section) {
+              print $fh "  $line\n";
+            }
           }
 
           print $fh "</IfModule>\n";
@@ -283,8 +295,17 @@ sub config_write {
         foreach my $anon (keys(%$sections)) {
           print $fh "<Anonymous $anon>\n";
 
-          while (my ($anon_k, $anon_v) = each(%{ $sections->{$anon} })) {
-            print $fh "  $anon_k $anon_v\n";
+          my $section = $sections->{$anon};
+
+          if (ref($section) eq 'HASH') {
+            while (my ($anon_k, $anon_v) = each(%$section)) {
+              print $fh "  $anon_k $anon_v\n";
+            }
+
+          } elsif (ref($section) eq 'ARRAY') {
+            foreach my $line (@$section) {
+              print $fh "  $line\n";
+            }
           }
 
           print $fh "</Anonymous>\n";
@@ -296,8 +317,17 @@ sub config_write {
         foreach my $dir (keys(%$sections)) {
           print $fh "<Directory $dir>\n";
 
-          while (my ($dir_k, $dir_v) = each(%{ $sections->{$dir} })) {
-            print $fh "  $dir_k $dir_v\n";
+          my $section = $sections->{$dir};
+
+          if (ref($section) eq 'HASH') {
+            while (my ($dir_k, $dir_v) = each(%$section)) {
+              print $fh "  $dir_k $dir_v\n";
+            }
+
+          } elsif (ref($section) eq 'ARRAY') {
+            foreach my $line (@$section) {
+              print $fh "  $line\n";
+            }
           }
 
           print $fh "</Directory>\n";
