@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.32 2008-01-18 19:23:56 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.33 2008-11-22 04:44:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -126,6 +126,7 @@ static char rewrite_vars[REWRITE_MAX_VARS][3] = {
 static char *rewrite_argsep(char **);
 static void rewrite_closelog(void);
 static char *rewrite_expand_var(cmd_rec *, const char *, const char *);
+static char *rewrite_get_cmd_name(cmd_rec *);
 static void rewrite_log(char *format, ...);
 static unsigned char rewrite_match_cond(cmd_rec *, config_rec *);
 static void rewrite_openlog(void);
@@ -138,6 +139,7 @@ static int rewrite_read_fifo(int, char *, size_t);
 static regex_t *rewrite_regalloc(void);
 static unsigned char rewrite_regexec(const char *, regex_t *, unsigned char,
     rewrite_match_t *);
+static void rewrite_replace_cmd_arg(cmd_rec *, char *);
 static char *rewrite_subst(cmd_rec *c, char *);
 static char *rewrite_subst_backrefs(cmd_rec *, char *, rewrite_match_t *);
 static char *rewrite_subst_maps(cmd_rec *, char *);
@@ -161,26 +163,39 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
     return (session.class ? session.class->cls_name : NULL);
 
   } else if (strcmp(var, "%F") == 0) {
+    char *cmd_name = rewrite_get_cmd_name(cmd);
 
     /* This variable is only valid for commands that operate on paths.
      * mod_log uses the session.xfer.xfer_path variable, but that is not yet
      * set at this stage in the command dispatch cycle.
      */
-    if (strcmp(cmd->argv[0], "APPE") == 0 ||
-        strcmp(cmd->argv[0], "RETR") == 0 ||
-        strcmp(cmd->argv[0], "STOR") == 0 ||
-        strcmp(cmd->argv[0], "DELE") == 0 ||
-        strcmp(cmd->argv[0], "MKD") == 0 ||
-        strcmp(cmd->argv[0], "MDTM") == 0 ||
-        strcmp(cmd->argv[0], "RMD") == 0 ||
-        strcmp(cmd->argv[0], "SIZE") == 0 ||
-        strcmp(cmd->argv[0], "STOU") == 0 ||
-        strcmp(cmd->argv[0], "XMKD") == 0 ||
-        strcmp(cmd->argv[0], "XRMD") == 0) {
+    if (strcmp(cmd_name, "APPE") == 0 ||
+        strcmp(cmd_name, "RETR") == 0 ||
+        strcmp(cmd_name, "STOR") == 0 ||
+        strcmp(cmd_name, "DELE") == 0 ||
+        strcmp(cmd_name, "MKD") == 0 ||
+        strcmp(cmd_name, "MDTM") == 0 ||
+        strcmp(cmd_name, "RMD") == 0 ||
+        strcmp(cmd_name, "SIZE") == 0 ||
+        strcmp(cmd_name, "STOU") == 0 ||
+        strcmp(cmd_name, "XMKD") == 0 ||
+        strcmp(cmd_name, "XRMD") == 0) {
       return dir_abs_path(cmd->tmp_pool, cmd->arg, FALSE);
 
+    } else if (strcasecmp(cmd_name, "SITE CHGRP") == 0 ||
+               strcasecmp(cmd_name, "SITE CHMOD") == 0) {
+      register unsigned int i;
+      char *tmp = "";
+
+      for (i = 2; i <= cmd->argc-1; i++) {
+        tmp = pstrcat(cmd->tmp_pool, tmp, *tmp ? " " : "", cmd->argv[i], NULL);
+      } 
+
+      return dir_abs_path(cmd->tmp_pool, tmp, FALSE);
+
     } else {
-      rewrite_log("rewrite_expand_var(): %%F not valid for this command");
+      rewrite_log("rewrite_expand_var(): %%F not valid for this command ('%s')",
+        cmd_name);
       return NULL;
     }
 
@@ -189,7 +204,7 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
     return cmd->arg;
 
   } else if (strcmp(var, "%m") == 0) {
-    return cmd->argv[0];
+    return rewrite_get_cmd_name(cmd);
 
   } else if (strcmp(var, "%p") == 0) {
     char *port = pcalloc(cmd->tmp_pool, 8 * sizeof(char));
@@ -291,6 +306,21 @@ static char *rewrite_argsep(char **arg) {
 
   *dst = '\0';
   return res;
+}
+
+static char *rewrite_get_cmd_name(cmd_rec *cmd) {
+  if (strcmp(cmd->argv[0], C_SITE) != 0) {
+    return cmd->argv[0];
+
+  } else {
+    if (strcasecmp(cmd->argv[1], "CHGRP") == 0 ||
+        strcasecmp(cmd->argv[1], "CHMOD") == 0) {
+      return pstrcat(cmd->pool, cmd->argv[0], " ", cmd->argv[1], NULL);
+
+    } else {
+      return cmd->argv[0];
+    }
+  }
 }
 
 static unsigned int rewrite_parse_cond_flags(pool *p, const char *flags_str) {
@@ -521,7 +551,8 @@ static unsigned char rewrite_parse_map_str(char *str, rewrite_map_t *map) {
     /* OK, now back to our regular schedule parsing... */
     *map_end = '\0';
 
-    if ((tmp = strchr(map_start, ':')) == NULL) {
+    tmp = strchr(map_start, ':');
+    if (tmp == NULL) {
       rewrite_log("rewrite_parse_mapstr(): notice: badly formatted map string");
       return FALSE;
     }
@@ -535,14 +566,16 @@ static unsigned char rewrite_parse_map_str(char *str, rewrite_map_t *map) {
 
     map->map_lookup_key = map_start;
 
-    if ((tmp = strchr(map_start, '|')) != NULL) {
+    tmp = strchr(map_start, '|');
+    if (tmp != NULL) {
       *tmp = '\0';
 
       /* We've got the default value. */
       map->map_default_value = ++tmp;
 
-    } else
+    } else {
       map->map_default_value = "";
+    }
 
     substr = ++map_end;
     return TRUE;
@@ -575,7 +608,8 @@ static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *txtmap) {
   }
 
   /* Open the file. */
-  if ((ftxt = pr_fsio_open(txtmap->txt_path, O_RDONLY)) == NULL) {
+  ftxt = pr_fsio_open(txtmap->txt_path, O_RDONLY);
+  if (ftxt == NULL) {
     rewrite_log("rewrite_parse_map_txt(): unable to open %s: %s",
       txtmap->txt_path, strerror(errno));
     return FALSE;
@@ -669,7 +703,8 @@ static regex_t *rewrite_regalloc(void) {
   if (!rewrite_regexes)
     rewrite_regexes = make_array(rewrite_pool, 0, sizeof(regex_t *));
 
-  if ((preg = calloc(1, sizeof(regex_t))) == NULL) {
+  preg = calloc(1, sizeof(regex_t));
+  if (preg == NULL) {
     rewrite_log("fatal: memory exhausted during regex_t allocation");
     exit(1);
   }
@@ -712,6 +747,22 @@ static unsigned char rewrite_regexec(const char *string, regex_t *regbuf,
     have_match = !have_match;
 
   return have_match;
+}
+
+static void rewrite_replace_cmd_arg(cmd_rec *cmd, char *new_arg) {
+  if (strcmp(cmd->argv[0], C_SITE) != 0) {
+    cmd->arg = new_arg;
+
+  } else {
+    if (strcasecmp(cmd->argv[1], "CHGRP") == 0 ||
+        strcasecmp(cmd->argv[1], "CHMOD") == 0) {
+      cmd->arg = pstrcat(cmd->pool, cmd->argv[1], " ", new_arg, NULL);
+
+    } else {
+      /* Not one of the handled SITE commands. */
+      cmd->arg = new_arg;
+    }
+  }
 }
 
 static char *rewrite_subst(cmd_rec *cmd, char *pattern) {
@@ -1102,10 +1153,11 @@ static char *rewrite_subst_vars(cmd_rec *cmd, char *pattern) {
     char *val = NULL;
 
     /* Does this variable occur in the substitution pattern? */
-    if (!strstr(pattern, rewrite_vars[i]))
+    if (strstr(pattern, rewrite_vars[i]) == NULL)
       continue;
 
-    if ((val = rewrite_expand_var(cmd, pattern, rewrite_vars[i])) != NULL) {
+    val = rewrite_expand_var(cmd, pattern, rewrite_vars[i]);
+    if (val != NULL) {
       rewrite_log("rewrite_subst_vars(): replacing variable '%s' with '%s'",
         rewrite_vars[i], val);
       if (!new_pattern)
@@ -1262,7 +1314,7 @@ static char *rewrite_map_int_replaceall(pool *map_pool, char *key) {
    * the given key, and the sequences to replace for this function.
    */
   char *str = pstrdup(map_pool, key + 1);
-  
+
   tmp = strchr(str , sep);
   if (tmp == NULL) {
     rewrite_log("rewrite_map_int_replaceall(): badly formatted input key");
@@ -1364,7 +1416,8 @@ static unsigned char rewrite_open_fifo(config_rec *c) {
   /* No interruptions, please. */
   pr_signals_block();
 
-  if ((fd = open(fifo, O_RDWR|O_NONBLOCK)) < 0) {
+  fd = open(fifo, O_RDWR|O_NONBLOCK);
+  if (fd < 0) {
     rewrite_log("rewrite_rdopen_fifo(): unable to open FIFO '%s': %s", fifo,
       strerror(errno));
     pr_signals_unblock();
@@ -1510,13 +1563,13 @@ static void rewrite_openlog(void) {
   if (rewrite_logfd >= 0)
     return;
 
-  if ((rewrite_logfile = get_param_ptr(main_server->conf, "RewriteLog",
-      FALSE)) == NULL) {
+  rewrite_logfile = get_param_ptr(main_server->conf, "RewriteLog", FALSE);
+  if (rewrite_logfile == NULL) {
     rewrite_logfd = -2;
     return;
   }
 
-  if (!strcasecmp(rewrite_logfile, "none")) {
+  if (strcasecmp(rewrite_logfile, "none") == 0) {
     rewrite_logfd = -1;
     rewrite_logfile = NULL;
     return;
@@ -1675,7 +1728,8 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
     cond_op = REWRITE_COND_OP_REGEX;
     cond_data = rewrite_regalloc();
 
-    if ((res = regcomp(cond_data, cmd->argv[2], regex_flags)) != 0) {
+    res = regcomp(cond_data, cmd->argv[2], regex_flags);
+    if (res != 0) {
       char errstr[200] = {'\0'};
 
       regerror(res, cond_data, errstr, sizeof(errstr));
@@ -1935,7 +1989,8 @@ MODRET set_rewriterule(cmd_rec *cmd) {
     cmd->argv[1]++;
   }
 
-  if ((res = regcomp(preg, cmd->argv[1], regex_flags)) != 0) {
+  res = regcomp(preg, cmd->argv[1], regex_flags);
+  if (res != 0) {
     char errstr[200] = {'\0'};
 
     regerror(res, preg, errstr, sizeof(errstr));
@@ -2004,6 +2059,7 @@ MODRET set_rewriterule(cmd_rec *cmd) {
 MODRET rewrite_fixup(cmd_rec *cmd) {
   config_rec *c = NULL;
   array_header *seen_rules = NULL;
+  char *cmd_name, *cmd_arg;
 
   /* Is RewriteEngine on? */
   if (!rewrite_engine)
@@ -2015,6 +2071,33 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
   if (cmd->argc == 1) {
     rewrite_log("rewrite_fixup(): skipping %s (no arg)", cmd->argv[0]);
     return PR_DECLINED(cmd);
+  }
+
+  /* If this is a SITE command, handle things a little differently, so that
+   * the rest of the rewrite machinery works properly.
+   */
+  if (strcmp(cmd->argv[0], C_SITE) != 0) {
+    cmd_name = cmd->argv[0];
+    cmd_arg = cmd->arg;
+
+  } else {
+    if (strcasecmp(cmd->argv[1], "CHGRP") == 0 ||
+        strcasecmp(cmd->argv[1], "CHMOD") == 0) {
+      register unsigned int i;
+      char *tmp = "";
+
+      cmd_name = pstrcat(cmd->pool, cmd->argv[0], " ", cmd->argv[1], NULL);
+
+      for (i = 2; i <= cmd->argc-1; i++) {
+        tmp = pstrcat(cmd->pool, tmp, *tmp ? " " : "", cmd->argv[i], NULL);
+      }
+ 
+      cmd_arg = tmp;
+
+    } else {
+      cmd_name = cmd->argv[0];
+      cmd_arg = cmd->arg;
+    }
   }
 
   /* Create an array that will contain the IDs of the RewriteRules we've
@@ -2054,11 +2137,11 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
 
     /* Make sure the given RewriteRule regex matches the command argument. */
     memset(&rewrite_rule_matches, '\0', sizeof(rewrite_rule_matches));
-    rewrite_rule_matches.match_string = cmd->arg;
-    if (!rewrite_regexec(cmd->arg, (regex_t *) c->argv[0],
+    rewrite_rule_matches.match_string = cmd_arg;
+    if (!rewrite_regexec(cmd_arg, (regex_t *) c->argv[0],
         *((unsigned char *) c->argv[2]), &rewrite_rule_matches)) {
       rewrite_log("rewrite_fixup(): %s arg '%s' does not match RewriteRule "
-        "regex", cmd->argv[0], cmd->arg);
+        "regex", cmd_name, cmd_arg);
       c = find_config_next(c, c->next, CONF_PARAM, "RewriteRule", FALSE);
       continue;
 
@@ -2111,8 +2194,8 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
         char *param, *dup;
         array_header *list;
 
-        cmd->arg = new_arg;
-        rewrite_log("rewrite_fixup(): %s arg now '%s'", cmd->argv[0], cmd->arg);
+        rewrite_replace_cmd_arg(cmd, new_arg);
+        rewrite_log("rewrite_fixup(): %s arg now '%s'", cmd_name, new_arg);
 
         /* Be sure to overwrite the entire cmd->argv array, not just
          * cmd->arg.
@@ -2123,8 +2206,15 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
         *((char **) push_array(list)) = pstrdup(cmd->pool, cmd->argv[0]);
         cmd->argc++;
 
-        if (strcmp(cmd->argv[0], C_SITE) == 0)
+        if (strcmp(cmd->argv[0], C_SITE) == 0) {
           flags |= PR_STR_FL_PRESERVE_WHITESPACE;
+
+          if (strcasecmp(cmd->argv[1], "CHGRP") == 0 ||
+              strcasecmp(cmd->argv[1], "CHMOD") == 0) {
+            *((char **) push_array(list)) = pstrdup(cmd->pool, cmd->argv[1]);
+            cmd->argc++;
+          }
+        }
 
         dup = pstrdup(cmd->tmp_pool, new_arg);
         while ((param = pr_str_get_word(&dup, flags)) != NULL) {
