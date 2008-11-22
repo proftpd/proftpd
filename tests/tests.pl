@@ -86,6 +86,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_ban)],
     },
 
+    't/modules/mod_rewrite.t' => {
+      order => ++$order,
+      test_class => [qw(mod_rewrite)],
+    },
+
     't/modules/mod_sql.t' => {
       order => ++$order,
       test_class => [qw(mod_sql)],
