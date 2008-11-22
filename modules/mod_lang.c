@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.16 2008-11-14 19:58:38 castaglia Exp $
+ * $Id: mod_lang.c,v 1.17 2008-11-22 23:23:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -53,7 +53,8 @@ static array_header *lang_list = NULL;
 static void lang_feat_add(pool *p) {
   char *feat_str = "";
 
-  if (lang_list) {
+  if (lang_list &&
+      lang_list->nelts > 0) {
     register unsigned int i;
     char **langs;
     size_t feat_strlen = 0;
