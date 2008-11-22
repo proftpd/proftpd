@@ -357,17 +357,35 @@ MODRET calc_ratios (cmd_rec * cmd)
       c = find_config_next (c, c->next, CONF_PARAM, "UserRatio", FALSE);
     }
 
-  c = find_config (main_server->conf, CONF_PARAM, "GroupRatio", TRUE);
-  while (c)
-    {
-      if (!strcmp (c->argv[0], session.group))
-	{
-	  set_ratios (c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
-	  g.rtype = "g";
-	  return PR_DECLINED (cmd);
-	}
-      c = find_config_next (c, c->next, CONF_PARAM, "GroupRatio", FALSE);
+  c = find_config(main_server->conf, CONF_PARAM, "GroupRatio", FALSE);
+  while (c) {
+    pr_signals_handle();
+
+    if (strcmp(c->argv[0], session.group) == 0) {
+      set_ratios(c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
+      g.rtype = "g";
+
+      return PR_DECLINED(cmd);
+
+    } else {
+      if (session.groups) {
+        register unsigned int i;
+        char **group_names = session.groups->elts;
+
+        /* Check the list of supplemental groups for this user as well. */
+        for (i = 0; i < session.groups->nelts-1; i++) {
+          if (strcmp(c->argv[0], group_names[i]) == 0) {
+            set_ratios(c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
+            g.rtype = "g";
+
+            return PR_DECLINED(cmd);
+          }
+        }
+      } 
     }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "GroupRatio", FALSE);
+  }
 
   return PR_DECLINED (cmd);
 }
