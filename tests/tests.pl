@@ -61,6 +61,7 @@ if (scalar(@ARGV) > 0) {
     t/config/displayconnect.t
     t/config/displaylogin.t
     t/config/hidefiles.t
+    t/config/maxinstances.t
     t/config/maxloginattempts.t
     t/config/maxretrievefilesize.t
     t/config/maxstorefilesize.t

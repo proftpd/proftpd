@@ -488,6 +488,9 @@ sub server_stop {
 
   if ($ENV{TEST_VERBOSE}) {
     print STDERR "Stopping server: $cmd\n";
+
+  } else {
+    $cmd .= " 2>/dev/null";
   }
 
   my @output = `$cmd`;
