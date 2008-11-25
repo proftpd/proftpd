@@ -58,6 +58,7 @@ if (scalar(@ARGV) > 0) {
     t/commands/stou.t
     t/commands/appe.t
     t/commands/abor.t
+    t/commands/mlst.t
     t/config/displayconnect.t
     t/config/displaylogin.t
     t/config/hidefiles.t
