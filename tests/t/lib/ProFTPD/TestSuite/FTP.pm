@@ -1313,6 +1313,114 @@ sub site {
   }
 }
 
+sub mlsd {
+  my $self = shift;
+  my $path = shift;
+  $path = '' unless defined($path);
+  my $code;
+
+  $code = $self->{ftp}->quot('MLSD', $path);
+  unless ($code) {
+    croak("MLSD command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("MLSD command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
+sub mlst {
+  my $self = shift;
+  my $path = shift;
+  $path = '' unless defined($path);
+  my $code;
+
+  $code = $self->{ftp}->quot('MLST', $path);
+  unless ($code) {
+    croak("MLST command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("MLST command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
+sub mff {
+  my $self = shift;
+  my $facts = shift;
+  $facts = '' unless defined($facts);
+  my $path = shift;
+  $path = '' unless defined($path);
+  my $code;
+
+  $code = $self->{ftp}->quot('MFF', $facts, $path);
+  unless ($code) {
+    croak("MFF command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("MFF command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
+sub mfmt {
+  my $self = shift;
+  my $timestamp = shift;
+  $timestamp = '' unless defined($timestamp);
+  my $path = shift;
+  $path = '' unless defined($path);
+  my $code;
+
+  $code = $self->{ftp}->quot('MFMT', $timestamp, $path);
+  unless ($code) {
+    croak("MFMT command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("MFMT command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
 sub get_connect_exception {
   return $conn_ex;
 }
