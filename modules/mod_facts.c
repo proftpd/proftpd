@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.9 2008-10-11 15:58:33 castaglia Exp $
+ * $Id: mod_facts.c,v 1.10 2008-11-26 17:18:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -805,11 +805,22 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  /* RFC3659 explicitly does NOT support glob characters. */
+  if (strpbrk(decoded_path, "{[*?") != NULL) {
+    pr_log_debug(DEBUG2, MOD_FACTS_VERSION ": unable to handle MLSD command: "
+      "target '%s' contains glob characters", decoded_path);
+    pr_response_add_err(R_550, _("Unable to handle command"));
+    return PR_ERROR(cmd);
+  }
+
   /* Make sure that the given path is actually a directory. */
   if (pr_fsio_stat(decoded_path, &(info.st)) < 0) {
+    int xerrno = errno;
+
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": unable to stat '%s' (%s), "
-      "denying %s", decoded_path, strerror(errno), cmd->argv[0]);
-    pr_response_add_err(R_550, _("Unable to handle command"));
+      "denying %s", decoded_path, strerror(xerrno), cmd->argv[0]);
+
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
     return PR_ERROR(cmd);
   }
 
@@ -820,6 +831,13 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
   dirh = pr_fsio_opendir(decoded_path);
   if (dirh == NULL) {
+    int xerrno = errno;
+
+    pr_trace_msg("fileperms", 1, "MLSD, user '%s' (UID %lu, GID %lu): "
+      "error reading directory '%s': %s", session.user,
+      (unsigned long) session.uid, (unsigned long) session.gid,
+      decoded_path, strerror(xerrno));
+
     pr_response_add_err(R_550, _("'%s' cannot be listed"), path);
     return PR_ERROR(cmd);
   }
