@@ -1317,17 +1317,37 @@ sub mlsd {
   my $self = shift;
   my $path = shift;
   $path = '' unless defined($path);
-  my $code;
 
-  $code = $self->{ftp}->quot('MLSD', $path);
-  unless ($code) {
+  my $res;
+
+  $res = $self->{ftp}->_data_cmd('MLSD', $path);
+  unless ($res) {
     croak("MLSD command failed: " .  $self->{ftp}->code . ' ' .
       $self->response_msg());
   }
 
+  if (ref($res)) {
+    my $buf;
+    while ($res->read($buf, 8192) > 0) {
+    }
+
+    $res->close();
+  }
+
+  # XXX Work around bug in Net::FTP which fails to handle the case where,
+  # for data transfers, a 150 response code may be sent (to open the data
+  # connection), followed by an error response code.
+  my $code = 0;
+
+  if ($self->{ftp}->code =~ /^(\d)/) {
+    $code = $1;
+  }
+
   if ($code == 4 || $code == 5) {
-    croak("MLSD command failed: " .  $self->{ftp}->code . ' ' .
-      $self->response_msg());
+    my $msg = $self->response_msg();
+    $self->{mesg} = $msg;
+
+    croak("MLSD command failed: " .  $self->{ftp}->code . ' ' . $msg);
   }
 
   my $msg = $self->response_msg();
@@ -1337,6 +1357,16 @@ sub mlsd {
   } else {
     return $msg;
   }
+}
+
+sub mlsd_raw {
+  my $self = shift;
+  my $path = shift;
+  $path = '' unless defined($path);
+  my $conn;
+
+  $conn = $self->{ftp}->_data_cmd('MLSD', $path);
+  return $conn;
 }
 
 sub mlst {
