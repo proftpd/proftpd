@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.246 2008-11-06 02:23:50 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.247 2008-12-03 05:06:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1398,7 +1398,7 @@ MODRET xfer_pre_appe(cmd_rec *cmd) {
 }
 
 MODRET xfer_stor(cmd_rec *cmd) {
-  char *dir;
+  char *path;
   char *lbuf;
   int bufsz, len, ferrno = 0;
   off_t nbytes_stored, nbytes_max_store = 0;
@@ -1418,7 +1418,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   session.xfer.path_hidden = pr_table_get(cmd->notes,
     "mod_xfer.store-hidden-path", NULL);
 
-  dir = session.xfer.path;
+  path = session.xfer.path;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
@@ -1495,14 +1495,14 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
   } else {
     /* Normal session */
-    stor_fh = pr_fsio_open(dir,
+    stor_fh = pr_fsio_open(path,
         O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT));
     if (stor_fh == NULL) {
       ferrno = errno;
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
         "error opening '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid, dir,
+        (unsigned long) session.uid, (unsigned long) session.gid, path,
         strerror(errno));
     }
   }
@@ -1516,7 +1516,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
         (pr_off_t) session.restart_pos, cmd->arg, strerror(errno));
       xerrno = errno;
 
-    } else if (pr_fsio_stat(dir, &st) == -1) {
+    } else if (pr_fsio_stat(path, &st) == -1) {
       pr_log_debug(DEBUG4, "unable to stat '%s': %s", cmd->arg,
         strerror(errno));
       xerrno = errno;
@@ -1553,6 +1553,13 @@ MODRET xfer_stor(cmd_rec *cmd) {
   /* Perform the actual transfer now */
   pr_data_init(cmd->arg, PR_NETIO_IO_RD);
 
+  /* Note that we have to re-populate the session.xfer variables here,
+   * AFTER the pr_data_init() call.  pr_data_init() ensures that there is
+   * no leftover information in session.xfer, as from aborted tranfers.
+   */
+  session.xfer.path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
+  session.xfer.path_hidden = pr_table_get(cmd->notes,
+    "mod_xfer.store-hidden-path", NULL);
   session.xfer.file_size = curr_pos;
 
   /* First, make sure the uploaded file has the requested ownership. */
@@ -1582,7 +1589,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
     pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " %s) reached: "
       "aborting transfer of '%s'", (pr_off_t) nbytes_max_store,
-      nbytes_max_store != 1 ? "bytes" : "byte", dir);
+      nbytes_max_store != 1 ? "bytes" : "byte", path);
 
     /* Abort the transfer. */
     stor_abort();
@@ -1619,7 +1626,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
         nbytes_stored > nbytes_max_store) {
 
       pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " bytes) reached: "
-        "aborting transfer of '%s'", (pr_off_t) nbytes_max_store, dir);
+        "aborting transfer of '%s'", (pr_off_t) nbytes_max_store, path);
 
       /* Abort the transfer. */
       stor_abort();

@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.115 2008-11-19 18:07:18 castaglia Exp $
+ * $Id: data.c,v 1.116 2008-12-03 05:06:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -497,8 +497,8 @@ void pr_data_init(char *filename, int direction) {
 
   } else {
     if (!(session.sf_flags & SF_PASSIVE))
-      pr_log_debug(DEBUG0,
-		"data_init oddity: session.xfer exists in non-PASV mode.");
+      pr_log_debug(DEBUG0, "data_init oddity: session.xfer exists in "
+        "non-PASV mode.");
 
     session.xfer.direction = direction;
   }
@@ -510,11 +510,12 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   /* Make sure that any abort flags have been cleared. */
   session.sf_flags &= ~SF_ABORT;
 
-  if (session.xfer.p == NULL)
+  if (session.xfer.p == NULL) {
     data_new_xfer(filename, direction);
 
-  else
+  } else {
     session.xfer.direction = direction;
+  }
 
   if (!reason)
     reason = filename;
