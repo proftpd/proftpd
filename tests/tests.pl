@@ -60,6 +60,8 @@ if (scalar(@ARGV) > 0) {
     t/commands/abor.t
     t/commands/mlsd.t
     t/commands/mlst.t
+    t/commands/mff.t
+    t/commands/mfmt.t
     t/config/displayconnect.t
     t/config/displaylogin.t
     t/config/hidefiles.t
