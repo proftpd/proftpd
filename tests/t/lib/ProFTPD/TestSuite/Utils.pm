@@ -333,6 +333,28 @@ sub config_write {
           print $fh "</Directory>\n";
         }
 
+      } elsif ($k eq 'Limit') {
+        my $sections = $v;
+
+        foreach my $limits (keys(%$sections)) {
+          print $fh "<Limit $limits>\n";
+
+          my $section = $sections->{$limits};
+
+          if (ref($section) eq 'HASH') {
+            while (my ($limit_k, $limit_v) = each(%$section)) {
+              print $fh "  $limit_k $limit_v\n";
+            }
+
+          } elsif (ref($section) eq 'ARRAY') {
+            foreach my $line (@$section) {
+              print $fh "  $line\n";
+            }
+          }
+
+          print $fh "</Limit>\n";
+        }
+
       } else {
         print $fh "$k $v\n";
       }
