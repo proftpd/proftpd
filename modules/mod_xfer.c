@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.247 2008-12-03 05:06:14 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.248 2008-12-03 17:58:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1989,8 +1989,14 @@ MODRET xfer_retr(cmd_rec *cmd) {
       break;
 
     if (len < 0) {
+      /* Make sure that the errno value, needed for the pr_data_abort() call,
+       * is preserved; errno itself might be overwritten in retr_abort().
+       */
+      int xerrno = errno;
+
       retr_abort();
-      pr_data_abort(errno, FALSE);
+
+      pr_data_abort(xerrno, FALSE);
       return PR_ERROR(cmd);
     }
 
