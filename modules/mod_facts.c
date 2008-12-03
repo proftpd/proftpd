@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.10 2008-11-26 17:18:49 castaglia Exp $
+ * $Id: mod_facts.c,v 1.11 2008-12-03 08:40:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -595,16 +595,24 @@ static int facts_modify_unix_mode(pool *p, const char *path, char *mode_str) {
  */
 
 MODRET facts_mff(cmd_rec *cmd) {
+  register unsigned int i;
   const char *path, *decoded_path;
   char *facts, *ptr;
 
-  if (cmd->argc != 3) {
+  if (cmd->argc < 3) {
     pr_response_add_err(R_501, _("Invalid number of arguments"));
     return PR_ERROR(cmd);
   }
 
   facts = cmd->argv[1];
-  path = cmd->argv[2];
+
+  /* The path can contain spaces; it is thus the concatenation of all of the
+   * arguments after the timestamp.
+   */
+  path = pstrdup(cmd->tmp_pool, cmd->argv[2]);
+  for (i = 3; i < cmd->argc; i++) {
+    path = pstrcat(cmd->tmp_pool, path, " ", cmd->argv[i], NULL);
+  }
 
   decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
@@ -622,6 +630,11 @@ MODRET facts_mff(cmd_rec *cmd) {
   }
 
   ptr = strchr(facts, ';');
+  if (ptr == NULL) {
+    pr_response_add_err(R_550, "%s: %s", facts, strerror(EINVAL));
+    return PR_ERROR(cmd);
+  }
+
   while (ptr) {
     pr_signals_handle();
 
@@ -717,21 +730,29 @@ MODRET facts_mff(cmd_rec *cmd) {
    * were successfully modified are to be included in the response, for
    * possible client parsing.  This means that the list is NOT localisable.
    */
-  pr_response_add(R_213, "%s %s", facts, path);
+  pr_response_add(R_213, "%s %s", cmd->argv[1], path);
   return PR_HANDLED(cmd);
 }
 
 MODRET facts_mfmt(cmd_rec *cmd) {
+  register unsigned int i;
   const char *path, *decoded_path;
   char *timestamp, *ptr;
 
-  if (cmd->argc != 3) {
+  if (cmd->argc < 3) {
     pr_response_add_err(R_501, _("Invalid number of arguments"));
     return PR_ERROR(cmd);
   }
 
   timestamp = cmd->argv[1];
-  path = cmd->argv[2];
+
+  /* The path can contain spaces; it is thus the concatenation of all of the
+   * arguments after the timestamp.
+   */
+  path = pstrdup(cmd->tmp_pool, cmd->argv[2]);
+  for (i = 3; i < cmd->argc; i++) {
+    path = pstrcat(cmd->tmp_pool, path, " ", cmd->argv[i], NULL);
+  }
 
   decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
