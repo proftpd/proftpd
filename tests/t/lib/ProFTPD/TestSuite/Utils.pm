@@ -355,6 +355,28 @@ sub config_write {
           print $fh "</Limit>\n";
         }
 
+      } elsif ($k eq 'Class') {
+        my $sections = $v;
+
+        foreach my $class (keys(%$sections)) {
+          print $fh "<Class $class>\n";
+
+          my $section = $sections->{$class};
+
+          if (ref($section) eq 'HASH') {
+            while (my ($class_k, $class_v) = each(%$section)) {
+              print $fh "  $class_k $class_v\n";
+            }
+
+          } elsif (ref($section) eq 'ARRAY') {
+            foreach my $line (@$section) {
+              print $fh "  $line\n";
+            }
+          }
+
+          print $fh "</Class>\n";
+        }
+
       } else {
         print $fh "$k $v\n";
       }
