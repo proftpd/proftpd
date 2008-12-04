@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.329 2008-10-13 22:36:24 castaglia Exp $
+ * $Id: mod_core.c,v 1.330 2008-12-04 06:55:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3924,17 +3924,20 @@ MODRET core_mkd(cmd_rec *cmd) {
    
   if (!dir_check_canon(cmd->tmp_pool, C_MKD, cmd->group, dir, NULL) ||
       !dir_check_canon(cmd->tmp_pool, C_XMKD, cmd->group, dir, NULL)) {
+    pr_log_debug(DEBUG8, "%s command denied by <Limit> config", cmd->argv[0]);
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
     return PR_ERROR(cmd);
   }
 
   if (pr_fsio_mkdir(dir, 0777) < 0) {
+    int xerrno = errno;
+
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
       "error making directory '%s': %s", cmd->argv[0], session.user,
       (unsigned long) session.uid, (unsigned long) session.gid, dir,
-      strerror(errno));
+      strerror(xerrno));
 
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
     return PR_ERROR(cmd);
   }
 
@@ -3953,17 +3956,18 @@ MODRET core_mkd(cmd_rec *cmd) {
     }
     PRIVS_RELINQUISH
 
-    if (iserr)
+    if (iserr) {
       pr_log_pri(PR_LOG_WARNING, "chown() as root failed: %s", strerror(err));
 
-    else {
-      if (session.fsgid != (gid_t) -1)
+    } else {
+      if (session.fsgid != (gid_t) -1) {
         pr_log_debug(DEBUG2, "root chown(%s) to uid %lu, gid %lu successful",
           dir, (unsigned long) session.fsuid, (unsigned long) session.fsgid);
 
-      else
+      } else {
         pr_log_debug(DEBUG2, "root chown(%s) to uid %lu successful", dir,
           (unsigned long) session.fsuid);
+      }
     }
 
   } else if (session.fsgid != (gid_t) -1) {
