@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.111 2008-10-28 00:48:08 castaglia Exp $
+ * $Id: inet.c,v 1.112 2008-12-04 21:35:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -82,20 +82,34 @@ int pr_inet_getservport(pool *p, const char *serv, const char *proto) {
 static void conn_cleanup_cb(void *cv) {
   conn_t *c = (conn_t *) cv;
 
-  if (c->instrm)
+  /* XXX These closes' return values should be checked, ideally. Do
+   * we really care if they fail, though?
+   */
+
+  if (c->instrm) {
     pr_netio_close(c->instrm);
+    c->instrm = NULL;
+  }
 
-  if (c->outstrm && c->outstrm != c->instrm)
+  if (c->outstrm && c->outstrm != c->instrm) {
     pr_netio_close(c->outstrm);
+    c->outstrm = NULL;
+  }
 
-  if (c->listen_fd != -1)
+  if (c->listen_fd != -1) {
     close(c->listen_fd);
+    c->listen_fd = -1;
+  }
 
-  if (c->rfd != -1)
+  if (c->rfd != -1) {
     close(c->rfd);
+    c->rfd = -1;
+  }
 
-  if (c->wfd != -1)
+  if (c->wfd != -1) {
     close(c->wfd);
+    c->wfd = -1;
+  }
 }
 
 /* Copy a connection structure, also creates a sub pool for the new
