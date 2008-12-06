@@ -79,6 +79,7 @@ if (scalar(@ARGV) > 0) {
     t/config/useftpusers.t
     t/config/limit/xmkd.t
     t/logging/extendedlog.t
+    t/logging/transferlog.t
     t/signals/term.t
     t/signals/hup.t
   )];
