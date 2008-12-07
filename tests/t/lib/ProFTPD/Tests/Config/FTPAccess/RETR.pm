@@ -200,6 +200,51 @@ EOF
       $expected = "$test_file: No such file or directory";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
+
+      # Now prove that the failures are caused by the .ftpaccess file
+      # by deleting that file.
+      unlink($ftpaccess_file);
+
+      $conn = $client->retr_raw("test.txt");
+      unless ($conn) {
+        die("Failed to RETR test.txt: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192);
+      $conn->close();
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $expected = 226;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = "Transfer complete";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+
+      $conn = $client->retr_raw($test_file);
+      unless ($conn) {
+        die("Failed to RETR $test_file: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      $conn->read($buf, 8192);
+      $conn->close();
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $expected = 226;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = "Transfer complete";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -361,6 +406,51 @@ EOF
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "$anon_test_file: No such file or directory";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+
+      # Now prove that the failures are caused by the .ftpaccess file
+      # by deleting that file.
+      unlink($ftpaccess_file);
+
+      $conn = $client->retr_raw("test.txt");
+      unless ($conn) {
+        die("Failed to RETR test.txt: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192);
+      $conn->close();
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $expected = 226;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = "Transfer complete";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+
+      $conn = $client->retr_raw($anon_test_file);
+      unless ($conn) {
+        die("Failed to RETR $anon_test_file: " . $client->response_code() .
+          " " .  $client->response_msg());
+      }
+
+      $conn->read($buf, 8192);
+      $conn->close();
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $expected = 226;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = "Transfer complete";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
