@@ -1,4 +1,4 @@
-<!-- $Id: CreateHome.html,v 1.3 2008-02-15 15:41:24 castaglia Exp $ -->
+<!-- $Id: CreateHome.html,v 1.4 2008-12-07 03:38:30 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/CreateHome.html,v $ -->
 
 <html>
@@ -113,8 +113,11 @@ might use the <code>CreateHome</code> configuration directive:
   <font color=green># Specify a mode of 711 for the created home directory</font>
   CreateHome on 711
 
-  <font color=green># Specify a mode of 711, and have the parent directories owned by a non-root UID/GID</font>
+  <font color=green># Specify a mode of 711, and have the parent directories owned by a specific non-root UID/GID</font>
   CreateHome on 711 uid 100 gid 100
+
+  <font color=green># Specify a mode of 711, and have the parent directories owned by the UID/GID of the logging-in user</font>
+  CreateHome on 711 uid ~ gid ~
 
   <font color=green># Specify a skeleton directory</font>
   CreateHome on skel /etc/ftpd/skel
@@ -163,7 +166,7 @@ For example:
 
 <p>
 <hr>
-<i>$Date: 2008-02-15 15:41:24 $</i><br>
+<i>$Date: 2008-12-07 03:38:30 $</i><br>
 
 </body>
 </html>
