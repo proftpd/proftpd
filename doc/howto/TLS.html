@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.16 2008-03-08 05:12:38 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.17 2008-12-07 20:31:11 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -21,12 +21,9 @@ The <code>mod_tls</code> module for <code>proftpd</code> is an implementation
 of RFC 4217.
 
 <p>
-RFC 2228 defines FTP Security Extensions, of which <code>mod_tls</code> is one implementation:
-</pre>
-  <a href="http://www.faqs.org/rfcs/rfc2228.html">http://www.faqs.org/rfcs/rfc2228.html</a>
-</pre>
-Another such RFC 2228 implementation is the <code>mod_gss</code> module,
-available from SourceForge.
+<a href="http://www.faqs.org/rfcs/rfc2228.html">RFC 2228</a> defines FTP Security Extensions, of which <code>mod_tls</code> is one implementation.  Another
+such RFC 2228 implementation is the <code>mod_gss</code> module, available
+from SourceForge.
 
 <p>
 Example <a href="http://www.castaglia.org/proftpd/modules/mod_tls.html"><code>mod_tls</code></a> configuration:
@@ -354,10 +351,10 @@ Another possibility is a misconfiguration.  If your
 <code>TLSCACertificateFile</code> and <code>TLSRSACertificateFile</code>
 directives are in the &quot;server config&quot; context of the
 <code>proftpd.conf</code> file, <i>and</i> you have
-<code>&gt;VirtualHost&lt;</code> sections in your <code>proftpd.conf</code>,
+<code>&lt;VirtualHost&gt;</code> sections in your <code>proftpd.conf</code>,
 then you might see the &quot;no shared cipher&quot; error.  The easiest
 thing is to move those <code>TLSCACertificateFile</code> and
-<code>TLSRSACertificateFile</code> directives into a <code>&gt;Global&lt;</code>
+<code>TLSRSACertificateFile</code> directives into a <code>&lt;Global&gt;</code>
 section in your <code>proftpd.conf</code>, so that they apply to all
 vhosts configured.  The virtual hosting <a href="Vhost.html">howto</a>
 describes this in more detail.
@@ -516,7 +513,7 @@ For additional reading on OpenSSL and FIPS, see:
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2008-03-08 05:12:38 $</i><br>
+Last Updated: <i>$Date: 2008-12-07 20:31:11 $</i><br>
 <hr>
 
 </body>
