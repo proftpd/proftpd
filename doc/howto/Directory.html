@@ -1,4 +1,4 @@
-<!-- $Id: Directory.html,v 1.9 2008-12-04 06:45:20 castaglia Exp $ -->
+<!-- $Id: Directory.html,v 1.10 2008-12-07 23:59:03 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Directory.html,v $ -->
 
 <html>
@@ -18,10 +18,18 @@ general, straightforward.  However, there are a few caveats of which to
 be aware.
 
 <p>
-First, it is not necessary to nest <code>&lt;Directory&gt;</code>; the
-daemon will not let one do this, in fact.  The daemon will determine
-automatically the relations of <code>&lt;Directory&gt;</code> paths,
-depending on the path given and surrounding configuration context.
+First, it is not necessary to nest <code>&lt;Directory&gt;</code> sections,
+like:
+<pre>
+  &lt;Directory /path/to/dir&gt;
+    &lt;Directory /path/to/dir/subdir&gt;
+      ...
+    &lt;/Directory&gt;
+  &lt;/Directory&gt;
+</pre>
+The daemon will not let one do this, in fact.  The daemon will determine
+automatically the relations of <code>&lt;Directory&gt;</code> paths, depending
+on the path given and surrounding configuration context.
 
 <p>
 Always use the normal, absolute path for a <code>&lt;Directory&gt;</code>
@@ -41,6 +49,18 @@ directory name in quotations, <i>e.g.</i>:
 <pre>
   &lt;Directory &quot;/path/to/My Directory&quot;&gt;
 </pre>
+
+<p>
+Any configuration directives in a <code>&lt;Directory&gt;</code> section
+will apply to that directory <i>and to all of the contents of that directory
+recursively</i>.  Thus if you use:
+<pre>
+  &lt;Directory /path/to/dir&gt;
+    Umask 022
+  &lt;/Directory&gt;
+</pre>
+Then that <code>Umask</code> value will be used within the
+"/path/to/dir/subdir/" directory as well.
 
 <p>
 As noted in the documentation, use of a <code>/*</code> suffix on a path
@@ -164,7 +184,7 @@ was used just for this one file, <i>e.g.</i>:
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2008-12-04 06:45:20 $</i><br>
+Last Updated: <i>$Date: 2008-12-07 23:59:03 $</i><br>
 <hr>
 
 </body>
