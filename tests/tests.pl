@@ -110,6 +110,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_sql_sqlite)],
     },
 
+    't/modules/mod_tls.t' => {
+      order => ++$order,
+      test_class => [qw(mod_tls)],
+    },
+
     't/modules/mod_wrap2_file.t' => {
       order => ++$order,
       test_class => [qw(mod_wrap2_file)],
