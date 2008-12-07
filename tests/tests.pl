@@ -62,6 +62,7 @@ if (scalar(@ARGV) > 0) {
     t/commands/mlst.t
     t/commands/mff.t
     t/commands/mfmt.t
+    t/config/createhome.t
     t/config/displayconnect.t
     t/config/displaylogin.t
     t/config/hidefiles.t
