@@ -1674,7 +1674,8 @@ static int tls_init_ctxt(void) {
 
   /* Set up session caching. */
   SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
-  SSL_CTX_set_session_id_context(ssl_ctx, (const unsigned char *) "1", 1);
+  SSL_CTX_set_session_id_context(ssl_ctx, MOD_TLS_VERSION,
+    strlen(MOD_TLS_VERSION));
 
   SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
 
