@@ -23,7 +23,7 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.11 2008-09-11 02:00:27 castaglia Exp $
+ * $Id: mkhome.c,v 1.12 2008-12-07 03:29:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -89,6 +89,18 @@ static int create_path(pool *p, const char *path, const char *user,
   }
 
   pr_event_generate("core.create-home", user);
+
+  /* The special-case values of -1 for dir UID/GID mean that the destination
+   * UID/GID should be used for the parent directories.
+   */
+
+  if (dir_uid == (uid_t) -1) {
+    dir_uid = dst_uid;
+  }
+
+  if (dir_gid == (gid_t) -1) {
+    dir_gid = dst_gid;
+  }
 
   pr_log_debug(DEBUG3, "creating home directory '%s' for user '%s'", path,
     user);

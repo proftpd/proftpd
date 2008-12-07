@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.247 2008-10-19 23:59:39 castaglia Exp $
+ * $Id: mod_auth.c,v 1.248 2008-12-07 03:29:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2215,27 +2215,49 @@ MODRET set_createhome(cmd_rec *cmd) {
         i++;
 
       } else if (strcasecmp(cmd->argv[i], "uid") == 0) {
-        char *tmp = NULL;
-        uid_t uid;
 
-        uid = strtol(cmd->argv[++i], &tmp, 10);
+        /* Check for a "~" parameter. */
+        if (strcmp(cmd->argv[i+1], "~") != 0) {
+          char *tmp = NULL;
+          uid_t uid;
 
-        if (tmp && *tmp)
-          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad UID parameter: '",
-            cmd->argv[i], "'", NULL));
+          uid = strtol(cmd->argv[++i], &tmp, 10);
+
+          if (tmp && *tmp) {
+            CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad UID parameter: '",
+              cmd->argv[i], "'", NULL));
+          }
+
+          cuid = uid;
+
+        } else {
+          cuid = (uid_t) -1;       
+          i++;
+        }
 
         /* Move the index past the uid parameter */
         i++;
 
       } else if (strcasecmp(cmd->argv[i], "gid") == 0) {
-        char *tmp = NULL;
-        gid_t gid;
 
-        gid = strtol(cmd->argv[++i], &tmp, 10);
+        /* Check for a "~" parameter. */
+        if (strcmp(cmd->argv[i+1], "~") != 0) {
+          char *tmp = NULL;
+          gid_t gid;
 
-        if (tmp && *tmp)
-          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad GID parameter: '",
-            cmd->argv[i], "'", NULL));
+          gid = strtol(cmd->argv[++i], &tmp, 10);
+
+          if (tmp && *tmp) {
+            CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad GID parameter: '",
+              cmd->argv[i], "'", NULL));
+          }
+
+          cgid = gid;
+
+        } else {
+          cgid = (gid_t) -1;
+          i++;
+        }
 
         /* Move the index past the gid parameter */
         i++;
