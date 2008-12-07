@@ -1,4 +1,4 @@
-<!-- $Id: Rewrite.html,v 1.1 2008-12-07 00:19:26 castaglia Exp $ -->
+<!-- $Id: Rewrite.html,v 1.2 2008-12-07 00:24:20 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Rewrite.html,v $ -->
 
 <html>
@@ -13,7 +13,7 @@
 <hr>
 
 <p>
-The <a href="http://www.proftpd.org/docs/contrib/mod_rewrite.html"><code>mod_rewrite</code></a> module for <code>proftpd</code> is a powerful tool
+The <a href="../contrib/mod_rewrite.html"><code>mod_rewrite</code></a> module for <code>proftpd</code> is a powerful tool
 for rewriting FTP commands received from clients.  It has been used to
 automatically append (or remove) domain names from logins, to translate
 Windows paths (using backslashes) to Unix paths (using slashes), to handle
@@ -141,7 +141,7 @@ ID (PID), to ensure some sort of file name uniqueness.  Enter
   &lt;/IfModule&gt;
 </pre>
 This appends the PID of the current session process to any uploaded filename.
-For more variables like <code>%P</code>, see the <a href="http://www.proftpd.org/docs/contrib/mod_rewrite.html#RewriteCondition"><code>RewriteCondition</code></a> and <a href="http://www.proftpd.org/docs/contrib/mod_rewrite.html#RewriteRule"><code>RewriteRule</code></a> descriptions.
+For more variables like <code>%P</code>, see the <a href="../contrib/mod_rewrite.html#RewriteCondition"><code>RewriteCondition</code></a> and <a href="../contrib/mod_rewrite.html#RewriteRule"><code>RewriteRule</code></a> descriptions.
 
 <p>
 <b>Modifying User Names</b><br>
