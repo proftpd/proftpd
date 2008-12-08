@@ -142,9 +142,9 @@ sub login_alarm {
 sub login {
   my $self = shift;
   my $user = shift;
-  croak("Missing required user argument") unless $user;
+  croak("Missing required user argument") unless defined($user);
   my $pass = shift;
-  croak("Missing required password argument") unless $pass;
+  croak("Missing required password argument") unless defined($pass);
   $login_timeout = shift;
   $login_timeout = 30 unless defined($login_timeout);
 
