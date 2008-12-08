@@ -214,7 +214,8 @@ sub config_write_subsection {
 
       if (ref($section) eq 'HASH') {
         while (my ($dir_k, $dir_v) = each(%$section)) {
-          if (ref($dir_v) eq 'HASH') {
+          if (ref($dir_v) eq 'HASH' ||
+              ref($dir_v) eq 'ARRAY') {
             config_write_subsection($fh, $dir_k, $dir_v, "$indent  ");
 
           } else {
@@ -242,7 +243,8 @@ sub config_write_subsection {
       if (ref($section) eq 'HASH') {
         while (my ($limit_k, $limit_v) = each(%$section)) {
 
-          if (ref($limit_v) eq 'HASH') {
+          if (ref($limit_v) eq 'HASH' ||
+              ref($limit_v) eq 'ARRAY') {
             config_write_subsection($fh, $limit_k, $limit_v, "$indent  ");
 
           } else {
@@ -384,7 +386,8 @@ sub config_write {
 
           if (ref($section) eq 'HASH') {
             while (my ($dir_k, $dir_v) = each(%$section)) {
-              if (ref($dir_v) eq 'HASH') {
+              if (ref($dir_v) eq 'HASH' ||
+                  ref($dir_v) eq 'ARRAY') {
                 config_write_subsection($fh, $dir_k, $dir_v, "  ");
 
               } else {
@@ -411,7 +414,8 @@ sub config_write {
 
           if (ref($section) eq 'HASH') {
             while (my ($limit_k, $limit_v) = each(%$section)) {
-              if (ref($limit_v) eq 'HASH') {
+              if (ref($limit_v) eq 'HASH' ||
+                  ref($limit_v) eq 'ARRAY') {
                 config_write_subsection($fh, $limit_k, $limit_v, "  ");
 
               } else {
