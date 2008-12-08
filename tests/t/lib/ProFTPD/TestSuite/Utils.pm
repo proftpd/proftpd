@@ -115,7 +115,7 @@ sub auth_group_write {
 
   my @member_names = @_;
 
-  if (open(my $fh, "> $group_file")) {
+  if (open(my $fh, ">> $group_file")) {
     print $fh "$group_name:*:$group_id:" . join(',', @member_names) . "\n";
 
     unless (close($fh)) {
@@ -145,7 +145,7 @@ sub auth_user_write {
 
   my $passwd = get_passwd($user_passwd);
 
-  if (open(my $fh, "> $user_file")) {
+  if (open(my $fh, ">> $user_file")) {
     print $fh join(':', ($user_name, $passwd, $user_id, $group_id, '', $home,
       $shell)), "\n";
 
