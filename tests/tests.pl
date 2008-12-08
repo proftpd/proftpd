@@ -65,6 +65,7 @@ if (scalar(@ARGV) > 0) {
     t/config/createhome.t
     t/config/displayconnect.t
     t/config/displaylogin.t
+    t/config/groupowner.t
     t/config/hidefiles.t
     t/config/maxinstances.t
     t/config/maxloginattempts.t
