@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.354 2008-11-19 08:58:36 castaglia Exp $
+ * $Id: main.c,v 1.355 2008-12-08 05:00:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1664,13 +1664,13 @@ void pr_signals_handle(void) {
 
     if (recvd_signal_flags & RECEIVED_SIG_ALRM) {
       recvd_signal_flags &= ~RECEIVED_SIG_ALRM;
-      pr_trace_msg("signal", 9, "handling SIGALRM");
+      pr_trace_msg("signal", 9, "handling SIGALRM (signal %d)", SIGALRM);
       handle_alarm();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_CHLD) {
       recvd_signal_flags &= ~RECEIVED_SIG_CHLD;
-      pr_trace_msg("signal", 9, "handling SIGCHLD");
+      pr_trace_msg("signal", 9, "handling SIGCHLD (signal %d)", SIGCHLD);
       handle_chld();
     }
 
@@ -1678,13 +1678,13 @@ void pr_signals_handle(void) {
       recvd_signal_flags &= ~RECEIVED_SIG_EVENT;
 
       /* The "event" signal is SIGUSR2 in proftpd. */
-      pr_trace_msg("signal", 9, "handling SIGUSR2");
+      pr_trace_msg("signal", 9, "handling SIGUSR2 (signal %d)", SIGUSR2);
       handle_evnt();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_SEGV) {
       recvd_signal_flags &= ~RECEIVED_SIG_SEGV;
-      pr_trace_msg("signal", 9, "handling SIGSEGV");
+      pr_trace_msg("signal", 9, "handling SIGSEGV (signal %d)", SIGSEGV);
       handle_terminate_other();
     }
 
@@ -1702,18 +1702,18 @@ void pr_signals_handle(void) {
 
     if (recvd_signal_flags & RECEIVED_SIG_XCPU) {
       recvd_signal_flags &= ~RECEIVED_SIG_XCPU;
-      pr_trace_msg("signal", 9, "handling SIGXCPU");
+      pr_trace_msg("signal", 9, "handling SIGXCPU (signal %d)", SIGXCPU);
       handle_xcpu();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_ABORT) {
       recvd_signal_flags &= ~RECEIVED_SIG_ABORT;
-      pr_trace_msg("signal", 9, "handling SIGABRT");
+      pr_trace_msg("signal", 9, "handling SIGABRT (signal %d)", SIGABRT);
       handle_abort();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_RESTART) {
-      pr_trace_msg("signal", 9, "handling SIGHUP");
+      pr_trace_msg("signal", 9, "handling SIGHUP (signal %d)", SIGHUP);
 
       /* NOTE: should this be done here, rather than using a schedule? */
       schedule(core_restart_cb, 0, NULL, NULL, NULL, NULL);
@@ -1722,13 +1722,13 @@ void pr_signals_handle(void) {
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_EXIT) {
-      pr_trace_msg("signal", 9, "handling SIGUSR1");
+      pr_trace_msg("signal", 9, "handling SIGUSR1 (signal %d)", SIGUSR1);
       session_exit(PR_LOG_NOTICE, "Parent process requested shutdown", 0, NULL);
       recvd_signal_flags &= ~RECEIVED_SIG_EXIT;
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_SHUTDOWN) {
-      pr_trace_msg("signal", 9, "handling SIGUSR1");
+      pr_trace_msg("signal", 9, "handling SIGUSR1 (signal %d)", SIGUSR1);
 
       /* NOTE: should this be done here, rather than using a schedule? */
       schedule(shutdown_exit, 0, NULL, NULL, NULL, NULL);
@@ -1837,7 +1837,7 @@ static RETSIGTYPE sig_abort(int signo) {
 
 static void handle_abort(void) {
   pr_log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, no core dump");
-  end_login_noexit();
+  finish_terminate();
 }
 
 #ifdef PR_DEVEL_STACK_TRACE
@@ -1881,7 +1881,7 @@ static RETSIGTYPE sig_terminate(int signo) {
   pr_scoreboard_entry_del(FALSE);
 
   if (signo == SIGSEGV) {
-    recvd_signal_flags |= RECEIVED_SIG_ABORT;
+    recvd_signal_flags |= RECEIVED_SIG_SEGV;
 
     /* This is probably not the safest thing to be doing, but since the
      * process is terminating anyway, why not?  It helps when knowing/logging
@@ -1897,14 +1897,15 @@ static RETSIGTYPE sig_terminate(int signo) {
     signal(SIGSEGV, SIG_DFL);
 #endif /* PR_DEVEL_STACK_TRACE */
 
-  } else if (signo == SIGTERM)
+  } else if (signo == SIGTERM) {
     recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
 
-  else if (signo == SIGXCPU)
+  } else if (signo == SIGXCPU) {
     recvd_signal_flags |= RECEIVED_SIG_XCPU;
 
-  else
+  } else {
     recvd_signal_flags |= RECEIVED_SIG_TERM_OTHER;
+  }
 
   /* Capture the signal number for later display purposes. */
   term_signo = signo;
