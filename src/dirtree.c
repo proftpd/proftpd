@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.194 2008-11-06 21:47:17 castaglia Exp $
+ * $Id: dirtree.c,v 1.195 2008-12-08 03:01:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -369,6 +369,11 @@ unsigned char dir_hide_file(const char *path) {
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_regex, have_group_regex, have_class_regex,
     have_all_regex, inverted = FALSE;
+
+  if (path == NULL ||
+      !*path) {
+    return FALSE;
+  }
 
   pr_pool_tag(tmp_pool, "dir_hide_file() tmp pool");
 
@@ -1520,7 +1525,7 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
  */
 
 int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
-  char *fullpath, *owner, *tmp = NULL;
+  char *fullpath, *owner;
   config_rec *c;
   struct stat st;
   pool *p;
@@ -1553,8 +1558,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   build_dyn_config(p, path, &st, TRUE);
 
   /* Check to see if this path is hidden by HideFiles. */
-  tmp = strrchr(fullpath, '/');
-  regex_hidden = tmp ? dir_hide_file(++tmp) : dir_hide_file(fullpath);
+  regex_hidden = dir_hide_file(path);
 
   /* Cache a pointer to the set of configuration data for this directory in
    * session.dir_config.
@@ -1657,7 +1661,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
  */
 
 int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
-  char *fullpath, *owner, *tmp = NULL;
+  char *fullpath, *owner;
   config_rec *c;
   struct stat st;
   pool *p;
@@ -1695,8 +1699,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   build_dyn_config(p, path, &st, FALSE);
 
   /* Check to see if this path is hidden by HideFiles. */
-  tmp = strrchr(fullpath, '/');
-  regex_hidden = tmp ? dir_hide_file(++tmp) : dir_hide_file(fullpath);
+  regex_hidden = dir_hide_file(path);
 
   /* Cache a pointer to the set of configuration data for this directory in
    * session.dir_config.

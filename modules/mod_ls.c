@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.151 2008-09-02 15:54:50 castaglia Exp $
+ * $Id: mod_ls.c,v 1.152 2008-12-08 03:01:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1746,7 +1746,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
       f = p;
     }
 
-    if (ls_perms(workp, cmd, f, &hidden)) {
+    if (ls_perms(workp, cmd, dir_best_path(cmd->tmp_pool, f), &hidden)) {
       if (hidden)
         continue;
 
