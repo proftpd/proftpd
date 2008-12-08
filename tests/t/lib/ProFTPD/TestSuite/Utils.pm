@@ -111,7 +111,7 @@ sub auth_group_write {
   my $group_name = shift;
   croak("Missing group name argument") unless $group_name;
   my $group_id = shift;
-  croak("Missing group ID argument") unless $group_id;
+  croak("Missing group ID argument") unless defined($group_id);
 
   my @member_names = @_;
 
@@ -135,9 +135,9 @@ sub auth_user_write {
   my $user_passwd = shift;
   croak("Missing user password argument") unless $user_passwd;
   my $user_id = shift;
-  croak("Missing user ID argument") unless $user_id;
+  croak("Missing user ID argument") unless defined($user_id);
   my $group_id = shift;
-  croak("Missing group ID argument") unless $group_id;
+  croak("Missing group ID argument") unless defined($group_id);
   my $home = shift;
   croak("Missing home directory argument") unless $home;
   my $shell = shift;
