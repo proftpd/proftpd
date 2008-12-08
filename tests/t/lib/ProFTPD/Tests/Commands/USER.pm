@@ -57,7 +57,7 @@ sub tear_down {
   }
 
   undef $self;
-};
+}
 
 sub user_ok {
   my $self = shift;
@@ -186,7 +186,7 @@ sub user_fails_no_user {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
+  my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
 

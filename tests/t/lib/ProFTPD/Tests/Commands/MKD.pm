@@ -67,7 +67,7 @@ sub tear_down {
   }
 
   undef $self;
-};
+}
 
 sub mkd_ok {
   my $self = shift;
@@ -271,7 +271,7 @@ sub mkd_fails_enoent {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "$sub_dir: Operation not permitted";
+      $expected = "$sub_dir: No such file or directory";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
@@ -402,9 +402,9 @@ sub mkd_fails_eperm {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "$sub_dir: Operation not permitted";
+      $expected = "$sub_dir: (Operation not permitted|Permission denied)";
       chomp($resp_msg);
-      $self->assert($expected eq $resp_msg,
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
