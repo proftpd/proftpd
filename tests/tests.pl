@@ -86,6 +86,8 @@ if (scalar(@ARGV) > 0) {
     t/logging/transferlog.t
     t/signals/term.t
     t/signals/hup.t
+    t/signals/segv.t
+    t/signals/abrt.t
   )];
 
   # Now interrogate the build to see which module/feature-specific test files
