@@ -78,6 +78,7 @@ if (scalar(@ARGV) > 0) {
     t/config/timeoutsession.t
     t/config/timeoutstalled.t
     t/config/useftpusers.t
+    t/config/directory/umask.t
     t/config/ftpaccess/dele.t
     t/config/ftpaccess/retr.t
     t/config/limit/xmkd.t

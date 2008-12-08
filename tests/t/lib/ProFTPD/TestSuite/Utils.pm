@@ -198,6 +198,69 @@ sub config_get_identity {
   return ($user, $group);
 }
 
+sub config_write_subsection {
+  my $fh = shift;
+  my $type = shift;
+  my $config = shift;
+  my $indent = shift;
+
+  if ($type eq 'Directory') {
+    my $sections = $config;
+
+    foreach my $dir (keys(%$sections)) {
+      print $fh "$indent<Directory $dir>\n";
+
+      my $section = $sections->{$dir};
+
+      if (ref($section) eq 'HASH') {
+        while (my ($dir_k, $dir_v) = each(%$section)) {
+          if (ref($dir_v) eq 'HASH') {
+            config_write_subsection($fh, $dir_k, $dir_v, "$indent  ");
+
+          } else {
+            print $fh "$indent  $dir_k $dir_v\n";
+          }
+        }
+
+      } elsif (ref($section) eq 'ARRAY') {
+        foreach my $line (@$section) {
+          print $fh "$indent  $line\n";
+        }
+      }
+
+      print $fh "$indent</Directory>\n";
+    }
+
+  } elsif ($type eq 'Limit') {
+    my $sections = $config;
+
+    foreach my $limits (keys(%$sections)) {
+      print $fh "$indent<Limit $limits>\n";
+
+      my $section = $sections->{$limits};
+
+      if (ref($section) eq 'HASH') {
+        while (my ($limit_k, $limit_v) = each(%$section)) {
+
+          if (ref($limit_v) eq 'HASH') {
+            config_write_subsection($fh, $limit_k, $limit_v, "$indent  ");
+
+          } else {
+            print $fh "$indent  $limit_k $limit_v\n";
+          }
+        }
+
+      } elsif (ref($section) eq 'ARRAY') {
+        foreach my $line (@$section) {
+          print $fh "$indent  $line\n";
+        }
+      }
+
+      print $fh "$indent</Limit>\n";
+    }
+  }
+}
+
 sub config_write {
   my $path = shift;
   my $config = shift;
@@ -321,7 +384,12 @@ sub config_write {
 
           if (ref($section) eq 'HASH') {
             while (my ($dir_k, $dir_v) = each(%$section)) {
-              print $fh "  $dir_k $dir_v\n";
+              if (ref($dir_v) eq 'HASH') {
+                config_write_subsection($fh, $dir_k, $dir_v, "  ");
+
+              } else {
+                print $fh "  $dir_k $dir_v\n";
+              }
             }
 
           } elsif (ref($section) eq 'ARRAY') {
@@ -343,7 +411,12 @@ sub config_write {
 
           if (ref($section) eq 'HASH') {
             while (my ($limit_k, $limit_v) = each(%$section)) {
-              print $fh "  $limit_k $limit_v\n";
+              if (ref($limit_v) eq 'HASH') {
+                config_write_subsection($fh, $limit_k, $limit_v, "  ");
+
+              } else {
+                print $fh "  $limit_k $limit_v\n";
+              }
             }
 
           } elsif (ref($section) eq 'ARRAY') {
