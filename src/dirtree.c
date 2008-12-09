@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.197 2008-12-09 19:08:45 castaglia Exp $
+ * $Id: dirtree.c,v 1.198 2008-12-09 22:13:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1244,11 +1244,13 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
     return TRUE;			/* default is to allow */
 
   /* First check top level */
-  for (c = (config_rec *) set->xas_list; c; c = c->next)
+  for (c = (config_rec *) set->xas_list; c; c = c->next) {
     if (c->config_type == CONF_LIMIT) {
-      for (argc = c->argc, argv = (char **) c->argv; argc; argc--, argv++)
-        if (strcasecmp("LOGIN", *argv) == 0)
+      for (argc = c->argc, argv = (char **) c->argv; argc; argc--, argv++) {
+        if (strcasecmp("LOGIN", *argv) == 0) {
           break;
+        }
+      }
 
       if (argc) {
         if (and) {
@@ -1281,10 +1283,13 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
         }
       }
     }
+  }
 
-  if ( ((res && and) || (!res && !and && *found)) && recurse ) {
-    for (c = (config_rec *) set->xas_list; c; c = c->next)
-      if (c->config_type == CONF_ANON && c->subset && c->subset->xas_list) {
+  if (((res && and) || (!res && !and && *found)) && recurse) {
+    for (c = (config_rec *) set->xas_list; c; c = c->next) {
+      if (c->config_type == CONF_ANON &&
+          c->subset &&
+          c->subset->xas_list) {
        if (and) {
          res = (res && login_check_limits(c->subset, recurse, and, &rfound));
          (*found) += rfound;
@@ -1297,11 +1302,13 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
          rres = login_check_limits(c->subset, recurse, and, &rfound);
          if (rfound)
            res = (res || rres);
+
          (*found) += rfound;
          if (res)
            break;
        }
      }
+    }
   }
 
   if (!*found && !and)
@@ -1322,13 +1329,15 @@ static int _check_limits(xaset_t *set, char *cmd, int hidden) {
     return res;
 
   for (lc = (config_rec *) set->xas_list; lc && (res == 1); lc = lc->next) {
+    pr_signals_handle();
 
     if (lc->config_type == CONF_LIMIT) {
       register unsigned int i = 0;
 
       for (i = 0; i < lc->argc; i++) {
-        if (strcasecmp(cmd, (char *) lc->argv[i]) == 0)
+        if (strcasecmp(cmd, (char *) lc->argv[i]) == 0) {
           break;
+        }
       }
 	
       if (i == lc->argc)
@@ -1380,14 +1389,16 @@ static int _check_limits(xaset_t *set, char *cmd, int hidden) {
 int dir_check_limits(config_rec *c, char *cmd, int hidden) {
   int res = 1;
 
-  for (; c && (res == 1); c = c->parent)
+  for (; c && (res == 1); c = c->parent) {
     res = _check_limits(c->subset, cmd, hidden);
+  }
 
-  if (!c && (res == 1))
+  if (!c && (res == 1)) {
     /* vhost or main server has been reached without an explicit permit or deny,
      * so try the current server.
      */
     res = _check_limits(main_server->conf, cmd, hidden);
+  }
 
   return res;
 }

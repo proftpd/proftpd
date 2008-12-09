@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.330 2008-12-04 06:55:13 castaglia Exp $
+ * $Id: mod_core.c,v 1.331 2008-12-09 22:13:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2222,7 +2222,7 @@ MODRET end_directory(cmd_rec *cmd) {
   pr_parser_config_ctxt_close(&empty_ctxt);
 
   if (empty_ctxt)
-    pr_log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
+    pr_log_debug(DEBUG3, "%s: ignoring empty section", cmd->argv[0]);
 
   return PR_HANDLED(cmd);
 }
@@ -2269,7 +2269,7 @@ MODRET end_anonymous(cmd_rec *cmd) {
   pr_parser_config_ctxt_close(&empty_ctxt);
 
   if (empty_ctxt)
-    pr_log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
+    pr_log_debug(DEBUG3, "%s: ignoring empty section", cmd->argv[0]);
 
   return PR_HANDLED(cmd);
 }
@@ -2317,7 +2317,7 @@ MODRET end_global(cmd_rec *cmd) {
   pr_parser_config_ctxt_close(&empty_ctxt);
 
   if (empty_ctxt)
-    pr_log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
+    pr_log_debug(DEBUG3, "%s: ignoring empty section", cmd->argv[0]);
 
   return PR_HANDLED(cmd);
 }
@@ -2325,25 +2325,35 @@ MODRET end_global(cmd_rec *cmd) {
 MODRET add_limit(cmd_rec *cmd) {
   config_rec *c = NULL;
   int cargc;
-  char **argv,**cargv;
+  char **cargv;
+  array_header *list;
 
   if (cmd->argc < 2)
     CONF_ERROR(cmd, "directive requires one or more commands");
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_DIR|CONF_ANON|CONF_DYNDIR|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_DIR|CONF_ANON|CONF_DYNDIR|CONF_GLOBAL);
 
   c = pr_parser_config_ctxt_open("Limit");
   c->config_type = CONF_LIMIT;
-  cargc = cmd->argc-1;
-  cargv = cmd->argv+1;
+  cargc = cmd->argc;
+  cargv = cmd->argv;
 
-  c->argc = cmd->argc-1;
-  c->argv = pcalloc(c->pool,cmd->argc*sizeof(void*));
-  argv = (char**)c->argv;
+  list = make_array(c->pool, c->argc + 1, sizeof(void *));
 
-  while(cargc--)
-    *argv++ = pstrdup(c->pool, *cargv++);
+  while (cargc-- && *(++cargv)) {
+    char *ent = NULL;
+    char *str = pstrdup(cmd->tmp_pool, *cargv);
 
-  *argv = NULL;
+    while ((ent = pr_str_get_token(&str, ",")) != NULL) {
+      pr_signals_handle();
+
+      if (*ent) {
+        *((char **) push_array(list)) = pstrdup(c->pool, ent);
+      }
+    }
+  }
+
+  c->argc = list->nelts;
+  c->argv = list->elts;
 
   return PR_HANDLED(cmd);
 }
@@ -2623,7 +2633,7 @@ MODRET end_limit(cmd_rec *cmd) {
   pr_parser_config_ctxt_close(&empty_ctxt);
 
   if (empty_ctxt)
-    pr_log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
+    pr_log_debug(DEBUG3, "%s: ignoring empty section", cmd->argv[0]);
 
   return PR_HANDLED(cmd);
 }
