@@ -129,6 +129,27 @@ sub tear_down {
   undef $self;
 }
 
+sub get_tally {
+  my $db_file = shift;
+  my $where = shift;
+
+  my $sql = "SELECT quota_type, bytes_in_used, bytes_out_used, bytes_xfer_used, files_in_used, files_out_used, files_xfer_used FROM quotatallies";
+  if ($where) {
+    $sql .= " WHERE $where";
+  }
+
+  my $cmd = "sqlite3 $db_file \"$sql\"";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my $res = join('', `$cmd`);
+
+  # The default sqlite3 delimiter is '|'
+  return split(/\|/, $res);
+}
+
 sub quotatab_stor_ok_user_limit {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
@@ -311,6 +332,38 @@ EOS
   server_stop($pid_file);
 
   $self->assert_child_ok($pid);
+
+  my ($quota_type, $bytes_in_used, $bytes_out_used, $bytes_xfer_used, $files_in_used, $files_out_used, $files_xfer_used) = get_tally($db_file, "name = \'$user\'");
+
+  my $expected;
+
+  $expected = 'user';
+  $self->assert($expected eq $quota_type,
+    test_msg("Expected '$expected', got '$quota_type'"));
+
+  $expected = '13.0';
+  $self->assert($expected eq $bytes_in_used,
+    test_msg("Expected $expected, got $bytes_in_used"));
+
+  $expected = '0.0';
+  $self->assert($expected eq $bytes_out_used,
+    test_msg("Expected $expected, got $bytes_out_used"));
+
+  $expected = '0.0';
+  $self->assert($expected eq $bytes_xfer_used,
+    test_msg("Expected $expected, got $bytes_xfer_used"));
+
+  $expected = 1;
+  $self->assert($expected == $files_in_used,
+    test_msg("Expected $expected, got $files_in_used"));
+
+  $expected = 0;
+  $self->assert($expected == $files_out_used,
+    test_msg("Expected $expected, got $files_out_used"));
+
+  $expected = 0;
+  $self->assert($expected == $files_xfer_used,
+    test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
     die($ex);
