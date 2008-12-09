@@ -1211,6 +1211,38 @@ EOS
 
   $self->assert_child_ok($pid);
 
+  my ($quota_type, $bytes_in_used, $bytes_out_used, $bytes_xfer_used, $files_in_used, $files_out_used, $files_xfer_used) = get_tally($db_file, "name = \'$group\'");
+
+  my $expected;
+
+  $expected = 'group';
+  $self->assert($expected eq $quota_type,
+    test_msg("Expected '$expected', got '$quota_type'"));
+
+  $expected = '26.0';
+  $self->assert($expected eq $bytes_in_used,
+    test_msg("Expected $expected, got $bytes_in_used"));
+
+  $expected = '0.0';
+  $self->assert($expected eq $bytes_out_used,
+    test_msg("Expected $expected, got $bytes_out_used"));
+
+  $expected = '0.0';
+  $self->assert($expected eq $bytes_xfer_used,
+    test_msg("Expected $expected, got $bytes_xfer_used"));
+
+  $expected = 2;
+  $self->assert($expected == $files_in_used,
+    test_msg("Expected $expected, got $files_in_used"));
+
+  $expected = 0;
+  $self->assert($expected == $files_out_used,
+    test_msg("Expected $expected, got $files_out_used"));
+
+  $expected = 0;
+  $self->assert($expected == $files_xfer_used,
+    test_msg("Expected $expected, got $files_xfer_used"));
+
   if ($ex) {
     die($ex);
   }
@@ -2136,6 +2168,38 @@ EOS
   server_stop($pid_file);
 
   $self->assert_child_ok($pid);
+
+  my ($quota_type, $bytes_in_used, $bytes_out_used, $bytes_xfer_used, $files_in_used, $files_out_used, $files_xfer_used) = get_tally($db_file, "name = \'$class\'");
+
+  my $expected;
+
+  $expected = 'class';
+  $self->assert($expected eq $quota_type,
+    test_msg("Expected '$expected', got '$quota_type'"));
+
+  $expected = '26.0';
+  $self->assert($expected eq $bytes_in_used,
+    test_msg("Expected $expected, got $bytes_in_used"));
+
+  $expected = '0.0';
+  $self->assert($expected eq $bytes_out_used,
+    test_msg("Expected $expected, got $bytes_out_used"));
+
+  $expected = '0.0';
+  $self->assert($expected eq $bytes_xfer_used,
+    test_msg("Expected $expected, got $bytes_xfer_used"));
+
+  $expected = 2;
+  $self->assert($expected == $files_in_used,
+    test_msg("Expected $expected, got $files_in_used"));
+
+  $expected = 0;
+  $self->assert($expected == $files_out_used,
+    test_msg("Expected $expected, got $files_out_used"));
+
+  $expected = 0;
+  $self->assert($expected == $files_xfer_used,
+    test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
     die($ex);
@@ -3080,6 +3144,38 @@ EOS
   server_stop($pid_file);
 
   $self->assert_child_ok($pid);
+
+  my ($quota_type, $bytes_in_used, $bytes_out_used, $bytes_xfer_used, $files_in_used, $files_out_used, $files_xfer_used) = get_tally($db_file, "name = \'\'");
+
+  my $expected;
+
+  $expected = 'all';
+  $self->assert($expected eq $quota_type,
+    test_msg("Expected '$expected', got '$quota_type'"));
+
+  $expected = '26.0';
+  $self->assert($expected eq $bytes_in_used,
+    test_msg("Expected $expected, got $bytes_in_used"));
+
+  $expected = '0.0';
+  $self->assert($expected eq $bytes_out_used,
+    test_msg("Expected $expected, got $bytes_out_used"));
+
+  $expected = '0.0';
+  $self->assert($expected eq $bytes_xfer_used,
+    test_msg("Expected $expected, got $bytes_xfer_used"));
+
+  $expected = 2;
+  $self->assert($expected == $files_in_used,
+    test_msg("Expected $expected, got $files_in_used"));
+
+  $expected = 0;
+  $self->assert($expected == $files_out_used,
+    test_msg("Expected $expected, got $files_out_used"));
+
+  $expected = 0;
+  $self->assert($expected == $files_xfer_used,
+    test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
     die($ex);
