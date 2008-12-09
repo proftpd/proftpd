@@ -1,4 +1,4 @@
-<!-- $Id: Directory.html,v 1.10 2008-12-07 23:59:03 castaglia Exp $ -->
+<!-- $Id: Directory.html,v 1.11 2008-12-09 22:56:39 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Directory.html,v $ -->
 
 <html>
@@ -182,9 +182,93 @@ was used just for this one file, <i>e.g.</i>:
   &lt;/Anonymous&gt;
 </pre>
 
+<p><a name="FAQ"></a>
+<b>Frequently Asked Questions</b><br>
+
+<p><a name="MultipleDirectoriesSamePath">
+<font color=red>Question</font>: What happens if I configure two <code>&lt;Directory&gt;</code> sections for the exact same path?<br>
+<font color=blue>Answer</font>: If you use explicit paths, then the config
+parser will choke on the duplicate <code>&lt;Directory&gt;</code> sections.
+For example, if you tried:
+<pre>
+  &lt;Directory /path/to/dir&gt;
+    &lt;Limit ALL&gt;
+      DenyAll
+    &lt;/Limit&gt;
+  &lt/Directory&gt;
+
+  &lt;Directory /path/to/dir&gt;
+    &lt;Limit ALL&gt;
+      AllowAll
+    &lt;/Limit&gt;
+
+    &lt;Limit WRITE&gt;
+      DenyAll
+    &lt;/Limit&gt;
+  &lt/Directory&gt;
+</pre>
+When starting <code>proftpd</code>, you would see something like:
+<pre>
+ - Fatal: <Directory>: <Directory> section already configured for '/path/to/dir' on line 39 of '/etc/ftpd/proftpd.conf'
+</pre>
+
+<p>
+But what if you have the two <code>&lt;Directory&gt;</code> sections, but
+one of the sections uses a wildcard character which would still match the
+same path?  For example:
+<pre>
+  &lt;Directory /path/to/dir&gt;
+    &lt;Limit ALL&gt;
+      DenyAll
+    &lt;/Limit&gt;
+  &lt/Directory&gt;
+
+  &lt;Directory /path/*/dir&gt;
+    &lt;Limit ALL&gt;
+      AllowAll
+    &lt;/Limit&gt;
+
+    &lt;Limit WRITE&gt;
+      DenyAll
+    &lt;/Limit&gt;
+  &lt/Directory&gt;
+</pre>
+This time, the config parser would not choke; <code>proftpd</code> would start
+up normally.  When it came time to look up the <code>&lt;Directory&gt;</code>
+section to use, <i>e.g.</i> for uploading to "/path/to/dir/test.txt",
+the matching <code>&lt;Directory&gt;</code> section <i>which appears later in
+the config file</i> wins.  In the above example, the upload to
+"/path/to/dir/test.txt" would be denied (because the wildcard-using
+<code>&lt;Directory&gt;</code> section appears later, and it has a
+<code>&lt;Limit WRITE&gt;</code> section denying writes).
+
+<p>
+However, if you simply reversed the order of the above
+<code>&lt;Directory&gt;</code> sections and tried to upload to
+"/path/to/subdir/test.txt", <i>e.g.</i>:
+<pre>
+  &lt;Directory /path/*/dir&gt;
+    &lt;Limit ALL&gt;
+      AllowAll
+    &lt;/Limit&gt;
+
+    &lt;Limit WRITE&gt;
+      DenyAll
+    &lt;/Limit&gt;
+  &lt/Directory&gt;
+
+  &lt;Directory /path/to/dir&gt;
+    &lt;Limit ALL&gt;
+      DenyAll
+    &lt;/Limit&gt;
+  &lt/Directory&gt;
+</pre>
+the upload would succeed, since the non-wildcard-using
+<code>&lt;Directory&gt;</code> section appeared later in the config.
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2008-12-07 23:59:03 $</i><br>
+Last Updated: <i>$Date: 2008-12-09 22:56:39 $</i><br>
 <hr>
 
 </body>
