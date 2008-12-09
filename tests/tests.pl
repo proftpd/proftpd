@@ -80,6 +80,7 @@ if (scalar(@ARGV) > 0) {
     t/config/timeoutstalled.t
     t/config/useftpusers.t
     t/config/userowner.t
+    t/config/directory/limits.t
     t/config/directory/umask.t
     t/config/ftpaccess/dele.t
     t/config/ftpaccess/retr.t
