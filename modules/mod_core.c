@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.331 2008-12-09 22:13:05 castaglia Exp $
+ * $Id: mod_core.c,v 1.332 2008-12-09 22:58:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1828,10 +1828,10 @@ MODRET add_directory(cmd_rec *cmd) {
    */
 
   if (!check_context(cmd, CONF_ANON) &&
-      find_config(cmd->server->conf, CONF_DIR, dir, FALSE) != NULL)
+      find_config(cmd->server->conf, CONF_DIR, dir, FALSE) != NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-      cmd->argv[0], ": <Directory> section already configured for '",
-      cmd->argv[1], "'", NULL));
+      "<Directory> section already configured for '", cmd->argv[1], "'", NULL));
+  }
 
   /* Check for any expandable variables, and mark this config_rec for
    * deferred resolution if present
