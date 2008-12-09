@@ -1,4 +1,4 @@
-<!-- $Id: Tracing.html,v 1.6 2008-08-18 18:52:41 castaglia Exp $ -->
+<!-- $Id: Tracing.html,v 1.7 2008-12-09 19:11:02 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Tracing.html,v $ -->
 
 <html>
@@ -134,6 +134,14 @@ you would need to explicitly mention the "tls" channel, <i>i.e.</i>:
 In addition to the default trace log channels listed above, there are
 optional trace log channels:
 <ul>
+  <li><code>directory</code>
+    <p>
+    The "directory" log channel is used when the core engine attempts
+    to find the closest matching <code>&lt;Directory&gt;</code> section
+    for a path.
+  </li>
+
+  <p>
   <li><code>fileperms</code>
     <p>
     The "fileperms" log channel is used whenever a user action involving
@@ -179,7 +187,7 @@ ever be used for debugging and development purposes; once your
 
 <p>
 <hr>
-<i>$Date: 2008-08-18 18:52:41 $</i><br>
+<i>$Date: 2008-12-09 19:11:02 $</i><br>
 
 </body>
 </html>
