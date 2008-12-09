@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.196 2008-12-08 03:05:48 castaglia Exp $
+ * $Id: dirtree.c,v 1.197 2008-12-09 19:08:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -688,11 +688,15 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
   char *tmp_path = NULL;
   config_rec *c = NULL, *res = NULL;
 
-  if (!s)
+  if (!s) {
+    errno = EINVAL;
     return NULL;
+  }
 
-  for (c = (config_rec *) s->xas_list; c; c = c->next)
+  for (c = (config_rec *) s->xas_list; c; c = c->next) {
     if (c->config_type == CONF_DIR) {
+      size_t path_len;
+
       tmp_path = c->name;
 
       if (c->argv[1]) {
@@ -703,33 +707,64 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
       }
 
       /* Exact path match */
-      if (strcmp(tmp_path, path) == 0)
+      if (strcmp(tmp_path, path) == 0) {
+        pr_trace_msg("directory", 8,
+          "<Directory %s> is an exact path match for '%s'", c->name, path);
         return c;
+      }
 
-      if (!strstr(tmp_path, "/*")) {
-        size_t tmplen = strlen(tmp_path);
+      /* Bug#3146 occurs because the following strstr(3) works well for paths
+       * which DO NOT contain the glob sequence.  But what if they do, just
+       * not at the end of the path?
+       *
+       * The fix is to explicitly check the last two characters of the path
+       * for '/' and '*', rather than using strstr(3).  (Again, I wish there
+       * was a strrstr(3) libc function.)
+       */
+      path_len = strlen(tmp_path);
+      if (path_len > 2 &&
+          tmp_path[path_len-2] != '/' &&
+          tmp_path[path_len-1] != '*') {
 
         /* Trim a trailing path separator, if present. */
-        if (*tmp_path && *(tmp_path + tmplen - 1) == '/' && tmplen > 1) {
-          *(tmp_path + tmplen - 1) = '\0';
+        if (*tmp_path && *(tmp_path + path_len - 1) == '/' && path_len > 1) {
+          *(tmp_path + path_len - 1) = '\0';
 
-          if (strcmp(tmp_path, path) == 0)
+          if (strcmp(tmp_path, path) == 0) {
+            pr_trace_msg("directory", 8,
+              "<Directory %s> is an exact path match for '%s'", c->name, path);
             return c;
+          }
         }
 
         tmp_path = pdircat(p, tmp_path, "*", NULL);
       }
 
       if (pr_fnmatch(tmp_path, path, 0) == 0) {
+        pr_trace_msg("directory", 8,
+          "<Directory %s> is a glob match for '%s'", tmp_path, path);
+
         if (c->subset) {
-          if ((res = recur_match_path(p, c->subset, path)))
+          /* If there's a subset config, check to see if there's a closer
+           * match there.
+           */
+          res = recur_match_path(p, c->subset, path);
+          if (res) {
+            pr_trace_msg("directory", 8,
+              "found closer matching <Directory %s> for '%s' in <Directory %s> "
+              "sub-config", res->name, path, tmp_path);
             return res;
+          }
         }
 
+        pr_trace_msg("directory", 8, "found <Directory %s> for '%s'",
+          c->name, path);
         return c;
       }
     }
+  }
 
+  errno = ENOENT;
   return NULL;
 }
 
@@ -762,8 +797,18 @@ config_rec *dir_match_path(pool *p, char *path) {
     }
   }
 
-  if (!res)
+  if (!res) {
     res = recur_match_path(p, main_server->conf, tmp);
+  }
+
+  if (res) {
+    pr_trace_msg("directory", 3, "matched <Directory %s> for path '%s'",
+      res->name, tmp);
+
+  } else {
+    pr_trace_msg("directory", 3, "no matching <Directory> found for '%s': %s",
+      tmp, strerror(errno));
+  }
 
   return res;
 }
@@ -1563,6 +1608,10 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
    * session.dir_config.
    */
   session.dir_config = c = dir_match_path(p, fullpath);
+  if (session.dir_config) {
+    pr_trace_msg("directory", 2, "matched <Directory %s> for '%s'",
+      session.dir_config->name, fullpath);
+  }
 
   if (!c && session.anon_config)
     c = session.anon_config;
@@ -1704,6 +1753,10 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
    * session.dir_config.
    */
   session.dir_config = c = dir_match_path(p, fullpath);
+  if (session.dir_config) {
+    pr_trace_msg("directory", 2, "matched <Directory %s> for '%s'",
+      session.dir_config->name, fullpath);
+  }
 
   if (!c && session.anon_config)
     c = session.anon_config;
