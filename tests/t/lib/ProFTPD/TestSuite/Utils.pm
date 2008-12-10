@@ -735,6 +735,29 @@ sub testsuite_get_runnable_tests {
     }
   }
 
+  # Special handling of the 'norootprivs' test class; unless we are running
+  # as non-root, we should exclude those test cases.
+  if ($< == 0) {
+    $skip_tests = [];
+    foreach my $test (keys(%$tests)) {
+      my $ok = 1;
+      foreach my $test_class (@{ $tests->{$test}->{test_class} }) {
+        if ($test_class eq 'norootprivs') {
+          $ok = 0;
+          last;
+        }
+      }
+
+      unless ($ok) {
+        push(@$skip_tests, $test);
+      }
+    }
+ 
+    foreach my $skip_test (@$skip_tests) {
+      delete($tests->{$skip_test});
+    }
+  }
+
   # Special handling of the 'rootprivs' test class: unless we are running
   # as root, we should exclude those test cases.
   unless ($< == 0) {
