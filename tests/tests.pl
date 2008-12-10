@@ -1,18 +1,33 @@
 #!/usr/bin/env perl
 
-use lib qw(t/lib);
 use strict;
 
+use Cwd qw(abs_path);
+use File::Spec;
 use Getopt::Long;
 use Test::Harness;
-
-use ProFTPD::TestSuite::Utils qw(:testsuite);
 
 my $opts = {};
 GetOptions($opts, 'h|help', 'C|class=s@');
 
 if ($opts->{h}) {
   usage();
+}
+
+# We use this, rather than use(), since use() is equivalent to a BEGIN
+# block, and we want the module to be loaded at run-time.
+
+my $test_dir = (File::Spec->splitpath(abs_path(__FILE__)))[1];
+push(@INC, "$test_dir/t/lib");
+
+require ProFTPD::TestSuite::Utils;
+import ProFTPD::TestSuite::Utils qw(:testsuite);
+
+# This is to handle the case where this tests.pl script might be
+# being used to run test files other than those that ship with proftpd,
+# e.g. to run the tests that come with third-party modules.
+unless (defined($ENV{PROFTPD_TEST_BIN})) {
+  $ENV{PROFTPD_TEST_BIN} = File::Spec->catfile($test_dir, '..', 'proftpd');
 }
 
 $| = 1;

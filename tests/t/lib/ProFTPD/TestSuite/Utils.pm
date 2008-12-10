@@ -53,11 +53,16 @@ our %EXPORT_TAGS = (
   testsuite => [@TESTSUITE],
 );
 
-# XXX Assume that the proftpd executable to use is one directory up;
-# assume that tests are always run from the tests/ directory.
-my $proftpd_bin = "../proftpd";
-if ($ENV{PROFTPD_TEST_BIN}) {
-  $proftpd_bin = $ENV{PROFTPD_TEST_BIN};
+my $testno = 0;
+
+sub get_proftpd_bin {
+  if ($ENV{PROFTPD_TEST_BIN}) {
+    return $ENV{PROFTPD_TEST_BIN};
+
+  } else {
+    # Guess.
+    return '../proftpd';
+  }
 }
 
 sub get_high_numbered_port {
@@ -477,6 +482,8 @@ sub config_write {
 sub feature_have_feature_enabled {
   my $feat = shift;
 
+  my $proftpd_bin = get_proftpd_bin();
+
   if (open(my $cmdh, "$proftpd_bin -V |")) {
     my $feat_list;
 
@@ -506,6 +513,8 @@ sub feature_have_feature_enabled {
 sub feature_have_module_compiled {
   my $module = shift;
 
+  my $proftpd_bin = get_proftpd_bin();
+
   if (open(my $cmdh, "$proftpd_bin -l |")) {
     my $mod_list;
 
@@ -532,6 +541,8 @@ sub feature_have_module_compiled {
 sub feature_have_module_loaded {
   my $module = shift;;
   my $config_file = shift;
+
+  my $proftpd_bin = get_proftpd_bin();
 
   if (open(my $cmdh, "$proftpd_bin -vv -c $config_file |")) {
     my $mod_list;
@@ -570,6 +581,8 @@ sub server_start {
 
   # Make sure that the config file is an absolute path
   my $abs_config_file = File::Spec->rel2abs($config_file);
+
+  my $proftpd_bin = get_proftpd_bin();
 
   my $cmd = "$proftpd_bin -q -c $abs_config_file";
 
@@ -801,8 +814,6 @@ sub testsuite_get_runnable_tests {
 
   return @$runnables;
 }
-
-my $testno = 0;
 
 sub testsuite_get_tmp_dir {
   my $use_global_dir = shift;
