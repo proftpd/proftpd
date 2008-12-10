@@ -1293,7 +1293,7 @@ sub site {
   $cmd = '' unless defined($cmd);
   my $code;
 
-  $code = $self->{ftp}->quot('SITE', $cmd);
+  $code = $self->{ftp}->quot('SITE', $cmd, @_);
   unless ($code) {
     croak("SITE command failed: " .  $self->{ftp}->code . ' ' .
       $self->response_msg());
