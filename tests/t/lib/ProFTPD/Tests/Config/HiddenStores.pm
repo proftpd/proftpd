@@ -194,7 +194,6 @@ sub hiddenstores_ok {
     die($ex);
   }
 
-die();
   unlink($log_file);
 }
 
