@@ -1,4 +1,4 @@
-<!-- $Id: Directory.html,v 1.11 2008-12-09 22:56:39 castaglia Exp $ -->
+<!-- $Id: Directory.html,v 1.12 2008-12-10 22:40:15 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Directory.html,v $ -->
 
 <html>
@@ -266,9 +266,55 @@ However, if you simply reversed the order of the above
 the upload would succeed, since the non-wildcard-using
 <code>&lt;Directory&gt;</code> section appeared later in the config.
 
+<p><a name="PreventDirectoryRename">
+<font color=red>Question</font>: How can I prevent a specific directory from
+being renamed?  I am currently trying:
+<pre>
+  &lt;Directory /dir/*&gt;
+    &lt;Limit CWD XCWD RNFR RNTO&gt;
+      AllowAll
+    &lt;/Limit&gt;
+
+    &lt;Limit ALL&gt;
+      DenyAll
+    &lt;/Limit&gt;
+  &lt;/Directory&gt;
+
+  &lt;Directory /dir/subdir&gt;
+    &lt;Limit WRITE&gt;
+      DenyAll
+    &lt;/Limit&gt;
+  &lt;/Directory&gt;
+</pre>
+to keep "/dir/subdir" from being renamed, but it doesn't work!<br>
+<font color=blue>Answer</font>: The trick is to block the <code>RNFR</code>
+command within the <code>&lt;Directory&gt;</code> section for that
+specific directory, <i>i.e.</i>:
+<pre>
+  &lt;Directory /dir/subdir&gt;
+    &lt;Limit RNFR WRITE&gt;
+      DenyAll
+    &lt;/Limit&gt;
+  &lt;/Directory&gt;
+</pre>
+
+<p>
+The reason the original config did not work as expected is that
+<code>proftpd</code>, when handling the <code>RNTO</code> command (<i>e.g.</i> "<code>RNTO subdir2</code>"), would <b>not</b> match the
+<code>&lt;Directory /dir/subdir&gt;</code> section for the path "/dir/subdir2",
+but instead matches the <code>&lt;Directory /dir/*&gt;</code> section.
+
+<p>
+Renaming of files via FTP is done by first sending the <code>RNFR</code>
+command (for the old filename), then sending <code>RNFTO</code> (with the
+new filename).  By placing <code>RNFR</code> in the
+<code>&lt;Directory /dir/subdir&gt;</code> section's <code>&lt;Limit&gt;</code>
+list, we make sure that the <code><i>RNFR</i></code> <i>does</i> match the
+<code>&lt;Directory /dir/subdir&gt;</code> section, and is thus denied.
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2008-12-09 22:56:39 $</i><br>
+Last Updated: <i>$Date: 2008-12-10 22:40:15 $</i><br>
 <hr>
 
 </body>
