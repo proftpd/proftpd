@@ -21,14 +21,14 @@ my $TESTS = {
     test_class => [qw(forking rootprivs)],
   },
 
-  groupowner_failed_no_root_privs => {
+  groupowner_failed_norootprivs => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(forking norootprivs)],
   },
 
-  groupowner_ok_suppl_group_no_root_privs => {
+  groupowner_ok_suppl_group_norootprivs => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(forking norootprivs)],
   },
 
 };
@@ -208,15 +208,8 @@ sub groupowner_ok {
   unlink($log_file);
 }
 
-sub groupowner_failed_no_root_privs {
+sub groupowner_failed_norootprivs {
   my $self = shift;
-
-  # We can't run this test if we have root privs
-  if ($< == 0) {
-    print STDERR " + unable to run 'groupowner_failed_no_root_privs' test as root, skipping\n";
-    return;
-  }
-
   my $tmpdir = $self->{tmpdir};
 
   my $config_file = "$tmpdir/config.conf";
@@ -346,20 +339,14 @@ sub groupowner_failed_no_root_privs {
   unlink($log_file);
 }
 
-sub groupowner_ok_suppl_group_no_root_privs {
+sub groupowner_ok_suppl_group_norootprivs {
   my $self = shift;
-
-  # We can't run this test if we have root privs
-  if ($< == 0) {
-    print STDERR " + unable to run 'groupowner_ok_suppl_group_no_root_privs' test as root, skipping\n";
-    return;
-  }
 
   my ($config_user, $config_group) = config_get_identity();
 
   my $members = [split(' ', (getgrnam($config_group))[3])];
   if (scalar(@$members) < 2) {
-    print STDERR " + unable to run 'groupowner_ok_suppl_no_root_privs' test without current user belonging to multiple groups, skipping\n";
+    print STDERR " + unable to run 'groupowner_ok_suppl_norootprivs' test without current user belonging to multiple groups, skipping\n";
     return;
   }
 

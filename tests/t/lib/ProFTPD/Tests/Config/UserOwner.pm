@@ -21,9 +21,9 @@ my $TESTS = {
     test_class => [qw(forking rootprivs)],
   },
 
-  userowner_failed_no_root_privs => {
+  userowner_failed_norootprivs => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(forking norootprivs)],
   },
 
 };
@@ -204,15 +204,8 @@ sub userowner_ok {
   unlink($log_file);
 }
 
-sub userowner_failed_no_root_privs {
+sub userowner_failed_norootprivs {
   my $self = shift;
-
-  # We can't run this test if we have root privs
-  if ($< == 0) {
-    print STDERR " + unable to run 'userowner_failed_no_root_privs' test as root, skipping\n";
-    return;
-  }
-
   my $tmpdir = $self->{tmpdir};
 
   my $config_file = "$tmpdir/config.conf";
