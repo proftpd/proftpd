@@ -95,6 +95,7 @@ if (scalar(@ARGV) > 0) {
     t/config/maxstorefilesize.t
     t/config/requirevalidshell.t
     t/config/serverident.t
+    t/config/storeuniqueprefix.t
     t/config/timeoutidle.t
     t/config/timeoutlogin.t
     t/config/timeoutnotransfer.t
