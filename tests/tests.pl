@@ -30,6 +30,11 @@ unless (defined($ENV{PROFTPD_TEST_BIN})) {
   $ENV{PROFTPD_TEST_BIN} = File::Spec->catfile($test_dir, '..', 'proftpd');
 }
 
+# Set this environment variable, for other test cases which may want to
+# know the directory, and not necessarily just the location of the uninstalled
+# `proftpd' binary.  This is useful, for example, for using the utilities.
+$ENV{PROFTPD_TEST_PATH} = $test_dir;
+
 $| = 1;
 
 my $test_files;
@@ -116,6 +121,11 @@ if (scalar(@ARGV) > 0) {
     't/modules/mod_ban.t' => {
       order => ++$order,
       test_class => [qw(mod_ban)],
+    },
+
+    't/modules/mod_ctrls.t' => {
+      order => ++$order,
+      test_class => [qw(mod_ctrls)],
     },
 
     't/modules/mod_quotatab_sql.t' => {
