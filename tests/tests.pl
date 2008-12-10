@@ -93,6 +93,7 @@ if (scalar(@ARGV) > 0) {
     t/config/maxloginattempts.t
     t/config/maxretrievefilesize.t
     t/config/maxstorefilesize.t
+    t/config/order.t
     t/config/requirevalidshell.t
     t/config/serverident.t
     t/config/storeuniqueprefix.t
