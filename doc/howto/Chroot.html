@@ -1,4 +1,4 @@
-<!-- $Id: Chroot.html,v 1.4 2006-06-07 16:50:53 castaglia Exp $ -->
+<!-- $Id: Chroot.html,v 1.5 2008-12-10 19:50:04 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Chroot.html,v $ -->
 
 <html>
@@ -186,9 +186,44 @@ partition, then you need to make sure that root privileges are <b>not</b>
 blocked (<i>e.g.</i> often referred to as "root squash") by the NFS
 mount.  Otherwise, the chroot will fail.
 
+<p><a name="FAQ"></a>
+<b>Frequently Asked Questions</b><br>
+
+<p>
+<font color=red>Question</font>: I am using the <code>DefaultRoot</code>
+directive, but my logins are failing.  The debug logging shows the following:
+<pre>
+  USER <i>user</i>: Login successful.
+  Preparing to chroot to directory '/home/users/<i>user</i>'
+  <i>user</i> chroot("/home/users/<i>user</i>"): Permission denied
+  error: unable to set default root directory
+</pre>
+I am starting <code>proftpd</code> with root privileges, so why is the
+<code>chroot()</code> failing with "Permission denied"?<br>
+<font color=blue>Answer</font>: The above situation can happen in cases
+where even root privileges are insufficient.  There have been reports of
+this happening for security-hardened systems (<i>e.g.</i> SELinux, OpenWall,
+<i>etc</i>); it can <i>also</i> happen when NFS is involved.
+
+<p>
+If the <code>DefaultRoot</code> directory in question is mounted via NFS, make
+sure that the NFS configuration mounts the directory with root privileges.  The
+<code>chroot(2)</code> system call <i>requires</i> root privileges; a
+no-root-privs mounted NFS directory does not allow the <code>chroot(2)</code>
+to succeed.
+
+<p>
+Similarly, instead of "Permission denied", you might see "No such file or
+directory":
+<pre>
+  <i>user</i> chroot("~"): No such file or directory
+</pre>
+The reasons for this error are explained
+<a href="Authentication.html#homedir">here</a>.
+
 <p>
 <hr>
-Last Updated: $Date: 2006-06-07 16:50:53 $<br>
+Last Updated: $Date: 2008-12-10 19:50:04 $<br>
 <hr>
 
 </body>
