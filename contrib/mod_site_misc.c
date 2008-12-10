@@ -22,7 +22,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.8 2008-08-20 18:23:53 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.9 2008-12-10 06:54:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -102,8 +102,6 @@ static int site_misc_create_path(pool *p, const char *path) {
    
     if (site_misc_create_dir(curr_path) < 0)
       return -1;
-
-    pr_signals_handle(); 
   }
  
   return 0;
@@ -130,14 +128,26 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
     file = pdircat(p, dir, dent->d_name, NULL);
 
     if (pr_fsio_stat(file, &st) < 0)
-      return -1;
-
+      continue;
+    
     if (S_ISDIR(st.st_mode)) {
-      if (site_misc_delete_dir(p, file) < 0)
-        return -1;
+      if (site_misc_delete_dir(p, file) < 0) {
+        int xerrno = errno;
 
-    } else if (pr_fsio_unlink(file) < 0)
+        pr_fsio_closedir(dirh);
+
+        errno = xerrno;
+        return -1;
+      }
+
+    } else if (pr_fsio_unlink(file) < 0) {
+      int xerrno = errno;
+
+      pr_fsio_closedir(dirh);
+
+      errno = xerrno;
       return -1;
+    }
   }
 
   pr_fsio_closedir(dirh);
@@ -410,8 +420,8 @@ MODRET site_misc_utime(cmd_rec *cmd) {
     if (strlen(cmd->argv[2]) != 12 &&
         strlen(cmd->argv[2]) != 14) {
       pr_log_debug(DEBUG7, MOD_SITE_MISC_VERSION
-        ": wrong number of digits in timestamp argument '%s' (%u)",
-        cmd->argv[2], strlen(cmd->argv[2]));
+        ": wrong number of digits in timestamp argument '%s' (%lu)",
+        cmd->argv[2], (unsigned long) strlen(cmd->argv[2]));
       pr_response_add_err(R_500, "%s: %s", cmd->arg, strerror(EINVAL));
       return PR_ERROR(cmd);
     }
