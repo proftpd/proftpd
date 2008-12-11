@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.18 2008-12-11 06:33:39 castaglia Exp $
+ * $Id: mod_lang.c,v 1.19 2008-12-11 06:40:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -461,7 +461,7 @@ MODRET lang_utf8(cmd_rec *cmd) {
           return PR_ERROR(cmd);
 
         } else {
-          pr_fs_use_encoding(FALSE);
+          pr_fs_use_encoding(TRUE);
           pr_response_add(R_200, _("UTF8 set to on"));
         }
       }
