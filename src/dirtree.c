@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.198 2008-12-09 22:13:05 castaglia Exp $
+ * $Id: dirtree.c,v 1.199 2008-12-11 20:45:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -773,8 +773,9 @@ config_rec *dir_match_path(pool *p, char *path) {
   char *tmp = NULL;
   size_t tmplen;
 
-  if (!p || !path || !*path)
+  if (!p || !path || !*path) {
     return NULL;
+  }
 
   tmp = pstrdup(p, path);
   tmplen = strlen(tmp);
@@ -1549,12 +1550,21 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
 
     cp = strrchr(path, '/');
 
-    if (cp &&
-        strcmp(path, "/") != 0) {
+    if (cp != path) {
+      /* If the cp pointer is not the same as the path pointer, then this
+       * path separator is later in the path, i.e. the path is not "/".
+       */
+
       *cp = '\0';
 
     } else {
-      path = NULL;
+      if (strlen(path) > 1)
+        path[1] = '\0';
+
+      /* Go one more pass through, but stop the loop after that by
+       * setting the recurse flag to 'false'.
+       */
+      recurse = FALSE;
     }
 
     if (path) {
