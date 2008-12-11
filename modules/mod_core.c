@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.333 2008-12-11 04:33:54 castaglia Exp $
+ * $Id: mod_core.c,v 1.334 2008-12-11 04:49:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1193,14 +1193,14 @@ MODRET set_rlimitcpu(cmd_rec *cmd) {
     struct rlimit *rlim = pcalloc(cmd->server->pool, sizeof(struct rlimit));
 
     /* Retrieve the current values */
-    if (getrlimit(RLIMIT_CPU, rlim) == -1)
+    if (getrlimit(RLIMIT_CPU, rlim) < 0)
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_CPU): %s",
         strerror(errno));
 
-    if (strcasecmp("max", cmd->argv[2]) == 0)
+    if (strcasecmp("max", cmd->argv[2]) == 0) {
       rlim->rlim_cur = RLIM_INFINITY;
 
-    else {
+    } else {
 
       /* Check that the non-max argument is a number, and error out if not.
        */
@@ -1215,10 +1215,10 @@ MODRET set_rlimitcpu(cmd_rec *cmd) {
 
     /* Handle the optional "hard limit" parameter, if present. */
     if (cmd->argc-1 == 3) {
-      if (strcasecmp("max", cmd->argv[3]) == 0)
+      if (strcasecmp("max", cmd->argv[3]) == 0) {
         rlim->rlim_max = RLIM_INFINITY;
 
-      else {
+      } else {
 
         /* Check that the non-max argument is a number, and error out if not.
          */
@@ -1242,14 +1242,14 @@ MODRET set_rlimitcpu(cmd_rec *cmd) {
     struct rlimit *rlim = pcalloc(cmd->server->pool, sizeof(struct rlimit));
 
     /* Retrieve the current values */
-    if (getrlimit(RLIMIT_CPU, rlim) == -1)
+    if (getrlimit(RLIMIT_CPU, rlim) < 0)
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_CPU): %s",
         strerror(errno));
 
-    if (strcasecmp("max", cmd->argv[1]) == 0)
+    if (strcasecmp("max", cmd->argv[1]) == 0) {
       rlim->rlim_cur = RLIM_INFINITY;
 
-    else {
+    } else {
 
       /* Check that the non-max argument is a number, and error out if not.
        */
@@ -1264,10 +1264,10 @@ MODRET set_rlimitcpu(cmd_rec *cmd) {
 
     /* Handle the optional "hard limit" parameter, if present. */
     if (cmd->argc-1 == 2) {
-      if (strcasecmp("max", cmd->argv[2]) == 0)
+      if (strcasecmp("max", cmd->argv[2]) == 0) {
         rlim->rlim_max = RLIM_INFINITY;
 
-      else {
+      } else {
 
         /* Check that the non-max argument is a number, and error out if not.
          */
@@ -1375,15 +1375,15 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
 
     /* Retrieve the current values */
 #if defined(RLIMIT_DATA)
-    if (getrlimit(RLIMIT_DATA, rlim) == -1)
+    if (getrlimit(RLIMIT_DATA, rlim) < 0)
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_DATA): %s",
         strerror(errno));
 #elif defined(RLIMIT_AS)
-    if (getrlimit(RLIMIT_AS, rlim) == -1)
+    if (getrlimit(RLIMIT_AS, rlim) < 0)
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_AS): %s",
         strerror(errno));
 #elif defined(RLIMIT_VMEM)
-    if (getrlimit(RLIMIT_VMEM, rlim) == -1)
+    if (getrlimit(RLIMIT_VMEM, rlim) < 0)
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_VMEM): %s",
         strerror(errno));
 #endif
@@ -1458,19 +1458,19 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
 
     /* Retrieve the current values */
 #if defined(RLIMIT_NOFILE)
-    if (getrlimit(RLIMIT_NOFILE, rlim) == -1)
+    if (getrlimit(RLIMIT_NOFILE, rlim) < 0)
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_NOFILE): %s",
         strerror(errno));
 #elif defined(RLIMIT_OFILE)
-    if (getrlimit(RLIMIT_OFILE, rlim) == -1)
+    if (getrlimit(RLIMIT_OFILE, rlim) < 0)
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_OFILE): %s",
         strerror(errno));
 #endif
 
-    if (strcasecmp("max", cmd->argv[2]) == 0)
+    if (strcasecmp("max", cmd->argv[2]) == 0) {
       rlim->rlim_cur = sysconf(_SC_OPEN_MAX);
 
-    else {
+    } else {
 
       /* Check that the non-max argument is a number, and error out if not.
        */
@@ -1485,10 +1485,10 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
 
     /* Handle the optional "hard limit" parameter, if present. */
     if (cmd->argc-1 == 3) {
-      if (strcasecmp("max", cmd->argv[3]) == 0)
+      if (strcasecmp("max", cmd->argv[3]) == 0) {
         rlim->rlim_max = sysconf(_SC_OPEN_MAX);
 
-      else {
+      } else {
 
         /* Check that the non-max argument is a number, and error out if not.
          */
@@ -1513,19 +1513,19 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
 
     /* Retrieve the current values */
 #if defined(RLIMIT_NOFILE)
-    if (getrlimit(RLIMIT_NOFILE, rlim) == -1)
+    if (getrlimit(RLIMIT_NOFILE, rlim) < 0)
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_NOFILE): %s",
         strerror(errno));
 #elif defined(RLIMIT_OFILE)
-    if (getrlimit(RLIMIT_OFILE, rlim) == -1)
+    if (getrlimit(RLIMIT_OFILE, rlim) < 0)
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_OFILE): %s",
         strerror(errno));
 #endif
 
-    if (strcasecmp("max", cmd->argv[1]) == 0)
+    if (strcasecmp("max", cmd->argv[1]) == 0) {
       rlim->rlim_cur = sysconf(_SC_OPEN_MAX);
 
-    else {
+    } else {
 
       /* Check that the non-max argument is a number, and error out if not.
        */
@@ -1540,10 +1540,10 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
 
     /* Handle the optional "hard limit" parameter, if present. */
     if (cmd->argc-1 == 2) {
-      if (strcasecmp("max", cmd->argv[2]) == 0)
+      if (strcasecmp("max", cmd->argv[2]) == 0) {
         rlim->rlim_max = sysconf(_SC_OPEN_MAX);
 
-      else {
+      } else {
 
         /* Check that the non-max argument is a number, and error out if not.
          */
