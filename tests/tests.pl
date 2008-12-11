@@ -132,6 +132,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_ctrls)],
     },
 
+    't/modules/mod_lang.t' => {
+      order => ++$order,
+      test_class => [qw(mod_lang)],
+    },
+
     't/modules/mod_quotatab_sql.t' => {
       order => ++$order,
       test_class => [qw(mod_quotatab mod_quotatab_sql mod_sql_sqlite)],

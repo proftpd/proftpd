@@ -158,10 +158,14 @@ sub feat_ok {
       if ($have_nls) {
         $feats->{' UTF8'} = 1;
 
-        # One of the following two will appear in the FEAT list, depending
+        # One of the following will appear in the FEAT list, depending
         # on the underlying platform.
         $feats->{' LANG en_US'} = 1;
+        $feats->{' LANG en-US'} = 1;
+        $feats->{' LANG en-US*'} = 1;
         $feats->{' LANG en_US.UTF-8'} = 1;
+        $feats->{' LANG en-US.UTF-8'} = 1;
+        $feats->{' LANG en-US.UTF-8*'} = 1;
       }
 
       for (my $i = 0; $i < $nfeat; $i++) {

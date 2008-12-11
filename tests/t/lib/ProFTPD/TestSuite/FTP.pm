@@ -1451,6 +1451,58 @@ sub mfmt {
   }
 }
 
+sub lang {
+  my $self = shift;
+  my $lang = shift;
+  $lang = '' unless defined($lang);
+  my $code;
+
+  $code = $self->{ftp}->quot('LANG', $lang);
+  unless ($code) {
+    croak("LANG command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("LANG command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
+sub opts {
+  my $self = shift;
+  my $cmd = shift;
+  $cmd = '' unless defined($cmd);
+  my $code;
+
+  $code = $self->{ftp}->quot('OPTS', $cmd, @_);
+  unless ($code) {
+    croak("OPTS command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("OPTS command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
 sub get_connect_exception {
   return $conn_ex;
 }
