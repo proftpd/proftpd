@@ -52,7 +52,7 @@ sub tear_down {
   }
 
   undef $self;
-};
+}
 
 sub feat_ok {
   my $self = shift;
@@ -61,7 +61,8 @@ sub feat_ok {
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -156,6 +157,10 @@ sub feat_ok {
 
       if ($have_nls) {
         $feats->{' UTF8'} = 1;
+
+        # One of the following two will appear in the FEAT list, depending
+        # on the underlying platform.
+        $feats->{' LANG en_US'} = 1;
         $feats->{' LANG en_US.UTF-8'} = 1;
       }
 
