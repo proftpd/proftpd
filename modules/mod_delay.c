@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.28 2008-02-20 22:07:03 castaglia Exp $
+ * $Id: mod_delay.c,v 1.29 2008-12-11 04:41:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -402,17 +402,20 @@ static int delay_table_init(void) {
     MAP_SHARED, delay_tab.dt_fd, 0);
 
   if (delay_tab.dt_data == MAP_FAILED) {
+    int xerrno = errno;
+
     delay_tab.dt_data = NULL;
 
     pr_log_pri(PR_LOG_ERR, MOD_DELAY_VERSION
       ": error mapping DelayTable '%s' into memory: %s", delay_tab.dt_path,
-      strerror(errno));
+      strerror(xerrno));
     pr_trace_msg("delay", 1, "error mapping DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(errno));
+      delay_tab.dt_path, strerror(xerrno));
 
     pr_fsio_close(fh);
     delay_tab.dt_fd = -1;
 
+    errno = xerrno;
     return -1;
   }
 
@@ -485,10 +488,10 @@ static int delay_table_init(void) {
 
       pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
         ": error writing single byte to DelayTable '%s': %s", fh->fh_path,
-        strerror(errno));
+        strerror(xerrno));
       pr_trace_msg("delay", 1,
         "error writing single byte to DelayTable '%s': %s", fh->fh_path,
-        strerror(errno));
+        strerror(xerrno));
 
       pr_fsio_close(fh);
 
@@ -713,16 +716,19 @@ static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
   delay_tab.dt_data = NULL;
 
   if (delay_table_load(TRUE) < 0) {
+    int xerrno = errno;
+
     pr_ctrls_add_response(ctrl,
       "unable to load DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(errno));
+      delay_tab.dt_path, strerror(xerrno));
     pr_trace_msg("delay", 1, "unable to load DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(errno));
+      delay_tab.dt_path, strerror(xerrno));
 
     pr_fsio_close(fh);
     delay_tab.dt_fd = -1;
     delay_tab.dt_data = NULL;
 
+    errno = xerrno;
     return -1;
   }
 
@@ -981,11 +987,15 @@ MODRET delay_post_pass(cmd_rec *cmd) {
 
   /* Prepare for manipulating the table. */
   if (delay_table_load(FALSE) < 0) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": unable to load DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(errno));
+      delay_tab.dt_path, strerror(xerrno));
     pr_trace_msg("delay", 1, "unable to load DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(errno));
+      delay_tab.dt_path, strerror(xerrno));
+
+    errno = xerrno;
     return PR_DECLINED(cmd);
   }
 
@@ -1008,11 +1018,12 @@ MODRET delay_post_pass(cmd_rec *cmd) {
     delay_table_add_interval(rownum, interval);
     delay_npass++;
 
-  } else
+  } else {
     /* Generate an event, in case a module (i.e. mod_ban) might want
      * to do something appropriate to such an ill-behaved client.
      */
     pr_event_generate("mod_delay.max-pass", session.c);
+  }
 
   /* Done with the table. */
   delay_table_unlock(rownum);
@@ -1054,11 +1065,15 @@ MODRET delay_post_user(cmd_rec *cmd) {
 
   /* Prepare for manipulating the table. */
   if (delay_table_load(FALSE) < 0) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": unable to load DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(errno));
+      delay_tab.dt_path, strerror(xerrno));
     pr_trace_msg("delay", 1, "unable to load DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(errno));
+      delay_tab.dt_path, strerror(xerrno));
+
+    errno = xerrno;
     return PR_DECLINED(cmd);
   }
 
