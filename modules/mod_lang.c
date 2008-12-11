@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.17 2008-11-22 23:23:38 castaglia Exp $
+ * $Id: mod_lang.c,v 1.18 2008-12-11 06:33:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -324,6 +324,8 @@ MODRET lang_lang(cmd_rec *cmd) {
   }
 
   if (lang_supported(cmd->tmp_pool, cmd->argv[1]) < 0) {
+    pr_log_debug(DEBUG3, MOD_LANG_VERSION ": language '%s' unsupported: %s",
+      cmd->argv[1], strerror(errno));
     pr_response_add_err(R_504, _("Language %s not supported"), cmd->argv[1]);
     return PR_ERROR(cmd);
   }
@@ -460,7 +462,7 @@ MODRET lang_utf8(cmd_rec *cmd) {
 
         } else {
           pr_fs_use_encoding(FALSE);
-          pr_response_add(R_200, _("UTF8 set to off"));
+          pr_response_add(R_200, _("UTF8 set to on"));
         }
       }
 
@@ -599,8 +601,10 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
         langs[i], NULL);
     }
 
-    pr_log_debug(DEBUG8, MOD_LANG_VERSION
+    if (lang_list->nelts > 0) {
+      pr_log_debug(DEBUG8, MOD_LANG_VERSION
       ": added the following supported languages: %s", langs_str);
+    }
 
   } else {
     pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
@@ -677,7 +681,9 @@ static int lang_sess_init(void) {
       if (lang_set_lang("") < 0) {
         pr_log_pri(PR_LOG_WARNING, MOD_LANG_VERSION
           ": unable to use LC_ALL value for locale: %s", strerror(errno));
-        end_login(1);
+
+        errno = EPERM;
+        return -1;
       }
     }
 
@@ -690,13 +696,27 @@ static int lang_sess_init(void) {
     if (lang_set_lang("") < 0) {
       pr_log_pri(PR_LOG_WARNING, MOD_LANG_VERSION
         ": unable to use LC_ALL value for locale: %s", strerror(errno));
-      end_login(1);
+
+      errno = EPERM;
+      return -1;
     }
 
     lang_curr = setlocale(LC_MESSAGES, NULL);
     if (strcasecmp(lang_curr, "C") == 0) {
       lang_curr = LANG_DEFAULT_LANG;
     }
+
+    /* If a list of languages is empty (perhaps because the message catalogs
+     * could not be found for some reason), we should still have an entry for
+     * the current language.
+     */
+    if (!lang_list) {
+      lang_list = make_array(lang_pool, 1, sizeof(char *));
+    }
+
+    if (lang_list->nelts == 0) {
+      *((char **) push_array(lang_list)) = pstrdup(lang_pool, lang_curr);
+    } 
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "UseEncoding", FALSE);
