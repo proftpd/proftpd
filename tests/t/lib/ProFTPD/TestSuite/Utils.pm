@@ -281,6 +281,10 @@ sub config_write {
 
   # Set a bunch of defaults, unless overridden by the caller
 
+  unless (defined($config->{AllowOverride})) {
+    $config->{AllowOverride} = 'off';
+  }
+
   unless (defined($config->{DefaultAddress})) {
     $config->{DefaultAddress} = '127.0.0.1';
   }

@@ -140,6 +140,8 @@ EOL
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
 
+    AllowOverride => 'on',
+
     IfModules => {
       'mod_delay.c' => {
         DelayEngine => 'off',

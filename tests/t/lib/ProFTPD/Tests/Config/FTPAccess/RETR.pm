@@ -141,6 +141,8 @@ EOF
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
 
+    AllowOverride => 'on',
+
     IfModules => {
       'mod_delay.c' => {
         DelayEngine => 'off',
@@ -340,6 +342,8 @@ EOF
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
 
+    AllowOverride => 'on',
+
     Anonymous => {
       $anon_dir => {
         User => $config_user,
@@ -356,8 +360,7 @@ EOF
     },
   };
 
-  my $port;
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -547,6 +550,8 @@ EOF
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
 
+    AllowOverride => 'on',
+
     Anonymous => {
       $anon_dir => {
         User => $config_user,
@@ -563,8 +568,7 @@ EOF
     },
   };
 
-  my $port;
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
