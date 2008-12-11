@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.332 2008-12-09 22:58:32 castaglia Exp $
+ * $Id: mod_core.c,v 1.333 2008-12-11 04:33:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1291,7 +1291,7 @@ MODRET set_rlimitcpu(cmd_rec *cmd) {
 }
 
 MODRET set_rlimitmemory(cmd_rec *cmd) {
-#if defined(RLIMIT_AS) || defined(RLIMIT_DATA) || defined(RLIMIT_VMEM)
+#if defined(RLIMIT_DATA) || defined(RLIMIT_AS) || defined(RLIMIT_VMEM)
   /* Make sure the directive has between 1 and 3 parameters */
   if (cmd->argc-1 < 1 || cmd->argc-1 > 3)
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -1319,13 +1319,13 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
     struct rlimit *rlim = pcalloc(cmd->server->pool, sizeof(struct rlimit));
 
     /* Retrieve the current values */
-#if defined(RLIMIT_AS)
-    if (getrlimit(RLIMIT_AS, rlim) == -1)
-      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_AS): %s",
-        strerror(errno));
-#elif defined(RLIMIT_DATA)
+#if defined(RLIMIT_DATA)
     if (getrlimit(RLIMIT_DATA, rlim) == -1)
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_DATA): %s",
+        strerror(errno));
+#elif defined(RLIMIT_AS)
+    if (getrlimit(RLIMIT_AS, rlim) == -1)
+      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_AS): %s",
         strerror(errno));
 #elif defined(RLIMIT_VMEM)
     if (getrlimit(RLIMIT_VMEM, rlim) == -1)
@@ -1333,11 +1333,12 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
         strerror(errno));
 #endif
 
-    if (strcasecmp("max", cmd->argv[2]) == 0)
+    if (strcasecmp("max", cmd->argv[2]) == 0) {
       rlim->rlim_cur = RLIM_INFINITY;
 
-    else
+    } else {
       rlim->rlim_cur = get_num_bytes(cmd->argv[2]);
+    }
 
     /* Check for bad return values. */
     if (rlim->rlim_cur == PR_BYTES_BAD_UNITS)
@@ -1348,17 +1349,18 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
 
     /* Handle the optional "hard limit" parameter, if present. */
     if (cmd->argc-1 == 3) {
-      if (strcasecmp("max", cmd->argv[3]) == 0)
+      if (strcasecmp("max", cmd->argv[3]) == 0) {
         rlim->rlim_max = RLIM_INFINITY;
 
-      else
-        rlim->rlim_cur = get_num_bytes(cmd->argv[3]);
+      } else {
+        rlim->rlim_max = get_num_bytes(cmd->argv[3]);
+      }
 
       /* Check for bad return values. */
-      if (rlim->rlim_cur == PR_BYTES_BAD_UNITS)
+      if (rlim->rlim_max == PR_BYTES_BAD_UNITS)
         CONF_ERROR(cmd, "unknown units used");
 
-      if (rlim->rlim_cur == PR_BYTES_BAD_FORMAT)
+      if (rlim->rlim_max == PR_BYTES_BAD_FORMAT)
         CONF_ERROR(cmd, "badly formatted parameter");
     }
 
@@ -1372,13 +1374,13 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
     struct rlimit *rlim = pcalloc(cmd->server->pool, sizeof(struct rlimit));
 
     /* Retrieve the current values */
-#if defined(RLIMIT_AS)
-    if (getrlimit(RLIMIT_AS, rlim) == -1)
-      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_AS): %s",
-        strerror(errno));
-#elif defined(RLIMIT_DATA)
+#if defined(RLIMIT_DATA)
     if (getrlimit(RLIMIT_DATA, rlim) == -1)
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_DATA): %s",
+        strerror(errno));
+#elif defined(RLIMIT_AS)
+    if (getrlimit(RLIMIT_AS, rlim) == -1)
+      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_AS): %s",
         strerror(errno));
 #elif defined(RLIMIT_VMEM)
     if (getrlimit(RLIMIT_VMEM, rlim) == -1)
@@ -1386,11 +1388,12 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
         strerror(errno));
 #endif
 
-    if (strcasecmp("max", cmd->argv[1]) == 0)
+    if (strcasecmp("max", cmd->argv[1]) == 0) {
       rlim->rlim_cur = RLIM_INFINITY;
 
-    else
+    } else {
       rlim->rlim_cur = get_num_bytes(cmd->argv[1]);
+    }
 
     /* Check for bad return values. */
     if (rlim->rlim_cur == PR_BYTES_BAD_UNITS)
@@ -1401,17 +1404,18 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
 
     /* Handle the optional "hard limit" parameter, if present. */
     if (cmd->argc-1 == 2) {
-      if (strcasecmp("max", cmd->argv[2]) == 0)
+      if (strcasecmp("max", cmd->argv[2]) == 0) {
         rlim->rlim_max = RLIM_INFINITY;
 
-      else
-        rlim->rlim_cur = get_num_bytes(cmd->argv[2]);
+      } else {
+        rlim->rlim_max = get_num_bytes(cmd->argv[2]);
+      }
 
       /* Check for bad return values. */
-      if (rlim->rlim_cur == PR_BYTES_BAD_UNITS)
+      if (rlim->rlim_max == PR_BYTES_BAD_UNITS)
         CONF_ERROR(cmd, "unknown units used");
 
-      if (rlim->rlim_cur == PR_BYTES_BAD_FORMAT)
+      if (rlim->rlim_max == PR_BYTES_BAD_FORMAT)
         CONF_ERROR(cmd, "badly formatted parameter");
     }
 
