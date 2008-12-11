@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.19 2008-12-11 06:40:09 castaglia Exp $
+ * $Id: mod_lang.c,v 1.20 2008-12-11 18:59:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -162,7 +162,8 @@ static int lang_set_lang(const char *lang) {
  */
 static int lang_supported(pool *p, const char *lang) {
   register unsigned int i;
-  char *lang_dup, **langs, *tmp;
+  size_t lang_len;
+  char *lang_dup, **langs;
   int ok = FALSE;
 
   if (!lang_list) {
@@ -172,9 +173,13 @@ static int lang_supported(pool *p, const char *lang) {
 
   lang_dup = pstrdup(p, lang);
 
-  tmp = strchr(lang_dup, '-');
-  if (tmp) {
-    *tmp = '_';
+  lang_len = strlen(lang_dup);
+  if (lang_len > 4) {
+
+    /* Transform something like "en-US" into "en_US". */
+    if (lang_dup[2] == '-') {
+      lang_dup[2] = '_';
+    }
   }
 
   langs = lang_list->elts;
@@ -705,6 +710,8 @@ static int lang_sess_init(void) {
     if (strcasecmp(lang_curr, "C") == 0) {
       lang_curr = LANG_DEFAULT_LANG;
     }
+
+    lang_default = lang_curr;
 
     /* If a list of languages is empty (perhaps because the message catalogs
      * could not be found for some reason), we should still have an entry for
