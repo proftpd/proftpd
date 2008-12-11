@@ -57,7 +57,7 @@ sub tear_down {
   }
 
   undef $self;
-};
+}
 
 sub umask_root_dir_bug2677 {
   my $self = shift;
@@ -66,7 +66,8 @@ sub umask_root_dir_bug2677 {
   my $config_file = "$tmpdir/dir.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
-  my $log_file = File::Spec->rel2abs('dir.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
@@ -103,6 +104,8 @@ sub umask_root_dir_bug2677 {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'directory:10',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
@@ -119,7 +122,7 @@ sub umask_root_dir_bug2677 {
         },
       },
 
-      '~' => {
+      "~" => {
         Umask => '000 000',
         Limit => {
           'CWD MKD STOR' => {
@@ -238,7 +241,8 @@ sub umask_server_config_bug2677 {
   my $config_file = "$tmpdir/dir.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
-  my $log_file = File::Spec->rel2abs('dir.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
@@ -275,6 +279,8 @@ sub umask_server_config_bug2677 {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'directory:10',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
