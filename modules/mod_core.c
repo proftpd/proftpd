@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.334 2008-12-11 04:49:08 castaglia Exp $
+ * $Id: mod_core.c,v 1.335 2008-12-11 20:19:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1791,7 +1791,7 @@ MODRET set_cdpath(cmd_rec *cmd) {
 
 MODRET add_directory(cmd_rec *cmd) {
   config_rec *c;
-  char *dir,*rootdir = NULL;
+  char *dir, *rootdir = NULL;
   int flags = 0;
 
   CHECK_ARGS(cmd, 1);
@@ -1840,26 +1840,32 @@ MODRET add_directory(cmd_rec *cmd) {
   /* Check for any expandable variables, and mark this config_rec for
    * deferred resolution if present
    */
-  if (strstr(dir, "%u") &&
-      !(flags & CF_DEFER))
+  if (strstr(dir, "%u")) {
     flags |= CF_DEFER;
+  }
 
   c = pr_parser_config_ctxt_open(dir);
   c->argc = 2;
   c->argv = pcalloc(c->pool, 3 * sizeof(void *));
-  if (rootdir)
+
+  /* If we do NOT have rootdir, then do NOT add anything to the argv[1] slot;
+   * it is intended solely for that particular use case.
+   */
+  if (rootdir) {
     c->argv[1] = pstrdup(c->pool, rootdir);
+  }
 
   c->config_type = CONF_DIR;
   c->flags |= flags;
 
-  if (!(c->flags & CF_DEFER))
-    pr_log_debug(DEBUG2,
-      "<Directory %s>: adding section for resolved path '%s'", cmd->argv[1],
-      dir);
-  else
+  if (!(c->flags & CF_DEFER)) {
+    pr_log_debug(DEBUG2, "<Directory %s>: adding section for resolved "
+      "path '%s'", cmd->argv[1], dir);
+
+  } else {
     pr_log_debug(DEBUG2,
       "<Directory %s>: deferring resolution of path", cmd->argv[1]);
+  }
 
   return PR_HANDLED(cmd);
 }
