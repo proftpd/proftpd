@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.199 2008-12-11 20:45:10 castaglia Exp $
+ * $Id: dirtree.c,v 1.200 2008-12-11 20:52:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1558,13 +1558,21 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
       *cp = '\0';
 
     } else {
-      if (strlen(path) > 1)
-        path[1] = '\0';
+      if (cp) {
+        /* Go one more pass through (if there actually is a '/' character),
+         * but stop the loop after that by setting the recurse flag to 'false'.
+         */
 
-      /* Go one more pass through, but stop the loop after that by
-       * setting the recurse flag to 'false'.
-       */
-      recurse = FALSE;
+        if (strlen(path) > 1) {
+          /* If we've reached this point, then the previous attempt was
+           * for "/path".  Thus we need to make sure the next attempt is
+           * just "/".
+           */
+          path[1] = '\0';
+        }
+
+        recurse = FALSE;
+      }
     }
 
     if (path) {
