@@ -1640,6 +1640,7 @@ static int tls_init_ctxt(void) {
   }
 
   SSL_library_init();
+  OpenSSL_add_all_algorithms();
 
 #ifdef ZLIB
    {
