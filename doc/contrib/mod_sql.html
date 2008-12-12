@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.10 2008-08-23 20:05:54 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.11 2008-12-12 21:26:58 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -591,6 +591,11 @@ would be appended to every group-related query as the string:
 </pre>
 
 <p>
+As of ProFTPD 1.3.1rc2, the <code>SQLGroupWhereClause</code> can use the same
+set of variables as supported by the <a href="#SQLNamedQuery"><code>SQLNamedQuer
+y</code></a> directive.
+
+<p>
 <hr>
 <h2><a name="SQLLog">SQLLog</a></h2>
 <strong>Syntax:</strong> SQLLog <em>cmd-set query-name [&quot;IGNORE_ERRORS&quot;]</em><br>
@@ -1149,6 +1154,10 @@ would be appended to every user-related query as the string:
 </pre>
 
 <p>
+As of ProFTPD 1.3.1rc2, the <code>SQLUserWhereClause</code> can use the same
+set of variables as supported by the <a href="#SQLNamedQuery"><code>SQLNamedQuery</code></a> directive.
+
+<p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_sql</code> module is distributed with ProFTPD.  Simply
@@ -1184,7 +1193,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2008-08-23 20:05:54 $</i><br>
+Last Updated: <i>$Date: 2008-12-12 21:26:58 $</i><br>
 
 <br><hr>
 
