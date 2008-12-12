@@ -40,6 +40,11 @@ my $TESTS = {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
+
+  sql_user_where_clause_ok => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
 };
 
 sub new {
@@ -71,7 +76,7 @@ sub tear_down {
   }
 
   undef $self;
-};
+}
 
 sub sql_bug2045 {
   my $self = shift;
@@ -80,8 +85,8 @@ sub sql_bug2045 {
   my $config_file = "$tmpdir/sqlite.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
-  my $log_file = File::Spec->rel2abs('sqlite.log');
-  my $sql_log_file = File::Spec->rel2abs('sql.log');
+
+  my $log_file = File::Spec->rel2abs('tests..log');
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -145,7 +150,7 @@ EOS
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
-        SQLLogFile => $sql_log_file,
+        SQLLogFile => $log_file,
         SQLNamedQuery => 'lastdir SELECT "lastdir FROM users WHERE userid = \'%u\'"',
         SQLShowInfo => 'PASS "230" "\"%{lastdir}\" was the last directory"',
       },
@@ -215,7 +220,6 @@ EOS
   }
 
   unlink($log_file);
-  unlink($sql_log_file);
 }
 
 sub sql_bug2922 {
@@ -225,8 +229,8 @@ sub sql_bug2922 {
   my $config_file = "$tmpdir/sqlite.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
-  my $log_file = File::Spec->rel2abs('sqlite.log');
-  my $sql_log_file = File::Spec->rel2abs('sql.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   # Bug#2922 occurred because mod_sql would "authenticate" the plaintext
   # password (if configured to do so) of a user whose info did NOT come from
@@ -287,7 +291,7 @@ EOS
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
-        SQLLogFile => $sql_log_file,
+        SQLLogFile => $log_file,
       },
     },
   };
@@ -360,7 +364,6 @@ EOS
   }
 
   unlink($log_file);
-  unlink($sql_log_file);
 }
 
 sub sql_bug3116 {
@@ -370,8 +373,8 @@ sub sql_bug3116 {
   my $config_file = "$tmpdir/sqlite.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
-  my $log_file = File::Spec->rel2abs('sqlite.log');
-  my $sql_log_file = File::Spec->rel2abs('sql.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   # Bug#3116 occurred because mod_sql was treating percent signs in user
   # (and group) names as variables to be substituted.
@@ -436,7 +439,7 @@ EOS
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
-        SQLLogFile => $sql_log_file,
+        SQLLogFile => $log_file,
       },
     },
   };
@@ -492,7 +495,6 @@ EOS
   }
 
   unlink($log_file);
-  unlink($sql_log_file);
 }
 
 sub sql_bug3124 {
@@ -502,8 +504,8 @@ sub sql_bug3124 {
   my $config_file = "$tmpdir/sqlite.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
-  my $log_file = File::Spec->rel2abs('sqlite.log');
-  my $sql_log_file = File::Spec->rel2abs('sql.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -566,7 +568,7 @@ EOS
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
-        SQLLogFile => $sql_log_file,
+        SQLLogFile => $log_file,
         SQLNegativeCache => 'on',
       },
     },
@@ -623,7 +625,6 @@ EOS
   }
 
   unlink($log_file);
-  unlink($sql_log_file);
 }
 
 sub sql_sqlite_bug3126 {
@@ -633,8 +634,8 @@ sub sql_sqlite_bug3126 {
   my $config_file = "$tmpdir/sqlite.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
-  my $log_file = File::Spec->rel2abs('sqlite.log');
-  my $sql_log_file = File::Spec->rel2abs('sql.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -696,7 +697,7 @@ EOS
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
-        SQLLogFile => $sql_log_file,
+        SQLLogFile => $log_file,
       },
     },
   };
@@ -752,7 +753,143 @@ EOS
   }
 
   unlink($log_file);
-  unlink($sql_log_file);
+}
+
+sub sql_user_where_clause_ok {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlite.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $user1 = 'proftpd';
+  my $user2 = 'proftpd2';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT, 
+  shell TEXT,
+  allowed TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell, allowed) VALUES ('$user1', '$passwd', 500, 500, '$home_dir', 'bin/bash', 'false');
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell, allowed) VALUES ('$user2', '$passwd', 500, 500, '$home_dir', 'bin/bash', 'true');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user1,$user2');
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLAuthTypes => 'plaintext',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $log_file,
+        SQLUserWhereClause => '"allowed = \'true\'"',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      # This account should not be allowed to login based on the
+      # SQLUserWhereCluase...
+      eval { $client->login($user1, $passwd) };
+      unless ($@) {
+        die("Login for user '$user1' succeeded unexpectedly");
+      }
+
+      # ...but this one should succeed.
+      $client->login($user2, $passwd);
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
 }
 
 1;
