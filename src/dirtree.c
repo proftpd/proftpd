@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.200 2008-12-11 20:52:41 castaglia Exp $
+ * $Id: dirtree.c,v 1.201 2008-12-13 04:49:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2331,6 +2331,8 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
   if (recurse) {
     do {
       config_rec *res = NULL;
+
+      pr_signals_handle();
 
       for (c = top; c; c = c->next) {
         if (c->subset &&
