@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.62 2008-10-06 17:20:22 castaglia Exp $
+ * $Id: auth.c,v 1.63 2008-12-13 07:12:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1008,13 +1008,16 @@ static config_rec *auth_anonymous_group(pool *p, char *user) {
 
   c = find_config(main_server->conf, CONF_PARAM, "AnonymousGroup", FALSE);
 
-  if (c)
+  if (c) {
     do {
+      pr_signals_handle();
+
       ret = pr_expr_eval_group_and((char **) c->argv);
 
     } while (ret == FALSE &&
       (c = find_config_next(c, c->next, CONF_PARAM, "AnonymousGroup",
         FALSE)) != NULL);
+  }
 
   return ret ? c : NULL;
 }
@@ -1035,6 +1038,18 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
   config_user_name = get_param_ptr(main_server->conf, "UserName", FALSE);
   if (config_user_name && user_name)
     *user_name = config_user_name;
+
+  /* If the main_server->conf->set list is large (e.g. there are many
+   * config_recs in the list, as can happen if MANY <Directory> sections are
+   * configured), the login can timeout because this find_config() call takes
+   * a long time.  The reason this issue strikes HERE first in the login
+   * process is that this appears to the first find_config() call which has
+   * a TRUE recurse flag.
+   *
+   * The find_config() call below is looking for a UserAlias directive
+   * anywhere in the configuration, no matter how deeply buried in nested
+   * config contexts it might be.
+   */
 
   c = find_config(main_server->conf, CONF_PARAM, "UserAlias", TRUE);
   if (c) {
@@ -1091,9 +1106,10 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
 
   /* Next, search for an anonymous entry. */
 
-  if (!c)
+  if (!c) {
     c = find_config(main_server->conf, CONF_ANON, NULL, FALSE);
-  else
+
+  } else
     find_config_set_top(c);
 
   if (c) {
