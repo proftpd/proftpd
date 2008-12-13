@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.145 2008-11-21 05:54:44 castaglia Exp $
+ * $Id: mod_sql.c,v 1.146 2008-12-13 02:20:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1730,7 +1730,7 @@ static char *resolve_long_tag(cmd_rec *cmd, char *tag) {
 }
 
 static int resolve_numeric_tag(cmd_rec *cmd, char *tag) {
-  int num;
+  int num = -1;
   char *endp = NULL;
 
   num = strtol(tag, &endp, 10);
@@ -1744,10 +1744,12 @@ static int resolve_numeric_tag(cmd_rec *cmd, char *tag) {
 }
 
 static char *resolve_short_tag(cmd_rec *cmd, char tag) {
-  char arg[256] = {'\0'}, *argp;
+  char arg[256], *argp = NULL;
+
+  memset(arg, '\0', sizeof(arg));
 
   switch (tag) {
-  case 'A': {
+    case 'A': {
       char *pass;
 
       argp = arg;
@@ -1756,214 +1758,222 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 	pass = "UNKNOWN";
       
       sstrncpy(argp, pass, sizeof(arg));
+      break;
     }
-    break;
 
-  case 'a':
-    argp = arg;
-    sstrncpy(argp, pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr()),
-      sizeof(arg));
-    break;
-
-  case 'b':
-    argp = arg;
-    if (session.xfer.p) {
-      snprintf(argp, sizeof(arg), "%" PR_LU,
-        (pr_off_t) session.xfer.total_bytes);
-
-    } else if (strcmp(cmd->argv[0], C_DELE) == 0) {
-      snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) sql_dele_filesz);
-
-    } else
-      sstrncpy(argp, "0", sizeof(arg));
-
-    break;
-
-  case 'c':
-    argp = arg;
-    sstrncpy(argp, session.class ? session.class->cls_name : "-", sizeof(arg));
-    break;
-
-  case 'd':
-    argp = arg;
-
-    if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
-        strcmp(cmd->argv[0], C_CWD) == 0 ||
-        strcmp(cmd->argv[0], C_MKD) == 0 ||
-        strcmp(cmd->argv[0], C_RMD) == 0 ||
-        strcmp(cmd->argv[0], C_XCWD) == 0 ||
-        strcmp(cmd->argv[0], C_XCUP) == 0 ||
-        strcmp(cmd->argv[0], C_XMKD) == 0 ||
-        strcmp(cmd->argv[0], C_XRMD) == 0) {
-      char *tmp = strrchr(cmd->arg, '/');
-
-      sstrncpy(argp, tmp ? tmp : cmd->arg, sizeof(arg));
-
-    } else
-      sstrncpy(argp, "", sizeof(arg));
-
-    break;
-
-  case 'D':
-    argp = arg;
-
-    if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
-        strcmp(cmd->argv[0], C_MKD) == 0 ||
-        strcmp(cmd->argv[0], C_RMD) == 0 ||
-        strcmp(cmd->argv[0], C_XCUP) == 0 ||
-        strcmp(cmd->argv[0], C_XMKD) == 0 ||
-        strcmp(cmd->argv[0], C_XRMD) == 0) {
-      sstrncpy(argp, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE), sizeof(arg));
-
-    } else if (strcmp(cmd->argv[0], C_CWD) == 0 ||
-               strcmp(cmd->argv[0], C_XCWD) == 0) {
-
-      /* Note: by this point in the dispatch cycle, the current working
-       * directory has already been changed.  For the CWD/XCWD commands,
-       * this means that dir_abs_path() may return an improper path,
-       * with the target directory being reported twice.  To deal with this,
-       * don't use dir_abs_path(), and use pr_fs_getvwd()/pr_fs_getcwd()
-       * instead.
-       */
-
-      if (session.chroot_path) {
-        /* Chrooted session. */
-        sstrncpy(arg, strcmp(pr_fs_getvwd(), "/") ?
-          pdircat(cmd->tmp_pool, session.chroot_path, pr_fs_getvwd(), NULL) :
-          session.chroot_path, sizeof(arg));
-
-      } else
-
-        /* Non-chrooted session. */
-        sstrncpy(arg, pr_fs_getcwd(), sizeof(arg));
-
-    } else
-      sstrncpy(argp, "", sizeof(arg));
-
-    break;
-
-  case 'f':
-    argp = arg;
-
-    if (strcmp(cmd->argv[0], C_RNTO) == 0) {
-      sstrncpy(argp, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE), sizeof(arg));
-
-    } else if (session.xfer.p &&
-               session.xfer.path) {
-      sstrncpy(argp, dir_abs_path(cmd->tmp_pool, session.xfer.path, TRUE),
+    case 'a':
+      argp = arg;
+      sstrncpy(argp, pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr()),
         sizeof(arg));
+      break;
 
-    } else {
+    case 'b':
+      argp = arg;
+      if (session.xfer.p) {
+        snprintf(argp, sizeof(arg), "%" PR_LU,
+          (pr_off_t) session.xfer.total_bytes);
 
-      /* Some commands (i.e. DELE, MKD, RMD, XMKD, and XRMD) have associated
-       * filenames that are not stored in the session.xfer structure; these
-       * should be expanded properly as well.
-       */
-      if (strcmp(cmd->argv[0], C_DELE) == 0 ||
+      } else if (strcmp(cmd->argv[0], C_DELE) == 0) {
+        snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) sql_dele_filesz);
+
+      } else {
+        sstrncpy(argp, "0", sizeof(arg));
+      }
+      break;
+
+    case 'c':
+      argp = arg;
+      sstrncpy(argp, session.class ? session.class->cls_name : "-",
+        sizeof(arg));
+      break;
+
+    case 'd':
+      argp = arg;
+
+      if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
+          strcmp(cmd->argv[0], C_CWD) == 0 ||
           strcmp(cmd->argv[0], C_MKD) == 0 ||
           strcmp(cmd->argv[0], C_RMD) == 0 ||
+          strcmp(cmd->argv[0], C_XCWD) == 0 ||
+          strcmp(cmd->argv[0], C_XCUP) == 0 ||
           strcmp(cmd->argv[0], C_XMKD) == 0 ||
-          strcmp(cmd->argv[0], C_XRMD) == 0)
-        sstrncpy(arg, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE), sizeof(arg));
+          strcmp(cmd->argv[0], C_XRMD) == 0) {
+        char *tmp = strrchr(cmd->arg, '/');
 
-      else
-        /* All other situations get a "-".  */
-        sstrncpy(argp, "-", sizeof(arg));
-    }
-    break;
+        sstrncpy(argp, tmp ? tmp : cmd->arg, sizeof(arg));
 
-  case 'F':
-    argp = arg;
+      } else {
+        sstrncpy(argp, "", sizeof(arg));
+      }
+      break;
 
-    if (strcmp(cmd->argv[0], C_RNTO) == 0) {
-      char *path;
+    case 'D':
+      argp = arg;
 
-      path = dir_best_path(cmd->tmp_pool,
-        pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
-      sstrncpy(arg, path, sizeof(arg));
+      if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
+          strcmp(cmd->argv[0], C_MKD) == 0 ||
+          strcmp(cmd->argv[0], C_RMD) == 0 ||
+          strcmp(cmd->argv[0], C_XCUP) == 0 ||
+          strcmp(cmd->argv[0], C_XMKD) == 0 ||
+          strcmp(cmd->argv[0], C_XRMD) == 0) {
+        sstrncpy(argp, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE),
+          sizeof(arg));
 
-    } else if (session.xfer.p &&
-               session.xfer.path) {
-      sstrncpy(argp, session.xfer.path, sizeof(arg));
+      } else if (strcmp(cmd->argv[0], C_CWD) == 0 ||
+                 strcmp(cmd->argv[0], C_XCWD) == 0) {
 
-    } else {
-      /* Some commands (i.e. DELE) have associated filenames that are not
-       * stored in the session.xfer structure; these should be expanded
-       * properly as well.
-       */
-      if (strcmp(cmd->argv[0], C_DELE) == 0) {
+        /* Note: by this point in the dispatch cycle, the current working
+         * directory has already been changed.  For the CWD/XCWD commands,
+         * this means that dir_abs_path() may return an improper path,
+         * with the target directory being reported twice.  To deal with this,
+         * don't use dir_abs_path(), and use pr_fs_getvwd()/pr_fs_getcwd()
+         * instead.
+         */
+
+        if (session.chroot_path) {
+          /* Chrooted session. */
+          sstrncpy(arg, strcmp(pr_fs_getvwd(), "/") ?
+            pdircat(cmd->tmp_pool, session.chroot_path, pr_fs_getvwd(), NULL) :
+            session.chroot_path, sizeof(arg));
+
+        } else {
+
+          /* Non-chrooted session. */
+          sstrncpy(arg, pr_fs_getcwd(), sizeof(arg));
+        }
+
+      } else {
+        sstrncpy(argp, "", sizeof(arg));
+      }
+      break;
+
+    case 'f':
+      argp = arg;
+
+      if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+        sstrncpy(argp, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE),
+          sizeof(arg));
+
+      } else if (session.xfer.p &&
+                 session.xfer.path) {
+        sstrncpy(argp, dir_abs_path(cmd->tmp_pool, session.xfer.path, TRUE),
+          sizeof(arg));
+
+      } else {
+
+        /* Some commands (i.e. DELE, MKD, RMD, XMKD, and XRMD) have associated
+         * filenames that are not stored in the session.xfer structure; these
+         * should be expanded properly as well.
+         */
+        if (strcmp(cmd->argv[0], C_DELE) == 0 ||
+            strcmp(cmd->argv[0], C_MKD) == 0 ||
+            strcmp(cmd->argv[0], C_RMD) == 0 ||
+            strcmp(cmd->argv[0], C_XMKD) == 0 ||
+            strcmp(cmd->argv[0], C_XRMD) == 0) {
+          sstrncpy(arg, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE),
+            sizeof(arg));
+
+        } else {
+          /* All other situations get a "-".  */
+          sstrncpy(argp, "-", sizeof(arg));
+        }
+      }
+      break;
+
+    case 'F':
+      argp = arg;
+
+      if (strcmp(cmd->argv[0], C_RNTO) == 0) {
         char *path;
 
         path = dir_best_path(cmd->tmp_pool,
           pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
         sstrncpy(arg, path, sizeof(arg));
 
-      } else
-        sstrncpy(argp, "-", sizeof(arg));
+      } else if (session.xfer.p &&
+                 session.xfer.path) {
+        sstrncpy(argp, session.xfer.path, sizeof(arg));
+
+      } else {
+        /* Some commands (i.e. DELE) have associated filenames that are not
+         * stored in the session.xfer structure; these should be expanded
+         * properly as well.
+         */
+        if (strcmp(cmd->argv[0], C_DELE) == 0) {
+          char *path;
+
+          path = dir_best_path(cmd->tmp_pool,
+            pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+          sstrncpy(arg, path, sizeof(arg));
+
+        } else {
+          sstrncpy(argp, "-", sizeof(arg));
+        }
+      }
+      break;
+
+    case 'J':
+      argp = arg;
+      if (strcasecmp(cmd->argv[0], C_PASS) == 0 &&
+          session.hide_password) {
+        sstrncpy(argp, "(hidden)", sizeof(arg));
+
+      } else {
+        sstrncpy(argp, cmd->arg, sizeof(arg));
+      }
+      break;
+
+    case 'h':
+      argp = arg;
+      sstrncpy(argp, pr_netaddr_get_sess_remote_name(), sizeof(arg));
+      break;
+
+    case 'L':
+      argp = arg;
+      sstrncpy(argp, pr_netaddr_get_ipstr(pr_netaddr_get_sess_local_addr()),
+        sizeof(arg));
+      break;
+
+    case 'l': {
+      char *rfc1413_ident;
+
+      argp = arg;
+      rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident",
+        NULL);
+      if (rfc1413_ident == NULL)
+        rfc1413_ident = "UNKNOWN";
+
+      sstrncpy(argp, rfc1413_ident, sizeof(arg));
+      break;
     }
-    break;
 
-  case 'J':
-    argp = arg;
-    if (strcasecmp(cmd->argv[0], C_PASS) == 0 &&
-        session.hide_password) {
-      sstrncpy(argp, "(hidden)", sizeof(arg));
+    case 'm':
+      argp = arg;
+      sstrncpy(argp, cmd->argv[0], sizeof(arg));
+      break;
 
-    } else {
-      sstrncpy(argp, cmd->arg, sizeof(arg));
-    }
-    break;
+    case 'P':
+      argp = arg;
+      snprintf(argp, sizeof(arg), "%lu", (unsigned long) getpid());
+      break;
 
-  case 'h':
-    argp = arg;
-    sstrncpy(argp, pr_netaddr_get_sess_remote_name(), sizeof(arg));
-    break;
+    case 'p': 
+      argp = arg;
+      snprintf(argp, sizeof(arg), "%d", main_server->ServerPort);
+      break;
 
-  case 'L':
-    argp = arg;
-    sstrncpy(argp, pr_netaddr_get_ipstr(pr_netaddr_get_sess_local_addr()),
-      sizeof(arg));
-    break;
+    case 'r':
+      argp = arg;
+      if (strcmp(cmd->argv[0], C_PASS) == 0 &&
+          session.hide_password) {
+        sstrncpy(argp, C_PASS " (hidden)", sizeof(arg));
 
-  case 'l': {
-    char *rfc1413_ident;
+      } else {
+        sstrncpy(argp, get_full_cmd(cmd), sizeof(arg));
+      }
+      break;
 
-    argp = arg;
-    rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident",
-      NULL);
-    if (rfc1413_ident == NULL)
-      rfc1413_ident = "UNKNOWN";
-
-    sstrncpy(argp, rfc1413_ident, sizeof(arg));
-    break;
-  }
-
-  case 'm':
-    argp = arg;
-    sstrncpy(argp, cmd->argv[0], sizeof(arg));
-    break;
-
-  case 'P':
-    argp = arg;
-    snprintf(argp, sizeof(arg), "%lu", (unsigned long) getpid());
-    break;
-
-  case 'p': 
-    argp = arg;
-    snprintf(argp, sizeof(arg), "%d", cmd->server->ServerPort);
-    break;
-
-  case 'r':
-    argp = arg;
-    if (strcmp(cmd->argv[0], C_PASS) == 0 &&
-        session.hide_password)
-      sstrncpy(argp, C_PASS " (hidden)", sizeof(arg));
-
-    else
-      sstrncpy(argp, get_full_cmd(cmd), sizeof(arg));
-    break;
-
-  case 's': {
+    case 's': {
       pr_response_t *r;
       argp = arg;
       
@@ -1971,84 +1981,91 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       
       for (; r && !r->num; r=r->next);
 
-      if (r && r->num)
+      if (r && r->num) {
         sstrncpy(argp, r->num, sizeof(arg));
-      else
+
+      } else {
         sstrncpy(argp, "-", sizeof(arg));
-    }
-    break;
-
-  case 'T':
-    argp = arg;
-    if (session.xfer.p) {
-      struct timeval end_time;
-      
-      gettimeofday(&end_time, NULL);
-      end_time.tv_sec -= session.xfer.start_time.tv_sec;
-
-      if (end_time.tv_usec >= session.xfer.start_time.tv_usec)
-        end_time.tv_usec -= session.xfer.start_time.tv_usec;
-
-      else {
-        end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
-          end_time.tv_usec);
-        end_time.tv_sec--;
       }
+
+      break;
+    }
+
+    case 'T':
+      argp = arg;
+      if (session.xfer.p) {
+        struct timeval end_time;
       
-      snprintf(argp, sizeof(arg), "%lu.%03lu", (unsigned long) end_time.tv_sec,
-        (unsigned long) (end_time.tv_usec / 1000));
+        gettimeofday(&end_time, NULL);
+        end_time.tv_sec -= session.xfer.start_time.tv_sec;
 
-    } else
-      sstrncpy(argp, "0.0", sizeof(arg));
+        if (end_time.tv_usec >= session.xfer.start_time.tv_usec) {
+          end_time.tv_usec -= session.xfer.start_time.tv_usec;
 
-    break;
+        } else {
+          end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
+            end_time.tv_usec);
+          end_time.tv_sec--;
+        }
+      
+        snprintf(argp, sizeof(arg), "%lu.%03lu",
+          (unsigned long) end_time.tv_sec,
+          (unsigned long) (end_time.tv_usec / 1000));
 
-  case 'U':
-    argp = arg;
-    {
-      char *login_user = get_param_ptr(main_server->conf, C_USER, FALSE);
+      } else {
+        sstrncpy(argp, "0.0", sizeof(arg));
+      }
+      break;
 
+    case 'U': {
+      char *login_user;
+
+      argp = arg;
+
+      login_user = get_param_ptr(main_server->conf, C_USER, FALSE);
       if (!login_user)
         login_user = "root";
 
       sstrncpy(argp, login_user, sizeof(arg));
+      break;
     }
-    break;
 
-  case 'u':
-    argp = arg;
+    case 'u': {
+      argp = arg;
 
-    if (!session.user) {
-      char *u;
+      if (!session.user) {
+        char *u;
 
-      u = get_param_ptr(main_server->conf, "UserName", FALSE);
-      if (!u)
-        u = "root";
+        u = get_param_ptr(main_server->conf, "UserName", FALSE);
+        if (!u)
+          u = "root";
 
-      sstrncpy(argp, u, sizeof(arg));
+        sstrncpy(argp, u, sizeof(arg));
 
-    } else
-      sstrncpy(argp, session.user, sizeof(arg));
+      } else {
+        sstrncpy(argp, session.user, sizeof(arg));
+      }
 
-    break;
+      break;
+    }
 
-  case 'V':
-    argp = arg;
-    sstrncpy(argp, cmd->server->ServerFQDN, sizeof(arg));
-    break;
+    case 'V':
+      argp = arg;
+      sstrncpy(argp, main_server->ServerFQDN, sizeof(arg));
+      break;
 
-  case 'v':
-    argp = arg;
-    sstrncpy(argp, cmd->server->ServerName, sizeof(arg));
-    break;
+    case 'v':
+      argp = arg;
+      sstrncpy(argp, main_server->ServerName, sizeof(arg));
+      break;
 
-  case '%':
-    argp = "%";
-    break;
+    case '%':
+      argp = "%";
+      break;
 
-  default:
-    argp = "{UNKNOWN TAG}";
-    break;
+    default:
+      argp = "{UNKNOWN TAG}";
+      break;
   }
 
   return pstrdup(cmd->tmp_pool, argp);
