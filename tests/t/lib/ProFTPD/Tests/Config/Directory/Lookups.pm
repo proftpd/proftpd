@@ -23,6 +23,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  dir_lookup_deep_layout => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   # dir_deep_layout
   # dir_wide_deep_layout
   #
@@ -51,6 +56,8 @@ sub set_up {
     my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
+
+  make_name(0, 0);
 }
 
 sub tear_down {
@@ -69,6 +76,11 @@ my ($prev_name, $prev_namelen);
 sub make_name {
   my $name_len = shift;
   my $inc = shift;
+
+  if ($name_len == 0) {
+    ($prev_name, $prev_namelen) = (undef, undef);
+    return undef;
+  }
 
   # If the requested name length has changed, start over
   if ($name_len != $prev_namelen) {
@@ -154,17 +166,22 @@ sub dir_lookup_wide_layout {
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
+  my $timeout = 300;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
     TraceLog => $log_file,
-    Trace => 'directory:10',
+    Trace => 'DEFAULT:10 auth:0 config:0 directory:10 fsio:0 lock:0',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
 
     DefaultChdir => '~',
+
+    TimeoutIdle => $timeout,
+    TimeoutLogin => $timeout,
 
     Directory => {
       '/' => {
@@ -194,10 +211,10 @@ sub dir_lookup_wide_layout {
   my $target_dir;
 
   if (open(my $fh, ">> $config_file")) {
-    my $width = 1000;
+    my $count = 1000;
     my $namelen = 3;
 
-    for (my $i = 0; $i < $width; $i++) {
+    for (my $i = 0; $i < $count; $i++) {
       $target_dir = make_name($namelen, 1);
       my $dir = File::Spec->rel2abs("$tmpdir/$target_dir");
       mkpath($dir);
@@ -235,7 +252,12 @@ EOD
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, undef,
+        $timeout);
+
+      # Make sure the underlying Net::FTP uses our long timeout
+      my $old_timeout = $client->{ftp}->timeout($timeout);
+
       $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
@@ -275,7 +297,7 @@ print STDERR "Elapsed: ", Dumper($elapsed);
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout + 5) };
     if ($@) {
       warn($@);
       exit 1;
@@ -293,6 +315,196 @@ print STDERR "Elapsed: ", Dumper($elapsed);
     die($ex);
   }
 
+  unlink($log_file);
+}
+
+sub dir_lookup_deep_layout {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/dir.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+ 
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $timeout = 300;
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 auth:0 config:0 directory:10 fsio:0 lock:0',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    DefaultChdir => '~',
+
+    TimeoutIdle => $timeout,
+    TimeoutLogin => $timeout,
+
+    Directory => {
+      '/' => {
+        Umask => '066 077',
+      },
+    },
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Append our mess of many dep <Directory> sections to the config:
+  #
+  #  <Directory /path/to/a>
+  #    Umask 066 077
+  #  </Directory>
+  #
+  #  <Directory/path/to/a/b>
+  #    Umask 066 077
+  #  </Directory>
+
+  my $target_dir;
+  if (open(my $fh, ">> $config_file")) {
+    my $count = 512 - length($home_dir);
+
+    $target_dir = make_name(1, 1);
+
+    for (my $i = 0; $i < $count; $i++) {
+      $target_dir = File::Spec->catdir($target_dir, make_name(1, 1));
+      my $dir = File::Spec->rel2abs($target_dir);
+      mkpath($dir);
+
+      print $fh <<EOD;
+<Directory ~/$target_dir>
+  Umask 066 077
+</Directory>
+EOD
+    }
+
+    unless (close($fh)) {
+      die("Can't write $config_file: $!");
+    }
+
+  } else {
+    die("Can't open $config_file: $!");
+  }
+
+  # To test the worst-case scenario, the target directory (to which we will
+  # write a file) should be the _last_ in the list.
+
+print STDERR "target_dir: $target_dir\n";
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, undef,
+        $timeout);
+
+      # Make sure the underlying Net::FTP uses our long timeout
+      my $old_timeout = $client->{ftp}->timeout($timeout);
+
+      $client->login($user, $passwd);
+
+      my ($resp_code, $resp_msg);
+
+      my $start_time = [gettimeofday()];
+
+      my $conn = $client->stor_raw("$target_dir/test.txt");
+      unless ($conn) {
+        die("Failed to STOR $target_dir/test.txt: " . $client->response_code() .
+          " " . $client->response_msg());
+      }
+
+      my $elapsed = tv_interval($start_time);
+print STDERR "Elapsed: ", Dumper($elapsed);
+
+      $conn->close();
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      my $expected;
+
+      $expected = 226;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected '$expected', got '$resp_code'"));
+
+      $expected = "Transfer complete";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh, $timeout + 5) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+die();
   unlink($log_file);
 }
 
