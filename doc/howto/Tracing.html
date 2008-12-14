@@ -1,4 +1,4 @@
-<!-- $Id: Tracing.html,v 1.7 2008-12-09 19:11:02 castaglia Exp $ -->
+<!-- $Id: Tracing.html,v 1.8 2008-12-14 22:51:49 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Tracing.html,v $ -->
 
 <html>
@@ -117,6 +117,15 @@ Then <b>all</b> of the above channels, up to log level 10, will have their
 messages logged.
 
 <p>
+If you want to look at the default trace channels <i>except</i> for a
+particular channel, use level 0 to effectively disable that channel.
+For example, to exclude the "fsio" channel but see the rest of the default
+channels, you would use:
+<pre>
+  Trace DEFAULT:10 fsio:0
+</pre>
+
+<p>
 Note that there are trace channel names that are <b>not</b> part of the
 "DEFAULT" channel name list (<i>e.g.</i> "class"); any custom channel names,
 such as might be used by a third-party module, are also not covered in the
@@ -187,7 +196,7 @@ ever be used for debugging and development purposes; once your
 
 <p>
 <hr>
-<i>$Date: 2008-12-09 19:11:02 $</i><br>
+<i>$Date: 2008-12-14 22:51:49 $</i><br>
 
 </body>
 </html>
