@@ -1,4 +1,4 @@
-<!-- $Id: Sendfile.html,v 1.1 2008-11-22 00:11:03 castaglia Exp $ -->
+<!-- $Id: Sendfile.html,v 1.2 2008-12-14 06:45:50 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Sendfile.html,v $ -->
 
 <html>
@@ -122,8 +122,8 @@ for providing their information, including transfer rates.  The progress
 of a file being downloaded is tracked in the <code>ScoreboardFile</code>
 as part of the download process; specifically, as part of the normal
 <code>read(2)</code>/<code>write(2)</code> loop.  When the
-<code>sendfile(2)</code> is used, the <code>ScoreboardFile</code> is not
-updated with the progress (since all of the data copying is being handled
+<code>sendfile(2)</code> function is used, the <code>ScoreboardFile</code> is
+not updated with the progress (since all of the data copying is being handled
 by the kernel, not by <code>proftpd</code> code at that point).  Thus
 for downloads which use <code>sendfile(2)</code>, <code>ftptop</code> and
 <code>ftpwho</code> often report the transfer rate as "Inf".
@@ -145,7 +145,7 @@ if ProFTPD supported the same, so that sites could do the following:
 
 <p>
 <hr>
-<i>$Date: 2008-11-22 00:11:03 $</i><br>
+<i>$Date: 2008-12-14 06:45:50 $</i><br>
 
 </body>
 </html>
