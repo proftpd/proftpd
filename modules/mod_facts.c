@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.11 2008-12-03 08:40:04 castaglia Exp $
+ * $Id: mod_facts.c,v 1.12 2008-12-14 22:48:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -647,7 +647,7 @@ MODRET facts_mff(cmd_rec *cmd) {
 
       ptr2 = strchr(facts, '=');
       if (!ptr2) {
-        pr_response_add_err(R_501, "%s: %s", facts, strerror(EINVAL));
+        pr_response_add_err(R_501, "%s: %s", cmd->argv[1], strerror(EINVAL));
         return PR_ERROR(cmd);
       }
 
@@ -679,7 +679,8 @@ MODRET facts_mff(cmd_rec *cmd) {
 
       ptr2 = strchr(facts, '=');
       if (!ptr2) {
-        pr_response_add_err(R_501, "%s: %s", facts, strerror(EINVAL));
+        *ptr = ';';
+        pr_response_add_err(R_501, "%s: %s", cmd->argv[1], strerror(EINVAL));
         return PR_ERROR(cmd);
       }
 
@@ -698,7 +699,8 @@ MODRET facts_mff(cmd_rec *cmd) {
 
       ptr2 = strchr(facts, '=');
       if (!ptr2) {
-        pr_response_add_err(R_501, "%s: %s", facts, strerror(EINVAL));
+        *ptr = ';';
+        pr_response_add_err(R_501, "%s: %s", cmd->argv[1], strerror(EINVAL));
         return PR_ERROR(cmd);
       }
 
@@ -718,6 +720,8 @@ MODRET facts_mff(cmd_rec *cmd) {
         ": %s: fact '%s' unsupported for modification, denying request",
         cmd->argv[0], facts);
       pr_response_add_err(R_504, _("Cannot modify fact '%s'"), facts);
+
+      *ptr = ';';
       return PR_ERROR(cmd);
     }
 
@@ -1042,6 +1046,7 @@ MODRET facts_opts_mlst(cmd_rec *cmd) {
         ": %s: client requested unsupported fact '%s'", method, facts);
     }
 
+    *ptr = ';';
     facts = ptr + 1;
     ptr = strchr(facts, ';');
   }
