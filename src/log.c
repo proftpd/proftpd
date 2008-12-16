@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.88 2008-10-31 20:15:32 castaglia Exp $
+ * $Id: log.c,v 1.89 2008-12-16 23:43:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -371,7 +371,7 @@ int pr_log_writefile(int logfd, const char *ident, const char *fmt, ...) {
 
   /* Prepend a small header */
   snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "%s[%u]: ",
-    ident, (unsigned int) session.pid ? session.pid : getpid());
+    ident, (unsigned int) (session.pid ? session.pid : getpid()));
   buf[sizeof(buf)-1] = '\0';
 
   /* Affix the message */
@@ -491,12 +491,12 @@ static void log_write(int priority, int f, char *s) {
     if (*serverinfo) {
       snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
 	       "%s proftpd[%u] %s: %s\n", systemlog_host,
-	       (unsigned int) session.pid ? session.pid : getpid(),
+	       (unsigned int) (session.pid ? session.pid : getpid()),
                serverinfo, s);
     } else {
       snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
 	       "%s proftpd[%u]: %s\n", systemlog_host,
-	       (unsigned int) session.pid ? session.pid : getpid(), s);
+	       (unsigned int) (session.pid ? session.pid : getpid()), s);
     }
 
     buf[sizeof(buf) - 1] = '\0';
