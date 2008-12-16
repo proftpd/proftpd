@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.202 2008-12-16 01:38:36 castaglia Exp $
+ * $Id: dirtree.c,v 1.203 2008-12-16 06:23:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1568,6 +1568,12 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
           *(cp+1) = '\0';
           recurse = FALSE;        
         }
+
+      } else {
+        /* Set the recurse flag to 'false', so that we go one more pass
+         * through the loop, but stop after that.
+         */
+        recurse = FALSE;        
       }
 
     } else {
