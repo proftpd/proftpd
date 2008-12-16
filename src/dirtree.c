@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.201 2008-12-13 04:49:24 castaglia Exp $
+ * $Id: dirtree.c,v 1.202 2008-12-16 01:38:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1549,30 +1549,29 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
       break;
 
     cp = strrchr(path, '/');
+    if (cp) {
+      if (strcmp(path, "/") != 0) {
 
-    if (cp != path) {
-      /* If the cp pointer is not the same as the path pointer, then this
-       * path separator is later in the path, i.e. the path is not "/".
-       */
+        /* We need to handle the case where path might be "/path".  We
+         * can't just set *cp to '\0', as that would result in the empty
+         * string.  Thus check if cp is the same value as path, i.e.
+         * that cp points to the start of the string.  If so, by definition
+         * we know that we are dealing with the "/path" case.
+         */
+        if (cp != path) {
+          *cp = '\0';
 
-      *cp = '\0';
+        } else {
+          /* Set the recurse flag to 'false', so that we go one more pass
+           * through the loop, but stop after that.
+           */
+          *(cp+1) = '\0';
+          recurse = FALSE;        
+        }
+      }
 
     } else {
-      if (cp) {
-        /* Go one more pass through (if there actually is a '/' character),
-         * but stop the loop after that by setting the recurse flag to 'false'.
-         */
-
-        if (strlen(path) > 1) {
-          /* If we've reached this point, then the previous attempt was
-           * for "/path".  Thus we need to make sure the next attempt is
-           * just "/".
-           */
-          path[1] = '\0';
-        }
-
-        recurse = FALSE;
-      }
+      path = NULL;
     }
 
     if (path) {
