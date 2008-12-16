@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.12 2008-12-14 22:48:33 castaglia Exp $
+ * $Id: mod_facts.c,v 1.13 2008-12-16 00:36:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -742,6 +742,7 @@ MODRET facts_mfmt(cmd_rec *cmd) {
   register unsigned int i;
   const char *path, *decoded_path;
   char *timestamp, *ptr;
+  int res;
 
   if (cmd->argc < 3) {
     pr_response_add_err(R_501, _("Invalid number of arguments"));
@@ -786,7 +787,12 @@ MODRET facts_mfmt(cmd_rec *cmd) {
     *ptr = '\0';
   }
 
-  if (facts_modify_mtime(cmd->tmp_pool, decoded_path, timestamp) < 0) {
+  res = facts_modify_mtime(cmd->tmp_pool, decoded_path, timestamp);
+  if (res < 0) {
+    if (ptr) {
+      *ptr = '.';
+    }
+
     pr_response_add_err(errno == ENOENT ? R_550 : R_501, "%s: %s", path,
       strerror(errno));
     return PR_ERROR(cmd);
@@ -800,6 +806,11 @@ MODRET facts_mfmt(cmd_rec *cmd) {
    * This same requirement means that the string is NOT localisable.
    */
   pr_response_add(R_213, "Modify=%s; %s", timestamp, path);
+
+  if (ptr) {
+    *ptr = '.';
+  }
+
   return PR_HANDLED(cmd);
 }
 
