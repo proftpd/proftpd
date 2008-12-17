@@ -1,4 +1,4 @@
-<!-- $Id: mod_wrap2_file.html,v 1.1 2006-09-06 23:09:58 castaglia Exp $ -->
+<!-- $Id: mod_wrap2_file.html,v 1.2 2008-12-17 00:24:47 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_wrap2_file.html,v $ -->
 
 <html>
@@ -69,13 +69,10 @@ in the <code>host_access(5)</code> man page.
 <p>
 Examples:
 <pre>
-  # Using file-based access tables
-  WrapTables file:/etc/hosts.allow file:/etc/hosts.deny
-</pre>
-
-Example:
-<pre>
   # Server-wide access files
+  WrapTables file:/etc/hosts.allow file:/etc/hosts.deny
+
+  # FTP server-specific access files
   WrapTables file:/etc/ftpd.allow file:/etc/ftpd.deny
 
   # Per-user access files, which are to be found in the user's home directory
@@ -135,12 +132,12 @@ still permits finger requests from other hosts and domains.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2006-09-06 23:09:58 $</i><br>
+Last Updated: <i>$Date: 2008-12-17 00:24:47 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2006 TJ Saunders<br>
+&copy; Copyright 2000-2008 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
