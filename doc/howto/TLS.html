@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.18 2008-12-08 04:00:55 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.19 2008-12-17 18:18:05 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -513,9 +513,26 @@ For additional reading on OpenSSL and FIPS, see:
   <a href="http://www.openssl.org/docs/fips/UserGuide-1.1.1.pdf">http://www.openssl.org/docs/fips/UserGuide-1.1.1.pdf</a>
 </pre>
 
+<p><a name="TLSVersionWarning">
+<font color=red>Question</font>: Why do I see the following in my logs when
+I start <code>proftpd</code> using <code>mod_tls</code>?
+<pre>
+ - mod_tls/2.2: compiled using OpenSSL version 'OpenSSL 0.9.7i 14 Oct 2005'
+headers, but linked to OpenSSL version 'OpenSSL 0.9.7l 28 Sep 2006' library
+</pre>
+<font color=blue>Answer</font>: That message is a warning, not an error.  It
+is telling you that the OpenSSL headers on your system don't match the OpenSSL
+library version.  In most cases, this is not a problem.  However, there
+can be inexplicable errors if the difference in header versus library versions
+is too large.
+
+<p>
+This header/library version check was added recently, hence why older
+<code>proftpd</code> releases do not log the warning.
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2008-12-08 04:00:55 $</i><br>
+Last Updated: <i>$Date: 2008-12-17 18:18:05 $</i><br>
 <hr>
 
 </body>
