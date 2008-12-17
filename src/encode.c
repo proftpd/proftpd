@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.8 2008-11-19 03:31:03 castaglia Exp $
+ * $Id: encode.c,v 1.9 2008-12-17 03:37:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -89,6 +89,7 @@ static int str_convert(iconv_t conv, const char *inbuf, size_t *inbuflen,
 }
 #endif /* !HAVE_ICONV_H */
 
+#ifdef HAVE_ICONV
 static void set_supports_telnet_iac(const char *codeset) {
 
   /* The full list of character sets which use 0xFF could be obtained from
@@ -107,6 +108,7 @@ static void set_supports_telnet_iac(const char *codeset) {
 
   supports_telnet_iac = TRUE;
 }
+#endif /* !HAVE_ICONV */
 
 int encode_free(void) {
 # ifdef HAVE_ICONV
