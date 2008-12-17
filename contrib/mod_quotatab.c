@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.34 2008-07-17 21:01:36 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.35 2008-12-17 22:20:09 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -190,7 +190,7 @@ static char *quota_display_bytes(pool *p, double bytes_used,
     case BYTE:
       /* no manipulation needed */
       sprintf(display, _("%.2f of %.2f %s %s"), bytes_used, bytes_avail,
-        xferstr, bytes_avail != 1.0 ? _("bytes") : _("byte"));
+        xferstr, bytes_avail > 1.0 ? _("bytes") : _("byte"));
       break;
 
     case KILO:
@@ -250,7 +250,7 @@ static char *quota_display_files(pool *p, unsigned int files_used,
   }
 
   sprintf(display, _("%u of %u %s %s"), files_used, files_avail, xferstr,
-    files_avail != 1.0 ? _("files") : _("file"));
+    files_avail > 1.0 ? _("files") : _("file"));
 
   return display;
 }
