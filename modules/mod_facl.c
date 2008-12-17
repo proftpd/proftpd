@@ -24,7 +24,7 @@
 
 /*
  * POSIX ACL checking code (aka POSIX.1e hell)
- * $Id: mod_facl.c,v 1.11 2007-07-18 16:41:47 castaglia Exp $
+ * $Id: mod_facl.c,v 1.12 2008-12-17 17:46:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -354,7 +354,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
     }
   }
 
-  /* 5. If not matched above, and if one of the group IDs matches one
+  /* 4. If not matched above, and if one of the group IDs matches one
    *    of the named group entries, and that entry contains the requested
    *    permissions, use that entry for access.
    */
@@ -441,7 +441,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
     }
   }
 
-  /* 6. If not matched above, and if one of the group IDs matches
+  /* 5. If not matched above, and if one of the group IDs matches
    *    the group owner or any of the named group entries, but neither
    *    the group owner entry nor any of the named group entries contains
    *    the requested permissions, access is denied.
@@ -449,7 +449,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 
   /* XXX implement this condition properly */
 
-  /* 7. If not matched above, the other entry determines access.
+  /* 6. If not matched above, the other entry determines access.
    */
   if (!have_access_entry) {
     ae = acl_other_entry;
@@ -465,7 +465,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
    *  entry contains the requested permissions, access is permitted.
    *
    *  Otherwise, if the selected entry and the mask entry both contain
-   *  the requested permissions, access is permitted.
+   *  the requested permissions (or there is no mask entry), access is
+   *  permitted.
    *
    *  Otherwise, access is denied.
    */
@@ -506,18 +507,28 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
           strerror(errno));
       }
 
-      if (acl_get_permset(acl_mask_entry, &mask_perms) < 0) {
-        pr_trace_msg(trace_channel, 5,
-          "error retrieving mask permission set: %s", strerror(errno));
-      }
-
 #  if defined(HAVE_BSD_POSIX_ACL)
       ret1 = acl_get_perm_np(ent_perms, get_facl_perm_for_mode(mode));
-      ret2 = acl_get_perm_np(mask_perms, get_facl_perm_for_mode(mode));
 #  elif defined(HAVE_LINUX_POSIX_ACL)
       ret1 = acl_get_perm(ent_perms, get_facl_perm_for_mode(mode));
-      ret2 = acl_get_perm(mask_perms, get_facl_perm_for_mode(mode));
 #  endif
+
+      if (acl_mask_entry != NULL) {
+        if (acl_get_permset(acl_mask_entry, &mask_perms) < 0) {
+          pr_trace_msg(trace_channel, 5,
+            "error retrieving mask permission set: %s", strerror(errno));
+        }
+
+#  if defined(HAVE_BSD_POSIX_ACL)
+        ret2 = acl_get_perm_np(mask_perms, get_facl_perm_for_mode(mode));
+#  elif defined(HAVE_LINUX_POSIX_ACL)
+        ret2 = acl_get_perm(mask_perms, get_facl_perm_for_mode(mode));
+#  endif
+
+      } else {
+        /* If there is no mask entry, then access should be granted. */
+        ret2 = 1;
+      }
 
       if (ret1 == 1 && ret2 == 1) {
         res = 0;
@@ -553,7 +564,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 
 # elif defined(HAVE_SOLARIS_POSIX_ACL)
   register unsigned int i;
-  int have_access_entry = FALSE, idx, res = -1;
+  int have_access_entry = FALSE, have_mask_entry = FALSE, idx, res = -1;
   pool *acl_pool;
   aclent_t *acls = acl;
   aclent_t ae;
@@ -652,6 +663,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 
     } else if (acls[i].a_type & CLASS_OBJ) {
       memcpy(&acl_mask_entry, &(acls[i]), sizeof(aclent_t));
+      have_mask_entry = TRUE;
     }
   }
 
@@ -738,7 +750,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
     }
   }
 
-  /* 5. If not matched above, and if one of the group IDs matches one
+  /* 4. If not matched above, and if one of the group IDs matches one
    *    of the named group entries, and that entry contains the requested
    *    permissions, use that entry for access.
    */
@@ -790,7 +802,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
     }
   }
 
-  /* 6. If not matched above, and if one of the group IDs matches
+  /* 5. If not matched above, and if one of the group IDs matches
    *    the group owner or any of the named group entries, but neither
    *    the group owner entry nor any of the named group entries contains
    *    the requested permissions, access is denied.
@@ -798,7 +810,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 
   /* XXX implement this condition properly */
 
-  /* 7. If not matched above, the other entry determines access.
+  /* 6. If not matched above, the other entry determines access.
    */
   if (!have_access_entry) {
     memcpy(&ae, &acl_other_entry, sizeof(aclent_t));
@@ -814,7 +826,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
    *  entry contains the requested permissions, access is permitted.
    *
    *  Otherwise, if the selected entry and the mask entry both contain
-   *  the requested permissions, access is permitted.
+   *  the requested permissions (or there is no mask entry), access is
+   *  permitted.
    *
    *  Otherwise, access is denied.
    */
@@ -826,9 +839,18 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
       break;
 
     default: 
-      if ((ae.a_perm & mode) &&
-          (acl_mask_entry.a_perm & mode))
-        res = 0;
+      if (have_mask_entry) {
+        if ((ae.a_perm & mode) &&
+            (acl_mask_entry.a_perm & mode))
+          res = 0;
+
+      } else {
+
+        /* If there is no mask entry, then access should be granted. */
+        if (ae.a_perm & mode)
+          res = 0;
+      }
+
       break;
   }
 
