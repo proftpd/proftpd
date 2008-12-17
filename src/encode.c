@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.9 2008-12-17 03:37:10 castaglia Exp $
+ * $Id: encode.c,v 1.10 2008-12-17 23:44:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -164,6 +164,15 @@ int encode_init(void) {
         encoding);
 
     } else {
+
+      /* Workaround a stupid bug in many implementations where nl_langinfo()
+       * returns "646" to mean "US-ASCII".  The problem is that iconv_open(3)
+       * doesn't accept "646" as an acceptable encoding.
+       */
+      if (strcmp(local_charset, "646") == 0) {
+        local_charset = "US-ASCII";
+      }
+
       pr_trace_msg(trace_channel, 1,
         "converting %s to local character set '%s'", encoding, local_charset);
     }
