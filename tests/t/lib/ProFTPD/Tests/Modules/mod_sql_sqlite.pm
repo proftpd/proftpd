@@ -48,7 +48,7 @@ my $TESTS = {
 
   sql_bug3149 => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(bug forking)],
   },
 
 };
@@ -92,7 +92,7 @@ sub sql_bug2045 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests..log');
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $user = 'proftpd';
   my $passwd = 'test';
