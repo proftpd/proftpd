@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.203 2008-12-16 06:23:17 castaglia Exp $
+ * $Id: dirtree.c,v 1.204 2008-12-18 23:05:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -551,34 +551,39 @@ void kludge_enable_umask(void) {
 
 cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
   pool *newpool = NULL;
-  cmd_rec *c = NULL;
+  cmd_rec *cmd = NULL;
   va_list args;
 
   newpool = make_sub_pool(p);
   pr_pool_tag(newpool, "pr_cmd_alloc() subpool");
 
-  c = pcalloc(newpool, sizeof(cmd_rec));
-  c->argc = argc;
-  c->stash_index = -1;
-  c->pool = newpool;
-  c->tmp_pool = make_sub_pool(c->pool);
-  pr_pool_tag(c->tmp_pool, "pr_cmd_alloc() tmp pool");
+  cmd = pcalloc(newpool, sizeof(cmd_rec));
+  cmd->argc = argc;
+  cmd->stash_index = -1;
+  cmd->pool = newpool;
+  cmd->tmp_pool = make_sub_pool(cmd->pool);
+  pr_pool_tag(cmd->tmp_pool, "pr_cmd_alloc() tmp pool");
 
   if (argc) {
     register unsigned int i = 0;
 
-    c->argv = pcalloc(newpool, sizeof(void *) * (argc + 1));
+    cmd->argv = pcalloc(newpool, sizeof(void *) * (argc + 1));
     va_start(args, argc);
 
     for (i = 0; i < argc; i++)
-      c->argv[i] = (void *) va_arg(args, char *);
+      cmd->argv[i] = (void *) va_arg(args, char *);
 
     va_end(args);
 
-    c->argv[argc] = NULL;
+    cmd->argv[argc] = NULL;
   }
 
-  return c;
+  /* This table will not contain that many entries, so a low number
+   * of chains should suffice.
+   */
+  cmd->notes = pr_table_nalloc(cmd->pool, 0, 8);
+
+  return cmd;
 }
 
 /* Adds a config_rec to the specified set */
