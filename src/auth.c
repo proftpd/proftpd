@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.64 2008-12-21 08:57:31 castaglia Exp $
+ * $Id: auth.c,v 1.65 2008-12-21 19:53:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,12 +50,16 @@ static unsigned int auth_caching = PR_AUTH_CACHE_FL_UID2NAME|PR_AUTH_CACHE_FL_GI
 /* Key comparison callback for the uidcache and gidcache. */
 static int uid_keycmp_cb(const void *key1, size_t keysz1,
     const void *key2, size_t keysz2) {
-  return (*((uid_t *) key1) == *((uid_t *) key2));
+
+  /* Return zero to indicate a match, non-zero otherwise. */
+  return (*((uid_t *) key1) == *((uid_t *) key2) ? 0 : 1);
 }
 
 static int gid_keycmp_cb(const void *key1, size_t keysz1,
     const void *key2, size_t keysz2) {
-  return (*((gid_t *) key1) == *((gid_t *) key2));
+
+  /* Return zero to indicate a match, non-zero otherwise. */
+  return (*((gid_t *) key1) == *((gid_t *) key2) ? 0 : 1);
 }
 
 /* Key "hash" callback for the uidcache and gidcache. */
