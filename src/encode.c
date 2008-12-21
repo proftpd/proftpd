@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.10 2008-12-17 23:44:11 castaglia Exp $
+ * $Id: encode.c,v 1.11 2008-12-21 23:25:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -219,7 +219,7 @@ int encode_init(void) {
 }
 
 char *pr_decode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
-#ifdef HAVE_ICONV_H
+#ifdef HAVE_ICONV
   size_t inbuflen, outbuflen;
   char *inbuf, outbuf[PR_TUNABLE_PATH_MAX*2], *res = NULL;
 
@@ -251,11 +251,11 @@ char *pr_decode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
   pr_trace_msg(trace_channel, 1,
     "missing iconv support, no %s decoding possible", encoding);
   return pstrdup(p, in);
-#endif /* !HAVE_ICONV_H */
+#endif /* !HAVE_ICONV */
 }
 
 char *pr_encode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
-#ifdef HAVE_ICONV_H
+#ifdef HAVE_ICONV
   size_t inbuflen, outbuflen;
   char *inbuf, outbuf[PR_TUNABLE_PATH_MAX*2], *res;
 
@@ -287,7 +287,7 @@ char *pr_encode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
   pr_trace_msg(trace_channel, 1,
     "missing iconv support, no %s encoding possible", encoding);
   return pstrdup(p, in);
-#endif /* !HAVE_ICONV_H */
+#endif /* !HAVE_ICONV */
 }
 
 void pr_encode_disable_encoding(void) {
