@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.13 2008-05-13 05:41:48 castaglia Exp $
+ * $Id: table.c,v 1.14 2008-12-21 00:55:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -406,7 +406,8 @@ int pr_table_kexists(pr_table_t *tab, const void *key_data, size_t key_datasz) {
   }
 
   for (ent = head; ent; ent = ent->next) {
-    if (ent->key->hash != h)
+    if (ent->key == NULL ||
+        ent->key->hash != h)
       continue;
 
     /* Matching hashes.  Now to see if the keys themselves match. */
@@ -484,7 +485,8 @@ void *pr_table_kget(pr_table_t *tab, const void *key_data, size_t key_datasz,
   }
 
   for (ent = head; ent; ent = ent->next) {
-    if (ent->key->hash != h)
+    if (ent->key == NULL ||
+        ent->key->hash != h)
       continue;
 
     /* Matching hashes.  Now to see if the keys themselves match. */
@@ -558,7 +560,8 @@ void *pr_table_kremove(pr_table_t *tab, const void *key_data,
   }
 
   for (ent = head; ent; ent = ent->next) {
-    if (ent->key->hash != h)
+    if (ent->key == NULL ||
+        ent->key->hash != h)
       continue;
 
     /* Matching hashes.  Now to see if the keys themselves match. */
@@ -634,7 +637,8 @@ int pr_table_kset(pr_table_t *tab, const void *key_data, size_t key_datasz,
   }
 
   for (ent = head; ent; ent = ent->next) {
-    if (ent->key->hash != h)
+    if (ent->key == NULL ||
+        ent->key->hash != h)
       continue;
 
     /* Matching hashes.  Now to see if the keys themselves match. */
