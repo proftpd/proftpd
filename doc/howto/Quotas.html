@@ -1,4 +1,4 @@
-<!-- $Id: Quotas.html,v 1.5 2008-04-01 01:15:57 castaglia Exp $ -->
+<!-- $Id: Quotas.html,v 1.6 2008-12-21 22:17:19 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Quotas.html,v $ -->
 
 <html>
@@ -287,9 +287,15 @@ are checked is dependent up on the order in which the groups are returned
 from the auth module providing them, <i>e.g.</i> <code>mod_sql</code>,
 <code>mod_ldap</code>, or perhaps <code>mod_auth_unix</code>.
 
+<p><a name="QuotasOverwrites" title="#QuotasOverwrites"></a><font color=red>Question</font>: Does <code>mod_quotatab</code> handle the case where a client might append to/overwrite an existing file, in terms of tracking bytes?<br>
+<font color=blue>Answer</font>: Yes.  The <code>mod_quotatab</code> module
+checks the size of the file before the upload/append starts, and then checks
+the size of the file again after the upload/append completes.  The difference
+in file sizes is used for tracking the byte-related tallies.
+
 <p>
 <hr>
-<i>$Date: 2008-04-01 01:15:57 $</i><br>
+<i>$Date: 2008-12-21 22:17:19 $</i><br>
 
 </body>
 </html>
