@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.63 2008-12-13 07:12:55 castaglia Exp $
+ * $Id: auth.c,v 1.64 2008-12-21 08:57:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,12 +50,12 @@ static unsigned int auth_caching = PR_AUTH_CACHE_FL_UID2NAME|PR_AUTH_CACHE_FL_GI
 /* Key comparison callback for the uidcache and gidcache. */
 static int uid_keycmp_cb(const void *key1, size_t keysz1,
     const void *key2, size_t keysz2) {
-  return memcmp(key1, key2, sizeof(uid_t));
+  return (*((uid_t *) key1) == *((uid_t *) key2));
 }
 
 static int gid_keycmp_cb(const void *key1, size_t keysz1,
     const void *key2, size_t keysz2) {
-  return memcmp(key1, key2, sizeof(gid_t));
+  return (*((gid_t *) key1) == *((gid_t *) key2));
 }
 
 /* Key "hash" callback for the uidcache and gidcache. */
@@ -84,6 +84,7 @@ static void uidcache_create(void) {
       !uid_tab &&
       auth_pool) {
     int ok = TRUE;
+
     uid_tab = pr_table_alloc(auth_pool, 0);
 
     if (pr_table_ctl(uid_tab, PR_TABLE_CTL_SET_KEY_CMP, uid_keycmp_cb) < 0) {
@@ -118,7 +119,15 @@ static void uidcache_add(uid_t uid, const char *name) {
     (void) pr_table_rewind(uid_tab);
     count = pr_table_kexists(uid_tab, (const void *) &uid, sizeof(uid_t));
     if (count <= 0) {
-      if (pr_table_kadd(uid_tab, (const void *) &uid, sizeof(uid_t),
+      uid_t *cache_uid;
+
+      /* Allocate memory for a UID out of the ID cache pool, so that this
+       * UID can be used as a key.
+       */
+      cache_uid = palloc(auth_pool, sizeof(uid_t));
+      *cache_uid = uid;
+
+      if (pr_table_kadd(uid_tab, (const void *) cache_uid, sizeof(uid_t),
           pstrdup(auth_pool, name), strlen(name) + 1) < 0 &&
           errno != EEXIST) {
         pr_trace_msg(trace_channel, 3,
@@ -174,7 +183,15 @@ static void gidcache_add(gid_t gid, const char *name) {
     (void) pr_table_rewind(gid_tab);
     count = pr_table_kexists(gid_tab, (const void *) &gid, sizeof(gid_t));
     if (count <= 0) {
-      if (pr_table_kadd(gid_tab, (const void *) &gid, sizeof(gid_t),
+      gid_t *cache_gid;
+
+      /* Allocate memory for a GID out of the ID cache pool, so that this
+       * GID can be used as a key.
+       */
+      cache_gid = palloc(auth_pool, sizeof(gid_t));
+      *cache_gid = gid;
+
+      if (pr_table_kadd(gid_tab, (const void *) cache_gid, sizeof(gid_t),
           pstrdup(auth_pool, name), strlen(name) + 1) < 0 &&
           errno != EEXIST) {
         pr_trace_msg(trace_channel, 3,
@@ -782,9 +799,9 @@ int pr_auth_requires_pass(pool *p, const char *name) {
 }
 
 const char *pr_auth_uid2name(pool *p, uid_t uid) {
+  static char namebuf[64];
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
-  static char namebuf[64];
   char *res = "(?)";
 
   memset(namebuf, '\0', sizeof(namebuf));
