@@ -2192,10 +2192,11 @@ static void tls_cleanup(int flags) {
      * be depriving those modules of OpenSSL functionality.
      *
      * At the moment, the modules known to use OpenSSL are mod_ldap,
-     * mod_sftp, and mod_sql.
+     * mod_sftp, mod_sftp_sql, and mod_sql.
      */
     if (pr_module_get("mod_ldap.c") == NULL &&
         pr_module_get("mod_sftp.c") == NULL &&
+        pr_module_get("mod_sftp_sql.c") == NULL &&
         pr_module_get("mod_sql.c") == NULL) {
       ERR_free_strings();
       ERR_remove_state(0);
@@ -2233,8 +2234,11 @@ static void tls_end_sess(SSL *ssl, int strms, int flags) {
     }
 
     if (res == 0) {
-      int err = SSL_get_error(ssl, res);
+      int err;
 
+      tls_log("error shutting down SSL/TLS session: %s", tls_get_errors());
+
+      err = SSL_get_error(ssl, res);
       switch (err) {
         case SSL_ERROR_WANT_READ:
           tls_log("SSL_shutdown error: WANT_READ");
