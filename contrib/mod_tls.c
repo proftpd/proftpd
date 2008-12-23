@@ -443,7 +443,7 @@ static void tls_closelog(void);
 static void tls_end_sess(SSL *, int, int);
 #define TLS_SHUTDOWN_BIDIRECTIONAL	0x0001
 
-static void tls_fatal_error(int, int);
+static void tls_fatal_error(long, int);
 static const char *tls_get_errors(void);
 static char *tls_get_page(size_t, void **);
 static size_t tls_get_pagesz(void);
@@ -2233,12 +2233,10 @@ static void tls_end_sess(SSL *ssl, int strms, int flags) {
     }
 
     if (res == 0) {
-      int err;
+      long err_code;
 
-      tls_log("error shutting down SSL/TLS session: %s", tls_get_errors());
-
-      err = SSL_get_error(ssl, res);
-      switch (err) {
+      err_code = SSL_get_error(ssl, res);
+      switch (err_code) {
         case SSL_ERROR_WANT_READ:
           tls_log("SSL_shutdown error: WANT_READ");
           pr_log_debug(DEBUG0, MOD_TLS_VERSION
@@ -2262,7 +2260,8 @@ static void tls_end_sess(SSL *ssl, int strms, int flags) {
               errno != EOF &&
               errno != EBADF &&
               errno != EPIPE &&
-              errno != EPERM) {
+              errno != EPERM &&
+              errno != ENOSYS) {
             tls_log("SSL_shutdown syscall error: %s", strerror(errno));
             pr_log_debug(DEBUG0, MOD_TLS_VERSION
               ": SSL_shutdown syscall error: %s", strerror(errno));
@@ -2270,23 +2269,24 @@ static void tls_end_sess(SSL *ssl, int strms, int flags) {
           break;
 
         default:
-          tls_log("SSL_shutdown error [%d]: %s", err, tls_get_errors());
+          tls_log("SSL_shutdown error [%ld]: %s", err_code, tls_get_errors());
           pr_log_debug(DEBUG0, MOD_TLS_VERSION
-            ": SSL_shutdown error [%d]: %s", err, tls_get_errors());
+            ": SSL_shutdown error [%ld]: %s", err_code, tls_get_errors());
           break;
       }
     }
 
   } else if (res < 0) {
-    int err = SSL_get_error(ssl, res);
+    long err_code;
 
-    switch (err) {
+    err_code = SSL_get_error(ssl, res);
+    switch (err_code) {
       case SSL_ERROR_ZERO_RETURN:
         /* Clean shutdown, nothing we need to do. */
         break;
 
       default:
-        tls_fatal_error(err, __LINE__);
+        tls_fatal_error(err_code, __LINE__);
         break;
     }
   }
@@ -2375,7 +2375,7 @@ static char *tls_get_subj_name(void) {
   return NULL;
 }
 
-static void tls_fatal_error(int error, int lineno) {
+static void tls_fatal_error(long error, int lineno) {
 
   switch (error) {
     case SSL_ERROR_NONE:
@@ -2398,7 +2398,7 @@ static void tls_fatal_error(int error, int lineno) {
       break;
 
     case SSL_ERROR_SYSCALL: {
-      int xerrcode = ERR_get_error();
+      long xerrcode = ERR_get_error();
 
       if (errno == ECONNRESET)
         return;
@@ -2434,7 +2434,7 @@ static void tls_fatal_error(int error, int lineno) {
       break;
 
     default:
-      tls_log("panic: SSL_ERROR %d, line %d", error, lineno);
+      tls_log("panic: SSL_ERROR %ld, line %d", error, lineno);
       break;
   }
 
@@ -2563,7 +2563,7 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
   pr_signals_handle();
   count = SSL_read(ssl, buf, len);
   if (count < 0) {
-    int err = SSL_get_error(ssl, count);
+    long err = SSL_get_error(ssl, count);
 
     /* read(2) returns only the generic error number -1 */
     count = -1;
@@ -2573,10 +2573,11 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
         /* OpenSSL needs more data from the wire to finish the current block,
          * so we wait a little while for it.
          */
-        if ((err = tls_readmore(SSL_get_fd(ssl))) > 0)
+        err = tls_readmore(SSL_get_fd(ssl));
+        if (err > 0) {
           goto retry;
 
-        else if (err == 0)
+        } else if (err == 0) {
           /* Still missing data after timeout. Simulate an EINTR and return.
            */
           errno = EINTR;
@@ -2586,15 +2587,17 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
            * returns -1.
            */
           break;
+        }
 
       case SSL_ERROR_WANT_WRITE:
         /* OpenSSL needs to write more data to the wire to finish the current
          * block, so we wait a little while for it.
          */
-        if ((err = tls_writemore(SSL_get_fd(ssl))) > 0)
+        err = tls_writemore(SSL_get_fd(ssl));
+        if (err > 0) {
           goto retry;
 
-        else if (err == 0)
+        } else if (err == 0) {
           /* Still missing data after timeout. Simulate an EINTR and return.
            */
           errno = EINTR;
@@ -2604,6 +2607,7 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
            * returns -1.
            */
           break;
+        }
 
       case SSL_ERROR_ZERO_RETURN:
         tls_log("read EOF from client");
@@ -3779,7 +3783,7 @@ static ssize_t tls_write(SSL *ssl, const void *buf, size_t len) {
   count = SSL_write(ssl, buf, len);
 
   if (count < 0) {
-    int err = SSL_get_error(ssl, count);
+    long err = SSL_get_error(ssl, count);
 
     /* write(2) returns only the generic error number -1 */
     count = -1;
