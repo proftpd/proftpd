@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.20 2008-12-11 18:59:29 castaglia Exp $
+ * $Id: mod_lang.c,v 1.21 2008-12-23 19:29:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -119,14 +119,14 @@ static void lang_feat_remove(void) {
     pr_feat_remove(lang_feat);
 }
 
-static int lang_set_lang(const char *lang) {
+static int lang_set_lang(pool *p, const char *lang) {
   char *curr_locale;
 
-  curr_locale = setlocale(LC_ALL, NULL);
+  curr_locale = pstrdup(p, setlocale(LC_ALL, NULL));
 
   if (setlocale(LC_ALL, lang) == NULL) {
     if (errno == ENOENT) {
-      /* The site may have an unknown/bad LC_ALL environment variable set.
+      /* The site may have an unknown/bad LANG environment variable set.
        * Report this, and fall back to using "C" as the locale.
        */
       pr_log_pri(PR_LOG_NOTICE,
@@ -311,13 +311,13 @@ MODRET lang_lang(cmd_rec *cmd) {
     pr_log_debug(DEBUG7, MOD_LANG_VERSION
       ": resetting to default language '%s'", lang_default);
 
-    if (lang_set_lang(lang_default) < 0) {
+    if (lang_set_lang(cmd->tmp_pool, lang_default) < 0) {
       pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
         ": unable to use LangDefault '%s': %s", lang_default, strerror(errno));
       pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
         ": using LC_ALL environment variable value instead");
 
-      if (lang_set_lang("") < 0) {
+      if (lang_set_lang(cmd->tmp_pool, "") < 0) {
         pr_log_pri(PR_LOG_WARNING, MOD_LANG_VERSION
           ": unable to use LC_ALL value for locale: %s", strerror(errno));
         end_login(1);
@@ -338,14 +338,14 @@ MODRET lang_lang(cmd_rec *cmd) {
   pr_log_debug(DEBUG7, MOD_LANG_VERSION
     ": setting to client-requested language '%s'", cmd->argv[1]);
 
-  if (lang_set_lang(cmd->argv[1]) < 0) {
+  if (lang_set_lang(cmd->tmp_pool, cmd->argv[1]) < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
       ": unable to use client-requested language '%s': %s", cmd->argv[1],
       strerror(errno));
     pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
       ": using LangDefault '%s' instead", lang_default);
 
-    if (lang_set_lang(lang_default) < 0) {
+    if (lang_set_lang(cmd->tmp_pool, lang_default) < 0) {
       pr_log_pri(PR_LOG_WARNING, MOD_LANG_VERSION
         ": unable to use LangDefault '%s': %s", lang_default, strerror(errno));
       end_login(1);
@@ -504,6 +504,17 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
       return;
   }
 
+  /* ANSI C says that every process starts off in the 'C' locale, regardless
+   * of any environment variable settings (e.g. LANG).  Thus to honor the
+   * LANG et al environment variables, we need to explicitly call
+   * setlocale(3) appropriately.
+   */
+  if (setlocale(LC_ALL, "") == NULL) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
+      ": error setting locale based on LANG and other environment "
+      "variables: %s", strerror(errno));
+  }
+
   /* Scan the LangPath for the .mo files to read in. */
 
   c = find_config(main_server->conf, CONF_PARAM, "LangPath", FALSE);
@@ -544,7 +555,7 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
    *
    *  $lang/LC_MESSAGES/proftpd.mo
    *
-   * In addition, make sure the directory name is an locale acceptable to
+   * In addition, make sure the directory name is a locale acceptable to
    * setlocale(3).
    */
 
@@ -575,7 +586,7 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
         /* Check that dent->d_name is a valid language name according to
          * setlocale(3) before adding it to the list.
          */
-        curr_locale = setlocale(LC_MESSAGES, NULL);
+        curr_locale = pstrdup(tmp_pool, setlocale(LC_MESSAGES, NULL));
 
         if (setlocale(LC_MESSAGES, dent->d_name) != NULL) {
           *((char **) push_array(lang_list)) = pstrdup(lang_pool, dent->d_name);
@@ -671,19 +682,30 @@ static int lang_sess_init(void) {
   if (!lang_engine)
     return 0;
 
+  /* ANSI C says that every process starts off in the 'C' locale, regardless
+   * of any environment variable settings (e.g. LANG).  Thus to honor the
+   * LANG et al environment variables, we need to explicitly call
+   * setlocale(3) appropriately.
+   */
+  if (setlocale(LC_ALL, "") == NULL) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
+      ": error setting locale based on LANG and other environment "
+      "variables: %s", strerror(errno));
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "LangDefault", FALSE);
   if (c) {
     char *lang;
 
     lang = c->argv[0];
 
-    if (lang_set_lang(lang) < 0) {
+    if (lang_set_lang(lang_pool, lang) < 0) {
       pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
         ": unable to use LangDefault '%s': %s", lang, strerror(errno));
       pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
         ": using LC_ALL environment variable value instead");
 
-      if (lang_set_lang("") < 0) {
+      if (lang_set_lang(lang_pool, "") < 0) {
         pr_log_pri(PR_LOG_WARNING, MOD_LANG_VERSION
           ": unable to use LC_ALL value for locale: %s", strerror(errno));
 
@@ -698,7 +720,7 @@ static int lang_sess_init(void) {
     /* No explicit default language configured; rely on the environment
      * variables.
      */
-    if (lang_set_lang("") < 0) {
+    if (lang_set_lang(lang_pool, "") < 0) {
       pr_log_pri(PR_LOG_WARNING, MOD_LANG_VERSION
         ": unable to use LC_ALL value for locale: %s", strerror(errno));
 
@@ -706,7 +728,7 @@ static int lang_sess_init(void) {
       return -1;
     }
 
-    lang_curr = setlocale(LC_MESSAGES, NULL);
+    lang_curr = pstrdup(lang_pool, setlocale(LC_MESSAGES, NULL));
     if (strcasecmp(lang_curr, "C") == 0) {
       lang_curr = LANG_DEFAULT_LANG;
     }
