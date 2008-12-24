@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.21 2008-12-23 19:29:03 castaglia Exp $
+ * $Id: mod_lang.c,v 1.22 2008-12-24 08:05:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,6 +34,10 @@
 #endif
 
 #if PR_USE_NLS
+
+#ifdef HAVE_LANGINFO_H
+# include <langinfo.h>
+#endif
 
 extern xaset_t *server_list;
 
@@ -120,28 +124,37 @@ static void lang_feat_remove(void) {
 }
 
 static int lang_set_lang(pool *p, const char *lang) {
-  char *curr_locale;
+  int category = LC_MESSAGES;
+  char *curr_lang, *codeset;
 
-  curr_locale = pstrdup(p, setlocale(LC_ALL, NULL));
+  if (strlen(lang) == 0) {
+    category = LC_ALL;
+  }
 
-  if (setlocale(LC_ALL, lang) == NULL) {
+  curr_lang = pstrdup(p, setlocale(LC_MESSAGES, NULL));
+
+  if (setlocale(category, lang) == NULL) {
     if (errno == ENOENT) {
       /* The site may have an unknown/bad LANG environment variable set.
        * Report this, and fall back to using "C" as the locale.
        */
       pr_log_pri(PR_LOG_NOTICE,
-        "unknown/unsupported language '%s' for LC_ALL, switching LC_ALL from "
-        "'%s' to 'C'", lang, curr_locale);
-      setlocale(LC_ALL, "C");
+        "unknown/unsupported language '%s' for %s, switching %s from '%s' "
+        "to 'C'", lang, category == LC_MESSAGES ? "LC_MESSAGES" : "LC_ALL",
+        curr_lang, category == LC_MESSAGES ? "LC_MESSAGES" : "LC_ALL");
+      setlocale(category, "C");
 
     } else {
-      pr_log_pri(PR_LOG_NOTICE, "unable to set LC_ALL: %s", strerror(errno));
+      pr_log_pri(PR_LOG_NOTICE, "unable to set %s to '%s': %s",
+        category == LC_MESSAGES ? "LC_MESSAGES" : "LC_ALL", lang,
+        strerror(errno));
       return -1;
     }
 
   } else {
+    curr_lang = setlocale(LC_MESSAGES, NULL);
     pr_log_debug(DEBUG4, MOD_LANG_VERSION ": using %s messages",
-      *lang ? lang : curr_locale);
+      *lang ? lang : curr_lang);
   }
 
   /* Preserve the POSIX/portable handling of number formatting; local
@@ -151,6 +164,34 @@ static int lang_set_lang(pool *p, const char *lang) {
   if (setlocale(LC_NUMERIC, "C") == NULL) {
     pr_log_pri(PR_LOG_NOTICE, "unable to set LC_NUMERIC: %s",
       strerror(errno));
+  }
+
+  /* Change the encoding used in the Encode API.  Unfortunately this means
+   * duplicating some of the logic from the Encode API here.
+   */
+#ifdef HAVE_NL_LANGINFO
+  codeset = nl_langinfo(CODESET);
+  if (codeset == NULL ||
+      strlen(codeset) == 0) {
+    codeset = "UTF-8";
+ 
+  } else { 
+ 
+    /* Workaround a stupid bug in many implementations where nl_langinfo()
+     * returns "646" to mean "US-ASCII".  The problem is that iconv_open(3)
+     * doesn't accept "646" as an acceptable encoding.
+     */
+    if (strcmp(codeset, "646") == 0) {
+      codeset = "US-ASCII";
+    }
+  }
+#else
+  codeset = "UTF-8";
+#endif /* !HAVE_NL_LANGINFO */
+
+  if (category == LC_ALL) {
+    if (pr_encode_enable_encoding(codeset) < 0)
+      return -1;
   }
 
   return 0;
@@ -459,7 +500,7 @@ MODRET lang_utf8(cmd_rec *cmd) {
           ": enabling use of UTF8 encoding as per client's request");
 
         /* No explicit UseEncoding instructions; we can turn on encoding. */
-        if (pr_encode_enable_encoding("UTF8") < 0) {
+        if (pr_encode_enable_encoding("UTF-8") < 0) {
           pr_log_debug(DEBUG3, MOD_LANG_VERSION
             ": error enabling UTF8 encoding: %s", strerror(errno));
           pr_response_add_err(R_451, _("Unable to accept %s"), method);
@@ -507,9 +548,9 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
   /* ANSI C says that every process starts off in the 'C' locale, regardless
    * of any environment variable settings (e.g. LANG).  Thus to honor the
    * LANG et al environment variables, we need to explicitly call
-   * setlocale(3) appropriately.
+   * setlocale(3) with the empty string.
    */
-  if (setlocale(LC_ALL, "") == NULL) {
+  if (lang_set_lang(lang_pool, "") < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
       ": error setting locale based on LANG and other environment "
       "variables: %s", strerror(errno));
@@ -687,7 +728,7 @@ static int lang_sess_init(void) {
    * LANG et al environment variables, we need to explicitly call
    * setlocale(3) appropriately.
    */
-  if (setlocale(LC_ALL, "") == NULL) {
+  if (lang_set_lang(lang_pool, "") < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
       ": error setting locale based on LANG and other environment "
       "variables: %s", strerror(errno));

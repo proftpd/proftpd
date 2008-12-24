@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.11 2008-12-21 23:25:21 castaglia Exp $
+ * $Id: encode.c,v 1.12 2008-12-24 08:05:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -157,10 +157,11 @@ int encode_init(void) {
      * UCS-2.
      */
     local_charset = nl_langinfo(CODESET);
-    if (!local_charset) {
-      local_charset = "C";
+    if (local_charset == NULL ||
+        strlen(local_charset) == 0) {
+      local_charset = "UTF-8";
       pr_trace_msg(trace_channel, 1,
-        "unable to determine locale, defaulting to 'C' for %s conversion",
+        "unable to determine locale, defaulting to 'UTF-8' for %s conversion",
         encoding);
 
     } else {
@@ -177,10 +178,10 @@ int encode_init(void) {
         "converting %s to local character set '%s'", encoding, local_charset);
     }
 #else
-    local_charset = "C";
+    local_charset = "UTF-8";
     pr_trace_msg(trace_channel, 1,
-      "nl_langinfo(3) not supported, defaulting to using 'C' for %s conversion",
-      encoding);
+      "nl_langinfo(3) not supported, defaulting to using 'UTF-8' for "
+      "%s conversion", encoding);
 #endif /* HAVE_NL_LANGINFO */
   } else {
     pr_trace_msg(trace_channel, 3,
@@ -309,6 +310,11 @@ int pr_encode_enable_encoding(const char *codeset) {
   if (codeset == NULL) {
     errno = EINVAL;
     return -1;
+  }
+
+  if (strcasecmp(encoding, codeset) == 0) {
+    pr_trace_msg(trace_channel, 5, "'%s' encoding already being used", codeset);
+    return 0;
   }
 
   if (encoding) {
