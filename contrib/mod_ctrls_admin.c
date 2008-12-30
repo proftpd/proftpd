@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.33 2008-10-04 05:03:53 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.34 2008-12-30 21:32:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -89,6 +89,7 @@ static int respcmp(const void *a, const void *b) {
 
 static pr_ctrls_t *mem_ctrl = NULL;
 
+#ifdef PR_USE_DEVEL
 static void mem_printf(const char *fmt, ...) {
   char buf[PR_TUNABLE_BUFFER_SIZE];
   va_list msg;
@@ -103,6 +104,7 @@ static void mem_printf(const char *fmt, ...) {
  
   pr_ctrls_add_response(mem_ctrl, "pool: %s", buf);
 }
+#endif /* !PR_USE_DEVEL */
 
 /* Controls handlers
  */
