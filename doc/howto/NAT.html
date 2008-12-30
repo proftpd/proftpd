@@ -108,6 +108,19 @@ Then we forward ports for passive FTP transfers. In our
 </pre>
 
 <p>
+If instead your Linux system uses IP Filters, then you might do something
+like the following.  First, update your <code>ipf.conf</code> with:
+<pre>
+  # Allow passive FTP transfers from ports 49152 to 65534, the IANA-registered
+  # ephemeral port range.
+  pass in quick proto tcp from any to any port 49151 &gt;&lt; 65535 flags S keep state
+</pre>
+Then make sure that the changes take effect by using:
+<pre>
+  ipf -Fa -f /path/to/ipf.conf
+</pre>
+
+<p>
 <b>Double Checking</b><br>
 Setting up <code>proftpd</code> that allows passive data transfers srequires
 that a range of ports be forwarded from the NAT to the local network.  This
@@ -205,7 +218,7 @@ For those that need to see a concrete example configuration of this:
 <p>
 <hr>
 Contributor: Tobias Ekbom &lt;tobias <i>at</i> vallcom <i>dot</i>com&gt;<br>
-Last Updated: <i>$Date: 2006-03-06 21:49:10 $</i>
+Last Updated: <i>$Date: 2008-12-30 21:39:47 $</i>
 <hr>
 
 <body>
