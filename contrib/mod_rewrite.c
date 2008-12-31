@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.33 2008-11-22 04:44:24 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.34 2008-12-31 17:53:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -955,7 +955,7 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
     FALSE);
   if (fifo_lockname != NULL) {
     /* Make sure the file exists. */
-    fifo_lockfd = open(fifo_lockname, O_CREAT);
+    fifo_lockfd = open(fifo_lockname, O_RDWR|O_CREAT, 0666);
     if (fifo_lockfd < 0) {
       rewrite_log("rewrite_subst_maps_fifo(): error creating '%s': %s",
         fifo_lockname, strerror(errno));
