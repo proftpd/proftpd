@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.248 2008-12-03 17:58:00 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.249 2008-12-31 01:02:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -773,10 +773,16 @@ static long transmit_data(off_t count, off_t *offset, char *buf, long bufsz) {
 #endif /* HAVE_SENDFILE */
 
 #ifdef TCP_CORK
-  on = 0;
-  if (setsockopt(PR_NETIO_FD(session.d->outstrm), tcp_level, TCP_CORK, &on,
-      len) < 0)
-    pr_log_pri(PR_LOG_NOTICE, "error setting TCP_CORK: %s", strerror(errno));
+  if (session.d) {
+    /* The session.d struct can become null after transmit_normal() if the
+     * client aborts the transfer, thus we need to check for this.
+     */
+    on = 0;
+    if (setsockopt(PR_NETIO_FD(session.d->outstrm), tcp_level, TCP_CORK, &on,
+        len) < 0) {
+      pr_log_pri(PR_LOG_NOTICE, "error setting TCP_CORK: %s", strerror(errno));
+    }
+  }
 #endif /* TCP_CORK */
 
   return res;
