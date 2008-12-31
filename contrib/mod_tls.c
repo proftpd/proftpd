@@ -4882,7 +4882,7 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
       opts |= TLS_OPT_VERIFY_CERT_IP_ADDR;
 
     } else
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TLSOption: '",
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TLSOption '",
         cmd->argv[i], "'", NULL));
   }
 
