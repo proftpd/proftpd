@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.20 2007-10-13 03:05:27 castaglia Exp $
+ * $Id: ctrls.c,v 1.21 2009-01-04 01:14:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -957,7 +957,8 @@ int pr_ctrls_connect(const char *socket_file) {
    */
 
   cl_sock.sun_family = AF_UNIX;
-  sprintf(cl_sock.sun_path, "%s%05u", "/tmp/ftp.cl", (unsigned int) getpid());
+  snprintf(cl_sock.sun_path, sizeof(cl_sock.sun_path) - 1, "%s%05u",
+    "/tmp/ftp.cl", (unsigned int) getpid());
   len = sizeof(cl_sock);
 
   /* Make sure the file doesn't already exist */

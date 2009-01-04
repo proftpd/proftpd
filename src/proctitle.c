@@ -24,7 +24,7 @@
 
 /*
  * Proctitle management
- * $Id: proctitle.c,v 1.7 2008-02-10 01:17:09 castaglia Exp $
+ * $Id: proctitle.c,v 1.8 2009-01-04 01:14:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -63,7 +63,8 @@ static char proc_title_buf[BUFSIZ];
 
 void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
 #ifndef PR_DEVEL_STACK_TRACE
-  register int i, envpsize;
+  register int i;
+  register size_t envpsize;
   char **p;
 
   /* Move the environment so setproctitle can use the space. */
@@ -73,9 +74,14 @@ void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
   if ((p = (char **) malloc((i + 1) * sizeof(char *))) != NULL) {
     environ = p;
 
-    for (i = 0; envp[i] != NULL; i++)
-      if ((environ[i] = malloc(strlen(envp[i]) + 1)) != NULL)
-        strcpy(environ[i], envp[i]);
+    for (i = 0; envp[i] != NULL; i++) {
+      size_t envp_len = strlen(envp[i]);
+
+      environ[i] = malloc(envp_len + 1);
+      if (environ[i] != NULL) {
+        sstrncpy(environ[i], envp[i], envp_len + 1);
+      }
+    }
 
     environ[i] = NULL;
   }

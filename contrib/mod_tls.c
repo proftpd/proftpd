@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2008 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2009 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -838,14 +838,15 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
 
         case GEN_IPADD:
           if (tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) {
-            char cert_ipstr[INET_ADDRSTRLEN] = {'\0'};
+            char cert_ipstr[INET_ADDRSTRLEN + 1] = {'\0'};
             const char *cert_ipaddr = (const char *) name->d.ia5->data;
 
             /* Note: OpenSSL doesn't support IPv6 addresses in the
              * ipAddress name yet.
              */
-            sprintf(cert_ipstr, "%u.%u.%u.%u", cert_ipaddr[0],
-              cert_ipaddr[1], cert_ipaddr[2], cert_ipaddr[3]);
+            memset(cert_ipstr, '\0', sizeof(cert_ipstr));
+            snprintf(cert_ipstr, sizeof(cert_ipstr) - 1, "%u.%u.%u.%u",
+              cert_ipaddr[0], cert_ipaddr[1], cert_ipaddr[2], cert_ipaddr[3]);
             have_ipaddr_ext = TRUE;
 
             if (strcmp(cert_ipstr, pr_netaddr_get_ipstr(conn->remote_addr))) {
@@ -2881,7 +2882,8 @@ static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
     char buf[80] = {'\0'};
     ASN1_INTEGER *serial = X509_get_serialNumber(cert);
 
-    sprintf(buf, "%lu", X509_get_version(cert) + 1);
+    memset(buf, '\0', sizeof(buf));
+    snprintf(buf, sizeof(buf) - 1, "%lu", X509_get_version(cert) + 1);
     buf[sizeof(buf)-1] = '\0';
 
     k = pstrcat(main_server->pool, env_prefix, "M_VERSION", NULL);
@@ -2890,7 +2892,7 @@ static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
 
     if (serial->length < 4) {
       memset(buf, '\0', sizeof(buf));
-      sprintf(buf, "%lu", ASN1_INTEGER_get(serial));
+      snprintf(buf, sizeof(buf) - 1, "%lu", ASN1_INTEGER_get(serial));
       buf[sizeof(buf)-1] = '\0';
 
       k = pstrcat(main_server->pool, env_prefix, "M_SERIAL", NULL);
@@ -3005,12 +3007,15 @@ static void tls_setup_environ(SSL *ssl) {
     /* Process the SSL session-related environ variable. */
     ssl_session = SSL_get_session(ssl);
     if (ssl_session) {
-      char buf[SSL_MAX_SSL_SESSION_ID_LENGTH*2+1] = {'\0'};
+      char buf[SSL_MAX_SSL_SESSION_ID_LENGTH*2+1];
       register unsigned int i = 0;
 
       /* Have to obtain a stringified session ID the hard way. */
-      for (i = 0; i < ssl_session->session_id_length; i++)
-        sprintf(&(buf[i*2]), "%02X", ssl_session->session_id[i]);
+      memset(buf, '\0', sizeof(buf));
+      for (i = 0; i < ssl_session->session_id_length; i++) {
+        snprintf(&(buf[i*2]), sizeof(buf) - (i*2) - 1, "%02X",
+          ssl_session->session_id[i]);
+      }
       buf[sizeof(buf)-1] = '\0';
 
       k = pstrdup(main_server->pool, "TLS_SESSION_ID");

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.249 2008-12-31 01:02:40 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.250 2009-01-04 01:14:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2457,16 +2457,21 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
     /* Pass the cmd_rec off to see what number of bytes was
      * requested/configured.
      */
-    if ((nbytes = parse_max_nbytes(cmd->argv[1], cmd->argv[2])) == 0) {
-      char ulong_max[80] = {'\0'};
-      sprintf(ulong_max, "%lu", (unsigned long) ULONG_MAX);
-
+    nbytes = parse_max_nbytes(cmd->argv[1], cmd->argv[2]);
+    if (nbytes == 0) {
       if (xfer_errno == EINVAL)
         CONF_ERROR(cmd, "invalid parameters");
 
-      if (xfer_errno == ERANGE)
+      if (xfer_errno == ERANGE) {
+        char ulong_max[80];
+
+        memset(ulong_max, '\0', sizeof(ulong_max));
+        snprintf(ulong_max, sizeof(ulong_max)-1, "%lu",
+          (unsigned long) ULONG_MAX);
+
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
          "number of bytes must be between 0 and ", ulong_max, NULL));
+      }
     }
   }
 

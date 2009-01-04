@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
  *
- * Copyright (c) 2001-2008 TJ Saunders
+ * Copyright (c) 2001-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.35 2008-12-17 22:20:09 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.36 2009-01-04 01:14:37 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -165,8 +165,10 @@ static int quotatab_wlock(quota_tabtype_t);
 static char *quota_display_bytes(pool *p, double bytes_used,
     double bytes_avail, quota_xfer_t xfer_type) {
   double adj_used = 0.0, adj_avail = 0.0;
-  char *display = (char *) pcalloc(p, 80);
-  char *xferstr = NULL;
+  char *display = NULL, *xferstr = NULL;
+  unsigned int display_len = 80;
+
+  display = pcalloc(p, display_len);
 
   switch (xfer_type) {
     case IN:
@@ -189,36 +191,35 @@ static char *quota_display_bytes(pool *p, double bytes_used,
 
     case BYTE:
       /* no manipulation needed */
-      sprintf(display, _("%.2f of %.2f %s %s"), bytes_used, bytes_avail,
-        xferstr, bytes_avail > 1.0 ? _("bytes") : _("byte"));
+      snprintf(display, display_len - 1, _("%.2f of %.2f %s %s"), bytes_used,
+        bytes_avail, xferstr, bytes_avail > 1.0 ? _("bytes") : _("byte"));
       break;
 
     case KILO:
       /* divide by 1024.0 */
       adj_used = (bytes_used / 1024.0);
       adj_avail = (bytes_avail / 1024.0);
-      sprintf(display, _("%.2f of %.2f %s Kb"), adj_used, adj_avail, xferstr);
-
+      snprintf(display, display_len - 1, _("%.2f of %.2f %s Kb"), adj_used,
+        adj_avail, xferstr);
       break;
 
     case MEGA:
       /* divide by 1024.0 * 1024.0 */
       adj_used = (bytes_used / (1024.0 * 1024.0));
       adj_avail = (bytes_avail / (1024.0 * 1024.0));
-      sprintf(display, _("%.2f of %.2f %s Mb"), adj_used, adj_avail, xferstr);
-
+      snprintf(display, display_len -1 , _("%.2f of %.2f %s Mb"), adj_used,
+        adj_avail, xferstr);
       break;
 
     case GIGA:
       /* divide by 1024.0 * 1024.0 * 1024.0 */
       adj_used = (bytes_used / (1024.0 * 1024.0 * 1024.0));
       adj_avail = (bytes_avail / (1024.0 * 1024.0 * 1024.0));
-      sprintf(display, _("%.2f of %.2f %s Gb"), adj_used, adj_avail, xferstr);
-
+      snprintf(display, display_len - 1, _("%.2f of %.2f %s Gb"), adj_used,
+        adj_avail, xferstr);
       break;
 
-    /* always have a fallthrough case, even if it _should_ never be reached
-     */
+    /* Always have a fallthrough case, even if it _should_ never be reached. */
     default:
       quotatab_log("warning: unknown QuotaDisplayUnits");
       break;
@@ -229,8 +230,10 @@ static char *quota_display_bytes(pool *p, double bytes_used,
 
 static char *quota_display_files(pool *p, unsigned int files_used,
     unsigned int files_avail, quota_xfer_t xfer_type) {
-  char *display = (char *) pcalloc(p, 80);
-  char *xferstr = NULL;
+  char *display = NULL, *xferstr = NULL;
+  unsigned int display_len = 80;
+
+  display = pcalloc(p, display_len);
 
   switch (xfer_type) {
     case IN:
@@ -249,8 +252,8 @@ static char *quota_display_files(pool *p, unsigned int files_used,
       break;
   }
 
-  sprintf(display, _("%u of %u %s %s"), files_used, files_avail, xferstr,
-    files_avail > 1.0 ? _("files") : _("file"));
+  snprintf(display, display_len - 1, _("%u of %u %s %s"), files_used,
+    files_avail, xferstr, files_avail > 1.0 ? _("files") : _("file"));
 
   return display;
 }
@@ -258,16 +261,20 @@ static char *quota_display_files(pool *p, unsigned int files_used,
 static char *quota_display_site_bytes(pool *p, double bytes_used,
     double bytes_avail, quota_xfer_t xfer_type) {
   double adj_used = 0.0, adj_avail = 0.0;
-  char *display = (char *) pcalloc(p, 80);
+  char *display = NULL;
+  unsigned int display_len = 80;
+
+  display = pcalloc(p, display_len);
 
   switch (byte_units) {
     case BYTE:
       /* no calculation needed */
 
       if (bytes_avail > 0.0)
-        sprintf(display, _("bytes:\t%.2f/%.2f"), bytes_used, bytes_avail);
+        snprintf(display, display_len - 1, _("bytes:\t%.2f/%.2f"), bytes_used,
+          bytes_avail);
       else
-        sprintf(display, _("bytes:\tunlimited"));
+        snprintf(display, display_len - 1, _("bytes:\tunlimited"));
       break;
 
     case KILO:
@@ -276,10 +283,10 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
       adj_avail = (bytes_avail / 1024.0);
 
       if (adj_avail > 0.0)
-        sprintf(display, _("Kb:\t%s%.2f/%.2f"), xfer_type != IN ? "" : "\t",
-          adj_used, adj_avail);
+        snprintf(display, display_len - 1, _("Kb:\t%s%.2f/%.2f"),
+          xfer_type != IN ? "" : "\t", adj_used, adj_avail);
       else
-        sprintf(display, _("Kb:\tunlimited"));
+        snprintf(display, display_len - 1, _("Kb:\tunlimited"));
       break;
 
     case MEGA:
@@ -288,10 +295,10 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
       adj_avail = (bytes_avail / (1024.0 * 1024.0));
 
       if (adj_avail > 0.0)
-        sprintf(display, _("Mb:\t%s%.2f/%.2f"), xfer_type != IN ? "" : "\t",
-          adj_used, adj_avail);
+        snprintf(display, display_len - 1, _("Mb:\t%s%.2f/%.2f"),
+          xfer_type != IN ? "" : "\t", adj_used, adj_avail);
       else
-        sprintf(display, _("Mb:\tunlimited"));
+        snprintf(display, display_len - 1, _("Mb:\tunlimited"));
       break;
 
     case GIGA:
@@ -300,10 +307,10 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
       adj_avail = (bytes_avail / (1024.0 * 1024.0 * 1024.0));
 
       if (adj_avail > 0.0)
-        sprintf(display, _("Gb:\t%s%.2f/%.2f"), xfer_type != IN ? "" : "\t",
-          adj_used, adj_avail);
+        snprintf(display, display_len - 1, _("Gb:\t%s%.2f/%.2f"),
+          xfer_type != IN ? "" : "\t", adj_used, adj_avail);
       else
-        sprintf(display, _("Gb:\tunlimited"));
+        snprintf(display, display_len - 1, _("Gb:\tunlimited"));
       break;
 
     default:
@@ -316,12 +323,16 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
 
 static char *quota_display_site_files(pool *p, unsigned int files_used,
     unsigned int files_avail, quota_xfer_t xfer_type) {
-  char *display = (char *) pcalloc(p, 80);
+  char *display = NULL;
+  unsigned int display_len = 80;
+
+  display = pcalloc(p, display_len);
 
   if (files_avail != 0)
-    sprintf(display, _("files:\t%u/%u"), files_used, files_avail);
+    snprintf(display, display_len - 1, _("files:\t%u/%u"), files_used,
+      files_avail);
   else
-    sprintf(display, _("files:\tunlimited"));
+    snprintf(display, display_len - 1, _("files:\tunlimited"));
 
   return display;
 }
