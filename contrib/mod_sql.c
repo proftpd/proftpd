@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.147 2009-01-04 01:14:37 castaglia Exp $
+ * $Id: mod_sql.c,v 1.148 2009-01-04 02:10:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -643,7 +643,12 @@ static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
   EVP_MD_CTX md_ctxt;
   EVP_ENCODE_CTX base64_ctxt;
   const EVP_MD *md;
-  unsigned char buf[EVP_MAX_KEY_LENGTH], mdval[EVP_MAX_MD_SIZE];
+
+  /* According to RATS, the output buffer (buf) for EVP_EncodeBlock() needs to
+   * be 4/3 the size of the input buffer (mdval).  Let's make it easy, and
+   * use an output buffer that's twice the size of the input buffer.
+   */
+  unsigned char buf[EVP_MAX_MD_SIZE*2], mdval[EVP_MAX_MD_SIZE];
   unsigned int mdlen;
   int res;
 

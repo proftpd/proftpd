@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.72 2008-10-31 20:15:32 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.73 2009-01-04 02:10:55 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1149,7 +1149,13 @@ handle_ldap_check(cmd_rec *cmd)
   unsigned int md_len;
   unsigned char md_value[EVP_MAX_MD_SIZE];
   EVP_ENCODE_CTX EVP_Encode;
-  unsigned char buff[EVP_MAX_KEY_LENGTH];
+
+  /* According to RATS, the output buffer (buff) for EVP_EncodeBlock() needs
+   * to be 4/3 the size of the input buffer (md_val).  Let's make it easy, and
+   * use an output buffer that's twice the size of the input buffer.
+   */
+  unsigned char buff[EVP_MAX_MD_SIZE*2];
+
 #endif /* !HAVE_OPENSSL and !PR_USE_OPENSSL */
 
   if (!ldap_doauth) {
