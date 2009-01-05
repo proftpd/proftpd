@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.148 2009-01-04 02:10:55 castaglia Exp $
+ * $Id: mod_sql.c,v 1.149 2009-01-05 17:29:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -688,6 +688,7 @@ static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
   EVP_DigestUpdate(&md_ctxt, c_clear, strlen(c_clear));
   EVP_DigestFinal(&md_ctxt, mdval, &mdlen);
 
+  memset(buf, '\0', sizeof(buf));
   EVP_EncodeInit(&base64_ctxt);
   EVP_EncodeBlock(buf, mdval, (int) mdlen);
 

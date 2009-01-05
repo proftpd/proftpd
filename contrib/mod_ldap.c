@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.73 2009-01-04 02:10:55 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.74 2009-01-05 17:29:50 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1276,6 +1276,7 @@ handle_ldap_check(cmd_rec *cmd)
     EVP_DigestFinal(&EVP_Context, md_value, &md_len);
 
     /* Base64 Encoding */
+    memset(buff, '\0', sizeof(buff));
     EVP_EncodeInit(&EVP_Encode);
     EVP_EncodeBlock(buff, md_value, (int) md_len);
 
