@@ -4365,9 +4365,16 @@ MODRET tls_auth(cmd_rec *cmd) {
   if (!tls_engine)
     return PR_DECLINED(cmd);
 
-  /* NOTE: need to make sure that AUTH cannot be used after USER has been
-   * issued/processed (not without a REIN, anyway).
+  /* If we already have protection on the control channel (i.e. AUTH has
+   * already been sent by the client and handled), then reject this second
+   * AUTH.  Clients that want to renegotiate can either use SSL/TLS's
+   * renegotiation facilities, or disconnect and start over.
    */
+  if (tls_flags & TLS_SESS_ON_CTRL) {
+    tls_log("Unwilling to accept AUTH after AUTH for this session");
+    pr_response_add_err(R_503, _("Unwilling to accept second AUTH"));
+    return PR_ERROR(cmd);
+  }
 
   if (cmd->argc < 2) {
     pr_response_add_err(R_504, _("AUTH requires at least one argument"));
