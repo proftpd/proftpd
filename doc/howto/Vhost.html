@@ -1,4 +1,4 @@
-<!-- $Id: Vhost.html,v 1.5 2007-09-12 18:08:19 castaglia Exp $ -->
+<!-- $Id: Vhost.html,v 1.6 2009-01-06 01:35:24 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Vhost.html,v $ -->
 
 <html>
@@ -183,9 +183,38 @@ addresses to which it has been configured to listen, rather than every address.
 By default, the <code>proftpd</code> daemon will listen to every address on
 the host machine.
 
+<p><a name="FAQ"></a>
+<b>Frequently Asked Questions</b><br>
+
 <p>
+<font color=red>Question</font>: Why do I see the following when I start <code>proftpd</code>?<br>
+<pre>
+- warning: "Virtual Server" address/port (1.2.3.4:21) already in use by "Main Server"
+</pre>
+<font color=blue>Answer</font>: This happens when a <code>&lt;VirtualHost&gt;</code> section is "hidden" behind the default server in the "server config"
+section (<i>i.e.</i> the context that is outside of all <code>&lt;VirtualHost&gt;</code> and <code>&lt;Global&gt;</code> sections).  It is "hidden" because
+both the <code>&lt;VirtualHost&gt;</code> section and the "server config"
+section are using the same IP address and port.
+
+<p>
+It is quite common to configure <code>&lt;VirtualHost&gt;</code> sections
+using DNS names, rather than IP addresses.  And the "server config" section
+in the <code>proftpd.conf</code> file, by default, uses the IP address of
+the machine's hostname.  This makes it quite easy to inadvertently have
+multiple sections trying to use the same IP address and port.
+
+<p>
+The quick-and-easy fix is to place the following your "server config" section
+in your <code>proftpd.conf</code>:
+<pre>
+  Port 0
+</pre>
+as mentioned above.  You can also use the <code>DefaultAddress</code>
+directive in the "server config" section to explicitly tell the "server config"
+section to use a different IP address/DNS name.
+
 <hr>
-Last Updated: <i>$Date: 2007-09-12 18:08:19 $</i><br>
+Last Updated: <i>$Date: 2009-01-06 01:35:24 $</i><br>
 <hr>
 
 </body>
