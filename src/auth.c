@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.65 2008-12-21 19:53:01 castaglia Exp $
+ * $Id: auth.c,v 1.66 2009-01-06 18:51:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -204,7 +204,7 @@ static void gidcache_add(gid_t gid, const char *name) {
 
       } else {
         pr_trace_msg(trace_channel, 5,
-          "stashed name '%s' for GID %lu in the uidcache", name,
+          "stashed name '%s' for GID %lu in the gidcache", name,
           (unsigned long) gid);
       }
     }
