@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.66 2009-01-06 18:51:15 castaglia Exp $
+ * $Id: auth.c,v 1.67 2009-01-07 18:25:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -806,7 +806,7 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
   static char namebuf[64];
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
-  char *res = "(?)";
+  char *res = NULL;
 
   memset(namebuf, '\0', sizeof(namebuf));
 
@@ -850,6 +850,10 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
     cmd->tmp_pool = NULL;
   }
 
+  memset(namebuf, '\0', sizeof(namebuf));
+  snprintf(namebuf, sizeof(namebuf)-1, "%lu", (unsigned long) uid);
+  res = namebuf;
+
   return res;
 }
 
@@ -857,7 +861,7 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   static char namebuf[64];
-  char *res = "(?)";
+  char *res = NULL;
 
   memset(namebuf, '\0', sizeof(namebuf));
 
@@ -900,6 +904,10 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
     destroy_pool(cmd->tmp_pool);
     cmd->tmp_pool = NULL;
   }
+
+  memset(namebuf, '\0', sizeof(namebuf));
+  snprintf(namebuf, sizeof(namebuf)-1, "%lu", (unsigned long) gid);
+  res = namebuf;
 
   return res;
 }
