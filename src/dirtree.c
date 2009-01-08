@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.204 2008-12-18 23:05:14 castaglia Exp $
+ * $Id: dirtree.c,v 1.205 2009-01-08 20:21:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -718,9 +718,12 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
         return c;
       }
 
-      /* Bug#3146 occurs because the following strstr(3) works well for paths
-       * which DO NOT contain the glob sequence.  But what if they do, just
-       * not at the end of the path?
+      /* Bug#3146 occurred because using strstr(3) works well for paths
+       * which DO NOT contain the glob sequence, i.e. we used to do:
+       *
+       *  if (strstr(tmp_path, slash_star) == NULL) {
+       *
+       * But what if they do, just not at the end of the path?
        *
        * The fix is to explicitly check the last two characters of the path
        * for '/' and '*', rather than using strstr(3).  (Again, I wish there
@@ -743,7 +746,14 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
         }
 
         tmp_path = pdircat(p, tmp_path, "*", NULL);
+
+      } else if (path_len == 1) {
+        /* We still need to append the "*" if the path is just '/'. */
+        tmp_path = pstrcat(p, tmp_path, "*", NULL);
       }
+
+      pr_trace_msg("directory", 9,
+        "checking if <Directory %s> is a glob match for %s", tmp_path, path);
 
       if (pr_fnmatch(tmp_path, path, 0) == 0) {
         pr_trace_msg("directory", 8,
