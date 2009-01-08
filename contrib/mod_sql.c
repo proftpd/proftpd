@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.149 2009-01-05 17:29:50 castaglia Exp $
+ * $Id: mod_sql.c,v 1.150 2009-01-08 07:36:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2872,7 +2872,7 @@ MODRET sql_defineconn(cmd_rec *cmd) {
 MODRET sql_load_backend(cmd_rec *cmd) {
   modret_t *res;
 
-  sql_log(DEBUG_FUNC, "%s", ">>> sql_load_backed");
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_load_backend");
 
   if (cmd->argc == 1) {
     sql_set_backend(cmd->argv[0]);
