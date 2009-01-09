@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.356 2008-12-11 04:33:54 castaglia Exp $
+ * $Id: main.c,v 1.357 2009-01-09 02:30:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1887,6 +1887,7 @@ static RETSIGTYPE sig_terminate(int signo) {
      * process is terminating anyway, why not?  It helps when knowing/logging
      * that a segfault happened...
      */
+    pr_trace_msg("signal", 9, "handling SIGSEGV (signal %d)", signo);
     pr_log_pri(PR_LOG_NOTICE, "ProFTPD terminating (signal 11)");
     pr_log_pri(PR_LOG_INFO, "%s session closed.", protocol_name);
 
