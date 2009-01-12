@@ -1,4 +1,4 @@
-<!-- $Id: Vhost.html,v 1.6 2009-01-06 01:35:24 castaglia Exp $ -->
+<!-- $Id: Vhost.html,v 1.7 2009-01-12 23:41:26 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Vhost.html,v $ -->
 
 <html>
@@ -213,8 +213,27 @@ as mentioned above.  You can also use the <code>DefaultAddress</code>
 directive in the "server config" section to explicitly tell the "server config"
 section to use a different IP address/DNS name.
 
+<p>
+<font color=red>Question</font>: How can I have my "server config" section
+(or a <code>&lt;VirtualHost&gt;</code> section) listen for multiple IP
+addresses/DNS names?<br>
+<font color=blue>Answer</font>: In version 1.3.0rc1 and later, the
+<code>&lt;VirtualHost&gt;</code> configuration was enhanced so that it could
+handle multiple IP addresses/DNS names, <i>e.g.</i>:
+<pre>
+  &lt;VirtualHost 1.2.3.4 ftp.example.com&gt;
+    ...
+  &lt;/VirtualHost&gt;
+</pre>
+And for the "server config" context, you would use the
+<code>DefaultAddress</code> directive, which can also handle multiple IP
+addresses/DNS names:
+<pre>
+  DefaultAddress 1.2.3.4 ftp.example.com
+</pre>
+
 <hr>
-Last Updated: <i>$Date: 2009-01-06 01:35:24 $</i><br>
+Last Updated: <i>$Date: 2009-01-12 23:41:26 $</i><br>
 <hr>
 
 </body>
