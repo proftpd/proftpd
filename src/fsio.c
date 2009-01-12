@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (C) 2001-2008 The ProFTPD Project
+ * Copyright (C) 2001-2009 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.74 2008-11-22 16:25:13 castaglia Exp $
+ * $Id: fsio.c,v 1.75 2009-01-12 17:47:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3490,23 +3490,32 @@ off_t pr_fs_getsize(char *path) {
   struct statvfs fs;
 #  endif /* LFS && !Solaris 2.5.1 && !Solaris 2.6 && !Solaris 2.7 */
 
-  if (statvfs(path, &fs) != 0)
+  if (statvfs(path, &fs) != 0) {
+    pr_trace_msg(trace_channel, 3, "statvfs() error using '%s': %s",
+      path, strerror(errno));
     return 0;
+  }
 
   return calc_fs_size(fs.f_bavail, fs.f_frsize);
 
 # elif defined(HAVE_SYS_VFS_H)
   struct statfs fs;
 
-  if (statfs(path, &fs) != 0)
+  if (statfs(path, &fs) != 0) {
+    pr_trace_msg(trace_channel, 3, "statfs() error using '%s': %s",
+      path, strerror(errno));
     return 0;
+  }
 
   return calc_fs_size(fs.f_bavail, fs.f_bsize);
 # elif defined(HAVE_STATFS)
   struct statfs fs;
 
-  if (statfs(path, &fs) != 0)
+  if (statfs(path, &fs) != 0) {
+    pr_trace_msg(trace_channel, 3, "statfs() error using '%s': %s",
+      path, strerror(errno));
     return 0;
+  }
 
   return calc_fs_size(fs.f_bavail, fs.f_bsize);
 # endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
