@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.357 2009-01-09 02:30:59 castaglia Exp $
+ * $Id: main.c,v 1.358 2009-01-13 17:38:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1880,6 +1880,9 @@ static RETSIGTYPE sig_terminate(int signo) {
   /* Make sure the scoreboard slot is properly cleared. */
   pr_scoreboard_entry_del(FALSE);
 
+  /* Capture the signal number for later display purposes. */
+  term_signo = signo;
+
   if (signo == SIGSEGV) {
     recvd_signal_flags |= RECEIVED_SIG_SEGV;
 
@@ -1888,7 +1891,7 @@ static RETSIGTYPE sig_terminate(int signo) {
      * that a segfault happened...
      */
     pr_trace_msg("signal", 9, "handling SIGSEGV (signal %d)", signo);
-    pr_log_pri(PR_LOG_NOTICE, "ProFTPD terminating (signal 11)");
+    pr_log_pri(PR_LOG_NOTICE, "ProFTPD terminating (signal %d)", signo);
     pr_log_pri(PR_LOG_INFO, "%s session closed.", protocol_name);
 
     /* Restore the default signal handler. */
@@ -1907,9 +1910,6 @@ static RETSIGTYPE sig_terminate(int signo) {
   } else {
     recvd_signal_flags |= RECEIVED_SIG_TERM_OTHER;
   }
-
-  /* Capture the signal number for later display purposes. */
-  term_signo = signo;
 }
 
 static void handle_chld(void) {
