@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.358 2009-01-13 17:38:36 castaglia Exp $
+ * $Id: main.c,v 1.359 2009-01-14 17:39:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1653,7 +1653,7 @@ void pr_signals_handle(void) {
     pr_trace_msg("signal", 8, "interrupted system call, "
       "delaying for %lu %s, %lu %s",
       (unsigned long) tv.tv_sec, tv.tv_sec != 1 ? "secs" : "sec",
-      (unsigned long) tv.tv_usec, tv.tv_usec != 1 ? "usecs" : "usec");
+      (unsigned long) tv.tv_usec, tv.tv_usec != 1 ? "microsecs" : "microsec");
 
     pr_signals_block();
     (void) select(0, NULL, NULL, NULL, &tv);
