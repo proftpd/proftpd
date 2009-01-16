@@ -24,7 +24,7 @@ In addition to those set by the configure script, the file 'include/options.h'
 contains a number of easily tweakable compile-time options which will affect
 ProFTPD's operation.  These options are never modified by the configure script.
 Each option is documented in the header file itself.  Changing these values
-is rarely needed, and most can be overriden at run-time by directives in the
+is rarely needed, and most can be overridden at run-time by directives in the
 proftpd.conf configuration file.
 
 Note that a sample RPM spec file has been included in contrib/dist/rpm/.
@@ -102,7 +102,7 @@ Installation Instructions
     By default proftpd and ftpshut are installed in /usr/local/sbin/,
     ftpcount and ftpwho in /usr/local/bin/, the configuration file in
     /usr/local/etc/, and the man pages in /usr/local/man/man?/.  Further,
-    /usr/local/var/proftpd/ is used to hold the runtime scoreboard files.
+    /usr/local/var/proftpd/ is used to hold the runtime scoreboard file.
     See the "Directory and file names" section of the './configure --help'
     output for the arguments to change these defaults.  For instance,
     to place all these directories under /usr/ rather than /usr/local/,
@@ -285,7 +285,7 @@ Installation Instructions
     ftpwho and ftpcount utilities to work, proftpd must have a scoreboard
     file.  The default is '/usr/local/var/proftpd/proftpd.scoreboard', though
     it may have been changed in the configuration process in Step 1.
-    The default location also can be overriden at run-time by using the
+    The default location also can be overridden at run-time by using the
     ScoreboardFile directive in the proftpd.conf configuration file.
     If the indicated file does not exist, it will be created when the daemon
     starts up.  If you have installed from an installation package, the
@@ -425,7 +425,7 @@ T5. If your system has a system call trace utility, you may wish to use it
         o syscalls, trace (AIX 4.x); sctrace
         o par (IRIX)
         o alpha-trace (Digital Unix: ftp://ftp.mrc-lmb.cam.ac.uk/pub/jkb/)
-        o ktrace/kdump (NetBSD, OpenBSD)
+        o ktrace/kdump (FreeBSD, OpenBSD, NetBSD)
         o strace, ktrace/kdump, ltrace (Linux)
 
 
@@ -434,7 +434,7 @@ T6. Another diagnostic technique is to monitor the FTP protocol communication
     debug or trace option.  Though requiring detailed knowledge of the FTP
     protocol, telnet can be used to connect and directly converse with the
     proftpd server.  Lastly, the FTP converstation can be traced using a
-    network monitoring tool, such as tcpdump, etherfind, snoop or netsnoop.
+    network monitoring tool, such as tcpdump, ethereal, snoop or netsnoop.
 
 
 T7. Further debugging probably will require the use of a debugger,
@@ -486,7 +486,7 @@ H2. When posting to the mailing list, try to be clear and concise, but give
            or `elfdump -v -n .note proftpd` or `mcs -p -n .note proftpd`
 
 
-H3. Please, please, do not use the bug reporting system for compilation or
+H3. Please, please, do NOT use the bug reporting system for compilation or
     configuration problems and questions.  Those should be sent to the
     mailing list.
 
