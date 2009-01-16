@@ -11,6 +11,7 @@ files.
 
   + New documentation:
 
+      doc/howto/Compiling.html
       doc/howto/Rewrite.html
       doc/howto/Sendfile.html
 
@@ -303,4 +304,4 @@ files.
         doc/howto/TLS.html#TLSFIPS
 
 
-Last Updated: $Date: 2008-12-07 00:35:08 $
+Last Updated: $Date: 2009-01-16 07:10:04 $
