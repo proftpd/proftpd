@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.12 2008-12-12 21:30:23 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.13 2009-01-22 19:25:29 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -740,6 +740,9 @@ retrieved value for GID is less than the value of <code>SQLMinUserGID</code>,
 it is reported as the value of <code>SQLDefaultGID</code>.
 
 <p>
+See also: <a href="#SQLDefaultGID"><code>SQLDefaultGID</code></a>
+
+<p>
 <hr>
 <h2><a name="SQLMinUserUID">SQLMinUserUID</a></h2>
 <strong>Syntax:</strong> SQLMinUserUID <em>minimum-uid</em><br>
@@ -752,6 +755,9 @@ it is reported as the value of <code>SQLDefaultGID</code>.
 <code>SQLMinUserUID</code> is checked whenever retrieving a user's UID.  If the
 retrieved value for UID is less than the value of <code>SQLMinUserUID</code>,
 it is reported as the value of <code>SQLDefaultUID</code>.
+
+<p>
+See also: <a href="#SQLDefaultUID"><code>SQLDefaultUID</code></a>
 
 <p>
 <hr>
@@ -1194,7 +1200,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2008-12-12 21:30:23 $</i><br>
+Last Updated: <i>$Date: 2009-01-22 19:25:29 $</i><br>
 
 <br><hr>
 
