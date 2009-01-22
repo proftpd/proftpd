@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.97 2008-09-29 23:02:55 castaglia Exp $
+ * $Id: support.c,v 1.98 2009-01-22 00:30:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -625,8 +625,17 @@ struct tm *pr_gmtime(pool *p, const time_t *t) {
   struct tm *sys_tm, *dup_tm;
 
   sys_tm = gmtime(t);
-  dup_tm = pcalloc(p, sizeof(struct tm));
-  memcpy(dup_tm, sys_tm, sizeof(struct tm));
+
+  /* If the caller provided a pool, make a copy of the struct tm using that
+   * pool.  Otherwise, return the struct tm as is.
+   */
+  if (p) {
+    dup_tm = pcalloc(p, sizeof(struct tm));
+    memcpy(dup_tm, sys_tm, sizeof(struct tm));
+
+  } else {
+    dup_tm = sys_tm;
+  }
 
   return dup_tm;
 }
@@ -691,7 +700,7 @@ struct tm *pr_localtime(pool *p, const time_t *t) {
 }
 
 const char *pr_strtime(time_t t) {
-  static char buf[30];
+  static char buf[64];
   static char *mons[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",
     "Aug", "Sep", "Oct", "Nov", "Dec" };
   static char *days[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
@@ -705,8 +714,9 @@ const char *pr_strtime(time_t t) {
       days[tr->tm_wday], mons[tr->tm_mon], tr->tm_mday, tr->tm_hour,
       tr->tm_min, tr->tm_sec, tr->tm_year + 1900);
 
-  } else
+  } else {
     buf[0] = '\0';
+  }
 
   buf[sizeof(buf)-1] = '\0';
 
