@@ -155,6 +155,7 @@ EOF
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AllowOverride => 'on',
     DefaultChdir => '~',
 
     IfModules => {
@@ -304,6 +305,8 @@ EOF
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
+
+    AllowOverride => 'on',
 
     Anonymous => {
       $anon_dir => {
@@ -487,6 +490,7 @@ EOF
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AllowOverride => 'on',
     DefaultChdir => '~',
 
     IfModules => {
@@ -634,6 +638,8 @@ EOF
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
+
+    AllowOverride => 'on',
 
     Anonymous => {
       $anon_dir => {
