@@ -9,6 +9,10 @@ files.
 1.3.2rc4
 ---------
 
+  + Fixed %f logging, HiddenStore and UserOwner not working (Bug#3137).
+
+  + Added Russian translation.
+
   + New documentation:
 
       doc/howto/Compiling.html
@@ -304,4 +308,4 @@ files.
         doc/howto/TLS.html#TLSFIPS
 
 
-Last Updated: $Date: 2009-01-16 07:10:04 $
+Last Updated: $Date: 2009-01-23 22:59:42 $
