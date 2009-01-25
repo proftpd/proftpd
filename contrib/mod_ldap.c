@@ -1,6 +1,6 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
- * Copyright (c) 1999, 2000-8, John Morrissey <jwm@horde.net>
+ * Copyright (c) 1999, 2000-9, John Morrissey <jwm@horde.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.20-20081006
+ * mod_ldap v2.8.20-20090124
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.74 2009-01-05 17:29:50 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.75 2009-01-25 03:24:17 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -59,7 +59,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.8.20-20081006"
+#define MOD_LDAP_VERSION	"mod_ldap/2.8.20-20090124"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001021002
 # error MOD_LDAP_VERSION " requires ProFTPD 1.2.10rc2 or later"
@@ -777,7 +777,8 @@ pr_ldap_quota_lookup(pool *p, char *filter_template, const char *replace,
 static struct group *
 pr_ldap_getgrnam(pool *p, const char *group_name)
 {
-  char *group_attrs[] = {ldap_attr_cn, ldap_attr_gidnumber, ldap_attr_memberuid, NULL};
+  char *group_attrs[] = {ldap_attr_cn, ldap_attr_gidnumber,
+                         ldap_attr_memberuid, NULL};
 
   return pr_ldap_group_lookup(p, ldap_group_name_filter,
     group_name, group_attrs);
@@ -1081,7 +1082,9 @@ MODRET
 handle_ldap_is_auth(cmd_rec *cmd)
 {
   const char *username = cmd->argv[0];
-  char *pass_attrs[] = {ldap_attr_userpassword, ldap_attr_homedirectory, NULL};
+  char *pass_attrs[] = {ldap_attr_userpassword, ldap_attr_uid,
+                        ldap_attr_uidnumber, ldap_attr_gidnumber,
+                        ldap_attr_homedirectory, ldap_attr_loginshell, NULL};
   struct passwd *pw;
 
   if (!ldap_doauth) {
@@ -1154,7 +1157,7 @@ handle_ldap_check(cmd_rec *cmd)
    * to be 4/3 the size of the input buffer (md_val).  Let's make it easy, and
    * use an output buffer that's twice the size of the input buffer.
    */
-  unsigned char buff[EVP_MAX_MD_SIZE*2];
+  unsigned char buff[EVP_MAX_MD_SIZE * 2];
 
 #endif /* !HAVE_OPENSSL and !PR_USE_OPENSSL */
 
