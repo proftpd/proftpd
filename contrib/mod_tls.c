@@ -53,7 +53,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.2"
+#define MOD_TLS_VERSION		"mod_tls/2.2.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001 
@@ -1781,35 +1781,29 @@ static int tls_init_server(void) {
     } 
 
     if (tls_ca_cert) {
-      FILE *cacertf = NULL;
+      STACK_OF(X509_NAME) *sk;
+
+      /* Use SSL_load_client_CA_file() to load all of the CA certs (since
+       * there can be more than one) from the TLSCACertificateFile.  The
+       * entire list of CAs in that file will be present to the client as
+       * the "acceptable client CA" list, assuming that
+       * "TLSOptions NoCertRequest" is not in use.
+       */
 
       PRIVS_ROOT
-      cacertf = fopen(tls_ca_cert, "r");
+      sk = SSL_load_client_CA_file(tls_ca_cert);
       PRIVS_RELINQUISH
 
-      if (cacertf) {
-        X509 *x509 = PEM_read_X509(cacertf, NULL, NULL, NULL);
-
-        if (x509) {
-          if (SSL_CTX_add_client_CA(ssl_ctx, x509) != 1) {
-            tls_log("error adding '%s' to client CA list: %s", tls_ca_cert,
-              tls_get_errors());
-          }
-
-        } else {
-          tls_log("unable to read certificate in '%s': %s", tls_ca_cert,
-            tls_get_errors());
-        }
-
-        fclose(cacertf);
+      if (sk) {
+        SSL_CTX_set_client_CA_list(ssl_ctx, sk);
 
       } else {
-        tls_log("unable to open '%s': %s", tls_ca_cert, strerror(errno));
+        tls_log("unable to read certificates in '%s': %s", tls_ca_cert,
+          tls_get_errors());
       }
     }
 
-    if (!tls_ca_chain &&
-        tls_ca_path) {
+    if (tls_ca_path) {
       DIR *cacertdir = NULL;
 
       PRIVS_ROOT
