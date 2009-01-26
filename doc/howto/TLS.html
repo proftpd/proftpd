@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.19 2008-12-17 18:18:05 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.20 2009-01-26 20:57:07 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -60,7 +60,256 @@ Example <a href="http://www.castaglia.org/proftpd/modules/mod_tls.html"><code>mo
 
 <p><a name="TLSDebugging"></a>
 <b>Debugging</b><br>
-<a href="http://www.rtfm.com/ssldump/"><code>ssldump</code></a>
+There are a couple of tools available for debugging and analysing FTPS
+traffic.  One of the easiest to use is the <a href="http://www.openssl.org/docs/apps/s_client.html"><code>s_client</code></a> application, part of OpenSSL.
+
+<p>
+The following examples assume that <code>proftpd+mod_tls</code> is listening
+on 127.0.0.1, port 21:
+<pre>
+  # openssl s_client -connect 127.0.0.1:21 -starttls ftp
+  CONNECTED(00000003)
+  depth=1 /CN=castaglia3-serverCA/C=US/emailAddress=tj@castaglia.org/O=Castaglia/OU=Castaglia Research and Development/OU=TJ Saunders/ST=Washington
+  verify error:num=20:unable to get local issuer certificate
+  verify return:0
+  ---
+  <b>Certificate chain</b>
+   0 s:/CN=castaglia3-server/C=US/emailAddress=tj@castaglia.org/O=Castaglia/OU=Castaglia Research and Development/OU=TJ Saunders/ST=Washington
+     i:/CN=castaglia3-serverCA/C=US/emailAddress=tj@castaglia.org/O=Castaglia/OU=Castaglia Research and Development/OU=TJ Saunders/ST=Washington
+   1 s:/CN=castaglia3-serverCA/C=US/emailAddress=tj@castaglia.org/O=Castaglia/OU=Castaglia Research and Development/OU=TJ Saunders/ST=Washington
+     i:/CN=castaglia3/C=US/ST=Washington/L=Seattle/O=Castaglia/OU=Castaglia Research and Development/OU=TJ Saunders/emailAddress=tj@castaglia.org
+  ---
+  Server certificate
+  -----BEGIN CERTIFICATE-----
+  ...
+  -----END CERTIFICATE-----
+  subject=/CN=castaglia3-server/C=US/emailAddress=tj@castaglia.org/O=Castaglia/OU=Castaglia Research and Development/OU=TJ Saunders/ST=Washington
+  issuer=/CN=castaglia3-serverCA/C=US/emailAddress=tj@castaglia.org/O=Castaglia/OU=Castaglia Research and Development/OU=TJ Saunders/ST=Washington
+  ---
+  <b>Acceptable client certificate CA names</b>
+  /CN=castaglia3-clientCA/C=US/emailAddress=tj@castaglia.org/O=Castaglia/OU=Castaglia Research and Development/OU=TJ Saunders/ST=Washington
+  /CN=castaglia3/C=US/ST=Washington/L=Seattle/O=Castaglia/OU=Castaglia Research and Development/OU=TJ Saunders/emailAddress=tj@castaglia.org
+  /CN=castaglia3-clientCA/C=US/emailAddress=tj@castaglia.org/O=Castaglia/OU=Castaglia Research and Development/OU=TJ Saunders/ST=Washington
+  /CN=castaglia3/C=US/ST=Washington/L=Seattle/O=Castaglia/OU=Castaglia Research and Development/OU=TJ Saunders/emailAddress=tj@castaglia.org
+  ---
+  SSL handshake has read 3731 bytes and written 344 bytes
+  ---
+  New, TLSv1/SSLv3, Cipher is DHE-RSA-AES256-SHA
+  Server public key is 1024 bit
+  Compression: NONE
+  Expansion: NONE
+  SSL-Session:
+      Protocol  : TLSv1
+      Cipher    : DHE-RSA-AES256-SHA
+      Session-ID: D1F2E7C001BCFE57D797F34BD1518BDCC6160106D56A238CC0F957337C093435
+      Session-ID-ctx: 
+      Master-Key: F8EE2812270E8FCD87D1B26F20546EF9BABAE40F36BC6F8DF45B0E2F089571E731EAFAEA5E61BCA7D9D204BE06F28B21
+      Key-Arg   : None
+      Start Time: 1232997620
+      Timeout   : 300 (sec)
+      Verify return code: 20 (unable to get local issuer certificate)
+  ---
+  220 ProFTPD 1.3.2rc4 Server (TJ's FTPS Server) [127.0.0.1]
+  quit
+  221 Goodbye.
+  read:errno=0
+</pre>
+Note that the "verify error" message is not of particular concern for us,
+since we are not using <code>s_client</code> to verify the server's
+certificate in this example.
+
+<p>
+The parts of the <code>s_client</code> output which are of particular interest
+are the highlighted "Certificate chain" and "Acceptable client certificate CA
+names" sections.
+
+<p>
+The "Certificate chain" section shows the certificate chain/trust path, from
+the server's certificate up through the root CA for that certificate.  Note
+that this assumes the certificates in the trust path are available on the
+server.  By default, OpenSSL constructs this certificate chain using the
+server's certificate (configured using <code>TLSRSACertificateFile</code> or
+<code>TLSDSACertificateFile</code>) and the trusted CA certificates configured
+using <code>TLSCACertificateFile</code> and/or
+<code>TLSCACertificatePath</code>.  See the <code>TLSCertificateChainFile</code>
+<a href="#TLSCertificateChainFile">FAQ</a> for more details on how to influence
+the constructed certificate chain.
+
+<p>
+The "Acceptable client certificate CA names" section contains the list of
+CAs that can issue certificates that <code>mod_tls</code> is willing to trust.
+These CAs <i>always</i> come from the configured
+<code>TLSCACertificateFile</code> and/or <code>TLSCACertificatePath</code>.
+This list of acceptable client CAs is presented to the client whenever the
+server is requesting the client's certificate (which is what
+<code>mod_tls</code> does by default).  If you use:
+<pre>
+  TLSOptions NoCertRequest
+</pre>
+then the server <i>will not</i> send this list of acceptable client CAs;
+using <code>s_client</code> in that case, you would see:
+<pre>
+  ---
+  No client certificate CA names sent
+  ---
+</pre>
+In case you're wondering, a list of CAs is sent to the client, rather than
+just a single CA, because this allows clients the ability to determine which
+certificate (as a client can have many) to use when talking to this particular
+server.
+
+<p>
+Another tool, slightly older, is <a href="http://www.rtfm.com/ssldump/"><code>ssldump</code></a>.  This tool is more like <code>ethereal</code> or
+<code>tcpdump</code> for any SSL/TLS traffic; it is deliberately modeled after
+<code>tcpdump</code>.
+
+<p>
+To use <code>ssldump</code> for watching your FTPS traffic, you will need
+the server key file (for decrypting), and possibly root privileges (for
+listening on the network interface).  Here is an example where
+<code>ssldump</code> is used to listen on the loopback interface
+(<code>lo0</code>), port 21:
+<pre>
+  # sudo ssldump -d -k <i>server</i>.pem -i lo0 port 21
+  New TCP connection #1: localhost(64148) &lt;-&gt; localhost(21)
+  0.0423 (0.0423)  S&gt;C
+  ---------------------------------------------------------------
+  220 ProFTPD 1.3.2rc4 Server (TJ's FTPS Server) [127.0.0.1]
+  ---------------------------------------------------------------
+
+  0.0427 (0.0004)  C&gt;S
+  ---------------------------------------------------------------
+  AUTH TLS
+  ---------------------------------------------------------------
+
+  0.0430 (0.0002)  S&gt;C
+  ---------------------------------------------------------------
+  234 AUTH TLS successful
+  ---------------------------------------------------------------
+
+  1 1  0.0433 (0.0003)  C&gt;S SSLv2 compatible client hello
+    Version 3.1 
+    cipher suites
+    Unknown value 0x39  
+    Unknown value 0x38  
+    Unknown value 0x35  
+    TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA  
+    TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA  
+    TLS_RSA_WITH_3DES_EDE_CBC_SHA  
+    SSL2_CK_3DES  
+    Unknown value 0x33  
+    Unknown value 0x32  
+    Unknown value 0x2f  
+    TLS_RSA_WITH_IDEA_CBC_SHA  
+    SSL2_CK_IDEA  
+    SSL2_CK_RC2  
+    TLS_RSA_WITH_RC4_128_SHA  
+    TLS_RSA_WITH_RC4_128_MD5  
+    SSL2_CK_RC4  
+    TLS_DHE_RSA_WITH_DES_CBC_SHA  
+    TLS_DHE_DSS_WITH_DES_CBC_SHA  
+    TLS_RSA_WITH_DES_CBC_SHA  
+    SSL2_CK_DES  
+    TLS_DHE_RSA_EXPORT_WITH_DES40_CBC_SHA  
+    TLS_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA  
+    TLS_RSA_EXPORT_WITH_DES40_CBC_SHA  
+    TLS_RSA_EXPORT_WITH_RC2_CBC_40_MD5  
+    SSL2_CK_RC2_EXPORT40  
+    TLS_RSA_EXPORT_WITH_RC4_40_MD5  
+    SSL2_CK_RC4_EXPORT40  
+  1 2  0.0658 (0.0225)  S&gt;C  Handshake
+        ServerHello
+          Version 3.1 
+          session_id[32]=
+            09 25 df 7a a8 e8 71 a2 9f 56 a6 7b dd 95 ac 67 
+            7d 2e 81 b2 1c ca b4 5f 1e 95 13 47 01 28 20 19 
+          cipherSuite         Unknown value 0x39
+          compressionMethod                   NULL
+  1 3  0.0658 (0.0000)  S&gt;C  Handshake
+        Certificate
+  1 4  0.0658 (0.0000)  S&gt;C  Handshake
+        ServerKeyExchange
+  1 5  0.0658 (0.0000)  S&gt;C  Handshake
+        CertificateRequest
+          certificate_types                   rsa_fixed_dh
+          certificate_types                   dss_fixed_dh
+          certificate_types                   rsa_sign
+          certificate_types                   dss_sign
+          certificate_authority
+            30 81 b8 31 1c 30 1a 06 03 55 04 03 13 13 63 61 
+            73 74 61 67 6c 69 61 33 2d 63 6c 69 65 6e 74 43 
+            41 31 0b 30 09 06 03 55 04 06 13 02 55 53 31 1f 
+            30 1d 06 09 2a 86 48 86 f7 0d 01 09 01 16 10 74 
+            6a 40 63 61 73 74 61 67 6c 69 61 2e 6f 72 67 31 
+            12 30 10 06 03 55 04 0a 13 09 43 61 73 74 61 67 
+            6c 69 61 31 2b 30 29 06 03 55 04 0b 13 22 43 61 
+            73 74 61 67 6c 69 61 20 52 65 73 65 61 72 63 68 
+            20 61 6e 64 20 44 65 76 65 6c 6f 70 6d 65 6e 74 
+            31 14 30 12 06 03 55 04 0b 13 0b 54 4a 20 53 61 
+            75 6e 64 65 72 73 31 13 30 11 06 03 55 04 08 13 
+            0a 57 61 73 68 69 6e 67 74 6f 6e 
+          certificate_authority
+            30 81 c1 31 13 30 11 06 03 55 04 03 13 0a 63 61 
+            73 74 61 67 6c 69 61 33 31 0b 30 09 06 03 55 04 
+            06 13 02 55 53 31 13 30 11 06 03 55 04 08 13 0a 
+            57 61 73 68 69 6e 67 74 6f 6e 31 10 30 0e 06 03 
+            55 04 07 13 07 53 65 61 74 74 6c 65 31 12 30 10 
+            06 03 55 04 0a 13 09 43 61 73 74 61 67 6c 69 61 
+            31 2b 30 29 06 03 55 04 0b 13 22 43 61 73 74 61 
+            67 6c 69 61 20 52 65 73 65 61 72 63 68 20 61 6e 
+            64 20 44 65 76 65 6c 6f 70 6d 65 6e 74 31 14 30 
+            12 06 03 55 04 0b 13 0b 54 4a 20 53 61 75 6e 64 
+            65 72 73 31 1f 30 1d 06 09 2a 86 48 86 f7 0d 01 
+            09 01 16 10 74 6a 40 63 61 73 74 61 67 6c 69 61 
+            2e 6f 72 67 
+          certificate_authority
+            30 81 b8 31 1c 30 1a 06 03 55 04 03 13 13 63 61 
+            73 74 61 67 6c 69 61 33 2d 63 6c 69 65 6e 74 43 
+            41 31 0b 30 09 06 03 55 04 06 13 02 55 53 31 1f 
+            30 1d 06 09 2a 86 48 86 f7 0d 01 09 01 16 10 74 
+            6a 40 63 61 73 74 61 67 6c 69 61 2e 6f 72 67 31 
+            12 30 10 06 03 55 04 0a 13 09 43 61 73 74 61 67 
+            6c 69 61 31 2b 30 29 06 03 55 04 0b 13 22 43 61 
+            73 74 61 67 6c 69 61 20 52 65 73 65 61 72 63 68 
+            20 61 6e 64 20 44 65 76 65 6c 6f 70 6d 65 6e 74 
+            31 14 30 12 06 03 55 04 0b 13 0b 54 4a 20 53 61 
+            75 6e 64 65 72 73 31 13 30 11 06 03 55 04 08 13 
+            0a 57 61 73 68 69 6e 67 74 6f 6e 
+          certificate_authority
+            30 81 c1 31 13 30 11 06 03 55 04 03 13 0a 63 61 
+            73 74 61 67 6c 69 61 33 31 0b 30 09 06 03 55 04 
+            06 13 02 55 53 31 13 30 11 06 03 55 04 08 13 0a 
+            57 61 73 68 69 6e 67 74 6f 6e 31 10 30 0e 06 03 
+            55 04 07 13 07 53 65 61 74 74 6c 65 31 12 30 10 
+            06 03 55 04 0a 13 09 43 61 73 74 61 67 6c 69 61 
+            31 2b 30 29 06 03 55 04 0b 13 22 43 61 73 74 61 
+            67 6c 69 61 20 52 65 73 65 61 72 63 68 20 61 6e 
+            64 20 44 65 76 65 6c 6f 70 6d 65 6e 74 31 14 30 
+            12 06 03 55 04 0b 13 0b 54 4a 20 53 61 75 6e 64 
+            65 72 73 31 1f 30 1d 06 09 2a 86 48 86 f7 0d 01 
+            09 01 16 10 74 6a 40 63 61 73 74 61 67 6c 69 61 
+            2e 6f 72 67 
+        ServerHelloDone
+  1 6  0.1005 (0.0346)  C&gt;S  Handshake
+        Certificate
+  1 7  0.1005 (0.0000)  C&gt;S  Handshake
+        ClientKeyExchange
+  1 8  0.1005 (0.0000)  C&gt;S  ChangeCipherSpec
+  1 9  0.1005 (0.0000)  C&gt;S  Handshake
+  1 10 0.1164 (0.0159)  S&gt;C  ChangeCipherSpec
+  1 11 0.1164 (0.0000)  S&gt;C  Handshake
+  1 12 1.7856 (1.6692)  C&gt;S  application_data
+  1 13 1.7856 (0.0000)  C&gt;S  application_data
+  1 14 1.7861 (0.0004)  S&gt;C  application_data
+  1    1.7866 (0.0004)  S&gt;C  TCP FIN
+  1 15 1.7868 (0.0002)  C&gt;S  Alert
+</pre>
+
+<p>
+As you can see, the level of granularity used by <code>ssldump</code> is on
+the level of each SSL/TLS packet; while useful in some cases, I suspect that
+using <code>openssl s_client</code> will provide most of the information you
+will want in figuring out your certificate and verification issues.
 
 <p><a name="FAQ"></a>
 <b>Frequently Asked Questions</b><br>
@@ -530,9 +779,65 @@ is too large.
 This header/library version check was added recently, hence why older
 <code>proftpd</code> releases do not log the warning.
 
+<p><a name="TLSCertificateChainFile">
+<font color=red>Question</font>: When should the <a href="../contrib/mod_tls.html#TLSCertificateChainFile"><code>TLSCertificateChainFile</code><a> directive be used?<br>
+<font color=blue>Answer</font>:  Short answer: only in very specific
+arrangements of CA hierarchies.  Most of the time, you probably do not need
+it.
+
+<p>
+The long explanation requires an illustration.  Let's say we have a CA hierarchy
+that looks something like this:
+<pre>
+       MyRootCA                      TheirRootCA
+           |                             |
+      MyServerCA                    TheirClientCA
+           |                             |
+    +------+------+               +------+------+
+    |      |      |               |      |      |
+  certA  certB  certC           cert1  cert2  cert3
+</pre>
+
+<p>
+Another way of asking the question thus is: "How to I send MyServerCA and
+MyRootCA to the client <i>without</i> having them in my trusted CA locations"?
+
+<p>
+We might configure <code>mod_tls</code> to have "certA" as the server's
+certificate, via <code>TLSRSACertificateFile</code>.  The "certA" certificate
+is issued by MyServerCA.  And let's assume that we do <b>not</b> want to verify
+any client certificates issued by MyServerCA.
+
+<p>
+We <i>do</i> want to be able to verify client certs issued by a different CA,
+say, TheirClientCA.  We configure TheirClientCA in <code>mod_tls</code> using
+<code>TLSCACertificateFile</code> or <code>TLSCACertificatePath</code>.
+
+<p>
+The client connects to <code>mod_tls</code>, and starts the SSL/TLS handshake.
+<code>mod_tls</code> sends its "certA" certificate, along with any certs that
+may be needed on the client for verifying the server's certificate.  (This
+is what appears in the "Certificate chain" output from <code>s_client</code>;
+see <a href="#TLSDebugging">SSL/TLS debugging</a> above).  Perhaps the client
+does not have MyServerCA present in the client certificate store.  So we need
+to tell <code>mod_tls</code> to send the MyServerCA and MyRootCA certs, along
+with "certA".  We <i>could</i> place the MyServerCA and MyRootCA certs in
+<code>TLSCACertificatePath</code>, but then any client certs issued by
+MyServerCA would be trusted as well (and that's not what we want for this
+example).
+
+<p>
+The solution here is to use <code>TLSCertificateChainFile</code> to supply the
+MyServerCA and MyRootCA certs, as part of the server cert chain.  The
+configured <code>TLSCertificateChainFile</code> would contain the PEM-formatted
+MyServerCA and MyRootCA public certs.  And although the
+<code>TLSCertificateChainFile</code> states that the certs contained in the
+file should be in certificate chain order, this is not strictly necessary; the
+OpenSSL library will adjust the ordering as appropriate.
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2008-12-17 18:18:05 $</i><br>
+Last Updated: <i>$Date: 2009-01-26 20:57:07 $</i><br>
 <hr>
 
 </body>
