@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_lang -- a module for handling the LANG command [RFC2640]
  *
- * Copyright (c) 2006-2008 The ProFTPD Project
+ * Copyright (c) 2006-2009 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.22 2008-12-24 08:05:54 castaglia Exp $
+ * $Id: mod_lang.c,v 1.23 2009-01-26 21:56:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -800,6 +800,7 @@ static int lang_sess_init(void) {
         pr_fs_use_encoding(TRUE);
 
       } else {
+        pr_encode_disable_encoding();
         pr_fs_use_encoding(FALSE);
       }
 
