@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.44 2009-01-27 23:23:49 castaglia Exp $
+ * $Id: scoreboard.c,v 1.45 2009-01-27 23:29:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -282,7 +282,7 @@ static int wlock_scoreboard(void) {
     }
 
     pr_trace_msg("lock", 3, "write-lock of scoreboard fd %d failed: %s",
-      scoreboard_fd, strerror(errno));
+      scoreboard_fd, strerror(xerrno));
     if (xerrno == EACCES) {
       /* Get the PID of the process blocking this lock. */
       if (fcntl(scoreboard_fd, F_GETLK, &lock) == 0) {
