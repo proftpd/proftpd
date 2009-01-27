@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.43 2008-09-04 00:30:14 castaglia Exp $
+ * $Id: scoreboard.c,v 1.44 2009-01-27 23:23:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -138,14 +138,16 @@ static int rlock_scoreboard(void) {
     scoreboard_fd);
 
   while (fcntl(scoreboard_fd, F_SETLKW, &lock) < 0) {
-    if (errno == EINTR) {
+    int xerrno = errno;
+
+    if (xerrno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
     pr_trace_msg("lock", 3, "read-lock of scoreboard fd %d failed: %s",
-      scoreboard_fd, strerror(errno));
-    if (errno == EACCES) {
+      scoreboard_fd, strerror(xerrno));
+    if (xerrno == EACCES) {
       /* Get the PID of the process blocking this lock. */
       if (fcntl(scoreboard_fd, F_GETLK, &lock) == 0) {
         pr_trace_msg("lock", 3, "process ID %lu has blocking %s lock on "
@@ -154,6 +156,7 @@ static int rlock_scoreboard(void) {
       }
     }
 
+    errno = xerrno;
     return -1;
   }
 
@@ -174,13 +177,17 @@ static int unlock_entry(void) {
     "offset %" PR_LU, scoreboard_fd, (pr_off_t) entry_lock.l_start);
 
   while (fcntl(scoreboard_fd, F_SETLKW, &entry_lock) < 0) {
-    if (errno == EINTR) {
+    int xerrno = errno;
+
+    if (xerrno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
     pr_trace_msg("lock", 3, "unlock of scoreboard fd %d entry failed: %s",
-      scoreboard_fd, strerror(errno));
+      scoreboard_fd, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -205,13 +212,17 @@ static int unlock_scoreboard(void) {
     scoreboard_fd);
 
   while (fcntl(scoreboard_fd, F_SETLK, &lock) < 0) {
+    int xerrno = errno;
+
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
     pr_trace_msg("lock", 3, "unlock of scoreboard fd %d failed: %s",
-      scoreboard_fd, strerror(errno));
+      scoreboard_fd, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -230,13 +241,17 @@ static int wlock_entry(void) {
     "offset %" PR_LU, scoreboard_fd, (pr_off_t) entry_lock.l_start);
 
   while (fcntl(scoreboard_fd, F_SETLKW, &entry_lock) < 0) {
-    if (errno == EINTR) {
+    int xerrno = errno;
+
+    if (xerrno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
     pr_trace_msg("lock", 3, "write-lock of scoreboard fd %d entry failed: %s",
-      scoreboard_fd, strerror(errno));
+      scoreboard_fd, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -259,14 +274,16 @@ static int wlock_scoreboard(void) {
     scoreboard_fd);
 
   while (fcntl(scoreboard_fd, F_SETLKW, &lock) < 0) {
-    if (errno == EINTR) {
+    int xerrno = errno;
+
+    if (xerrno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
     pr_trace_msg("lock", 3, "write-lock of scoreboard fd %d failed: %s",
       scoreboard_fd, strerror(errno));
-    if (errno == EACCES) {
+    if (xerrno == EACCES) {
       /* Get the PID of the process blocking this lock. */
       if (fcntl(scoreboard_fd, F_GETLK, &lock) == 0) {
         pr_trace_msg("lock", 3, "process ID %lu has blocking %s lock on "
@@ -275,6 +292,7 @@ static int wlock_scoreboard(void) {
       }
     }
 
+    errno = xerrno;
     return -1;
   }
 
