@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2008 The ProFTPD Project team
+ * Copyright (c) 2006-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.12 2008-12-24 08:05:54 castaglia Exp $
+ * $Id: encode.c,v 1.13 2009-01-28 00:19:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -230,8 +230,9 @@ char *pr_decode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
   }
 
   if (decode_conv == (iconv_t) -1) {
-    errno = EPERM;
-    return NULL;
+    pr_trace_msg(trace_channel, 1, "invalid decoding conversion handle, "
+      "unable to decode string");
+    return pstrdup(p, in);
   }
 
   inbuf = pcalloc(p, inlen);
@@ -266,8 +267,9 @@ char *pr_encode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
   }
 
   if (encode_conv == (iconv_t) -1) {
-    errno = EPERM;
-    return NULL;
+    pr_trace_msg(trace_channel, 1, "invalid encoding conversion handle, "
+      "unable to encode string");
+    return pstrdup(p, in);
   }
 
   inbuf = pcalloc(p, inlen);
