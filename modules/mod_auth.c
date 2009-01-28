@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.248 2008-12-07 03:29:55 castaglia Exp $
+ * $Id: mod_auth.c,v 1.249 2009-01-28 17:56:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1017,7 +1017,7 @@ static int setup_env(pool *p, char *user, char *pass) {
     if (!session.chroot_path) {
       pr_log_pri(PR_LOG_ERR, "%s: Directory %s is not accessible.",
         session.user, c->name);
-      pr_response_add_err(R_530, "Unable to set anonymous privileges.");
+      pr_response_add_err(R_530, _("Unable to set anonymous privileges."));
       goto auth_failure;
     }
 
@@ -1727,7 +1727,7 @@ MODRET auth_pre_user(cmd_rec *cmd) {
   if (strlen(cmd->arg) > PR_TUNABLE_LOGIN_MAX) {
     pr_log_pri(PR_LOG_NOTICE, "USER %s (Login failed): "
       "maximum login length exceeded", cmd->arg);
-    pr_response_add_err(R_501, "Login incorrect.");
+    pr_response_add_err(R_501, _("Login incorrect."));
     return PR_ERROR(cmd);
   }
 
