@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.27 2008-11-15 22:34:11 castaglia Exp $
+ * $Id: options.h,v 1.28 2009-01-29 16:40:04 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -100,6 +100,9 @@
  * special circumstances, when you need to explicitly control that
  * buffer size.
  */
+#ifndef PR_TUNABLE_XFER_BUFFER_SIZE
+# define PR_TUNABLE_XFER_BUFFER_SIZE	PR_TUNABLE_BUFFER_SIZE
+#endif
 
 /* Maximum path length.  GNU HURD (and some others) do not define
  * MAXPATHLEN.  POSIX' PATH_MAX is mandated to be at least 256 
