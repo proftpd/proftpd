@@ -24,7 +24,7 @@
 
 /*
  * Pool API tests
- * $Id: pool.c,v 1.1 2008-10-06 18:16:50 castaglia Exp $
+ * $Id: pool.c,v 1.2 2009-01-30 00:14:16 castaglia Exp $
  */
 
 #include "tests.h"
@@ -123,7 +123,7 @@ START_TEST (pcalloc_test) {
   }
 
   sz = 16382;
-  v = palloc(p, sz);
+  v = pcalloc(p, sz);
   fail_if(v == NULL, "Failed to allocate %u-len memory", sz);
   for (i = 0; i < sz; i++) {
     fail_unless(v[i] == 0, "Allocated non-zero memory at position %u", i);
