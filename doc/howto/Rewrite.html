@@ -1,4 +1,4 @@
-<!-- $Id: Rewrite.html,v 1.3 2008-12-07 00:33:43 castaglia Exp $ -->
+<!-- $Id: Rewrite.html,v 1.4 2009-02-02 19:46:51 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Rewrite.html,v $ -->
 
 <html>
@@ -303,6 +303,42 @@ redirect a request, just like one might do using Apache's
 The above <code>RewriteRule</code> would work, but it would <b>not</b> actually
 redirect the FTP client to the URL.  FTP unfortuntely does <i>not</i> support
 redirection of requests, at the protocol level, unlike HTTP.
+
+<p>
+<b>URL Encoded Characters</b><br>
+On very rare occasions, you may find yourself dealing with URL-encoded
+characters in your FTP command parameters.  If you have worked with web servers
+and URLs, you will accustomed to seeing sequences like "%20" in URLs; these are
+URL encoded characters (as per <a href="http://www.faqs.org/rfcs/rfc2369.html">RFC2369</a>).  Unescaping these URL-encoded sequences is exactly what the
+"unescape" <code>RewriteMap</code> builtin function handles.
+
+<p>
+<b>Handling Non-ASCII Characters</b><br>
+If you need to handle non-ASCII characters in your <code>mod_rewrite</code>
+rules, then you may need to generate your configuration using a scripting
+language, rather than using your editor.  For example, my editor does not
+handle non-ASCII characters well; it displays them as <code>?</code>.
+
+<p>
+Here's an example, using Perl, to replace "&auml;" with "ae" in uploaded file
+names.  Note that "&auml" in hex notation is <code>0xE4</code>:
+<pre>
+  my $rewrite_rule = 'RewriteRule (.*) ${replace:/$1/' . chr(0xE4) . '/ae}';
+
+  my $config = '/path/to/proftpd.conf';
+  if (open(my $fh, "> $config")) {
+    print $fh EOR;
+
+  &lt;IfModule mod_rewrite.c&gt;
+    RewriteEngine on
+    RewriteLog /path/to/rewrite.log
+
+    RewriteCondition %m ^STOR$
+    $rewrite_rule
+  &lt;/IfModule&gt;
+EOR
+  }
+</pre>
 
 <hr>
 </body>
