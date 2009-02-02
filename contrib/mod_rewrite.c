@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
  *
- * Copyright (c) 2001-2008 TJ Saunders
+ * Copyright (c) 2001-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,13 +24,13 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.34 2008-12-31 17:53:50 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.35 2009-02-02 18:34:52 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_REWRITE_VERSION "mod_rewrite/0.6.8"
+#define MOD_REWRITE_VERSION "mod_rewrite/0.7"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001
@@ -800,13 +800,14 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
 
     memset(buf, '\0', sizeof(buf));
 
-    if (matches == &rewrite_rule_matches)
+    if (matches == &rewrite_rule_matches) {
       /* Substitute "$N" backreferences for RewriteRule matches */
       snprintf(buf, sizeof(buf), "$%u", i);
 
-    else if (matches == &rewrite_cond_matches)
+    } else if (matches == &rewrite_cond_matches) {
       /* Substitute "%N" backreferences for RewriteCondition matches */
       snprintf(buf, sizeof(buf), "%%%u", i);
+    }
 
     if (!replacement_pattern)
       replacement_pattern = pstrdup(cmd->pool, pattern);
@@ -1383,10 +1384,10 @@ static char *rewrite_map_int_unescape(pool *map_pool, char *key) {
   char *value = pcalloc(map_pool, sizeof(char) * strlen(key));
 
   for (i = 0, j = 0; key[j]; ++i, ++j) {
-    if (key[j] != '%')
+    if (key[j] != '%') {
       value[i] = key[j];
 
-    else {
+    } else {
 
       if (!REWRITE_IS_XDIGIT(key[j+1]) || !REWRITE_IS_XDIGIT(key[j+2])) {
         rewrite_log("rewrite_map_int_unescape(): bad escape sequence '%c%c%c'",
@@ -2239,6 +2240,11 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
         break;
       }
     }
+
+    /* When processing multiple RewriteRules, we may have changed cmd->arg.
+     * Thus we need to update the locally cached version of it.
+     */
+    cmd_arg = cmd->arg;
 
     c = find_config_next(c, c->next, CONF_PARAM, "RewriteRule", FALSE);
   }

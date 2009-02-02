@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.972 2009-01-23 22:59:42 castaglia Exp $
+$Id: NEWS,v 1.973 2009-02-02 18:34:52 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -8,6 +8,11 @@ $Id: NEWS,v 1.972 2009-01-23 22:59:42 castaglia Exp $
 
   where `N' is the bug number.
 -----------------------------------------------------------------------------
+
+CVS
+--------------------------------
+- Bug 3169 - Multiple RewriteRules for the same RewriteCondition not processed
+  properly.
 
 1.3.2rc4 - Released 23-Jan-2009
 --------------------------------
