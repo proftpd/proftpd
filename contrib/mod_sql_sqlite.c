@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.11 2008-11-03 19:27:24 castaglia Exp $
+ * $Id: mod_sql_sqlite.c,v 1.12 2009-02-05 21:49:28 castaglia Exp $
  * $Libraries: -lsqlite3 $
  */
 
@@ -846,6 +846,7 @@ MODRET sql_sqlite_quote(cmd_rec *cmd) {
   char *unescaped = NULL;
   char *escaped = NULL;
   char *tmp;
+  cmd_rec *close_cmd;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tsqlite cmd_escapestring");
 
@@ -875,6 +876,10 @@ MODRET sql_sqlite_quote(cmd_rec *cmd) {
   tmp = sqlite3_mprintf("%q", unescaped);
   escaped = pstrdup(cmd->pool, tmp);
   sqlite3_free(tmp);
+
+  close_cmd = pr_cmd_alloc(cmd->tmp_pool, 1, entry->name);
+  sql_sqlite_close(close_cmd);
+  destroy_pool(close_cmd->pool);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_escapestring");
   return mod_create_data(cmd, escaped);

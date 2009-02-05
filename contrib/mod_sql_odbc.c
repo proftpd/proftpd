@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_odbc.c,v 1.7 2008-03-17 15:19:22 castaglia Exp $
+ * $Id: mod_sql_odbc.c,v 1.8 2009-02-05 21:49:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1546,6 +1546,7 @@ MODRET sqlodbc_quote(cmd_rec *cmd) {
   modret_t *mr = NULL;
   char *unescaped = NULL;
   char *escaped = NULL;
+  cmd_rec *close_cmd;
 
   sql_log(DEBUG_FUNC, "%s", "entering \todbc cmd_escapestring");
 
@@ -1575,6 +1576,10 @@ MODRET sqlodbc_quote(cmd_rec *cmd) {
 			      (strlen(unescaped) * 2) + 1);
 
   sqlodbc_escape_string(escaped, unescaped, strlen(unescaped));
+
+  close_cmd = pr_cmd_alloc(cmd->tmp_pool, 1, entry->name);
+  sqlodbc_close(close_cmd);
+  destroy_pool(close_cmd->pool);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_escapestring");
   return mod_create_data(cmd, (void *) escaped);

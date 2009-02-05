@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.975 2009-02-05 18:53:54 castaglia Exp $
+$Id: NEWS,v 1.976 2009-02-05 21:49:28 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -8,6 +8,11 @@ $Id: NEWS,v 1.975 2009-02-05 18:53:54 castaglia Exp $
 
   where `N' is the bug number.
 -----------------------------------------------------------------------------
+
+CVS
+--------------------------------
+- Bug 1801 - Faulty SQLConnectInfo PERCALL policy - connections not closed
+  after each call.
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------
