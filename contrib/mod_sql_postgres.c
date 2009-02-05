@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql_postgres -- Support for connecting to Postgres databases.
  * Time-stamp: <1999-10-04 03:21:21 root>
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2008 TJ Saunders
+ * Copyright (c) 2004-2009 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.36 2008-03-13 22:44:46 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.37 2009-02-05 18:53:54 castaglia Exp $
  */
 
 /*
@@ -34,7 +34,7 @@
  * Internal define used for debug and logging.  All backends are encouraged
  * to use the same format.
  */
-#define MOD_SQL_POSTGRES_VERSION	"mod_sql_postgres/4.03"
+#define MOD_SQL_POSTGRES_VERSION	"mod_sql_postgres/4.0.4"
 
 #define _POSTGRES_PORT "5432"
 
@@ -42,6 +42,21 @@
 #include "../contrib/mod_sql.h"
 
 #include <libpq-fe.h>
+
+/* For the pg_encoding_to_char() function, used for NLS support, we need
+ * to include the <mb/pg_wchar.h> file.  It's OK; the function has been
+ * declared in that file for a while, according to:
+ *
+ *  http://archives.postgresql.org/pgsql-bugs/2006-07/msg00125.php
+ *
+ * But it's a pain to quell all of the compiler warnings about redefined
+ * this, undefined that.  The linker finds the symbol without issue, so
+ * punt on including <mb/pg_wchar.h> file.  Instead, we'll copy the
+ * function declaration here.
+ */
+#ifdef PR_USE_NLS
+extern const char *pg_encoding_to_char(int encoding);
+#endif
 
 /* 
  * timer-handling code adds the need for a couple of forward declarations
@@ -305,6 +320,39 @@ MODRET cmd_open(cmd_rec *cmd) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
     return _build_error( cmd, conn );
   }
+
+#ifdef PR_USE_NLS
+  if (pr_encode_get_encoding() != NULL) {
+    const char *encoding = pr_encode_get_encoding();
+
+    /* XXX Hack to deal with Postgres' incredibly broken behavior when
+     * handling the 'ASCII' encoding.  Specifically, Postgres chokes on
+     * 'ASCII', and instead insists on calling it 'SQL_ASCII' (which, of
+     * course, is not even close to being a valid encoding name according
+     * to libiconv.)
+     *
+     * Treat 'ANSI_X3.4-1968' (another common name/alias for ASCII) the
+     * same; rename it to 'SQL_ASCII' for Postgres' benefit.  And same for
+     * 'US-ASCII'.
+     */
+    if (strcmp(encoding, "ANSI_X3.4-1968") == 0 ||
+        strcmp(encoding, "ASCII") == 0 ||
+        strcmp(encoding, "US-ASCII") == 0) {
+      encoding = "SQL_ASCII";
+    }
+
+    /* Configure the connection for the current local character set. */
+    if (PQsetClientEncoding(conn->postgres, encoding) < 0) {
+      /* if it didn't work, return an error */
+      sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
+      return _build_error(cmd, conn);
+    }
+
+    sql_log(DEBUG_FUNC, "Postgres connection character set now '%s' "
+      "(from '%s')", pg_encoding_to_char(PQclientEncoding(conn->postgres)),
+      pr_encode_get_charset());
+  }
+#endif /* !PR_USE_NLS */
 
   /* bump connections */
   entry->connections++;

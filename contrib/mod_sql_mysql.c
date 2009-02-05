@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_mysql -- Support for connecting to MySQL databases.
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2008 TJ Saunders
+ * Copyright (c) 2004-2009 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.50 2008-03-13 22:44:46 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.51 2009-02-05 18:53:54 castaglia Exp $
  */
 
 /*
@@ -128,7 +128,7 @@
  * Internal define used for debug and logging.  All backends are encouraged
  * to use the same format.
  */
-#define MOD_SQL_MYSQL_VERSION		"mod_sql_mysql/4.0.7"
+#define MOD_SQL_MYSQL_VERSION		"mod_sql_mysql/4.0.8"
 
 #define _MYSQL_PORT "3306"
 
@@ -439,6 +439,49 @@ MODRET cmd_open(cmd_rec *cmd) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
     return _build_error(cmd, conn);
   }
+
+#ifdef PR_USE_NLS
+  if (pr_encode_get_encoding() != NULL) {
+
+# if MYSQL_VERSION_ID >= 50007
+    /* Configure the connection for the current local character set.
+     *
+     * Note: the mysql_set_character_set() function appeared in MySQL 5.0.7,
+     * as per:
+     *
+     *  http://dev.mysql.com/doc/refman/5.0/en/mysql-set-character-set.html
+     */
+    if (!mysql_set_character_set(conn->mysql, pr_encode_get_charset())) {
+      sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
+      return _build_error(cmd, conn);
+    }
+
+    sql_log(DEBUG_FUNC, "MySQL connection character set now '%s' (from '%s')",
+      mysql_character_set_name(conn->mysql), pr_encode_get_charset());
+
+# else
+    /* No mysql_set_character_set() API available.  But
+     * mysql_character_set_name() has been around for a while; we can use it
+     * to at least see whether there might be a character set discrepancy.
+     */
+
+    const char *local_charset = pr_encode_get_charset();
+    const char *mysql_charset = mysql_character_set_name(conn->mysql);
+
+    if (local_charset &&
+        mysql_charset &&
+        strcasecmp(local_charset, mysql_charset) != 0) {
+      pr_log_pri(PR_LOG_ERR, MOD_SQL_MYSQL_VERSION
+        ": local character set '%s' does not match MySQL character set '%s', "
+        "SQL injection possible, shutting down", local_charset, mysql_charset);
+      sql_log(DEBUG_WARN, "local character set '%s' does not match MySQL "
+        "character set '%s', SQL injection possible, shutting down",
+        local_charset, mysql_charset);
+      end_login(1);
+    }
+# endif /* older MySQL */
+  }
+#endif /* !PR_USE_NLS */
 
   /* bump connections */
   entry->connections++;
