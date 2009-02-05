@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_facts -- a module for handling "facts" [RFC3659]
  *
- * Copyright (c) 2007-2008 The ProFTPD Project
+ * Copyright (c) 2007-2009 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.13 2008-12-16 00:36:50 castaglia Exp $
+ * $Id: mod_facts.c,v 1.14 2009-02-05 22:26:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1123,6 +1123,7 @@ static int facts_sess_init(void) {
 
   pr_feat_add("MFF modify;UNIX.group;UNIX.mode;");
   pr_feat_add("MFMT");
+  pr_feat_add("TVFS");
 
   facts_mlst_feat_add(session.pool);
 
