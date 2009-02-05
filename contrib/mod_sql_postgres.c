@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.38 2009-02-05 21:49:28 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.39 2009-02-05 22:23:10 castaglia Exp $
  */
 
 /*
@@ -1153,6 +1153,9 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
   char *unescaped = NULL;
   char *escaped = NULL;
   cmd_rec *close_cmd;
+#ifdef PG_VERSION_NUM
+  int pgerr = 0;
+#endif
 
   sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_escapestring");
 
@@ -1180,14 +1183,27 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
     return cmr;
   }
 
-  /* Note: the PQescapeString() function appeared in the C API as of
-   * Postgres-7.2.
+  /* Note: I think PQescapeStringConn() appears in the C API as of
+   * Postgres-7.3, but I'm not sure.  The PQescapeString() function appeared
+   * in the C API as of Postgres-7.2.  The PG_VERSION_NUM macro appeared
+   * as of Postgres-8.2, hence why that is used as the proxy indicator of
+   * whether to use PQescapeString() or PQescapeStringConn().
    */
-  unescaped = cmd->argv[1];
-  escaped = (char *) pcalloc(cmd->tmp_pool, sizeof(char) *
-    (strlen(unescaped) * 2) + 1);
 
-  PQescapeString(escaped, unescaped, strlen(unescaped));
+  unescaped = cmd->argv[1];
+  unescaped_len = strlen(unescaped);
+  escaped = (char *) pcalloc(cmd->tmp_pool, sizeof(char) *
+    (unescaped_len * 2) + 1);
+
+#ifdef PG_VERSION_NUM
+  PQescapeStringConn(conn->postgres, escaped, unescaped, unescaped_len, &pgerr);
+  if (pgerr != 0) {
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_escapestring");
+    return _build_error(cmd, conn);
+  }
+#else
+  PQescapeString(escaped, unescaped, unescaped_len);
+#endif
 
   close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
   cmd_close(close_cmd);
