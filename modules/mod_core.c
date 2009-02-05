@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.335 2008-12-11 20:19:07 castaglia Exp $
+ * $Id: mod_core.c,v 1.336 2009-02-05 22:41:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -890,24 +890,6 @@ MODRET set_multilinerfc2228(cmd_rec *cmd) {
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   MultilineRFC2228 = bool;
-  return PR_HANDLED(cmd);
-}
-
-MODRET set_identlookups(cmd_rec *cmd) {
-  int bool = -1;
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
-    CONF_ERROR(cmd, "expected Boolean parameter");
-
-  c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
-
   return PR_HANDLED(cmd);
 }
 
@@ -4871,7 +4853,6 @@ static conftable core_conftab[] = {
   { "HideGroup",		set_hidegroup,			NULL },
   { "HideNoAccess",		set_hidenoaccess,		NULL },
   { "HideUser",			set_hideuser,			NULL },
-  { "IdentLookups",		set_identlookups,		NULL },
   { "IgnoreHidden",		set_ignorehidden,		NULL },
   { "Include",			add_include,	 		NULL },
   { "MasqueradeAddress",	set_masqueradeaddress,		NULL },
