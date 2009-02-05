@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql_sqlite.html,v 1.2 2008-01-08 02:38:15 castaglia Exp $ -->
+<!-- $Id: mod_sql_sqlite.html,v 1.3 2009-02-05 22:33:56 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql_sqlite.html,v $ -->
 
 <html>
@@ -74,18 +74,23 @@ For example:
     SQLConnectInfo /path/to/ftpd.db
   &lt;/IfModule&gt;
 </pre>
-Please contact the author directly with any questions or comments.
+
+<p>
+Note that <code>mod_sql_sqlite<code> uses database transactions when handling
+<code>INSERT</code> and <code>UPDATE</code> SQL statements.  Due to way that
+transactions are implemented in SQLite, this requires write permissions on
+the directory containing the SQLite database file.
 
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2008-01-08 02:38:15 $</i><br>
+Last Updated: <i>$Date: 2009-02-05 22:33:56 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2004-2008 TJ Saunders<br>
+&copy; Copyright 2004-2009 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 

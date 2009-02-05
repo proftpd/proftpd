@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_sqlite -- Support for connecting to SQLite databases
  *
- * Copyright (c) 2004-2008 TJ Saunders
+ * Copyright (c) 2004-2009 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,11 +21,11 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.12 2009-02-05 21:49:28 castaglia Exp $
+ * $Id: mod_sql_sqlite.c,v 1.13 2009-02-05 22:33:56 castaglia Exp $
  * $Libraries: -lsqlite3 $
  */
 
-#define MOD_SQL_SQLITE_VERSION		"mod_sql_sqlite/0.3"
+#define MOD_SQL_SQLITE_VERSION		"mod_sql_sqlite/0.4"
 
 #include "conf.h"
 #include "privs.h"
@@ -539,7 +539,8 @@ MODRET sql_sqlite_insert(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "entering \tsqlite cmd_insert");
 
-  if (cmd->argc != 2 && cmd->argc != 4) {
+  if (cmd->argc != 2 &&
+      cmd->argc != 4) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_insert");
     return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION, "badly formed request");
   }
@@ -562,11 +563,12 @@ MODRET sql_sqlite_insert(cmd_rec *cmd) {
 
   /* Construct the query string */
   if (cmd->argc == 2)
-    query = pstrcat(cmd->tmp_pool, "INSERT ", cmd->argv[1], NULL);
+    query = pstrcat(cmd->tmp_pool, "BEGIN; INSERT ", cmd->argv[1],
+      "; COMMIT;", NULL);
 
   else
-    query = pstrcat(cmd->tmp_pool, "INSERT INTO ", cmd->argv[1], " (",
-      cmd->argv[2], ") VALUES (", cmd->argv[3], ")", NULL);
+    query = pstrcat(cmd->tmp_pool, "BEGIN; INSERT INTO ", cmd->argv[1], " (",
+      cmd->argv[2], ") VALUES (", cmd->argv[3], "); COMMIT;", NULL);
 
   /* Log the query string */
   sql_log(DEBUG_INFO, "query \"%s\"", query);
@@ -575,7 +577,10 @@ MODRET sql_sqlite_insert(cmd_rec *cmd) {
    * connection (and log any errors there, too) then return the error
    * from the query processing.
    */
+  PRIVS_ROOT
   res = sqlite3_exec(conn->dbh, query, exec_cb, cmd, &tmp);
+  PRIVS_RELINQUISH
+
   while (res != SQLITE_OK) {
     char *errstr;
 
@@ -592,7 +597,10 @@ MODRET sql_sqlite_insert(cmd_rec *cmd) {
         }
       }
 
+      PRIVS_ROOT
       res = sqlite3_exec(conn->dbh, query, exec_cb, cmd, &tmp);
+      PRIVS_RELINQUISH
+
       continue;
     }
 
@@ -659,15 +667,19 @@ MODRET sql_sqlite_update(cmd_rec *cmd) {
   }
 
   if (cmd->argc == 2) {
-    query = pstrcat(cmd->tmp_pool, "UPDATE ", cmd->argv[1], NULL);
+    query = pstrcat(cmd->tmp_pool, "BEGIN; UPDATE ", cmd->argv[1],
+      "; COMMIT;", NULL);
 
   } else {
     /* Construct the query string */
     query = pstrcat(cmd->tmp_pool, "UPDATE ", cmd->argv[1], " SET ",
       cmd->argv[2], NULL);
 
-    if (cmd->argc > 3 && cmd->argv[3])
+    if (cmd->argc > 3 &&
+        cmd->argv[3])
       query = pstrcat(cmd->tmp_pool, query, " WHERE ", cmd->argv[3], NULL);
+
+    query = pstrcat(cmd->tmp_pool, query, "; COMMIT;", NULL);
   }
 
   /* Log the query string. */
@@ -676,7 +688,10 @@ MODRET sql_sqlite_update(cmd_rec *cmd) {
   /* Perform the query.  If it doesn't work close the connection, then
    * return the error from the query processing.
    */
+  PRIVS_ROOT
   res = sqlite3_exec(conn->dbh, query, exec_cb, cmd, &tmp);
+  PRIVS_RELINQUISH
+
   while (res != SQLITE_OK) {
     char *errstr;
 
@@ -693,7 +708,10 @@ MODRET sql_sqlite_update(cmd_rec *cmd) {
         }
       }
 
+      PRIVS_ROOT
       res = sqlite3_exec(conn->dbh, query, exec_cb, cmd, &tmp);
+      PRIVS_RELINQUISH
+
       continue;
     }
 
@@ -783,7 +801,7 @@ MODRET sql_sqlite_query(cmd_rec *cmd) {
     return mr;
   }
 
-  query = pstrcat(cmd->tmp_pool, cmd->argv[1], NULL);
+  query = pstrcat(cmd->tmp_pool, "BEGIN; ", cmd->argv[1], "; COMMIT;", NULL);
 
   /* Log the query string */
   sql_log(DEBUG_INFO, "query \"%s\"", query);
@@ -791,7 +809,10 @@ MODRET sql_sqlite_query(cmd_rec *cmd) {
   /* Perform the query.  If it doesn't work close the connection, then
    * return the error from the query processing.
    */
+  PRIVS_ROOT
   res = sqlite3_exec(conn->dbh, query, exec_cb, cmd, &tmp);
+  PRIVS_RELINQUISH
+
   while (res != SQLITE_OK) {
     char *errstr;
 
@@ -808,7 +829,10 @@ MODRET sql_sqlite_query(cmd_rec *cmd) {
         }
       }
 
+      PRIVS_ROOT
       res = sqlite3_exec(conn->dbh, query, exec_cb, cmd, &tmp);
+      PRIVS_RELINQUISH
+
       continue;
     }
 
