@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.980 2009-02-05 22:33:56 castaglia Exp $
+$Id: NEWS,v 1.981 2009-02-05 22:40:30 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -18,6 +18,11 @@ CVS
 - Bug 3133 - mod_facts should advertise TVFS support in the FEAT response.
 - Bug 3128 - mod_sql_sqlite should use transactions for INSERT/UPDATE
   statements.
+- Bug 3155 - Change the IdentLookups default to 'off'.  The RFC1413 IDENT
+  lookup adds latency to the login process, so much so that it is a FAQ
+  to configure "IdentLookups off".  In addition, the IDENT protocol is not
+  secure; it can easily be spoofed using man-in-the-middle attacks.  Sites
+  that require IDENT lookups must now explicitly configure "IdentLookups on".
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------

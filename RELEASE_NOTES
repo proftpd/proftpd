@@ -11,6 +11,17 @@ files.
 
   + Added French translation.
 
+  + Changed configuration directives:
+
+    IdentLookups
+
+      The default IdentLookups value is now 'off'.  The RFC1413 IDENT lookup
+      adds latency to the login process, so much so that it is a FAQ to
+      configure "IdentLookups off".  In addition, the IDENT protocol is not
+      secure; it can easily be spoofed using man-in-the-middle attacks.  Sites
+      that require IDENT lookups must now explicitly configure
+      "IdentLookups on".
+
   + Deprecated configuration directives:
 
     AnonymousGroup
@@ -18,4 +29,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-02-05 22:06:45 $
+Last Updated: $Date: 2009-02-05 22:40:30 $

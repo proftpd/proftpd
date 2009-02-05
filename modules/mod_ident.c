@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ident -- a module for performing identd lookups [RFC1413]
  *
- * Copyright (c) 2008 The ProFTPD Project
+ * Copyright (c) 2008-2009 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_ident.c,v 1.2 2008-06-05 08:01:39 castaglia Exp $
+ * $Id: mod_ident.c,v 1.3 2009-02-05 22:40:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@
 
 module ident_module;
 
-static int ident_engine = TRUE;
+static int ident_engine = FALSE;
 static pr_netio_stream_t *ident_nstrm = NULL;
 static int ident_timeout_triggered = FALSE;
 
