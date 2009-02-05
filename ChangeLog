@@ -1,3 +1,154 @@
+2009-02-05 10:58  castaglia
+
+	* contrib/dist/rpm/proftpd.spec, include/version.h: 
+	Updating versions for the 1.3.2 release.
+
+2009-02-05 10:56  castaglia
+
+	* RELEASE_NOTES: 
+	Updating release notes.
+
+2009-02-05 10:53  castaglia
+
+	* NEWS, contrib/mod_sql_mysql.c, contrib/mod_sql_postgres.c: 
+	Bug#3173 - Encoding-dependent SQL injection vulnerability.
+
+2009-02-03 09:43  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Logging/ExtendedLog.pm: 
+	Added testcase for Bug#3171.
+
+2009-02-03 09:42  castaglia
+
+	* NEWS, modules/mod_log.c: 
+	Bug#3171 - ExtendedLog should log full SITE command using %m.
+
+2009-02-02 11:47  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_rewrite.pm: 
+	Added testcase for Bug#3170.
+
+2009-02-02 11:46  castaglia
+
+	* doc/howto/Rewrite.html: 
+	Give examples for handling non-ASCII characters in RewriteRule
+	expressions.
+
+2009-02-02 10:46  castaglia
+
+	* doc/contrib/mod_rewrite.html: 
+	Clarify exactly what type of encoding is unescaped by mod_rewrite's
+	unescape RewriteMap.
+
+2009-02-02 10:35  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_rewrite.pm: 
+	Added testcase for Bug#3169.
+
+2009-02-02 10:34  castaglia
+
+	* NEWS, contrib/mod_rewrite.c: 
+	Bug#3169 - Multiple RewriteRules for the same RewriteCondition not
+	processed properly.
+
+2009-01-30 09:58  castaglia
+
+	* contrib/mod_sql.c: 
+	Used the wrong pool when retrieving environment variables; when
+	handling %{env} tags in a SQLUserWhereClause, this would cause the
+	environment variable to not be retrieved properly.
+
+2009-01-29 16:14  castaglia
+
+	* tests/api/pool.c: 
+	Fix a test that was failing due to a thinko.
+
+2009-01-29 08:40  castaglia
+
+	* include/options.h: 
+	The changes for Bug#2874 erroneously removed the
+	PR_TUNABLE_XFER_BUFFER_SIZE macro.  The transfer buffer sizes are
+	now determined at runtime, but we still need a fallback (and some
+	contrib modules still use this macro).
+
+2009-01-28 09:56  castaglia
+
+	* modules/mod_auth.c: 
+	Missed a few places in need of translation.
+
+2009-01-27 16:19  castaglia
+
+	* src/encode.c: 
+	If the conversion handles are invalid for some reason, don't cause
+	segfaults by returning null; just return a dup of the input string,
+	and log the error.
+
+2009-01-27 15:29  castaglia
+
+	* src/scoreboard.c: 
+	Missed a spot.
+
+2009-01-27 15:23  castaglia
+
+	* src/scoreboard.c: 
+	Cache the errno value when using pr_trace_msg(), since that
+	function can change the errno value.
+
+2009-01-26 13:56  castaglia
+
+	* modules/mod_lang.c: 
+	When "UseEncoding off" is configured, *really* disable encoding.
+
+2009-01-26 12:57  castaglia
+
+	* doc/howto/TLS.html: 
+	Finally got around to adding more substance to the "TLS Debugging"
+	section, including examples using openssl s_client and ssldump. 
+	Very useful tools.
+	
+	Added a FAQ about TLSCertificateChainFile, mostly for my own
+	reference; it's a bit confusing as to when such a thing is useful.
+
+2009-01-26 09:35  castaglia
+
+	* contrib/mod_tls.c: 
+	Fix two minor issues in mod_tls:
+	
+	1. The TLSCACertificateFile can contain multiple certificates to
+	use when    verifying client certs.  However, when requesting the
+	client's cert	 and sending the list of acceptable client CAs,
+	mod_tls was only using	  the *first* cert contained in the
+	TLSCACertificateFile, rather than    using *all* certs which might
+	be in this file.  (Usually there is only    one cert anyway, so
+	this is not a huge problem.)
+	
+	2. The list of acceptable client CAs, sent to the client when
+	requesting    the client's cert, is built up from
+	TLSCACertificateFile and all of the    certs in
+	TLSCACertificatePath.  However, for some strange reason, if    a
+	TLSCertificateChainFile was configured, mod_tls was NOT sending the
+	   certs in TLSCACertificatePath.  (I suspect it was a
+	misunderstanding on    my part about the role that the certificate
+	chain file plays in SSL/TLS;	now I understand it.)
+
+2009-01-24 19:24  jwm
+
+	* contrib/mod_ldap.c: mod_ldap bzr r62: * Retrieve all LDAP
+	attributes when calling pr_ldap_user_lookup() since   it will need
+	various attributes (to perform home directory generation,   for
+	one). Thanks to Nikos Voutsinas <nvoutsin@noc.uoa.gr>.	 
+	http://forums.proftpd.org/smf/index.php/topic,3562.0.html
+
+2009-01-23 15:52  castaglia
+
+	* include/version.h: 
+	Back to a CVS version.
+
+2009-01-23 15:02  castaglia
+
+	* ChangeLog: 
+	Updating ChangeLog for 1.3.2rc4.
+
 2009-01-23 14:59  castaglia
 
 	* NEWS, RELEASE_NOTES: 
@@ -17524,7 +17675,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c: 
-	Missing $Id: ChangeLog,v 1.139 2009-01-23 23:02:06 castaglia Exp $ keyword.
+	Missing $Id: ChangeLog,v 1.140 2009-02-05 18:59:53 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -18695,7 +18846,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.139 2009-01-23 23:02:06 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.140 2009-02-05 18:59:53 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -19212,12 +19363,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.139 2009-01-23 23:02:06 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.140 2009-02-05 18:59:53 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.139 2009-01-23 23:02:06 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.140 2009-02-05 18:59:53 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
