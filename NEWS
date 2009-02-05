@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.976 2009-02-05 21:49:28 castaglia Exp $
+$Id: NEWS,v 1.977 2009-02-05 22:06:45 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -13,6 +13,7 @@ CVS
 --------------------------------
 - Bug 1801 - Faulty SQLConnectInfo PERCALL policy - connections not closed
   after each call.
+- Bug 2894 - Deprecate the AnonymousGroup directive.
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------

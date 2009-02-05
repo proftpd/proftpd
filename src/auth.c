@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.67 2009-01-07 18:25:39 castaglia Exp $
+ * $Id: auth.c,v 1.68 2009-02-05 22:06:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1021,42 +1021,12 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
   return res;
 }
 
-/* Helper function for pr_auth_get_anon_config(), for handling the
- * (horrible) AnonymousGroup directive.
- */
-static config_rec *auth_anonymous_group(pool *p, char *user) {
-  config_rec *c;
-  int ret = 0;
-
-  /* Retrieve the session group membership information, so that this check
-   * may work properly.
-   */
-  if (!session.gids && !session.groups &&
-      (ret = pr_auth_getgroups(p, user, &session.gids, &session.groups)) < 1)
-    pr_log_debug(DEBUG2, "no supplemental groups found for user '%s'", user);
-
-  c = find_config(main_server->conf, CONF_PARAM, "AnonymousGroup", FALSE);
-
-  if (c) {
-    do {
-      pr_signals_handle();
-
-      ret = pr_expr_eval_group_and((char **) c->argv);
-
-    } while (ret == FALSE &&
-      (c = find_config_next(c, c->next, CONF_PARAM, "AnonymousGroup",
-        FALSE)) != NULL);
-  }
-
-  return ret ? c : NULL;
-}
-
 /* This is one messy function.  Yuck.  Yay legacy code. */
 config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
     char **user_name, char **anon_name) {
   config_rec *c = NULL, *topc = NULL;
   char *config_user_name, *config_anon_name = NULL;
-  unsigned char is_alias = FALSE, force_anon = FALSE, *auth_alias_only = NULL;
+  unsigned char is_alias = FALSE, *auth_alias_only = NULL;
 
   /* Precendence rules:
    *   1. Search for UserAlias directive.
@@ -1159,14 +1129,7 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
       FALSE)) != NULL);
   }
 
-  if (!c) {
-    c = auth_anonymous_group(p, *login_name);
-
-    if (c)
-      force_anon = TRUE;
-  }
-
-  if (!is_alias && !force_anon) {
+  if (!is_alias) {
     auth_alias_only = get_param_ptr(c ? c->subset : main_server->conf,
       "AuthAliasOnly", FALSE);
 

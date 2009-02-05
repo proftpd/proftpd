@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.249 2009-01-28 17:56:58 castaglia Exp $
+ * $Id: mod_auth.c,v 1.250 2009-02-05 22:06:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -629,7 +629,7 @@ static int setup_env(pool *p, char *user, char *pass) {
   char *origuser,*ourname,*anonname = NULL,*anongroup = NULL,*ugroup = NULL;
   char sess_ttyname[20] = {'\0'}, *defaulttransfermode;
   char *defroot = NULL,*defchdir = NULL,*xferlog = NULL;
-  int aclp,i,force_anon = 0,res = 0,showsymlinks;
+  int aclp, i, res = 0, showsymlinks;
   unsigned char *wtmp_log = NULL, *anon_require_passwd = NULL;
 
   /********************* Authenticate the user here *********************/
@@ -724,36 +724,12 @@ static int setup_env(pool *p, char *user, char *pass) {
   }
 
   /* If c != NULL from this point on, we have an anonymous login */
-  aclp = login_check_limits(main_server->conf,FALSE,TRUE,&i);
-
-  /* set force_anon (for AnonymousGroup) and build a custom
-   * anonymous config for this session.
-   */
-  if (c && c->config_type != CONF_ANON) {
-    force_anon = 1;
-
-    defroot = get_default_root(session.pool);
-    if (!defroot)
-      defroot = pstrdup(session.pool, pw->pw_dir);
-
-    c = (config_rec *) pcalloc(session.pool, sizeof(config_rec));
-    c->config_type = CONF_ANON;
-    c->name = defroot;
-
-    anonname = pw->pw_name;
-
-    /* hackery, we trick everything else by pointing the subset
-     * at the main server's configuration.  tricky, eh?
-     */
-     c->subset = main_server->conf;
-  }
+  aclp = login_check_limits(main_server->conf, FALSE, TRUE, &i);
 
   if (c) {
-    if (!force_anon) {
-        anongroup = (char*)get_param_ptr(c->subset,"GroupName",FALSE);
-      if (!anongroup)
-        anongroup = (char*)get_param_ptr(main_server->conf,"GroupName",FALSE);
-    }
+    anongroup = get_param_ptr(c->subset, "GroupName", FALSE);
+    if (!anongroup)
+      anongroup = get_param_ptr(main_server->conf, "GroupName",FALSE);
 
     /* Check for configured AnonRejectPasswords regex here, and fail the login
      * if the given password matches the regex.
@@ -2055,41 +2031,6 @@ MODRET set_anonrejectpasswords(cmd_rec *cmd) {
 #endif
 }
 
-MODRET add_anonymousgroup(cmd_rec *cmd) {
-  int argc;
-  config_rec *c = NULL;
-  char **argv = NULL;
-  array_header *acl = NULL;
-
-  if (cmd->argc < 2)
-    CONF_ERROR(cmd, "wrong number of parameters");
-
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  argv = cmd->argv;
-  argc = cmd->argc - 1;
-
-  acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
-
-  c = add_config_param(cmd->argv[0], 0);
-  c->argc = argc;
-  c->argv = pcalloc(c->pool, (argc+1) * sizeof(char *));
-  argv = (char **) c->argv;
-
-  if (argc && acl)
-    while (argc--) {
-      *argv++ = pstrdup(c->pool, *((char **) acl->elts));
-      acl->elts = ((char **) acl->elts) + 1;
-    }
-
-  *argv = NULL;
-
-  pr_log_pri(PR_LOG_DEBUG, "The '%s' directive has been deprecated, and will "
-    "be removed in future releases", cmd->argv[0]);
-
-  return PR_HANDLED(cmd);
-}
-
 MODRET set_authaliasonly(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
@@ -2961,7 +2902,6 @@ static conftable auth_conftab[] = {
   { "AccessGrantMsg",		set_accessgrantmsg,		NULL },
   { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
   { "AnonRejectPasswords",	set_anonrejectpasswords,	NULL },
-  { "AnonymousGroup",		add_anonymousgroup,		NULL },
   { "AuthAliasOnly",		set_authaliasonly,		NULL },
   { "AuthUsingAlias",		set_authusingalias,		NULL },
   { "CreateHome",		set_createhome,			NULL },
