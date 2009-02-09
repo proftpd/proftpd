@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.250 2009-02-05 22:06:45 castaglia Exp $
+ * $Id: mod_auth.c,v 1.251 2009-02-09 18:51:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -146,7 +146,7 @@ static int auth_sess_init(void) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_USER, "(none)",
     PR_SCORE_SERVER_PORT, main_server->ServerPort,
-    PR_SCORE_SERVER_ADDR, main_server->addr, main_server->ServerPort,
+    PR_SCORE_SERVER_ADDR, session.c->local_addr, session.c->local_port,
     PR_SCORE_SERVER_LABEL, main_server->ServerName,
     PR_SCORE_CLIENT_ADDR, session.c->remote_addr,
     PR_SCORE_CLIENT_NAME, session.c->remote_name,
