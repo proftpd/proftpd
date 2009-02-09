@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.39 2009-02-05 22:23:10 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.40 2009-02-09 17:21:35 castaglia Exp $
  */
 
 /*
@@ -1153,6 +1153,7 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
   char *unescaped = NULL;
   char *escaped = NULL;
   cmd_rec *close_cmd;
+  size_t unescaped_len = 0;
 #ifdef PG_VERSION_NUM
   int pgerr = 0;
 #endif
