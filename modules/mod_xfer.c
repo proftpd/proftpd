@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.250 2009-01-04 01:14:37 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.251 2009-02-09 23:27:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1052,10 +1052,11 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path) {
     return -1;
   }
 
-  if (pr_table_add(cmd->notes, "mod_xfer.store-hidden-path", NULL, 0) < 0)
+  if (pr_table_add(cmd->notes, "mod_xfer.store-hidden-path", NULL, 0) < 0) {
     pr_log_pri(PR_LOG_NOTICE,
       "notice: error adding 'mod_xfer.store-hidden-path': %s",
       strerror(errno));
+  }
 
   if (!foundslash) {
 
@@ -1086,15 +1087,15 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path) {
 
     pr_response_add_err(R_550, _("%s: Temporary hidden file %s already exists"),
       cmd->arg, hidden_path);
-
     return -1;
   }
 
   if (pr_table_set(cmd->notes, "mod_xfer.store-hidden-path",
-      hidden_path, 0) < 0)
+      hidden_path, 0) < 0) {
     pr_log_pri(PR_LOG_NOTICE,
       "notice: error setting 'mod_xfer.store-hidden-path': %s",
       strerror(errno));
+  }
 
   session.xfer.xfer_type = STOR_HIDDEN;
   return 0;
@@ -1203,8 +1204,16 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   if (hidden_stores!= NULL &&
       *hidden_stores == TRUE) {
 
-    if (get_hidden_store_path(cmd, path) < 0)
+    /* If we're using HiddenStores, then REST won't work. */
+    if (session.restart_pos) {
+      pr_response_add_err(R_501,
+        _("REST not compatible with server configuration"));
       return PR_ERROR(cmd);
+    }
+
+    if (get_hidden_store_path(cmd, path) < 0) {
+      return PR_ERROR(cmd);
+    }
   }
 
   (void) xfer_prio_adjust();
@@ -1735,19 +1744,9 @@ MODRET xfer_stor(cmd_rec *cmd) {
 MODRET xfer_rest(cmd_rec *cmd) {
   off_t pos;
   char *endp = NULL;
-  unsigned char *hidden_stores = NULL;
 
   if (cmd->argc != 2) {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
-    return PR_ERROR(cmd);
-  }
-
-  /* If we're using HiddenStores, then REST won't work. */
-  hidden_stores = get_param_ptr(CURRENT_CONF, "HiddenStores", FALSE);
-  if (hidden_stores != NULL &&
-      *hidden_stores == TRUE) {
-    pr_response_add_err(R_501,
-      _("REST not compatible with server configuration"));
     return PR_ERROR(cmd);
   }
 
