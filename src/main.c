@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.359 2009-01-14 17:39:47 castaglia Exp $
+ * $Id: main.c,v 1.360 2009-02-10 00:05:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1713,27 +1713,25 @@ void pr_signals_handle(void) {
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_RESTART) {
+      recvd_signal_flags &= ~RECEIVED_SIG_RESTART;
       pr_trace_msg("signal", 9, "handling SIGHUP (signal %d)", SIGHUP);
 
       /* NOTE: should this be done here, rather than using a schedule? */
       schedule(core_restart_cb, 0, NULL, NULL, NULL, NULL);
-
-      recvd_signal_flags &= ~RECEIVED_SIG_RESTART;
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_EXIT) {
+      recvd_signal_flags &= ~RECEIVED_SIG_EXIT;
       pr_trace_msg("signal", 9, "handling SIGUSR1 (signal %d)", SIGUSR1);
       session_exit(PR_LOG_NOTICE, "Parent process requested shutdown", 0, NULL);
-      recvd_signal_flags &= ~RECEIVED_SIG_EXIT;
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_SHUTDOWN) {
+      recvd_signal_flags &= ~RECEIVED_SIG_SHUTDOWN;
       pr_trace_msg("signal", 9, "handling SIGUSR1 (signal %d)", SIGUSR1);
 
       /* NOTE: should this be done here, rather than using a schedule? */
       schedule(shutdown_exit, 0, NULL, NULL, NULL, NULL);
-
-      recvd_signal_flags &= ~RECEIVED_SIG_SHUTDOWN;
     }
   }
 
