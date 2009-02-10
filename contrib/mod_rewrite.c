@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.35 2009-02-02 18:34:52 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.36 2009-02-10 00:31:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -766,18 +766,50 @@ static void rewrite_replace_cmd_arg(cmd_rec *cmd, char *new_arg) {
 }
 
 static char *rewrite_subst(cmd_rec *cmd, char *pattern) {
+  int have_cond_backrefs = FALSE;
   char *new_pattern = NULL;
+
   rewrite_log("rewrite_subst(): original pattern: '%s'", pattern);
+
+  /* Before we do any substitution, check first to see if we have any
+   * RewriteCondition backreferences in the original pattern.  Later
+   * substitutions may add sequences which look like RewriteCondition
+   * backreferences (e.g. the 'unescape' RewriteMap builtin function),
+   * we want to try to disambiguate these situations.
+   */
+  if (strchr(pattern, '%') != NULL) {
+    if (strstr(pattern, "%0") != NULL ||
+        strstr(pattern, "%1") != NULL ||
+        strstr(pattern, "%2") != NULL ||
+        strstr(pattern, "%3") != NULL ||
+        strstr(pattern, "%4") != NULL ||
+        strstr(pattern, "%5") != NULL ||
+        strstr(pattern, "%6") != NULL ||
+        strstr(pattern, "%7") != NULL ||
+        strstr(pattern, "%8") != NULL ||
+        strstr(pattern, "%9") != NULL) {
+
+       have_cond_backrefs = TRUE;
+    }
+  }
 
   /* Expand any RewriteRule backreferences in the substitution pattern. */
   new_pattern = rewrite_subst_backrefs(cmd, pattern, &rewrite_rule_matches);
   rewrite_log("rewrite_subst(): rule backref subst'd pattern: '%s'",
     new_pattern);
 
-  /* Expand any RewriteCondition backreferences in the substitution pattern. */
-  new_pattern = rewrite_subst_backrefs(cmd, new_pattern, &rewrite_cond_matches);
-  rewrite_log("rewrite_subst(): cond backref subst'd pattern: '%s'",
-    new_pattern);
+  if (have_cond_backrefs) {
+    /* Expand any RewriteCondition backreferences in the substitution
+     * pattern.
+     */
+    new_pattern = rewrite_subst_backrefs(cmd, new_pattern,
+      &rewrite_cond_matches);
+    rewrite_log("rewrite_subst(): cond backref subst'd pattern: '%s'",
+      new_pattern);
+
+  } else {
+    rewrite_log("rewrite_subst(): pattern '%s' had no cond backrefs", pattern);
+  }
 
   /* Next, rewrite the arg, substituting in the values. */
   new_pattern = rewrite_subst_vars(cmd, new_pattern);

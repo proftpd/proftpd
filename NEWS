@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.982 2009-02-09 23:27:08 castaglia Exp $
+$Id: NEWS,v 1.983 2009-02-10 00:31:08 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -24,6 +24,8 @@ CVS
   secure; it can easily be spoofed using man-in-the-middle attacks.  Sites
   that require IDENT lookups must now explicitly configure "IdentLookups on".
 - Bug 3156 - Allow resumed downloads when HiddenStore is in effect.
+- Bug 3170 - RewriteMap unescape URL encoding broken by RewriteCondition
+  backreference handling.
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------
