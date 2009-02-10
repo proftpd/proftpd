@@ -22,6 +22,18 @@ files.
       that require IDENT lookups must now explicitly configure
       "IdentLookups on".
 
+      Note that in order to use IdentLookups, you must compile proftpd with
+      the mod_ident module.  If you use the --disable-ident configure
+      option, then proftpd will not recognize the IdentLookups directive.
+      Thus in your proftpd.conf, you should use something like:
+
+        <IfModule mod_ident.c>
+          IdentLookups on
+        </IfModule>
+
+      if you want to use RFC1413 lookups.
+
+
   + Deprecated configuration directives:
 
     AnonymousGroup
@@ -29,4 +41,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-02-09 17:58:56 $
+Last Updated: $Date: 2009-02-10 21:57:06 $
