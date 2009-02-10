@@ -3090,16 +3090,20 @@ static void tls_setup_environ(SSL *ssl) {
   if (cert) {
     tls_setup_cert_environ("TLS_SERVER_", cert);
 
-  } else
-    tls_log("unable to set server certificate environ variables");
+  } else {
+    tls_log("unable to set server certificate environ variables: "
+      "Server certificate unavailable");
+  }
 
   cert = SSL_get_peer_certificate(ssl);
   if (cert) {
     tls_setup_cert_environ("TLS_CLIENT_", cert);
     X509_free(cert);
 
-  } else
-    tls_log("unable to set client certificate environ variables");
+  } else {
+    tls_log("unable to set client certificate environ variables: "
+      "Client certificate unavailable");
+  }
 
   return;
 }
