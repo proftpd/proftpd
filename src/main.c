@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.360 2009-02-10 00:05:23 castaglia Exp $
+ * $Id: main.c,v 1.361 2009-02-11 05:57:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -836,9 +836,10 @@ static void send_session_banner(server_rec *server) {
 
   display = get_param_ptr(server->conf, "DisplayConnect", FALSE);
   if (display != NULL) {
-    if (pr_display_file(display, NULL, R_220) < 0)
+    if (pr_display_file(display, NULL, R_220) < 0) {
       pr_log_debug(DEBUG6, "unable to display DisplayConnect file '%s': %s",
         display, strerror(errno));
+    }
   }
 
   serveraddress = pr_netaddr_get_ipstr(session.c->local_addr);
@@ -849,14 +850,32 @@ static void send_session_banner(server_rec *server) {
     serveraddress = pr_netaddr_get_ipstr(masq_addr);
   }
 
-  if ((c = find_config(server->conf, CONF_PARAM, "ServerIdent",
-      FALSE)) == NULL || *((unsigned char *) c->argv[0]) == FALSE) {
+  c = find_config(server->conf, CONF_PARAM, "ServerIdent", FALSE);
+  if (c == NULL ||
+      *((unsigned char *) c->argv[0]) == FALSE) {
     unsigned char *defer_welcome = get_param_ptr(main_server->conf,
       "DeferWelcome", FALSE);
 
     if (c &&
         c->argc > 1) {
-      pr_response_send(R_220, "%s", (char *) c->argv[1]);
+      char *server_ident = c->argv[1];
+
+      if (strstr(server_ident, "%L") != NULL) {
+        server_ident = sreplace(session.pool, server_ident, "%L",
+          pr_netaddr_get_ipstr(session.c->local_addr), NULL);
+      }
+
+      if (strstr(server_ident, "%V") != NULL) {
+        server_ident = sreplace(session.pool, server_ident, "%V",
+          main_server->ServerFQDN, NULL);
+      }
+
+      if (strstr(server_ident, "%v") != NULL) {
+        server_ident = sreplace(session.pool, server_ident, "%v",
+          main_server->ServerName, NULL);
+      }
+
+      pr_response_send(R_220, "%s", server_ident);
 
     } else if (defer_welcome &&
                *defer_welcome == TRUE) {
@@ -868,9 +887,9 @@ static void send_session_banner(server_rec *server) {
         " Server (%s) [%s]", server->ServerName, serveraddress);
     }
 
-  } else
+  } else {
     pr_response_send(R_220, _("%s FTP server ready"), serveraddress);
-
+  }
 }
 
 static void cmd_loop(server_rec *server, conn_t *c) {
