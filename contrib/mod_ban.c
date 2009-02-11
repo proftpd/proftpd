@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
  *
- * Copyright (c) 2004-2008 TJ Saunders
+ * Copyright (c) 2004-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.20 2008-11-20 04:19:06 castaglia Exp $
+ * $Id: mod_ban.c,v 1.21 2009-02-11 20:03:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1687,7 +1687,8 @@ static void ban_exit_ev(const void *event_data, void *user_data) {
    */
 
   if (getpid() == mpid &&
-      ServerType == SERVER_STANDALONE) {
+      ServerType == SERVER_STANDALONE &&
+      ban_shmid >= 0) {
     struct shmid_ds ds;
     int res;
 
