@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_wrap2 -- tcpwrappers-like access control
  *
- * Copyright (c) 2000-2008 TJ Saunders
+ * Copyright (c) 2000-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -548,11 +548,32 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
     return (wrap2_match_netmask(tok, mask, wrap2_get_hostaddr(host)));
 
   } else {
+    pr_netaddr_t *acl_addr;
 
-    /* Anything else */
-    return (wrap2_match_string(tok, wrap2_get_hostaddr(host)) ||
-      (WRAP2_IS_NOT_INADDR(tok) &&
-       wrap2_match_string(tok, wrap2_get_hostname(host))));
+    /* Anything else.
+     *
+     * In order to properly compare IP addresses (and to handle cases of
+     * handling IPv4-mapped IPv6 addresses compared against IPv4 addresses),
+     * we need to use pr_netaddr_cmp(), rather than doing the string
+     * comparison that libwrap used.
+     */
+
+    acl_addr = pr_netaddr_get_addr(wrap2_pool, tok, NULL);
+    if (acl_addr == NULL) {
+      wrap2_log("unable to resolve address '%s'", tok);
+
+    } else {
+      if (pr_netaddr_cmp(session.c->remote_addr, acl_addr) == 0) {
+        return TRUE;
+      }
+    }
+
+    if (WRAP2_IS_NOT_INADDR(tok) &&
+        wrap2_match_string(tok, wrap2_get_hostname(host))) {
+      return TRUE;
+    }
+
+    return FALSE;
   }
 
   return FALSE;
