@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2008 The ProFTPD Project team
+ * Copyright (c) 2004-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.10 2008-08-23 02:57:46 castaglia Exp $
+ * $Id: display.c,v 1.11 2009-02-11 06:56:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,6 +50,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
   unsigned int *max_clients = NULL;
   off_t fs_size = 0;
   pool *p;
+  void *v;
   xaset_t *s;
   config_rec *c = NULL;
   const char *serverfqdn = main_server->ServerFQDN;
@@ -59,7 +60,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
     total_files_xfer[12] = {'\0'};
   char mg_class_limit[12] = {'\0'}, mg_cur[12] = {'\0'},
     mg_xfer_bytes[12] = {'\0'}, mg_cur_class[12] = {'\0'};
-  char mg_xfer_units[12] = {'\0'}, config_class_users[128] = {'\0'}, *user;
+  char mg_xfer_units[12] = {'\0'}, *user;
   const char *mg_time;
   char *rfc1413_ident = NULL;
   unsigned char first = TRUE;
@@ -83,22 +84,25 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
 
   max_clients = get_param_ptr(s, "MaxClients", FALSE);
 
-  current_clients = get_param_ptr(main_server->conf, "CURRENT-CLIENTS", FALSE);
+  v = pr_table_get(session.notes, "client-count", NULL);
+  if (v) {
+    current_clients = v;
+  }
 
   snprintf(mg_cur, sizeof(mg_cur), "%u", current_clients ? *current_clients: 1);
 
   if (session.class && session.class->cls_name) {
-    unsigned int *class_users = NULL;
+    unsigned int *class_clients = NULL;
     config_rec *maxc = NULL;
     unsigned int maxclients = 0;
 
-    snprintf(config_class_users, sizeof(config_class_users),
-      "CURRENT-CLIENTS-CLASS-%s", session.class->cls_name);
-
-    class_users = get_param_ptr(main_server->conf, config_class_users, FALSE);
+    v = pr_table_get(session.notes, "class-client-count", NULL);
+    if (v) {
+      class_clients = v;
+    }
 
     snprintf(mg_cur_class, sizeof(mg_cur_class), "%u",
-      class_users ? *class_users : 0);
+      class_clients ? *class_clients : 0);
 
     /* For the %z variable, first we scan through the MaxClientsPerClass,
      * and use the first applicable one.  If none are found, look for

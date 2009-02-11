@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.251 2009-02-09 18:51:04 castaglia Exp $
+ * $Id: mod_auth.c,v 1.252 2009-02-11 06:56:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1371,22 +1371,23 @@ auth_failure:
  * MaxConnectionsPerHost limit.
  */
 static void auth_scan_scoreboard(void) {
+  char *key;
+  void *v;
   config_rec *c = NULL;
   pr_scoreboard_entry_t *score = NULL;
   unsigned int cur = 0, ccur = 0, hcur = 0;
-  char config_class_users[128] = {'\0'};
   char curr_server_addr[80] = {'\0'};
-  xaset_t *conf = NULL;
   const char *client_addr = pr_netaddr_get_ipstr(session.c->remote_addr);
 
   snprintf(curr_server_addr, sizeof(curr_server_addr), "%s:%d",
-    pr_netaddr_get_ipstr(main_server->addr), main_server->ServerPort);
+    pr_netaddr_get_ipstr(session.c->local_addr), main_server->ServerPort);
   curr_server_addr[sizeof(curr_server_addr)-1] = '\0';
 
   /* Determine how many users are currently connected */
-  if (pr_rewind_scoreboard() < 0)
+  if (pr_rewind_scoreboard() < 0) {
     pr_log_pri(PR_LOG_NOTICE, "error rewinding scoreboard: %s",
       strerror(errno));
+  }
 
   while ((score = pr_scoreboard_entry_read()) != NULL) {
 
@@ -1411,22 +1412,26 @@ static void auth_scan_scoreboard(void) {
   }
   pr_restore_scoreboard();
 
-  /* This silliness is needed to get past the broken HP/UX 11.x compiler.
-   */
-  conf = CURRENT_CONF;
+  key = "client-count";
+  (void) pr_table_remove(session.notes, key, NULL);
+  v = palloc(session.pool, sizeof(unsigned int));
+  *((unsigned int *) v) = cur;
 
-  remove_config(CURRENT_CONF, "CURRENT-CLIENTS", FALSE);
-  c = add_config_param_set(&conf, "CURRENT-CLIENTS", 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[0]) = cur;
+  if (pr_table_add(session.notes, key, v, sizeof(unsigned int)) < 0) {
+    pr_log_pri(PR_LOG_WARNING,
+      "warning: error stashing '%s': %s", key, strerror(errno));
+  }
 
   if (session.class) {
-    snprintf(config_class_users, sizeof(config_class_users),
-      "CURRENT-CLIENTS-CLASS-%s", session.class->cls_name);
-    remove_config(CURRENT_CONF, config_class_users, FALSE);
-    c = add_config_param_set(&conf, config_class_users, 1, NULL);
-    c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
-    *((unsigned int *) c->argv[0]) = ccur;
+    key = "class-client-count";
+    (void) pr_table_remove(session.notes, key, NULL);
+    v = palloc(session.pool, sizeof(unsigned int));
+    *((unsigned int *) v) = ccur;
+
+    if (pr_table_add(session.notes, key, v, sizeof(unsigned int)) < 0) {
+      pr_log_pri(PR_LOG_WARNING,
+        "warning: error stashing '%s': %s", key, strerror(errno));
+    }
   }
 
   /* Lookup any configured MaxConnectionsPerHost. */
@@ -1463,10 +1468,12 @@ static void auth_scan_scoreboard(void) {
 }
 
 static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
+  char *key;
+  void *v;
   pr_scoreboard_entry_t *score = NULL;
   long cur = 0, hcur = 0, ccur = 0, hostsperuser = 1, usersessions = 0;
   config_rec *c = NULL, *anon_config = NULL, *maxc = NULL;
-  char *origuser, config_class_users[128] = {'\0'};
+  char *origuser;
 
   /* Determine how many users are currently connected. */
   origuser = user;
@@ -1477,12 +1484,13 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     char curr_server_addr[80] = {'\0'};
 
     snprintf(curr_server_addr, sizeof(curr_server_addr), "%s:%d",
-      pr_netaddr_get_ipstr(main_server->addr), main_server->ServerPort);
+      pr_netaddr_get_ipstr(session.c->local_addr), main_server->ServerPort);
     curr_server_addr[sizeof(curr_server_addr)-1] = '\0';
 
-    if (pr_rewind_scoreboard() < 0)
+    if (pr_rewind_scoreboard() < 0) {
       pr_log_pri(PR_LOG_NOTICE, "error rewinding scoreboard: %s",
         strerror(errno));
+    }
 
     while ((score = pr_scoreboard_entry_read()) != NULL) {
       unsigned char same_host = FALSE;
@@ -1523,7 +1531,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
           }
 
           /* Take a per-user count of connections. */
-          if (!strcmp(score->sce_user, user)) {
+          if (strcmp(score->sce_user, user) == 0) {
             usersessions++;
 
             /* Count up unique hosts. */
@@ -1533,26 +1541,35 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
         }
 
         if (session.class &&
-            strcasecmp(score->sce_class, session.class->cls_name) == 0)
+            strcasecmp(score->sce_class, session.class->cls_name) == 0) {
           ccur++;
+        }
       }
     }
     pr_restore_scoreboard();
     PRIVS_RELINQUISH
   }
 
-  remove_config(cmd->server->conf, "CURRENT-CLIENTS", FALSE);
-  c = add_config_param_set(&cmd->server->conf, "CURRENT-CLIENTS", 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = cur;
+  key = "client-count";
+  (void) pr_table_remove(session.notes, key, NULL);
+  v = palloc(session.pool, sizeof(unsigned int));
+  *((unsigned int *) v) = cur;
+
+  if (pr_table_add(session.notes, key, v, sizeof(unsigned int)) < 0) {
+    pr_log_pri(PR_LOG_WARNING,
+      "warning: error stashing '%s': %s", key, strerror(errno));
+  }
 
   if (session.class) {
-    snprintf(config_class_users, sizeof(config_class_users), "%s-%s",
-      "CURRENT-CLIENTS-CLASS", session.class->cls_name);
-    remove_config(cmd->server->conf, config_class_users, FALSE);
-    c = add_config_param_set(&cmd->server->conf, config_class_users, 1, NULL);
-    c->argv[0] = pcalloc(c->pool, sizeof(int));
-    *((int *) c->argv[0]) = ccur;
+    key = "class-client-count";
+    (void) pr_table_remove(session.notes, key, NULL);
+    v = palloc(session.pool, sizeof(unsigned int));
+    *((unsigned int *) v) = ccur;
+
+    if (pr_table_add(session.notes, key, v, sizeof(unsigned int)) < 0) {
+      pr_log_pri(PR_LOG_WARNING,
+        "warning: error stashing '%s': %s", key, strerror(errno));
+    }
   }
 
   /* Try to determine what MaxClients/MaxHosts limits apply to this session
