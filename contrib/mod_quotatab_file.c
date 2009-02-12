@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab_file -- a mod_quotatab sub-module for managing quota
  *                          data via file-based tables
  *
- * Copyright (c) 2002-2003 TJ Saunders
+ * Copyright (c) 2002-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_quotatab_file.c,v 1.2 2004-12-16 22:55:46 castaglia Exp $
+ * $Id: mod_quotatab_file.c,v 1.3 2009-02-12 21:36:45 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -87,14 +87,28 @@ static int filetab_create(quota_table_t *filetab) {
   /* Seek to the end of the table */
   current_pos = lseek(filetab->tab_handle, 0, SEEK_END);
 
-  if ((res = writev(filetab->tab_handle, quotav, 8)) > 0)
+  while ((res = writev(filetab->tab_handle, quotav, 8)) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+    }
+
+    return -1;
+  }
+
+  if (res > 0) {
 
     /* Rewind to the start of the entry. */
     lseek(filetab->tab_handle, current_pos, SEEK_SET);
 
-  else if (res == 0)
+  } else if (res == 0) {
     /* If no bytes were written, it's an error. */
+
+    quotatab_log("error: writev(2) returned zero when creating tally entry, "
+      "returning EPERM");
+    errno = EPERM;
     res = -1;
+  }
 
   return res;
 }
@@ -190,14 +204,25 @@ static int filetab_read(quota_table_t *filetab) {
     quotav[7].iov_base = QUOTATAB_IOV_BASE_TYPE &quotatab_tally.files_xfer_used;
     quotav[7].iov_len = sizeof(quotatab_tally.files_xfer_used);
 
-    if ((res = readv(filetab->tab_handle, quotav, 8)) > 0)
+    while ((res = readv(filetab->tab_handle, quotav, 8)) < 0) {
+      if (errno == EINTR) {
+        pr_signals_handle();
+        continue;
+      }
+
+      return -1;
+    }
+
+    if (res > 0) {
 
       /* Always rewind after reading a record. */
       lseek(filetab->tab_handle, current_pos, SEEK_SET);
 
-    else if (res == 0) {
-
+    } else if (res == 0) {
       /* Assume end-of-file. */
+
+      quotatab_log("error: readv(2) returned zero when reading tally entry, "
+        "returning EOF");
       errno = EOF;
       res = -1;
     }
@@ -244,14 +269,25 @@ static int filetab_read(quota_table_t *filetab) {
       &quotatab_limit.files_xfer_avail;
     quotav[9].iov_len = sizeof(quotatab_limit.files_xfer_avail);
 
-    if ((res = readv(filetab->tab_handle, quotav, 10)) > 0)
+    while ((res = readv(filetab->tab_handle, quotav, 10)) < 0) {
+      if (errno == EINTR) {
+        pr_signals_handle();
+        continue;
+      }
+
+      return -1;
+    }
+
+    if (res > 0) {
 
       /* Always rewind after reading a record. */
       lseek(filetab->tab_handle, current_pos, SEEK_SET);
 
-    else if (res == 0) {
-
+    } else if (res == 0) {
       /* Assume end-of-file. */
+
+      quotatab_log("error: readv(2) returned zero when reading limit entry, "
+        "returning EOF");
       errno = EOF;
       res = -1;
     }
@@ -316,15 +352,28 @@ static int filetab_write(quota_table_t *filetab) {
   quotav[7].iov_base = QUOTATAB_IOV_BASE_TYPE &quotatab_tally.files_xfer_used;
   quotav[7].iov_len = sizeof(quotatab_tally.files_xfer_used);
 
-  if ((res = writev(filetab->tab_handle, quotav, 8)) >= 0)
+  while ((res = writev(filetab->tab_handle, quotav, 8)) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+    }
 
-    /* Always rewind after writing a record. */
+    return -1;
+  }
+
+  if (res > 0) {
+
+    /* Rewind to the start of the entry. */
     lseek(filetab->tab_handle, current_pos, SEEK_SET);
 
-  else if (res == 0)
+  } else if (res == 0) {
+    /* If no bytes were written, it's an error. */
 
-    /* It's an error if no bytes are written. */
+    quotatab_log("error: writev(2) returned zero when updating tally entry, "
+      "returning EPERM");
+    errno = EPERM;
     res = -1;
+  }
 
   return res;
 }
