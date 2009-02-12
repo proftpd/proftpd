@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.362 2009-02-12 19:13:42 castaglia Exp $
+ * $Id: main.c,v 1.363 2009-02-12 20:13:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1034,8 +1034,11 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
     /* Set the (possibly new) resource limits. */
     set_daemon_rlimits();
 
-    /* XXX What should be done if fixup_servers() returns -1? */
-    fixup_servers(server_list);
+    if (fixup_servers(server_list) < 0) {
+      pr_log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s'",
+        config_filename);
+      end_login(1);
+    }
 
     pr_event_generate("core.postparse", NULL);
 

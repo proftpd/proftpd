@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.32 2006-09-29 16:38:16 castaglia Exp $
+ * $Id: bindings.c,v 1.33 2009-02-12 20:13:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -162,7 +162,7 @@ int pr_ipbind_add_binds(server_rec *serv) {
      */
     if (SocketBindTight &&
         serv->ServerPort) {
-      listen_conn = pr_inet_create_connection(serv->pool, server_list, -1, addr,
+      listen_conn = pr_inet_create_conn(serv->pool, server_list, -1, addr,
         serv->ServerPort, FALSE);
 
       PR_CREATE_IPBIND(serv, addr);
@@ -786,7 +786,7 @@ static void init_inetd_bindings(void) {
   server_rec *serv = NULL;
   unsigned char *default_server = NULL, is_default = FALSE;
 
-  main_server->listen = pr_inet_create_connection(main_server->pool,
+  main_server->listen = pr_inet_create_conn(main_server->pool,
     server_list, STDIN_FILENO, NULL, INPORT_ANY, FALSE);
 
   /* Fill in all the important connection information. */
@@ -847,7 +847,7 @@ static void init_standalone_bindings(void) {
    */
   if (main_server->ServerPort) {
 
-    /* If SocketBindTight is off, then pr_inet_create_connection() will
+    /* If SocketBindTight is off, then pr_inet_create_conn() will
      * create and bind to a wildcard socket.  However, should it be an
      * IPv4 or an IPv6 wildcard socket?
      */
@@ -867,7 +867,7 @@ static void init_standalone_bindings(void) {
     }
 
     main_server->listen =
-      pr_inet_create_connection(main_server->pool, server_list, -1,
+      pr_inet_create_conn(main_server->pool, server_list, -1,
         (SocketBindTight ? main_server->addr : NULL),
         main_server->ServerPort, FALSE);
 
@@ -911,7 +911,7 @@ static void init_standalone_bindings(void) {
 #endif /* PR_USE_IPV6 */
         }
 
-        serv->listen = pr_inet_create_connection(serv->pool, server_list, -1,
+        serv->listen = pr_inet_create_conn(serv->pool, server_list, -1,
           (SocketBindTight ? serv->addr : NULL), serv->ServerPort, FALSE);
 
         PR_CREATE_IPBIND(serv, serv->addr);

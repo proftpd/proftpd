@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_ident.c,v 1.3 2009-02-05 22:40:31 castaglia Exp $
+ * $Id: mod_ident.c,v 1.4 2009-02-12 20:13:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -78,8 +78,8 @@ static char *ident_lookup(pool *p, conn_t *conn) {
     return NULL;
   }
 
-  ident_conn = pr_inet_create_connection(p, NULL, -1, conn->local_addr,
-    INPORT_ANY, FALSE);
+  ident_conn = pr_inet_create_conn(p, NULL, -1, conn->local_addr, INPORT_ANY,
+    FALSE);
   if (ident_conn == NULL) {
     pr_trace_msg(trace_channel, 3, "error creating connection: %s",
       strerror(errno));

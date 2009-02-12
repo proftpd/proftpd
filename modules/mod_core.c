@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.337 2009-02-12 06:46:33 castaglia Exp $
+ * $Id: mod_core.c,v 1.338 2009-02-12 20:13:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3005,7 +3005,7 @@ MODRET core_pasv(cmd_rec *cmd) {
     int pasv_min_port = *((int *) c->argv[0]);
     int pasv_max_port = *((int *) c->argv[1]);
 
-    if (!(session.d = pr_inet_create_connection_portrange(session.pool,
+    if (!(session.d = pr_inet_create_conn_portrange(session.pool,
         NULL, session.c->local_addr, pasv_min_port, pasv_max_port))) {
 
       /* If not able to open a passive port in the given range, default to
@@ -3019,9 +3019,10 @@ MODRET core_pasv(cmd_rec *cmd) {
   }
 
   /* Open up the connection and pass it back. */
-  if (!session.d)
-    session.d = pr_inet_create_connection(session.pool, NULL, -1,
+  if (!session.d) {
+    session.d = pr_inet_create_conn(session.pool, NULL, -1,
       session.c->local_addr, INPORT_ANY, FALSE);
+  }
 
   if (!session.d) {
     pr_response_add_err(R_425, _("Unable to build data connection: "
@@ -3520,7 +3521,7 @@ MODRET core_epsv(cmd_rec *cmd) {
     epsv_max_port = *((int *) c->argv[1]);
   }
 
-  /* We always use the portrange variant of inet_create_connection() here,
+  /* We always use the portrange variant of inet_create_conn() here,
    * since it seems that some Unix kernels have issues when choosing a
    * random port number for IPv6 sockets (see Bug #2900).  By using the
    * portrange variant, proftpd, and not the kernel, will be the one
@@ -3530,7 +3531,7 @@ MODRET core_epsv(cmd_rec *cmd) {
    * have more predictable behavior for choosing random IPv4 socket ports.
    */
 
-  session.d = pr_inet_create_connection_portrange(session.pool, NULL,
+  session.d = pr_inet_create_conn_portrange(session.pool, NULL,
     session.c->local_addr, epsv_min_port, epsv_max_port);
 
   if (session.d == NULL) {
@@ -3541,7 +3542,7 @@ MODRET core_epsv(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_WARNING, "unable to find open port in PassivePorts "
       "range %d-%d: defaulting to INPORT_ANY", epsv_min_port, epsv_max_port);
 
-    session.d = pr_inet_create_connection(session.pool, NULL, -1,
+    session.d = pr_inet_create_conn(session.pool, NULL, -1,
       session.c->local_addr, INPORT_ANY, FALSE);
   }
 

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.116 2008-12-03 05:06:14 castaglia Exp $
+ * $Id: data.c,v 1.117 2009-02-12 20:13:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -337,7 +337,7 @@ static int data_active_open(char *reason, off_t size) {
   if (!reason && session.xfer.filename)
     reason = session.xfer.filename;
 
-  session.d = pr_inet_create_connection(session.pool, NULL, -1,
+  session.d = pr_inet_create_conn(session.pool, NULL, -1,
     session.c->local_addr, session.c->local_port-1, TRUE);
 
   /* Set the "stalled" timer, if any, to prevent the connection
@@ -1099,6 +1099,8 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
       int bwrote = 0;
       int buflen = cl_size;
       unsigned int xferbuflen;
+
+      pr_signals_handle();
 
       if (buflen > pr_config_get_xfer_bufsz())
         buflen = pr_config_get_xfer_bufsz();

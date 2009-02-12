@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.65 2008-03-20 21:56:30 castaglia Exp $
+ * $Id: netaddr.c,v 1.66 2009-02-12 20:13:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1391,15 +1391,17 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
 
 /* Return the hostname (wrapper for gethostname(2), except returns FQDN). */
 const char *pr_netaddr_get_localaddr_str(pool *p) {
-  char buf[256] = {'\0'};
-  struct hostent *host;
+  char buf[256];
 
   if (p == NULL) {
     errno = EINVAL;
     return NULL;
   }
 
+  memset(buf, '\0', sizeof(buf));
   if (gethostname(buf, sizeof(buf)-1) != -1) {
+    struct hostent *host;
+
     buf[sizeof(buf)-1] = '\0';
 
     /* Note: this may need to be gethostbyname2() on systems that provide
@@ -1407,7 +1409,6 @@ const char *pr_netaddr_get_localaddr_str(pool *p) {
      * a machine only resolves to an IPv6 address.
      */
     host = gethostbyname(buf);
-
     if (host)
       return pr_netaddr_validate_dns_str(pstrdup(p, host->h_name));
 

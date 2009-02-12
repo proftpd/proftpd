@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ctrls_admin -- a module implementing admin control handlers
  *
- * Copyright (c) 2000-2008 TJ Saunders
+ * Copyright (c) 2000-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.34 2008-12-30 21:32:07 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.35 2009-02-12 20:13:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -932,7 +932,7 @@ static int admin_addr_up(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
    */
   if (ipbind->ib_server->ServerPort && !ipbind->ib_server->listen) {
     ipbind->ib_server->listen =
-      pr_inet_create_connection(ipbind->ib_server->pool, server_list, -1,
+      pr_inet_create_conn(ipbind->ib_server->pool, server_list, -1,
       (SocketBindTight ? ipbind->ib_server->addr : NULL),
       ipbind->ib_server->ServerPort, FALSE);
   }
