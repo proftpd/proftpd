@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.361 2009-02-11 05:57:12 castaglia Exp $
+ * $Id: main.c,v 1.362 2009-02-12 19:13:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -92,8 +92,6 @@ static char shutmsg[81] = {'\0'};
 
 static unsigned char have_dead_child = FALSE;
 
-static char sbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-
 #define PR_DEFAULT_CMD_BUFSZ	512
 
 /* From mod_auth_unix.c */
@@ -108,7 +106,16 @@ static int shutdownp = 0;
 static int syntax_check = 0;
 
 static const char *protocol_name = "FTP";
+
+/* This protocol_name_lc variable is used only by WtmpLog logging.  Newer
+ * BSD variants require a name of "ftp" while other, non-BSD variants
+ * prefer "ftpd".
+ */
+#if (defined(BSD) && (BSD >= 199103))
 static const char *protocol_name_lc = "ftp";
+#else
+static const char *protocol_name_lc = "ftpd";
+#endif
 
 /* Command handling */
 static void cmd_loop(server_rec *, conn_t *);
@@ -185,6 +192,7 @@ void pr_cmd_set_handler(void (*handler)(server_rec *, conn_t *)) {
 }
 
 static void end_login_noexit(void) {
+  char wtmp_buf[PR_TUNABLE_BUFFER_SIZE];
 
   /* Clear the scoreboard entry. */
   if (ServerType == SERVER_STANDALONE) {
@@ -206,20 +214,25 @@ static void end_login_noexit(void) {
         strerror(errno));
   }
 
+  if (session.wtmp_log) {
+    memset(wtmp_buf, '\0', sizeof(wtmp_buf));
+  }
+
   /* If session.user is set, we have a valid login */
   if (session.user) {
 #if (defined(BSD) && (BSD >= 199103))
-    snprintf(sbuf, sizeof(sbuf), "%s%ld", protocol_name_lc,
+    snprintf(wtmp_buf, sizeof(wtmp_buf), "%s%ld", protocol_name_lc,
       (long) (session.pid ? session.pid : getpid()));
 #else
-    snprintf(sbuf, sizeof(sbuf), "%s%d", protocol_name_lc,
+    snprintf(wtmp_buf, sizeof(wtmp_buf), "%s%d", protocol_name_lc,
       (int) (session.pid ? session.pid : getpid()));
 #endif
-    sbuf[sizeof(sbuf) - 1] = '\0';
+    wtmp_buf[sizeof(wtmp_buf) - 1] = '\0';
 
-    if (session.wtmp_log)
-      log_wtmp(sbuf, "", pr_netaddr_get_sess_remote_name(),
+    if (session.wtmp_log) {
+      log_wtmp(wtmp_buf, "", pr_netaddr_get_sess_remote_name(),
         pr_netaddr_get_sess_remote_addr());
+    }
   }
 
   /* These are necessary in order that cleanups associated with these pools
@@ -573,7 +586,6 @@ int set_protocol_name(const char *name) {
   }
 
   protocol_name_lc = lc;
-
   return 0;
 }
 

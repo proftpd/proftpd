@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.252 2009-02-11 06:56:43 castaglia Exp $
+ * $Id: mod_auth.c,v 1.253 2009-02-12 19:13:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1074,11 +1074,13 @@ static int setup_env(pool *p, char *user, char *pass) {
    * through with the login process.  Oh well.
    */
 
+  memset(sess_ttyname, '\0', sizeof(sess_ttyname));
 #if (defined(BSD) && (BSD >= 199103))
   snprintf(sess_ttyname, sizeof(sess_ttyname), "ftp%ld", (long) getpid());
 #else
   snprintf(sess_ttyname, sizeof(sess_ttyname), "ftpd%d", (int) getpid());
 #endif
+  sess_ttyname[sizeof(sess_ttyname)-1] = '\0';
 
   /* Perform wtmp logging only if not turned off in <Anonymous>
    * or the current server
