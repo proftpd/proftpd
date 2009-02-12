@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.68 2009-02-05 22:06:45 castaglia Exp $
+ * $Id: auth.c,v 1.69 2009-02-12 05:04:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -807,6 +807,7 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   char *res = NULL;
+  int have_name = FALSE;
 
   memset(namebuf, '\0', sizeof(namebuf));
 
@@ -843,6 +844,7 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
     res = namebuf;
 
     uidcache_add(uid, res);
+    have_name = TRUE;
   }
 
   if (cmd->tmp_pool) {
@@ -850,10 +852,11 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
     cmd->tmp_pool = NULL;
   }
 
-  memset(namebuf, '\0', sizeof(namebuf));
-  snprintf(namebuf, sizeof(namebuf)-1, "%lu", (unsigned long) uid);
-  res = namebuf;
+  if (!have_name) {
+    snprintf(namebuf, sizeof(namebuf)-1, "%lu", (unsigned long) uid);
+  }
 
+  res = namebuf;
   return res;
 }
 
@@ -862,6 +865,7 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
   modret_t *mr = NULL;
   static char namebuf[64];
   char *res = NULL;
+  int have_name = FALSE;
 
   memset(namebuf, '\0', sizeof(namebuf));
 
@@ -898,6 +902,7 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
     res = namebuf;
 
     gidcache_add(gid, res);
+    have_name = TRUE;
   }
 
   if (cmd->tmp_pool) {
@@ -905,10 +910,11 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
     cmd->tmp_pool = NULL;
   }
 
-  memset(namebuf, '\0', sizeof(namebuf));
-  snprintf(namebuf, sizeof(namebuf)-1, "%lu", (unsigned long) gid);
-  res = namebuf;
+  if (!have_name) {
+    snprintf(namebuf, sizeof(namebuf)-1, "%lu", (unsigned long) gid);
+  }
 
+  res = namebuf;
   return res;
 }
 
