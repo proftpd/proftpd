@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2008 The ProFTPD Project team
+ * Copyright (c) 2003-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.16 2008-02-18 21:25:31 castaglia Exp $
+ * $Id: event.c,v 1.17 2009-02-12 05:31:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -74,8 +74,8 @@ int pr_event_register(module *m, const char *event,
   }
 
   pr_trace_msg(trace_channel, 3,
-    "module '%s' registering handler for event '%s' (at %p)",
-    m ? m->name : "(none)", event, cb);
+    "module '%s' (%p) registering handler for event '%s' (at %p)",
+    m ? m->name : "(none)", m, event, cb);
 
   evh = pcalloc(event_pool, sizeof(struct event_handler));
 
@@ -146,8 +146,8 @@ int pr_event_unregister(module *m, const char *event,
     return 0;
 
   pr_trace_msg(trace_channel, 3,
-    "module '%s' unregistering handler for event '%s'",
-    m ? m->name : "(none)", event ? event : "(all)");
+    "module '%s' (%p) unregistering handler for event '%s'",
+    m ? m->name : "(none)", m, event ? event : "(all)");
 
   /* For now, simply remove the event_handler entry for this callback.  In
    * the future, add a static counter, and churn the event pool after a
@@ -162,8 +162,9 @@ int pr_event_unregister(module *m, const char *event,
       /* If there are no handlers for this event, there is nothing to
        * unregister.  Skip on to the next list.
        */
-      if (!evl->handlers)
+      if (!evl->handlers) {
         continue;
+      }
 
       for (evh = evl->handlers; evh;) {
 
@@ -171,21 +172,25 @@ int pr_event_unregister(module *m, const char *event,
             (cb == NULL || evh->cb == cb)) { 
           struct event_handler *tmp = evh->next;
 
-          if (evh->prev)
+          if (evh->next) {
+            evh->next->prev = evh->prev;
+          }
+
+          if (evh->prev) {
             evh->prev->next = evh->next;
 
-          else
+          } else {
             /* This is the head of the list. */
             evl->handlers = evh->next;
+          }
 
-          if (evh->next)
-            evh->next->prev = evh->prev;
-
+          evh->module = NULL;
           evh = tmp;
           unregistered = TRUE;
   
-        } else
+        } else {
           evh = evh->next;
+        }
       }
     }
   }
@@ -235,13 +240,14 @@ void pr_event_generate(const char *event, const void *event_data) {
       curr_evl = evl;
 
       for (evh = evl->handlers; evh; evh = evh->next) {
-        if (evh->module)
+        if (evh->module) {
           pr_trace_msg(trace_channel, 8, "dispatching event '%s' to mod_%s",
             event, evh->module->name);
 
-        else
+        } else {
           pr_trace_msg(trace_channel, 8, "dispatching event '%s' to core",
             event);
+        }
 
         evh->cb(event_data, evh->user_data);
       }

@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.21 2009-01-04 01:14:38 castaglia Exp $
+ * $Id: ctrls.c,v 1.22 2009-02-12 05:31:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -268,7 +268,7 @@ int pr_ctrls_register(const module *mod, const char *action,
 
   act->next = NULL;
   act->id = act_id;
-  act->action = action;
+  act->action = pstrdup(ctrls_pool, action);
   act->desc = desc;
   act->module = mod;
   act->action_cb = cb;
