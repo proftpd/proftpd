@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2008 The ProFTPD Project team
+ * Copyright (c) 2003-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.66 2009-02-12 20:13:42 castaglia Exp $
+ * $Id: netaddr.c,v 1.67 2009-02-12 22:32:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -49,6 +49,9 @@ static int use_ipv6 = TRUE;
 #else
 static int use_ipv6 = FALSE;
 #endif /* PR_USE_IPV6 */
+
+static const char localaddr_str[PR_TUNABLE_BUFFER_SIZE];
+static int have_localaddr_str = FALSE;
 
 static pool *netaddr_pool = NULL;
 static pr_table_t *netaddr_tab = NULL;
@@ -1398,6 +1401,10 @@ const char *pr_netaddr_get_localaddr_str(pool *p) {
     return NULL;
   }
 
+  if (have_localaddr_str) {
+    return pr_netaddr_validate_dns_str(pstrdup(p, localaddr_str));
+  }
+
   memset(buf, '\0', sizeof(buf));
   if (gethostname(buf, sizeof(buf)-1) != -1) {
     struct hostent *host;
@@ -1417,6 +1424,18 @@ const char *pr_netaddr_get_localaddr_str(pool *p) {
 
   pr_trace_msg(trace_channel, 1, "gethostname(2) error: %s", strerror(errno));
   return NULL;
+}
+
+int pr_netaddr_set_localaddr_str(const char *addr_str) {
+  if (addr_str == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  memset(localaddr_str, '\0', sizeof(localaddr_str));
+  sstrncpy(localaddr_str, addr_str, sizeof(localaddr_str));
+  have_localaddr_str = TRUE;
+  return 0;
 }
 
 int pr_netaddr_is_loopback(const pr_netaddr_t *na) {

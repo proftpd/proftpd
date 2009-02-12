@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.988 2009-02-12 19:13:41 castaglia Exp $
+$Id: NEWS,v 1.989 2009-02-12 22:32:01 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -32,6 +32,10 @@ CVS
 - Bug 3179 - Restarted proftpd using mod_shaper will segfault.
 - Bug 2720 - HideUser/HideGroup should be more flexible.
 - Bug 3183 - Incorrect logging to wtmp.
+- Bug 2608 - DNS should not be used for "server config" address discovery.
+  A new -S command-line option has been added, for specifying the IP address
+  to use for the host, rather than using DNS to resolve the host IP address
+  from the hostname.
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------

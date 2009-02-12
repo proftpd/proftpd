@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.338 2009-02-12 20:13:41 castaglia Exp $
+ * $Id: mod_core.c,v 1.339 2009-02-12 22:32:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -563,6 +563,7 @@ MODRET set_usereversedns(cmd_rec *cmd) {
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   ServerUseReverseDNS = bool;
+  pr_netaddr_set_reverse_dns(bool);
 
   return PR_HANDLED(cmd);
 }

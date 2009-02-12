@@ -75,6 +75,9 @@ Disables address/port collision checking.
 .BI \-V,\--settings
 Displays various compile-time settings and exits.
 .TP
+.BI \-S,\--serveraddr
+Specifies an IP address for the host machine, avoiding an DNS lookup of the hostname
+.TP
 .BI \-t,\--configtest
 Read the configuration file, report any syntax errors, and exit.
 .TP

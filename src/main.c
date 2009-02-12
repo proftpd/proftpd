@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.363 2009-02-12 20:13:42 castaglia Exp $
+ * $Id: main.c,v 1.364 2009-02-12 22:32:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2679,38 +2679,57 @@ static void show_settings(void) {
 }
 
 static struct option_help {
-  const char *long_opt,*short_opt,*desc;
+  const char *long_opt, *short_opt, *desc;
+
 } opts_help[] = {
   { "--help", "-h",
     "Display proftpd usage"},
+
   { "--nocollision", "-N",
     "Disable address/port collision checking" },
+
   { "--nodaemon", "-n",
     "Disable background daemon mode (and send all output to stderr)" },
+
   { "--quiet", "-q",
     "Don't send output to stderr when running with -n or --nodaemon" },
+
   { "--debug", "-d [level]",
     "Set debugging level (0-10, 10 = most debugging)" },
+
   { "--define", "-D [definition]",
     "Set arbitrary IfDefine definition" },
+
   { "--config", "-c [config-file]",
     "Specify alternate configuration file" },
+
   { "--persistent", "-p [0|1]",
     "Enable/disable default persistent passwd support" },
+
   { "--list", "-l",
     "List all compiled-in modules" },
+
+  { "--serveraddr", "-S",
+    "Specify IP address for server config" },
+
   { "--configtest", "-t",
     "Test the syntax of the specified config" },
+
   { "--settings", "-V",
     "Print compile-time settings and exit" },
+
   { "--version", "-v",
     "Print version number and exit" },
+
   { "--version-status", "-vv",
     "Print extended version information and exit" },
+
   { "--ipv4", "-4",
     "Support IPv4 connections only" },
+
   { "--ipv6", "-6",
     "Support IPv6 connections" },
+
   { NULL, NULL, NULL }
 };
 
@@ -2732,7 +2751,7 @@ static void show_usage(int exit_code) {
 
 int main(int argc, char *argv[], char **envp) {
   int optc, show_version = 0;
-  const char *cmdopts = "D:NVc:d:hlnp:qtv46";
+  const char *cmdopts = "D:NVc:d:hlnp:qS:tv46";
   mode_t *main_umask = NULL;
   socklen_t peerlen;
   struct sockaddr peer;
@@ -2782,6 +2801,8 @@ int main(int argc, char *argv[], char **envp) {
    * --nocollision
    * -n                 standalone server does not daemonize, all logging
    * --nodaemon         redirected to stderr
+   * -S                 specify the IP address for the 'server config',
+   * --serveraddr       rather than using DNS on the hostname
    * -t                 syntax check of the configuration file
    * --configtest
    * -v                 report version number
@@ -2852,6 +2873,21 @@ int main(int argc, char *argv[], char **envp) {
     case 'l':
       modules_list(PR_MODULES_LIST_FL_SHOW_STATIC);
       exit(0);
+      break;
+
+    case 'S':
+      if (!optarg) {
+        pr_log_pri(PR_LOG_ERR,
+          "Fatal: -S requires IP address parameter.");
+        exit(1);
+      }
+
+      if (pr_netaddr_set_localaddr_str(optarg) < 0) {
+        pr_log_pri(PR_LOG_ERR,
+          "Fatal: unable to use '%s' as server address: %s", optarg,
+          strerror(errno));
+        exit(1);
+      }
       break;
 
     case 't':
