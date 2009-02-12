@@ -3,7 +3,7 @@ config.status
 Makefile
 mod_load.c
 mod_load.h
+.libs
 *.la
-*.libs
 *.o
 *~

@@ -4,7 +4,7 @@ config.log
 config.status
 autom4te.cache
 mod_wrap2.h
-*.libs
+.libs
 *.la
 *.o
 *~

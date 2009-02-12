@@ -14,6 +14,7 @@ Makefile
 Make.rules
 Make.modules
 stamp-h
+*.la
 *.o
 *.patch
 *~
