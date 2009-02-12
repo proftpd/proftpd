@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.336 2009-02-05 22:41:37 castaglia Exp $
+ * $Id: mod_core.c,v 1.337 2009-02-12 06:46:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2013,7 +2013,7 @@ MODRET set_hidenoaccess(cmd_rec *cmd) {
 MODRET set_hideuser(cmd_rec *cmd) {
   config_rec *c = NULL;
   char *user = NULL;
-  struct passwd *pw = NULL;
+  uid_t uid;
   unsigned char inverted = FALSE;
 
   CHECK_ARGS(cmd, 1);
@@ -2026,15 +2026,23 @@ MODRET set_hideuser(cmd_rec *cmd) {
     user++;
   }
 
-  pw = pr_auth_getpwnam(cmd->tmp_pool, user);
+  if (strcmp(user, "~") != 0) {
+    struct passwd *pw;
 
-  if (!pw)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", user,
-      "' is not a valid user", NULL));
+    pw = pr_auth_getpwnam(cmd->tmp_pool, user);
+    if (!pw)
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", user,
+        "' is not a valid user", NULL));
+
+    uid = pw->pw_uid;
+
+  } else {
+    uid = (uid_t) -1;
+  }
 
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
-  *((uid_t *) c->argv[0]) = pw->pw_uid;
+  *((uid_t *) c->argv[0]) = uid;
   c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[1]) = inverted;
 
@@ -2045,7 +2053,7 @@ MODRET set_hideuser(cmd_rec *cmd) {
 MODRET set_hidegroup(cmd_rec *cmd) {
   config_rec *c = NULL;
   char *group = NULL;
-  struct group *gr = NULL;
+  gid_t gid;
   unsigned char inverted = FALSE;
 
   CHECK_ARGS(cmd, 1);
@@ -2058,15 +2066,23 @@ MODRET set_hidegroup(cmd_rec *cmd) {
     group++;
   }
 
-  gr = pr_auth_getgrnam(cmd->tmp_pool, group);
+  if (strcmp(group, "~") != 0) {
+    struct group *gr;
 
-  if (!gr)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", group,
-      "' is not a valid group", NULL));
+    gr = pr_auth_getgrnam(cmd->tmp_pool, group);
+    if (!gr)
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", group,
+        "' is not a valid group", NULL));
+
+    gid = gr->gr_gid;
+
+  } else {
+    gid = (gid_t) -1;
+  }
 
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
-  *((gid_t *) c->argv[0]) = gr->gr_gid;
+  *((gid_t *) c->argv[0]) = gid;
   c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[1]) = inverted;
 

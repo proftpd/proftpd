@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.205 2009-01-08 20:21:32 castaglia Exp $
+ * $Id: dirtree.c,v 1.206 2009-02-12 06:46:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -830,46 +830,104 @@ config_rec *dir_match_path(pool *p, char *path) {
 }
 
 /* Returns TRUE to allow, FALSE to deny. */
-static int dir_check_op(pool *p, xaset_t *c, int op, const char *path,
-    uid_t uid, gid_t gid, mode_t mode) {
+static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
+    uid_t file_uid, gid_t file_gid, mode_t mode) {
   int res = TRUE;
-  uid_t *u = NULL;
-  gid_t *g = NULL;
+  config_rec *c;
   unsigned char *hide_no_access = NULL;
 
   /* Default is to allow. */
-  if (!c)
+  if (!set)
     return TRUE;
 
   switch (op) {
     case OP_HIDE:
-      u = get_param_ptr(c, "HideUser", FALSE);
+      c = find_config(set, CONF_PARAM, "HideUser", FALSE);
+      while (c) {
+        unsigned char inverted;
+        uid_t hide_uid;
 
-      while (u &&
-             *u != (uid_t) -1 &&
-             (*u != uid || *u == session.uid))
-        u = get_param_ptr_next("HideUser", FALSE);
+        pr_signals_handle();
 
-      if (u &&
-          *u == uid) {
-        res = 0;
-        break;
+        hide_uid = *((uid_t *) c->argv[0]);
+        inverted = *((unsigned char *) c->argv[1]);
+
+        if (hide_uid == (uid_t) -1) {
+          hide_uid = session.uid;
+        }
+
+        if (file_uid == hide_uid) {
+          if (!inverted)
+            res = FALSE;
+
+          break;
+
+        } else {
+          if (inverted) {
+            res = FALSE;
+            break;
+          }
+        }
+
+        c = find_config_next(c, c->next, CONF_PARAM, "HideUser", FALSE);
       }
 
-      g = get_param_ptr(c, "HideGroup", FALSE);
+      c = find_config(set, CONF_PARAM, "HideGroup", FALSE);
+      while (c) {
+        unsigned char inverted;
+        gid_t hide_gid;
 
-      while (g &&
-             *g != (gid_t) -1 &&
-             (*g != gid || *g == session.gid))
-        g = get_param_ptr_next("HideGroup", FALSE);
+        pr_signals_handle();
 
-      if (g &&
-          *g == gid) {
-        res = 0;
-        break;
+        hide_gid = *((gid_t *) c->argv[0]);
+        inverted = *((unsigned char *) c->argv[1]);
+
+        if (hide_gid != (gid_t) -1) {
+          if (file_gid == hide_gid) {
+            if (!inverted)
+              res = FALSE;
+
+            break;
+
+          } else {
+            if (inverted) {
+              res = FALSE;
+              break;
+            }
+          }
+
+        } else {
+          register unsigned int i;
+          gid_t *group_ids = session.gids->elts;
+
+          /* First check to see if the file GID matches the session GID. */
+          if (file_gid == session.gid) {
+            if (!inverted)
+              res = FALSE;
+
+            break;
+          }
+
+          /* Next, scan the list of supplemental groups for this user. */
+          for (i = 0; i < session.gids->nelts; i++) {
+            if (file_gid == group_ids[i]) {
+              if (!inverted)
+                res = FALSE;
+
+              break;
+            }
+          }
+
+          if (inverted) {
+            res = FALSE;
+            break;
+          }
+        }
+
+        c = find_config_next(c, c->next, CONF_PARAM, "HideGroup", FALSE);
       }
 
-      hide_no_access = get_param_ptr(c, "HideNoAccess", FALSE);
+      hide_no_access = get_param_ptr(set, "HideNoAccess", FALSE);
       if (hide_no_access &&
           *hide_no_access == TRUE) {
 
@@ -891,20 +949,21 @@ static int dir_check_op(pool *p, xaset_t *c, int op, const char *path,
       break;
 
     case OP_COMMAND: {
-      unsigned char *allow_all = get_param_ptr(c, "AllowAll", FALSE);
-      unsigned char *deny_all = get_param_ptr(c, "DenyAll", FALSE);
+      unsigned char *allow_all = get_param_ptr(set, "AllowAll", FALSE);
+      unsigned char *deny_all = get_param_ptr(set, "DenyAll", FALSE);
 
       if (allow_all &&
-          *allow_all == TRUE)
+          *allow_all == TRUE) {
         /* No-op */
         ;
 
-      else if (deny_all &&
-               *deny_all == TRUE) {
-        res = 0;
+      } else if (deny_all &&
+                 *deny_all == TRUE) {
+        res = FALSE;
         errno = EACCES;
       }
     }
+
     break;
   }
 
