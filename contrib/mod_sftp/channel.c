@@ -1,0 +1,1350 @@
+/*
+ * ProFTPD - mod_sftp channels
+ * Copyright (c) 2008-2009 TJ Saunders
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ *
+ * As a special exemption, TJ Saunders and other respective copyright holders
+ * give permission to link this program with OpenSSL, and distribute the
+ * resulting executable, without including the source code for OpenSSL in the
+ * source distribution.
+ */
+
+#include "mod_sftp.h"
+#include "ssh2.h"
+#include "msg.h"
+#include "packet.h"
+#include "channel.h"
+#include "disconnect.h"
+#include "interop.h"
+#include "fxp.h"
+#include "scp.h"
+
+/* Used for buffering up incoming/outgoing packets until the channel windows
+ * open.
+ */
+struct ssh2_channel_databuf {
+  pool *pool;
+
+  struct ssh2_channel_databuf *next;
+
+  /* Points to the start of the buffer. */
+  char *ptr;
+
+  /* Points to the start of the data which needs to be sent.  Usually, but
+   * not always, this is the same as ptr.
+   */
+  char *buf;
+
+  uint32_t buflen;
+  uint32_t bufsz;
+};
+
+static pool *channel_pool = NULL;
+static uint32_t channelno = 0;
+
+static unsigned int channel_max = SFTP_SSH2_CHANNEL_MAX_COUNT;
+static unsigned int channel_count = 0;
+
+static pool *channel_databuf_pool = NULL;
+
+/* XXX Use a table, rather than a list, for tracking channels? */
+static array_header *channel_list = NULL;
+
+static uint32_t chan_window_size = SFTP_SSH2_CHANNEL_WINDOW_SIZE;
+static uint32_t chan_packet_size = SFTP_SSH2_CHANNEL_MAX_PACKET_SIZE;
+
+/* Define the maximum SSH2 packet payload size, working backward from the
+ * maximum SSH2 packet size:
+ *
+ *  max payload len = max packet len - max padding len \
+ *                                   - padding len field len \
+ *                                   - MAC len (EVP_MAX_MD_SIZE) \
+ *                                   - packet len field len
+ */
+#define SFTP_MAX_PAYLOAD_LEN	(SFTP_MAX_PACKET_LEN - SFTP_MAX_PADDING_LEN - sizeof(char) - EVP_MAX_MD_SIZE - sizeof(uint32_t))
+
+static const char *trace_channel = "ssh2";
+
+static int send_channel_done(pool *, uint32_t);
+
+static struct ssh2_channel *alloc_channel(const char *type,
+    uint32_t remote_channel_id, uint32_t remote_windowsz,
+    uint32_t remote_max_packetsz) {
+  struct ssh2_channel *chan = NULL;
+  pool *sub_pool = NULL;
+ 
+  sub_pool = make_sub_pool(channel_pool);
+  pr_pool_tag(sub_pool, "SSH2 channel pool");
+   
+  chan = pcalloc(sub_pool, sizeof(struct ssh2_channel));
+  chan->pool = sub_pool;
+  chan->type = pstrdup(sub_pool, type);
+
+  chan->local_channel_id = channelno++;
+
+  chan->local_windowsz = chan_window_size;
+  chan->local_max_packetsz = chan_packet_size;
+
+  chan->remote_channel_id = remote_channel_id;
+  chan->remote_windowsz = remote_windowsz;
+  chan->remote_max_packetsz = remote_max_packetsz;
+
+  if (channel_list == NULL) {
+    channel_list = make_array(channel_pool, 1, sizeof(struct ssh2_channel *));
+  }
+
+  *((struct ssh2_channel **) push_array(channel_list)) = chan;
+
+  channel_count++;
+  return chan;
+}
+
+static void destroy_channel(uint32_t channel_id) {
+  register unsigned int i;
+  struct ssh2_channel **chans;
+
+  if (channel_list == NULL)
+    return;
+
+  chans = channel_list->elts;
+  for (i = 0; i < channel_list->nelts; i++) {
+    if (chans[i] != NULL &&
+        chans[i]->local_channel_id == channel_id) {
+
+      /* If both parties have said that this channel is closed, we can
+       * close it.
+       */
+      if (chans[i]->recvd_close &&
+          chans[i]->sent_close) {
+        if (chans[i]->finish != NULL) {
+          (chans[i]->finish)(channel_id);
+        }
+
+        chans[i] = NULL;
+        channel_count--;
+        break;
+      }
+    }
+  }
+
+  return;
+}
+
+static struct ssh2_channel *get_channel(uint32_t channel_id) {
+  register unsigned int i;
+  struct ssh2_channel **chans;
+
+  if (channel_list == NULL) {
+    errno = EACCES;
+    return NULL;
+  }
+
+  chans = channel_list->elts;
+  for (i = 0; i < channel_list->nelts; i++) {
+    if (chans[i] != NULL &&
+        chans[i]->local_channel_id == channel_id) {
+      return chans[i];
+    }
+  }
+
+  errno = ENOENT;
+  return NULL;
+}
+
+static uint32_t get_channel_pending_size(struct ssh2_channel *chan) {
+  struct ssh2_channel_databuf *db;
+  uint32_t pending_datalen = 0;
+
+  db = chan->outgoing;
+  while (db &&
+         db->buflen > 0) {
+    pr_signals_handle();
+
+    pending_datalen += db->buflen;
+    db = db->next;
+  }
+
+  return pending_datalen;
+}
+
+static void drain_pending_channel_data(uint32_t channel_id) {
+  struct ssh2_channel *chan;
+  uint32_t header_len;
+
+  chan = get_channel(channel_id);
+  if (chan == NULL) {
+    return;
+  }
+
+  /* The header length is 1 byte for the packet type, 4 bytes for the remote
+   * channel ID, and 4 more bytes for the payload length.  These 9 bytes
+   * need to be taken into account when checking/adjusting the remote
+   * window size.
+   */
+  header_len = 1 + (2 * sizeof(uint32_t));
+
+  if (chan->outgoing) {
+    pool *tmp_pool;
+    struct ssh2_channel_databuf *db;
+
+    tmp_pool = make_sub_pool(channel_pool);
+
+    pr_trace_msg(trace_channel, 15, "draining pending data for channel %lu "
+      "(%lu bytes)", (unsigned long) channel_id,
+      (unsigned long) get_channel_pending_size(chan));
+
+    db = chan->outgoing;
+
+    /* While we have room remaining in the remote window (and we are not
+     * rekeying), and while there are still pending outgoing messages,
+     * send them.
+     */
+
+    while (!(sftp_sess_state & SFTP_SESS_STATE_REKEYING) &&
+           db &&
+           db->buflen > 0 &&
+           chan->remote_windowsz > 0) {
+      struct ssh2_packet *pkt;
+      char *buf, *ptr;
+      uint32_t bufsz, buflen, max_payloadsz, payload_len;
+      int res;
+
+      pr_signals_handle();
+
+      max_payloadsz = header_len + db->buflen;
+
+      /* The maximum size of the CHANNEL_DATA payload we can send to the client
+       * is the smaller of the max SSH2 payload size, remote window size, and
+       * the remote packet size.
+       */
+
+      if (max_payloadsz > SFTP_MAX_PAYLOAD_LEN)
+        max_payloadsz = SFTP_MAX_PAYLOAD_LEN;
+
+      if (max_payloadsz > chan->remote_windowsz)
+        max_payloadsz = chan->remote_windowsz;
+
+      if (max_payloadsz > chan->remote_max_packetsz)
+        max_payloadsz = chan->remote_max_packetsz;
+
+      if (max_payloadsz <= header_len) {
+        /* Not enough room to send any data. */
+        break;
+      }
+
+      /* If the remote window size is small, then payload_len is NOT the
+       * same as db->buflen.  Hence the separate variable.
+       */
+      payload_len = max_payloadsz - header_len;
+
+      pkt = sftp_ssh2_packet_create(tmp_pool);
+
+      bufsz = buflen = max_payloadsz;
+      ptr = buf = palloc(pkt->pool, bufsz);
+
+      sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_DATA);
+      sftp_msg_write_int(&buf, &buflen, chan->remote_channel_id);
+      sftp_msg_write_int(&buf, &buflen, payload_len);
+      memcpy(buf, db->buf, payload_len);
+      buflen -= payload_len;
+
+      pkt->payload = ptr;
+      pkt->payload_len = (bufsz - buflen);
+
+      pr_trace_msg(trace_channel, 9, "sending CHANNEL_DATA (remote channel "
+        "ID %lu, %lu bytes)", (unsigned long) chan->remote_channel_id,
+        (unsigned long) pkt->payload_len);
+
+      res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+      if (res < 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error draining pending CHANNEL_DATA for channel %lu: %s",
+          (unsigned long) channel_id, strerror(errno));
+        destroy_pool(tmp_pool);
+        return;
+      }
+
+      chan->remote_windowsz -= pkt->payload_len;
+
+      /* If we sent this entire databuf, then we can dispose of it, and
+       * advance to the next one on the list.  However, we may have only
+       * sent a portion of it, in which case it needs to stay where it is;
+       * we only need to update buf and buflen.
+       */
+
+      if (payload_len == db->buflen) {
+        struct ssh2_channel_databuf *next;
+
+        next = db->next;
+        destroy_pool(db->pool);
+        chan->outgoing = db = next;
+
+      } else {
+        db->buf += payload_len;
+        db->buflen -= payload_len;
+      }
+    }
+
+    /* If we still have pending data at this point, it is probably because
+     * the window wasn't big enough; we need to wait for another
+     * CHANNEL_WINDOW_ADJUST.
+     */
+    if (chan->outgoing) {
+      pr_trace_msg(trace_channel, 15, "still have pending channel data "
+        "(%lu bytes) for channel %lu (window at %lu bytes)",
+        (unsigned long) get_channel_pending_size(chan),
+        (unsigned long) channel_id, (unsigned long) chan->remote_windowsz);
+    }
+
+    destroy_pool(tmp_pool);
+  }
+
+  return;
+}
+
+static struct ssh2_channel_databuf *get_databuf(uint32_t channel_id,
+    uint32_t buflen) {
+  struct ssh2_channel *chan;
+  struct ssh2_channel_databuf *db;
+  pool *sub_pool;
+
+  chan = get_channel(channel_id);
+  if (chan == NULL) {
+    errno = EPERM;
+    return NULL;
+  }
+
+  if (!channel_databuf_pool) {
+    channel_databuf_pool = make_sub_pool(channel_pool);
+    pr_pool_tag(channel_databuf_pool, "SSH2 Channel data buffer pool");
+  }
+
+  sub_pool = pr_pool_create_sz(channel_databuf_pool, 128);
+  pr_pool_tag(sub_pool, "channel databuf pool");
+
+  db = pcalloc(sub_pool, sizeof(struct ssh2_channel_databuf));
+  db->pool = sub_pool;
+  db->bufsz = buflen;
+  db->ptr = db->buf = palloc(db->pool, db->bufsz);
+
+  db->buflen = 0;
+  db->next = NULL;
+
+  /* Make sure the returned outbuf is already in place at the end of
+   * the pending outgoing list.
+   */
+  if (chan->outgoing) {
+    struct ssh2_channel_databuf *iter;
+
+    iter = chan->outgoing;
+    while (iter->next) {
+      pr_signals_handle();
+      iter = iter->next;
+    }
+
+    iter->next = db;
+
+  } else {
+    chan->outgoing = db;
+  }
+
+  return db;
+}
+
+static int read_channel_open(struct ssh2_packet *pkt, uint32_t *channel_id) {
+  char *buf, *channel_type;
+  uint32_t buflen, initial_windowsz, max_packetsz;
+  cmd_rec *cmd;
+
+  buf = pkt->payload;
+  buflen = pkt->payload_len;
+
+  channel_type = sftp_msg_read_string(pkt->pool, &buf, &buflen);
+  *channel_id = sftp_msg_read_int(pkt->pool, &buf, &buflen);
+
+  /* First check if this would cause the client to exceed its count of
+   * open channels.
+   */
+  if (channel_count + 1 > channel_max) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "maximum number of channels (%u) open, denying request to "
+      "open '%s' channel", channel_count, channel_type);
+    return -1;
+  }
+
+  initial_windowsz = sftp_msg_read_int(pkt->pool, &buf, &buflen);
+  max_packetsz = sftp_msg_read_int(pkt->pool, &buf, &buflen);
+
+  pr_trace_msg(trace_channel, 8, "open of '%s' channel using remote "
+    "ID %lu requested: initial client window len = %lu bytes, client max "
+    "packet size = %lu bytes", channel_type, (unsigned long) *channel_id,
+    (unsigned long) initial_windowsz, (unsigned long) max_packetsz);
+
+  cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_OPEN"));
+  cmd->arg = channel_type;
+
+  if (strcmp(channel_type, "session") != 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unsupported channel type '%s' requested, denying", channel_type);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    return -1;
+  }
+
+  if (alloc_channel(channel_type, *channel_id, initial_windowsz,
+      max_packetsz) == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error allocating channel");
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    return -1;
+  }
+
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  return 0;
+}
+
+static int handle_channel_close(struct ssh2_packet *pkt) {
+  char *buf;
+  uint32_t buflen, channel_id;
+  struct ssh2_channel *chan;
+  cmd_rec *cmd;
+
+  buf = pkt->payload;
+  buflen = pkt->payload_len;
+
+  channel_id = sftp_msg_read_int(pkt->pool, &buf, &buflen);
+
+  cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_CLOSE"));
+  cmd->arg = "";
+
+  chan = get_channel(channel_id);
+  if (chan == NULL) {
+    pr_trace_msg(trace_channel, 8, "unable to close channel ID %lu: %s",
+      (unsigned long) channel_id, strerror(errno));
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "no open channel for channel ID %lu", (unsigned long) channel_id);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    return -1;
+  }
+
+  if (!chan->sent_close) {
+    send_channel_done(pkt->pool, channel_id);
+  }
+
+  chan->recvd_close = TRUE;
+  destroy_channel(channel_id);
+
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  return 0;
+}
+
+static int process_channel_data(struct ssh2_channel *chan,
+    struct ssh2_packet *pkt, char *data, uint32_t datalen) {
+  int res;
+
+  res = chan->handle_packet(pkt, chan->local_channel_id, data, datalen);
+
+  chan->local_windowsz -= datalen;
+
+  if (chan->local_windowsz < (chan->local_max_packetsz * 3)) {
+    char *buf, *ptr;
+    uint32_t buflen, bufsz, window_adjlen;
+    struct ssh2_packet *resp;
+
+    /* Need to send a CHANNEL_WINDOW_ADJUST message to the client, so that
+     * they know to send more data.
+     */
+    buflen = bufsz = 128;
+    ptr = buf = palloc(pkt->pool, bufsz);
+
+    window_adjlen = SFTP_SSH2_CHANNEL_WINDOW_SIZE - chan->local_windowsz;
+
+    sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_WINDOW_ADJUST);
+    sftp_msg_write_int(&buf, &buflen, chan->remote_channel_id);
+    sftp_msg_write_int(&buf, &buflen, window_adjlen);
+
+    pr_trace_msg(trace_channel, 15, "sending CHANNEL_WINDOW_ADJUST message "
+      "for channel %lu, adding %lu bytes to the window size (currently %lu "
+      "bytes)", (unsigned long) chan->local_channel_id,
+      (unsigned long) window_adjlen, (unsigned long) chan->local_windowsz);
+
+    resp = sftp_ssh2_packet_create(pkt->pool);
+    resp->payload = ptr;
+    resp->payload_len = (bufsz - buflen);
+
+    if (sftp_ssh2_packet_write(sftp_conn->wfd, resp) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error sending CHANNEL_WINDOW_ADJUST request to client: %s",
+        strerror(errno));
+    }
+
+    chan->local_windowsz += window_adjlen;
+  }
+
+  return res;
+}
+
+static int handle_channel_data(struct ssh2_packet *pkt, uint32_t *channel_id) {
+  char *buf, *data;
+  uint32_t buflen, datalen;
+  struct ssh2_channel *chan;
+
+  buf = pkt->payload;
+  buflen = pkt->payload_len;
+
+  *channel_id = sftp_msg_read_int(pkt->pool, &buf, &buflen);
+
+  chan = get_channel(*channel_id);
+  if (chan == NULL) {
+    pr_trace_msg(trace_channel, 8, "unable to handle data for "
+      "channel ID %lu: %s", (unsigned long) *channel_id, strerror(errno));
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "no open channel for remote channel ID %lu", (unsigned long) *channel_id);
+    return -1;
+  }
+
+  if (chan->recvd_eof) {
+    pr_trace_msg(trace_channel, 3, "received data on channel ID %lu after "
+      "client had sent CHANNEL_EOF", (unsigned long) *channel_id);
+  }
+
+  datalen = sftp_msg_read_int(pkt->pool, &buf, &buflen);
+
+  if (datalen > chan->local_windowsz) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "received too much data (%lu bytes) for local window size (%lu bytes) "
+      "for channel %lu, ignoring CHANNEL_DATA message",
+      (unsigned long) datalen, (unsigned long) chan->local_windowsz,
+      (unsigned long) *channel_id);
+    return 0;
+  }
+
+  data = sftp_msg_read_data(pkt->pool, &buf, &buflen, datalen);
+
+  return process_channel_data(chan, pkt, data, datalen);
+}
+
+/* Sends an "exit-status" message, followed by CHANNEL_EOF, and
+ * finishes with CHANNEL_CLOSE.
+ */
+static int send_channel_done(pool *p, uint32_t channel_id) {
+  int res;
+  char *buf, *ptr;
+  uint32_t buflen, bufsz;
+  struct ssh2_channel *chan;
+  struct ssh2_packet *pkt;
+
+  chan = get_channel(channel_id);
+  if (chan == NULL) {
+    return 0;
+  }
+
+  buflen = bufsz = 128;
+  ptr = buf = palloc(p, bufsz);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_REQUEST);
+  sftp_msg_write_int(&buf, &buflen, chan->remote_channel_id);
+  sftp_msg_write_string(&buf, &buflen, "exit-status");
+  sftp_msg_write_bool(&buf, &buflen, FALSE);
+  sftp_msg_write_int(&buf, &buflen, 0);
+
+  pkt = sftp_ssh2_packet_create(p);
+  pkt->payload = ptr;
+  pkt->payload_len = (bufsz - buflen);
+
+  pr_trace_msg(trace_channel, 9,
+    "sending CHANNEL_REQUEST (remote channel ID %lu, exit status 0)",
+    (unsigned long) chan->remote_channel_id);
+
+  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+  if (res < 0)
+    return res;
+
+  buf = ptr;
+  buflen = bufsz;
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_EOF);
+  sftp_msg_write_int(&buf, &buflen, chan->remote_channel_id);
+
+  pkt = sftp_ssh2_packet_create(p);
+  pkt->payload = ptr;
+  pkt->payload_len = (bufsz - buflen);
+
+  pr_trace_msg(trace_channel, 9,
+    "sending CHANNEL_EOF (remote channel ID %lu)",
+    (unsigned long) chan->remote_channel_id);
+
+  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+  if (res < 0)
+    return res;
+
+  chan->sent_eof = TRUE;
+
+  buf = ptr;
+  buflen = bufsz;
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_CLOSE);
+  sftp_msg_write_int(&buf, &buflen, chan->remote_channel_id);
+
+  pkt->payload = ptr;
+  pkt->payload_len = (bufsz - buflen);
+
+  pr_trace_msg(trace_channel, 9,
+    "sending CHANNEL_CLOSE (remote channel ID %lu)",
+    (unsigned long) chan->remote_channel_id);
+
+  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+  if (res < 0)
+    return res;
+
+  chan->sent_close = TRUE;
+  destroy_channel(channel_id);
+
+  return res;
+}
+
+static int handle_channel_eof(struct ssh2_packet *pkt) {
+  char *buf;
+  uint32_t buflen, channel_id;
+  struct ssh2_channel *chan;
+  cmd_rec *cmd;
+
+  buf = pkt->payload;
+  buflen = pkt->payload_len;
+
+  channel_id = sftp_msg_read_int(pkt->pool, &buf, &buflen);
+
+  cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_EOF"));
+  cmd->arg = "";
+
+  chan = get_channel(channel_id);
+  if (chan == NULL) {
+    pr_trace_msg(trace_channel, 8, "unable to handle EOF for "
+      "channel ID %lu: %s", (unsigned long) channel_id, strerror(errno));
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "no open channel for remote channel ID %lu", (unsigned long) channel_id);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    return -1;
+  }
+
+  /* The client is telling us it will not send any more data on this channel.*/
+  chan->recvd_eof = TRUE;
+
+  /* First, though, drain any pending data for the channel. */
+  drain_pending_channel_data(channel_id);
+
+  if (!chan->sent_eof) {
+    send_channel_done(pkt->pool, channel_id);
+  }
+
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  return 0;
+}
+
+static int allow_env(const char *key) {
+
+  /* The following is a hardcoded list of environment variables set by
+   * mod_sftp itself.  These are not allowed to be changed by the client.
+   */
+
+  register unsigned int i;
+  const char *prohibited_keys[] = {
+    "SFTP",
+    "SFTP_LIBRARY_VERSION",
+    "SFTP_CLIENT_CIPHER_ALGO",
+    "SFTP_CLIENT_MAC_ALGO",
+    "SFTP_CLIENT_COMPRESSION_ALGO",
+    "SFTP_KEX_ALGO",
+    "SFTP_SERVER_CIPHER_ALGO",
+    "SFTP_SERVER_MAC_ALGO",
+    "SFTP_SERVER_COMPRESSION_ALGO",
+    NULL
+  };
+
+  /* XXX Allow the admin to configure a list of prohibited env vars as well? */
+
+  for (i = 0; prohibited_keys[i]; i++) {
+    if (strcasecmp(key, prohibited_keys[i]) == 0) {
+      return FALSE;
+    }
+  }
+
+  return TRUE;
+}
+
+static int handle_exec_channel(struct ssh2_channel *chan,
+    struct ssh2_packet *pkt, char **buf, uint32_t *buflen) {
+  char *command, *ptr, **reqargv, *word;
+  array_header *req;
+
+  command = sftp_msg_read_string(pkt->pool, buf, buflen);
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+    "'exec' channel request: command = '%s'", command);
+
+  req = make_array(pkt->pool, 2, sizeof(char *));
+  ptr = command;
+
+  while ((word = pr_str_get_word(&ptr, 0)) != NULL) {
+    pr_signals_handle();
+    *((char **) push_array(req)) = pstrdup(pkt->pool, word);
+  }
+
+  *((char **) push_array(req)) = NULL;
+
+  reqargv = (char **) req->elts;
+
+  if (strcmp(reqargv[0], "scp") == 0) {
+    if (sftp_scp_set_params(pkt->pool, chan->local_channel_id, req) < 0) {
+      return -1;
+    }
+
+    chan->prepare = sftp_scp_open_session;
+    chan->handle_packet = sftp_scp_handle_packet;
+    chan->finish = sftp_scp_close_session;
+
+  } else {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unsupported exec command '%s'", command);
+    return -1;
+  }
+
+  return 0;
+}
+
+static int handle_env_channel(struct ssh2_channel *chan,
+    struct ssh2_packet *pkt, char **buf, uint32_t *buflen) {
+  int res;
+  char *key, *value;
+
+  key = sftp_msg_read_string(pkt->pool, buf, buflen);
+  value = sftp_msg_read_string(pkt->pool, buf, buflen);
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+    "'env' channel request: '%s' = '%s'", key, value);
+
+  if (allow_env(key) == TRUE) {
+    res = pr_env_set(sftp_pool, pstrdup(session.pool, key),
+      pstrdup(session.pool, value));
+    if (res < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error setting environment variable '%s' with value '%s': %s",
+        key, value, strerror(errno));
+    }
+
+  } else {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "environment variable '%s' prohibited by policy", key);
+    res = -1;
+  }
+
+  return res;
+}
+
+static int handle_signal_channel(struct ssh2_channel *chan,
+    struct ssh2_packet *pkt, char **buf, uint32_t *buflen) {
+  int res;
+  char bool, *sig_name;
+
+  bool = sftp_msg_read_bool(pkt->pool, buf, buflen);
+  if (bool != FALSE) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "malformed 'signal' request (bool must be FALSE)");
+    res = -1;
+  }
+
+  sig_name = sftp_msg_read_string(pkt->pool, buf, buflen);
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+    "'signal' channel request: SIG%s", sig_name);
+
+  if (strcmp(sig_name, "ABRT") == 0) {
+    res = raise(SIGABRT);
+
+  } else if (strcmp(sig_name, "ALRM") == 0) {
+    res = raise(SIGALRM);
+
+#ifdef SIGFPE
+  } else if (strcmp(sig_name, "FPE") == 0) {
+    res = raise(SIGFPE);
+
+#endif
+  } else if (strcmp(sig_name, "HUP") == 0) {
+    /* Sending SIGHUP to this process is not a good idea, but we'll act
+     * like it succeeded anyway.
+     */
+    res = 0;
+
+#ifdef SIGILL
+  } else if (strcmp(sig_name, "ILL") == 0) {
+    res = raise(SIGILL);
+
+#endif
+  } else if (strcmp(sig_name, "INT") == 0) {
+    res = raise(SIGINT);
+
+  } else if (strcmp(sig_name, "KILL") == 0) {
+    res = raise(SIGKILL);
+
+  } else if (strcmp(sig_name, "PIPE") == 0) {
+    /* Ignore SIGPIPE, since we told the kernel we would ignore it. */
+    res = 0;
+
+  } else if (strcmp(sig_name, "QUIT") == 0) {
+    res = raise(SIGQUIT);
+
+  } else if (strcmp(sig_name, "SEGV") == 0) {
+    res = raise(SIGSEGV);
+
+  } else if (strcmp(sig_name, "TERM") == 0) {
+    res = raise(SIGTERM);
+
+  } else if (strcmp(sig_name, "USR1") == 0 ||
+             strcmp(sig_name, "USR2") == 0) {
+    /* We already use these for very specific uses. */
+    res = 0;
+
+  } else {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unknown signal name 'SIG%s'", sig_name);
+    res = -1;
+  }
+
+  return res;
+}
+
+static int handle_subsystem_channel(struct ssh2_channel *chan,
+    struct ssh2_packet *pkt, char **buf, uint32_t *buflen) {
+  char *subsystem;
+
+  subsystem = sftp_msg_read_string(pkt->pool, buf, buflen);
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+    "'subsystem' channel request for '%s' subsystem", subsystem);
+
+  if (strcmp(subsystem, "sftp") == 0) {
+    chan->prepare = sftp_fxp_open_session;
+    chan->handle_packet = sftp_fxp_handle_packet;
+    chan->finish = sftp_fxp_close_session;
+
+  } else {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "subsystem '%s' unsupported", subsystem);
+    return -1;
+  }
+
+  return 0;
+}
+
+static int handle_channel_req(struct ssh2_packet *pkt) {
+  char *buf, *channel_request;
+  uint32_t buflen, channel_id;
+  int res, unsupported = FALSE, want_reply;
+  struct ssh2_channel *chan;
+  cmd_rec *cmd;
+
+  buf = pkt->payload;
+  buflen = pkt->payload_len;
+
+  channel_id = sftp_msg_read_int(pkt->pool, &buf, &buflen);
+  channel_request = sftp_msg_read_string(pkt->pool, &buf, &buflen);
+  want_reply = sftp_msg_read_bool(pkt->pool, &buf, &buflen);
+
+  pr_trace_msg(trace_channel, 7,
+    "received '%s' request for channel ID %lu, want reply = %s",
+    channel_request, (unsigned long) channel_id,
+    want_reply ? "true" : "false");
+
+  cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_REQUEST"));
+  cmd->arg = channel_request;
+
+  chan = get_channel(channel_id);
+  if (chan == NULL) {
+    pr_trace_msg(trace_channel, 8, "unable to handle request for "
+      "channel ID %lu: %s", (unsigned long) channel_id, strerror(errno));
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "no open channel for remote channel ID %lu", (unsigned long) channel_id);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    return -1;
+  }
+
+  if (strcmp(channel_request, "subsystem") == 0) {
+    res = handle_subsystem_channel(chan, pkt, &buf, &buflen);
+
+  } else if (strcmp(channel_request, "exec") == 0) {
+    res = handle_exec_channel(chan, pkt, &buf, &buflen);
+
+  } else if (strcmp(channel_request, "env") == 0) {
+    res = handle_env_channel(chan, pkt, &buf, &buflen);
+
+  } else if (strcmp(channel_request, "signal") == 0) {
+    res = handle_signal_channel(chan, pkt, &buf, &buflen);
+
+  } else if (strcmp(channel_request, "break") == 0) {
+    uint32_t breaklen;
+
+    /* Handle RFC4335 messages.  We will still return CHANNEL_FAILURE for
+     * them, but at least we can log that we understood the request.
+     */
+
+    breaklen = sftp_msg_read_int(pkt->pool, &buf, &buflen);
+
+    pr_trace_msg(trace_channel, 10,
+      "received '%s' request for %lu millisecs, ignoring", channel_request,
+      (unsigned long) breaklen);
+
+    res = -1;
+
+  } else {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unsupported '%s' channel requested, ignoring", channel_request);
+    res = -1;
+    unsupported = TRUE;
+  }
+
+  if (res == 0 &&
+      chan->prepare) {
+    if ((chan->prepare)(chan->local_channel_id) < 0) {
+      int xerrno = errno;
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unable to prepare channel ID %lu: %s",
+        (unsigned long) chan->local_channel_id, strerror(xerrno));
+
+      errno = xerrno;
+      res = -1;
+    }
+  }
+
+  if (want_reply) {
+    struct ssh2_packet *pkt2;
+    char *buf2, *ptr2;
+    uint32_t buflen2, bufsz2;
+
+    buflen2 = bufsz2 = 128;
+    buf2 = ptr2 = palloc(pkt->pool, bufsz2);
+
+    if (res < 0) {
+      sftp_msg_write_byte(&buf2, &buflen2, SFTP_SSH2_MSG_CHANNEL_FAILURE);
+
+    } else {
+      sftp_msg_write_byte(&buf2, &buflen2, SFTP_SSH2_MSG_CHANNEL_SUCCESS);
+    }
+
+    sftp_msg_write_int(&buf2, &buflen2, chan->remote_channel_id);
+
+    pkt2 = sftp_ssh2_packet_create(pkt->pool);
+    pkt2->payload = ptr2;
+    pkt2->payload_len = (bufsz2 - buflen2);
+
+    if (sftp_ssh2_packet_write(sftp_conn->wfd, pkt2) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error sending reply to CHANNEL_REQUEST: %s", strerror(errno));
+    }
+
+    destroy_pool(pkt2->pool);
+  }
+
+  /* Make a special case for failed, but unsupported, channel requests.
+   * For these, we essentially treat them as "succeeded", but ignore them.
+   * Clients like PuTTY send some strange requests, and there's no reason to
+   * support such requests unnecessarily.
+   */
+
+  if (!unsupported &&
+      res < 0) {
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    return 0;
+  }
+
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  return 0;
+}
+
+static int handle_channel_window_adjust(struct ssh2_packet *pkt) {
+  char *buf;
+  uint32_t buflen, channel_id, adjust_len;
+  struct ssh2_channel *chan;
+  cmd_rec *cmd;
+
+  buf = pkt->payload;
+  buflen = pkt->payload_len;
+
+  channel_id = sftp_msg_read_int(pkt->pool, &buf, &buflen);
+
+  cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_WINDOW_ADJUST"));
+  cmd->arg = "";
+
+  chan = get_channel(channel_id);
+  if (chan == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "no open channel for channel ID %lu", (unsigned long) channel_id);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    return -1;
+  }
+
+  adjust_len = sftp_msg_read_int(pkt->pool, &buf, &buflen);
+
+  pr_trace_msg(trace_channel, 15, "adjusting remote window size "
+    "for local channel ID %lu, adding %lu bytes to current window size "
+    "(%lu bytes)", (unsigned long) channel_id, (unsigned long) adjust_len,
+    (unsigned long) chan->remote_windowsz);
+
+  chan->remote_windowsz += adjust_len;
+
+  drain_pending_channel_data(channel_id);
+
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  return 0;
+}
+
+static int write_channel_open_confirm(struct ssh2_packet *pkt,
+    uint32_t channel_id) {
+  register unsigned int i;
+  char *buf, *ptr;
+  uint32_t buflen, bufsz;
+  struct ssh2_channel *chan = NULL, **chans;
+
+  chans = channel_list->elts;
+  for (i = 0; i < channel_list->nelts; i++) {
+    if (chans[i] != NULL &&
+        chans[i]->remote_channel_id == channel_id) {
+      chan = chans[i];
+      break;
+    }
+  }
+
+  if (chan == NULL) {
+    pr_trace_msg(trace_channel, 8, "unable to confirm open channel ID %lu: %s",
+      (unsigned long) channel_id, strerror(errno));
+
+    return -1;
+  }
+
+  buflen = bufsz = 1024;
+  ptr = buf = palloc(pkt->pool, bufsz);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_OPEN_CONFIRMATION);
+  sftp_msg_write_int(&buf, &buflen, chan->remote_channel_id);
+  sftp_msg_write_int(&buf, &buflen, chan->local_channel_id);
+  sftp_msg_write_int(&buf, &buflen, chan->local_windowsz);
+  sftp_msg_write_int(&buf, &buflen, chan->local_max_packetsz);
+
+  pr_trace_msg(trace_channel, 8, "confirm open channel remote ID %lu, "
+    "local ID %lu: initial server window len = %lu bytes, server max "
+    "packet size = %lu bytes", (unsigned long) chan->remote_channel_id,
+    (unsigned long) chan->local_channel_id, (unsigned long)
+    chan->local_windowsz, (unsigned long) chan->local_max_packetsz);
+
+  pkt->payload = ptr;
+  pkt->payload_len = (bufsz - buflen);
+
+  return 0;
+}
+
+static int write_channel_open_failed(struct ssh2_packet *pkt,
+    uint32_t channel_id) {
+  char *buf, *ptr;
+  uint32_t buflen, bufsz;
+
+  buflen = bufsz = 1024;
+  ptr = buf = palloc(pkt->pool, bufsz);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_OPEN_FAILURE);
+  sftp_msg_write_int(&buf, &buflen, channel_id);
+  sftp_msg_write_int(&buf, &buflen,
+    SFTP_SSH2_CHANNEL_OPEN_UNKNOWN_CHANNEL_TYPE);
+  sftp_msg_write_string(&buf, &buflen, "Unsupported channel type requested");
+  sftp_msg_write_string(&buf, &buflen, "en-US");
+
+  pkt->payload = ptr;
+  pkt->payload_len = (bufsz - buflen);
+
+  return 0;
+}
+
+unsigned int sftp_channel_set_max_count(unsigned int max) {
+  unsigned int prev_max;
+
+  prev_max = channel_max;
+  channel_max = max;
+
+  return prev_max;
+}
+
+uint32_t sftp_channel_set_max_packetsz(uint32_t packetsz) {
+  uint32_t prev_packetsz;
+
+  prev_packetsz = chan_packet_size;
+  chan_packet_size = packetsz;
+
+  return prev_packetsz;
+}
+
+uint32_t sftp_channel_set_max_windowsz(uint32_t windowsz) {
+  uint32_t prev_windowsz;
+
+  prev_windowsz = chan_window_size;
+  chan_window_size = windowsz;
+
+  return prev_windowsz;
+}
+
+int sftp_channel_handle(struct ssh2_packet *pkt, char mesg_type) {
+  int res;
+  uint32_t channel_id;
+
+  switch (mesg_type) {
+    case SFTP_SSH2_MSG_CHANNEL_OPEN: {
+      res = read_channel_open(pkt, &channel_id);
+      if (res < 0) {
+        struct ssh2_packet *pkt2;
+        pkt2 = sftp_ssh2_packet_create(channel_pool);
+
+        if (write_channel_open_failed(pkt2, channel_id) == 0) {
+          (void) sftp_ssh2_packet_write(sftp_conn->wfd, pkt2);
+        }
+
+        destroy_pool(pkt2->pool);
+        destroy_pool(pkt->pool);
+
+        return -1;
+      }
+
+      destroy_pool(pkt->pool);
+
+      pkt = sftp_ssh2_packet_create(channel_pool);
+      res = write_channel_open_confirm(pkt, channel_id);
+      if (res < 0) {
+        destroy_pool(pkt->pool);
+        return -1;
+      }
+
+      res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+      if (res < 0) {
+        destroy_pool(pkt->pool);
+        return -1;
+      }
+
+      destroy_pool(pkt->pool);
+      return 0;
+    }
+
+    case SFTP_SSH2_MSG_CHANNEL_REQUEST:
+      res = handle_channel_req(pkt);
+      destroy_pool(pkt->pool);
+      return res;
+
+    case SFTP_SSH2_MSG_CHANNEL_CLOSE:
+      res = handle_channel_close(pkt);
+      destroy_pool(pkt->pool);
+      return res;
+
+    case SFTP_SSH2_MSG_CHANNEL_DATA:
+      res = handle_channel_data(pkt, &channel_id);
+      if (res == 1) {
+        /* Send an EOF, since the channel has indicated it has finished
+         * gracefully.
+         */
+        res = send_channel_done(pkt->pool, channel_id);
+      }
+
+      destroy_pool(pkt->pool);
+      return res;
+
+    case SFTP_SSH2_MSG_CHANNEL_EOF:
+      res = handle_channel_eof(pkt);
+      destroy_pool(pkt->pool);
+      return res;
+
+    case SFTP_SSH2_MSG_CHANNEL_WINDOW_ADJUST:
+      res = handle_channel_window_adjust(pkt);
+      destroy_pool(pkt->pool);
+      return res;
+
+    default:
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "expecting CHANNEL message, received %s (%d), disconnecting",
+        sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
+      destroy_pool(pkt->pool);
+      SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_PROTOCOL_ERROR, NULL);
+  }
+
+  errno = EINVAL;
+  return -1;
+}
+
+int sftp_channel_init(void) {
+  if (channel_pool == NULL) {
+    channel_pool = make_sub_pool(sftp_pool);
+    pr_pool_tag(channel_pool, "SSH2 Channel Pool");
+  }
+
+  return 0;
+}
+
+int sftp_channel_drain_data(void) {
+  register unsigned int i;
+  struct ssh2_channel **chans;
+
+  if (channel_list == NULL) {
+    errno = EACCES;
+    return -1;
+  }
+
+  /* Iterate through all the open channels, draining any pending data they
+   * might have.
+   */
+  chans = channel_list->elts;
+  for (i = 0; i < channel_list->nelts; i++) {
+    if (chans[i] != NULL) {
+      pr_trace_msg(trace_channel, 15, "draining pending data for local "
+        "channel ID %lu", (unsigned long) chans[i]->local_channel_id);
+
+      drain_pending_channel_data(chans[i]->local_channel_id);
+    }
+  }
+
+  return 0;
+}
+
+int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
+    uint32_t buflen) {
+  struct ssh2_channel *chan;
+  uint32_t header_len;
+  int res;
+
+  chan = get_channel(channel_id);
+  if (chan == NULL) {
+    errno = EACCES;
+    return -1;
+  }
+
+  /* The header length is 1 byte for the packet type, 4 bytes for the remote
+   * channel ID, and 4 more bytes for the payload length.  These 9 bytes
+   * need to be taken into account when checking/adjusting the remote
+   * window size.
+   */
+  header_len = 1 + (2 * sizeof(uint32_t));
+
+  /* We may need to send the given buffer in multiple CHANNEL_DATA packets,
+   * for example of the remote window size is large but the remote max
+   * packet size is small.  Hence the loop.
+   */
+
+  while (!(sftp_sess_state & SFTP_SESS_STATE_REKEYING) &&
+         chan->remote_windowsz > 0 &&
+         buflen > 0) {
+    uint32_t max_payloadsz, payload_len;
+
+    pr_signals_handle();
+
+    /* First try to drain any pending data for this channel. */
+    drain_pending_channel_data(channel_id);
+    if (chan->remote_windowsz == 0)
+      break;
+
+    max_payloadsz = header_len + buflen;
+
+    /* The maximum size of the CHANNEL_DATA payload we can send to the client
+     * is the smaller of the max SSH2 payload size, remote window size, and the
+     * remote packet size.
+     */ 
+
+    if (max_payloadsz > SFTP_MAX_PAYLOAD_LEN)
+      max_payloadsz = SFTP_MAX_PAYLOAD_LEN;
+
+    if (max_payloadsz > chan->remote_windowsz)
+      max_payloadsz = chan->remote_windowsz;
+
+    if (max_payloadsz > chan->remote_max_packetsz)
+      max_payloadsz = chan->remote_max_packetsz;
+
+    /* If the remote window size or remote max packet size changes the
+     * length we can send, then payload_len is NOT the same as buflen.  Hence
+     * the separate variable.
+     */
+    payload_len = max_payloadsz - header_len;
+
+    /* XXX What if max_payloadsz, at this point, is _less_ than header_len,
+     * i.e. the remote window is only large enough for some of the packet
+     * type and length fields?  If that's a problem, then the check below
+     * should be "if (max_payloadsz > 0)", rather than using payload_len.
+     */
+
+    if (payload_len > 0) {
+      struct ssh2_packet *pkt;
+      char *buf2, *ptr2;
+      uint32_t bufsz2, buflen2;
+
+      bufsz2 = buflen2 = max_payloadsz;
+ 
+      pkt = sftp_ssh2_packet_create(p);
+      ptr2 = buf2 = palloc(pkt->pool, bufsz2);
+
+      sftp_msg_write_byte(&buf2, &buflen2, SFTP_SSH2_MSG_CHANNEL_DATA);
+      sftp_msg_write_int(&buf2, &buflen2, chan->remote_channel_id);
+      sftp_msg_write_int(&buf2, &buflen2, payload_len);
+      memcpy(buf2, buf, payload_len);
+      buflen2 -= payload_len;
+
+      pkt->payload = ptr2;
+      pkt->payload_len = (bufsz2 - buflen2);
+
+      pr_trace_msg(trace_channel, 9, "sending CHANNEL_DATA (remote channel "
+        "ID %lu, %lu bytes)", (unsigned long) chan->remote_channel_id,
+        (unsigned long) pkt->payload_len);
+
+      res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+      if (res == 0) {
+        chan->remote_windowsz -= pkt->payload_len;
+      }
+
+      /* If that was the entire payload, we can be done now. */
+      if (payload_len == buflen) {
+        return res;
+      }
+
+      buf += payload_len;
+      buflen -= payload_len;
+
+      /* Otherwise try sending another CHANNEL_DATA packet.  If the window
+       * closes, the loop will end.
+       */
+    }
+  }
+
+  /* We have to buffer up the remaining payload, and wait for a
+   * CHANNEL_WINDOW_ADJUST from the client before we can send more.
+   */
+
+  if (buflen > 0) {
+    struct ssh2_channel_databuf *db;
+
+    db = get_databuf(channel_id, buflen);
+
+    db->buflen = buflen;
+    memcpy(db->buf, buf, buflen);
+
+    pr_trace_msg(trace_channel, 8, "buffering %lu remaining bytes of "
+      "outgoing packet", (unsigned long) buflen);
+  }
+
+  return 0;
+}
