@@ -1067,6 +1067,10 @@ static void sftp_exit_ev(const void *event_data, void *user_data) {
 #if defined(PR_SHARED_MODULE)
 static void sftp_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_sftp.c", (const char *) event_data) == 0) {
+    /* Unregister ourselves from all events. */
+    pr_event_unregister(&sftp_module, NULL, NULL);
+
+    sftp_keys_free();
     pr_response_block(FALSE);
     sftp_utf8_free();
 
