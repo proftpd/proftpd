@@ -1,0 +1,168 @@
+<!-- $Id: mod_sftp_sql.html,v 1.1 2009-02-13 21:45:12 castaglia Exp $ -->
+<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp_sql.html,v $ -->
+
+<html>
+<head>
+<title>ProFTPD module mod_sftp_sql</title>
+</head>
+
+<body bgcolor=white>
+
+<hr>
+<center>
+<h2><b>ProFTPD module <code>mod_sftp_sql</code></b></h2>
+</center>
+<hr><br>
+
+<p>
+The <a href="http://www.castaglia.org/proftpd/modules/mod_sftp.html"><code>mod_sftp</code></a> module for ProFTPD can support different storage formats for
+its user- and host-based authorized keys.  By default, the <code>mod_sftp</code>
+module supports storing authorized keys in flats.  This
+<code>mod_sftp_sql</code> module allows for authorized SSH keys to be stored
+in SQL tables.
+
+<p>
+This module is contained in the <code>mod_sftp_sql.c</code> file for
+ProFTPD 1.3.<i>x</i>, and is not compiled by default.  Installation
+instructions are discussed <a href="#Installation">here</a>.  Examples
+of how to use the <code>mod_sftp_sql</code> module are available
+<a href="#Usage">here</a>.
+
+<p>
+The most current version of <code>mod_sftp_sql</code> can be found at:
+<pre>
+  <a href="http://www.castaglia.org/proftpd/">http://www.castaglia.org/proftpd/</a>
+</pre>
+
+<h2>Author</h2>
+<p>
+Please contact TJ Saunders &lt;tj <i>at</i> castaglia.org&gt; with any
+questions, concerns, or suggestions regarding this module.
+
+<p>
+<hr>
+<h2><a name="Installation">Installation</a></h2>
+To install <code>mod_sftp_sql</code>, copy the <code>mod_sftp_sql.c</code> file
+into:
+<pre>
+  <i>proftpd-dir</i>/contrib/
+</pre>
+after unpacking the latest proftpd-1.3.<i>x</i> source code.  Then follow the
+usual steps for using third-party modules in proftpd, making sure to include
+the <code>mod_sftp</code> and <code>mod_sql</code> modules, which
+<code>mod_sftp_sql</code> requires.  For example, if you use MySQL as your
+SQL database, then you might use:
+<pre>
+  ./configure --with-modules=mod_sql:mod_sql_mysql:mod_sftp:mod_sftp_sql ...
+  make
+  make install
+</pre>
+
+<p>
+<hr><br>
+<h2><a name="Usage">Usage</a></h2>
+
+<p>
+The <code>mod_sftp_sql</code> module works by using <code>mod_sql</code>'s
+<code>SQLNamedQuery</code> ability to define a SQL <code>SELECT</code>
+statement which returns the requested key.  Thus the <code>mod_sftp_sql</code>
+module has no configuration directives of its own.
+
+<p>
+To help demonstrate, see the example configuration below:
+<pre>
+  &lt;IfModule mod_sql.c&gt;
+    # Other mod_sql configuration here
+
+    # Define a SELECT statement to retrieve users' authorized SSH keys
+    SQLNamedQuery get-user-authorized-keys SELECT "key FROM sftpuserkeys WHERE name='%U'"
+
+    # Define a SELECT statement to retrieve hosts' authorized SSH keys
+    SQLNamedQuery get-host-authorized-keys SELECT "key FROM sftphostkeys WHERE host='%{0}'"
+  &lt;/IfModule&gt;
+
+  &lt;IfModule mod_sftp.c&gt;
+    SFTPEngine on
+    SFTPLog /path/to/sftp.log
+
+    # Host keys, for server host authentication
+    SFTPHostKey /etc/ssh_host_dsa_key
+    SFTPHostKey /etc/ssh_host_rsa_key
+
+    &lt;IfModule mod_sftp_sql.c&gt; 
+      # Instead of using a file-based key store, we tell mod_sftp to use
+      # the SQL-based key store provided by mod_sftp_sql
+      SFTPAuthorizedUserKeys sql:/get-user-authorized-keys
+      SFTPAuthorizedHostKeys sql:/get-host-authorized-keys
+    &lt;/IfModule&gt;
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
+What should the schema be, for the table which holds these authorized keys?
+The <b>required</b> columns are one for the key (as a single base64-encoded
+string) and one for the name of the entity owning that key, <i>e.g.</i> the
+user name or FQDN (or IP address) of the host.  These columns can be added to
+existing tables you might have, or be part of a new table.
+
+<p>
+For example, using SQLite, you could do:
+<pre>
+  # sqlite3 sftp.db
+  sqlite> CREATE TABLE sftpuserkeys (
+  sqlite>  name TEXT NOT NULL,
+  sqlite>  key BLOB NOT NULL
+  sqlite> );
+
+  sqlite> CREATE TABLE sftphostkeys (
+  sqlite>  host TEXT NOT NULL,
+  sqlite>  key BLOB NOT NULL
+  sqlite> );
+</pre>
+and then configure <code>mod_sql</code> to use that <code>sftp.db</code>
+database file.
+
+<p>
+Which leads to the next question: how can I transfer existing authorized
+SSH keys from their current flate files into the SQL tables?  The
+<code>mod_sftp_sql</code> source code is distributed with a
+<code>extract-rfc4716-key.pl</code> Perl script which can be used to read
+an existing authorized keys file and print out the string which should
+be added to the database table.  Note that the
+<code>extract-rfc47167-key.pl</code> script will print out the key data for
+each key contained in the file, one key per line, to stdout.
+
+<pre>
+  # extract-rfc4716-key.pl ~/.sftp/authorized_keys 
+AAAAB3NzaC1yc2EAAAABIwAAAIEA6d+bt06KSlp4Q6wMS57hFAEaiNIQfdguCN9uMP3C5dC4kCt/S85jYt3cdB9XECr8AIxCsivay8WTw77z4qBgR6XrOrzb2J57mX27oQxi4kjHNY3vcVU0Y9lRa6M8whdokpWQsgGaPDmoa2ScU56r0FFiHy0cDX+dDU3ycniQSwc=
+</pre>
+Since this is a user-specific key, and since we are using SQLite for this
+example, you would then do:
+<pre>
+  # sqlite sftp.db
+  sqlite> INSERT INTO sftpuserkeys (name, key) VALUES ('tj', 'AAAAB3NzaC1yc2EAAAABIwAAAIEA6d+bt06KSlp4Q6wMS57hFAEaiNIQfdguCN9uMP3C5dC4kCt/S85jYt3cdB9XECr8AIxCsivay8WTw77z4qBgR6XrOrzb2J57mX27oQxi4kjHNY3vcVU0Y9lRa6M8whdokpWQsgGaPDmoa2ScU56r0FFiHy0cDX+dDU3ycniQSwc=');
+</pre>
+
+<p>
+Other databases (<i>e.g.</i> MySQL, Postgres, Oracle, <i>etc</i>) have
+bulk data loading tools which can also be used to load a CSV file containing
+keys into your SQL tables, for use via <code>mod_sftp_sql</code>.
+
+<p>
+<hr><br>
+
+Author: <i>$Author: castaglia $</i><br>
+Last Updated: <i>$Date: 2009-02-13 21:45:12 $</i><br>
+
+<br><hr>
+
+<font size=2><b><i>
+&copy; Copyright 2008 TJ Saunders<br>
+ All Rights Reserved<br>
+</i></b></font>
+
+<hr><br>
+
+</body>
+</html>
+
