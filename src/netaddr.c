@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.67 2009-02-12 22:32:01 castaglia Exp $
+ * $Id: netaddr.c,v 1.68 2009-02-13 23:09:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,7 +50,7 @@ static int use_ipv6 = TRUE;
 static int use_ipv6 = FALSE;
 #endif /* PR_USE_IPV6 */
 
-static const char localaddr_str[PR_TUNABLE_BUFFER_SIZE];
+static char localaddr_str[PR_TUNABLE_BUFFER_SIZE];
 static int have_localaddr_str = FALSE;
 
 static pool *netaddr_pool = NULL;
