@@ -24,6 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
+ * $Id: mod_sftp.c,v 1.3 2009-02-13 23:41:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"

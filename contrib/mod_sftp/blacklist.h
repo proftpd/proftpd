@@ -23,6 +23,8 @@
  *
  * The file size to encode 294,903 of 48-bit fingerprints is just 1.3 MB,
  * which corresponds to less than 4.5 bytes per fingerprint.
+ *
+ * $Id: blacklist.h,v 1.2 2009-02-13 23:41:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
