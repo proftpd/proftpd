@@ -81,6 +81,11 @@ Also, see contrib/README.
 
 Security/encryption modules:
 
+    mod_sftp, mod_sftp_pam, mod_sftp_sql
+        SSH2, SFTP, SCP protocol implementation
+        See doc/contrib/mod_sftp.html
+        Contributed by TJ Saunders <tj@castaglia.org>
+
     mod_tls
         SSL/TLS authentication/encryption
         See doc/contrib/mod_tls.html

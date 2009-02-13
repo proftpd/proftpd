@@ -28,6 +28,25 @@ files.
 
       /usr/local/sbin/proftpd -S 0.0.0.0 ...
 
+  + New modules:
+
+    mod_sftp
+
+      This module implements the SSH2, SFTP, and SCP protocols.  See
+      doc/contrib/mod_sftp.html for more information.
+
+    mod_sftp_pam
+
+      This module uses PAM to provide a 'keyboard-interactive' SSH2
+      authentication method for mod_sftp.  More information can be found in
+      the documentation for mod_sftp_pam, in doc/contrib/mod_sftp_pam.html.
+
+    mod_sftp_sql
+
+      This module uses SQL (via mod_sql) for looking up authorized SSH2 
+      public keys for user and hostbased authentication.  More information
+      is available in doc/contrib/mod_sftp_sql.html.
+
   + Changed configuration directives:
 
     IdentLookups
@@ -58,4 +77,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-02-12 22:32:01 $
+Last Updated: $Date: 2009-02-13 21:51:56 $
