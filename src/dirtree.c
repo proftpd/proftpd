@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.207 2009-02-12 20:13:42 castaglia Exp $
+ * $Id: dirtree.c,v 1.208 2009-02-13 16:04:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2921,11 +2921,30 @@ static void set_tcp_bufsz(void) {
 
   p = getprotobyname("tcp");
   if (!p) {
+#ifndef PR_TUNABLE_RCVBUFSZ
     tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
+#else
+    tcp_rcvbufsz = PR_TUNABLE_RCVBUFSZ;
+#endif /* PR_TUNABLE_RCVBUFSZ */
+
+#ifndef PR_TUNABLE_SNDBUFSZ
     tcp_sndbufsz = PR_TUNABLE_DEFAULT_SNDBUFSZ;
+#else
+    tcp_sndbufsz = PR_TUNABLE_SNDBUFSZ;
+#endif /* PR_TUNABLE_SNDBUFSZ */
 
     pr_log_debug(DEBUG3, "getprotobyname error for 'tcp': %s", strerror(errno));
     pr_log_debug(DEBUG4, "using default TCP receive/send buffer sizes");
+
+#ifndef PR_TUNABLE_XFER_BUFFER_SIZE
+  /* Choose the smaller of the two TCP buffer sizes as the overall transfer
+   * size (for use by the data transfer layer).
+   */
+   xfer_bufsz = tcp_sndbufsz < tcp_rcvbufsz ? tcp_sndbufsz : tcp_rcvbufsz;
+#else
+  xfer_bufsz = PR_TUNABLE_XFER_BUFFER_SIZE;
+#endif /* PR_TUNABLE_XFER_BUFFER_SIZE */
+
     return;
   }
 
