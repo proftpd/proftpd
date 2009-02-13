@@ -4092,9 +4092,16 @@ static int tls_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
 }
 
 static void tls_netio_install_ctrl(void) {
-  pr_netio_t *netio = tls_ctrl_netio ? tls_ctrl_netio :
-    (tls_ctrl_netio = pr_alloc_netio(session.pool ? session.pool :
-    permanent_pool));
+  pr_netio_t *netio;
+
+  if (tls_ctrl_netio) {
+    /* If we already have our ctrl netio, then it's been registered, and
+     * we don't need to do anything more.
+     */
+    return;
+  }
+
+  tls_ctrl_netio = netio = pr_alloc_netio(permanent_pool);
 
   netio->abort = tls_netio_abort_cb;
   netio->close = tls_netio_close_cb;
@@ -5270,6 +5277,17 @@ static void tls_mod_unload_ev(const void *event_data, void *user_data) {
 
     /* Unregister our NetIO handler for the control channel. */
     pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
+    if (tls_ctrl_netio) {
+      destroy_pool(tls_ctrl_netio->pool);
+      tls_ctrl_netio = NULL;
+    }
+
+    if (tls_data_netio) {
+      destroy_pool(tls_data_netio->pool);
+      tls_data_netio = NULL;
+    }
+
   }
 }
 #endif /* PR_SHARED_MODULE */
@@ -5308,7 +5326,12 @@ static void tls_sess_exit_ev(const void *event_data, void *user_data) {
   /* OpenSSL cleanup */
   tls_cleanup(0);
 
-  /* Done with the NetIO objects */
+  /* Done with the NetIO objects.  Note that we only really need to
+   * destroy the data channel NetIO object; the control channel NetIO
+   * object is allocated out of the permanent pool, in the daemon process,
+   * and thus we have a read-only copy.
+   */
+
   if (tls_ctrl_netio) {
     pr_unregister_netio(PR_NETIO_STRM_CTRL);
     destroy_pool(tls_ctrl_netio->pool);
@@ -5417,9 +5440,6 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
    * initialized.
    */
   tls_get_passphrases();
-}
-
-static void tls_startup_ev(const void *event_data, void *user_data) {
 
   /* Install our control channel NetIO handlers.  This is done here
    * specifically because we need to cache a pointer to the nstrm that
@@ -5459,7 +5479,6 @@ static int tls_init(void) {
 #endif /* PR_SHARED_MODULE */
   pr_event_register(&tls_module, "core.postparse", tls_postparse_ev, NULL);
   pr_event_register(&tls_module, "core.restart", tls_restart_ev, NULL);
-  pr_event_register(&tls_module, "core.startup", tls_startup_ev, NULL);
 
   return 0;
 }
