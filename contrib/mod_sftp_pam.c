@@ -2,7 +2,7 @@
  * ProFTPD: mod_sftp_pam -- a module which provides an SSH2
  *                          "keyboard-interactive" driver using PAM
  *
- * Copyright (c) 2008 TJ Saunders
+ * Copyright (c) 2008-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  * This is mod_sftp_pam, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_pam.c,v 1.1 2009-02-13 21:45:12 castaglia Exp $
+ * $Id: mod_sftp_pam.c,v 1.2 2009-02-13 23:43:43 castaglia Exp $
  * $Libraries: -lpam $
  */
 
