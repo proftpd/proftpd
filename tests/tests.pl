@@ -149,6 +149,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_rewrite)],
     },
 
+    't/modules/mod_sftp.t' => {
+      order => ++$order,
+      test_class => [qw(mod_sftp)],
+    },
+
     't/modules/mod_site_misc.t' => {
       order => ++$order,
       test_class => [qw(mod_site_misc)],
