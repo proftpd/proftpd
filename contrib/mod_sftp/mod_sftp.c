@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.3 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.4 2009-02-14 03:59:11 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1349,7 +1349,7 @@ static int sftp_sess_init(void) {
   /* Use our own "authenticated yet?" check. */
   set_auth_check(sftp_have_authenticated);
 
-  set_protocol_name("SFTP");
+  pr_session_set_protocol("ssh2");
   pr_cmd_set_handler(sftp_cmd_loop);
 
   return 0;

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.89 2008-12-16 23:43:55 castaglia Exp $
+ * $Id: log.c,v 1.90 2009-02-14 03:59:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -52,7 +52,7 @@ int syslog_sockfd = -1;
  * but I haven't been able to test them.
  */
 
-int log_wtmp(char *line, const char *name, const char *host,
+int log_wtmp(const char *line, const char *name, const char *host,
     pr_netaddr_t *ip) {
   struct stat buf;
   struct utmp ut;

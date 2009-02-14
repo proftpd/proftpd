@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.364 2009-02-12 22:32:01 castaglia Exp $
+ * $Id: main.c,v 1.365 2009-02-14 03:59:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -105,18 +105,6 @@ static int quiet     = 0;
 static int shutdownp = 0;
 static int syntax_check = 0;
 
-static const char *protocol_name = "FTP";
-
-/* This protocol_name_lc variable is used only by WtmpLog logging.  Newer
- * BSD variants require a name of "ftp" while other, non-BSD variants
- * prefer "ftpd".
- */
-#if (defined(BSD) && (BSD >= 199103))
-static const char *protocol_name_lc = "ftp";
-#else
-static const char *protocol_name_lc = "ftpd";
-#endif
-
 /* Command handling */
 static void cmd_loop(server_rec *, conn_t *);
 
@@ -192,7 +180,6 @@ void pr_cmd_set_handler(void (*handler)(server_rec *, conn_t *)) {
 }
 
 static void end_login_noexit(void) {
-  char wtmp_buf[PR_TUNABLE_BUFFER_SIZE];
 
   /* Clear the scoreboard entry. */
   if (ServerType == SERVER_STANDALONE) {
@@ -214,25 +201,14 @@ static void end_login_noexit(void) {
         strerror(errno));
   }
 
-  if (session.wtmp_log) {
-    memset(wtmp_buf, '\0', sizeof(wtmp_buf));
-  }
+  /* If session.user is set, we have a valid login. */
+  if (session.user &&
+      session.wtmp_log) {
+    const char *sess_ttyname;
 
-  /* If session.user is set, we have a valid login */
-  if (session.user) {
-#if (defined(BSD) && (BSD >= 199103))
-    snprintf(wtmp_buf, sizeof(wtmp_buf), "%s%ld", protocol_name_lc,
-      (long) (session.pid ? session.pid : getpid()));
-#else
-    snprintf(wtmp_buf, sizeof(wtmp_buf), "%s%d", protocol_name_lc,
-      (int) (session.pid ? session.pid : getpid()));
-#endif
-    wtmp_buf[sizeof(wtmp_buf) - 1] = '\0';
-
-    if (session.wtmp_log) {
-      log_wtmp(wtmp_buf, "", pr_netaddr_get_sess_remote_name(),
-        pr_netaddr_get_sess_remote_addr());
-    }
+    sess_ttyname = pr_session_get_ttyname(session.pool);
+    log_wtmp(sess_ttyname, "", pr_netaddr_get_sess_remote_name(),
+      pr_netaddr_get_sess_remote_addr());
   }
 
   /* These are necessary in order that cleanups associated with these pools
@@ -253,7 +229,8 @@ static void end_login_noexit(void) {
 
   if (!is_master ||
       (ServerType == SERVER_INETD && !syntax_check)) {
-    pr_log_pri(PR_LOG_INFO, "%s session closed.", protocol_name);
+    pr_log_pri(PR_LOG_INFO, "%s session closed.",
+      pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT));
   }
 
   log_closesyslog();
@@ -561,32 +538,6 @@ static long get_max_cmd_len(size_t buflen) {
   }
 
   return res;
-}
-
-int set_protocol_name(const char *name) {
-  register unsigned int i;
-  size_t namelen;
-  char *lc;
-
-  if (name == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  protocol_name = name;
-
-  /* Also make a lowercased version of the protocol name, for other logs
-   * (e.g. the WtmpLog).
-   */
-  namelen = strlen(name);
-  lc = pstrdup(permanent_pool, name);
-
-  for (i = 0; i < namelen; i++) {
-    lc[i] = tolower((int) lc[i]);
-  }
-
-  protocol_name_lc = lc;
-  return 0;
 }
 
 int pr_cmd_read(cmd_rec **res) {
@@ -1448,7 +1399,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     session.c->remote_name ? session.c->remote_name : "?",
     session.c->remote_addr ? pr_netaddr_get_ipstr(session.c->remote_addr) : "?",
     session.c->remote_port ? session.c->remote_port : 0);
-  pr_log_pri(PR_LOG_INFO, "%s session opened.", protocol_name);
+
+  pr_log_pri(PR_LOG_INFO, "%s session opened.",
+    pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT));
 
   send_session_banner(main_server);
 
@@ -1924,7 +1877,9 @@ static RETSIGTYPE sig_terminate(int signo) {
      */
     pr_trace_msg("signal", 9, "handling SIGSEGV (signal %d)", signo);
     pr_log_pri(PR_LOG_NOTICE, "ProFTPD terminating (signal %d)", signo);
-    pr_log_pri(PR_LOG_INFO, "%s session closed.", protocol_name);
+
+    pr_log_pri(PR_LOG_INFO, "%s session closed.",
+      pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT));
 
     /* Restore the default signal handler. */
 #ifdef PR_DEVEL_STACK_TRACE

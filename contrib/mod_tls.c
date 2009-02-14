@@ -4460,7 +4460,9 @@ MODRET tls_auth(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
+  pr_session_set_protocol("ftps");
   session.rfc2228_mech = "TLS";
+
   return PR_HANDLED(cmd);
 }
 

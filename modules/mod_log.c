@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.88 2009-02-03 17:42:05 castaglia Exp $
+ * $Id: mod_log.c,v 1.89 2009-02-14 03:59:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -96,7 +96,8 @@ struct logfile_struc {
 #define META_DIR_PATH		24
 #define META_CMD_PARAMS		25
 #define META_RESPONSE_STR	26
-#define META_VERSION		27
+#define META_PROTOCOL		27
+#define META_VERSION		28
 
 /* For tracking the size of deleted files. */
 static off_t log_dele_filesz = 0;
@@ -134,6 +135,7 @@ static xaset_t			*log_set = NULL;
    %u			- Local user
    %V                   - DNS name of server serving request
    %v			- ServerName of server serving request
+   %{protocol}          - Current protocol (e.g. "ftp", "sftp", etc)
    %{version}           - ProFTPD version
 */
 
@@ -192,6 +194,13 @@ static void logformat(char *nickname, char *fmts) {
       arg = NULL;
       tmp++;
       for (;;) {
+
+        if (strncmp(tmp, "{protocol}", 10) == 0) {
+          add_meta(&outs, META_PROTOCOL, 0);
+          tmp += 10;
+          *outs++ = *tmp;
+          continue;
+        }
 
         if (strncmp(tmp, "{version}", 9) == 0) {
           add_meta(&outs, META_VERSION, 0);
@@ -999,6 +1008,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
     }
+
+    case META_PROTOCOL:
+      argp = arg;
+      sstrncpy(argp, pr_session_get_protocol(0), sizeof(arg));
+      m++;
+      break;
 
     case META_VERSION:
       argp = arg;
