@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.69 2009-02-12 05:04:02 castaglia Exp $
+ * $Id: auth.c,v 1.70 2009-02-14 23:35:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -693,6 +693,44 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
 
   else if (MODRET_ISERROR(mr))
     res = MODRET_ERROR(mr);
+
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
+  }
+
+  return res;
+}
+
+int pr_auth_authorize(pool *p, const char *name) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
+  module *m = NULL;
+  int res = PR_AUTH_DISABLEDPWD;
+
+  cmd = make_cmd(p, 1, name);
+
+  if (auth_tab) {
+
+    /* Fetch the specific module to be used for authenticating this user. */
+    void *v = pr_table_get(auth_tab, name, NULL);
+    if (v) {
+      m = *((module **) v);
+
+      pr_trace_msg(trace_channel, 4,
+        "using module 'mod_%s.c' from authcache to authorize user '%s'",
+        m->name, name);
+    }
+  }
+
+  mr = dispatch_auth(cmd, "authorize", m ? &m : NULL);
+
+  if (MODRET_ISHANDLED(mr)) {
+    res = PR_AUTH_OK;
+
+  } else if (MODRET_ISERROR(mr)) {
+    res = MODRET_ERROR(mr);
+  }
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.36 2008-03-19 20:59:30 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.37 2009-02-14 23:35:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -589,6 +589,67 @@ MODRET pw_auth(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+MODRET pw_authz(cmd_rec *cmd) {
+
+#ifdef HAVE_LOGINRESTRICTIONS
+  int code = 0;
+  char *reason = NULL;
+#endif
+
+  /* XXX Any other implementations here? */
+
+#ifdef HAVE_LOGINRESTRICTIONS
+  /* Check for account login restrictions and such using AIX-specific
+   * functions.
+   */
+  PRIVS_ROOT
+  if (loginrestrictions(cmd->argv[0], S_RLOGIN, NULL, &reason) != 0) {
+    PRIVS_RELINQUISH
+
+    if (reason &&
+        *reason) {
+      pr_log_auth(LOG_WARNING, "login restricted for user '%s': %.100s",
+        cmd->argv[0], reason);
+    }
+
+    pr_log_debug(DEBUG2, "AIX loginrestrictions() failed for user '%s': %s",
+      cmd->argv[0], strerror(errno));
+
+    return PR_DECLINED(cmd);
+  }
+
+  code = passwdexpired(cmd->argv[0], &reason);
+  PRIVS_RELINQUISH
+
+  switch (code) {
+    case 0:
+      /* Password not expired for user */
+      break;
+
+    case 1:
+      /* Password expired and needs to be changed */
+      pr_log_auth(LOG_WARNING, "password expired for user '%s': %.100s",
+        cmd->argv[0], reason);
+      return PR_DECLINED(cmd);
+
+    case 2:
+      /* Password expired, requires sysadmin to change it */
+      pr_log_auth(LOG_WARNING,
+        "password expired for user '%s', requires sysadmin intervention: "
+        "%.100s", cmd->argv[0], reason);
+      return PR_DECLINED(cmd);
+
+    default:
+      /* Other error */
+      pr_log_auth(LOG_WARNING, "AIX passwdexpired() failed for user '%s': "
+        "%.100s", cmd->argv[0], reason);
+      return PR_DECLINED(cmd);
+  }
+#endif /* !HAVE_LOGINRESTRICTIONS */
+
+  return PR_HANDLED(cmd);
+}
+
 /* cmd->argv[0] = hashed password
  * cmd->argv[1] = user
  * cmd->argv[2] = cleartext
@@ -597,6 +658,8 @@ MODRET pw_auth(cmd_rec *cmd) {
 MODRET pw_check(cmd_rec *cmd) {
   const char *cpw = cmd->argv[0];
   const char *pw = cmd->argv[2];
+  modret_t *mr = NULL;
+  cmd_rec *cmd2 = NULL;
 
 #ifdef PR_USE_SIA
   SIAENTITY *ent = NULL;
@@ -604,11 +667,6 @@ MODRET pw_check(cmd_rec *cmd) {
   char *info[2];
   struct passwd *pwd;
   char *user = NULL;
-#endif
-
-#ifdef HAVE_LOGINRESTRICTIONS
-  int code = 0;
-  char *reason = NULL;
 #endif
 
 #ifdef COMSEC
@@ -676,21 +734,19 @@ MODRET pw_check(cmd_rec *cmd) {
    * http://cygwin.com/cygwin-ug-net/ntsec.html#NTSEC-SETUID
    */
   if (GetVersion() < 0x80000000) {
-    cmd_rec *tmp_cmd = NULL;
-    modret_t *mr = NULL;
     struct passwd *pwent = NULL;
     HANDLE token;
 
     /* A struct passwd * is needed.  To look one up via pw_getpwnam(), though,
      * we'll need a cmd_rec.
      */
-    tmp_cmd = pr_cmd_alloc(cmd->tmp_pool, 1, cmd->argv[1]);
+    cmd2 = pr_cmd_alloc(cmd->tmp_pool, 1, cmd->argv[1]);
 
     /* pw_getpwnam() returns a MODRET, so we need to handle that.  Yes, this
      * might have been easier if we'd used pr_auth_getpwnam(), but that would
      * dispatch through other auth modules, which is _not_ what we want.
      */
-    mr = pw_getpwnam(tmp_cmd);
+    mr = pw_getpwnam(cmd2);
 
     /* Note: we don't handle the case where pw_getpwnam() returns anything
      * other than HANDLED at the moment.
@@ -716,55 +772,15 @@ MODRET pw_check(cmd_rec *cmd) {
   } else
 # endif /* CYGWIN */
 
-# ifdef HAVE_LOGINRESTRICTIONS
+  /* Call pw_authz here, to make sure the user is authorized to login. */
 
-  /* Check for account login restrictions and such using AIX-specific
-   * functions.
-   */
-  PRIVS_ROOT
-  if (loginrestrictions(cmd->argv[1], S_RLOGIN, NULL, &reason) != 0) {
-    PRIVS_RELINQUISH
+  if (cmd2 == NULL)
+    cmd2 = pr_cmd_alloc(cmd->tmp_pool, 1, cmd->argv[1]);
 
-    if (reason &&
-        *reason) {
-      pr_log_auth(LOG_WARNING, "login restricted for user '%s': %.100s",
-        cmd->argv[1], reason);
-    }
-
-    pr_log_debug(DEBUG2, "AIX loginrestrictions() failed for user '%s': %s",
-      cmd->argv[1], strerror(errno));
-
+  mr = pw_authz(cmd2);
+  if (MODRET_ISDECLINED(mr)) {
     return PR_DECLINED(cmd);
   }
-
-  code = passwdexpired(cmd->argv[1], &reason);
-  PRIVS_RELINQUISH
-
-  switch (code) {
-    case 0:
-      /* Password not expired for user */
-      break;
-
-    case 1:
-      /* Password expired and needs to be changed */
-      pr_log_auth(LOG_WARNING, "password expired for user '%s': %.100s",
-        cmd->argv[1], reason);
-      return PR_DECLINED(cmd);
-
-    case 2:
-      /* Password expired, requires sysadmin to change it */
-      pr_log_auth(LOG_WARNING,
-        "password expired for user '%s', requires sysadmin intervention: "
-        "%.100s", cmd->argv[1], reason);
-      return PR_DECLINED(cmd);
-
-    default:
-      /* Other error */
-      pr_log_auth(LOG_WARNING, "AIX passwdexpired() failed for user '%s': "
-        "%.100s", cmd->argv[1], reason);
-      return PR_DECLINED(cmd);
-  }
-# endif /* !HAVE_LOGINRESTRICTIONS */
 
   if (strcmp(crypt(pw, cpw), cpw) != 0) {
     return PR_DECLINED(cmd);
@@ -1042,6 +1058,7 @@ static authtable auth_unix_authtab[] = {
   { 0,  "getgrnam",     pw_getgrnam },
   { 0,  "getgrgid",     pw_getgrgid },
   { 0,  "auth",         pw_auth	},
+  { 0,  "authorize",	pw_authz },
   { 0,  "check",	pw_check },
   { 0,  "uid2name",	pw_uid2name },
   { 0,  "gid2name",	pw_gid2name },

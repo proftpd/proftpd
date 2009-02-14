@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-hostbased.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: auth-hostbased.c,v 1.3 2009-02-14 23:35:04 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -170,6 +170,21 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, const char *user,
       "failed to verify '%s' signature on hostbased auth request for "
       "user '%s', host %s", hostkey_algo, user, host_fqdn);
     *send_userauth_fail = TRUE;
+    return 0;
+  }
+
+  /* Make sure the user is authorized to login.  Normally this is checked
+   * as part of the password verification process, but in the case of
+   * hostbased authentication, there is no password to verify.
+   */
+
+  if (pr_auth_authorize(pkt->pool, user) != PR_AUTH_OK) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "authentication for user '%s' failed: User not authorized", user);
+    pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): User not authorized "
+      "for login", user);
+    *send_userauth_fail = TRUE;
+    errno = EACCES;
     return 0;
   }
 
