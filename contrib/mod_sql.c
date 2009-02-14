@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.152 2009-02-14 03:59:10 castaglia Exp $
+ * $Id: mod_sql.c,v 1.153 2009-02-14 05:01:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -112,7 +112,7 @@ static off_t sql_dele_filesz = 0;
 static char *sql_prepare_where(int, cmd_rec *, int, ...);
 #define SQL_PREPARE_WHERE_FL_NO_TAGS	0x00001
 
-static char *resolve_long_tag(cmd_rec *, char *);
+static const char *resolve_long_tag(cmd_rec *, char *);
 static int resolve_numeric_tag(cmd_rec *, char *);
 static char *resolve_short_tag(cmd_rec *, char);
 
@@ -823,7 +823,7 @@ static char *sql_prepare_where(int flags, cmd_rec *cmd, int cnt, ...) {
 
           tag = pstrndup(cmd->tmp_pool, query, (tmp - query));
           if (tag) {
-            str = resolve_long_tag(cmd, tag);
+            str = (char *) resolve_long_tag(cmd, tag);
             if (!str)
               str = pstrdup(cmd->tmp_pool, "");
 
@@ -1706,7 +1706,7 @@ MODRET sql_post_retr(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
-static char *resolve_long_tag(cmd_rec *cmd, char *tag) {
+static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
 
   if (strcmp(tag, "protocol") == 0) {
     return pr_session_get_protocol(0);
@@ -2151,7 +2151,7 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name) {
               esc_arg = cmd->argv[num+2];
 
             } else {
-              argp = resolve_long_tag(cmd, tag);
+              argp = (char *) resolve_long_tag(cmd, tag);
               if (argp == NULL) {
                 return PR_ERROR_MSG(cmd, MOD_SQL_VERSION,
                   "malformed reference %{?} in query");
