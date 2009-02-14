@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: session.c,v 1.1 2009-02-14 03:59:11 castaglia Exp $
+ * $Id: session.c,v 1.2 2009-02-14 06:02:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -74,13 +74,20 @@ int pr_session_set_protocol(const char *sess_proto) {
   return res;
 }
 
+static const char *sess_ttyname = NULL;
+
 const char *pr_session_get_ttyname(pool *p) {
-  char sess_ttyname[32];
+  char ttybuf[32];
   const char *sess_proto, *tty_proto = NULL;
 
   if (p == NULL) {
     errno = EINVAL;
     return NULL;
+  }
+
+  if (sess_ttyname) {
+    /* Return the cached name. */
+    return pstrdup(p, sess_ttyname);
   }
 
   sess_proto = pr_table_get(session.notes, "protocol", NULL);
@@ -96,11 +103,13 @@ const char *pr_session_get_ttyname(pool *p) {
     } else if (strcmp(sess_proto, "ssh2") == 0 ||
                strcmp(sess_proto, "sftp") == 0 ||
                strcmp(sess_proto, "scp") == 0) {
-#if (defined(BSD) && (BSD >= 199103))
+
+      /* Just use the plain "ssh" string for the tty name for these cases. */
       tty_proto = "ssh";
-#else
-      tty_proto = "sshd";
-#endif
+
+      /* Cache the originally constructed tty name for any later retrievals. */
+      sess_ttyname = pstrdup(session.pool, tty_proto);
+      return pstrdup(p, sess_ttyname);
     }
   }
 
@@ -112,15 +121,17 @@ const char *pr_session_get_ttyname(pool *p) {
 #endif
   }
 
-  memset(sess_ttyname, '\0', sizeof(sess_ttyname));
+  memset(ttybuf, '\0', sizeof(ttybuf));
 #if (defined(BSD) && (BSD >= 199103))
-  snprintf(sess_ttyname, sizeof(sess_ttyname), "%s%ld", tty_proto,
+  snprintf(ttybuf, sizeof(ttybuf), "%s%ld", tty_proto,
     (long) (session.pid ? session.pid : getpid()));
 #else
-  snprintf(sess_ttyname, sizeof(sess_ttyname), "%s%d", tty_proto,
+  snprintf(ttybuf, sizeof(ttybuf), "%s%d", tty_proto,
     (int) (session.pid ? session.pid : getpid()));
 #endif
-  sess_ttyname[sizeof(sess_ttyname)-1] = '\0';
+
+  /* Cache the originally constructed tty name for any later retrievals. */
+  sess_ttyname = pstrdup(session.pool, ttybuf);
 
   return pstrdup(p, sess_ttyname);
 }
