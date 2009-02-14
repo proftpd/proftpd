@@ -1630,6 +1630,9 @@ static void wrap2_mod_unload_ev(const void *event_data, void *user_data) {
       destroy_pool(wrap2_pool);
       wrap2_pool = NULL;
     }
+
+    close(wrap2_logfd);
+    wrap2_logfd = -1;
   }
 }
 

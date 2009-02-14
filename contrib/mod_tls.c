@@ -5290,6 +5290,8 @@ static void tls_mod_unload_ev(const void *event_data, void *user_data) {
       tls_data_netio = NULL;
     }
 
+    close(tls_logfd);
+    tls_logfd = -1;
   }
 }
 #endif /* PR_SHARED_MODULE */

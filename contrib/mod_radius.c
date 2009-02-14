@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_radius -- a module for RADIUS authentication and accounting
  *
- * Copyright (c) 2001-2008 TJ Saunders
+ * Copyright (c) 2001-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.47 2008-04-04 17:47:50 castaglia Exp $
+ * $Id: mod_radius.c,v 1.48 2009-02-14 22:33:05 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9"
@@ -3186,6 +3186,10 @@ static void radius_mod_unload_ev(const void *event_data, void *user_data) {
       destroy_pool(radius_pool);
       radius_pool = NULL;
     }
+
+    close(radius_logfd);
+    radius_logfd = -1;
+    radius_logname = NULL;
   }
 }
 #endif /* PR_SHARED_MODULE */

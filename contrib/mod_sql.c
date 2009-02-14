@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.153 2009-02-14 05:01:13 castaglia Exp $
+ * $Id: mod_sql.c,v 1.154 2009-02-14 22:33:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4651,6 +4651,9 @@ static void sql_mod_unload_ev(const void *event_data, void *user_data) {
     sql_backends = NULL;
 
     pr_event_unregister(&sql_module, NULL, NULL);
+
+    close(sql_logfd);
+    sql_logfd = -1;
   }
 }
 

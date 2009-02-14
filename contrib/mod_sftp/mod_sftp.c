@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.4 2009-02-14 03:59:11 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.5 2009-02-14 22:33:05 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1080,6 +1080,9 @@ static void sftp_mod_unload_ev(const void *event_data, void *user_data) {
 
     destroy_pool(sftp_pool);
     sftp_pool = NULL;
+
+    close(sftp_logfd);
+    sftp_logfd = -1;
   }
 }
 #endif
