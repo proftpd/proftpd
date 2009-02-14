@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: auth.c,v 1.3 2009-02-14 05:06:36 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -261,6 +261,7 @@ static int setup_env(pool *p, char *user) {
   int login_acl, i, res, show_symlinks = FALSE;
   struct stat st;
   char *default_chdir, *default_root, *home_dir;
+  const char *sess_ttyname = NULL;
 
   pw = pr_auth_getpwnam(p, user);
 
@@ -353,11 +354,38 @@ static int setup_env(pool *p, char *user) {
   resolve_deferred_dirs(main_server);
   fixup_dirs(main_server, CF_DEFER);
 
-/* XXX WtmpLog */
-/* XXX UseLastlog */
-/* XXX TransferLog? */
+  session.wtmp_log = TRUE;
+
+  c = find_config(main_server->conf, CONF_PARAM, "WtmpLog", FALSE);
+  if (c &&
+      *((unsigned char *) c->argv[0]) == FALSE) {
+    session.wtmp_log = FALSE;
+  }
 
   PRIVS_ROOT
+
+  if (session.wtmp_log) {
+    sess_ttyname = pr_session_get_ttyname(p);
+
+    log_wtmp(sess_ttyname, session.user, session.c->remote_name,
+      session.c->remote_addr);
+  }
+
+#ifdef PR_USE_LASTLOG
+  c = find_config(main_server->conf, CONF_PARAM, "UseLastlog", FALSE);
+  if (c &&
+      *((unsigned char *) c->argv[0]) == TRUE) {
+    if (sess_ttyname == NULL) {
+      sess_ttyname = pr_session_get_ttyname(p);
+    }
+
+    log_lastlog(pw->pw_uid, session.user, sess_ttyname,
+      session.c->remote_addr);
+  }
+#endif /* PR_USE_LASTLOG */
+
+/* XXX TransferLog? */
+
   res = set_groups(p, pw->pw_gid, session.gids);
   PRIVS_RELINQUISH
 

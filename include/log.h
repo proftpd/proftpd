@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.29 2009-02-14 03:59:11 castaglia Exp $
+ * $Id: log.h,v 1.30 2009-02-14 05:06:36 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -106,6 +106,11 @@ int log_lastlog(uid_t uid, const char *user_name, const char *tty,
   pr_netaddr_t *remote_addr);
 #endif /* PR_USE_LASTLOG */
 
+/* Note: Like lastlog.h, it would be tempting to split out the declaration of
+ * this function, and its necessary system headers, into a proftpd-specific
+ * wtmp.h file.  But that would collide with the system wtmp.h file on
+ * some systems.
+ */
 int log_wtmp(const char *, const char *, const char *, pr_netaddr_t *);
 
 /* file-based logging functions */
