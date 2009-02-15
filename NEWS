@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.992 2009-02-15 03:15:52 castaglia Exp $
+$Id: NEWS,v 1.993 2009-02-15 23:32:23 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -41,6 +41,9 @@ CVS
 - Added mod_sftp, mod_sftp_pam, and mod_sftp_sql to the contrib modules.
 - Bug 3185 - mod_wrap2 does not honour partial DNS name in access files.
   This appears to have been a regression caused by the fix for Bug#3178.
+- Bug 3186 - Support use of <IfClass> directive with mod_ban.  The
+  BanEngine directive can now appear in an <IfClass> section, in order
+  to exclude connection classes from mod_ban's rules.
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------

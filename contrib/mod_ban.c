@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.21 2009-02-11 20:03:34 castaglia Exp $
+ * $Id: mod_ban.c,v 1.22 2009-02-15 23:32:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#define MOD_BAN_VERSION			"mod_ban/0.5.3"
+#define MOD_BAN_VERSION			"mod_ban/0.5.4"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030101
@@ -133,7 +133,7 @@ struct ban_data {
 };
 
 static struct ban_data *ban_lists = NULL;
-static int ban_engine = FALSE;
+static int ban_engine = -1;
 static int ban_logfd = -1;
 static char *ban_log = NULL;
 static char *ban_mesg = NULL;
@@ -955,7 +955,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     return -1;
   }
 
-  if (!ban_engine) {
+  if (ban_engine != TRUE) {
     pr_ctrls_add_response(ctrl, MOD_BAN_VERSION " not enabled");
     return -1;
   }
@@ -1316,7 +1316,7 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     return -1;
   }
 
-  if (!ban_engine) {
+  if (ban_engine != TRUE) {
     pr_ctrls_add_response(ctrl, MOD_BAN_VERSION " not enabled");
     return -1;
   }
@@ -1457,7 +1457,7 @@ MODRET ban_pre_pass(cmd_rec *cmd) {
   char *user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
   char *rule_mesg = NULL;
 
-  if (!ban_engine)
+  if (ban_engine != TRUE)
     return PR_DECLINED(cmd);
 
   if (!user)
@@ -1516,13 +1516,32 @@ MODRET set_banengine(cmd_rec *cmd) {
   int bool = -1;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT);
 
   bool = get_boolean(cmd, 1);
   if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
-  ban_engine = bool;
+  if (ban_engine == -1) {
+    CHECK_CONF(cmd, CONF_ROOT);
+
+    /* If ban_engine has not been initialized yet, we can do it here. */
+    ban_engine = bool;
+
+  } else {
+    config_rec *c;
+
+    CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+    /* If we're here, then ban_engine has been initialized.  This probably
+     * means we're being called by mod_ifsession, in which case we will
+     * stash the BanEngine value in a config_rec.
+     */
+
+    c = add_config_param(cmd->argv[0], 1, NULL);
+    c->argv[0] = palloc(c->pool, sizeof(int));
+    *((int *) c->argv[0]) = bool;
+  }
+
   return PR_HANDLED(cmd);
 }
 
@@ -1819,7 +1838,7 @@ static void ban_anonrejectpasswords_ev(const void *event_data,
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
 
-  if (!ban_engine)
+  if (ban_engine != TRUE)
     return;
 
   ipstr = pr_netaddr_get_ipstr(c->remote_addr);
@@ -1836,7 +1855,7 @@ static void ban_clientconnectrate_ev(const void *event_data, void *user_data) {
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
 
-  if (!ban_engine)
+  if (ban_engine != TRUE)
     return;
 
   ipstr = pr_netaddr_get_ipstr(c->remote_addr);
@@ -1851,7 +1870,7 @@ static void ban_maxclientsperclass_ev(const void *event_data, void *user_data) {
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
 
-  if (!ban_engine)
+  if (ban_engine != TRUE)
     return;
 
   if (class) {
@@ -1869,7 +1888,7 @@ static void ban_maxclientsperhost_ev(const void *event_data, void *user_data) {
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
 
-  if (!ban_engine)
+  if (ban_engine != TRUE)
     return;
 
   ipstr = pr_netaddr_get_ipstr(c->remote_addr);
@@ -1885,7 +1904,7 @@ static void ban_maxclientsperuser_ev(const void *event_data, void *user_data) {
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
 
-  if (!ban_engine)
+  if (ban_engine != TRUE)
     return;
 
   ban_handle_event(BAN_EV_TYPE_MAX_CLIENTS_PER_USER, BAN_TYPE_USER,
@@ -1901,7 +1920,7 @@ static void ban_maxconnperhost_ev(const void *event_data, void *user_data) {
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
 
-  if (!ban_engine)
+  if (ban_engine != TRUE)
     return;
 
   ipstr = pr_netaddr_get_ipstr(c->remote_addr);
@@ -1917,7 +1936,7 @@ static void ban_maxhostsperuser_ev(const void *event_data, void *user_data) {
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
 
-  if (!ban_engine)
+  if (ban_engine != TRUE)
     return;
 
   ban_handle_event(BAN_EV_TYPE_MAX_HOSTS_PER_USER, BAN_TYPE_USER,
@@ -1933,7 +1952,7 @@ static void ban_maxloginattempts_ev(const void *event_data, void *user_data) {
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
 
-  if (!ban_engine)
+  if (ban_engine != TRUE)
     return;
 
   ipstr = pr_netaddr_get_ipstr(c->remote_addr);
@@ -1966,6 +1985,8 @@ static void ban_mod_unload_ev(const void *event_data, void *user_data) {
       (void) close(ban_logfd);
       ban_logfd = -1;
     }
+
+    ban_engine = -1;
   }
 }
 #endif /* PR_SHARED_MODULE */
@@ -1973,7 +1994,7 @@ static void ban_mod_unload_ev(const void *event_data, void *user_data) {
 static void ban_postparse_ev(const void *event_data, void *user_data) {
   struct ban_data *lists;
 
-  if (!ban_engine)
+  if (ban_engine != TRUE)
     return;
 
   /* Open the BanLog. */
@@ -2118,7 +2139,7 @@ static void ban_timeoutidle_ev(const void *event_data, void *user_data) {
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
 
-  if (!ban_engine)
+  if (ban_engine != TRUE)
     return;
 
   ban_handle_event(BAN_EV_TYPE_TIMEOUT_IDLE, BAN_TYPE_HOST, ipstr, tmpl);
@@ -2130,7 +2151,7 @@ static void ban_timeoutnoxfer_ev(const void *event_data, void *user_data) {
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
   
-  if (!ban_engine)
+  if (ban_engine != TRUE)
     return;
   
   ban_handle_event(BAN_EV_TYPE_TIMEOUT_NO_TRANSFER, BAN_TYPE_HOST, ipstr, tmpl);
@@ -2173,12 +2194,24 @@ static int ban_init(void) {
 }
 
 static int ban_sess_init(void) {
-  pool *tmp_pool = make_sub_pool(ban_pool);
+  config_rec *c;
+  pool *tmp_pool;
   const char *class, *remote_ip;
   char *rule_mesg = NULL;
 
-  if (!ban_engine)
+  if (ban_engine != TRUE)
     return 0;
+
+  /* Check to see if the BanEngine directive is set to 'off'. */
+  c = find_config(main_server->conf, CONF_PARAM, "BanEngine", FALSE);
+  if (c) {
+    int use_bans = *((int *) c->argv[0]);
+
+    if (!use_bans)
+      return 0;
+  }
+
+  tmp_pool = make_sub_pool(ban_pool);
 
   class = session.class ? session.class->cls_name : "";
   remote_ip = pr_netaddr_get_ipstr(session.c->remote_addr);
@@ -2197,7 +2230,7 @@ static int ban_sess_init(void) {
     ban_send_mesg(tmp_pool, "(none)", rule_mesg);
     destroy_pool(tmp_pool);
 
-    errno = EPERM;
+    errno = EACCES;
     return -1;
   }
 
@@ -2212,7 +2245,7 @@ static int ban_sess_init(void) {
     ban_send_mesg(tmp_pool, "(none)", rule_mesg); 
     destroy_pool(tmp_pool);
 
-    errno = EPERM;
+    errno = EACCES;
     return -1;
   }
 
