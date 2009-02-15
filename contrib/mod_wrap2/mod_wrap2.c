@@ -333,8 +333,22 @@ static char *wrap2_get_hostaddr(wrap2_host_t *host) {
 }
 
 static char *wrap2_get_hostname(wrap2_host_t *host) {
-  if (*host->name == '\0')
-    sstrncpy(host->name, session.c->remote_name, sizeof(host->name));
+  if (*host->name == '\0') {
+    int reverse_dns;
+
+    /* Manually tweak the UseReverseDNS setting, and any caches, so that
+     * we really do use the DNS name here if possible.
+     */
+    pr_netaddr_clear_cache();
+
+    reverse_dns = pr_netaddr_set_reverse_dns(TRUE);
+    session.c->remote_addr->na_have_dnsstr = FALSE;
+    sstrncpy(host->name, pr_netaddr_get_dnsstr(session.c->remote_addr),
+      sizeof(host->name));
+
+    pr_netaddr_set_reverse_dns(reverse_dns);
+    session.c->remote_addr->na_have_dnsstr = FALSE;
+  }
 
   return host->name;
 }
@@ -560,7 +574,11 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
 
     acl_addr = pr_netaddr_get_addr(wrap2_pool, tok, NULL);
     if (acl_addr == NULL) {
-      wrap2_log("unable to resolve address '%s'", tok);
+      if (wrap2_match_string(tok, wrap2_get_hostname(host))) {
+        return TRUE;
+      }
+
+      wrap2_log("unable to handle address '%s'", tok);
 
     } else {
       if (pr_netaddr_cmp(session.c->remote_addr, acl_addr) == 0) {

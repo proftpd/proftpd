@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.991 2009-02-13 21:51:56 castaglia Exp $
+$Id: NEWS,v 1.992 2009-02-15 03:15:52 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -39,6 +39,8 @@ CVS
 - Bug 3184 - When started in a chroot, proftpd fails to set transfer buffer
   size.
 - Added mod_sftp, mod_sftp_pam, and mod_sftp_sql to the contrib modules.
+- Bug 3185 - mod_wrap2 does not honour partial DNS name in access files.
+  This appears to have been a regression caused by the fix for Bug#3178.
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------
