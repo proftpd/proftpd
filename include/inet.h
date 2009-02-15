@@ -25,7 +25,7 @@
  */
 
 /* BSD socket manipulation tools.
- * $Id: inet.h,v 1.31 2009-02-12 20:13:41 castaglia Exp $
+ * $Id: inet.h,v 1.32 2009-02-15 00:27:34 castaglia Exp $
  */
 
 #ifndef PR_INET_H
@@ -127,9 +127,6 @@ typedef struct conn_struc {
   int local_port;
 
 } conn_t;
-
-/* XXX Find a better home in the headers for this function. */
-void pr_cmd_set_handler(void (*)(server_rec *, conn_t *)); 
 
 /* Prototypes */
 void pr_inet_clear(void);

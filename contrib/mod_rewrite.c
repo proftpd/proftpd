@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.36 2009-02-10 00:31:08 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.37 2009-02-15 00:27:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2261,6 +2261,8 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
         *((char **) push_array(list)) = NULL;
 
         cmd->argv = (char **) list->elts;
+
+        pr_cmd_clear_cache(cmd);
 
       } else
         rewrite_log("rewrite_fixup(): error processing RewriteRule");

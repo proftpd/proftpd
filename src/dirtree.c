@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.208 2009-02-13 16:04:10 castaglia Exp $
+ * $Id: dirtree.c,v 1.209 2009-02-15 00:27:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -547,43 +547,6 @@ void kludge_disable_umask(void) {
 
 void kludge_enable_umask(void) {
   _kludge_disable_umask = FALSE;
-}
-
-cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
-  pool *newpool = NULL;
-  cmd_rec *cmd = NULL;
-  va_list args;
-
-  newpool = make_sub_pool(p);
-  pr_pool_tag(newpool, "pr_cmd_alloc() subpool");
-
-  cmd = pcalloc(newpool, sizeof(cmd_rec));
-  cmd->argc = argc;
-  cmd->stash_index = -1;
-  cmd->pool = newpool;
-  cmd->tmp_pool = make_sub_pool(cmd->pool);
-  pr_pool_tag(cmd->tmp_pool, "pr_cmd_alloc() tmp pool");
-
-  if (argc) {
-    register unsigned int i = 0;
-
-    cmd->argv = pcalloc(newpool, sizeof(void *) * (argc + 1));
-    va_start(args, argc);
-
-    for (i = 0; i < argc; i++)
-      cmd->argv[i] = (void *) va_arg(args, char *);
-
-    va_end(args);
-
-    cmd->argv[argc] = NULL;
-  }
-
-  /* This table will not contain that many entries, so a low number
-   * of chains should suffice.
-   */
-  cmd->notes = pr_table_nalloc(cmd->pool, 0, 8);
-
-  return cmd;
 }
 
 /* Adds a config_rec to the specified set */

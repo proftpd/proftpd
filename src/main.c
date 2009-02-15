@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.365 2009-02-14 03:59:11 castaglia Exp $
+ * $Id: main.c,v 1.366 2009-02-15 00:27:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -378,9 +378,12 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
       if (c->requires_auth && cmd_auth_chk && !cmd_auth_chk(cmd))
         return -1;
 
-      cmd->tmp_pool = make_sub_pool(cmd->pool);
+      if (cmd->tmp_pool == NULL) {
+        cmd->tmp_pool = make_sub_pool(cmd->pool);
+        pr_pool_tag(cmd->tmp_pool, "cmd_rec tmp pool");
+      }
 
-      cmdargstr = make_arg_str(cmd->tmp_pool, cmd->argc, cmd->argv);
+      cmdargstr = pr_cmd_get_displayable_str(cmd);
 
       if (cmd_type == CMD) {
 
@@ -466,6 +469,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
       }
 
       destroy_pool(cmd->tmp_pool);
+      cmd->tmp_pool = NULL;
     }
 
     if (!success) {

@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.71 2008-06-14 02:40:04 castaglia Exp $
+ * $Id: dirtree.h,v 1.72 2009-02-15 00:27:34 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -250,8 +250,6 @@ int pr_config_get_xfer_bufsz(void);
  * error.
  */
 unsigned int pr_config_set_id(const char *name);
-
-cmd_rec *pr_cmd_alloc(pool *, int, ...);
 
 void *get_param_ptr(xaset_t *, const char *, int);
 void *get_param_ptr_next(const char *, int);

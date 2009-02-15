@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.98 2009-01-22 00:30:14 castaglia Exp $
+ * $Id: support.c,v 1.99 2009-02-15 00:27:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -551,37 +551,6 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
   }
 
   return 0;
-}
-
-/* Make sure we don't display any sensitive information via argstr. Note:
- * make this a separate function in the future (get_full_cmd() or somesuch),
- * and have that function deal with creating a displayable string.  Once
- * RFC2228 support is added, PASS won't be the only command whose parameters
- * should not be displayed.
- */
-char *make_arg_str(pool *p, int argc, char **argv) {
-  char *res = "";
-
-  /* Check for "sensitive" commands. */
-  if (strcmp(argv[0], C_PASS) == 0 ||
-      strcmp(argv[0], C_ADAT) == 0) {
-    argc = 2;
-    argv[1] = "(hidden)";
-  }
-
-  if (argc > 0) {
-    while (argc--) {
-      if (*res)
-        res = pstrcat(p, res, " ", pr_fs_decode_path(p, *argv++), NULL);
-      else
-        res = pstrcat(p, res, pr_fs_decode_path(p, *argv++), NULL);
-    }
-
-  } else {
-    res = pstrdup(p, res);
-  }
-
-  return res;
 }
 
 /* "safe" memset() (code borrowed from OpenSSL).  This function should be
