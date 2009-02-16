@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.31 2008-06-05 08:01:39 castaglia Exp $
+ * $Id: support.h,v 1.32 2009-02-16 02:51:47 castaglia Exp $
  */
 
 #ifndef PR_SUPPORT_H
@@ -82,7 +82,6 @@ mode_t file_mode(char *);
 int file_exists(char *);
 int dir_exists(char *);
 int exists(char *);
-char *make_arg_str(pool *, int, char **);
 
 char *safe_token(char **);
 int check_shutmsg(time_t *, time_t *, time_t *, char *, size_t);
