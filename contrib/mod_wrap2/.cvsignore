@@ -6,5 +6,6 @@ autom4te.cache
 mod_wrap2.h
 .libs
 *.la
+*.lo
 *.o
 *~

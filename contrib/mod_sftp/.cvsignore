@@ -6,5 +6,6 @@ autom4te.cache
 mod_sftp.h
 .libs
 *.la
+*.lo
 *.o
 *~
