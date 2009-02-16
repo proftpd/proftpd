@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.3 2009-02-14 05:06:36 castaglia Exp $
+ * $Id: auth.c,v 1.4 2009-02-16 03:14:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -772,8 +772,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   /* Dispatch these as a PRE_CMDs, so that mod_delay's tactics can be used
    * to ameliorate any timing-based attacks.
    */
-  pr_cmd_dispatch_phase(cmd2, PRE_CMD, FALSE);
-  pr_cmd_dispatch_phase(cmd3, PRE_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0);
+  pr_cmd_dispatch_phase(cmd3, PRE_CMD, 0);
 
   if (auth_user) {
     /* Check to see if the client has requested a different user name in
@@ -785,11 +785,11 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
         "client used different user name '%s' in USERAUTH_REQUEST (was '%s'), "
         "disconnecting", user, auth_user);
 
-      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, FALSE);
-      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, FALSE);
+      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
 
-      pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, FALSE);
-      pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, FALSE);
+      pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
 
       return -1;
     }
@@ -809,11 +809,11 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
         "client used different service name '%s' in USERAUTH_REQUEST (was "
         "'%s'), disconnecting", *service, auth_service);
 
-      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, FALSE);
-      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, FALSE);
+      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
 
-      pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, FALSE);
-      pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, FALSE);
+      pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
 
       return -1;
     }
@@ -853,20 +853,20 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
      * queried.
      */
     if (send_userauth_methods() < 0) {
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, FALSE);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, FALSE);
-      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, FALSE);
+      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
 
-      pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, FALSE);
-      pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, FALSE);
+      pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
 
       return -1;
     }
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD, FALSE);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
     return 0;
 
@@ -880,20 +880,20 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       auth_attempts++;
 
       if (send_userauth_methods() < 0) {
-        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, FALSE);
-        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-        pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, FALSE);
-        pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, FALSE);
+        pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
 
-        pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, FALSE);
-        pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, FALSE);
+        pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
 
         return -1;
       }
 
-      pr_cmd_dispatch_phase(cmd, POST_CMD, FALSE);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+      pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
       return 0;
     }
@@ -908,20 +908,20 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       auth_attempts++;
 
       if (send_userauth_methods() < 0) {
-        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, FALSE);
-        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-        pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, FALSE);
-        pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, FALSE);
+        pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
 
-        pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, FALSE);
-        pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, FALSE);
+        pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
 
         return -1;
       }
 
-      pr_cmd_dispatch_phase(cmd, POST_CMD, FALSE);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+      pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
       return 0;
     }
@@ -936,20 +936,20 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       auth_attempts++;
 
       if (send_userauth_methods() < 0) {
-        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, FALSE);
-        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-        pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, FALSE);
-        pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, FALSE);
+        pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
 
-        pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, FALSE);
-        pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, FALSE);
+        pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
 
         return -1;
       }
 
-      pr_cmd_dispatch_phase(cmd, POST_CMD, FALSE);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+      pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
       return 0;
     }
@@ -964,20 +964,20 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       auth_attempts++;
 
       if (send_userauth_methods() < 0) {
-        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, FALSE);
-        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-        pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, FALSE);
-        pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, FALSE);
+        pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
 
-        pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, FALSE);
-        pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, FALSE);
+        pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
 
         return -1;
       }
 
-      pr_cmd_dispatch_phase(cmd, POST_CMD, FALSE);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+      pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
       return 0;
     }
@@ -985,14 +985,14 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   } else {
     auth_attempts++;
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, FALSE);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, FALSE);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
 
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, FALSE);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported authentication method '%s' requested", method);
@@ -1004,8 +1004,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
     auth_attempts++;
 
-    pr_cmd_dispatch_phase(cmd, res == 0 ? POST_CMD : POST_CMD_ERR, FALSE);
-    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, res == 0 ? POST_CMD : POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
     if (send_userauth_fail) {
       errno = xerrno;
@@ -1021,14 +1021,14 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   if (setup_env(pkt->pool, user) < 0) {
     auth_attempts++;
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, FALSE);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, FALSE);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
 
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, FALSE);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
 
     if (send_userauth_failure(NULL) < 0) {
       return -1;
@@ -1038,14 +1038,14 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   }
 
   if (send_userauth_success() < 0) {
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, FALSE);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, FALSE);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
 
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, FALSE);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
 
     return -1;
   }
@@ -1058,14 +1058,14 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "user '%s' authenticated via '%s' method", user, method);
 
-  pr_cmd_dispatch_phase(cmd, POST_CMD, FALSE);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
-  pr_cmd_dispatch_phase(cmd2, POST_CMD, FALSE);
-  pr_cmd_dispatch_phase(cmd2, LOG_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
+  pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
 
-  pr_cmd_dispatch_phase(cmd3, POST_CMD, FALSE);
-  pr_cmd_dispatch_phase(cmd3, LOG_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd3, POST_CMD, 0);
+  pr_cmd_dispatch_phase(cmd3, LOG_CMD, PR_CMD_DISPATCH_FL_CLEAR_RESPONSE);
 
   return 1;
 }

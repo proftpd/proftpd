@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.366 2009-02-15 00:27:34 castaglia Exp $
+ * $Id: main.c,v 1.367 2009-02-16 03:14:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -624,13 +624,16 @@ int pr_cmd_read(cmd_rec **res) {
   return 0;
 }
 
-int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int send_response) {
+int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
   char *cp = NULL;
   int success = 0;
   pool *resp_pool = NULL;
 
   cmd->server = main_server;
-  resp_list = resp_err_list = NULL;
+
+  if (flags & PR_CMD_DISPATCH_FL_CLEAR_RESPONSE) {
+    resp_list = resp_err_list = NULL;
+  }
 
   /* Get any previous pool that may be being used by the Response API.
    *
@@ -730,7 +733,7 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int send_response) {
         return -1;
     }
 
-    if (send_response) {
+    if (flags & PR_CMD_DISPATCH_FL_SEND_RESPONSE) {
       if (success == 1) {
         pr_response_flush(&resp_list);
 
@@ -747,7 +750,8 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int send_response) {
 }
 
 int pr_cmd_dispatch(cmd_rec *cmd) {
-  return pr_cmd_dispatch_phase(cmd, 0, TRUE);
+  return pr_cmd_dispatch_phase(cmd, 0,
+    PR_CMD_DISPATCH_FL_SEND_RESPONSE|PR_CMD_DISPATCH_FL_CLEAR_RESPONSE);
 }
 
 static cmd_rec *make_ftp_cmd(pool *p, char *buf, int flags) {

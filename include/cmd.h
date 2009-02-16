@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: cmd.h,v 1.1 2009-02-15 00:27:34 castaglia Exp $
+ * $Id: cmd.h,v 1.2 2009-02-16 03:14:02 castaglia Exp $
  */
 
 #ifndef PR_CMD_H
@@ -35,6 +35,8 @@ char *pr_cmd_get_displayable_str(cmd_rec *);
 int pr_cmd_read(cmd_rec **);
 int pr_cmd_dispatch(cmd_rec *);
 int pr_cmd_dispatch_phase(cmd_rec *, int, int);
+#define PR_CMD_DISPATCH_FL_SEND_RESPONSE	0x001
+#define PR_CMD_DISPATCH_FL_CLEAR_RESPONSE	0x002
 
 void pr_cmd_set_handler(void (*)(server_rec *, conn_t *));
 

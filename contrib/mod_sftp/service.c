@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: service.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: service.c,v 1.3 2009-02-16 03:14:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -53,14 +53,14 @@ static int read_service_req(struct ssh2_packet *pkt, char **service) {
     if (service)
       *service = pstrdup(service_pool, service_name);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
     return 0;
   }
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "client requested unsupported '%s' service", service_name);
 
-  pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
   return -1;
 }
 

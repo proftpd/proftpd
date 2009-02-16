@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: packet.c,v 1.3 2009-02-16 03:14:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -40,6 +40,8 @@
 
 #define SFTP_PACKET_IO_RD	5
 #define SFTP_PACKET_IO_WR	7
+
+extern pr_response_t *resp_list, *resp_err_list;
 
 static uint32_t packet_client_seqno = 0;
 static uint32_t packet_server_seqno = 0;
@@ -1080,6 +1082,9 @@ int sftp_ssh2_packet_handle(void) {
   }
 
   mesg_type = sftp_ssh2_packet_get_mesg_type(pkt);
+
+  pr_response_clear(&resp_list);
+  pr_response_clear(&resp_err_list);
 
   switch (mesg_type) {
     case SFTP_SSH2_MSG_KEXINIT:

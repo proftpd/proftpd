@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: channel.c,v 1.3 2009-02-16 03:14:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -401,7 +401,7 @@ static int read_channel_open(struct ssh2_packet *pkt, uint32_t *channel_id) {
   if (strcmp(channel_type, "session") != 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported channel type '%s' requested, denying", channel_type);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     return -1;
   }
 
@@ -409,11 +409,11 @@ static int read_channel_open(struct ssh2_packet *pkt, uint32_t *channel_id) {
       max_packetsz) == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error allocating channel");
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     return -1;
   }
 
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   return 0;
 }
 
@@ -438,7 +438,7 @@ static int handle_channel_close(struct ssh2_packet *pkt) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "no open channel for channel ID %lu", (unsigned long) channel_id);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     return -1;
   }
 
@@ -449,7 +449,7 @@ static int handle_channel_close(struct ssh2_packet *pkt) {
   chan->recvd_close = TRUE;
   destroy_channel(channel_id);
 
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   return 0;
 }
 
@@ -640,7 +640,7 @@ static int handle_channel_eof(struct ssh2_packet *pkt) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "no open channel for remote channel ID %lu", (unsigned long) channel_id);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     return -1;
   }
 
@@ -654,7 +654,7 @@ static int handle_channel_eof(struct ssh2_packet *pkt) {
     send_channel_done(pkt->pool, channel_id);
   }
 
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   return 0;
 }
 
@@ -882,7 +882,7 @@ static int handle_channel_req(struct ssh2_packet *pkt) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "no open channel for remote channel ID %lu", (unsigned long) channel_id);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     return -1;
   }
 
@@ -971,11 +971,11 @@ static int handle_channel_req(struct ssh2_packet *pkt) {
 
   if (!unsupported &&
       res < 0) {
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     return 0;
   }
 
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   return 0;
 }
 
@@ -997,7 +997,7 @@ static int handle_channel_window_adjust(struct ssh2_packet *pkt) {
   if (chan == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "no open channel for channel ID %lu", (unsigned long) channel_id);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     return -1;
   }
 
@@ -1012,7 +1012,7 @@ static int handle_channel_window_adjust(struct ssh2_packet *pkt) {
 
   drain_pending_channel_data(channel_id);
 
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   return 0;
 }
 

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: kex.c,v 1.3 2009-02-16 03:14:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1759,13 +1759,13 @@ static int handle_kex_dh(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 
   res = read_dh_init(pkt, kex);
   if (res < 0) {
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     destroy_pool(pkt->pool);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
   }
 
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   destroy_pool(pkt->pool);
 
   pr_trace_msg(trace_channel, 9, "writing DH_INIT message to client");
@@ -2245,13 +2245,13 @@ static int handle_kex_dh_gex(struct ssh2_packet *pkt, struct sftp_kex *kex,
 
   res = read_dh_gex(pkt, &min, &pref, &max, old_request);
   if (res < 0) {
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     destroy_pool(pkt->pool);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
   }
 
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   destroy_pool(pkt->pool);
 
   pkt = sftp_ssh2_packet_create(kex_pool);
@@ -2294,13 +2294,13 @@ static int handle_kex_dh_gex(struct ssh2_packet *pkt, struct sftp_kex *kex,
 
   res = read_dh_gex_init(pkt, kex);
   if (res < 0) {
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     destroy_pool(pkt->pool);
     return -1;
   }
 
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   destroy_pool(pkt->pool);
 
   if (finish_dh(kex) < 0) {
@@ -2567,13 +2567,13 @@ static int handle_kex_rsa(struct sftp_kex *kex) {
 
   res = read_kexrsa_secret(pkt, kex);
   if (res < 0) {
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     destroy_pool(pkt->pool);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
   }
 
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   destroy_pool(pkt->pool);
 
   pkt = sftp_ssh2_packet_create(kex_pool);
@@ -2630,14 +2630,14 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
   res = read_kexinit(pkt, kex);
   if (res < 0) {
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     destroy_kex(kex);
     destroy_pool(pkt->pool);
     return -1;
   }
 
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   destroy_pool(pkt->pool);
 
   pr_trace_msg(trace_channel, 9,
@@ -2814,7 +2814,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "NEWKEYS"));
   cmd->arg = "";
 
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, FALSE);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
   pr_trace_msg(trace_channel, 9, "sending NEWKEYS message to client");
 
