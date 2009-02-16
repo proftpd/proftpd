@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.3 2009-02-14 03:59:11 castaglia Exp $
+ * $Id: fxp.c,v 1.4 2009-02-16 00:44:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3577,37 +3577,12 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   flags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
   /* Check for any unsupported flags. */
-  if (fxp_session->client_version == 4) {
-    if (flags & SSH2_FXF_TEXT) {
-      uint32_t status_code;
-
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "client requested unsupported TEXT flag in OPEN command, rejecting");
-
-      status_code = SSH2_FX_OP_UNSUPPORTED;
-
-      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
-        (unsigned long) status_code, fxp_strerror(status_code));
-
-      fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
-        fxp_strerror(status_code), NULL);
-
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, FALSE);
-
-      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-      resp->payload = ptr;
-      resp->payload_sz = (bufsz - buflen);
-
-      return fxp_packet_write(resp);
-    }
-
-  } else if (fxp_session->client_version > 4) {
+  if (fxp_session->client_version > 4) {
     /* XXX If O_SHLOCK and O_EXLOCK are defined, as they are on OSX, the
      * ACCESS_READ_LOCK and ACCESS_WRITE_LOCK flags should be supported.
      */
 
-    if ((flags & SSH2_FXF_ACCESS_TEXT_MODE) ||
-        (flags & SSH2_FXF_ACCESS_READ_LOCK) ||
+    if ((flags & SSH2_FXF_ACCESS_READ_LOCK) ||
         (flags & SSH2_FXF_ACCESS_WRITE_LOCK) ||
         (flags & SSH2_FXF_ACCESS_DELETE_LOCK)) {
       uint32_t status_code;
