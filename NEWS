@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.993 2009-02-15 23:32:23 castaglia Exp $
+$Id: NEWS,v 1.994 2009-02-16 18:32:11 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -44,6 +44,7 @@ CVS
 - Bug 3186 - Support use of <IfClass> directive with mod_ban.  The
   BanEngine directive can now appear in an <IfClass> section, in order
   to exclude connection classes from mod_ban's rules.
+- Bug 3188 - prxs broken due to typo.
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------
