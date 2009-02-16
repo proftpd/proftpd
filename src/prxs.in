@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
 #
-#  $Id: prxs.in,v 1.3 2009-02-16 18:32:11 castaglia Exp $
+#  $Id: prxs.in,v 1.4 2009-02-16 18:45:41 castaglia Exp $
 # ---------------------------------------------------------------------------
 
 use strict;
@@ -52,8 +52,13 @@ if (!defined($ENV{LIBTOOL})) {
 my $shell = q(@SHELL@);
 
 my $opts = {};
-GetOptions($opts, 'c|compile', 'i|install', 'd|clean', 'name=s', 'D=s@',
-  'I=s@', 'L=s@', 'l=s@', 'W=s@');
+GetOptions($opts, 'c|compile', 'i|install', 'd|clean', 'h|help', 'name=s',
+  'D=s@', 'I=s@', 'L=s@', 'l=s@', 'W=s@');
+
+if ($opts->{h}) {
+  usage();
+  exit 0;
+}
 
 # Make sure we can query proftpd to find out its list of installed modules.
 # Unless we see mod_dso listed, there's no point in compiling a shared
@@ -200,4 +205,54 @@ sub run_cmds {
       exit 1;
     }
   }
+}
+
+sub usage {
+  my $prog = basename($0);
+
+  print STDOUT <<EOU;
+
+usage: $prog <action> <opts> <source files>
+
+Actions:
+
+ -c, --compile          Compiles the listed .c source files into a proftpd
+                        DSO module.
+
+ -i, --install          Installs a compiled proftpd DSO module into the
+                        directory where proftpd expects to find loadable
+                        DSO modules.
+
+ -d, --clean            Removes any generated files, returning the build
+                        directory to a clean state.
+
+Options:
+
+ -h, --help             Displays this message.
+
+ -n, --name             Tells prxs the name of the module being compiled.
+                        By default, prxs determines the module name from
+                        the list of .c files listed, expecting to see a
+                        "mod_\$name.c" file.
+
+ -D key                 Passes these macros through to the compilation step.
+ -D key=value           Note that the space before the key is important.
+
+ -I includedir          Specify additional include file search directories.
+                        Note that the space before the directory is important.
+
+ -L libdir              Specify additional library file search directories.
+                        Note that the space before the directory is important.
+
+ -l library             Specify additional libraries for linking.
+                        Note that the space before the library name is important.
+
+At least one of the above actions must be specified when using prxs.  More
+than one action can be specified at the same time.
+
+To use prxs all in one step, you could do:
+
+  prxs -c -i -d mod_custom.c
+
+EOU
 }
