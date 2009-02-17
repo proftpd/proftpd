@@ -47,6 +47,16 @@ files.
       public keys for user and hostbased authentication.  More information
       is available in doc/contrib/mod_sftp_sql.html.
 
+  + New configuration directives:
+
+    TLSPKCS12File
+
+      The TLSPKCS12File directive of the mod_tls module is used to
+      configure mod_tls to use the certificate and private key contained
+      in the indicated PKCS#12 file.  Some sites already use PKCS#12 files
+      for containing their other certificates, and thus find it useful to
+      have PKCS#12 support in mod_tls.
+
   + Changed configuration directives:
 
     IdentLookups
@@ -77,4 +87,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-02-13 21:51:56 $
+Last Updated: $Date: 2009-02-17 05:59:08 $
