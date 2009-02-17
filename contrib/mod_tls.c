@@ -41,6 +41,7 @@
 #include <openssl/evp.h>
 #include <openssl/x509v3.h>
 #include <openssl/err.h>
+#include <openssl/pkcs12.h>
 #include <openssl/rand.h>
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 # include <openssl/engine.h>
@@ -53,7 +54,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.2.1"
+#define MOD_TLS_VERSION		"mod_tls/2.3"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001 
@@ -329,6 +330,13 @@ typedef struct tls_pkey_obj {
   char *dsa_pkey;
   void *dsa_pkey_ptr;
 
+  /* Used for stashing the password for a PKCS12 file, which should
+   * contain a certificate.  Any passphrase for the private key for that
+   * certificate should be in one of the above RSA/DSA buffers.
+   */
+  char *pkcs12_passwd;
+  void *pkcs12_passwd_ptr;
+
   unsigned int flags;
 
   server_rec *server;
@@ -357,6 +365,7 @@ static char *tls_passphrase_provider = NULL;
 #define TLS_PASSPHRASE_TIMEOUT		10
 #define TLS_PASSPHRASE_FL_RSA_KEY	0x0001
 #define TLS_PASSPHRASE_FL_DSA_KEY	0x0002
+#define TLS_PASSPHRASE_FL_PKCS12_PASSWD	0x0004
 
 #define TLS_PROTO_SSL_V3		0x0001
 #define TLS_PROTO_TLS_V1		0x0002
@@ -396,6 +405,7 @@ static char *tls_cipher_suite = NULL;
 static char *tls_crl_file = NULL, *tls_crl_path = NULL;
 static char *tls_dhparam_file = NULL;
 static char *tls_dsa_cert_file = NULL, *tls_dsa_key_file = NULL;
+static char *tls_pkcs12_file = NULL;
 static char *tls_rsa_cert_file = NULL, *tls_rsa_key_file = NULL;
 static char *tls_rand_file = NULL;
 
@@ -447,6 +457,9 @@ static void tls_fatal_error(long, int);
 static const char *tls_get_errors(void);
 static char *tls_get_page(size_t, void **);
 static size_t tls_get_pagesz(void);
+static int tls_get_passphrase(server_rec *, const char *, const char *,
+  char *, size_t, int);
+
 static char *tls_get_subj_name(void);
 
 static int tls_log(const char *, ...)
@@ -893,7 +906,7 @@ struct tls_pkey_data {
   server_rec *s;
   int flags;
   char *buf;
-  size_t buflen;
+  size_t buflen, bufsz;
   const char *prompt;
 };
 
@@ -1045,8 +1058,16 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
     nbuf[sizeof(nbuf)-1] = '\0';
     stdin_argv[1] = pstrcat(tmp_pool, s->ServerName, ":", nbuf, NULL);
 
-    stdin_argv[2] = pstrdup(tmp_pool, flags & TLS_PASSPHRASE_FL_RSA_KEY ?
-      "RSA" : "DSA");
+    if (flags & TLS_PASSPHRASE_FL_RSA_KEY) {
+      stdin_argv[2] = pstrdup(tmp_pool, "RSA");
+
+    } else if (flags & TLS_PASSPHRASE_FL_DSA_KEY) {
+      stdin_argv[2] = pstrdup(tmp_pool, "DSA");
+
+    } else if (flags & TLS_PASSPHRASE_FL_PKCS12_PASSWD) {
+      stdin_argv[2] = pstrdup(tmp_pool, "PKCS12");
+    }
+
     stdin_argv[3] = NULL;
 
     PRIVS_ROOT
@@ -1247,11 +1268,13 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
       }
 
       pwlen = strlen(buf);
-      if (pwlen < 1)
+      if (pwlen < 1) {
         fprintf(stderr, "Error: passphrase must be at least one character\n");
 
-      else {
-        sstrncpy(pdata->buf, buf, pdata->buflen);
+      } else {
+        sstrncpy(pdata->buf, buf, pdata->bufsz);
+        pdata->buflen = pwlen;
+
         return pwlen;
       }
     }
@@ -1264,8 +1287,10 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
         tls_passphrase_provider, strerror(errno));
 
     } else {
-      sstrncpy(pdata->buf, buf, pdata->buflen);
-      return strlen(buf);
+      sstrncpy(pdata->buf, buf, pdata->bufsz);
+      pdata->buflen = strlen(buf);
+
+      return pdata->buflen;
     }
   }
 
@@ -1279,29 +1304,9 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
   return -1;
 }
 
-static int tls_get_passphrase(server_rec *s, const char *path,
-    const char *prompt, char *buf, size_t buflen, int flags) {
-  FILE *keyf;
-  EVP_PKEY *pkey = NULL;
-  int prompt_fd = -1;
-  struct tls_pkey_data pdata;
-  register unsigned int attempt;
+static int prompt_fd = -1;
 
-  /* Open an fp on the cert file. */
-  PRIVS_ROOT
-  keyf = fopen(path, "r");
-  PRIVS_RELINQUISH
-
-  if (!keyf) {
-    SYSerr(SYS_F_FOPEN, errno);
-    return -1;
-  }
-
-  pdata.s = s;
-  pdata.flags = flags;
-  pdata.buf = buf;
-  pdata.buflen = buflen;
-  pdata.prompt = prompt;
+static void set_prompt_fds(void) {
 
   /* Reconnect stderr to the term because proftpd connects stderr, earlier,
    * to the general stderr logfile.
@@ -1313,6 +1318,173 @@ static int tls_get_passphrase(server_rec *s, const char *path,
 
   dup2(STDERR_FILENO, prompt_fd);
   dup2(STDOUT_FILENO, STDERR_FILENO);
+}
+
+static void restore_prompt_fds(void) {
+  dup2(prompt_fd, STDERR_FILENO);
+  close(prompt_fd);
+  prompt_fd = -1;
+}
+
+static int tls_get_pkcs12_passwd(server_rec *s, FILE *fp, const char *prompt,
+    char *buf, size_t bufsz, int flags, struct tls_pkey_data *pdata) {
+  EVP_PKEY *pkey = NULL;
+  X509 *cert = NULL;
+  PKCS12 *p12 = NULL;
+  char *passwd = NULL;
+  int res, ok = FALSE;
+
+  p12 = d2i_PKCS12_fp(fp, NULL);
+  if (p12 != NULL) {
+
+    /* Check if a password is needed. */
+    res = PKCS12_verify_mac(p12, NULL, 0);
+    if (res == 1) {
+      passwd = NULL;
+
+    } else if (res == 0) {
+      res = PKCS12_verify_mac(p12, "", 0);
+      if (res == 1) {
+        passwd = "";
+      }
+    }
+
+    if (res == 0) {
+      register unsigned int attempt;
+
+      /* This PKCS12 file is password-protected; need to get the password
+       * from the admin.
+       */
+      for (attempt = 0; attempt < 3; attempt++) {
+        int len = -1;
+
+        /* Always handle signals in a loop. */
+        pr_signals_handle();
+
+        len = tls_passphrase_cb(buf, bufsz, 0, pdata);
+        if (len > 0) {
+          res = PKCS12_verify_mac(p12, buf, -1);
+          if (res == 1) {
+#if OPENSSL_VERSION_NUMBER >= 0x000905000L
+            /* Use the obtained password as additional entropy, ostensibly
+             * unknown to attackers who may be watching the network, for
+             * OpenSSL's PRNG.
+             *
+             * Human language gives about 2-3 bits of entropy per byte
+             * (as per RFC1750).
+             */
+            RAND_add(buf, pdata->buflen, pdata->buflen * 0.25);
+#endif
+
+            res = PKCS12_parse(p12, buf, &pkey, &cert, NULL);
+            if (res != 1) {
+              PKCS12_free(p12);
+              return -1;
+            }
+
+            ok = TRUE;
+            break;
+          }
+        }
+ 
+        ERR_clear_error();
+        fprintf(stderr, "\nWrong password for this PKCS12 file.  Please try again.\n");
+      }
+    } else {
+      res = PKCS12_parse(p12, passwd, &pkey, &cert, NULL);
+      if (res != 1) {
+        PKCS12_free(p12);
+        return -1;
+      }
+
+      ok = TRUE;
+    }
+
+  } else {
+    fprintf(stderr, "\nUnable to read PKCS12 file.\n");
+    return -1;
+  }
+
+  /* Now we should have an EVP_PKEY (which may or may not need a passphrase),
+   * and a cert.  We don't really care about the cert right now.  But we
+   * DO need to get the passphrase for the private key.  Do this by writing
+   * the key to a BIO, then calling tls_get_passphrase() for that BIO.
+   *
+   * It looks like OpenSSL's pkcs12 command-line tool does not allow
+   * passphrase-protected keys to be written into a PKCS12 structure;
+   * the key is decrypted first (hence, probably, the password protection 
+   * for the entire PKCS12 structure).  Can the same be assumed to be true
+   * for PKCS12 files created via other applications?
+   *
+   * For now, assume yes, that all PKCS12 files will have private keys which
+   * are not encrypted.  If this is found to NOT be the case, then we
+   * will need to write the obtained private key out to a BIO somehow,
+   * then call tls_get_passphrase() on that BIO, rather than on a path.
+   */
+
+  if (cert)
+    X509_free(cert);
+
+  if (pkey)
+    EVP_PKEY_free(pkey);
+
+  if (p12)
+    PKCS12_free(p12);
+
+  if (!ok) {
+#if OPENSSL_VERSION_NUMBER < 0x00908001
+    PEMerr(PEM_F_DEF_CALLBACK, PEM_R_PROBLEMS_GETTING_PASSWORD);
+#else
+    PEMerr(PEM_F_PEM_DEF_CALLBACK, PEM_R_PROBLEMS_GETTING_PASSWORD);
+#endif
+    return -1;
+  }
+
+  ERR_clear_error();
+  return res;
+}
+
+static int tls_get_passphrase(server_rec *s, const char *path,
+    const char *prompt, char *buf, size_t bufsz, int flags) {
+  FILE *keyf = NULL;
+  EVP_PKEY *pkey = NULL;
+  struct tls_pkey_data pdata;
+  register unsigned int attempt;
+
+  if (path) {
+    /* Open an fp on the cert file. */
+    PRIVS_ROOT
+    keyf = fopen(path, "r");
+    PRIVS_RELINQUISH
+
+    if (!keyf) {
+      SYSerr(SYS_F_FOPEN, errno);
+      return -1;
+    }
+  }
+
+  pdata.s = s;
+  pdata.flags = flags;
+  pdata.buf = buf;
+  pdata.buflen = 0;
+  pdata.bufsz = bufsz;
+  pdata.prompt = prompt;
+
+  set_prompt_fds();
+
+  if (flags & TLS_PASSPHRASE_FL_PKCS12_PASSWD) {
+    int res;
+
+    res = tls_get_pkcs12_passwd(s, keyf, prompt, buf, bufsz, flags, &pdata);
+
+    if (keyf)
+      fclose(keyf);
+
+    /* Restore the normal stderr logging. */
+    restore_prompt_fds();
+
+    return res;
+  }
 
   /* The user gets three tries to enter the correct passphrase. */
   for (attempt = 0; attempt < 3; attempt++) {
@@ -1324,18 +1496,23 @@ static int tls_get_passphrase(server_rec *s, const char *path,
     if (pkey)
       break;
 
-    fseek(keyf, 0, SEEK_SET);
+    if (keyf)
+      fseek(keyf, 0, SEEK_SET);
+
     ERR_clear_error();
     fprintf(stderr, "\nWrong passphrase for this key.  Please try again.\n");
   }
-  fclose(keyf);
+
+  if (keyf)
+    fclose(keyf);
 
   /* Restore the normal stderr logging. */
-  dup2(prompt_fd, STDERR_FILENO);
-  close(prompt_fd);
+  restore_prompt_fds();
 
   if (pkey == NULL)
     return -1;
+
+  EVP_PKEY_free(pkey);
 
 #if OPENSSL_VERSION_NUMBER >= 0x000905000L
   /* Use the obtained passphrase as additional entropy, ostensibly
@@ -1344,12 +1521,12 @@ static int tls_get_passphrase(server_rec *s, const char *path,
    *
    * Human language gives about 2-3 bits of entropy per byte (RFC1750).
    */
-  RAND_add(buf, buflen, buflen * 0.25);
+  RAND_add(buf, pdata.buflen, pdata.buflen * 0.25);
 #endif
 
 #ifdef HAVE_MLOCK
    PRIVS_ROOT
-   if (mlock(buf, buflen) < 0) 
+   if (mlock(buf, bufsz) < 0) 
      pr_log_debug(DEBUG1, MOD_TLS_VERSION
        ": error locking passphrase into memory: %s", strerror(errno));
    else
@@ -1357,7 +1534,6 @@ static int tls_get_passphrase(server_rec *s, const char *path,
    PRIVS_RELINQUISH
 #endif
 
-  EVP_PKEY_free(pkey);
   return 0;
 }
 
@@ -1379,13 +1555,20 @@ static tls_pkey_t *tls_lookup_pkey(void) {
        * inherited across forks.
        */
       PRIVS_ROOT
-      if (k->rsa_pkey)
+      if (k->rsa_pkey) {
         if (mlock(k->rsa_pkey, k->pkeysz) < 0)
           tls_log("error locking passphrase into memory: %s", strerror(errno));
+      }
 
-      if (k->dsa_pkey)
+      if (k->dsa_pkey) {
         if (mlock(k->dsa_pkey, k->pkeysz) < 0)
           tls_log("error locking passphrase into memory: %s", strerror(errno));
+      }
+
+      if (k->pkcs12_passwd) {
+        if (mlock(k->pkcs12_passwd, k->pkeysz) < 0)
+          tls_log("error locking password into memory: %s", strerror(errno));
+      }
       PRIVS_RELINQUISH
 #endif /* HAVE_MLOCK */
 
@@ -1404,6 +1587,12 @@ static tls_pkey_t *tls_lookup_pkey(void) {
       pr_memscrub(k->dsa_pkey, k->pkeysz);
       free(k->dsa_pkey_ptr);
       k->dsa_pkey = k->dsa_pkey_ptr = NULL;
+    }
+
+    if (k->pkcs12_passwd) {
+      pr_memscrub(k->pkcs12_passwd, k->pkeysz);
+      free(k->pkcs12_passwd_ptr);
+      k->pkcs12_passwd = k->pkcs12_passwd_ptr = NULL;
     }
   }
 
@@ -1456,6 +1645,12 @@ static void tls_scrub_pkeys(void) {
       pr_memscrub(k->dsa_pkey, k->pkeysz);
       free(k->dsa_pkey_ptr);
       k->dsa_pkey = k->dsa_pkey_ptr = NULL;
+    }
+
+    if (k->pkcs12_passwd) {
+      pr_memscrub(k->pkcs12_passwd, k->pkeysz);
+      free(k->pkcs12_passwd_ptr);
+      k->pkcs12_passwd = k->pkcs12_passwd_ptr = NULL;
     }
   }
 
@@ -1639,6 +1834,12 @@ static int tls_init_ctxt(void) {
     pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION ": FIPS mode requested, but " OPENSSL_VERSION_TEXT " not built with FIPS support");
 #endif /* OPENSSL_FIPS */
   }
+
+  /* It looks like calling OpenSSL_add_all_algorithms() is necessary for
+   * handling some algorithms (e.g. PKCS12 files) which are NOT added by
+   * just calling SSL_library_init().
+   */
+  OpenSSL_add_all_algorithms();
 
   SSL_library_init();
   OpenSSL_add_all_algorithms();
@@ -1921,8 +2122,8 @@ static int tls_init_server(void) {
     int res;
 
     if (tls_pkey) {
-      tls_pkey->flags &= ~TLS_PKEY_USE_RSA;
       tls_pkey->flags |= TLS_PKEY_USE_DSA;
+      tls_pkey->flags &= ~TLS_PKEY_USE_RSA;
     }
 
     res = SSL_CTX_use_PrivateKey_file(ssl_ctx, tls_dsa_key_file,
@@ -1936,6 +2137,110 @@ static int tls_init_server(void) {
       return -1;
     }
   }
+
+  if (tls_pkcs12_file) {
+    int res;
+    FILE *fp;
+    X509 *cert = NULL;
+    EVP_PKEY *pkey = NULL;
+    PKCS12 *p12 = NULL;
+    char *passwd = "";
+
+    if (tls_pkey) {
+      passwd = tls_pkey->pkcs12_passwd;
+    }
+
+    fp = fopen(tls_pkcs12_file, "r");
+    if (fp == NULL) {
+      int xerrno = errno;
+
+      PRIVS_RELINQUISH
+      tls_log("error opening TLSPKCS12File '%s': %s", tls_pkcs12_file,
+        strerror(xerrno));
+      return -1;
+    }
+
+    /* Note that this should NOT fail; we will have already parsed the
+     * PKCS12 file already, in order to get the password and key passphrases.
+     */
+    p12 = d2i_PKCS12_fp(fp, NULL);
+    if (p12 == NULL) {
+      tls_log("error reading TLSPKCS12File '%s': %s", tls_pkcs12_file,
+        tls_get_errors()); 
+      fclose(fp);
+      return -1;
+    }
+
+    fclose(fp);
+
+    /* XXX Need to add support for any CA certs contained in the PKCS12 file.
+     */
+    if (PKCS12_parse(p12, passwd, &pkey, &cert, NULL) != 1) {
+      tls_log("error parsing info in TLSPKCS12File '%s': %s", tls_pkcs12_file,
+        tls_get_errors());
+      PKCS12_free(p12);
+      return -1;
+    }
+
+    res = SSL_CTX_use_certificate(ssl_ctx, cert);
+    if (res <= 0) {
+      PRIVS_RELINQUISH
+
+      tls_log("error loading certificate from TLSPKCS12File '%s' %s",
+        tls_pkcs12_file, tls_get_errors());
+      PKCS12_free(p12);
+
+      if (cert)
+        X509_free(cert);
+
+      if (pkey)
+        EVP_PKEY_free(pkey);
+
+      return -1;
+    }
+
+    if (pkey &&
+        tls_pkey) {
+      switch (EVP_PKEY_type(pkey->type)) {
+        case EVP_PKEY_RSA:
+          tls_pkey->flags |= TLS_PKEY_USE_RSA;
+          tls_pkey->flags &= ~TLS_PKEY_USE_DSA;
+          break;
+
+        case EVP_PKEY_DSA:
+          tls_pkey->flags |= TLS_PKEY_USE_DSA;
+          tls_pkey->flags &= ~TLS_PKEY_USE_RSA;
+          break;
+      }
+    }
+
+    res = SSL_CTX_use_PrivateKey(ssl_ctx, pkey);
+    if (res <= 0) {
+      PRIVS_RELINQUISH
+
+      tls_log("error loading key from TLSPKCS12File '%s' %s", tls_pkcs12_file,
+        tls_get_errors());
+      PKCS12_free(p12);
+
+      if (cert)
+        X509_free(cert);
+
+      if (pkey)
+        EVP_PKEY_free(pkey);
+
+      return -1;
+    }
+
+    if (cert)
+      X509_free(cert);
+
+    if (pkey)
+      EVP_PKEY_free(pkey);
+
+    if (p12)
+      PKCS12_free(p12);
+  }
+
   PRIVS_RELINQUISH
 
   /* Set up the CRL. */
@@ -2328,7 +2633,7 @@ static char *tls_get_page(size_t sz, void **ptr) {
   void *d;
   long pagesz = tls_get_pagesz(), p;
 
-  d = malloc(sz + (pagesz-1));
+  d = calloc(1, sz + (pagesz-1));
   if (d == NULL) {
     pr_log_pri(PR_LOG_ERR, "out of memory!");
     exit(1);
@@ -4934,6 +5239,23 @@ MODRET set_tlspassphraseprovider(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSPKCS12File file */
+MODRET set_tlspkcs12file(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (!file_exists(cmd->argv[1])) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' does not exist", NULL));
+  }
+
+  if (*cmd->argv[1] != '/')
+    CONF_ERROR(cmd, "parameter must be an absolute path");
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return PR_HANDLED(cmd);
+}
+
 /* usage: TLSProtocol version1 ... versionN */
 MODRET set_tlsprotocol(cmd_rec *cmd) {
   register unsigned int i;
@@ -5360,22 +5682,27 @@ static void tls_get_passphrases(void) {
   char buf[256];
 
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
-    config_rec *rsa = NULL, *dsa = NULL;
+    config_rec *rsa = NULL, *dsa = NULL, *pkcs12 = NULL;
     tls_pkey_t *k = NULL;
 
-    /* Find any TLS{D,R}SACertificateKeyFile directives.  If they aren't
-     * present, look for TLS{D,R}SACertificateFile directives.
+    /* Find any TLS*CertificateKeyFile directives.  If they aren't present,
+     * look for TLS*CertificateFile directives (when appropriate).
      */
     rsa = find_config(s->conf, CONF_PARAM, "TLSRSACertificateKeyFile", FALSE);
-    if (!rsa)
+    if (rsa == NULL)
       rsa = find_config(s->conf, CONF_PARAM, "TLSRSACertificateFile", FALSE);
 
     dsa = find_config(s->conf, CONF_PARAM, "TLSDSACertificateKeyFile", FALSE);
-    if (!dsa)
+    if (dsa == NULL)
       dsa = find_config(s->conf, CONF_PARAM, "TLSDSACertificateFile", FALSE);
 
-    if (!rsa && !dsa)
+    pkcs12 = find_config(s->conf, CONF_PARAM, "TLSPKCS12File", FALSE);
+
+    if (rsa == NULL &&
+        dsa == NULL &&
+        pkcs12 == NULL) {
       continue;
+    }
 
     k = pcalloc(s->pool, sizeof(tls_pkey_t));
     k->pkeysz = PEM_BUFSIZE;
@@ -5392,10 +5719,10 @@ static void tls_get_passphrases(void) {
         exit(1);
       }
 
-      if (tls_get_passphrase(s, rsa->argv[0], buf, k->rsa_pkey, k->pkeysz,
-          TLS_PASSPHRASE_FL_RSA_KEY) < 0) {
-        tls_log("error reading RSA passphrase: %s",
-          ERR_error_string(ERR_get_error(), NULL));
+      if (tls_get_passphrase(s, rsa->argv[0], buf, k->rsa_pkey,
+          k->pkeysz, TLS_PASSPHRASE_FL_RSA_KEY) < 0) {
+        pr_log_debug(DEBUG0, MOD_TLS_VERSION
+          ": error reading RSA passphrase: %s", tls_get_errors());
 
         pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
           "RSA certificate key in '%s', exiting", (char *) rsa->argv[0]);
@@ -5414,13 +5741,36 @@ static void tls_get_passphrases(void) {
         exit(1);
       }
 
-      if (tls_get_passphrase(s, dsa->argv[0], buf, k->dsa_pkey, k->pkeysz,
-          TLS_PASSPHRASE_FL_DSA_KEY) < 0) {
-        tls_log("error reading DSA passphrase: %s",
-          ERR_error_string(ERR_get_error(), NULL));
+      if (tls_get_passphrase(s, dsa->argv[0], buf, k->dsa_pkey,
+          k->pkeysz, TLS_PASSPHRASE_FL_DSA_KEY) < 0) {
+        pr_log_debug(DEBUG0, MOD_TLS_VERSION
+          ": error reading DSA passphrase: %s", tls_get_errors());
 
         pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
           "DSA certificate key '%s', exiting", (char *) dsa->argv[0]);
+        end_login(1);
+      }
+    }
+
+    if (pkcs12) {
+      snprintf(buf, sizeof(buf)-1,
+        "PKCS12 password for the %s#%d (%s) server: ",
+        pr_netaddr_get_ipstr(s->addr), s->ServerPort, s->ServerName);
+      buf[sizeof(buf)-1] = '\0';
+
+      k->pkcs12_passwd = tls_get_page(PEM_BUFSIZE, &k->pkcs12_passwd_ptr);
+      if (k->pkcs12_passwd == NULL) {
+        pr_log_pri(PR_LOG_ERR, "out of memory!");
+        exit(1);
+      }
+
+      if (tls_get_passphrase(s, pkcs12->argv[0], buf, k->pkcs12_passwd,
+          k->pkeysz, TLS_PASSPHRASE_FL_PKCS12_PASSWD) < 0) {
+        pr_log_debug(DEBUG0, MOD_TLS_VERSION
+          ": error reading PKCS12 password: %s", tls_get_errors());
+
+        pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
+          "PKCS12 certificate '%s', exiting", (char *) pkcs12->argv[0]);
         end_login(1);
       }
     }
@@ -5519,21 +5869,20 @@ static int tls_sess_init(void) {
   if (tls_cipher_suite == NULL)
     tls_cipher_suite = TLS_DEFAULT_CIPHER_SUITE;
 
-  tls_crl_file = get_param_ptr(main_server->conf,
-    "TLSCARevocationFile", FALSE);
-  tls_crl_path = get_param_ptr(main_server->conf, 
-    "TLSCARevocationPath", FALSE);
+  tls_crl_file = get_param_ptr(main_server->conf, "TLSCARevocationFile", FALSE);
+  tls_crl_path = get_param_ptr(main_server->conf, "TLSCARevocationPath", FALSE);
 
-  tls_dhparam_file = get_param_ptr(main_server->conf,
-    "TLSDHParamFile", FALSE);
+  tls_dhparam_file = get_param_ptr(main_server->conf, "TLSDHParamFile", FALSE);
 
-  tls_dsa_cert_file = get_param_ptr(main_server->conf,
-    "TLSDSACertificateFile", FALSE);
+  tls_dsa_cert_file = get_param_ptr(main_server->conf, "TLSDSACertificateFile",
+    FALSE);
   tls_dsa_key_file = get_param_ptr(main_server->conf,
     "TLSDSACertificateKeyFile", FALSE);
 
-  tls_rsa_cert_file = get_param_ptr(main_server->conf,
-    "TLSRSACertificateFile", FALSE);
+  tls_pkcs12_file = get_param_ptr(main_server->conf, "TLSPKCS12File", FALSE);
+
+  tls_rsa_cert_file = get_param_ptr(main_server->conf, "TLSRSACertificateFile",
+    FALSE);
   tls_rsa_key_file = get_param_ptr(main_server->conf,
     "TLSRSACertificateKeyFile", FALSE);
 
@@ -5741,6 +6090,7 @@ static conftable tls_conftab[] = {
   { "TLSLog",			set_tlslog,		NULL },
   { "TLSOptions",		set_tlsoptions,		NULL },
   { "TLSPassPhraseProvider",	set_tlspassphraseprovider, NULL },
+  { "TLSPKCS12File", 		set_tlspkcs12file,	NULL },
   { "TLSProtocol",		set_tlsprotocol,	NULL },
   { "TLSRandomSeed",		set_tlsrandseed,	NULL },
   { "TLSRenegotiate",		set_tlsrenegotiate,	NULL },
