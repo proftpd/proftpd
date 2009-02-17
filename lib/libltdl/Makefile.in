@@ -233,18 +233,7 @@ all: config.h
 am--refresh:
 	@:
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
-	@for dep in $?; do \
-	  case '$(am__configure_deps)' in \
-	    *$$dep*) \
-	      echo ' cd $(srcdir) && $(AUTOMAKE) --foreign '; \
-	      cd $(srcdir) && $(AUTOMAKE) --foreign  \
-		&& exit 0; \
-	      exit 1;; \
-	  esac; \
-	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign  Makefile'; \
-	cd $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign  Makefile
+
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -274,7 +263,6 @@ stamp-h1: $(srcdir)/config-h.in $(top_builddir)/config.status
 	@rm -f stamp-h1
 	cd $(top_builddir) && $(SHELL) ./config.status config.h
 $(srcdir)/config-h.in:  $(am__configure_deps) 
-	cd $(top_srcdir) && $(AUTOHEADER)
 	rm -f stamp-h1
 	touch $@
 
