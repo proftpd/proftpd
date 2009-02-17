@@ -54,13 +54,13 @@ dirs: include/buildstamp.h dummy
 proftpd$(EXEEXT): lib src modules dirs locale
 	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) $(MAIN_LDFLAGS) -o $@ $(BUILD_PROFTPD_OBJS) $(BUILD_PROFTPD_ARCHIVES) $(LIBS) $(MAIN_LIBS)
 
-ftpcount$(EXEEXT): utils
+ftpcount$(EXEEXT): lib utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPCOUNT_OBJS) $(UTILS_LIBS)
 
-ftpdctl$(EXEEXT): src
+ftpdctl$(EXEEXT): lib src
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPDCTL_OBJS) $(LIBS)
 
-ftpshut$(EXEEXT): utils
+ftpshut$(EXEEXT): lib utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPSHUT_OBJS) $(UTILS_LIBS)
 
 ftptop$(EXEEXT): lib utils
