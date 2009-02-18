@@ -22,7 +22,7 @@ Makefile: Makefile.in ../config.status
 utils: $(FTPCOUNT_OBJS) $(FTPSCRUB_OBJS) $(FTPSHUT_OBJS) $(FTPTOP_OBJS) $(FTPWHO_OBJS)
 
 clean:
-	rm -f *.o
+	rm -f *.o ftpcount.1 ftpscrub.8 ftpshut.8 ftptop.1 ftpwho.1
 
 depend:
 	makedepend $(CPPFLAGS) -Y *.c 2>/dev/null
