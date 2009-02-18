@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: wtmp.c,v 1.1 2009-02-14 05:06:36 castaglia Exp $
+ * $Id: wtmp.c,v 1.2 2009-02-18 18:24:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,9 +34,7 @@
 int log_wtmp(const char *line, const char *name, const char *host,
     pr_netaddr_t *ip) {
   struct stat buf;
-  struct utmp ut;
   int res = 0;
-  static int fd = -1;
 
 #if ((defined(SVR4) || defined(__SVR4)) || \
     (defined(__NetBSD__) && defined(HAVE_UTMPX_H))) && \
@@ -115,6 +113,8 @@ int log_wtmp(const char *line, const char *name, const char *host,
   }
 
 #else /* Non-SVR4 systems */
+  struct utmp ut;
+  static int fd = -1;
 
   if (fd < 0 &&
       (fd = open(WTMP_FILE, O_WRONLY|O_APPEND, 0)) < 0) {
