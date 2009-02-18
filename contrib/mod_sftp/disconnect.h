@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp disconnect msgs
- * Copyright (c) 2008 TJ Saunders
+ * Copyright (c) 2008-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: disconnect.h,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: disconnect.h,v 1.3 2009-02-18 18:53:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -31,7 +31,24 @@
 
 void sftp_disconnect_conn(uint32_t, const char *, const char *, int,
   const char *);
+
+/* Deal with the fact that __FUNCTION__ is a gcc extension.  Sun's compilers
+ * (e.g. SunStudio) like __func__.  As a fallback, simply use an empty
+ * string.
+ */
+
+# if defined(__FUNCTION__)
 #define SFTP_DISCONNECT_CONN(c, m) \
   sftp_disconnect_conn((c), (m), __FILE__, __LINE__, __FUNCTION__)
+
+# elif defined(__func__)
+#define SFTP_DISCONNECT_CONN(c, m) \
+  sftp_disconnect_conn((c), (m), __FILE__, __LINE__, __func__)
+
+# else
+#define SFTP_DISCONNECT_CONN(c, m) \
+  sftp_disconnect_conn((c), (m), __FILE__, __LINE__, "(unknown)")
+
+# endif
 
 #endif
