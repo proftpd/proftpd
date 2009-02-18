@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: disconnect.h,v 1.3 2009-02-18 18:53:17 castaglia Exp $
+ * $Id: disconnect.h,v 1.4 2009-02-18 18:54:01 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -33,8 +33,7 @@ void sftp_disconnect_conn(uint32_t, const char *, const char *, int,
   const char *);
 
 /* Deal with the fact that __FUNCTION__ is a gcc extension.  Sun's compilers
- * (e.g. SunStudio) like __func__.  As a fallback, simply use an empty
- * string.
+ * (e.g. SunStudio) like __func__.  As a fallback, simply use a static string.
  */
 
 # if defined(__FUNCTION__)
