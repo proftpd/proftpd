@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.41 2009-02-18 18:01:52 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.42 2009-02-18 21:24:43 castaglia Exp $
  */
 
 /*
@@ -323,9 +323,9 @@ const char *get_postgres_encoding(const char *encoding) {
     return "SJIS";
   }
 
-  if (strcasecmp(encoding, "UTF8-MAC") == 0 ||
-      strcasecmp(encoding, "UTF8") == 0 ||
-      strcasecmp(encoding, "UTF-8") == 0) {
+  if (strcasecmp(encoding, "UTF8") == 0 ||
+      strcasecmp(encoding, "UTF-8") == 0 ||
+      strcasecmp(encoding, "UTF8-MAC") == 0) {
     return "UNICODE";
   }
 
