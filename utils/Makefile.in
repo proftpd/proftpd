@@ -19,7 +19,7 @@ Makefile: Makefile.in ../config.status
 .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
-utils: $(FTPCOUNT_OBJS) $(FTPSHUT_OBJS) $(FTPTOP_OBJS) $(FTPWHO_OBJS)
+utils: $(FTPCOUNT_OBJS) $(FTPSCRUB_OBJS) $(FTPSHUT_OBJS) $(FTPTOP_OBJS) $(FTPWHO_OBJS)
 
 clean:
 	rm -f *.o

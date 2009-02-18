@@ -22,7 +22,7 @@ Makefile: Makefile.in ../config.status
 src: $(OBJS) $(FTPDCTL_OBJS)
 
 clean:
-	rm -f *.o ftpdctl.8 proftpd.8 prxs xferlog.5
+	rm -f *.o ftpdctl.8 ftpscrub.8 proftpd.8 prxs xferlog.5
 
 depend:
 	makedepend $(CPPFLAGS) -Y *.c 2>/dev/null

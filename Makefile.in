@@ -19,7 +19,7 @@ MAIN_LIBS=@MAIN_LIBS@
 
 BUILD_PROFTPD_OBJS=$(BUILD_OBJS) $(BUILD_STATIC_MODULE_OBJS)
 BUILD_PROFTPD_ARCHIVES=$(BUILD_STATIC_MODULE_ARCHIVES)
-BUILD_BIN=proftpd$(EXEEXT) ftpcount$(EXEEXT) ftpdctl$(EXEEXT) ftpshut$(EXEEXT) ftptop$(EXEEXT) ftpwho$(EXEEXT)
+BUILD_BIN=proftpd$(EXEEXT) ftpcount$(EXEEXT) ftpdctl$(EXEEXT) ftpscrub$(EXEEXT) ftpshut$(EXEEXT) ftptop$(EXEEXT) ftpwho$(EXEEXT)
 
 
 all: $(BUILD_BIN)
@@ -59,6 +59,9 @@ ftpcount$(EXEEXT): lib utils
 
 ftpdctl$(EXEEXT): lib src
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPDCTL_OBJS) $(LIBS)
+
+ftpscrub$(EXEEXT): lib utils
+	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPSCRUB_OBJS) $(UTILS_LIBS)
 
 ftpshut$(EXEEXT): lib utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPSHUT_OBJS) $(UTILS_LIBS)
@@ -118,6 +121,7 @@ install-modules: $(DESTDIR)$(libexecdir) $(DESTDIR)$(sysconfdir)
 install-utils: $(DESTDIR)$(sbindir) $(DESTDIR)$(bindir)
 	$(INSTALL_BIN)  ftpcount $(DESTDIR)$(bindir)/ftpcount
 	$(INSTALL_BIN)  ftpdctl  $(DESTDIR)$(bindir)/ftpdctl
+	$(INSTALL_SBIN) ftpscrub $(DESTDIR)$(sbindir)/ftpscrub
 	$(INSTALL_SBIN) ftpshut  $(DESTDIR)$(sbindir)/ftpshut
 	$(INSTALL_BIN)  ftptop   $(DESTDIR)$(bindir)/ftptop
 	$(INSTALL_BIN)  ftpwho   $(DESTDIR)$(bindir)/ftpwho
@@ -136,6 +140,7 @@ install-libltdl:
 install-man: $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8
 	$(INSTALL_MAN) $(top_srcdir)/src/ftpdctl.8    $(DESTDIR)$(mandir)/man8
 	$(INSTALL_MAN) $(top_srcdir)/src/proftpd.8    $(DESTDIR)$(mandir)/man8
+	$(INSTALL_MAN) $(top_srcdir)/utils/ftpscrub.8 $(DESTDIR)$(mandir)/man8
 	$(INSTALL_MAN) $(top_srcdir)/utils/ftpshut.8  $(DESTDIR)$(mandir)/man8
 	$(INSTALL_MAN) $(top_srcdir)/utils/ftpcount.1 $(DESTDIR)$(mandir)/man1
 	$(INSTALL_MAN) $(top_srcdir)/utils/ftptop.1   $(DESTDIR)$(mandir)/man1

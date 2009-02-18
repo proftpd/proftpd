@@ -2210,6 +2210,7 @@ AC_OUTPUT(
   tests/Makefile
   utils/Makefile
   utils/ftpcount.1
+  utils/ftpscrub.8
   utils/ftpshut.8
   utils/ftptop.1
   utils/ftpwho.1

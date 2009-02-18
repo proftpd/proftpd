@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.339 2009-02-12 22:32:01 castaglia Exp $
+ * $Id: mod_core.c,v 1.340 2009-02-18 21:33:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -56,6 +56,7 @@ module core_module;
 char AddressCollisionCheck = TRUE;
 
 static int core_scrub_timer_id;
+
 static pr_fh_t *displayquit_fh = NULL;
 
 #ifdef PR_USE_TRACE
@@ -598,6 +599,41 @@ MODRET set_scoreboardfile(cmd_rec *cmd) {
   if (pr_set_scoreboard(cmd->argv[1]) < 0)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unable to use '",
       cmd->argv[1], "': ", strerror(errno), NULL));
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: ScoreboardScrub "on"|"off"|secs */
+MODRET set_scoreboardscrub(cmd_rec *cmd) {
+  int bool = -1, nsecs = 0;
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+ 
+  bool = get_boolean(cmd, 1);
+  if (bool == -1) {
+    /* If this is the case, try handling the parameter as the number of
+     * seconds, as the scrub frequency.
+     */
+    nsecs = atoi(cmd->argv[1]);
+    if (nsecs <= 0) {
+      CONF_ERROR(cmd, "number must be greater than zero");
+    }
+  }
+
+  if (nsecs > 0) {
+    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(int));
+    *((int *) c->argv[0]) = TRUE;
+    c->argv[1] = pcalloc(c->pool, sizeof(int));
+    *((int *) c->argv[1]) = nsecs;
+
+  } else {
+    c = add_config_param(cmd->argv[0], 1, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(int));
+    *((int *) c->argv[0]) = bool;
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -4551,9 +4587,35 @@ static void core_restart_ev(const void *event_data, void *user_data) {
 
 static void core_startup_ev(const void *event_data, void *user_data) {
 
-  /* Add a scoreboard-scrubbing timer. */
-  core_scrub_timer_id = pr_timer_add(PR_TUNABLE_SCOREBOARD_SCRUB_TIMER, -1,
-    &core_module, core_scrub_scoreboard_cb, "scoreboard scrubbing");
+  /* Add a scoreboard-scrubbing timer.
+   *
+   * Note that we do this only for standalone proftpd daemons, not for
+   * inetd-run daemons.  There is no "master"/"daemon" process for
+   * inetd-run proftpd processes, which means that _all_ processes scrub
+   * the scoreboard (which greatly increases lock contention, particularly
+   * under high numbers of simultaneous connections), or that _no_
+   * processes scrub the scoreboard (which increases the chance of stale/bad
+   * scoreboard data).
+   */
+  if (ServerType == SERVER_STANDALONE) {
+    int scrub_scoreboard = TRUE;
+    int scrub_interval = PR_TUNABLE_SCOREBOARD_SCRUB_TIMER;
+    config_rec *c;
+
+    c = find_config(main_server->conf, CONF_PARAM, "ScoreboardScrub", FALSE);
+    if (c) {
+      scrub_scoreboard = *((int *) c->argv[0]);
+
+      if (c->argc == 2) {
+        scrub_interval = *((int *) c->argv[1]);
+      }
+    }
+
+    if (scrub_scoreboard) {
+      core_scrub_timer_id = pr_timer_add(scrub_interval, -1,
+        &core_module, core_scrub_scoreboard_cb, "scoreboard scrubbing");
+    }
+  }
 
   /* Add a restart handler to scrub the scoreboard, too. */
   pr_event_register(&core_module, "core.restart", core_restart_ev, NULL);
@@ -4746,14 +4808,23 @@ static int core_sess_init(void) {
      */
   }
 
-  pr_timer_remove(core_scrub_timer_id, &core_module);
+  if (ServerType == SERVER_STANDALONE) {
+    pr_timer_remove(core_scrub_timer_id, &core_module);
 
-  /* If we're running as 'ServerType inetd', scrub the scoreboard here.
-   * For standalone ServerTypes, the scoreboard scrubber will handle
-   * things itself.
-   */
-  if (ServerType == SERVER_INETD)
-    pr_scoreboard_scrub();
+  } else if (ServerType == SERVER_INETD) {
+
+    /* If we're running as 'ServerType inetd', scrub the scoreboard here.
+     * For standalone ServerTypes, the scoreboard scrubber will handle
+     * things itself.
+     */
+
+    c = find_config(main_server->conf, CONF_PARAM, "ScoreboardScrub", FALSE);
+    if (c) {
+      if (*((int *) c->argv[0]) == TRUE) {
+        pr_scoreboard_scrub();
+      }
+    }
+  }
 
   /* Set some Variable entries for Display files. */
   if (pr_var_set(session.pool, "%{total_bytes_in}",
@@ -4888,6 +4959,7 @@ static conftable core_conftab[] = {
   { "RLimitOpenFiles",		set_rlimitopenfiles,		NULL },
   { "Satisfy",			set_satisfy,			NULL },
   { "ScoreboardFile",		set_scoreboardfile,		NULL },
+  { "ScoreboardScrub",		set_scoreboardscrub,		NULL },
   { "ServerAdmin",		set_serveradmin,		NULL },
   { "ServerIdent",		set_serverident,		NULL },
   { "ServerName",		set_servername, 		NULL },

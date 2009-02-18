@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.998 2009-02-18 18:01:43 castaglia Exp $
+$Id: NEWS,v 1.999 2009-02-18 21:33:09 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -52,6 +52,9 @@ CVS
   ProFTPD now builds successfully using "make -jN", where N is the number
   of simultaneous build processes to use.
 - Bug 3176 - Postgres chokes on standard charset names.
+- Bug 3129 - Support configurable scoreboard scrubbing.  A new configuration
+  directive, ScoreboardScrub, can be used to control whether the ScoreboardFile
+  is scrubbed, and how often.
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------
