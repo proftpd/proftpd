@@ -37347,7 +37347,7 @@ _ACEOF
 ac_config_headers="$ac_config_headers config.h"
 
 
-ac_config_files="$ac_config_files include/Makefile lib/Makefile locale/Makefile modules/Makefile src/Makefile src/prxs src/ftpdctl.8 src/proftpd.8 src/xferlog.5 tests/Makefile utils/Makefile utils/ftpcount.1 utils/ftpshut.8 utils/ftptop.1 utils/ftpwho.1 Makefile Make.rules"
+ac_config_files="$ac_config_files include/Makefile lib/Makefile locale/Makefile modules/Makefile src/Makefile src/prxs src/ftpdctl.8 src/proftpd.8 src/xferlog.5 tests/Makefile utils/Makefile utils/ftpcount.1 utils/ftpscrub.8 utils/ftpshut.8 utils/ftptop.1 utils/ftpwho.1 Makefile Make.rules"
 
 ac_config_commands="$ac_config_commands default"
 
@@ -37921,6 +37921,7 @@ do
     "tests/Makefile") CONFIG_FILES="$CONFIG_FILES tests/Makefile" ;;
     "utils/Makefile") CONFIG_FILES="$CONFIG_FILES utils/Makefile" ;;
     "utils/ftpcount.1") CONFIG_FILES="$CONFIG_FILES utils/ftpcount.1" ;;
+    "utils/ftpscrub.8") CONFIG_FILES="$CONFIG_FILES utils/ftpscrub.8" ;;
     "utils/ftpshut.8") CONFIG_FILES="$CONFIG_FILES utils/ftpshut.8" ;;
     "utils/ftptop.1") CONFIG_FILES="$CONFIG_FILES utils/ftptop.1" ;;
     "utils/ftpwho.1") CONFIG_FILES="$CONFIG_FILES utils/ftpwho.1" ;;
