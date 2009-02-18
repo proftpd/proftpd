@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.40 2009-02-09 17:21:35 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.41 2009-02-18 18:01:52 castaglia Exp $
  */
 
 /*
@@ -257,6 +257,82 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
   return mod_create_data( cmd, (void *) sd );
 }
 
+#ifdef PR_USE_NLS
+const char *get_postgres_encoding(const char *encoding) {
+
+  /* XXX Hack to deal with Postgres' incredibly broken behavior when
+   * handling the 'ASCII' encoding.  Specifically, Postgres chokes on
+   * 'ASCII', and instead insists on calling it 'SQL_ASCII' (which, of
+   * course, is not even close to being a valid encoding name according
+   * to libiconv.)
+   *
+   * Treat 'ANSI_X3.4-1968' (another common name/alias for ASCII) the
+   * same; rename it to 'SQL_ASCII' for Postgres' benefit.  And same for
+   * 'US-ASCII'.
+   */
+  if (strcasecmp(encoding, "ANSI_X3.4-1968") == 0 ||
+      strcasecmp(encoding, "ASCII") == 0 ||
+      strcasecmp(encoding, "US-ASCII") == 0) {
+    return "SQL_ASCII";
+  }
+
+  /* And other commonly used charsets for which Postgres has their own names. */
+
+  if (strcasecmp(encoding, "CP1251") == 0 ||
+      strcasecmp(encoding, "WINDOWS-1251") == 0) {
+    return "WIN1251";
+  }
+
+  if (strcasecmp(encoding, "KOI-8") == 0 ||
+      strcasecmp(encoding, "KOI8-R") == 0 ||
+      strcasecmp(encoding, "KOI8") == 0 ||
+      strcasecmp(encoding, "KOI8R") == 0) {
+    return "KOI";
+  }
+
+  if (strcasecmp(encoding, "CP866") == 0) {
+    return "WIN866";
+  }
+
+  if (strcasecmp(encoding, "ISO-8859-1") == 0) {
+    return "LATIN1";
+  }
+
+  if (strcasecmp(encoding, "EUC-CN") == 0 ||
+      strcasecmp(encoding, "EUCCN") == 0) {
+    return "EUC_CN";
+  }
+
+  if (strcasecmp(encoding, "EUC-JP") == 0 ||
+      strcasecmp(encoding, "EUCJP") == 0) {
+    return "EUC_JP";
+  }
+
+  if (strcasecmp(encoding, "EUC-KR") == 0 ||
+      strcasecmp(encoding, "EUCKR") == 0) {
+    return "EUC_KR";
+  }
+
+  if (strcasecmp(encoding, "EUC-TW") == 0 ||
+      strcasecmp(encoding, "EUCTW") == 0) {
+    return "EUC_TW";
+  }
+
+  if (strcasecmp(encoding, "SHIFT-JIS") == 0 ||
+      strcasecmp(encoding, "SHIFT_JIS") == 0) {
+    return "SJIS";
+  }
+
+  if (strcasecmp(encoding, "UTF8-MAC") == 0 ||
+      strcasecmp(encoding, "UTF8") == 0 ||
+      strcasecmp(encoding, "UTF-8") == 0) {
+    return "UNICODE";
+  }
+
+  return encoding;
+}
+#endif
+
 /*
  * cmd_open: attempts to open a named connection to the database.
  *
@@ -323,23 +399,9 @@ MODRET cmd_open(cmd_rec *cmd) {
 
 #ifdef PR_USE_NLS
   if (pr_encode_get_encoding() != NULL) {
-    const char *encoding = pr_encode_get_encoding();
+    const char *encoding;
 
-    /* XXX Hack to deal with Postgres' incredibly broken behavior when
-     * handling the 'ASCII' encoding.  Specifically, Postgres chokes on
-     * 'ASCII', and instead insists on calling it 'SQL_ASCII' (which, of
-     * course, is not even close to being a valid encoding name according
-     * to libiconv.)
-     *
-     * Treat 'ANSI_X3.4-1968' (another common name/alias for ASCII) the
-     * same; rename it to 'SQL_ASCII' for Postgres' benefit.  And same for
-     * 'US-ASCII'.
-     */
-    if (strcmp(encoding, "ANSI_X3.4-1968") == 0 ||
-        strcmp(encoding, "ASCII") == 0 ||
-        strcmp(encoding, "US-ASCII") == 0) {
-      encoding = "SQL_ASCII";
-    }
+    encoding = get_postgres_encoding(pr_encode_get_encoding());
 
     /* Configure the connection for the current local character set. */
     if (PQsetClientEncoding(conn->postgres, encoding) < 0) {
