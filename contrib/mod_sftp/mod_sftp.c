@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.5 2009-02-14 22:33:05 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.6 2009-02-19 17:34:29 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1284,7 +1284,6 @@ static int sftp_sess_init(void) {
   pr_response_block(TRUE);
 
   sftp_fxp_use_gmt(times_gmt);
-  sftp_utf8_init();
 
   /* Check for any rekey policy. */
   c = find_config(main_server->conf, CONF_PARAM, "SFTPRekey", FALSE);
@@ -1354,6 +1353,35 @@ static int sftp_sess_init(void) {
 
   pr_session_set_protocol("ssh2");
   pr_cmd_set_handler(sftp_cmd_loop);
+
+  /* Check for any UseEncoding directives.  Specifically, we're interested
+   * in the charset portion; the encoding is always UTF8 for SFTP clients
+   * (when applicable).
+   */
+
+  c = find_config(main_server->conf, CONF_PARAM, "UseEncoding", FALSE);
+  if (c) {
+    if (c->argc == 2) {
+      char *charset;
+
+      charset = c->argv[0];
+
+      if (sftp_utf8_set_charset(charset) < 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error setting local charset '%s': %s", charset, strerror(errno));
+
+        /* Re-initialize the UTF8 conversion handles. */
+        (void) sftp_utf8_free();
+        sftp_utf8_init();
+      }
+
+    } else {
+      sftp_utf8_init();
+    }
+
+  } else {
+    sftp_utf8_init();
+  }
 
   return 0;
 }

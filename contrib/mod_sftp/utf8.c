@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: utf8.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: utf8.c,v 1.3 2009-02-19 17:34:30 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -38,6 +38,8 @@
 #if defined(PR_USE_NLS) && defined(HAVE_ICONV_H)
 static iconv_t decode_conv = (iconv_t) -1;
 static iconv_t encode_conv = (iconv_t) -1;
+
+static const char *local_charset = NULL;
 
 static int utf8_convert(iconv_t conv, char *inbuf, size_t *inbuflen,
     char *outbuf, size_t *outbuflen) {
@@ -69,6 +71,38 @@ static int utf8_convert(iconv_t conv, char *inbuf, size_t *inbuflen,
 }
 #endif /* !PR_USE_NLS && !HAVE_ICONV_H */
 
+int sftp_utf8_set_charset(const char *charset) {
+  int res;
+
+  if (charset == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (local_charset) {
+    pr_trace_msg("sftp", 5,
+      "attempting to switch local charset from %s to %s", local_charset,
+      charset);
+
+  } else {
+    pr_trace_msg("sftp", 5, "attempting to use %s as local charset", charset);
+  }
+
+  (void) sftp_utf8_free();
+
+  local_charset = pstrdup(permanent_pool, charset);
+
+  res = sftp_utf8_init();
+  if (res < 0) {
+    pr_trace_msg("sftp", 1,
+      "failed to initialize encoding for local charset %s", charset);
+    local_charset = NULL;
+    return -1;
+  }
+
+  return res;
+}
+
 int sftp_utf8_free(void) {
 # if defined(PR_USE_NLS) && defined(HAVE_ICONV)
   int res = 0;
@@ -78,7 +112,8 @@ int sftp_utf8_free(void) {
     res = iconv_close(encode_conv);
     if (res < 0) {
       pr_trace_msg("sftp", 1,
-        "error closing encoding conversion handle: %s", strerror(errno));
+        "error closing encoding conversion handle from '%s' to '%s': %s",
+          local_charset, "UTF-8", strerror(errno));
       res = -1;
     }
 
@@ -89,7 +124,8 @@ int sftp_utf8_free(void) {
     res = iconv_close(decode_conv);
     if (res < 0) {
       pr_trace_msg("sftp", 1,
-        "error closing decoding conversion handle: %s", strerror(errno));
+        "error closing decoding conversion handle from '%s' to '%s': %s",
+          "UTF-8", local_charset, strerror(errno));
       res = -1;
     }
 
@@ -105,46 +141,58 @@ int sftp_utf8_free(void) {
 
 int sftp_utf8_init(void) {
 #if defined(PR_USE_NLS) && defined(HAVE_ICONV)
-  const char *local_charset;
 
+  if (local_charset == NULL) {
 # ifdef HAVE_NL_LANGINFO
-  /* Look up the current charset.  If there's a problem, default to
-   * UCS-2.
-   */
-  local_charset = nl_langinfo(CODESET);
-  if (!local_charset) {
-    local_charset = "C";
-    pr_trace_msg("sftp", 1,
-      "unable to determine locale, defaulting to 'C' for UTF8 conversion");
-
-  } else {
-
-    /* Workaround a stupid bug in many implementations where nl_langinfo()
-     * returns "646" to mean "US-ASCII".  The problem is that iconv_open(3)
-     * doesn't accept "646" as an acceptable encoding.
+    /* Look up the current charset.  If there's a problem, default to
+     * UCS-2.
      */
-    if (strcmp(local_charset, "646") == 0) {
-      local_charset = "US-ASCII";
-    }
+    local_charset = nl_langinfo(CODESET);
+    if (local_charset == NULL ||
+        strlen(local_charset) == 0) {
+      local_charset = "UTF-8";
+      pr_trace_msg("sftp", 1,
+        "unable to determine locale, defaulting to 'UTF-8' for "
+        "UTF8 conversion");
 
-    pr_trace_msg("sftp", 1, "converting UTF8 to local character set '%s'",
-      local_charset);
-  }
+    } else {
+
+      /* Workaround a stupid bug in many implementations where nl_langinfo()
+       * returns "646" to mean "US-ASCII".  The problem is that iconv_open(3)
+       * doesn't accept "646" as an acceptable encoding.
+       */
+      if (strcmp(local_charset, "646") == 0) {
+        local_charset = "US-ASCII";
+      }
+
+      pr_trace_msg("sftp", 1, "converting UTF8 to local character set '%s'",
+        local_charset);
+    }
 # else
-  local_charset = "C";
-  pr_trace_msg("sftp", 1,
-    "nl_langinfo(3) not supported, defaulting to using 'C' for UTF8 "
-    "conversion");
+    local_charset = "UTF-8";
+    pr_trace_msg("sftp", 1,
+      "nl_langinfo(3) not supported, defaulting to using 'UTF-8' for UTF8 "
+      "conversion");
 # endif /* HAVE_NL_LANGINFO */
+  } else {
+    pr_trace_msg("sftp", 3,
+      "using '%s' as local charset for UTF8 conversion", local_charset);
+  }
 
   /* Get the iconv handles. */
   encode_conv = iconv_open("UTF-8", local_charset);
-  if (encode_conv == (iconv_t) -1)
+  if (encode_conv == (iconv_t) -1) {
+    pr_trace_msg("sftp", 1, "error opening conversion handle from '%s' "
+      "to '%s': %s", local_charset, "UTF-8", strerror(errno));
     return -1;
+  }
  
   decode_conv = iconv_open(local_charset, "UTF-8");
   if (decode_conv == (iconv_t) -1) {
     int xerrno = errno;
+
+    pr_trace_msg("sftp", 1, "error opening conversion handle from '%s' "
+      "to '%s': %s", "UTF-8", local_charset, strerror(errno));
 
     (void) iconv_close(encode_conv);
     encode_conv = (iconv_t) -1;

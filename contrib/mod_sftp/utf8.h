@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: utf8.h,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: utf8.h,v 1.3 2009-02-19 17:34:30 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_UTF8_H
@@ -29,6 +29,11 @@
 
 char *sftp_utf8_decode_str(pool *p, const char *str);
 char *sftp_utf8_encode_str(pool *p, const char *str);
+
+/* Set the local charset to use explicitly, rather than relying on
+ * nl_langinfo(3).
+ */
+int sftp_utf8_set_charset(const char *charset);
 
 int sftp_utf8_init(void);
 int sftp_utf8_free(void);
