@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.154 2009-02-14 22:33:05 castaglia Exp $
+ * $Id: mod_sql.c,v 1.155 2009-02-20 22:47:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4276,10 +4276,11 @@ static int sql_closelog(void) {
 }
 
 int sql_log(int level, const char *fmt, ...) {
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE * 2] = {'\0'};
   time_t timestamp = time(NULL);
   struct tm *t = NULL;
   va_list msg;
+  size_t buflen;
 
   /* sanity check */
   if (!sql_logfile)
@@ -4303,7 +4304,14 @@ int sql_log(int level, const char *fmt, ...) {
   va_end(msg);
 
   buf[sizeof(buf) - 1] = '\0';
-  buf[strlen(buf)] = '\n';
+
+  buflen = strlen(buf);
+  if (buflen < (sizeof(buf) - 1)) {
+    buf[buflen] = '\n';
+
+  } else {
+    buf[sizeof(buf)-2] = '\n';
+  }
 
   if (write(sql_logfd, buf, strlen(buf)) < 0)
     return -1;

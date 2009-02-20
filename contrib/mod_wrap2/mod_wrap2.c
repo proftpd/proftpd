@@ -119,6 +119,7 @@ int wrap2_log(const char *fmt, ...) {
   time_t timestamp = time(NULL);
   struct tm *t = NULL;
   va_list msg;
+  size_t buflen;
 
   if (!wrap2_logname)
     return 0;
@@ -140,8 +141,15 @@ int wrap2_log(const char *fmt, ...) {
   vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, msg);
   va_end(msg);
 
-  buf[strlen(buf)] = '\n';
   buf[sizeof(buf) - 1] = '\0';
+
+  buflen = strlen(buf);
+  if (buflen < (sizeof(buf) - 1)) {
+    buf[buflen] = '\n';
+
+  } else {
+    buf[sizeof(buf) - 2] = '\n';
+  }
 
   while (write(wrap2_logfd, buf, strlen(buf)) < 0) {
     if (errno == EINTR) {

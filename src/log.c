@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.91 2009-02-14 05:06:36 castaglia Exp $
+ * $Id: log.c,v 1.92 2009-02-20 22:47:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -216,6 +216,7 @@ int pr_log_writefile(int logfd, const char *ident, const char *fmt, ...) {
   time_t timestamp = time(NULL);
   struct tm *t = NULL;
   va_list msg;
+  size_t buflen;
 
   if (logfd < 0) {
     errno = EINVAL;
@@ -241,7 +242,14 @@ int pr_log_writefile(int logfd, const char *ident, const char *fmt, ...) {
   va_end(msg);
 
   buf[sizeof(buf)-1] = '\0';
-  buf[strlen(buf)] = '\n';
+
+  buflen = strlen(buf);
+  if (buflen < (sizeof(buf) - 1)) {
+    buf[buflen] = '\n';
+
+  } else {
+    buf[sizeof(buf)-2] = '\n';
+  }
 
   while (write(logfd, buf, strlen(buf)) < 0) {
     if (errno == EINTR) {

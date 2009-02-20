@@ -3,7 +3,7 @@
  *          server, as well as several utility functions for other Controls
  *          modules
  *
- * Copyright (c) 2000-2007 TJ Saunders
+ * Copyright (c) 2000-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.39 2007-10-22 18:09:17 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.40 2009-02-20 22:47:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -470,6 +470,7 @@ int ctrls_log(const char *module_version, const char *fmt, ...) {
   time_t timestamp = time(NULL);
   struct tm *t = NULL;
   va_list msg;
+  size_t buflen;
 
   /* sanity check */
   if (!ctrls_logname)
@@ -492,8 +493,15 @@ int ctrls_log(const char *module_version, const char *fmt, ...) {
   vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, msg);
   va_end(msg);
  
-  buf[strlen(buf)] = '\n'; 
   buf[sizeof(buf) - 1] = '\0';
+
+  buflen = strlen(buf);
+  if (buflen < (sizeof(buf) - 1)) {
+    buf[buflen] = '\n'; 
+
+  } else {
+    buf[sizeof(buf) - 2] = '\n';
+  }
    
   while (write(ctrls_logfd, buf, strlen(buf)) < 0) {
     if (errno == EINTR) {

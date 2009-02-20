@@ -4467,6 +4467,7 @@ static int tls_log(const char *fmt, ...) {
   time_t timestamp = time(NULL);
   struct tm *t = NULL;
   va_list msg;
+  size_t buflen;
 
   /* Sanity check */
   if (!tls_logname)
@@ -4489,7 +4490,14 @@ static int tls_log(const char *fmt, ...) {
   va_end(msg);
 
   buf[sizeof(buf)-1] = '\0';
-  buf[strlen(buf)] = '\n';
+
+  buflen = strlen(buf);
+  if (buflen < (sizeof(buf) - 1)) {
+    buf[buflen] = '\n';
+
+  } else {
+    buf[sizeof(buf) - 2] = '\n';
+  }
 
   if (write(tls_logfd, buf, strlen(buf)) < 0)
     return -1;
