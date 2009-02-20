@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.14 2009-02-05 22:26:28 castaglia Exp $
+ * $Id: mod_facts.c,v 1.15 2009-02-20 17:19:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -889,17 +889,38 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   facts_mlinfobuf_init();
 
   while ((dent = pr_fsio_readdir(dirh)) != NULL) {
-    const char *p;
+    int hidden = FALSE, res;
+    char *rel_path, *abs_path;
 
     pr_signals_handle();
 
-    p = pdircat(cmd->tmp_pool, decoded_path, dent->d_name, NULL);
+    rel_path = pdircat(cmd->tmp_pool, decoded_path, dent->d_name, NULL);
+
+    /* Check that the file can be listed. */
+    abs_path = dir_realpath(cmd->tmp_pool, rel_path);
+    if (abs_path) {
+      res = dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, abs_path,
+        &hidden);
+      
+    } else {
+      abs_path = dir_canonical_path(cmd->tmp_pool, rel_path);
+      if (abs_path == NULL)
+        abs_path = rel_path;
+
+      res = dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, abs_path,
+        &hidden);
+    }
+
+    if (!res || hidden) {
+      continue;
+    }
+
     memset(&info, 0, sizeof(struct mlinfo));
 
     info.pool = cmd->tmp_pool;
-    if (facts_mlinfo_get(&info, p) < 0) {
+    if (facts_mlinfo_get(&info, rel_path) < 0) {
       pr_log_debug(DEBUG3, MOD_FACTS_VERSION
-        ": MLSD: unable to get info for '%s': %s", p, strerror(errno));
+        ": MLSD: unable to get info for '%s': %s", abs_path, strerror(errno));
       continue;
     }
 
@@ -930,6 +951,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 }
 
 MODRET facts_mlst(cmd_rec *cmd) {
+  int hidden = FALSE;
   const char *path, *decoded_path;
   struct mlinfo info;
 
@@ -947,11 +969,21 @@ MODRET facts_mlst(cmd_rec *cmd) {
   }
 
   if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, (char *) decoded_path,
-      NULL)) {
+      &hidden)) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       cmd->argv[0]);
     pr_response_add_err(R_550, _("Unable to handle command"));
     return PR_ERROR(cmd);
+  }
+
+  if (hidden) {
+    /* Simply send an empty list, much like we do for a STAT command for
+     * a hidden file.
+     */
+    pr_response_send_raw(_("%s- Start of list for %s"), R_250, path);
+    pr_response_send_raw(_("%s End of list"), R_250);
+
+    return PR_HANDLED(cmd);
   }
 
   info.pool = cmd->tmp_pool;
