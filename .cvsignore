@@ -10,6 +10,7 @@ ftpwho
 ftpcount
 ftptop
 ftpdctl
+ftpscrub
 Makefile
 Make.rules
 Make.modules
