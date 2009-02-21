@@ -4114,13 +4114,13 @@ static ssize_t tls_write(SSL *ssl, const void *buf, size_t len) {
 static char *tls_x509_name_oneline(X509_NAME *x509_name) {
   static char buf[1024] = {'\0'};
 
-  /* If we are using OpenSSL 0.9.6 or newer, we want to use X509_NAME_print_ex()
-   * instead of X509_NAME_oneline().
+  /* If we are using OpenSSL 0.9.6 or newer, we want to use
+   * X509_NAME_print_ex() instead of X509_NAME_oneline().
    */
 
 #if OPENSSL_VERSION_NUMBER < 0x000906000L
   memset(&buf, '\0', sizeof(buf));
-  return X509_NAME_oneline(x509_name, buf, sizeof(buf));
+  return X509_NAME_oneline(x509_name, buf, sizeof(buf)-1);
 #else
 
   /* Sigh...do it the hard way. */
