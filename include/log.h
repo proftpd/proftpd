@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.30 2009-02-14 05:06:36 castaglia Exp $
+ * $Id: log.h,v 1.31 2009-02-21 06:19:31 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -115,12 +115,19 @@ int log_wtmp(const char *, const char *, const char *, pr_netaddr_t *);
 
 /* file-based logging functions */
 int pr_log_openfile(const char *, int *, mode_t);
+
 int pr_log_writefile(int, const char *, const char *, ...)
 #ifdef __GNUC__
   __attribute__ ((format (printf, 3, 4)));
 #else
   ;
 #endif
+
+/* Same as pr_log_writefile(), only this function takes a va_list.
+ * Useful for modules which provide their own varargs wrapper log functions,
+ * but still want to use the core facilities for writing to the log fd.
+ */
+int pr_log_vwritefile(int, const char *, const char *, va_list ap);
 
 /* syslog-based logging functions.  Note that the open/close functions are
  * not part of the public API; use the pr_log_pri() function to log via

@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.38 2009-02-20 22:47:22 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.39 2009-02-21 06:19:31 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -350,47 +350,18 @@ static int quotatab_closelog(void) {
 }
 
 int quotatab_log(const char *fmt, ...) {
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  time_t timestamp = time(NULL);
-  struct tm *t = NULL;
   va_list msg;
-  size_t buflen;
+  int res;
 
   /* sanity check */
   if (!quota_logname)
     return 0;
 
-  t = pr_localtime(NULL, &timestamp);
-
-  /* prepend the timestamp */
-  strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);
-  buf[sizeof(buf) - 1] = '\0';
-
-  /* prepend a small header */
-  snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-           MOD_QUOTATAB_VERSION "[%u]: ", (unsigned int) getpid());
-
-  buf[sizeof(buf) - 1] = '\0';
-
-  /* affix the message */
   va_start(msg, fmt);
-  vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, msg);
+  res = pr_log_vwritefile(quota_logfd, MOD_QUOTATAB_VERSION, fmt, msg);
   va_end(msg);
 
-  buf[sizeof(buf) - 1] = '\0';
-
-  buflen = strlen(buf);
-  if (buflen < (sizeof(buf) - 1)) {
-    buf[buflen] = '\n';
-
-  } else {
-    buf[sizeof(buf) - 2] = '\n';
-  }
-
-  if (write(quota_logfd, buf, strlen(buf)) < 0)
-    return -1;
-
-  return 0;
+  return res;
 }
 
 int quotatab_openlog(void) {
@@ -643,7 +614,8 @@ static int quotatab_open(quota_tabtype_t tab_type) {
         return -1;
 
     } else {
-      quotatab_log("error: unsupported tally table type: '%s'", c->argv[0]);
+      quotatab_log("error: unsupported tally table type: '%s'",
+        (const char *) c->argv[0]);
       return -1;
     }
 
@@ -665,7 +637,8 @@ static int quotatab_open(quota_tabtype_t tab_type) {
         return -1;
 
     } else {
-      quotatab_log("error: unsupported limit table type: '%s'", c->argv[0]);
+      quotatab_log("error: unsupported limit table type: '%s'",
+        (const char *) c->argv[0]);
       return -1;
     }
   }
@@ -1752,8 +1725,9 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
             double bytes_diff = byte_count - quotatab_tally.bytes_in_used;
             int files_diff = file_count - quotatab_tally.files_in_used;
 
-            quotatab_log("found %0.2lf bytes in %u files for group '%s'",
-              byte_count, file_count, group_name, time(NULL) - then);
+            quotatab_log("found %0.2lf bytes in %u files for group '%s' "
+              "in %lu secs", byte_count, file_count, group_name,
+              time(NULL) - then);
 
             quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
               bytes_diff, files_diff);

@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.40 2009-02-20 22:47:22 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.41 2009-02-21 06:19:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -466,53 +466,18 @@ static int ctrls_closelog(void) {
 }
 
 int ctrls_log(const char *module_version, const char *fmt, ...) {
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  time_t timestamp = time(NULL);
-  struct tm *t = NULL;
   va_list msg;
-  size_t buflen;
+  int res;
 
   /* sanity check */
   if (!ctrls_logname)
     return 0;
 
-  t = pr_localtime(NULL, &timestamp);
-
-  /* prepend the timestamp */ 
-  strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);
-  buf[sizeof(buf) - 1] = '\0';
-
-  /* prepend a small header */
-  snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-           "%s[%u]: ", module_version, (unsigned int) getpid());
-
-  buf[sizeof(buf) - 1] = '\0';
-
-  /* affix the message */
   va_start(msg, fmt);
-  vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, msg);
+  res = pr_log_vwritefile(ctrls_logfd, module_version, fmt, msg);
   va_end(msg);
- 
-  buf[sizeof(buf) - 1] = '\0';
 
-  buflen = strlen(buf);
-  if (buflen < (sizeof(buf) - 1)) {
-    buf[buflen] = '\n'; 
-
-  } else {
-    buf[sizeof(buf) - 2] = '\n';
-  }
-   
-  while (write(ctrls_logfd, buf, strlen(buf)) < 0) {
-    if (errno == EINTR) {
-      pr_signals_handle();
-      continue;
-    }
-
-    return -1;
-  }
-
-  return 0;
+  return res;
 }
 
 static int ctrls_openlog(void) {

@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.156 2009-02-21 06:14:43 castaglia Exp $
+ * $Id: mod_sql.c,v 1.157 2009-02-21 06:19:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4276,47 +4276,18 @@ static int sql_closelog(void) {
 }
 
 int sql_log(int level, const char *fmt, ...) {
-  char buf[PR_TUNABLE_BUFFER_SIZE * 2] = {'\0'};
-  time_t timestamp = time(NULL);
-  struct tm *t = NULL;
   va_list msg;
-  size_t buflen;
+  int res;
 
   /* sanity check */
   if (!sql_logfile)
     return 0;
 
-  t = pr_localtime(NULL, &timestamp);
-
-  /* prepend the timestamp */
-  strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);
-  buf[sizeof(buf) - 1] = '\0';
-
-  /* prepend a small header */
-  snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-    MOD_SQL_VERSION "[%u]: ", (unsigned int) getpid());
-
-  buf[sizeof(buf) - 1] = '\0';
-
-  /* affix the message */
   va_start(msg, fmt);
-  vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, msg);
+  res = pr_log_vwritefile(sql_logfd, MOD_SQL_VERSION, fmt, msg);
   va_end(msg);
 
-  buf[sizeof(buf) - 1] = '\0';
-
-  buflen = strlen(buf);
-  if (buflen < (sizeof(buf) - 1)) {
-    buf[buflen] = '\n';
-
-  } else {
-    buf[sizeof(buf)-2] = '\n';
-  }
-
-  if (write(sql_logfd, buf, strlen(buf)) < 0)
-    return -1;
-
-  return 0;
+  return res;
 }
 
 static int sql_openlog(void) {

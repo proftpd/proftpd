@@ -29,7 +29,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.h,v 1.8 2008-07-17 20:51:16 castaglia Exp $
+ * $Id: mod_quotatab.h,v 1.9 2009-02-21 06:19:31 castaglia Exp $
  */
 
 #ifndef MOD_QUOTATAB_H
@@ -189,7 +189,13 @@ quota_tally_t quotatab_tally;
 quota_deltas_t quotatab_deltas;
 
 /* Function prototypes necessary for quotatab sub-modules */
-int quotatab_log(const char *, ...);
+int quotatab_log(const char *, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 1, 2)));
+#else
+       ;
+#endif
+
 int quotatab_openlog(void);
 int quotatab_register_backend(const char *,
   quota_table_t *(*tab_open)(pool *, quota_tabtype_t, const char *),

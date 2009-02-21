@@ -4463,46 +4463,18 @@ static void tls_closelog(void) {
 }
 
 static int tls_log(const char *fmt, ...) {
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  time_t timestamp = time(NULL);
-  struct tm *t = NULL;
   va_list msg;
-  size_t buflen;
+  int res;
 
   /* Sanity check */
   if (!tls_logname)
     return 0;
 
-  t = pr_localtime(NULL, &timestamp);
-
-  /* Prepend the timestamp */
-  strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);
-  buf[sizeof(buf)-1] = '\0';
-
-  /* Prepend a small header */
-  snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), MOD_TLS_VERSION
-    "[%u]: ", (unsigned int) getpid());
-  buf[sizeof(buf)-1] = '\0';
-
-  /* Affix the message */
   va_start(msg, fmt);
-  vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, msg);
+  res = pr_log_vwritefile(tls_logfd, MOD_TLS_VERSION, fmt, msg);
   va_end(msg);
 
-  buf[sizeof(buf)-1] = '\0';
-
-  buflen = strlen(buf);
-  if (buflen < (sizeof(buf) - 1)) {
-    buf[buflen] = '\n';
-
-  } else {
-    buf[sizeof(buf) - 2] = '\n';
-  }
-
-  if (write(tls_logfd, buf, strlen(buf)) < 0)
-    return -1;
-
-  return 0;
+  return res;
 }
 
 static int tls_openlog(void) {

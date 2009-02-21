@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.49 2009-02-20 22:47:22 castaglia Exp $
+ * $Id: mod_radius.c,v 1.50 2009-02-21 06:19:31 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9"
@@ -259,7 +259,14 @@ static radius_attrib_t *radius_get_attrib(radius_packet_t *, unsigned char);
 static void radius_get_rnd_digest(radius_packet_t *);
 static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *,
   unsigned char);
-static int radius_log(const char *, ...);
+
+static int radius_log(const char *, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 1, 2)));
+#else
+       ;
+#endif
+
 static radius_server_t *radius_make_server(pool *);
 static int radius_openlog(void);
 static int radius_open_socket(void);
@@ -1672,47 +1679,18 @@ static int radius_closelog(void) {
 }
 
 static int radius_log(const char *fmt, ...) {
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  time_t timestamp = time(NULL);
-  struct tm *t = NULL;
   va_list msg;
-  size_t buflen;
+  int res;
 
   /* sanity check */
   if (!radius_logname)
     return 0;
 
-  t = pr_localtime(NULL, &timestamp);
-
-  /* prepend the timestamp */
-  strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);
-  buf[sizeof(buf) - 1] = '\0';
-
-  /* prepend a small header */
-  snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-           MOD_RADIUS_VERSION "[%u]: ", (unsigned int) getpid());
-
-  buf[sizeof(buf) - 1] = '\0';
-
-  /* affix the message */
   va_start(msg, fmt);
-  vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, msg);
+  res = pr_log_vwritefile(radius_logfd, MOD_RADIUS_VERSION, fmt, msg);
   va_end(msg);
 
-  buf[sizeof(buf) - 1] = '\0';
-
-  buflen = strlen(buf);
-  if (buflen < (sizeof(buf) - 1)) {
-    buf[buflen] = '\n';
-
-  } else {
-    buf[sizeof(buf) - 2] = '\n';
-  }
-
-  if (write(radius_logfd, buf, strlen(buf)) < 0)
-    return -1;
-
-  return 0;
+  return res;
 }
 
 static int radius_openlog(void) {
@@ -1920,10 +1898,9 @@ static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
     unsigned int vendor_id = 0;
     radius_attrib_t *vsa = NULL;
 
-    if (attrib->length <= 0 ||
-        attrib->length > UCHAR_MAX) {
+    if (attrib->length == 0) {
       radius_log("packet includes invalid length (%u) for attribute type %u, "
-        " rejecting", attrib->length);
+        " rejecting", attrib->length, attrib->type);
       return NULL;
     }
 
