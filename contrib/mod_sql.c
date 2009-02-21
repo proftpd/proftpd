@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.155 2009-02-20 22:47:22 castaglia Exp $
+ * $Id: mod_sql.c,v 1.156 2009-02-21 06:14:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1285,8 +1285,6 @@ static struct group *_sql_addgroup(cmd_rec *cmd, char *groupname, gid_t gid,
   struct group *cached = NULL;
   struct group *grp = NULL;
 
-  int cnt = 0;
-
   grp = pcalloc(cmd->tmp_pool, sizeof(struct group));
   grp->gr_gid = gid;
   grp->gr_name = groupname;
@@ -1305,15 +1303,17 @@ static struct group *_sql_addgroup(cmd_rec *cmd, char *groupname, gid_t gid,
     grp->gr_gid = gid;
 
     if (ah) {
+      register unsigned int i;
+
       /* finish filling in the group */
       grp->gr_mem = (char **) pcalloc(sql_pool,
         sizeof(char *) * (ah->nelts + 1));
 
-      for (cnt = 0; cnt < ah->nelts; cnt++) {
-        grp->gr_mem[cnt] = pstrdup(sql_pool, ((char **) ah->elts)[cnt]);
+      for (i = 0; i < ah->nelts; i++) {
+        grp->gr_mem[i] = pstrdup(sql_pool, ((char **) ah->elts)[i]);
       }
 
-      grp->gr_mem[ah->nelts] = '\0';
+      grp->gr_mem[i] = NULL;
     }
 
     cache_addentry(group_name_cache, grp);
