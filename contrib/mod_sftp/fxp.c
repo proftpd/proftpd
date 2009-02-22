@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.5 2009-02-16 03:14:02 castaglia Exp $
+ * $Id: fxp.c,v 1.6 2009-02-22 02:49:42 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -711,35 +711,32 @@ static const char *fxp_get_request_type_desc(unsigned char request_type) {
   return "(unknown)";
 }
 
-static int fxp_path_pass_regex_filters(const char *req_name, const char *path) {
-#if defined(HAVE_REGEX_H) && defined(REGCOMP)
-  regex_t *reg;
-  xaset_t *ctx;
+static int fxp_path_pass_regex_filters(pool *p, const char *request,
+    const char *path) {
+  int res;
+  xaset_t *set;
 
-  ctx = get_dir_ctxt(path);
+  set = get_dir_ctxt(p, (char *) path);
 
-  reg = get_param_ptr(ctx, "PathAllowFilter", FALSE);
-  if (reg &&
-      regexec(reg, path, 0, NULL, 0) != 0) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "path '%s' for %s denied by PathAllowFilter", path, req_name);
-    errno = EPERM;
-    return -1;
-  } 
+  res = pr_filter_allow_path(set, path);
+  switch (res) {
+    case 0:
+      break;
 
-  reg = get_param_ptr(ctx, "PathDenyFilter", FALSE);
-  if (reg &&
-      regexec(reg, path, 0, NULL, 0) == 0) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "path '%s' for %s denied by PathDenyFilter", path, req_name);
-    errno = EPERM;
-    return -1;
-  } 
+    case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "path '%s' for %s denied by PathAllowFilter", path, request);
+      errno = EPERM;
+      return -1;
+
+    case PR_FILTER_ERR_FAILS_DENY_FILTER:
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "path '%s' for %s denied by PathDenyFilter", path, request);
+      errno = EPERM;
+      return -1;
+  }
 
   return 0;
-#else
-  return 0;
-#endif
 }
 
 /* FXP_STATUS messages */
@@ -3442,7 +3439,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (fxp_path_pass_regex_filters("MKDIR", path) < 0) {
+  if (fxp_path_pass_regex_filters(fxp->pool, "MKDIR", path) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -4129,7 +4126,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
   /* XXX Check MaxRetrieveFileSize */
 
-  if (fxp_path_pass_regex_filters("READ", fxh->fh->fh_path) < 0) {
+  if (fxp_path_pass_regex_filters(fxp->pool, "READ", fxh->fh->fh_path) < 0) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -4672,7 +4669,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (fxp_path_pass_regex_filters("REMOVE", path) < 0) {
+  if (fxp_path_pass_regex_filters(fxp->pool, "REMOVE", path) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -4941,8 +4938,8 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (fxp_path_pass_regex_filters("RENAME", old_path) < 0 ||
-      fxp_path_pass_regex_filters("RENAME", new_path) < 0) {
+  if (fxp_path_pass_regex_filters(fxp->pool, "RENAME", old_path) < 0 ||
+      fxp_path_pass_regex_filters(fxp->pool, "RENAME", new_path) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -5111,7 +5108,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (fxp_path_pass_regex_filters("RMDIR", path) < 0) {
+  if (fxp_path_pass_regex_filters(fxp->pool, "RMDIR", path) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -5633,7 +5630,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
   /* XXX Check MaxStoreFileSize */
 
-  if (fxp_path_pass_regex_filters("WRITE", fxh->fh->fh_path) < 0) {
+  if (fxp_path_pass_regex_filters(fxp->pool, "WRITE", fxh->fh->fh_path) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
