@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.79 2009-02-15 00:27:34 castaglia Exp $
+ * $Id: conf.h,v 1.80 2009-02-22 00:28:07 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -412,6 +412,7 @@ typedef struct {
 #include "sets.h"
 #include "dirtree.h"
 #include "expr.h"
+#include "filter.h"
 #include "netio.h"
 #include "modules.h"
 #include "auth.h"

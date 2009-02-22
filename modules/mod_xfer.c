@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.251 2009-02-09 23:27:08 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.252 2009-02-22 00:28:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1415,16 +1415,11 @@ MODRET xfer_pre_appe(cmd_rec *cmd) {
 MODRET xfer_stor(cmd_rec *cmd) {
   char *path;
   char *lbuf;
-  int bufsz, len, ferrno = 0;
+  int bufsz, len, ferrno = 0, res;
   off_t nbytes_stored, nbytes_max_store = 0;
   unsigned char have_limit = FALSE;
   struct stat st;
   off_t curr_pos = 0;
-
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  regex_t *preg;
-  int ret;
-#endif /* REGEX */
 
   /* Prepare for any potential throttling. */
   pr_throttle_init(cmd);
@@ -1435,41 +1430,21 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
   path = session.xfer.path;
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
-
-  if (preg) {
-    ret = regexec(preg, cmd->arg, 0, NULL, 0);
-    if (ret != 0) {
+  res = pr_filter_allow_path(CURRENT_CONF, path);
+  switch (res) {
+    case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
       pr_log_debug(DEBUG2, "'%s' denied by PathAllowFilter", cmd->arg);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
       return PR_ERROR(cmd);
 
-    } else {
-      char errmsg[200];
-      regerror(ret, preg, errmsg, sizeof(errmsg));
-      pr_log_debug(DEBUG8, "'%s' allowed by PathAllowFilter (%s)", cmd->arg,
-        errmsg);
-    }
-  }
-
-  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
-
-  if (preg) {
-    ret = regexec(preg, cmd->arg, 0, NULL, 0);
-    if (ret == 0) {
+    case PR_FILTER_ERR_FAILS_DENY_FILTER:
       pr_log_debug(DEBUG2, "'%s' denied by PathDenyFilter", cmd->arg);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
       return PR_ERROR(cmd);
 
-    } else {
-      char errmsg[200];
-      regerror(ret, preg, errmsg, sizeof(errmsg));
-      pr_log_debug(DEBUG8, "'%s' allowed by PathDenyFilter (%s)", cmd->arg,
-        errmsg);
-    }
+    case 0:
+      break;
   }
-#endif /* REGEX */
 
   /* Make sure the proper current working directory is set in the FSIO
    * layer, so that the proper FS can be used for the open().
@@ -1625,8 +1600,6 @@ MODRET xfer_stor(cmd_rec *cmd) {
   lbuf = (char *) palloc(cmd->tmp_pool, bufsz);
 
   while ((len = pr_data_xfer(lbuf, bufsz)) > 0) {
-    int res;
-
     pr_signals_handle();
 
     if (XFER_ABORTED)
