@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: utf8.c,v 1.3 2009-02-19 17:34:30 castaglia Exp $
+ * $Id: utf8.c,v 1.4 2009-02-22 02:48:22 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -35,11 +35,11 @@
 # include <langinfo.h>
 #endif
 
+static const char *local_charset = NULL;
+
 #if defined(PR_USE_NLS) && defined(HAVE_ICONV_H)
 static iconv_t decode_conv = (iconv_t) -1;
 static iconv_t encode_conv = (iconv_t) -1;
-
-static const char *local_charset = NULL;
 
 static int utf8_convert(iconv_t conv, char *inbuf, size_t *inbuflen,
     char *outbuf, size_t *outbuflen) {
