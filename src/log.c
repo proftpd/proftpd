@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.93 2009-02-21 06:19:32 castaglia Exp $
+ * $Id: log.c,v 1.94 2009-02-22 00:22:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -262,55 +262,19 @@ int pr_log_vwritefile(int logfd, const char *ident, const char *fmt,
 }
 
 int pr_log_writefile(int logfd, const char *ident, const char *fmt, ...) {
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  time_t timestamp = time(NULL);
-  struct tm *t = NULL;
   va_list msg;
-  size_t buflen;
+  int res;
 
   if (logfd < 0) {
     errno = EINVAL;
     return -1;
   }
 
-  t = pr_localtime(NULL, &timestamp);
-  if (!t) 
-    return -1;
-
-  /* Prepend the timestamp */
-  strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);
-  buf[sizeof(buf)-1] = '\0';
-
-  /* Prepend a small header */
-  snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "%s[%u]: ",
-    ident, (unsigned int) (session.pid ? session.pid : getpid()));
-  buf[sizeof(buf)-1] = '\0';
-
-  /* Affix the message */
   va_start(msg, fmt);
-  vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, msg);
+  res = pr_log_vwritefile(logfd, ident, fmt, msg);
   va_end(msg);
 
-  buf[sizeof(buf)-1] = '\0';
-
-  buflen = strlen(buf);
-  if (buflen < (sizeof(buf) - 1)) {
-    buf[buflen] = '\n';
-
-  } else {
-    buf[sizeof(buf)-2] = '\n';
-  }
-
-  while (write(logfd, buf, strlen(buf)) < 0) {
-    if (errno == EINTR) {
-      pr_signals_handle();
-      continue;
-    }
-
-    return -1;
-  }
-
-  return 0;
+  return res;
 }
 
 int log_opensyslog(const char *fn) {
