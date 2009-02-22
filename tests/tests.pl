@@ -96,6 +96,8 @@ if (scalar(@ARGV) > 0) {
     t/config/maxretrievefilesize.t
     t/config/maxstorefilesize.t
     t/config/order.t
+    t/config/pathallowfilter.t
+    t/config/pathdenyfilter.t
     t/config/requirevalidshell.t
     t/config/serverident.t
     t/config/storeuniqueprefix.t
