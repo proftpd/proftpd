@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.252 2009-02-22 00:28:07 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.253 2009-02-22 01:51:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1432,18 +1432,20 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
   res = pr_filter_allow_path(CURRENT_CONF, path);
   switch (res) {
+    case 0:
+      break;
+
     case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
-      pr_log_debug(DEBUG2, "'%s' denied by PathAllowFilter", cmd->arg);
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
+        path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
       return PR_ERROR(cmd);
 
     case PR_FILTER_ERR_FAILS_DENY_FILTER:
-      pr_log_debug(DEBUG2, "'%s' denied by PathDenyFilter", cmd->arg);
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
+        path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
       return PR_ERROR(cmd);
-
-    case 0:
-      break;
   }
 
   /* Make sure the proper current working directory is set in the FSIO
