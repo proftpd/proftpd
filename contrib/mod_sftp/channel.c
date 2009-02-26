@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.3 2009-02-16 03:14:02 castaglia Exp $
+ * $Id: channel.c,v 1.4 2009-02-26 21:43:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -472,7 +472,7 @@ static int process_channel_data(struct ssh2_channel *chan,
     buflen = bufsz = 128;
     ptr = buf = palloc(pkt->pool, bufsz);
 
-    window_adjlen = SFTP_SSH2_CHANNEL_WINDOW_SIZE - chan->local_windowsz;
+    window_adjlen = chan_window_size - chan->local_windowsz;
 
     sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_WINDOW_ADJUST);
     sftp_msg_write_int(&buf, &buflen, chan->remote_channel_id);
