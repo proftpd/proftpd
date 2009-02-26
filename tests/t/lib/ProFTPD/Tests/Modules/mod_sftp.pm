@@ -497,6 +497,16 @@ sub set_up {
     my $abs_path = File::Spec->rel2abs($self->{tmpdir});
     die("Can't create dir $abs_path: $@");
   }
+
+  # Make sure that mod_sftp does not complain about permissions on the hostkey
+  # files.
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  unless (chmod(0400, $rsa_host_key, $dsa_host_key)) {
+    die("Can't set perms on $rsa_host_key, $dsa_host_key: $!");
+  }
 }
 
 sub tear_down {
