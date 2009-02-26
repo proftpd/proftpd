@@ -1,14 +1,14 @@
-# English translations for PACKAGE package.
-# Copyright (C) 2008 The ProFTPD Project
-# This file is distributed under the same license as the PACKAGE package.
-# Automatically generated, 2008.
+# French translations for ProFTPD package.
+# Copyright (C) 2009 The ProFTPD Project
+# This file is distributed under the same license as the ProFTPD package.
+# Automatically generated, 2009.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: ProFTPD 1.3.2\n"
+"Project-Id-Version: ProFTPD 1.3.3\n"
 "Report-Msgid-Bugs-To: core@proftpd.org\n"
 "POT-Creation-Date: 2008-04-04 10:49-0800\n"
-"PO-Revision-Date: 2009-02-03 18:17+0100\n"
+"PO-Revision-Date: 2009-02-24 12:30+0100\n"
 "Last-Translator: Davy Defaud <davy.defaud@trustmission.com>\n"
 "Language-Team: none\n"
 "MIME-Version: 1.0\n"
@@ -119,7 +119,7 @@ msgstr "Tout"
 #: ../contrib/mod_quotatab.c:2663
 #, c-format
 msgid "Per Session: %s"
-msgstr "Par session: %s"
+msgstr "Par session : %s"
 
 #: ../contrib/mod_quotatab.c:2664
 msgid "False"
@@ -177,7 +177,7 @@ msgstr "Identifiez-vous d'abord avec la commande USER"
 #: ../contrib/mod_readme.c:74
 #, c-format
 msgid "Please read the file %s"
-msgstr "Veuillez lire le fichier « %s » S.V.P."
+msgstr "Veuillez lire le fichier %s S.V.P."
 
 #: ../contrib/mod_readme.c:75
 #, c-format
@@ -330,7 +330,7 @@ msgstr "Expiration du délai de session (%u s) : fermeture du canal de contrôle
 
 #: ../modules/mod_auth.c:420
 msgid "Anonymous access granted, restrictions apply"
-msgstr "Accès anonyme authorisé, application des restrictions"
+msgstr "Accès anonyme autorisé, application des restrictions"
 
 #: ../modules/mod_auth.c:422
 #, c-format
@@ -376,7 +376,7 @@ msgstr "Au revoir."
 #: ../modules/mod_core.c:2931
 #, c-format
 msgid "\"%s\" is the current directory"
-msgstr "le répertoire courant est « %s »"
+msgstr "\"%s\" est le répertoire courant"
 
 #: ../modules/mod_core.c:2943
 msgid "Illegal PASV command, EPSV ALL in effect"
@@ -390,7 +390,7 @@ msgstr "Impossible d'établir la connexion sur le canal de données : erreur int
 #: ../modules/mod_core.c:3045
 #: ../modules/mod_core.c:3185
 msgid "Illegal PORT command, EPSV ALL in effect"
-msgstr "commande PORT illégale, état actuel : EPSV ALL"
+msgstr "commande PORT illégale, EPSV ALL effectif"
 
 #: ../modules/mod_core.c:3070
 msgid "Unable to service PORT commands"
@@ -488,12 +488,12 @@ msgstr "%s : nom de répertoire incorrect"
 #: ../modules/mod_core.c:3873
 #, c-format
 msgid "\"%s\" - Directory successfully created"
-msgstr "« %s » - Répertoire créé avec succès"
+msgstr "\"%s\" - Répertoire créé avec succès"
 
 #: ../modules/mod_core.c:3912
 #, c-format
 msgid "%s: not a plain file"
-msgstr "« %s » n'est pas un fichier texte"
+msgstr "%s n'est pas un fichier texte"
 
 #: ../modules/mod_core.c:3947
 #, c-format
@@ -503,7 +503,7 @@ msgstr "%s n'est pas autorisé en mode ASCII"
 #: ../modules/mod_core.c:3962
 #, c-format
 msgid "%s: not a regular file"
-msgstr "« %s » n'est pas un fichier régulier"
+msgstr "%s n'est pas un fichier régulier"
 
 #: ../modules/mod_core.c:4068
 msgid "Bad sequence of commands"
@@ -512,7 +512,7 @@ msgstr "Mauvaise séquence de commandes"
 #: ../modules/mod_core.c:4107
 #, c-format
 msgid "%s: Rename permission denied"
-msgstr "%s : permission de renommer non accordée"
+msgstr "%s: permission de renommer non accordée"
 
 #: ../modules/mod_core.c:4116
 #: ../modules/mod_core.c:4124
@@ -526,7 +526,7 @@ msgstr "Renommage exécuté avec succès"
 
 #: ../modules/mod_core.c:4201
 msgid "File or directory exists, ready for destination name"
-msgstr "lFichier ou répertoire existant, prêt pour le nom de destination"
+msgstr "Fichier ou répertoire existant, prêt pour le nom de destination"
 
 #: ../modules/mod_core.c:4208
 msgid "NOOP command successful"
@@ -705,7 +705,7 @@ msgstr "%s : fichier non régulier"
 #: ../modules/mod_site.c:457
 #, c-format
 msgid "'SITE %s' not understood"
-msgstr "commande « SITE %s » incomprise"
+msgstr "commande « SITE %s » non comprise"
 
 #: ../modules/mod_site.c:370
 #, c-format
@@ -768,7 +768,7 @@ msgstr "%s : permission d'écrasement refusée"
 #: ../modules/mod_xfer.c:1400
 #, c-format
 msgid "%s: Append/Restart not permitted, try again"
-msgstr "%s : ajout/reprise non permis, veuillez réessayer"
+msgstr "%s : ajout/reprise non permis, veuillez recommencer"
 
 #: ../modules/mod_xfer.c:1456
 msgid "STOU incompatible with REST"
@@ -825,11 +825,11 @@ msgstr "Annulation réussie"
 #: ../modules/mod_xfer.c:2257
 #, c-format
 msgid "Type set to %s"
-msgstr "Type à %s"
+msgstr "Type paramétré à %s"
 
 #: ../modules/mod_xfer.c:2272
 msgid "Structure set to F"
-msgstr "Structure à F"
+msgstr "Structure paramétrée à F"
 
 #: ../modules/mod_xfer.c:2291
 #, c-format
@@ -843,7 +843,7 @@ msgstr "Type de structure « %s » non reconnu"
 
 #: ../modules/mod_xfer.c:2315
 msgid "Mode set to S"
-msgstr "Mode à S"
+msgstr "Mode paramétré à S"
 
 #: ../modules/mod_xfer.c:2323
 #, c-format
@@ -903,7 +903,7 @@ msgstr "Connexion de données fermée"
 
 #: ../src/data.c:691
 msgid "Unexpected streams hangup"
-msgstr "Rupture inopinée du flux"
+msgstr "Interruption inopinée du flux"
 
 #: ../src/data.c:704
 msgid "Insufficient memory or file locked"
@@ -931,7 +931,7 @@ msgstr "%s : téléchargement de données en cours"
 #: ../src/data.c:941
 #: ../src/main.c:821
 msgid "Invalid command: try being more creative"
-msgstr "Commande incorrecte : essayez d'être plus créatif"
+msgstr "Commande incorrecte : essayez d'être plus imaginatif"
 
 #: ../src/help.c:88
 msgid "The following commands are recognized (* =>'s unimplemented):"
@@ -960,7 +960,7 @@ msgstr "Serveur FTP %s prêt"
 #: ../src/main.c:1243
 #, c-format
 msgid "FTP server shut down (%s) -- please try again later"
-msgstr "Arrêt du serveur FTP (%s) -- veuillez réessayer plus tard"
+msgstr "Arrêt du serveur FTP (%s) -- veuillez réessayer ultérieurement"
 
 #: ../src/main.c:1258
 #, c-format
