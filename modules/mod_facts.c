@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.15 2009-02-20 17:19:03 castaglia Exp $
+ * $Id: mod_facts.c,v 1.16 2009-02-26 20:31:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -227,7 +227,7 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
     ptr = buf + buflen;
   }
 
-  snprintf(ptr, bufsz - buflen, " %s\n", info->path);
+  snprintf(ptr, bufsz - buflen, " %s", info->path);
 
   buf[bufsz-1] = '\0';
   buflen = strlen(buf);
@@ -358,6 +358,8 @@ static void facts_mlinfo_send(struct mlinfo *info) {
   char buf[PR_TUNABLE_BUFFER_SIZE];
 
   (void) facts_mlinfo_fmt(info, buf, sizeof(buf));
+
+  /* The trailing CRLF will be added by pr_response_send_raw(). */
   pr_response_send_raw("%s", buf);
 }
 
