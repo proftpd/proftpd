@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.5 2009-02-27 00:20:10 castaglia Exp $
+ * $Id: kex.c,v 1.6 2009-02-27 22:32:11 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1563,11 +1563,11 @@ static int read_kexinit(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   kex->client_names->s2c_comp_algo = list;
 
   /* Client-to-server languages */
-  list = sftp_msg_read_string(pkt->pool, &buf, &buflen);
+  list = sftp_msg_read_string(kex_pool, &buf, &buflen);
   kex->client_names->c2s_lang = list;
 
   /* Server-to-client languages */
-  list = sftp_msg_read_string(pkt->pool, &buf, &buflen);
+  list = sftp_msg_read_string(kex_pool, &buf, &buflen);
   kex->client_names->s2c_lang = list;
 
   /* Read the "first kex packet follows" byte */
