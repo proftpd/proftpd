@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.4 2009-02-26 23:14:54 castaglia Exp $
+ * $Id: kex.c,v 1.5 2009-02-27 00:20:10 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -888,8 +888,21 @@ static struct sftp_kex *create_kex(pool *p) {
   list = get_kexinit_exchange_list(kex_pool);
   kex->server_names->kex_algo = list;
 
-/* XXX Make this depend on the hostkeys that have been configured. */
-  kex->server_names->server_hostkey_algo = "ssh-rsa,ssh-dss";
+  /* Our list of supported hostkey algorithms depends on the hostkeys
+   * that have been configured.  Show a preference for RSA over DSA.
+   * XXX Should this be configurable later?
+   */
+
+  if (sftp_keys_have_dsa_hostkey() == 0 &&
+      sftp_keys_have_rsa_hostkey() == 0) {
+    kex->server_names->server_hostkey_algo = "ssh-rsa,ssh-dss";
+
+  } else if (sftp_keys_have_rsa_hostkey() == 0) {
+    kex->server_names->server_hostkey_algo = "ssh-rsa";
+
+  } else if (sftp_keys_have_dsa_hostkey() == 0) {
+    kex->server_names->server_hostkey_algo = "ssh-dss";
+  }
 
   list = sftp_crypto_get_kexinit_cipher_list(kex_pool);
   kex->server_names->c2s_encrypt_algo = list;
@@ -919,6 +932,20 @@ static struct sftp_kex *create_kex(pool *p) {
     kex->server_names->c2s_comp_algo = "none";
     kex->server_names->s2c_comp_algo = "none";
   }
+
+#ifdef PR_USE_NLS
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPLanguages", FALSE);
+  if (c) {
+    /* XXX Need to implement functionality here. */
+
+  } else {
+    kex->server_names->c2s_lang = "en_US";
+    kex->server_names->s2c_lang = "en_US";
+  }
+#else
+  kex->server_names->c2s_lang = "";
+  kex->server_names->s2c_lang = "";
+#endif /* !PR_USE_NLS */
 
   return kex;
 }

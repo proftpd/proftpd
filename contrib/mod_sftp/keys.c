@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: keys.c,v 1.3 2009-02-27 00:20:10 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1080,12 +1080,21 @@ const char *sftp_keys_get_hostkey_data(pool *p, int key_type,
   return ptr;
 }
 
-int sftp_keys_have_hostkeys(void) {
-  if (sftp_dsa_hostkey != NULL &&
-      sftp_rsa_hostkey != NULL) {
+int sftp_keys_have_dsa_hostkey(void) {
+  if (sftp_dsa_hostkey != NULL) {
     return 0;
   }
 
+  errno = ENOENT;
+  return -1;
+}
+
+int sftp_keys_have_rsa_hostkey(void) {
+  if (sftp_rsa_hostkey != NULL) {
+    return 0;
+  }
+
+  errno = ENOENT;
   return -1;
 }
 

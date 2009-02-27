@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.6 2009-02-19 17:34:29 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.7 2009-02-27 00:20:10 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1248,7 +1248,11 @@ static int sftp_sess_init(void) {
     c = find_config_next(c, c->next, CONF_PARAM, "SFTPHostKey", FALSE);
   }
 
-  if (sftp_keys_have_hostkeys() < 0) {
+  /* Support having either an RSA hostkey, a DSA hostkey, or both.  But
+   * we have to have at least one hostkey.
+   */
+  if (sftp_keys_have_dsa_hostkey() < 0 &&
+      sftp_keys_have_rsa_hostkey() < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "no available host keys, unable to handle session");
     errno = EPERM;
