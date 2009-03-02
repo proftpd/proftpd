@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.16 2009-02-26 20:31:52 castaglia Exp $
+ * $Id: mod_facts.c,v 1.17 2009-03-02 23:48:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -227,7 +227,17 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
     ptr = buf + buflen;
   }
 
-  snprintf(ptr, bufsz - buflen, " %s", info->path);
+  /* MLST entries are not sent via pr_data_xfer(), and thus we do not need
+   * to include an LF at the end; it is appended by pr_response_send_raw().
+   * But MLSD entries DO need the trailing LF, so that it can be converted
+   * into a CRLF sequence by pr_data_xfer().
+   */
+  if (strcmp(session.curr_cmd, C_MLSD) == 0) {
+    snprintf(ptr, bufsz - buflen, " %s\n", info->path);
+
+  } else {
+    snprintf(ptr, bufsz - buflen, " %s", info->path);
+  }
 
   buf[bufsz-1] = '\0';
   buflen = strlen(buf);
@@ -822,13 +832,17 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   DIR *dirh;
   struct dirent *dent;
 
-  if (cmd->argc > 2) {
-    pr_response_add_err(R_501, _("Invalid number of arguments"));
-    return PR_ERROR(cmd);
-  }
-
   if (cmd->argc != 1) {
-    path = cmd->argv[1];
+    register unsigned int i;
+
+    /* The path can contain spaces; it is thus the concatenation of all of the
+     * arguments after the command.
+     */
+    path = pstrdup(cmd->tmp_pool, cmd->argv[1]);
+    for (i = 2; i < cmd->argc; i++) {
+      path = pstrcat(cmd->tmp_pool, path, " ", cmd->argv[i], NULL);
+    }
+
     decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
   } else {
@@ -957,13 +971,17 @@ MODRET facts_mlst(cmd_rec *cmd) {
   const char *path, *decoded_path;
   struct mlinfo info;
 
-  if (cmd->argc > 2) {
-    pr_response_add_err(R_501, _("Invalid number of arguments"));
-    return PR_ERROR(cmd);
-  }
-
   if (cmd->argc != 1) {
-    path = cmd->argv[1];
+    register unsigned int i;
+
+    /* The path can contain spaces; it is thus the concatenation of all of the
+     * arguments after the command.
+     */
+    path = pstrdup(cmd->tmp_pool, cmd->argv[1]);
+    for (i = 2; i < cmd->argc; i++) {
+      path = pstrcat(cmd->tmp_pool, path, " ", cmd->argv[i], NULL);
+    }
+
     decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
   } else {
