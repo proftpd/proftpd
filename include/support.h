@@ -25,7 +25,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.32 2009-02-16 02:51:47 castaglia Exp $
+ * $Id: support.h,v 1.33 2009-03-02 17:56:20 castaglia Exp $
  */
 
 #ifndef PR_SUPPORT_H
@@ -69,8 +69,6 @@ char *dir_realpath(pool *, const char *);
 char *dir_canonical_path(pool *, const char *);
 char *dir_canonical_vpath(pool *, const char *);
 char *dir_best_path(pool *, const char *);
-
-int set_protocol_name(const char *);
 
 void schedule(void (*f)(void *, void *, void *, void *), int, void *, void *,
   void *, void *);
