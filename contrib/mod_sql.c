@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.157 2009-02-21 06:19:31 castaglia Exp $
+ * $Id: mod_sql.c,v 1.158 2009-03-03 23:41:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -528,6 +528,12 @@ int sql_unregister_backend(const char *backend) {
  * is available.
  */
 static int sql_set_backend(char *backend) {
+  if (sql_nbackends == 0) {
+    pr_log_debug(DEBUG0, MOD_SQL_VERSION ": no SQL backends registered");
+    sql_log(DEBUG_INFO, "%s", "no SQL backends registered");
+    errno = ENOENT;
+    return -1;
+  }
 
   if (sql_nbackends == 1) {
     pr_log_debug(DEBUG8, MOD_SQL_VERSION ": defaulting to '%s' backend",
@@ -4692,7 +4698,17 @@ static int sql_sess_init(void) {
   }
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLBackend", FALSE);
-  sql_set_backend(temp_ptr);    
+  if (sql_set_backend(temp_ptr) < 0) {
+    if (temp_ptr) {
+      sql_log(DEBUG_INFO, "unable to load '%s' SQL backend: %s",
+        (char *) temp_ptr, strerror(errno));
+
+    } else {
+      sql_log(DEBUG_INFO, "unable to load SQL backend: %s", strerror(errno));
+    }
+
+    return -1;
+  }
  
   /* Get our backend info and toss it up */
   cmd = _sql_make_cmd(tmp_pool, 1, "foo");
