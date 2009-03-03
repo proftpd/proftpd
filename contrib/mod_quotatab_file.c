@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_quotatab_file -- a mod_quotatab sub-module for managing quota
- *                          data via file-based tables
+ *                               data via file-based tables
  *
  * Copyright (c) 2002-2009 TJ Saunders
  *
@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_quotatab_file.c,v 1.3 2009-02-12 21:36:45 castaglia Exp $
+ * $Id: mod_quotatab_file.c,v 1.4 2009-03-03 07:59:52 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -132,7 +132,8 @@ static unsigned char filetab_lookup(quota_table_t *filetab, const char *name,
       if (quota_type == quotatab_tally.quota_type) {
 
         /* Match names if need be */
-        if (name && !strcmp(name, quotatab_tally.name))
+        if (name &&
+            strcmp(name, quotatab_tally.name) == 0)
           return TRUE;
 
         if (quota_type == ALL_QUOTA)
@@ -149,7 +150,8 @@ static unsigned char filetab_lookup(quota_table_t *filetab, const char *name,
   } else if (filetab->tab_type == TYPE_LIMIT) {
     while (filetab->tab_read(filetab) >= 0) {
       if (quota_type == quotatab_limit.quota_type) {
-        if (name && !strcmp(name, quotatab_limit.name))
+        if (name &&
+            strcmp(name, quotatab_limit.name) == 0)
           return TRUE;
 
         if (quota_type == ALL_QUOTA)
@@ -179,7 +181,6 @@ static int filetab_read(quota_table_t *filetab) {
   /* Handle the limit and tally tables differently. */
 
   if (filetab->tab_type == TYPE_TALLY) {
-
     quotav[0].iov_base = QUOTATAB_IOV_BASE_TYPE quotatab_tally.name;
     quotav[0].iov_len = sizeof(quotatab_tally.name);
 
@@ -220,9 +221,6 @@ static int filetab_read(quota_table_t *filetab) {
 
     } else if (res == 0) {
       /* Assume end-of-file. */
-
-      quotatab_log("error: readv(2) returned zero when reading tally entry, "
-        "returning EOF");
       errno = EOF;
       res = -1;
     }
@@ -285,9 +283,6 @@ static int filetab_read(quota_table_t *filetab) {
 
     } else if (res == 0) {
       /* Assume end-of-file. */
-
-      quotatab_log("error: readv(2) returned zero when reading limit entry, "
-        "returning EOF");
       errno = EOF;
       res = -1;
     }
