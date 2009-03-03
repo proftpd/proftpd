@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.39 2009-02-21 06:19:31 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.40 2009-03-03 07:59:01 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -1687,7 +1687,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
         gid_t *group_ids = session.gids->elts;
 
         /* Scan the list of supplemental group memberships for this user. */
-        for (i = 0; i < session.groups->nelts-1; i++) {
+        for (i = 0; i < session.groups->nelts; i++) {
           group_name = group_names[i];
           group_id = group_ids[i];
 
