@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.89 2009-02-14 03:59:11 castaglia Exp $
+ * $Id: mod_log.c,v 1.90 2009-03-04 06:06:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -567,7 +567,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     case META_ANON_PASS:
       argp = arg;
 
-      pass = get_param_ptr(cmd->server->conf, C_PASS, FALSE);
+      pass = pr_table_get(session.notes, "mod_auth.anon-passwd", NULL);
       if (!pass)
         pass = "UNKNOWN";
 

@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.158 2009-03-03 23:41:28 castaglia Exp $
+ * $Id: mod_sql.c,v 1.159 2009-03-04 06:06:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1769,7 +1769,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       char *pass;
 
       argp = arg;
-      pass = get_param_ptr(main_server->conf, C_PASS, FALSE);
+      pass = pr_table_get(session.notes, "mod_auth.anon-passwd", NULL);
       if (!pass)
 	pass = "UNKNOWN";
       

@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.254 2009-02-14 03:59:11 castaglia Exp $
+ * $Id: mod_auth.c,v 1.255 2009-03-04 06:06:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1739,7 +1739,7 @@ MODRET auth_user(cmd_rec *cmd) {
   user = cmd->arg;
 
   remove_config(cmd->server->conf, C_USER, FALSE);
-  remove_config(cmd->server->conf, C_PASS, FALSE);
+  (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
   c = add_config_param_set(&cmd->server->conf, C_USER, 1, NULL);
   c->argv[0] = pstrdup(c->pool, user);
@@ -1759,7 +1759,7 @@ MODRET auth_user(cmd_rec *cmd) {
   if (failnopwprompt) {
     if (!user) {
       remove_config(cmd->server->conf, C_USER, FALSE);
-      remove_config(cmd->server->conf, C_PASS, FALSE);
+      (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
       pr_log_pri(PR_LOG_NOTICE, "USER %s (Login failed): Not a UserAlias.",
         origuser);
@@ -1781,7 +1781,7 @@ MODRET auth_user(cmd_rec *cmd) {
       if (!login_check_limits(c->subset, FALSE, TRUE, &i) ||
           (!aclp && !i) ) {
         remove_config(cmd->server->conf, C_USER, FALSE);
-        remove_config(cmd->server->conf, C_PASS, FALSE);
+        (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
         pr_log_auth(PR_LOG_NOTICE, "ANON %s: Limit access denies login.",
           origuser);
@@ -1793,7 +1793,7 @@ MODRET auth_user(cmd_rec *cmd) {
 
     if (!c && !aclp) {
       remove_config(cmd->server->conf, C_USER, FALSE);
-      remove_config(cmd->server->conf, C_PASS, FALSE);
+      (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
       pr_log_auth(PR_LOG_NOTICE,
         "USER %s: Limit access denies login.", origuser);
@@ -1887,7 +1887,7 @@ MODRET auth_pass(cmd_rec *cmd) {
 
   if (!user) {
     remove_config(cmd->server->conf, C_USER, FALSE);
-    remove_config(cmd->server->conf, C_PASS, FALSE);
+    (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
     return PR_ERROR_MSG(cmd, R_503, _("Login with USER first"));
   }
@@ -1906,18 +1906,22 @@ MODRET auth_pass(cmd_rec *cmd) {
 
     set_auth_check(NULL);
 
-    remove_config(cmd->server->conf, C_PASS, FALSE);
+    (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
-    if (session.sf_flags & SF_ANON)
-      add_config_param_set(&cmd->server->conf, C_PASS, 1,
-        pstrdup(cmd->server->pool,
-          pr_fs_decode_path(cmd->server->pool, cmd->arg)));
+    if (session.sf_flags & SF_ANON) {
+      if (pr_table_add_dup(session.notes, "mod_auth.anon-passwd",
+          pr_fs_decode_path(cmd->server->pool, cmd->arg), 0) < 0) {
+        pr_log_debug(DEBUG3,
+          "error stashing anonymous password in session.notes: %s",
+          strerror(errno));
+      }
+    }
 
     logged_in = 1;
     return PR_HANDLED(cmd);
   }
 
-  remove_config(cmd->server->conf, C_PASS, FALSE);
+  (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
   if (res == 0) {
     unsigned int max_logins, *max = NULL;
