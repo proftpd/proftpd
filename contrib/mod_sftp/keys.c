@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.3 2009-02-27 00:20:10 castaglia Exp $
+ * $Id: keys.c,v 1.4 2009-03-04 18:10:54 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -776,6 +776,47 @@ static EVP_PKEY *get_pkey_from_data(pool *p, char *pkey_data,
   return pkey;
 }
 
+static const char *get_key_type_desc(int key_type) {
+  const char *key_desc;
+
+  switch (key_type) {
+#ifdef EVP_PKEY_NONE
+    case EVP_PKEY_NONE:
+      key_desc = "undefined";
+      break;
+#endif
+
+#ifdef EVP_PKEY_RSA
+    case EVP_PKEY_RSA:
+      key_desc = "RSA";
+      break;
+#endif
+
+#ifdef EVP_PKEY_DSA
+    case EVP_PKEY_DSA:
+      key_desc = "DSA";
+      break;
+#endif
+
+#ifdef EVP_PKEY_DH
+    case EVP_PKEY_DH:
+      key_desc = "DH";
+      break;
+#endif
+
+#ifdef EVP_PKEY_EC
+    case EVP_PKEY_EC:
+      key_desc = "EC";
+      break;
+#endif
+
+    default:
+      key_desc = "unknown";
+  }
+
+  return key_desc;
+}
+
 /* Compare a "blob" of pubkey data sent by the client for authentication
  * with a file pubkey (from an RFC4716 formatted file).  Returns -1 if
  * there was an error, TRUE if the keys are equals, and FALSE if not.
@@ -811,8 +852,23 @@ int sftp_keys_compare_keys(pool *p, char *client_pubkey_data,
         client_rsa = EVP_PKEY_get1_RSA(client_pkey);
         file_rsa = EVP_PKEY_get1_RSA(file_pkey);
 
-        res = BN_cmp(client_rsa->e, file_rsa->e) == 0 &&
-              BN_cmp(client_rsa->n, file_rsa->n) == 0;
+        if (BN_cmp(client_rsa->e, file_rsa->e) != 0) {
+          pr_trace_msg(trace_channel, 17, "%s",
+            "RSA key mismatch: client-sent RSA key component 'e' does not "
+            "match local RSA key component 'e'");
+          res = FALSE;
+
+        } else {
+          if (BN_cmp(client_rsa->n, file_rsa->n) != 0) {
+            pr_trace_msg(trace_channel, 17, "%s",
+              "RSA key mismatch: client-sent RSA key component 'n' does not "
+              "match local RSA key component 'n'");
+            res = FALSE;
+
+          } else {
+            res = TRUE;
+          }
+        } 
 
         RSA_free(client_rsa);
         RSA_free(file_rsa);
@@ -825,10 +881,39 @@ int sftp_keys_compare_keys(pool *p, char *client_pubkey_data,
         client_dsa = EVP_PKEY_get1_DSA(client_pkey);
         file_dsa = EVP_PKEY_get1_DSA(file_pkey);
 
-        res = BN_cmp(client_dsa->p, file_dsa->p) == 0 &&
-              BN_cmp(client_dsa->q, file_dsa->q) == 0 &&
-              BN_cmp(client_dsa->g, file_dsa->g) == 0 &&
-              BN_cmp(client_dsa->pub_key, file_dsa->pub_key) == 0;
+        if (BN_cmp(client_dsa->p, file_dsa->p) != 0) {
+          pr_trace_msg(trace_channel, 17, "%s",
+            "DSA key mismatch: client-sent DSA key parameter 'p' does not "
+            "match local DSA key parameter 'p'");
+          res = FALSE;
+
+        } else {
+          if (BN_cmp(client_dsa->q, file_dsa->q) != 0) {
+            pr_trace_msg(trace_channel, 17, "%s",
+              "DSA key mismatch: client-sent DSA key parameter 'q' does not "
+              "match local DSA key parameter 'q'");
+            res = FALSE;
+
+          } else {
+            if (BN_cmp(client_dsa->g, file_dsa->g) != 0) {
+              pr_trace_msg(trace_channel, 17, "%s",
+                "DSA key mismatch: client-sent DSA key parameter 'g' does not "
+                "match local DSA key parameter 'g'");
+              res = FALSE;
+
+            } else {
+              if (BN_cmp(client_dsa->pub_key, file_dsa->pub_key) != 0) {
+                pr_trace_msg(trace_channel, 17, "%s",
+                  "DSA key mismatch: client-sent DSA key parameter 'pub_key' "
+                  "does not match local DSA key parameter 'pub_key'");
+                res = FALSE;
+
+              } else {
+                res = TRUE;
+              }
+            }
+          }
+        }
 
         DSA_free(client_dsa);
         DSA_free(file_dsa);
@@ -838,6 +923,16 @@ int sftp_keys_compare_keys(pool *p, char *client_pubkey_data,
     }
 
   } else {
+    if (pr_trace_get_level(trace_channel) >= 17) {
+      const char *client_key_desc, *file_key_desc;
+
+      client_key_desc = get_key_type_desc(EVP_PKEY_type(client_pkey->type));
+      file_key_desc = get_key_type_desc(EVP_PKEY_type(file_pkey->type));
+
+      pr_trace_msg(trace_channel, 17, "key mismatch: cannot compare %s key "
+        "(client-sent) with %s key (local)", client_key_desc, file_key_desc);
+    }
+
     res = FALSE;
   }
 
