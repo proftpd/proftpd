@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.70 2009-02-14 23:35:04 castaglia Exp $
+ * $Id: auth.c,v 1.71 2009-03-04 18:44:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -706,7 +706,7 @@ int pr_auth_authorize(pool *p, const char *name) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   module *m = NULL;
-  int res = PR_AUTH_DISABLEDPWD;
+  int res = PR_AUTH_OK;
 
   cmd = make_cmd(p, 1, name);
 
@@ -725,10 +725,14 @@ int pr_auth_authorize(pool *p, const char *name) {
 
   mr = dispatch_auth(cmd, "authorize", m ? &m : NULL);
 
-  if (MODRET_ISHANDLED(mr)) {
-    res = PR_AUTH_OK;
+  /* Unlike the other auth calls, we assume here that unless the handlers
+   * explicitly return ERROR, the user is authorized.  Thus HANDLED and
+   * DECLINED are both treated as "yes, this user is authorized".  This
+   * handles the case where the authenticating module (e.g. mod_sql)
+   * does NOT provide an 'authorize' handler.
+   */
 
-  } else if (MODRET_ISERROR(mr)) {
+  if (MODRET_ISERROR(mr)) {
     res = MODRET_ERROR(mr);
   }
 

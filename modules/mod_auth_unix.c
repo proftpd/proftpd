@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.37 2009-02-14 23:35:04 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.38 2009-03-04 18:44:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -615,7 +615,7 @@ MODRET pw_authz(cmd_rec *cmd) {
     pr_log_debug(DEBUG2, "AIX loginrestrictions() failed for user '%s': %s",
       cmd->argv[0], strerror(errno));
 
-    return PR_DECLINED(cmd);
+    return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD)
   }
 
   code = passwdexpired(cmd->argv[0], &reason);
@@ -630,20 +630,20 @@ MODRET pw_authz(cmd_rec *cmd) {
       /* Password expired and needs to be changed */
       pr_log_auth(LOG_WARNING, "password expired for user '%s': %.100s",
         cmd->argv[0], reason);
-      return PR_DECLINED(cmd);
+      return PR_ERROR_INT(cmd, PR_AUTH_AGEPWD);
 
     case 2:
       /* Password expired, requires sysadmin to change it */
       pr_log_auth(LOG_WARNING,
         "password expired for user '%s', requires sysadmin intervention: "
         "%.100s", cmd->argv[0], reason);
-      return PR_DECLINED(cmd);
+      return PR_ERROR_INT(cmd, PR_AUTH_AGEPWD);
 
     default:
       /* Other error */
       pr_log_auth(LOG_WARNING, "AIX passwdexpired() failed for user '%s': "
         "%.100s", cmd->argv[0], reason);
-      return PR_DECLINED(cmd);
+      return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD)
   }
 #endif /* !HAVE_LOGINRESTRICTIONS */
 
