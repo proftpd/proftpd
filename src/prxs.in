@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
 #
-#  $Id: prxs.in,v 1.4 2009-02-16 18:45:41 castaglia Exp $
+#  $Id: prxs.in,v 1.5 2009-03-04 16:21:14 castaglia Exp $
 # ---------------------------------------------------------------------------
 
 use strict;
@@ -133,6 +133,36 @@ if (defined($opts->{c})) {
     $ldflags .= " -L$libdir";
   }
 
+  # Scan through the .c files, looking for the $Libraries$ hint that
+  # proftpd's build system uses.
+  foreach my $src (@$srcs) {
+    if (open(my $fh, "< $src")) {
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($line =~ /\$Libraries:\s+(.*)?\$/) {
+          my $hint = $1;
+
+          # Assume that the library hint list is space-separated; add them
+          # to the $opts hashref.  Don't forget to strip of the '-l' prefix;
+          # that is added back later in the handling of $opts.
+          my $libs = [split(/\s+/, $hint)];
+          foreach my $lib (@$libs) {
+            $lib =~ s/^\-l//;
+            push(@{ $opts->{l} }, $lib);
+          }
+
+          last;
+        }
+      }
+
+      close($fh);
+
+    } else {
+      print STDERR "Unable to scan $src for \$Libraries\$ hint: $!\n";
+    }
+  }
+
   my $libs = "";
   foreach my $lib (@{ $opts->{l} }) {
     $libs .= " -l$lib";
@@ -146,7 +176,7 @@ if (defined($opts->{c})) {
 
 if (defined($opts->{i})) {
   my $cmds = [];
-  push(@$cmds, "$shell $libtool --mode=install $installer $install_strip $mod_name.la $libexecdir");
+  push(@$cmds, "$shell $libtool --mode=install $installer $install_strip $mod_name.la $ENV{DESTDIR}$libexecdir");
 
   run_cmds($cmds);
 
