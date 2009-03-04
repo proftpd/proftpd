@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: crypto.c,v 1.3 2009-03-04 17:41:45 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -40,7 +40,11 @@ struct sftp_cipher {
    */
   size_t discard_len;
 
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
   const EVP_CIPHER *(*get_type)(void);
+#else
+  EVP_CIPHER *(*get_type)(void);
+#endif
 
   /* Is this cipher enabled by default?  (If FALSE, then this cipher must
    * be explicitly requested via SFTPCiphers.
@@ -97,7 +101,13 @@ static struct sftp_cipher ciphers[] = {
 struct sftp_digest {
   const char *name;
   const char *openssl_name;
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
   const EVP_MD *(*get_type)(void);
+#else
+  EVP_MD *(*get_type)(void);
+#endif
+
   uint32_t mac_len;
 
   /* Is this MAC enabled by default?  (If FALSE, then this MAC must be
@@ -117,6 +127,8 @@ static struct sftp_digest digests[] = {
 };
 
 static const char *trace_channel = "ssh2";
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
 
 struct aes_ex {
   AES_KEY key;
@@ -213,6 +225,7 @@ static const EVP_CIPHER *get_aes_cipher(int key_len) {
 
   return &aes_cipher;
 }
+#endif /* OpenSSL older than 0.9.7 */
 
 const EVP_CIPHER *sftp_crypto_get_cipher(const char *name,
     size_t *discard_len) {
@@ -222,6 +235,7 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name,
     if (strcmp(ciphers[i].name, name) == 0) {
       const EVP_CIPHER *cipher;
 
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
       if (strcmp(name, "aes256-ctr") == 0) {
         cipher = get_aes_cipher(32);
 
@@ -234,6 +248,9 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name,
       } else {
         cipher = ciphers[i].get_type();
       }
+#else
+      cipher = ciphers[i].get_type();
+#endif /* OpenSSL older than 0.9.7 */
 
       if (discard_len)
         *discard_len = ciphers[i].discard_len;
@@ -290,6 +307,7 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
                 pstrdup(p, ciphers[j].name), NULL);
 
             } else {
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
               /* XXX The AES CTR modes are special cases. */
               if (strcmp(ciphers[j].name, "aes256-ctr") == 0 ||
                   strcmp(ciphers[j].name, "aes192-ctr") == 0 ||
@@ -298,10 +316,14 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
                   pstrdup(p, ciphers[j].name), NULL);
        
               } else {
+#endif
                 pr_trace_msg(trace_channel, 3,
                   "unable to use '%s' cipher: Unsupported by OpenSSL",
                   ciphers[j].name);
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
               }
+#endif
             }
 
           } else {
@@ -323,6 +345,7 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
               pstrdup(p, ciphers[i].name), NULL);
 
           } else {
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
             /* XXX The AES CTR modes are special cases. */
             if (strcmp(ciphers[i].name, "aes256-ctr") == 0 ||
                 strcmp(ciphers[i].name, "aes192-ctr") == 0 ||
@@ -331,10 +354,14 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
                 pstrdup(p, ciphers[i].name), NULL);
 
             } else {       
+#endif
               pr_trace_msg(trace_channel, 3,
                 "unable to use '%s' cipher: Unsupported by OpenSSL",
                 ciphers[i].name);
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
             }
+#endif
           }
 
         } else {

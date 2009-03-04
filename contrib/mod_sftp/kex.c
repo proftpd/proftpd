@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.6 2009-02-27 22:32:11 castaglia Exp $
+ * $Id: kex.c,v 1.7 2009-03-04 17:41:49 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -211,6 +211,12 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
   /* Shared secret */
   sftp_msg_write_mpint(&buf, &buflen, k);
 
+  /* In OpenSSL 0.9.6, many of the EVP_Digest* functions returned void, not
+   * int.  Without these ugly OpenSSL version preprocessor checks, the
+   * compiler will error out with "void value not ignored as it ought to be".
+   */
+
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestInit(&ctx, kex->hash) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing message digest: %s", sftp_crypto_get_errors());
@@ -219,7 +225,11 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
     pr_memscrub(ptr, bufsz);
     return NULL;
   }
+#else
+  EVP_DigestInit(&ctx, kex->hash);
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestUpdate(&ctx, ptr, (bufsz - buflen)) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest: %s", sftp_crypto_get_errors());
@@ -228,7 +238,11 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
     pr_memscrub(ptr, bufsz);
     return NULL;
   }
+#else
+  EVP_DigestUpdate(&ctx, ptr, (bufsz - buflen));
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestFinal(&ctx, kex_digest_buf, hlen) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error finalizing message digest: %s", sftp_crypto_get_errors());
@@ -237,6 +251,9 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
     pr_memscrub(ptr, bufsz);
     return NULL;
   }
+#else
+  EVP_DigestFinal(&ctx, kex_digest_buf, hlen);
+#endif
 
   BN_clear_free(kex->e);
   kex->e = NULL;
@@ -302,6 +319,12 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
   /* Shared secret */
   sftp_msg_write_mpint(&buf, &buflen, k);
 
+  /* In OpenSSL 0.9.6, many of the EVP_Digest* functions returned void, not
+   * int.  Without these ugly OpenSSL version preprocessor checks, the
+   * compiler will error out with "void value not ignored as it ought to be".
+   */
+
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestInit(&ctx, kex->hash) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing message digest: %s", sftp_crypto_get_errors());
@@ -310,7 +333,11 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
     pr_memscrub(ptr, bufsz);
     return NULL;
   }
+#else
+  EVP_DigestInit(&ctx, kex->hash);
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestUpdate(&ctx, ptr, (bufsz - buflen)) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest: %s", sftp_crypto_get_errors());
@@ -319,7 +346,11 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
     pr_memscrub(ptr, bufsz);
     return NULL;
   }
+#else
+  EVP_DigestUpdate(&ctx, ptr, (bufsz - buflen));
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestFinal(&ctx, kex_digest_buf, hlen) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error finalizing message digest: %s", sftp_crypto_get_errors());
@@ -328,6 +359,9 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
     pr_memscrub(ptr, bufsz);
     return NULL;
   }
+#else
+  EVP_DigestFinal(&ctx, kex_digest_buf, hlen);
+#endif
 
   BN_clear_free(kex->e);
   kex->e = NULL;
@@ -379,26 +413,43 @@ static const unsigned char *calculate_kexrsa_h(struct sftp_kex *kex,
   /* Shared secret. */
   sftp_msg_write_mpint(&buf, &buflen, k);
 
+  /* In OpenSSL 0.9.6, many of the EVP_Digest* functions returned void, not
+   * int.  Without these ugly OpenSSL version preprocessor checks, the
+   * compiler will error out with "void value not ignored as it ought to be".
+   */
+
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestInit(&ctx, kex->hash) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing message digest: %s", sftp_crypto_get_errors());
     pr_memscrub(ptr, bufsz);
     return NULL;
   }
+#else
+  EVP_DigestInit(&ctx, kex->hash);
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestUpdate(&ctx, ptr, (bufsz - buflen)) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest: %s", sftp_crypto_get_errors());
     pr_memscrub(ptr, bufsz);
     return NULL;
   }
+#else
+  EVP_DigestUpdate(&ctx, ptr, (bufsz - buflen));
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestFinal(&ctx, kex_digest_buf, hlen) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error finalizing message digest: %s", sftp_crypto_get_errors());
     pr_memscrub(ptr, bufsz);
     return NULL;
   }
+#else
+  EVP_DigestFinal(&ctx, kex_digest_buf, hlen);
+#endif
 
   pr_memscrub(ptr, bufsz);
   return kex_digest_buf;

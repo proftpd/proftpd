@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mac.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: mac.c,v 1.3 2009-03-04 17:41:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -160,42 +160,71 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
     _exit(1);
   }
 
+  /* In OpenSSL 0.9.6, many of the EVP_Digest* functions returned void, not
+   * int.  Without these ugly OpenSSL version preprocessor checks, the
+   * compiler will error out with "void value not ignored as it ought to be".
+   */
+
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestInit(&ctx, hash) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing message digest: %s", sftp_crypto_get_errors());
     return -1;
   }
+#else
+  EVP_DigestInit(&ctx, hash);
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestUpdate(&ctx, k, klen) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest with K: %s", sftp_crypto_get_errors());
     return -1;
   }
+#else
+  EVP_DigestUpdate(&ctx, k, klen);
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestUpdate(&ctx, h, hlen) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest with H: %s", sftp_crypto_get_errors());
     return -1;
   }
+#else
+  EVP_DigestUpdate(&ctx, h, hlen);
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestUpdate(&ctx, letter, sizeof(char)) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest with '%c': %s", *letter,
       sftp_crypto_get_errors());
     return -1;
   }
+#else
+  EVP_DigestUpdate(&ctx, letter, sizeof(char));
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestUpdate(&ctx, (char *) id, id_len) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest with ID: %s", sftp_crypto_get_errors());
     return -1;
   }
+#else
+  EVP_DigestUpdate(&ctx, (char *) id, id_len);
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
   if (EVP_DigestFinal(&ctx, key, &key_len) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error finalizing message digest: %s", sftp_crypto_get_errors());
     return -1;
   }
+#else
+  EVP_DigestFinal(&ctx, key, &key_len);
+#endif
 
   /* If we need more, keep hashing, as per RFC, until we have enough
    * material.
@@ -205,36 +234,56 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
 
     pr_signals_handle();
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
     if (EVP_DigestInit(&ctx, hash) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error initializing message digest: %s", sftp_crypto_get_errors());
       return -1;
     }
+#else
+    EVP_DigestInit(&ctx, hash);
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
     if (EVP_DigestUpdate(&ctx, k, klen) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error updating message digest with K: %s", sftp_crypto_get_errors());
       return -1;
     }
+#else
+    EVP_DigestUpdate(&ctx, k, klen);
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
     if (EVP_DigestUpdate(&ctx, h, hlen) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error updating message digest with H: %s", sftp_crypto_get_errors());
       return -1;
     }
+#else
+    EVP_DigestUpdate(&ctx, h, hlen);
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
     if (EVP_DigestUpdate(&ctx, key, len) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error updating message digest with data: %s",
         sftp_crypto_get_errors());
       return -1;
     }
+#else
+    EVP_DigestUpdate(&ctx, key, len);
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
     if (EVP_DigestFinal(&ctx, key + len, &len) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error finalizing message digest: %s", sftp_crypto_get_errors());
       return -1;
     }
+#else
+    EVP_DigestFinal(&ctx, key + len, &len);
+#endif
 
     key_len += len;
   }
@@ -317,7 +366,7 @@ int sftp_mac_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   HMAC_CTX_init(mac_ctx);
 #else
   /* Reset the HMAC context. */
-  HMAC_init(mac_ctx, NULL, 0, NULL);
+  HMAC_Init(mac_ctx, NULL, 0, NULL);
 #endif
   HMAC_Init(mac_ctx, mac->key, mac->key_len, mac->digest);
 
@@ -475,7 +524,7 @@ int sftp_mac_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   HMAC_CTX_init(mac_ctx);
 #else
   /* Reset the HMAC context. */
-  HMAC_init(mac_ctx, NULL, 0, NULL);
+  HMAC_Init(mac_ctx, NULL, 0, NULL);
 #endif
   HMAC_Init(mac_ctx, mac->key, mac->key_len, mac->digest);
 
