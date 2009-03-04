@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: interop.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: interop.c,v 1.3 2009-03-04 18:30:53 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -163,6 +163,8 @@ int sftp_interop_handle_version(const char *client_version) {
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "handling connection from SSH2 client '%s'", version);
+  pr_trace_msg(trace_channel, 5, "handling connection from SSH2 client '%s'",
+    version);
 
   /* First matching pattern wins. */
   for (i = 0; known_versions[i].pattern; i++) {
