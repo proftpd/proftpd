@@ -25,7 +25,7 @@
  * This is mod_sftp_sql, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_sql.c,v 1.2 2009-02-13 23:43:43 castaglia Exp $
+ * $Id: mod_sftp_sql.c,v 1.3 2009-03-04 17:42:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -256,10 +256,17 @@ static int sqlstore_verify_host_key(sftp_keystore_t *store, pool *p,
 
     res = sftp_keys_compare_keys(p, key_data, key_datalen, key->key_data,
       key->key_datalen);
-    if (res != TRUE) {
+    if (res < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
-        "error comparing client key with SQL data (row %u) from SQLNamedQuery "
-        "'%s': %s", i+1, store_data->select_query, strerror(errno));
+        "error comparing client-sent host key with SQL data (row %u) from "
+        "SQLNamedQuery '%s': %s", i+1, store_data->select_query,
+        strerror(errno));
+      continue;
+
+    } else if (res == FALSE) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+        "client-sent host key does not match SQL data (row %u) from "
+        "SQLNamedQuery '%s'", i+1, store_data->select_query);
       continue;
     }
 
@@ -345,10 +352,17 @@ static int sqlstore_verify_user_key(sftp_keystore_t *store, pool *p,
 
     res = sftp_keys_compare_keys(p, key_data, key_datalen, key->key_data,
       key->key_datalen);
-    if (res != TRUE) {
+    if (res < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
-        "error comparing client key with SQL data (row %u) from SQLNamedQuery "
-        "'%s': %s", i+1, store_data->select_query, strerror(errno));
+        "error comparing client-sent user key with SQL data (row %u) from "
+        "SQLNamedQuery '%s': %s", i+1, store_data->select_query,
+        strerror(errno));
+      continue;
+
+    } else if (res == FALSE) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+        "client-sent user key does not match SQL data (row %u) from "
+        "SQLNamedQuery '%s'", i+1, store_data->select_query);
       continue;
     }
 
