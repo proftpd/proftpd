@@ -1,4 +1,4 @@
-<!-- $Id: ServerType.html,v 1.4 2004-06-08 23:08:42 castaglia Exp $ -->
+<!-- $Id: ServerType.html,v 1.5 2009-03-04 06:11:47 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/ServerType.html,v $ -->
 
 <html>
@@ -55,7 +55,23 @@ Example <code>/etc/inetd.conf</code> entry:
   ftp    stream  tcp     nowait  root    /usr/sbin/tcpd  /usr/sbin/proftpd
 </pre>
 The <code>inetd.conf</code> man pages discuss these fields in greater detail.
-See the ProFTPD User's Guide for an <a href="http://proftpd.linux.co.uk/localsite/Userguide/linked/c1090.html#AEN1173">example</a> xinetd configuration.
+
+<p>
+An example <code>xinetd</code> configuration is:
+<pre>
+  service ftp
+  {
+        disable = no
+        flags			= REUSE
+        socket_type             = stream
+        wait                    = no
+        user                    = root
+        server                  = /usr/sbin/proftpd
+        server_args             = -c /etc/proftpd.conf
+  }
+</pre>
+The xinetd configuration is usually found in <code>/etc/xinetd.conf</code>
+or in the <code>/etc/xinetd.d/</code> directory.
 
 <p><a name="InetdIPv6"></a>
 <b>Note</b>: Solaris users may find that their <code>/etc/inetd.conf</code>
@@ -186,7 +202,7 @@ is there.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-06-08 23:08:42 $</i><br>
+Last Updated: <i>$Date: 2009-03-04 06:11:47 $</i><br>
 <hr>
 
 </body>
