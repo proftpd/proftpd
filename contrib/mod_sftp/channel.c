@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.4 2009-02-26 21:43:19 castaglia Exp $
+ * $Id: channel.c,v 1.5 2009-03-04 06:47:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -418,6 +418,7 @@ static int read_channel_open(struct ssh2_packet *pkt, uint32_t *channel_id) {
 }
 
 static int handle_channel_close(struct ssh2_packet *pkt) {
+  char chan_str[16];
   char *buf;
   uint32_t buflen, channel_id;
   struct ssh2_channel *chan;
@@ -428,8 +429,11 @@ static int handle_channel_close(struct ssh2_packet *pkt) {
 
   channel_id = sftp_msg_read_int(pkt->pool, &buf, &buflen);
 
+  memset(chan_str, '\0', sizeof(chan_str));
+  snprintf(chan_str, sizeof(chan_str)-1, "%lu", (unsigned long) channel_id);
+
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_CLOSE"));
-  cmd->arg = "";
+  cmd->arg = pstrdup(pkt->pool, chan_str);
 
   chan = get_channel(channel_id);
   if (chan == NULL) {
@@ -620,6 +624,7 @@ static int send_channel_done(pool *p, uint32_t channel_id) {
 }
 
 static int handle_channel_eof(struct ssh2_packet *pkt) {
+  char chan_str[16];
   char *buf;
   uint32_t buflen, channel_id;
   struct ssh2_channel *chan;
@@ -630,8 +635,11 @@ static int handle_channel_eof(struct ssh2_packet *pkt) {
 
   channel_id = sftp_msg_read_int(pkt->pool, &buf, &buflen);
 
+  memset(chan_str, '\0', sizeof(chan_str));
+  snprintf(chan_str, sizeof(chan_str)-1, "%lu", (unsigned long) channel_id);
+
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_EOF"));
-  cmd->arg = "";
+  cmd->arg = pstrdup(pkt->pool, chan_str);
 
   chan = get_channel(channel_id);
   if (chan == NULL) {
@@ -980,6 +988,7 @@ static int handle_channel_req(struct ssh2_packet *pkt) {
 }
 
 static int handle_channel_window_adjust(struct ssh2_packet *pkt) {
+  char adjust_str[32];
   char *buf;
   uint32_t buflen, channel_id, adjust_len;
   struct ssh2_channel *chan;
@@ -989,9 +998,14 @@ static int handle_channel_window_adjust(struct ssh2_packet *pkt) {
   buflen = pkt->payload_len;
 
   channel_id = sftp_msg_read_int(pkt->pool, &buf, &buflen);
+  adjust_len = sftp_msg_read_int(pkt->pool, &buf, &buflen);
+
+  memset(adjust_str, '\0', sizeof(adjust_str));
+  snprintf(adjust_str, sizeof(adjust_str)-1, "%lu %lu",
+    (unsigned long) channel_id, (unsigned long) adjust_len);
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_WINDOW_ADJUST"));
-  cmd->arg = "";
+  cmd->arg = pstrdup(pkt->pool, adjust_str);
 
   chan = get_channel(channel_id);
   if (chan == NULL) {
@@ -1000,8 +1014,6 @@ static int handle_channel_window_adjust(struct ssh2_packet *pkt) {
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     return -1;
   }
-
-  adjust_len = sftp_msg_read_int(pkt->pool, &buf, &buflen);
 
   pr_trace_msg(trace_channel, 15, "adjusting remote window size "
     "for local channel ID %lu, adding %lu bytes to current window size "

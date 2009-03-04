@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.6 2009-02-22 02:49:42 castaglia Exp $
+ * $Id: fxp.c,v 1.7 2009-03-04 06:47:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2818,7 +2818,7 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "INIT", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
-    PR_SCORE_CMD_ARG, "%s", "", NULL, NULL);
+    PR_SCORE_CMD_ARG, "%s", version_str, NULL, NULL);
 
   pr_trace_msg(trace_channel, 7, "received request: INIT %lu",
     (unsigned long) fxp_session->client_version);
