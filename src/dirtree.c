@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.209 2009-02-15 00:27:34 castaglia Exp $
+ * $Id: dirtree.c,v 1.210 2009-03-04 20:15:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -355,9 +355,10 @@ char *path_subst_uservar(pool *path_pool, char **path) {
   return new_path;
 }
 
-/* Check for configured HideFiles directives, and check the given filename
- * (not _path_, just filename) against those regexes if configured. Returns
- * FALSE if filename should be shown/listed, TRUE if it should not
+/* Check for configured HideFiles directives, and check the given path (full
+ * _path_, not just filename) against those regexes if configured.
+ *
+ * Returns FALSE if the path should be shown/listed, TRUE if it should not
  * be visible.
  */
 unsigned char dir_hide_file(const char *path) {
