@@ -49,6 +49,32 @@ files.
 
   + New configuration directives:
 
+    RewriteHome
+
+      The RewriteHome directive can be used to support rewriting the
+      home directory for a user, based on regular expression rules.
+      One such use case is where some portion of the home directory is
+      retrieved e.g. from an LDAP directory, but you need to apply some
+      custom prefix to the LDAP attribute.
+
+      To enable this feature, first you need to add the following to your
+      proftpd.conf:
+
+        RewriteHome on
+
+      Next, you need to configure the mod_rewrite rules for rewriting your home
+      directory; this feature depends on mod_rewrite for the rewriting.
+      The pseudo-command used by mod_rewrite for rewriting home directories is
+      "REWRITE_HOME".  Thus would you use:
+
+        <IfModule mod_rewrite.c>
+          RewriteEngine on
+          RewrlteLog /path/to/rewrite.log
+
+          RewriteCondition %m REWRITE_HOME
+          RewriteRule (.*) /my/new/prefix$1
+      </IfModule>
+
     ScoreboardScrub
 
       The ScoreboardScrub directive can be used to turn on/off proftpd's
@@ -100,4 +126,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-03-02 17:22:01 $
+Last Updated: $Date: 2009-03-05 21:13:41 $
