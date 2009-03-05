@@ -24,7 +24,7 @@
 
 /* ProFTPD Auth API
  *
- * $Id: auth.h,v 1.11 2009-02-14 23:35:04 castaglia Exp $
+ * $Id: auth.h,v 1.12 2009-03-05 18:56:12 castaglia Exp $
  */
 
 #ifndef PR_AUTH_H
@@ -111,6 +111,11 @@ int pr_auth_cache_set(int, unsigned int);
 #define PR_AUTH_CACHE_FL_UID2NAME	0x00001
 #define PR_AUTH_CACHE_FL_GID2NAME	0x00002
 #define PR_AUTH_CACHE_FL_AUTH_MODULE	0x00004
+
+/* Wrapper function for retrieving the user's home directory.  This handles
+ * any possible RewriteHome configuration.
+ */
+char *pr_auth_get_home(pool *, char *pw_dir);
 
 /* For internal use only. */
 int init_auth(void);

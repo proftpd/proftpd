@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.255 2009-03-04 06:06:47 castaglia Exp $
+ * $Id: mod_auth.c,v 1.256 2009-03-05 18:56:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -894,6 +894,8 @@ static int setup_env(pool *p, char *user, char *pass) {
       PR_FTPUSERS_PATH, user);
     goto auth_failure;
   }
+
+  pw->pw_dir = pr_auth_get_home(p, pw->pw_dir);
 
   if (c) {
     struct group *grp = NULL;
@@ -2655,6 +2657,25 @@ MODRET set_requirevalidshell(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: RewriteHome on|off */
+MODRET set_rewritehome(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = bool;
+
+  return PR_HANDLED(cmd);
+}
+
 MODRET set_rootlogin(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
@@ -2935,6 +2956,7 @@ static conftable auth_conftab[] = {
   { "MaxHostsPerUser",		set_maxhostsperuser,		NULL },
   { "MaxLoginAttempts",		set_maxloginattempts,		NULL },
   { "RequireValidShell",	set_requirevalidshell,		NULL },
+  { "RewriteHome",		set_rewritehome,		NULL },
   { "RootLogin",		set_rootlogin,			NULL },
   { "RootRevoke",		set_rootrevoke,			NULL },
   { "TimeoutLogin",		set_timeoutlogin,		NULL },

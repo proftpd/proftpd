@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.71 2009-03-04 18:44:03 castaglia Exp $
+ * $Id: auth.c,v 1.72 2009-03-05 18:56:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1507,6 +1507,57 @@ int pr_auth_add_auth_only_module(const char *name) {
   pr_trace_msg(trace_channel, 5, "added '%s' to auth-only module list",
     name);
   return 0;
+}
+
+char *pr_auth_get_home(pool *p, char *pw_dir) {
+  config_rec *c;
+  char *home_dir;
+
+  home_dir = pw_dir;
+
+  c = find_config(main_server->conf, CONF_PARAM, "RewriteHome", FALSE);
+  if (c == NULL)
+    return home_dir;
+
+  if (*((int *) c->argv[0]) == FALSE)
+    return home_dir;
+
+  /* Rather than using a cmd_rec dispatched to mod_rewrite's PRE_CMD handler,
+   * we use an approach with looser coupling to mod_rewrite: stash the
+   * home directory in the session.notes table, and generate an event.
+   * The mod_rewrite module will listen for this event, rewrite the stashed
+   * home directory as necessary, and be done.
+   *
+   * Thus after the event has been generated, we retrieve (and remove) the
+   * (possibly rewritten) home directory from the session.notes table.
+   * This approach means that other modules which wish to get involved
+   * in the rewriting of the home directory can also do so.
+   */
+
+  if (pr_table_add(session.notes, "mod_auth.home-dir",
+      pstrdup(p, pw_dir), 0) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error stashing home dir in session.notes: %s", strerror(errno));
+    return home_dir;
+  }
+
+  pr_event_generate("mod_auth.rewrite-home", NULL);
+
+  home_dir = pr_table_get(session.notes, "mod_auth.home-dir", NULL);
+  if (home_dir == NULL) {
+    pr_trace_msg(trace_channel, 3,
+      "error getting home dir from session.notes: %s", strerror(errno));
+    return pw_dir;
+  }
+
+  (void) pr_table_remove(session.notes, "mod_auth.home-dir", NULL);
+
+  pr_log_debug(DEBUG9, "returning rewritten home directory '%s' for original "
+    "home directory '%s'", home_dir, pw_dir);
+  pr_trace_msg(trace_channel, 9, "returning rewritten home directory '%s' "
+    "for original home directory '%s'", home_dir, pw_dir);
+
+  return home_dir;
 }
 
 /* Internal use only.  To be called in the session process. */

@@ -24,13 +24,13 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.38 2009-03-05 06:01:42 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.39 2009-03-05 18:56:12 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_REWRITE_VERSION "mod_rewrite/0.7"
+#define MOD_REWRITE_VERSION "mod_rewrite/0.7.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001
@@ -2334,6 +2334,48 @@ static void rewrite_restart_ev(const void *event_data, void *user_data) {
   }
 }
 
+static void rewrite_rewrite_home_ev(const void *event_data, void *user_data) {
+  char *pw_dir;
+  pool *tmp_pool;
+  cmd_rec *cmd;
+  modret_t *mr; 
+
+  rewrite_log("handling 'mod_auth.rewrite-home' event");
+  pw_dir = pr_table_get(session.notes, "mod_auth.home-dir", NULL);
+  if (pw_dir == NULL) {
+    /* Nothing to be done. */
+    rewrite_log("no 'mod_auth.home-dir' found in session.notes");
+    return;
+  }
+
+  tmp_pool = pr_pool_create_sz(rewrite_pool, 128);
+  pr_pool_tag(tmp_pool, "rewrite home pool");
+
+  cmd = pr_cmd_alloc(tmp_pool, 2, pstrdup(tmp_pool, "REWRITE_HOME"), pw_dir);
+  cmd->arg = pw_dir;
+  cmd->tmp_pool = tmp_pool;
+
+  /* Call rewrite_fixup() directly, rather than going through the entire
+   * command dispatch mechanism.
+   */
+  mr = rewrite_fixup(cmd);
+
+  rewrite_log("rewrote home to be '%s'", cmd->arg);
+
+  /* Make sure to use a pool whose lifetime is longer/outside of the pools
+   * used here.
+   */
+  if (pr_table_set(session.notes, "mod_auth.home-dir",
+      pstrdup(session.pool, cmd->arg), 0) < 0) {
+    pr_trace_msg("auth", 3, MOD_REWRITE_VERSION
+      ": error stashing home directory in session.notes: %s", strerror(errno));
+    destroy_pool(tmp_pool);
+    return;
+  }
+
+  destroy_pool(tmp_pool);
+}
+
 /* Initialization functions
  */
 
@@ -2362,7 +2404,6 @@ static int rewrite_sess_init(void) {
    */
 
   c = find_config(main_server->conf, CONF_PARAM, "RewriteMap", FALSE);
-
   while (c) {
     pr_signals_handle();
 
@@ -2374,6 +2415,14 @@ static int rewrite_sess_init(void) {
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RewriteMap", FALSE);
+  }
+
+  /* See if we need to register an event handler for the RewriteHome event. */
+  c = find_config(main_server->conf, CONF_PARAM, "RewriteHome", FALSE);
+  if (c &&
+      *((int *) c->argv[0]) == TRUE) {
+    pr_event_register(&rewrite_module, "mod_auth.rewrite-home",
+      rewrite_rewrite_home_ev, NULL);
   }
 
   return 0;
