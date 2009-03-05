@@ -36,7 +36,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.23 2009-03-05 04:57:42 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.24 2009-03-05 05:24:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -89,12 +89,12 @@ static const char *trace_channel = "pam";
  * incompatible pointer types, we need to use const or not as appropriate.
  */
 #ifndef SOLARIS2
-# define PAM_CONST	const
+# define PR_PAM_CONST	const
 #else
-# define PAM_CONST
+# define PR_PAM_CONST
 #endif
 
-static int pam_exchange(int num_msg, PAM_CONST struct pam_message **msg,
+static int pam_exchange(int num_msg, PR_PAM_CONST struct pam_message **msg,
     struct pam_response **resp, void *appdata_ptr) {
   register unsigned int i;
   struct pam_response *response = NULL;
