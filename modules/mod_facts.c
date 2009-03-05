@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.17 2009-03-02 23:48:07 castaglia Exp $
+ * $Id: mod_facts.c,v 1.18 2009-03-05 06:01:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -254,11 +254,17 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
  * channel, wherease MLSD's output is sent via a data transfer, much like
  * LIST or NLST.
  */
-static char mlinfo_buf[PR_TUNABLE_BUFFER_SIZE];
+static char *mlinfo_buf = NULL;
+static size_t mlinfo_bufsz = 0;
 static size_t mlinfo_buflen = 0;
 
 static void facts_mlinfobuf_init(void) {
-  memset(mlinfo_buf, '\0', sizeof(mlinfo_buf));
+  if (mlinfo_buf == NULL) {
+    mlinfo_bufsz = pr_config_get_xfer_bufsz();
+    mlinfo_buf = palloc(session.pool, mlinfo_bufsz);
+  }
+
+  memset(mlinfo_buf, '\0', mlinfo_bufsz);
   mlinfo_buflen = 0;
 }
 
@@ -271,11 +277,11 @@ static void facts_mlinfobuf_add(struct mlinfo *info) {
   /* If this buffer will exceed the capacity of mlinfo_buf, then flush
    * mlinfo_buf.
    */
-  if (buflen >= (sizeof(mlinfo_buf) - mlinfo_buflen)) {
+  if (buflen >= (mlinfo_bufsz - mlinfo_buflen)) {
     (void) facts_mlinfobuf_flush();
   }
 
-  sstrcat(mlinfo_buf, buf, sizeof(mlinfo_buf));
+  sstrcat(mlinfo_buf, buf, mlinfo_bufsz);
   mlinfo_buflen += buflen;
 }
 

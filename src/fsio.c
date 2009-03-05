@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.75 2009-01-12 17:47:47 castaglia Exp $
+ * $Id: fsio.c,v 1.76 2009-03-05 06:01:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3335,10 +3335,16 @@ char *pr_fsio_gets(char *buf, size_t size, pr_fh_t *fh) {
   }
 
   if (!fh->fh_buf) {
+    size_t bufsz;
+
+    /* Conscientious callers who want the optimal IO on the file should
+     * set the fh->fh_iosz hint.
+     */
+    bufsz = fh->fh_iosz ? fh->fh_iosz : PR_TUNABLE_BUFFER_SIZE;
+
     fh->fh_buf = pcalloc(fh->fh_pool, sizeof(pr_buffer_t));
-    fh->fh_buf->buf = fh->fh_buf->current = pcalloc(fh->fh_pool,
-      PR_TUNABLE_BUFFER_SIZE);
-    fh->fh_buf->remaining = fh->fh_buf->buflen = PR_TUNABLE_BUFFER_SIZE;
+    fh->fh_buf->buf = fh->fh_buf->current = pcalloc(fh->fh_pool, bufsz);
+    fh->fh_buf->remaining = fh->fh_buf->buflen = bufsz;
   }
 
   pbuf = fh->fh_buf;

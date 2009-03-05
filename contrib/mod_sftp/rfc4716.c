@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp RFC4716 keystore
- * Copyright (c) 2008 TJ Saunders
+ * Copyright (c) 2008-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: rfc4716.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: rfc4716.c,v 1.3 2009-03-05 06:01:48 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -450,6 +450,7 @@ static sftp_keystore_t *filestore_open(pool *parent_pool,
   struct filestore_data *store_data;
   pr_fh_t *fh;
   char *path;
+  struct stat st;
 
   filestore_pool = make_sub_pool(parent_pool);
   pr_pool_tag(filestore_pool, "SFTP File-based Keystore Pool");
@@ -475,6 +476,11 @@ static sftp_keystore_t *filestore_open(pool *parent_pool,
     errno = xerrno;
     return NULL;
   }
+
+  /* Stat the opened file to determine the optimal buffer size for IO. */
+  memset(&st, 0, sizeof(st));
+  pr_fsio_fstat(fh, &st);
+  fh->fh_iosz = st.st_blksize;
 
   store_data = pcalloc(filestore_pool, sizeof(struct filestore_data));
   store->keystore_data = store_data;

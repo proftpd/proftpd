@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.37 2009-02-15 00:27:34 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.38 2009-03-05 06:01:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -614,6 +614,10 @@ static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *txtmap) {
       txtmap->txt_path, strerror(errno));
     return FALSE;
   }
+
+  /* Populate the optimal file IO size hint. */
+  ftxt->fh_iosz = st.st_blksize;
+
   txtmap->txt_mtime = st.st_mtime;
 
   tmp_pool = make_sub_pool(txtmap->txt_pool);

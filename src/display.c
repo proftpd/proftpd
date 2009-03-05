@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.11 2009-02-11 06:56:54 castaglia Exp $
+ * $Id: display.c,v 1.12 2009-03-05 06:01:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,6 +44,7 @@ static void format_size_str(char *buf, size_t buflen, off_t size) {
 }
 
 static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
+  struct stat st;
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   int len;
   unsigned int *current_clients = NULL;
@@ -64,6 +65,11 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
   const char *mg_time;
   char *rfc1413_ident = NULL;
   unsigned char first = TRUE;
+
+  /* Stat the opened file to determine the optimal buffer size for IO. */
+  memset(&st, 0, sizeof(st));
+  pr_fsio_fstat(fh, &st);
+  fh->fh_iosz = st.st_blksize;
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || \
    defined(HAVE_SYS_VFS_H)

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project
+ * Copyright (c) 2001-2009 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.21 2008-10-31 17:38:55 castaglia Exp $
+ * $Id: fsio.h,v 1.22 2009-03-05 06:01:49 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -187,6 +187,9 @@ struct fh_rec {
 
   /* For buffer I/O on this file, should anything choose to use it. */
   pr_buffer_t *fh_buf;
+
+  /* Hint of the optimal buffer size for IO on this file. */
+  size_t fh_iosz;
 };
 
 /* Macros for that code that needs to get into the internals of pr_fs_t.

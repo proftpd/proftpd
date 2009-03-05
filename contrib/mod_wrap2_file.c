@@ -2,7 +2,7 @@
  * ProFTPD: mod_wrap2_file -- a mod_wrap2 sub-module for supplying IP-based
  *                            access control data via file-based tables
  *
- * Copyright (c) 2002-2008 TJ Saunders
+ * Copyright (c) 2002-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_file.c,v 1.6 2008-03-03 16:26:28 castaglia Exp $
+ * $Id: mod_wrap2_file.c,v 1.7 2009-03-05 06:01:45 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -50,7 +50,7 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
 
     if (buf[buflen-1] != '\n') {
       wrap2_log("file '%s': missing newline or line too long (%u) at line %u",
-        filetab->tab_name, buflen, lineno);
+        filetab->tab_name, (unsigned int) buflen, lineno);
       continue;
     } 
 
@@ -187,6 +187,7 @@ static array_header *filetab_fetch_options_cb(wrap2_table_t *filetab,
 }
 
 static wrap2_table_t *filetab_open_cb(pool *parent_pool, char *srcinfo) {
+  struct stat st;
   wrap2_table_t *tab = NULL;
   pool *tab_pool = make_sub_pool(parent_pool);
 
@@ -225,6 +226,11 @@ static wrap2_table_t *filetab_open_cb(pool *parent_pool, char *srcinfo) {
     destroy_pool(tab->tab_pool);
     return NULL;
   }
+
+  /* Stat the opened file to determine the optimal buffer size for IO. */
+  memset(&st, 0, sizeof(st));
+  pr_fsio_fstat((pr_fh_t *) tab->tab_handle, &st);
+  ((pr_fh_t *) tab->tab_handle)->fh_iosz = st.st_blksize;
 
   tab->tab_name = pstrdup(tab->tab_pool, srcinfo);
 

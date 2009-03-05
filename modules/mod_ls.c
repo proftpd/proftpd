@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.152 2008-12-08 03:01:58 castaglia Exp $
+ * $Id: mod_ls.c,v 1.153 2009-03-05 06:01:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -244,12 +244,23 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
   return res;
 }
 
-/* sendline() now has an internal buffer, to help speed up LIST output. */
+/* sendline() now has an internal buffer, to help speed up LIST output.
+ * This buffer is allocated one, the first time sendline() is called.
+ * By using a runtime allocation, we can use pr_config_get_xfer_bufsz()
+ * to get the optimal buffer size for network transfers.
+ */
+static char *listbuf = NULL;
+static size_t listbufsz = 0;
+
 static int sendline(int flags, char *fmt, ...) {
-  static char listbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   va_list msg;
   char buf[PR_TUNABLE_BUFFER_SIZE+1] = {'\0'};
   int res = 0;
+
+  if (listbuf == NULL) {
+    listbufsz = pr_config_get_xfer_bufsz();
+    listbuf = pcalloc(session.pool, listbufsz);
+  }
 
   if (flags & LS_SENDLINE_FL_FLUSH) {
     size_t listbuflen = strlen(listbuf);
@@ -258,11 +269,11 @@ static int sendline(int flags, char *fmt, ...) {
       res = pr_data_xfer(listbuf, listbuflen);
       if (res < 0 &&
           errno != 0) {
-        pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s.", res,
+        pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s", res,
           strerror(PR_NETIO_ERRNO(session.d->outstrm)));
       }
 
-      memset(listbuf, '\0', sizeof(listbuf));
+      memset(listbuf, '\0', listbufsz);
     }
 
     return res;
@@ -275,18 +286,18 @@ static int sendline(int flags, char *fmt, ...) {
   buf[sizeof(buf)-1] = '\0';
 
   /* If buf won't fit completely into listbuf, flush listbuf */
-  if (strlen(buf) >= (sizeof(listbuf) - strlen(listbuf))) {
+  if (strlen(buf) >= (listbufsz - strlen(listbuf))) {
     res = pr_data_xfer(listbuf, strlen(listbuf));
     if (res < 0 &&
         errno != 0) {
-      pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s.", res,
+      pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s", res,
         strerror(PR_NETIO_ERRNO(session.d->outstrm)));
     }
 
-    memset(listbuf, '\0', sizeof(listbuf));
+    memset(listbuf, '\0', listbufsz);
   }
 
-  sstrcat(listbuf, buf, sizeof(listbuf));
+  sstrcat(listbuf, buf, listbufsz);
   return res;
 }
 
