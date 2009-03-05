@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.210 2009-03-04 20:15:05 castaglia Exp $
+ * $Id: dirtree.c,v 1.211 2009-03-05 21:29:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -249,13 +249,15 @@ char *path_subst_uservar(pool *path_pool, char **path) {
   char *new_path = NULL, *substr = NULL, *substr_path = NULL;
 
   /* Sanity check. */
-  if (!path_pool || !path || !*path) {
+  if (path_pool == NULL ||
+      path == NULL ||
+      !*path) {
     errno = EINVAL;
     return NULL;
   }
 
   /* If no %u string present, do nothing. */
-  if (!strstr(*path, "%u"))
+  if (strstr(*path, "%u") == NULL)
     return *path;
 
   /* First, deal with occurrences of "%u[index]" strings.  Note that
@@ -271,6 +273,8 @@ char *path_subst_uservar(pool *path_pool, char **path) {
     int i = 0;
     char *substr_end = NULL, *substr_dup = NULL, *endp = NULL;
     char ref_char[2] = {'\0', '\0'};
+
+    pr_signals_handle();
 
     /* Now, find the closing ']'. If not found, it is a syntax error;
      * continue on without processing this occurrence.
@@ -314,6 +318,7 @@ char *path_subst_uservar(pool *path_pool, char **path) {
     i = strtol(substr, &endp, 10);
 
     if (endp && *endp) {
+      *substr_end = ']';
       substr_path = substr;
       continue;
     }
@@ -346,11 +351,12 @@ char *path_subst_uservar(pool *path_pool, char **path) {
 
   /* Check for any bare "%u", and handle those if present. */
   if (substr_path &&
-      strstr(substr_path, "%u"))
+      strstr(substr_path, "%u") != NULL) {
     new_path = sreplace(path_pool, substr_path, "%u", session.user, NULL);
 
-  else
+  } else {
     new_path = substr_path;
+  }
 
   return new_path;
 }
