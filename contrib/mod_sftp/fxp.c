@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.8 2009-03-05 00:33:44 castaglia Exp $
+ * $Id: fxp.c,v 1.9 2009-03-05 23:15:32 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3959,6 +3959,8 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
+  path = dir_canonical_vpath(fxp->pool, path);
+
   dirh = pr_fsio_opendir(path);
   if (dirh == NULL) {
     uint32_t status_code;
@@ -4567,6 +4569,11 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     buflen = bufsz;
 
     status_code = fxp_errno2status(xerrno, &reason);
+
+    (void) pr_trace_msg("fileperms", 1, "READLINK, user '%s' (UID %lu, "
+      "GID %lu): error using readlink() on  '%s': %s", session.user,
+      (unsigned long) session.uid, (unsigned long) session.gid, path,
+      strerror(xerrno));
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
       "('%s' [%d])", (unsigned long) status_code, reason,
