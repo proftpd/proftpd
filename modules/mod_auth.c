@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.256 2009-03-05 18:56:12 castaglia Exp $
+ * $Id: mod_auth.c,v 1.257 2009-03-05 21:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -689,6 +689,8 @@ static int setup_env(pool *p, char *user, char *pass) {
   session.login_uid = pw->pw_uid;
   session.login_gid = pw->pw_gid;
 
+  pw->pw_dir = pr_auth_get_home(p, pw->pw_dir);
+
   /* Check for any expandable variables in session.cwd. */
   pw->pw_dir = path_subst_uservar(p, &pw->pw_dir);
 
@@ -894,8 +896,6 @@ static int setup_env(pool *p, char *user, char *pass) {
       PR_FTPUSERS_PATH, user);
     goto auth_failure;
   }
-
-  pw->pw_dir = pr_auth_get_home(p, pw->pw_dir);
 
   if (c) {
     struct group *grp = NULL;
