@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.7 2009-03-04 06:47:17 castaglia Exp $
+ * $Id: fxp.c,v 1.8 2009-03-05 00:33:44 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -100,6 +100,10 @@
 #define SSH2_FXF_ACCESS_APPEND_DATA		0x00000008
 #define SSH2_FXF_ACCESS_APPEND_DATA_ATOMIC	0x00000010
 #define SSH2_FXF_ACCESS_TEXT_MODE		0x00000020
+
+/* These are the BLOCK_{READ,WRITE,DELETE} values from Section 8.1.1.3 of
+ * the SFTP Draft.
+ */
 #define SSH2_FXF_ACCESS_READ_LOCK		0x00000040
 #define SSH2_FXF_ACCESS_WRITE_LOCK		0x00000080
 #define SSH2_FXF_ACCESS_DELETE_LOCK		0x00000100
@@ -1376,6 +1380,42 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
   }
 
   return pstrdup(p, buf);
+}
+
+static char *fxp_strattrflags(pool *p, uint32_t flags) {
+  char *str = "";
+
+  if (flags & SSH2_FX_ATTR_SIZE) {
+    str = pstrcat(p, str, *str ? ";" : "", "size", NULL);
+  }
+
+  if ((flags & SSH2_FX_ATTR_UIDGID) ||
+      (flags & SSH2_FX_ATTR_OWNERGROUP)) {
+    str = pstrcat(p, str, *str ? ";" : "", "UNIX.owner", NULL);
+    str = pstrcat(p, str, *str ? ";" : "", "UNIX.group", NULL);
+  }
+
+  if (flags & SSH2_FX_ATTR_PERMISSIONS) {
+    str = pstrcat(p, str, *str ? ";" : "", "UNIX.mode", NULL);
+  }
+
+  if (fxp_session->client_version <= 3) {
+    if (flags & SSH2_FX_ATTR_ACMODTIME) {
+      str = pstrcat(p, str, *str ? ";" : "", "access", NULL);
+      str = pstrcat(p, str, *str ? ";" : "", "modify", NULL);
+    }
+
+  } else {
+    if (flags & SSH2_FX_ATTR_ACCESSTIME) {
+      str = pstrcat(p, str, *str ? ";" : "", "access", NULL);
+    }
+
+    if (flags & SSH2_FX_ATTR_MODIFYTIME) {
+      str = pstrcat(p, str, *str ? ";" : "", "modify", NULL);
+    }
+  }
+
+  return str;
 }
 
 static char *fxp_stroflags(pool *p, int flags) {
@@ -2683,15 +2723,15 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     PR_SCORE_CMD_ARG, "%s", name, NULL, NULL);
 
   if (fxp_session->client_version > 3) {
-    uint32_t flags;
+    uint32_t attr_flags;
 
     /* These are hints from the client about what file attributes are
      * of particular interest.  We do not currently honor them.
      */
-    flags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+    attr_flags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
-    pr_trace_msg(trace_channel, 7, "received request: FSTAT %s %lu", name,
-      (unsigned long) flags);
+    pr_trace_msg(trace_channel, 7, "received request: FSTAT %s %s", name,
+      fxp_strattrflags(fxp->pool, attr_flags));
 
   } else {
     pr_trace_msg(trace_channel, 7, "received request: FSTAT %s", name);
@@ -3268,8 +3308,6 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", path, NULL, NULL);
 
-  pr_trace_msg(trace_channel, 7, "received request: LSTAT %s", path);
-
   if (strlen(path) == 0) {
     /* Use the default directory if the path is empty. */
     path = sftp_auth_get_default_dir();
@@ -3279,12 +3317,18 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   }
 
   if (fxp_session->client_version > 3) {
-    uint32_t flags;
+    uint32_t attr_flags;
 
     /* These are hints from the client about what file attributes are
      * of particular interest.  We do not currently honor them.
      */
-    flags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+    attr_flags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+    pr_trace_msg(trace_channel, 7, "received request: LSTAT %s %s", path,
+      fxp_strattrflags(fxp->pool, attr_flags));
+
+  } else {
+    pr_trace_msg(trace_channel, 7, "received request: LSTAT %s", path);
   }
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
@@ -3565,9 +3609,36 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
         (desired_access & SSH2_FXF_WANT_WRITE_ACL) ||
         (desired_access & SSH2_FXF_WANT_WRITE_OWNER)) {
       uint32_t status_code;
+      const char *unsupported_str = "";
+
+      if (desired_access & SSH2_FXF_WANT_READ_NAMED_ATTRS) {
+        unsupported_str = pstrcat(fxp->pool, unsupported_str,
+          *unsupported_str ? "|" : "", "WANT_READ_NAMED_ATTRS", NULL);
+      }
+
+      if (desired_access & SSH2_FXF_WANT_READ_ACL) {
+        unsupported_str = pstrcat(fxp->pool, unsupported_str,
+          *unsupported_str ? "|" : "", "WANT_READ_ACL", NULL);
+      }
+
+      if (desired_access & SSH2_FXF_WANT_WRITE_NAMED_ATTRS) {
+        unsupported_str = pstrcat(fxp->pool, unsupported_str,
+          *unsupported_str ? "|" : "", "WANT_WRITE_NAMED_ATTRS", NULL);
+      }
+
+      if (desired_access & SSH2_FXF_WANT_WRITE_ACL) {
+        unsupported_str = pstrcat(fxp->pool, unsupported_str,
+          *unsupported_str ? "|" : "", "WANT_WRITE_ACL", NULL);
+      }
+
+      if (desired_access & SSH2_FXF_WANT_WRITE_OWNER) {
+        unsupported_str = pstrcat(fxp->pool, unsupported_str,
+          *unsupported_str ? "|" : "", "WANT_WRITE_OWNER", NULL);
+      }
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "client requested unsupported access in OPEN command, rejecting");
+        "client requested unsupported access '%s' in OPEN command, rejecting",
+        unsupported_str);
 
       status_code = SSH2_FX_OP_UNSUPPORTED;
 
@@ -3593,15 +3664,35 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   if (fxp_session->client_version > 4) {
     /* XXX If O_SHLOCK and O_EXLOCK are defined, as they are on OSX, the
      * ACCESS_READ_LOCK and ACCESS_WRITE_LOCK flags should be supported.
+     *
+     * Note that IF we support these LOCK flags, we will need to report
+     * this support in the VERSION response as well.
      */
 
     if ((flags & SSH2_FXF_ACCESS_READ_LOCK) ||
         (flags & SSH2_FXF_ACCESS_WRITE_LOCK) ||
         (flags & SSH2_FXF_ACCESS_DELETE_LOCK)) {
       uint32_t status_code;
+      const char *unsupported_str = "";
+
+      if (desired_access & SSH2_FXF_ACCESS_READ_LOCK) {
+        unsupported_str = pstrcat(fxp->pool, unsupported_str,
+          *unsupported_str ? "|" : "", "ACCESS_READ_LOCK", NULL);
+      }
+
+      if (desired_access & SSH2_FXF_ACCESS_WRITE_LOCK) {
+        unsupported_str = pstrcat(fxp->pool, unsupported_str,
+          *unsupported_str ? "|" : "", "ACCESS_WRITE_LOCK", NULL);
+      }
+
+      if (desired_access & SSH2_FXF_ACCESS_DELETE_LOCK) {
+        unsupported_str = pstrcat(fxp->pool, unsupported_str,
+          *unsupported_str ? "|" : "", "ACCESS_DELETE_LOCK", NULL);
+      }
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "client requested unsupported flag in OPEN command, rejecting");
+        "client requested unsupported flag '%s' in OPEN command, rejecting",
+        unsupported_str);
 
       status_code = SSH2_FX_OP_UNSUPPORTED;
 
@@ -5283,14 +5374,15 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   }
 
   if (fxp_session->client_version > 3) {
-    uint32_t flags;
+    uint32_t attr_flags;
 
     /* These are hints from the client about what file attributes are
      * of particular interest.  We do not currently honor them.
      */
-    flags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
-    pr_trace_msg(trace_channel, 7, "received request: STAT %s %lu", path,
-      (unsigned long) flags);
+    attr_flags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+    pr_trace_msg(trace_channel, 7, "received request: STAT %s %s", path,
+      fxp_strattrflags(fxp->pool, attr_flags));
 
   } else {
     pr_trace_msg(trace_channel, 7, "received request: STAT %s", path);
