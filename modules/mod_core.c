@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.341 2009-02-22 01:51:33 castaglia Exp $
+ * $Id: mod_core.c,v 1.342 2009-03-05 07:08:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3037,8 +3037,8 @@ MODRET core_pasv(cmd_rec *cmd) {
     session.d = NULL;
   }
 
-  if ((c = find_config(main_server->conf, CONF_PARAM, "PassivePorts",
-      FALSE)) != NULL) {
+  c = find_config(main_server->conf, CONF_PARAM, "PassivePorts", FALSE);
+  if (c != NULL) {
     int pasv_min_port = *((int *) c->argv[0]);
     int pasv_max_port = *((int *) c->argv[1]);
 
@@ -3051,7 +3051,8 @@ MODRET core_pasv(cmd_rec *cmd) {
        */
       pr_log_pri(PR_LOG_WARNING,
         "unable to find open port in PassivePorts range %d-%d: "
-        "defaulting to INPORT_ANY", pasv_min_port, pasv_max_port);
+        "defaulting to INPORT_ANY (consider defining a larger PassivePorts "
+        "range)", pasv_min_port, pasv_max_port);
     }
   }
 
@@ -3577,7 +3578,8 @@ MODRET core_epsv(cmd_rec *cmd) {
      * indicates a too-small range configuration.
      */
     pr_log_pri(PR_LOG_WARNING, "unable to find open port in PassivePorts "
-      "range %d-%d: defaulting to INPORT_ANY", epsv_min_port, epsv_max_port);
+      "range %d-%d: defaulting to INPORT_ANY (consider defining a larger "
+      "PassivePorts range)", epsv_min_port, epsv_max_port);
 
     session.d = pr_inet_create_conn(session.pool, NULL, -1,
       session.c->local_addr, INPORT_ANY, FALSE);
