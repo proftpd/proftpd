@@ -2931,7 +2931,7 @@ static RSA *tls_rsa_cb(SSL *ssl, int is_export, int keylength) {
 }
 
 static int tls_seed_prng(void) {
-  char stackdata[1024];
+  char *heapdata, stackdata[1024];
   static char rand_file[300];
   FILE *fp = NULL;
   
@@ -2999,6 +2999,12 @@ static int tls_seed_prng(void) {
     pid = getpid();
     RAND_seed(&pid, sizeof(pid_t));
     RAND_seed(stackdata, sizeof(stackdata));
+
+    heapdata = malloc(sizeof(stackdata));
+    if (heapdata != NULL) {
+      RAND_seed(heapdata, sizeof(stackdata));
+      free(heapdata);
+    }
 
   } else {
     tls_log("loaded PRNG seed data from '%s'", tls_rand_file);
