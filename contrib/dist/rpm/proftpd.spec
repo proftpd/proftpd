@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.60 2009-03-07 00:25:45 castaglia Exp $
+# $Id: proftpd.spec,v 1.61 2009-03-07 02:00:31 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -42,6 +42,13 @@
 #
 # rpmbuild -ba --with ctrls --with mod_facl --with mod_tls --with nls \
 #	--with ipv6 --with dso proftpd.spec
+#
+# If the /home directory is a network mount (e.g. NFS) which squashes
+# root privileges, then rpm will fail at the install step.  To avoid this,
+# use:
+#
+#  rpmbuild --define 'nohome 1' ...
+%{!?nohome:%define nohome 0}
 
 %define proftpd_version 1.3.2
 %define usecvsversion             0%{?_with_cvs:1}
@@ -224,7 +231,9 @@ CFLAGS="$RPM_OPT_FLAGS" ./configure \
 	rundir=%{_localstatedir}/run/proftpd \
 	INSTALL_USER=`id -un` INSTALL_GROUP=`id -gn` \
     install
+%if !%{nohome}
   mkdir -p $RPM_BUILD_ROOT/home/ftp
+%endif
   mkdir -p $RPM_BUILD_ROOT/etc/pam.d
   install -m 644 contrib/dist/rpm/ftp.pamd $RPM_BUILD_ROOT/etc/pam.d/ftp
   install -m 644 sample-configurations/basic.conf $RPM_BUILD_ROOT/etc/proftpd.conf
@@ -340,7 +349,9 @@ rm -rf %{_builddir}/%{name}-%{version}
 %{_libexecdir}/*.a
 %{_libexecdir}/*.so
 %dir %{_localstatedir}/run/proftpd
+%if !%{nohome}
 %dir /home/ftp
+%endif
 %{_initrddir}/proftpd
 %config(noreplace) %{_sysconfdir}/proftpd.conf
 %config(noreplace) %{_sysconfdir}/pam.d/ftp
