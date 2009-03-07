@@ -26,7 +26,7 @@
  * This is mod_sftp_pam, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_pam.c,v 1.2 2009-02-13 23:43:43 castaglia Exp $
+ * $Id: mod_sftp_pam.c,v 1.3 2009-03-07 03:49:32 castaglia Exp $
  * $Libraries: -lpam $
  */
 
@@ -77,6 +77,16 @@
 # define SFTP_PAM_MSG_MEMBER(msg, n, member)	((msg)[(n)]->member)
 #endif
 
+/* On non-Solaris systems, the struct pam_message argument of pam_conv is
+ * declared const, but on Solaris, it isn't.  To avoid compiler warnings about
+ * incompatible pointer types, we need to use const or not as appropriate.
+ */
+#ifndef SOLARIS2
+# define PR_PAM_CONST   const
+#else
+# define PR_PAM_CONST 
+#endif 
+
 /* Same as from mod_auth_pam.c */
 #define SFTP_PAM_OPT_NO_TTY	0x001
 
@@ -103,7 +113,7 @@ static const char *trace_channel = "ssh2";
 /* PAM interaction
  */
 
-static int sftppam_converse(int nmsgs, const struct pam_message **msgs,
+static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
     struct pam_response **resps, void *app_data) {
   register unsigned int i;
   array_header *list;
