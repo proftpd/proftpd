@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp keyboard-interactive driver mgmt
- * Copyright (c) 2008 TJ Saunders
+ * Copyright (c) 2008-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kbdint.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: kbdint.c,v 1.3 2009-03-07 06:12:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -181,7 +181,7 @@ int sftp_kbdint_unregister_driver(const char *name) {
   }
 
   errno = ENOENT;
-  return 0;
+  return -1;
 }
 
 /* Convenience functions that can be used by the driver implementations
