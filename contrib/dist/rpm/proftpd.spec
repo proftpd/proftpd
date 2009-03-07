@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.59 2009-02-05 18:58:19 castaglia Exp $
+# $Id: proftpd.spec,v 1.60 2009-03-07 00:25:45 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -89,6 +89,7 @@ Prefix:			%{_prefix}
 BuildRoot:		%{_tmppath}/%{name}-%{version}-root
 Requires:		pam >= 0.99, /sbin/chkconfig
 BuildRequires:		pkgconfig, pam-devel, ncurses-devel, zlib-devel
+BuildRequires:		rpm-build >= 4.2
 # For mod_tls:
 %if 0%{?_with_mod_tls:1}
 %define _with_openssl	1
