@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.22 2009-02-15 23:32:23 castaglia Exp $
+ * $Id: mod_ban.c,v 1.23 2009-03-08 03:16:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -196,7 +196,7 @@ static struct ban_data *ban_get_shm(pr_fh_t *tabfh) {
   if (data == NULL) {
     int xerrno = errno;
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "unable to attached to shm: %s", strerror(xerrno));
+      "unable to attach to shm: %s", strerror(xerrno));
 
     errno = xerrno;
     return NULL;
