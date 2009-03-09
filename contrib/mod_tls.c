@@ -5636,7 +5636,7 @@ static void tls_restart_ev(const void *event_data, void *user_data) {
 static void tls_sess_exit_ev(const void *event_data, void *user_data) {
 
   /* If diags are enabled, log some OpenSSL stats. */
-  if (ssl_ctx != NULL && (
+  if (ssl_ctx != NULL && 
       (tls_opts & TLS_OPT_ENABLE_DIAGS)) {
     long res;
 
