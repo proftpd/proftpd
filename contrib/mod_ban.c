@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.23 2009-03-08 03:16:09 castaglia Exp $
+ * $Id: mod_ban.c,v 1.24 2009-03-09 23:04:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2266,7 +2266,7 @@ static ctrls_acttab_t ban_acttab[] = {
      ban_handle_ban },
   { "permit",	"allow a banned class, host or user to use the daemon",	NULL,
     ban_handle_permit },
-  { NULL, NULL, NULL, NULL },
+  { NULL, NULL, NULL, NULL }
 };
 
 /* Module API tables
