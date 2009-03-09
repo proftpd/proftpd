@@ -2016,16 +2016,17 @@ static int tls_init_server(void) {
         pool *tmp_pool = make_sub_pool(permanent_pool);
 
         while ((cadent = readdir(cacertdir)) != NULL) {
-          FILE *cacertf = NULL;
-          char *cacertname = pdircat(tmp_pool, tls_ca_path, cadent->d_name,
-             NULL);
+          FILE *cacertf;
+          char *cacertname;
 
           pr_signals_handle();
 
           /* Skip dot directories. */
-          if (is_dotdir(cacertname)) {
+          if (is_dotdir(cadent->d_name)) {
             continue;
           }
+
+          cacertname = pdircat(tmp_pool, tls_ca_path, cadent->d_name, NULL);
 
           PRIVS_ROOT
           cacertf = fopen(cacertname, "r");
