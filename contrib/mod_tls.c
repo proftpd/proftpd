@@ -5635,6 +5635,36 @@ static void tls_restart_ev(const void *event_data, void *user_data) {
 
 static void tls_sess_exit_ev(const void *event_data, void *user_data) {
 
+  /* If diags are enabled, log some OpenSSL stats. */
+  if (ssl_ctx != NULL && (
+      (tls_opts & TLS_OPT_ENABLE_DIAGS)) {
+    long res;
+
+    res = SSL_CTX_sess_accept(ssl_ctx);
+    tls_log("[stat]: SSL sessions attempted: %ld", res);
+
+    res = SSL_CTX_sess_accept_good(ssl_ctx);
+    tls_log("[stat]: SSL sessions established: %ld", res);
+
+    res = SSL_CTX_sess_accept_renegotiate(ssl_ctx);
+    tls_log("[stat]: SSL sessions renegotiated: %ld", res);
+
+    res = SSL_CTX_sess_number(ssl_ctx);
+    tls_log("[sta]: SSL sessions in cache: %ld", res);
+
+    res = SSL_CTX_sess_hits(ssl_ctx);
+    tls_log("[stat]: SSL sessions resumed: %ld", res);
+
+    res = SSL_CTX_sess_cb_hits(ssl_ctx);
+    tls_log("[stat]: SSL session cache hits: %ld", res);
+
+    res = SSL_CTX_sess_misses(ssl_ctx);
+    tls_log("[stat]: SSL session cache misses: %ld", res);
+
+    res = SSL_CTX_sess_timeouts(ssl_ctx);
+    tls_log("[stat]: SSL session cache timeouts: %ld", res);
+  }
+
   /* OpenSSL cleanup */
   tls_cleanup(0);
 
