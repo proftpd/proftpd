@@ -34,7 +34,7 @@ Reports additional information while scrubbing the scoreboard.
 .PD 0
 .B @SBINDIR@/ftpscrub
 .br
-.B @LOCALSTATEDIR@/run/proftpd/proftpd.scoreboard
+.B @LOCALSTATEDIR@/proftpd/proftpd.scoreboard
 .PD
 .SH AUTHORS
 .PP

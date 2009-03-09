@@ -61,7 +61,7 @@ modes.
 .PD 0
 .B @BINDIR@/ftptop
 .br
-.B @LOCALSTATEDIR@/run/proftpd/proftpd.scoreboard
+.B @LOCALSTATEDIR@/proftpd/proftpd.scoreboard
 .PD
 .SH AUTHORS
 .PP
