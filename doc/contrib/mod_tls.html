@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.18 2009-02-17 05:59:08 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.19 2009-03-10 06:04:33 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -50,6 +50,7 @@ is based.  His module can be found here:
   <li><a href="#TLSCARevocationPath">TLSCARevocationPath</a>
   <li><a href="#TLSCertificateChainFile">TLSCertificateChainFile</a>
   <li><a href="#TLSCipherSuite">TLSCipherSuite</a>
+  <li><a href="#TLSControlsACLs">TLSControlsACLs</a>
   <li><a href="#TLSCryptoDevice">TLSCryptoDevice</a>
   <li><a href="#TLSDHParamFile">TLSDHParamFile</a>
   <li><a href="#TLSDSACertificateFile">TLSDSACertificateFile</a>
@@ -65,10 +66,18 @@ is based.  His module can be found here:
   <li><a href="#TLSRequired">TLSRequired</a>
   <li><a href="#TLSRSACertificateFile">TLSRSACertificateFile</a>
   <li><a href="#TLSRSACertificateKeyFile">TLSRSACertificateKeyFile</a>
+  <li><a href="#TLSSessionCache">TLSSessionCache</a>
   <li><a href="#TLSTimeoutHandshake">TLSTimeoutHandshake</a>
   <li><a href="#TLSVerifyClient">TLSVerifyClient</a>
   <li><a href="#TLSVerifyDepth">TLSVerifyDepth</a>
   <li><a href="#TLSVerifyOrder">TLSVerifyOrder</a>
+</ul>
+
+<h2>Control Actions</h2>
+<ul>
+  <li><a href="#tls_sesscache_clear"><code>tls sesscache clear</code></a>
+  <li><a href="#tls_sesscache_info"><code>tls sesscache info</code></a>
+  <li><a href="#tls_sesscache_remove"><code>tls sesscache remove</code></a>
 </ul>
 
 <hr>
@@ -348,6 +357,42 @@ The OpenSSL command
 </pre>
 may be used to list all of the ciphers and the order described by a specific
 <em>&lt;list of ciphers&gt;</em>.
+
+<p>
+<hr>
+<h2><a name="TLSControlsACLs">TLSControlsACLs</a></h2>
+<strong>Syntax:</strong> TLSControlsACLs <em>actions|&quot;all&quot; &quot;allow&quot;|&quot;deny&quot; &quot;user&quot;|&quot;group&quot; list</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.3rc1 and later
+
+<p>
+The <code>TLSControlsACLs</code> directive configures access lists of
+<em>users</em> or <em>groups</em> who are allowed (or denied) the ability to
+use the <em>actions</em> implemented by <code>mod_tls</code>. The default
+behavior is to deny everyone unless an ACL allowing access has been explicitly
+configured.
+
+<p>
+If &quot;allow&quot; is used, then <em>list</em>, a comma-delimited list
+of <em>users</em> or <em>groups</em>, can use the given <em>actions</em>; all
+others are denied.  If &quot;deny&quot; is used, then the <em>list</em> of
+<em>users</em> or <em>groups</em> cannot use <em>actions</em> all others are
+allowed.  Multiple <code>TLSControlsACLs</code> directives may be used to
+configure ACLs for different control actions, and for both users and groups.
+
+<p>
+The <em>actions</em> provided by <code>mod_tls</code> are
+&quot;sesscache clear&quot; , &quot;sesscache info&quot;, and
+&quot;sesscache remove&quot;.
+
+<p>
+Examples:
+<pre>
+  # Allow only user root to examine/update the external SSL session cache
+  TLSControlsACLs all allow user root
+</pre>
 
 <p>
 <hr>
@@ -1130,6 +1175,52 @@ Example:
 
 <p>
 <hr>
+<h2><a name="TLSSessionCache">TLSSessionCache</a></h2>
+<strong>Syntax:</strong> TLSSessionCache <em>type:/info [timeout]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.3rc1 and later
+
+<p>
+The <code>TLSSessionCache</code> directive configures an external SSL session
+cache, which can be used for storing and shared SSL sessions across multiple
+processes.  An external SSL session cache is an optional facility which speeds
+up parallel FTPS session connections.
+
+<p>
+Modern FTP clients often create multiple simultaneous connections to an FTP
+server, for downloading different chunks of data in parallel.  Each FTP
+connection will be handled by a different server process, and each one
+will be required to perform a full SSL/TLS handshake.  By using an
+external SSL session cache, a cached SSL session can be "resumed" by the
+client, which avoids the expensive portions of the handshake.  FTPS clients
+which cache the SSL session locally can also attempt to resume that cached
+session at a later date; if the server still has that same session cached,
+the FTPS client can again avoid the expensive portions of the handshake and
+resume its previous SSL session.
+
+<p>
+If the <code>TLSSessionCache</code> directive is <i>not</i> used, then
+OpenSSL's default internal SSL session caching will be used.  Thus multiple
+SSL sessions to the same server process (<i>e.g.</i> for FTP data transfers)
+will benefit from the speedup, but parallel simultaneous FTP connections from
+the same FTPS client will each need to perform the full SSL/TLS handshake.
+
+<p>
+The <em>type</em> and <em>info</em> parameters all depend on the module
+implementing the external SSL session cache being configured.  For example,
+for using a shared memory external SSL session cache, see the
+<a href="mod_tls_shmcache.html"><code>mod_tls_shmcache</code></a> documentation.
+
+<p>
+The optional <em>timeout</em> parameters sets the time-to-live, in seconds, for
+the SSL session datal stored in the external SSL session cache.  It can be set
+as low as 15 for testing, but should be set to higher values like 600 in real
+life.  The default timeout is 1800 seconds (30 minutes).
+
+<p>
+<hr>
 <h2><a name="TLSTimeoutHandshake">TLSTimeoutHandshake</a></h2>
 <strong>Syntax:</strong> TLSTimeoutHandshake <em>seconds</em><br>
 <strong>Default:</strong> 300<br>
@@ -1239,6 +1330,98 @@ See also: <a href="#TLSCARevocationFile"><code>TLSCARevocationFile</code></a>,
 
 <p>
 <hr>
+<h2>Control Actions</h2>
+
+<p>
+<hr>
+<h3><a name="tls_sesscache_clear"><code>tls sesscache clear</code></a></h3>
+<strong>Syntax:</strong> ftpdctl tls sesscache clear<br>
+<strong>Purpose:</strong> Clears all cached sessions from the SSL session cache<br>
+
+<p>
+The <code>tls sesscache clear</code> action is used to clear all cached
+sessions, whether they have expired or not, from the configured external
+SSL session cache.  For example:
+<pre>
+  # ftpdctl tls sesscache clear   
+  ftpdctl: tls sesscache: cleared 1 session from 'shm' session cache
+</pre>
+
+<p>
+See also: <a href="#TLSSessionCache"><code>TLSSessionCache</code></a>
+
+<p>
+<hr>
+<h3><a name="tls_sesscache_info"><code>tls sesscache info</code></a></h3>
+<strong>Syntax:</strong> ftpdctl tls sesscache info <em>[-v]</em><br>
+<strong>Purpose:</strong> Displays status of session cache<br>
+
+<p>
+The <code>tls sesscache info</code> action is used to display information
+about the configured external SSL session cache.  If the optional <em>-v</em>
+command-line option is used, then information about each cached session
+will also be displayed.
+
+<p>
+For example:
+<pre>
+  # ftpdctl tls sesscache info -v
+  ftpdctl: Shared memory (shm) SSL session cache provided by mod_tls_shmcache/0.1
+  ftpdctl:
+  ftpdctl: Shared memory segment ID: 589824
+  ftpdctl: Shared memory segment size: 1576960 bytes
+  ftpdctl: Shared memory cache created on: Mon Mar  9 21:18:05 2009
+  ftpdctl: Shared memory attach count: 1
+  ftpdctl: 
+  ftpdctl: Max session cache size: 153
+  ftpdctl: Current session cache size: 1
+  ftpdctl: 
+  ftpdctl: Cache lifetime hits: 0
+  ftpdctl: Cache lifetime misses: 0
+  ftpdctl: 
+  ftpdctl: Cache lifetime sessions stored: 1
+  ftpdctl: Cache lifetime sessions deleted: 0
+  ftpdctl: Cache lifetime sessions expired: 0
+  ftpdctl: 
+  ftpdctl: Cache lifetime errors handling sessions in cache: 0
+  ftpdctl: Cache lifetime sessions exceeding max entry size: 0
+  ftpdctl: 
+  ftpdctl: Cached sessions:
+  ftpdctl:   -----BEGIN SSL SESSION PARAMETERS-----
+  ftpdctl:     Session ID: A9BB647E236BAB0EF128FE9EAD2ABEC6F8E65C9EB8F050A07D1F0F66EC3019DC
+  ftpdctl:     Session ID Context: 00000000
+  ftpdctl:     Protocol: TLSv1
+  ftpdctl:     Started: Mon Mar  9 21:19:20 2009
+  ftpdctl:     Expires: Tue Mar 10 21:19:20 2009 (86400 secs)
+  ftpdctl:   -----END SSL SESSION PARAMETERS-----
+</pre>
+
+<p>
+See also: <a href="#TLSSessionCache"><code>TLSSessionCache</code></a>
+
+<p>
+<hr>
+<h3><a name="tls_sesscache_remove"><code>tls sesscache remove</code></a></h3>
+<strong>Syntax:</strong> ftpdctl tls sesscache remove<br>
+<strong>Purpose:</strong> Removes the external SSL session cache<br>
+
+<p>
+The <code>tls sesscache remove</code> action is used to remove the
+external SSL session cache entirely.  Depending on the actual module providing
+the session cache, this may or may not be implemented.
+
+<p>
+For example:
+<pre>
+  # ftpdctl tls sesscache remove
+  ftpdctl: tls sesscache: removed 'shm' session cache
+</pre>
+
+<p>
+See also: <a href="#TLSSessionCache"><code>TLSSessionCache</code></a>
+
+<p>
+<hr>
 <h2><a name="Usage">Usage</a></h2>
 Much of the documentation for Apache's <code>mod_ssl</code>, concerning
 certificates, OpenSSL usage, <i>etc</i> applies to this module as well:
@@ -1284,7 +1467,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-02-17 05:59:08 $</i><br>
+Last Updated: <i>$Date: 2009-03-10 06:04:33 $</i><br>
 
 <br><hr>
 
