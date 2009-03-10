@@ -5991,6 +5991,15 @@ static int tls_sess_init(void) {
 #endif /* OPENSSL_FIPS */
   }
 
+  /* Update the session ID context to use.  This is important; it ensures
+   * that the session IDs for this particular vhost will differ from those
+   * for another vhost.  An external SSL session cache will possibly
+   * cache sessions from all vhosts together, and we need to keep them
+   * separate.
+   */
+  SSL_CTX_set_session_id_context(ssl_ctx, (unsigned char *) main_server,
+    sizeof(main_server));
+
   /* Install our data channel NetIO handlers. */
   tls_netio_install_data();
 
