@@ -23,7 +23,7 @@
  */
 
 /* Compatibility
- * $Id: compat.h,v 1.12 2009-02-12 20:13:41 castaglia Exp $
+ * $Id: compat.h,v 1.13 2009-03-10 16:59:23 castaglia Exp $
  */
 
 #ifndef PR_COMPAT_H
@@ -81,5 +81,16 @@
 #define pr_inet_copy_connection		pr_inet_copy_conn
 #define pr_inet_create_connection	pr_inet_create_conn
 #define pr_inet_create_conn_portrange	pr_inet_create_conn_portrange
+
+#define ctrls_check_acl			pr_ctrls_check_acl
+#define ctrls_check_group_acl		pr_ctrls_check_group_acl
+#define ctrls_check_user_acl		pr_ctrls_check_user_acl
+#define ctrls_init_acl			pr_ctrls_init_acl
+#define ctrls_parse_acl			pr_ctrls_parse_acl
+#define ctrls_set_group_acl		pr_ctrls_set_group_acl
+#define ctrls_set_module_acls		pr_ctrls_set_module_acls
+#define ctrls_set_user_acl		pr_ctrls_set_user_acl
+#define ctrls_unregister_module_actions	pr_ctrls_unregister_module_actions
+#define ctrls_log			pr_ctrls_log
 
 #endif /* PR_COMPAT_H */

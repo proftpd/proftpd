@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.41 2009-02-21 06:19:32 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.42 2009-03-10 16:59:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -79,430 +79,54 @@ static ctrls_acl_t ctrls_sock_acl;
 
 static unsigned char ctrls_engine = TRUE;
 
-/* Logging */
-static int ctrls_logfd = -1;
-static char *ctrls_logname = NULL;
-
 /* Necessary prototypes */
 static int ctrls_setblock(int sockfd);
 static int ctrls_setnonblock(int sockfd);
 
+static const char *ctrls_logname = NULL;
+
 /* Support routines
  */
-
-char *ctrls_argsep(char **arg) {
-  char *ret = NULL, *dst = NULL;
-  char quote_mode = 0;
-
-  if (!arg || !*arg || !**arg)
-    return NULL;
-
-  while (**arg && isspace((int) **arg))
-    (*arg)++;
-
-  if (!**arg)
-    return NULL;
-
-  ret = dst = *arg;
-
-  if (**arg == '\"') {
-    quote_mode++;
-    (*arg)++;
-  }
-
-  while (**arg && **arg != ',' &&
-      (quote_mode ? (**arg != '\"') : (!isspace((int) **arg)))) {
-
-    if (**arg == '\\' && quote_mode) {
-
-      /* escaped char */
-      if (*((*arg) + 1))
-        *dst = *(++(*arg));
-    }
-
-    *dst++ = **arg;
-    ++(*arg);
-  }
-
-  if (**arg)
-    (*arg)++;
-
-  *dst = '\0';
-  return ret;
-}
-
-/* Returns TRUE if the given cl_gid is allowed by the group ACL, FALSE
- * otherwise. Note that the default is to deny everyone, unless an ACL has
- * been configured. 
- */
-static unsigned char ctrls_check_group_acl(gid_t cl_gid,
-    const ctrls_grp_acl_t *grp_acl) {
-  register int i = 0;
-  unsigned char res = FALSE;
-
-  /* Note: the special condition of ngids of 1 and gids of NULL signals
-   * that all groups are to be treated according to the allow member.
-   */
-  if (grp_acl->gids) {
-    for (i = 0; i < grp_acl->ngids; i++) {
-      if ((grp_acl->gids)[i] == cl_gid) {
-        res = TRUE;
-      }
-    }
-
-  } else if (grp_acl->ngids == 1)
-    res = TRUE;
-
-  if (!grp_acl->allow)
-    res = !res;
-
-  return res;
-}
-
-/* Returns TRUE if the given cl_uid is allowed by the user ACL, FALSE
- * otherwise. Note that the default is to deny everyone, unless an ACL has
- * been configured.
- */
-static unsigned char ctrls_check_user_acl(uid_t cl_uid,
-    const ctrls_usr_acl_t *usr_acl) {
-  register int i = 0;
-  unsigned char res = FALSE;
-
-  /* Note: the special condition of nuids of 1 and uids of NULL signals
-   * that all users are to be treated according to the allow member.
-   */
-  if (usr_acl->uids) {
-    for (i = 0; i < usr_acl->nuids; i++) {
-      if ((usr_acl->uids)[i] == cl_uid) {
-        res = TRUE;
-      }
-    }
-
-  } else if (usr_acl->nuids == 1)
-    res = TRUE;
- 
-  if (!usr_acl->allow)
-    res = !res;
-
-  return res;
-}
-
-/* Returns TRUE for allowed, FALSE for denied. */
-unsigned char ctrls_check_acl(const pr_ctrls_t *ctrl,
-    const ctrls_acttab_t *acttab, const char *action) {
-  register unsigned int i = 0;
-
-  for (i = 0; acttab[i].act_action; i++) {
-    if (strcmp(acttab[i].act_action, action) == 0) {
-
-      if (!ctrls_check_user_acl(ctrl->ctrls_cl->cl_uid,
-            &(acttab[i].act_acl->acl_usrs)) &&
-          !ctrls_check_group_acl(ctrl->ctrls_cl->cl_gid,
-            &(acttab[i].act_acl->acl_grps))) {
-
-        /* Access denied */
-        return FALSE;
-      }
-    }
-  }
-
-  return TRUE;
-}
-
-void ctrls_init_acl(ctrls_acl_t *acl) {
-
-  /* Sanity check */
-  if (!acl)
-    return;
-
-  memset(acl, '\0', sizeof(ctrls_acl_t));
-  acl->acl_usrs.allow = acl->acl_grps.allow = TRUE;
-}
-
-char **ctrls_parse_acl(pool *acl_pool, char *acl_str) {
-  char *name = NULL, *acl_str_dup = NULL, **acl_list = NULL;
-  array_header *acl_arr = NULL;
-  pool *tmp_pool = NULL;
-
-  /* Sanity checks */
-  if (!acl_pool || !acl_str)
-    return NULL;
-
-  tmp_pool = make_sub_pool(acl_pool);
-  acl_str_dup = pstrdup(tmp_pool, acl_str);
- 
-  /* Allocate an array */
-  acl_arr = make_array(acl_pool, 0, sizeof(char **));
-
-  /* Add each name to the array */
-  while ((name = ctrls_argsep(&acl_str_dup)) != NULL) {
-    char *tmp = pstrdup(acl_pool, name);
-
-    /* Push the name into the ACL array */
-    *((char **) push_array(acl_arr)) = tmp;
-  }
-
-  /* Terminate the temp array with a NULL, as is proper. */
-  *((char **) push_array(acl_arr)) = NULL;
-
-  acl_list = (char **) acl_arr->elts;
-  destroy_pool(tmp_pool);
-
-  /* return the array of names */
-  return acl_list;
-}
-
-static void ctrls_set_group_acl(pool *grp_acl_pool, ctrls_grp_acl_t *grp_acl,
-    const char *allow, char *grouplist) {
-  char *group = NULL, **groups = NULL;
-  array_header *gidarr = NULL;
-  gid_t gid = 0;
-  pool *tmp_pool = NULL;
-
-  if (!grp_acl_pool || !grp_acl || !allow || !grouplist)
-    return;
-
-  tmp_pool = make_sub_pool(grp_acl_pool);
-
-  if (strcmp(allow, "allow") == 0)
-    grp_acl->allow = TRUE;
-  else
-    grp_acl->allow = FALSE;
-
-  /* Parse the given expression into an array, then retrieve the GID
-   * for each given name.
-   */
-  groups = ctrls_parse_acl(grp_acl_pool, grouplist);
-
-  /* Allocate an array of gid_t's */
-  gidarr = make_array(grp_acl_pool, 0, sizeof(gid_t));
-
-  for (group = *groups; group != NULL; group = *++groups) {
-
-    /* Handle a group name of "*" differently. */
-    if (strcmp("*", group) == 0) {
-      grp_acl->ngids = 1;
-      grp_acl->gids = NULL;
-      destroy_pool(tmp_pool);
-      return;
-
-    } else {
-      gid = pr_auth_name2gid(tmp_pool, group);
-      if (gid == (gid_t) -1)
-        continue;
-    }
-
-    *((gid_t *) push_array(gidarr)) = gid;
-  }
-
-  grp_acl->ngids = gidarr->nelts;
-  grp_acl->gids = (gid_t *) gidarr->elts;
-
-  destroy_pool(tmp_pool);
-}
-
-static void ctrls_set_user_acl(pool *usr_acl_pool, ctrls_usr_acl_t *usr_acl,
-    const char *allow, char *userlist) {
-  char *user = NULL, **users = NULL;
-  array_header *uidarr = NULL;
-  uid_t uid = 0;
-  pool *tmp_pool = NULL;
-
-  /* Sanity checks */
-  if (!usr_acl_pool || !usr_acl || !allow || !userlist)
-    return;
-
-  tmp_pool = make_sub_pool(usr_acl_pool);
-
-  if (strcmp(allow, "allow") == 0)
-    usr_acl->allow = TRUE;
-  else
-    usr_acl->allow = FALSE;
-
-  /* Parse the given expression into an array, then retrieve the UID
-   * for each given name.
-   */
-  users = ctrls_parse_acl(usr_acl_pool, userlist);
-
-  /* Allocate an array of uid_t's */
-  uidarr = make_array(usr_acl_pool, 0, sizeof(uid_t));
-
-  for (user = *users; user != NULL; user = *++users) {
-
-    /* Handle a user name of "*" differently. */
-    if (strcmp("*", user) == 0) {
-      usr_acl->nuids = 1;
-      usr_acl->uids = NULL;
-      destroy_pool(tmp_pool);
-      return;
-
-    } else {
-      uid = pr_auth_name2uid(tmp_pool, user);
-      if (uid == (uid_t) -1)
-        continue;
-    }
-
-    *((uid_t *) push_array(uidarr)) = uid;
-  }
-
-  usr_acl->nuids = uidarr->nelts;
-  usr_acl->uids = (uid_t *) uidarr->elts;
-
-  destroy_pool(tmp_pool);
-}
-
-char *ctrls_set_module_acls(ctrls_acttab_t *acttab, pool *acl_pool,
-    char **actions, const char *allow, const char *type, char *list) {
-  register unsigned int i = 0;
-  unsigned char all_actions = FALSE;
-
-  /* First, sanity check the given list of actions against the actions
-   * in the given table.
-   */
-  for (i = 0; actions[i]; i++) {
-    register unsigned int j = 0;
-    unsigned char valid_action = FALSE;
-
-    if (strcmp(actions[i], "all") == 0)
-      continue;
-
-    for (j = 0; acttab[j].act_action; j++) {
-      if (strcmp(actions[i], acttab[j].act_action) == 0) {
-        valid_action = TRUE;
-        break;
-      }
-    }
-
-    if (!valid_action)
-      return actions[i];
-  }
-
-  for (i = 0; actions[i]; i++) {
-    register unsigned int j = 0;
-
-    if (!all_actions && strcmp(actions[i], "all") == 0)
-      all_actions = TRUE;
-
-    for (j = 0; acttab[j].act_action; j++) {
-      if (all_actions || strcmp(actions[i], acttab[j].act_action) == 0) {
-
-        /* Use the type parameter to determine whether the list is of users or
-         * of groups.
-         */
-        if (strcmp(type, "user") == 0)
-          ctrls_set_user_acl(acl_pool, &(acttab[j].act_acl->acl_usrs),
-            allow, list);
-
-        else if (strcmp(type, "group") == 0)
-          ctrls_set_group_acl(acl_pool, &(acttab[j].act_acl->acl_grps),
-            allow, list);
-      }
-    }
-  }
-
-  return NULL;
-}
-
-char *ctrls_unregister_module_actions(ctrls_acttab_t *acttab,
-    char **actions, module *mod) {
-  register unsigned int i = 0;
-
-  /* First, sanity check the given actions against the actions supported by
-   * this module.
-   */
-  for (i = 0; actions[i]; i++) {
-    register unsigned int j = 0;
-    unsigned char valid_action = FALSE;
-
-    for (j = 0; acttab[j].act_action; j++) {
-      if (strcmp(actions[i], acttab[j].act_action) == 0) {
-        valid_action = TRUE;
-        break;
-      }
-    }
-
-    if (!valid_action)
-      return actions[i];
-  }
-
-  /* Next, iterate through both lists again, looking for actions of the
-   * module _not_ in the given list.
-   */
-  for (i = 0; acttab[i].act_action; i++) {
-    register unsigned int j = 0;
-    unsigned char have_action = FALSE;
-
-    for (j = 0; actions[j]; j++) {
-      if (strcmp(acttab[i].act_action, actions[j]) == 0) {
-        have_action = TRUE;
-        break;
-      }
-    }
-
-    if (have_action) {
-      pr_trace_msg(trace_channel, 4, "mod_%s.c: removing '%s' control",
-        mod->name, acttab[i].act_action);
-      pr_ctrls_unregister(mod, acttab[i].act_action);
-      destroy_pool(acttab[i].act_acl->acl_pool);
-    }
-  }
-
-  return NULL;
-}
 
 /* Controls logging routines
  */
 
 static int ctrls_closelog(void) {
-  /* sanity check */
-  if (ctrls_logfd != -1) {
-    close(ctrls_logfd);
-    ctrls_logfd = -1;
-
+  if (ctrls_logname != NULL) {
+    pr_ctrls_set_logfd(-1);
     ctrls_logname = NULL;
   }
 
   return 0;
 }
 
-int ctrls_log(const char *module_version, const char *fmt, ...) {
-  va_list msg;
-  int res;
-
-  /* sanity check */
-  if (!ctrls_logname)
-    return 0;
-
-  va_start(msg, fmt);
-  res = pr_log_vwritefile(ctrls_logfd, module_version, fmt, msg);
-  va_end(msg);
-
-  return res;
-}
-
 static int ctrls_openlog(void) {
-  int res = 0;
+  int logfd, res = 0;
 
   /* Sanity check */
   if (ctrls_logname == NULL)
     return 0;
 
-  res = pr_log_openfile(ctrls_logname, &ctrls_logfd, 0640);
+  res = pr_log_openfile(ctrls_logname, &logfd, 0640);
+  if (res == 0) {
+    pr_ctrls_set_logfd(logfd);
 
-  if (res == -1) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
-      ": unable to open ControlsLog '%s': %s", ctrls_logname,
-      strerror(errno));
+  } else {
+    if (res == -1) {
+      pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
+        ": unable to open ControlsLog '%s': %s", ctrls_logname,
+        strerror(errno));
 
-  } else if (res == PR_LOG_WRITABLE_DIR) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
-      ": unable to open ControlsLog '%s': "
-      "containing directory is world writable", ctrls_logname);
+    } else if (res == PR_LOG_WRITABLE_DIR) {
+      pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
+        ": unable to open ControlsLog '%s': "
+        "containing directory is world writable", ctrls_logname);
 
-  } else if (res == PR_LOG_SYMLINK) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
-      ": unable to open ControlsLog '%s': %s is a symbolic link",
-      ctrls_logname, ctrls_logname);
+    } else if (res == PR_LOG_SYMLINK) {
+      pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
+        ": unable to open ControlsLog '%s': %s is a symbolic link",
+        ctrls_logname, ctrls_logname);
+    }
   }
 
   return res;
@@ -582,7 +206,7 @@ static pr_ctrls_cl_t *ctrls_add_cl(int cl_fd, uid_t cl_uid, gid_t cl_gid,
   cl->cl_pid = cl_pid;
   cl->cl_flags = cl_flags;
 
-  ctrls_log(MOD_CTRLS_VERSION,
+  pr_ctrls_log(MOD_CTRLS_VERSION,
     "accepted connection from %s/%s client", cl->cl_user, cl->cl_group);
  
   return cl;
@@ -633,7 +257,7 @@ static void ctrls_cls_read(void) {
         if (!cl->cl_flags)
           cl->cl_flags = PR_CTRLS_CL_NOACTION;
 
-        ctrls_log(MOD_CTRLS_VERSION,
+        pr_ctrls_log(MOD_CTRLS_VERSION,
           "recvd from %s/%s client: (invalid action)", cl->cl_user,
           cl->cl_group);
 
@@ -644,8 +268,7 @@ static void ctrls_cls_read(void) {
           cl->cl_flags = PR_CTRLS_CL_BLOCKED;
 
       } else {
-        
-        ctrls_log(MOD_CTRLS_VERSION,
+        pr_ctrls_log(MOD_CTRLS_VERSION,
           "error: unable to receive client request: %s", strerror(errno)); 
       }
 
@@ -669,7 +292,7 @@ static void ctrls_cls_read(void) {
         while (reqargc--)
           request = pstrcat(cl->cl_pool, request, " ", *reqargv++, NULL);
 
-        ctrls_log(MOD_CTRLS_VERSION,
+        pr_ctrls_log(MOD_CTRLS_VERSION,
           "recvd from %s/%s client: '%s'", cl->cl_user, cl->cl_group,
           request);
       }
@@ -698,39 +321,42 @@ static int ctrls_cls_write(void) {
       char *msg = "access denied";
 
       /* ACL-denied access */
-      if (pr_ctrls_send_msg(cl->cl_fd, -1, 1, &msg) < 0)
-        ctrls_log(MOD_CTRLS_VERSION,
+      if (pr_ctrls_send_msg(cl->cl_fd, -1, 1, &msg) < 0) {
+        pr_ctrls_log(MOD_CTRLS_VERSION,
           "error: unable to send response to %s/%s client: %s",
           cl->cl_user, cl->cl_group, strerror(errno));
 
-      else
-        ctrls_log(MOD_CTRLS_VERSION, "sent to %s/%s client: '%s'",
+      } else {
+        pr_ctrls_log(MOD_CTRLS_VERSION, "sent to %s/%s client: '%s'",
           cl->cl_user, cl->cl_group, msg);
+      }
 
     } else if (cl->cl_flags == PR_CTRLS_CL_NOACTION) {
       char *msg = "unsupported action requested";
 
       /* Unsupported action -- no matching controls */
-      if (pr_ctrls_send_msg(cl->cl_fd, -1, 1, &msg) < 0)
-        ctrls_log(MOD_CTRLS_VERSION,
+      if (pr_ctrls_send_msg(cl->cl_fd, -1, 1, &msg) < 0) {
+        pr_ctrls_log(MOD_CTRLS_VERSION,
           "error: unable to send response to %s/%s client: %s",
           cl->cl_user, cl->cl_group, strerror(errno));
 
-      else
-        ctrls_log(MOD_CTRLS_VERSION, "sent to %s/%s client: '%s'",
+      } else {
+        pr_ctrls_log(MOD_CTRLS_VERSION, "sent to %s/%s client: '%s'",
           cl->cl_user, cl->cl_group, msg);
+      }
 
     } else if (cl->cl_flags == PR_CTRLS_CL_BLOCKED) {
       char *msg = "blocked connection";
 
-      if (pr_ctrls_send_msg(cl->cl_fd, -1, 1, &msg) < 0)
-        ctrls_log(MOD_CTRLS_VERSION,
+      if (pr_ctrls_send_msg(cl->cl_fd, -1, 1, &msg) < 0) {
+        pr_ctrls_log(MOD_CTRLS_VERSION,
           "error: unable to send response to %s/%s client: %s",
           cl->cl_user, cl->cl_group, strerror(errno));
 
-      else
-        ctrls_log(MOD_CTRLS_VERSION, "sent to %s/%s client: '%s'",
+      } else {
+        pr_ctrls_log(MOD_CTRLS_VERSION, "sent to %s/%s client: '%s'",
           cl->cl_user, cl->cl_group, msg);
+      }
 
     } else if (cl->cl_flags == PR_CTRLS_CL_HAVEREQ) {
 
@@ -749,7 +375,7 @@ static int ctrls_cls_write(void) {
                 if (pr_ctrls_send_msg(cl->cl_fd, (ctrlv[i])->ctrls_cb_retval,
                     (ctrlv[i])->ctrls_cb_resps->nelts,
                     (char **) (ctrlv[i])->ctrls_cb_resps->elts) < 0) {
-                  ctrls_log(MOD_CTRLS_VERSION,
+                  pr_ctrls_log(MOD_CTRLS_VERSION,
                     "error: unable to send response to %s/%s "
                     "client: %s", cl->cl_user, cl->cl_group, strerror(errno));
 
@@ -761,20 +387,21 @@ static int ctrls_cls_write(void) {
                   int respargc = (ctrlv[i])->ctrls_cb_resps->nelts;
                   char **respargv = (ctrlv[i])->ctrls_cb_resps->elts;
 
-                  ctrls_log(MOD_CTRLS_VERSION,
+                  pr_ctrls_log(MOD_CTRLS_VERSION,
                     "sent to %s/%s client: return value: %d",
                     cl->cl_user, cl->cl_group, respval);
 
-                  for (j = 0; j < respargc; j++) 
-                    ctrls_log(MOD_CTRLS_VERSION,
-                      "sent to %s/%s client: '%s'", cl->cl_user,
-                      cl->cl_group, respargv[j]);
+                  for (j = 0; j < respargc; j++) {
+                    pr_ctrls_log(MOD_CTRLS_VERSION,
+                      "sent to %s/%s client: '%s'", cl->cl_user, cl->cl_group,
+                      respargv[j]);
+                  }
                 }
 
               } else {
 
                 /* No responses added by callbacks */
-                ctrls_log(MOD_CTRLS_VERSION,
+                pr_ctrls_log(MOD_CTRLS_VERSION,
                   "notice: no responses given for %s/%s client: "
                   "check controls handlers", cl->cl_user, cl->cl_group);
               }
@@ -784,7 +411,7 @@ static int ctrls_cls_write(void) {
       }
     }
 
-    ctrls_log(MOD_CTRLS_VERSION,
+    pr_ctrls_log(MOD_CTRLS_VERSION,
       "closed connection to %s/%s client", cl->cl_user, cl->cl_group);
 
     /* Remove the client from the list */
@@ -815,7 +442,7 @@ static int ctrls_listen(const char *sock_file) {
 
     pr_signals_unblock();
     errno = xerrno;
-    ctrls_log(MOD_CTRLS_VERSION,
+    pr_ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to create local socket: %s", strerror(errno));
     return -1;
   }
@@ -841,7 +468,7 @@ static int ctrls_listen(const char *sock_file) {
     pr_signals_unblock();
     (void) close(sockfd);
     errno = xerrno;
-    ctrls_log(MOD_CTRLS_VERSION,
+    pr_ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to bind to local socket: %s", strerror(xerrno));
     pr_trace_msg(trace_channel, 1, "unable to bind to local socket: %s",
       strerror(xerrno));
@@ -855,7 +482,7 @@ static int ctrls_listen(const char *sock_file) {
     pr_signals_unblock();
     (void) close(sockfd);
     errno = xerrno;
-    ctrls_log(MOD_CTRLS_VERSION,
+    pr_ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to listen on local socket: %s", strerror(xerrno));
     pr_trace_msg(trace_channel, 1, "unable to listen on local socket: %s",
       strerror(xerrno));
@@ -866,7 +493,7 @@ static int ctrls_listen(const char *sock_file) {
     !defined(HAVE_GETPEERUCRED) && defined(LOCAL_CREDS)
   /* Set the LOCAL_CREDS socket option. */
   if (setsockopt(sockfd, 0, LOCAL_CREDS, &opt, optlen) < 0)
-    ctrls_log(MOD_CTRLS_VERSION, "error enabling LOCAL_CREDS: %s",
+    pr_ctrls_log(MOD_CTRLS_VERSION, "error enabling LOCAL_CREDS: %s",
       strerror(errno));
 #endif /* !LOCAL_CREDS */
 
@@ -877,7 +504,7 @@ static int ctrls_listen(const char *sock_file) {
     pr_signals_unblock();
     (void) close(sockfd);
     errno = xerrno;
-    ctrls_log(MOD_CTRLS_VERSION,
+    pr_ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to chmod local socket: %s", strerror(xerrno));
     pr_trace_msg(trace_channel, 1, "unable to chmod local socket: %s",
       strerror(xerrno));
@@ -928,7 +555,7 @@ static int ctrls_recv_cl_reqs(void) {
         continue;
       }
 
-      ctrls_log(MOD_CTRLS_VERSION,
+      pr_ctrls_log(MOD_CTRLS_VERSION,
         "error: unable to select on local socket: %s", strerror(errno));
       return res;
     }
@@ -937,7 +564,7 @@ static int ctrls_recv_cl_reqs(void) {
 
       /* Make sure the ctrl socket is non-blocking */
       if (ctrls_setnonblock(ctrls_sockfd) < 0) {
-        ctrls_log(MOD_CTRLS_VERSION,
+        pr_ctrls_log(MOD_CTRLS_VERSION,
           "error: unable to set nonblocking on local socket: %s",
           strerror(errno));
         return -1;
@@ -947,30 +574,33 @@ static int ctrls_recv_cl_reqs(void) {
       cl_fd = pr_ctrls_accept(ctrls_sockfd, &cl_uid, &cl_gid, &cl_pid,
         ctrls_cl_freshness);
       if (cl_fd < 0) {
-        if (errno != ETIMEDOUT)
-          ctrls_log(MOD_CTRLS_VERSION,
+        if (errno != ETIMEDOUT) {
+          pr_ctrls_log(MOD_CTRLS_VERSION,
             "error: unable to accept connection: %s", strerror(errno));
+        }
+
         continue;
       }
 
       /* Restore blocking mode to the ctrl socket */
       if (ctrls_setblock(ctrls_sockfd) < 0) {
-        ctrls_log(MOD_CTRLS_VERSION,
+        pr_ctrls_log(MOD_CTRLS_VERSION,
           "error: unable to set blocking on local socket: %s",
           strerror(errno));
       }
 
       /* Set this socket as non-blocking */
       if (ctrls_setnonblock(cl_fd) < 0) {
-        ctrls_log(MOD_CTRLS_VERSION,
+        pr_ctrls_log(MOD_CTRLS_VERSION,
           "error: unable to set nonblocking on client socket: %s",
           strerror(errno));
         continue;
       }
 
-      if (!ctrls_check_user_acl(cl_uid, &ctrls_sock_acl.acl_usrs) &&
-          !ctrls_check_group_acl(cl_gid, &ctrls_sock_acl.acl_grps))
+      if (!pr_ctrls_check_user_acl(cl_uid, &ctrls_sock_acl.acl_usrs) &&
+          !pr_ctrls_check_group_acl(cl_gid, &ctrls_sock_acl.acl_grps)) {
         cl_flags = PR_CTRLS_CL_NOACCESS;
+      }
 
       /* Add the client to the list */
       ctrls_add_cl(cl_fd, cl_uid, cl_gid, cl_pid, cl_flags);
@@ -1103,7 +733,7 @@ static int ctrls_handle_insctrl(pr_ctrls_t *ctrl, int reqargc,
    */
 
   /* Check the insctrl ACL */
-  if (!ctrls_check_acl(ctrl, ctrls_acttab, "insctrl")) {
+  if (!pr_ctrls_check_acl(ctrl, ctrls_acttab, "insctrl")) {
 
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
@@ -1143,7 +773,7 @@ static int ctrls_handle_lsctrl(pr_ctrls_t *ctrl, int reqargc,
    */
 
   /* Check the lsctrl ACL */
-  if (!ctrls_check_acl(ctrl, ctrls_acttab, "lsctrl")) {
+  if (!pr_ctrls_check_acl(ctrl, ctrls_acttab, "lsctrl")) {
 
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
@@ -1178,7 +808,7 @@ static int ctrls_handle_rmctrl(pr_ctrls_t *ctrl, int reqargc,
    */
 
   /* Check the rmctrl ACL */
-  if (!ctrls_check_acl(ctrl, ctrls_acttab, "rmctrl")) {
+  if (!pr_ctrls_check_acl(ctrl, ctrls_acttab, "rmctrl")) {
 
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
@@ -1267,11 +897,12 @@ MODRET set_ctrlsacls(cmd_rec *cmd) {
       strcmp(cmd->argv[3], "group") != 0)
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
 
-  bad_action = ctrls_set_module_acls(ctrls_acttab, ctrls_pool, actions,
+  bad_action = pr_ctrls_set_module_acls(ctrls_acttab, ctrls_pool, actions,
     cmd->argv[2], cmd->argv[3], cmd->argv[4]);
-  if (bad_action != NULL)
+  if (bad_action != NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown action: '",
       bad_action, "'", NULL));
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -1392,7 +1023,7 @@ MODRET set_ctrlssocketacl(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 3);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  ctrls_init_acl(&ctrls_sock_acl);
+  pr_ctrls_init_acl(&ctrls_sock_acl);
 
   /* Check the first argument to make sure it either "allow" or "deny" */
   if (strcmp(cmd->argv[1], "allow") != 0 &&
@@ -1400,16 +1031,17 @@ MODRET set_ctrlssocketacl(cmd_rec *cmd) {
     CONF_ERROR(cmd, "first parameter must be either 'allow' or 'deny'");
 
   /* Check the second argument to see how to handle the directive */
-  if (strcmp(cmd->argv[2], "user") == 0)
-    ctrls_set_user_acl(ctrls_pool, &ctrls_sock_acl.acl_usrs, cmd->argv[1],
+  if (strcmp(cmd->argv[2], "user") == 0) {
+    pr_ctrls_set_user_acl(ctrls_pool, &ctrls_sock_acl.acl_usrs, cmd->argv[1],
+      cmd->argv[3]);
+ 
+  } else if (strcmp(cmd->argv[2], "group") == 0) {
+    pr_ctrls_set_group_acl(ctrls_pool, &ctrls_sock_acl.acl_grps, cmd->argv[1],
       cmd->argv[3]);
 
-  else if (strcmp(cmd->argv[2], "group") == 0)
-    ctrls_set_group_acl(ctrls_pool, &ctrls_sock_acl.acl_grps, cmd->argv[1],
-      cmd->argv[3]);
-
-  else
+  } else {
     CONF_ERROR(cmd, "second parameter must be either 'user' or 'group'");
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -1545,7 +1177,7 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
 
     /* Allocate and initialize the ACL for this control. */
     ctrls_acttab[i].act_acl = pcalloc(ctrls_pool, sizeof(ctrls_acl_t));
-    ctrls_init_acl(ctrls_acttab[i].act_acl);
+    pr_ctrls_init_acl(ctrls_acttab[i].act_acl);
   }
 
   pr_alarms_unblock();
@@ -1575,7 +1207,7 @@ static int ctrls_init(void) {
 
     /* Allocate and initialize the ACL for this control. */
     ctrls_acttab[i].act_acl = pcalloc(ctrls_pool, sizeof(ctrls_acl_t));
-    ctrls_init_acl(ctrls_acttab[i].act_acl);
+    pr_ctrls_init_acl(ctrls_acttab[i].act_acl);
 
     if (pr_ctrls_register(&ctrls_module, ctrls_acttab[i].act_action,
         ctrls_acttab[i].act_desc, ctrls_acttab[i].act_cb) < 0)

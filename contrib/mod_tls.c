@@ -4589,7 +4589,7 @@ static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   if (strcmp(reqargv[0], "info") == 0) {
 
     /* Check the ACLs. */
-    if (!ctrls_check_acl(ctrl, tls_acttab, "info")) {
+    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "info")) {
       pr_ctrls_add_response(ctrl, "access denied");
       return -1;
     }
@@ -4599,7 +4599,7 @@ static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   } else if (strcmp(reqargv[0], "clear") == 0) {
 
     /* Check the ACLs. */
-    if (!ctrls_check_acl(ctrl, tls_acttab, "clear")) {
+    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "clear")) {
       pr_ctrls_add_response(ctrl, "access denied");
       return -1;
     }
@@ -4609,7 +4609,7 @@ static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   } else if (strcmp(reqargv[0], "remove") == 0) {
 
     /* Check the ACLs. */
-    if (!ctrls_check_acl(ctrl, tls_acttab, "remove")) {
+    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "remove")) {
       pr_ctrls_add_response(ctrl, "access denied");
       return -1;
     }
@@ -4638,7 +4638,7 @@ static int tls_handle_tls(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   if (strcmp(reqargv[0], "sesscache") == 0) {
 
     /* Check the ACLs. */
-    if (!ctrls_check_acl(ctrl, tls_acttab, "sesscache")) {
+    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "sesscache")) {
       pr_ctrls_add_response(ctrl, "access denied");
       return -1;
     }
@@ -5692,7 +5692,7 @@ MODRET set_tlsctrlsacls(cmd_rec *cmd) {
       strcmp(cmd->argv[3], "group") != 0)
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
 
-  bad_action = ctrls_set_module_acls(tls_acttab, tls_act_pool, actions,
+  bad_action = pr_ctrls_set_module_acls(tls_acttab, tls_act_pool, actions,
     cmd->argv[2], cmd->argv[3], cmd->argv[4]);
   if (bad_action != NULL)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown action: '",
@@ -6361,7 +6361,7 @@ static void tls_restart_ev(const void *event_data, void *user_data) {
   /* Re-create the controls ACLs. */
   for (i = 0; tls_acttab[i].act_action; i++) {
     tls_acttab[i].act_acl = palloc(tls_act_pool, sizeof(ctrls_acl_t));
-    ctrls_init_acl(tls_acttab[i].act_acl);
+    pr_ctrls_init_acl(tls_acttab[i].act_acl);
   }
 #endif /* PR_USE_CTRLS */
 
@@ -6599,7 +6599,7 @@ static int tls_init(void) {
 
     for (i = 0; tls_acttab[i].act_action; i++) {
       tls_acttab[i].act_acl = palloc(tls_act_pool, sizeof(ctrls_acl_t));
-      ctrls_init_acl(tls_acttab[i].act_acl);
+      pr_ctrls_init_acl(tls_acttab[i].act_acl);
     }
   }
 #endif /* PR_USE_CTRLS */

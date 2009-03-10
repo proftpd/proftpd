@@ -24,7 +24,7 @@
 
 /* ProFTPD Controls command-line client
  *
- * $Id: ftpdctl.c,v 1.11 2008-02-24 20:35:56 castaglia Exp $
+ * $Id: ftpdctl.c,v 1.12 2009-03-10 16:59:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,6 +50,14 @@ void pr_alarms_block(void) {
 }
 
 void pr_alarms_unblock(void) {
+}
+
+gid_t pr_auth_name2gid(pool *p, const char *name) {
+  return (gid_t) -1;
+}
+
+uid_t pr_auth_name2uid(pool *p, const char *name) {
+  return (uid_t) -1;
 }
 
 void pr_signals_block(void) {

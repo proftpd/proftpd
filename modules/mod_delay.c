@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.30 2009-01-04 01:14:37 castaglia Exp $
+ * $Id: mod_delay.c,v 1.31 2009-03-10 16:59:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -875,7 +875,7 @@ static int delay_handle_delay(pr_ctrls_t *ctrl, int reqargc,
 
   if (strcmp(reqargv[0], "info") == 0) {
 
-    if (!ctrls_check_acl(ctrl, delay_acttab, "info")) {
+    if (!pr_ctrls_check_acl(ctrl, delay_acttab, "info")) {
       pr_ctrls_add_response(ctrl, "access denied");
       return -1;
     }
@@ -884,7 +884,7 @@ static int delay_handle_delay(pr_ctrls_t *ctrl, int reqargc,
 
   } else if (strcmp(reqargv[0], "reset") == 0) {
 
-    if (!ctrls_check_acl(ctrl, delay_acttab, "reset")) {
+    if (!pr_ctrls_check_acl(ctrl, delay_acttab, "reset")) {
       pr_ctrls_add_response(ctrl, "access denied");
       return -1;
     }
@@ -924,7 +924,7 @@ MODRET set_delayctrlsacls(cmd_rec *cmd) {
       strcmp(cmd->argv[3], "group") != 0)
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
 
-  bad_action = ctrls_set_module_acls(delay_acttab, delay_pool, actions,
+  bad_action = pr_ctrls_set_module_acls(delay_acttab, delay_pool, actions,
     cmd->argv[2], cmd->argv[3], cmd->argv[4]);
   if (bad_action != NULL)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown delay action: '",
@@ -1248,7 +1248,7 @@ static int delay_init(void) {
 
     for (i = 0; delay_acttab[i].act_action; i++) {
       delay_acttab[i].act_acl = pcalloc(delay_pool, sizeof(ctrls_acl_t));
-      ctrls_init_acl(delay_acttab[i].act_acl);
+      pr_ctrls_init_acl(delay_acttab[i].act_acl);
     }
   }
 #endif /* PR_USE_CTRLS */

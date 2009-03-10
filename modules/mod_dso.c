@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_dso -- support for loading/unloading modules at run-time
  *
- * Copyright (c) 2004-2008 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2004-2009 TJ Saunders <tj@castaglia.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.16 2008-10-14 23:23:09 castaglia Exp $
+ * $Id: mod_dso.c,v 1.17 2009-03-10 16:59:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -245,7 +245,7 @@ static int dso_handle_insmod(pr_ctrls_t *ctrl, int reqargc,
   register unsigned int i;
 
   /* Check the ACL. */
-  if (!ctrls_check_acl(ctrl, dso_acttab, "insmod")) {
+  if (!pr_ctrls_check_acl(ctrl, dso_acttab, "insmod")) {
 
     /* Access denied. */
     pr_ctrls_add_response(ctrl, "access denied");
@@ -292,7 +292,7 @@ static int dso_handle_lsmod(pr_ctrls_t *ctrl, int reqargc,
   module *m;
 
   /* Check the ACL. */
-  if (!ctrls_check_acl(ctrl, dso_acttab, "lsmod")) {
+  if (!pr_ctrls_check_acl(ctrl, dso_acttab, "lsmod")) {
 
     /* Access denied. */
     pr_ctrls_add_response(ctrl, "access denied");
@@ -322,7 +322,7 @@ static int dso_handle_rmmod(pr_ctrls_t *ctrl, int reqargc,
   register unsigned int i;
 
   /* Check the ACL. */
-  if (!ctrls_check_acl(ctrl, dso_acttab, "rmmod")) {
+  if (!pr_ctrls_check_acl(ctrl, dso_acttab, "rmmod")) {
 
     /* Access denied. */
     pr_ctrls_add_response(ctrl, "access denied");
@@ -412,7 +412,7 @@ MODRET set_modulectrlsacls(cmd_rec *cmd) {
       strcmp(cmd->argv[3], "group") != 0)
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
 
-  bad_action = ctrls_set_module_acls(dso_acttab, dso_pool, actions,
+  bad_action = pr_ctrls_set_module_acls(dso_acttab, dso_pool, actions,
     cmd->argv[2], cmd->argv[3], cmd->argv[4]);
   if (bad_action != NULL)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown action: '",
@@ -567,7 +567,7 @@ static void dso_restart_ev(const void *event_data, void *user_data) {
     /* Allocate and initialize the ACL for this control. */
     dso_acttab[i].act_acl = pcalloc(sub_pool, sizeof(ctrls_acl_t));
     dso_acttab[i].act_acl->acl_pool = sub_pool;
-    ctrls_init_acl(dso_acttab[i].act_acl);
+    pr_ctrls_init_acl(dso_acttab[i].act_acl);
   }
 #endif /* PR_USE_CTRLS */
 
@@ -645,7 +645,7 @@ static int dso_init(void) {
     /* Allocate and initialize the ACL for this control. */
     dso_acttab[i].act_acl = pcalloc(sub_pool, sizeof(ctrls_acl_t));
     dso_acttab[i].act_acl->acl_pool = sub_pool;
-    ctrls_init_acl(dso_acttab[i].act_acl);
+    pr_ctrls_init_acl(dso_acttab[i].act_acl);
 
     if (pr_ctrls_register(&dso_module, dso_acttab[i].act_action,
         dso_acttab[i].act_desc, dso_acttab[i].act_cb) < 0)

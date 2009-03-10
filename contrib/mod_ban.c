@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.24 2009-03-09 23:04:52 castaglia Exp $
+ * $Id: mod_ban.c,v 1.25 2009-03-10 16:59:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -942,7 +942,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
   register unsigned int i = 0;
 
   /* Check the ban ACL */
-  if (!ctrls_check_acl(ctrl, ban_acttab, "ban")) {
+  if (!pr_ctrls_check_acl(ctrl, ban_acttab, "ban")) {
 
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
@@ -1303,7 +1303,7 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
   register unsigned int i = 0;
 
   /* Check the permit ACL */
-  if (!ctrls_check_acl(ctrl, ban_acttab, "permit")) {
+  if (!pr_ctrls_check_acl(ctrl, ban_acttab, "permit")) {
 
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
@@ -1502,7 +1502,7 @@ MODRET set_banctrlsacls(cmd_rec *cmd) {
       strcmp(cmd->argv[3], "group") != 0)
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
 
-  bad_action = ctrls_set_module_acls(ban_acttab, ban_pool, actions,
+  bad_action = pr_ctrls_set_module_acls(ban_acttab, ban_pool, actions,
     cmd->argv[2], cmd->argv[3], cmd->argv[4]);
   if (bad_action != NULL)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown action: '",
@@ -2076,7 +2076,7 @@ static void ban_restart_ev(const void *event_data, void *user_data) {
 
     /* Allocate and initialize the ACL for this control. */
     ban_acttab[i].act_acl = pcalloc(ban_pool, sizeof(ctrls_acl_t));
-    ctrls_init_acl(ban_acttab[i].act_acl);
+    pr_ctrls_init_acl(ban_acttab[i].act_acl);
   }
 
   /* Unregister any BanOnEvent event handlers */
@@ -2172,7 +2172,7 @@ static int ban_init(void) {
 
     /* Allocate and initialize the ACL for this control. */
     ban_acttab[i].act_acl = pcalloc(ban_pool, sizeof(ctrls_acl_t));
-    ctrls_init_acl(ban_acttab[i].act_acl);
+    pr_ctrls_init_acl(ban_acttab[i].act_acl);
 
     if (pr_ctrls_register(&ban_module, ban_acttab[i].act_action,
         ban_acttab[i].act_desc, ban_acttab[i].act_cb) < 0)
