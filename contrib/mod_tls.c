@@ -36,11 +36,18 @@
 
 #include "conf.h"
 #include "privs.h"
+#include "mod_tls.h"
 
-#include <openssl/ssl.h>
+#ifdef PR_USE_CTRLS
+# include "mod_ctrls.h"
+#endif
+
+/* Note that the openssl/ssl.h header is already included in mod_tls.h, so
+ * we don't need to include it here.
+*/
+
 #include <openssl/evp.h>
 #include <openssl/x509v3.h>
-#include <openssl/err.h>
 #include <openssl/pkcs12.h>
 #include <openssl/rand.h>
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
@@ -441,6 +448,8 @@ static pr_netio_t *tls_data_netio = NULL;
 static pr_netio_stream_t *tls_data_rd_nstrm = NULL;
 static pr_netio_stream_t *tls_data_wr_nstrm = NULL;
 
+static tls_sess_cache_t *tls_sess_cache = NULL;
+
 /* OpenSSL variables */
 static SSL *ctrl_ssl = NULL;
 static SSL_CTX *ssl_ctx = NULL;
@@ -462,13 +471,6 @@ static int tls_get_passphrase(server_rec *, const char *, const char *,
 
 static char *tls_get_subj_name(void);
 
-static int tls_log(const char *, ...)
-#ifdef __GNUC__
-       __attribute__ ((format (printf, 1, 2)));
-#else
-       ;
-#endif
-
 static int tls_openlog(void);
 static RSA *tls_rsa_cb(SSL *, int, int);
 static int tls_seed_prng(void);
@@ -477,6 +479,26 @@ static int tls_verify_cb(int, X509_STORE_CTX *);
 static int tls_verify_crl(int, X509_STORE_CTX *);
 static int tls_verify_ocsp(int, X509_STORE_CTX *);
 static char *tls_x509_name_oneline(X509_NAME *);
+
+/* Session cache API */
+static tls_sess_cache_t *tls_sess_cache_get_cache(const char *);
+static long tls_sess_cache_get_cache_mode(void);
+static int tls_sess_cache_open(char *, long);
+static int tls_sess_cache_close(void);
+#ifdef PR_USE_CTRLS
+static int tls_sess_cache_clear(void);
+static int tls_sess_cache_remove(void);
+static int tls_sess_cache_status(pr_ctrls_t *, int);
+#endif /* PR_USE_CTRLS */
+static int tls_sess_cache_add_sess_cb(SSL *, SSL_SESSION *);
+static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *, unsigned char *, int,
+  int *);
+static void tls_sess_cache_delete_sess_cb(SSL_CTX *, SSL_SESSION *);
+
+#ifdef PR_USE_CTRLS
+static pool *tls_act_pool = NULL;
+static ctrls_acttab_t tls_acttab[];
+#endif /* PR_USE_CTRLS */
 
 static void tls_diags_cb(const SSL *ssl, int where, int ret) {
   const char *str;
@@ -1798,6 +1820,8 @@ static void tls_blinding_on(SSL *ssl) {
 #endif
 
 static int tls_init_ctxt(void) {
+  config_rec *c;
+
   SSL_load_error_strings();
 
   if (pr_define_exists("TLS_USE_FIPS") &&
@@ -1876,9 +1900,68 @@ static int tls_init_ctxt(void) {
 #endif
 
   /* Set up session caching. */
-  SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
+
   SSL_CTX_set_session_id_context(ssl_ctx, (unsigned char *) MOD_TLS_VERSION,
     strlen(MOD_TLS_VERSION));
+
+  c = find_config(main_server->conf, CONF_PARAM, "TLSSessionCache", FALSE);
+  if (c) {
+    long timeout;
+
+    /* Look up and initialize the configured session cache provider. */
+    tls_sess_cache = tls_sess_cache_get_cache(c->argv[0]);
+
+    pr_log_debug(DEBUG8, MOD_TLS_VERSION ": opening '%s' TLSSessionCache",
+      (const char *) c->argv[0]);
+
+    timeout = *((long *) c->argv[2]);
+    if (tls_sess_cache_open(c->argv[1], timeout) == 0) {
+      long cache_mode, cache_flags;
+
+      cache_mode = SSL_SESS_CACHE_SERVER;
+
+      /* We could force OpenSSL to use ONLY the configured external session
+       * caching mechanism by using the SSL_SESS_CACHE_NO_INTERNAL mode flag
+       * (available in OpenSSL 0.9.6h and later).
+       *
+       * However, consider the case where the serialized session data is
+       * too large for the external cache, or the external cache refuses
+       * to add the session for some reason.  If OpenSSL is using only our
+       * external cache, that session is lost (which could cause problems
+       * e.g. for later protected data transfers, which require that the
+       * SSL session from the control connection be reused).
+       *
+       * If the external cache can be reasonably sure that session data
+       * can be added, then the NO_INTERNAL flag is a good idea; it keeps
+       * OpenSSL from allocating more memory than necessary.  Having both
+       * an internal and an external cache of the same data is a bit
+       * unresourceful.  Thus we ask the external cache mechanism what
+       * additional cache mode flags to use.
+       */
+
+      cache_flags = tls_sess_cache_get_cache_mode();
+      cache_mode |= cache_flags;
+
+      SSL_CTX_set_session_cache_mode(ssl_ctx, cache_mode);
+      SSL_CTX_set_timeout(ssl_ctx, timeout);
+
+      SSL_CTX_sess_set_new_cb(ssl_ctx, tls_sess_cache_add_sess_cb);
+      SSL_CTX_sess_set_get_cb(ssl_ctx, tls_sess_cache_get_sess_cb);
+      SSL_CTX_sess_set_remove_cb(ssl_ctx, tls_sess_cache_delete_sess_cb);
+
+    } else {
+      pr_log_debug(DEBUG1, MOD_TLS_VERSION
+        ": error opening '%s' TLSSessionCache: %s", (const char *) c->argv[0],
+        strerror(errno));
+
+      /* Default to using OpenSSL's own internal session caching. */
+      SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
+    }
+
+  } else {
+    /* Default to using OpenSSL's own internal session caching. */
+    SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
+  }
 
   SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
 
@@ -2453,6 +2536,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 }
 
 static void tls_cleanup(int flags) {
+
+  tls_sess_cache_close();
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   if (tls_crypto_device) {
@@ -4162,6 +4247,473 @@ static char *tls_x509_name_oneline(X509_NAME *x509_name) {
 #endif /* OPENSSL_VERSION_NUMBER >= 0x000906000 */
 }
 
+/* Session cache API */
+
+struct tls_scache {
+  struct tls_scache *next, *prev;
+
+  const char *name;
+  tls_sess_cache_t *cache;
+};
+
+static pool *tls_sess_cache_pool = NULL;
+static struct tls_scache *tls_sess_caches = NULL;
+static unsigned int tls_sess_ncaches = 0;
+
+int tls_sess_cache_register(const char *name, tls_sess_cache_t *cache) {
+  struct tls_scache *sc;
+
+  if (name == NULL ||
+      cache == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (tls_sess_cache_pool == NULL) {
+    tls_sess_cache_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(tls_sess_cache_pool, "TLS Session Cache API Pool");
+  }
+
+  /* Make sure this cache has not already been registered. */
+  if (tls_sess_cache_get_cache(name) != NULL) {
+    errno = EEXIST;
+    return -1;
+  }
+
+  sc = pcalloc(tls_sess_cache_pool, sizeof(struct tls_scache)); 
+
+  /* XXX Should this name string be dup'd from the tls_sess_cache_pool? */
+  sc->name = name;
+  cache->cache_name = pstrdup(tls_sess_cache_pool, name); 
+  sc->cache = cache;
+
+  if (tls_sess_caches) {
+    sc->next = tls_sess_caches;
+
+  } else {
+    sc->next = NULL;
+  }
+
+  tls_sess_caches = sc;
+  tls_sess_ncaches++;
+
+  return 0;
+}
+
+int tls_sess_cache_unregister(const char *name) {
+  struct tls_scache *sc;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  for (sc = tls_sess_caches; sc; sc = sc->next) {
+    if (strcmp(sc->name, name) == 0) {
+
+      if (sc->prev) {
+        sc->prev->next = sc->next;
+
+      } else {
+        /* If prev is NULL, this is the head of the list. */
+        tls_sess_caches = sc->next;
+      }
+
+      if (sc->next)
+        sc->next->prev = sc->prev;
+
+      sc->next = sc->prev = NULL;
+      tls_sess_ncaches--;
+
+      /* NOTE: a counter should be kept of the number of unregistrations,
+       * as the memory for a registration is not freed on unregistration.
+       */
+
+      return 0;
+    }
+  }
+
+  errno = ENOENT;
+  return -1;
+}
+
+static tls_sess_cache_t *tls_sess_cache_get_cache(const char *name) {
+  struct tls_scache *sc;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  for (sc = tls_sess_caches; sc; sc = sc->next) {
+    if (strcmp(sc->name, name) == 0) {
+      return sc->cache;
+    }
+  }
+
+  errno = ENOENT;
+  return NULL;
+}
+
+static long tls_sess_cache_get_cache_mode(void) {
+  if (tls_sess_cache == NULL) {
+    return 0;
+  }
+
+  return tls_sess_cache->cache_mode;
+}
+
+static int tls_sess_cache_open(char *info, long timeout) {
+  int res;
+
+  if (tls_sess_cache == NULL) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  res = (tls_sess_cache->open)(tls_sess_cache, info, timeout);
+  return res;
+}
+
+static int tls_sess_cache_close(void) {
+  int res;
+
+  if (tls_sess_cache == NULL) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  res = (tls_sess_cache->close)(tls_sess_cache);
+  return res;
+}
+
+#ifdef PR_USE_CTRLS
+static int tls_sess_cache_clear(void) {
+  int res;
+
+  if (tls_sess_cache == NULL) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  res = (tls_sess_cache->clear)(tls_sess_cache);
+  return res;
+}
+
+static int tls_sess_cache_remove(void) {
+  int res;
+
+  if (tls_sess_cache == NULL) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  res = (tls_sess_cache->remove)(tls_sess_cache);
+  return res;
+}
+
+static void sess_cache_printf(void *ctrl, const char *fmt, ...) {
+  char buf[PR_TUNABLE_BUFFER_SIZE];
+  va_list msg;
+
+  memset(buf, '\0', sizeof(buf));
+
+  va_start(msg, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, msg);
+  va_end(msg);
+
+  buf[sizeof(buf)-1] = '\0';
+  pr_ctrls_add_response(ctrl, "%s", buf);
+}
+
+static int tls_sess_cache_status(pr_ctrls_t *ctrl, int flags) {
+  int res = 0;
+
+  if (tls_sess_cache != NULL) {
+    res = (tls_sess_cache->status)(tls_sess_cache, sess_cache_printf, ctrl,
+      flags);
+    return res;
+  }
+
+  pr_ctrls_add_response(ctrl, "No TLSSessionCache configured");
+  return res;
+}
+
+static int tls_handle_clear(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
+  int res;
+
+  res = tls_sess_cache_clear();
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl,
+      "tls sesscache: error clearing session cache: %s", strerror(errno));
+
+  } else {
+    pr_ctrls_add_response(ctrl, "tls sesscache: cleared %d %s from cache",
+      res, res != 1 ? "sessions" : "session");
+    res = 0;
+  }
+
+  return res;
+}
+
+static int tls_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
+  int flags = 0, optc, res;
+  const char *opts = "v";
+
+  /* All the fun portability of resetting getopt(3). */
+#if defined(FREEBSD4) || defined(FREEBSD5) || \
+    defined(FREEBSD6) || defined(FREEBSD7) || \
+    defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9)
+  optreset = 1;
+  opterr = 1;
+  optind = 1;
+
+#elif defined(SOLARIS2)
+  opterr = 0;
+  optind = 1;
+
+#else
+  opterr = 0;
+  optind = 0;
+#endif /* !FreeBSD, !Mac OSX and !Solaris2 */
+
+  while ((optc = getopt(reqargc, reqargv, opts)) != -1) {
+    switch (optc) {
+      case 'v':
+        flags = TLS_SESS_CACHE_STATUS_FL_SHOW_SESSIONS;
+        break;
+
+      case '?':
+        pr_ctrls_add_response(ctrl,
+          "tls sesscache: unsupported parameter: '%s'", reqargv[1]);
+        return -1;
+    }
+  }
+
+  res = tls_sess_cache_status(ctrl, flags);
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl,
+      "tls sesscache: error obtaining session cache status: %s",
+      strerror(errno));
+
+  } else {
+    res = 0;
+  }
+
+  return res;
+}
+
+static int tls_handle_remove(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
+  int res;
+
+  res = tls_sess_cache_remove();
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl,
+      "tls sesscache: error removing session cache: %s", strerror(errno));
+
+  } else {
+    pr_ctrls_add_response(ctrl, "tls sesscache: removed session cache");
+    res = 0;
+  }
+
+  return res;
+}
+
+static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
+
+  /* Sanity check */
+  if (reqargc == 0 ||
+      reqargv == NULL) {
+    pr_ctrls_add_response(ctrl, "tls sesscache: missing required parameters");
+    return -1;
+  }
+
+  if (strcmp(reqargv[0], "info") == 0) {
+
+    /* Check the ACLs. */
+    if (!ctrls_check_acl(ctrl, tls_acttab, "info")) {
+      pr_ctrls_add_response(ctrl, "access denied");
+      return -1;
+    }
+
+    return tls_handle_info(ctrl, reqargc, reqargv);
+
+  } else if (strcmp(reqargv[0], "clear") == 0) {
+
+    /* Check the ACLs. */
+    if (!ctrls_check_acl(ctrl, tls_acttab, "clear")) {
+      pr_ctrls_add_response(ctrl, "access denied");
+      return -1;
+    }
+
+    return tls_handle_clear(ctrl, reqargc, reqargv);
+
+  } else if (strcmp(reqargv[0], "remove") == 0) {
+
+    /* Check the ACLs. */
+    if (!ctrls_check_acl(ctrl, tls_acttab, "remove")) {
+      pr_ctrls_add_response(ctrl, "access denied");
+      return -1;
+    }
+
+    return tls_handle_remove(ctrl, reqargc, reqargv);
+
+  } else {
+    pr_ctrls_add_response(ctrl, "tls sesscache: unknown sesscache action: '%s'",
+      reqargv[0]);
+    return -1;
+  }
+
+  return 0;
+}
+
+/* Our main ftpdctl action handler */
+static int tls_handle_tls(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
+
+  /* Sanity check */
+  if (reqargc == 0 ||
+      reqargv == NULL) {
+    pr_ctrls_add_response(ctrl, "tls: missing required parameters");
+    return -1;
+  }
+
+  if (strcmp(reqargv[0], "sesscache") == 0) {
+
+    /* Check the ACLs. */
+    if (!ctrls_check_acl(ctrl, tls_acttab, "sesscache")) {
+      pr_ctrls_add_response(ctrl, "access denied");
+      return -1;
+    }
+
+    return tls_handle_sesscache(ctrl, --reqargc, ++reqargv);
+
+  } else {
+    pr_ctrls_add_response(ctrl, "tls: unknown tls action: '%s'", reqargv[0]);
+    return -1;
+  }
+
+  return 0;
+}
+#endif
+
+static int tls_sess_cache_add_sess_cb(SSL *ssl, SSL_SESSION *sess) {
+  unsigned char *sess_id;
+  unsigned int sess_id_len;
+  int res;
+  long expires;
+
+  if (tls_sess_cache == NULL) {
+    tls_log("unable to add session to session cache: %s", strerror(ENOSYS));
+
+    SSL_SESSION_free(sess);
+    return 1;
+  }
+
+  SSL_set_timeout(sess, tls_sess_cache->cache_timeout);
+
+#if OPENSSL_VERSION_NUMBER > 0x000908000L
+  sess_id = (unsigned char *) SSL_SESSION_get_id(sess, &sess_id_len);
+#else
+  /* XXX Directly accessing these fields cannot be a Good Thing. */
+  sess_id = sess->session_id;
+  sess_id_len = sess->session_id_length;
+#endif
+
+  /* The expiration timestamp stored in the session cache is the
+   * Unix epoch time, not an interval.
+   */
+  expires = SSL_SESSION_get_time(sess) + tls_sess_cache->cache_timeout;
+
+  res = (tls_sess_cache->add)(tls_sess_cache, sess_id, sess_id_len, expires,
+    sess);
+  if (res < 0) {
+    long cache_mode;
+
+    tls_log("error adding session to '%s' cache: %s",
+      tls_sess_cache->cache_name, strerror(errno));
+
+    cache_mode = tls_sess_cache_get_cache_mode();
+#ifdef SSL_SESS_CACHE_NO_INTERNAL
+    if (cache_mode & SSL_SESS_CACHE_NO_INTERNAL) {
+      /* Call SSL_SESSION_free() here, and return 1.  We told OpenSSL that we
+       * are the only cache, so failing to call SSL_SESSION_free() could
+       * result in a memory leak.
+       */ 
+      SSL_SESSION_free(sess);
+      return 1;
+    }
+#endif /* !SSL_SESS_CACHE_NO_INTERNAL */
+  }
+
+  /* Return zero to indicate to OpenSSL that we have not called
+   * SSL_SESSION_free().
+   */
+  return 0;
+}
+
+static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *ssl,
+    unsigned char *sess_id, int sess_id_len, int *do_copy) {
+  SSL_SESSION *sess;
+
+  /* Indicate to OpenSSL that the ref count should not be incremented
+   * by setting the do_copy pointer to zero.
+   */
+  *do_copy = 0;
+
+  /* The actual session_id_length field in the OpenSSL SSL_SESSION struct
+   * is unsigned, not signed.  But for some reason, the expected callback
+   * signature uses 'int', not 'unsigned int'.  Hopefully the implicit
+   * cast below (our callback uses 'unsigned int') won't cause problems.
+   * Just to be sure, check if OpenSSL is giving us a negative ID length.
+   */
+  if (sess_id_len <= 0) {
+    tls_log("OpenSSL invoked SSL session cache 'get' callback with session "
+      "ID length %d, returning null", sess_id_len);
+    return NULL;
+  }
+
+  if (tls_sess_cache == NULL) {
+    tls_log("unable to get session from session cache: %s", strerror(ENOSYS));
+    return NULL;
+  }
+
+  sess = (tls_sess_cache->get)(tls_sess_cache, sess_id, sess_id_len);
+  if (sess == NULL) {
+    tls_log("error retrieving session from '%s' cache: %s",
+      tls_sess_cache->cache_name, strerror(errno));
+  }
+
+  return sess;
+}
+
+static void tls_sess_cache_delete_sess_cb(SSL_CTX *ctx, SSL_SESSION *sess) {
+  unsigned char *sess_id;
+  unsigned int sess_id_len;
+  int res;
+
+  if (tls_sess_cache == NULL) {
+    tls_log("unable to remove session from session cache: %s",
+      strerror(ENOSYS));
+    return;
+  }
+
+#if OPENSSL_VERSION_NUMBER > 0x000908000L
+  sess_id = (unsigned char *) SSL_SESSION_get_id(sess, &sess_id_len);
+#else
+  /* XXX Directly accessing these fields cannot be a Good Thing. */
+  sess_id = sess->session_id;
+  sess_id_len = sess->session_id_length;
+#endif
+
+  res = (tls_sess_cache->delete)(tls_sess_cache, sess_id, sess_id_len);
+  if (res < 0) {
+    tls_log("error removing session from '%s' cache: %s",
+      tls_sess_cache->cache_name, strerror(errno));
+  }
+
+  return;
+}
+
 /* NetIO callbacks
  */
 
@@ -4469,7 +5021,7 @@ static void tls_closelog(void) {
   return;
 }
 
-static int tls_log(const char *fmt, ...) {
+int tls_log(const char *fmt, ...) {
   va_list msg;
   int res;
 
@@ -5059,6 +5611,42 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSControlsACLs actions|all allow|deny user|group list */
+MODRET set_tlsctrlsacls(cmd_rec *cmd) {
+#ifdef PR_USE_CTRLS
+  char *bad_action = NULL, **actions = NULL;
+
+  CHECK_ARGS(cmd, 4);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  /* We can cheat here, and use the ctrls_parse_acl() routine to
+   * separate the given string...
+   */
+  actions = ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
+
+  /* Check the second parameter to make sure it is "allow" or "deny" */
+  if (strcmp(cmd->argv[2], "allow") != 0 &&
+      strcmp(cmd->argv[2], "deny") != 0)
+    CONF_ERROR(cmd, "second parameter must be 'allow' or 'deny'");
+
+  /* Check the third parameter to make sure it is "user" or "group" */
+  if (strcmp(cmd->argv[3], "user") != 0 &&
+      strcmp(cmd->argv[3], "group") != 0)
+    CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
+
+  bad_action = ctrls_set_module_acls(tls_acttab, tls_act_pool, actions,
+    cmd->argv[2], cmd->argv[3], cmd->argv[4]);
+  if (bad_action != NULL)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown action: '",
+      bad_action, "'", NULL));
+
+  return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive requires Controls support (--enable-ctrls)", NULL));
+#endif /* PR_USE_CTRLS */
+}
+
 /* usage: TLSCryptoDevice driver|"ALL" */
 MODRET set_tlscryptodevice(cmd_rec *cmd) {
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
@@ -5470,6 +6058,62 @@ MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSSessionCache type:/info [timeout] */
+MODRET set_tlssessioncache(cmd_rec *cmd) {
+  char *info, *ptr;
+  config_rec *c;
+  long timeout = -1;
+
+  if (cmd->argc < 2 ||
+      cmd->argc > 3) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  /* Separate the type/info parameter into pieces. */
+  ptr = strchr(cmd->argv[1], ':');
+  if (ptr == NULL) {
+    CONF_ERROR(cmd, "badly formatted parameter");
+  }
+
+  *ptr = '\0';
+
+  /* Verify that the requested cache type has been registered. */
+  if (tls_sess_cache_get_cache(cmd->argv[1]) == NULL) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "session cache type '",
+      cmd->argv[1], "' not available", NULL));
+  }
+
+  info = ptr + 1;
+
+  if (cmd->argc == 3) {
+    ptr = NULL;
+   
+    timeout = strtol(cmd->argv[2], &ptr, 10);
+    if (ptr && *ptr) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[2],
+        "' is not a valid timeout value", NULL));
+    }
+
+    if (timeout < 1) {
+      CONF_ERROR(cmd, "timeout be greater than 1");
+    }
+
+  } else {
+    /* Default timeout is 1 day (86400 secs). */
+    timeout = 86400;
+  }
+
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+  c->argv[1] = pstrdup(c->pool, info);
+  c->argv[2] = palloc(c->pool, sizeof(long));
+  *((long *) c->argv[2]) = timeout;
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: TLSTimeoutHandshake <secs> */
 MODRET set_tlstimeouthandshake(cmd_rec *cmd) {
   int timeout = -1;
@@ -5583,6 +6227,14 @@ static void tls_mod_unload_ev(const void *event_data, void *user_data) {
     /* Unregister ourselves from all events. */
     pr_event_unregister(&tls_module, NULL, NULL);
 
+# ifdef PR_USE_CTRLS
+    /* Unregister any control actions. */
+    pr_ctrls_unregister(&tls_module, "tls");
+
+    destroy_pool(tls_act_pool);
+    tls_act_pool = NULL;
+# endif /* PR_USE_CTRLS */
+
     /* Cleanup the OpenSSL stuff. */
     tls_cleanup(0);
 
@@ -5630,7 +6282,28 @@ static void tls_daemon_exit_ev(const void *event_data, void *user_data) {
 }
 
 static void tls_restart_ev(const void *event_data, void *user_data) {
+#ifdef PR_USE_CTRLS
+  register unsigned int i;
+#endif /* PR_USE_CTRLS */
+
   tls_scrub_pkeys();
+
+#ifdef PR_USE_CTRLS
+  if (tls_act_pool) {
+    destroy_pool(tls_act_pool);
+    tls_act_pool = NULL;
+  }
+
+  tls_act_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(tls_act_pool, "TLS Controls Pool");
+
+  /* Re-create the controls ACLs. */
+  for (i = 0; tls_acttab[i].act_action; i++) {
+    tls_acttab[i].act_acl = palloc(tls_act_pool, sizeof(ctrls_acl_t));
+    ctrls_init_acl(tls_acttab[i].act_acl);
+  }
+#endif /* PR_USE_CTRLS */
+
   tls_closelog();
 }
 
@@ -5851,6 +6524,25 @@ static int tls_init(void) {
   pr_event_register(&tls_module, "core.postparse", tls_postparse_ev, NULL);
   pr_event_register(&tls_module, "core.restart", tls_restart_ev, NULL);
 
+#ifdef PR_USE_CTRLS
+  if (pr_ctrls_register(&tls_module, "tls", "query/tune mod_tls settings",
+      tls_handle_tls) < 0) {
+    pr_log_pri(PR_LOG_INFO, MOD_TLS_VERSION
+      ": error registering 'tls' control: %s", strerror(errno));
+
+  } else {
+    register unsigned int i;
+
+    tls_act_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(tls_act_pool, "TLS Controls Pool");
+
+    for (i = 0; tls_acttab[i].act_action; i++) {
+      tls_acttab[i].act_acl = palloc(tls_act_pool, sizeof(ctrls_acl_t));
+      ctrls_init_acl(tls_acttab[i].act_acl);
+    }
+  }
+#endif /* PR_USE_CTRLS */
+
   return 0;
 }
 
@@ -6000,6 +6692,15 @@ static int tls_sess_init(void) {
   SSL_CTX_set_session_id_context(ssl_ctx, (unsigned char *) main_server,
     sizeof(main_server));
 
+  /* Update the session ID context to use.  This is important; it ensures
+   * that the session IDs for this particular vhost will differ from those
+   * for another vhost.  An external SSL session cache will possibly
+   * cache sessions from all vhosts together, and we need to keep them
+   * separate.
+   */
+  SSL_CTX_set_session_id_context(ssl_ctx, (unsigned char *) main_server,
+    sizeof(main_server));
+
   /* Install our data channel NetIO handlers. */
   tls_netio_install_data();
 
@@ -6098,6 +6799,18 @@ static int tls_sess_init(void) {
   return 0;
 }
 
+#ifdef PR_USE_CTRLS
+static ctrls_acttab_t tls_acttab[] = {
+  { "clear", NULL, NULL, NULL },
+  { "info", NULL, NULL, NULL },
+  { "remove", NULL, NULL, NULL },
+  { "sesscache", NULL, NULL, NULL },
+ 
+  { NULL, NULL, NULL, NULL }
+};
+
+#endif /* PR_USE_CTRLS */
+
 /* Module API tables
  */
 
@@ -6108,6 +6821,7 @@ static conftable tls_conftab[] = {
   { "TLSCARevocationPath",      set_tlscacrlpath,       NULL }, 
   { "TLSCertificateChainFile",	set_tlscertchain,	NULL },
   { "TLSCipherSuite",		set_tlsciphersuite,	NULL },
+  { "TLSControlsACLs",		set_tlsctrlsacls,	NULL },
   { "TLSCryptoDevice",		set_tlscryptodevice,	NULL },
   { "TLSDHParamFile",		set_tlsdhparamfile,	NULL },
   { "TLSDSACertificateFile",	set_tlsdsacertfile,	NULL },
@@ -6123,6 +6837,7 @@ static conftable tls_conftab[] = {
   { "TLSRequired",		set_tlsrequired,	NULL },
   { "TLSRSACertificateFile",	set_tlsrsacertfile,	NULL },
   { "TLSRSACertificateKeyFile",	set_tlsrsakeyfile,	NULL },
+  { "TLSSessionCache",		set_tlssessioncache,	NULL },
   { "TLSTimeoutHandshake",	set_tlstimeouthandshake,NULL },
   { "TLSVerifyClient",		set_tlsverifyclient,	NULL },
   { "TLSVerifyDepth",		set_tlsverifydepth,	NULL },
