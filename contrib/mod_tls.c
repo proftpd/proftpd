@@ -396,14 +396,15 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_SESS_HAVE_CCC		0x0800
 
 /* mod_tls option flags */
-#define TLS_OPT_NO_CERT_REQUEST		0x0001
-#define TLS_OPT_VERIFY_CERT_FQDN	0x0002
-#define TLS_OPT_VERIFY_CERT_IP_ADDR	0x0004
-#define TLS_OPT_ALLOW_DOT_LOGIN		0x0008
-#define TLS_OPT_EXPORT_CERT_DATA	0x0010
-#define TLS_OPT_STD_ENV_VARS		0x0020
-#define TLS_OPT_ALLOW_PER_USER		0x0040
-#define TLS_OPT_ENABLE_DIAGS		0x0080
+#define TLS_OPT_NO_CERT_REQUEST				0x0001
+#define TLS_OPT_VERIFY_CERT_FQDN			0x0002
+#define TLS_OPT_VERIFY_CERT_IP_ADDR			0x0004
+#define TLS_OPT_ALLOW_DOT_LOGIN				0x0008
+#define TLS_OPT_EXPORT_CERT_DATA			0x0010
+#define TLS_OPT_STD_ENV_VARS				0x0020
+#define TLS_OPT_ALLOW_PER_USER				0x0040
+#define TLS_OPT_ENABLE_DIAGS				0x0080
+#define TLS_OPT_NO_SESSION_REUSE_REQUIRED		0x0100
 
 /* mod_tls cleanup flags */
 #define TLS_CLEANUP_FL_SESS_INIT	0x0001
@@ -2416,9 +2417,10 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   SSL_set_fd(ssl, conn->rfd);
 
   /* If configured, set a timer for the handshake. */
-  if (tls_handshake_timeout)
+  if (tls_handshake_timeout) {
     tls_handshake_timer_id = pr_timer_add(tls_handshake_timeout, -1,
       &tls_module, tls_handshake_timeout_cb, "SSL/TLS handshake");
+  }
 
   retry:
   pr_signals_handle();
@@ -2489,8 +2491,9 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     ctrl_ssl = ssl;
     tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data = (void *) ssl;
 
-  } else if (conn == session.d)
+  } else if (conn == session.d) {
     tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = (void *) ssl;
+  }
 
   /* TLS handshake on the control channel... */
   if (!on_data) {
@@ -2520,6 +2523,59 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   /* TLS handshake on the data channel... */
   } else {
+
+    if (!(tls_opts & TLS_OPT_NO_SESSION_REUSE_REQUIRED)) {
+      int reused;
+      SSL_SESSION *ctrl_sess;
+
+      /* Ensure that the following conditions are met:
+       *
+       *   1. The client reused an existing SSL session
+       *   2. The reused SSL session matches the SSL session from the control
+       *      connection.
+       *
+       * Shutdown the SSL session unless the conditions are met.  By
+       * requiring these conditions, we make sure that the client which is
+       * talking to us on the control connection is indeed the same client
+       * that is using this data connection.  Without this checks, a
+       * malicious client might be able to hijack/steal the data transfer.
+       */
+
+      reused = SSL_session_reused(ssl);
+      tls_log("%s SSL session for data connection",
+        reused == 1 ? "reused" : "did NOT reuse");
+
+      if (reused != 1) {
+        tls_log("Client did not reuse SSL session, rejecting data connection "
+          "(see TLSOption NoSessionReuseRequired)");
+        tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+        return -1;
+      }
+
+      ctrl_sess = SSL_get_session(ctrl_ssl);
+      if (ctrl_sess != NULL) {
+        SSL_SESSION *data_sess;
+
+        data_sess = SSL_get_session(ssl);
+        if (data_sess != NULL) {
+          if (SSL_SESSION_cmp(ctrl_sess, data_sess) != 0) {
+            tls_log("Client did not reuse SSL session from control channel, "
+              "rejecting data connection (see TLSOption "
+              "NoSessionReuseRequired)");
+            tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+            return -1;
+          }
+
+        } else {
+          /* This should never happen, so log if it does. */
+          tls_log("BUG: SSL_get_session() returned null for data SSL");
+        }
+
+      } else {
+        /* This should never happen, so log if it does. */
+        tls_log("BUG: SSL_get_session() returned null for control SSL");
+      }
+    }
 
     /* Only be verbose with the first TLS data connection, otherwise there
      * might be too much noise.
@@ -5772,6 +5828,9 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "NoCertRequest") == 0) {
       opts |= TLS_OPT_NO_CERT_REQUEST;
+
+    } else if (strcmp(cmd->argv[1], "NoSessionReuseRequired") == 0) {
+      opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;
 
     } else if (strcmp(cmd->argv[i], "StdEnvVars") == 0) {
       opts |= TLS_OPT_STD_ENV_VARS;

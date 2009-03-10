@@ -129,6 +129,10 @@ files.
 
       if you want to use RFC1413 lookups.
 
+    TLSOptions
+
+      NoSessionReuseRequired
+
 
   + Deprecated configuration directives:
 
@@ -137,4 +141,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-03-10 06:06:53 $
+Last Updated: $Date: 2009-03-10 06:17:38 $

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1006 2009-03-10 05:10:29 castaglia Exp $
+$Id: NEWS,v 1.1007 2009-03-10 06:17:37 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -68,6 +68,11 @@ CVS
 - Bug 3207 - Support for SSL/TLS session caching across processes/machines.
   The mod_tls module now supports a TLSSessionCache directive, and an API
   for modules to provide external SSL session caching mechanisms.
+- Bug 3210 - Data transfers protected by SSL/TLS should reuse the control
+  connection SSL session.  If the TLSRequired policy allows/requires SSL/TLS
+  protections on data tranfers, then reuse of the SSL session from the
+  control connection is now enforced.  Use "TLSOptions NoSessionReuseRequired"
+  to relax this requirement.
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------
