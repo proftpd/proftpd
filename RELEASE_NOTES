@@ -50,6 +50,9 @@ files.
       public keys for user and hostbased authentication.  More information
       is available in doc/contrib/mod_sftp_sql.html.
 
+    mod_tls_shmcache
+
+
   + New configuration directives:
 
     RewriteHome
@@ -91,6 +94,8 @@ files.
       "ftpdctl scoreboard scrub" action, or by using the new ftpscrub
       command-line utility.
 
+    TLSControlsACLs
+
     TLSPKCS12File
 
       The TLSPKCS12File directive of the mod_tls module is used to
@@ -98,6 +103,9 @@ files.
       in the indicated PKCS#12 file.  Some sites already use PKCS#12 files
       for containing their other certificates, and thus find it useful to
       have PKCS#12 support in mod_tls.
+
+    TLSSessionCache
+
 
   + Changed configuration directives:
 
@@ -129,4 +137,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-03-07 00:25:45 $
+Last Updated: $Date: 2009-03-10 06:06:53 $
