@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_sql.c,v 1.6 2008-06-12 22:57:01 castaglia Exp $
+ * $Id: mod_wrap2_sql.c,v 1.7 2009-03-10 23:26:14 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -64,6 +64,7 @@ static int sqltab_close_cb(wrap2_table_t *sqltab) {
 
 static array_header *sqltab_fetch_clients_cb(wrap2_table_t *sqltab,
     const char *name) {
+  register unsigned int i;
   pool *tmp_pool = NULL;
   cmdtable *sql_cmdtab = NULL;
   cmd_rec *sql_cmd = NULL;
@@ -104,9 +105,6 @@ static array_header *sqltab_fetch_clients_cb(wrap2_table_t *sqltab,
     return NULL;
   }
 
-  /* Construct a single string, concatenating the returned client tokens
-   * together.
-   */
   sql_data = (array_header *) sql_res->data;
   vals = (char **) sql_data->elts;
 
@@ -117,12 +115,38 @@ static array_header *sqltab_fetch_clients_cb(wrap2_table_t *sqltab,
   }
 
   clients_list = make_array(sqltab->tab_pool, sql_data->nelts, sizeof(char *));
+
+  /* Iterate through each returned row.  If there are commas in the line,
+   * parse them as separate client names.  Otherwise, a comma-delimited list
+   * of names will be treated as a single name, and violate the principal of
+   * least surprise for the site admin.
+   */
+
   *((char **) push_array(clients_list)) = pstrdup(sqltab->tab_pool, vals[0]);
 
-  if (sql_data->nelts > 1) {
-    register unsigned int i = 0;
+  for (i = 0; i < sql_data->nelts; i++) {
+    char *ptr;
 
-    for (i = 1; i < sql_data->nelts; i++) {
+    ptr = strchr(vals[i], ',');
+    if (ptr != NULL) {
+      char *dup = pstrdup(sqltab->tab_pool, vals[i]);
+      char *word;
+
+      while ((word = pr_str_get_word(&dup, 0)) != NULL) {
+        size_t wordlen;
+
+        pr_signals_handle();
+
+        wordlen = strlen(word);
+
+        /* Remove any trailing comma */
+        if (word[wordlen-1] == ',')
+          word[wordlen-1] = '\0';
+
+        *((char **) push_array(clients_list)) = word;
+      }
+
+    } else {
       *((char **) push_array(clients_list)) = pstrdup(sqltab->tab_pool,
         vals[i]);
     }
