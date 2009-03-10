@@ -26,7 +26,9 @@
  * This is mod_tls_shmcache, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_tls_shmcache.c,v 1.2 2009-03-10 05:55:47 castaglia Exp $
+ *  --- DO NOT DELETE BELOW THIS LINE ----
+ *  $Id: mod_tls_shmcache.c,v 1.3 2009-03-10 06:53:09 castaglia Exp $
+ *  $Libraries: -lssl -lcrypto$
  */
 
 #include "conf.h"
