@@ -4448,8 +4448,9 @@ static int tls_handle_clear(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
       "tls sesscache: error clearing session cache: %s", strerror(errno));
 
   } else {
-    pr_ctrls_add_response(ctrl, "tls sesscache: cleared %d %s from cache",
-      res, res != 1 ? "sessions" : "session");
+    pr_ctrls_add_response(ctrl, "tls sesscache: cleared %d %s from '%s' "
+      "session cache", res, res != 1 ? "sessions" : "session",
+      tls_sess_cache->cache_name);
     res = 0;
   }
 
@@ -4512,7 +4513,8 @@ static int tls_handle_remove(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
       "tls sesscache: error removing session cache: %s", strerror(errno));
 
   } else {
-    pr_ctrls_add_response(ctrl, "tls sesscache: removed session cache");
+    pr_ctrls_add_response(ctrl, "tls sesscache: removed '%s' session cache",
+      tls_sess_cache->cache_name);
     res = 0;
   }
 
