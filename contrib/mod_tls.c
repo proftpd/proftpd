@@ -6101,8 +6101,8 @@ MODRET set_tlssessioncache(cmd_rec *cmd) {
     }
 
   } else {
-    /* Default timeout is 1 day (86400 secs). */
-    timeout = 86400;
+    /* Default timeout is 30 min (1800 secs). */
+    timeout = 1800;
   }
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
