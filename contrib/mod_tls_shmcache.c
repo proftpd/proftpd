@@ -26,7 +26,7 @@
  * This is mod_tls_shmcache, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_tls_shmcache.c,v 1.1 2009-03-10 05:13:32 castaglia Exp $
+ * $Id: mod_tls_shmcache.c,v 1.2 2009-03-10 05:55:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1237,6 +1237,9 @@ static int shmcache_status(tls_sess_cache_t *cache,
 
   tmp_pool = make_sub_pool(permanent_pool);
 
+  statusf(arg, "%s", "Shared memory (shm) SSL session cache provided by "
+    MOD_TLS_SHMCACHE_VERSION);
+  statusf(arg, "%s", "");
   statusf(arg, "Shared memory segment ID: %d", shmcache_shmid);
 
   PRIVS_ROOT
