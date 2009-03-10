@@ -1,4 +1,4 @@
-<!-- $Id: Limit.html,v 1.13 2009-03-09 16:26:24 castaglia Exp $ -->
+<!-- $Id: Limit.html,v 1.14 2009-03-10 02:47:53 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Limit.html,v $ -->
 
 <html>
@@ -317,6 +317,22 @@ Or, conversely, to block passive data transfers:
 </pre>
 
 <p>
+Another common question is: "How can I create a read-only account using
+<code>&lt;Limit&gt;</code> sections"?  Here's how:
+<pre>
+  # Assumes that the user is chrooted into their home directory
+  &lt;Directory ~<i>user</i>&gt;
+    &lt;Limit CWD PWD DIRS READ&gt;
+      AllowUser <i>user</i>
+    &lt;/Limit&gt;
+
+    &lt;Limit ALL&gt;
+      DenyUser <i>user</i>
+    &lt;/Limit&gt;
+  &lt;/Directory&gt;
+</pre>
+
+<p>
 What if you want to prevent a certain directory from being deleted, but
 you <i>do</i> want to allow sub-directories in that directory to be deletable?
 Using two <code>&lt;Directory&gt;</code> sections with
@@ -342,7 +358,7 @@ section).
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2009-03-09 16:26:24 $</i><br>
+Last Updated: <i>$Date: 2009-03-10 02:47:53 $</i><br>
 <hr>
 
 </body>
