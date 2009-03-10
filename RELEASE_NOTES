@@ -52,6 +52,10 @@ files.
 
     mod_tls_shmcache
 
+      This module provides an external SSL session cache using shared
+      memory; see the TLSSessionCache configuration directive.  More
+      information on this module can be found in
+      doc/contrib/mod_tls_shmcache.html.
 
   + New configuration directives:
 
@@ -155,4 +159,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-03-10 06:28:42 $
+Last Updated: $Date: 2009-03-10 07:00:22 $
