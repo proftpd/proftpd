@@ -1827,7 +1827,7 @@ CREATE TABLE ftpallow (
   allowed TEXT
 );
 
-INSERT INTO ftpallow (allowed) VALUES ('192.168.0.1, 127.0.0.1');
+INSERT INTO ftpallow (allowed) VALUES ('192.168.0.1,192.168.0.2 192.168.0.3, 192.168.0.4 127.0.0.1');
 
 CREATE TABLE ftpdeny (
   denied TEXT

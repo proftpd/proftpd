@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_sql.c,v 1.7 2009-03-10 23:26:14 castaglia Exp $
+ * $Id: mod_wrap2_sql.c,v 1.8 2009-03-11 04:50:03 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -116,34 +116,41 @@ static array_header *sqltab_fetch_clients_cb(wrap2_table_t *sqltab,
 
   clients_list = make_array(sqltab->tab_pool, sql_data->nelts, sizeof(char *));
 
-  /* Iterate through each returned row.  If there are commas in the line,
-   * parse them as separate client names.  Otherwise, a comma-delimited list
-   * of names will be treated as a single name, and violate the principal of
-   * least surprise for the site admin.
+  /* Iterate through each returned row.  If there are commas or whitespace
+   * in the row, parse them as separate client names.  Otherwise, a comma-
+   * or space-delimited list of names will be treated as a single name, and
+   * violate the principle of least surprise for the site admin.
    */
-
-  *((char **) push_array(clients_list)) = pstrdup(sqltab->tab_pool, vals[0]);
 
   for (i = 0; i < sql_data->nelts; i++) {
     char *ptr;
 
-    ptr = strchr(vals[i], ',');
+    ptr = strpbrk(vals[i], ", \t");
     if (ptr != NULL) {
       char *dup = pstrdup(sqltab->tab_pool, vals[i]);
       char *word;
 
-      while ((word = pr_str_get_word(&dup, 0)) != NULL) {
+      while ((word = pr_str_get_token(&dup, ", \t")) != NULL) {
         size_t wordlen;
 
         pr_signals_handle();
 
         wordlen = strlen(word);
+        if (wordlen == 0)
+          continue;
 
         /* Remove any trailing comma */
         if (word[wordlen-1] == ',')
           word[wordlen-1] = '\0';
 
         *((char **) push_array(clients_list)) = word;
+
+        /* Skip redundant whitespaces */
+        while (*dup == ' ' ||
+               *dup == '\t') {
+          pr_signals_handle();
+          dup++;
+        }
       }
 
     } else {

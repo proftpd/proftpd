@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_file.c,v 1.7 2009-03-05 06:01:45 castaglia Exp $
+ * $Id: mod_wrap2_file.c,v 1.8 2009-03-11 04:50:03 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -76,7 +76,7 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
     if (filetab_service_name &&
         (strcasecmp(filetab_service_name, service) == 0 ||
          strcasecmp("ALL", service) == 0)) {
-      char *tmp = NULL;
+      char *ptr = NULL;
 
       if (filetab_daemons_list == NULL)
         filetab_daemons_list = make_array(filetab->tab_pool, 0, sizeof(char *));
@@ -93,24 +93,37 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
       if (filetab_clients_list == NULL)
         filetab_clients_list = make_array(filetab->tab_pool, 0, sizeof(char *));
 
-      /* If there are commas in the line, parse them as separate client
-       * names.  Otherwise, a comma-delimited list of names will be treated
-       * as a single name, and violate the principal of least surprise
-       * for the site admin.
+      /* If there are commas or whitespace in the line, parse them as separate
+       * client names.  Otherwise, a comma- or space-delimited list of names
+       * will be treated as a single name, and violate the principle of least
+       * surprise for the site admin.
        */
-      tmp = strchr(res, ',');
-      if (tmp != NULL) {
+      ptr = strpbrk(res, ", \t");
+      if (ptr != NULL) {
         char *dup = pstrdup(filetab->tab_pool, res);
         char *word;
 
-        while ((word = pr_str_get_word(&dup, 0)) != NULL) {
-          size_t wordlen = strlen(word);
+        while ((word = pr_str_get_token(&dup, ", \t")) != NULL) {
+          size_t wordlen;
+
+          pr_signals_handle();
+
+          wordlen = strlen(word);
+          if (wordlen == 0)
+            continue;
 
           /* Remove any trailing comma */
           if (word[wordlen-1] == ',')
             word[wordlen-1] = '\0';
 
           *((char **) push_array(filetab_clients_list)) = word;
+
+          /* Skip redundant whitespaces */
+          while (*dup == ' ' ||
+                 *dup == '\t') {
+            pr_signals_handle();
+            dup++;
+          }
         }
 
       } else {
