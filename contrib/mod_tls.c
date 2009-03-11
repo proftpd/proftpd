@@ -3576,18 +3576,20 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
       char *mech = c->argv[i];
 
       if (strcasecmp(mech, "crl") == 0) {
-        if (!ok)
+        if (!ok) {
           ok = tls_verify_crl(ok, ctx);
 
-        else
+        } else {
           break;
+        }
 
       } else if (strcasecmp(mech, "ocsp") == 0) {
-        if (!ok)
+        if (!ok) {
           ok = tls_verify_ocsp(ok, ctx);
 
-        else
+        } else {
           break;
+        }
       }
     }
 
@@ -3672,7 +3674,6 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   X509_NAME *subject = NULL, *issuer = NULL;
   X509 *xs = NULL;
   X509_CRL *crl = NULL;
-  X509_REVOKED *revoked = NULL;
   X509_STORE_CTX store_ctx;
   int n, rc;
   register unsigned int i = 0;
@@ -3737,7 +3738,6 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
 #endif
 
   rc = X509_STORE_get_by_subject(&store_ctx, X509_LU_CRL, subject, &obj);
-  X509_STORE_CTX_cleanup(&store_ctx);
   crl = obj.data.crl;
 
   if (rc > 0 &&
@@ -3757,8 +3757,6 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
     ASN1_UTCTIME_print(b, crl->crl->nextUpdate);
 
     len = BIO_read(b, buf, sizeof(buf) - 1);
-    buf[strlen(buf)-1] = '\0';
-
     if (len >= sizeof(buf)) {
       len = sizeof(buf)-1;
     }
@@ -3778,6 +3776,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
 
       X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_SIGNATURE_FAILURE);
       X509_OBJECT_free_contents(&obj);
+      X509_STORE_CTX_cleanup(&store_ctx);
       return 0;
     }
 
@@ -3790,14 +3789,19 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
       tls_log("CRL has invalid nextUpdate field: %s", tls_get_errors());
       X509_STORE_CTX_set_error(ctx, X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD);
       X509_OBJECT_free_contents(&obj);
+      X509_STORE_CTX_cleanup(&store_ctx);
       return 0;
     }
 
     if (i < 0) {
+      /* XXX This is a bit draconian, rejecting all certificates if the CRL
+       * has expired.
+       */
       tls_log("%s", "CRL is expired, revoking all certificates until an "
         "updated CRL is obtained");
       X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_HAS_EXPIRED);
       X509_OBJECT_free_contents(&obj);
+      X509_STORE_CTX_cleanup(&store_ctx);
       return 0;
     }
 
@@ -3808,17 +3812,8 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
    * the current certificate in order to check for revocation.
    */
   memset(&obj, 0, sizeof(obj));
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
-  if (X509_STORE_CTX_init(&store_ctx, tls_crl_store, NULL, NULL) == 0) {
-    tls_log("error initializing CRL store context: %s", tls_get_errors());
-    return ok;
-  }
-#else
-  X509_STORE_CTX_init(&store_ctx, tls_crl_store, NULL, NULL);
-#endif
 
   rc = X509_STORE_get_by_subject(&store_ctx, X509_LU_CRL, issuer, &obj);
-  X509_STORE_CTX_cleanup(&store_ctx);
   crl = obj.data.crl;
 
   if (rc > 0 &&
@@ -3828,6 +3823,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
     n = sk_X509_REVOKED_num(X509_CRL_get_REVOKED(crl));
 
     for (i = 0; i < n; i++) {
+      X509_REVOKED *revoked;
       ASN1_INTEGER *sn;
 
       revoked = sk_X509_REVOKED_value(X509_CRL_get_REVOKED(crl), i);
@@ -3837,11 +3833,12 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
         long serial = ASN1_INTEGER_get(sn);
         char *cp = tls_x509_name_oneline(issuer);
 
-        tls_log("certificate with serial %ld (0x%lX) revoked per CRL from "
-          "issuer '%s'", serial, serial, cp ? cp : "(ERROR)");
+        tls_log("certificate with serial number %ld (0x%lX) revoked per CRL "
+          "from issuer '%s'", serial, serial, cp ? cp : "(ERROR)");
 
         X509_STORE_CTX_set_error(ctx, X509_V_ERR_CERT_REVOKED);
         X509_OBJECT_free_contents(&obj);
+        X509_STORE_CTX_cleanup(&store_ctx);
         return 0;
       }
     }
@@ -3849,6 +3846,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
     X509_OBJECT_free_contents(&obj);
   }
 
+  X509_STORE_CTX_cleanup(&store_ctx);
   return ok;
 }
 
