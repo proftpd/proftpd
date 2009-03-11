@@ -1,4 +1,4 @@
-<!-- $Id: Compiling.html,v 1.1 2009-01-16 07:09:07 castaglia Exp $ -->
+<!-- $Id: Compiling.html,v 1.2 2009-03-11 14:59:04 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Compiling.html,v $ -->
 
 <html>
@@ -500,6 +500,14 @@ privileges (in order to use port 21, look up passwords, <i>etc</i>), any
 coredump files generated could possibly contain sensitive information (such as
 users' passwords).  The only people who should be looking at coredump files are
 developers, and even then there are better ways of debugging issues.
+<b>Note</b> that if the <code>coredump</code> option is used, proftpd will
+<b>not</b> switch the UID/GID to the <code>User</code>/<code>Group</code>
+defined in the config file, nor to that of the logged-in user.  Unix kernels
+are notoriously picky about generating coredumps for processes that have
+changed their effective UID/GID; they won't do it.  Thus the ID switching
+is disabled in order to make it possible to get a coredump.  Again, it is
+a <b>bad idea</b> to run a proftpd built with <code>coredump</code> in
+production.
 
 <p>
 The <code>nodaemon</code> option makes it such that the <code>proftpd</code>
@@ -713,7 +721,7 @@ is the way to get a statically linked <code>proftpd</code> executable:
 
 <p>
 <hr>
-<i>$Date: 2009-01-16 07:09:07 $</i><br>
+<i>$Date: 2009-03-11 14:59:04 $</i><br>
 
 </body>
 </html>
