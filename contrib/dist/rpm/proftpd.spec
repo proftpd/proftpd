@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.61 2009-03-07 02:00:31 castaglia Exp $
+# $Id: proftpd.spec,v 1.62 2009-03-12 17:23:56 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -228,7 +228,7 @@ CFLAGS="$RPM_OPT_FLAGS" ./configure \
 	sysconfdir=%{_sysconfdir} \
 	mandir=%{_mandir} \
 	localstatedir=%{_localstatedir}/run \
-	rundir=%{_localstatedir}/run/proftpd \
+	rundir=%{_localstatedir}/run \
 	INSTALL_USER=`id -un` INSTALL_GROUP=`id -gn` \
     install
 %if !%{nohome}
@@ -263,8 +263,8 @@ CFLAGS="$RPM_OPT_FLAGS" ./configure \
 
 %preun
   if [ "$1" = 0 ]; then
-    if [ -d /var/run/proftpd ]; then
-		rm -rf /var/run/proftpd/*
+    if [ -d /var/run ]; then
+		rm -rf /var/run/proftpd*
     fi
     /sbin/chkconfig --del proftpd
   fi
@@ -348,7 +348,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 %{_libdir}/proftpd/*.a
 %{_libexecdir}/*.a
 %{_libexecdir}/*.so
-%dir %{_localstatedir}/run/proftpd
+%dir %{_localstatedir}/run
 %if !%{nohome}
 %dir /home/ftp
 %endif
