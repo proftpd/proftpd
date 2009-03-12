@@ -14,6 +14,15 @@ files.
   + RPM 4.2 or later is required by the proftpd.spec file provided in the
     distribution.
 
+  + If the --localstatedir configure option is used, proftpd's build system
+    used to automatically append "/proftpd" to the configured path.  This
+    behavior has been fixed; proftpd's build system will now use the
+    configured --localstatedir path as is.
+
+    Note that this may cause issues if you have an existing build script
+    for compling proftpd; the expected locations of files under the
+    --localstatedir path will change.
+
   + New command-line options:
 
     The -S, --serveraddr command-line option has been added.  This option
@@ -159,4 +168,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-03-10 07:00:22 $
+Last Updated: $Date: 2009-03-12 17:11:16 $
