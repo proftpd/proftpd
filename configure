@@ -20804,15 +20804,18 @@ fi
 
 # Check whether --with-includes was given.
 if test "${with_includes+set}" = set; then
-  withval=$with_includes;  ac_addl_includes=`echo "$withval" | sed -e 's/:/ /g'` ;
-    for ainclude in $ac_addl_includes; do
-      if test x"$ac_build_addl_includes" = x ; then
-        ac_build_addl_includes="-I$ainclude"
-      else
-        ac_build_addl_includes="-I$ainclude $ac_build_addl_includes"
-      fi
-    done
-    CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
+  withval=$with_includes;
+    if test x"$withval" != x; then
+      ac_addl_includes=`echo "$withval" | sed -e 's/:/ /g'` ;
+      for ainclude in $ac_addl_includes; do
+        if test x"$ac_build_addl_includes" = x ; then
+          ac_build_addl_includes="-I$ainclude"
+        else
+          ac_build_addl_includes="-I$ainclude $ac_build_addl_includes"
+        fi
+      done
+      CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
+    fi
 
 fi
 
@@ -20820,15 +20823,18 @@ fi
 
 # Check whether --with-libraries was given.
 if test "${with_libraries+set}" = set; then
-  withval=$with_libraries;  ac_addl_libdirs=`echo "$withval" | sed -e 's/:/ /g'` ;
-    for alibdir in $ac_addl_libdirs; do
-      if test x"$ac_build_addl_libdirs" = x ; then
-        ac_build_addl_libdirs="-L$alibdir"
-      else
-        ac_build_addl_libdirs="-L$alibdir $ac_build_addl_libdirs"
-      fi
-    done
-    LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
+  withval=$with_libraries;
+    if text x"$withval" != x; then
+      ac_addl_libdirs=`echo "$withval" | sed -e 's/:/ /g'` ;
+      for alibdir in $ac_addl_libdirs; do
+        if test x"$ac_build_addl_libdirs" = x ; then
+          ac_build_addl_libdirs="-L$alibdir"
+        else
+          ac_build_addl_libdirs="-L$alibdir $ac_build_addl_libdirs"
+        fi
+      done
+      LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
+    fi
 
 fi
 
@@ -20837,11 +20843,13 @@ fi
 # Check whether --with-modules was given.
 if test "${with_modules+set}" = set; then
   withval=$with_modules;
-    ac_static_modules=`echo "$withval" | sed -e 's/:/.o /g'`.o ;
+    if test x"$withval" != x; then
+      ac_static_modules=`echo "$withval" | sed -e 's/:/.o /g'`.o ;
 
-    for amodule in $ac_static_modules; do
-      ac_build_static_modules="modules/$amodule $ac_build_static_modules"
-    done
+      for amodule in $ac_static_modules; do
+        ac_build_static_modules="modules/$amodule $ac_build_static_modules"
+      done
+    fi
 
 fi
 
@@ -20852,24 +20860,26 @@ ac_unshareable_modules="mod_auth mod_auth_unix mod_core mod_dso mod_ls mod_xfer 
 # Check whether --with-shared was given.
 if test "${with_shared+set}" = set; then
   withval=$with_shared;
-    shared_modules=`echo "$withval" | sed -e 's/:/ /g'`;
+    if test x"$withval" != x; then
+      shared_modules=`echo "$withval" | sed -e 's/:/ /g'`;
 
-    # First double-check that the given list does not contain any
-    # unshareable modules
-    for amodule in $shared_modules; do
-      for smodule in $ac_unshareable_modules; do
-        if test x"$amodule" = x"$smodule"; then
-          { { echo "$as_me:$LINENO: error: cannot build $amodule as a shared module" >&5
+      # First double-check that the given list does not contain any
+      # unshareable modules
+      for amodule in $shared_modules; do
+        for smodule in $ac_unshareable_modules; do
+          if test x"$amodule" = x"$smodule"; then
+            { { echo "$as_me:$LINENO: error: cannot build $amodule as a shared module" >&5
 echo "$as_me: error: cannot build $amodule as a shared module" >&2;}
    { (exit 1); exit 1; }; }
-        fi
+          fi
+        done
       done
-    done
 
-    ac_shared_modules=`echo "$withval" | sed -e 's/:/.la /g'`.la ;
-    for amodule in $ac_shared_modules; do
-      ac_build_shared_modules="modules/$amodule $ac_build_shared_modules"
-    done
+      ac_shared_modules=`echo "$withval" | sed -e 's/:/.la /g'`.la ;
+      for amodule in $ac_shared_modules; do
+        ac_build_shared_modules="modules/$amodule $ac_build_shared_modules"
+      done
+    fi
 
 fi
 
@@ -20879,7 +20889,9 @@ pkgconfigdir=NONE
 # Check whether --with-pkgconfig was given.
 if test "${with_pkgconfig+set}" = set; then
   withval=$with_pkgconfig;
-    pkgconfigdir=`echo "$withval"`
+    if test x"$withval" != x; then
+      pkgconfigdir=`echo "$withval"`
+    fi
 
 fi
 
