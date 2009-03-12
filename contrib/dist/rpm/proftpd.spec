@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.62 2009-03-12 17:23:56 castaglia Exp $
+# $Id: proftpd.spec,v 1.63 2009-03-12 17:43:22 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -263,8 +263,8 @@ CFLAGS="$RPM_OPT_FLAGS" ./configure \
 
 %preun
   if [ "$1" = 0 ]; then
-    if [ -d /var/run ]; then
-		rm -rf /var/run/proftpd*
+    if [ -d /var/run/proftpd ]; then
+		rm -rf /var/run/proftpd/*
     fi
     /sbin/chkconfig --del proftpd
   fi
