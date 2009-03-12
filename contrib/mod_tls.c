@@ -2549,6 +2549,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         tls_log("Client did not reuse SSL session, rejecting data connection "
           "(see TLSOption NoSessionReuseRequired)");
         tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+        tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = NULL;
         return -1;
       }
 
