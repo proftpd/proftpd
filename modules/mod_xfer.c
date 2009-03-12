@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.253 2009-02-22 01:51:33 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.254 2009-03-12 02:57:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -692,6 +692,10 @@ static int transmit_sendfile(off_t count, off_t *offset,
 #ifdef ENOSYS
       case ENOSYS:
 #endif /* ENOSYS */
+
+#ifdef EOVERFLOW
+      case EOVERFLOW:
+#endif /* EOVERFLOW */
 
       case EINVAL:
         /* No sendfile support, apparently.  Try it the normal way. */
