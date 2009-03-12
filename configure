@@ -37227,7 +37227,7 @@ _ACEOF
 
 
 cat >>confdefs.h <<_ACEOF
-#define PR_RUN_DIR "`eval echo "${localstatedir}/proftpd"`"
+#define PR_RUN_DIR "`eval echo "${localstatedir}"`"
 _ACEOF
 
 cat >>confdefs.h <<_ACEOF
