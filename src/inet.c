@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.113 2009-02-12 20:13:42 castaglia Exp $
+ * $Id: inet.c,v 1.114 2009-03-13 15:55:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -489,13 +489,14 @@ conn_t *pr_inet_create_conn_portrange(pool *p, xaset_t *servers,
 	 * port will be from the range of as-yet untried ports.
 	 */
 
-	while (++random_index < i)
+	while (++random_index <= i)
 	  range[random_index-1] = range[random_index];
       }
 
       c = init_conn(p, servers, -1, bind_addr, ports[i], FALSE, FALSE);
 
-      if (!c && inet_errno != EADDRINUSE) {
+      if (!c &&
+          inet_errno != EADDRINUSE) {
         pr_log_pri(PR_LOG_ERR, "error initializing connection: %s",
           strerror(inet_errno));
         end_login(1);
