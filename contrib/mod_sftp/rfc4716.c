@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: rfc4716.c,v 1.3 2009-03-05 06:01:48 castaglia Exp $
+ * $Id: rfc4716.c,v 1.4 2009-03-14 17:59:16 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -54,9 +54,13 @@ static const char *trace_channel = "ssh2";
 /* This getline() function is quite similar to pr_fsio_getline(), except
  * that it a) enforces the 72-byte max line length from RFC4716, and
  * properly handles lines ending with CR, LF, or CRLF.
+ *
+ * Technically it allows one more byte than necessary, since the worst case
+ * is 74 bytes (72 + CRLF); this also means 73 + CR or 73 + LF.  The extra
+ * byte is for the terminating NUL.
  */
 static char *filestore_getline(sftp_keystore_t *store, pool *p) {
-  char linebuf[73], *line = "", *res;
+  char linebuf[75], *line = "", *res;
   struct filestore_data *store_data = store->keystore_data;
 
   while (TRUE) {
@@ -188,7 +192,8 @@ static char *filestore_getline(sftp_keystore_t *store, pool *p) {
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "line too long on line %u of '%s'", store_data->lineno,
+          "line too long (%lu) on line %u of '%s'", (unsigned long) linelen,
+          store_data->lineno,
           store_data->path);
         errno = EINVAL;
         return NULL;
