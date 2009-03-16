@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.90 2009-03-04 06:06:47 castaglia Exp $
+ * $Id: mod_log.c,v 1.91 2009-03-16 23:26:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -822,7 +822,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
     case META_LOCAL_FQDN:
       argp = arg;
-      sstrncpy(argp, cmd->server->ServerFQDN, sizeof(arg));
+      sstrncpy(argp, pr_netaddr_get_dnsstr(session.c->local_addr), sizeof(arg));
       m++;
       break;
 
