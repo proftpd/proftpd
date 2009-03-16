@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.18 2009-03-05 06:01:51 castaglia Exp $
+ * $Id: mod_facts.c,v 1.19 2009-03-16 16:47:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -863,12 +863,13 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  /* RFC3659 explicitly does NOT support glob characters. */
+  /* RFC3659 explicitly does NOT support glob characters.  So warn about
+   * this, but let the command continue as is.  We don't actually call
+   * glob(3) here, so no expansion will occur.
+   */
   if (strpbrk(decoded_path, "{[*?") != NULL) {
-    pr_log_debug(DEBUG2, MOD_FACTS_VERSION ": unable to handle MLSD command: "
-      "target '%s' contains glob characters", decoded_path);
-    pr_response_add_err(R_550, _("Unable to handle command"));
-    return PR_ERROR(cmd);
+    pr_log_debug(DEBUG9, MOD_FACTS_VERSION ": glob characters in MLSD ('%s') "
+      "ignored", decoded_path);
   }
 
   /* Make sure that the given path is actually a directory. */
