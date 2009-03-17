@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.211 2009-03-05 21:29:32 castaglia Exp $
+ * $Id: dirtree.c,v 1.212 2009-03-17 05:36:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2888,6 +2888,10 @@ static void set_tcp_bufsz(void) {
   int sockfd;
   socklen_t optlen = 0;
   struct protoent *p = NULL;
+
+#ifdef HAVE_SETPROTOENT
+  setprotoent(FALSE);
+#endif
 
   p = getprotobyname("tcp");
   if (!p) {
