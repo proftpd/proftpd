@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.33 2009-02-12 20:13:41 castaglia Exp $
+ * $Id: bindings.c,v 1.34 2009-03-17 00:16:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -436,6 +436,7 @@ pr_ipbind_t *pr_ipbind_get(pr_ipbind_t *prev) {
 
 server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
   pr_ipbind_t *ipbind = NULL;
+  pr_netaddr_t wildcard_addr;
 
   /* If we've got a binding configured for this exact address, return it
    * straightaway.
@@ -443,6 +444,28 @@ server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
   ipbind = pr_ipbind_find(addr, port, TRUE);
   if (ipbind != NULL)
     return ipbind->ib_server;
+
+  /* Look for a vhost bound to the wildcard address (i.e. INADDR_ANY).
+   * Not sure whether this works for IPv6 addresses, though.
+   *
+   * This allows for "<VirtualHost 0.0.0.0>" configurations, where the
+   * IP address to which the client might connect is not known at
+   * configuration time.  (Usually happens when the same config file
+   * is deployed to multiple machines.)
+   */
+
+  pr_netaddr_clear(&wildcard_addr);
+  pr_netaddr_set_family(&wildcard_addr, pr_netaddr_get_family(addr));
+  pr_netaddr_set_sockaddr(&wildcard_addr, pr_netaddr_get_sockaddr(addr));
+  pr_netaddr_set_sockaddr_any(&wildcard_addr);
+
+  ipbind = pr_ipbind_find(&wildcard_addr, port, TRUE);
+  if (ipbind != NULL) {
+    pr_log_debug(DEBUG7, "no matching vhost found for %s#%u, using "
+      "'%s' listening on wildcard address", pr_netaddr_get_ipstr(addr), port,
+      ipbind->ib_server->ServerName);
+    return ipbind->ib_server;
+  }
 
   /* Use the default server, if set. */
   if (ipbind_default_server &&
@@ -457,8 +480,9 @@ server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
    * loopback address
    */
   if (ipbind_localhost_server &&
-      pr_netaddr_is_loopback(addr))
+      pr_netaddr_is_loopback(addr)) {
     return ipbind_localhost_server->ib_server;
+  }
 
   return NULL;
 }

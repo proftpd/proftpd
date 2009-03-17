@@ -122,6 +122,11 @@ files.
 
   + Changed configuration directives:
 
+    <VirtualHost>
+
+      You can now specify an IP address of "0.0.0.0" in a <VirtualHost>
+      definition.
+
     IdentLookups
 
       The default IdentLookups value is now 'off'.  The RFC1413 IDENT lookup
@@ -168,4 +173,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-03-12 17:11:16 $
+Last Updated: $Date: 2009-03-17 00:16:38 $
