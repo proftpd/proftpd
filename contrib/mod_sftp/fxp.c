@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.9 2009-03-05 23:15:32 castaglia Exp $
+ * $Id: fxp.c,v 1.10 2009-03-17 06:09:35 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1575,8 +1575,11 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, char **buf,
       st->st_mode = sftp_msg_read_int(fxp->pool, buf, buflen);
     }
 
-    if (*flags & SSH2_FX_ATTR_ACMODTIME) {
+    if (*flags & SSH2_FX_ATTR_ACCESSTIME) {
       st->st_atime = fxp_msg_read_long(fxp->pool, buf, buflen);
+    }
+
+    if (*flags & SSH2_FX_ATTR_MODIFYTIME) {
       st->st_mtime = fxp_msg_read_long(fxp->pool, buf, buflen);
     }
 
