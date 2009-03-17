@@ -1,4 +1,4 @@
-<!-- $Id: Limit.html,v 1.14 2009-03-10 02:47:53 castaglia Exp $ -->
+<!-- $Id: Limit.html,v 1.15 2009-03-17 23:47:22 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Limit.html,v $ -->
 
 <html>
@@ -41,7 +41,7 @@ The FTP command groups are:
 
   <p>
   <li>DIRS<br>
-    <i>Covering</i>: CDUP, CWD, LIST, MDTM, NLST, PWD, RNFR, STAT, XCUP, XCWD, XPWD
+    <i>Covering</i>: CDUP, CWD, LIST, MDTM, MLSD, MLST, NLST, PWD, RNFR, STAT, XCUP, XCWD, XPWD
 
   <p>
   <li>LOGIN<br>
@@ -148,7 +148,7 @@ default, unless denied by a <code>Deny</code> directive; &quot;Deny,Allow&quot;
 interpretation to be the more &quot;common sense&quot; interpretation, even
 though it does not match Apache's interpretation.
 
-<p><a name="examples"></a>
+<p><a name="Examples"></a>
 <b>Examples</b><br>
 Here are examples to help illustrate the use of <code>&lt;Limit&gt;</code>.
 First, a common configuration: an upload-only directory.
@@ -185,15 +185,15 @@ upload and download files from the directory, but they cannot see what is
 in the directory:
 <pre>
   &lt;Directory /path/to/dir&gt;
-    &lt;Limit LIST NLST&gt;
+    &lt;Limit LIST NLST MLSD MLST&gt;
       DenyAll
     &lt;/Limit&gt;
   &lt;/Directory&gt;
 </pre>
 That's it.  By default, all commands are allowed in a directory.  By blocking
-the two FTP commands used to list a directory's contents (<i>i.e.</i>
-<code>LIST</code> and <code>NLST</code>), we have effectively blocked the
-client from seeing anything in the directory.
+the FTP commands used to list a directory's contents (<i>i.e.</i>
+<code>LIST</code>, <code>MLSD</code>, <code>MLST</code>, and <code>NLST</code>),
+we have effectively blocked the client from seeing anything in the directory.
 
 <p>
 Cautious system administrators may want only a few select system users to be
@@ -358,7 +358,7 @@ section).
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2009-03-10 02:47:53 $</i><br>
+Last Updated: <i>$Date: 2009-03-17 23:47:22 $</i><br>
 <hr>
 
 </body>
