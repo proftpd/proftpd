@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.25 2009-03-10 16:59:23 castaglia Exp $
+ * $Id: mod_ban.c,v 1.26 2009-03-18 16:03:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -228,9 +228,7 @@ static struct ban_data *ban_get_shm(pr_fh_t *tabfh) {
 static int ban_lock_shm(int flags) {
   static unsigned int ban_nlocks = 0;
 
-#ifdef HAVE_FLOCK
-  int res;
-#else
+#ifndef HAVE_FLOCK
   int lock_flag;
   struct flock lock;
 #endif /* HAVE_FLOCK */
@@ -242,21 +240,29 @@ static int ban_lock_shm(int flags) {
   }
 
   if (ban_nlocks == 0 &&
-      (flags & LOCK_UN))
+      (flags & LOCK_UN)) {
     return 0;
-
-#ifdef HAVE_FLOCK
-  res = flock(ban_tabfh->fh_fd, flags);
-  if (res == 0) {
-    if ((flags & LOCK_SH) ||
-        (flags & LOCK_EX))
-      ban_nlocks++;
-
-    else if (flags & LOCK_UN)
-      ban_nlocks--;
   }
 
-  return res;
+#ifdef HAVE_FLOCK
+  while (flock(ban_tabfh->fh_fd, flags) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+    }
+
+    return -1;
+  }
+
+  if ((flags & LOCK_SH) ||
+      (flags & LOCK_EX)) {
+    ban_nlocks++;
+
+  } else if (flags & LOCK_UN) {
+    ban_nlocks--;
+  }
+
+  return 0;
 #else
   lock_flag = F_SETLKW;
 
@@ -350,7 +356,8 @@ static int ban_disconnect_class(const char *class) {
 
   if (kicked_class) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "disconnected %u clients from class '%s'", nclients, class);
+      "disconnected %u %s from class '%s'", nclients,
+      nclients != 1 ? "clients" : "client", class);
     return 0;
 
   } else {
@@ -412,7 +419,8 @@ static int ban_disconnect_host(const char *host) {
 
   if (kicked_host) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "disconnected %u clients from host '%s'", nclients, host);
+      "disconnected %u %s from host '%s'", nclients,
+      nclients != 1 ? "clients" : "client", host);
     return 0;
 
   } else {
@@ -474,7 +482,8 @@ static int ban_disconnect_user(const char *user) {
 
   if (kicked_user) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "disconnected %u clients from user '%s'", nclients, user);
+      "disconnected %u %s from user '%s'", nclients,
+      nclients != 1 ? "clients" : "client", user);
     return 0;
 
   } else {
@@ -1740,10 +1749,23 @@ static void ban_exit_ev(const void *event_data, void *user_data) {
  */
 static void ban_handle_event(unsigned int ev_type, int ban_type,
     const char *src, struct ban_event_entry *tmpl) {
+  config_rec *c;
   int end_session = FALSE;
   struct ban_event_entry *bee = NULL;
   const char *event = ban_event_entry_typestr(ev_type);
   pool *tmp_pool = NULL;
+
+  /* Check to see if the BanEngine directive is set to 'off'.  We need
+   * to do this here since events can happen before the POST_CMD PASS
+   * handling that mod_ban does.
+   */
+  c = find_config(main_server->conf, CONF_PARAM, "BanEngine", FALSE);
+  if (c) {
+    int use_bans = *((int *) c->argv[0]);
+
+    if (!use_bans)
+      return;
+  }
 
   if (ban_lock_shm(LOCK_EX) < 0) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,

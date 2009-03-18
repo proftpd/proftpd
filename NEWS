@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1010 2009-03-17 00:16:38 castaglia Exp $
+$Id: NEWS,v 1.1011 2009-03-18 16:03:44 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -78,6 +78,8 @@ CVS
 - Bug 2613 - Configure script should not append '/proftpd' to the
   --localstatedir.
 - Bug 2680 - Add support for <VirtualHost 0.0.0.0>.
+- Bug 3187 - Inconsistent mod_ban logging and display when using
+  "BanEngine off" in an <IfClass> configuration.
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------
