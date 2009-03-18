@@ -24,13 +24,13 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.39 2009-03-05 18:56:12 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.40 2009-03-18 23:32:32 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_REWRITE_VERSION "mod_rewrite/0.7.1"
+#define MOD_REWRITE_VERSION "mod_rewrite/0.8"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001
@@ -142,6 +142,7 @@ static unsigned char rewrite_regexec(const char *, regex_t *, unsigned char,
 static void rewrite_replace_cmd_arg(cmd_rec *, char *);
 static char *rewrite_subst(cmd_rec *c, char *);
 static char *rewrite_subst_backrefs(cmd_rec *, char *, rewrite_match_t *);
+static char *rewrite_subst_env(cmd_rec *, char *);
 static char *rewrite_subst_maps(cmd_rec *, char *);
 static char *rewrite_subst_maps_fifo(cmd_rec *, config_rec *, rewrite_map_t *);
 static char *rewrite_subst_maps_int(cmd_rec *, config_rec *, rewrite_map_t *);
@@ -169,17 +170,17 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
      * mod_log uses the session.xfer.xfer_path variable, but that is not yet
      * set at this stage in the command dispatch cycle.
      */
-    if (strcmp(cmd_name, "APPE") == 0 ||
-        strcmp(cmd_name, "RETR") == 0 ||
-        strcmp(cmd_name, "STOR") == 0 ||
-        strcmp(cmd_name, "DELE") == 0 ||
-        strcmp(cmd_name, "MKD") == 0 ||
-        strcmp(cmd_name, "MDTM") == 0 ||
-        strcmp(cmd_name, "RMD") == 0 ||
-        strcmp(cmd_name, "SIZE") == 0 ||
-        strcmp(cmd_name, "STOU") == 0 ||
-        strcmp(cmd_name, "XMKD") == 0 ||
-        strcmp(cmd_name, "XRMD") == 0) {
+    if (strcmp(cmd_name, C_APPE) == 0 ||
+        strcmp(cmd_name, C_RETR) == 0 ||
+        strcmp(cmd_name, C_STOR) == 0 ||
+        strcmp(cmd_name, C_DELE) == 0 ||
+        strcmp(cmd_name, C_MKD) == 0 ||
+        strcmp(cmd_name, C_MDTM) == 0 ||
+        strcmp(cmd_name, C_RMD) == 0 ||
+        strcmp(cmd_name, C_SIZE) == 0 ||
+        strcmp(cmd_name, C_STOU) == 0 ||
+        strcmp(cmd_name, C_XMKD) == 0 ||
+        strcmp(cmd_name, C_XRMD) == 0) {
       return dir_abs_path(cmd->tmp_pool, cmd->arg, FALSE);
 
     } else if (strcasecmp(cmd_name, "SITE CHGRP") == 0 ||
@@ -245,9 +246,10 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
       char *suppl_groups = pstrcat(cmd->tmp_pool, "", NULL);
       char **groups = (char **) session.groups->elts;
 
-      for (i = 0; i < session.groups->nelts; i++)
+      for (i = 0; i < session.groups->nelts; i++) {
         suppl_groups = pstrcat(cmd->tmp_pool, suppl_groups,
           i != 0 ? "," : "", groups[i], NULL);
+      }
 
       return suppl_groups;
 
@@ -261,6 +263,17 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
     snprintf(timestr, 80, "%lu", time(NULL));
     timestr[79] = '\0';
     return timestr;
+
+  } else if (strlen(var) > 7 &&
+             strncmp(var, "%{ENV:", 6) == 0 &&
+             var[strlen(var)-1] == '}') {
+    char *env, *str;
+
+    str = pstrdup(cmd->tmp_pool, var);
+    str[strlen(str)-1] = '\0';
+
+    env = pr_env_get(cmd->tmp_pool, str + 6);
+    return env ? pstrdup(cmd->tmp_pool, env) : "";
   }
 
   rewrite_log("unknown variable: '%s'", var); 
@@ -823,6 +836,10 @@ static char *rewrite_subst(cmd_rec *cmd, char *pattern) {
   new_pattern = rewrite_subst_maps(cmd, new_pattern);
   rewrite_log("rewrite_subst(): maps subst'd pattern: '%s'", new_pattern);
 
+  /* Expand any environment variables. */
+  new_pattern = rewrite_subst_env(cmd, new_pattern);
+  rewrite_log("rewrite_subst(): env subst'd pattern: '%s'", new_pattern);
+
   return new_pattern;
 }
 
@@ -886,6 +903,45 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
   }
 
   return (replacement_pattern ? replacement_pattern : pattern);
+}
+
+static char *rewrite_subst_env(cmd_rec *cmd, char *pattern) {
+  char *new_pattern = NULL, *ptr;
+
+  ptr = strstr(pattern, "%{ENV:");
+  while (ptr) {
+    char ch, *ptr2, *key, *val;
+
+    pr_signals_handle();
+
+    ptr2 = strchr(ptr, '}');
+    if (ptr2 == NULL) {
+      break;
+    }
+
+    ch = *(ptr2 + 1);
+    *(ptr2 + 1) = '\0';
+
+    key = pstrdup(cmd->tmp_pool, ptr);
+    *(ptr2 + 1) = ch;
+
+    val = rewrite_expand_var(cmd, pattern, key);
+    if (val != NULL) {
+      rewrite_log("rewrite_subst_env(): replacing variable '%s' with '%s'",
+        key, val);
+
+      if (new_pattern == NULL) {
+        new_pattern = pstrdup(cmd->pool, pattern);
+      }
+
+      new_pattern = sreplace(cmd->pool, new_pattern, key, val, NULL);
+    }
+
+    /* Look for the next environment variable to process. */
+    ptr = strstr(ptr2 + 1, "%{ENV:");
+  }
+
+  return (new_pattern ? new_pattern : pattern);
 }
 
 static char *rewrite_subst_maps(cmd_rec *cmd, char *pattern) {
@@ -1688,7 +1744,6 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
   pool *cond_pool = NULL;
   void *cond_data = NULL;
   unsigned int cond_flags = 0;
-  char *var = NULL;
   unsigned char negated = FALSE;
   rewrite_cond_op_t cond_op = 0;
   int regex_flags = REG_EXTENDED, res = -1;
@@ -1777,23 +1832,32 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
     }
   }
 
-  /* Make sure the variables used, if any, are valid. */
-  var = cmd->argv[1];
-  while (*var != '\0' && (var = strchr(var, '%')) != NULL &&
-         strlen(var) > 1 && !isdigit(*(var+1))) {
-    register unsigned int i = 0;
-    unsigned char is_valid_var = FALSE;
+  /* Make sure the variables used, if any, are valid.  Environment variables
+   * are handled later.
+   */
+  if (strncmp(cmd->argv[1], "%{ENV:", 6) != 0) {
+    char *var;
 
-    for (i = 0; i < REWRITE_MAX_VARS; i++) {
-      if (!strncmp(var, rewrite_vars[i], 2)) {
-        is_valid_var = TRUE;
-        break;
+    var = cmd->argv[1];
+
+    while (*var != '\0' &&
+           (var = strchr(var, '%')) != NULL && strlen(var) > 1 &&
+            !isdigit(*(var+1))) {
+      register unsigned int i = 0;
+      unsigned char is_valid_var = FALSE;
+
+      for (i = 0; i < REWRITE_MAX_VARS; i++) {
+        if (strncmp(var, rewrite_vars[i], 2) == 0) {
+          is_valid_var = TRUE;
+          break;
+        }
       }
-    }
-    if (!is_valid_var)
-      pr_log_debug(DEBUG1, "invalid RewriteCondition variable used");
 
-    var += 2;
+      if (!is_valid_var)
+        pr_log_debug(DEBUG1, "invalid RewriteCondition variable used");
+
+      var += 2;
+    }
   }
 
   /* Do this manually -- no need to clutter up the configuration tree
