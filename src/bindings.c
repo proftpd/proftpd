@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.34 2009-03-17 00:16:38 castaglia Exp $
+ * $Id: bindings.c,v 1.35 2009-03-18 05:34:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -437,6 +437,7 @@ pr_ipbind_t *pr_ipbind_get(pr_ipbind_t *prev) {
 server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
   pr_ipbind_t *ipbind = NULL;
   pr_netaddr_t wildcard_addr;
+  int addr_family;
 
   /* If we've got a binding configured for this exact address, return it
    * straightaway.
@@ -446,7 +447,6 @@ server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
     return ipbind->ib_server;
 
   /* Look for a vhost bound to the wildcard address (i.e. INADDR_ANY).
-   * Not sure whether this works for IPv6 addresses, though.
    *
    * This allows for "<VirtualHost 0.0.0.0>" configurations, where the
    * IP address to which the client might connect is not known at
@@ -454,9 +454,10 @@ server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
    * is deployed to multiple machines.)
    */
 
+  addr_family = pr_netaddr_get_family(addr);
+
   pr_netaddr_clear(&wildcard_addr);
-  pr_netaddr_set_family(&wildcard_addr, pr_netaddr_get_family(addr));
-  pr_netaddr_set_sockaddr(&wildcard_addr, pr_netaddr_get_sockaddr(addr));
+  pr_netaddr_set_family(&wildcard_addr, addr_family);
   pr_netaddr_set_sockaddr_any(&wildcard_addr);
 
   ipbind = pr_ipbind_find(&wildcard_addr, port, TRUE);
@@ -465,6 +466,31 @@ server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
       "'%s' listening on wildcard address", pr_netaddr_get_ipstr(addr), port,
       ipbind->ib_server->ServerName);
     return ipbind->ib_server;
+
+  } else {
+#ifdef PR_USE_IPV6
+    if (addr_family == AF_INET6 &&
+        pr_netaddr_use_ipv6()) {
+
+      /* The pr_ipbind_find() probably returned NULL because there aren't
+       * any <VirtualHost> sections configured explicitly for the wildcard
+       * IPv6 address of "::", just the IPv4 wildcard "0.0.0.0" address.
+       *
+       * So try the pr_ipbind_find() again, this time using the IPv4 wildcard.
+       */
+      pr_netaddr_clear(&wildcard_addr);
+      pr_netaddr_set_family(&wildcard_addr, AF_INET);
+      pr_netaddr_set_sockaddr_any(&wildcard_addr);
+
+      ipbind = pr_ipbind_find(&wildcard_addr, port, TRUE);
+      if (ipbind != NULL) {
+        pr_log_debug(DEBUG7, "no matching vhost found for %s#%u, using "
+          "'%s' listening on wildcard address", pr_netaddr_get_ipstr(addr),
+          port, ipbind->ib_server->ServerName);
+        return ipbind->ib_server;
+      }
+    }
+#endif /* PR_USE_IPV6 */
   }
 
   /* Use the default server, if set. */
