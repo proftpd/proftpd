@@ -1,4 +1,4 @@
-<!-- $Id: mod_rewrite.html,v 1.4 2009-02-02 18:46:02 castaglia Exp $ -->
+<!-- $Id: mod_rewrite.html,v 1.5 2009-03-18 23:48:46 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_rewrite.html,v $ -->
 
 <html>
@@ -15,11 +15,11 @@
 <hr><br>
 
 This module is contained in the <code>mod_rewrite.c</code> file for ProFTPD
-1.2, and is not compiled by default.  Installation instructions are discussed
-<a href="#Installation">here</a>.
+1.3.<i>x</i>, and is not compiled by default.  Installation instructions are
+discussed <a href="#Installation">here</a>.
 
 <p>
-The most current version of <code>mod_tls</code> is distributed with the
+The most current version of <code>mod_rewrite</code> is distributed with the
 ProFTPD source code.
 
 <p>
@@ -109,6 +109,16 @@ constructs in addition to plain text:
    <b>%U</b>   name of user sent by client via <code>USER</code>
    <b>%v</b>   <code>ServerName</code> of server handling the session
 </pre>
+  </li>
+
+  <p>
+  <li><b>Environment Variable substitutions:</b><br>
+    These are substitutions of the form:
+<pre>
+  <b><code>%{ENV:<i>variable-name</i>}</code></b>
+</pre>
+    If the <em>variable-name</em> environment variable is not present,
+    it will be substituted with the empty string.
   </li>
 </ul>
 
@@ -654,6 +664,7 @@ Beside plain text you can use:
     <code>RewriteCondition</code> pattern 
   <li>variables as in <code>RewriteCondition</code> test strings
   <li>map function calls (<code>${map-name:lookup-key|default-value}</code>) 
+  <li>environment variable substitutions (<code>%{ENV:<i>variable-name</i>}</code>)
 </ol>
 Backreferences are $<b>N</b> (<b>N</b>=0..9) identifiers which will be replaced
 by the contents of the <b>N</b>th group of the matched <em>pattern</em>. The
@@ -767,7 +778,7 @@ third-party modules in proftpd:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-02-02 18:46:02 $</i><br>
+Last Updated: <i>$Date: 2009-03-18 23:48:46 $</i><br>
 
 <br><hr>
 
