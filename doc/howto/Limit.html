@@ -1,4 +1,4 @@
-<!-- $Id: Limit.html,v 1.15 2009-03-17 23:47:22 castaglia Exp $ -->
+<!-- $Id: Limit.html,v 1.16 2009-03-18 00:23:59 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Limit.html,v $ -->
 
 <html>
@@ -305,13 +305,13 @@ on the FTP commands response for active and passive data transfers was
 added to ProFTPD in 1.2.10rc1.  If you are using that version or later,
 you can use the following to block active transfers:
 <pre>
-  &lt;Limit PORT&gt;
+  &lt;Limit EPRT PORT&gt;
     DenyAll
   &lt;/Limit&gt;
 </pre>
 Or, conversely, to block passive data transfers:
 <pre>
-  &lt;Limit PASV&gt;
+  &lt;Limit EPSV PASV&gt;
     DenyAll
   &lt;/Limit&gt;
 </pre>
@@ -358,7 +358,7 @@ section).
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2009-03-17 23:47:22 $</i><br>
+Last Updated: <i>$Date: 2009-03-18 00:23:59 $</i><br>
 <hr>
 
 </body>
