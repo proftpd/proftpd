@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.3 2009-03-04 17:41:45 castaglia Exp $
+ * $Id: crypto.c,v 1.4 2009-03-19 17:02:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -73,8 +73,11 @@ static struct sftp_cipher ciphers[] = {
   { "aes192-ctr",	NULL,		0,	NULL,			TRUE },
   { "aes128-ctr",	NULL,		0,	NULL,			TRUE },
 
+# ifndef HAVE_AES_CRIPPLED_OPENSSL
   { "aes256-cbc",	"aes-256-cbc",	0,	EVP_aes_256_cbc,	TRUE },
   { "aes192-cbc",	"aes-192-cbc",	0,	EVP_aes_192_cbc,	TRUE },
+# endif /* !HAVE_AES_CRIPPLED_OPENSSL */
+
   { "aes128-cbc",	"aes-128-cbc",	0,	EVP_aes_128_cbc,	TRUE },
 #endif
   { "blowfish-cbc",	"bf-cbc",	0,	EVP_bf_cbc,		TRUE },
