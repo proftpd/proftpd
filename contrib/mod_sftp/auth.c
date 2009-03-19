@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.6 2009-03-19 05:51:23 castaglia Exp $
+ * $Id: auth.c,v 1.7 2009-03-19 06:04:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -753,7 +753,7 @@ static int send_userauth_methods(void) {
 
 /* Return -1 on error, 0 to continue, and 1 if the authentication succeeded. */
 static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
-  char *buf, *user, *method;
+  char *buf, *orig_user, *user, *method;
   uint32_t buflen;
   cmd_rec *cmd, *cmd2, *cmd3;
   config_rec *c;
@@ -762,10 +762,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   buf = pkt->payload;
   buflen = pkt->payload_len;
 
-  user = sftp_msg_read_string(pkt->pool, &buf, &buflen);
+  orig_user = sftp_msg_read_string(pkt->pool, &buf, &buflen);
 
-  cmd2 = pr_cmd_alloc(pkt->pool, 2, pstrdup(pkt->pool, C_USER), user);
-  cmd2->arg = user;
+  cmd2 = pr_cmd_alloc(pkt->pool, 2, pstrdup(pkt->pool, C_USER), orig_user);
+  cmd2->arg = orig_user;
 
   cmd3 = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, C_PASS));
   cmd3->arg = "(hidden)";
@@ -774,7 +774,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
    * to ameliorate any timing-based attacks.
    */
   pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0);
-  if (strcmp(user, cmd2->arg) != 0) {
+  if (strcmp(orig_user, cmd2->arg) == 0) {
+    user = orig_user;
+
+  } else {
     user = cmd2->arg;
   }
 
@@ -785,10 +788,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
      * this USERAUTH_REQUEST.  As per Section 5 of RFC4252, if the user
      * name changes, we can disconnect the client.
      */
-    if (strcmp(user, auth_user) != 0) {
+    if (strcmp(orig_user, auth_user) != 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "client used different user name '%s' in USERAUTH_REQUEST (was '%s'), "
-        "disconnecting", user, auth_user);
+        "disconnecting", orig_user, auth_user);
 
       pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
       pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
@@ -800,7 +803,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     }
 
   } else {
-    auth_user = pstrdup(auth_pool, user);
+    auth_user = pstrdup(auth_pool, orig_user);
   }
 
   *service = sftp_msg_read_string(pkt->pool, &buf, &buflen);
@@ -877,7 +880,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   } else if (strcmp(method, "publickey") == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_PUBLICKEY) {
-      res = sftp_auth_publickey(pkt, user, *service, &buf, &buflen,
+      res = sftp_auth_publickey(pkt, orig_user, user, *service, &buf, &buflen,
         &send_userauth_fail);
 
     } else {
@@ -905,7 +908,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   } else if (strcmp(method, "keyboard-interactive") == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_KBDINT) {
-      res = sftp_auth_kbdint(pkt, user, *service, &buf, &buflen,
+      res = sftp_auth_kbdint(pkt, orig_user, user, *service, &buf, &buflen,
         &send_userauth_fail);
 
     } else {
@@ -933,7 +936,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   } else if (strcmp(method, "password") == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_PASSWORD) {
-      res = sftp_auth_password(pkt, user, *service, &buf, &buflen,
+      res = sftp_auth_password(pkt, orig_user, user, *service, &buf, &buflen,
         &send_userauth_fail);
 
     } else {
@@ -961,7 +964,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   } else if (strcmp(method, "hostbased") == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_HOSTBASED) {
-      res = sftp_auth_hostbased(pkt, user, *service, &buf, &buflen,
+      res = sftp_auth_hostbased(pkt, orig_user, user, *service, &buf, &buflen,
         &send_userauth_fail);
 
     } else {

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'keyboard-interactive' user authentication
- * Copyright (c) 2008 TJ Saunders
+ * Copyright (c) 2008-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-kbdint.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: auth-kbdint.c,v 1.3 2009-03-19 06:04:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -36,8 +36,8 @@
 
 static const char *trace_channel = "ssh2";
 
-int sftp_auth_kbdint(struct ssh2_packet *pkt, const char *user,
-    const char *service, char **buf, uint32_t *buflen,
+int sftp_auth_kbdint(struct ssh2_packet *pkt, const char *orig_user,
+    const char *user, const char *service, char **buf, uint32_t *buflen,
     int *send_userauth_fail) {
   const char *cipher_algo, *mac_algo;
   struct passwd *pw;
@@ -88,7 +88,7 @@ int sftp_auth_kbdint(struct ssh2_packet *pkt, const char *user,
     return 0;
   }
 
-  /* Read off the deprecated language string. */
+  /* XXX Read off the deprecated language string. */
   sftp_msg_read_string(pkt->pool, buf, buflen);
 
   submethods = sftp_msg_read_string(pkt->pool, buf, buflen);

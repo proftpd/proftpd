@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication (auth)
- * Copyright (c) 2008 TJ Saunders
+ * Copyright (c) 2008-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.h,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: auth.h,v 1.3 2009-03-19 06:04:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -42,18 +42,18 @@ int sftp_auth_init(void);
 
 /* Handles 'hostbased' user authentication. */
 int sftp_auth_hostbased(struct ssh2_packet *, const char *, const char *,
-  char **, uint32_t *, int *);
+  const char *, char **, uint32_t *, int *);
 
 /* Handles 'keyboard-interactive' user authentication. */
 int sftp_auth_kbdint(struct ssh2_packet *, const char *, const char *,
-  char **, uint32_t *, int *);
+  const char *, char **, uint32_t *, int *);
 
 /* Handles 'password' user authentication. */
 int sftp_auth_password(struct ssh2_packet *, const char *, const char *,
-  char **, uint32_t *, int *);
+  const char *, char **, uint32_t *, int *);
 
 /* Handles 'publickey' user authentication. */
 int sftp_auth_publickey(struct ssh2_packet *, const char *, const char *,
-  char **, uint32_t *, int *);
+  const char *, char **, uint32_t *, int *);
 
 #endif

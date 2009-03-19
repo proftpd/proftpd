@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-publickey.c,v 1.3 2009-02-14 23:35:04 castaglia Exp $
+ * $Id: auth-publickey.c,v 1.4 2009-03-19 06:04:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -68,8 +68,8 @@ static int send_pubkey_ok(const char *algo, const char *pubkey_data,
   return 0;
 }
 
-int sftp_auth_publickey(struct ssh2_packet *pkt, const char *user,
-    const char *service, char **buf, uint32_t *buflen,
+int sftp_auth_publickey(struct ssh2_packet *pkt, const char *orig_user,
+    const char *user, const char *service, char **buf, uint32_t *buflen,
     int *send_userauth_fail) {
   int have_signature, pubkey_type;
   char *pubkey_algo = NULL, *pubkey_data;
@@ -187,7 +187,7 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, const char *user,
 
     sftp_msg_write_data(&buf2, &buflen2, (char *) id, id_len, TRUE);
     sftp_msg_write_byte(&buf2, &buflen2, SFTP_SSH2_MSG_USER_AUTH_REQUEST);
-    sftp_msg_write_string(&buf2, &buflen2, user);
+    sftp_msg_write_string(&buf2, &buflen2, orig_user);
 
     if (sftp_interop_supports_feature(SFTP_SSH2_FEAT_SERVICE_IN_PUBKEY_SIG)) {
       sftp_msg_write_string(&buf2, &buflen2, service);
@@ -212,7 +212,7 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, const char *user,
         (bufsz2 - buflen2)) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "failed to verify '%s' signature on public key auth request for "
-        "user '%s'", pubkey_algo, user);
+        "user '%s'", pubkey_algo, orig_user);
       *send_userauth_fail = TRUE;
       return 0;
     }

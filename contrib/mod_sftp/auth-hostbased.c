@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-hostbased.c,v 1.3 2009-02-14 23:35:04 castaglia Exp $
+ * $Id: auth-hostbased.c,v 1.4 2009-03-19 06:04:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -38,8 +38,8 @@
 
 static const char *trace_channel = "ssh2";
 
-int sftp_auth_hostbased(struct ssh2_packet *pkt, const char *user,
-    const char *service, char **buf, uint32_t *buflen,
+int sftp_auth_hostbased(struct ssh2_packet *pkt, const char *orig_user,
+    const char *user, const char *service, char **buf, uint32_t *buflen,
     int *send_userauth_fail) {
   struct passwd *pw;
   char *hostkey_algo, *host_fqdn, *host_user, *host_user_utf8;
@@ -148,7 +148,7 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, const char *user,
 
   sftp_msg_write_data(&buf2, &buflen2, (char *) id, id_len, TRUE);
   sftp_msg_write_byte(&buf2, &buflen2, SFTP_SSH2_MSG_USER_AUTH_REQUEST);
-  sftp_msg_write_string(&buf2, &buflen2, user);
+  sftp_msg_write_string(&buf2, &buflen2, orig_user);
 
   if (sftp_interop_supports_feature(SFTP_SSH2_FEAT_SERVICE_IN_HOST_SIG)) {
     sftp_msg_write_string(&buf2, &buflen2, service);
@@ -168,7 +168,7 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, const char *user,
       (bufsz2 - buflen2)) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "failed to verify '%s' signature on hostbased auth request for "
-      "user '%s', host %s", hostkey_algo, user, host_fqdn);
+      "user '%s', host %s", hostkey_algo, orig_user, host_fqdn);
     *send_userauth_fail = TRUE;
     return 0;
   }

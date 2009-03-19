@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-password.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: auth-password.c,v 1.3 2009-03-19 06:04:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -32,8 +32,8 @@
 #include "mac.h"
 #include "utf8.h"
 
-int sftp_auth_password(struct ssh2_packet *pkt, const char *user,
-    const char *service, char **buf, uint32_t *buflen,
+int sftp_auth_password(struct ssh2_packet *pkt, const char *orig_user,
+    const char *user, const char *service, char **buf, uint32_t *buflen,
     int *send_userauth_fail) {
   const char *cipher_algo, *mac_algo;
   char *passwd;
