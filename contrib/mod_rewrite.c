@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.40 2009-03-18 23:32:32 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.41 2009-03-19 04:57:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2307,7 +2307,8 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
         *((char **) push_array(list)) = pstrdup(cmd->pool, cmd->argv[0]);
         cmd->argc++;
 
-        if (strcmp(cmd->argv[0], C_SITE) == 0) {
+        if (strcmp(cmd->argv[0], C_SITE) == 0 ||
+            strcmp(cmd->argv[0], "SYMLINK") == 0) {
           flags |= PR_STR_FL_PRESERVE_WHITESPACE;
 
           if (strcasecmp(cmd->argv[1], "CHGRP") == 0 ||
