@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.11 2009-03-19 04:57:13 castaglia Exp $
+ * $Id: fxp.c,v 1.12 2009-03-19 05:39:01 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3357,7 +3357,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = cmd->argv[1];
+  path = cmd->arg;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -3483,7 +3483,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  path = cmd->argv[1];
+  path = cmd->arg;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -3512,7 +3512,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = cmd->argv[1];
+  path = cmd->arg;
 
   if (!dir_check(fxp->pool, C_MKD, G_WRITE, path, NULL) ||
       !dir_check(fxp->pool, C_XMKD, G_WRITE, path, NULL)) {
@@ -3840,7 +3840,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       return fxp_packet_write(resp);
     }
 
-    path = cmd2->argv[1];
+    path = cmd2->arg;
   }
 
   fh = pr_fsio_open(path, open_flags);
@@ -4027,7 +4027,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = cmd->argv[1];
+  path = cmd->arg;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -4652,7 +4652,7 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = cmd->argv[1];
+  path = cmd->arg;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -4782,7 +4782,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = cmd->argv[1];
+  path = cmd->arg;
 
   buflen = bufsz = PR_TUNABLE_PATH_MAX + 32;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -4888,7 +4888,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  path = cmd->argv[1];
+  path = cmd->arg;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -5110,7 +5110,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  new_path = cmd2->argv[1];
+  new_path = cmd2->arg;
 
   cmd3 = fxp_cmd_alloc(fxp->pool, C_RNFR, old_path);
   if (pr_cmd_dispatch_phase(cmd3, PRE_CMD, 0) < 0) {
@@ -5135,7 +5135,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  old_path = cmd3->argv[1];
+  old_path = cmd3->arg;
 
   if (!dir_check(fxp->pool, C_RNFR, G_DIRS, old_path, NULL) ||
       !dir_check(fxp->pool, C_RNTO, G_WRITE, new_path, NULL)) {
@@ -5353,7 +5353,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  path = cmd->argv[1];
+  path = cmd->arg;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -5522,7 +5522,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = cmd->argv[1];
+  path = cmd->arg;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -5640,7 +5640,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = cmd->argv[1];
+  path = cmd->arg;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
