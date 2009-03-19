@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.5 2009-03-05 21:18:59 castaglia Exp $
+ * $Id: auth.c,v 1.6 2009-03-19 05:51:23 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -764,7 +764,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   user = sftp_msg_read_string(pkt->pool, &buf, &buflen);
 
-  cmd2 = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, C_USER));
+  cmd2 = pr_cmd_alloc(pkt->pool, 2, pstrdup(pkt->pool, C_USER), user);
   cmd2->arg = user;
 
   cmd3 = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, C_PASS));
@@ -774,6 +774,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
    * to ameliorate any timing-based attacks.
    */
   pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0);
+  if (strcmp(user, cmd2->arg) != 0) {
+    user = cmd2->arg;
+  }
+
   pr_cmd_dispatch_phase(cmd3, PRE_CMD, 0);
 
   if (auth_user) {
