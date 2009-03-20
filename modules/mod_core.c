@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.342 2009-03-05 07:08:50 castaglia Exp $
+ * $Id: mod_core.c,v 1.343 2009-03-20 00:03:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4132,6 +4132,8 @@ MODRET core_size(cmd_rec *cmd) {
 
   path = dir_realpath(cmd->tmp_pool,
     pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+
+  pr_fs_clear_cache();
 
   if (!path ||
       !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
