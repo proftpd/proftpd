@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.5 2009-03-19 05:39:02 castaglia Exp $
+ * $Id: scp.c,v 1.6 2009-03-20 23:03:52 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -539,7 +539,15 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
   }
 
   if (sp->filename) {
-    sp->best_path = dir_best_path(scp_pool, sp->filename);
+    char *ptr;
+
+    ptr = strrchr(sp->path, '/');
+    if (ptr == NULL) {
+      sp->best_path = dir_best_path(scp_pool, sp->filename);
+
+    } else {
+      sp->best_path = dir_best_path(scp_pool, sp->path);
+    }
   }
 
   pr_trace_msg(trace_channel, 8,
@@ -844,13 +852,33 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         if (!S_ISDIR(st.st_mode)) {
           write_confirm(p, channel_id, 1,
             pstrcat(p, sp->path, ": ", strerror(ENOTDIR), NULL));
-          return -1;
+          return 1;
         }
 
       } else {
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->path, ": ", strerror(errno), NULL));
-        return -1;
+        return 1;
+      }
+
+    } else {
+      char *ptr;
+
+      /* If the given path contains a directory component, make sure that the
+       * directory exists.
+       */
+      ptr = strrchr(sp->path, '/');
+      if (ptr != NULL) {
+        *ptr = '\0';
+
+        res = pr_fsio_stat(sp->path, &st);
+        *ptr = '/';
+
+        if (res < 0) {
+          write_confirm(p, channel_id, 1,
+            pstrcat(p, sp->path, ": ", strerror(errno), NULL));
+          return 1;
+        }
       }
     }
   }
@@ -869,11 +897,11 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
 
     if (sp->fh == NULL) {
       if (cmd == NULL)
-        cmd = scp_cmd_alloc(p, C_STOR, sp->filename);
+        cmd = scp_cmd_alloc(p, C_STOR, sp->path);
 
       if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "scp upload to '%s' blocked by '%s' handler", sp->filename,
+          "scp upload to '%s' blocked by '%s' handler", sp->path,
           cmd->argv[0]);
 
         (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
@@ -887,12 +915,12 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         sp->best_path = dir_best_path(scp_pool, sp->filename);
       }
 
-      if (!dir_check(p, C_STOR, G_WRITE, (char *) sp->filename, NULL)) {
+      if (!dir_check(p, C_STOR, G_WRITE, (char *) sp->path, NULL)) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "scp upload to '%s' blocked by <Limit> configuration", sp->filename);
+          "scp upload to '%s' blocked by <Limit> configuration", sp->path);
 
         if (cmd == NULL)
-          cmd = scp_cmd_alloc(p, C_STOR, sp->filename);
+          cmd = scp_cmd_alloc(p, C_STOR, sp->path);
 
         (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -916,7 +944,7 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
           pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
 
         if (cmd == NULL)
-          cmd = scp_cmd_alloc(p, C_STOR, sp->filename);
+          cmd = scp_cmd_alloc(p, C_STOR, sp->path);
 
         (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -927,7 +955,7 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
     }
 
     if (cmd == NULL)
-      cmd = scp_cmd_alloc(p, C_STOR, sp->filename);
+      cmd = scp_cmd_alloc(p, C_STOR, sp->path);
 
     pr_throttle_init(cmd);
 
@@ -1025,14 +1053,14 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
     write_confirm(p, channel_id, 0, NULL);
 
     if (cmd == NULL)
-      cmd = scp_cmd_alloc(p, C_STOR, sp->filename);
+      cmd = scp_cmd_alloc(p, C_STOR, sp->path);
 
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
   } else {
     if (cmd == NULL)
-      cmd = scp_cmd_alloc(p, C_STOR, sp->filename);
+      cmd = scp_cmd_alloc(p, C_STOR, sp->path);
 
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
