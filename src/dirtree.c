@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.212 2009-03-17 05:36:54 castaglia Exp $
+ * $Id: dirtree.c,v 1.213 2009-03-20 19:01:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -63,8 +63,15 @@ static void merge_down(xaset_t *, int);
 static config_rec *_last_param_ptr = NULL;
 static unsigned char _kludge_disable_umask = 0;
 
+/* We have two different lists for Defines.  The 'perm' pool/list are
+ * for "permanent" defines, i.e. those set on the command-line via the
+ * -D/--define options.
+ */
 static pool *defines_pool = NULL;
 static array_header *defines_list = NULL;
+
+static pool *defines_perm_pool = NULL;
+static array_header *defines_perm_list = NULL;
 
 static pool *config_tab_pool = NULL;
 static pr_table_t *config_tab = NULL;
@@ -517,27 +524,73 @@ static void define_restart_ev(const void *event_data, void *user_data) {
   pr_event_unregister(NULL, "core.restart", define_restart_ev);
 }
 
-int pr_define_add(const char *definition) {
+/* The 'survive_restarts' boolean indicates whether this Define is to be
+ * permanent for the lifetime of the daemon (i.e. survives across restarts)
+ * or whether it should be cleared when restarted.
+ *
+ * Right now, defines from the command-line will surive restarts, but
+ * defines from the config (via the Define directive) will not.
+ */
+int pr_define_add(const char *definition, int survive_restarts) {
 
-  if (!defines_list) {
-    defines_pool = make_sub_pool(permanent_pool);
-    pr_pool_tag(defines_pool, "Defines Pool");
-    defines_list = make_array(defines_pool, 0, sizeof(char *));
-
-    pr_event_register(NULL, "core.restart", define_restart_ev, NULL);
+  if (definition == NULL ||
+      (survive_restarts != FALSE && survive_restarts != TRUE)) {
+    errno = EINVAL;
+    return -1;
   }
 
-  *((char **) push_array(defines_list)) = pstrdup(defines_pool, definition);
+  if (survive_restarts == FALSE) {
+    if (defines_pool == NULL) {
+      defines_pool = make_sub_pool(permanent_pool);
+      pr_pool_tag(defines_pool, "Defines Pool");
+      pr_event_register(NULL, "core.restart", define_restart_ev, NULL);
+    }
+
+    if (!defines_list) {
+      defines_list = make_array(defines_pool, 0, sizeof(char *));
+
+    }
+
+    *((char **) push_array(defines_list)) = pstrdup(defines_pool, definition);
+    return 0;
+  }
+
+  if (defines_perm_pool == NULL) {
+    defines_perm_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(defines_perm_pool, "Permanent Defines Pool");
+  }
+
+  if (!defines_perm_list) {
+    defines_perm_list = make_array(defines_perm_pool, 0, sizeof(char *)); 
+  }
+
+  *((char **) push_array(defines_perm_list)) =
+    pstrdup(defines_perm_pool, definition);
   return 0;
 }
 
 unsigned char pr_define_exists(const char *definition) {
+  if (definition == NULL) {
+    errno = EINVAL;
+    return FALSE;
+  }
 
   if (defines_list) {
     char **defines = defines_list->elts;
     register unsigned int i = 0;
 
     for (i = 0; i < defines_list->nelts; i++) {
+      if (defines[i] &&
+          strcmp(defines[i], definition) == 0)
+        return TRUE;
+    }
+  }
+
+  if (defines_perm_list) {
+    char **defines = defines_perm_list->elts;
+    register unsigned int i = 0;
+
+    for (i = 0; i < defines_perm_list->nelts; i++) {
       if (defines[i] &&
           strcmp(defines[i], definition) == 0)
         return TRUE;

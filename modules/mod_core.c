@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.343 2009-03-20 00:03:56 castaglia Exp $
+ * $Id: mod_core.c,v 1.344 2009-03-20 19:01:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -288,7 +288,7 @@ MODRET set_define(cmd_rec *cmd) {
    * CHECK_CONF macro.
    */
 
-  pr_define_add(cmd->argv[1]);
+  pr_define_add(cmd->argv[1], FALSE);
   return PR_HANDLED(cmd);
 }
 

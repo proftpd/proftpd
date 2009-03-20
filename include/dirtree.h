@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.72 2009-02-15 00:27:34 castaglia Exp $
+ * $Id: dirtree.h,v 1.73 2009-03-20 19:01:34 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -213,7 +213,7 @@ extern int			ServerUseReverseDNS;
 void kludge_disable_umask(void);
 void kludge_enable_umask(void);
 
-int pr_define_add(const char *);
+int pr_define_add(const char *, int);
 unsigned char pr_define_exists(const char *);
 
 void init_config(void);

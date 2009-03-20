@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.367 2009-02-16 03:14:02 castaglia Exp $
+ * $Id: main.c,v 1.368 2009-03-20 19:01:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2792,7 +2792,7 @@ int main(int argc, char *argv[], char **envp) {
         exit(1);
       }
 
-      pr_define_add(optarg);
+      pr_define_add(optarg, TRUE);
       break;
 
     case 'V':
