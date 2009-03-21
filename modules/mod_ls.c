@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.153 2009-03-05 06:01:52 castaglia Exp $
+ * $Id: mod_ls.c,v 1.154 2009-03-21 23:08:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1652,10 +1652,6 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
   if (res < 0)
     return res;
 
-  res = sendline(LS_SENDLINE_FL_FLUSH, " ");
-  if (res < 0)
-    return res;
-
   return 1;
 }
 
@@ -1769,11 +1765,10 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
         char *str = pr_fs_encode_path(cmd->tmp_pool,
           pdircat(cmd->tmp_pool, dir, p, NULL));
 
-        if (sendline(0, "%s\n", str) < 0 ||
-            sendline(LS_SENDLINE_FL_FLUSH, " ") < 0)
+        if (sendline(0, "%s\n", str) < 0) {
           count = -1;
 
-        else {
+        } else {
           count++;
 
           if (list_nfiles.curr && list_nfiles.max &&
@@ -1791,11 +1786,10 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
         }
 
       } else {
-        if (sendline(0, "%s\n", pr_fs_encode_path(cmd->tmp_pool, p)) < 0 ||
-            sendline(LS_SENDLINE_FL_FLUSH, " ") < 0)
+        if (sendline(0, "%s\n", pr_fs_encode_path(cmd->tmp_pool, p)) < 0) {
           count = -1;
 
-        else {
+        } else {
           count++;
 
           if (list_nfiles.curr && list_nfiles.max &&
@@ -1814,6 +1808,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
       }
     }
   }
+
+  sendline(LS_SENDLINE_FL_FLUSH, " ");
 
   if (!curdir)
     pop_cwd(cwd_buf, &symhold);
@@ -2239,6 +2235,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       }
     }
 
+    sendline(LS_SENDLINE_FL_FLUSH, " ");
     pr_fs_globfree(&g);
 
   } else {
@@ -2305,6 +2302,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
     if (res > 0)
       count += res;
+
+    sendline(LS_SENDLINE_FL_FLUSH, " ");
   }
 
   if (XFER_ABORTED) {
