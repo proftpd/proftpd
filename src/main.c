@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.368 2009-03-20 19:01:34 castaglia Exp $
+ * $Id: main.c,v 1.369 2009-03-22 01:30:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2623,7 +2623,8 @@ static void show_settings(void) {
   /* Tunable settings */
   printf("\n  Tunable Options:\n");
   printf("    PR_TUNABLE_BUFFER_SIZE = %u\n", PR_TUNABLE_BUFFER_SIZE);
-  printf("    PR_TUNABLE_GLOBBING_MAX = %u\n", PR_TUNABLE_GLOBBING_MAX);
+  printf("    PR_TUNABLE_GLOBBING_MAX_MATCHES = %u\n", PR_TUNABLE_GLOBBING_MAX_MATCHES);
+  printf("    PR_TUNABLE_GLOBBING_MAX_RECURSION = %u\n", PR_TUNABLE_GLOBBING_MAX_RECURSION);
   printf("    PR_TUNABLE_HASH_TABLE_SIZE = %u\n", PR_TUNABLE_HASH_TABLE_SIZE);
   printf("    PR_TUNABLE_NEW_POOL_SIZE = %u\n", PR_TUNABLE_NEW_POOL_SIZE);
   printf("    PR_TUNABLE_SCOREBOARD_BUFFER_SIZE = %u\n",
