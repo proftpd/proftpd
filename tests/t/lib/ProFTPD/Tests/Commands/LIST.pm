@@ -98,7 +98,7 @@ sub tear_down {
   }
 
   undef $self;
-};
+}
 
 sub list_ok_raw_active {
   my $self = shift;
@@ -107,7 +107,8 @@ sub list_ok_raw_active {
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -249,7 +250,8 @@ sub list_ok_raw_passive {
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -391,7 +393,8 @@ sub list_ok_file {
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -520,7 +523,8 @@ sub list_ok_dir {
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -643,7 +647,8 @@ sub list_ok_no_path {
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -765,7 +770,8 @@ sub list_ok_glob {
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -893,7 +899,8 @@ sub list_fails_login_required {
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $config = {
     PidFile => $pid_file,
@@ -983,7 +990,8 @@ sub list_fails_enoent {
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -1107,7 +1115,8 @@ sub list_fails_enoent_glob {
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -1226,7 +1235,8 @@ sub list_fails_eperm {
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
