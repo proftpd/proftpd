@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.344 2009-03-20 19:01:34 castaglia Exp $
+ * $Id: mod_core.c,v 1.345 2009-03-22 04:13:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1838,8 +1838,12 @@ MODRET add_directory(cmd_rec *cmd) {
       dir = pdircat(cmd->tmp_pool, "/", dir, NULL);
     rootdir = cmd->config->name;
 
-  } else
-    flags |= CF_DEFER;
+  } else {
+    if (pr_fs_valid_path(dir) < 0) {
+      /* Not an absolute path; mark it for deferred resolution. */
+      flags |= CF_DEFER;
+    }
+  }
 
   /* Check to see that there isn't already a config for this directory,
    * but only if we're not in an <Anonymous> section.  Due to the way
