@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: cmd.c,v 1.1 2009-02-15 00:27:34 castaglia Exp $
+ * $Id: cmd.c,v 1.2 2009-03-22 04:47:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -107,11 +107,12 @@ char *pr_cmd_get_displayable_str(cmd_rec *cmd) {
   }
 
   if (argc > 0) {
-    while (argc--) {
-      if (*res)
-        res = pstrcat(p, res, " ", pr_fs_decode_path(p, *argv++), NULL);
-      else
-        res = pstrcat(p, res, pr_fs_decode_path(p, *argv++), NULL);
+    register unsigned int i;
+
+    res = pstrcat(p, res, pr_fs_decode_path(p, argv[0]), NULL);
+
+    for (i = 1; i < argc; i++) {
+      res = pstrcat(p, res, " ", pr_fs_decode_path(p, argv[i]), NULL);
     }
   }
 

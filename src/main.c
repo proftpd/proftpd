@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.370 2009-03-22 03:31:19 castaglia Exp $
+ * $Id: main.c,v 1.371 2009-03-22 04:47:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -546,7 +546,7 @@ static long get_max_cmd_len(size_t buflen) {
 
 int pr_cmd_read(cmd_rec **res) {
   static long cmd_bufsz = -1;
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE+1] = {'\0'};
   char *cp;
   size_t buflen;
 
@@ -584,8 +584,21 @@ int pr_cmd_read(cmd_rec **res) {
   if (cmd_bufsz == -1)
     cmd_bufsz = get_max_cmd_len(sizeof(buf));
 
-  buf[cmd_bufsz - 1] = '\0';
+  /* This strlen(3) is guaranteed to terminate; the last byte of buf is
+   * always NUL, since pr_netio_telnet_gets() is told that the buf size is
+   * one byte less than it really is.
+   *
+   * If the strlen(3) says that the length is less than the cmd_bufsz, then
+   * there is no need to truncate the buffer by inserting a NUL.
+   */
   buflen = strlen(buf);
+  if (buflen > (cmd_bufsz - 1)) {
+    pr_log_debug(DEBUG0, "truncating incoming command length (%lu bytes) to "
+      "CommandBufferSize %lu; use the CommandBufferSize directive to increase "
+      "the allowed command length", (unsigned long) buflen,
+      (unsigned long) cmd_bufsz);
+    buf[cmd_bufsz - 1] = '\0';
+  }
 
   if (buflen &&
       (buf[buflen-1] == '\n' || buf[buflen-1] == '\r')) {
