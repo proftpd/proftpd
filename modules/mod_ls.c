@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.154 2009-03-21 23:08:19 castaglia Exp $
+ * $Id: mod_ls.c,v 1.155 2009-03-22 01:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1450,6 +1450,11 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       if (use_globbing &&
           strpbrk(target, "{[*?") != NULL) {
         a = pr_fs_glob(target, glob_flags, NULL, &g);
+        if (a == 0) {
+          pr_log_debug(DEBUG8, "LIST: glob(3) returned %lu paths",
+            (unsigned long) g.gl_pathc);
+        }
+
         globbed = TRUE;
 
       } else {
@@ -2061,7 +2066,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
   size_t targetlen = 0;
   config_rec *c = NULL;
   int count = 0, res = 0, hidden = 0;
-  int glob_flags = GLOB_PERIOD;
+  int glob_flags = GLOB_PERIOD|GLOB_NOSORT;
   unsigned char *tmp = NULL;
 
   list_nfiles.curr = list_ndirs.curr = list_ndepth.curr = 0;
@@ -2191,15 +2196,18 @@ MODRET ls_nlst(cmd_rec *cmd) {
   if (use_globbing &&
       strpbrk(target, "{[*?") != NULL) {
     glob_t g;
-    char **path,*p;
+    char **path, *p;
 
     /* Make sure the glob_t is initialized */
     memset(&g, '\0', sizeof(glob_t));
 
-    if (pr_fs_glob(target, GLOB_PERIOD, NULL, &g) != 0) {
+    if (pr_fs_glob(target, glob_flags, NULL, &g) != 0) {
       pr_response_add_err(R_450, _("No files found"));
       return PR_ERROR(cmd);
     }
+
+    pr_log_debug(DEBUG8, "NLST: glob(3) returned %lu paths",
+      (unsigned long) g.gl_pathc);
 
     if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
       return PR_ERROR(cmd);
