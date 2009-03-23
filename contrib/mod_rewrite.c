@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.42 2009-03-19 04:58:41 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.43 2009-03-23 01:59:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -849,7 +849,7 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
   char *replacement_pattern = NULL;
 
   for (i = 0; i < REWRITE_MAX_MATCHES; i++) {
-    char buf[3] = {'\0'};
+    char buf[3] = {'\0'}, *ptr;
 
     memset(buf, '\0', sizeof(buf));
 
@@ -868,8 +868,51 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
     /* Make sure there's a backreference for this in the substitution
      * pattern.  Otherwise, just continue on.
      */
-    if (strstr(replacement_pattern, buf) == NULL)
+    ptr = strstr(replacement_pattern, buf);
+    if (ptr == NULL)
       continue;
+
+    /* Check for escaped backrefs. */ 
+    if (ptr > replacement_pattern) {
+      if (matches == &rewrite_rule_matches) {
+        /* If the character before ptr is itself a '$', then this is
+         * an escaped sequence and NOT a RewriteRule backref.  For example,
+         * it might be "$$1".  In which case, silently replace the escaped
+         * string with the literal string.
+         */
+        if (*(ptr - 1) == '$') {
+          char *var;
+          size_t var_len = sizeof(buf) + 1;
+
+          var = pcalloc(cmd->tmp_pool, var_len);
+          var[0] = '$';
+          sstrcat(var, buf, var_len);
+
+          replacement_pattern = sreplace(cmd->pool, replacement_pattern, var,
+            buf, NULL);
+          continue;
+        }
+
+      } else if (matches == &rewrite_cond_matches) {
+        /* If the character before ptr is itself a '%', then this is
+         * an escaped sequence and NOT a RewriteCondition backref.  For example,
+         * it might be "%%1". In which case, silently replace the escaped
+         * string with the literal string.
+         */
+        if (*(ptr - 1) == '%') {
+          char *var;
+          size_t var_len = sizeof(buf) + 1;
+
+          var = pcalloc(cmd->tmp_pool, var_len);
+          var[0] = '%';
+          sstrcat(var, buf, var_len);
+
+          replacement_pattern = sreplace(cmd->pool, replacement_pattern, var,
+            buf, NULL);
+          continue;
+        }
+      }
+    }
 
     if (matches->match_groups[i].rm_so != -1) {
       char tmp;
