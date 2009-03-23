@@ -1,4 +1,4 @@
-<!-- $Id: mod_rewrite.html,v 1.5 2009-03-18 23:48:46 castaglia Exp $ -->
+<!-- $Id: mod_rewrite.html,v 1.6 2009-03-23 02:04:31 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_rewrite.html,v $ -->
 
 <html>
@@ -69,6 +69,11 @@ constructs in addition to plain text:
     <code>RewriteRule</code> directive (the one following the current bunch of
     <code>RewriteCondition</code> directives).  Note that <em>$0</em> will
     refer back to the entire original string being matched.
+
+    <p>
+    Use an extra <code>$</code> character to escape a sequence which
+    <i>looks</i> like a <code>RewriteRule</code> backreference, <i>e.g.</i>
+    <em>$$N</em>.
   </li>
 
   <p>
@@ -80,6 +85,11 @@ constructs in addition to plain text:
     (0 &lt;= <em>N</em> &lt;= 9) which provide access to the grouped parts
     (parentheses!) of the pattern from the previous
     <code>RewriteCondition</code> attached to this <code>RewriteRule</code>.
+
+    <p>
+    Use an extra <code>%</code> character to escape a sequence which
+    <i>looks</i> like a <code>RewriteCondition</code> backreference, <i>e.g.</i>
+    <em>%%N</em>.
   </li>
 
   <p>
@@ -778,7 +788,7 @@ third-party modules in proftpd:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-03-18 23:48:46 $</i><br>
+Last Updated: <i>$Date: 2009-03-23 02:04:31 $</i><br>
 
 <br><hr>
 
