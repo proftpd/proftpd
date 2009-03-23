@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.155 2009-03-22 01:11:07 castaglia Exp $
+ * $Id: mod_ls.c,v 1.156 2009-03-23 01:15:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -718,7 +718,7 @@ static void sortfiles(cmd_rec *cmd) {
 }
 
 static int outputfiles(cmd_rec *cmd) {
-  int n;
+  int n, res = 0;
   struct filename *p = NULL, *q = NULL;
 
   if (opt_S || opt_t)
@@ -729,7 +729,7 @@ static int outputfiles(cmd_rec *cmd) {
 
   tail->down = NULL;
   tail = NULL;
-  colwidth = ( colwidth | 7 ) + 1;
+  colwidth = (colwidth | 7) + 1;
   if (opt_l || !opt_C)
     colwidth = 75;
 
@@ -737,48 +737,62 @@ static int outputfiles(cmd_rec *cmd) {
   if (colwidth > 75)
     colwidth = 75;
 
-  p = head;
-  p->top = 1;
-  n = (filenames + (75 / colwidth)-1) / (75 / colwidth);
-  while (n && p) {
-    p = p->down;
-    if (p)
-      p->top = 0;
-    n--;
+  if (opt_C) {
+    p = head;
+    p->top = 1;
+    n = (filenames + (75 / colwidth)-1) / (75 / colwidth);
+
+    while (n && p) {
+      pr_signals_handle();
+
+      p = p->down;
+      if (p)
+        p->top = 0;
+      n--;
+    }
+
+    q = head;
+    while (p) {
+      pr_signals_handle();
+
+      p->top = q->top;
+      q->right = p;
+      q = q->down;
+      p = p->down;
+    }
+
+    while (q) {
+      pr_signals_handle();
+
+      q->right = NULL;
+      q = q->down;
+    }
+
+    p = head;
+    while (p && p->down && !p->down->top) {
+      pr_signals_handle();
+      p = p->down;
+    }
+
+    if (p && p->down)
+      p->down = NULL;
   }
 
-  q = head;
+  p = head;
   while (p) {
-    p->top = q->top;
-    q->right = p;
-    q = q->down;
-    p = p->down;
-  }
+    pr_signals_handle();
 
-  while (q) {
-    q->right = NULL;
-    q = q->down;
-  }
-
-  p = head;
-  while (p && p->down && !p->down->top)
-    p = p->down;
-  if (p && p->down)
-    p->down = NULL;
-
-  p = head;
-  while (p) {
     q = p;
     p = p->down;
     while (q) {
       char pad[6] = {'\0'};
 
-      if (q->right) {
-        sstrncpy(pad, "\t\t\t\t\t", sizeof(pad));
-        pad[(colwidth + 7 - strlen(q->line)) / 8] = '\0';
+      if (!q->right) {
+        sstrncpy(pad, "\n", sizeof(pad));
 
       } else {
-        sstrncpy(pad, "\n", sizeof(pad));
+        sstrncpy(pad, "\t\t\t\t\t", sizeof(pad));
+        pad[(colwidth + 7 - strlen(q->line)) / 8] = '\0';
       }
 
       if (sendline(0, "%s%s", q->line, pad) < 0)
@@ -788,6 +802,9 @@ static int outputfiles(cmd_rec *cmd) {
     }
   }
 
+  if (sendline(LS_SENDLINE_FL_FLUSH, " ") < 0)
+    res = -1;
+
   destroy_pool(fpool);
   fpool = NULL;
   sort_arr = NULL;
@@ -795,10 +812,7 @@ static int outputfiles(cmd_rec *cmd) {
   colwidth = 0;
   filenames = 0;
 
-  if (sendline(LS_SENDLINE_FL_FLUSH, " ") < 0)
-    return -1;
-
-  return 0;
+  return res;
 }
 
 static void discard_output(void) {
