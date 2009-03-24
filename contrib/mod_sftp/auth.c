@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.7 2009-03-19 06:04:08 castaglia Exp $
+ * $Id: auth.c,v 1.8 2009-03-24 06:23:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -262,6 +262,7 @@ static int setup_env(pool *p, char *user) {
   struct stat st;
   char *default_chdir, *default_root, *home_dir;
   const char *sess_ttyname = NULL;
+  cmd_rec *cmd;
 
   pw = pr_auth_getpwnam(p, user);
 
@@ -485,7 +486,9 @@ static int setup_env(pool *p, char *user) {
   sstrncpy(session.vwd, pr_fs_getvwd(), sizeof(session.vwd));
 
   /* Make sure directory config pointers are set correctly */
-  dir_check_full(p, C_PASS, G_NONE, session.cwd, NULL);
+  cmd = pr_cmd_alloc(p, 1, C_PASS);
+  cmd->arg = "";
+  dir_check_full(p, cmd, G_NONE, session.cwd, NULL);
 
   session.proc_prefix = pstrdup(session.pool, session.c->remote_name);
   session.sf_flags = 0;

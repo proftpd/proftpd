@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.257 2009-03-05 21:18:59 castaglia Exp $
+ * $Id: mod_auth.c,v 1.258 2009-03-24 06:23:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -622,7 +622,7 @@ static void ensure_open_passwd(pool *p) {
 /* Next function (the biggie) handles all authentication, setting
  * up chroot() jail, etc.
  */
-static int setup_env(pool *p, char *user, char *pass) {
+static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   struct passwd *pw;
   struct stat sbuf;
   config_rec *c, *tmpc;
@@ -1273,7 +1273,7 @@ static int setup_env(pool *p, char *user, char *pass) {
   sstrncpy(session.vwd, pr_fs_getvwd(), sizeof(session.vwd));
 
   /* Make sure directory config pointers are set correctly */
-  dir_check_full(p, C_PASS, G_NONE, session.cwd, NULL);
+  dir_check_full(p, cmd, G_NONE, session.cwd, NULL);
 
   if (c) {
     if (!session.hide_password)
@@ -1898,7 +1898,7 @@ MODRET auth_pass(cmd_rec *cmd) {
   session.anon_config = NULL;
   session.dir_config = NULL;
 
-  res = setup_env(cmd->tmp_pool, user, cmd->arg);
+  res = setup_env(cmd->tmp_pool, cmd, user, cmd->arg);
   if (res == 1) {
     config_rec *c = NULL;
 

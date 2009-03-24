@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.19 2009-03-16 16:47:32 castaglia Exp $
+ * $Id: mod_facts.c,v 1.20 2009-03-24 06:23:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -634,8 +634,7 @@ MODRET facts_mff(cmd_rec *cmd) {
 
   decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
-  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, (char *) decoded_path,
-      NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, (char *) decoded_path, NULL)) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       cmd->argv[0]);
     pr_response_add_err(R_550, _("Unable to handle command"));
@@ -779,8 +778,7 @@ MODRET facts_mfmt(cmd_rec *cmd) {
 
   decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
-  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, (char *) decoded_path,
-      NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, (char *) decoded_path, NULL)) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       cmd->argv[0]);
     pr_response_add_err(R_550, _("Unable to handle command"));
@@ -855,8 +853,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     decoded_path = path = pr_fs_getcwd();
   }
 
-  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, (char *) decoded_path,
-      NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, (char *) decoded_path, NULL)) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       cmd->argv[0]);
     pr_response_add_err(R_550, _("Unable to handle command"));
@@ -922,16 +919,14 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     /* Check that the file can be listed. */
     abs_path = dir_realpath(cmd->tmp_pool, rel_path);
     if (abs_path) {
-      res = dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, abs_path,
-        &hidden);
+      res = dir_check(cmd->tmp_pool, cmd, cmd->group, abs_path, &hidden);
       
     } else {
       abs_path = dir_canonical_path(cmd->tmp_pool, rel_path);
       if (abs_path == NULL)
         abs_path = rel_path;
 
-      res = dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, abs_path,
-        &hidden);
+      res = dir_check_canon(cmd->tmp_pool, cmd, cmd->group, abs_path, &hidden);
     }
 
     if (!res || hidden) {
@@ -995,7 +990,7 @@ MODRET facts_mlst(cmd_rec *cmd) {
     decoded_path = path = pr_fs_getcwd();
   }
 
-  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, (char *) decoded_path,
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, (char *) decoded_path,
       &hidden)) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       cmd->argv[0]);

@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.156 2009-03-23 01:15:50 castaglia Exp $
+ * $Id: mod_ls.c,v 1.157 2009-03-24 06:23:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -96,14 +96,14 @@ static int
 static char cwd[PR_TUNABLE_PATH_MAX+1] = "";
 
 /* Find a <Limit> block that limits the given command (which will probably
- * be LIST).  This code borrowed for src/dirtree.c's _dir_check_limit().
+ * be LIST).  This code borrowed for src/dirtree.c's dir_check_limit().
  * Note that this function is targeted specifically for ls commands (eg
  * LIST, NLST, DIRS, and ALL) that might be <Limit>'ed.
  */
-static config_rec *_find_ls_limit(char *ftp_cmd) {
+static config_rec *find_ls_limit(char *cmd_name) {
   config_rec *c = NULL, *limit_c = NULL;
 
-  if (!ftp_cmd)
+  if (!cmd_name)
     return NULL;
 
   if (!session.dir_config)
@@ -124,17 +124,16 @@ static config_rec *_find_ls_limit(char *ftp_cmd) {
 
             /* match any of the appropriate <Limit> arguments
              */
-            if (!strcasecmp(ftp_cmd, (char *) (limit_c->argv[i])) ||
-                !strcasecmp("DIRS", (char *) (limit_c->argv[i])) ||
-                !strcasecmp("ALL", (char *) (limit_c->argv[i])))
+            if (strcasecmp(cmd_name, (char *) (limit_c->argv[i])) == 0 ||
+                strcasecmp("DIRS", (char *) (limit_c->argv[i])) == 0 ||
+                strcasecmp("ALL", (char *) (limit_c->argv[i])) == 0)
               break;
           }
 
           if (i == limit_c->argc)
             continue;
 
-          /* Found a <Limit> directive associated with the current command
-           */
+          /* Found a <Limit> directive associated with the current command. */
           return limit_c;
         }
       }
@@ -181,10 +180,12 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
   if (!fullpath)
     fullpath = pstrdup(p, path);
 
-  if (canon)
-    res = dir_check_canon(p, cmd->argv[0], cmd->group, fullpath, hidden);
-  else
-    res = dir_check(p, cmd->argv[0], cmd->group, fullpath, hidden);
+  if (canon) {
+    res = dir_check_canon(p, cmd, cmd->group, fullpath, hidden);
+
+  } else {
+    res = dir_check(p, cmd, cmd->group, fullpath, hidden);
+  }
 
   if (session.dir_config) {
     unsigned char *tmp = get_param_ptr(session.dir_config->subset,
@@ -217,13 +218,15 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
   if (*path == '~')
     return ls_perms_full(p, cmd, path, hidden);
 
-  if (*path != '/')
+  if (*path != '/') {
     pr_fs_clean_path(pdircat(p, pr_fs_getcwd(), path, NULL), fullpath,
       PR_TUNABLE_PATH_MAX);
-  else
-    pr_fs_clean_path(path, fullpath, PR_TUNABLE_PATH_MAX);
 
-  res = dir_check(p, cmd->argv[0], cmd->group, fullpath, hidden);
+  } else {
+    pr_fs_clean_path(path, fullpath, PR_TUNABLE_PATH_MAX);
+  }
+
+  res = dir_check(p, cmd, cmd->group, fullpath, hidden);
 
   if (session.dir_config) {
     unsigned char *tmp = get_param_ptr(session.dir_config->subset,
@@ -996,7 +999,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
   /* Search for relevant <Limit>'s to this LIST command.  If found,
    * check to see whether hidden files should be ignored.
    */
-  c = _find_ls_limit(cmd->argv[0]);
+  c = find_ls_limit(cmd->argv[0]);
   if (c != NULL) {
     unsigned char *ignore = get_param_ptr(c->subset, "IgnoreHidden", FALSE);
 
@@ -1739,7 +1742,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   /* Search for relevant <Limit>'s to this NLST command.  If found,
    * check to see whether hidden files should be ignored.
    */
-  c = _find_ls_limit(cmd->argv[0]);
+  c = find_ls_limit(cmd->argv[0]);
   if (c != NULL) {
     unsigned char *ignore = get_param_ptr(c->subset, "IgnoreHidden", FALSE);
 
@@ -1942,8 +1945,7 @@ MODRET ls_stat(cmd_rec *cmd) {
      * status.
      */
 
-    if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd,
-        NULL)) {
+    if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
       pr_response_add_err(R_500, "%s: %s", cmd->argv[0], strerror(EPERM));
       return PR_ERROR(cmd);
     }
@@ -2275,7 +2277,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
     /* Don't display hidden files */
     if (hidden) {
-      c = _find_ls_limit(target);
+      c = find_ls_limit(target);
 
       if (c) {
         unsigned char *ignore_hidden = get_param_ptr(c->subset,

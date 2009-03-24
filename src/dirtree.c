@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.213 2009-03-20 19:01:34 castaglia Exp $
+ * $Id: dirtree.c,v 1.214 2009-03-24 06:23:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -993,7 +993,7 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
   return res;
 }
 
-static int _check_user_access(xaset_t *set, char *name) {
+static int check_user_access(xaset_t *set, const char *name) {
   int res = 0;
   config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
 
@@ -1029,7 +1029,7 @@ static int _check_user_access(xaset_t *set, char *name) {
   return res;
 }
 
-static int _check_group_access(xaset_t *set, char *name) {
+static int check_group_access(xaset_t *set, const char *name) {
   int res = 0;
   config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
 
@@ -1075,7 +1075,7 @@ static int _check_group_access(xaset_t *set, char *name) {
   return res;
 }
 
-static int _check_class_access(xaset_t *set, char *name) {
+static int check_class_access(xaset_t *set, const char *name) {
   int res = 0;
   config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
 
@@ -1112,6 +1112,32 @@ static int _check_class_access(xaset_t *set, char *name) {
   return res;
 }
 
+static int check_filter_access(xaset_t *set, const char *name, cmd_rec *cmd) {
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  int res = 0;
+  config_rec *c;
+
+  if (!cmd)
+    return res;
+
+  c = find_config(set, CONF_PARAM, name, FALSE);
+  while (c) {
+    regex_t *preg = (regex_t *) c->argv[0];
+
+    if (regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
+      res = TRUE;
+      break;
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
+  }
+
+  return res;
+#else
+  return 0;
+#endif /* HAVE_REGEX_H and HAVE_REGCOMP */
+}
+
 /* As of 1.2.0rc3, a '!' character in front of the IP address
  * negates the logic (i.e. doesn't match).
  *
@@ -1129,7 +1155,7 @@ static int _check_class_access(xaset_t *set, char *name) {
 /* Check an ACL for negated rules and make sure all of them evaluate to TRUE.
  * Default (if none exist) is TRUE.
  */
-static int _check_ip_negative(const config_rec *c) {
+static int check_ip_negative(const config_rec *c) {
   int aclc;
   pr_netacl_t **aclv;
 
@@ -1168,7 +1194,7 @@ static int _check_ip_negative(const config_rec *c) {
 /* Check an ACL for positive conditions, short-circuiting if ANY of them are
  * TRUE.  Default return is FALSE.
  */
-static int _check_ip_positive(const config_rec *c) {
+static int check_ip_positive(const config_rec *c) {
   int aclc;
   pr_netacl_t **aclv;
 
@@ -1197,7 +1223,7 @@ static int _check_ip_positive(const config_rec *c) {
   return FALSE;
 }
 
-static int _check_ip_access(xaset_t *set, char *name) {
+static int check_ip_access(xaset_t *set, char *name) {
   int res = FALSE;
 
   config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
@@ -1206,11 +1232,11 @@ static int _check_ip_access(xaset_t *set, char *name) {
     /* If the negative check failed (default is success), short-circuit and
      * return FALSE
      */
-    if (_check_ip_negative(c) != TRUE)
+    if (check_ip_negative(c) != TRUE)
       return FALSE;
 
     /* Otherwise, continue on with boolean or check */
-    if (_check_ip_positive(c) == TRUE)
+    if (check_ip_positive(c) == TRUE)
       res = TRUE;
 
     /* Continue on, in case there are other acls that need to be checked
@@ -1224,13 +1250,13 @@ static int _check_ip_access(xaset_t *set, char *name) {
 
 /* 1 if allowed, 0 otherwise */
 
-static int _check_limit_allow(config_rec *c) {
+static int check_limit_allow(config_rec *c, cmd_rec *cmd) {
   unsigned char *allow_all = NULL;
 
   /* If session.groups is null, this means no authentication
    * attempt has been made, so we simply check for the
    * very existance of an AllowGroup, and assume (for now) it's
-   * allowed.  This works because later calls to _check_limit_allow
+   * allowed.  This works because later calls to check_limit_allow()
    * WILL have filled in the group members and we can truely check
    * group membership at that time.  Same goes for AllowUser.
    */
@@ -1239,22 +1265,26 @@ static int _check_limit_allow(config_rec *c) {
     if (find_config(c->subset, CONF_PARAM, "AllowUser", FALSE))
       return 1;
 
-  } else if (_check_user_access(c->subset, "AllowUser"))
+  } else if (check_user_access(c->subset, "AllowUser"))
     return 1;
 
   if (!session.groups) {
     if (find_config(c->subset, CONF_PARAM, "AllowGroup", FALSE))
       return 1;
 
-  } else if (_check_group_access(c->subset, "AllowGroup"))
+  } else if (check_group_access(c->subset, "AllowGroup"))
     return 1;
 
   if (session.class &&
-      _check_class_access(c->subset, "AllowClass"))
+      check_class_access(c->subset, "AllowClass"))
     return 1;
 
-  if (_check_ip_access(c->subset, "Allow"))
+  if (check_ip_access(c->subset, "Allow"))
     return 1;
+
+  if (check_filter_access(c->subset, "AllowFilter", cmd)) {
+    return 1;
+  }
 
   allow_all = get_param_ptr(c->subset, "AllowAll", FALSE);
   if (allow_all && *allow_all == TRUE)
@@ -1263,61 +1293,70 @@ static int _check_limit_allow(config_rec *c) {
   return 0;
 }
 
-static int _check_limit_deny(config_rec *c) {
+static int check_limit_deny(config_rec *c, cmd_rec *cmd) {
   unsigned char *deny_all = get_param_ptr(c->subset, "DenyAll", FALSE);
 
   if (deny_all && *deny_all == TRUE)
     return 1;
 
   if (session.user &&
-      _check_user_access(c->subset, "DenyUser"))
+      check_user_access(c->subset, "DenyUser"))
     return 1;
 
   if (session.groups &&
-      _check_group_access(c->subset, "DenyGroup"))
+      check_group_access(c->subset, "DenyGroup"))
     return 1;
 
   if (session.class &&
-      _check_class_access(c->subset, "DenyClass"))
+      check_class_access(c->subset, "DenyClass"))
     return 1;
 
-  if (_check_ip_access(c->subset, "Deny"))
+  if (check_ip_access(c->subset, "Deny"))
+    return 1;
+
+  if (check_filter_access(c->subset, "DenyFilter", cmd))
     return 1;
 
   return 0;
 }
 
-/* _check_limit returns 1 if allowed, 0 if implicitly allowed,
+/* check_limit returns 1 if allowed, 0 if implicitly allowed,
  * and -1 if implicitly denied and -2 if explicitly denied.
  */
 
-static int _check_limit(config_rec *c) {
+static int check_limit(config_rec *c, cmd_rec *cmd) {
   int *tmp = get_param_ptr(c->subset, "Order", FALSE);
   int order = tmp ? *tmp : ORDER_ALLOWDENY;
 
   if (order == ORDER_DENYALLOW) {
     /* Check deny first */
 
-    if (_check_limit_deny(c))
+    if (check_limit_deny(c, cmd)) {
       /* Explicit deny */
+      errno = EPERM;
       return -2;
+    }
 
-    if (_check_limit_allow(c))
+    if (check_limit_allow(c, cmd)) {
       /* Explicit allow */
       return 1;
+    }
 
     /* Implicit deny */
     return -1;
   }
 
   /* Check allow first */
-  if (_check_limit_allow(c))
+  if (check_limit_allow(c, cmd)) {
     /* Explicit allow */
     return 1;
+  }
 
-  if (_check_limit_deny(c))
+  if (check_limit_deny(c, cmd)) {
     /* Explicit deny */
+    errno = EPERM;
     return -2;
+  }
 
   /* Implicit allow */
   return 0;
@@ -1352,7 +1391,7 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
 
       if (argc) {
         if (and) {
-          switch (_check_limit(c)) {
+          switch (check_limit(c, NULL)) {
             case 1:
               res = (res && TRUE);
               (*found)++;
@@ -1369,7 +1408,7 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
             break;
 
         } else {
-          switch (_check_limit(c)) {
+          switch (check_limit(c, NULL)) {
             case 1:
               res = TRUE;
 
@@ -1417,7 +1456,8 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
 
 /* Check limit directives.
  */
-static int _check_limits(xaset_t *set, char *cmd, int hidden) {
+static int check_limits(xaset_t *set, cmd_rec *cmd, const char *cmd_name,
+    int hidden) {
   int res = 1, ignore_hidden = -1;
   config_rec *lc = NULL;
 
@@ -1433,7 +1473,7 @@ static int _check_limits(xaset_t *set, char *cmd, int hidden) {
       register unsigned int i = 0;
 
       for (i = 0; i < lc->argc; i++) {
-        if (strcasecmp(cmd, (char *) lc->argv[i]) == 0) {
+        if (strcasecmp(cmd_name, (char *) lc->argv[i]) == 0) {
           break;
         }
       }
@@ -1462,7 +1502,7 @@ static int _check_limits(xaset_t *set, char *cmd, int hidden) {
         }
       }
 
-      switch (_check_limit(lc)) {
+      switch (check_limit(lc, cmd)) {
         case 1:
           res++;
           break;
@@ -1484,24 +1524,25 @@ static int _check_limits(xaset_t *set, char *cmd, int hidden) {
   return res;
 }
 
-int dir_check_limits(config_rec *c, char *cmd, int hidden) {
+int dir_check_limits(cmd_rec *cmd, config_rec *c, const char *cmd_name,
+    int hidden) {
   int res = 1;
 
   for (; c && (res == 1); c = c->parent) {
-    res = _check_limits(c->subset, cmd, hidden);
+    res = check_limits(c->subset, cmd, cmd_name, hidden);
   }
 
   if (!c && (res == 1)) {
     /* vhost or main server has been reached without an explicit permit or deny,
      * so try the current server.
      */
-    res = _check_limits(main_server->conf, cmd, hidden);
+    res = check_limits(main_server->conf, cmd, cmd_name, hidden);
   }
 
   return res;
 }
 
-void build_dyn_config(pool *p, char *_path, struct stat *stp,
+void build_dyn_config(pool *p, const char *_path, struct stat *stp,
     unsigned char recurse) {
   char *fullpath = NULL, *path = NULL, *dynpath = NULL, *cp = NULL;
   struct stat st;
@@ -1699,7 +1740,8 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
  * .dotfile".
  */
 
-int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
+int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
+    int *hidden) {
   char *fullpath, *owner;
   config_rec *c;
   struct stat st;
@@ -1716,7 +1758,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   p = make_sub_pool(pp);
   pr_pool_tag(p, "dir_check_full() subpool");
 
-  fullpath = path;
+  fullpath = (char *) path;
 
   if (session.chroot_path)
     fullpath = pdircat(p, session.chroot_path, fullpath, NULL);
@@ -1750,8 +1792,8 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   if (!_kludge_disable_umask) {
     /* Check for a directory Umask. */
     if (S_ISDIR(st.st_mode) ||
-        strcmp(cmd, C_MKD) == 0 ||
-        strcmp(cmd, C_XMKD) == 0) {
+        strcmp(cmd->argv[0], C_MKD) == 0 ||
+        strcmp(cmd->argv[0], C_XMKD) == 0) {
       mode_t *dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
       _umask = dir_umask ? *dir_umask : (mode_t) -1;
     }
@@ -1800,24 +1842,24 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
      * these return 0 (no access), and also set errno to ENOENT so it looks
      * like the file doesn't exist.
      */
-    res = dir_check_limits(c, cmd, op_hidden || regex_hidden);
+    res = dir_check_limits(cmd, c, cmd->argv[0], op_hidden || regex_hidden);
 
     /* If specifically allowed, res will be > 1 and we don't want to
      * check the command group limit.
      */
     if (res == 1 && group)
-      res = dir_check_limits(c, group, op_hidden || regex_hidden);
+      res = dir_check_limits(cmd, c, group, op_hidden || regex_hidden);
 
     /* If still == 1, no explicit allow so check lowest priority "ALL" group.
      * Note that certain commands are deliberately excluded from the
      * ALL group (i.e. EPRT, EPSV, PASV, and PORT).
      */
     if (res == 1 &&
-        strcmp(cmd, C_EPRT) != 0 &&
-        strcmp(cmd, C_EPSV) != 0 &&
-        strcmp(cmd, C_PASV) != 0 &&
-        strcmp(cmd, C_PORT) != 0)
-      res = dir_check_limits(c, "ALL", op_hidden || regex_hidden);
+        strcmp(cmd->argv[0], C_EPRT) != 0 &&
+        strcmp(cmd->argv[0], C_EPSV) != 0 &&
+        strcmp(cmd->argv[0], C_PASV) != 0 &&
+        strcmp(cmd->argv[0], C_PORT) != 0)
+      res = dir_check_limits(cmd, c, "ALL", op_hidden || regex_hidden);
   }
 
   if (res &&
@@ -1839,7 +1881,8 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
  * otherwise handed off to dir_check_full
  */
 
-int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
+int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
+    int *hidden) {
   char *fullpath, *owner;
   config_rec *c;
   struct stat st;
@@ -1856,7 +1899,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   p = make_sub_pool(pp);
   pr_pool_tag(p, "dir_check() subpool");
 
-  fullpath = path;
+  fullpath = (char *) path;
 
   if (session.chroot_path)
     fullpath = pdircat(p, session.chroot_path, fullpath, NULL);
@@ -1895,8 +1938,8 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   if (!_kludge_disable_umask) {
     /* Check for a directory Umask. */
     if (S_ISDIR(st.st_mode) ||
-        strcmp(cmd, C_MKD) == 0 ||
-        strcmp(cmd, C_XMKD) == 0) {
+        strcmp(cmd->argv[0], C_MKD) == 0 ||
+        strcmp(cmd->argv[0], C_XMKD) == 0) {
       mode_t *dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
       _umask = dir_umask ? *dir_umask : (mode_t) -1;
     }
@@ -1943,24 +1986,24 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   }
 
   if (res) {
-    res = dir_check_limits(c, cmd, op_hidden || regex_hidden);
+    res = dir_check_limits(cmd, c, cmd->argv[0], op_hidden || regex_hidden);
 
     /* If specifically allowed, res will be > 1 and we don't want to
      * check the command group limit.
      */
     if (res == 1 && group)
-      res = dir_check_limits(c, group, op_hidden || regex_hidden);
+      res = dir_check_limits(cmd, c, group, op_hidden || regex_hidden);
 
     /* If still == 1, no explicit allow so check lowest priority "ALL" group.
      * Note that certain commands are deliberately excluded from the
      * ALL group (i.e. EPRT, EPSV, PASV, and PORT).
      */
     if (res == 1 &&
-        strcmp(cmd, C_EPRT) != 0 &&
-        strcmp(cmd, C_EPSV) != 0 &&
-        strcmp(cmd, C_PASV) != 0 &&
-        strcmp(cmd, C_PORT) != 0)
-      res = dir_check_limits(c, "ALL", op_hidden || regex_hidden);
+        strcmp(cmd->argv[0], C_EPRT) != 0 &&
+        strcmp(cmd->argv[0], C_EPSV) != 0 &&
+        strcmp(cmd->argv[0], C_PASV) != 0 &&
+        strcmp(cmd->argv[0], C_PORT) != 0)
+      res = dir_check_limits(cmd, c, "ALL", op_hidden || regex_hidden);
   }
 
   if (res &&
@@ -1980,7 +2023,8 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
  * not be all of it, as the target may not yet exist) then we hand off to
  * dir_check().
  */
-int dir_check_canon(pool *pp, char *cmd, char *group, char *path, int *hidden) {
+int dir_check_canon(pool *pp, cmd_rec *cmd, const char *group,
+    const char *path, int *hidden) {
   return dir_check(pp, cmd, group, dir_best_path(pp, path), hidden);
 }
 

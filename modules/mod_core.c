@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.345 2009-03-22 04:13:12 castaglia Exp $
+ * $Id: mod_core.c,v 1.346 2009-03-24 06:23:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1711,12 +1711,39 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
 #endif
 }
 
-MODRET set_allowfilter(cmd_rec *cmd) {
-  return set_regex(cmd, cmd->argv[0], "allow");
-}
+MODRET set_allowdenyfilter(cmd_rec *cmd) {
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  regex_t *preg = NULL;
+  config_rec *c = NULL;
+  int res = 0;
 
-MODRET set_denyfilter(cmd_rec *cmd) {
-  return set_regex(cmd, cmd->argv[0], "deny");
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR|
+    CONF_DYNDIR|CONF_LIMIT);
+
+  preg = pr_regexp_alloc();
+
+  pr_log_debug(DEBUG4, "%s: compiling regex '%s'", cmd->argv[0], cmd->argv[1]);
+  res = regcomp(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  if (res != 0) {
+    char errstr[200] = {'\0'};
+
+    regerror(res, preg, errstr, sizeof(errstr));
+    pr_regexp_free(preg);
+
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
+      "compilation: ", errstr, NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 1, preg);
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED(cmd);
+
+#else /* no regular expression support at the moment */
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive cannot be used on this system, as you do not have POSIX "
+    "compliant regex support", NULL));
+#endif
 }
 
 MODRET set_passiveports(cmd_rec *cmd) {
@@ -3000,10 +3027,22 @@ static const char *quote_dir(cmd_rec *cmd, char *dir) {
 }
 
 MODRET core_pwd(cmd_rec *cmd) {
+  char *cmd_name;
+
   CHECK_CMD_ARGS(cmd, 1);
 
-  if (!dir_check(cmd->tmp_pool, C_PWD, cmd->group, session.vwd, NULL) ||
-      !dir_check(cmd->tmp_pool, C_XPWD, cmd->group, session.vwd, NULL)) {
+  cmd_name = cmd->argv[0];
+  cmd->argv[0] = C_PWD;
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.vwd, NULL)) {
+    cmd->argv[0] = cmd_name;
+    pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(EACCES));
+    return PR_ERROR(cmd);
+  }
+
+  cmd_name = cmd->argv[0];
+  cmd->argv[0] = C_XPWD;
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.vwd, NULL)) {
+    cmd->argv[0] = cmd_name;
     pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(EACCES));
     return PR_ERROR(cmd);
   }
@@ -3029,7 +3068,7 @@ MODRET core_pasv(cmd_rec *cmd) {
   /* Returning 501 is the best we can do.  It would be nicer if RFC959 allowed
    * 550 as a possible response.
    */
-  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd, NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
     pr_log_debug(DEBUG8, "PASV denied by <Limit> configuration");
     pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(EPERM));
     return PR_ERROR(cmd);
@@ -3133,7 +3172,7 @@ MODRET core_port(cmd_rec *cmd) {
   /* Returning 501 is the best we can do.  It would be nicer if RFC959 allowed
    * 550 as a possible response.
    */
-  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd, NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
     pr_log_debug(DEBUG8, "PORT denied by <Limit> configuration");
     pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(EPERM));
     return PR_ERROR(cmd);
@@ -3273,7 +3312,7 @@ MODRET core_eprt(cmd_rec *cmd) {
   /* Returning 501 is the best we can do.  It would be nicer if RFC959 allowed
    * 550 as a possible response.
    */
-  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd, NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
     pr_log_debug(DEBUG8, "EPRT denied by <Limit> configuration");
     pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(EPERM));
     return PR_ERROR(cmd);
@@ -3480,7 +3519,7 @@ MODRET core_epsv(cmd_rec *cmd) {
   /* Returning 501 is the best we can do.  It would be nicer if RFC959 allowed
    * 550 as a possible response.
    */
-  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd, NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
     pr_log_debug(DEBUG8, "EPSV denied by <Limit> configuration");
     pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(EPERM));
     return PR_ERROR(cmd);
@@ -3660,15 +3699,29 @@ MODRET core_syst(cmd_rec *cmd) {
 }
 
 int core_chgrp(cmd_rec *cmd, char *dir, uid_t uid, gid_t gid) {
-  if (!dir_check(cmd->tmp_pool, "SITE_CHGRP", "WRITE", dir, NULL))
+  char *cmd_name;
+
+  cmd_name = cmd->argv[0];
+  cmd->argv[0] = "SITE_CHGRP";
+  if (!dir_check(cmd->tmp_pool, cmd, "WRITE", dir, NULL)) {
+    cmd->argv[0] = cmd_name;
     return -1;
+  }
+  cmd->argv[0] = cmd_name;
 
   return pr_fsio_chown(dir, uid, gid);
 }
 
 int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
-  if (!dir_check(cmd->tmp_pool, "SITE_CHMOD", "WRITE", dir, NULL))
+  char *cmd_name;
+
+  cmd_name = cmd->argv[0];
+  cmd->argv[0] = "SITE_CHMOD";
+  if (!dir_check(cmd->tmp_pool, cmd, "WRITE", dir, NULL)) {
+    cmd->argv[0] = cmd_name;
     return -1;
+  }
+  cmd->argv[0] = cmd_name;
 
   return pr_fsio_chmod(dir,mode);
 }
@@ -3697,19 +3750,29 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
     if (!use_cdpath) {
       int allowed_access = TRUE;
 
-      allowed_access = dir_check_full(cmd->tmp_pool, cmd->argv[0], cmd->group,
-        dir, NULL);
+      allowed_access = dir_check_full(cmd->tmp_pool, cmd, cmd->group, dir,
+        NULL);
 
       if (allowed_access &&
           strcmp(cmd->argv[0], C_XCWD) == 0) {
+        char *cmd_name;
+
+        cmd_name = cmd->argv[0];
+        cmd->argv[0] = C_CWD;
         allowed_access = (allowed_access && dir_check_full(cmd->tmp_pool,
-                          C_CWD, cmd->group, dir, NULL));
+                          cmd, cmd->group, dir, NULL));
+        cmd->argv[0] = cmd_name;
       }
 
       if (allowed_access &&
           strcmp(cmd->argv[0], C_XCUP) == 0) {
+        char *cmd_name;
+
+        cmd_name = cmd->argv[0];
+        cmd->argv[0] = C_CDUP;
         allowed_access = (allowed_access && dir_check_full(cmd->tmp_pool,
-                          C_CDUP, cmd->group, dir, NULL));
+                          cmd, cmd->group, dir, NULL));
+        cmd->argv[0] = cmd_name;
       }
 
       if (!allowed_access)
@@ -3734,7 +3797,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
         free(cdir);
 
         if (dir &&
-            dir_check_full(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) &&
+            dir_check_full(cmd->tmp_pool, cmd, cmd->group, dir, NULL) &&
             pr_fsio_chdir(dir, 0) == 0) {
           break;
         }
@@ -3760,19 +3823,29 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
     if (!use_cdpath) {
       int allowed_access = TRUE;
 
-      allowed_access = dir_check_full(cmd->tmp_pool, cmd->argv[0], cmd->group,
-        dir, NULL);
+      allowed_access = dir_check_full(cmd->tmp_pool, cmd, cmd->group, dir,
+        NULL);
 
       if (allowed_access &&
           strcmp(cmd->argv[0], C_XCWD) == 0) {
+        char *cmd_name;
+
+        cmd_name = cmd->argv[0];
+        cmd->argv[0] = C_CWD;
         allowed_access = (allowed_access && dir_check_full(cmd->tmp_pool,
-                          C_CWD, cmd->group, dir, NULL));
+                          cmd, cmd->group, dir, NULL));
+        cmd->argv[0] = cmd_name;
       }
 
       if (allowed_access &&
           strcmp(cmd->argv[0], C_XCUP) == 0) {
+        char *cmd_name;
+
+        cmd_name = cmd->argv[0];
+        cmd->argv[0] = C_CDUP;
         allowed_access = (allowed_access && dir_check_full(cmd->tmp_pool,
-                          C_CDUP, cmd->group, dir, NULL));
+                          cmd, cmd->group, dir, NULL));
+        cmd->argv[0] = cmd_name;
       }
 
       if (!allowed_access)
@@ -3798,7 +3871,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
         free(cdir);
 
         if (dir &&
-            dir_check_full(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) &&
+            dir_check_full(cmd->tmp_pool, cmd, cmd->group, dir, NULL) &&
             pr_fsio_chdir_canon(ndir, 1) != -1) {
           break;
         }
@@ -3879,7 +3952,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
 
 MODRET core_rmd(cmd_rec *cmd) {
   int res;
-  char *dir;
+  char *cmd_name, *dir;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -3913,11 +3986,23 @@ MODRET core_rmd(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  if (!dir_check_canon(cmd->tmp_pool, C_RMD, cmd->group, dir, NULL) ||
-      !dir_check_canon(cmd->tmp_pool, C_XRMD, cmd->group, dir, NULL)) {
+  cmd_name = cmd->argv[0];
+  cmd->argv[0] = C_RMD;
+
+  if (!dir_check_canon(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
+    cmd->argv[0] = cmd_name;
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
     return PR_ERROR(cmd);
   }
+
+  cmd->argv[0] = C_XRMD;
+  if (!dir_check_canon(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
+    cmd->argv[0] = cmd_name;
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
+    return PR_ERROR(cmd);
+  }
+
+  cmd->argv[0] = cmd_name;
 
   if (pr_fsio_rmdir(dir) < 0) {
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
@@ -3935,7 +4020,7 @@ MODRET core_rmd(cmd_rec *cmd) {
 
 MODRET core_mkd(cmd_rec *cmd) {
   int res;
-  char *dir;
+  char *cmd_name, *dir;
   struct stat sbuf;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
@@ -3971,13 +4056,25 @@ MODRET core_mkd(cmd_rec *cmd) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EINVAL));
     return PR_ERROR(cmd);
   }
-   
-  if (!dir_check_canon(cmd->tmp_pool, C_MKD, cmd->group, dir, NULL) ||
-      !dir_check_canon(cmd->tmp_pool, C_XMKD, cmd->group, dir, NULL)) {
+
+  cmd_name = cmd->argv[0];
+  cmd->argv[0] = C_MKD;
+
+  if (!dir_check_canon(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
+    cmd->argv[0] = cmd_name;
+    pr_log_debug(DEBUG8, "%s command denied by <Limit> config", cmd->argv[0]);
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
+  }
+
+  cmd->argv[0] = C_XMKD;
+  if (!dir_check_canon(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
+    cmd->argv[0] = cmd_name;
     pr_log_debug(DEBUG8, "%s command denied by <Limit> config", cmd->argv[0]);
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
     return PR_ERROR(cmd);
   }
+
+  cmd->argv[0] = cmd_name;
 
   if (pr_fsio_mkdir(dir, 0777) < 0) {
     int xerrno = errno;
@@ -4087,7 +4184,7 @@ MODRET core_mdtm(cmd_rec *cmd) {
     pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
 
   if (!path ||
-      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
+      !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
       pr_fsio_stat(path, &st) == -1) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return PR_ERROR(cmd);
@@ -4140,7 +4237,7 @@ MODRET core_size(cmd_rec *cmd) {
   pr_fs_clear_cache();
 
   if (!path ||
-      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
+      !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
       pr_fsio_stat(path, &st) == -1) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return PR_ERROR(cmd);
@@ -4191,7 +4288,7 @@ MODRET core_dele(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  if (!dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL)) {
+  if (!dir_check_canon(cmd->tmp_pool, cmd, cmd->group, path, NULL)) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return PR_ERROR(cmd);
   }
@@ -4288,7 +4385,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   }
 
   if (!path ||
-      !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
+      !dir_check_canon(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
       pr_fsio_rename(session.xfer.path, path) == -1) {
     int xerrno = errno;
 
@@ -4368,7 +4465,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
   path = dir_canonical_path(cmd->tmp_pool, path);
 
   if (!path ||
-      !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
+      !dir_check_canon(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
       !exists(path)) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return PR_ERROR(cmd);
@@ -4399,7 +4496,7 @@ MODRET core_feat(cmd_rec *cmd) {
   const char *feat = NULL;
   CHECK_CMD_ARGS(cmd, 1);
 
-  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.vwd, NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.vwd, NULL)) {
     pr_log_debug(DEBUG3, "%s command denied by <Limit> configuration",
       cmd->argv[0]);
     pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(EPERM));
@@ -4887,7 +4984,7 @@ static conftable core_conftab[] = {
   { "Allow",			set_allowdeny,			NULL },
   { "AllowAll",			set_allowall,			NULL },
   { "AllowClass",		set_allowdenyusergroupclass,	NULL },
-  { "AllowFilter",		set_allowfilter,		NULL },
+  { "AllowFilter",		set_allowdenyfilter,		NULL },
   { "AllowForeignAddress",	set_allowforeignaddress,	NULL },
   { "AllowGroup",		set_allowdenyusergroupclass,	NULL },
   { "AllowOverride",		set_allowoverride,		NULL },
@@ -4904,7 +5001,7 @@ static conftable core_conftab[] = {
   { "Deny",			set_allowdeny,			NULL },
   { "DenyAll",			set_denyall,			NULL },
   { "DenyClass",		set_allowdenyusergroupclass,	NULL },
-  { "DenyFilter",		set_denyfilter,			NULL },
+  { "DenyFilter",		set_allowdenyfilter,		NULL },
   { "DenyGroup",		set_allowdenyusergroupclass,	NULL },
   { "DenyUser",			set_allowdenyusergroupclass,	NULL },
   { "DisplayChdir",		set_displaychdir,		NULL },

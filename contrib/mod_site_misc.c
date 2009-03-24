@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_site_misc -- a module implementing miscellaneous SITE commands
  *
- * Copyright (c) 2004-2008 The ProFTPD Project
+ * Copyright (c) 2004-2009 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.9 2008-12-10 06:54:05 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.10 2009-03-24 06:23:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -254,7 +254,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
 
   if (strcasecmp(cmd->argv[1], "MKDIR") == 0) {
     register unsigned int i;
-    char *path = "";
+    char *cmd_name, *path = "";
     unsigned char *authenticated;
 
     if (cmd->argc < 3)
@@ -277,10 +277,14 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    if (!dir_check(cmd->tmp_pool, "SITE_MKDIR", G_WRITE, path, NULL)) {
+    cmd_name = cmd->argv[0];
+    cmd->argv[0] = "SITE_MKDIR";
+    if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, path, NULL)) {
+      cmd->argv[0] = cmd_name;
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
       return PR_ERROR(cmd);
     }
+    cmd->argv[0] = cmd_name;
 
     if (site_misc_create_path(cmd->tmp_pool, path) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
@@ -303,7 +307,7 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
 
   if (strcasecmp(cmd->argv[1], "RMDIR") == 0) {
     register unsigned int i;
-    char *path = "";
+    char *cmd_name, *path = "";
     unsigned char *authenticated;
 
     if (cmd->argc < 3)
@@ -321,10 +325,14 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
 
     path = pr_fs_decode_path(cmd->tmp_pool, path);
 
-    if (!dir_check(cmd->tmp_pool, "SITE_RMDIR", G_WRITE, path, NULL)) {
+    cmd_name = cmd->argv[0];
+    cmd->argv[0] = "SITE_RMDIR";
+    if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, path, NULL)) {
+      cmd->argv[0] = cmd_name;
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
       return PR_ERROR(cmd);
     }
+    cmd->argv[0] = cmd_name;
 
     if (site_misc_delete_path(cmd->tmp_pool, path) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
@@ -346,7 +354,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
 
   if (strcasecmp(cmd->argv[1], "SYMLINK") == 0) {
-    char *src, *dst;
+    char *cmd_name, *src, *dst;
     unsigned char *authenticated;
 
     if (cmd->argc < 4)
@@ -361,17 +369,22 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
 
     src = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[2]);
 
-    if (!dir_check(cmd->tmp_pool, "SITE_SYMLINK", G_WRITE, src, NULL)) {
+    cmd_name = cmd->argv[0];
+    cmd->argv[0] = "SITE_SYMLINK";
+    if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, src, NULL)) {
+      cmd->argv[0] = cmd_name;
       pr_response_add_err(R_550, "%s: %s", cmd->argv[2], strerror(EPERM));
       return PR_ERROR(cmd);
     }
 
     dst = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[3]);
 
-    if (!dir_check(cmd->tmp_pool, "SITE_SYMLINK", G_WRITE, dst, NULL)) {
+    if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, dst, NULL)) {
+      cmd->argv[0] = cmd_name;
       pr_response_add_err(R_550, "%s: %s", cmd->argv[3], strerror(EPERM));
       return PR_ERROR(cmd);
     }
+    cmd->argv[0] = cmd_name;
 
     if (site_misc_check_filters(cmd, dst) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
@@ -399,7 +412,7 @@ MODRET site_misc_utime(cmd_rec *cmd) {
 
   if (strcasecmp(cmd->argv[1], "UTIME") == 0) {
     register unsigned int i;
-    char c, *p, *path = "";
+    char c, *cmd_name, *p, *path = "";
     unsigned int year, month, day, hour, min, sec = 0;
     struct timeval tvs[2];
     unsigned char *authenticated;
@@ -435,10 +448,14 @@ MODRET site_misc_utime(cmd_rec *cmd) {
 
     path = pr_fs_decode_path(cmd->tmp_pool, path);
 
-    if (!dir_check(cmd->tmp_pool, "SITE_UTIME", G_WRITE, path, NULL)) {
+    cmd_name = cmd->argv[0];
+    cmd->argv[0] = "SITE_UTIME";
+    if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, path, NULL)) {
+      cmd->argv[0] = cmd_name;
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
       return PR_ERROR(cmd);
     }
+    cmd->argv[0] = cmd_name;
 
     if (site_misc_check_filters(cmd, path) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));

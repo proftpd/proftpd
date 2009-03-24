@@ -5389,7 +5389,7 @@ MODRET tls_ccc(cmd_rec *cmd) {
   }
 
   /* Check for <Limit> restrictions. */
-  if (!dir_check(cmd->tmp_pool, C_CCC, G_NONE, session.cwd, NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, G_NONE, session.cwd, NULL)) {
     pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
     tls_log("%s: unwilling to accept security parameters", cmd->argv[0]);
     return PR_ERROR(cmd);
@@ -5509,7 +5509,7 @@ MODRET tls_prot(cmd_rec *cmd) {
   }
 
   /* Check for <Limit> restrictions. */
-  if (!dir_check(cmd->tmp_pool, C_PROT, G_NONE, session.cwd, NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, G_NONE, session.cwd, NULL)) {
     pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
     tls_log("%s: denied by <Limit> configuration", cmd->argv[0]);
     return PR_ERROR(cmd);

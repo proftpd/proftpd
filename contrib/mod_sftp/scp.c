@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.6 2009-03-20 23:03:52 castaglia Exp $
+ * $Id: scp.c,v 1.7 2009-03-24 06:23:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -915,7 +915,7 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         sp->best_path = dir_best_path(scp_pool, sp->filename);
       }
 
-      if (!dir_check(p, C_STOR, G_WRITE, (char *) sp->path, NULL)) {
+      if (!dir_check(p, cmd, G_WRITE, (char *) sp->path, NULL)) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "scp upload to '%s' blocked by <Limit> configuration", sp->path);
 
@@ -1422,7 +1422,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
   }
 
   if (!sp->fh) {
-    if (!dir_check(p, C_RETR, G_READ, sp->path, NULL)) {
+    if (!dir_check(p, cmd, G_READ, sp->path, NULL)) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "scp download of '%s' blocked by <Limit> configuration", sp->path);
 

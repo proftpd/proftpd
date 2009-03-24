@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.254 2009-03-12 02:57:46 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.255 2009-03-24 06:23:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1147,7 +1147,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
 
   if (!path ||
-      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL)) {
+      !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL)) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return PR_ERROR(cmd);
   }
@@ -1297,8 +1297,8 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   /* It's OK to reuse the char * pointer for filename. */
   filename = dir_best_path(cmd->tmp_pool, cmd->arg);
 
-  if (!filename || !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group,
-      filename, NULL)) {
+  if (!filename ||
+      !dir_check(cmd->tmp_pool, cmd, cmd->group, filename, NULL)) {
     int xerrno = errno;
 
     /* Do not forget to delete the file created by mkstemp(3) if there is
@@ -1795,7 +1795,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
 
   if (!dir ||
-      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL)) {
+      !dir_check(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return PR_ERROR(cmd);
   }
