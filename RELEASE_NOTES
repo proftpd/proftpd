@@ -147,6 +147,10 @@ files.
 
       if you want to use RFC1413 lookups.
 
+    LogFormat, SQLNamedQuery
+
+      New %{protocol} variable, with values of "ftp", "ftps", "sftp", "scp".
+
     RewriteCondition, RewriteRule
 
       Environment variable support via "%{ENV:var}" syntax.
@@ -177,4 +181,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-03-18 23:32:31 $
+Last Updated: $Date: 2009-03-24 17:50:03 $
