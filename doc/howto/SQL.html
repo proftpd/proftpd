@@ -1,4 +1,4 @@
-<!-- $Id: SQL.html,v 1.10 2007-08-29 17:47:42 castaglia Exp $ -->
+<!-- $Id: SQL.html,v 1.11 2009-03-25 05:41:28 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/SQL.html,v $ -->
 
 <html>
@@ -474,9 +474,50 @@ the SQL client libraries; then run <code>/sbin/ldconfig</code> in order
 update the shared library loader cache file.  Once the shared library loader
 has been updated, <code>proftpd</code> should start without problems.
 
+<p><a name="SQLUsersetfast"></a>
+<font color=red>Question</font>: What is the difference between the
+<em>userset</em> and <em>usersetfast</em> <code>SQLAuthenticate</code> options,
+and when would I use them?<br>
+<font color=blue>Answer</font>: It depends, of course.
+
+<p>
+First, the use of these options is <i>only</i> relevant when the session
+is chrooted, either via the <code>DefaultRoot</code> directive or because
+it is an <code>&lt;Anonymous&gt;</code> login.  (Why?  When chrooting a
+session, <code>proftpd</code> calls the <code>setpwent()</code> function in
+order to "reset" or "rewind" the user info database; this ensures that
+all of the info in the user info database is accessible in the chrooted
+session.)
+
+<p>
+The <em>userset</em> <code>SQLAuthenticate</code> option says that the
+info for <i>all</i> users should be looked up and cached when
+<code>setpwent()</code> is called.  Specifically, the list of names for every
+user in the database (and <i>just</i> the names!) is looked up.  For each
+user name, a SELECT query (using the <code>SQLUserInfo</code> configuration)
+is used to retrieve all of the details for that user.
+
+<p>
+The <em>usersetfast</em> <code>SQLAuthenticate</code> option goes even further,
+Rather than having a SELECT per user name, <em>usersetfast</em> says to lookup
+<i>all the info for all the users</i> when <code>setpwent()</code> is called,
+in a single SELECT query (again, based on the <code>SQLUserInfo</code>
+configuration).
+
+<p>
+Knowing the above, the choice of when to use <em>userset</em> or
+<em>usersetfast</em> becomes one of efficiency.  Some efficiency (in terms
+of ID-to-name lookups during the session) can be gained by using
+<em>userset</em>, since the info for all users is cached (using a SELECT query
+per user).  Even more efficiency is gained by using <em>usersetfast</em> to
+lookup the info for all users using a single SELECT query.  In both cases, the
+price you pay for the efficiency is increased memory usage in the session
+process, of course; the info for <b>all</b> users will be held in memory in
+the process for every session.
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2007-08-29 17:47:42 $</i><br>
+Last Updated: <i>$Date: 2009-03-25 05:41:28 $</i><br>
 <hr>
 
 </body>
