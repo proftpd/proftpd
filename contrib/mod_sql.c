@@ -23,14 +23,14 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.160 2009-03-16 23:26:58 castaglia Exp $
+ * $Id: mod_sql.c,v 1.161 2009-03-25 05:03:17 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_VERSION			"mod_sql/4.2.2"
+#define MOD_SQL_VERSION			"mod_sql/4.2.3"
 
 #if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
@@ -165,7 +165,10 @@ static struct {
   char *homedirfield;           /* user homedir field */
   char *shellfield;             /* user login shell field */
   char *userwhere;              /* users where clause */
+
   char *usercustom;		/* custom users query */
+  char *usercustomuserset;	/* custom query to get 'userset' users */
+  char *usercustomusersetfast;	/* custom query to get 'usersetfast' users */
 
   /*
    * group table and field information
@@ -3075,16 +3078,40 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
 
   /* single select or not? */
   if (SQL_FASTUSERS) {
-    /* retrieve our list of passwds */
-    where = sql_prepare_where(0, cmd, 1, cmap.userwhere, NULL);
+    /* retrieve our list of users */
 
-    mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default",
-      cmap.usrtable, cmap.usrfields, where), "sql_select");
-    if (check_response(mr) < 0)
-      return mr;
+    if (!cmap.usercustomusersetfast) {
+      where = sql_prepare_where(0, cmd, 1, cmap.userwhere, NULL);
+
+      mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default",
+        cmap.usrtable, cmap.usrfields, where), "sql_select");
+      if (check_response(mr) < 0)
+        return mr;
   
-    sd = (sql_data_t *) mr->data;
-    
+      sd = (sql_data_t *) mr->data;
+
+    } else {
+      mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 2, "default",
+        cmap.usercustomusersetfast));
+
+      if (check_response(mr) < 0)
+        return mr;
+
+      if (MODRET_HASDATA(mr)) {
+        array_header *ah = (array_header *) mr->data;
+        sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+
+        /* Assume the query returned 6 columns per row. */
+        sd->fnum = 6;
+        sd->rnum = ah->nelts / 6;
+        sd->data = (char **) ah->elts;
+
+      } else {
+        sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+        sd->rnum = 0;
+      }
+    }
+ 
     /* walk through the array, adding users to the cache */
     for (i = 0, cnt = 0; cnt < sd->rnum; cnt++) {
       username = sd->data[i++];
@@ -3148,16 +3175,36 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
     } 
 
   } else {
-    /* retrieve our list of passwds */
-    where = sql_prepare_where(0, cmd, 1, cmap.userwhere, NULL);
+    /* Retrieve our list of users */
 
-    mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default",
-      cmap.usrtable, cmap.usrfield, where), "sql_select");
-    if (check_response(mr) < 0)
-      return mr;
+    if (!cmap.usercustomuserset) {
+      where = sql_prepare_where(0, cmd, 1, cmap.userwhere, NULL);
+
+      mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default",
+        cmap.usrtable, cmap.usrfield, where), "sql_select");
+      if (check_response(mr) < 0)
+        return mr;
     
-    sd = (sql_data_t *) mr->data;
-    
+      sd = (sql_data_t *) mr->data;
+
+    } else {
+      mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 2, "default",
+        cmap.usercustomuserset));
+
+      if (check_response(mr) < 0)
+        return mr;
+
+      if (MODRET_HASDATA(mr)) {
+        array_header *ah = (array_header *) mr->data;
+        sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+
+        /* Assume the query only returned 1 column per row. */
+        sd->fnum = 1;
+        sd->rnum = ah->nelts;
+        sd->data = (char **) ah->elts;
+      }
+    }
+
     for (cnt = 0; cnt < sd->rnum; cnt++) {
       username = sd->data[cnt];
       
@@ -3934,7 +3981,7 @@ MODRET add_virtualstr(char *name, cmd_rec *cmd) {
 }
 
 /* usage: SQLUserInfo table(s) usernamefield passwdfield uid gid homedir
- *           shell | custom:/<sql-named-query>
+ *           shell | custom:/<sql-named-query>[/<sql-named-query>[/<sql-named-query>]]
  */
 MODRET set_sqluserinfo(cmd_rec *cmd) {
 
@@ -3944,15 +3991,37 @@ MODRET set_sqluserinfo(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
   if (cmd->argc-1 == 1) {
-    char *tmp = NULL;
+    char *user = NULL, *userset = NULL, *usersetfast = NULL;
+    char *ptr = NULL;
 
     /* If only one paramter is used, it must be of the "custom:/" form. */
-    if (strncmp("custom:/", cmd->argv[1], 8) != 0)
+    if (strncmp("custom:/", cmd->argv[1], 8) != 0) {
       CONF_ERROR(cmd, "badly formatted parameter");
+    }
 
-    tmp = strchr(cmd->argv[1], '/');
+    ptr = strchr(cmd->argv[1] + 8, '/');
+    if (ptr == NULL) {
+      add_config_param_str("SQLCustomUserInfoByName", 1, cmd->argv[1] + 8);
+      return PR_HANDLED(cmd);
+    }
 
-    add_config_param_str("SQLCustomUserInfo", 1, tmp+1);
+    *ptr = '\0';
+    user = cmd->argv[1] + 8;
+    userset = ptr + 1;
+
+    add_config_param_str("SQLCustomUserInfoByName", 1, user);
+
+    ptr = strchr(userset, '/');
+    if (ptr == NULL) {
+      add_config_param_str("SQLCustomUserInfoAllNames", 1, userset);
+      return PR_HANDLED(cmd);
+    }
+
+    *ptr = '\0';
+    usersetfast = ptr + 1;
+
+    add_config_param_str("SQLCustomUserInfoAllNames", 1, userset);
+    add_config_param_str("SQLCustomUserInfoAllUsers", 1, usersetfast);
     return PR_HANDLED(cmd);
   }
 
@@ -4778,11 +4847,11 @@ static int sql_sess_init(void) {
     cmap.homedirfield = MOD_SQL_DEF_USERHOMEDIRFIELD;
     cmap.shellfield = MOD_SQL_DEF_USERSHELLFIELD;
 
-    /* It's possible that a custom UserInfo query was configured.  Check for
-     * this.
+    /* It's possible that custom UserInfo queries were configured.  Check for
+     * them.
      */
-    temp_ptr = get_param_ptr(main_server->conf, "SQLCustomUserInfo", FALSE);
-
+    temp_ptr = get_param_ptr(main_server->conf, "SQLCustomUserInfoByName",
+      FALSE);
     if (temp_ptr) {
       config_rec *custom_c = NULL;
       char *named_query = pstrcat(tmp_pool, "SQLNamedQuery_", temp_ptr, NULL);
@@ -4792,8 +4861,49 @@ static int sql_sess_init(void) {
         sql_log(DEBUG_INFO, "error: unable to resolve custom "
           "SQLNamedQuery name '%s'", temp_ptr);
 
-      } else
+      } else {
         cmap.usercustom = temp_ptr;
+      }
+    }
+
+    temp_ptr = get_param_ptr(main_server->conf, "SQLCustomUserInfoAllNames",
+      FALSE);
+    if (temp_ptr) {
+      config_rec *custom_c = NULL;
+      char *named_query = pstrcat(tmp_pool, "SQLNamedQuery_", temp_ptr, NULL);
+
+      custom_c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+      if (custom_c == NULL) {
+        sql_log(DEBUG_INFO, "error: unable to resolve custom "
+          "SQLNamedQuery name '%s'", temp_ptr);
+
+      } else {
+        cmap.usercustomuserset = temp_ptr;
+      }
+    }
+
+    temp_ptr = get_param_ptr(main_server->conf, "SQLCustomUserInfoAllUsers",
+      FALSE);
+    if (temp_ptr) {
+      config_rec *custom_c = NULL;
+      char *named_query = pstrcat(tmp_pool, "SQLNamedQuery_", temp_ptr, NULL);
+
+      custom_c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+      if (custom_c == NULL) {
+        sql_log(DEBUG_INFO, "error: unable to resolve custom "
+          "SQLNamedQuery name '%s'", temp_ptr);
+
+      } else {
+        cmap.usercustomusersetfast = temp_ptr;
+      }
+    }
+
+    if (cmap.usercustomuserset &&
+        cmap.usercustomusersetfast &&
+        strcmp(cmap.usercustomuserset, cmap.usercustomusersetfast) == 0) {
+      sql_log(DEBUG_INFO, "warning: 'userset' and 'usersetfast' custom "
+        "SQLUserInfo SQLNamedQuery are the same query ('%s'), probable "
+        "misconfiguration", cmap.usercustomuserset);
     }
 
   } else {
