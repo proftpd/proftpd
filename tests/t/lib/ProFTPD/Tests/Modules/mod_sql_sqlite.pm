@@ -950,7 +950,7 @@ CREATE TABLE users (
   host TEXT
 );
 INSERT INTO users (userid, passwd, uid, gid, homedir, shell, host) VALUES ('$user1', '$passwd', 500, 500, '$home_dir', '/bin/bash', 'remotehost');
-INSERT INTO users (userid, passwd, uid, gid, homedir, shell, host) VALUES ('$user2', '$passwd', 500, 500, '$home_dir', '/bin/bash', 'localhost');
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell, host) VALUES ('$user2', '$passwd', 500, 500, '$home_dir', '/bin/bash', '127.0.0.1');
 
 CREATE TABLE groups (
   groupname TEXT,
