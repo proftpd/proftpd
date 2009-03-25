@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.13 2009-01-22 19:25:29 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.14 2009-03-25 05:30:05 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -1113,6 +1113,7 @@ whether NULL or not.  The parameters are described below:
 </ul>
 
 <p>
+<b>Custom Queries</b><br>
 As of <code>1.2.9rc1</code>, the <code>SQLUserInfo</code> directive accepts
 an alternate syntax:
 <pre>
@@ -1130,7 +1131,36 @@ user name, which is exactly what <code>SQLUserInfo</code> is meant to
 provide.
 
 <p>
+<b>Note</b>, however, that if you use the <em>userset</em> or
+<em>usersetfast</em> <a href="#SQLAuthenticate"><code>SQLAuthenticate</code></a>
+options, you will need to supply some additional <code>SQLNamedQuery</code>
+names in your custom <code>SQLUserInfo</code> directive.  The
+<code>SQLUserInfo</code> directive supports:
+<pre>
+  SQLUserInfo custom:/<i>name</i>[/<i>userset-name</i>[/<i>usersetfast-name</i>]]
+</pre>
+where <em>userset-name</em> is the name of a SELECT <code>SQLNamedQuery</code>
+that returns the names (and <i>only the names</i>) of all users, and the
+<em>usersetfast-name</em> refers to a SELECT <code>SQLNamedQuery</code>
+that returns all the fields (<i>i.e.</i> <code>username, passwd, uid, gid,
+homedir, shell</code> in that order) for all users.
+
+<p>
+To provide a concrete example:
+<pre>
+  SQLAuthenticate users groups usersetfast
+  SQLUserInfo custom:/get-user/get-user-names/get-all-users
+  SQLNamedQuery get-user SELECT "userid, passwd, uid, gid, homedir, shell FROM users WHERE userid = '%U'"
+  SQLNamedQuery get-user-names SELECT "userid FROM users"
+  SQLNamedQuery get-all-users SELECT "userid, passwd, uid, gid, homedir, shell FROM users"
+</pre>
+With a configuration similar to these, using either of the <em>userset</em> or
+<em>usersetfast</em> in your <code>SQLAuthenticate</code> directive will
+work as expected.
+
+<p>
 <b>See Also</b>:
+  <a href="#SQLAuthenticate"><code>SQLAuthenticate</code></a>,
   <a href="#SQLLog"><code>SQLLog</code></a>, 
   <a href="#SQLNamedQuery"><code>SQLNamedQuery</code></a>
 
@@ -1200,7 +1230,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-01-22 19:25:29 $</i><br>
+Last Updated: <i>$Date: 2009-03-25 05:30:05 $</i><br>
 
 <br><hr>
 
