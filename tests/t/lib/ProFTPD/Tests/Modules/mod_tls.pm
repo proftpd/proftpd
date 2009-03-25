@@ -582,14 +582,18 @@ sub tls_crl_file_ok {
       my $client;
 
       eval {
-        $client = Net::FTPSSL->new('127.0.0.1',
-          Encryption => 'E',
-          Port => $port,
-
-          # IO::Socket::SSL options
+        # IO::Socket::SSL options
+        my $ssl_opts = {
           SSL_use_cert => 1,
           SSL_cert_file => $client_cert,
           SSL_key_file => $client_cert,
+        };
+
+        $client = Net::FTPSSL->new('127.0.0.1',
+          Croak => 1,
+          Encryption => 'E',
+          Port => $port,
+          SSL_Advanced => $ssl_opts,
         );
       };
 
