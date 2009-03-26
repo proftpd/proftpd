@@ -149,7 +149,9 @@ files.
 
     LogFormat, SQLNamedQuery
 
-      New %{protocol} variable, with values of "ftp", "ftps", "sftp", "scp".
+      New %{protocol} variable, with values of "ftp", "ftps", "ssh2", "sftp",
+      "scp".  (Note that the value will be "ssh2" until the SFTP or SCP channel
+      is opened, thus during login, the %{protocol} value will be "ssh2".)
 
     RewriteCondition, RewriteRule
 
@@ -185,4 +187,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-03-25 05:30:05 $
+Last Updated: $Date: 2009-03-26 05:18:42 $
