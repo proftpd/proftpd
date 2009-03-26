@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.157 2009-03-24 06:23:27 castaglia Exp $
+ * $Id: mod_ls.c,v 1.158 2009-03-26 20:20:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -206,7 +206,7 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
   return res;
 }
 
-static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
+static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
   int res = 0;
   char fullpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   mode_t *fake_mode = NULL;

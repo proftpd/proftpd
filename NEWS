@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1017 2009-03-25 05:03:17 castaglia Exp $
+$Id: NEWS,v 1.1018 2009-03-26 20:20:52 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -91,6 +91,7 @@ CVS
 - Bug 2067 - Allow/Deny Filters should be supported in the <Limit> context.
 - Bug 2434 - Buggy interaction between custom SQLUserInfo and 'userset'
   SQLAuthenticate parameter.  See the SQLUserInfo description for more details.
+- Bug 3226 - HideFiles directive not working properly in <Anonymous> sections.
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------

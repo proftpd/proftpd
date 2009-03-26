@@ -50,6 +50,27 @@ my $TESTS = {
     order => ++$order,
     test_class => [qw(forking)],
   },
+
+  hidefiles_anon_list_rel_path_bug3226 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
+  },
+
+  hidefiles_anon_nlst_rel_path_bug3226 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
+  },
+
+  hidefiles_anon_list_abs_path_bug3226 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
+  },
+
+  hidefiles_anon_nlst_abs_path_bug3226 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
+  },
+
 };
 
 sub new {
@@ -890,7 +911,7 @@ sub hidefiles_bug3130 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 2) };
+    eval { server_wait($config_file, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1045,7 +1066,7 @@ sub hidefiles_per_user_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 2) };
+    eval { server_wait($config_file, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1208,7 +1229,788 @@ sub hidefiles_per_not_user_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 2) };
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub hidefiles_anon_list_rel_path_bug3226 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
+
+  my $user = 'proftpd';
+  my $group = 'ftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  my $pub_dir = File::Spec->rel2abs("$tmpdir/pub");
+  mkpath($pub_dir);
+
+  my $sub_dir1 = File::Spec->rel2abs("$pub_dir/foo");
+  mkpath($sub_dir1);
+
+  my $sub_dir2 = File::Spec->rel2abs("$pub_dir/bar");
+  mkpath($sub_dir2);
+
+  my $test_file = "X12foo";
+  if (open(my $fh, "> $sub_dir2/$test_file")) {
+    close($fh);
+
+  } else {
+    die("Can't write test file $sub_dir2/$test_file: $!");
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    DebugLevel => 10,
+
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+
+    Anonymous => {
+      $home_dir => [
+        "User $user",
+        "Group $group",
+        "UserAlias anonymous $user",
+        'RequireValidShell off',
+
+        '  <Limit ALL>',
+        '    IgnoreHidden on',
+        '  </Limit>',
+
+        '  <Directory pub>',
+        '    HideFiles !foo',
+        '  </Directory>',
+      ],
+    },
+
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      $client->login('anonymous', 'nospam');
+      $client->cwd('pub');
+
+      my $conn = $client->list_raw();
+      unless ($conn) {
+        die("Failed to LIST: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192);
+      $conn->close();
+
+      $client->quit();
+
+      # We have to be careful of the fact that readdir returns directory
+      # entries in an unordered fashion.
+      my $res = {};
+      my $lines = [split(/\n/, $buf)];
+      foreach my $line (@$lines) {
+        if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
+          $res->{$1} = 1;
+        }
+      }
+
+      my $expected = {
+        'foo' => 1,
+      };
+
+      my $ok = 1;
+      my $mismatch;
+
+      my $seen = [];
+      foreach my $name (keys(%$res)) {
+        push(@$seen, $name);
+
+        unless (defined($expected->{$name})) {
+          $mismatch = $name;
+          $ok = 0;
+          last;
+        }
+      }
+
+      unless ($ok) {
+        die("Unexpected name '$mismatch' appeared in NLST data")
+      }
+
+      # Now remove from $expected all of the paths we saw; if there are
+      # any entries remaining in $expected, something went wrong.
+      foreach my $name (@$seen) {
+        delete($expected->{$name});
+      }
+
+      my $remaining = scalar(keys(%$expected));
+      $self->assert(0 == $remaining,
+        test_msg("Expected 0, got $remaining"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub hidefiles_anon_nlst_rel_path_bug3226 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
+
+  my $user = 'proftpd';
+  my $group = 'ftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  my $pub_dir = File::Spec->rel2abs("$tmpdir/pub");
+  mkpath($pub_dir);
+
+  my $sub_dir1 = File::Spec->rel2abs("$pub_dir/foo");
+  mkpath($sub_dir1);
+
+  my $sub_dir2 = File::Spec->rel2abs("$pub_dir/bar");
+  mkpath($sub_dir2);
+
+  my $test_file = "X12foo";
+  if (open(my $fh, "> $sub_dir2/$test_file")) {
+    close($fh);
+
+  } else {
+    die("Can't write test file $sub_dir2/$test_file: $!");
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    DebugLevel => 10,
+
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+
+    Anonymous => {
+      $home_dir => [
+        "User $user",
+        "Group $group",
+        "UserAlias anonymous $user",
+        'RequireValidShell off',
+
+        '  <Limit ALL>',
+        '    IgnoreHidden on',
+        '  </Limit>',
+
+        '  <Directory pub>',
+        '    HideFiles !foo',
+        '  </Directory>',
+      ],
+    },
+
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      $client->login('anonymous', 'nospam');
+      $client->cwd('pub');
+
+      my $conn = $client->nlst_raw();
+      unless ($conn) {
+        die("Failed to NLST: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192);
+      $conn->close();
+
+      $client->quit();
+
+      # We have to be careful of the fact that readdir returns directory
+      # entries in an unordered fashion.
+      my $res = {};
+      my $lines = [split(/\n/, $buf)];
+      foreach my $line (@$lines) {
+        $res->{$line} = 1;
+      }
+
+      my $expected = {
+        'foo' => 1,
+      };
+
+      my $ok = 1;
+      my $mismatch;
+
+      my $seen = [];
+      foreach my $name (keys(%$res)) {
+        push(@$seen, $name);
+
+        unless (defined($expected->{$name})) {
+          $mismatch = $name;
+          $ok = 0;
+          last;
+        }
+      }
+
+      unless ($ok) {
+        die("Unexpected name '$mismatch' appeared in NLST data")
+      }
+
+      # Now remove from $expected all of the paths we saw; if there are
+      # any entries remaining in $expected, something went wrong.
+      foreach my $name (@$seen) {
+        delete($expected->{$name});
+      }
+
+      my $remaining = scalar(keys(%$expected));
+      $self->assert(0 == $remaining,
+        test_msg("Expected 0, got $remaining"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub hidefiles_anon_list_abs_path_bug3226 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
+
+  my $user = 'proftpd';
+  my $group = 'ftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  my $pub_dir = File::Spec->rel2abs("$tmpdir/pub");
+  mkpath($pub_dir);
+
+  my $sub_dir1 = File::Spec->rel2abs("$pub_dir/foo");
+  mkpath($sub_dir1);
+
+  my $sub_dir2 = File::Spec->rel2abs("$pub_dir/bar");
+  mkpath($sub_dir2);
+
+  my $test_file = "X12foo";
+  if (open(my $fh, "> $sub_dir2/$test_file")) {
+    close($fh);
+
+  } else {
+    die("Can't write test file $sub_dir2/$test_file: $!");
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    DebugLevel => 10,
+
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+
+    Anonymous => {
+      $home_dir => [
+        "User $user",
+        "Group $group",
+        "UserAlias anonymous $user",
+        'RequireValidShell off',
+
+        '  <Limit ALL>',
+        '    IgnoreHidden on',
+        '  </Limit>',
+
+        "  <Directory $pub_dir>",
+        '    HideFiles !foo',
+        '  </Directory>',
+
+      ],
+    },
+
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      $client->login('anonymous', 'nospam');
+      $client->cwd('pub');
+
+      my $conn = $client->list_raw();
+      unless ($conn) {
+        die("Failed to LIST: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192);
+      $conn->close();
+
+      $client->quit();
+
+      # We have to be careful of the fact that readdir returns directory
+      # entries in an unordered fashion.
+      my $res = {};
+      my $lines = [split(/\n/, $buf)];
+      foreach my $line (@$lines) {
+        if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
+          $res->{$1} = 1;
+        }
+      }
+
+      my $expected = {
+        'foo' => 1,
+      };
+
+      my $ok = 1;
+      my $mismatch;
+
+      my $seen = [];
+      foreach my $name (keys(%$res)) {
+        push(@$seen, $name);
+
+        unless (defined($expected->{$name})) {
+          $mismatch = $name;
+          $ok = 0;
+          last;
+        }
+      }
+
+      unless ($ok) {
+        die("Unexpected name '$mismatch' appeared in NLST data")
+      }
+
+      # Now remove from $expected all of the paths we saw; if there are
+      # any entries remaining in $expected, something went wrong.
+      foreach my $name (@$seen) {
+        delete($expected->{$name});
+      }
+
+      my $remaining = scalar(keys(%$expected));
+      $self->assert(0 == $remaining,
+        test_msg("Expected 0, got $remaining"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub hidefiles_anon_nlst_abs_path_bug3226 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
+
+  my $user = 'proftpd';
+  my $group = 'ftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  my $pub_dir = File::Spec->rel2abs("$tmpdir/pub");
+  mkpath($pub_dir);
+
+  my $sub_dir1 = File::Spec->rel2abs("$pub_dir/foo");
+  mkpath($sub_dir1);
+
+  my $sub_dir2 = File::Spec->rel2abs("$pub_dir/bar");
+  mkpath($sub_dir2);
+
+  my $test_file = "X12foo";
+  if (open(my $fh, "> $sub_dir2/$test_file")) {
+    close($fh);
+
+  } else {
+    die("Can't write test file $sub_dir2/$test_file: $!");
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    DebugLevel => 10,
+
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+
+    Anonymous => {
+      $home_dir => [
+        "User $user",
+        "Group $group",
+        "UserAlias anonymous $user",
+        'RequireValidShell off',
+
+        '  <Limit ALL>',
+        '    IgnoreHidden on',
+        '  </Limit>',
+
+        "  <Directory $pub_dir>",
+        '    HideFiles !foo',
+        '  </Directory>',
+      ],
+    },
+
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      $client->login('anonymous', 'nospam');
+      $client->cwd('pub');
+
+      my $conn = $client->nlst_raw();
+      unless ($conn) {
+        die("Failed to NLST: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192);
+      $conn->close();
+
+      $client->quit();
+
+      # We have to be careful of the fact that readdir returns directory
+      # entries in an unordered fashion.
+      my $res = {};
+      my $lines = [split(/\n/, $buf)];
+      foreach my $line (@$lines) {
+        $res->{$line} = 1;
+      }
+
+      my $expected = {
+        'foo' => 1,
+      };
+
+      my $ok = 1;
+      my $mismatch;
+
+      my $seen = [];
+      foreach my $name (keys(%$res)) {
+        push(@$seen, $name);
+
+        unless (defined($expected->{$name})) {
+          $mismatch = $name;
+          $ok = 0;
+          last;
+        }
+      }
+
+      unless ($ok) {
+        die("Unexpected name '$mismatch' appeared in NLST data")
+      }
+
+      # Now remove from $expected all of the paths we saw; if there are
+      # any entries remaining in $expected, something went wrong.
+      foreach my $name (@$seen) {
+        delete($expected->{$name});
+      }
+
+      my $remaining = scalar(keys(%$expected));
+      $self->assert(0 == $remaining,
+        test_msg("Expected 0, got $remaining"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
