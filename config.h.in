@@ -294,6 +294,9 @@
 /* Define if you have the getgrouplist function.  */
 #undef HAVE_GETGROUPLIST
 
+/* Define if you have the getgrset function.  */
+#undef HAVE_GETGRSET
+
 /* Define if you have the gethostbyname2 function.  */
 #undef HAVE_GETHOSTBYNAME2
 

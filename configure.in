@@ -1407,7 +1407,7 @@ AC_TRY_LINK(
   ]
 )
 
-AC_CHECK_FUNCS(getcwd getenv getgrouplist gethostbyname2 gethostname getnameinfo)
+AC_CHECK_FUNCS(getcwd getenv getgrouplist getgrset gethostbyname2 gethostname getnameinfo)
 AC_CHECK_FUNCS(gettimeofday hstrerror inet_aton inet_ntop inet_pton)
 AC_CHECK_FUNCS(loginrestrictions)
 AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp mlock mlockall munlock munlockall)

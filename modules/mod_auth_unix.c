@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.38 2009-03-04 18:44:01 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.39 2009-03-27 17:15:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -893,12 +893,12 @@ MODRET pw_getgroups(cmd_rec *cmd) {
     my_setgrent = setgrent;
   }
 
+#ifdef HAVE_GETGROUPLIST
   /* Determine whether to use getgrouplist(3), if available.  Older glibc
    * versions (i.e. 2.2.4 and older) had buggy getgrouplist() implementations
    * which allowed for buffer overflows (see CVS-2003-0689); do not use
    * getgrouplist() on such glibc versions.
    */
-#ifdef HAVE_GETGROUPLIST
   use_getgrouplist = TRUE;
 
 # if defined(__GLIBC__) && \
@@ -932,9 +932,7 @@ MODRET pw_getgroups(cmd_rec *cmd) {
   my_setgrent();
 
   if (use_getgrouplist) {
-#ifndef HAVE_GETGROUPLIST
-    ;
-#else
+#ifdef HAVE_GETGROUPLIST
     gid_t group_ids[NGROUPS_MAX];
     int ngroups = NGROUPS_MAX;
     register unsigned int i;
@@ -954,14 +952,77 @@ MODRET pw_getgroups(cmd_rec *cmd) {
         if (gids && pw->pw_gid != gr->gr_gid)
           *((gid_t *) push_array(gids)) = gr->gr_gid;
 
-        if (groups && pw->pw_gid != gr->gr_gid)
+        if (groups && pw->pw_gid != gr->gr_gid) {
           *((char **) push_array(groups)) = pstrdup(session.pool,
             gr->gr_name);
+        }
       }
     }
 #endif /* !HAVE_GETGROUPLIST */
 
   } else {
+#ifdef HAVE_GETGRSET
+    gid_t group_ids[NGROUPS_MAX];
+    unsigned int ngroups = 0;
+    register unsigned int i;
+    char *grgid, *grouplist, *ptr;
+
+    pr_trace_msg("auth", 4,
+      "using getgrset(3) to look up group membership");
+
+    grouplist = getgrset(pw->pw_name);
+    if (grouplist == NULL) {
+      pr_log_pri(PR_LOG_ERR, "getgrset error: %s", strerror(errno));
+      return PR_DECLINED(cmd);
+    }
+
+    ptr = grouplist;
+    memset(group_ids, 0, sizeof(group_ids));
+
+    /* The getgrset(3) function returns a string which is a comma-delimited
+     * list of group IDs.
+     */
+    grgid = strsep(&grouplist, ",");
+    while (grgid) {
+      long gid;
+
+      pr_signals_handle();
+
+      if (ngroups >= sizeof(group_ids)) {
+        /* Reached capacity of the group_ids array. */
+        break;
+      }
+
+      /* XXX Should we use strtoul(3) or even strtoull(3) here? */
+      gid = strtol(grgid, NULL, 10);
+
+      /* Skip the primary group. */
+      if ((gid_t) gid == pw->pw_gid) {
+        grgid = strsep(&grouplist, ",");
+        continue;
+      }
+
+      group_ids[ngroups] = (gid_t) gid;
+      ngroups++;
+
+      grgid = strsep(&grouplist, ",");
+    }
+
+    for (i = 0; i < ngroups; i++) {
+      gr = my_getgrgid(group_ids[i]);
+      if (gr) {
+        if (gids && pw->pw_gid != gr->gr_gid)
+          *((gid_t *) push_array(gids)) = gr->gr_gid;
+
+        if (groups && pw->pw_gid != gr->gr_gid) {
+          *((char **) push_array(groups)) = pstrdup(session.pool,
+            gr->gr_name);
+        }
+      }
+    }
+
+    free(ptr);
+#else
     char **gr_member = NULL;
 
     /* This is where things get slow, expensive, and ugly.  Loop through
@@ -980,19 +1041,24 @@ MODRET pw_getgroups(cmd_rec *cmd) {
           if (gids)
             *((gid_t *) push_array(gids)) = gr->gr_gid;
 
-          if (groups && pw->pw_gid != gr->gr_gid)
+          if (groups && pw->pw_gid != gr->gr_gid) {
             *((char **) push_array(groups)) = pstrdup(session.pool,
               gr->gr_name);
+          }
         }
       }
     }
+#endif /* !HAVE_GETGRSET */
   }
 
-  if (gids && gids->nelts > 0)
+  if (gids &&
+      gids->nelts > 0) {
     return mod_create_data(cmd, (void *) &gids->nelts);
 
-  else if (groups && groups->nelts > 0)
+  } else if (groups &&
+             groups->nelts > 0) {
     return mod_create_data(cmd, (void *) &groups->nelts);
+  }
 
   return PR_DECLINED(cmd);
 }
