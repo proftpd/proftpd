@@ -32784,7 +32784,8 @@ rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
 
 
 
-for ac_func in getcwd getenv getgrouplist gethostbyname2 gethostname getnameinfo
+
+for ac_func in getcwd getenv getgrouplist getgrset gethostbyname2 gethostname getnameinfo
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 { echo "$as_me:$LINENO: checking for $ac_func" >&5
