@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.8 2009-03-26 01:47:33 castaglia Exp $
+ * $Id: scp.c,v 1.9 2009-03-27 18:44:30 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -546,7 +546,16 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
       sp->best_path = dir_best_path(scp_pool, sp->filename);
 
     } else {
-      sp->best_path = dir_best_path(scp_pool, sp->path);
+
+      /* What if the client initially sent an scp command like:
+       *
+       *  scp -t dir/subdir/
+       *
+       * for an incoming 'test.txt' file?  To handle this, we append
+       * the given name to the path sent in the initial scp command.
+       */
+      sp->best_path = dir_best_path(scp_pool,
+        pdircat(p, sp->path, name_str, NULL));
     }
   }
 
