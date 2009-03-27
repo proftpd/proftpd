@@ -157,6 +157,11 @@ files.
 
       Environment variable support via "%{ENV:var}" syntax.
 
+    SQLGroupInfo
+
+      Custom SQLNamedQuery for all group lookups, including 'groupset' and
+      'groupsetfast' SQLAuthenticate options.
+
     SQLUserInfo
 
       Custom SQLNamedQuery for 'userset' and 'usersetfast' cases supported
@@ -187,4 +192,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-03-26 05:18:42 $
+Last Updated: $Date: 2009-03-27 17:26:23 $

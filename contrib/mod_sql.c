@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.161 2009-03-25 05:03:17 castaglia Exp $
+ * $Id: mod_sql.c,v 1.162 2009-03-27 17:26:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -54,18 +54,17 @@
 #define MOD_SQL_DEF_GROUPGIDFIELD     "gid"
 #define MOD_SQL_DEF_GROUPMEMBERSFIELD "members"
 
-/* default minimum id / default uid / default gid info. 
- * uids and gids less than MOD_SQL_MIN_USER_UID and
- * MOD_SQL_MIN_USER_GID, respectively, get automatically
- * mapped to the defaults, below.  These can be
- * overridden using directives
+/* default minimum ID / default UID / default GID info. 
+ * UIDs and GIDs less than MOD_SQL_MIN_USER_UID and MOD_SQL_MIN_USER_GID,
+ * respectively, get automatically mapped to the defaults, below.  These can
+ * be overridden using directives
  */
-#define MOD_SQL_MIN_USER_UID 999
-#define MOD_SQL_MIN_USER_GID 999
-#define MOD_SQL_DEF_UID 65533
-#define MOD_SQL_DEF_GID 65533
+#define MOD_SQL_MIN_USER_UID		999
+#define MOD_SQL_MIN_USER_GID		999
+#define MOD_SQL_DEF_UID			65533
+#define MOD_SQL_DEF_GID			65533
 
-#define MOD_SQL_BUFSIZE 32
+#define MOD_SQL_BUFSIZE			32
 
 /* Named Query defines */
 #define SQL_SELECT_C		"SELECT"
@@ -123,6 +122,8 @@ MODRET sql_lookup(cmd_rec *);
 
 static pool *sql_pool = NULL;
 
+static modret_t *process_named_query(cmd_rec *cmd, char *name);
+
 /*
  * cache typedefs
  */
@@ -160,8 +161,8 @@ static struct {
   char *usrtable;               /* user info table name */
   char *usrfield;               /* user name field */
   char *pwdfield;               /* user password field */
-  char *uidfield;               /* user uid field */
-  char *gidfield;               /* user gid field */
+  char *uidfield;               /* user UID field */
+  char *gidfield;               /* user GID field */
   char *homedirfield;           /* user homedir field */
   char *shellfield;             /* user login shell field */
   char *userwhere;              /* users where clause */
@@ -176,9 +177,15 @@ static struct {
 
   char *grptable;               /* group info table name */
   char *grpfield;               /* group name field */
-  char *grpgidfield;            /* group gid field */
+  char *grpgidfield;            /* group GID field */
   char *grpmembersfield;        /* group members field */
   char *groupwhere;             /* groups where clause */
+
+  char *groupcustombyname;	/* custom group query (by name) */
+  char *groupcustombyid;	/* custom group query (by GID) */
+  char *groupcustommembers;	/* custom group query (user members only) */
+  char *groupcustomgroupset;	/* custom query to get 'groupset' groups */
+  char *groupcustomgroupsetfast;/* custom query to get 'groupsetfast' groups */
 
   /*
    * other information
@@ -919,7 +926,7 @@ static int _groupcmp(const void *val1, const void *val2) {
   if ((val1 == NULL) || (val2 == NULL))
     return 0;
   
-  /* either the groupnames match or the gids match */
+  /* either the groupnames match or the GIDs match */
   
   if (_sql_strcmp(((struct group *) val1)->gr_name,
       ((struct group *) val2)->gr_name) == 0)
@@ -962,7 +969,7 @@ static int _passwdcmp(const void *val1, const void *val2) {
   if ((val1 == NULL) || (val2 == NULL))
      return 0;
   
-  /* either the usernames match or the uids match */
+  /* either the usernames match or the UIDs match */
   if (_sql_strcmp(((struct passwd *) val1)->pw_name,
       ((struct passwd *) val2)->pw_name)  == 0)
     return 1;
@@ -1068,11 +1075,11 @@ static struct passwd *_sql_addpasswd(cmd_rec *cmd, char *username,
   return pwd;
 }
 
-static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
+static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   sql_data_t *sd = NULL;
   modret_t *mr = NULL;
   struct passwd *pwd = NULL;
-  char uidstr[MOD_SQL_BUFSIZE] = {'\0'};
+  char uidstr[MOD_SQL_BUFSIZE];
   char *usrwhere, *where;
   char *realname = NULL;
   int i = 0;
@@ -1085,7 +1092,7 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   gid_t gid = 0;
 
   if (p == NULL) {
-    sql_log(DEBUG_WARN, "%s", "_sql_getpasswd called with NULL passwd struct");
+    sql_log(DEBUG_WARN, "%s", "sql_getpasswd called with NULL passwd struct");
     sql_log(DEBUG_WARN, "%s", "THIS SHOULD NEVER HAPPEN");
     return NULL;
   }
@@ -1128,18 +1135,19 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     sql_log(DEBUG_WARN, "cache miss for user '%s'", realname);
 
   } else {
-    /* Assume we have a uid */
-    snprintf(uidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) p->pw_uid);
-    sql_log(DEBUG_WARN, "cache miss for uid '%s'", uidstr);
+    /* Assume we have a UID */
+    memset(uidstr, '\0', sizeof(uidstr));
+    snprintf(uidstr, sizeof(uidstr)-1, "%lu", (unsigned long) p->pw_uid);
+    sql_log(DEBUG_WARN, "cache miss for UID '%s'", uidstr);
 
-    if (cmap.uidfield)
+    if (cmap.uidfield) {
       usrwhere = pstrcat(cmd->tmp_pool, cmap.uidfield, " = ", uidstr, NULL);
 
-    else {
-      sql_log(DEBUG_WARN, "no user uid field configured, declining to "
-        "lookup uid '%s'", uidstr);
+    } else {
+      sql_log(DEBUG_WARN, "no user UID field configured, declining to "
+        "lookup UID '%s'", uidstr);
 
-      /* If no uid field has been configured, return now and let other
+      /* If no UID field has been configured, return now and let other
        * modules possibly have a chance at resolving this UID to a name.
        */
       return NULL;
@@ -1170,7 +1178,6 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
       sd = (sql_data_t *) mr->data;
 
   } else {
-
     mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, "default", cmap.usercustom,
       realname ? realname : "NULL"));
 
@@ -1336,7 +1343,7 @@ static struct group *_sql_addgroup(cmd_rec *cmd, char *groupname, gid_t gid,
   return grp;
 }
 
-static struct group *_sql_getgroup(cmd_rec *cmd, struct group *g) {
+static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
   struct group *grp = NULL;
   modret_t *mr = NULL;
   int cnt = 0;
@@ -1355,7 +1362,7 @@ static struct group *_sql_getgroup(cmd_rec *cmd, struct group *g) {
   gid_t gid = 0;
   
   if (g == NULL) {
-    sql_log(DEBUG_WARN, "%s", "_sql_getgroup called with NULL group struct");
+    sql_log(DEBUG_WARN, "%s", "sql_getgroup called with NULL group struct");
     sql_log(DEBUG_WARN, "%s", "THIS SHOULD NEVER HAPPEN");
     return NULL;
   }
@@ -1379,33 +1386,58 @@ static struct group *_sql_getgroup(cmd_rec *cmd, struct group *g) {
     sql_log(DEBUG_WARN, "cache miss for group '%s'", groupname);
 
   } else {
-    /* Get groupname from gid */
+    /* Get groupname from GID */
     snprintf(gidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) g->gr_gid);
 
-    sql_log(DEBUG_WARN, "cache miss for gid '%s'", gidstr);
+    sql_log(DEBUG_WARN, "cache miss for GID '%s'", gidstr);
 
-    if (cmap.grpgidfield)
-      grpwhere = pstrcat(cmd->tmp_pool, cmap.grpgidfield, " = ", gidstr, NULL);
+    if (!cmap.groupcustombyid) {
+      if (cmap.grpgidfield) {
+        grpwhere = pstrcat(cmd->tmp_pool, cmap.grpgidfield, " = ", gidstr,
+          NULL);
 
-    else {
-      sql_log(DEBUG_WARN, "no group gid field configured, declining to lookup "
-        "gid '%s'", gidstr);
+      } else {
+        sql_log(DEBUG_WARN, "no group GID field configured, declining to "
+          "lookup GID '%s'", gidstr);
 
-      /* If no gid field has been configured, return now and let other
-       * modules possibly have a chance at resolving this GID to a name.
-       */
-      return NULL;
+        /* If no GID field has been configured, return now and let other
+         * modules possibly have a chance at resolving this GID to a name.
+         */
+        return NULL;
+      }
+
+      where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, grpwhere,
+        sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL), NULL);
+
+      mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5, "default",
+        cmap.grptable, cmap.grpfield, where, "1"), "sql_select");
+      if (check_response(mr) < 0)
+        return NULL;
+
+      sd = (sql_data_t *) mr->data;
+
+    } else {
+      mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, "default",
+        cmap.groupcustombyid, gidstr));
+
+      if (check_response(mr) < 0)
+        return NULL;
+
+      ah = mr->data;
+
+      sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+
+      /* Assume the query only return 1 row. */
+      sd->fnum = ah->nelts;
+      if (sd->fnum) {
+        sd->rnum = 1;
+        sd->data = (char **) ah->elts;
+
+      } else {
+        sd->rnum = 0;
+        sd->data = NULL;
+      }
     }
-
-    where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, grpwhere,
-      sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL), NULL);
-
-    mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5, "default",
-      cmap.grptable, cmap.grpfield, where, "1"), "sql_select");
-    if (check_response(mr) < 0)
-      return NULL;
-
-    sd = (sql_data_t *) mr->data;
 
     /* If we have no data.. */
     if (sd->rnum == 0)
@@ -1414,18 +1446,41 @@ static struct group *_sql_getgroup(cmd_rec *cmd, struct group *g) {
     groupname = sd->data[0];
   }
 
-  grpwhere = pstrcat(cmd->tmp_pool, cmap.grpfield, " = '", groupname, "'",
-    NULL);
+  if (!cmap.groupcustombyname) {
+    grpwhere = pstrcat(cmd->tmp_pool, cmap.grpfield, " = '", groupname, "'",
+      NULL);
 
-  where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, grpwhere,
-    sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL), NULL);
+    where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, grpwhere,
+      sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL), NULL);
 
-  mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default",
-    cmap.grptable, cmap.grpfields, where), "sql_select");
-  if (check_response(mr) < 0)
-    return NULL;
+    mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default",
+      cmap.grptable, cmap.grpfields, where), "sql_select");
+    if (check_response(mr) < 0)
+      return NULL;
   
-  sd = (sql_data_t *) mr->data;
+    sd = (sql_data_t *) mr->data;
+
+  } else {
+    mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, "default",
+      cmap.groupcustombyname, groupname ? groupname : "NULL"));
+    if (check_response(mr) < 0)
+      return NULL;
+
+    ah = mr->data;
+    sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+ 
+    /* Assume the query only returned 1 row. */
+    sd->fnum = ah->nelts;
+
+    if (sd->fnum) {
+      sd->rnum = 1;
+      sd->data = (char **) ah->elts;
+
+    } else {
+      sd->rnum = 0;
+      sd->data = NULL;
+    }
+  }
 
   /* if we have no data.. */
   if (sd->rnum == 0) {
@@ -1444,8 +1499,7 @@ static struct group *_sql_getgroup(cmd_rec *cmd, struct group *g) {
   
   gid = (gid_t) strtoul(rows[1], NULL, 10);
   
-  /*
-   * painful.. we need to walk through the returned rows and fill in our
+  /* Painful.. we need to walk through the returned rows and fill in our
    * members. Every third element in a row is a member field, and every
    * member field can have multiple members.
    */
@@ -1501,7 +1555,7 @@ static void _setstats(cmd_rec *cmd, int fstor, int fretr, int bstor,
   (void) check_response(mr);
 }
 
-static int _sql_getgroups(cmd_rec *cmd) {
+static int sql_getgroups(cmd_rec *cmd) {
   struct passwd *pw = NULL, lpw;
   struct group *grp, lgr;
   char *grpwhere = NULL, *where = NULL, **rows = NULL;
@@ -1524,7 +1578,7 @@ static int _sql_getgroups(cmd_rec *cmd) {
   
   /* Retrieve the necessary info */
   if (!name ||
-      !(pw = _sql_getpasswd(cmd, &lpw)))
+      !(pw = sql_getpasswd(cmd, &lpw)))
     return -1;
 
   /* Populate the first group ID and name */
@@ -1535,7 +1589,7 @@ static int _sql_getgroups(cmd_rec *cmd) {
   lgr.gr_name = NULL;
 
   if (groups &&
-      (grp = _sql_getgroup(cmd, &lgr)) != NULL)
+      (grp = sql_getgroup(cmd, &lgr)) != NULL)
     *((char **) push_array(groups)) = pstrdup(permanent_pool, grp->gr_name);
 
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", name),
@@ -1545,40 +1599,69 @@ static int _sql_getgroups(cmd_rec *cmd) {
 
   username = (char *) mr->data;
 
-  if (!(cmap.opts & SQL_OPT_USE_NORMALIZED_GROUP_SCHEMA)) {
+  if (!cmap.groupcustommembers) {
+    if (!(cmap.opts & SQL_OPT_USE_NORMALIZED_GROUP_SCHEMA)) {
 
-    /* Use a SELECT with a LIKE clause:
-     *
-     *  SELECT groupname,gid,members FROM groups
-     *    WHERE members LIKE '%,<user>,%' OR LIKE '<user>,%' OR LIKE '%,<user>';
-     */
+      /* Use a SELECT with a LIKE clause:
+       *
+       *  SELECT groupname,gid,members FROM groups
+       *    WHERE members LIKE '%,<user>,%' OR LIKE '<user>,%' OR LIKE '%,<user>';
+       */
 
-    grpwhere = pstrcat(cmd->tmp_pool,
-      cmap.grpmembersfield, " = '", username, "' OR ",
-      cmap.grpmembersfield, " LIKE '", username, ",%' OR ",
-      cmap.grpmembersfield, " LIKE '%,", username, "' OR ",
-      cmap.grpmembersfield, " LIKE '%,", username, ",%'", NULL);
+      grpwhere = pstrcat(cmd->tmp_pool,
+        cmap.grpmembersfield, " = '", username, "' OR ",
+        cmap.grpmembersfield, " LIKE '", username, ",%' OR ",
+        cmap.grpmembersfield, " LIKE '%,", username, "' OR ",
+        cmap.grpmembersfield, " LIKE '%,", username, ",%'", NULL);
+
+    } else {
+      /* Use a single SELECT:
+       *
+       *  SELECT groupname,gid,members FROM groups WHERE members = <user>';
+       */
+      grpwhere = pstrcat(cmd->tmp_pool,
+        cmap.grpmembersfield, " = '", username, "'", NULL);
+    }
+
+    where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, grpwhere,
+      sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL), NULL);
+  
+    mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default",
+      cmap.grptable, cmap.grpfields, where), "sql_select");
+    if (check_response(mr) < 0)
+      return -1;
+  
+    sd = (sql_data_t *) mr->data;
 
   } else {
+    array_header *ah;
 
-    /* Use a single SELECT:
-     *
-     *  SELECT groupname,gid,members FROM groups WHERE members = <user>';
+    /* The username has been escaped according to the backend database' rules
+     * at this point.
      */
+    mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, "default",
+      cmap.groupcustommembers, username));
+    if (check_response(mr) < 0)
+      return -1;
 
-    grpwhere = pstrcat(cmd->tmp_pool,
-      cmap.grpmembersfield, " = '", username, "'", NULL);
+    ah = mr->data;
+    sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+
+    /* Assume the query returned N rows, 3 columns per row. */
+    if (ah->nelts % 3 == 0) {
+      sd->fnum = 3;
+      sd->rnum = ah->nelts / 3;
+
+      if (sd->rnum > 0) {
+        sd->data = (char **) ah->elts;
+      }
+
+    } else {
+      sql_log(DEBUG_INFO, "wrong number of columns (%d) returned by custom SQLGroupInfo members query, ignoring results", ah->nelts % 3);
+      sd->rnum = 0;
+      sd->data = NULL;
+    }
   }
-
-  where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, grpwhere,
-    sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL), NULL);
-  
-  mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default",
-    cmap.grptable, cmap.grpfields, where), "sql_select");
-  if (check_response(mr) < 0)
-    return -1;
-  
-  sd = (sql_data_t *) mr->data;
 
   /* If we have no data... */
   if (sd->rnum == 0)
@@ -1611,12 +1694,13 @@ static int _sql_getgroups(cmd_rec *cmd) {
   }
 
   if (gids &&
-      gids->nelts > 0)
+      gids->nelts > 0) {
     return gids->nelts;
 
-  else if (groups &&
-           groups->nelts)
+  } else if (groups &&
+           groups->nelts) {
     return groups->nelts;
+  }
 
   /* Default */
   return -1;
@@ -2091,7 +2175,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
   return pstrdup(cmd->tmp_pool, argp);
 }
 
-static char *_named_query_type(cmd_rec *cmd, char *name) {
+static char *named_query_type(cmd_rec *cmd, char *name) {
   config_rec *c = NULL;
   char *query = NULL;
 
@@ -2104,7 +2188,7 @@ static char *_named_query_type(cmd_rec *cmd, char *name) {
   return NULL;
 }
 
-static modret_t *_process_named_query(cmd_rec *cmd, char *name) {
+static modret_t *process_named_query(cmd_rec *cmd, char *name) {
   config_rec *c;
   char *query, *tmp, *argp;
   char outs[SQL_MAX_STMT_LEN] = {'\0'}, *outsp;
@@ -2112,7 +2196,7 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name) {
   modret_t *mr = NULL;
   int num = 0;
 
-  sql_log(DEBUG_FUNC, "%s", ">>> _process_named_query");
+  sql_log(DEBUG_FUNC, "%s", ">>> process_named_query");
 
   /* Check for a query by that name */
 
@@ -2232,7 +2316,7 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name) {
     mr = PR_ERROR(cmd);
   }
  
-  sql_log(DEBUG_FUNC, "%s", "<<< _process_named_query");
+  sql_log(DEBUG_FUNC, "%s", "<<< process_named_query");
 
   return mr;
 }
@@ -2257,16 +2341,17 @@ MODRET log_master(cmd_rec *cmd) {
       sql_log(DEBUG_FUNC, "%s", ">>> log_master");
 
       qname = c->argv[0];
-      type = _named_query_type(cmd, qname);
+      type = named_query_type(cmd, qname);
 
       if (type) {
 	if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
 	    strcasecmp(type, SQL_FREEFORM_C) == 0 ||
 	    strcasecmp(type, SQL_INSERT_C) == 0) {
-	  mr = _process_named_query(cmd, qname);
-	  if (c->argc == 2)
+	  mr = process_named_query(cmd, qname);
+	  if (c->argc == 2) {
             if (check_response(mr) < 0)
               return mr;
+          }
 
 	} else {
 	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
@@ -2291,16 +2376,17 @@ MODRET log_master(cmd_rec *cmd) {
       sql_log(DEBUG_FUNC, "%s", ">>> log_master");
 
       qname = c->argv[0];
-      type = _named_query_type(cmd, qname);
+      type = named_query_type(cmd, qname);
 
       if (type) {
 	if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
 	    strcasecmp(type, SQL_FREEFORM_C) == 0 ||
 	    strcasecmp(type, SQL_INSERT_C) == 0) {
-          mr = _process_named_query(cmd, qname);
-          if (c->argc == 2)
+          mr = process_named_query(cmd, qname);
+          if (c->argc == 2) {
             if (check_response(mr) < 0)
               return mr;
+          }
 
 	} else {
 	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
@@ -2338,16 +2424,17 @@ MODRET err_master(cmd_rec *cmd) {
       sql_log(DEBUG_FUNC, "%s", ">>> err_master");
 
       qname = c->argv[0];
-      type = _named_query_type(cmd, qname);
+      type = named_query_type(cmd, qname);
 
       if (type) {
 	if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
 	    strcasecmp(type, SQL_FREEFORM_C) == 0 ||
 	    strcasecmp(type, SQL_INSERT_C) == 0) {
-          mr = _process_named_query(cmd, qname);
-          if (c->argc == 2)
+          mr = process_named_query(cmd, qname);
+          if (c->argc == 2) {
             if (check_response(mr) < 0)
               return mr;
+          }
 
 	} else {
 	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
@@ -2372,16 +2459,17 @@ MODRET err_master(cmd_rec *cmd) {
       sql_log(DEBUG_FUNC, "%s", ">>> err_master");
 
       qname = c->argv[0];
-      type = _named_query_type(cmd, qname);
+      type = named_query_type(cmd, qname);
 
       if (type) {
 	if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
 	    strcasecmp(type, SQL_FREEFORM_C) == 0 ||
 	    strcasecmp(type, SQL_INSERT_C) == 0) {
-          mr = _process_named_query(cmd, qname);
-          if (c->argc == 2)
+          mr = process_named_query(cmd, qname);
+          if (c->argc == 2) {
             if (check_response(mr) < 0)
               return mr;
+          }
 
 	} else {
 	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
@@ -2450,10 +2538,10 @@ MODRET info_master(cmd_rec *cmd) {
 
 	    /* make sure it's a SELECT query */
 	    
-	    type = _named_query_type(cmd, query);
+	    type = named_query_type(cmd, query);
 	    if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
 			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
-	      mr = _process_named_query(cmd, query);
+	      mr = process_named_query(cmd, query);
 	      
               if (MODRET_ISERROR(mr)) {
                 memset(outs, '\0', sizeof(outs));
@@ -2555,10 +2643,10 @@ MODRET info_master(cmd_rec *cmd) {
 
 	    /* make sure it's a SELECT query */
 	    
-	    type = _named_query_type(cmd, query);
+	    type = named_query_type(cmd, query);
 	    if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
 			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
-	      mr = _process_named_query(cmd, query);
+	      mr = process_named_query(cmd, query);
 	      
               if (MODRET_ISERROR(mr)) {
                 memset(outs, '\0', sizeof(outs));
@@ -2674,10 +2762,10 @@ MODRET errinfo_master(cmd_rec *cmd) {
 
 	    /* make sure it's a SELECT query */
 	    
-	    type = _named_query_type(cmd, query);
+	    type = named_query_type(cmd, query);
 	    if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
 			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
-	      mr = _process_named_query(cmd, query);
+	      mr = process_named_query(cmd, query);
 	      
               if (MODRET_ISERROR(mr)) {
                 memset(outs, '\0', sizeof(outs));
@@ -2779,10 +2867,10 @@ MODRET errinfo_master(cmd_rec *cmd) {
 
 	    /* make sure it's a SELECT query */
 	    
-	    type = _named_query_type(cmd, query);
+	    type = named_query_type(cmd, query);
 	    if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
 			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
-	      mr = _process_named_query(cmd, query);
+	      mr = process_named_query(cmd, query);
 	      
               if (MODRET_ISERROR(mr)) {
                 memset(outs, '\0', sizeof(outs));
@@ -2953,7 +3041,6 @@ MODRET sql_lookup(cmd_rec *cmd) {
   modret_t *mr = NULL;
   sql_data_t *sd = NULL;
   array_header *ah = NULL;
-  int cnt = 0;
 
   if (cmap.engine == 0)
     return PR_DECLINED(cmd);
@@ -2963,12 +3050,14 @@ MODRET sql_lookup(cmd_rec *cmd) {
   if (cmd->argc < 1)
     return PR_ERROR(cmd);
 
-  type = _named_query_type(cmd, cmd->argv[1]);
+  type = named_query_type(cmd, cmd->argv[1]);
   if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
 	       strcasecmp(type, SQL_FREEFORM_C) == 0)) {
-    mr = _process_named_query(cmd, cmd->argv[1]);
+    mr = process_named_query(cmd, cmd->argv[1]);
     
     if (!MODRET_ISERROR(mr)) {
+      register unsigned int i;
+
       sd = (sql_data_t *) mr->data;
 
       ah = make_array(session.pool, (sd->rnum * sd->fnum) , sizeof(char *));
@@ -2976,16 +3065,17 @@ MODRET sql_lookup(cmd_rec *cmd) {
       /* the right way to do this is to preserve the abstraction of the array
        * header so things don't blow up when it gets freed
        */
-      for (cnt =0; cnt< (sd->rnum * sd->fnum); cnt++) {
-	*((char **) push_array(ah)) = sd->data[cnt];
+      for (i = 0; i< (sd->rnum * sd->fnum); i++) {
+	*((char **) push_array(ah)) = sd->data[i];
       }
 
       mr = mod_create_data(cmd, (void *) ah);
 
     } else {
       /* We have an error.  Log it and die. */
-      if (check_response(mr) < 0)
+      if (check_response(mr) < 0) {
         return mr;
+      }
     }
 
   } else {
@@ -3008,17 +3098,18 @@ MODRET sql_change(cmd_rec *cmd) {
   if (cmd->argc < 1)
     return PR_ERROR(cmd);
 
-  type = _named_query_type(cmd, cmd->argv[1]);
+  type = named_query_type(cmd, cmd->argv[1]);
   if (type && ((!strcasecmp(type, SQL_INSERT_C)) || 
 	       (!strcasecmp(type, SQL_UPDATE_C)) ||
 	       (!strcasecmp(type, SQL_FREEFORM_C)))) {
     /* fixup the cmd_rec */
 
-    mr = _process_named_query(cmd, cmd->argv[1]);
+    mr = process_named_query(cmd, cmd->argv[1]);
     
     if (MODRET_ISERROR(mr)) {
-      if (check_response(mr) < 0)
+      if (check_response(mr) < 0) {
         return mr;
+      }
     }
 
   } else {
@@ -3215,7 +3306,7 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
       /* otherwise, add it to the cache */
       lpw.pw_uid = -1;
       lpw.pw_name = username;
-      _sql_getpasswd(cmd, &lpw);
+      sql_getpasswd(cmd, &lpw);
     }
   }
   
@@ -3304,15 +3395,38 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
 
   if (SQL_FASTGROUPS) {
     /* retrieve our list of groups */
-    where = sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL);
 
-    mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 6, "default",
-      cmap.grptable, cmap.grpfields, where, NULL), "sql_select");
-    if (check_response(mr) < 0)
-      return mr;
+    if (!cmap.groupcustomgroupsetfast) {
+      where = sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL);
+
+      mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 6, "default",
+        cmap.grptable, cmap.grpfields, where, NULL), "sql_select");
+      if (check_response(mr) < 0)
+        return mr;
     
-    sd = (sql_data_t *) mr->data;
-    
+      sd = (sql_data_t *) mr->data;
+   
+    } else {
+      mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 2, "default",
+        cmap.groupcustomgroupsetfast));
+      if (check_response(mr) < 0)
+        return mr;
+
+      if (MODRET_HASDATA(mr)) {
+        ah = mr->data;
+        sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+
+        /* Assume the query returned 3 columns per row. */
+        sd->fnum = 3;
+        sd->rnum = ah->nelts / 3;
+        sd->data = (char **) ah->elts;
+
+      } else {
+        sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+        sd->rnum = 0;
+      }
+    }
+ 
     /* for each group, fill our array header and call _sql_addgroup */
 
     for (cnt = 0; cnt < sd->rnum; cnt ++) {
@@ -3338,15 +3452,38 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
 
   } else {
     /* Retrieve our list of groups. */
-    where = sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL);
+
+    if (!cmap.groupcustomgroupset) {
+      where = sql_prepare_where(0, cmd, 1, cmap.groupwhere, NULL);
  
-    mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 6, "default",
-      cmap.grptable, cmap.grpfield, where, NULL, "DISTINCT"), "sql_select");
-    if (check_response(mr) < 0)
-      return mr;
+      mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 6, "default",
+        cmap.grptable, cmap.grpfield, where, NULL, "DISTINCT"), "sql_select");
+      if (check_response(mr) < 0)
+        return mr;
     
-    sd = (sql_data_t *) mr->data;
-    
+      sd = (sql_data_t *) mr->data;
+
+    } else {
+      mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 2, "default",
+        cmap.groupcustomgroupset));
+      if (check_response(mr) < 0)
+        return mr;
+
+      if (MODRET_HASDATA(mr)) {
+        ah = mr->data;
+        sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+
+        /* Assume the query only returned 1 column per row. */
+        sd->fnum = 1;
+        sd->rnum = ah->nelts;
+        sd->data = (char **) ah->elts;
+
+      } else {
+        sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+        sd->rnum = 0;
+      }
+    }
+ 
     for (cnt = 0; cnt < sd->rnum; cnt++) {
       groupname = sd->data[cnt];
       
@@ -3358,7 +3495,7 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
       lgr.gr_gid = -1;
       lgr.gr_name = groupname;
       
-      _sql_getgroup(cmd, &lgr);
+      sql_getgroup(cmd, &lgr);
     }
   }
   
@@ -3431,7 +3568,7 @@ MODRET cmd_getpwnam(cmd_rec *cmd) {
 
   lpw.pw_uid = -1;
   lpw.pw_name = cmd->argv[0];
-  pw = _sql_getpasswd(cmd, &lpw);
+  pw = sql_getpasswd(cmd, &lpw);
 
   if (pw == NULL ||
       pw->pw_uid == (uid_t) -1) {
@@ -3455,7 +3592,7 @@ MODRET cmd_getpwuid(cmd_rec *cmd) {
 
   lpw.pw_uid = *((uid_t *) cmd->argv[0]);
   lpw.pw_name = NULL;
-  pw = _sql_getpasswd(cmd, &lpw);
+  pw = sql_getpasswd(cmd, &lpw);
 
   if (pw == NULL ||
       pw->pw_uid == (uid_t) -1) {
@@ -3479,7 +3616,7 @@ MODRET cmd_getgrnam(cmd_rec *cmd) {
 
   lgr.gr_gid = -1;
   lgr.gr_name = cmd->argv[0];
-  gr = _sql_getgroup(cmd, &lgr);
+  gr = sql_getgroup(cmd, &lgr);
 
   if (gr == NULL ||
       gr->gr_gid == (gid_t) -1) {
@@ -3503,7 +3640,7 @@ MODRET cmd_getgrgid(cmd_rec *cmd) {
 
   lgr.gr_gid = *((gid_t *) cmd->argv[0]);
   lgr.gr_name = NULL;
-  gr = _sql_getgroup(cmd, &lgr);
+  gr = sql_getgroup(cmd, &lgr);
 
   if (gr == NULL ||
       gr->gr_gid == (gid_t) -1) {
@@ -3539,7 +3676,7 @@ MODRET cmd_auth(cmd_rec *cmd) {
   lpw.pw_uid = -1;
   lpw.pw_name = cmd->argv[0];
 
-  if ((pw = _sql_getpasswd(cmd, &lpw)) && 
+  if ((pw = sql_getpasswd(cmd, &lpw)) && 
       !pr_auth_check(cmd->tmp_pool, pw->pw_passwd, cmd->argv[0],
         cmd->argv[1])) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_auth");
@@ -3619,7 +3756,7 @@ MODRET cmd_check(cmd_rec *cmd) {
 
     lpw.pw_uid = -1;
     lpw.pw_name = cmd->argv[1];
-    cmap.authpasswd = _sql_getpasswd(cmd, &lpw);
+    cmap.authpasswd = sql_getpasswd(cmd, &lpw);
 
     session.auth_mech = "mod_sql.c";
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_check");
@@ -3652,7 +3789,7 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
     pw = cmap.authpasswd;
 
   } else {
-    pw = _sql_getpasswd(cmd, &lpw);
+    pw = sql_getpasswd(cmd, &lpw);
   }
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_uid2name");
@@ -3664,10 +3801,10 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
    * member will be NULL, which causes an undesired handling by
    * the core code.  Handle this case separately.
    */
-  if (pw->pw_name)
+  if (pw->pw_name) {
     uid_name = pw->pw_name;
 
-  else {
+  } else {
     snprintf(uidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) cmd->argv[0]);
     uid_name = uidstr;
   }
@@ -3679,7 +3816,7 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
   char *gid_name = NULL;
   struct group *gr;
   struct group lgr;
-  char gidstr[MOD_SQL_BUFSIZE]={'\0'};
+  char gidstr[MOD_SQL_BUFSIZE];
 
   if (!SQL_GROUPS ||
       !(cmap.engine & SQL_ENGINE_FL_AUTH))
@@ -3689,7 +3826,7 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
 
   lgr.gr_gid = *((gid_t *) cmd->argv[0]);
   lgr.gr_name = NULL;
-  gr = _sql_getgroup(cmd, &lgr);
+  gr = sql_getgroup(cmd, &lgr);
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_gid2name");
 
@@ -3700,11 +3837,12 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
    * member will be NULL, which causes an undesired handling by
    * the core code.  Handle this case separately.
    */
-  if (gr->gr_name)
+  if (gr->gr_name) {
     gid_name = gr->gr_name;
 
-  else {
-    snprintf(gidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) cmd->argv[0]);
+  } else {
+    memset(gidstr, '\0', sizeof(gidstr));
+    snprintf(gidstr, sizeof(gidstr)-1, "%lu", (unsigned long) cmd->argv[0]);
     gid_name = gidstr;
   }
 
@@ -3731,7 +3869,7 @@ MODRET cmd_name2uid(cmd_rec *cmd) {
     pw = cmap.authpasswd;
 
   } else {
-    pw = _sql_getpasswd(cmd, &lpw);
+    pw = sql_getpasswd(cmd, &lpw);
   }
 
   if (pw == NULL ||
@@ -3756,7 +3894,7 @@ MODRET cmd_name2gid(cmd_rec *cmd) {
 
   lgr.gr_gid = -1;
   lgr.gr_name = cmd->argv[0];
-  gr = _sql_getgroup(cmd, &lgr);
+  gr = sql_getgroup(cmd, &lgr);
 
   if (gr == NULL ||
       gr->gr_gid == (gid_t) -1) {
@@ -3777,7 +3915,7 @@ MODRET cmd_getgroups(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getgroups");
 
-  res = _sql_getgroups(cmd);
+  res = sql_getgroups(cmd);
 
   if (res < 0) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgroups");
@@ -3831,8 +3969,9 @@ MODRET cmd_getratio(cmd_rec *cmd) {
   sql_data_t *sd;
   char *usrwhere, *where;
 
-  if (!cmap.sql_frate)
+  if (!cmap.sql_frate) {
     return PR_DECLINED(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getratio");
 
@@ -3980,14 +4119,16 @@ MODRET add_virtualstr(char *name, cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: SQLUserInfo table(s) usernamefield passwdfield uid gid homedir
+/* usage: SQLUserInfo table(s) usernamefield passwdfield UID GID homedir
  *           shell | custom:/<sql-named-query>[/<sql-named-query>[/<sql-named-query>]]
  */
 MODRET set_sqluserinfo(cmd_rec *cmd) {
 
   if (cmd->argc-1 != 1 &&
-      cmd->argc-1 != 7)
+      cmd->argc-1 != 7) {
     CONF_ERROR(cmd, "missing parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
   if (cmd->argc-1 == 1) {
@@ -4051,16 +4192,79 @@ MODRET set_sqluserwhereclause(cmd_rec *cmd) {
 }
 
 /* usage: SQLGroupInfo table(s) groupnamefield gidfield membersfield */
+/* usage: SQLGroupInfo table(s) groupnamefield gidfield membersfield |
+ *        custom:/<sql-named-query>/<sql-named-query>/sql-named-query[/<sql-named-query[/<sql-named-query>]]
+ */
 MODRET set_sqlgroupinfo(cmd_rec *cmd) {
 
-  CHECK_ARGS(cmd, 4);
-  CHECK_CONF(cmd, CONF_ROOT | CONF_GLOBAL | CONF_VIRTUAL);
+  if (cmd->argc-1 != 1 &&
+      cmd->argc-1 != 4) {
+    CONF_ERROR(cmd, "missing parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
+
+  if (cmd->argc-1 == 1) {
+    char *groupbyname = NULL, *groupbyid = NULL, *groupmembers = NULL,
+      *groupset = NULL, *groupsetfast = NULL;
+    char *ptr = NULL;
+
+    /* If only one paramter is used, it must be of the "custom:/" form. */
+    if (strncmp("custom:/", cmd->argv[1], 8) != 0) {
+      CONF_ERROR(cmd, "badly formatted parameter");
+    }
+
+    ptr = strchr(cmd->argv[1] + 8, '/');
+    if (ptr == NULL) {
+      CONF_ERROR(cmd, "badly formatted parameter");
+    }
+
+    *ptr = '\0';
+    groupbyname = cmd->argv[1] + 8;
+    groupbyid = ptr + 1;
+
+    add_config_param_str("SQLCustomGroupInfoByName", 1, groupbyname);
+
+    ptr = strchr(groupbyid, '/');
+    if (ptr == NULL) {
+      CONF_ERROR(cmd, "badly formatted parameter");
+    }
+
+    *ptr = '\0';
+    groupmembers = ptr + 1;
+
+    add_config_param_str("SQLCustomGroupInfoByID", 1, groupbyid);
+
+    ptr = strchr(groupmembers, '/');
+    if (ptr == NULL) {
+      add_config_param_str("SQLCustomGroupInfoMembers", 1, groupmembers);
+      return PR_HANDLED(cmd);
+    }
+
+    *ptr = '\0';
+    groupset = ptr + 1;
+
+    add_config_param_str("SQLCustomGroupInfoMembers", 1, groupmembers);
+
+    ptr = strchr(groupset, '/');
+    if (ptr == NULL) {
+      add_config_param_str("SQLCustomGroupInfoAllNames", 1, groupset);
+      return PR_HANDLED(cmd);
+    }
+
+    *ptr = '\0';
+    groupsetfast = ptr + 1;
+
+    add_config_param_str("SQLCustomGroupInfoAllNames", 1, groupset);
+    add_config_param_str("SQLCustomGroupInfoAllGroups", 1, groupsetfast);
+    return PR_HANDLED(cmd);
+  }
 
   /* required to exist - not even going to check them. */
-  add_config_param_str("SQLGroupTable", 1, (void *) cmd->argv[1]);
-  add_config_param_str("SQLGroupnameField", 1, (void *) cmd->argv[2]);
-  add_config_param_str("SQLGroupGIDField", 1, (void *) cmd->argv[3]);
-  add_config_param_str("SQLGroupMembersField", 1, (void *) cmd->argv[4]);
+  add_config_param_str("SQLGroupTable", 1, cmd->argv[1]);
+  add_config_param_str("SQLGroupnameField", 1, cmd->argv[2]);
+  add_config_param_str("SQLGroupGIDField", 1, cmd->argv[3]);
+  add_config_param_str("SQLGroupMembersField", 1, cmd->argv[4]);
 
   return PR_HANDLED(cmd);
 }
@@ -4669,7 +4873,7 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
      * get away with using the config_rec's pool.
      */
     cmd = _sql_make_cmd(c->pool, 1, "EXIT");
-    type = _named_query_type(cmd, qname);
+    type = named_query_type(cmd, qname);
 
     if (type) {
       if (strcasecmp(type, SQL_UPDATE_C) == 0 ||
@@ -4677,7 +4881,7 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
           strcasecmp(type, SQL_INSERT_C) == 0) {
 
         sql_log(DEBUG_FUNC, "running named query '%s' at exit", qname);
-        _process_named_query(cmd, qname);
+        process_named_query(cmd, qname);
 
       } else {
         sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
@@ -4938,6 +5142,89 @@ static int sql_sess_init(void) {
     cmap.grpgidfield = MOD_SQL_DEF_GROUPGIDFIELD;
     cmap.grpmembersfield = MOD_SQL_DEF_GROUPMEMBERSFIELD;
 
+    /* Check for any configured custom SQLGroupInfo queries. */
+
+    temp_ptr = get_param_ptr(main_server->conf, "SQLCustomGroupInfoByID",
+      FALSE);
+    if (temp_ptr) {
+      config_rec *custom_c = NULL;
+      char *named_query = pstrcat(tmp_pool, "SQLNamedQuery_", temp_ptr, NULL);
+
+      custom_c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+      if (custom_c == NULL) {
+        sql_log(DEBUG_INFO, "error: unable to resolve custom "
+          "SQLNamedQuery name '%s'", temp_ptr);
+
+      } else {
+        cmap.groupcustombyid = temp_ptr;
+      }
+    }
+
+    temp_ptr = get_param_ptr(main_server->conf, "SQLCustomGroupInfoByName",
+      FALSE);
+    if (temp_ptr) {
+      config_rec *custom_c = NULL;
+      char *named_query = pstrcat(tmp_pool, "SQLNamedQuery_", temp_ptr, NULL);
+
+      custom_c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+      if (custom_c == NULL) {
+        sql_log(DEBUG_INFO, "error: unable to resolve custom "
+          "SQLNamedQuery name '%s'", temp_ptr);
+
+      } else {
+        cmap.groupcustombyname = temp_ptr;
+      }
+    }
+
+    temp_ptr = get_param_ptr(main_server->conf, "SQLCustomGroupInfoMembers",
+      FALSE);
+    if (temp_ptr) {
+      config_rec *custom_c = NULL;
+      char *named_query = pstrcat(tmp_pool, "SQLNamedQuery_", temp_ptr, NULL);
+
+      custom_c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+      if (custom_c == NULL) {
+        sql_log(DEBUG_INFO, "error: unable to resolve custom "
+          "SQLNamedQuery name '%s'", temp_ptr);
+
+      } else {
+        cmap.groupcustommembers = temp_ptr;
+      }
+    }
+
+    temp_ptr = get_param_ptr(main_server->conf, "SQLCustomGroupInfoAllNames",
+      FALSE);
+    if (temp_ptr) {
+      config_rec *custom_c = NULL;
+      char *named_query = pstrcat(tmp_pool, "SQLNamedQuery_", temp_ptr, NULL);
+
+      custom_c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+      if (custom_c == NULL) {
+        sql_log(DEBUG_INFO, "error: unable to resolve custom "
+          "SQLNamedQuery name '%s'", temp_ptr);
+
+      } else {
+        cmap.groupcustomgroupset = temp_ptr;
+      }
+    }
+
+    temp_ptr = get_param_ptr(main_server->conf, "SQLCustomGroupInfoAllGroups",
+      FALSE);
+    if (temp_ptr) {
+      config_rec *custom_c = NULL;
+      char *named_query = pstrcat(tmp_pool, "SQLNamedQuery_", temp_ptr, NULL);
+
+      custom_c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+      if (custom_c == NULL) {
+        sql_log(DEBUG_INFO, "error: unable to resolve custom "
+          "SQLNamedQuery name '%s'", temp_ptr);
+
+      } else {
+        cmap.groupcustomgroupsetfast = temp_ptr;
+      }
+    }
+
+
   } else {
     cmap.grptable = get_param_ptr(main_server->conf, "SQLGroupTable", FALSE);
     cmap.grpfield = get_param_ptr(main_server->conf, "SQLGroupnameField",
@@ -5098,9 +5385,9 @@ static int sql_sess_init(void) {
 
   if (SQL_USERS) {
     sql_log(DEBUG_INFO, "password field     : %s", cmap.pwdfield);
-    sql_log(DEBUG_INFO, "uid field          : %s",
+    sql_log(DEBUG_INFO, "UID field          : %s",
       (cmap.uidfield ? cmap.uidfield : "NULL"));
-    sql_log(DEBUG_INFO, "gid field          : %s",
+    sql_log(DEBUG_INFO, "GID field          : %s",
       (cmap.gidfield ? cmap.gidfield : "NULL"));
     if (cmap.homedirfield)
       sql_log(DEBUG_INFO, "homedir field      : %s", cmap.homedirfield);
@@ -5113,7 +5400,7 @@ static int sql_sess_init(void) {
   if (SQL_GROUPS) {
     sql_log(DEBUG_INFO, "group table        : %s", cmap.grptable);
     sql_log(DEBUG_INFO, "groupname field    : %s", cmap.grpfield);
-    sql_log(DEBUG_INFO, "grp gid field      : %s", cmap.grpgidfield);
+    sql_log(DEBUG_INFO, "grp GID field      : %s", cmap.grpgidfield);
     sql_log(DEBUG_INFO, "grp members field  : %s", cmap.grpmembersfield);
   }
 
