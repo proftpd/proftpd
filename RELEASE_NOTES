@@ -184,6 +184,14 @@ files.
           ...
         </IfModule>
 
+    TLSRequired
+
+      The TLSRequired directive can now be used in <Directory> sections and
+      in .ftpaccess files.  When used in these configuration contexts, only
+      the TLSRequired values that require SSL/TLS protection on data transfers
+      are honored.  With this, it is now possible to mark specific files or
+      directories as requiring SSL/TLS protection to be accessed via data
+      transfer.
 
   + Deprecated configuration directives:
 
@@ -192,4 +200,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-03-27 17:26:23 $
+Last Updated: $Date: 2009-03-28 19:26:47 $

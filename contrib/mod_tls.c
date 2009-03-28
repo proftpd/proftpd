@@ -5196,13 +5196,6 @@ MODRET tls_any(cmd_rec *cmd) {
   if (!tls_engine)
     return PR_DECLINED(cmd);
 
-  /* NOTE: possibly add checks of commands here in order to support the
-   * ability of having TLSRequired in per-directory configurations.  This
-   * would mean watching for directory change commands, file transfer
-   * commands, and doing a context check in order to appropriately set
-   * the value of tls_required_on_data.
-   */
-
   /* Some commands need not be hindered. */
   if (strcmp(cmd->argv[0], C_SYST) == 0 ||
       strcmp(cmd->argv[0], C_AUTH) == 0 ||
@@ -5247,18 +5240,63 @@ MODRET tls_any(cmd_rec *cmd) {
     }
   }
 
-  if (tls_required_on_data == 1 &&
-      !(tls_flags & TLS_SESS_NEED_DATA_PROT)) {
+  /* TLSRequired checks */
+
+  if (tls_required_on_data == 1) {
+    /* TLSRequired encompasses all data transfers for this session, the
+     * client did not specify an appropriate PROT, and the command is one
+     * which will trigger a data transfer...
+     */
+
+    if (!(tls_flags & TLS_SESS_NEED_DATA_PROT)) {
+      if (strcmp(cmd->argv[0], C_APPE) == 0 ||
+          strcmp(cmd->argv[0], C_LIST) == 0 ||
+          strcmp(cmd->argv[0], C_NLST) == 0 ||
+          strcmp(cmd->argv[0], C_RETR) == 0 ||
+          strcmp(cmd->argv[0], C_STOR) == 0 ||
+          strcmp(cmd->argv[0], C_STOU) == 0) {
+        tls_log("SSL/TLS required but absent on data channel, "
+          "denying %s command", cmd->argv[0]);
+        pr_response_add_err(R_550, _("SSL/TLS required on the data channel"));
+        return PR_ERROR(cmd);
+      }
+    }
+
+  } else {
+
+    /* TLSRequired is not in effect for all data transfers for this session.
+     * If this command will trigger a data transfer, check the current
+     * context to see if there's a directory-level TLSRequired for data
+     * transfers.
+     *
+     * XXX ideally, rather than using the current directory location, we'd
+     * do the lookup based on the target location.
+     */
+
     if (strcmp(cmd->argv[0], C_APPE) == 0 ||
         strcmp(cmd->argv[0], C_LIST) == 0 ||
         strcmp(cmd->argv[0], C_NLST) == 0 ||
         strcmp(cmd->argv[0], C_RETR) == 0 ||
         strcmp(cmd->argv[0], C_STOR) == 0 ||
         strcmp(cmd->argv[0], C_STOU) == 0) {
-      tls_log("SSL/TLS required but absent on data channel, "
-        "denying %s command", cmd->argv[0]);
-      pr_response_add_err(R_550, _("SSL/TLS required on the data channel"));
-      return PR_ERROR(cmd);
+      config_rec *c;
+
+      c = find_config(CURRENT_CONF, CONF_PARAM, "TLSRequired", FALSE);
+      if (c) {
+        int tls_required;
+
+        tls_required = *((int *) c->argv[1]);
+
+        if (tls_required == TRUE &&
+            !(tls_flags & TLS_SESS_NEED_DATA_PROT)) {
+          tls_log("%s command denied by TLSRequired in directory '%s'",
+            cmd->argv[0], session.dir_config ? session.dir_config->name :
+            session.anon_config ? session.anon_config->name :
+            main_server->ServerName);
+          pr_response_add_err(R_550, _("SSL/TLS required on the data channel"));
+          return PR_ERROR(cmd);
+        }
+      }
     }
   }
 
@@ -6023,7 +6061,8 @@ MODRET set_tlsrequired(cmd_rec *cmd) {
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR|
+    CONF_DYNDIR);
 
   bool = get_boolean(cmd, 1);
   if (bool == -1) {

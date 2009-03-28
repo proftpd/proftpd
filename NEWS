@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1020 2009-03-27 17:26:23 castaglia Exp $
+$Id: NEWS,v 1.1021 2009-03-28 19:26:47 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -95,6 +95,7 @@ CVS
 - Bug 3231 - Use getgrset(3) on AIX to emulate getgrouplist(3).
 - Bug 3043 - SQLGroupInfo should allow custom queries.  See the SQLGroupInfo
   description for more information.
+- Bug 2178 - Extend TLSRequired for <Directory> and .ftpaccess contexts.
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------
