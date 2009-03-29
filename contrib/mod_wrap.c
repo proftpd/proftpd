@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.18 2008-01-25 01:53:34 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.19 2009-03-29 00:51:58 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.3"
@@ -899,6 +899,9 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
 
     /* log the denied connection */
     wrap_log_request_denied(deny_severity, &request);
+
+    /* Broadcast this event to any interested listeners. */
+    pr_event_generate("mod_wrap.connection-denied", NULL);
 
     /* check for AccessDenyMsg */
     if ((denymsg = (char *) get_param_ptr(TOPLEVEL_CONF, "AccessDenyMsg",

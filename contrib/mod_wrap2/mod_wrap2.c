@@ -1567,6 +1567,11 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
     /* Log the denied connection */
     wrap2_log("refused connection from %s", wrap2_get_client(&con));
 
+    /* Broadcast this event to any interested listeners.  We use the same
+     * event name as mod_wrap for consistency.
+     */
+    pr_event_generate("mod_wrap.connection-denied", NULL);
+
     /* Check for a configured WrapDenyMsg.  If not present, then use the
      * default denied message.
      */
