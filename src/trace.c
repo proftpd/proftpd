@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2008 The ProFTPD Project team
+ * Copyright (c) 2006-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.21 2008-12-16 23:43:55 castaglia Exp $
+ * $Id: trace.c,v 1.22 2009-03-30 18:43:50 castaglia Exp $
  */
 
 
@@ -66,12 +66,6 @@ static const char *trace_channels[] = {
   "xfer",
   NULL
 };
-
-/* XXX This hardcoded fd number is NOT a good idea.  There's always the
- * possibility of it colliding with a "real" fd.  That's why it's so 
- * arbitrarily high.
- */
-static const int trace_log_fallback_fd = 255;
 
 static void trace_restart_ev(const void *event_data, void *user_data) {
   close(trace_logfd);
@@ -164,40 +158,22 @@ int pr_trace_set_file(const char *path) {
   pr_signals_unblock();
 
   if (res < 0) {
-    if (res == -1)
+    if (res == -1) {
       pr_log_debug(DEBUG1, "unable to open TraceLog '%s': %s", path,
         strerror(errno));
 
-    else if (res == PR_LOG_WRITABLE_DIR)
+    } else if (res == PR_LOG_WRITABLE_DIR) {
       pr_log_debug(DEBUG1,
         "unable to open TraceLog '%s': parent directory is world-writable",
         path);
 
-    else if (res == PR_LOG_SYMLINK)
+    } else if (res == PR_LOG_SYMLINK) {
       pr_log_debug(DEBUG1,
         "unable to open TraceLog '%s': cannot log to a symbolic link",
         path);
+    }
 
     return res;
-  }
-
-  /* Ensure that the log fd used is not one of the major three
-   * (stdin, stdout, or stderr).
-   */
-  if (trace_logfd < 3) {
-    if (dup2(trace_logfd, trace_log_fallback_fd) < 0) {
-      pr_log_pri(PR_LOG_NOTICE, "error duplicating trace log fd: %s",
-        strerror(errno));
-      (void) close(trace_logfd);
-      trace_logfd = -1;
-
-      errno = EACCES;
-      return -1;
-
-    } else {
-      (void) close(trace_logfd);
-      trace_logfd = trace_log_fallback_fd;
-    }
   }
 
   return 0;

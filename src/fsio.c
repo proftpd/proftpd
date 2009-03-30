@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.76 2009-03-05 06:01:50 castaglia Exp $
+ * $Id: fsio.c,v 1.77 2009-03-30 18:43:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3476,6 +3476,86 @@ static off_t calc_fs_size(size_t blocks, size_t bsize) {
     return 0;
 
   return (res_lo >> 10) | (res_hi << 6);
+}
+
+/* Be generous in the maximum allowed number of dup fds, in our search for
+ * one that is outside the big three.
+ *
+ * In theory, this should be a runtime lookup using getdtablesize(2), being
+ * sure to handle the ENOSYS case (for older systems).
+ */
+#define FSIO_MAX_DUPFDS		512
+
+/* The main three fds (stdin, stdout, stderr) need to be protected, reserved
+ * for use.  This function uses dup(2) to open new fds on the given fd
+ * until the new fd is not one of the big three.
+ */
+int pr_fs_get_usable_fd(int fd) {
+  register unsigned int i;
+  int fdi, dup_fds[FSIO_MAX_DUPFDS], n; 
+
+  if (fd > STDERR_FILENO) {
+    return fd;
+  }
+ 
+  memset(dup_fds, -1, sizeof(dup_fds));
+  i = 0;
+  n = -1;
+
+  fdi = fd;
+  while (i < FSIO_MAX_DUPFDS) {
+    pr_signals_handle();
+
+    dup_fds[i] = dup(fdi);
+    if (dup_fds[i] < 0) {
+      register unsigned int j;
+      int xerrno  = errno;
+
+      /* Need to clean up any previously opened dups as well. */
+      for (j = 0; j <= i; j++) {
+        close(dup_fds[j]);
+        dup_fds[j] = -1;
+      }
+
+      errno = xerrno;
+      return -1;
+    }
+
+    if (dup_fds[i] <= STDERR_FILENO) {
+      /* Continue searching for an open fd that isn't 0, 1, or 2. */
+      fdi = dup_fds[i];
+      i++;
+      continue;
+    }
+
+    n = i;
+    fdi = dup_fds[n];
+    break;
+  }
+
+  /* If n is -1, we reached the max number of dups without finding an
+   * open one.  Hard to imagine this happening, but catch the case anyway.
+   */
+  if (n == -1) {
+    /* Free up the fds we opened in our search. */
+    for (i = 0; i < FSIO_MAX_DUPFDS; i++) {
+      if (dup_fds[i] >= 0) {
+        close(dup_fds[i]);
+        dup_fds[i] = -1;
+      }
+    }
+
+    errno = EPERM;
+    return -1;
+  }
+
+  /* Free up the fds we opened in our search. */
+  for (i = 0; i < n; i++) {
+    close(dup_fds[i]);
+    dup_fds[i] = -1;
+  }
+
+  return fdi;
 }
 
 off_t pr_fs_getsize(char *path) {

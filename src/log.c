@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.94 2009-02-22 00:22:57 castaglia Exp $
+ * $Id: log.c,v 1.95 2009-03-30 18:43:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -47,6 +47,7 @@ static int systemlog_fd = -1;
 int syslog_sockfd = -1;
 
 int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
+  int res;
   pool *tmp_pool = NULL;
   char *tmp = NULL, *lf;
   unsigned char have_stat = FALSE, *allow_log_symlinks = NULL;
@@ -204,6 +205,19 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
     if (*log_fd == -1) {
       destroy_pool(tmp_pool);
       return -1;
+    }
+  }
+
+  /* Find a usable fd for the just-opened log fd. */
+  if (*log_fd <= STDERR_FILENO) {
+    res = pr_fs_get_usable_fd(*log_fd);
+    if (res < 0) {
+      pr_log_debug(DEBUG0, "warning: unable to find good fd for logfd %d: %s",
+        *log_fd, strerror(errno));
+
+    } else {
+      close(*log_fd);
+      *log_fd = res;
     }
   }
 

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2009 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /* ProFTPD Controls command-line client
  *
- * $Id: ftpdctl.c,v 1.12 2009-03-10 16:59:23 castaglia Exp $
+ * $Id: ftpdctl.c,v 1.13 2009-03-30 18:43:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -58,6 +58,10 @@ gid_t pr_auth_name2gid(pool *p, const char *name) {
 
 uid_t pr_auth_name2uid(pool *p, const char *name) {
   return (uid_t) -1;
+}
+
+int pr_fs_get_usable_fd(int fd) {
+  return -1;
 }
 
 void pr_signals_block(void) {

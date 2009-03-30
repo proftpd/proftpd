@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.42 2009-03-10 16:59:23 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.43 2009-03-30 18:43:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -445,6 +445,29 @@ static int ctrls_listen(const char *sock_file) {
     pr_ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to create local socket: %s", strerror(errno));
     return -1;
+  }
+
+  /* Ensure that the socket used is not one of the major three fds (stdin,
+   * stdout, or stderr).
+   */
+  if (sockfd <= STDERR_FILENO) {
+    int res;
+
+    res = pr_fs_get_usable_fd(sockfd);
+    if (res < 0) {
+      int xerrno = errno;
+
+      pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
+        ": error duplicating ctrls socket: %s", strerror(errno));
+      (void) close(sockfd);
+
+      errno = xerrno;
+      return -1;
+
+    } else {
+      (void) close(sockfd);
+      sockfd = res;
+    }
   }
 
   /* Make sure the path to which we want to bind this socket doesn't already
@@ -1112,25 +1135,7 @@ static void ctrls_postparse_ev(const void *event_data, void *user_data) {
   if (ctrls_sockfd < 0) {
     pr_log_pri(PR_LOG_NOTICE, "notice: unable to listen to local socket: %s",
       strerror(errno));
-
-  } else {
-    /* Ensure that the listen socket used is not one of the major three
-     * (stdin, stdout, or stderr).
-     */
-    if (ctrls_sockfd < 3) {
-      if (dup2(ctrls_sockfd, 3) < 0) {
-        pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
-          ": error duplicating listen socket: %s", strerror(errno));
-        (void) close(ctrls_sockfd);
-        ctrls_sockfd = -1;
-
-      } else {
-        (void) close(ctrls_sockfd);
-        ctrls_sockfd = 3;
-      }
-    }
   }
-
 }
 
 static void ctrls_restart_ev(const void *event_data, void *user_data) {
@@ -1222,9 +1227,10 @@ static int ctrls_init(void) {
 
   /* Start listening on the ctrl socket */
   ctrls_sockfd = ctrls_listen(ctrls_sock_file);
-  if (ctrls_sockfd < 0)
+  if (ctrls_sockfd < 0) {
     pr_log_pri(PR_LOG_NOTICE, "notice: unable to listen to local socket: %s",
       strerror(errno));
+  }
 
   pr_event_register(&ctrls_module, "core.exit", ctrls_exit_ev, NULL);
   pr_event_register(&ctrls_module, "core.postparse", ctrls_postparse_ev, NULL);

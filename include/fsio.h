@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.22 2009-03-05 06:01:49 castaglia Exp $
+ * $Id: fsio.h,v 1.23 2009-03-30 18:43:50 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -322,6 +322,12 @@ void pr_fs_clean_path(const char *, char *, size_t);
 int pr_fs_glob(const char *, int, int (*errfunc)(const char *, int), glob_t *);
 void pr_fs_globfree(glob_t *);
 void pr_resolve_fs_map(void);
+
+/* The main three fds (stdin, stdout, stderr) need to be protected, reserved
+ * for use.  This function uses dup(2) to open new fds on the given fd
+ * until the new fd is not one of the big three.
+ */
+int pr_fs_get_usable_fd(int);
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || \
   defined(HAVE_SYS_VFS_H)
