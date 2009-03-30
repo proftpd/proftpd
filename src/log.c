@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.95 2009-03-30 18:43:50 castaglia Exp $
+ * $Id: log.c,v 1.96 2009-03-30 23:16:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -68,6 +68,8 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   if (tmp == NULL) {
     pr_log_debug(DEBUG0, "inappropriate log file: %s", lf);
     destroy_pool(tmp_pool);
+
+    errno = EINVAL;
     return -1;
   }
 
@@ -77,9 +79,12 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   *tmp = '\0';
 
   if (stat(lf, &sbuf) == -1) {
+    int xerrno = errno;
     pr_log_debug(DEBUG0, "error: unable to stat() %s: %s", lf,
       strerror(errno));
     destroy_pool(tmp_pool);
+
+    errno = xerrno;
     return -1;
   }
 
@@ -87,6 +92,8 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   if (!S_ISDIR(sbuf.st_mode)) {
     pr_log_debug(DEBUG0, "error: %s is not a directory", lf);
     destroy_pool(tmp_pool);
+
+    errno = ENOTDIR;
     return -1;
   }
 
