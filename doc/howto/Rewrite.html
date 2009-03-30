@@ -1,4 +1,4 @@
-<!-- $Id: Rewrite.html,v 1.4 2009-02-02 19:46:51 castaglia Exp $ -->
+<!-- $Id: Rewrite.html,v 1.5 2009-03-30 18:31:40 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Rewrite.html,v $ -->
 
 <html>
@@ -302,7 +302,20 @@ redirect a request, just like one might do using Apache's
 </pre>
 The above <code>RewriteRule</code> would work, but it would <b>not</b> actually
 redirect the FTP client to the URL.  FTP unfortuntely does <i>not</i> support
-redirection of requests, at the protocol level, unlike HTTP.
+redirection of requests to other servers, at the protocol level, unlike HTTP.
+
+<p>
+However, it <i>is</i> possible to redirect a request to some other directory
+on the same machine.  For example, if you wanted to have any file uploaded
+by a client go into the "/Incoming/" directory, no matter where the client
+wanted to upload the file, you could use:
+<pre>
+  &lt;IfModule mod_rewrite.c&gt;
+    RewriteEngine on
+    RewriteCondition %m STOR
+    RewriteRule (.*/)?(.*) /Incoming/$2
+  &lt;/IfModule&gt;
+</pre>
 
 <p>
 <b>URL Encoded Characters</b><br>
