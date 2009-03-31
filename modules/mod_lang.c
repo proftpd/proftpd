@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.23 2009-01-26 21:56:13 castaglia Exp $
+ * $Id: mod_lang.c,v 1.24 2009-03-31 03:27:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -322,7 +322,7 @@ MODRET lang_lang(cmd_rec *cmd) {
   if (!lang_engine)
     return PR_DECLINED(cmd);
 
-  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd, NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
     pr_log_debug(DEBUG4, MOD_LANG_VERSION ": LANG command denied by <Limit>");
     pr_response_add_err(R_500, _("Unable to handle command"));
     return PR_ERROR(cmd);
