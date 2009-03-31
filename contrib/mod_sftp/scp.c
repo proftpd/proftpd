@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.9 2009-03-27 18:44:30 castaglia Exp $
+ * $Id: scp.c,v 1.10 2009-03-31 14:45:31 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -543,7 +543,7 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
 
     ptr = strrchr(sp->path, '/');
     if (ptr == NULL) {
-      sp->best_path = dir_best_path(scp_pool, sp->filename);
+      sp->best_path = dir_canonical_vpath(scp_pool, sp->filename);
 
     } else {
 
@@ -554,7 +554,7 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
        * for an incoming 'test.txt' file?  To handle this, we append
        * the given name to the path sent in the initial scp command.
        */
-      sp->best_path = dir_best_path(scp_pool,
+      sp->best_path = dir_canonical_vpath(scp_pool,
         pdircat(p, sp->path, name_str, NULL));
     }
   }
@@ -921,7 +921,7 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
 
       if (strcmp(sp->filename, cmd->arg) != 0) {
         sp->filename = cmd->arg;
-        sp->best_path = dir_best_path(scp_pool, sp->filename);
+        sp->best_path = dir_canonical_vpath(scp_pool, sp->filename);
       }
 
       if (!dir_check(p, cmd, G_WRITE, (char *) sp->path, NULL)) {
