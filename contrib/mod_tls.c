@@ -2451,7 +2451,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   if (blocking) {
     /* Return the connection to blocking mode. */
-    pr_inet_set_nonblock(conn->pool, conn);
+    pr_inet_set_block(conn->pool, conn);
   }
 
   if (res < 1) {
