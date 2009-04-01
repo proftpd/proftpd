@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.215 2009-03-26 20:20:55 castaglia Exp $
+ * $Id: dirtree.c,v 1.216 2009-04-01 23:09:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -58,6 +58,7 @@ extern pool *global_config_pool;
 /* Used by find_config_* */
 static xaset_t *find_config_top = NULL;
 
+static void config_dumpf(const char *, ...);
 static void merge_down(xaset_t *, int);
 
 static config_rec *_last_param_ptr = NULL;
@@ -77,7 +78,7 @@ static pool *config_tab_pool = NULL;
 static pr_table_t *config_tab = NULL;
 static unsigned int config_id = 0;
 
-static int allow_dyn_config(void) {
+static int allow_dyn_config(const char *path) {
   config_rec *c = NULL;
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_limit, have_group_limit, have_class_limit,
@@ -91,7 +92,7 @@ static int allow_dyn_config(void) {
 
   while (c) {
     if (c->argc == 3) {
-      if (!strcmp(c->argv[2], "user")) {
+      if (strcmp(c->argv[2], "user") == 0) {
 
         if (pr_expr_eval_user_or((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
@@ -106,7 +107,7 @@ static int allow_dyn_config(void) {
           }
         }
 
-      } else if (!strcmp(c->argv[2], "group")) {
+      } else if (strcmp(c->argv[2], "group") == 0) {
 
         if (pr_expr_eval_group_and((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
@@ -121,7 +122,7 @@ static int allow_dyn_config(void) {
           }
         }
 
-      } else if (!strcmp(c->argv[2], "class")) {
+      } else if (strcmp(c->argv[2], "class") == 0) {
 
         if (pr_expr_eval_class_or((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
@@ -157,8 +158,8 @@ static int allow_dyn_config(void) {
   /* Print out some nice debugging information. */
   if (have_user_limit || have_group_limit ||
       have_class_limit || have_all_limit) {
-    pr_log_debug(DEBUG4, "AllowOverride %s %s%s .ftpaccess files",
-      allow ? "allows" : "denies",
+    pr_log_debug(DEBUG8, "AllowOverride for path '%s' %s %s%s .ftpaccess files",
+      path, allow ? "allows" : "denies",
       have_user_limit ? "user " : have_group_limit ? "group " :
       have_class_limit ? "class " : "all",
       have_user_limit ? session.user : have_group_limit ? session.group :
@@ -1567,7 +1568,7 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
     return;
 
   /* Check to see whether .ftpaccess files are allowed to be parsed. */
-  if (!allow_dyn_config())
+  if (!allow_dyn_config(_path))
     return;
 
   path = pstrdup(p, _path);
@@ -2265,6 +2266,22 @@ static void merge_down(xaset_t *s, int dynamic) {
           if ((c->flags & CF_MERGEDOWN) &&
               find_config(dst->subset, c->config_type, c->name, FALSE))
             continue;
+
+          if (dynamic) {
+            /* If we are doing a dynamic merge (i.e. .ftpaccess files) then
+             * we do not need to re-merge the static configs that are already
+             * there.  Otherwise we are creating copies needlessly of any
+             * config_rec marked with the CF_MERGEDOWN_MULTI flag, which
+             * adds to the memory usage/processing time.
+             *
+             * If neither the src or the dst config have the CF_DYNAMIC
+             * flag, it's a static config, and we can skip this merge and move
+             * on.  Otherwise, we can merge it.
+             */
+            if (!(c->flags & CF_DYNAMIC) && !(dst->flags & CF_DYNAMIC)) {
+              continue;
+            }
+          }
 
           if (!dst->subset)
             dst->subset = xaset_create(dst->pool, NULL);
