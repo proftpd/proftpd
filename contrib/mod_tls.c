@@ -481,6 +481,9 @@ static int tls_verify_crl(int, X509_STORE_CTX *);
 static int tls_verify_ocsp(int, X509_STORE_CTX *);
 static char *tls_x509_name_oneline(X509_NAME *);
 
+static int tls_readmore(int);
+static int tls_writemore(int);
+
 /* Session cache API */
 static tls_sess_cache_t *tls_sess_cache_get_cache(const char *);
 static long tls_sess_cache_get_cache_mode(void);
@@ -2395,8 +2398,19 @@ static int tls_init_server(void) {
   return 0;
 }
 
+static int tls_get_block(conn_t *conn) {
+  int flags;
+
+  flags = fcntl(conn->rfd, F_GETFL);
+  if (flags & O_NONBLOCK) {
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
 static int tls_accept(conn_t *conn, unsigned char on_data) {
-  int res = 0;
+  int blocking, res = 0;
   char *subj = NULL;
   static unsigned char logged_data = FALSE;
   SSL *ssl = NULL;
@@ -2413,6 +2427,15 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     return -2;
   }
 
+  blocking = tls_get_block(conn);
+  if (blocking) {
+    /* Put the connection in non-blocking mode for the duration of the
+     * SSL handshake.  This lets us handle EGAIN/retries better (i.e.
+     * without spinning in a tight loop and consuming the CPU).
+     */
+    pr_inet_set_nonblock(conn->pool, conn);
+  }
+
   /* This works with either rfd or wfd (I hope) */
   SSL_set_fd(ssl, conn->rfd);
 
@@ -2425,6 +2448,12 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   retry:
   pr_signals_handle();
   res = SSL_accept(ssl);
+
+  if (blocking) {
+    /* Return the connection to blocking mode. */
+    pr_inet_set_nonblock(conn->pool, conn);
+  }
+
   if (res < 1) {
     const char *msg = "unable to accept TLS connection";
     int errcode = SSL_get_error(ssl, res);
@@ -2439,7 +2468,11 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
     switch (errcode) {
       case SSL_ERROR_WANT_READ:
+        tls_readmore(conn->rfd);
+        goto retry;
+
       case SSL_ERROR_WANT_WRITE:
+        tls_writemore(conn->rfd);
         goto retry;
 
       case SSL_ERROR_ZERO_RETURN:
