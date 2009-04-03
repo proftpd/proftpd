@@ -1,4 +1,4 @@
-<!-- $Id: Compiling.html,v 1.3 2009-03-19 01:40:19 castaglia Exp $ -->
+<!-- $Id: Compiling.html,v 1.4 2009-04-03 21:23:21 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Compiling.html,v $ -->
 
 <html>
@@ -175,73 +175,85 @@ For example, I do a lot of personal ProFTPD builds, and so I typically use:
 There are some features which are part of the core <code>proftpd</code> engine
 itself which can be configured via compile-time options.  The list below talks
 about the more common of these feature options:
+<ul>
+  <li><code>--disable-auth-file</code><br>
+    The <a href="../modules/mod_auth_file.html"><code>mod_auth_file</code></a>
+    module is included in the build by default; use this option to <b>not</b>
+    include the module.
+  </li>
 
-<p>
-<dt><code>--disable-auth-file</code>
-<dd>The <a href="../modules/mod_auth_file.html"><code>mod_auth_file</code></a>
-  module is included in the build by default; use this option to <b>not</b>
-  include the module.
-</dd>
+  <p>
+  <li><code>--enable-ctrls</code><br>
+    Enables support for the <a href="Controls.html">Controls</a> feature; this
+    is not enabled by default.
+  </li>
 
-<p>
-<dt><code>--enable-ctrls</code>
-<dd>Enables support for the <a href="Controls.html">Controls</a> feature;
-  this is not enabled by default.
-</dd>
+  <p>
+  <li><code>--enable-dso</code><br>
+    Enables support for <a href="DSO.html">DSO</a> modules (also called "shared
+    modules") by including the
+    <a href="../modules/mod_dso.html"><code>mod_dso</code></a> module in the
+    build.  This is not enabled by default.
+  </li>
 
-<p>
-<dt><code>--enable-dso</code>
-<dd>Enables support for <a href="DSO.html">DSO</a> modules (also called "shared
-  modules") by including the
-  <a href="../modules/mod_dso.html"><code>mod_dso</code></a> module in the
-  build.  This is not enabled by default.
-</dd>
+  <p>
+  <li><code>--enable-facl</code><br>
+    Enables support for POSX ACLs, which is not enabled by default.  Note that
+    the related <a href="../modules/mod_facl.html"><code>mod_facl</code></a>
+    module must be added <b>separately</b> to the build, using
+    <code>--with-modules</code>.
+  </li>
 
-<p>
-<dt><code>--enable-facl</code>
-<dd>Enables support for POSX ACLs, which is not enabled by default.
-  Note that the related <a href="../modules/mod_facl.html"><code>mod_facl</code></a> module must be added <b>separately</b> to the build, using
-  <code>--with-modules</code>.
-</dd>
+  <p>
+  <li><code>--disable-ident</code><br>
+    Disables support for IDENT
+    (<a href="http://www.faqs.org/rfcs/rfc1413.html">RFC1413</a>) lookups by
+    not adding the <a href="../modules/mod_ident.html"><code>mod_ident</code></a>
+     module to the build.  This module is added by default.
+  </li>
 
-<p>
-<dt><code>--disable-ident</code>
-<dd>Disables support for IDENT (<a href="http://www.faqs.org/rfcs/rfc1413.html">RFC1413</a>) lookups by not adding the
-  <a href="../modules/mod_ident.html"><code>mod_ident</code></a> module to the
-  build.  This module is added by default.
-</dd>
+  <p>
+  <li><code>--disable-ipv6</code><br>
+    Disables IPv6 support, which is enabled by default.  Note that IPv6 support
+    can be disabled <i>at run-time</i> using the <code>UseIPv6</code> directive
+    in your <code>proftpd.conf</code> file.
+  </li>
 
-<p>
-<dt>--enable-nls</code>
-<dd>Enables support for different character sets and encodings, for translated
-  response messages, and for the <code>LANG</code> FTP command via the
-  <a href="../modules/mod_lang.html"><code>mod_lang</code></a> module.  This
-  is not enabled by default.
-</dd>
+  <p>
+  <li>--enable-nls</code><br>
+    Enables support for different character sets and encodings, for translated
+    response messages, and for the <code>LANG</code> FTP command via the
+    <a href="../modules/mod_lang.html"><code>mod_lang</code></a> module.  This
+    is not enabled by default.
+  </li>
 
-<p>
-<dt><code>--disable-ipv6</code>
-<dd>Disables IPv6 support, which is enabled by default.  Note that IPv6
-  support can be disabled <i>at run-time</i> using the <code>UseIPv6</code>
-  directive in your <code>proftpd.conf</code> file.
-</dd>
+  <p>
+  <li><code>--disable-sendfile</code><br>
+    Disables support for the <code>sendfile(2)</code> function, which is
+    enabled by default.  Read <a href="Sendfile.html">here</a> for information
+    on when and why this is a Good Thing to do.
+  </li>
 
-<p>
-<dt><code>--disable-sendfile</code>
-<dd>Disables support for the <code>sendfile(2)</code> function, which is
-  enabled by default.  Read <a href="Sendfile.html">here</a> for information
-  on when and why this is a Good Thing to do.
-</dd>
+  <p>
+  <li><code>--enable-devel</code><br>
+    Enables code/behavior that is specifically used by developers and
+    maintainers; this code is disabled by default.  The uses for this option
+    are covered more fully <a href="#DeveloperOptions">below</a>; suffice to
+    say that unless you <i>really</i> know what you are doing, you should
+    <b>not</b> be using this option in your configure command.
+  </li>
 
-<p>
-<dt><code>--enable-devel</code>
-<dd>Enables code/behavior that is specifically used by developers and
-  maintainers; this code is disabled by default.  The uses for this option are
-  covered more fully <a href="#DeveloperOptions">below</a>; suffice to say
-  that unless you <i>really</i> know what you are doing, you should <b>not</b>
-  be using this option in your configure command.
-</dd>
+  <p>
+  <li>--with-lastlog</code><em>=/path/to/lastlog</em><br>
+    Enables support for lastlog logging; see the <code>lastlog(8)</code>
+    man page.  The optional <em>/path/to/lastlog</em> argument is only
+    needed if your lastlog file location is not a standard location.
+    Note that this configure option is needed in order to support the
+    <code>UseLastlog</code> configuration directive at runtime.
+    This feature is not enabled by default.
+  </li>
 
+</ul>
 <p>
 There are of course other feature-specific configure options, but most of
 the time, most people will not need to know about or use them.
@@ -721,7 +733,7 @@ is the way to get a statically linked <code>proftpd</code> executable:
 
 <p>
 <hr>
-<i>$Date: 2009-03-19 01:40:19 $</i><br>
+<i>$Date: 2009-04-03 21:23:21 $</i><br>
 
 </body>
 </html>
