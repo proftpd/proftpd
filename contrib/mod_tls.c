@@ -4566,6 +4566,10 @@ static int tls_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   optind = 0;
 #endif /* !FreeBSD, !Mac OSX and !Solaris2 */
 
+  if (pr_env_get(permanent_pool, "POSIXLY_CORRECT") == NULL) {
+    pr_env_set(permanent_pool, "POSIXLY_CORRECT", "1");
+  }
+
   while ((optc = getopt(reqargc, reqargv, opts)) != -1) {
     switch (optc) {
       case 'v':
