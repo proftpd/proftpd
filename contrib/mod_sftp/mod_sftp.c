@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.7 2009-02-27 00:20:10 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.8 2009-04-03 21:03:03 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1206,7 +1206,7 @@ static int sftp_sess_init(void) {
         pr_log_pri(PR_LOG_ERR, MOD_SFTP_VERSION ": unable to use FIPS mode: %s",
           errstr);
 
-        errno = EPERM;
+        errno = EACCES;
         return -1;
 
       } else {
@@ -1255,7 +1255,7 @@ static int sftp_sess_init(void) {
       sftp_keys_have_rsa_hostkey() < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "no available host keys, unable to handle session");
-    errno = EPERM;
+    errno = EACCES;
     return -1;
   }
 
