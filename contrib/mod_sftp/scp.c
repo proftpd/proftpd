@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.10 2009-03-31 14:45:31 castaglia Exp $
+ * $Id: scp.c,v 1.11 2009-04-03 17:09:09 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -916,6 +916,9 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
+        write_confirm(p, channel_id, 1,
+          pstrcat(p, sp->filename, ": ", strerror(EACCES), NULL));
+
         return 1;
       }
 
@@ -934,6 +937,9 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
+        write_confirm(p, channel_id, 1,
+          pstrcat(p, sp->filename, ": ", strerror(EACCES), NULL));
+
         return 1;
       }
 
@@ -949,14 +955,14 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "scp: error opening '%s': %s", sp->best_path, strerror(xerrno));
 
-        write_confirm(p, channel_id, 1,
-          pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
-
         if (cmd == NULL)
           cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
 
         (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+        write_confirm(p, channel_id, 1,
+          pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
 
         errno = xerrno;
         return 1;
