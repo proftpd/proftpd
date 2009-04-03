@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.39 2009-03-27 17:15:46 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.40 2009-04-03 14:30:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -615,7 +615,7 @@ MODRET pw_authz(cmd_rec *cmd) {
     pr_log_debug(DEBUG2, "AIX loginrestrictions() failed for user '%s': %s",
       cmd->argv[0], strerror(errno));
 
-    return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD)
+    return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
   }
 
   code = passwdexpired(cmd->argv[0], &reason);
@@ -643,7 +643,7 @@ MODRET pw_authz(cmd_rec *cmd) {
       /* Other error */
       pr_log_auth(LOG_WARNING, "AIX passwdexpired() failed for user '%s': "
         "%.100s", cmd->argv[0], reason);
-      return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD)
+      return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
   }
 #endif /* !HAVE_LOGINRESTRICTIONS */
 
