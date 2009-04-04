@@ -29,7 +29,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.h,v 1.10 2009-03-23 21:27:42 castaglia Exp $
+ * $Id: mod_quotatab.h,v 1.11 2009-04-04 04:38:33 castaglia Exp $
  */
 
 #ifndef MOD_QUOTATAB_H
@@ -175,9 +175,14 @@ typedef struct table_obj {
 
   /* Table locking routines */
   struct flock tab_lock;
+  int tab_lockfd;
   int (*tab_rlock)(struct table_obj *);
   int (*tab_unlock)(struct table_obj *);
   int (*tab_wlock)(struct table_obj *);
+
+  /* Table locking counters */
+  unsigned int rlock_count;
+  unsigned int wlock_count;
 
 } quota_table_t;
 

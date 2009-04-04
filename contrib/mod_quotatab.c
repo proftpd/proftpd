@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.42 2009-03-24 06:23:27 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.43 2009-04-04 04:38:33 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -77,7 +77,6 @@ static unsigned char use_quotas = FALSE;
 static unsigned char have_quota_entry = FALSE;
 static unsigned char have_quota_limit_table = FALSE;
 static unsigned char have_quota_tally_table = FALSE;
-static unsigned char have_quota_lock = FALSE;
 
 static unsigned long have_quota_update = 0;
 #define QUOTA_HAVE_READ_UPDATE			10000
@@ -100,6 +99,9 @@ static unsigned int quotatab_disk_nfiles;
 /* For handling deletes of files which not belong to us. */
 static struct stat quotatab_dele_st;
 static int quotatab_have_dele_st = FALSE;
+
+/* For locking (e.g. during tally creation). */
+static int quota_lockfd = -1;
 
 /* It is the case where sometimes a command may be denied by a PRE_CMD
  * handler of this module, in which case an appropriate error response is
@@ -160,9 +162,11 @@ static unsigned long quotatab_opts = 0UL;
 MODRET quotatab_pre_stor(cmd_rec *);
 MODRET quotatab_post_stor(cmd_rec *);
 MODRET quotatab_post_stor_err(cmd_rec *);
-static int quotatab_rlock(quota_tabtype_t);
-static int quotatab_unlock(quota_tabtype_t);
-static int quotatab_wlock(quota_tabtype_t);
+
+static int quotatab_rlock(quota_table_t *);
+static int quotatab_runlock(quota_table_t *);
+static int quotatab_wlock(quota_table_t *);
+static int quotatab_wunlock(quota_table_t *);
 
 /* Support routines
  */
@@ -438,16 +442,16 @@ static int quotatab_create(quota_tally_t *tally) {
    */
 
   /* Obtain a writer lock for the entry in question. */
-  if (quotatab_wlock(TYPE_TALLY) < 0)
+  if (quotatab_wlock(tally_tab) < 0)
     return FALSE;
 
   if (tally_tab->tab_create(tally_tab, tally) < 0) {
-    quotatab_unlock(TYPE_TALLY);
+    quotatab_wunlock(tally_tab);
     return FALSE;
   }
 
   /* Release the lock */
-  if (quotatab_unlock(TYPE_TALLY) < 0)
+  if (quotatab_wunlock(tally_tab) < 0)
     return FALSE;
 
   return TRUE;
@@ -666,7 +670,7 @@ int quotatab_read(quota_tally_t *tally) {
   }
 
   /* Obtain a reader lock for the entry in question. */
-  if (quotatab_rlock(TYPE_TALLY) < 0) {
+  if (quotatab_rlock(tally_tab) < 0) {
     quotatab_log("error: unable to obtain read lock: %s", strerror(errno));
     return -1;
   }
@@ -676,12 +680,12 @@ int quotatab_read(quota_tally_t *tally) {
    */
   bread = tally_tab->tab_read(tally_tab, tally);
   if (bread < 0) {
-    quotatab_unlock(TYPE_TALLY);
+    quotatab_runlock(tally_tab);
     return -1;
   }
 
   /* Release the lock */
-  if (quotatab_unlock(TYPE_TALLY) < 0) {
+  if (quotatab_runlock(tally_tab) < 0) {
     quotatab_log("error: unable to release read lock: %s", strerror(errno));
     return -1;
   }
@@ -726,31 +730,6 @@ int quotatab_register_backend(const char *backend,
   quotatab_nbackends++;
 
   return 0;
-}
-
-static int quotatab_rlock(quota_tabtype_t tab_type) {
-  if (have_quota_lock)
-    return 0;
-
-  if (tab_type == TYPE_TALLY) {
-    int res = tally_tab->tab_rlock(tally_tab);
-    if (res == 0)
-      have_quota_lock = TRUE;
-
-    return res;
-  }
-
-  else if (tab_type == TYPE_LIMIT) {
-    int res = limit_tab->tab_rlock(limit_tab);
-    if (res == 0)
-      have_quota_lock = TRUE;
-
-    return res;
-  }
-
-  /* default */
-  errno = EINVAL;
-  return -1;
 }
 
 /* Used by mod_quotatab backends to unregister their backend function pointers
@@ -838,54 +817,146 @@ unsigned char quotatab_lookup(quota_tabtype_t tab_type, void *ptr,
   return FALSE;
 }
 
-static int quotatab_unlock(quota_tabtype_t tab_type) {
-  if (!have_quota_lock)
+static int quotatab_mutex_lock(int lock_type) {
+  const char *lock_desc;
+  struct flock lock;
+  unsigned int nattempts = 1;
+
+  if (quota_lockfd < 0)
     return 0;
 
-  if (tab_type == TYPE_TALLY) {
-    int res = tally_tab->tab_unlock(tally_tab);
-    if (res == 0)
-      have_quota_lock = FALSE;
+  lock.l_type = F_WRLCK;
+  lock.l_whence = SEEK_SET;
+  lock.l_start = 0;
+  lock.l_len = 0;
 
-    return res;
+  lock_desc = (lock_type == F_WRLCK ? "write-lock" : "unlock");
+
+  pr_trace_msg("lock", 9, "attempting to %s QuotaLock fd %d", lock_desc,
+    quota_lockfd);
+
+  while (fcntl(quota_lockfd, F_SETLK, &lock) < 0) {
+    int xerrno = errno;
+
+    if (xerrno == EINTR) {
+      pr_signals_handle();
+      continue;
+    }
+
+    pr_trace_msg("lock", 3, "%s of QuotaLock fd %d failed: %s",
+      lock_desc, quota_lockfd, strerror(xerrno));
+    if (xerrno == EACCES) {
+      struct flock locker;
+
+      /* Get the PID of the process blocking this lock. */
+      if (fcntl(quota_lockfd, F_GETLK, &locker) == 0) {
+        pr_trace_msg("lock", 3, "process ID %lu has blocking %s on "
+          "QuotaLock fd %d", (unsigned long) locker.l_pid,
+          (locker.l_type == F_WRLCK ? "write-lock" :
+           locker.l_type == F_RDLCK ? "read-lock" : "unlock"),
+          quota_lockfd);
+      }
+
+      /* Treat this as an interrupted call, call pr_signals_handle() (which
+       * will delay for a few msecs because of EINTR), and try again.
+       * After 10 attempts, give up altogether.
+       */
+
+      nattempts++;
+      if (nattempts <= 10) {
+        errno = EINTR;
+
+        pr_signals_handle();
+        continue;
+      }
+
+      errno = xerrno;
+      return -1;
+    }
   }
 
-  else if (tab_type == TYPE_LIMIT) {
-    int res = limit_tab->tab_unlock(limit_tab);
-    if (res == 0)
-      have_quota_lock = FALSE;
-
-    return res;
-  }
-
-  /* default */
-  errno = EINVAL;
-  return -1;
+  pr_trace_msg("lock", 9, "%s of QuotaLock fd %d succeeded", lock_desc,
+    quota_lockfd);
+  return 0;
 }
 
-static int quotatab_wlock(quota_tabtype_t tab_type) {
-  if (have_quota_lock)
-    return 0;
+static int quotatab_rlock(quota_table_t *tab) {
+  int res = 0;
 
-  if (tab_type == TYPE_TALLY) {
-    int res = tally_tab->tab_wlock(tally_tab);
-    if (res == 0)
-      have_quota_lock = TRUE;
-
-    return res;
+  if (tab->rlock_count == 0 &&
+      tab->wlock_count == 0) {
+    tab->tab_lockfd = quota_lockfd;
+    res = tab->tab_rlock(tab);
   }
 
-  else if (tab_type == TYPE_LIMIT) {
-    int res = limit_tab->tab_wlock(limit_tab);
-    if (res == 0)
-      have_quota_lock = TRUE;
-
-    return res;
+  if (res == 0) {
+    tab->rlock_count++;
   }
 
-  /* default */
-  errno = EINVAL;
-  return -1;
+  return res;
+}
+
+static int quotatab_runlock(quota_table_t *tab) {
+  int res = 0;
+
+  if (tab->rlock_count == 1 &&
+      tab->wlock_count == 0) {
+    tab->tab_lockfd = quota_lockfd;
+    res = tab->tab_unlock(tab);
+  }
+
+  if (res == 0 &&
+      tab->rlock_count > 0) {
+    tab->rlock_count--;
+  }
+
+  return 0;
+}
+
+static int quotatab_wlock(quota_table_t *tab) {
+  int res = 0;
+
+  if (tab->wlock_count == 0) {
+    tab->tab_lockfd = quota_lockfd;
+    res = tab->tab_wlock(tab);
+  }
+
+  if (res == 0) {
+    tab->wlock_count++;
+  }
+
+  return res;
+}
+
+static int quotatab_wunlock(quota_table_t *tab) {
+  int res = 0;
+
+  /* A write-lock may need to be "downgraded" into a read-lock, depending
+   * on the other lock attempts that have been made.
+   */
+  if (tab->wlock_count == 1) {
+    tab->tab_lockfd = quota_lockfd;
+
+    if (tab->rlock_count == 0) {
+      /* The write-lock is the only lock left on the table; do a full unlock. */
+      res = tab->tab_unlock(tab);
+
+    } else {
+      /* We have some read-locks on the table; downgrade the write-lock to
+       * a read-lock.  The call to the tab_rlock() callback does NOT go
+       * through the quotatab_rlock() function, which means it does not affect
+       * the table lock counters; this is by design.
+       */
+      res = tab->tab_rlock(tab);
+    }
+  }
+
+  if (res == 0 &&
+      tab->wlock_count > 0) {
+    tab->wlock_count--;
+  }
+
+  return res;
 }
 
 int quotatab_write(quota_tally_t *tally,
@@ -899,7 +970,7 @@ int quotatab_write(quota_tally_t *tally,
   }
 
   /* Obtain a writer lock for the entry in question */
-  if (quotatab_wlock(TYPE_TALLY) < 0) {
+  if (quotatab_wlock(tally_tab) < 0) {
     quotatab_log("error: unable to obtain write lock: %s", strerror(errno));
     return -1;
   }
@@ -985,19 +1056,19 @@ int quotatab_write(quota_tally_t *tally,
   /* No need to write out to the stream if per-session quotas are in effect. */
   if (sess_limit.quota_per_session) {
     memset(&quotatab_deltas, '\0', sizeof(quotatab_deltas));
-    quotatab_unlock(TYPE_TALLY);
+    quotatab_wunlock(tally_tab);
     return 0;
   }
 
   if (tally_tab->tab_write(tally_tab, tally) < 0) {
     quotatab_log("error: unable to update tally entry: %s", strerror(errno));
-    quotatab_unlock(TYPE_TALLY);
+    quotatab_wunlock(tally_tab);
     memset(&quotatab_deltas, '\0', sizeof(quotatab_deltas));
     return -1;
   }
 
   /* Release the lock */
-  if (quotatab_unlock(TYPE_TALLY) < 0) {
+  if (quotatab_wunlock(tally_tab) < 0) {
     quotatab_log("error: unable to release write lock: %s", strerror(errno));
     memset(&quotatab_deltas, '\0', sizeof(quotatab_deltas));
     return -1;
@@ -1604,11 +1675,14 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
         (unsigned long) quotatab_dele_st.st_uid, session.user,
         (unsigned long) session.uid, user_owner);
 
+      quotatab_mutex_lock(F_WRLCK);
+
       if (quotatab_lookup(TYPE_LIMIT, &dele_limit, user_owner, USER_QUOTA)) {
         quotatab_log("found limit entry for user '%s'", user_owner);
 
         if (quotatab_lookup(TYPE_TALLY, &dele_tally, user_owner, USER_QUOTA)) {
           quotatab_log("found tally entry for user '%s'", user_owner);
+          quotatab_mutex_lock(F_UNLCK);
 
           if (quotatab_write(&dele_tally, -quotatab_disk_nbytes, 0, 0, -1,
               0, 0) < 0) {
@@ -1623,6 +1697,7 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
 
         } else {
           quotatab_log("no tally entry found for user '%s'", user_owner);
+          quotatab_mutex_lock(F_UNLCK);
 
           /* Credit the current user for these bytes anyway; that's the
            * default behavior anyway.
@@ -1641,6 +1716,7 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
           if (quotatab_lookup(TYPE_TALLY, &dele_tally, group_owner,
               GROUP_QUOTA)) {
             quotatab_log("found tally entry for group '%s'", group_owner);
+            quotatab_mutex_lock(F_UNLCK);
 
             if (quotatab_write(&dele_tally, -quotatab_disk_nbytes, 0, 0, -1,
                 0, 0) < 0) {
@@ -1655,6 +1731,7 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
 
           } else {
             quotatab_log("no tally entry found for group '%s'", group_owner);
+            quotatab_mutex_lock(F_UNLCK);
 
             /* Credit the current user for these bytes anyway; that's the
              * default behavior anyway.
@@ -1663,6 +1740,7 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
           }
 
         } else {
+          quotatab_mutex_lock(F_UNLCK);
 
           /* Credit the current user for these bytes anyway; that's the
            * default behavior anyway.
@@ -1742,6 +1820,8 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
+  quotatab_mutex_lock(F_WRLCK);
+
   /* Check for a limit and a tally entry for this user. */
   if (quotatab_lookup(TYPE_LIMIT, &sess_limit, session.user, USER_QUOTA)) {
     quotatab_log("found limit entry for user '%s'", session.user);
@@ -1749,6 +1829,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
     if (quotatab_lookup(TYPE_TALLY, &sess_tally, session.user, USER_QUOTA)) {
       quotatab_log("found tally entry for user '%s'", session.user);
+      quotatab_mutex_lock(F_UNLCK);
       have_quota_entry = TRUE;
 
       if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
@@ -1820,6 +1901,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
     if (have_limit_entry) {
       if (quotatab_lookup(TYPE_TALLY, &sess_tally, group_name, GROUP_QUOTA)) {
         quotatab_log("found tally entry for group '%s'", group_name);
+        quotatab_mutex_lock(F_UNLCK);
         have_quota_entry = TRUE;
 
         if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
@@ -1869,6 +1951,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
           CLASS_QUOTA)) {
         quotatab_log("found tally entry for class '%s'",
           session.class->cls_name);
+        quotatab_mutex_lock(F_UNLCK);
         have_quota_entry = TRUE;
 
         if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
@@ -1916,6 +1999,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
       if (quotatab_lookup(TYPE_TALLY, &sess_tally, NULL, ALL_QUOTA)) {
         quotatab_log("found tally entry for all");
+        quotatab_mutex_lock(F_UNLCK);
         have_quota_entry = TRUE;
 
         if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
@@ -1989,6 +2073,8 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
       quotatab_log("error: unable to create tally entry: %s",
         strerror(errno));
     }
+
+    quotatab_mutex_lock(F_UNLCK);
   }
 
   if (have_quota_entry) {
@@ -2026,6 +2112,12 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
     }
 
   } else {
+    /* If we didn't even find a limit entry, then make sure that we
+     * release the QuotaLock.
+     */
+    if (!have_limit_entry) {
+      quotatab_mutex_lock(F_UNLCK);
+    }
 
     /* No quota entry for this user.  Make sure the quotas are not used. */
     quotatab_log("no quota entry found, turning QuotaEngine off");
@@ -3030,6 +3122,41 @@ static int quotatab_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "QuotaOptions", FALSE);
   if (c) {
     quotatab_opts = *((unsigned long *) c->argv[0]);
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "QuotaLock", FALSE);
+  if (c) {
+    int fd;
+    const char *path;
+
+    path = c->argv[0];
+
+    /* Make sure the QuotaLock file exists. */
+    PRIVS_ROOT
+    fd = open(path, O_RDWR|O_CREAT, 0600);
+    PRIVS_RELINQUISH
+
+    if (fd < 0) {
+      quotatab_log("unable to open QuotaLock '%s': %s", path, strerror(errno));
+
+    } else {
+      /* Make sure that this fd is not one of the main three. */
+      if (fd <= STDERR_FILENO) {
+        int res;
+
+        res = pr_fs_get_usable_fd(fd);
+        if (res < 0) {
+          quotatab_log("warning: unable to find usable fd for lockfd %d: %s",
+            fd, strerror(errno));
+
+        } else {
+          quota_lockfd = fd;
+        }
+
+      } else {
+        quota_lockfd = fd;
+      }
+    }
   }
 
   return 0;

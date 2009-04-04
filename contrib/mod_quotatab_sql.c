@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_quotatab_sql.c,v 1.10 2009-03-23 21:27:43 castaglia Exp $
+ * $Id: mod_quotatab_sql.c,v 1.11 2009-04-04 04:38:33 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -31,10 +31,6 @@
 #define QUOTATAB_SQL_VALUE_BUFSZ	20
 
 module quotatab_sql_module;
-
-/* For synchronizing on database table operations among sessions. */
-static char *sqltab_lock_file = NULL;
-static int sqltab_lock_fd = -1;
 
 static cmd_rec *sqltab_cmd_create(pool *parent_pool, int argc, ...) {
   pool *cmd_pool = NULL;
@@ -553,9 +549,9 @@ static int sqltab_write(quota_table_t *sqltab, void *ptr) {
 static int sqltab_rlock(quota_table_t *sqltab) {
 
   /* Check for a configured lock file. */
-  if (sqltab_lock_file) {
+  if (sqltab->tab_lockfd > 0) {
     sqltab->tab_lock.l_type = F_RDLCK;
-    return fcntl(sqltab_lock_fd, F_SETLK, &sqltab->tab_lock);
+    return fcntl(sqltab->tab_lockfd, F_SETLK, &sqltab->tab_lock);
   }
 
   return 0;
@@ -564,9 +560,9 @@ static int sqltab_rlock(quota_table_t *sqltab) {
 static int sqltab_unlock(quota_table_t *sqltab) {
 
   /* Check for a configured lock file. */
-  if (sqltab_lock_file) {
+  if (sqltab->tab_lockfd > 0) {
     sqltab->tab_lock.l_type = F_UNLCK;
-    return fcntl(sqltab_lock_fd, F_SETLK, &sqltab->tab_lock);
+    return fcntl(sqltab->tab_lockfd, F_SETLK, &sqltab->tab_lock);
   }
 
   return 0;
@@ -575,9 +571,9 @@ static int sqltab_unlock(quota_table_t *sqltab) {
 static int sqltab_wlock(quota_table_t *sqltab) {
 
   /* Check for a configured lock file. */
-  if (sqltab_lock_file) {
+  if (sqltab->tab_lockfd > 0) {
     sqltab->tab_lock.l_type = F_WRLCK;
-    return fcntl(sqltab_lock_fd, F_SETLK, &sqltab->tab_lock);
+    return fcntl(sqltab->tab_lockfd, F_SETLK, &sqltab->tab_lock);
   }
 
   return 0;
@@ -759,31 +755,6 @@ static quota_table_t *sqltab_open(pool *parent_pool, quota_tabtype_t tab_type,
   return tab;
 }
 
-static int sqltab_sess_init(void) {
-  quotatab_openlog();
-
-  /* Check for a configured lock file. */
-  sqltab_lock_file = get_param_ptr(main_server->conf, "QuotaLock", FALSE);
-  if (sqltab_lock_file != NULL) {
-
-    /* Make sure the file exists. */
-    PRIVS_ROOT
-    if (unlink(sqltab_lock_file) < 0 && errno != ENOENT)
-      quotatab_log("error: unable to delete QuotaLock '%s': %s",
-        sqltab_lock_file, strerror(errno));
-    sqltab_lock_fd = open(sqltab_lock_file, O_RDWR|O_CREAT, 0600);
-    PRIVS_RELINQUISH
-
-    if (sqltab_lock_fd < 0) {
-      quotatab_log("error: unable to open QuotaLock '%s': %s",
-        sqltab_lock_file, strerror(errno));
-      sqltab_lock_file = NULL;
-    }
-  }
-
-  return 0;
-}
-
 /* Event handlers
  */
 
@@ -831,9 +802,9 @@ module quotatab_sql_module = {
   /* Module authentication handler table */
   NULL,
 
-  /* Module initialization function */
+  /* Module initialization */
   sqltab_init,
 
-  /* Module child initialization function */
-  sqltab_sess_init
+  /* Session initialization */
+  NULL
 };
