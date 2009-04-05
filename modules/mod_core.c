@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.346 2009-03-24 06:23:27 castaglia Exp $
+ * $Id: mod_core.c,v 1.347 2009-04-05 16:34:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4432,6 +4432,8 @@ MODRET core_rnto_cleanup(cmd_rec *cmd) {
     destroy_pool(session.xfer.p);
 
   memset(&session.xfer, '\0', sizeof(session.xfer));
+
+  pr_table_remove(session.notes, "mod_core.rnfr-path", NULL);
   return PR_DECLINED(cmd);
 }
 
@@ -4481,6 +4483,10 @@ MODRET core_rnfr(cmd_rec *cmd) {
   pr_pool_tag(session.xfer.p, "session xfer pool");
 
   session.xfer.path = pstrdup(session.xfer.p, path);
+
+  pr_table_add(session.notes, "mod_core.rnfr-path",
+    pstrdup(session.xfer.p, session.xfer.path), 0);
+
   pr_response_add(R_350, _("File or directory exists, ready for "
     "destination name"));
 

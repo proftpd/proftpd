@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.91 2009-03-16 23:26:58 castaglia Exp $
+ * $Id: mod_log.c,v 1.92 2009-04-05 16:34:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -98,6 +98,7 @@ struct logfile_struc {
 #define META_RESPONSE_STR	26
 #define META_PROTOCOL		27
 #define META_VERSION		28
+#define META_RENAME_FROM	29
 
 /* For tracking the size of deleted files. */
 static off_t log_dele_filesz = 0;
@@ -135,6 +136,7 @@ static xaset_t			*log_set = NULL;
    %u			- Local user
    %V                   - DNS name of server serving request
    %v			- ServerName of server serving request
+   %w                   - RNFR path ("whence" a rename comes, i.e. the source)
    %{protocol}          - Current protocol (e.g. "ftp", "sftp", etc)
    %{version}           - ProFTPD version
 */
@@ -317,6 +319,10 @@ static void logformat(char *nickname, char *fmts) {
 
           case 'V':
             add_meta(&outs, META_LOCAL_FQDN, 0);
+            break;
+
+          case 'w':
+            add_meta(&outs, META_RENAME_FROM, 0);
             break;
 
           case '%':
@@ -770,6 +776,21 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
         sizeof(arg));
       m++;
       break;
+
+    case META_RENAME_FROM: {
+      char *rnfr_path = "-";
+
+      argp = arg;
+      if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+        rnfr_path = pr_table_get(session.notes, "mod_core.rnfr-path", NULL);
+        if (rnfr_path == NULL)
+          rnfr_path = "-";
+      }
+
+      sstrncpy(argp, rnfr_path, sizeof(arg));
+      m++;
+      break;
+    }
 
     case META_IDENT_USER: {
       char *rfc1413_ident;

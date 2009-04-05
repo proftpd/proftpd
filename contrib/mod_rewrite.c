@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.43 2009-03-23 01:59:22 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.44 2009-04-05 16:34:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -102,7 +102,7 @@ static array_header *rewrite_conds = NULL, *rewrite_regexes = NULL;
 static rewrite_match_t rewrite_cond_matches;
 static rewrite_match_t rewrite_rule_matches;
 
-#define REWRITE_MAX_VARS		14
+#define REWRITE_MAX_VARS		15
 
 static char rewrite_vars[REWRITE_MAX_VARS][3] = {
   "%a",		/* Remote IP address */
@@ -118,7 +118,8 @@ static char rewrite_vars[REWRITE_MAX_VARS][3] = {
   "%t",		/* Unix time */
   "%U",		/* Original username */
   "%u",		/* Resolved/real username */
-  "%v"		/* Server name */
+  "%v",		/* Server name */
+  "%w"		/* Rename from (whence) */
 };
 
 /* Necessary prototypes
@@ -164,7 +165,9 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
     return (session.class ? session.class->cls_name : NULL);
 
   } else if (strcmp(var, "%F") == 0) {
-    char *cmd_name = rewrite_get_cmd_name(cmd);
+    char *cmd_name;
+
+    cmd_name = rewrite_get_cmd_name(cmd);
 
     /* This variable is only valid for commands that operate on paths.
      * mod_log uses the session.xfer.xfer_path variable, but that is not yet
@@ -255,6 +258,20 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
 
     } else {
       REWRITE_CHECK_VAR(session.groups, "%G");
+      return NULL;
+    }
+
+  } else if (strcmp(var, "%w") == 0) {
+    char *cmd_name;
+
+    cmd_name = rewrite_get_cmd_name(cmd);
+
+    if (strcmp(cmd_name, C_RNTO) == 0) {
+      return pr_table_get(session.notes, "mod_core.rnfr-path", NULL);
+
+    } else {
+      rewrite_log("rewrite_expand_var(): %%w not valid for this command ('%s')",
+        cmd_name);
       return NULL;
     }
 

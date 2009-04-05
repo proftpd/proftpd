@@ -153,6 +153,8 @@ files.
       "scp".  (Note that the value will be "ssh2" until the SFTP or SCP channel
       is opened, thus during login, the %{protocol} value will be "ssh2".)
 
+      New %w variable ("whence" a rename comes), only valid for RNTO commands.
+
     RewriteCondition, RewriteRule
 
       Environment variable support via "%{ENV:var}" syntax.
@@ -200,4 +202,4 @@ files.
       Support for this directive has been removed.
 
    
-Last Updated: $Date: 2009-03-28 19:26:47 $
+Last Updated: $Date: 2009-04-05 16:34:10 $
