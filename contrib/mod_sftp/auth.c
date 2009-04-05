@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.8 2009-03-24 06:23:27 castaglia Exp $
+ * $Id: auth.c,v 1.9 2009-04-05 17:56:55 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -759,7 +759,6 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   char *buf, *orig_user, *user, *method;
   uint32_t buflen;
   cmd_rec *cmd, *cmd2, *cmd3;
-  config_rec *c;
   int res, send_userauth_fail = FALSE;
 
   buf = pkt->payload;
@@ -838,9 +837,11 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   pr_trace_msg(trace_channel, 10, "auth requested for user '%s', service '%s', "
     "using method '%s'", user, *service, method);
 
-  remove_config(main_server->conf, C_USER, FALSE);
-  c = add_config_param_set(&main_server->conf, C_USER, 1, NULL);
-  c->argv[0] = pstrdup(c->pool, user);
+  (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
+  if (pr_table_add_dup(session.notes, "mod_auth.orig-user", user, 0) < 0) {
+    pr_log_debug(DEBUG3, "error stashing 'mod_auth.orig-user' in "
+      "session.notes: %s", strerror(errno));
+  }
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "USERAUTH_REQUEST"));
   cmd->arg = pstrcat(pkt->pool, user, " ", method, NULL);
