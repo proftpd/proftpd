@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.258 2009-03-24 06:23:27 castaglia Exp $
+ * $Id: mod_auth.c,v 1.259 2009-04-05 17:47:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -227,14 +227,14 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
 
 MODRET auth_err_pass(cmd_rec *cmd) {
 
-  /* Remove C_USER here in a LOG_CMD_ERR handler, so that other modules,
-   * who may want to lookup the original USER parameter on a failed login in
-   * an earlier command handler phase, have a chance to do so.  This removal
-   * of the C_USER parameter on failure was happening directly in the
-   * CMD handler previously, thus preventing POST_CMD_ERR handlers from
-   * using C_USER.
+  /* Remove the stashed original USER name here in a LOG_CMD_ERR handler, so
+   * that other modules, who may want to lookup the original USER parameter on
+   * a failed login in an earlier command handler phase, have a chance to do
+   * so.  This removal of the USER parameter on failure was happening directly
+   * in the CMD handler previously, thus preventing POST_CMD_ERR handlers from
+   * using USER.
    */
-  remove_config(cmd->server->conf, C_USER, FALSE);
+  pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
 
   return PR_HANDLED(cmd);
 }
@@ -258,7 +258,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   unsigned char have_user_timeout, have_group_timeout, have_class_timeout,
     have_all_timeout, *privsdrop = NULL;
 
-  user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
 
   /* Count up various quantities in the scoreboard, checking them against
    * the Max* limits to see if the session should be barred from going
@@ -900,8 +900,9 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   if (c) {
     struct group *grp = NULL;
     unsigned char *add_userdir = NULL;
-    char *u = get_param_ptr(main_server->conf, C_USER, FALSE);
+    char *u;
 
+    u = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
     add_userdir = get_param_ptr(c->subset, "UserDirRoot", FALSE);
 
     /* If resolving an <Anonymous> user, make sure that user's groups
@@ -1740,11 +1741,13 @@ MODRET auth_user(cmd_rec *cmd) {
 
   user = cmd->arg;
 
-  remove_config(cmd->server->conf, C_USER, FALSE);
+  (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
   (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
-  c = add_config_param_set(&cmd->server->conf, C_USER, 1, NULL);
-  c->argv[0] = pstrdup(c->pool, user);
+  if (pr_table_add_dup(session.notes, "mod_auth.orig-user", user, 0) < 0) {
+    pr_log_debug(DEBUG3, "error stashing 'mod_auth.orig-user' in "
+      "session.notes: %s", strerror(errno));
+  }
 
   origuser = user;
   c = pr_auth_get_anon_config(cmd->tmp_pool, &user, NULL, NULL);
@@ -1760,7 +1763,7 @@ MODRET auth_user(cmd_rec *cmd) {
 
   if (failnopwprompt) {
     if (!user) {
-      remove_config(cmd->server->conf, C_USER, FALSE);
+      (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
       (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
       pr_log_pri(PR_LOG_NOTICE, "USER %s (Login failed): Not a UserAlias.",
@@ -1782,7 +1785,7 @@ MODRET auth_user(cmd_rec *cmd) {
     if (c) {
       if (!login_check_limits(c->subset, FALSE, TRUE, &i) ||
           (!aclp && !i) ) {
-        remove_config(cmd->server->conf, C_USER, FALSE);
+        (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
         (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
         pr_log_auth(PR_LOG_NOTICE, "ANON %s: Limit access denies login.",
@@ -1794,7 +1797,7 @@ MODRET auth_user(cmd_rec *cmd) {
     }
 
     if (!c && !aclp) {
-      remove_config(cmd->server->conf, C_USER, FALSE);
+      (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
       (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
       pr_log_auth(PR_LOG_NOTICE,
@@ -1885,10 +1888,9 @@ MODRET auth_pass(cmd_rec *cmd) {
   if (logged_in)
     return PR_ERROR_MSG(cmd, R_503, _("You are already logged in"));
 
-  user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
-
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
   if (!user) {
-    remove_config(cmd->server->conf, C_USER, FALSE);
+    (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
     (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
     return PR_ERROR_MSG(cmd, R_503, _("Login with USER first"));

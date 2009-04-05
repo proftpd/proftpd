@@ -2,7 +2,7 @@
  * ProFTPD: mod_wrap -- use Wietse Venema's TCP wrappers library for
  *                      access control
  *
- * Copyright (c) 2000-2008 TJ Saunders
+ * Copyright (c) 2000-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.19 2009-03-29 00:51:58 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.20 2009-04-05 17:47:22 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.3"
@@ -702,7 +702,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
   /* Sneaky...found in mod_auth.c's cmd_pass() function.  Need to find the
    * login UID in order to resolve the possibly-login-dependent filename.
    */
-  user = (char *) get_param_ptr(cmd->server->conf, C_USER, FALSE);
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
 
   /* It's possible that a PASS command came before USER.  This is a PRE_CMD
    * handler, so it won't be protected from this case; we'll need to do

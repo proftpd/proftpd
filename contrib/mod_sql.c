@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.163 2009-04-05 16:34:10 castaglia Exp $
+ * $Id: mod_sql.c,v 1.164 2009-04-05 17:47:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -775,11 +775,9 @@ static char *_sql_realuser(cmd_rec *cmd) {
   char *user = NULL;
 
   /* this is the userid given by the user */
-  user = (char *) get_param_ptr(main_server->conf, C_USER, FALSE);
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
 
-  /* do we need to check for useralias?
-   * see mod_time.c, get_user_cmd_times() */
-
+  /* Do we need to check for useralias? see mod_time.c, get_user_cmd_times(). */
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", user),
     "sql_escapestring");
   if (check_response(mr) < 0)
@@ -1746,7 +1744,7 @@ MODRET sql_pre_pass(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", ">>> sql_pre_pass");
 
-  user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
   if (user) {
     config_rec *anon_config;
 
@@ -2125,7 +2123,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
       argp = arg;
 
-      login_user = get_param_ptr(main_server->conf, C_USER, FALSE);
+      login_user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
       if (!login_user)
         login_user = "root";
 

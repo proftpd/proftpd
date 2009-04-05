@@ -201,5 +201,22 @@ files.
 
       Support for this directive has been removed.
 
-   
-Last Updated: $Date: 2009-04-05 16:34:10 $
+  + Developer Notes
+
+    If you are a module developer, then you will want to know of the following
+    API/internals changes:
+
+      * The original USER value sent by the client is no longer stored in
+        the config tree.  That is, the following no longer works:
+
+          user = get_param_ptr(main_server->conf, C_USER, FALSE);
+
+        Instead, the original USER value is stashes in the session.notes
+        table.  Thus the above line of code can be replaced with:
+
+          user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+
+        A similar change occurred for the anonymous "password" sent, but
+        this will probably not apply to most modules.
+ 
+Last Updated: $Date: 2009-04-05 17:47:22 $

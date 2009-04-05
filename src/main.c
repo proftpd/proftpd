@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.371 2009-03-22 04:47:05 castaglia Exp $
+ * $Id: main.c,v 1.372 2009-04-05 17:47:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -297,10 +297,12 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
     }
 
     time(&now);
-    if (authenticated && *authenticated == TRUE)
-      user = get_param_ptr(main_server->conf, C_USER, FALSE);
-    else
+    if (authenticated && *authenticated == TRUE) {
+      user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+
+    } else {
       user = "NONE";
+    }
 
     msg = sreplace(permanent_pool, shutmsg,
                    "%s", pstrdup(permanent_pool, pr_strtime(shut)),

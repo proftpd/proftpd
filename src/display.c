@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.12 2009-03-05 06:01:50 castaglia Exp $
+ * $Id: display.c,v 1.13 2009-04-05 17:47:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -165,7 +165,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
 
   snprintf(mg_max, sizeof(mg_max), "%u", max_clients ? *max_clients : 0);
 
-  user = get_param_ptr(main_server->conf, C_USER, FALSE);
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
   if (user == NULL)
     user = "";
 

@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.50 2009-02-21 06:19:31 castaglia Exp $
+ * $Id: mod_radius.c,v 1.51 2009-04-05 17:47:22 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9"
@@ -2635,7 +2635,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
       !radius_auth_server)
     return PR_DECLINED(cmd);
 
-  user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
   if (!user) {
     radius_log("missing prerequisite USER command, declining to handle PASS");
     pr_response_add_err(R_503, _("Login with USER first"));

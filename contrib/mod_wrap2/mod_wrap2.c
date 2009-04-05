@@ -280,7 +280,7 @@ static char *wrap2_get_user(wrap2_conn_t *conn) {
 
     /* RFC1413 lookups may have already been done by the mod_ident module.
      * If so, use the ident name stashed; otherwise, use the user name issued
-     * by the client, C_USER.
+     * by the client.
      */
 
     rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident",
@@ -289,8 +289,12 @@ static char *wrap2_get_user(wrap2_conn_t *conn) {
       sstrncpy(conn->user, rfc1413_ident, sizeof(conn->user));
 
     } else {
-      char *user = get_param_ptr(main_server->conf, C_USER, FALSE);
-      sstrncpy(conn->user, user, sizeof(conn->user));
+      char *user;
+
+      user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+      if (user) {
+        sstrncpy(conn->user, user, sizeof(conn->user));
+      }
     }
   }
 
@@ -1415,8 +1419,7 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
   /* Hide passwords */
   session.hide_password = TRUE;
 
-  user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
-
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
   if (!user)
     return PR_DECLINED(cmd);
 
@@ -1600,7 +1603,9 @@ MODRET wrap2_post_pass(cmd_rec *cmd) {
   msg = get_param_ptr(wrap2_ctxt ? wrap2_ctxt->subset : main_server->conf,
     "WrapAllowMsg", FALSE);
   if (msg != NULL) {
-    char *user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
+    char *user;
+
+    user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
     msg = sreplace(cmd->tmp_pool, msg, "%u", user, NULL);
     pr_response_add(R_DUP, "%s", msg);
   }

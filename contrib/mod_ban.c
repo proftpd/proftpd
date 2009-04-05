@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.27 2009-04-03 23:04:19 castaglia Exp $
+ * $Id: mod_ban.c,v 1.28 2009-04-05 17:47:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1467,11 +1467,12 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
  */
 
 MODRET ban_pre_pass(cmd_rec *cmd) {
-  char *user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
-  char *rule_mesg = NULL;
+  char *user, *rule_mesg = NULL;
 
   if (ban_engine != TRUE)
     return PR_DECLINED(cmd);
+
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
 
   if (!user)
     return PR_DECLINED(cmd);
