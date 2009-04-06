@@ -370,6 +370,14 @@ sub extlog_site_cmds_bug3171 {
   my $uid = 500;
   my $gid = 500;
 
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  if (open(my $fh, "> $test_file")) {
+    close($fh);
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
@@ -377,8 +385,8 @@ sub extlog_site_cmds_bug3171 {
       die("Can't set perms on $home_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($uid, $gid, $home_dir, $test_file)) {
+      die("Can't set owner of $home_dir, $test_file to $uid/$gid: $!");
     }
   }
 
@@ -387,14 +395,6 @@ sub extlog_site_cmds_bug3171 {
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
-
-  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
-  if (open(my $fh, "> $test_file")) {
-    close($fh);
-
-  } else {
-    die("Can't open $test_file: $!");
-  }
 
   my $config = {
     PidFile => $pid_file,
@@ -520,29 +520,13 @@ sub extlog_protocol {
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
 
+  my $test_file = File::Spec->rel2abs("$tmpdir/foo");
+
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
-  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -551,6 +535,24 @@ sub extlog_protocol {
   } else {
     die("Can't open $test_file: $!");
   }
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir, $test_file)) {
+      die("Can't set owner of $home_dir, $test_file to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
   my $config = {
     PidFile => $pid_file,
