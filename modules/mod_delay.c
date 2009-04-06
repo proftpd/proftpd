@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.31 2009-03-10 16:59:23 castaglia Exp $
+ * $Id: mod_delay.c,v 1.32 2009-04-06 22:32:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -287,7 +287,7 @@ static int delay_table_init(void) {
   unsigned int nservers = 0;
   off_t tab_size;
   int flags = O_RDWR|O_CREAT;
-  int reset_table = FALSE;
+  int reset_table = FALSE, xerrno = 0;
 
   /* We only want to create the table if it does not already exist.
    *
@@ -306,14 +306,18 @@ static int delay_table_init(void) {
 
   PRIVS_ROOT
   fh = pr_fsio_open(delay_tab.dt_path, flags);
+  if (fh == NULL) {
+    xerrno = errno;
+  }
   PRIVS_RELINQUISH
 
   if (!fh) {
     pr_log_debug(DEBUG0, MOD_DELAY_VERSION
       ": error opening DelayTable '%s': %s", delay_tab.dt_path,
-      strerror(errno));
+      strerror(xerrno));
     pr_trace_msg("delay", 1, "error opening DelayTable '%s': %s",
-      delay_tab.dt_path, strerror(errno));
+      delay_tab.dt_path, strerror(xerrno));
+    errno = xerrno;
     return -1;
   }
 
@@ -368,7 +372,7 @@ static int delay_table_init(void) {
      */
     lseek(fh->fh_fd, tab_size-1, SEEK_SET);
     if (write(fh->fh_fd, "", 1) != 1) {
-      int xerrno = errno;
+      xerrno = errno;
 
       pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
         ": error writing single byte to DelayTable '%s': %s", fh->fh_path,
@@ -402,7 +406,7 @@ static int delay_table_init(void) {
     MAP_SHARED, delay_tab.dt_fd, 0);
 
   if (delay_tab.dt_data == MAP_FAILED) {
-    int xerrno = errno;
+    xerrno = errno;
 
     delay_tab.dt_data = NULL;
 
@@ -484,7 +488,7 @@ static int delay_table_init(void) {
      */
     lseek(fh->fh_fd, tab_size-1, SEEK_SET);
     if (write(fh->fh_fd, "", 1) != 1) {
-      int xerrno = errno;
+      xerrno = errno;
 
       pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
         ": error writing single byte to DelayTable '%s': %s", fh->fh_path,
@@ -515,7 +519,7 @@ static int delay_table_init(void) {
   pr_trace_msg("delay", 8, "unmapping DelayTable '%s' from memory",
     delay_tab.dt_path);
   if (munmap(delay_tab.dt_data, delay_tab.dt_size) < 0) {
-    int xerrno = errno;
+    xerrno = errno;
     pr_fsio_close(fh);
 
     errno = xerrno;
@@ -700,15 +704,20 @@ static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
   pool *tmp_pool;
   pr_fh_t *fh;
   char *vals;
+  int xerrno = 0;
 
   PRIVS_ROOT
   fh = pr_fsio_open(delay_tab.dt_path, O_RDWR);
+  if (fh == NULL) {
+    xerrno = errno;
+  }
   PRIVS_RELINQUISH
 
   if (!fh) {
     pr_ctrls_add_response(ctrl,
       "warning: unable to open DelayTable '%s': %s", delay_tab.dt_path,
-      strerror(errno));
+      strerror(xerrno));
+    xerrno = errno;
     return -1;
   }
 
@@ -716,7 +725,7 @@ static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
   delay_tab.dt_data = NULL;
 
   if (delay_table_load(TRUE) < 0) {
-    int xerrno = errno;
+    xerrno = errno;
 
     pr_ctrls_add_response(ctrl,
       "unable to load DelayTable '%s' into memory: %s",
@@ -812,15 +821,20 @@ static int delay_handle_reset(pr_ctrls_t *ctrl, int reqargc,
     char **reqarg) {
   struct flock lock;
   pr_fh_t *fh;
+  int xerrno = 0;
 
   PRIVS_ROOT
   fh = pr_fsio_open(delay_tab.dt_path, O_RDWR);
+  if (fh == NULL) {
+    xerrno = errno;
+  }
   PRIVS_RELINQUISH
 
   if (!fh) {
     pr_ctrls_add_response(ctrl,
       "unable to open DelayTable '%s': %s", delay_tab.dt_path,
-      strerror(errno));
+      strerror(xerrno));
+    errno = xerrno;
     return -1;
   }
 
@@ -1134,6 +1148,7 @@ static void delay_exit_ev(const void *event_data, void *user_data) {
   pr_fh_t *fh;
   char *data;
   size_t datalen;
+  int xerrno = 0;
 
   if (!delay_engine)
     return;
@@ -1144,12 +1159,16 @@ static void delay_exit_ev(const void *event_data, void *user_data) {
 
   PRIVS_ROOT
   fh = pr_fsio_open(delay_tab.dt_path, O_RDWR);
+  if (fh == NULL) {
+    xerrno = errno;
+  }
   PRIVS_RELINQUISH
 
   if (!fh) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": unable to open DelayTable '%s': %s", delay_tab.dt_path,
-      strerror(errno));
+      strerror(xerrno));
+    errno = xerrno;
     return;
   }
 
@@ -1157,7 +1176,7 @@ static void delay_exit_ev(const void *event_data, void *user_data) {
   delay_tab.dt_data = NULL;
 
   if (delay_table_load(TRUE) < 0) {
-    int xerrno = errno;
+    xerrno = errno;
     pr_fsio_close(fh);
 
     errno = xerrno;
@@ -1259,6 +1278,7 @@ static int delay_init(void) {
 static int delay_sess_init(void) {
   pr_fh_t *fh;
   config_rec *c;
+  int xerrno = errno;
 
   pr_event_unregister(&delay_module, "core.exit", delay_exit_ev);
 
@@ -1282,14 +1302,17 @@ static int delay_sess_init(void) {
 
   PRIVS_ROOT
   fh = pr_fsio_open(delay_tab.dt_path, O_RDWR);
+  if (fh == NULL) {
+    xerrno = errno;
+  }
   PRIVS_RELINQUISH
 
   if (!fh) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": unable to open DelayTable '%s': %s", delay_tab.dt_path,
-      strerror(errno));
+      strerror(xerrno));
     pr_trace_msg("delay", 1, "unable to open DelayTable '%s': %s",
-      delay_tab.dt_path, strerror(errno));
+      delay_tab.dt_path, strerror(xerrno));
     delay_engine = FALSE;
     return 0;
   }

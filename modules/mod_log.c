@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.93 2009-04-05 17:47:22 castaglia Exp $
+ * $Id: mod_log.c,v 1.94 2009-04-06 22:32:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -507,7 +507,10 @@ MODRET set_systemlog(cmd_rec *cmd) {
 
   pr_signals_block();
 
+  PRIVS_ROOT
   res = log_opensyslog(syslogfn);
+  PRIVS_RELINQUISH
+
   if (res < 0) {
     int xerrno = errno;
 

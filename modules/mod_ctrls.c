@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.43 2009-03-30 18:43:50 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.44 2009-04-06 22:32:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -107,7 +107,10 @@ static int ctrls_openlog(void) {
   if (ctrls_logname == NULL)
     return 0;
 
+  PRIVS_ROOT
   res = pr_log_openfile(ctrls_logname, &logfd, 0640);
+  PRIVS_RELINQUISH
+
   if (res == 0) {
     pr_ctrls_set_logfd(logfd);
 
