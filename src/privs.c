@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: privs.c,v 1.1 2009-04-06 22:32:21 castaglia Exp $
+ * $Id: privs.c,v 1.2 2009-04-06 23:08:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -240,7 +240,6 @@ int pr_privs_user(const char *file, int lineno) {
 
 int pr_privs_relinquish(const char *file, int lineno) {
   pr_log_debug(DEBUG9, "RELINQUISH PRIVS at %s:%d", file, lineno);
-  pr_signals_block();
 
   if (root_privs == 0 &&
       user_privs == 0) {
@@ -263,6 +262,8 @@ int pr_privs_relinquish(const char *file, int lineno) {
     pr_trace_msg(trace_channel, 9, "root privs count = %u, user privs "
       "count = %u, honoring PRIVS_RELINQUISH", root_privs, user_privs);
   }
+
+  pr_signals_block();
 
   if (!session.disable_id_switching) {
 #if defined(HAVE_SETEUID)
