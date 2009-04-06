@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.6 2009-03-19 05:39:00 castaglia Exp $
+ * $Id: channel.c,v 1.7 2009-04-06 22:47:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1291,22 +1291,16 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
     if (max_payloadsz > chan->remote_max_packetsz)
       max_payloadsz = chan->remote_max_packetsz;
 
-    /* If the remote window size or remote max packet size changes the
-     * length we can send, then payload_len is NOT the same as buflen.  Hence
-     * the separate variable.
-     */
-    payload_len = max_payloadsz - header_len;
-
-    /* XXX What if max_payloadsz, at this point, is _less_ than header_len,
-     * i.e. the remote window is only large enough for some of the packet
-     * type and length fields?  If that's a problem, then the check below
-     * should be "if (max_payloadsz > 0)", rather than using payload_len.
-     */
-
-    if (payload_len > 0) {
+    if (max_payloadsz > header_len) {
       struct ssh2_packet *pkt;
       char *buf2, *ptr2;
       uint32_t bufsz2, buflen2;
+
+      /* If the remote window size or remote max packet size changes the
+       * length we can send, then payload_len is NOT the same as buflen.  Hence
+       * the separate variable.
+       */
+      payload_len = max_payloadsz - header_len;
 
       bufsz2 = buflen2 = max_payloadsz;
  
@@ -1342,6 +1336,22 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
       /* Otherwise try sending another CHANNEL_DATA packet.  If the window
        * closes, the loop will end.
        */
+
+    } else {
+      pr_trace_msg(trace_channel, 6, "max payload size of %lu bytes is not "
+        "big enough for the header length (%lu bytes) plus any data",
+        (unsigned long) max_payloadsz, (unsigned long) header_len);
+
+      /* XXX It's possible that we end up in a deadlock in this situation.
+       * The client may not send a WINDOW_ADJUST until it's window is
+       * completely closed.  And if the window size is less than the
+       * header length (9 bytes), as of right now, we aren't sending anything.
+       * Thus we would wait forever (or until timeout) for a WINDOW_ADJUST
+       * while the client waits for our last bytes of data.
+       *
+       * For now, leave this case as is, and break out of the while loop.
+       */
+      break;
     }
   }
 
