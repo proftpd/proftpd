@@ -57,7 +57,7 @@ sub tear_down {
   }
 
   undef $self;
-};
+}
 
 sub mff_ok {
   my $self = shift;
@@ -66,7 +66,8 @@ sub mff_ok {
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -92,8 +93,8 @@ sub mff_ok {
       die("Can't set perms on $home_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($uid, $gid, $home_dir, $test_file)) {
+      die("Can't set owner of $home_dir, $test_file to $uid/$gid: $!");
     }
   }
 
@@ -187,7 +188,8 @@ sub mff_bug3142 {
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -213,8 +215,8 @@ sub mff_bug3142 {
       die("Can't set perms on $home_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($uid, $gid, $home_dir, $test_file)) {
+      die("Can't set owner of $home_dir, $test_file to $uid/$gid: $!");
     }
   }
 

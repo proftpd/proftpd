@@ -52,7 +52,7 @@ sub tear_down {
   }
 
   undef $self;
-};
+}
 
 sub help_ok {
   my $self = shift;
@@ -61,7 +61,8 @@ sub help_ok {
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-  my $log_file = File::Spec->rel2abs('cmds.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -146,7 +147,7 @@ sub help_ok {
         ' PBSZ*   PROT*   TYPE    STRU    MODE    RETR    STOR    STOU    ',
         ' APPE    REST    ABOR    USER    PASS    ACCT*   REIN*   LIST    ',
         ' NLST    STAT    SITE    MLSD    MLST    ',
-        'Direct comments to root@localhost',
+        'Direct comments to root@127.0.0.1',
       )];
 
       for (my $i = 0; $i < $nhelp; $i++) {

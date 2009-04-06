@@ -520,8 +520,6 @@ sub extlog_protocol {
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
 
-  my $test_file = File::Spec->rel2abs("$tmpdir/foo");
-
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs($tmpdir);

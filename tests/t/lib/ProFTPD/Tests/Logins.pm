@@ -9,7 +9,7 @@ use File::Spec;
 use IO::Handle;
 
 use ProFTPD::TestSuite::FTP;
-use ProFTPD::TestSuite::Utils qw(:config :running :testsuite);
+use ProFTPD::TestSuite::Utils qw(:auth :config :running :testsuite);
 
 $| = 1;
 
@@ -70,7 +70,8 @@ sub login_plaintext_fails {
   my $config_file = "$tmpdir/login.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/login.scoreboard");
-  my $log_file = File::Spec->rel2abs("login.log");
+
+  my $log_file = File::Spec->rel2abs("tests.log");
 
   my $config = {
     PidFile => $pid_file,
@@ -147,16 +148,43 @@ sub login_anonymous_ok {
   my $config_file = "$tmpdir/login.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/login.scoreboard");
-  my $log_file = File::Spec->rel2abs('login.log');
 
-  my $anon_dir = File::Spec->rel2abs($tmpdir);
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/login.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/login.group");
 
   my ($config_user, $config_group) = config_get_identity();
+
+  my $anon_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $anon_dir)) {
+      die("Can't set perms on $anon_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $anon_dir)) {
+      die("Can't set owner of $anon_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $config_user, 'foo', $uid, $gid,
+    '/tmp', '/bin/bash');
+  auth_group_write($auth_group_file, $config_group, $gid, $config_user);
 
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 privs:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
 
     IfModules => {
       'mod_delay.c' => {
@@ -196,6 +224,8 @@ sub login_anonymous_ok {
       # In parent process, login anonymously to server using a plaintext
       # password which SHOULD work.
       $client->login('anonymous', 'ftp@nospam.org');
+
+      $client->quit();
     };
 
     if ($@) {
@@ -234,7 +264,8 @@ sub login_anonymous_fails {
   my $config_file = "$tmpdir/login.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/login.scoreboard");
-  my $log_file = File::Spec->rel2abs('login.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $anon_dir = File::Spec->rel2abs($tmpdir);
 

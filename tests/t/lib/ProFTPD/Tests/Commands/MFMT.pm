@@ -98,8 +98,8 @@ sub mfmt_ok {
       die("Can't set perms on $home_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($uid, $gid, $home_dir, $test_file)) {
+      die("Can't set owner of $home_dir, $test_file to $uid/$gid: $!");
     }
   }
 
@@ -220,8 +220,8 @@ sub mfmt_unsupported_precision_ok {
       die("Can't set perms on $home_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($uid, $gid, $home_dir, $test_file)) {
+      die("Can't set owner of $home_dir, $test_file to $uid/$gid: $!");
     }
   }
 
@@ -343,8 +343,8 @@ sub mfmt_bug3142 {
       die("Can't set perms on $home_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($uid, $gid, $home_dir, $test_file)) {
+      die("Can't set owner of $home_dir, $test_file to $uid/$gid: $!");
     }
   }
 

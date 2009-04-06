@@ -564,18 +564,18 @@ sub umask_glob_subdirs {
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
-      my $mode = sprintf("%04o", (stat($test_dir2))[2] & 07777);
+      $mode = sprintf("%04o", (stat($test_dir2))[2] & 07777);
       $expected = '0700';
       $self->assert($expected == $mode,
         test_msg("Expected '$expected', got '$mode'"));
 
-      my $conn = $client->stor_raw("otherdir/foo/test.txt");
+      $conn = $client->stor_raw("otherdir/foo/test.txt");
       unless ($conn) {
         die("Failed to STOR otherdir/foo/test.txt: " .
           $client->response_code() .  " " . $client->response_msg());
       }
 
-      my $buf = "Foo!\n";
+      $buf = "Foo!\n";
       $conn->write($buf, length($buf));
       $conn->close();
 
