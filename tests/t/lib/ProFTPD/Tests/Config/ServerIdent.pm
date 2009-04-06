@@ -681,7 +681,7 @@ sub serverident_on_with_var_V {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'Server (localhost)';
+      $expected = 'Server (127.0.0.1)';
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

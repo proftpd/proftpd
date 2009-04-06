@@ -1117,6 +1117,9 @@ sub pathallowfilter_rnto_allowed {
   my $uid = 500;
   my $gid = 500;
 
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/subdir.d");
+  mkpath($sub_dir);
+
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
@@ -1124,12 +1127,10 @@ sub pathallowfilter_rnto_allowed {
       die("Can't set perms on $home_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
+      die("Can't set owner of $home_dir, $sub_dir to $uid/$gid: $!");
     }
   }
-
-  mkpath("$tmpdir/subdir.d");
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');

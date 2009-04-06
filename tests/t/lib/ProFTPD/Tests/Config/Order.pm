@@ -285,7 +285,7 @@ sub order_deny_allow_ok {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "test.txt: Permission denied";
+      $expected = "test.txt: Operation not permitted";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
