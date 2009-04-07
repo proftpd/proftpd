@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.36 2009-03-10 16:59:23 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.37 2009-04-07 15:41:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -428,8 +428,10 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
     for (i = 1; i < reqargc; i++) {
       unsigned char kicked_user = FALSE;
 
-      if (pr_rewind_scoreboard() < 0)
-        pr_ctrls_log("error rewinding scoreboard: %s", strerror(errno));
+      if (pr_rewind_scoreboard() < 0) {
+        pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "error rewinding scoreboard: %s",
+          strerror(errno));
+      }
 
       while ((score = pr_scoreboard_entry_read()) != NULL) {
         if (strcmp(reqargv[i], score->sce_user) == 0) {
@@ -439,20 +441,24 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
           res = kill(score->sce_pid, SIGTERM);
           PRIVS_RELINQUISH
 
-          if (res == 0)
+          if (res == 0) {
             kicked_user = TRUE;
 
-          else
-            pr_ctrls_log("error kicking user '%s': %s", reqargv[i],
-              strerror(errno));
+          } else {
+            pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
+              "error kicking user '%s': %s", reqargv[i], strerror(errno));
+          }
         }
       }
-      if (pr_restore_scoreboard() < 0)
-        pr_ctrls_log("error restoring scoreboard: %s", strerror(errno));
+
+      if (pr_restore_scoreboard() < 0) {
+        pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "error restoring scoreboard: %s",
+          strerror(errno));
+      }
 
       if (kicked_user) {
         pr_ctrls_add_response(ctrl, "kicked user '%s'", reqargv[i]);
-        pr_ctrls_log("kicked user '%s'", reqargv[i]);
+        pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "kicked user '%s'", reqargv[i]);
         pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION ": kicked user '%s'",
           reqargv[i]);
 
@@ -489,8 +495,10 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
 
       addr = pr_netaddr_get_ipstr(na);
 
-      if (pr_rewind_scoreboard() < 0)
-        pr_ctrls_log("error rewinding scoreboard: %s", strerror(errno));
+      if (pr_rewind_scoreboard() < 0) {
+        pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "error rewinding scoreboard: %s",
+          strerror(errno));
+      }
 
       while ((score = pr_scoreboard_entry_read()) != NULL) {
         if (strcmp(score->sce_client_addr, addr) == 0) {
@@ -504,7 +512,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
 
       if (kicked_host) {
         pr_ctrls_add_response(ctrl, "kicked host '%s'", addr);
-        pr_ctrls_log("kicked host '%s'", addr);
+        pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "kicked host '%s'", addr);
         pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION ": kicked host '%s'",
           addr);
 
@@ -528,8 +536,10 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
     for (i = 1; i < reqargc; i++) {
       unsigned char kicked_class = FALSE;
 
-      if (pr_rewind_scoreboard() < 0)
-        pr_ctrls_log("error rewinding scoreboard: %s", strerror(errno));
+      if (pr_rewind_scoreboard() < 0) {
+        pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "error rewinding scoreboard: %s",
+          strerror(errno));
+      }
 
       while ((score = pr_scoreboard_entry_read()) != NULL) {
         if (strcmp(reqargv[i], score->sce_class) == 0) {
@@ -539,21 +549,24 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
           res = kill(score->sce_pid, SIGTERM);
           PRIVS_RELINQUISH
 
-          if (res == 0)
+          if (res == 0) {
             kicked_class = TRUE;
 
-          else
-            pr_ctrls_log("error kicking class '%s': %s", reqargv[i],
-              strerror(errno));
+          } else {
+            pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
+              "error kicking class '%s': %s", reqargv[i], strerror(errno));
+          }
         }
       }
 
-      if (pr_restore_scoreboard() < 0)
-        pr_ctrls_log("error restoring scoreboard: %s", strerror(errno));
+      if (pr_restore_scoreboard() < 0) {
+        pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "error restoring scoreboard: %s",
+          strerror(errno));
+      }
 
       if (kicked_class) {
         pr_ctrls_add_response(ctrl, "kicked class '%s'", reqargv[i]);
-        pr_ctrls_log("kicked class '%s'", reqargv[i]);
+        pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "kicked class '%s'", reqargv[i]);
         pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION ": kicked class '%s'",
           reqargv[i]);
 
@@ -710,9 +723,10 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
   /* Manually tweak the return value, for the benefit of the client */
   ctrl->ctrls_cb_retval = 0;
 
-  if (pr_ctrls_flush_response(ctrl) < 0)
+  if (pr_ctrls_flush_response(ctrl) < 0) {
     pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
       "shutdown: error flushing response: %s", strerror(errno));
+  }
 
   /* For logging/accounting purposes */
   pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
