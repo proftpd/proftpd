@@ -287,6 +287,9 @@ sub hidefiles_list_anon_bug2020 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
+
   my $log_file = File::Spec->rel2abs('tests.log');
 
   my ($config_user, $config_group) = config_get_identity();
@@ -322,11 +325,25 @@ EOF
     }
   }
 
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $anon_dir, $sub_dir)) {
+      die("Can't set perms on $anon_dir, $sub_dir to 0755: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $config_user, 'foo', 500, 500, '/tmp',
+    '/bin/bash');
+  auth_group_write($auth_group_file, $config_group, 500, $config_user);
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
 
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
     AllowOverride => 'on',
 
     Anonymous => {
@@ -368,7 +385,7 @@ EOF
 
       my $conn = $client->list_raw('foo');
       unless ($conn) {
-        die("Failed to NLST: " . $client->response_code() . " " .
+        die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
       }
 
@@ -620,6 +637,9 @@ sub hidefiles_nlst_anon_bug2020 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
+
   my $log_file = File::Spec->rel2abs('tests.log');
 
   my ($config_user, $config_group) = config_get_identity();
@@ -655,11 +675,25 @@ EOF
     }
   }
 
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $anon_dir, $sub_dir)) {
+      die("Can't set perms on $anon_dir, $sub_dir to 0755: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $config_user, 'foo', 500, 500, '/tmp',
+    '/bin/bash');
+  auth_group_write($auth_group_file, $config_group, 500, $config_user);
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
 
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
     AllowOverride => 'on',
 
     Anonymous => {
