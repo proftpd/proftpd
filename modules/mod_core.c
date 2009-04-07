@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.347 2009-04-05 16:34:10 castaglia Exp $
+ * $Id: mod_core.c,v 1.348 2009-04-07 00:03:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4021,7 +4021,7 @@ MODRET core_rmd(cmd_rec *cmd) {
 MODRET core_mkd(cmd_rec *cmd) {
   int res;
   char *cmd_name, *dir;
-  struct stat sbuf;
+  struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -4064,6 +4064,7 @@ MODRET core_mkd(cmd_rec *cmd) {
     cmd->argv[0] = cmd_name;
     pr_log_debug(DEBUG8, "%s command denied by <Limit> config", cmd->argv[0]);
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
+    return PR_ERROR(cmd);
   }
 
   cmd->argv[0] = C_XMKD;
@@ -4094,7 +4095,7 @@ MODRET core_mkd(cmd_rec *cmd) {
   if (session.fsuid != (uid_t) -1) {
     int err = 0, iserr = 0;
 
-    pr_fsio_stat(dir, &sbuf);
+    pr_fsio_stat(dir, &st);
 
     PRIVS_ROOT
     if (pr_fsio_chown(dir, session.fsuid, session.fsgid) == -1) {
@@ -4121,7 +4122,7 @@ MODRET core_mkd(cmd_rec *cmd) {
     register unsigned int i;
     int use_root_privs = TRUE;
 
-    pr_fsio_stat(dir, &sbuf);
+    pr_fsio_stat(dir, &st);
 
     /* Check if session.fsgid is in session.gids.  If not, use root privs.  */
     for (i = 0; i < session.gids->nelts; i++) {
