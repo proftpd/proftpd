@@ -5903,7 +5903,7 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "NoCertRequest") == 0) {
       opts |= TLS_OPT_NO_CERT_REQUEST;
 
-    } else if (strcmp(cmd->argv[1], "NoSessionReuseRequired") == 0) {
+    } else if (strcmp(cmd->argv[i], "NoSessionReuseRequired") == 0) {
       opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;
 
     } else if (strcmp(cmd->argv[i], "StdEnvVars") == 0) {
