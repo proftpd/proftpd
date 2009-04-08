@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.13 2009-03-24 06:23:27 castaglia Exp $
+ * $Id: fxp.c,v 1.14 2009-04-08 18:56:32 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1799,15 +1799,19 @@ static char *fxp_get_path_listing(pool *p, const char *path, struct stat *st) {
   return pstrdup(p, listing);
 }
 
-static struct fxp_dirent *fxp_get_dirent(pool *p, const char *real_path) {
+static struct fxp_dirent *fxp_get_dirent(pool *p, cmd_rec *cmd,
+    const char *real_path) {
   struct fxp_dirent *fxd;
   struct stat st;
-
-  /* XXX This is where we would honor other configs to hide this path,
-   * e.g. HideFiles.
-   */
+  int hidden = 0, res;
 
   if (pr_fsio_lstat(real_path, &st) < 0) {
+    return NULL;
+  }
+
+  res = dir_check(p, cmd, G_DIRS, real_path, &hidden);
+  if (res == 0 ||
+      hidden == TRUE) {
     return NULL;
   }
 
@@ -4606,7 +4610,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     real_path = dir_canonical_vpath(fxp->pool, pdircat(fxp->pool, fxh->dir,
       dent->d_name, NULL));
 
-    fxd = fxp_get_dirent(fxp->pool, real_path);
+    fxd = fxp_get_dirent(fxp->pool, cmd, real_path);
     if (fxd == NULL) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to obtain directory listing for '%s': %s", real_path,
