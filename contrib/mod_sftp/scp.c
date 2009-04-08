@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.12 2009-04-03 23:04:19 castaglia Exp $
+ * $Id: scp.c,v 1.13 2009-04-08 02:48:24 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -569,6 +569,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   register unsigned int i;
   char *msg, *ptr = NULL;
   int have_dir = FALSE;
+  cmd_rec *cmd = NULL;
 
   switch (data[0]) {
     case 'C':
@@ -701,6 +702,62 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
     /* Reset sp, for re-use for the next file coming in. */
     reset_path(sp);
+  }
+
+  cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
+
+  if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "scp upload to '%s' blocked by '%s' handler", sp->path,
+      cmd->argv[0]);
+
+    (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    write_confirm(p, channel_id, 1,
+      pstrcat(p, sp->filename, ": ", strerror(EACCES), NULL));
+
+    return 1;
+  }
+
+  if (strcmp(sp->filename, cmd->arg) != 0) {
+    sp->filename = cmd->arg;
+    sp->best_path = dir_canonical_vpath(scp_pool, sp->filename);
+  }
+
+  if (!dir_check(p, cmd, G_WRITE, (char *) sp->path, NULL)) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "scp upload to '%s' blocked by <Limit> configuration", sp->path);
+
+    (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    write_confirm(p, channel_id, 1,
+      pstrcat(p, sp->filename, ": ", strerror(EACCES), NULL));
+
+    return 1;
+  }
+
+  sp->fh = pr_fsio_open(sp->best_path, O_WRONLY|O_CREAT);
+  if (sp->fh == NULL) {
+    int xerrno = errno;
+
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      "error opening '%s': %s", "scp upload", session.user,
+      (unsigned long) session.uid, (unsigned long) session.gid,
+      sp->best_path, strerror(xerrno));
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "scp: error opening '%s': %s", sp->best_path, strerror(xerrno));
+
+    (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    write_confirm(p, channel_id, 1,
+      pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
+
+    errno = xerrno;
+    return 1;
   }
 
   write_confirm(p, channel_id, 0, NULL);
@@ -903,72 +960,6 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   if (!sp->recvd_data &&
       sp->recvlen != sp->filesz) {
-
-    if (sp->fh == NULL) {
-      if (cmd == NULL)
-        cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
-
-      if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "scp upload to '%s' blocked by '%s' handler", sp->path,
-          cmd->argv[0]);
-
-        (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-        (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
-        write_confirm(p, channel_id, 1,
-          pstrcat(p, sp->filename, ": ", strerror(EACCES), NULL));
-
-        return 1;
-      }
-
-      if (strcmp(sp->filename, cmd->arg) != 0) {
-        sp->filename = cmd->arg;
-        sp->best_path = dir_canonical_vpath(scp_pool, sp->filename);
-      }
-
-      if (!dir_check(p, cmd, G_WRITE, (char *) sp->path, NULL)) {
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "scp upload to '%s' blocked by <Limit> configuration", sp->path);
-
-        if (cmd == NULL)
-          cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
-
-        (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-        (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
-        write_confirm(p, channel_id, 1,
-          pstrcat(p, sp->filename, ": ", strerror(EACCES), NULL));
-
-        return 1;
-      }
-
-      sp->fh = pr_fsio_open(sp->best_path, O_WRONLY|O_CREAT);
-      if (sp->fh == NULL) {
-        int xerrno = errno;
-
-        (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
-          "error opening '%s': %s", "scp upload", session.user,
-          (unsigned long) session.uid, (unsigned long) session.gid,
-          sp->best_path, strerror(xerrno));
-
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "scp: error opening '%s': %s", sp->best_path, strerror(xerrno));
-
-        if (cmd == NULL)
-          cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
-
-        (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-        (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
-        write_confirm(p, channel_id, 1,
-          pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
-
-        errno = xerrno;
-        return 1;
-      }
-    }
-
     if (cmd == NULL)
       cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
 
