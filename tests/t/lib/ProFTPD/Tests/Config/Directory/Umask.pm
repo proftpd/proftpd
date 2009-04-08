@@ -96,7 +96,7 @@ sub umask_root_dir_bug2677 {
       die("Can't set perms on $home_dir, $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir)) {
+    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
       die("Can't set owner of $home_dir, $sub_dir to $uid/$gid: $!");
     }
   }
@@ -271,7 +271,7 @@ sub umask_server_config_bug2677 {
       die("Can't set perms on $home_dir, $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir)) {
+    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
       die("Can't set owner of $home_dir, $sub_dir to $uid/$gid: $!");
     }
   }

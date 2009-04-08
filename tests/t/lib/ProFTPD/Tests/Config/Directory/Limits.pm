@@ -93,7 +93,7 @@ sub tear_down {
   }
 
   undef $self;
-};
+}
 
 sub limits_with_glob_then_nonglob_dirs_for_same_path {
   my $self = shift;
@@ -368,7 +368,7 @@ EOD
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "test.txt: No such file or directory";
+      $expected = "test.txt: Operation not permitted";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -531,7 +531,7 @@ sub limits_with_glob_denied_delete_bug3146 {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "test.txt: No such file or directory",
+      $expected = "test.txt: Operation not permitted";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -695,7 +695,7 @@ sub limits_without_glob_denied_delete_bug3146 {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "test.txt: No such file or directory",
+      $expected = "test.txt: Operation not permitted";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -1486,7 +1486,7 @@ sub limits_rename_dir_failed_rnfr_denied {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "upload: No such file or directory";
+      $expected = "upload: Operation not permitted";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
