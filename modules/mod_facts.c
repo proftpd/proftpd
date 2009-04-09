@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.21 2009-04-09 15:44:49 castaglia Exp $
+ * $Id: mod_facts.c,v 1.22 2009-04-09 15:59:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -613,7 +613,6 @@ static int facts_modify_unix_mode(pool *p, const char *path, char *mode_str) {
  */
 
 MODRET facts_mff(cmd_rec *cmd) {
-  register unsigned int i;
   const char *path, *decoded_path;
   char *facts, *ptr;
 
@@ -624,13 +623,12 @@ MODRET facts_mff(cmd_rec *cmd) {
 
   facts = cmd->argv[1];
 
-  /* The path can contain spaces; it is thus the concatenation of all of the
-   * arguments after the timestamp.
+  /* The path can contain spaces.  Thus we need to use cmd->arg, not cmd->argv,
+   * to find the path.  But cmd->arg contains the facts as well.  Thus we
+   * find the FIRST space in cmd->arg; the path is everything past that space.
    */
-  path = pstrdup(cmd->tmp_pool, cmd->argv[2]);
-  for (i = 3; i < cmd->argc; i++) {
-    path = pstrcat(cmd->tmp_pool, path, " ", cmd->argv[i], NULL);
-  }
+  ptr = strchr(cmd->arg, ' ');
+  path = pstrdup(cmd->tmp_pool, ptr + 1);
 
   decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
@@ -756,7 +754,6 @@ MODRET facts_mff(cmd_rec *cmd) {
 }
 
 MODRET facts_mfmt(cmd_rec *cmd) {
-  register unsigned int i;
   const char *path, *decoded_path;
   char *timestamp, *ptr;
   int res;
@@ -768,13 +765,12 @@ MODRET facts_mfmt(cmd_rec *cmd) {
 
   timestamp = cmd->argv[1];
 
-  /* The path can contain spaces; it is thus the concatenation of all of the
-   * arguments after the timestamp.
+  /* The path can contain spaces.  Thus we need to use cmd->arg, not cmd->argv,
+   * to find the path.  But cmd->arg contains the facts as well.  Thus we
+   * find the FIRST space in cmd->arg; the path is everything past that space.
    */
-  path = pstrdup(cmd->tmp_pool, cmd->argv[2]);
-  for (i = 3; i < cmd->argc; i++) {
-    path = pstrcat(cmd->tmp_pool, path, " ", cmd->argv[i], NULL);
-  }
+  ptr = strchr(cmd->arg, ' ');
+  path = pstrdup(cmd->tmp_pool, ptr + 1);
 
   decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
@@ -837,16 +833,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   struct dirent *dent;
 
   if (cmd->argc != 1) {
-    register unsigned int i;
-
-    /* The path can contain spaces; it is thus the concatenation of all of the
-     * arguments after the command.
-     */
-    path = pstrdup(cmd->tmp_pool, cmd->argv[1]);
-    for (i = 2; i < cmd->argc; i++) {
-      path = pstrcat(cmd->tmp_pool, path, " ", cmd->argv[i], NULL);
-    }
-
+    path = pstrdup(cmd->tmp_pool, cmd->arg);
     decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
   } else {
@@ -974,16 +961,7 @@ MODRET facts_mlst(cmd_rec *cmd) {
   struct mlinfo info;
 
   if (cmd->argc != 1) {
-    register unsigned int i;
-
-    /* The path can contain spaces; it is thus the concatenation of all of the
-     * arguments after the command.
-     */
-    path = pstrdup(cmd->tmp_pool, cmd->argv[1]);
-    for (i = 2; i < cmd->argc; i++) {
-      path = pstrcat(cmd->tmp_pool, path, " ", cmd->argv[i], NULL);
-    }
-
+    path = pstrdup(cmd->tmp_pool, cmd->arg);
     decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
   } else {
