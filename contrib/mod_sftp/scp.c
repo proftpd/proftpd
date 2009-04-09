@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.13 2009-04-08 02:48:24 castaglia Exp $
+ * $Id: scp.c,v 1.14 2009-04-09 03:27:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1284,6 +1284,7 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
       session.xfer.path = pstrdup(session.xfer.p, sp->dir_spi->path);
       memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
       gettimeofday(&session.xfer.start_time, NULL);
+      session.xfer.direction = PR_NETIO_IO_WR;
     }
 
     res = send_path(p, channel_id, sp->dir_spi);
@@ -1331,6 +1332,7 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
         session.xfer.path = pstrdup(session.xfer.p, sp->dir_spi->path);
         memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
         gettimeofday(&session.xfer.start_time, NULL);
+        session.xfer.direction = PR_NETIO_IO_WR;
       }
 
       res = send_path(p, channel_id, sp->dir_spi);
@@ -1545,6 +1547,7 @@ int sftp_scp_handle_packet(struct ssh2_packet *pkt, uint32_t channel_id,
           paths[scp_session->path_idx]->path);
         memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
         gettimeofday(&session.xfer.start_time, NULL);
+        session.xfer.direction = PR_NETIO_IO_WR;
       }
 
       res = send_path(pkt->pool, channel_id, paths[scp_session->path_idx]);
@@ -1586,6 +1589,7 @@ int sftp_scp_handle_packet(struct ssh2_packet *pkt, uint32_t channel_id,
         paths[scp_session->path_idx]->path);
       memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
       gettimeofday(&session.xfer.start_time, NULL);
+      session.xfer.direction = PR_NETIO_IO_RD;
     }
 
     res = recv_path(pkt->pool, channel_id, paths[scp_session->path_idx], data,

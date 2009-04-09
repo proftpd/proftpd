@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.14 2009-04-08 18:56:32 castaglia Exp $
+ * $Id: fxp.c,v 1.15 2009-04-09 03:27:37 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4014,6 +4014,15 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
   gettimeofday(&session.xfer.start_time, NULL);
 
+  if ((open_flags & O_APPEND) ||
+      (open_flags & O_WRONLY) ||
+      (open_flags & O_RDWR)) {
+    session.xfer.direction = PR_NETIO_IO_RD;
+
+  } else if (open_flags == O_RDONLY) {
+    session.xfer.direction = PR_NETIO_IO_WR;
+  }
+
   pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
 
   timeout_stalled = pr_data_get_timeout(PR_DATA_TIMEOUT_STALLED);
@@ -4171,6 +4180,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   session.xfer.p = pr_pool_create_sz(fxp_pool, 64);
   memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
   gettimeofday(&session.xfer.start_time, NULL);
+  session.xfer.direction = PR_NETIO_IO_WR;
 
   pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
 
