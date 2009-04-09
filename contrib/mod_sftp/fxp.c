@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.15 2009-04-09 03:27:37 castaglia Exp $
+ * $Id: fxp.c,v 1.16 2009-04-09 05:06:34 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1800,7 +1800,7 @@ static char *fxp_get_path_listing(pool *p, const char *path, struct stat *st) {
 }
 
 static struct fxp_dirent *fxp_get_dirent(pool *p, cmd_rec *cmd,
-    const char *real_path) {
+    const char *real_path, mode_t *fake_mode) {
   struct fxp_dirent *fxd;
   struct stat st;
   int hidden = 0, res;
@@ -1813,6 +1813,29 @@ static struct fxp_dirent *fxp_get_dirent(pool *p, cmd_rec *cmd,
   if (res == 0 ||
       hidden == TRUE) {
     return NULL;
+  }
+
+  if (fake_mode != NULL) {
+    mode_t mode;
+
+    mode = *fake_mode;
+    mode |= (st.st_mode & S_IFMT);
+
+    if (S_ISDIR(st.st_mode)) {
+      if (st.st_mode & S_IROTH) {
+        mode |= S_IXOTH;
+      }
+
+      if (st.st_mode & S_IRGRP) {
+        mode |= S_IXGRP;
+      }
+
+      if (st.st_mode & S_IRUSR) {
+        mode |= S_IXUSR;
+      }
+    }
+
+    st.st_mode = mode;
   }
 
   fxd = pcalloc(p, sizeof(struct fxp_dirent));  
@@ -4511,6 +4534,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   array_header *path_list;
   cmd_rec *cmd;
   int have_error = FALSE;
+  mode_t *fake_mode = NULL;
 
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
@@ -4611,6 +4635,9 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
+  fake_mode = get_param_ptr(get_dir_ctxt(fxp->pool, (char *) fxh->dir),
+    "DirFakeMode", FALSE);
+
   while ((dent = pr_fsio_readdir(fxh->dirh)) != NULL) {
     char *real_path;
     struct fxp_dirent *fxd;
@@ -4620,7 +4647,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     real_path = dir_canonical_vpath(fxp->pool, pdircat(fxp->pool, fxh->dir,
       dent->d_name, NULL));
 
-    fxd = fxp_get_dirent(fxp->pool, cmd, real_path);
+    fxd = fxp_get_dirent(fxp->pool, cmd, real_path, fake_mode);
     if (fxd == NULL) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to obtain directory listing for '%s': %s", real_path,
