@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.20 2009-03-24 06:23:27 castaglia Exp $
+ * $Id: mod_facts.c,v 1.21 2009-04-09 15:44:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -890,11 +890,11 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     int xerrno = errno;
 
     pr_trace_msg("fileperms", 1, "MLSD, user '%s' (UID %lu, GID %lu): "
-      "error reading directory '%s': %s", session.user,
+      "error opening directory '%s': %s", session.user,
       (unsigned long) session.uid, (unsigned long) session.gid,
       decoded_path, strerror(xerrno));
 
-    pr_response_add_err(R_550, _("'%s' cannot be listed"), path);
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
     return PR_ERROR(cmd);
   }
 
