@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.29 2008-10-04 05:23:00 castaglia Exp $
+ * $Id: timers.c,v 1.30 2009-04-09 15:33:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -274,6 +274,12 @@ int pr_timer_reset(int timerno, module *mod) {
   }
 
   pr_alarms_unblock();
+
+  if (t) {
+    pr_trace_msg("timer", 7, "reset timer ID %d ('%s', for module '%s')",
+      t->timerno, t->desc, t->mod ? t->mod->name : "[none]");
+    return t->timerno;
+  }
 
   return (t ? t->timerno : 0);
 }
