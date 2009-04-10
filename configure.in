@@ -300,7 +300,7 @@ AC_ARG_WITH(libraries,
     [add additional library paths to proftpd. LIST is a colon-separated list of include paths to add e.g. --with-libraries=/some/mysql/libdir:/my/libs])
   ],
   [
-    if text x"$withval" != x; then
+    if test x"$withval" != x; then
       ac_addl_libdirs=`echo "$withval" | sed -e 's/:/ /g'` ;
       for alibdir in $ac_addl_libdirs; do
         if test x"$ac_build_addl_libdirs" = x ; then
