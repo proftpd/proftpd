@@ -20824,7 +20824,7 @@ fi
 # Check whether --with-libraries was given.
 if test "${with_libraries+set}" = set; then
   withval=$with_libraries;
-    if text x"$withval" != x; then
+    if test x"$withval" != x; then
       ac_addl_libdirs=`echo "$withval" | sed -e 's/:/ /g'` ;
       for alibdir in $ac_addl_libdirs; do
         if test x"$ac_build_addl_libdirs" = x ; then
