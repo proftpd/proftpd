@@ -320,6 +320,13 @@ AC_ARG_WITH(modules,
   ],
   [
     if test x"$withval" != x; then
+      modules_list=`echo "$withval" | sed -e 's/:/ /g'`;
+      for amodule in $modules_list; do
+        if test x"$amodule" == xmod_dso ; then
+          AC_MSG_ERROR([use --enable-dso instead of --with-modules=mod_dso for DSO support])
+        fi
+      done
+
       ac_static_modules=`echo "$withval" | sed -e 's/:/.o /g'`.o ;
 
       for amodule in $ac_static_modules; do
