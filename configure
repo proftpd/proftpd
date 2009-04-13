@@ -20844,6 +20844,15 @@ fi
 if test "${with_modules+set}" = set; then
   withval=$with_modules;
     if test x"$withval" != x; then
+      modules_list=`echo "$withval" | sed -e 's/:/ /g'`;
+      for amodule in $modules_list; do
+        if test x"$amodule" == xmod_dso ; then
+          { { echo "$as_me:$LINENO: error: use --enable-dso instead of --with-modules=mod_dso for DSO support" >&5
+echo "$as_me: error: use --enable-dso instead of --with-modules=mod_dso for DSO support" >&2;}
+   { (exit 1); exit 1; }; }
+        fi
+      done
+
       ac_static_modules=`echo "$withval" | sed -e 's/:/.o /g'`.o ;
 
       for amodule in $ac_static_modules; do
