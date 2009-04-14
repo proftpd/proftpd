@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1027 2009-04-05 16:34:10 castaglia Exp $
+$Id: NEWS,v 1.1028 2009-04-14 18:45:52 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -107,6 +107,7 @@ CVS
 - Bug 3233 - Dynamic config causes many copies of static configs to be merged.
 - Bug 3086 - mod_quotatab write locking is ineffective.
 - Bug 3029 - Support a RewriteCondition variable for renames.
+- Bug 3230 - Differentiate among protocol connections in DelayTable.
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------
