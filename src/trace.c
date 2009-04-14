@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.23 2009-04-06 22:41:12 castaglia Exp $
+ * $Id: trace.c,v 1.24 2009-04-14 18:53:13 castaglia Exp $
  */
 
 
@@ -57,7 +57,6 @@ static const char *trace_channels[] = {
   "netio",
   "pam",
   "pool",
-  "privs",
   "regexp",
   "response",
   "signal",
