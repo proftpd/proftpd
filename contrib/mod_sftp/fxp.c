@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.16 2009-04-09 05:06:34 castaglia Exp $
+ * $Id: fxp.c,v 1.17 2009-04-14 18:38:05 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1812,6 +1812,7 @@ static struct fxp_dirent *fxp_get_dirent(pool *p, cmd_rec *cmd,
   res = dir_check(p, cmd, G_DIRS, real_path, &hidden);
   if (res == 0 ||
       hidden == TRUE) {
+    errno = EACCES;
     return NULL;
   }
 
@@ -4649,9 +4650,12 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
     fxd = fxp_get_dirent(fxp->pool, cmd, real_path, fake_mode);
     if (fxd == NULL) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      int xerrno = errno;
+
+      pr_trace_msg(trace_channel, 3,
         "unable to obtain directory listing for '%s': %s", real_path,
-        strerror(errno));
+        strerror(xerrno));
+
       continue;
     }
 
