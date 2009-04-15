@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.158 2009-03-26 20:20:54 castaglia Exp $
+ * $Id: mod_ls.c,v 1.159 2009-04-15 18:15:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -364,7 +364,19 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
     p = cmd->tmp_pool;
 
   if (pr_fsio_lstat(name, &st) == 0) {
+    register unsigned int i;
+    char *display_name = NULL;
+
     suffix[0] = suffix[1] = '\0';
+
+    display_name = pstrdup(p, name);
+
+    /* Check for any non-printable characters, and replace them with '?'. */
+    for (i = 0; i < strlen(display_name); i++) {
+      if (!isprint((int) display_name[i])) {
+        display_name[i] = '?';
+      }
+    }
 
     if (S_ISLNK(st.st_mode) && (opt_L || !list_show_symlinks)) {
       /* Attempt to fully dereference symlink */
@@ -514,7 +526,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
             "%s %3d %-8s %-8s %s %s %2d %s %s", m, (int) st.st_nlink,
             MAP_UID(st.st_uid), MAP_GID(st.st_gid), s,
             months[t->tm_mon], t->tm_mday, timeline,
-            pr_fs_encode_path(cmd->tmp_pool, name));
+            pr_fs_encode_path(cmd->tmp_pool, display_name));
 
         } else {
 
@@ -1658,7 +1670,9 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
  * aborted.
  */
 static int nlstfile(cmd_rec *cmd, const char *file) {
+  register unsigned int i;
   int res = 0;
+  char *display_name;
 
   /* If the data connection isn't open, return an error */
   if ((session.sf_flags & SF_XFER) == 0) {
@@ -1669,8 +1683,17 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
   if (dir_hide_file(file))
     return 1;
 
+  display_name = pstrdup(cmd->tmp_pool, file);
+
+  /* Check for any non-printable characters, and replace them with '?'. */
+  for (i = 0; i < strlen(display_name); i++) {
+    if (!isprint((int) display_name[i])) {
+      display_name[i] = '?';
+    }
+  }
+
   /* Be sure to flush the output */
-  res = sendline(0, "%s\n", pr_fs_encode_path(cmd->tmp_pool, file));
+  res = sendline(0, "%s\n", pr_fs_encode_path(cmd->tmp_pool, display_name));
   if (res < 0)
     return res;
 
