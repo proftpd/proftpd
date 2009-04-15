@@ -1650,7 +1650,7 @@ sub pathdenyfilter_stor_denied_bug3032 {
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
-    PathDenyFilter => '[:print:]',
+    PathDenyFilter => '[^[:print:]]',
 
     IfModules => {
       'mod_delay.c' => {
