@@ -1,4 +1,4 @@
-<!-- $Id: Filters.html,v 1.6 2005-10-08 20:51:55 castaglia Exp $ -->
+<!-- $Id: Filters.html,v 1.7 2009-04-15 18:20:58 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Filters.html,v $ -->
 
 <html>
@@ -90,8 +90,17 @@ server <a href="Debugging.html">debugging</a> output, to see how well your
 filters are being applied.
 
 <p>
+<b>Examples</b><br>
+To prevent clients from using paths which may contain non-printable characters
+(<i>e.g.</i> CR, LF, VB, <i>etc</i>), you can use the following
+<code>PathDenyFilter</code> pattern:
+<pre>
+  PathDenyFilter [:print:]
+</pre>
+
+<p>
 <hr>
-Last Updated: <i>$Date: 2005-10-08 20:51:55 $</i><br>
+Last Updated: <i>$Date: 2009-04-15 18:20:58 $</i><br>
 <hr>
 
 </body>
