@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.8 2009-04-17 00:51:17 castaglia Exp $
+ * $Id: channel.c,v 1.9 2009-04-17 18:51:54 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -268,7 +268,7 @@ static void drain_pending_channel_data(uint32_t channel_id) {
 
       pr_trace_msg(trace_channel, 9, "sending CHANNEL_DATA (remote channel "
         "ID %lu, %lu bytes)", (unsigned long) chan->remote_channel_id,
-        (unsigned long) pkt->payload_len);
+        (unsigned long) payload_len);
 
       res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
       if (res < 0) {
@@ -1318,7 +1318,7 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
 
       pr_trace_msg(trace_channel, 9, "sending CHANNEL_DATA (remote channel "
         "ID %lu, %lu bytes)", (unsigned long) chan->remote_channel_id,
-        (unsigned long) pkt->payload_len);
+        (unsigned long) payload_len);
 
       res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
       if (res == 0) {
