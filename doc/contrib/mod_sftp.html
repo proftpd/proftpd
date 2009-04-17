@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.6 2009-04-14 18:39:30 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.7 2009-04-17 23:19:06 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -169,6 +169,21 @@ authentication methods to use is provided as a space-delimited list,
   # Offer publickey and keyboard-interactive authentication only
   SFTPAuthMethods publickey keyboard-interactive
 </pre>
+
+<p>
+The <em>hostbased</em> authentication method is only offered to clients if
+the <a href="#SFTPAuthorizedHostKeys"><code>SFTPAuthorizedHostKeys</code></a>
+directive is configured.
+
+<p>
+The <em>publickey</em> authentication method is only offered to clients if
+the <a href="#SFTPAuthorizedUserKeys"><code>SFTPAuthorizedUserKeys</code></a>
+directive is configured.
+
+<p>
+The <em>keyboard-interactive</em> authentication method is only offered to
+clients if the <a href="mod_sftp_pam.html"><code>mod_sftp_pam</code></a>
+module is present.
 
 <p>
 <hr>
@@ -594,7 +609,7 @@ default value is 10.
 <p>
 A malicious client might try to abuse the server's resources by opening
 an large number of SSH2 channels and then not using them.  Most well-behaved
-SSH2 clients only every open one channel.
+SSH2 clients only ever open one channel.
 
 <p>
 <hr>
@@ -1293,7 +1308,7 @@ used for the SFTP/SCP sessions, <i>etc</i>.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-04-14 18:39:30 $</i><br>
+Last Updated: <i>$Date: 2009-04-17 23:19:06 $</i><br>
 
 <br><hr>
 
