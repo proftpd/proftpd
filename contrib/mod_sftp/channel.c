@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.7 2009-04-06 22:47:59 castaglia Exp $
+ * $Id: channel.c,v 1.8 2009-04-17 00:51:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -279,7 +279,7 @@ static void drain_pending_channel_data(uint32_t channel_id) {
         return;
       }
 
-      chan->remote_windowsz -= pkt->payload_len;
+      chan->remote_windowsz -= payload_len;
 
       /* If we sent this entire databuf, then we can dispose of it, and
        * advance to the next one on the list.  However, we may have only
@@ -1322,7 +1322,7 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
 
       res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
       if (res == 0) {
-        chan->remote_windowsz -= pkt->payload_len;
+        chan->remote_windowsz -= payload_len;
       }
 
       /* If that was the entire payload, we can be done now. */
