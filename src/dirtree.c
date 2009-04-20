@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.216 2009-04-01 23:09:35 castaglia Exp $
+ * $Id: dirtree.c,v 1.217 2009-04-20 22:11:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3098,14 +3098,10 @@ static void set_tcp_bufsz(void) {
     tcp_sndbufsz);
 #endif /* PR_TUNABLE_SNDBUFSZ */
 
-#ifndef PR_TUNABLE_XFER_BUFFER_SIZE
   /* Choose the smaller of the two TCP buffer sizes as the overall transfer
    * size (for use by the data transfer layer).
    */
    xfer_bufsz = tcp_sndbufsz < tcp_rcvbufsz ? tcp_sndbufsz : tcp_rcvbufsz;
-#else
-  xfer_bufsz = PR_TUNABLE_XFER_BUFFER_SIZE;
-#endif /* PR_TUNABLE_XFER_BUFFER_SIZE */
 
   (void) close(sockfd);
 }
