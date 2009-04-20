@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.8 2009-04-03 21:03:03 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.9 2009-04-20 16:52:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -645,6 +645,39 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
 
       /* Don't forget to advance i past the value. */
       i++;
+
+#ifdef PR_USE_NLS
+    } else if (strcmp(cmd->argv[i], "sftpUTF8ProtocolVersion") == 0) {
+      char *ptr = NULL;
+      void *value;
+      long protocol_version;
+
+      protocol_version = strtol(cmd->argv[i+1], &ptr, 10);
+      if (ptr && *ptr) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "badly formatted 'sftpUTF8ProtocolVersion' value: ", cmd->argv[i+1],
+          NULL));
+      }
+
+      if (protocol_version < 1 ||
+          protocol_version > 6) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "'sftpUTF8ProtocolVersion' value ", cmd->argv[i+1], NULL));
+      }
+
+      value = palloc(c->pool, sizeof(unsigned int));
+      *((unsigned int *) value) = (unsigned int) protocol_version;
+
+      if (pr_table_add(tab, pstrdup(c->pool, "sftpUTF8ProtocolVersion"),
+          value, sizeof(unsigned int)) < 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "error storing 'sftpUTF8ProtocolVersion' value: ", strerror(errno),
+          NULL));
+      }
+
+      /* Don't forget to advance i past the value. */
+      i++;
+#endif /* PR_USE_NLS */
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPClientMatch key: '",

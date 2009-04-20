@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.h,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: fxp.h,v 1.3 2009-04-20 16:52:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -67,6 +67,15 @@ int sftp_fxp_open_session(uint32_t);
 int sftp_fxp_close_session(uint32_t);
 
 int sftp_fxp_set_protocol_version(unsigned int, unsigned int);
+
+/* Set the SFTP protocol version at which UTF8 decoding/encoding will be done
+ * on the paths/strings sent to/from the SFTP client.  The default SFTP
+ * protocol version at which this happens, by IETF Draft, is 4.  Some sites
+ * (e.g. Japanese sites) may need the encoding facilities for other SFTP
+ * protocol versions, however.
+ */
+int sftp_fxp_set_utf8_protocol_version(unsigned int);
+
 void sftp_fxp_use_gmt(int);
 
 #endif

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: interop.c,v 1.3 2009-03-04 18:30:53 castaglia Exp $
+ * $Id: interop.c,v 1.4 2009-04-20 16:52:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -251,6 +251,7 @@ int sftp_interop_handle_version(const char *client_version) {
        *  channelPacketSize
        *  sftpMinProtocolVersion
        *  sftpMaxProtocolVersion
+       *  sftpUTF8ProtocolVersion (only if NLS support is enabled)
        */
 
       v = pr_table_get(tab, "channelWindowSize", NULL);
@@ -299,6 +300,19 @@ int sftp_interop_handle_version(const char *client_version) {
 
         sftp_fxp_set_protocol_version(min_version, max_version);
       }
+
+#ifdef PR_USE_NLS
+      v = pr_table_get(tab, "sftpUTF8ProtocolVersion", NULL);
+      if (v) {
+        unsigned int protocol_version;
+
+        protocol_version = *((unsigned int *) v);
+        pr_trace_msg(trace_channel, 16, "setting SFTP UTF8 protocol version "
+          "%u, as per SFTPClientMatch", protocol_version);
+
+        sftp_fxp_set_utf8_protocol_version(protocol_version);
+      }
+#endif /* PR_USE_NLS */
 
       /* Once we're done, we can destroy the table. */
       (void) pr_table_empty(tab);

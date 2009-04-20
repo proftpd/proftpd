@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.17 2009-04-14 18:38:05 castaglia Exp $
+ * $Id: fxp.c,v 1.18 2009-04-20 16:52:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -211,6 +211,7 @@ static int fxp_use_gmt = TRUE;
 
 static unsigned int fxp_min_client_version = 1;
 static unsigned int fxp_max_client_version = 6;
+static unsigned int fxp_utf8_protocol_version = 4;
 
 /* Use a struct to maintain the per-channel FXP-specific values. */
 struct fxp_session {
@@ -1795,7 +1796,6 @@ static char *fxp_get_path_listing(pool *p, const char *path, struct stat *st) {
     "%s %3u %-*s %-*s %8" PR_LU " %s %s", mode_str,
     (unsigned int) st->st_nlink, user_len, user, group_len, group,
     (pr_off_t) st->st_size, time_str, path);
-
   return pstrdup(p, listing);
 }
 
@@ -1850,7 +1850,7 @@ static struct fxp_dirent *fxp_get_dirent(pool *p, cmd_rec *cmd,
 static void fxp_name_write(pool *p, char **buf, uint32_t *buflen,
     const char *path, struct stat *st) {
 
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     sftp_msg_write_string(buf, buflen, sftp_utf8_encode_str(p, path));
 
   } else {
@@ -2987,12 +2987,12 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
   cmd_rec *cmd;
 
   src_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     src_path = sftp_utf8_decode_str(fxp->pool, src_path);
   }
 
   dst_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     dst_path = sftp_utf8_decode_str(fxp->pool, dst_path);
   }
 
@@ -3358,7 +3358,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   cmd_rec *cmd;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
@@ -3499,7 +3499,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   cmd_rec *cmd, *cmd2;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
@@ -3712,7 +3712,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   cmd_rec *cmd, *cmd2 = NULL;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
@@ -4074,7 +4074,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   cmd_rec *cmd;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
@@ -4732,7 +4732,7 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
   cmd_rec *cmd;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
@@ -4838,7 +4838,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   cmd_rec *cmd;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version > fxp_utf8_protocol_version) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
@@ -4969,7 +4969,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
   cmd_rec *cmd, *cmd2;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
@@ -5165,12 +5165,12 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
   int xerrno = 0;
 
   old_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     old_path = sftp_utf8_decode_str(fxp->pool, old_path);
   }
 
   new_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     new_path = sftp_utf8_decode_str(fxp->pool, new_path);
   }
 
@@ -5441,7 +5441,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   int have_error = FALSE;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
@@ -5620,7 +5620,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   cmd_rec *cmd;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
@@ -5737,7 +5737,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   cmd_rec *cmd;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version > fxp_utf8_protocol_version) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
@@ -5879,12 +5879,12 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
   cmd_rec *cmd, *cmd2;
 
   src_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     src_path = sftp_utf8_decode_str(fxp->pool, src_path);
   }
 
   dst_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > 3) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     dst_path = sftp_utf8_decode_str(fxp->pool, dst_path);
   }
 
@@ -6708,6 +6708,16 @@ int sftp_fxp_set_protocol_version(unsigned int min_version,
 
   fxp_min_client_version = min_version;
   fxp_max_client_version = max_version;
+  return 0;
+}
+
+int sftp_fxp_set_utf8_protocol_version(unsigned int version) {
+  if (version < 1 || version > 6) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fxp_utf8_protocol_version = version;
   return 0;
 }
 
