@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.7 2009-04-17 23:19:06 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.8 2009-04-20 16:55:30 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -317,6 +317,15 @@ The currently supported SSH2/SFTP keys which can be tuned via
     <i>e.g.</i> "3", or it can be a range such as "1-3".  The
     <code>mod_sftp</code> module supports SFTP protocol versions 1-6;
     using any other protocol versions will result in bad configuration.
+  </li>
+
+  <p>
+  <li>sftpUTF8ProtocolVersion</br>
+    The <em>value</em> for this key is a specific version number,
+    <i>e.g.</i> "3".  The <code>mod_sftp</code> module uses UTF8 encoding
+    for handling paths/strings in SFTP messages for protocol version 4 and
+    above by default; this key can be used to change when UTF8 encoding
+    is used.
   </li>
 </ul>
 
@@ -1308,7 +1317,7 @@ used for the SFTP/SCP sessions, <i>etc</i>.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-04-17 23:19:06 $</i><br>
+Last Updated: <i>$Date: 2009-04-20 16:55:30 $</i><br>
 
 <br><hr>
 
