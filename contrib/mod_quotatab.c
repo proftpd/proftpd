@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.45 2009-04-21 23:01:38 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.46 2009-04-21 23:30:05 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -825,7 +825,7 @@ static int quotatab_mutex_lock(int lock_type) {
   if (quota_lockfd < 0)
     return 0;
 
-  lock.l_type = F_WRLCK;
+  lock.l_type = lock_type;
   lock.l_whence = SEEK_SET;
   lock.l_start = 0;
   lock.l_len = 0;
