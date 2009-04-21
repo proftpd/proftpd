@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.18 2009-04-20 16:52:28 castaglia Exp $
+ * $Id: fxp.c,v 1.19 2009-04-21 22:21:56 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4883,6 +4883,9 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     }
   }
 
+  buflen = bufsz = PR_TUNABLE_PATH_MAX + 32;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -4907,9 +4910,6 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
   /* The path may have been changed by any PRE_CMD handlers. */
   path = cmd->arg;
-
-  buflen = bufsz = PR_TUNABLE_PATH_MAX + 32;
-  buf = ptr = palloc(fxp->pool, bufsz);
 
   if (strcmp(path, ".") == 0) {
     /* The client is asking about the current working directory.  Easy. */
