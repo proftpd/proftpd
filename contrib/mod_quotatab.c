@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.44 2009-04-21 21:59:27 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.45 2009-04-21 23:01:38 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -838,14 +838,14 @@ static int quotatab_mutex_lock(int lock_type) {
   while (fcntl(quota_lockfd, F_SETLK, &lock) < 0) {
     int xerrno = errno;
 
-    if (xerrno == EINTR ||
-        xerrno == EAGAIN) {
+    if (xerrno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
     pr_trace_msg("lock", 3, "%s of QuotaLock fd %d failed: %s",
       lock_desc, quota_lockfd, strerror(xerrno));
+  
     if (xerrno == EACCES) {
       struct flock locker;
 
@@ -857,7 +857,10 @@ static int quotatab_mutex_lock(int lock_type) {
            locker.l_type == F_RDLCK ? "read-lock" : "unlock"),
           quota_lockfd);
       }
+    }
 
+    if (xerrno == EAGAIN ||
+        xerrno == EACCES) {
       /* Treat this as an interrupted call, call pr_signals_handle() (which
        * will delay for a few msecs because of EINTR), and try again.
        * After 10 attempts, give up altogether.
