@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.7 2009-03-04 17:41:49 castaglia Exp $
+ * $Id: kex.c,v 1.8 2009-04-21 23:20:21 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -969,14 +969,22 @@ static struct sftp_kex *create_kex(pool *p) {
 
     comp_mode = *((int *) c->argv[0]);
 
-    if (comp_mode == 2) {
-      /* Advertise that we support OpenSSH's "delayed" compression mode. */
-      kex->server_names->c2s_comp_algo = "zlib@openssh.com,zlib,none";
-      kex->server_names->s2c_comp_algo = "zlib@openssh.com,zlib,none";
+    switch (comp_mode) {
+      case 2:
+        /* Advertise that we support OpenSSH's "delayed" compression mode. */
+        kex->server_names->c2s_comp_algo = "zlib@openssh.com,zlib,none";
+        kex->server_names->s2c_comp_algo = "zlib@openssh.com,zlib,none";
+        break;
 
-    } else if (comp_mode == 1) {
-      kex->server_names->c2s_comp_algo = "zlib,none";
-      kex->server_names->s2c_comp_algo = "zlib,none";
+      case 1:
+        kex->server_names->c2s_comp_algo = "zlib,none";
+        kex->server_names->s2c_comp_algo = "zlib,none";
+        break;
+
+      default:
+        kex->server_names->c2s_comp_algo = "none";
+        kex->server_names->s2c_comp_algo = "none";
+        break;
     }
 
   } else {
