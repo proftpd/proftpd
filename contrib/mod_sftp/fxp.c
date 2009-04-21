@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.19 2009-04-21 22:21:56 castaglia Exp $
+ * $Id: fxp.c,v 1.20 2009-04-21 23:45:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3392,6 +3392,9 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "LSTAT", path);
 
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -3416,9 +3419,6 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
 
   /* The path may have been changed by any PRE_CMD handlers. */
   path = cmd->arg;
-
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
 
   cmd_name = cmd->argv[0];
   cmd->argv[0] = "STAT";
@@ -3526,6 +3526,9 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "MKDIR", path);
 
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -3549,9 +3552,6 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   }
 
   path = cmd->arg;
-
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
 
   cmd2 = fxp_cmd_alloc(fxp->pool, C_MKD, path);
   if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) == -1) {
@@ -4095,6 +4095,9 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "OPENDIR", path);
 
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -4119,9 +4122,6 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
 
   /* The path may have been changed by any PRE_CMD handlers. */
   path = cmd->arg;
-
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
 
   path = dir_canonical_vpath(fxp->pool, path);
 
@@ -4753,6 +4753,9 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "READLINK", path);
 
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -4777,9 +4780,6 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
 
   /* The path may have been changed by any PRE_CMD handlers. */
   path = cmd->arg;
-
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
 
   res = pr_fsio_readlink(path, data, sizeof(data) - 1);
   if (res < 0) {
@@ -4990,6 +4990,9 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "REMOVE", path);
 
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -5013,9 +5016,6 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
   }
 
   path = cmd->arg;
-
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
 
   cmd_name = cmd->argv[0];
   cmd->argv[0] = C_DELE;
@@ -5462,6 +5462,9 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "RMDIR", path);
 
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -5485,9 +5488,6 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   }
 
   path = cmd->arg;
-
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
 
   cmd2 = fxp_cmd_alloc(fxp->pool, C_RMD, path);
   if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) == -1) {
@@ -5647,6 +5647,9 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "SETSTAT", path);
 
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -5671,9 +5674,6 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
 
   /* The path may have been changed by any PRE_CMD handlers. */
   path = cmd->arg;
-
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
 
   cmd_name = cmd->argv[0];
   cmd->argv[0] = "SETSTAT";
@@ -5771,6 +5771,9 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "STAT", path);
 
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -5795,9 +5798,6 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
 
   /* The path may have been changed by any PRE_CMD handlers. */
   path = cmd->arg;
-
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
 
   cmd_name = cmd->argv[0];
   cmd->argv[0] = "STAT";
@@ -5933,6 +5933,9 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
   args2 = pstrcat(fxp->pool, src_path, "\t", dst_path, NULL);
   cmd2 = fxp_cmd_alloc(fxp->pool, "SYMLINK", args2);
 
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
   if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -5965,9 +5968,6 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
       dst_path = ptr + 1;
     }
   }
-
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
 
   cmd_name = cmd->argv[0];
   cmd->argv[0] = "SYMLINK";
