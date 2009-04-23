@@ -1713,6 +1713,11 @@ sub list_nonascii_chars_bug3032 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
+  if (feature_have_feature_enabled('nls')) {
+    # This test is only valid if NLS support is not enabled.
+    return;
+  }
+
   my $config_file = "$tmpdir/cmds.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
