@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.159 2009-04-15 18:15:33 castaglia Exp $
+ * $Id: mod_ls.c,v 1.160 2009-04-23 04:24:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -371,12 +371,14 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
 
     display_name = pstrdup(p, name);
 
+#ifndef PR_USE_NLS
     /* Check for any non-printable characters, and replace them with '?'. */
     for (i = 0; i < strlen(display_name); i++) {
       if (!isprint((int) display_name[i])) {
         display_name[i] = '?';
       }
     }
+#endif /* PR_USE_NLS */
 
     if (S_ISLNK(st.st_mode) && (opt_L || !list_show_symlinks)) {
       /* Attempt to fully dereference symlink */
