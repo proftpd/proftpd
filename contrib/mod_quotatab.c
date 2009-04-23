@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.47 2009-04-21 23:31:25 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.48 2009-04-23 22:02:22 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -382,8 +382,8 @@ int quotatab_openlog(void) {
   if (quota_logname)
     return 0;
 
-  if ((quota_logname = (char *) get_param_ptr(main_server->conf,
-      "QuotaLog", FALSE)) == NULL)
+  quota_logname = get_param_ptr(main_server->conf, "QuotaLog", FALSE);
+  if (quota_logname == NULL)
     return 0;
 
   /* check for "none" */
@@ -397,6 +397,24 @@ int quotatab_openlog(void) {
   res = pr_log_openfile(quota_logname, &quota_logfd, 0640);
   PRIVS_RELINQUISH
   pr_signals_unblock();
+
+  switch (res) {
+    case -1:
+      pr_log_pri(LOG_NOTICE, MOD_QUOTATAB_VERSION
+        ": unable to open QuotaLog '%s': %s", quota_logname, strerror(errno));
+      break;
+
+    case PR_LOG_WRITABLE_DIR:
+      pr_log_pri(LOG_NOTICE, MOD_QUOTATAB_VERSION
+        ": unable to open QuotaLog '%s': %s", quota_logname,
+        "World-writable directory");
+      break;
+
+    case PR_LOG_SYMLINK:
+      pr_log_pri(LOG_NOTICE, MOD_QUOTATAB_VERSION
+        ": unable to open QuotaLog '%s': %s", quota_logname, "Symbolic link");
+      break;
+  }
 
   return res;
 }
