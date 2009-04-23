@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.160 2009-04-23 04:24:02 castaglia Exp $
+ * $Id: mod_ls.c,v 1.161 2009-04-23 04:40:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1687,12 +1687,14 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
 
   display_name = pstrdup(cmd->tmp_pool, file);
 
+#ifndef PR_USE_NLS
   /* Check for any non-printable characters, and replace them with '?'. */
   for (i = 0; i < strlen(display_name); i++) {
     if (!isprint((int) display_name[i])) {
       display_name[i] = '?';
     }
   }
+#endif /* PR_USE_NLS */
 
   /* Be sure to flush the output */
   res = sendline(0, "%s\n", pr_fs_encode_path(cmd->tmp_pool, display_name));
