@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.20 2009-04-21 23:45:02 castaglia Exp $
+ * $Id: fxp.c,v 1.21 2009-04-23 05:40:18 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1861,7 +1861,13 @@ static void fxp_name_write(pool *p, char **buf, uint32_t *buflen,
     char *path_desc;
 
     path_desc = fxp_get_path_listing(p, path, st);
-    sftp_msg_write_string(buf, buflen, path_desc);
+
+    if (fxp_session->client_version >= fxp_utf8_protocol_version) {
+      sftp_msg_write_string(buf, buflen, sftp_utf8_encode_str(p, path_desc));
+
+    } else {
+      sftp_msg_write_string(buf, buflen, path_desc);
+    }
   }
 
   fxp_attrs_write(p, buf, buflen, st);
