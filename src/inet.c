@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.114 2009-03-13 15:55:17 castaglia Exp $
+ * $Id: inet.c,v 1.115 2009-04-23 03:25:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -284,15 +284,17 @@ static conn_t *init_conn(pool *p, xaset_t *servers, int fd,
     memset(&na, 0, sizeof(na));
     pr_netaddr_set_family(&na, addr_family);
 
-    if (bind_addr)
+    if (bind_addr) {
       pr_netaddr_set_sockaddr(&na, pr_netaddr_get_sockaddr(bind_addr));
 
-    else
+    } else {
       pr_netaddr_set_sockaddr_any(&na);
+    }
 
 #if defined(PR_USE_IPV6) && defined(IPV6_V6ONLY)
     if (pr_netaddr_use_ipv6() &&
-        addr_family == AF_INET6) {
+        addr_family == AF_INET6 &&
+        !pr_netaddr_is_v4mappedv6(&na)) {
       int level = ipv6_proto;
       int off;
       socklen_t len = sizeof(off);
