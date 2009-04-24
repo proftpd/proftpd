@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.21 2009-04-23 05:40:18 castaglia Exp $
+ * $Id: fxp.c,v 1.22 2009-04-24 17:38:25 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4554,8 +4554,11 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
   pr_trace_msg(trace_channel, 7, "received request: READDIR %s", name);
 
-  /* XXX What's a good size here? */
-  buflen = bufsz = 8192;
+  /* XXX What's a good size here?
+   * Currently we calculate the max path length for the maximum number of
+   * entries, plus 256 bytes of additional data for that path.
+   */
+  buflen = bufsz = (max_entries * ((PR_TUNABLE_PATH_MAX + 1) + 256));
   buf = ptr = palloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(name);
