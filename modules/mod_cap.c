@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2003-2008 The ProFTPD Project team
+ * Copyright (c) 2003-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.15 2008-02-13 17:10:49 castaglia Exp $
+ * $Id: mod_cap.c,v 1.16 2009-04-24 16:44:07 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -65,6 +65,7 @@ static unsigned int cap_flags = 0;
 #define CAP_USE_CHOWN		0x0001
 #define CAP_USE_DAC_OVERRIDE	0x0002
 #define CAP_USE_DAC_READ_SEARCH	0x0004
+#define CAP_USE_SETUID		0x0008
 
 /* log current capabilities */
 static void lp_debug(void) {
@@ -72,33 +73,40 @@ static void lp_debug(void) {
   ssize_t len;
   cap_t caps;
 
-  if (! (caps = cap_get_proc())) {
+  caps = cap_get_proc();
+  if (caps == NULL) {
     pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": cap_get_proc failed: %s",
-            strerror(errno));
+      strerror(errno));
     return;
   }
 
-  if (! (res = cap_to_text(caps, &len))) {
+  res = cap_to_text(caps, &len);
+  if (res == NULL) {
     pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": cap_to_text failed: %s",
       strerror(errno));
-    if (cap_free(caps) < 0)
+
+    if (cap_free(caps) < 0) {
       pr_log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
         ": error freeing cap at line %d: %s", __LINE__ - 2, strerror(errno));
+    }
+
     return;
   }
 
   pr_log_debug(DEBUG1, MOD_CAP_VERSION ": capabilities '%s'", res);
   cap_free(res);
 
-  if (cap_free(caps) < 0)
+  if (cap_free(caps) < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
       ": error freeing cap at line %d: %s", __LINE__ - 2, strerror(errno));
+  }
 }
 
 /* create a new capability structure */
 static int lp_init_cap(void) {
 
-  if (! (capabilities = cap_init())) {
+  capabilities = cap_init();
+  if (capabilities == NULL) {
     pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": initializing cap failed: %s",
       strerror(errno));
     return -1;
@@ -111,9 +119,10 @@ static int lp_init_cap(void) {
 /* free the capability structure */
 static void lp_free_cap(void) {
   if (have_capabilities) {
-    if (cap_free(capabilities) < 0)
+    if (cap_free(capabilities) < 0) {
       pr_log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
         ": error freeing cap at line %d: %s", __LINE__ - 2, strerror(errno));
+    }
   }
 }
 
@@ -121,7 +130,7 @@ static void lp_free_cap(void) {
 static int lp_add_cap(cap_value_t cap, cap_flag_t set) {
   if (cap_set_flag(capabilities, set, 1, &cap, CAP_SET) == -1) {
     pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": cap_set_flag failed: %s",
-            strerror(errno));
+      strerror(errno));
     return -1;
   }
 
@@ -175,9 +184,10 @@ MODRET set_caps(cmd_rec *cmd) {
       if (*cmd->argv[i] == '+')
         flags |= CAP_USE_DAC_READ_SEARCH;
 
-    } else
+    } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown capability: '",
-                 cp, "'", NULL));
+        cp, "'", NULL));
+    }
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -252,6 +262,13 @@ MODRET cap_post_pass(cmd_rec *cmd) {
   if (res != -1 && (cap_flags & CAP_USE_DAC_READ_SEARCH))
     res = lp_add_cap(CAP_DAC_READ_SEARCH, CAP_PERMITTED);
 
+  if (res != -1 && (cap_flags & CAP_USE_SETUID)) {
+    res = lp_add_cap(CAP_SETUID, CAP_PERMITTED);
+    if (res != -1) {
+      res = lp_add_cap(CAP_SETGID, CAP_PERMITTED);
+    }
+  }
+
   if (res != -1)
     res = lp_set_cap();
 
@@ -281,6 +298,12 @@ MODRET cap_post_pass(cmd_rec *cmd) {
   if (res != -1 && (cap_flags & CAP_USE_DAC_READ_SEARCH))
     res = lp_add_cap(CAP_DAC_READ_SEARCH, CAP_EFFECTIVE);
 
+  if (res != -1 && (cap_flags & CAP_USE_SETUID)) {
+    res = lp_add_cap(CAP_SETUID, CAP_EFFECTIVE);
+    if (res != -1) {
+      res = lp_add_cap(CAP_SETGID, CAP_EFFECTIVE);
+    }
+  }
   if (res != -1)
     res = lp_set_cap();
 
@@ -291,9 +314,10 @@ MODRET cap_post_pass(cmd_rec *cmd) {
     session.disable_id_switching = TRUE;
     lp_debug();
 
-  } else
+  } else {
     pr_log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION ": attempt to configure "
-            "capabilities failed, reverting to normal operation");
+      "capabilities failed, reverting to normal operation");
+  }
 
   return PR_DECLINED(cmd);
 }
@@ -306,10 +330,11 @@ static int cap_sess_init(void) {
    * configuration file.
    */
   if (use_capabilities) {
-    unsigned char *cap_engine = get_param_ptr(main_server->conf,
-                                              "CapabilitiesEngine", FALSE);
+    unsigned char *cap_engine;
 
-    if (cap_engine && *cap_engine == FALSE) {
+    cap_engine = get_param_ptr(main_server->conf, "CapabilitiesEngine", FALSE);
+    if (cap_engine &&
+        *cap_engine == FALSE) {
       pr_log_debug(DEBUG3, MOD_CAP_VERSION
         ": lowering of capabilities disabled");
       use_capabilities = FALSE;
@@ -318,23 +343,41 @@ static int cap_sess_init(void) {
 
   /* Check for which specific capabilities to include/exclude. */
   if (use_capabilities) {
-    config_rec *c = find_config(main_server->conf, CONF_PARAM,
-      "CapabilitiesSet", FALSE);
+    config_rec *c;
 
+    c = find_config(main_server->conf, CONF_PARAM, "CapabilitiesSet", FALSE);
     if (c != NULL) {
       cap_flags = *((unsigned int *) c->argv[0]);
 
-      if (!(cap_flags & CAP_USE_CHOWN))
+      if (!(cap_flags & CAP_USE_CHOWN)) {
         pr_log_debug(DEBUG3, MOD_CAP_VERSION
           ": removing CAP_CHOWN capability");
+      }
 
-      if (cap_flags & CAP_USE_DAC_OVERRIDE)
+      if (cap_flags & CAP_USE_DAC_OVERRIDE) {
         pr_log_debug(DEBUG3, MOD_CAP_VERSION
           ": adding CAP_DAC_OVERRIDE capability"); 
+      }
 
-      if (cap_flags & CAP_USE_DAC_READ_SEARCH)
+      if (cap_flags & CAP_USE_DAC_READ_SEARCH) {
         pr_log_debug(DEBUG3, MOD_CAP_VERSION
           ": adding CAP_DAC_READ_SEARCH capability");
+      }
+    }
+
+    /* We also need to check for things which want to revoke root privs
+     * altogether: mod_exec, mod_sftp, and the RootRevoke directive.
+     * Revoking root privs completely requires the SETUID/SETGID
+     * capabilities.
+     */
+
+    c = find_config(main_server->conf, CONF_PARAM, "RootRevoke", FALSE);
+    if (pr_module_get("mod_exec.c") != NULL ||
+        pr_module_get("mod_sftp.c") != NULL ||
+        (c && *((unsigned char *) c->argv[0]) == TRUE)) {
+      cap_flags |= CAP_USE_SETUID;
+      pr_log_debug(DEBUG3, MOD_CAP_VERSION
+        ": adding CAP_SETUID and CAP_SETGID capabilities");
     }
   }
 
