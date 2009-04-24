@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.348 2009-04-07 00:03:06 castaglia Exp $
+ * $Id: mod_core.c,v 1.349 2009-04-24 20:48:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -368,13 +368,13 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
 
 #ifdef PR_USE_IPV6
       if (pr_netaddr_use_ipv6()) {
-        char *ipbuf = pcalloc(cmd->tmp_pool, INET6_ADDRSTRLEN);
+        char *ipbuf = pcalloc(cmd->tmp_pool, INET6_ADDRSTRLEN + 1);
         if (pr_netaddr_get_family(elts[i]) == AF_INET) {
 
           /* Create the bind record using the IPv4-mapped IPv6 version of
            * this address.
            */
-          snprintf(ipbuf, sizeof(ipbuf), "::ffff:%s", ipstr);
+          snprintf(ipbuf, INET6_ADDRSTRLEN, "::ffff:%s", ipstr);
           ipstr = ipbuf;
         }
       }
