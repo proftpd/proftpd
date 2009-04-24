@@ -36960,18 +36960,18 @@ my_static_modules=`echo "$ac_static_modules" | sed -e 's/\.o//g'`;
 my_shared_modules=`echo "$ac_shared_modules" | sed -e 's/\.la//g'`;
 all_modules="$my_core_modules $my_static_modules $my_shared_modules";
 
+pr_use_openssl="no"
+
 { echo "$as_me:$LINENO: checking checking for duplicate module requests" >&5
 echo $ECHO_N "checking checking for duplicate module requests... $ECHO_C" >&6; }
 for i in $all_modules; do
   once=no;
 
     if test x"$i" = x"mod_tls"; then
+    pr_use_openssl=yes
 
-cat >>confdefs.h <<\_ACEOF
-#define PR_USE_OPENSSL 1
-_ACEOF
-
-      ac_build_addl_libs="$ac_build_addl_libs -lssl -lcrypto"
+  elif test x"$i" = x"mod_sftp"; then
+    pr_use_openssl=yes
   fi
 
   for j in $all_modules; do
@@ -36991,6 +36991,15 @@ echo "$as_me: error: duplicate build request for $j -- aborting" >&2;}
 done
 { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
+
+if test x"$pr_use_openssl" = xyes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define PR_USE_OPENSSL 1
+_ACEOF
+
+  ac_build_addl_libs="$ac_build_addl_libs -lssl -lcrypto"
+fi
 
 for module in $ac_shared_modules ; do
   moduledir=`echo "$module" | sed -e 's/\.la$//'`;
