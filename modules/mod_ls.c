@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.161 2009-04-23 04:40:16 castaglia Exp $
+ * $Id: mod_ls.c,v 1.162 2009-04-24 15:46:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1450,9 +1450,9 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
     /* Open data connection */
     if (!opt_STAT) {
-      session.sf_flags |= SF_ASCII_OVERRIDE;
       if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
         return -1;
+      session.sf_flags |= SF_ASCII_OVERRIDE;
     }
 
     /* If there are no globbing characters in the given target,
@@ -1634,9 +1634,9 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
     /* Open data connection */
     if (!opt_STAT) {
-      session.sf_flags |= SF_ASCII_OVERRIDE;
       if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
         return -1;
+      session.sf_flags |= SF_ASCII_OVERRIDE;
     }
 
     if (ls_perms_full(cmd->tmp_pool, cmd, ".", NULL)) {
