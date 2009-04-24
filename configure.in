@@ -1858,14 +1858,18 @@ my_static_modules=`echo "$ac_static_modules" | sed -e 's/\.o//g'`;
 my_shared_modules=`echo "$ac_shared_modules" | sed -e 's/\.la//g'`;
 all_modules="$my_core_modules $my_static_modules $my_shared_modules";
 
+pr_use_openssl="no"
+
 AC_MSG_CHECKING([checking for duplicate module requests])
 for i in $all_modules; do
   once=no;
 
-  dnl Make sure the OpenSSL define is set if mod_tls is being used
+  dnl Make sure the OpenSSL define is set if mod_tls or mod_sftp are being used
   if test x"$i" = x"mod_tls"; then
-      AC_DEFINE(PR_USE_OPENSSL, 1, [Define if using OpenSSL support.])
-      ac_build_addl_libs="$ac_build_addl_libs -lssl -lcrypto"
+    pr_use_openssl=yes
+
+  elif test x"$i" = x"mod_sftp"; then
+    pr_use_openssl=yes
   fi
 
   for j in $all_modules; do
@@ -1881,6 +1885,11 @@ for i in $all_modules; do
   done
 done
 AC_MSG_RESULT([no])
+
+if test x"$pr_use_openssl" = xyes; then
+  AC_DEFINE(PR_USE_OPENSSL, 1, [Define if using OpenSSL support.])
+  ac_build_addl_libs="$ac_build_addl_libs -lssl -lcrypto"
+fi
 
 for module in $ac_shared_modules ; do
   moduledir=`echo "$module" | sed -e 's/\.la$//'`;
