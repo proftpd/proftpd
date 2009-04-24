@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: utf8.c,v 1.4 2009-02-22 02:48:22 castaglia Exp $
+ * $Id: utf8.c,v 1.5 2009-04-24 16:55:30 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -232,8 +232,10 @@ char *sftp_utf8_decode_str(pool *p, const char *str) {
 
   outbuflen = sizeof(outbuf);
 
-  if (utf8_convert(decode_conv, inbuf, &inbuflen, outbuf, &outbuflen) < 0)
-    return NULL;
+  if (utf8_convert(decode_conv, inbuf, &inbuflen, outbuf, &outbuflen) < 0) {
+    pr_trace_msg("sftp", 1, "error decoding string: %s", strerror(errno));
+    return (char *) str;
+  }
 
   outlen = sizeof(outbuf) - outbuflen;
   res = pcalloc(p, outlen);
@@ -269,8 +271,10 @@ char *sftp_utf8_encode_str(pool *p, const char *str) {
 
   outbuflen = sizeof(outbuf);
 
-  if (utf8_convert(encode_conv, inbuf, &inbuflen, outbuf, &outbuflen) < 0)
-    return NULL;
+  if (utf8_convert(encode_conv, inbuf, &inbuflen, outbuf, &outbuflen) < 0) {
+    pr_trace_msg("sftp", 1, "error encoding string: %s", strerror(errno));
+    return (char *) str;
+  }
 
   outlen = sizeof(outbuf) - outbuflen;
   res = pcalloc(p, outlen);
