@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.9 2009-04-05 17:56:55 castaglia Exp $
+ * $Id: auth.c,v 1.10 2009-04-24 16:48:13 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -425,7 +425,6 @@ static int setup_env(pool *p, char *user) {
   pr_signals_unblock();
 
   /* Should we give up root privs completely here? */
-  PRIVS_ROOT
   PRIVS_REVOKE
   session.disable_id_switching = TRUE;
 
