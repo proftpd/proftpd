@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.16 2009-04-24 16:44:07 castaglia Exp $
+ * $Id: mod_cap.c,v 1.17 2009-04-24 17:18:24 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -343,6 +343,7 @@ static int cap_sess_init(void) {
 
   /* Check for which specific capabilities to include/exclude. */
   if (use_capabilities) {
+    int use_setuid = FALSE;
     config_rec *c;
 
     c = find_config(main_server->conf, CONF_PARAM, "CapabilitiesSet", FALSE);
@@ -371,10 +372,33 @@ static int cap_sess_init(void) {
      * capabilities.
      */
 
-    c = find_config(main_server->conf, CONF_PARAM, "RootRevoke", FALSE);
-    if (pr_module_get("mod_exec.c") != NULL ||
-        pr_module_get("mod_sftp.c") != NULL ||
-        (c && *((unsigned char *) c->argv[0]) == TRUE)) {
+    if (use_setuid == FALSE &&
+        pr_module_get("mod_sftp.c") != NULL) {
+      c = find_config(main_server->conf, CONF_PARAM, "SFTPEngine", FALSE);
+      if (c &&
+          *((int *) c->argv[0]) == TRUE) {
+        use_setuid = TRUE;
+      }
+    }
+
+    if (use_setuid == FALSE &&
+        pr_module_get("mod_exec.c") != NULL) {
+      c = find_config(main_server->conf, CONF_PARAM, "ExecEngine", FALSE);
+      if (c &&
+          *((unsigned char *) c->argv[0]) == TRUE) {
+        use_setuid = TRUE;
+      }
+    }
+
+    if (use_setuid == FALSE) {
+      c = find_config(main_server->conf, CONF_PARAM, "RootRevoke", FALSE);
+      if (c &&
+          *((unsigned char *) c->argv[0]) == TRUE) {
+        use_setuid = TRUE;
+      }
+    }
+
+    if (use_setuid) {
       cap_flags |= CAP_USE_SETUID;
       pr_log_debug(DEBUG3, MOD_CAP_VERSION
         ": adding CAP_SETUID and CAP_SETGID capabilities");
