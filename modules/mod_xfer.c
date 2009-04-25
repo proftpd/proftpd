@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.255 2009-03-24 06:23:27 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.256 2009-04-25 21:14:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -487,6 +487,39 @@ static int xfer_check_limit(cmd_rec *cmd) {
   }
 
   return 0;
+}
+
+static int xfer_displayfile(void) {
+  int res = -1;
+
+  if (displayfilexfer_fh) {
+    if (pr_display_fh(displayfilexfer_fh, session.vwd, R_226) < 0) {
+      pr_log_debug(DEBUG6, "unable to display DisplayFileTransfer "
+        "file '%s': %s", displayfilexfer_fh->fh_path, strerror(errno));
+    }
+
+    /* Rewind the filehandle, so that it can be used again. */
+    if (pr_fsio_lseek(displayfilexfer_fh, 0, SEEK_SET) < 0) {
+      pr_log_debug(DEBUG6, "error rewinding DisplayFileTransfer "
+        "file '%s': %s", displayfilexfer_fh->fh_path, strerror(errno));
+    }
+
+    res = 0;
+
+  } else {
+    char *displayfilexfer = get_param_ptr(main_server->conf,
+      "DisplayFileTransfer", FALSE);
+    if (displayfilexfer) {
+      if (pr_display_file(displayfilexfer, session.vwd, R_226) < 0) {
+        pr_log_debug(DEBUG6, "unable to display DisplayFileTransfer "
+          "file '%s': %s", displayfilexfer, strerror(errno));
+      }
+
+      res = 0;
+    }
+  }
+
+  return res;
 }
 
 static int xfer_prio_adjust(void) {
@@ -1345,38 +1378,12 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET xfer_post_xfer(cmd_rec *cmd) {
-
-  if (displayfilexfer_fh) {
-    if (pr_display_fh(displayfilexfer_fh, session.vwd, R_226) < 0)
-      pr_log_debug(DEBUG6, "unable to display DisplayFileTransfer "
-        "file '%s': %s", displayfilexfer_fh->fh_path, strerror(errno));
-
-    /* Rewind the filehandle, so that it can be used again. */
-    if (pr_fsio_lseek(displayfilexfer_fh, 0, SEEK_SET) < 0)
-      pr_log_debug(DEBUG6, "error rewinding DisplayFileTransfer "
-        "file '%s': %s", displayfilexfer_fh->fh_path, strerror(errno));
-
-  } else {
-    char *displayfilexfer = get_param_ptr(main_server->conf,
-      "DisplayFileTransfer", FALSE);
-    if (displayfilexfer) {
-      if (pr_display_file(displayfilexfer, session.vwd, R_226) < 0)
-        pr_log_debug(DEBUG6, "unable to display DisplayFileTransfer "
-          "file '%s': %s", displayfilexfer, strerror(errno));
-    }
-  }
-
-  return PR_DECLINED(cmd);
-}
-
 /* xfer_post_stou() is a POST_CMD handler that changes the mode of the
  * STOU file from 0600, which is what mkstemp() makes it, to 0666,
  * the default for files uploaded via STOR.  This is to prevent users
  * from being surprised.
  */
 MODRET xfer_post_stou(cmd_rec *cmd) {
-  char *display;
 
   /* This is the same mode as used in src/fs.c.  Should probably be
    * available as a macro.
@@ -1388,14 +1395,6 @@ MODRET xfer_post_stou(cmd_rec *cmd) {
     /* Not much to do but log the error. */
     pr_log_pri(PR_LOG_ERR, "error: unable to chmod '%s': %s", cmd->arg,
       strerror(errno));
-  }
-
-  display = get_param_ptr(main_server->conf, "DisplayFileTransfer", FALSE);
-  if (display) {
-    if (pr_display_file(display, session.vwd, R_226) < 0) {
-      pr_log_debug(DEBUG3, "error displaying '%s': %s", display,
-        strerror(errno));
-    }
   }
 
   return PR_DECLINED(cmd);
@@ -1714,7 +1713,12 @@ MODRET xfer_stor(cmd_rec *cmd) {
       }
     }
 
-    pr_data_close(FALSE);
+    if (xfer_displayfile() < 0) {
+      pr_data_close(FALSE);
+
+    } else {
+      pr_data_close(TRUE);
+    } 
   }
 
   return PR_HANDLED(cmd);
@@ -2018,7 +2022,13 @@ MODRET xfer_retr(cmd_rec *cmd) {
     pr_throttle_pause(session.xfer.total_bytes, TRUE);
 
     retr_complete();
-    pr_data_close(FALSE);
+
+    if (xfer_displayfile() < 0) {
+      pr_data_close(FALSE);
+
+    } else {
+      pr_data_close(TRUE);
+    }
   }
 
   return PR_HANDLED(cmd);
@@ -3037,8 +3047,6 @@ static cmdtable xfer_cmdtab[] = {
   { CMD,     C_ABOR,	G_NONE,	 xfer_abor,	TRUE,	TRUE,  CL_MISC  },
   { CMD,     C_REST,	G_NONE,	 xfer_rest,	TRUE,	FALSE, CL_MISC  },
   { POST_CMD,C_PROT,	G_NONE,  xfer_post_prot,	FALSE,	FALSE },
-  { POST_CMD,C_RETR,	G_NONE,	 xfer_post_xfer,	FALSE,	FALSE },
-  { POST_CMD,C_STOR,	G_NONE,	 xfer_post_xfer,	FALSE,	FALSE },
   { POST_CMD,C_PASS,	G_NONE,	 xfer_post_pass,	FALSE, FALSE },
   { 0, NULL }
 };

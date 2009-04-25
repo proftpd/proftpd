@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.13 2009-04-05 17:47:22 castaglia Exp $
+ * $Id: display.c,v 1.14 2009-04-25 21:14:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -64,7 +64,8 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
   char mg_xfer_units[12] = {'\0'}, *user;
   const char *mg_time;
   char *rfc1413_ident = NULL;
-  unsigned char first = TRUE;
+  char *first = NULL, *prev = NULL;
+  int sent_first = FALSE;
 
   /* Stat the opened file to determine the optimal buffer size for IO. */
   memset(&st, 0, sizeof(st));
@@ -139,7 +140,6 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
     snprintf(mg_class_limit, sizeof(mg_class_limit), "%u", maxclients);
 
   } else {
-    mg_cur_class[0] = 0;
     snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",
       max_clients ? *max_clients : 0);
     snprintf(mg_cur_class, sizeof(mg_cur_class), "%u", 0);
@@ -300,15 +300,64 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
 
     sstrncpy(buf, outs, sizeof(buf));
 
+    /* Handle the case where the Display file might contain only one
+     * line.
+     *
+     * We _could_ just use pr_response_add(), and let the response code
+     * automatically handle all of the multiline response formatting.
+     * However, some of the Display files are at times where waiting for
+     * the response chains to be flushed won't work (e.g. login, logout).
+     * Thus we have to deal with multiline files appropriately here.
+     */
+
+    if (first == NULL &&
+        sent_first == FALSE) {
+      first = pstrdup(p, outs);
+      continue;
+    }
+
     if (first) {
-      pr_response_send_raw("%s-%s", code, outs);
-      first = FALSE;
+      pr_response_send_raw("%s-%s", code, first);
+      first = NULL;
+      sent_first = TRUE;
+
+      prev = pstrdup(p, outs);
+      continue;
+    }
+
+    if (prev) {
+      if (MultilineRFC2228) {
+        pr_response_send_raw("%s-%s", code, prev);
+
+      } else {
+        pr_response_send_raw(" %s", prev);
+      }
+    }
+
+    prev = pstrdup(p, outs);
+  }
+
+  if (first != NULL) {
+    if (session.auth_mech != NULL) {
+      pr_response_send_raw("%s %s", code, first);
 
     } else {
-      if (MultilineRFC2228)
-        pr_response_send_raw("%s-%s", code, outs);
-      else
-        pr_response_send_raw(" %s", outs);
+      /* There is a special case if the client has not yet authenticated; it
+       * means we are handling a DisplayConnect file.  The server will send
+       * a banner as well, so we need to treat this is the start of a multiline
+       * response.
+       */
+      pr_response_send_raw("%s-%s", code, first);
+    }
+
+  } else {
+    if (prev) {
+      if (MultilineRFC2228) {
+        pr_response_send_raw("%s-%s", code, prev);
+
+      } else {
+        pr_response_send_raw("%s %s", code, prev);
+      }
     }
   }
 

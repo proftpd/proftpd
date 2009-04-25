@@ -36,6 +36,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  displayconnect_multiline => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   # XXX Add other tests with the various Display variables
 };
 
@@ -527,6 +532,107 @@ sub displayconnect_class_client_count {
 
       $client2->quit();
       $client1->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub displayconnect_multiline {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $connect_file = File::Spec->rel2abs("$tmpdir/connect.txt");
+
+  if (open(my $fh, "> $connect_file")) {
+    print $fh "Welcome to my domain\nThe files are restless today\nHello client!\n";
+
+    unless (close($fh)) {
+      die("Unable to write $connect_file: $!");
+    }
+
+  } else {
+    die("Unable to open $connect_file: $!");
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    DisplayConnect => $connect_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      my ($resp_code, $resp_msg);
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg(2);
+
+      my $expected;
+
+      $expected = 220;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = "Hello client!";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
