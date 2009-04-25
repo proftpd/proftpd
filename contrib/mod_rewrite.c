@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.45 2009-04-05 17:47:22 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.46 2009-04-25 21:25:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1734,16 +1734,32 @@ static void rewrite_openlog(void) {
   PRIVS_RELINQUISH
   pr_signals_unblock();
 
-  if (res < 0)
-    pr_log_pri(PR_LOG_NOTICE, MOD_REWRITE_VERSION
-      ": error: unable to open log file '%s': %s", rewrite_logfile,
-      strerror(errno));
+  if (res < 0) {
+    switch (res) {
+      case -1:
+        pr_log_pri(PR_LOG_NOTICE, MOD_REWRITE_VERSION
+          ": error: unable to open RewriteLog '%s': %s", rewrite_logfile,
+          strerror(errno));
+        break;
+
+      case PR_LOG_WRITABLE_DIR:
+        pr_log_pri(PR_LOG_NOTICE, MOD_REWRITE_VERSION
+          ": error: unable to open RewriteLog '%s': %s", rewrite_logfile,
+          "world-writable parent directory");
+        break;
+
+      case PR_LOG_SYMLINK:
+        pr_log_pri(PR_LOG_NOTICE, MOD_REWRITE_VERSION
+          ": error: unable to open RewriteLog '%s': %s", rewrite_logfile,
+          "cannot log to a symbolic link");
+        break;
+    }
+  }
 
   return;
 }
 
 static void rewrite_closelog(void) {
-
   /* Sanity check */
   if (rewrite_logfd < 0)
     return;
@@ -1760,37 +1776,13 @@ static void rewrite_closelog(void) {
   return;
 }
 
-static void rewrite_log(char *format, ...) {
-  char mesgbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  char prefix[80] = {'\0'};
-  char entry[1156] = {'\0'};
-  time_t logtime = time(NULL);
-  struct tm *timestamp = pr_localtime(NULL, &logtime);
-  va_list mesg;
+static void rewrite_log(char *fmt, ...) {
+  va_list msg;
+  int res;
 
-  /* Format the log message */
-  va_start(mesg, format);
-  vsnprintf(mesgbuf, sizeof(mesgbuf), format, mesg);
-  va_end(mesg);
-  mesgbuf[sizeof(mesgbuf)-1] = '\0';
-
-  /* Format a message prefix */
-  strftime(prefix, sizeof(prefix), "%b %d %H:%M:%S:", timestamp);
-  snprintf(prefix + strlen(prefix), sizeof(prefix) - strlen(prefix),
-    " " MOD_REWRITE_VERSION ":");
-
-  prefix[sizeof(prefix)-1] = '\0';
-
-  snprintf(entry, sizeof(entry), "%s %s\n", prefix, mesgbuf);
-  entry[sizeof(entry)-1] = '\0';
-
-  if (rewrite_logfd > 0) {
-    if (write(rewrite_logfd, entry, strlen(entry)) < strlen(entry))
-      pr_log_pri(PR_LOG_ERR, "error writing to RewriteLog '%s': %s",
-        rewrite_logfile, strerror(errno));
-
-  } else
-    pr_log_debug(DEBUG3, MOD_REWRITE_VERSION ": %s", mesgbuf);
+  va_start(msg, fmt);
+  res = pr_log_vwritefile(rewrite_logfd, MOD_REWRITE_VERSION, fmt, msg);
+  va_end(msg);
 
   return;
 }
