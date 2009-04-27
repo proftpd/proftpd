@@ -59,6 +59,12 @@ files.
       public keys for user and hostbased authentication.  More information
       is available in doc/contrib/mod_sftp_sql.html.
 
+    mod_shaper
+
+      This module can be used to provide data transfer rate "shaping"
+      across the entire server.  See the documentation at
+      doc/contrib/mod_shaper.html.
+
     mod_tls_shmcache
 
       This module provides an external SSL session cache using shared
@@ -219,4 +225,4 @@ files.
         A similar change occurred for the anonymous "password" sent, but
         this will probably not apply to most modules.
  
-Last Updated: $Date: 2009-04-05 17:47:22 $
+Last Updated: $Date: 2009-04-27 23:10:43 $

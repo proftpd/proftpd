@@ -150,7 +150,7 @@ Feature modules:
         Contributed by Johnie Ingram <johnie@netgod.net>
         and Jim Dogopoulos <jd@dynw.com>/<jd@downcity.net>.
 
-   mod_readme
+    mod_readme
         Display "readme" files, controlled by the "DisplayReadme" directive.
         Originally contributed by <jan.menzel@gmx.de>.
 
@@ -159,6 +159,10 @@ Feature modules:
         See doc/contrib/mod_rewrite.html
         Contributed by TJ Saunders <tj@castaglia.org>
 
+    mod_shaper
+        Throttling of data transfers across the entire server.
+        See doc/contrib/mod_shaper.html
+ 
     mod_site_misc
         Miscellaneous SITE commands (e.g. SITE SYLINK, SITE UTIME)
         See doc/contrib/mod_site_misc.html
