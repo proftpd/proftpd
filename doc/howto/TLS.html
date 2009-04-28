@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.20 2009-01-26 20:57:07 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.21 2009-04-28 06:34:10 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -324,6 +324,32 @@ are used, and how to generate your own:
 <pre>
   <a href="http://www.modssl.org/docs/2.7/ssl_faq.html#ToC24">http://www.modssl.org/docs/2.7/ssl_faq.html</a>
 </pre>
+
+<p><a name="TLSProtection">
+<font color=red>Question</font>: Does FTPS protect both the control connection
+<i>and</i> the data connections?<br>
+<font color=blue>Question</font>: Short answer: yes.
+
+<p>
+The long answer is, of course, that it depends.  In the case of
+<code>mod_tls</code>, it depends on your <code>TLSRequired</code> setting.
+If you use:
+<pre>
+  TLSRequired on
+</pre>
+then you are configuring <code>mod_tls</code> to <b>require</b> SSL/TLS
+protection for both control connections (<i>e.g.</i> protecting the username
+and password used to log in) <i>and</i> data connections.  If you have:
+<pre>
+  TLSRequired off
+</pre>
+then it is up to the FTPS client whether both control and data connections
+will be protected via SSL/TLS.  Other <code>TLSRequired</code> settings
+can be used to specify specific combinations: data connections only,
+control connections only, authentication plus data data connections only,
+<i>etc</i>.  The <code>TLSRequired</code>
+<a href="../../contrib/mod_tls.html#TLSRequired">documentation</a> has the
+details.
 
 <p><a name="TLSClients">
 <font color=red>Question</font>: Where can I find a list of clients that
@@ -837,7 +863,7 @@ OpenSSL library will adjust the ordering as appropriate.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2009-01-26 20:57:07 $</i><br>
+Last Updated: <i>$Date: 2009-04-28 06:34:10 $</i><br>
 <hr>
 
 </body>
