@@ -1,4 +1,4 @@
-<!-- $Id: mod_exec.html,v 1.1 2009-04-28 22:18:11 castaglia Exp $ -->
+<!-- $Id: mod_exec.html,v 1.2 2009-04-28 22:24:25 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_exec.html,v $ -->
 
 <html>
@@ -23,10 +23,10 @@ default.  Installation instructions are discussed
 <p>
 The <code>mod_exec</code> module can be used to execute external programs
 or scripts at various points in the process of handling FTP commands.  By
-conscious design, ProFTPD does not and will not execute external programs.
-This is a security decision, as it was decided not to allow ProFTPD to
-serve as a means of compromising a system or disclosing information via
-bugs in external programs or scripts.  Use of this module allows for such
+conscious design, the core ProFTPD engine does not and will not execute
+external programs.  This is a security decision, as it was decided not to allow
+ProFTPD to serve as a means of compromising a system or disclosing information
+via bugs in external programs or scripts.  Use of this module allows for such
 external programs to be executed, and also opens up the server to the
 mentioned possibilities of compromise or disclosure via those programs.
 
@@ -37,15 +37,12 @@ mentioned possibilities of compromise or disclosure via those programs.
 </center>
 
 <p>
-This module is intended never to become part of the standard proftpd
-source code distribution.  Please read the <a href="#Usage">usage</a>
-section to know the other caveats with this module.
+Please read the <a href="#Usage">usage</a> section to know the other caveats
+with this module.
 
 <p>
-The most current version of <code>mod_exec</code> can be found at:
-<pre>
-  <a href="http://www.castaglia.org/proftpd/">http://www.castaglia.org/proftpd/</a>
-</pre>
+The most current version of <code>mod_exec</code> is distributed with the
+ProFTPD source code.
 
 <h2>Author</h2>
 <p>
@@ -576,7 +573,7 @@ usual steps for using third-party modules in proftpd:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-04-28 22:18:11 $</i><br>
+Last Updated: <i>$Date: 2009-04-28 22:24:25 $</i><br>
 
 <br><hr>
 
