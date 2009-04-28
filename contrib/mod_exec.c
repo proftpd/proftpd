@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.1 2009-04-28 22:18:11 castaglia Exp $
+ * $Id: mod_exec.c,v 1.2 2009-04-28 22:22:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1598,7 +1598,8 @@ static int exec_init(void) {
 
   /* Register event handlers. */
 #if defined(PR_SHARED_MODULE)
-  pr_event_register(&exec_module, "core.mod-unload", exec_mod_unload_ev, NULL);
+  pr_event_register(&exec_module, "core.module-unload", exec_mod_unload_ev,
+    NULL);
 #endif /* PR_SHARED_MODULE */
   pr_event_register(&exec_module, "core.postparse", exec_postparse_ev, NULL);
   pr_event_register(&exec_module, "core.restart", exec_restart_ev, NULL);
