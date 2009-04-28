@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.8 2009-04-20 16:55:30 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.9 2009-04-28 06:26:28 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -1312,12 +1312,36 @@ be used as an OpenSSH subsystem because proftpd needs more information about
 the session than is provided to OpenSSH subsystems.  ProFTPD needs to know all
 of the information about the authenticated user, the SSH2 channel IDs being
 used for the SFTP/SCP sessions, <i>etc</i>.
+
+<p><a name="SFTPOnly">
+<font color=red>Question</font>: How can I configure <code>proftpd</code>
+so that it only accepts SFTP connections (via <code>mod_sftp</code>), and no
+FTP connections?<br>
+<font color=blue>Answer</font>: Use the following in your
+<code>proftpd.conf</code>:
+<pre>
+  &lt;Limit LOGIN&gt;
+    DenyAll
+  &lt;/Limit&gt;
+
+  &lt;VirtualHost <i>a.b.c.d</i>&gt;
+    &lt;Limit LOGIN&gt;
+      AllowAll
+    &lt;/Limit&gt;
+
+    SFTPEngine on
+    ...
+  &lt;/VirtualHost&gt;
+</pre>
+The idea is to use the <code>&lt;Limit LOGIN&gt;</code> to deny all logins to
+any/all virtual host sections <i>except</i> for the <code>mod_sftp</code>
+section.
  
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-04-20 16:55:30 $</i><br>
+Last Updated: <i>$Date: 2009-04-28 06:26:28 $</i><br>
 
 <br><hr>
 
