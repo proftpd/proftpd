@@ -42,6 +42,11 @@ files.
 
   + New modules:
 
+    mod_exec
+
+      This module enables execution of external scripts based on actions/events
+      during a session.  See doc/contrib/mod_exec.html for details.
+
     mod_sftp
 
       This module implements the SSH2, SFTP, and SCP protocols.  See
@@ -225,4 +230,4 @@ files.
         A similar change occurred for the anonymous "password" sent, but
         this will probably not apply to most modules.
  
-Last Updated: $Date: 2009-04-27 23:10:43 $
+Last Updated: $Date: 2009-04-28 22:18:11 $

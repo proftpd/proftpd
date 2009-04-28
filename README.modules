@@ -128,6 +128,11 @@ Feature modules:
         See doc/contrib/mod_dynmasq.html
         Contributed by TJ Saunders <tj@castaglia.org>
 
+    mod_exec
+        Execute custom external scripts based on session actions/events.
+        See doc/contrib/mod_exec.html
+        Contributed by TJ saunders <tj@castaglia.org>
+
     mod_ifsession
         Conditional per-user, per-group, per-class configurations
         See doc/contrib/mod_ifsession.html
