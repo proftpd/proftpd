@@ -1825,6 +1825,7 @@ static void tls_blinding_on(SSL *ssl) {
 
 static int tls_init_ctxt(void) {
   config_rec *c;
+  int ssl_opts = SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE;
 
   SSL_load_error_strings();
 
@@ -1892,19 +1893,21 @@ static int tls_init_ctxt(void) {
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
 #endif
 
-  /* Make sure that SSLv2 communications are disabled entirely.  If using
-   * OpenSSL-0.9.7 or greater, prevent session resumptions on renegotiations
-   * as well (more secure).
+  /* If using OpenSSL-0.9.7 or greater, prevent session resumptions on
+   * renegotiations (more secure).
    */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-  SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL|SSL_OP_NO_SSLv2|
-    SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION|SSL_OP_SINGLE_DH_USE);
-#else
-  SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE);
+  ssl_opts |= SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION;
 #endif
 
-  /* Set up session caching. */
+  /* Disable SSL tickets, for now. */
+#ifdef SSL_OP_NO_TICKET
+  ssl_opts |= SSL_OP_NO_TICKET;
+#endif
 
+  SSL_CTX_set_options(ssl_ctx, ssl_opts);
+
+  /* Set up session caching. */
   SSL_CTX_set_session_id_context(ssl_ctx, (unsigned char *) MOD_TLS_VERSION,
     strlen(MOD_TLS_VERSION));
 
