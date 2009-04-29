@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.9 2009-04-20 16:52:28 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.10 2009-04-29 18:14:49 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1083,6 +1083,7 @@ MODRET set_sftptrafficpolicy(cmd_rec *cmd) {
   (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
 }
+
 /* Event handlers
  */
 
@@ -1136,6 +1137,16 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
   sftp_keys_get_passphrases();
 }
 
+static void sftp_restart_ev(const void *event_data, void *user_data) {
+  /* Re-initialize the interoperability checks.  A restart clears the memory
+   * pool used by the compiled regexes, hence the need to re-compile them.
+   */
+  if (sftp_interop_init() < 0) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
+      ": error preparing interoperability checks: %s", strerror(errno));
+  }
+}
+
 /* Initialization routines
  */
 
@@ -1172,6 +1183,7 @@ static int sftp_init(void) {
     NULL);
 #endif
   pr_event_register(&sftp_module, "core.postparse", sftp_postparse_ev, NULL);
+  pr_event_register(&sftp_module, "core.restart", sftp_restart_ev, NULL);
 
   return 0;
 }
