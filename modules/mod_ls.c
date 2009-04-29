@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.162 2009-04-24 15:46:49 castaglia Exp $
+ * $Id: mod_ls.c,v 1.163 2009-04-29 16:09:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -364,7 +364,10 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
     p = cmd->tmp_pool;
 
   if (pr_fsio_lstat(name, &st) == 0) {
+#ifndef PR_USE_NLS
     register unsigned int i;
+#endif /* PR_USE_NLS */
+
     char *display_name = NULL;
 
     suffix[0] = suffix[1] = '\0';
@@ -1672,7 +1675,9 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
  * aborted.
  */
 static int nlstfile(cmd_rec *cmd, const char *file) {
+#ifndef PR_USE_NLS
   register unsigned int i;
+#endif /* PR_USE_NLS */
   int res = 0;
   char *display_name;
 
