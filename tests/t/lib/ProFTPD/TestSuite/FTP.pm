@@ -618,6 +618,29 @@ sub port {
   # Naughtily invade the Net::FTP internals; it makes for less confusion
   # when writing the unit tests.
   my $ftp = $self->{ftp};
+
+  if ($port) {
+    # Determine the local port from the given argument.
+
+    my $numbers = [split(',', $port)];
+    my $local_port = ($numbers->[4] * 256) + $numbers->[5];
+
+    # If the caller provided an explicit PORT argument, then we need to
+    # open the listening socket ourselves.  Net::FTP is braindead that way.
+    #
+    # The code below is copied from Net::FTP::port().
+
+    ${*$ftp}{net_ftp_listen} ||= IO::Socket::INET->new(
+      Listen => 5,
+      Proto => 'tcp',
+      Timeout => $ftp->timeout,
+      LocalAddr => $ftp->sockhost,
+      LocalPort => $local_port,
+    );
+
+    ${*$ftp}{net_ftp_intern_port} = 1;
+  }
+
   delete(${*$ftp}{net_ftp_passive});
 
   my $msg = $self->response_msg();
