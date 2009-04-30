@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.373 2009-04-30 21:10:29 castaglia Exp $
+ * $Id: main.c,v 1.374 2009-04-30 21:18:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -380,6 +380,9 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
       if (c->requires_auth &&
           cmd_auth_chk &&
           !cmd_auth_chk(cmd)) {
+        pr_trace_msg("command", 8,
+          "command '%s' failed 'requires_auth' check for mod_%s.c",
+          cmd->argv[0], c->m->name);
         return -1;
       }
 
