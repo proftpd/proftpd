@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.17 2009-04-24 17:18:24 castaglia Exp $
+ * $Id: mod_cap.c,v 1.18 2009-04-30 21:10:29 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -440,7 +440,7 @@ static conftable cap_conftab[] = {
 };
 
 static cmdtable cap_cmdtab[] = {
-  { POST_CMD, C_PASS, G_NONE, cap_post_pass, TRUE, FALSE },
+  { POST_CMD, C_PASS, G_NONE, cap_post_pass, FALSE, FALSE },
   { 0, NULL }
 };
 
