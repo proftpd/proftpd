@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.163 2009-04-29 16:09:06 castaglia Exp $
+ * $Id: mod_ls.c,v 1.164 2009-05-01 15:42:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -80,6 +80,7 @@ static struct list_limit_rec list_nfiles;
 static int
     opt_a = 0,
     opt_A = 0,
+    opt_B = 0,
     opt_C = 0,
     opt_d = 0,
     opt_F = 0,
@@ -364,9 +365,6 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
     p = cmd->tmp_pool;
 
   if (pr_fsio_lstat(name, &st) == 0) {
-#ifndef PR_USE_NLS
-    register unsigned int i;
-#endif /* PR_USE_NLS */
 
     char *display_name = NULL;
 
@@ -375,10 +373,23 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
     display_name = pstrdup(p, name);
 
 #ifndef PR_USE_NLS
-    /* Check for any non-printable characters, and replace them with '?'. */
-    for (i = 0; i < strlen(display_name); i++) {
-      if (!isprint((int) display_name[i])) {
-        display_name[i] = '?';
+    if (opt_B) {
+      register unsigned int i;
+
+      /* Check for any non-printable characters, and replace them with the
+       * octal escape sequence equivalent.
+       */
+      for (i = 0; i < strlen(display_name); i++) {
+        if (!isprint((int) display_name[i])) {
+          char replace[32];
+
+          memset(replace, '\0', sizeof(replace));
+          snprintf(replace, sizeof(replace)-1, "\\%03o", display_name[i]);
+
+          display_name = pstrndup(p, display_name, i);
+          display_name = pstrcat(p, display_name, replace,
+            &(display_name[i+1]), NULL);
+        }
       }
     }
 #endif /* PR_USE_NLS */
@@ -1233,6 +1244,10 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           opt_a = 1;
           break;
 
+        case 'B':
+          opt_B = 1;
+          break;
+
         case 'C':
           if (strcmp(session.curr_cmd, C_NLST) != 0) {
             opt_l = 0;
@@ -1320,6 +1335,10 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           opt_a = 0;
           break;
 
+        case 'B':
+          opt_B = 0;
+          break;
+
         case 'C':
           opt_l = opt_C = 0;
           break;
@@ -1385,9 +1404,10 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
   ls_curtime = time(NULL);
 
-  if (clearflags)
-    opt_A = opt_a = opt_C = opt_d = opt_F = opt_h = opt_n = opt_r = opt_R =
-      opt_S = opt_t = opt_STAT = opt_L = 0;
+  if (clearflags) {
+    opt_A = opt_a = opt_B = opt_C = opt_d = opt_F = opt_h = opt_n = opt_r =
+      opt_R = opt_S = opt_t = opt_STAT = opt_L = 0;
+  }
 
   if (!list_strict_opts) {
     parse_list_opts(&arg, &glob_flags, FALSE);
@@ -1675,9 +1695,6 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
  * aborted.
  */
 static int nlstfile(cmd_rec *cmd, const char *file) {
-#ifndef PR_USE_NLS
-  register unsigned int i;
-#endif /* PR_USE_NLS */
   int res = 0;
   char *display_name;
 
@@ -1693,10 +1710,21 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
   display_name = pstrdup(cmd->tmp_pool, file);
 
 #ifndef PR_USE_NLS
-  /* Check for any non-printable characters, and replace them with '?'. */
-  for (i = 0; i < strlen(display_name); i++) {
-    if (!isprint((int) display_name[i])) {
-      display_name[i] = '?';
+  if (opt_B) {
+    register unsigned int i;
+
+    /* Check for any non-printable characters, and replace them with '?'. */
+    for (i = 0; i < strlen(display_name); i++) {
+      if (!isprint((int) display_name[i])) {
+        char replace[32];
+
+        memset(replace, '\0', sizeof(replace));
+        snprintf(replace, sizeof(replace)-1, "\\%03o", display_name[i]);
+
+        display_name = pstrndup(cmd->tmp_pool, display_name, i);
+        display_name = pstrcat(cmd->tmp_pool, display_name, replace,
+          &(display_name[i+1]), NULL);
+      }
     }
   }
 #endif /* PR_USE_NLS */
@@ -2148,8 +2176,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
   }
 
   /* Clear the listing option flags. */
-  opt_A = opt_a = opt_C = opt_d = opt_F = opt_n = opt_r = opt_R = opt_S =
-    opt_t = opt_STAT = opt_L = 0;
+  opt_A = opt_a = opt_B = opt_C = opt_d = opt_F = opt_n = opt_r = opt_R =
+    opt_S = opt_t = opt_STAT = opt_L = 0;
 
   if (!list_strict_opts) {
     parse_list_opts(&target, &glob_flags, FALSE);

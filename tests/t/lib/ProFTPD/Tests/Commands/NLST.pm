@@ -9,7 +9,7 @@ use File::Spec;
 use IO::Handle;
 
 use ProFTPD::TestSuite::FTP;
-use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
+use ProFTPD::TestSuite::Utils qw(:auth :config :features :running :test :testsuite);
 
 $| = 1;
 
@@ -1623,7 +1623,7 @@ sub nlst_nonascii_chars_bug3032 {
 
       $client->login($user, $passwd);
 
-      my $conn = $client->nlst_raw("test*");
+      my $conn = $client->nlst_raw("-B test*");
       unless ($conn) {
         die("NLST failed: " . $client->response_code() . " " .
           $client->response_msg());
@@ -1644,7 +1644,7 @@ sub nlst_nonascii_chars_bug3032 {
       }
 
       my $expected = {
-        'test?' => 1,
+        'test\010' => 1,
       };
 
       my $ok = 1;
