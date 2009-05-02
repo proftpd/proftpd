@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.10 2009-04-29 18:14:49 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.11 2009-05-02 23:15:24 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -86,8 +86,11 @@ static int sftp_get_client_version(conn_t *conn) {
         continue;
       }
 
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error reading from client rfd %d: %s", conn->rfd, strerror(errno));
+      if (res < 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error reading from client rfd %d: %s", conn->rfd, strerror(errno));
+      }
+
       return res;
     }
 
