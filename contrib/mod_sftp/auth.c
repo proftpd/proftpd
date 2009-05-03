@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.10 2009-04-24 16:48:13 castaglia Exp $
+ * $Id: auth.c,v 1.11 2009-05-03 19:18:04 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -757,7 +757,7 @@ static int send_userauth_methods(void) {
 static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   char *buf, *orig_user, *user, *method;
   uint32_t buflen;
-  cmd_rec *cmd, *cmd2, *cmd3;
+  cmd_rec *cmd, *user_cmd, *pass_cmd;
   int res, send_userauth_fail = FALSE;
 
   buf = pkt->payload;
@@ -765,24 +765,22 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   orig_user = sftp_msg_read_string(pkt->pool, &buf, &buflen);
 
-  cmd2 = pr_cmd_alloc(pkt->pool, 2, pstrdup(pkt->pool, C_USER), orig_user);
-  cmd2->arg = orig_user;
+  user_cmd = pr_cmd_alloc(pkt->pool, 2, pstrdup(pkt->pool, C_USER), orig_user);
+  user_cmd->arg = orig_user;
 
-  cmd3 = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, C_PASS));
-  cmd3->arg = "(hidden)";
+  pass_cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, C_PASS));
+  pass_cmd->arg = "(hidden)";
 
   /* Dispatch these as a PRE_CMDs, so that mod_delay's tactics can be used
    * to ameliorate any timing-based attacks.
    */
-  pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0);
-  if (strcmp(orig_user, cmd2->arg) == 0) {
+  pr_cmd_dispatch_phase(user_cmd, PRE_CMD, 0);
+  if (strcmp(orig_user, user_cmd->arg) == 0) {
     user = orig_user;
 
   } else {
-    user = cmd2->arg;
+    user = user_cmd->arg;
   }
-
-  pr_cmd_dispatch_phase(cmd3, PRE_CMD, 0);
 
   if (auth_user) {
     /* Check to see if the client has requested a different user name in
@@ -794,11 +792,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
         "client used different user name '%s' in USERAUTH_REQUEST (was '%s'), "
         "disconnecting", orig_user, auth_user);
 
-      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-
-      pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(user_cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(user_cmd, LOG_CMD_ERR, 0);
 
       return -1;
     }
@@ -818,11 +813,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
         "client used different service name '%s' in USERAUTH_REQUEST (was "
         "'%s'), disconnecting", *service, auth_service);
 
-      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-
-      pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(user_cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(user_cmd, LOG_CMD_ERR, 0);
 
       return -1;
     }
@@ -830,6 +822,9 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   } else {
     auth_service = pstrdup(auth_pool, *service);
   }
+
+  pr_cmd_dispatch_phase(user_cmd, POST_CMD, 0);
+  pr_cmd_dispatch_phase(user_cmd, LOG_CMD, 0);
 
   method = sftp_msg_read_string(pkt->pool, &buf, &buflen);
 
@@ -858,6 +853,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   set_userauth_methods();
 
+  pr_cmd_dispatch_phase(pass_cmd, PRE_CMD, 0);
+
   if (strcmp(method, "none") == 0) {
     /* If the client requested the "none" auth method at this point, then
      * the list of authentication methods supported by the server is being
@@ -867,11 +864,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
       pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-
-      pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
 
       return -1;
     }
@@ -894,11 +888,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-        pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-        pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-
-        pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-        pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
 
         return -1;
       }
@@ -922,11 +913,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-        pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-        pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-
-        pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-        pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
 
         return -1;
       }
@@ -950,11 +938,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-        pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-        pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-
-        pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-        pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
 
         return -1;
       }
@@ -978,11 +963,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-        pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-        pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-
-        pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-        pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
 
         return -1;
       }
@@ -999,11 +981,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported authentication method '%s' requested", method);
@@ -1035,11 +1014,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
 
     if (send_userauth_failure(NULL) < 0) {
       return -1;
@@ -1052,11 +1028,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
 
     return -1;
   }
@@ -1072,11 +1045,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
-  pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
-
-  pr_cmd_dispatch_phase(cmd3, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd3, LOG_CMD, PR_CMD_DISPATCH_FL_CLEAR_RESPONSE);
+  pr_cmd_dispatch_phase(pass_cmd, POST_CMD, 0);
+  pr_cmd_dispatch_phase(pass_cmd, LOG_CMD, PR_CMD_DISPATCH_FL_CLEAR_RESPONSE);
 
   return 1;
 }
