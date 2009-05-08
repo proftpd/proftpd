@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.11 2009-05-03 19:18:04 castaglia Exp $
+ * $Id: auth.c,v 1.12 2009-05-08 23:13:34 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -386,7 +386,18 @@ static int setup_env(pool *p, char *user) {
   }
 #endif /* PR_USE_LASTLOG */
 
-/* XXX TransferLog? */
+  c = find_config(main_server->conf, CONF_PARAM, "TransferLog", FALSE);
+  if (c) {
+    const char *xferlog;
+
+    xferlog = c->argv[0];
+    if (strcasecmp(xferlog, "none") == 0) {
+      xferlog_open(NULL);
+
+    } else {
+      xferlog_open(xferlog);
+    }
+  }
 
   res = set_groups(p, pw->pw_gid, session.gids);
   PRIVS_RELINQUISH
