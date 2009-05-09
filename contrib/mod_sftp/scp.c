@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.15 2009-05-03 20:13:04 castaglia Exp $
+ * $Id: scp.c,v 1.16 2009-05-09 17:02:14 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1321,7 +1321,7 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
     pathlen = strlen(spi->path);
 
     /* Trim any trailing path separators.  It's important. */
-    while (pathlen > 0 &&
+    while (pathlen > 1 &&
            spi->path[pathlen-1] == '/') {
       pr_signals_handle();
       spi->path[--pathlen] = '\0';
@@ -1754,7 +1754,7 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
               pathlen = strlen(sp->path);
 
               /* Trim any trailing path separators.  It's important. */
-              while (pathlen > 0 &&
+              while (pathlen > 1 &&
                      sp->path[pathlen-1] == '/') {
                 pr_signals_handle();
                 sp->path[--pathlen] = '\0';
@@ -1791,7 +1791,7 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
         pathlen = strlen(sp->path);
 
         /* Trim any trailing path separators.  It's important. */
-        while (pathlen > 0 &&
+        while (pathlen > 1 &&
                sp->path[pathlen-1] == '/') {
           pr_signals_handle();
           sp->path[--pathlen] = '\0';
