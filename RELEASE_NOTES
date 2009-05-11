@@ -206,6 +206,16 @@ files.
       directories as requiring SSL/TLS protection to be accessed via data
       transfer.
 
+    TransferLog
+
+      The "service-name" field of the TransferLog usually contains just
+      "ftp".  In order to support TransferLogs for SFTP and SCP transfers,
+      the service-name field of the TransferLog format may now show
+      "sftp" or "scp".  It may also show "ftps" instead of "ftp", if the
+      data transfer occurred while the client is using FTP over SSL/TLS.
+
+      NOTE: This change, while correct, may cause issues for log parsers.
+
   + Deprecated configuration directives:
 
     AnonymousGroup
@@ -229,5 +239,6 @@ files.
 
         A similar change occurred for the anonymous "password" sent, but
         this will probably not apply to most modules.
+
  
-Last Updated: $Date: 2009-04-28 22:18:11 $
+Last Updated: $Date: 2009-05-11 18:58:47 $
