@@ -12,6 +12,7 @@ EXEEXT=@EXEEXT@
 
 TEST_API_DEPS=\
   $(top_srcdir)/src/pool.o \
+  $(top_srcdir)/src/privs.o \
   $(top_srcdir)/src/str.o \
   $(top_srcdir)/src/sets.o \
   $(top_srcdir)/src/timers.o \
