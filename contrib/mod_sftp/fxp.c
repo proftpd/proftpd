@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.22 2009-04-24 17:38:25 castaglia Exp $
+ * $Id: fxp.c,v 1.23 2009-05-11 16:58:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5143,6 +5143,9 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     errno = xerrno;
 
   } else {
+    xferlog_write(0, session.c->remote_name, st.st_size, real_path,
+      'b', 'd', 'r', session.user, 'c');
+
     pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
     errno = 0;
