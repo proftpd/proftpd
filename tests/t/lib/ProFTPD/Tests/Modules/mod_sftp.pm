@@ -278,102 +278,102 @@ my $TESTS = {
 
   sftp_without_auth => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_stat => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_fstat => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_lstat => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_setstat => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_fsetstat => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_realpath => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_upload => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_upload_largefile => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_download => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_download_largefile => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_readdir => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_readdir_symlink_dir => {
     order => ++$order,
-    test_class => [qw(forking mod_vroot ssh2 sftp)],
+    test_class => [qw(forking mod_vroot sftp ssh2)],
   },
 
   sftp_mkdir => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_rmdir => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_remove => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_rename => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_symlink => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_readlink => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_config_ignore_upload_perms => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_config_client_match => {
@@ -383,222 +383,232 @@ my $TESTS = {
 
   sftp_config_allowoverwrite => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
+  },
+
+  sftp_config_deleteabortedstores => {
+    order => ++$order,
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_config_dirfakemode => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
+  },
+
+  sftp_config_hiddenstores => {
+    order => ++$order,
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_config_hidefiles => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_config_hidenoaccess => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_config_pathdenyfilter => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_config_limit_chmod => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_config_limit_list => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_config_limit_nlst => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_multi_channels => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_multi_channel_downloads => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_log_xferlog_download => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_log_xferlog_delete => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   sftp_log_xferlog_delete_chrooted => {
     order => ++$order,
-    test_class => [qw(forking rootprivs ssh2 sftp)],
+    test_class => [qw(forking rootprivs sftp ssh2)],
   },
 
   sftp_sighup => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp)],
+    test_class => [qw(forking sftp ssh2)],
   },
 
   scp_upload => {
     order => ++$order,
-    test_class => [qw(forking ssh2 scp)],
+    test_class => [qw(forking scp ssh2)],
   },
 
   scp_upload_largefile => {
     order => ++$order,
-    test_class => [qw(forking ssh2 scp)],
+    test_class => [qw(forking scp ssh2)],
   },
 
   scp_upload_subdir_enoent => {
     order => ++$order,
-    test_class => [qw(forking ssh2 scp)],
+    test_class => [qw(forking scp ssh2)],
   },
 
   scp_upload_subdir_enoent_with_limits => {
     order => ++$order,
-    test_class => [qw(forking rootprivs ssh2 scp)],
+    test_class => [qw(forking rootprivs scp ssh2)],
   },
 
   scp_download => {
     order => ++$order,
-    test_class => [qw(forking ssh2 scp)],
+    test_class => [qw(forking scp ssh2)],
   },
 
   scp_download_largefile => {
     order => ++$order,
-    test_class => [qw(forking ssh2 scp)],
+    test_class => [qw(forking scp ssh2)],
   },
 
   scp_config_ignore_upload_perms => {
     order => ++$order,
-    test_class => [qw(forking ssh2 scp)],
+    test_class => [qw(forking scp ssh2)],
   },
 
   scp_log_xferlog_download => {
     order => ++$order,
-    test_class => [qw(forking ssh2 scp)],
+    test_class => [qw(forking scp ssh2)],
   },
 
   scp_log_xferlog_upload => {
     order => ++$order,
-    test_class => [qw(forking ssh2 scp)],
+    test_class => [qw(forking scp ssh2)],
   },
 
   sftp_rewrite_stat => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 sftp)],
+    test_class => [qw(forking mod_rewrite sftp ssh2)],
   },
 
   sftp_rewrite_lstat => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 sftp)],
+    test_class => [qw(forking mod_rewrite sftp ssh2)],
   },
 
   sftp_rewrite_setstat => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 sftp)],
+    test_class => [qw(forking mod_rewrite sftp ssh2)],
   },
 
   sftp_rewrite_realpath => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 sftp)],
+    test_class => [qw(forking mod_rewrite sftp ssh2)],
   },
 
   sftp_rewrite_upload => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 sftp)],
+    test_class => [qw(forking mod_rewrite sftp ssh2)],
   },
 
   sftp_rewrite_download => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 sftp)],
+    test_class => [qw(forking mod_rewrite sftp ssh2)],
   },
 
   sftp_rewrite_readdir => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 sftp)],
+    test_class => [qw(forking mod_rewrite sftp ssh2)],
   },
 
   sftp_rewrite_mkdir => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 sftp)],
+    test_class => [qw(forking mod_rewrite sftp ssh2)],
   },
 
   sftp_rewrite_rmdir => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 sftp)],
+    test_class => [qw(forking mod_rewrite sftp ssh2)],
   },
 
   sftp_rewrite_remove => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 sftp)],
+    test_class => [qw(forking mod_rewrite sftp ssh2)],
   },
 
   sftp_rewrite_rename => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 sftp)],
+    test_class => [qw(forking mod_rewrite sftp ssh2)],
   },
 
   sftp_rewrite_symlink => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 sftp)],
+    test_class => [qw(forking mod_rewrite sftp ssh2)],
   },
 
   sftp_rewrite_readlink => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 sftp)],
+    test_class => [qw(forking mod_rewrite sftp ssh2)],
   },
 
   sftp_sql_log_retr_vars => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp mod_sql mod_sql_sqlite)],
+    test_class => [qw(forking mod_sql mod_sql_sqlite sftp ssh2)],
   },
 
   sftp_sql_log_stor_vars => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp mod_sql mod_sql_sqlite)],
+    test_class => [qw(forking mod_sql mod_sql_sqlite sftp ssh2)],
   },
 
   sftp_sql_log_appe_vars => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp mod_sql mod_sql_sqlite)],
+    test_class => [qw(forking mod_sql mod_sql_sqlite sftp ssh2)],
   },
 
   sftp_sql_log_init_vars => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp mod_sql mod_sql_sqlite)],
+    test_class => [qw(forking mod_sql mod_sql_sqlite sftp ssh2)],
   },
 
   sftp_sql_log_pass_vars => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp mod_sql mod_sql_sqlite)],
+    test_class => [qw(forking mod_sql mod_sql_sqlite sftp ssh2)],
   },
 
   sftp_sql_log_exit_vars => {
     order => ++$order,
-    test_class => [qw(forking ssh2 sftp mod_sql mod_sql_sqlite)],
+    test_class => [qw(forking mod_sql mod_sql_sqlite sftp ssh2)],
   },
 
   scp_rewrite_upload => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 scp)],
+    test_class => [qw(forking mod_rewrite scp ssh2)],
   },
 
   scp_rewrite_download => {
     order => ++$order,
-    test_class => [qw(forking mod_rewrite ssh2 scp)],
+    test_class => [qw(forking mod_rewrite scp ssh2)],
   },
 
 };
@@ -10810,6 +10820,177 @@ sub sftp_config_client_match {
   unlink($log_file);
 }
 
+sub sftp_config_deleteabortedstores {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sftp.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $hidden_file = File::Spec->rel2abs("$tmpdir/.in.test.txt.");
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    HiddenStores => 'on',
+    DeleteAbortedStores => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $log_file",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $ssh2 = Net::SSH2->new();
+
+      sleep(1);
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($user, $passwd)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $fh = $sftp->open('test.txt', O_WRONLY|O_CREAT|O_TRUNC, 0644);
+      unless ($fh) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't open test.txt: [$err_name] ($err_code)");
+      }
+
+      # Check for the HiddenStores file
+      unless (-f $hidden_file) {
+        die("File $hidden_file does not exist as expected");
+      }
+
+      print $fh "ABCD\n" x 32;
+
+      # Explicitly close the channel before we have closed the file, to
+      # simulate an "aborted" transfer.
+      $ssh2->disconnect();
+
+      # Give the server a little time to do its end-of-session thing.
+      sleep(1);
+
+      # Check that the HiddenStores file is gone, and the requested
+      # file does NOT exist.
+
+      if (-f $hidden_file) {
+        die("File $hidden_file exists unexpectedly");
+      }
+
+      if (-f $test_file) {
+        die("File $test_file does not exist as expected");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
 sub sftp_config_dirfakemode {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
@@ -10983,6 +11164,174 @@ sub sftp_config_dirfakemode {
       my $remaining = scalar(keys(%$expected));
       $self->assert(0 == $remaining,
         test_msg("Expected 0, got $remaining"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub sftp_config_hiddenstores {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sftp.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $hidden_file = File::Spec->rel2abs("$tmpdir/.in.test.txt.");
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    HiddenStores => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $log_file",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $ssh2 = Net::SSH2->new();
+
+      sleep(1);
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($user, $passwd)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $fh = $sftp->open('test.txt', O_WRONLY|O_CREAT|O_TRUNC, 0644);
+      unless ($fh) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't open test.txt: [$err_name] ($err_code)");
+      }
+
+      # Check for the HiddenStores file
+      unless (-f $hidden_file) {
+        die("File $hidden_file does not exist as expected");
+      }
+
+      print $fh "ABCD\n" x 32;
+
+      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      $fh = undef;
+
+      # Check that the HiddenStores file is gone, and the requested
+      # file exists.
+
+      $ssh2->disconnect();
+
+      if (-f $hidden_file) {
+        die("File $hidden_file exists unexpectedly");
+      }
+
+      unless (-f $test_file) {
+        die("File $test_file does not exist as expected");
+      }
     };
 
     if ($@) {
