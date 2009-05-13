@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.23 2009-05-11 16:58:59 castaglia Exp $
+ * $Id: fxp.c,v 1.24 2009-05-13 16:41:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5143,7 +5143,14 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     errno = xerrno;
 
   } else {
-    xferlog_write(0, session.c->remote_name, st.st_size, real_path,
+    char *abs_path;
+
+    /* The TransferLog format wants the full path to the deleted file,
+     * regardless of a chroot.
+     */
+    abs_path = dir_abs_path(fxp->pool, path, TRUE);
+
+    xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
       'b', 'd', 'r', session.user, 'c');
 
     pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
