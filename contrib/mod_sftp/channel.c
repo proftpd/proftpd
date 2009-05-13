@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.9 2009-04-17 18:51:54 castaglia Exp $
+ * $Id: channel.c,v 1.10 2009-05-13 23:18:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1203,6 +1203,34 @@ int sftp_channel_handle(struct ssh2_packet *pkt, char mesg_type) {
 
   errno = EINVAL;
   return -1;
+}
+
+int sftp_channel_free(void) {
+  register unsigned int i;
+  struct ssh2_channel **chans;
+
+  if (channel_count == 0 ||
+      channel_list == NULL) {
+    return 0;
+  }
+
+  /* Iterate through all the open channels, destroying each one. */
+  chans = channel_list->elts;
+  for (i = 0; i < channel_list->nelts; i++) {
+    if (chans[i] != NULL) {
+      pr_trace_msg(trace_channel, 15, "destroying unclosed channel ID %lu",
+        (unsigned long) chans[i]->local_channel_id);
+
+      if (chans[i]->finish != NULL) {
+        (chans[i]->finish)(chans[i]->local_channel_id);
+      }
+
+      chans[i] = NULL;
+      channel_count--;
+    }
+  }
+
+  return 0;
 }
 
 int sftp_channel_init(void) {

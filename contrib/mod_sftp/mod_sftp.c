@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.11 2009-05-02 23:15:24 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.12 2009-05-13 23:18:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1093,6 +1093,10 @@ MODRET set_sftptrafficpolicy(cmd_rec *cmd) {
 extern pid_t mpid;
 
 static void sftp_exit_ev(const void *event_data, void *user_data) {
+
+  /* Close any channels/sessions that remain open. */
+  sftp_channel_free();
+
   sftp_keys_free();
 
   if (session.pid &&

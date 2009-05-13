@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.24 2009-05-13 16:41:51 castaglia Exp $
+ * $Id: fxp.c,v 1.25 2009-05-13 23:18:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -166,6 +166,9 @@ struct fxp_handle {
 
   pr_fh_t *fh;
   int fh_flags;
+
+  /* For supporting the HiddenStores directive */
+  char *fh_real_path;
 
   void *dirh;
   const char *dir;
@@ -1940,6 +1943,52 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
   return fxh;
 }
 
+/* NOTE: this function is ONLY called when the session is closed, for
+ * "aborting" any file handles still left open by the client.
+ */
+static int fxp_handle_abort(const void *key_data, size_t key_datasz,
+    void *value_data, size_t value_datasz, void *user_data) {
+  struct fxp_handle *fxh;
+  char *curr_path = NULL, *real_path = NULL;
+  unsigned char *delete_aborted_stores;
+
+  fxh = value_data;
+  delete_aborted_stores = user_data;
+
+  curr_path = pstrdup(fxh->pool, fxh->fh->fh_path);
+  real_path = curr_path;
+  if (fxh->fh_real_path) {
+    real_path = fxh->fh_real_path;
+  }
+
+  if (pr_fsio_close(fxh->fh) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error writing aborted file '%s': %s", fxh->fh->fh_path, strerror(errno));
+  }
+
+  fxh->fh = NULL;
+
+  if (fxh->fh_real_path != NULL) {
+    /* This is a HiddenStores file.  If DeleteAbortedStores is on, then
+     * we need to delete it.
+     */
+    if (*delete_aborted_stores == TRUE) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "removing aborted HiddenStores file '%s'", curr_path);
+
+      if (pr_fsio_unlink(curr_path) < 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error unlinking HiddenStores file '%s': %s", curr_path,
+          strerror(errno));
+      }
+    }
+  }
+
+  /* XXX Write an 'incomplete' TransferLog entry for this. */
+
+  return 0;
+}
+
 static int fxp_handle_delete(struct fxp_handle *fxh) {
   if (fxp_session->handle_tab == NULL) {
     errno = EPERM;
@@ -2504,27 +2553,51 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
 
   if (fxh->fh != NULL) {
+    char *curr_path = NULL, *real_path = NULL;
     cmd_rec *cmd2 = NULL;
 
-    pr_scoreboard_entry_update(session.pid,
-      PR_SCORE_CMD_ARG, "%s", fxh->fh->fh_path, NULL, NULL);
-
+    curr_path = pstrdup(fxp->pool, fxh->fh->fh_path);
+    real_path = curr_path;
+    if (fxh->fh_real_path) {
+      real_path = fxh->fh_real_path;
+    }
+ 
     res = pr_fsio_close(fxh->fh);
     if (res < 0) 
       xerrno = errno;
 
+    pr_scoreboard_entry_update(session.pid,
+      PR_SCORE_CMD_ARG, "%s", real_path, NULL, NULL);
+
+    if (fxh->fh_real_path != NULL &&
+        res == 0) {
+      /* This is a HiddenStores file, and needs to be renamed to the real
+       * path.
+       */
+      res = pr_fsio_rename(curr_path, real_path);
+      if (res < 0) {
+        xerrno = errno;
+
+        pr_log_pri(PR_LOG_WARNING, "Rename of %s to %s failed: %s",
+          curr_path, real_path, strerror(xerrno));
+
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "renaming of HiddenStore path '%s' to '%s' failed: %s",
+          curr_path, real_path, strerror(xerrno));
+
+        pr_fsio_unlink(curr_path);
+      }
+    }
+
     if (fxh->fh_flags & O_APPEND) {
-      cmd2 = fxp_cmd_alloc(fxp->pool, C_APPE,
-        pstrdup(fxp->pool, fxh->fh->fh_path));
+      cmd2 = fxp_cmd_alloc(fxp->pool, C_APPE, pstrdup(fxp->pool, real_path));
 
     } else if ((fxh->fh_flags & O_WRONLY) ||
                (fxh->fh_flags & O_RDWR)) {
-      cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR,
-        pstrdup(fxp->pool, fxh->fh->fh_path));
+      cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, pstrdup(fxp->pool, real_path));
 
     } else if (fxh->fh_flags == O_RDONLY) {
-      cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR,
-        pstrdup(fxp->pool, fxh->fh->fh_path));
+      cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, pstrdup(fxp->pool, real_path));
     }
 
     fxh->fh = NULL;
@@ -3708,7 +3781,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_open(struct fxp_packet *fxp) {
-  char *buf, *ptr, *path;
+  char *buf, *ptr, *path, *hiddenstore_path = NULL;
   uint32_t attr_flags, buflen, bufsz, desired_access = 0, flags;
   int open_flags, res, timeout_stalled;
   pr_fh_t *fh;
@@ -3901,7 +3974,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   }
 
   if (cmd2) {
-    if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) == -1) {
+    if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
       /* One of the PRE_CMD phase handlers rejected the command. */
       uint32_t status_code;
 
@@ -3929,9 +4002,14 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     }
 
     path = cmd2->arg;
+
+    if (session.xfer.xfer_type == STOR_HIDDEN) {
+      hiddenstore_path = pr_table_get(cmd2->notes,
+        "mod_xfer.store-hidden-path", NULL);
+    }
   }
 
-  fh = pr_fsio_open(path, open_flags);
+  fh = pr_fsio_open(hiddenstore_path ? hiddenstore_path : path, open_flags);
   if (fh == NULL) {
     uint32_t status_code;
     const char *reason;
@@ -3939,11 +4017,12 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
     (void) pr_trace_msg("fileperms", 1, "OPEN, user '%s' (UID %lu, GID %lu): "
       "error opening '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, path,
-      strerror(xerrno));
+      (unsigned long) session.uid, (unsigned long) session.gid,
+      hiddenstore_path ? hiddenstore_path : path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error opening '%s': %s", path, strerror(xerrno));
+      "error opening '%s': %s", hiddenstore_path ? hiddenstore_path : path,
+      strerror(xerrno));
 
     status_code = fxp_errno2status(xerrno, &reason);
 
@@ -3999,6 +4078,10 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   fxh = fxp_handle_create(fxp_pool);
   fxh->fh = fh;
   fxh->fh_flags = open_flags;
+
+  if (hiddenstore_path) {
+    fxh->fh_real_path = pstrdup(fxh->pool, path);
+  }
 
   if (fxp_handle_add(fxp->channel_id, fxh) < 0) {
     uint32_t status_code;
@@ -6811,6 +6894,23 @@ int sftp_fxp_close_session(uint32_t channel_id) {
       }
 
       if (sess->handle_tab) {
+        int count;
+
+        count = pr_table_count(sess->handle_tab);
+        if (count > 0) {
+          config_rec *c;
+
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "aborting %d unclosed file %s", count,
+            count != 1 ? "handles" : "handle");
+
+          c = find_config(main_server->conf, CONF_PARAM, "DeleteAbortedStores",
+            FALSE);
+
+          pr_table_do(sess->handle_tab, fxp_handle_abort, c->argv[0],
+            PR_TABLE_DO_FL_ALL);
+        }
+
         (void) pr_table_empty(sess->handle_tab);
         (void) pr_table_free(sess->handle_tab);
         sess->handle_tab = NULL;
