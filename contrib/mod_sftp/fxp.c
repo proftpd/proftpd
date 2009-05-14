@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.25 2009-05-13 23:18:08 castaglia Exp $
+ * $Id: fxp.c,v 1.26 2009-05-14 16:44:49 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -169,6 +169,11 @@ struct fxp_handle {
 
   /* For supporting the HiddenStores directive */
   char *fh_real_path;
+
+  /* For tracking the number of bytes transferred for this file; for
+   * better TransferLog tracking.
+   */
+  size_t fh_bytes_xferred;
 
   void *dirh;
   const char *dir;
@@ -1949,7 +1954,8 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
 static int fxp_handle_abort(const void *key_data, size_t key_datasz,
     void *value_data, size_t value_datasz, void *user_data) {
   struct fxp_handle *fxh;
-  char *curr_path = NULL, *real_path = NULL;
+  char *abs_path, *curr_path = NULL, *real_path = NULL;
+  char direction;
   unsigned char *delete_aborted_stores;
 
   fxh = value_data;
@@ -1960,6 +1966,19 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
   if (fxh->fh_real_path) {
     real_path = fxh->fh_real_path;
   }
+
+  /* Write an 'incomplete' TransferLog entry for this. */
+  abs_path = dir_abs_path(fxh->pool, curr_path, TRUE);
+
+  if (fxh->fh_flags == O_RDONLY) {
+    direction = 'o';
+
+  } else {
+    direction = 'i';
+  }
+
+  xferlog_write(0, pr_netaddr_get_sess_remote_name(), fxh->fh_bytes_xferred,
+    abs_path, 'b', direction, 'r', session.user, 'i');
 
   if (pr_fsio_close(fxh->fh) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1983,8 +2002,6 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
       }
     }
   }
-
-  /* XXX Write an 'incomplete' TransferLog entry for this. */
 
   return 0;
 }
@@ -4603,6 +4620,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   resp->payload = ptr;
   resp->payload_sz = (bufsz - buflen);
 
+  fxh->fh_bytes_xferred += res;
   session.xfer.total_bytes += res;
   session.total_bytes += res;
   
@@ -6216,6 +6234,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", fxh->fh->fh_path, NULL, NULL);
+  fxh->fh_bytes_xferred += datalen;
 
   if (pr_fsio_fstat(fxh->fh, &st) < 0) {
     const char *reason;
@@ -6898,17 +6917,26 @@ int sftp_fxp_close_session(uint32_t channel_id) {
 
         count = pr_table_count(sess->handle_tab);
         if (count > 0) {
+          int res;
           config_rec *c;
+          void *callback_data = NULL;
+
+          c = find_config(main_server->conf, CONF_PARAM, "DeleteAbortedStores",
+            FALSE);
+          if (c) {
+            callback_data = c->argv[0];
+          }
 
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "aborting %d unclosed file %s", count,
             count != 1 ? "handles" : "handle");
 
-          c = find_config(main_server->conf, CONF_PARAM, "DeleteAbortedStores",
-            FALSE);
-
-          pr_table_do(sess->handle_tab, fxp_handle_abort, c->argv[0],
+          res = pr_table_do(sess->handle_tab, fxp_handle_abort, callback_data,
             PR_TABLE_DO_FL_ALL);
+          if (res < 0) {
+            (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+              "error doing session filehandle table: %s", strerror(errno));
+          }
         }
 
         (void) pr_table_empty(sess->handle_tab);
