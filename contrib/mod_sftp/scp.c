@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.16 2009-05-09 17:02:14 castaglia Exp $
+ * $Id: scp.c,v 1.17 2009-05-14 19:21:14 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -80,6 +80,9 @@ struct scp_path {
   /* For directories. */
   void *dirh;
   struct scp_path *dir_spi;
+
+  /* For supporting the HiddenStores directive. */
+  int hiddenstore;
 };
 
 static pool *scp_pool = NULL;
@@ -261,6 +264,7 @@ static void reset_path(struct scp_path *sp) {
   sp->recvd_data = FALSE;
 
   sp->recvlen = 0;
+  sp->hiddenstore = FALSE;
 
   sp->wrote_errors = FALSE;
 }
@@ -567,7 +571,7 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
 static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
     char *data, uint32_t datalen) {
   register unsigned int i;
-  char *msg, *ptr = NULL;
+  char *hiddenstore_path = NULL, *msg, *ptr = NULL;
   int have_dir = FALSE;
   cmd_rec *cmd = NULL;
 
@@ -728,6 +732,11 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
     sp->best_path = dir_canonical_vpath(scp_pool, sp->filename);
   }
 
+  if (session.xfer.xfer_type == STOR_HIDDEN) {
+    hiddenstore_path = pr_table_get(cmd->notes, "mod_xfer.store-hidden-path",
+      NULL);
+  }
+
   if (!dir_check(p, cmd, G_WRITE, (char *) sp->path, NULL)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "scp upload to '%s' blocked by <Limit> configuration", sp->path);
@@ -741,17 +750,19 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
     return 1;
   }
 
-  sp->fh = pr_fsio_open(sp->best_path, O_WRONLY|O_CREAT);
+  sp->fh = pr_fsio_open(hiddenstore_path ? hiddenstore_path : sp->best_path,
+    O_WRONLY|O_CREAT);
   if (sp->fh == NULL) {
     int xerrno = errno;
 
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
       "error opening '%s': %s", "scp upload", session.user,
       (unsigned long) session.uid, (unsigned long) session.gid,
-      sp->best_path, strerror(xerrno));
+      hiddenstore_path ? hiddenstore_path : sp->best_path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "scp: error opening '%s': %s", sp->best_path, strerror(xerrno));
+      "scp: error opening '%s': %s",
+      hiddenstore_path ? hiddenstore_path : sp->best_path, strerror(xerrno));
 
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -761,6 +772,10 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
     errno = xerrno;
     return 1;
+  }
+
+  if (hiddenstore_path) {
+    sp->hiddenstore = TRUE;
   }
 
   write_confirm(p, channel_id, 0, NULL);
@@ -1022,7 +1037,12 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
   }
 
   if (sp->fh) {
-    if (pr_fsio_close(sp->fh) < 0) {
+    char *curr_path;
+
+    curr_path = pstrdup(scp_pool, sp->fh->fh_path);
+
+    res = pr_fsio_close(sp->fh);
+    if (res < 0) {
       int xerrno = errno;
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1034,6 +1054,30 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
     }
 
     sp->fh = NULL;
+
+    if (sp->hiddenstore == TRUE &&
+        res == 0) {
+      /* This is a HiddenStores file, and needs to be renamed to the real
+       * path (i.e. sp->best_path).
+       */
+
+      pr_trace_msg(trace_channel, 8, "renaming HiddenStores path '%s' to '%s'",
+        curr_path, sp->best_path);
+
+      res = pr_fsio_rename(curr_path, sp->best_path);
+      if (res < 0) {
+        int xerrno = errno;
+
+        pr_log_pri(PR_LOG_WARNING, "Rename of %s to %s failed: %s",
+          curr_path, sp->best_path, strerror(xerrno));
+
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "renaming of HiddenStore path '%s' to '%s' failed: %s",
+          curr_path, sp->best_path, strerror(xerrno));
+
+        pr_fsio_unlink(curr_path);
+      }
+    }
   }
 
   /* After receiving all the data and metadata, we need to make sure that
@@ -1922,6 +1966,86 @@ int sftp_scp_close_session(uint32_t channel_id) {
       } else {
         /* This is the start of the session list. */
         scp_sessions = sess->next;
+      }
+
+      if (sess->dirs != NULL) {
+        /* XXX How to handle dangling directory lists?? */
+      }
+
+      if (sess->paths != NULL) {
+        if (sess->paths->paths != NULL &&
+            sess->paths->paths->nelts > 0) {
+          register unsigned int i;
+          int count = 0;
+          config_rec *c;
+          struct scp_path **elts;
+          unsigned char delete_aborted_stores = FALSE;
+
+          c = find_config(main_server->conf, CONF_PARAM, "DeleteAbortedStores",
+            FALSE);
+          if (c) {
+            delete_aborted_stores = *((unsigned char *) c->argv[0]);
+          }
+
+          elts = sess->paths->paths->elts;
+          for (i = 0; i < sess->paths->paths->nelts; i++) {
+            struct scp_path *elt = elts[i];
+
+            if (elt->fh != NULL) {
+              count++;
+            }
+          }
+
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "aborting %d unclosed file %s", count,
+            count != 1 ? "handles" : "handle");
+
+          for (i = 0; i < sess->paths->paths->nelts; i++) {
+            struct scp_path *elt = elts[i];
+
+            if (elt->fh != NULL) {
+              char *abs_path, *curr_path;
+
+              curr_path = pstrdup(scp_pool, elt->fh->fh_path);
+
+              /* Write out an 'incomplete' TransferLog entry for this. */
+              abs_path = dir_abs_path(scp_pool, elt->best_path, TRUE);
+            
+              if (elt->recvlen > 0) {
+                xferlog_write(0, pr_netaddr_get_sess_remote_name(),
+                  elt->recvlen, abs_path, 'b', 'i', session.user, 'i');
+            
+              } else {
+                xferlog_write(0, pr_netaddr_get_sess_remote_name(),
+                  elt->sentlen, abs_path, 'b', 'o', session.user, 'i');
+              }
+
+              if (pr_fsio_close(elt->fh) < 0) {
+                (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+                  "error writing aborted file '%s': %s", elt->best_path,
+                  strerror(errno));
+              }
+
+              elt->fh = NULL;
+
+              if (elt->hiddenstore) {
+                /* This is a HiddenStores file.  If DeleteAbortedStores is on,
+                 * then we need to delete it.
+                 */
+                if (delete_aborted_stores) {
+                  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+                    "removing aborted HiddenStores file '%s'", curr_path);
+
+                  if (pr_fsio_unlink(curr_path) < 0) {
+                    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+                      "error unlinking HiddenStores file '%s': %s", curr_path,
+                      strerror(errno));
+                  }
+                }
+              }
+            }
+          }
+        }
       }
 
       sess->dirs = NULL;
