@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.26 2009-05-14 16:44:49 castaglia Exp $
+ * $Id: fxp.c,v 1.27 2009-05-14 18:48:40 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2591,6 +2591,10 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
       /* This is a HiddenStores file, and needs to be renamed to the real
        * path.
        */
+
+      pr_trace_msg(trace_channel, 8, "renaming HiddenStores path '%s' to '%s'",
+        curr_path, sp->best_path);
+
       res = pr_fsio_rename(curr_path, real_path);
       if (res < 0) {
         xerrno = errno;
