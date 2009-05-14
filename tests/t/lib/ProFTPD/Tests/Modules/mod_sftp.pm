@@ -511,6 +511,11 @@ my $TESTS = {
     test_class => [qw(forking scp ssh2)],
   },
 
+  scp_config_hiddenstores => {
+    order => ++$order,
+    test_class => [qw(forking scp ssh2)],
+  },
+
   scp_log_xferlog_download => {
     order => ++$order,
     test_class => [qw(forking scp ssh2)],
@@ -15759,6 +15764,155 @@ sub scp_config_ignore_upload_perms {
   my $expected = 0644;
   $self->assert($expected == $perms,
     test_msg("Expected '$expected', got '$perms'"));
+
+  unlink($log_file);
+}
+
+sub scp_config_hiddenstores {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sftp.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  my $hidden_file = File::Spec->rel2abs("$tmpdir/.in.test.txt.");
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    HiddenStores => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $log_file",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $ssh2 = Net::SSH2->new();
+
+      sleep(1);
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($user, $passwd)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $res = $ssh2->scp_put($config_file, 'test.txt');
+      unless ($res) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't upload $config_file to server: [$err_name] ($err_code) $err_str");
+      }
+
+      $ssh2->disconnect();
+
+      if (-f $hidden_file) {
+        die("File $hidden_file exists unexpectedly");
+      }
+
+      unless (-f $test_file) {
+        die("File $test_file does not exist as expected");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
 
   unlink($log_file);
 }
