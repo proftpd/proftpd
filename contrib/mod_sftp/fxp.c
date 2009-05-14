@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.29 2009-05-14 21:46:17 castaglia Exp $
+ * $Id: fxp.c,v 1.30 2009-05-14 21:51:23 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1987,14 +1987,16 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
 
   fxh->fh = NULL;
 
-  if (*delete_aborted_stores == TRUE) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "removing aborted file '%s'", curr_path);
-
-    if (pr_fsio_unlink(curr_path) < 0) {
+  if (fxh->fh_flags != O_RDONLY) {
+    if (*delete_aborted_stores == TRUE) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error unlinking file '%s': %s", curr_path,
-        strerror(errno));
+        "removing aborted uploaded file '%s'", curr_path);
+
+      if (pr_fsio_unlink(curr_path) < 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error unlinking file '%s': %s", curr_path,
+          strerror(errno));
+      }
     }
   }
 

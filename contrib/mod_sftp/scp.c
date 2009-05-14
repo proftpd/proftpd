@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.18 2009-05-14 21:46:17 castaglia Exp $
+ * $Id: scp.c,v 1.19 2009-05-14 21:51:23 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2028,9 +2028,10 @@ int sftp_scp_close_session(uint32_t channel_id) {
 
               elt->fh = NULL;
 
-              if (delete_aborted_stores) {
+              if (delete_aborted_stores == TRUE &&
+                  elt->recvlen > 0) {
                 (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-                  "removing aborted file '%s'", curr_path);
+                  "removing aborted uploaded file '%s'", curr_path);
 
                 if (pr_fsio_unlink(curr_path) < 0) {
                   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
