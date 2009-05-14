@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.17 2009-05-14 19:21:14 castaglia Exp $
+ * $Id: scp.c,v 1.18 2009-05-14 21:46:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2028,19 +2028,14 @@ int sftp_scp_close_session(uint32_t channel_id) {
 
               elt->fh = NULL;
 
-              if (elt->hiddenstore) {
-                /* This is a HiddenStores file.  If DeleteAbortedStores is on,
-                 * then we need to delete it.
-                 */
-                if (delete_aborted_stores) {
-                  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-                    "removing aborted HiddenStores file '%s'", curr_path);
+              if (delete_aborted_stores) {
+                (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+                  "removing aborted file '%s'", curr_path);
 
-                  if (pr_fsio_unlink(curr_path) < 0) {
-                    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-                      "error unlinking HiddenStores file '%s': %s", curr_path,
-                      strerror(errno));
-                  }
+                if (pr_fsio_unlink(curr_path) < 0) {
+                  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+                    "error unlinking file '%s': %s", curr_path,
+                    strerror(errno));
                 }
               }
             }
