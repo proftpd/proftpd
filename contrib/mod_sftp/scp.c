@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.19 2009-05-14 21:51:23 castaglia Exp $
+ * $Id: scp.c,v 1.20 2009-05-15 00:19:36 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1973,8 +1973,8 @@ int sftp_scp_close_session(uint32_t channel_id) {
       }
 
       if (sess->paths != NULL) {
-        if (sess->paths->paths != NULL &&
-            sess->paths->paths->nelts > 0) {
+        if (sess->paths != NULL &&
+            sess->paths->nelts > 0) {
           register unsigned int i;
           int count = 0;
           config_rec *c;
@@ -1987,8 +1987,8 @@ int sftp_scp_close_session(uint32_t channel_id) {
             delete_aborted_stores = *((unsigned char *) c->argv[0]);
           }
 
-          elts = sess->paths->paths->elts;
-          for (i = 0; i < sess->paths->paths->nelts; i++) {
+          elts = sess->paths->elts;
+          for (i = 0; i < sess->paths->nelts; i++) {
             struct scp_path *elt = elts[i];
 
             if (elt->fh != NULL) {
@@ -2000,7 +2000,7 @@ int sftp_scp_close_session(uint32_t channel_id) {
             "aborting %d unclosed file %s", count,
             count != 1 ? "handles" : "handle");
 
-          for (i = 0; i < sess->paths->paths->nelts; i++) {
+          for (i = 0; i < sess->paths->nelts; i++) {
             struct scp_path *elt = elts[i];
 
             if (elt->fh != NULL) {
@@ -2013,11 +2013,11 @@ int sftp_scp_close_session(uint32_t channel_id) {
             
               if (elt->recvlen > 0) {
                 xferlog_write(0, pr_netaddr_get_sess_remote_name(),
-                  elt->recvlen, abs_path, 'b', 'i', session.user, 'i');
+                  elt->recvlen, abs_path, 'b', 'i', 'r', session.user, 'i');
             
               } else {
                 xferlog_write(0, pr_netaddr_get_sess_remote_name(),
-                  elt->sentlen, abs_path, 'b', 'o', session.user, 'i');
+                  elt->sentlen, abs_path, 'b', 'o', 'r', session.user, 'i');
               }
 
               if (pr_fsio_close(elt->fh) < 0) {
