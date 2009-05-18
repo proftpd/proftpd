@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.63 2009-03-12 17:43:22 castaglia Exp $
+# $Id: proftpd.spec,v 1.64 2009-05-18 16:11:00 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -55,7 +55,12 @@
 %define proftpd_cvs_version_main  1.2
 %define proftpd_cvs_version_date  20070929
 
-%define static_modules	%{?_with_mod_facl:mod_facl}
+# define static_modules only if mod_facl has been requested
+%if 0%{?_with_mod_facl:1}
+%define static_modules	mod_facl
+%else
+%undefine static_modules
+%endif
 
 # put mod_ifsession at the end of the list (always)
 %define shared_modules	%{?_with_mod_tls:mod_tls:}mod_sql:mod_radius:mod_ban:mod_ctrls_admin:mod_load:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_ratio:mod_readme:mod_rewrite:mod_site_misc:mod_wrap2:mod_wrap2_file:mod_wrap2_sql%{?_with_nls::mod_lang}:mod_ifsession
