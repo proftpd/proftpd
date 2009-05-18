@@ -11,7 +11,6 @@ libexecdir=@libexecdir@
 localedir=@localedir@
 localstatedir=@localstatedir@
 pkgconfigdir=@pkgconfigdir@
-rundir=@localstatedir@/proftpd
 mandir=@mandir@
 
 AR=@AR@
