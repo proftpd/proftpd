@@ -272,6 +272,11 @@ sub config_write {
   my $path = shift;
   my $config = shift;
 
+  # The $opts hash can be used to tell this function to NOT write
+  # default config values.
+  my $opts = shift;
+  $opts = {} unless defined($opts);
+
   my $port = get_high_numbered_port();
   my ($user_name, $group_name) = config_get_identity();
 
@@ -281,8 +286,10 @@ sub config_write {
 
   # Set a bunch of defaults, unless overridden by the caller
 
-  unless (defined($config->{AllowOverride})) {
-    $config->{AllowOverride} = 'off';
+  unless ($opts->{NoAllowOverride}) {
+    unless (defined($config->{AllowOverride})) {
+      $config->{AllowOverride} = 'off';
+    }
   }
 
   unless (defined($config->{DefaultAddress})) {
