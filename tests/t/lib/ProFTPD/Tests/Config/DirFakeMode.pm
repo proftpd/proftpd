@@ -164,7 +164,7 @@ sub dirfakemode_ok {
         }
       }
 
-      my $expected = {
+      $expected = {
         'config.conf' => '--wx--x--x',
         'config.group' => '--wx--x--x',
         'config.passwd' => '--wx--x--x',
