@@ -292,9 +292,6 @@ sub ftpaccess_anon_retr_bug2038 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/ftpaccess.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ftpaccess.scoreboard");
 
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ftpaccess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ftpaccess.group");
-
   my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/ftpaccess.passwd");
@@ -512,9 +509,6 @@ sub ftpaccess_anon_retr_bug2461 {
   my $config_file = "$tmpdir/ftpaccess.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/ftpaccess.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ftpaccess.scoreboard");
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ftpaccess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ftpaccess.group");
 
   my $log_file = File::Spec->rel2abs('tests.log');
 
