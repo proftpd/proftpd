@@ -876,8 +876,6 @@ sub port_eaddrnotavail {
 
       ($resp_code, $resp_msg) = $client2->port($arg);
 
-      my $expected;
-
       $expected = 200;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
