@@ -1,4 +1,4 @@
-<!-- $Id: Rewrite.html,v 1.5 2009-03-30 18:31:40 castaglia Exp $ -->
+<!-- $Id: Rewrite.html,v 1.6 2009-05-27 23:09:18 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Rewrite.html,v $ -->
 
 <html>
@@ -252,7 +252,7 @@ configuation used to make this work:
     # Substitute in the IP address of the client, regardless of the address
     # the client tells us to use in the PORT command
     RewriteCondition %m ^PORT$
-    RewriteRule ([0-9]+,[0-9]+,[0-9]+,[0-9]+)(.*) ${replace:/$1/%a$2}
+    RewriteRule ([0-9]+,[0-9]+,[0-9]+,[0-9]+)(.*) ${replace:/$1/$1/%a$2}
 
     # Replace the periods in the client address with commas, as per RFC959
     # requirements
