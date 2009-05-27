@@ -885,7 +885,7 @@ sub rewrite_bug3034 {
         # Substitute in the IP address of the client, regardless of
         # the address the client tells us to use in the PORT command
         'RewriteCondition %m ^PORT$',
-        'RewriteRule ([0-9]+,[0-9]+,[0-9]+,[0-9]+)(.*) ${replace:/$1/%a$2}',
+        'RewriteRule ([0-9]+,[0-9]+,[0-9]+,[0-9]+)(.*) ${replace:/$1/$1/%a$2}',
 
         # Replace the periods in the client address with commas, as per RFC959
         # requirements
