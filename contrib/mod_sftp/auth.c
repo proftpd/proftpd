@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.13 2009-05-27 18:31:30 castaglia Exp $
+ * $Id: auth.c,v 1.14 2009-06-03 18:42:31 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -51,6 +51,7 @@ static const char *auth_avail_meths = NULL;
 static const char *auth_remaining_meths = NULL;
 static unsigned int auth_meths_enabled = 0;
 
+static int auth_sent_userauth_banner = FALSE;
 static int auth_sent_userauth_success = FALSE;
 
 static const char *auth_user = NULL;
@@ -554,6 +555,11 @@ static int send_userauth_banner(void) {
   pr_fh_t *fh;
   pool *sub_pool;
 
+  if (auth_sent_userauth_banner) {
+    /* Already sent the banner; no need to do it again. */
+    return 0;
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "SFTPDisplayBanner", FALSE);
   if (c == NULL) {
     return 0;
@@ -618,6 +624,8 @@ static int send_userauth_banner(void) {
     destroy_pool(pkt->pool);
     return -1;
   }
+
+  auth_sent_userauth_banner = TRUE;
 
   destroy_pool(sub_pool);
   destroy_pool(pkt->pool);
