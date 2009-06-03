@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.4 2009-03-04 18:10:54 castaglia Exp $
+ * $Id: keys.c,v 1.5 2009-06-03 17:28:56 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -589,15 +589,15 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
 #endif
 
 #ifdef HAVE_MLOCK
-     PRIVS_ROOT
-     if (mlock(k->host_pkey, k->pkeysz) < 0) {
-       pr_log_debug(DEBUG1, MOD_SFTP_VERSION
-         ": error locking passphrase into memory: %s", strerror(errno));
+    PRIVS_ROOT
+    if (mlock(k->host_pkey, k->pkeysz) < 0) {
+      pr_log_debug(DEBUG1, MOD_SFTP_VERSION
+        ": error locking passphrase into memory: %s", strerror(errno));
 
-     } else {
-       pr_log_debug(DEBUG1, MOD_SFTP_VERSION ": passphrase locked into memory");
-     }
-     PRIVS_RELINQUISH
+    } else {
+      pr_log_debug(DEBUG1, MOD_SFTP_VERSION ": passphrase locked into memory");
+    }
+    PRIVS_RELINQUISH
 #endif
   }
 
@@ -624,6 +624,7 @@ static struct sftp_pkey *lookup_pkey(void) {
             "error locking passphrase into memory: %s", strerror(errno));
         }
       }
+      PRIVS_RELINQUISH
 #endif /* HAVE_MLOCK */
 
       pkey = k;
