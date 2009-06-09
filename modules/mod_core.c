@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.349 2009-04-24 20:48:12 castaglia Exp $
+ * $Id: mod_core.c,v 1.350 2009-06-09 16:05:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3704,6 +3704,7 @@ int core_chgrp(cmd_rec *cmd, char *dir, uid_t uid, gid_t gid) {
   cmd_name = cmd->argv[0];
   cmd->argv[0] = "SITE_CHGRP";
   if (!dir_check(cmd->tmp_pool, cmd, "WRITE", dir, NULL)) {
+    pr_log_debug(DEBUG7, "SITE CHGRP command denied by <Limit> config");
     cmd->argv[0] = cmd_name;
     return -1;
   }
@@ -3718,6 +3719,7 @@ int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
   cmd_name = cmd->argv[0];
   cmd->argv[0] = "SITE_CHMOD";
   if (!dir_check(cmd->tmp_pool, cmd, "WRITE", dir, NULL)) {
+    pr_log_debug(DEBUG7, "SITE CHMOD command denied by <Limit> config");
     cmd->argv[0] = cmd_name;
     return -1;
   }
