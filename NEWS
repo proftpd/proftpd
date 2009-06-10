@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1032 2009-04-28 22:18:11 castaglia Exp $
+$Id: NEWS,v 1.1033 2009-06-10 16:18:21 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -112,6 +112,7 @@ CVS
 - Bug 3237 - "error setting IPV6_V6ONLY: Protocol not available" message
   filling up log file.
 - Added mod_shaper, mod_exec to the contrib modules.
+- Bug 3249 - mod_ban support for TimeoutLogin.
 
 1.3.2 - Released 5-Feb-2009
 --------------------------------

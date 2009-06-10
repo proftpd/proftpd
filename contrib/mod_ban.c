@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.28 2009-04-05 17:47:22 castaglia Exp $
+ * $Id: mod_ban.c,v 1.29 2009-06-10 16:18:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#define MOD_BAN_VERSION			"mod_ban/0.5.4"
+#define MOD_BAN_VERSION			"mod_ban/0.5.5"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030101
@@ -120,6 +120,7 @@ struct ban_event_entry {
 #define BAN_EV_TYPE_TIMEOUT_NO_TRANSFER		8
 #define BAN_EV_TYPE_MAX_CONN_PER_HOST		9
 #define BAN_EV_TYPE_CLIENT_CONNECT_RATE		10
+#define BAN_EV_TYPE_TIMEOUT_LOGIN		11
 
 struct ban_event_list {
   struct ban_event_entry bel_entries[BAN_EVENT_LIST_MAXSZ];
@@ -152,6 +153,7 @@ static void ban_maxconnperhost_ev(const void *, void *);
 static void ban_maxhostsperuser_ev(const void *, void *);
 static void ban_maxloginattempts_ev(const void *, void *);
 static void ban_timeoutidle_ev(const void *, void *);
+static void ban_timeoutlogin_ev(const void *, void *);
 static void ban_timeoutnoxfer_ev(const void *, void *);
 
 static struct ban_data *ban_get_shm(pr_fh_t *tabfh) {
@@ -777,6 +779,9 @@ static const char *ban_event_entry_typestr(unsigned int type) {
     case BAN_EV_TYPE_TIMEOUT_IDLE:
       return "TimeoutIdle";
 
+    case BAN_EV_TYPE_TIMEOUT_LOGIN:
+      return "TimeoutLogin";
+
     case BAN_EV_TYPE_TIMEOUT_NO_TRANSFER:
       return "TimeoutNoTransfer";
 
@@ -1272,6 +1277,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
             case BAN_EV_TYPE_MAX_HOSTS_PER_USER:
             case BAN_EV_TYPE_MAX_LOGIN_ATTEMPTS:
             case BAN_EV_TYPE_TIMEOUT_IDLE:
+            case BAN_EV_TYPE_TIMEOUT_LOGIN:
             case BAN_EV_TYPE_TIMEOUT_NO_TRANSFER:
             case BAN_EV_TYPE_MAX_CONN_PER_HOST:
             case BAN_EV_TYPE_CLIENT_CONNECT_RATE:
@@ -1674,6 +1680,11 @@ MODRET set_banonevent(cmd_rec *cmd) {
     bee->bee_type = BAN_EV_TYPE_TIMEOUT_IDLE;
     pr_event_register(&ban_module, "core.timeout-idle",
       ban_timeoutidle_ev, bee);
+
+  } else if (strcasecmp(cmd->argv[1], "TimeoutLogin") == 0) {
+    bee->bee_type = BAN_EV_TYPE_TIMEOUT_LOGIN;
+    pr_event_register(&ban_module, "core.timeout-login",
+      ban_timeoutlogin_ev, bee);
 
   } else if (strcasecmp(cmd->argv[1], "TimeoutNoTransfer") == 0) {
     bee->bee_type = BAN_EV_TYPE_TIMEOUT_NO_TRANSFER;
@@ -2108,6 +2119,7 @@ static void ban_restart_ev(const void *event_data, void *user_data) {
 
   /* Unregister any BanOnEvent event handlers */
   pr_event_unregister(&ban_module, "core.timeout-idle", NULL);
+  pr_event_unregister(&ban_module, "core.timeout-login", NULL);
   pr_event_unregister(&ban_module, "core.timeout-no-transfer", NULL);
   pr_event_unregister(&ban_module, "mod_auth.anon-reject-passwords", NULL);
   pr_event_unregister(&ban_module, "mod_auth.max-clients-per-class", NULL);
@@ -2170,6 +2182,18 @@ static void ban_timeoutidle_ev(const void *event_data, void *user_data) {
     return;
 
   ban_handle_event(BAN_EV_TYPE_TIMEOUT_IDLE, BAN_TYPE_HOST, ipstr, tmpl);
+}
+
+static void ban_timeoutlogin_ev(const void *event_data, void *user_data) {
+  const char *ipstr = pr_netaddr_get_ipstr(session.c->remote_addr);
+
+  /* user_data is a template of the ban event entry. */
+  struct ban_event_entry *tmpl = user_data;
+
+  if (ban_engine != TRUE)
+    return;
+
+  ban_handle_event(BAN_EV_TYPE_TIMEOUT_LOGIN, BAN_TYPE_HOST, ipstr, tmpl);
 }
 
 static void ban_timeoutnoxfer_ev(const void *event_data, void *user_data) {
