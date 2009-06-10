@@ -1845,7 +1845,7 @@ ac_static_module_dirs=
 
 dnl Remove any modules in the shared module list from the static module list
 for amodule in $ac_shared_modules; do
-  module=`echo "$amodule" | sed -e 's/.la//g'`.o;
+  module=`echo "$amodule" | sed -e 's/\.la//g'`.o;
   ac_static_modules=`echo "$ac_static_modules" | sed -e "s/$module//g"`;
   ac_build_static_modules=`echo "$ac_build_static_modules" | sed -e "s/modules\/$module//g"`;
 done
@@ -1860,7 +1860,7 @@ all_modules="$my_core_modules $my_static_modules $my_shared_modules";
 
 pr_use_openssl="no"
 
-AC_MSG_CHECKING([checking for duplicate module requests])
+AC_MSG_CHECKING([checking for duplicate module build requests])
 for i in $all_modules; do
   once=no;
 
