@@ -36948,7 +36948,7 @@ ac_shared_module_dirs=
 ac_static_module_dirs=
 
 for amodule in $ac_shared_modules; do
-  module=`echo "$amodule" | sed -e 's/.la//g'`.o;
+  module=`echo "$amodule" | sed -e 's/\.la//g'`.o;
   ac_static_modules=`echo "$ac_static_modules" | sed -e "s/$module//g"`;
   ac_build_static_modules=`echo "$ac_build_static_modules" | sed -e "s/modules\/$module//g"`;
 done
@@ -36962,8 +36962,8 @@ all_modules="$my_core_modules $my_static_modules $my_shared_modules";
 
 pr_use_openssl="no"
 
-{ echo "$as_me:$LINENO: checking checking for duplicate module requests" >&5
-echo $ECHO_N "checking checking for duplicate module requests... $ECHO_C" >&6; }
+{ echo "$as_me:$LINENO: checking checking for duplicate module build requests" >&5
+echo $ECHO_N "checking checking for duplicate module build requests... $ECHO_C" >&6; }
 for i in $all_modules; do
   once=no;
 
