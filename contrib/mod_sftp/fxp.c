@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.30 2009-05-14 21:51:23 castaglia Exp $
+ * $Id: fxp.c,v 1.31 2009-06-19 00:32:26 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1158,93 +1158,95 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
     }
   }
 
-  if (fxp_session->client_version > 3 &&
-      attr_flags & SSH2_FX_ATTR_ACCESSTIME) {
-    if (st.st_atime != attrs->st_atime) {
-      struct timeval tvs[2];
+  if (fxp_session->client_version > 3) {
+    if (attr_flags & SSH2_FX_ATTR_ACCESSTIME) {
+      if (st.st_atime != attrs->st_atime) {
+        struct timeval tvs[2];
 
-      tvs[0].tv_sec = attrs->st_atime;
-      tvs[0].tv_usec = 0;
+        tvs[0].tv_sec = attrs->st_atime;
+        tvs[0].tv_usec = 0;
 
-      tvs[1].tv_sec = st.st_mtime;
-      tvs[1].tv_usec = 0;
+        tvs[1].tv_sec = st.st_mtime;
+        tvs[1].tv_usec = 0;
 
-      if (fh != NULL) {
-        res = pr_fsio_futimes(fh, tvs);
+        if (fh != NULL) {
+          res = pr_fsio_futimes(fh, tvs);
 
-      } else {
-        res = pr_fsio_utimes(path, tvs);
-      }
+        } else {
+          res = pr_fsio_utimes(path, tvs);
+        }
 
-      if (res < 0) {
-        uint32_t status_code;
-        const char *reason;
-        int xerrno = errno;
+        if (res < 0) {
+          uint32_t status_code;
+          const char *reason;
+          int xerrno = errno;
 
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error changing access time '%s': %s", path, strerror(xerrno));
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "error changing access time '%s': %s", path, strerror(xerrno));
 
-        status_code = fxp_errno2status(xerrno, &reason);
+          status_code = fxp_errno2status(xerrno, &reason);
+  
+          pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+            "('%s' [%d])", (unsigned long) status_code, reason,
+            xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
-        pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-          "('%s' [%d])", (unsigned long) status_code, reason,
-          xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+          fxp_status_write(buf, buflen, fxp->request_id, status_code, reason,
+            NULL);
 
-        fxp_status_write(buf, buflen, fxp->request_id, status_code, reason,
-          NULL);
+          errno = xerrno;
+          return -1;
 
-        errno = xerrno;
-        return -1;
-
-      } else {
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "client set access time of '%s' to %s", path,
-          fxp_strtime(fxp->pool, attrs->st_atime));
+        } else {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "client set access time of '%s' to %s", path,
+            fxp_strtime(fxp->pool, attrs->st_atime));
+        }
       }
     }
-  }
 
-  if (attr_flags & SSH2_FX_ATTR_MODIFYTIME) {
-    if (st.st_mtime != attrs->st_mtime) {
-      struct timeval tvs[2];
+    if (attr_flags & SSH2_FX_ATTR_MODIFYTIME) {
+      if (st.st_mtime != attrs->st_mtime) {
+        struct timeval tvs[2];
 
-      tvs[0].tv_sec = st.st_atime;
-      tvs[0].tv_usec = 0;
+        tvs[0].tv_sec = st.st_atime;
+        tvs[0].tv_usec = 0;
 
-      tvs[1].tv_sec = attrs->st_mtime;
-      tvs[1].tv_usec = 0;
+        tvs[1].tv_sec = attrs->st_mtime;
+        tvs[1].tv_usec = 0;
 
-      if (fh != NULL) {
-        res = pr_fsio_futimes(fh, tvs);
+        if (fh != NULL) {
+          res = pr_fsio_futimes(fh, tvs);
 
-      } else {
-        res = pr_fsio_utimes(path, tvs);
-      }
+        } else {
+          res = pr_fsio_utimes(path, tvs);
+        }
 
-      if (res < 0) {
-        uint32_t status_code;
-        const char *reason;
-        int xerrno = errno;
+        if (res < 0) {
+          uint32_t status_code;
+          const char *reason;
+          int xerrno = errno;
 
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error changing modification time '%s': %s", path, strerror(xerrno));
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "error changing modification time '%s': %s", path,
+            strerror(xerrno));
 
-        status_code = fxp_errno2status(xerrno, &reason);
+          status_code = fxp_errno2status(xerrno, &reason);
 
-        pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-          "('%s' [%d])", (unsigned long) status_code, reason,
-          xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+          pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+            "('%s' [%d])", (unsigned long) status_code, reason,
+            xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
-        fxp_status_write(buf, buflen, fxp->request_id, status_code, reason,
-          NULL);
+          fxp_status_write(buf, buflen, fxp->request_id, status_code, reason,
+            NULL);
 
-        errno = xerrno;
-        return -1;
+          errno = xerrno;
+          return -1;
 
-      } else {
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "client set modification time of '%s' to %s", path,
-          fxp_strtime(fxp->pool, attrs->st_mtime));
+        } else {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "client set modification time of '%s' to %s", path,
+            fxp_strtime(fxp->pool, attrs->st_mtime));
+        }
       }
     }
   }
