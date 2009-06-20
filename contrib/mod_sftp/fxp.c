@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.31 2009-06-19 00:32:26 castaglia Exp $
+ * $Id: fxp.c,v 1.32 2009-06-20 00:29:56 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1086,7 +1086,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error changing size of '%s' from %" PR_LU " bytes to %" PR_LU
-          " bytes: %s", path, (pr_off_t) st.st_size, attrs->st_size,
+          " bytes: %s", path, (pr_off_t) st.st_size, (pr_off_t) attrs->st_size,
           strerror(xerrno));
 
         status_code = fxp_errno2status(xerrno, &reason);
