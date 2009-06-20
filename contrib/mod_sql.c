@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.164 2009-04-05 17:47:22 castaglia Exp $
+ * $Id: mod_sql.c,v 1.165 2009-06-20 00:54:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -167,7 +167,8 @@ static struct {
   char *shellfield;             /* user login shell field */
   char *userwhere;              /* users where clause */
 
-  char *usercustom;		/* custom users query */
+  char *usercustom;		/* custom users query (by name) */
+  char *usercustombyid;		/* custom users query (by UID) */
   char *usercustomuserset;	/* custom query to get 'userset' users */
   char *usercustomusersetfast;	/* custom query to get 'usersetfast' users */
 
@@ -1132,63 +1133,100 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
 
     sql_log(DEBUG_WARN, "cache miss for user '%s'", realname);
 
+    if (!cmap.usercustom) { 
+      /* The following nested function calls may look a little strange, but
+       * it is deliberate.  We want to handle any tags/variables within the
+       * cmap.userwhere string (i.e. the SQLUserWhereClause directive, if
+       * configured), but we do NOT want to handle any tags/variables in
+       * the usrwhere variable (a string we concatenated ourselves).  The
+       * usrwhere variable contains the user name, and we need to handle that
+       * string as-is, lest we corrupt/change the user name.
+       */
+
+      where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, usrwhere,
+        sql_prepare_where(0, cmd, 1, cmap.userwhere, NULL), NULL);
+
+      mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5, "default",
+        cmap.usrtable, cmap.usrfields, where, "1"), "sql_select");
+
+      if (check_response(mr) < 0)
+        return NULL;
+
+      if (MODRET_HASDATA(mr))
+        sd = (sql_data_t *) mr->data;
+
+    } else {
+      mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, "default",
+        cmap.usercustom, realname ? realname : "NULL"));
+
+      if (check_response(mr) < 0)
+        return NULL;
+
+      if (MODRET_HASDATA(mr)) {
+        array_header *ah = (array_header *) mr->data;
+        sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+
+        /* Assume the query only returned 1 row. */
+        sd->fnum = ah->nelts;
+
+        if (sd->fnum) {
+          sd->rnum = 1;
+          sd->data = (char **) ah->elts;
+
+        } else {
+          sd->rnum = 0;
+          sd->data = NULL;
+        }
+      }
+    }
+
   } else {
     /* Assume we have a UID */
     memset(uidstr, '\0', sizeof(uidstr));
     snprintf(uidstr, sizeof(uidstr)-1, "%lu", (unsigned long) p->pw_uid);
     sql_log(DEBUG_WARN, "cache miss for UID '%s'", uidstr);
 
-    if (cmap.uidfield) {
-      usrwhere = pstrcat(cmd->tmp_pool, cmap.uidfield, " = ", uidstr, NULL);
+    if (!cmap.usercustombyid) {
+      if (cmap.uidfield) {
+        usrwhere = pstrcat(cmd->tmp_pool, cmap.uidfield, " = ", uidstr, NULL);
+
+        where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2,
+          usrwhere, sql_prepare_where(0, cmd, 1, cmap.userwhere, NULL), NULL);
+
+        mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5, "default",
+          cmap.usrtable, cmap.usrfields, where, "1"), "sql_select");
+
+        if (check_response(mr) < 0)
+          return NULL;
+
+        if (MODRET_HASDATA(mr))
+          sd = (sql_data_t *) mr->data;
+
+      } else {
+        sql_log(DEBUG_WARN, "no user UID field configured, declining to "
+          "lookup UID '%s'", uidstr);
+
+        /* If no UID field has been configured, return now and let other
+         * modules possibly have a chance at resolving this UID to a name.
+         */
+        return NULL;
+      }
 
     } else {
-      sql_log(DEBUG_WARN, "no user UID field configured, declining to "
-        "lookup UID '%s'", uidstr);
+      array_header *ah = NULL;
 
-      /* If no UID field has been configured, return now and let other
-       * modules possibly have a chance at resolving this UID to a name.
-       */
-      return NULL;
-    }
-  }
+      mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, "default",
+        cmap.usercustombyid, uidstr));
 
-  if (!cmap.usercustom) { 
+      if (check_response(mr) < 0)
+        return NULL;
 
-    /* The following nested function calls may look a little strange, but
-     * it is deliberate.  We want to handle any tags/variables within the
-     * cmap.userwhere string (i.e. the SQLUserWhereClause directive, if
-     * configured), but we do NOT want to handle any tags/variables in
-     * the usrwhere variable (a string we concatenated ourselves).  The
-     * usrwhere variable contains the user name, and we need to handle that
-     * string as-is, lest we corrupt/change the user name.
-     */
+      ah = mr->data;
 
-    where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, usrwhere,
-      sql_prepare_where(0, cmd, 1, cmap.userwhere, NULL), NULL);
-
-    mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5, "default",
-      cmap.usrtable, cmap.usrfields, where, "1"), "sql_select");
-
-    if (check_response(mr) < 0)
-      return NULL;
-
-    if (MODRET_HASDATA(mr))
-      sd = (sql_data_t *) mr->data;
-
-  } else {
-    mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, "default", cmap.usercustom,
-      realname ? realname : "NULL"));
-
-    if (check_response(mr) < 0)
-      return NULL;
-
-    if (MODRET_HASDATA(mr)) {
-      array_header *ah = (array_header *) mr->data;
       sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
 
-      /* Assume the query only returned 1 row. */
+      /* Assume the query only return 1 row. */
       sd->fnum = ah->nelts;
-
       if (sd->fnum) {
         sd->rnum = 1;
         sd->data = (char **) ah->elts;
@@ -4132,7 +4170,7 @@ MODRET add_virtualstr(char *name, cmd_rec *cmd) {
 }
 
 /* usage: SQLUserInfo table(s) usernamefield passwdfield UID GID homedir
- *           shell | custom:/<sql-named-query>[/<sql-named-query>[/<sql-named-query>]]
+ *           shell | custom:/<sql-named-query>[/<sql-named-query>[/<sql-named-query>[/<sql-named-query>]]]
  */
 MODRET set_sqluserinfo(cmd_rec *cmd) {
 
@@ -4144,7 +4182,7 @@ MODRET set_sqluserinfo(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
   if (cmd->argc-1 == 1) {
-    char *user = NULL, *userset = NULL, *usersetfast = NULL;
+    char *user = NULL, *userbyid = NULL, *userset = NULL, *usersetfast = NULL;
     char *ptr = NULL;
 
     /* If only one paramter is used, it must be of the "custom:/" form. */
@@ -4160,9 +4198,20 @@ MODRET set_sqluserinfo(cmd_rec *cmd) {
 
     *ptr = '\0';
     user = cmd->argv[1] + 8;
-    userset = ptr + 1;
+    userbyid = ptr + 1;
 
     add_config_param_str("SQLCustomUserInfoByName", 1, user);
+
+    ptr = strchr(userbyid, '/');
+    if (ptr == NULL) {
+      add_config_param_str("SQLCustomUserInfoByID", 1, userbyid);
+      return PR_HANDLED(cmd);
+    }
+
+    *ptr = '\0';
+    userset = ptr + 1;
+
+    add_config_param_str("SQLCustomUserInfoByID", 1, userbyid);
 
     ptr = strchr(userset, '/');
     if (ptr == NULL) {
@@ -5082,6 +5131,21 @@ static int sql_sess_init(void) {
       }
     }
 
+    temp_ptr = get_param_ptr(main_server->conf, "SQLCustomUserInfoByID", FALSE);
+    if (temp_ptr) {
+      config_rec *custom_c = NULL;
+      char *named_query = pstrcat(tmp_pool, "SQLNamedQuery_", temp_ptr, NULL);
+
+      custom_c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+      if (custom_c == NULL) {
+        sql_log(DEBUG_INFO, "error: unable to resolve custom "
+          "SQLNamedQuery name '%s'", temp_ptr);
+
+      } else {
+        cmap.usercustombyid = temp_ptr;
+      }
+    }
+
     temp_ptr = get_param_ptr(main_server->conf, "SQLCustomUserInfoAllNames",
       FALSE);
     if (temp_ptr) {
@@ -5169,6 +5233,7 @@ static int sql_sess_init(void) {
 
       } else {
         cmap.groupcustombyid = temp_ptr;
+        cmap.grpgidfield = NULL;
       }
     }
 
