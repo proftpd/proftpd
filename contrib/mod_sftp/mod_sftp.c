@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.12 2009-05-13 23:18:08 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.13 2009-06-20 18:42:06 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1145,6 +1145,10 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
 }
 
 static void sftp_restart_ev(const void *event_data, void *user_data) {
+
+  /* Clear the host keys. */
+  sftp_keys_free();
+
   /* Re-initialize the interoperability checks.  A restart clears the memory
    * pool used by the compiled regexes, hence the need to re-compile them.
    */
