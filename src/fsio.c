@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.77 2009-03-30 18:43:50 castaglia Exp $
+ * $Id: fsio.c,v 1.78 2009-06-20 20:33:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -266,7 +266,19 @@ static int sys_utimes(pr_fs_t *fs, const char *path, struct timeval *tvs) {
 
 static int sys_futimes(pr_fh_t *fh, int fd, struct timeval *tvs) {
 #ifdef HAVE_FUTIMES
-  return futimes(fd, tvs);
+  int res;
+
+  /* Check for an ENOSYS errno; if so, fallback to using sys_utimes.  Some
+   * platforms will provide a futimes(2) stub which does not actually do
+   * anything.
+   */
+  res = futimes(fd, tvs);
+  if (res < 0 &&
+      errno == ENOSYS) {
+    return sys_utimes(fh->fh_fs, fh->fh_path, tvs);
+  }
+
+  return res;
 #else
   return sys_utimes(fh->fh_fs, fh->fh_path, tvs);
 #endif
