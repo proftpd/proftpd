@@ -137,6 +137,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_ban)],
     },
 
+    't/modules/mod_cap.t' => {
+      order => ++$order,
+      test_class => [qw(mod_cap)],
+    },
+
     't/modules/mod_ctrls.t' => {
       order => ++$order,
       test_class => [qw(mod_ctrls)],
