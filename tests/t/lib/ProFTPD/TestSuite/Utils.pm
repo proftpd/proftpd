@@ -280,11 +280,17 @@ sub config_write {
   my $port = get_high_numbered_port();
   my ($user_name, $group_name) = config_get_identity();
 
-  $config->{Port} = $port;
-  $config->{User} = $user_name;
-  $config->{Group} = $group_name;
-
   # Set a bunch of defaults, unless overridden by the caller
+
+  $config->{Port} = $port;
+
+  unless (defined($config->{User})) {
+    $config->{User} = $user_name;
+  }
+
+  unless (defined($config->{Group})) {
+    $config->{Group} = $group_name;
+  }
 
   unless ($opts->{NoAllowOverride}) {
     unless (defined($config->{AllowOverride})) {
