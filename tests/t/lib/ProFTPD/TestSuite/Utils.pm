@@ -595,6 +595,7 @@ sub server_start {
   my $config_file = shift;
   croak("Missing config file argument") unless $config_file;
   my $debug_level = shift;
+  my $pid_file = shift;
 
   # Make sure that the config file is an absolute path
   my $abs_config_file = File::Spec->rel2abs($config_file);
@@ -618,8 +619,36 @@ sub server_start {
   }
 
   my @output = `$cmd`;
-  if ($? != 0) {
-    croak("'$cmd' failed: " . join("", @output));
+
+  # Ideally we would use the return value from the command to determine
+  # whether the server started successfully or not.  But proftpd's exit
+  # codes are not that nice yet, sadly.  Instead, we'll use the PidFile
+  # written out by the server, if provided.
+  if ($pid_file) {
+
+    my $pid;
+    if (open(my $fh, "< $pid_file")) {
+      $pid = <$fh>;
+      chomp($pid);
+      close($fh);
+
+    } else {
+      croak("Can't read $pid_file: $!");
+    }
+
+    $cmd = "kill -0 $pid";
+
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "Testing server: $cmd\n";
+
+    } else {
+      $cmd .= " 2>/dev/null";
+    }
+
+    @output = `$cmd`;
+    if ($? != 0) {
+      croak("server failed to start");
+    }
   }
 }
 
