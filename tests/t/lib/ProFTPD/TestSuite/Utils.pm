@@ -618,6 +618,9 @@ sub server_start {
   }
 
   my @output = `$cmd`;
+  if ($? != 0) {
+    croak("'$cmd' failed: " . join("", @output));
+  }
 }
 
 sub server_stop {
