@@ -6611,6 +6611,42 @@ static void tls_get_passphrases(void) {
 }
 
 static void tls_postparse_ev(const void *event_data, void *user_data) {
+  server_rec *s = NULL;
+
+  /* Check for incompatible configurations.  For example, configuring:
+   *
+   *  TLSOptions AllowPerUser
+   *  TLSRequired auth
+   *
+   * cannot be supported; the AllowPerUser means that the requirement of
+   * SSL/TLS protection during authentication cannot be enforced.
+   */
+
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    unsigned long *opts;
+    config_rec *c;
+    int on_auth = FALSE;
+
+    opts = get_param_ptr(s->conf, "TLSOptions", FALSE);
+    if (opts == NULL) {
+      continue;
+    }
+
+    c = find_config(s->conf, CONF_PARAM, "TLSRequired", FALSE);
+    if (c == NULL) {
+      continue;
+    }
+
+    on_auth = *((int *) c->argv[2]);
+
+    if (on_auth == TRUE &&
+        (*opts & TLS_OPT_ALLOW_PER_USER)) {
+      pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": Server %s: cannot enforce both "
+        "'TLSRequired auth' and 'TLSOptions AllowPerUser' at the same time",
+        s->ServerName);
+      end_login(1);
+    }
+  }
 
   /* Initialize the OpenSSL context. */
   if (tls_init_ctxt() < 0) {

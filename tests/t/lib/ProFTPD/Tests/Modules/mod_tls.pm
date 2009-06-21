@@ -66,6 +66,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  tls_incompatible_config_bug3247 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -1567,6 +1572,52 @@ sub tls_list_ok_tls_required_by_ftpaccess_bug2178 {
 
   if ($ex) {
     die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub tls_incompatible_config_bug3247 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/tls.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/client-cert.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $log_file,
+        TLSProtocol => 'SSLv3 TLSv1',
+        TLSRequired => 'auth',
+        TLSRSACertificateFile => $server_cert,
+        TLSCACertificateFile => $ca_cert,
+        TLSOptions => 'AllowPerUser',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  eval { server_start($config_file, undef, $pid_file) };
+  unless ($@) {
+    die("server started unexpectedly");
   }
 
   unlink($log_file);
