@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.79 2009-06-22 17:44:04 castaglia Exp $
+ * $Id: fsio.c,v 1.80 2009-06-22 17:48:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3206,6 +3206,7 @@ int pr_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
 }
 
 int pr_fsio_utimes(const char *path, struct timeval *tvs) {
+  int res;
   pr_fs_t *fs;
 
   if (path == NULL ||
@@ -3224,10 +3225,16 @@ int pr_fsio_utimes(const char *path, struct timeval *tvs) {
 
   pr_trace_msg(trace_channel, 8, "using %s utimes() for path '%s'",
     fs->fs_name, path);
-  return (fs->utimes)(fs, path, tvs);
+  res = (fs->utimes)(fs, path, tvs);
+
+  if (res == 0)
+    pr_fs_clear_cache();
+
+  return res;
 }
 
 int pr_fsio_futimes(pr_fh_t *fh, struct timeval *tvs) {
+  int res;
   pr_fs_t *fs;
 
   if (fh == NULL ||
@@ -3245,7 +3252,12 @@ int pr_fsio_futimes(pr_fh_t *fh, struct timeval *tvs) {
 
   pr_trace_msg(trace_channel, 8, "using %s futimes() for path '%s'",
     fs->fs_name, fh->fh_path);
-  return (fh->fh_fs->futimes)(fh, fh->fh_fd, tvs);
+  res = (fs->futimes)(fh, fh->fh_fd, tvs);
+
+  if (res == 0)
+    pr_fs_clear_cache();
+
+  return res;
 }
 
 /* If the wrapped chroot() function suceeds (eg returns 0), then all
