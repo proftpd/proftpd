@@ -1,4 +1,4 @@
-<!-- $Id: Limit.html,v 1.16 2009-03-18 00:23:59 castaglia Exp $ -->
+<!-- $Id: Limit.html,v 1.17 2009-06-22 16:54:44 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Limit.html,v $ -->
 
 <html>
@@ -95,7 +95,7 @@ subdirectories (<i>e.g.</i> <code>pub/</code> or <code>incoming/</code>
 directories).
 
 <p>
-<b>Using <code>AllowUser</code></b><br>
+<b>Using <code>AllowUser</code> and <code>DenyUser</code></b><br>
 There is a catch to using the <code>AllowUser</code> configuration directive
 that causes confusion, primarily when a single <code>AllowUser</code>
 directive is being used to allow access to some FTP commands only to
@@ -121,6 +121,7 @@ try using:
   AllowUser dave
   AllowUser wendy
 </pre>
+All of this applies to the <code>DenyUser</code> directive as well.
 
 <p>
 Another important item to keep in mind is that the names used in
@@ -358,7 +359,7 @@ section).
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2009-03-18 00:23:59 $</i><br>
+Last Updated: <i>$Date: 2009-06-22 16:54:44 $</i><br>
 <hr>
 
 </body>
