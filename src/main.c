@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.374 2009-04-30 21:18:04 castaglia Exp $
+ * $Id: main.c,v 1.375 2009-06-22 20:54:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -886,9 +886,6 @@ static void send_session_banner(server_rec *server) {
 
 static void cmd_loop(server_rec *server, conn_t *c) {
 
-  /* Make sure we can receive OOB data */
-  pr_inet_set_async(session.pool, session.c);
-
   while (TRUE) {
     int res = 0; 
     cmd_rec *cmd = NULL;
@@ -1431,6 +1428,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   pr_log_pri(PR_LOG_INFO, "%s session opened.",
     pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT));
+
+  /* Make sure we can receive OOB data */
+  pr_inet_set_async(session.pool, session.c);
 
   send_session_banner(main_server);
 
