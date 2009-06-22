@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.78 2009-06-20 20:33:39 castaglia Exp $
+ * $Id: fsio.c,v 1.79 2009-06-22 17:44:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3798,6 +3798,12 @@ static const char *get_fs_hooks_str(pool *p, pr_fs_t *fs) {
 
   if (fs->faccess)
     hooks = pstrcat(p, hooks, *hooks ? ", " : "", "faccess(2)", NULL);
+
+  if (fs->utimes)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "utimes(2)", NULL);
+
+  if (fs->futimes)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "futimes(3)", NULL);
 
   if (fs->chdir)
     hooks = pstrcat(p, hooks, *hooks ? ", " : "", "chdir(2)", NULL);
