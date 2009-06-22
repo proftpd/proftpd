@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.80 2009-06-22 17:48:39 castaglia Exp $
+ * $Id: fsio.c,v 1.81 2009-06-22 18:10:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3202,7 +3202,7 @@ int pr_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
 
   pr_trace_msg(trace_channel, 8, "using %s faccess() for path '%s'",
     fs->fs_name, fh->fh_path);
-  return (fh->fh_fs->faccess)(fh, mode, uid, gid, suppl_gids);
+  return (fs->faccess)(fh, mode, uid, gid, suppl_gids);
 }
 
 int pr_fsio_utimes(const char *path, struct timeval *tvs) {
