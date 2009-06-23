@@ -177,7 +177,8 @@ files.
 
     SQLUserInfo
 
-      Custom SQLNamedQuery for 'userset' and 'usersetfast' cases supported
+      Custom SQLNamedQuery for all user lookups, including 'userset' and
+      'usersetfast' SQLAuthenticate options.
 
     TLSOptions
 
@@ -241,4 +242,4 @@ files.
         this will probably not apply to most modules.
 
  
-Last Updated: $Date: 2009-05-11 18:58:47 $
+Last Updated: $Date: 2009-06-23 23:15:55 $
