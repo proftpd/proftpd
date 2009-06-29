@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.52 2009-02-05 21:49:28 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.53 2009-06-29 20:36:44 castaglia Exp $
  */
 
 /*
@@ -200,21 +200,24 @@ static array_header *conn_cache = NULL;
  *   connection.  Returns NULL if unsuccessful, a pointer to the conn_entry_t
  *   if successful.
  */
-static conn_entry_t *_sql_get_connection(char *name)
-{
-  conn_entry_t *entry = NULL;
-  int cnt;
+static conn_entry_t *_sql_get_connection(char *name) {
+  register unsigned int i;
 
-  if (name == NULL) return NULL;
+  if (name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   /* walk the array looking for our entry */
-  for (cnt=0; cnt < conn_cache->nelts; cnt++) {
-    entry = ((conn_entry_t **) conn_cache->elts)[cnt];
-    if (!strcmp(name, entry->name)) {
+  for (i = 0; i < conn_cache->nelts; i++) {
+    conn_entry_t *entry = ((conn_entry_t **) conn_cache->elts)[i];
+
+    if (strcmp(name, entry->name) == 0) {
       return entry;
     }
   }
 
+  errno = ENOENT;
   return NULL;
 }
 
@@ -227,14 +230,19 @@ static conn_entry_t *_sql_get_connection(char *name)
  * Returns: NULL if the insertion was unsuccessful, a pointer to the 
  *  conn_entry_t that was created if successful.
  */
-static void *_sql_add_connection(pool *p, char *name, db_conn_t *conn)
-{
+static void *_sql_add_connection(pool *p, char *name, db_conn_t *conn) {
   conn_entry_t *entry = NULL;
 
-  if ((!name) || (!conn) || (!p)) return NULL;
-  
+  if (name == NULL ||
+      conn == NULL ||
+      p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   if (_sql_get_connection(name)) {
     /* duplicated name */
+    errno = EEXIST;
     return NULL;
   }
 
@@ -394,7 +402,8 @@ MODRET cmd_open(cmd_rec *cmd) {
 
   /* get the named connection */
 
-  if (!(entry = _sql_get_connection( cmd->argv[0]))) {
+  entry = _sql_get_connection(cmd->argv[0]);
+  if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   } 
