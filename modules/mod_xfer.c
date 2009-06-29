@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.256 2009-04-25 21:14:53 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.257 2009-06-29 17:18:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -696,7 +696,7 @@ static int transmit_sendfile(off_t count, off_t *offset,
     return 0;
   }
 
-  pr_log_debug(DEBUG0, "using sendfile capability for transmitting data");
+  pr_log_debug(DEBUG10, "using sendfile capability for transmitting data");
 
  retry:
   *sentlen = pr_data_sendfile(PR_FH_FD(retr_fh), offset,
