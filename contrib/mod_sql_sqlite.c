@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.13 2009-02-05 22:33:56 castaglia Exp $
+ * $Id: mod_sql_sqlite.c,v 1.14 2009-06-29 05:31:08 castaglia Exp $
  * $Libraries: -lsqlite3 $
  */
 
@@ -235,7 +235,20 @@ MODRET sql_sqlite_open(cmd_rec *cmd) {
       conn->dsn, errstr);
 
     sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_open");
+
     return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION, errstr);
+  }
+
+  /* Tell SQLite to only use in-memory journals.  This is necessary for
+   * mod_sql_sqlite to work properly, for SQLLog statements, when a chroot
+   * is used.  Note that the MEMORY journal mode of SQLite is supported
+   * only for SQLite-3.6.5 and later.
+   */
+  res = sqlite3_exec(conn->dbh, "PRAGMA journal_mode = MEMORY;", NULL, NULL,
+    NULL);
+  if (res != SQLITE_OK) {
+    sql_log(DEBUG_FUNC, "error setting MEMORY journal mode: %s",
+      sqlite3_errmsg(conn->dbh));
   }
 
   /* Add some SQLite information to the logs. */
@@ -561,14 +574,15 @@ MODRET sql_sqlite_insert(cmd_rec *cmd) {
     return mr;
   }
 
-  /* Construct the query string */
-  if (cmd->argc == 2)
+  /* Construct the query string. */
+  if (cmd->argc == 2) {
     query = pstrcat(cmd->tmp_pool, "BEGIN; INSERT ", cmd->argv[1],
       "; COMMIT;", NULL);
 
-  else
+  } else {
     query = pstrcat(cmd->tmp_pool, "BEGIN; INSERT INTO ", cmd->argv[1], " (",
       cmd->argv[2], ") VALUES (", cmd->argv[3], "); COMMIT;", NULL);
+  }
 
   /* Log the query string */
   sql_log(DEBUG_INFO, "query \"%s\"", query);
@@ -666,13 +680,13 @@ MODRET sql_sqlite_update(cmd_rec *cmd) {
     return mr;
   }
 
+  /* Construct the query string. */
   if (cmd->argc == 2) {
     query = pstrcat(cmd->tmp_pool, "BEGIN; UPDATE ", cmd->argv[1],
       "; COMMIT;", NULL);
 
   } else {
-    /* Construct the query string */
-    query = pstrcat(cmd->tmp_pool, "UPDATE ", cmd->argv[1], " SET ",
+    query = pstrcat(cmd->tmp_pool, "BEGIN; UPDATE ", cmd->argv[1], " SET ",
       cmd->argv[2], NULL);
 
     if (cmd->argc > 3 &&
@@ -839,7 +853,13 @@ MODRET sql_sqlite_query(cmd_rec *cmd) {
     errstr = pstrdup(cmd->pool, tmp);
     sqlite3_free(tmp);
 
-    sql_log(DEBUG_FUNC, "error executing '%s': %s", query, errstr);
+    if (res == SQLITE_CANTOPEN) {
+      sql_log(DEBUG_FUNC, "error executing '%s': %s (%s)", query, errstr,
+        strerror(errno));
+
+    } else {
+      sql_log(DEBUG_FUNC, "error executing '%s': %s", query, errstr);
+    }
 
     close_cmd = pr_cmd_alloc(cmd->tmp_pool, 1, entry->name);
     sql_sqlite_close(close_cmd);
