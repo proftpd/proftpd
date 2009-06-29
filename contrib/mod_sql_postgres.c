@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.42 2009-02-18 21:24:43 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.43 2009-06-29 23:02:38 castaglia Exp $
  */
 
 /*
@@ -1321,11 +1321,14 @@ MODRET cmd_checkauth(cmd_rec * cmd) {
 
   conn = (db_conn_t *) entry->data;
 
+  sql_log(DEBUG_WARN, MOD_SQL_POSTGRES_VERSION
+    ": Postgres does not support the 'Backend' SQLAuthType");
+
   sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_checkauth");
 
   /* PostgreSQL doesn't provide this functionality */
-
-  return PR_ERROR(cmd);
+  return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
+    "Postgres does not support the 'Backend' SQLAuthType");
 }
 
 /*
