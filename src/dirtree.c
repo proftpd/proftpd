@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.218 2009-04-24 20:45:54 castaglia Exp $
+ * $Id: dirtree.c,v 1.219 2009-06-30 17:22:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -81,89 +81,29 @@ static unsigned int config_id = 0;
 static int allow_dyn_config(const char *path) {
   config_rec *c = NULL;
   unsigned int ctxt_precedence = 0;
-  unsigned char have_user_limit, have_group_limit, have_class_limit,
-    have_all_limit;
-  unsigned char allow = TRUE;
-
-  have_user_limit = have_group_limit = have_class_limit =
-    have_all_limit = FALSE;
+  unsigned char allow = TRUE, found_config = FALSE;
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "AllowOverride", FALSE);
-
   while (c) {
-    if (c->argc == 3) {
-      if (strcmp(c->argv[2], "user") == 0) {
+    pr_signals_handle();
 
-        if (pr_expr_eval_user_or((char **) &c->argv[3]) == TRUE) {
-          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+    if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
-            /* Set the context precedence. */
-            ctxt_precedence = *((unsigned int *) c->argv[1]);
+      /* Set the context precedence. */
+      ctxt_precedence = *((unsigned int *) c->argv[1]);
 
-            allow = *((int *) c->argv[0]);
+      allow = *((int *) c->argv[0]);
 
-            have_group_limit = have_class_limit = have_all_limit = FALSE;
-            have_user_limit = TRUE;
-          }
-        }
-
-      } else if (strcmp(c->argv[2], "group") == 0) {
-
-        if (pr_expr_eval_group_and((char **) &c->argv[3]) == TRUE) {
-          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
-
-            /* Set the context precedence. */
-            ctxt_precedence = *((unsigned int *) c->argv[1]);
-
-            allow = *((int *) c->argv[0]);
-
-            have_user_limit = have_class_limit = have_all_limit = FALSE;
-            have_group_limit = TRUE;
-          }
-        }
-
-      } else if (strcmp(c->argv[2], "class") == 0) {
-
-        if (pr_expr_eval_class_or((char **) &c->argv[3]) == TRUE) {
-          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
-
-            /* Set the context precedence. */
-            ctxt_precedence = *((unsigned int *) c->argv[1]);
-
-            allow = *((int *) c->argv[0]);
-
-            have_user_limit = have_group_limit = have_all_limit = FALSE;
-            have_class_limit = TRUE;
-          }
-        }
-      }
-
-    } else {
-
-      if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
-
-        /* Set the context precedence. */
-        ctxt_precedence = *((unsigned int *) c->argv[1]);
-
-        allow = *((int *) c->argv[0]);
-
-        have_user_limit = have_group_limit = have_class_limit = FALSE;
-        have_all_limit = TRUE;
-      }
+      found_config = TRUE;
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "AllowOverride", FALSE);
   }
 
   /* Print out some nice debugging information. */
-  if (have_user_limit || have_group_limit ||
-      have_class_limit || have_all_limit) {
-    pr_log_debug(DEBUG8, "AllowOverride for path '%s' %s %s%s .ftpaccess files",
-      path, allow ? "allows" : "denies",
-      have_user_limit ? "user " : have_group_limit ? "group " :
-      have_class_limit ? "class " : "all",
-      have_user_limit ? session.user : have_group_limit ? session.group :
-      have_class_limit ? session.class->cls_name : "");
+  if (found_config) {
+    pr_log_debug(DEBUG8, "AllowOverride for path '%s' %s .ftpaccess files",
+      path, allow ? "allows" : "denies");
   }
 
   return allow;

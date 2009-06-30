@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.259 2009-04-05 17:47:22 castaglia Exp $
+ * $Id: mod_auth.c,v 1.260 2009-06-30 17:22:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -257,6 +257,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_timeout, have_group_timeout, have_class_timeout,
     have_all_timeout, *privsdrop = NULL;
+  struct stat st;
 
   user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
 
@@ -265,6 +266,13 @@ MODRET auth_post_pass(cmd_rec *cmd) {
    * any further.
    */
   auth_count_scoreboard(cmd, session.user);
+
+  /* Check for dynamic configuration.  This check needs to be after the
+   * setting of any possible anon_config, as that context may be allowed
+   * or denied .ftpaccess-parsing separately from the containing server.
+   */
+  if (pr_fsio_stat(session.cwd, &st) != -1)
+    build_dyn_config(cmd->tmp_pool, session.cwd, &st, TRUE);
 
   have_user_timeout = have_group_timeout = have_class_timeout =
     have_all_timeout = FALSE;
@@ -624,7 +632,6 @@ static void ensure_open_passwd(pool *p) {
  */
 static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   struct passwd *pw;
-  struct stat sbuf;
   config_rec *c, *tmpc;
   char *origuser,*ourname,*anonname = NULL,*anongroup = NULL,*ugroup = NULL;
   char *defaulttransfermode, *defroot = NULL,*defchdir = NULL,*xferlog = NULL;
@@ -1291,13 +1298,6 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     session.proc_prefix = pstrdup(session.pool, session.c->remote_name);
     session.sf_flags = 0;
   }
-
-   /* Check for dynamic configuration.  This check needs to be after the
-    * setting of any possible anon_config, as that context may be allowed
-    * or denied .ftpaccess-parsing separately from the containing server.
-    */
-   if (pr_fsio_stat(session.cwd, &sbuf) != -1)
-     build_dyn_config(p, session.cwd, &sbuf, TRUE);
 
   /* While closing the pointer to the password database would avoid any
    * potential attempt to hijack this information, it is unfortunately needed
