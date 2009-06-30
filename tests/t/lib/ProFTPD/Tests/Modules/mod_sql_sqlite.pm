@@ -2369,10 +2369,10 @@ EOS
         "SQLLogFile $log_file",
         'SQLNamedQuery get-group-by-name SELECT "groupname, gid, members FROM ftpgroups WHERE groupname = \'%{0}\'"',
         'SQLNamedQuery get-group-by-id SELECT "groupname, gid, members FROM ftpgroups WHERE gid = %{0}"',
-        'SQLNamedQuery get-members-by-user SELECT "members FROM ftpgroups WHERE (members LIKE \'%%,%{0},%%\' OR members LIKE \'%{0},%%\' OR members LIKE \'%%,%{0}\')"',
+        'SQLNamedQuery get-group-by-member SELECT "groupname, gid, members FROM ftpgroups WHERE (members LIKE \'%%,%{0},%%\' OR members LIKE \'%{0},%%\' OR members LIKE \'%%,%{0}\')"',
         'SQLNamedQuery get-all-groupnames SELECT "groupname FROM ftpgroups"',
         'SQLNamedQuery get-all-groups SELECT "groupname, gid, members FROM ftpgroups"',
-        'SQLGroupInfo custom:/get-group-by-name/get-group-by-id/get-members-by-user/get-all-groupnames/get-all-groups',
+        'SQLGroupInfo custom:/get-group-by-name/get-group-by-id/get-group-by-member/get-all-groupnames/get-all-groups',
       ],
     },
   };
