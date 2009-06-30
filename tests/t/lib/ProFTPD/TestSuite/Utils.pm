@@ -556,7 +556,7 @@ sub feature_have_module_compiled {
 }
 
 sub feature_have_module_loaded {
-  my $module = shift;;
+  my $module = shift;
   my $config_file = shift;
 
   my $proftpd_bin = get_proftpd_bin();
