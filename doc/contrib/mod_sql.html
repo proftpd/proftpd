@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.14 2009-03-25 05:30:05 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.15 2009-06-30 21:05:48 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -566,6 +566,64 @@ If you need to change <b>any</b> of these field names from the default, you
 need to specify <b>all</b> of them.
 
 <p>
+<b>Custom Queries</b><br>
+As of <code>1.3.3rc1</code>, the <code>SQLGroupInfo</code> directive accepts
+an alternate syntax:
+<pre>
+  SQLGroupInfo custom:/<i>group-by-name</i>/<i>group-by-id</i>/<i>group-by-member</i>
+</pre>
+where <i>group-by-name</i> refers to a configured SELECT
+<code>SQLNamedQuery</code>.  This named query <b>must</b> return one row, and
+return the following columns, in this order: <code>groupname, gid,
+members</code>.  The configured query may make use of the variables mentioned
+in the <code>SQLLog</code> description.  The <code>%{0}</code> variable will
+be populated with the group name for which info is being retrieved.  The
+<i>group-by-id</i> here refers to a <code>SQLNamedQuery</code> which is
+<i>just</i> like the lookup given a group name, only the <i>group-by-id</i>
+query needs to return group information given a GID.  For the
+<i>group-by-id</i> query, the <code>%{0}</code> variable is populated with
+the GID in question.  Last, the <i>group-by-member</i> query returns group
+information given a user member; again, the <code>%{0}</code> will contain
+the member/user name by which to look up the group information.
+
+<p>
+<b>Note</b>, however, that if you use the <em>groupset</em> or
+<em>groupsetfast</em> <a href="#SQLAuthenticate"><code>SQLAuthenticate</code></a>
+options, you will need to supply some additional <code>SQLNamedQuery</code>
+names in your custom <code>SQLGroupInfo</code> directive.  The
+<code>SQLGroupInfo</code> directive supports:
+<pre>
+  SQLGroupInfo custom:/<i>lookup-by-name</i>/<i>lookup-by-id</i>/<i>lookup-by-member/[/<i>groupset-lookup</i>[/<i>groupsetfast-lookup</i>]]
+</pre>
+where <em>groupset-lookup</em> is the name of a SELECT
+<code>SQLNamedQuery</code> that returns the names (and <i>only the names</i>)
+of all groups, and the <em>groupsetfast-lookup</em> refers to a SELECT
+<code>SQLNamedQuery</code> that returns all the fields (<i>i.e.</i>
+<code>groupname, gid, members</code> in that order) for all groups.
+
+<p>
+To provide a concrete example:
+<pre>
+  SQLAuthenticate users groups groupsetfast
+  SQLGroupInfo custom:/get-group-by-name/get-group-by-id/get-group-by-member/get-all-groupnames/get-all-groups
+  SQLNamedQuery get-group-by-name SELECT "groupname, gid, members FROM ftpgroups WHERE groupname = '%{0}'"
+  SQLNamedQuery get-group-by-id SELECT "groupname, gid, members FROM ftpgroups WHERE gid = %{0}"
+  SQLNamedQuery get-group-by-member SELECT "groupname, gid, members FROM ftpgroups WHERE (members LIKE '%%,%{0},%%' OR members LIKE '%{0},%%' OR members LIKE '%%,%{0}')"
+  SQLNamedQuery get-all-groupnames SELECT "groupname FROM ftpgroups"
+  SQLNamedQuery get-all-groups SELECT "groupname, gid, members FROM ftpgroups"
+</pre>
+With a configuration similar to these, using either of the <em>groupset</em> or
+<em>groupsetfast</em> in your <code>SQLAuthenticate</code> directive will
+work as expected.
+
+<p>
+<b>See Also</b>:
+  <a href="#SQLAuthenticate"><code>SQLAuthenticate</code></a>,
+  <a href="#SQLLog"><code>SQLLog</code></a>,
+  <a href="#SQLNamedQuery"><code>SQLNamedQuery</code></a>,
+  <a href="#SQLUserInfo"><code>SQLUserInfo</code></a>
+
+<p>
 <hr>
 <h2><a name="SQLGroupWhereClause">SQLGroupWhereClause</a></h2>
 <strong>Syntax:</strong> SQLGroupWhereClause <em>where-clause</em><br>
@@ -1131,17 +1189,29 @@ user name, which is exactly what <code>SQLUserInfo</code> is meant to
 provide.
 
 <p>
+Starting with <code>1.3.3rc1</code>, you can supply other queries as well.
+You can supply a SELECT <code>SQLNamedQuery</code> for returning the
+same information as above, only this query is given a <i>UID</i> instead of
+a user name.  For example:
+<pre>
+  SQLNamedQuery get-user-by-name SELECT "userid, passwd, uid, gid, homedir, shell FROM ftpusers WHERE userid = '%U'"
+  SQLNamedQuery get-user-by-name SELECT "userid, passwd, uid, gid, homedir, shell FROM ftpusers WHERE uid = %{0}"
+
+  SQLUserInfo custom:/get-user-by-name/get-user-by-id
+</pre>
+
+<p>
 <b>Note</b>, however, that if you use the <em>userset</em> or
 <em>usersetfast</em> <a href="#SQLAuthenticate"><code>SQLAuthenticate</code></a>
 options, you will need to supply some additional <code>SQLNamedQuery</code>
 names in your custom <code>SQLUserInfo</code> directive.  The
 <code>SQLUserInfo</code> directive supports:
 <pre>
-  SQLUserInfo custom:/<i>name</i>[/<i>userset-name</i>[/<i>usersetfast-name</i>]]
+  SQLUserInfo custom:/<i>lookup-by-name</i>[/<i>lookup-by-id</i>[/<i>userset-lookup</i>[/<i>usersetfast-lookup</i>]]]
 </pre>
-where <em>userset-name</em> is the name of a SELECT <code>SQLNamedQuery</code>
+where <em>userset-lookup</em> is the name of a SELECT <code>SQLNamedQuery</code>
 that returns the names (and <i>only the names</i>) of all users, and the
-<em>usersetfast-name</em> refers to a SELECT <code>SQLNamedQuery</code>
+<em>usersetfast-lookup</em> refers to a SELECT <code>SQLNamedQuery</code>
 that returns all the fields (<i>i.e.</i> <code>username, passwd, uid, gid,
 homedir, shell</code> in that order) for all users.
 
@@ -1149,8 +1219,9 @@ homedir, shell</code> in that order) for all users.
 To provide a concrete example:
 <pre>
   SQLAuthenticate users groups usersetfast
-  SQLUserInfo custom:/get-user/get-user-names/get-all-users
-  SQLNamedQuery get-user SELECT "userid, passwd, uid, gid, homedir, shell FROM users WHERE userid = '%U'"
+  SQLUserInfo custom:/get-user-by-name/get-user-by-id/get-user-names/get-all-users
+  SQLNamedQuery get-user-by-name SELECT "userid, passwd, uid, gid, homedir, shell FROM users WHERE userid = '%U'"
+  SQLNamedQuery get-user-by-id SELECT "userid, passwd, uid, gid, homedir, shell FROM users WHERE uid = %{0}"
   SQLNamedQuery get-user-names SELECT "userid FROM users"
   SQLNamedQuery get-all-users SELECT "userid, passwd, uid, gid, homedir, shell FROM users"
 </pre>
@@ -1161,6 +1232,7 @@ work as expected.
 <p>
 <b>See Also</b>:
   <a href="#SQLAuthenticate"><code>SQLAuthenticate</code></a>,
+  <a href="#SQLGroupInfo"><code>SQLGroupInfo</code></a>, 
   <a href="#SQLLog"><code>SQLLog</code></a>, 
   <a href="#SQLNamedQuery"><code>SQLNamedQuery</code></a>
 
@@ -1230,7 +1302,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-03-25 05:30:05 $</i><br>
+Last Updated: <i>$Date: 2009-06-30 21:05:48 $</i><br>
 
 <br><hr>
 

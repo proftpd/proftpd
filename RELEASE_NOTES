@@ -103,7 +103,7 @@ files.
 
           RewriteCondition %m REWRITE_HOME
           RewriteRule (.*) /my/new/prefix$1
-      </IfModule>
+        </IfModule>
 
     ScoreboardScrub
 
@@ -120,6 +120,13 @@ files.
 
     TLSControlsACLs
 
+      With the addition of support for external session caches, the
+      mod_tls module now supports some ftpdctl actions for interacting
+      with those session caches.  The TLSControlsACLs directive can be
+      used to configure ACLs for the ftpdctl actions supported by mod_tls,
+      and is analogous to other ACLs directives for other modules which
+      support ftpdctl actions.
+
     TLSPKCS12File
 
       The TLSPKCS12File directive of the mod_tls module is used to
@@ -130,8 +137,42 @@ files.
 
     TLSSessionCache
 
+      The TLSSessionCache directive configures an external SSL session
+      cache, which can be used for storing and shared SSL sessions across
+      multiple processes.  An external SSL session cache is an optional
+      facility which speeds up parallel FTPS session connections.
+
+      See doc/contrib/mod_tls.html#TLSSessionCache for more information.
 
   + Changed configuration directives:
+
+    AllowOverride
+
+      This directive no longer supports the optional user/group/class
+      parameters.  If you wish to have per-user/group/class conditional
+      use of the AllowOverride directive, you will need to use the
+      mod_ifsession module.  For example, instead of:
+
+        AllowOverride off user !admin
+
+      you will need to use:
+
+        <IfUser admin>
+          AllowOverride on
+        </IfUser>
+
+        <IfUser !admin>
+          AllowOverride off
+        </IfUser>
+
+      Note that the "!admin" section is necessary.  If you set
+      "AllowOverride off" unconditionally, then use a mod_ifsession context,
+      you would end up with two AllowOverride settings, and the code might not
+      be able to distinguish properly which setting to use.  Thus you need to
+      make both the "on" and "off" cases conditional, and mutually exclusive.
+
+      Configurations which use the user/group/class conditional parameters
+      to AllowOverride will now generate configuration errors.
 
     <VirtualHost>
 
@@ -160,25 +201,42 @@ files.
 
     LogFormat, SQLNamedQuery
 
-      New %{protocol} variable, with values of "ftp", "ftps", "ssh2", "sftp",
-      "scp".  (Note that the value will be "ssh2" until the SFTP or SCP channel
-      is opened, thus during login, the %{protocol} value will be "ssh2".)
+      There is a new variable, %{protocol}, which describes the protocol
+      that the client is using.  This variable can have values of "ftp",
+      "ftps", "ssh2", "sftp", and "scp".
 
-      New %w variable ("whence" a rename comes), only valid for RNTO commands.
+      Note that for SSH2 connections, the value will be "ssh2" until SFTP or
+      SCP channels are opened; this means that during login, the %{protocol}
+      value will be "ssh2".
+
+      There is also a new %w variable which is only valid for RNTO commands.
+      The %w value will be the original name of the file being renamed
+      (mnemonic: "whence" a renamed file comes).
 
     RewriteCondition, RewriteRule
 
-      Environment variable support via "%{ENV:var}" syntax.
+      Use of environment variables in mod_rewrite rules is now supported
+      via the "%{ENV:var}" syntax.
 
     SQLGroupInfo
 
-      Custom SQLNamedQuery for all group lookups, including 'groupset' and
-      'groupsetfast' SQLAuthenticate options.
+      The SQLGroupInfo now supports custom queries for retrieve group
+      information.  Note that instead of a single custom query, several
+      different queries are needed; different lookups are called for
+      depending on the situation and configuration of mod_sql (e.g.
+      using the 'groupset' or 'groupsetfast' SQLAuthenticate parameters).
+
+      See doc/contrib/mod_sql.html#SQLGroupInfo and
+      doc/howto/SQL.html#SQLUsersetfast for more details.
 
     SQLUserInfo
 
-      Custom SQLNamedQuery for all user lookups, including 'userset' and
-      'usersetfast' SQLAuthenticate options.
+      The support for custom SQLUserInfo queries has been extended to
+      support custom queries to be used when the 'userset' or 'usersetfast'
+      SQLAuthenticate parameters are used.
+
+      For more information, see doc/contrib/mod_sql.html#SQLUserInfo and 
+      doc/howto/SQL.html#SQLUsersetfast.
 
     TLSOptions
 
@@ -242,4 +300,4 @@ files.
         this will probably not apply to most modules.
 
  
-Last Updated: $Date: 2009-06-23 23:15:55 $
+Last Updated: $Date: 2009-06-30 21:05:47 $
