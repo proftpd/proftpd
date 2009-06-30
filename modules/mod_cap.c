@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.19 2009-06-30 16:53:17 castaglia Exp $
+ * $Id: mod_cap.c,v 1.20 2009-06-30 17:09:09 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -385,7 +385,7 @@ static int cap_sess_init(void) {
      */
 
     if (use_setuid == FALSE &&
-        pr_module_get("mod_sftp.c") != NULL) {
+        pr_module_exists("mod_sftp.c")) {
       c = find_config(main_server->conf, CONF_PARAM, "SFTPEngine", FALSE);
       if (c &&
           *((int *) c->argv[0]) == TRUE) {
@@ -394,7 +394,7 @@ static int cap_sess_init(void) {
     }
 
     if (use_setuid == FALSE &&
-        pr_module_get("mod_exec.c") != NULL) {
+        pr_module_exists("mod_exec.c")) {
       c = find_config(main_server->conf, CONF_PARAM, "ExecEngine", FALSE);
       if (c &&
           *((unsigned char *) c->argv[0]) == TRUE) {
