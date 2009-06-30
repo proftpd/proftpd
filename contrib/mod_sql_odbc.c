@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_odbc -- Support for connecting to databases via ODBC
  *
- * Copyright (c) 2003-2008 TJ Saunders
+ * Copyright (c) 2003-2009 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_odbc.c,v 1.9 2009-06-30 16:41:42 castaglia Exp $
+ * $Id: mod_sql_odbc.c,v 1.10 2009-06-30 16:42:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -330,25 +330,25 @@ static const char *sqlodbc_strerror(SQLSMALLINT odbc_error) {
 
 static modret_t *sqlodbc_get_error(cmd_rec *cmd, SQLSMALLINT handle_type,
     SQLHANDLE handle) {
-  SQLCHAR state[6], odbc_errstr[SQL_MAX_MESSAGE_LENGTH];
-  SQLSMALLINT odbc_errlen;
+  SQLCHAR state[6], errstr[SQL_MAX_MESSAGE_LENGTH];
+  SQLSMALLINT errlen;
   SQLINTEGER odbc_errno = 0;
   SQLRETURN res;
   unsigned int recno = 1;
   char numstr[20];
 
-  memset(odbc_errstr, '\0', sizeof(odbc_errstr));
-  snprintf((char *) odbc_errstr, sizeof(odbc_errstr)-1, "%s", "(no data)");
+  memset(errstr, '\0', sizeof(errstr));
+  snprintf((char *) errstr, sizeof(errstr)-1, "%s", "(no data)");
 
   res = SQLGetDiagRec(handle_type, handle, recno++, state, &odbc_errno,
-    odbc_errstr, sizeof(odbc_errstr), &odbc_errlen);
+    errstr, sizeof(errstr), &errlen);
   while (res != SQL_NO_DATA) {
     pr_signals_handle();
 
-    sql_log(DEBUG_FUNC, "odbc error: [%d] %s", odbc_errno, odbc_errstr);
+    sql_log(DEBUG_FUNC, "odbc error: [%d] %s", odbc_errno, errstr);
     
     res = SQLGetDiagRec(handle_type, handle, recno++, state, &odbc_errno,
-      odbc_errstr, sizeof(odbc_errstr), &odbc_errlen);
+      errstr, sizeof(errstr), &errlen);
   }
 
   /* This will return the last error retrieved.  This is OK, since we
@@ -357,7 +357,7 @@ static modret_t *sqlodbc_get_error(cmd_rec *cmd, SQLSMALLINT handle_type,
   memset(numstr, '\0', sizeof(numstr));
   snprintf(numstr, 20, "%d", (int) odbc_errno);
 
-  return PR_ERROR_MSG(cmd, numstr, (char *) odbc_errstr);
+  return PR_ERROR_MSG(cmd, numstr, (char *) errstr);
 }
 
 static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
