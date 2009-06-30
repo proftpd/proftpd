@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.18 2009-04-30 21:10:29 castaglia Exp $
+ * $Id: mod_cap.c,v 1.19 2009-06-30 16:53:17 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -66,6 +66,7 @@ static unsigned int cap_flags = 0;
 #define CAP_USE_DAC_OVERRIDE	0x0002
 #define CAP_USE_DAC_READ_SEARCH	0x0004
 #define CAP_USE_SETUID		0x0008
+#define CAP_USE_AUDIT_WRITE	0x0010
 
 /* log current capabilities */
 static void lp_debug(void) {
@@ -269,6 +270,11 @@ MODRET cap_post_pass(cmd_rec *cmd) {
     }
   }
 
+#ifdef CAP_AUDIT_WRITE
+  if (res != -1 && (cap_flags & CAP_USE_AUDIT_WRITE))
+    res = lp_add_cap(CAP_AUDIT_WRITE, CAP_PERMITTED);
+#endif
+
   if (res != -1)
     res = lp_set_cap();
 
@@ -280,9 +286,9 @@ MODRET cap_post_pass(cmd_rec *cmd) {
   }
   pr_signals_unblock();
 
-  /* Now our only capabilities consist of CAP_NET_BIND_SERVICE
-   * (and other configured caps), however in order to actually be able to bind
-   * to low-numbered ports, we need the capability to be in the effective set.
+  /* Now our only capabilities consist of CAP_NET_BIND_SERVICE (and other
+   * configured caps), however in order to actually be able to bind to
+   * low-numbered ports, we need the capability to be in the effective set.
    */
 
   if (res != -1)
@@ -304,6 +310,12 @@ MODRET cap_post_pass(cmd_rec *cmd) {
       res = lp_add_cap(CAP_SETGID, CAP_EFFECTIVE);
     }
   }
+
+#ifdef CAP_AUDIT_WRITE
+  if (res != -1 && (cap_flags & CAP_USE_AUDIT_WRITE))
+    res = lp_add_cap(CAP_AUDIT_WRITE, CAP_EFFECTIVE);
+#endif
+
   if (res != -1)
     res = lp_set_cap();
 
@@ -403,6 +415,14 @@ static int cap_sess_init(void) {
       pr_log_debug(DEBUG3, MOD_CAP_VERSION
         ": adding CAP_SETUID and CAP_SETGID capabilities");
     }
+
+#ifdef CAP_AUDIT_WRITE
+    if (pr_module_exists("mod_auth_pam.c")) {
+      cap_flags |= CAP_USE_AUDIT_WRITE;
+      pr_log_debug(DEBUG3, MOD_CAP_VERSION
+        ": adding CAP_AUDIT_WRITE capability");
+    }
+#endif
   }
 
   return 0;
