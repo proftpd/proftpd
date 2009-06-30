@@ -87,7 +87,7 @@ sub tear_down {
   }
 
   undef $self;
-};
+}
 
 sub abor_retr_binary_ok {
   my $self = shift;
