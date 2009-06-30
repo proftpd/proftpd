@@ -6039,12 +6039,13 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
     if (strcmp(cmd->argv[i], "ctrl") == 0) {
       int secs = atoi(cmd->argv[i+1]);
 
-      if (secs > 0)
+      if (secs > 0) {
         *((int *) c->argv[0]) = secs;
 
-      else
+      } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[i],
           " must be greater than zero: '", cmd->argv[i+1], "'", NULL));
+      }
 
       i += 2;
 
@@ -6052,38 +6053,45 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
       char *tmp = NULL;
       unsigned long kbytes = strtoul(cmd->argv[i+1], &tmp, 10);
 
-      if (!(tmp && *tmp))
+      if (!(tmp && *tmp)) {
         *((off_t *) c->argv[1]) = (off_t) kbytes * 1024;
 
-      else
+      } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[i],
           " must be greater than zero: '", cmd->argv[i+1], "'", NULL));
+      }
 
       i += 2;
 
     } else if (strcmp(cmd->argv[i], "required") == 0) {
       int bool = get_boolean(cmd, i+1);
 
-      if (bool != -1)
+      if (bool != -1) {
         *((unsigned char *) c->argv[3]) = bool;
 
-      else
+      } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[i],
           " must be a Boolean value: '", cmd->argv[i+1], "'", NULL));
+      }
 
       i += 2;
 
     } else if (strcmp(cmd->argv[i], "timeout") == 0) {
       int secs = atoi(cmd->argv[i+1]);
       
-      if (secs > 0)
+      if (secs > 0) {
         *((int *) c->argv[2]) = secs;
 
-      else
+      } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[i],
           " must be greater than zero: '", cmd->argv[i+1], "'", NULL));
+      }
 
       i += 2;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": unknown TLSRenegotiate argument '", cmd->argv[i], "'", NULL));
     }
   }
 
