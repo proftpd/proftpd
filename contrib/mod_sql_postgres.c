@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.43 2009-06-29 23:02:38 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.44 2009-06-30 16:41:42 castaglia Exp $
  */
 
 /*
@@ -1374,8 +1374,11 @@ MODRET cmd_prepare(cmd_rec *cmd) {
   }
 
   conn_pool = (pool *) cmd->argv[0];
-  conn_cache = make_array((pool *) cmd->argv[0], DEF_CONN_POOL_SIZE,
-    sizeof(conn_entry_t));
+
+  if (conn_cache == NULL) {
+    conn_cache = make_array((pool *) cmd->argv[0], DEF_CONN_POOL_SIZE,
+      sizeof(conn_entry_t *));
+  }
 
   return mod_create_data(cmd, NULL);
 }
@@ -1459,9 +1462,15 @@ static int sql_postgres_init(void) {
 }
 
 static int sql_postgres_sess_init(void) {
-  conn_pool = make_sub_pool(session.pool);
-  conn_cache = make_array(make_sub_pool(session.pool), DEF_CONN_POOL_SIZE,
-    sizeof(conn_entry_t));
+  if (conn_pool == NULL) {
+    conn_pool = make_sub_pool(session.pool);
+    pr_pool_tag(conn_pool, "Postgres connection pool");
+  }
+
+  if (conn_cache == NULL) {
+    conn_cache = make_array(make_sub_pool(session.pool), DEF_CONN_POOL_SIZE,
+      sizeof(conn_entry_t *));
+  }
 
   return 0;
 }

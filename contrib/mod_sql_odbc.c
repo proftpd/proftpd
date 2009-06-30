@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_odbc.c,v 1.8 2009-02-05 21:49:28 castaglia Exp $
+ * $Id: mod_sql_odbc.c,v 1.9 2009-06-30 16:41:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1697,12 +1697,15 @@ static int sqlodbc_init(void) {
 }
 
 static int sqlodbc_sess_init(void) {
-  if (!conn_pool)
+  if (conn_pool == NULL) {
     conn_pool = make_sub_pool(session.pool);
+    pr_pool_tag(conn_pool, "ODBC connection pool");
+  }
 
-  if (!conn_cache)
+  if (conn_cache == NULL) {
     conn_cache = make_array(make_sub_pool(session.pool), DEF_CONN_POOL_SIZE,
-      sizeof(conn_entry_t));
+      sizeof(conn_entry_t *));
+  }
 
   /* There is a very specific reason for using square brackets, rather than
    * parentheses, here.

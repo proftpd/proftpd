@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.14 2009-06-29 05:31:08 castaglia Exp $
+ * $Id: mod_sql_sqlite.c,v 1.15 2009-06-30 16:41:42 castaglia Exp $
  * $Libraries: -lsqlite3 $
  */
 
@@ -766,7 +766,11 @@ MODRET sql_sqlite_prepare(cmd_rec *cmd) {
   }
 
   conn_pool = (pool *) cmd->argv[0];
-  conn_cache = make_array(conn_pool, DEF_CONN_POOL_SIZE, sizeof(conn_entry_t));
+
+  if (conn_cache == NULL) {
+    conn_cache = make_array(conn_pool, DEF_CONN_POOL_SIZE,
+      sizeof(conn_entry_t *));
+  }
 
   return mod_create_data(cmd, NULL);
 }
@@ -1038,9 +1042,15 @@ static int sql_sqlite_init(void) {
 }
 
 static int sql_sqlite_sess_init(void) {
-  conn_pool = make_sub_pool(session.pool);
-  conn_cache = make_array(make_sub_pool(session.pool), DEF_CONN_POOL_SIZE,
-    sizeof(conn_entry_t));
+  if (conn_pool == NULL) {
+    conn_pool = make_sub_pool(session.pool);
+    pr_pool_tag(conn_pool, "SQLite connection pool");
+  }
+
+  if (conn_cache == NULL) {
+    conn_cache = make_array(make_sub_pool(session.pool), DEF_CONN_POOL_SIZE,
+      sizeof(conn_entry_t *));
+  }
 
   return 0;
 }

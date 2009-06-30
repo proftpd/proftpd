@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.53 2009-06-29 20:36:44 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.54 2009-06-30 16:41:42 castaglia Exp $
  */
 
 /*
@@ -1473,8 +1473,11 @@ MODRET cmd_prepare(cmd_rec *cmd) {
   }
 
   conn_pool = (pool *) cmd->argv[0];
-  conn_cache = make_array((pool *) cmd->argv[0], DEF_CONN_POOL_SIZE,
-    sizeof(conn_entry_t));
+
+  if (conn_cache == NULL) {
+    conn_cache = make_array(conn_pool, DEF_CONN_POOL_SIZE,
+      sizeof(conn_entry_t *));
+  }
 
   return mod_create_data(cmd, NULL);
 }
@@ -1566,9 +1569,15 @@ static int sql_mysql_init(void) {
 }
 
 static int sql_mysql_sess_init(void) {
-  conn_pool = make_sub_pool(session.pool);
-  conn_cache = make_array(make_sub_pool(session.pool), DEF_CONN_POOL_SIZE,
-    sizeof(conn_entry_t));
+  if (conn_pool == NULL) {
+    conn_pool = make_sub_pool(session.pool);
+    pr_pool_tag(conn_pool, "MySQL connection pool");
+  }
+
+  if (conn_cache == NULL) {
+    conn_cache = make_array(make_sub_pool(session.pool), DEF_CONN_POOL_SIZE,
+      sizeof(conn_entry_t *));
+  }
 
   return 0;
 }
