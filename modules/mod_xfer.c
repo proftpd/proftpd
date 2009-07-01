@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.257 2009-06-29 17:18:27 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.258 2009-07-01 00:26:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1662,8 +1662,18 @@ MODRET xfer_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
 
   } else if (len < 0) {
+
+    /* default abort errno, in case session.d et al has already gone away */
+    int xerrno = ECONNABORTED;
+
     stor_abort();
-    pr_data_abort(PR_NETIO_ERRNO(session.d->instrm), FALSE);
+
+    if (session.d != NULL &&
+        session.d->instrm != NULL) {
+      xerrno = PR_NETIO_ERRNO(session.d->instrm);
+    }
+
+    pr_data_abort(xerrno, FALSE);
     return PR_ERROR(cmd);
 
   } else {
