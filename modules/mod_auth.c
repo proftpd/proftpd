@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.260 2009-06-30 17:22:12 castaglia Exp $
+ * $Id: mod_auth.c,v 1.261 2009-07-01 00:49:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1938,13 +1938,16 @@ MODRET auth_pass(cmd_rec *cmd) {
       denymsg = sreplace(cmd->tmp_pool, denymsg, "%u", user, NULL);
     }
 
-    if ((max = get_param_ptr(main_server->conf, "MaxLoginAttempts",
-        FALSE)) == NULL)
-      max_logins = 3;
-    else
+    max = get_param_ptr(main_server->conf, "MaxLoginAttempts", FALSE);
+    if (max != NULL) {
       max_logins = *max;
 
-    if (++auth_tries >= max_logins) {
+    } else {
+      max_logins = 3;
+    }
+
+    if (max_logins > 0 &&
+        auth_tries++ >= max_logins) {
       if (denymsg)
         pr_response_send(R_530, "%s", denymsg);
       else
@@ -2622,10 +2625,10 @@ MODRET set_maxloginattempts(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!strcasecmp(cmd->argv[1], "none"))
+  if (strcasecmp(cmd->argv[1], "none") == 0) {
     max = 0;
 
-  else {
+  } else {
     char *endp = NULL;
     max = (int) strtol(cmd->argv[1], &endp, 10);
 
