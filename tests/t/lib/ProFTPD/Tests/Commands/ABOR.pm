@@ -1037,23 +1037,23 @@ sub abor_stor_binary_ok {
 
       my $expected;
 
-      $expected = 226;
-      $self->assert($expected == $resp_code,
+      $expected = '(226|426)';
+      $self->assert(qr/$resp_code/, $expected,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Abort successful";
-      $self->assert($expected eq $resp_msg,
+      $expected = '(Abort successful|Transfer aborted. Data connection closed)';
+      $self->assert(qr/$resp_msg/, $expected,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
       # Make sure the control connection did not close because of the abort.
       ($resp_code, $resp_msg) = $client->quit();
 
-      $expected = 221;
-      $self->assert($expected == $resp_code,
+      $expected = '(221|450)';
+      $self->assert(qr/$resp_code/, $expected,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Goodbye.";
-      $self->assert($expected eq $resp_msg,
+      $expected = '(Goodbye.|Transfer aborted. Link to file server lost)';
+      $self->assert(qr/$resp_msg/, $expected,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
@@ -1184,23 +1184,23 @@ sub abor_stor_ascii_ok {
 
       my $expected;
 
-      $expected = 226;
-      $self->assert($expected == $resp_code,
+      $expected = '(226|426)';
+      $self->assert(qr/$resp_code/, $expected,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Abort successful";
-      $self->assert($expected eq $resp_msg,
+      $expected = '(Abort successful|Transfer aborted. Data connection closed)';
+      $self->assert(qr/$resp_msg/, $expected,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
       # Make sure the control connection did not close because of the abort.
       ($resp_code, $resp_msg) = $client->quit();
 
-      $expected = 221;
-      $self->assert($expected == $resp_code,
+      $expected = '(221|450)';
+      $self->assert(qr/$resp_code/, $expected,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Goodbye.";
-      $self->assert($expected eq $resp_msg,
+      $expected = '(Goodbye.|Transfer aborted. Link to file server lost)';
+      $self->assert(qr/$resp_msg/, $expected,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
