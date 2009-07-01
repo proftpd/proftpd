@@ -779,8 +779,8 @@ sub rewrite_bug3027 {
       $conn->write($buf, length($buf));
       $conn->close();
 
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
 
       my $expected;
 
@@ -1074,8 +1074,8 @@ sub rewrite_bug3169 {
       $conn->write($buf, length($buf));
       $conn->close();
 
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
 
       my $expected;
 
@@ -1218,8 +1218,8 @@ sub rewrite_map_unescape_bug3170 {
       $conn->write($buf, length($buf));
       $conn->close();
 
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
 
       my $expected;
 
