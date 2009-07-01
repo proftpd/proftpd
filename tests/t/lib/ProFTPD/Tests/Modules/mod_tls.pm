@@ -1050,13 +1050,17 @@ sub tls_list_fails_tls_required_by_dir_bug2178 {
         die("Can't login: " . $client->last_message());
       }
 
-      my $res = $client->list();
+      my $res;
+      eval { $res = $client->list() };
+      unless ($@) {
+        die("LIST succeeded unexpectedly");
+      }
+
       if ($res) {
         die("LIST succeeded unexpectedly");
       }
 
       my $resp_msg = $client->last_message();
-      $client->quit();
 
       my $expected = '550 SSL/TLS required on the data channel';
       $self->assert($expected eq $resp_msg,
@@ -1370,13 +1374,17 @@ sub tls_list_fails_tls_required_by_ftpaccess_bug2178 {
       }
 
       $client->cwd('subdir');
-      my $res = $client->list();
+      my $res;
+      eval { $res = $client->list() };
+      unless ($@) {
+        die("LIST succeeded unexpectedly");
+      }
+
       if ($res) {
         die("LIST succeeded unexpectedly");
       }
 
       my $resp_msg = $client->last_message();
-      $client->quit();
 
       my $expected = '550 SSL/TLS required on the data channel';
       $self->assert($expected eq $resp_msg,
