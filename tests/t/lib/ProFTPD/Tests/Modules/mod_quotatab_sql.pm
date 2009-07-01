@@ -821,8 +821,8 @@ EOS
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'Transfer aborted. Disc quota exceeded';
-      $self->assert($expected eq $resp_msg,
+      $expected = 'Transfer aborted. (Disc|Disk) quota exceeded';
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
       $client->quit();
@@ -1775,8 +1775,8 @@ EOS
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'Transfer aborted. Disc quota exceeded';
-      $self->assert($expected eq $resp_msg,
+      $expected = 'Transfer aborted. (Disc|Disk) quota exceeded';
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
       $client->quit();
@@ -2769,8 +2769,8 @@ EOS
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'Transfer aborted. Disc quota exceeded';
-      $self->assert($expected eq $resp_msg,
+      $expected = 'Transfer aborted. (Disc|Disk) quota exceeded';
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
       $client->quit();
@@ -3749,8 +3749,8 @@ EOS
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'Transfer aborted. Disc quota exceeded';
-      $self->assert($expected eq $resp_msg,
+      $expected = 'Transfer aborted. (Disc|Disk) quota exceeded';
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
       $client->quit();
