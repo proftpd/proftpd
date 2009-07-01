@@ -1038,22 +1038,22 @@ sub abor_stor_binary_ok {
       my $expected;
 
       $expected = '(226|426)';
-      $self->assert(qr/$resp_code/, $expected,
+      $self->assert(qr/$expected/, $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = '(Abort successful|Transfer aborted. Data connection closed)';
-      $self->assert(qr/$resp_msg/, $expected,
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
       # Make sure the control connection did not close because of the abort.
       ($resp_code, $resp_msg) = $client->quit();
 
       $expected = '(221|450)';
-      $self->assert(qr/$resp_code/, $expected,
+      $self->assert(qr/$expected/, $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = '(Goodbye.|Transfer aborted. Link to file server lost)';
-      $self->assert(qr/$resp_msg/, $expected,
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
@@ -1185,22 +1185,22 @@ sub abor_stor_ascii_ok {
       my $expected;
 
       $expected = '(226|426)';
-      $self->assert(qr/$resp_code/, $expected,
+      $self->assert(qr/$expected/, $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = '(Abort successful|Transfer aborted. Data connection closed)';
-      $self->assert(qr/$resp_msg/, $expected,
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
       # Make sure the control connection did not close because of the abort.
       ($resp_code, $resp_msg) = $client->quit();
 
       $expected = '(221|450)';
-      $self->assert(qr/$resp_code/, $expected,
+      $self->assert(qr/$expected/, $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = '(Goodbye.|Transfer aborted. Link to file server lost)';
-      $self->assert(qr/$resp_msg/, $expected,
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
