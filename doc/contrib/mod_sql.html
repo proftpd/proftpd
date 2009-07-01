@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.15 2009-06-30 21:05:48 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.16 2009-07-01 18:18:10 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -243,7 +243,9 @@ The current supported authentication methods are:
     <code>'{digest-name}hashed-value'</code>, where <code>hashed-value</code>
     is the base64-encoded digest of the passsword.  Only available if you
     define <code>HAVE_OPENSSL</code> when you compile <code>proftpd</code>
-    and you link with OpenSSL's <code>libcrypto</code> library.<br>
+    and you link with OpenSSL's <code>libcrypto</code> library; the easiest
+    way to handle this is to use the <code>--enable-openssl</code> configure
+    option.<br>
   </li>
   <br>
 
@@ -1302,7 +1304,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-06-30 21:05:48 $</i><br>
+Last Updated: <i>$Date: 2009-07-01 18:18:10 $</i><br>
 
 <br><hr>
 
