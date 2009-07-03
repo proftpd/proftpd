@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.13 2009-06-20 18:42:06 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.14 2009-07-03 23:02:09 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1059,13 +1059,13 @@ MODRET set_sftprekey(cmd_rec *cmd) {
   if (cmd->argc-1 == 4) {
     int rekey_timeout;
 
-    rekey_timeout = atoi(cmd->argv[5]);
+    rekey_timeout = atoi(cmd->argv[4]);
     if (rekey_timeout > 0) {
       c->argv[3] = pcalloc(c->pool, sizeof(int));
       *((int *) c->argv[3]) = rekey_timeout;
 
     } else {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "rekey timeout '", cmd->argv[5],
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "rekey timeout '", cmd->argv[4],
         "' must be greater than zero", NULL));
     }
   }
