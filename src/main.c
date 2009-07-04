@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.376 2009-06-24 23:44:07 castaglia Exp $
+ * $Id: main.c,v 1.377 2009-07-04 01:33:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2934,6 +2934,9 @@ int main(int argc, char *argv[], char **envp) {
 
   mpid = getpid();
 
+  /* Install signal handlers */
+  install_signal_handlers();
+
   /* Initialize sub-systems */
   init_pools();
   init_regexp();
@@ -3073,9 +3076,6 @@ int main(int argc, char *argv[], char **envp) {
     exit(1);
   }
 #endif /* PR_DEVEL_COREDUMP */
-
-  /* Install signal handlers */
-  install_signal_handlers();
 
 #ifndef PR_DEVEL_NO_DAEMON
   set_daemon_rlimits();
