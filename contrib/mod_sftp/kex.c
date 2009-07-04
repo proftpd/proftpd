@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.8 2009-04-21 23:20:21 castaglia Exp $
+ * $Id: kex.c,v 1.9 2009-07-04 00:34:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1937,6 +1937,7 @@ static int handle_kex_dh(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "DH_INIT"));
   cmd->arg = "(data)";
+  cmd->class = CL_AUTH;
 
   pr_trace_msg(trace_channel, 9, "reading DH_INIT message from client");
 
@@ -2417,6 +2418,7 @@ static int handle_kex_dh_gex(struct ssh2_packet *pkt, struct sftp_kex *kex,
 
     cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "DH_GEX_REQUEST"));
     cmd->arg = "(data)";
+    cmd->class = CL_AUTH;
 
   } else {
     pr_trace_msg(trace_channel, 9,
@@ -2424,6 +2426,7 @@ static int handle_kex_dh_gex(struct ssh2_packet *pkt, struct sftp_kex *kex,
 
     cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "DH_GEX_REQUEST_OLD"));
     cmd->arg = "(data)";
+    cmd->class = CL_AUTH;
   }
 
   res = read_dh_gex(pkt, &min, &pref, &max, old_request);
@@ -2745,6 +2748,7 @@ static int handle_kex_rsa(struct sftp_kex *kex) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "KEXRSA_SECRET"));
   cmd->arg = "(data)";
+  cmd->class = CL_AUTH;
 
   pr_trace_msg(trace_channel, 9, "reading KEXRSA_SECRET message from client");
 
@@ -2808,6 +2812,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "KEXINIT"));
   cmd->arg = "(data)";
+  cmd->class = CL_AUTH;
 
   pr_trace_msg(trace_channel, 9, "reading KEXINIT message from client");
 
@@ -2996,6 +3001,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "NEWKEYS"));
   cmd->arg = "";
+  cmd->class = CL_AUTH;
 
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
