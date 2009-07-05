@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.34 2009-07-04 00:34:08 castaglia Exp $
+ * $Id: fxp.c,v 1.35 2009-07-05 02:02:55 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1959,6 +1959,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
   char *abs_path, *curr_path = NULL, *real_path = NULL;
   char direction;
   unsigned char *delete_aborted_stores = NULL;
+  cmd_rec *cmd = NULL;
 
   fxh = value_data;
   delete_aborted_stores = user_data;
@@ -1979,8 +1980,24 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
     direction = 'i';
   }
 
+  if (fxh->fh_flags & O_APPEND) {
+    cmd = fxp_cmd_alloc(fxh->pool, C_APPE, pstrdup(fxh->pool, curr_path));
+
+  } else if ((fxh->fh_flags & O_WRONLY) ||
+             (fxh->fh_flags & O_RDWR)) {
+    cmd = fxp_cmd_alloc(fxh->pool, C_STOR, pstrdup(fxh->pool, curr_path));
+
+  } else if (fxh->fh_flags == O_RDONLY) {
+    cmd = fxp_cmd_alloc(fxh->pool, C_RETR, pstrdup(fxh->pool, curr_path));
+  }
+
   xferlog_write(0, pr_netaddr_get_sess_remote_name(), fxh->fh_bytes_xferred,
     abs_path, 'b', direction, 'r', session.user, 'i');
+
+  if (cmd) {
+    (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+  }
 
   if (pr_fsio_close(fxh->fh) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
