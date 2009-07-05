@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.20 2009-05-15 00:19:36 castaglia Exp $
+ * $Id: scp.c,v 1.21 2009-07-05 01:48:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -557,9 +557,25 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
        *
        * for an incoming 'test.txt' file?  To handle this, we append
        * the given name to the path sent in the initial scp command.
+       *
+       * However, we only want to do this if the given name_str differs
+       * from the last path component in sp->path.  Otherwise the client
+       * could send:
+       *
+       *  scp -t dir/subdir/file
+       *
+       * and the file info control message might include a filename of
+       * "file".  If we simply append, then we get "dir/subdir/file/file"
+       * which is obviously not correct.
        */
-      sp->best_path = dir_canonical_vpath(scp_pool,
-        pdircat(p, sp->path, name_str, NULL));
+
+      if (strcmp(name_str, ptr + 1) != 0) {
+        sp->best_path = dir_canonical_vpath(scp_pool,
+          pdircat(p, sp->path, name_str, NULL));
+
+      } else {
+        sp->best_path = dir_canonical_vpath(scp_pool, sp->path);
+      }
     }
   }
 
@@ -737,9 +753,9 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
       NULL);
   }
 
-  if (!dir_check(p, cmd, G_WRITE, (char *) sp->path, NULL)) {
+  if (!dir_check(p, cmd, G_WRITE, (char *) sp->best_path, NULL)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "scp upload to '%s' blocked by <Limit> configuration", sp->path);
+      "scp upload to '%s' blocked by <Limit> configuration", sp->best_path);
 
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -1477,9 +1493,9 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
   }
 
   if (!sp->fh) {
-    if (!dir_check(p, cmd, G_READ, sp->path, NULL)) {
+    if (!dir_check(p, cmd, G_READ, sp->best_path, NULL)) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "scp download of '%s' blocked by <Limit> configuration", sp->path);
+        "scp download of '%s' blocked by <Limit> configuration", sp->best_path);
 
       (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
