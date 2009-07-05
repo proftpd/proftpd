@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.35 2009-07-05 02:02:55 castaglia Exp $
+ * $Id: fxp.c,v 1.36 2009-07-05 19:36:41 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -553,10 +553,12 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
   int res = 0;
 
   if ((desired_access & SSH2_FXF_WANT_READ_DATA) ||
-      (desired_access & SSH2_FXF_WANT_READ_ATTRIBUTES)) {
+      (desired_access & SSH2_FXF_WANT_READ_ATTRIBUTES) ||
+      (desired_access & SSH2_FXF_WANT_READ_NAMED_ATTRS)) {
 
     if ((desired_access & SSH2_FXF_WANT_WRITE_DATA) ||
-        (desired_access & SSH2_FXF_WANT_WRITE_ATTRIBUTES)) {
+        (desired_access & SSH2_FXF_WANT_WRITE_ATTRIBUTES) ||
+        (desired_access & SSH2_FXF_WANT_WRITE_NAMED_ATTRS)) {
       res = O_RDWR;
 
 #ifdef O_APPEND
@@ -570,7 +572,8 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
     }
 
   } else if ((desired_access & SSH2_FXF_WANT_WRITE_DATA) ||
-             (desired_access & SSH2_FXF_WANT_WRITE_ATTRIBUTES)) {
+             (desired_access & SSH2_FXF_WANT_WRITE_ATTRIBUTES) ||
+             (desired_access & SSH2_FXF_WANT_WRITE_NAMED_ATTRS)) {
     res = O_WRONLY;
 
 #ifdef O_APPEND
@@ -582,6 +585,14 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
 
   if ((flags & SSH2_FXF_ACCESS_APPEND_DATA) ||
       (flags & SSH2_FXF_ACCESS_APPEND_DATA_ATOMIC)) {
+
+    if (res == O_RDONLY) {
+      /* If the APPEND flag is used, but we're read-only, well...we're
+       * not read-only anymore.
+       */
+      res = O_RDWR;
+    }
+
     res |= O_APPEND;
   }
 
