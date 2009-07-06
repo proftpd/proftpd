@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.261 2009-07-01 00:49:44 castaglia Exp $
+ * $Id: mod_auth.c,v 1.262 2009-07-06 03:13:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1729,7 +1729,7 @@ MODRET auth_pre_user(cmd_rec *cmd) {
 MODRET auth_user(cmd_rec *cmd) {
   int nopass = FALSE;
   config_rec *c;
-  char *user, *origuser;
+  char *denymsg = NULL, *user, *origuser;
   int failnopwprompt = 0, aclp, i;
   unsigned char *anon_require_passwd = NULL, *login_passwd_prompt = NULL;
 
@@ -1752,14 +1752,26 @@ MODRET auth_user(cmd_rec *cmd) {
   origuser = user;
   c = pr_auth_get_anon_config(cmd->tmp_pool, &user, NULL, NULL);
 
+  /* Check for AccessDenyMsg */
+  if ((denymsg = get_param_ptr((c ? c->subset : cmd->server->conf),
+      "AccessDenyMsg", FALSE)) != NULL) {
+
+    if (strstr(denymsg, "%u") != NULL) {
+      denymsg = sreplace(cmd->tmp_pool, denymsg, "%u", user, NULL);
+    }
+  }
+
   login_passwd_prompt = get_param_ptr(
     (c && c->config_type == CONF_ANON) ? c->subset : main_server->conf,
     "LoginPasswordPrompt", FALSE);
 
-  if (login_passwd_prompt && *login_passwd_prompt == FALSE)
+  if (login_passwd_prompt &&
+      *login_passwd_prompt == FALSE) {
     failnopwprompt = TRUE;
-  else
+
+  } else {
     failnopwprompt = FALSE;
+  }
 
   if (failnopwprompt) {
     if (!user) {
@@ -1768,7 +1780,13 @@ MODRET auth_user(cmd_rec *cmd) {
 
       pr_log_pri(PR_LOG_NOTICE, "USER %s (Login failed): Not a UserAlias.",
         origuser);
-      pr_response_send(R_530, _("Login incorrect."));
+
+      if (denymsg) {
+        pr_response_send(R_530, "%s", denymsg);
+
+      } else {
+        pr_response_send(R_530, _("Login incorrect."));
+      }
 
       end_login(0);
     }
@@ -1790,7 +1808,13 @@ MODRET auth_user(cmd_rec *cmd) {
 
         pr_log_auth(PR_LOG_NOTICE, "ANON %s: Limit access denies login.",
           origuser);
-        pr_response_send(R_530, _("Login incorrect."));
+
+        if (denymsg) {
+          pr_response_send(R_530, "%s", denymsg);
+
+        } else {
+          pr_response_send(R_530, _("Login incorrect."));
+        }
 
         end_login(0);
       }
@@ -1802,7 +1826,13 @@ MODRET auth_user(cmd_rec *cmd) {
 
       pr_log_auth(PR_LOG_NOTICE,
         "USER %s: Limit access denies login.", origuser);
-      pr_response_send(R_530, _("Login incorrect."));
+
+      if (denymsg) {
+        pr_response_send(R_530, "%s", denymsg);
+
+      } else {
+        pr_response_send(R_530, _("Login incorrect."));
+      }
 
       end_login(0);
     }
@@ -1849,8 +1879,9 @@ MODRET auth_user(cmd_rec *cmd) {
 
     pr_cmd_dispatch(fakecmd);
 
-  } else
+  } else {
     pr_response_add(R_331, _("Password required for %s"), cmd->argv[1]);
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -1935,7 +1966,10 @@ MODRET auth_pass(cmd_rec *cmd) {
     if ((denymsg = get_param_ptr((session.anon_config ?
         session.anon_config->subset : cmd->server->conf),
         "AccessDenyMsg", FALSE)) != NULL) {
-      denymsg = sreplace(cmd->tmp_pool, denymsg, "%u", user, NULL);
+
+      if (strstr(denymsg, "%u") != NULL) {
+        denymsg = sreplace(cmd->tmp_pool, denymsg, "%u", user, NULL);
+      }
     }
 
     max = get_param_ptr(main_server->conf, "MaxLoginAttempts", FALSE);
