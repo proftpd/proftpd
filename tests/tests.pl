@@ -82,6 +82,7 @@ if (scalar(@ARGV) > 0) {
     t/commands/mlst.t
     t/commands/mff.t
     t/commands/mfmt.t
+    t/config/accessdenymsg.t
     t/config/accessgrantmsg.t
     t/config/allowoverwrite.t
     t/config/createhome.t
