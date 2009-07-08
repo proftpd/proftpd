@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.36 2009-07-05 19:36:41 castaglia Exp $
+ * $Id: fxp.c,v 1.37 2009-07-08 18:06:45 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -583,6 +583,18 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
 #endif
   }
 
+  /* Check for client bugs (e.g WinSCP).  If we don't have any of
+   * O_RDONLY, O_RDWR, or O_WRONLY at this point, the client is stupid,
+   * and is not providing/setting all the right bits in the right places.
+   */
+  if ((res != O_RDONLY) &&
+      !(res & O_RDWR) &&
+      !(res & O_WRONLY)) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "missing proper read/write flags in OPEN request, most likely a client "
+      "bug");
+  }
+
   if ((flags & SSH2_FXF_ACCESS_APPEND_DATA) ||
       (flags & SSH2_FXF_ACCESS_APPEND_DATA_ATOMIC)) {
 
@@ -594,18 +606,44 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
     }
 
     res |= O_APPEND;
+
+    /* If we're appending, then it's a write. */
+    if (!(res & O_RDWR)) {
+      res |= O_WRONLY;
+    }
   }
 
   if (flags & SSH2_FXF_OPEN_OR_CREATE) {
     res |= O_CREAT;
+
+    /* If we're creating, then it's a write. */
+    if (!(res & O_RDWR)) {
+      res |= O_WRONLY;
+    }
   }
 
   if (flags & SSH2_FXF_CREATE_TRUNCATE) {
     res |= O_CREAT|O_TRUNC;
+
+    /* If we're creating and truncating, then it's definitely a write. */
+    if (!(res & O_RDWR)) {
+      res |= O_WRONLY;
+    }
   }
 
   if (flags & SSH2_FXF_TRUNCATE_EXISTING) {
     res |= O_TRUNC;
+
+    /* If we're truncating, then it's a write. */
+    if (!(res & O_RDWR)) {
+      res |= O_WRONLY;
+    }
+  }
+
+  /* At this point, if we're not writing, then we must be reading. */
+  if (!(res & O_RDWR) &&
+      !(res & O_WRONLY)) {
+    res = O_RDONLY;
   }
 
   return res;
