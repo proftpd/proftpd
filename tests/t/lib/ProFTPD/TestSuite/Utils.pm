@@ -277,12 +277,14 @@ sub config_write {
   my $opts = shift;
   $opts = {} unless defined($opts);
 
-  my $port = get_high_numbered_port();
   my ($user_name, $group_name) = config_get_identity();
 
   # Set a bunch of defaults, unless overridden by the caller
 
-  $config->{Port} = $port;
+  unless (defined($config->{Port})) {
+    $config->{Port} = get_high_numbered_port();
+  }
+  my $port = $config->{Port};
 
   unless (defined($config->{User})) {
     $config->{User} = $user_name;
