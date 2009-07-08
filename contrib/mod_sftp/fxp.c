@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.37 2009-07-08 18:06:45 castaglia Exp $
+ * $Id: fxp.c,v 1.38 2009-07-08 18:16:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -643,7 +643,7 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
   /* At this point, if we're not writing, then we must be reading. */
   if (!(res & O_RDWR) &&
       !(res & O_WRONLY)) {
-    res = O_RDONLY;
+    res |= O_RDONLY;
   }
 
   return res;
