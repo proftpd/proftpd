@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.2 2009-04-28 22:22:11 castaglia Exp $
+ * $Id: mod_exec.c,v 1.3 2009-07-09 01:12:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -472,7 +472,7 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
       (unsigned long) getuid(), (unsigned long) geteuid(),
       (unsigned long) getgid(), (unsigned long) getegid());
 
-    for (i = 3; i < c->argc-1; i++) {
+    for (i = 3; i < c->argc; i++) {
       exec_log(" + '%s': argv[%u] = %s", (const char *) c->argv[2], i - 2,
         (const char *) c->argv[i]);
     }
