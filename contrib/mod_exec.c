@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.3 2009-07-09 01:12:54 castaglia Exp $
+ * $Id: mod_exec.c,v 1.4 2009-07-09 01:27:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -33,7 +33,7 @@
 #include <signal.h>
 #include <sys/resource.h>
 
-#define MOD_EXEC_VERSION	"mod_exec/0.9.7"
+#define MOD_EXEC_VERSION	"mod_exec/0.9.8"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030301
@@ -740,28 +740,33 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
 
 /* Perform any substitution of "magic cookie" values. */
 static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
+  char *ptr = NULL;
 
   if (!varstr)
     return NULL;
 
-  if (strstr(varstr, "%a")) {
+  ptr = strstr(varstr, "%a");
+  if (ptr != NULL) {
     pr_netaddr_t *remote_addr = pr_netaddr_get_sess_remote_addr();
 
     varstr = sreplace(tmp_pool, varstr, "%a", remote_addr ?
         pr_netaddr_get_ipstr(remote_addr) : "", NULL);
   }
 
-  if (strstr(varstr, "%C")) {
+  ptr = strstr(varstr, "%C");
+  if (ptr != NULL) {
     varstr = sreplace(tmp_pool, varstr, "%C",
       session.cwd[0] ? session.cwd : "", NULL);
   }
 
-  if (strstr(varstr, "%c")) {
+  ptr = strstr(varstr, "%c");
+  if (ptr != NULL) {
     varstr = sreplace(tmp_pool, varstr, "%c",
       session.class ? session.class->cls_name : "", NULL);
   }
 
-  if (strstr(varstr, "%F")) {
+  ptr = strstr(varstr, "%F");
+  if (ptr != NULL) {
     if (strcmp(cmd->argv[0], C_RNTO) == 0) {
       char *path;
 
@@ -789,7 +794,8 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
     }
   }
 
-  if (strstr(varstr, "%f")) {
+  ptr = strstr(varstr, "%f");
+  if (ptr != NULL) {
 
     if (strcmp(cmd->argv[0], C_RNTO) == 0) {
       varstr = sreplace(tmp_pool, varstr, "%f",
@@ -820,19 +826,22 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
     }
   }
 
-  if (strstr(varstr, "%g")) {
+  ptr = strstr(varstr, "%g");
+  if (ptr != NULL) {
     varstr = sreplace(tmp_pool, varstr, "%g",
       session.group ? session.group : "", NULL);
   }
 
-  if (strstr(varstr, "%h")) {
+  ptr = strstr(varstr, "%h");
+  if (ptr != NULL) {
     const char *remote_name = pr_netaddr_get_sess_remote_name();
 
     varstr = sreplace(tmp_pool, varstr, "%h", 
       remote_name ? remote_name : "", NULL);
   }
 
-  if (strstr(varstr, "%l")) {
+  ptr = strstr(varstr, "%l");
+  if (ptr != NULL) {
     char *rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident",
       NULL);
 
@@ -842,23 +851,27 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
     varstr = sreplace(tmp_pool, varstr, "%l", rfc1413_ident, NULL);
   }
 
-  if (strstr(varstr, "%m")) {
+  ptr = strstr(varstr, "%m");
+  if (ptr != NULL) {
     varstr = sreplace(tmp_pool, varstr, "%m", cmd ? cmd->argv[0] : "",
       NULL);
   }
 
-  if (strstr(varstr, "%r")) {
+  ptr = strstr(varstr, "%r");
+  if (ptr != NULL) {
     if (cmd) {
       if (strcasecmp(cmd->argv[0], C_PASS) == 0 &&
-          session.hide_password)
+          session.hide_password) {
         varstr = sreplace(tmp_pool, varstr, "%r", "PASS (hidden)", NULL);
 
-      else
+      } else {
         varstr = sreplace(tmp_pool, varstr, "%r", get_full_cmd(cmd), NULL);
+      }
     }
   }
 
-  if (strstr(varstr, "%U")) {
+  ptr = strstr(varstr, "%U");
+  if (ptr != NULL) {
     char *user;
 
     user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
@@ -867,22 +880,26 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
       user ? user : "", NULL);
   }
 
-  if (strstr(varstr, "%u")) {
+  ptr = strstr(varstr, "%u");
+  if (ptr != NULL) {
     varstr = sreplace(tmp_pool, varstr, "%u",
       session.user ? session.user : "", NULL);
   }
 
-  if (strstr(varstr, "%V")) {
+  ptr = strstr(varstr, "%V");
+  if (ptr != NULL) {
     varstr = sreplace(tmp_pool, varstr, "%V",
       pr_netaddr_get_dnsstr(pr_netaddr_get_sess_local_addr()), NULL);
   }
 
-  if (strstr(varstr, "%v")) {
+  ptr = strstr(varstr, "%v");
+  if (ptr != NULL) {
     varstr = sreplace(tmp_pool, varstr, "%v", cmd ? cmd->server->ServerName :
       "", NULL);
   }
 
-  if (strstr(varstr, "%w")) {
+  ptr = strstr(varstr, "%w");
+  if (ptr != NULL) {
     char *rnfr_path = "-";
 
     if (strcmp(cmd->argv[0], C_RNTO) == 0) {
@@ -892,6 +909,73 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
     }
 
     varstr = sreplace(tmp_pool, varstr, "%w", rnfr_path, NULL);
+  }
+
+  /* Check for any Variable-style strings. */
+  ptr = strstr(varstr, "%{");
+  while (ptr) {
+    char *key, *ptr2;
+    const char *val;
+
+    pr_signals_handle();
+
+    ptr2 = strchr(ptr, '}');
+    if (ptr2 == NULL) {
+      ptr = strstr(ptr + 1, "%{");
+      continue;
+    }
+
+    key = pstrndup(tmp_pool, ptr, ptr2 - ptr + 1);
+
+    /* There are a couple of special-case keys to watch for:
+     *
+     *   env:$var
+     *   time:$fmt
+     *
+     * The Var API does not easily support returning values for keys
+     * where part of the value depends on part of the key.  That's why
+     * these keys are handled here, instead of in pr_var_get().
+     */
+
+    if (strncmp(key, "%{time:", 7) == 0) {
+      char time_str[128], *fmt;
+      time_t now;
+      struct tm *time_info;
+
+      fmt = pstrndup(tmp_pool, key + 7, strlen(key) - 8);
+
+      now = time(NULL);
+      time_info = pr_localtime(NULL, &now);
+
+      memset(time_str, 0, sizeof(time_str));
+      strftime(time_str, sizeof(time_str), fmt, time_info);
+
+      val = pstrdup(tmp_pool, time_str);
+
+    } else if (strncmp(key, "%{env:", 6) == 0) {
+      char *env_var;
+
+      env_var = pstrndup(tmp_pool, key + 6, strlen(key) - 7);
+      val = pr_env_get(tmp_pool, env_var);
+      if (val == NULL) {
+        pr_trace_msg("var", 4,
+          "no value set for environment variable '%s', using \"(none)\"",
+          env_var);
+        val = "(none)";
+      }
+
+    } else {
+      val = pr_var_get(key);
+      if (val == NULL) {
+        pr_trace_msg("var", 4,
+          "no value set for name '%s', using \"(none)\"", key);
+        val = "(none)";
+      }
+    }
+
+    varstr = sreplace(tmp_pool, varstr, key, val, NULL);
+
+    ptr = strstr(varstr, "%{");
   }
 
   return varstr;
@@ -1210,8 +1294,9 @@ MODRET set_execonconnect(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = exec_nexecs++;
 
-  for (i = 1; i < cmd->argc; i++)
+  for (i = 1; i < cmd->argc; i++) {
     c->argv[i+1] = pstrdup(c->pool, cmd->argv[i]);
+  }
 
   return PR_HANDLED(cmd);
 }
