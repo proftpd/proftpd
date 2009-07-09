@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.4 2009-07-09 01:27:20 castaglia Exp $
+ * $Id: mod_exec.c,v 1.5 2009-07-09 07:17:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -245,48 +245,51 @@ static char **exec_prepare_environ(pool *env_pool, cmd_rec *cmd) {
 }
 
 static void exec_prepare_fds(int stdin_fd, int stdout_fd, int stderr_fd) {
-  unsigned long nfiles = 0;
+  long nfiles = 0;
   register unsigned int i = 0;
   struct rlimit rlim;
 
   if (stdin_fd < 0) {
     stdin_fd = open("/dev/null", O_RDONLY);
-    if (stdin_fd < 0)
+    if (stdin_fd < 0) {
       exec_log("error: unable to open /dev/null for stdin: %s",
         strerror(errno));
 
-    else {
+    } else {
       if (dup2(stdin_fd, STDIN_FILENO) < 0)
         exec_log("error: unable to dup fd %d to stdin: %s", stdin_fd,
           strerror(errno));
 
-      close(stdin_fd);
+      (void) close(stdin_fd);
     }
 
   } else {
     if (stdin_fd != STDIN_FILENO) {
-      if (dup2(stdin_fd, STDIN_FILENO) < 0)
+      if (dup2(stdin_fd, STDIN_FILENO) < 0) {
         exec_log("error: unable to dup fd %d to stdin: %s", stdin_fd,
           strerror(errno));
+      }
 
-      close(stdin_fd);
+      (void) close(stdin_fd);
     }
   }
 
   if (stdout_fd != STDOUT_FILENO) {
-    if (dup2(stdout_fd, STDOUT_FILENO) < 0)
+    if (dup2(stdout_fd, STDOUT_FILENO) < 0) {
       exec_log("error: unable to dup fd %d to stdout: %s", stdout_fd,
         strerror(errno));
+    }
 
-    close(stdout_fd);
+    (void) close(stdout_fd);
   }
 
   if (stderr_fd != STDERR_FILENO) {
-    if (dup2(stderr_fd, STDERR_FILENO) < 0)
+    if (dup2(stderr_fd, STDERR_FILENO) < 0) {
       exec_log("error: unable to dup fd %d to stderr: %s", stderr_fd,
         strerror(errno));
+    }
 
-    close(stderr_fd);
+    (void) close(stderr_fd);
   }
 
   /* Make sure not to pass on open file descriptors.  For stdin, we
@@ -308,15 +311,33 @@ static void exec_prepare_fds(int stdin_fd, int stdout_fd, int stderr_fd) {
     /* Pick some arbitrary high number. */
     nfiles = 1024;
 
-  } else
+  } else {
     nfiles = rlim.rlim_max;
+  }
+
 #else /* no RLIMIT_NOFILE or RLIMIT_OFILE */
    nfiles = 1024;
 #endif
 
+  /* Yes, using a long for the nfiles variable is not quite kosher; it should
+   * be an unsigned type, otherwise a large limit (say, RLIMIT_INFINITY)
+   * might overflow the data type.  In that case, though, we want to know
+   * about it -- and using a signed type, we will know if the overflowed
+   * value is a negative number.  Chances are we do NOT want to be closing
+   * fds whose value is as high as they can possibly get; that's too many
+   * fds to iterate over.  Long story short, using a long int is just fine.
+   * (Plus it makes mod_exec work on Mac OSX 10.4; without this tweak,
+   * mod_exec's forked processes never return/exit.)
+   */
+
+  if (nfiles < 0) {
+    nfiles = 1024;
+  }
+
   /* Close the "non-standard" file descriptors. */
-  for (i = 3; i < nfiles; i++)
+  for (i = 3; i < nfiles; i++) {
     close(i);
+  }
 
   return;
 }
@@ -473,8 +494,10 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
       (unsigned long) getgid(), (unsigned long) getegid());
 
     for (i = 3; i < c->argc; i++) {
-      exec_log(" + '%s': argv[%u] = %s", (const char *) c->argv[2], i - 2,
-        (const char *) c->argv[i]);
+      if (c->argv[i] != NULL) {
+        exec_log(" + '%s': argv[%u] = %s", (const char *) c->argv[2], i - 2,
+          (const char *) c->argv[i]);
+      }
     }
 
     /* Prepare the file descriptors that the process will inherit. */
