@@ -1336,6 +1336,32 @@ sub site {
   }
 }
 
+sub quote {
+  my $self = shift;
+  my $cmd = shift;
+  $cmd = '' unless defined($cmd);
+  my $code;
+
+  $code = $self->{ftp}->quot($cmd, @_);
+  unless ($code) {
+    croak("Raw command '$cmd' failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("Raw command '$cmd' failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
 sub mlsd {
   my $self = shift;
   my $path = shift;
