@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.38 2009-07-08 18:16:02 castaglia Exp $
+ * $Id: fxp.c,v 1.39 2009-07-14 21:31:31 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2691,15 +2691,19 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
     fxh->fh = NULL;
 
     if (cmd2) {
-      int phase = (res == 0) ? POST_CMD : POST_CMD_ERR;
+      int post_phase = POST_CMD, log_phase = LOG_CMD;
+
+      if (res < 0 &&
+          xerrno != EOF) {
+        post_phase = POST_CMD_ERR;
+        log_phase = LOG_CMD_ERR;
+      }
 
       /* XXX We don't really care about the success of this dispatch, since
        * there's not much that we can do, in this code, at this point.
        */
-      (void) pr_cmd_dispatch_phase(cmd2, phase, 0);
-
-      phase = (res == 0) ? LOG_CMD : LOG_CMD_ERR;
-      (void) pr_cmd_dispatch_phase(cmd2, phase, 0);
+      (void) pr_cmd_dispatch_phase(cmd2, post_phase, 0);
+      (void) pr_cmd_dispatch_phase(cmd2, log_phase, 0);
     }
 
   } else if (fxh->dirh != NULL) {
@@ -4693,7 +4697,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
       NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, xerrno != EOF ? LOG_CMD_ERR : LOG_CMD, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
