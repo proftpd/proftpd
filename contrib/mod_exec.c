@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.5 2009-07-09 07:17:57 castaglia Exp $
+ * $Id: mod_exec.c,v 1.6 2009-07-14 18:46:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -336,6 +336,10 @@ static void exec_prepare_fds(int stdin_fd, int stdout_fd, int stderr_fd) {
 
   /* Close the "non-standard" file descriptors. */
   for (i = 3; i < nfiles; i++) {
+
+    /* This is a potentially long-running loop, so handle signals. */
+    pr_signals_handle();
+
     close(i);
   }
 
