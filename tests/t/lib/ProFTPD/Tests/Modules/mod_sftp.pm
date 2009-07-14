@@ -481,6 +481,11 @@ my $TESTS = {
     test_class => [qw(forking sftp ssh2)],
   },
 
+  sftp_log_extlog_var_s => {
+    order => ++$order,
+    test_class => [qw(forking sftp ssh2)],
+  },
+
   sftp_sighup => {
     order => ++$order,
     test_class => [qw(forking sftp ssh2)],
@@ -14810,6 +14815,256 @@ sub sftp_log_extlog_reads {
     unless ($ok) {
       die("Lines found unexpectedly in $extlog_file");
     }
+
+  } else {
+    die("Can't read $extlog_file: $!");
+  }
+
+  unlink($log_file);
+}
+
+sub sftp_log_extlog_var_s {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sftp.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
+  my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  my $write_sz = 32;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  # Create some files in the home directory to read
+  for (my $i = 0; $i < 5; $i++) {
+    my $path = File::Spec->rel2abs("$home_dir/$i.txt");
+
+    if (open(my $fh, "> $path")) {
+      print $fh "ABCD\n" x 64;
+
+      unless (close($fh)) {
+        die("Can't write $path: $!");
+      }
+
+    } else {
+      die("Can't open $path: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    LogFormat => 'response "%r %s"',
+    ExtendedLog => "$extlog_file READ response",
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $log_file",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $ssh2 = Net::SSH2->new();
+
+      sleep(1);
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($user, $passwd)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $dir = $sftp->opendir('.');
+      unless ($dir) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't open directory '.': [$err_name] ($err_code)");
+      }
+
+      my $files = {};
+
+      my $file = $dir->read();
+      while ($file) {
+        $files->{$file->{name}} = $file;
+
+        $file = $dir->read();
+      }
+
+      # To issue the FXP_CLOSE, we have to explicit destroy the dirhandle
+      $dir = undef;
+
+      foreach my $file (keys(%$files)) {
+        next unless $file =~ /\.txt$/;
+
+        my $fh = $sftp->open($file, O_RDONLY);
+        unless ($fh) {
+          my ($err_code, $err_name) = $sftp->error();
+          die("Can't open $file: [$err_name] ($err_code)");
+        }
+
+        my $read_len = 32768;
+        my $buf;
+
+        my $res = $fh->read($buf, $read_len);
+        unless ($res) {
+          my ($err_code, $err_name) = $sftp->error();
+          if ($err_code != 0) {
+            die("Can't read $file: [$err_name] ($err_code)");
+
+          } else {
+            my $err_str;
+            ($err_code, $err_name, $err_str) = $ssh2->error();
+            die("SSH2 error: [$err_name] ($err_code) $err_str");
+          }
+        }
+
+        $fh = undef;
+      }
+
+      # Explicitly disconnect without closing the file, simulating an
+      # aborted transfer.
+      $ssh2->disconnect();
+
+      # Give a little time for the server to do its end-of-session thing.
+      sleep(1);
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  if (open(my $fh, "< $extlog_file")) {
+    while (my $line = <$fh>) {
+      chomp($line);
+
+      if ($line =~ /(\S+)\s+\S+\s+(\S+)$/) {
+        my $cmd = $1;
+        my $code = $2;
+
+        my $expected;
+ 
+        if ($cmd eq 'OPEN') {
+          $expected = '-';
+
+        } elsif ($cmd eq 'CLOSE') {
+          $expected = '0';
+
+        } elsif ($cmd eq 'READ') {
+          $expected = '(-|1)';
+
+        } elsif ($cmd eq 'RETR') {
+          $expected = '-';
+
+        } else {
+          die("Unexpected command '$cmd' in $extlog_file");
+        }
+
+        $self->assert(qr/$expected/, $code,
+          test_msg("Expected '$expected', got '$code'"));
+
+      } else {
+        die("Unexpected line '$line' in $extlog_file");
+      }
+    }
+
+    close($fh);
 
   } else {
     die("Can't read $extlog_file: $!");
