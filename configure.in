@@ -1428,7 +1428,7 @@ then
 	AC_CHECK_HEADERS(floatingpoint.h)
 fi
 AC_CHECK_FUNCS(setsid setgroupent seteuid setegid setenv setpgid siginterrupt)
-AC_CHECK_FUNCS(tzset unsetenv)
+AC_CHECK_FUNCS(tzset uname unsetenv)
 
 AC_CHECK_FUNC(setpassent,
 [case "$target_os:$enable_force_setpassent" in

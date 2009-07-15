@@ -453,6 +453,9 @@
 /* Define if you have the tzset function.  */
 #undef HAVE_TZSET
 
+/* Define if you have the uname function.  */
+#undef HAVE_UNAME
+
 /* Define if you have the unsetenv function.  */
 #undef HAVE_UNSETENV
 
