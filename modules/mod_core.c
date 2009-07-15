@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.352 2009-06-30 17:22:12 castaglia Exp $
+ * $Id: mod_core.c,v 1.353 2009-07-15 05:58:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4581,21 +4581,31 @@ MODRET set_deferwelcome(cmd_rec *cmd) {
  */
 
 static const char *core_get_sess_bytes_str(void *data, size_t datasz) {
-  char buf[PR_TUNABLE_BUFFER_SIZE];
+  char buf[256];
   off_t bytes = *((off_t *) data);
 
   memset(buf, '\0', sizeof(buf));
-  snprintf(buf, sizeof(buf), "%" PR_LU, (pr_off_t) bytes);
+  snprintf(buf, sizeof(buf)-1, "%" PR_LU, (pr_off_t) bytes);
 
   return pstrdup(session.pool, buf);
 }
 
 static const char *core_get_sess_files_str(void *data, size_t datasz) {
-  char buf[PR_TUNABLE_BUFFER_SIZE];
+  char buf[256];
   unsigned int files = *((unsigned int *) data);
 
   memset(buf, '\0', sizeof(buf));
-  snprintf(buf, sizeof(buf), "%u", files);
+  snprintf(buf, sizeof(buf)-1, "%u", files);
+
+  return pstrdup(session.pool, buf);
+}
+
+static const char *core_get_xfer_bytes_str(void *data, size_t datasz) {
+  char buf[256];
+  off_t bytes = *((off_t *) data);
+
+  memset(buf, '\0', sizeof(buf));
+  snprintf(buf, sizeof(buf)-1, "%" PR_LU, (pr_off_t) bytes);
 
   return pstrdup(session.pool, buf);
 }
@@ -4857,47 +4867,62 @@ static int core_sess_init(void) {
   }
 
   /* Set some Variable entries for Display files. */
+
+  if (pr_var_set(session.pool, "%{bytes_xfer}", 
+      "Number of bytes transfered in this transfer", PR_VAR_TYPE_FUNC,
+      (void *) core_get_xfer_bytes_str, &session.xfer.total_bytes,
+      sizeof(off_t *)) < 0) {
+    pr_log_debug(DEBUG6, "error setting %%{bytes_fer} variable: %s",
+      strerror(errno));
+  }
+
   if (pr_var_set(session.pool, "%{total_bytes_in}",
       "Number of bytes uploaded during a session", PR_VAR_TYPE_FUNC,
       (void *) core_get_sess_bytes_str, &session.total_bytes_in,
-      sizeof(off_t *)) < 0)
+      sizeof(off_t *)) < 0) {
     pr_log_debug(DEBUG6, "error setting %%{total_bytes_in} variable: %s",
       strerror(errno));
+  }
 
   if (pr_var_set(session.pool, "%{total_bytes_out}", 
       "Number of bytes downloaded during a session", PR_VAR_TYPE_FUNC,
       (void *) core_get_sess_bytes_str, &session.total_bytes_out,
-      sizeof(off_t *)) < 0)
+      sizeof(off_t *)) < 0) {
     pr_log_debug(DEBUG6, "error setting %%{total_bytes_out} variable: %s",
       strerror(errno));
+  }
 
   if (pr_var_set(session.pool, "%{total_bytes_xfer}", 
       "Number of bytes transfered during a session", PR_VAR_TYPE_FUNC,
       (void *) core_get_sess_bytes_str, &session.total_bytes,
-      sizeof(off_t *)) < 0)
+      sizeof(off_t *)) < 0) {
     pr_log_debug(DEBUG6, "error setting %%{total_bytes_fer} variable: %s",
       strerror(errno));
+  }
 
   if (pr_var_set(session.pool, "%{total_files_in}", 
       "Number of files uploaded during a session", PR_VAR_TYPE_FUNC,
       (void *) core_get_sess_files_str, &session.total_files_in,
-      sizeof(unsigned int *)) < 0)
+      sizeof(unsigned int *)) < 0) {
     pr_log_debug(DEBUG6, "error setting %%{total_files_in} variable: %s",
       strerror(errno));
+  }
 
   if (pr_var_set(session.pool, "%{total_files_out}", 
       "Number of files downloaded during a session", PR_VAR_TYPE_FUNC,
       (void *) core_get_sess_files_str, &session.total_files_out,
-      sizeof(unsigned int *)) < 0)
+      sizeof(unsigned int *)) < 0) {
     pr_log_debug(DEBUG6, "error setting %%{total_files_out} variable: %s",
       strerror(errno));
+  }
 
   if (pr_var_set(session.pool, "%{total_files_xfer}", 
       "Number of files transfered during a session", PR_VAR_TYPE_FUNC,
       (void *) core_get_sess_files_str, &session.total_files_xfer,
-      sizeof(unsigned int *)) < 0)
+      sizeof(unsigned int *)) < 0) {
     pr_log_debug(DEBUG6, "error setting %%{total_files_xfer} variable: %s",
       strerror(errno));
+  }
 
   /* Look for a DisplayQuit file which has an absolute path.  If we
    * find one, open a filehandle, such that that file can be displayed
