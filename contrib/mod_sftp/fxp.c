@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.39 2009-07-14 21:31:31 castaglia Exp $
+ * $Id: fxp.c,v 1.40 2009-07-15 16:37:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -550,7 +550,9 @@ static int fxp_get_v3_open_flags(uint32_t flags) {
 }
 
 static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
-  int res = 0;
+
+  /* Assume that the desired flag is read-only by default. */
+  int res = O_RDONLY;
 
   if ((desired_access & SSH2_FXF_WANT_READ_DATA) ||
       (desired_access & SSH2_FXF_WANT_READ_ATTRIBUTES) ||
@@ -581,18 +583,6 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
       res |= O_APPEND;
     }
 #endif
-  }
-
-  /* Check for client bugs (e.g WinSCP).  If we don't have any of
-   * O_RDONLY, O_RDWR, or O_WRONLY at this point, the client is stupid,
-   * and is not providing/setting all the right bits in the right places.
-   */
-  if ((res != O_RDONLY) &&
-      !(res & O_RDWR) &&
-      !(res & O_WRONLY)) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "missing proper read/write flags in OPEN request, most likely a client "
-      "bug");
   }
 
   if ((flags & SSH2_FXF_ACCESS_APPEND_DATA) ||
@@ -638,12 +628,6 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
     if (!(res & O_RDWR)) {
       res |= O_WRONLY;
     }
-  }
-
-  /* At this point, if we're not writing, then we must be reading. */
-  if (!(res & O_RDWR) &&
-      !(res & O_WRONLY)) {
-    res |= O_RDONLY;
   }
 
   return res;
