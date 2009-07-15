@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.40 2009-07-15 16:37:19 castaglia Exp $
+ * $Id: fxp.c,v 1.41 2009-07-15 21:41:37 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -789,7 +789,6 @@ static int fxp_path_pass_regex_filters(pool *p, const char *request,
 static void fxp_status_write(char **buf, uint32_t *buflen, uint32_t request_id,
     uint32_t status_code, const char *status_msg, const char *extra_data) {
   char num[32];
-  pool *p;
 
   /* Add a fake response to the response chain, for use by mod_log's
    * logging, e.g. for supporting the %S/%s LogFormat variables.
@@ -797,12 +796,11 @@ static void fxp_status_write(char **buf, uint32_t *buflen, uint32_t request_id,
 
   pr_response_clear(&resp_list);
   pr_response_clear(&resp_err_list);
-  p = pr_response_get_pool();
 
   memset(num, '\0', sizeof(num));
   snprintf(num, sizeof(num), "%lu", (unsigned long) status_code);
   num[sizeof(num)-1] = '\0';
-  pr_response_add(pstrdup(p, num), "%s", status_msg);
+  pr_response_add(pstrdup(fxp_session->pool, num), "%s", status_msg);
 
   sftp_msg_write_byte(buf, buflen, SFTP_SSH2_FXP_STATUS);
   sftp_msg_write_int(buf, buflen, request_id);
