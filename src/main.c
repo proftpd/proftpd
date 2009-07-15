@@ -26,12 +26,13 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.377 2009-07-04 01:33:38 castaglia Exp $
+ * $Id: main.c,v 1.378 2009-07-15 21:25:19 castaglia Exp $
  */
 
 #include "conf.h"
 
 #include <signal.h>
+#include <sys/utsname.h>
 
 #ifdef HAVE_GETOPT_H
 # include <getopt.h>
@@ -2527,9 +2528,24 @@ static struct option opts[] = {
 #endif /* HAVE_GETOPT_LONG */
 
 static void show_settings(void) {
+  int res;
+  struct utsname uts;
+
   printf("Compile-time Settings:\n");
   printf("  Version: " PROFTPD_VERSION_TEXT " " PR_STATUS "\n");
-  printf("  Platform: " PR_PLATFORM "\n");
+
+  /* We use uname(2) to get the 'machine', which will tell us whether
+   * we're a 32- or 64-bit machine.
+   */
+  res = uname(&uts);
+  if (res == 0) {
+    printf("  Platform: " PR_PLATFORM " (%s %s %s)\n", uts.sysname,
+      uts.release, uts.machine);
+
+  } else {
+    printf("  Platform: " PR_PLATFORM "\n");
+  }
+
   printf("  Built: " BUILD_STAMP "\n");
   printf("  Built With:\n    configure " PR_BUILD_OPTS "\n\n");
 
