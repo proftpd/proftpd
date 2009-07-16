@@ -182,6 +182,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_sftp)],
     },
 
+    't/modules/mod_shaper.t' => {
+      order => ++$order,
+      test_class => [qw(mod_shaper)],
+    },
+
     't/modules/mod_site_misc.t' => {
       order => ++$order,
       test_class => [qw(mod_site_misc)],
