@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.17 2009-03-10 16:59:23 castaglia Exp $
+ * $Id: mod_dso.c,v 1.18 2009-07-17 01:10:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -116,7 +116,12 @@ static int dso_load_module(char *name) {
     if (mh == NULL) {
       pr_log_debug(DEBUG0, MOD_DSO_VERSION ": error loading 'self': %s",
         lt_dlerror());
-      errno = EPERM;
+
+      if (errno == ENOENT) {
+        pr_log_debug(DEBUG0, MOD_DSO_VERSION ": check to see if '%s.la' exists",
+          path);
+      }
+
       return -1;
     }
   }
@@ -141,7 +146,11 @@ static int dso_load_module(char *name) {
     lt_dlclose(mh);
     mh = NULL;
 
-    errno = EACCES;
+    if (errno == ENOENT) {
+      pr_log_debug(DEBUG0, MOD_DSO_VERSION ": check to see if '%s.la' exists",
+        path);
+    }
+
     return -1;
   }
   *tmp = '.';
