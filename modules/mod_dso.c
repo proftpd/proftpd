@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.18 2009-07-17 01:10:09 castaglia Exp $
+ * $Id: mod_dso.c,v 1.19 2009-07-17 16:35:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -118,8 +118,8 @@ static int dso_load_module(char *name) {
         lt_dlerror());
 
       if (errno == ENOENT) {
-        pr_log_debug(DEBUG0, MOD_DSO_VERSION ": check to see if '%s.la' exists",
-          path);
+        pr_log_pri(PR_LOG_NOTICE, MOD_DSO_VERSION
+          ": check to see if '%s.la' exists", path);
       }
 
       return -1;
@@ -147,8 +147,8 @@ static int dso_load_module(char *name) {
     mh = NULL;
 
     if (errno == ENOENT) {
-      pr_log_debug(DEBUG0, MOD_DSO_VERSION ": check to see if '%s.la' exists",
-        path);
+      pr_log_pri(PR_LOG_NOTICE,
+        MOD_DSO_VERSION ": check to see if '%s.la' exists", path);
     }
 
     return -1;
@@ -498,9 +498,10 @@ MODRET set_moduleorder(cmd_rec *cmd) {
   for (m = loaded_modules; m;) {
     mn = m->next;
 
-    if (pr_module_unload(m) < 0)
+    if (pr_module_unload(m) < 0) {
       pr_log_debug(DEBUG0, "%s: error unloading module 'mod_%s.c': %s",
         cmd->argv[0], m->name, strerror(errno));
+    }
 
     m = mn;
   }
@@ -514,8 +515,9 @@ MODRET set_moduleorder(cmd_rec *cmd) {
   }
 
   pr_log_pri(PR_LOG_NOTICE, "module order is now:");
-  for (m = loaded_modules; m; m = m->next)
+  for (m = loaded_modules; m; m = m->next) {
     pr_log_pri(PR_LOG_NOTICE, " mod_%s.c", m->name);
+  }
 
   return PR_HANDLED(cmd);
 }
