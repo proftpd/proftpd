@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.44 2009-04-06 22:32:21 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.45 2009-07-17 01:16:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1130,6 +1130,10 @@ static void ctrls_exit_ev(const void *event_data, void *user_data) {
 }
 
 static void ctrls_postparse_ev(const void *event_data, void *user_data) {
+
+  if (!ctrls_engine) {
+    return;
+  }
 
   /* Start listening on the ctrl socket */
   PRIVS_ROOT
