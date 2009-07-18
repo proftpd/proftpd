@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.21 2009-04-28 06:34:10 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.22 2009-07-18 01:51:52 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -390,6 +390,11 @@ negotiation or extension discovery, allowing clients and servers to easily
 agree to negotiate &quot;upward&quot; into a secure channel.  The authors
 of the FTPS Draft felt that upward negotiation was the more appropriate of
 these two approaches for encrypting FTP channels.
+
+<p>
+All that said, in ProFTPD 1.3.3rc2, the <code>mod_tls</code> module was
+enhanced to support implicit FTPS via the <code>UseImplicitSSL</code>
+<a href="../contrib/mod_tls.html#TLSOption"><code>TLSOption</code></a>.
 
 <p><a name="TLSPerUser">
 <font color=red>Question</font>: Can I require TLS on a per-user basis?<br>
@@ -863,7 +868,7 @@ OpenSSL library will adjust the ordering as appropriate.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2009-04-28 06:34:10 $</i><br>
+Last Updated: <i>$Date: 2009-07-18 01:51:52 $</i><br>
 <hr>
 
 </body>
