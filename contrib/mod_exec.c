@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.6 2009-07-14 18:46:44 castaglia Exp $
+ * $Id: mod_exec.c,v 1.7 2009-07-18 22:58:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -356,15 +356,16 @@ static void exec_prepare_pipes(void) {
       exec_stdin_pipe[1] = -1;
 
     } else {
-
-      if (fcntl(exec_stdin_pipe[0], F_SETFD, 0) < 0)
+      if (fcntl(exec_stdin_pipe[0], F_SETFD, 0) < 0) {
         exec_log("error: unable to set cloexec flag on stdin pipe read fd: %s",
           strerror(errno));
+      }
 
-      if (fcntl(exec_stdin_pipe[1], F_SETFD, FD_CLOEXEC) < 0)
+      if (fcntl(exec_stdin_pipe[1], F_SETFD, FD_CLOEXEC) < 0) {
         exec_log("error: unable to set cloexec flag on stdin pipe write fd: %s",
           strerror(errno));
       }
+    }
   }
 
   if (pipe(exec_stdout_pipe) < 0) {
@@ -373,14 +374,15 @@ static void exec_prepare_pipes(void) {
     exec_stdout_pipe[1] = STDOUT_FILENO;
 
   } else {
-
-    if (fcntl(exec_stdout_pipe[0], F_SETFD, FD_CLOEXEC) < 0)
+    if (fcntl(exec_stdout_pipe[0], F_SETFD, FD_CLOEXEC) < 0) {
       exec_log("error: unable to set cloexec flag on stdout pipe read fd: %s",
         strerror(errno));
+    }
 
-    if (fcntl(exec_stdout_pipe[1], F_SETFD, 0) < 0)
+    if (fcntl(exec_stdout_pipe[1], F_SETFD, 0) < 0) {
       exec_log("error: unable to set cloexec flag on stdout pipe write fd: %s",
         strerror(errno));
+    }
   }
 
   if (pipe(exec_stderr_pipe) < 0) {
@@ -389,14 +391,15 @@ static void exec_prepare_pipes(void) {
     exec_stderr_pipe[1] = STDERR_FILENO;
 
   } else {
-
-    if (fcntl(exec_stderr_pipe[0], F_SETFD, FD_CLOEXEC) < 0)
+    if (fcntl(exec_stderr_pipe[0], F_SETFD, FD_CLOEXEC) < 0) {
       exec_log("error: unable to set cloexec flag on stderr pipe read fd: %s",
         strerror(errno));
+    }
 
-    if (fcntl(exec_stderr_pipe[1], F_SETFD, 0) < 0)
+    if (fcntl(exec_stderr_pipe[1], F_SETFD, 0) < 0) {
       exec_log("error: unable to set cloexec flag on stderr pipe write fd: %s",
         strerror(errno));
+    }
   }
 
   return;
@@ -441,7 +444,7 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
 
   } else if (pid == 0) {
     /* Child process */
-    char **env = NULL;
+    char **env = NULL, *path = NULL, *ptr = NULL;
     register unsigned int i = 0;
 
     if (!(exec_opts & EXEC_OPT_USE_STDIN)) {
@@ -460,8 +463,10 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
       env = exec_prepare_environ(tmp_pool, cmd);
  
       /* Perform any required substitution on the command arguments. */
-      for (i = 3; i < c->argc; i++)
+      for (i = 3; i < c->argc; i++) {
+        pr_signals_handle();
         c->argv[i] = exec_subst_var(tmp_pool, c->argv[i], cmd);
+      }
     }
 
     /* Restore previous signal actions. */
@@ -497,9 +502,18 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
       (unsigned long) getuid(), (unsigned long) geteuid(),
       (unsigned long) getgid(), (unsigned long) getegid());
 
+    path = c->argv[2];
+
+    /* Trim the given path to the command to execute to just the last
+     * component; this name will be the first argument to the executed
+     * command, as per execve(2) convention.
+     */
+    ptr = strrchr(c->argv[2], '/');
+    c->argv[2] = ptr + 1;
+
     for (i = 3; i < c->argc; i++) {
       if (c->argv[i] != NULL) {
-        exec_log(" + '%s': argv[%u] = %s", (const char *) c->argv[2], i - 2,
+        exec_log(" + '%s': argv[%u] = %s", (const char *) path, i - 2,
           (const char *) c->argv[i]);
       }
     }
@@ -515,14 +529,16 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
 
     errno = 0;
 
-    /* If we are using stdin to convey all of the argument, then we need
+    /* If we are using stdin to convey all of the arguments, then we need
      * not provide any sort of environment variables. 
      */
     if (exec_opts & EXEC_OPT_USE_STDIN) {
-      execve(c->argv[2], NULL, env);
+      char *args[] = { NULL };
+
+      execve(path, args, env);
 
     } else {
-      execve(c->argv[2], (char **) (c->argv + 2), env);
+      execve(path, (char **) (c->argv + 2), env);
     }
 
     /* Since all previous file descriptors (including those for log files)
@@ -544,15 +560,41 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
      */
     if (exec_opts & EXEC_OPT_USE_STDIN) {
       register unsigned int i;
+      int maxfd = -1, fds;
+      fd_set writefds;
+      struct timeval tv;
       pool *tmp_pool = cmd ? cmd->tmp_pool : make_sub_pool(session.pool);
+
+      /* Wait for stdin to be available for writing. */
+
+      FD_ZERO(&writefds);
+      FD_SET(exec_stdin_pipe[1], &writefds);
+      if (exec_stdin_pipe[1] > maxfd) {
+        maxfd = exec_stdin_pipe[1];
+      }
+
+      /* Note: this delay should be configurable somehow. */
+      tv.tv_sec = 2L;
+      tv.tv_usec = 0L;
+
+      fds = select(maxfd + 1, &writefds, NULL, NULL, &tv);
+
+      if (fds == -1 &&
+          errno == EINTR) {
+        pr_signals_handle();
+      }
 
       /* Perform any required substitution on the command arguments. */
       for (i = 3; i < c->argc; i++) {
-        c->argv[i] = exec_subst_var(cmd->tmp_pool, c->argv[i], cmd);
+        c->argv[i] = exec_subst_var(tmp_pool, c->argv[i], cmd);
 
         /* Write the argument to stdin, terminated by a newline. */
-        if (write(exec_stdin_pipe[1], c->argv[1], strlen(c->argv[1])) < 0) {
+        if (write(exec_stdin_pipe[1], c->argv[i], strlen(c->argv[i])) < 0) {
           exec_log("error writing argument to stdin: %s", strerror(errno));
+
+        } else {
+          exec_log("wrote argument %u (%s) to stdin (%d)", i - 3,
+            (char *) c->argv[i], exec_stdin_pipe[1]);
         }
 
         if (write(exec_stdin_pipe[1], "\n", 2) < 0) {
@@ -575,22 +617,23 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
 
     if (exec_opts & EXEC_OPT_USE_STDIN) {
       close(exec_stdin_pipe[0]);
+      exec_stdin_pipe[0] = -1;
     }
 
     close(exec_stdout_pipe[1]);
+    exec_stdout_pipe[1] = -1;
+
     close(exec_stderr_pipe[1]);
+    exec_stderr_pipe[1] = -1;
    
     if ((exec_opts & EXEC_OPT_LOG_STDOUT) ||
         (exec_opts & EXEC_OPT_LOG_STDERR) ||
         (exec_opts & EXEC_OPT_SEND_STDOUT) ||
         exec_timeout > 0) {
-      int maxfd, fds, send_sigterm = 1;
+      int maxfd = -1, fds, send_sigterm = 1;
       fd_set readfds;
       struct timeval tv;
       time_t start_time = time(NULL);
-
-      maxfd = (exec_stderr_pipe[0] > exec_stdout_pipe[0]) ?
-        exec_stderr_pipe[0] : exec_stdout_pipe[0];
 
       res = waitpid(pid, &status, WNOHANG);
       while (res <= 0) {
@@ -601,8 +644,10 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
             status = -1;
             break;
 
-          } else
+          } else {
             pr_signals_handle();
+            continue;
+          }
         }
 
         /* Check the time elapsed since we started. */
@@ -631,11 +676,21 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
         FD_ZERO(&readfds);
 
         if ((exec_opts & EXEC_OPT_LOG_STDOUT) ||
-            (exec_opts & EXEC_OPT_SEND_STDOUT))
+            (exec_opts & EXEC_OPT_SEND_STDOUT)) {
           FD_SET(exec_stdout_pipe[0], &readfds);
 
-        if (exec_opts & EXEC_OPT_LOG_STDERR)
+          if (exec_stdout_pipe[0] > maxfd) {
+            maxfd = exec_stdout_pipe[0];
+          }
+        }
+
+        if (exec_opts & EXEC_OPT_LOG_STDERR) {
           FD_SET(exec_stderr_pipe[0], &readfds);
+
+          if (exec_stderr_pipe[0] > maxfd) {
+            maxfd = exec_stderr_pipe[0];
+          }
+        }
 
         /* Note: this delay should be configurable somehow. */
         tv.tv_sec = 2L;
@@ -643,10 +698,12 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
 
         fds = select(maxfd + 1, &readfds, NULL, NULL, &tv);
 
-        if (fds == -1 && errno == EINTR)
+        if (fds == -1 &&
+            errno == EINTR) {
           pr_signals_handle();
+        }
 
-        if (fds > 0) {
+        if (fds >= 0) {
           size_t buflen;
           char buf[PIPE_BUF];
 
@@ -657,28 +714,41 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
 
             buflen = read(exec_stdout_pipe[0], buf, sizeof(buf)-1);
             if (buflen > 0) {
-
               if (exec_opts & EXEC_OPT_SEND_STDOUT) {
 
                 if (!(flags & EXEC_FL_NO_SEND)) {
-                  if (flags & EXEC_FL_USE_SEND)
+                  if (flags & EXEC_FL_USE_SEND) {
                     pr_response_send(R_220, "%s", buf);
-                  else
-                    pr_response_add(R_DUP, "%s", buf);
 
-                } else
+                  } else {
+                    pr_response_add(R_DUP, "%s", buf);
+                  }
+
+                } else {
                   exec_log("not appropriate to send stdout to client at "
                     "this time");
+                }
               }
 
               /* Trim trailing CRs and LFs. */
-              while (buflen && (buf[buflen-1] == '\r' || buf[buflen-1] == '\n'))
+              while (buflen > 0 &&
+                     (buf[buflen-1] == '\r' || buf[buflen-1] == '\n')) {
+                pr_signals_handle();
+                buf[buflen-1] = '\0';
                 buflen--;
+              }
+
+              /* We told read(2) that the size of buf is one less than its
+               * actual size.  Which means that the buflen value returned
+               * by read(2) can, at most, be one less than the size of buf.
+               * Thus it should be OK to do the following.
+               */
               buf[buflen] = '\0';
 
-              if (exec_opts & EXEC_OPT_LOG_STDOUT)
+              if (exec_opts & EXEC_OPT_LOG_STDOUT) {
                 exec_log("stdout from '%s': '%s'", (const char *) c->argv[2],
                   buf);
+              }
 
             } else if (buflen < 0) {
               if (errno != 0) {
@@ -695,13 +765,24 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
             if (buflen > 0) {
 
               /* Trim trailing CRs and LFs. */
-              while (buflen && (buf[buflen-1] == '\r' || buf[buflen-1] == '\n'))
+              while (buflen > 0 &&
+                     (buf[buflen-1] == '\r' || buf[buflen-1] == '\n')) {
+                pr_signals_handle();
+                buf[buflen-1] = '\0';
                 buflen--;
+              }
+
+              /* We told read(2) that the size of buf is one less than its
+               * actual size.  Which means that the buflen value returned
+               * by read(2) can, at most, be one less than the size of buf.
+               * Thus it should be OK to do the following.
+               */
               buf[buflen] = '\0';
 
-              if (exec_opts & EXEC_OPT_LOG_STDERR)
+              if (exec_opts & EXEC_OPT_LOG_STDERR) {
                 exec_log("stderr from '%s': '%s'", (const char *) c->argv[2],
                   buf);
+              }
 
             } else if (buflen < 0) {
               if (errno != 0) {
@@ -1054,12 +1135,14 @@ MODRET exec_pre_cmd(cmd_rec *cmd) {
     /* Check the command list for this program against the current command. */
     if (exec_match_cmd(cmd, c->argv[1])) {
       int res = exec_ssystem(cmd, c, EXEC_FL_NO_SEND);
-      if (res != 0)
+      if (res != 0) {
         exec_log("%s ExecBeforeCommand '%s' failed: %s", cmd->argv[0],
           (const char *) c->argv[2], strerror(res));
-      else
+
+      } else {
         exec_log("%s ExecBeforeCommand '%s' succeeded", cmd->argv[0],
           (const char *) c->argv[2]);
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "ExecBeforeCommand", FALSE);
@@ -1110,12 +1193,14 @@ MODRET exec_post_cmd(cmd_rec *cmd) {
     /* Check the command list for this program against the command. */
     if (exec_match_cmd(cmd, c->argv[1])) {
       int res = exec_ssystem(cmd, c, 0);
-      if (res != 0)
+      if (res != 0) {
         exec_log("%s ExecOnCommand '%s' failed: %s", cmd->argv[0],
           (const char *) c->argv[2], strerror(res));
-      else
+
+      } else {
         exec_log("%s ExecOnCommand '%s' succeeded", cmd->argv[0],
           (const char *) c->argv[2]);
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "ExecOnCommand", FALSE);
@@ -1481,21 +1566,22 @@ MODRET set_execoptions(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strcmp(cmd->argv[i], "logStdout") == 0)
+    if (strcmp(cmd->argv[i], "logStdout") == 0) {
       opts |= EXEC_OPT_LOG_STDOUT;
 
-    else if (strcmp(cmd->argv[i], "logStderr") == 0)
+    } else if (strcmp(cmd->argv[i], "logStderr") == 0) {
       opts |= EXEC_OPT_LOG_STDERR;
 
-    else if (strcmp(cmd->argv[i], "sendStdout") == 0)
+    } else if (strcmp(cmd->argv[i], "sendStdout") == 0) {
       opts |= EXEC_OPT_SEND_STDOUT;
 
-    else if (strcmp(cmd->argv[1], "useStdin") == 0)
+    } else if (strcmp(cmd->argv[i], "useStdin") == 0) {
       opts |= EXEC_OPT_USE_STDIN;
 
-    else
+    } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown ExecOption: '",
         cmd->argv[i], "'", NULL));
+    }
   }
 
   c->argv[0] = palloc(c->pool, sizeof(unsigned int));
@@ -1536,13 +1622,14 @@ static void exec_any_ev(const void *event_data, void *user_data) {
     return;
 
   res = exec_ssystem(NULL, eed->c, eed->flags);
-  if (res != 0)
+  if (res != 0) {
     exec_log("ExecOnEvent '%s' for %s failed: %s", eed->event,
       (const char *) eed->c->argv[2], strerror(res));
 
-  else
+  } else {
     exec_log("ExecOnEvent '%s' for %s succeeded", eed->event,
       (const char *) eed->c->argv[2]);
+  }
 }
 
 static void exec_exit_ev(const void *event_data, void *user_data) {
@@ -1660,8 +1747,9 @@ static int exec_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "ExecOptions", FALSE);
-  if (c)
+  if (c) {
     exec_opts = *((unsigned int *) c->argv[0]);
+  }
 
   c = find_config(main_server->conf, CONF_PARAM, "ExecTimeout", FALSE);
   if (c)
