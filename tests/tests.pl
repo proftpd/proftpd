@@ -113,8 +113,9 @@ if (scalar(@ARGV) > 0) {
     t/config/timeoutnotransfer.t
     t/config/timeoutsession.t
     t/config/timeoutstalled.t
-    t/config/useralias.t
     t/config/useftpusers.t
+    t/config/useglobbing.t
+    t/config/useralias.t
     t/config/userowner.t
     t/config/userpassword.t
     t/config/directory/limits.t
