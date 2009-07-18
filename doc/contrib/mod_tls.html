@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.21 2009-03-10 06:52:09 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.22 2009-07-18 01:48:32 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -831,6 +831,33 @@ The currently implemented options are:
     </table>
 
   <p>
+  <li><code>UseImplicitSSL</code><br>
+    <p>
+    This option will cause the <code>mod_tls</code> module to handle <b>all</b>
+    connections as if they are SSL connections implicitly; the client does
+    <i>not</i> need to send the <code>AUTH TLS</code> FTP command.  This can
+    cause issues for FTPS clients which are expecting explicit FTPS, not
+    implicit FTPS.
+
+    <p>
+    Thus if the <code>UseImplicitSSL</code> option is used, you will want to
+    have a separate <code>&lt;VirtualHost&gt;</code> section with
+    a different port number just for those clients which require/expect
+    implicit FTPS.  For example:
+<pre>
+    &lt;IfModule mod_tls.c&gt;
+      &lt;VirtualHost a.b.c.d&gt;
+        TLSEngine on
+        TLSOptions UseImplicitSSL
+
+        # The "standard" implicit FTPS port is 990
+        Port 990
+        ...
+      &lt;/VirtualHost&gt;
+    &lt;/IfModule&gt;
+</pre>
+
+  <p>
   <li><code>dNSNameRequired</code><br>
     <p>
     This option will cause <code>mod_tls</code> to perform checks on a client's
@@ -1486,7 +1513,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-03-10 06:52:09 $</i><br>
+Last Updated: <i>$Date: 2009-07-18 01:48:32 $</i><br>
 
 <hr>
 <font size=2><b><i>

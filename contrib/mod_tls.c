@@ -61,7 +61,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.3"
+#define MOD_TLS_VERSION		"mod_tls/2.4"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001 
@@ -405,6 +405,7 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_OPT_ALLOW_PER_USER				0x0040
 #define TLS_OPT_ENABLE_DIAGS				0x0080
 #define TLS_OPT_NO_SESSION_REUSE_REQUIRED		0x0100
+#define TLS_OPT_USE_IMPLICIT_SSL			0x0200
 
 /* mod_tls cleanup flags */
 #define TLS_CLEANUP_FL_SESS_INIT	0x0001
@@ -5918,9 +5919,13 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "iPAddressRequired") == 0) {
       opts |= TLS_OPT_VERIFY_CERT_IP_ADDR;
 
-    } else
+    } else if (strcmp(cmd->argv[i], "UseImplicitSSL") == 0) {
+      opts |= TLS_OPT_USE_IMPLICIT_SSL;
+
+    } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TLSOption '",
         cmd->argv[i], "'", NULL));
+    }
   }
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
@@ -6978,6 +6983,20 @@ static int tls_sess_init(void) {
   pr_feat_add("AUTH TLS");
   pr_feat_add("PBSZ");
   pr_feat_add("PROT");
+
+  if (tls_opts & TLS_OPT_USE_IMPLICIT_SSL) {
+    tls_log("%s", "TLSOption UseImplicitSSL in effect, starting SSL/TLS "
+      "handshake");
+
+    if (tls_accept(session.c, FALSE) < 0) {
+      tls_log("%s", "implicit SSL/TLS negotiation failed on control channel");
+
+      errno = EACCES;
+      return -1;
+    }
+
+    tls_flags |= TLS_SESS_ON_CTRL;
+  }
 
   return 0;
 }
