@@ -1,4 +1,4 @@
-<!-- $Id: mod_exec.html,v 1.3 2009-04-28 22:26:34 castaglia Exp $ -->
+<!-- $Id: mod_exec.html,v 1.4 2009-07-18 19:50:50 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_exec.html,v $ -->
 
 <html>
@@ -532,7 +532,7 @@ use the <code>chroot(2)</code> system call, which wreaks havoc when it
 comes to scripts.  The path to script/shell interpreters often assume a certain
 location that is no longer valid within a chroot.  In addition, most modern
 operating systems use dynamically loaded libraries (<code>.so</code>
-libraries) for many binaries, including script/shell interpretes.  The
+libraries) for many binaries, including script/shell interpreters.  The
 location of these libraries, when they come to be loaded, are also assumed;
 those assumptions break within a chroot.  Perl, in particular, is so
 wrought with filesystem location assumptions that it's almost impossible
@@ -549,11 +549,11 @@ that it probably won't do what you want.
 As an alternative to <code>mod_exec</code> for executing arbitrary
 scripts/commands based on FTP command issued, file uploaded/downloaded,
 <i>etc</i>, I recommend using a logging FIFO-based approach, similar to
-what is illustrated <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Logging.html">here</a>.  This approach allows for any script
-you wish, and is not subject to the restrictions of a chroot, meaning
-that you can use <code>DefaultRoot</code> and still have arbitrary scripts
-executed.  If requested, I can provide help in writing a FIFO reader
-to execute the necessary scripts.
+what is illustrated <a href="../howto/Logging.html">here</a>.  This approach
+allows for any script you wish, and is not subject to the restrictions of a
+chroot, meaning that you can use <code>DefaultRoot</code> and still have
+arbitrary scripts executed.  If requested, I can provide help in writing a
+FIFO reader to execute the necessary scripts.
 
 <p>
 <hr>
@@ -571,15 +571,23 @@ usual steps for using third-party modules in proftpd:
 </pre>
 
 <p>
+Alternatively, if your proftpd was compiled with DSO support, you can
+use the <code>prxs</code> tool to build <code>mod_exec</code> as a shared
+module:
+<pre>
+  prxs -c -i -d mod_exec.c
+</pre>
+
+<p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-04-28 22:26:34 $</i><br>
+Last Updated: <i>$Date: 2009-07-18 19:50:50 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2007 TJ Saunders<br>
+&copy; Copyright 2000-2009 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
