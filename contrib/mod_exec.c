@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.7 2009-07-18 22:58:36 castaglia Exp $
+ * $Id: mod_exec.c,v 1.8 2009-07-19 19:06:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -806,8 +806,10 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
             status = -1;
             break;
 
-          } else
+          } else {
             pr_signals_handle();
+            continue;
+          }
         }
 
         res = waitpid(pid, &status, 0);
@@ -1643,6 +1645,8 @@ static void exec_exit_ev(const void *event_data, void *user_data) {
   while (c) {
     int res;
 
+    pr_signals_handle();
+
     res = exec_ssystem(NULL, c, EXEC_FL_CLEAR_GROUPS|EXEC_FL_NO_SEND);
     if (res != 0) {
       exec_log("ExecOnExit '%s' failed: %s", (const char *) c->argv[2],
@@ -1706,6 +1710,8 @@ static void exec_restart_ev(const void *event_data, void *user_data) {
 
     while (c) {
       int res;
+
+      pr_signals_handle();
 
       res = exec_ssystem(NULL, c, EXEC_FL_CLEAR_GROUPS|EXEC_FL_NO_SEND);
       if (res != 0) {
@@ -1773,6 +1779,8 @@ static int exec_sess_init(void) {
 
   while (c) {
     int res;
+
+    pr_signals_handle();
 
     res = exec_ssystem(NULL, c, EXEC_FL_CLEAR_GROUPS|EXEC_FL_USE_SEND);
     if (res != 0) {
