@@ -85,6 +85,7 @@ if (scalar(@ARGV) > 0) {
     t/config/accessdenymsg.t
     t/config/accessgrantmsg.t
     t/config/allowoverwrite.t
+    t/config/authaliasonly.t
     t/config/authusingalias.t
     t/config/createhome.t
     t/config/deleteabortedstores.t
