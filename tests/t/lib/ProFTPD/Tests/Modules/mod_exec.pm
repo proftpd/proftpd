@@ -46,6 +46,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  exec_on_restart => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   exec_opt_log_stdout => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -810,6 +815,7 @@ sub exec_on_error {
         DenyAll => '',
       },
     },
+
   };
 
   my ($port, $config_user, $config_group) = config_write($config_file, $config);
@@ -879,6 +885,125 @@ sub exec_on_error {
 
   } else {
     die("Can't read $cmd_file: $!");
+  }
+
+  unlink($log_file);
+}
+
+sub exec_restart {
+  my $pid_file = shift;
+
+  my $pid;
+  if (open(my $fh, "< $pid_file")) {
+    $pid = <$fh>;
+    chomp($pid);
+    close($fh);
+
+  } else {
+    die("Can't read $pid_file: $!");
+  }
+
+  my $cmd = "kill -HUP $pid";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Restarting server: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+}
+
+sub exec_on_restart {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/exec.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/exec.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/exec.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/exec.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/exec.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+  
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $restart_file = File::Spec->rel2abs("$tmpdir/restart.txt");
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_exec.c' => {
+        ExecEngine => 'on',
+        ExecLog => $log_file,
+        ExecTimeout => 1,
+        ExecOnRestart => "/bin/bash -c \"echo restarted > $restart_file\"",
+      },
+
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Start the server
+  server_start($config_file);
+
+  # Give it a second or two to start up, then send the SIGHUP signal.  Wait
+  # for a couple seconds after, to let mod_exec do its thing.
+  sleep(2);
+  exec_restart($pid_file);
+  sleep(2);
+
+  # Stop server
+  server_stop($pid_file);
+
+  if (open(my $fh, "< $restart_file")) {
+    my $line = <$fh>;
+    close($fh);
+
+    chomp($line);
+
+    my $expected = 'restarted';
+
+    $self->assert($expected eq $line,
+      test_msg("Expected '$expected', got '$line'"));
+
+  } else {
+    die("Can't read $restart_file: $!");
   }
 
   unlink($log_file);
