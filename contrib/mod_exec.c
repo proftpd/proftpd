@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.8 2009-07-19 19:06:32 castaglia Exp $
+ * $Id: mod_exec.c,v 1.9 2009-07-19 19:11:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -533,7 +533,7 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
      * not provide any sort of environment variables. 
      */
     if (exec_opts & EXEC_OPT_USE_STDIN) {
-      char *args[] = { NULL };
+      char *args[] = { ptr + 1, NULL };
 
       execve(path, args, env);
 
