@@ -133,6 +133,7 @@ if (scalar(@ARGV) > 0) {
     t/signals/segv.t
     t/signals/abrt.t
     t/utils/ftpcount.t
+    t/utils/ftpwho.t
   )];
 
   # Now interrogate the build to see which module/feature-specific test files
