@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.41 2009-07-15 21:41:37 castaglia Exp $
+ * $Id: fxp.c,v 1.42 2009-07-20 18:22:31 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1994,6 +1994,17 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
 
   fxh = value_data;
   delete_aborted_stores = user_data;
+
+  /* Is this a file or a directory handle? */
+  if (fxh->dirh != NULL) {
+    if (pr_fsio_closedir(fxh->dirh) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error closing aborted directory '%s': %s", fxh->dir, strerror(errno));
+    }
+
+    fxh->dirh = NULL;
+    return 0;
+  }
 
   curr_path = pstrdup(fxh->pool, fxh->fh->fh_path);
   real_path = curr_path;
