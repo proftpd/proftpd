@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.5 2009-06-03 17:28:56 castaglia Exp $
+ * $Id: keys.c,v 1.6 2009-07-20 02:37:09 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -68,7 +68,7 @@ struct sftp_pkey_data {
 static const char *trace_channel = "ssh2";
 
 static void prepare_provider_fds(int stdout_fd, int stderr_fd) {
-  unsigned long nfiles = 0;
+  long nfiles = 0;
   register unsigned int i = 0;
   struct rlimit rlim;
 
@@ -78,7 +78,7 @@ static void prepare_provider_fds(int stdout_fd, int stderr_fd) {
         ": error duping fd %d to stdout: %s", stdout_fd, strerror(errno));
     }
 
-    close(stdout_fd);
+    (void) close(stdout_fd);
   }
 
   if (stderr_fd != STDERR_FILENO) {
@@ -87,7 +87,7 @@ static void prepare_provider_fds(int stdout_fd, int stderr_fd) {
         ": error duping fd %d to stderr: %s", stderr_fd, strerror(errno));
     }
 
-    close(stderr_fd);
+    (void) close(stderr_fd);
   }
 
   /* Make sure not to pass on open file descriptors. For stdout and stderr,
@@ -109,8 +109,10 @@ static void prepare_provider_fds(int stdout_fd, int stderr_fd) {
     /* Pick some arbitrary high number. */
     nfiles = 255;
 
-  } else
+  } else {
     nfiles = rlim.rlim_max;
+  }
+
 #else /* no RLIMIT_NOFILE or RLIMIT_OFILE */
    nfiles = 255;
 #endif
@@ -121,11 +123,25 @@ static void prepare_provider_fds(int stdout_fd, int stderr_fd) {
    * select() to work property on the stdout/stderr fds attached to the
    * exec'd script.
    */
-  if (nfiles > 255)
+  if (nfiles > 255) {
     nfiles = 255;
+  }
+
+  if (nfiles < 0) {
+    /* Yes, using a long for the nfiles variable is not quite kosher; it should
+     * be an unsigned type, otherwise a large limit (say, RLIMIT_INFINITY)
+     * might overflow the data type.  In that case, though, we want to know
+     * about it -- and using a signed type, we will know if the overflowed
+     * value is a negative number.  Chances are we do NOT want to be closing
+     * fds whose value is as high as they can possibly get; that's too many
+     * fds to iterate over.  Long story short, using a long int is just fine.
+     */
+    nfiles = 255;
+  }
  
   /* Close the "non-standard" file descriptors. */
   for (i = 3; i < nfiles; i++) {
+    pr_signals_handle();
     (void) close(i);
   }
 
@@ -265,7 +281,7 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
 
   } else {
     int res;
-    int maxfd, fds, send_sigterm = 1;
+    int maxfd = -1, fds, send_sigterm = 1;
     fd_set readfds;
     time_t start_time = time(NULL);
     struct timeval tv;
@@ -273,10 +289,18 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
     /* Parent process */
 
     close(stdout_pipe[1]);
-    close(stderr_pipe[1]);
+    stdout_pipe[1] = -1;
 
-    maxfd = (stderr_pipe[0] > stdout_pipe[0]) ?
-      stderr_pipe[0] : stdout_pipe[0];
+    close(stderr_pipe[1]);
+    stderr_pipe[1] = -1;
+
+    if (stdout_pipe[0] > maxfd) {
+      maxfd = stdout_pipe[0];
+    }
+
+    if (stderr_pipe[0] > maxfd) {
+      maxfd = stderr_pipe[0];
+    }
 
     res = waitpid(pid, &status, WNOHANG);
     while (res <= 0) {
@@ -288,8 +312,10 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
           status = -1;
           break;
 
-        } else
+        } else {
           pr_signals_handle();
+          continue;
+        }
       }
 
       /* Check the time elapsed since we started. */
@@ -339,11 +365,14 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
         if (FD_ISSET(stdout_pipe[0], &readfds)) {
           res = read(stdout_pipe[0], buf, buflen);
           if (res > 0) {
-              while (res && (buf[res-1] == '\r' || buf[res-1] == '\n'))
+              while (res &&
+                     (buf[res-1] == '\r' ||
+                      buf[res-1] == '\n')) {
                 res--;
+              }
               buf[res] = '\0';
 
-          } else if (res < 0){
+          } else if (res < 0) {
             pr_log_debug(DEBUG2, MOD_SFTP_VERSION
               ": error reading stdout from '%s': %s",
               passphrase_provider, strerror(errno));
@@ -359,8 +388,9 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
           if (stderrlen > 0) {
             while (stderrlen &&
                    (stderrbuf[stderrlen-1] == '\r' ||
-                    stderrbuf[stderrlen-1] == '\n'))
+                    stderrbuf[stderrlen-1] == '\n')) {
               stderrlen--;
+            }
             stderrbuf[stderrlen] = '\0';
 
             pr_log_debug(DEBUG5, MOD_SFTP_VERSION
