@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.43 2009-07-20 18:33:02 castaglia Exp $
+ * $Id: fxp.c,v 1.44 2009-07-20 21:07:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2992,9 +2992,9 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
   }
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = "STAT";
+  cmd->argv[0] = "FSTAT";
 
-  if (!dir_check(fxp->pool, cmd, G_READ, fxh->fh->fh_path, NULL)) {
+  if (!dir_check(fxp->pool, cmd, G_NONE, fxh->fh->fh_path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     cmd->argv[0] = cmd_name;
@@ -3599,9 +3599,9 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   path = cmd->arg;
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = "STAT";
+  cmd->argv[0] = "LSTAT";
 
-  if (!dir_check(fxp->pool, cmd, G_READ, path, NULL)) {
+  if (!dir_check(fxp->pool, cmd, G_NONE, path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     cmd->argv[0] = cmd_name;
@@ -6029,7 +6029,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   cmd_name = cmd->argv[0];
   cmd->argv[0] = "STAT";
 
-  if (!dir_check(fxp->pool, cmd, G_READ, path, NULL)) {
+  if (!dir_check(fxp->pool, cmd, G_NONE, path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     cmd->argv[0] = cmd_name;
