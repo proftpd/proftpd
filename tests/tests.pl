@@ -8,10 +8,14 @@ use Getopt::Long;
 use Test::Harness;
 
 my $opts = {};
-GetOptions($opts, 'h|help', 'C|class=s@');
+GetOptions($opts, 'h|help', 'C|class=s@', 'V|verbose');
 
 if ($opts->{h}) {
   usage();
+}
+
+if ($opts->{V}) {
+  $ENV{TEST_VERBOSE} = 1;
 }
 
 # We use this, rather than use(), since use() is equivalent to a BEGIN
@@ -254,7 +258,7 @@ exit 0;
 sub usage {
   print STDOUT <<EOH;
 
-$0: [--help] [--class=\$name]
+$0: [--help] [--class=\$name] [--verbose]
 
 Examples:
 
