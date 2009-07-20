@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.72 2009-03-05 18:56:13 castaglia Exp $
+ * $Id: auth.c,v 1.73 2009-07-20 00:18:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1072,7 +1072,7 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
 /* This is one messy function.  Yuck.  Yay legacy code. */
 config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
     char **user_name, char **anon_name) {
-  config_rec *c = NULL, *topc = NULL;
+  config_rec *c = NULL, *topc = NULL, *anon_c = NULL;
   char *config_user_name, *config_anon_name = NULL;
   unsigned char is_alias = FALSE, *auth_alias_only = NULL;
 
@@ -1083,8 +1083,10 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
    */
 
   config_user_name = get_param_ptr(main_server->conf, "UserName", FALSE);
-  if (config_user_name && user_name)
+  if (config_user_name &&
+      user_name) {
     *user_name = config_user_name;
+  }
 
   /* If the main_server->conf->set list is large (e.g. there are many
    * config_recs in the list, as can happen if MANY <Directory> sections are
@@ -1101,6 +1103,8 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
   c = find_config(main_server->conf, CONF_PARAM, "UserAlias", TRUE);
   if (c) {
     do {
+      pr_signals_handle();
+
       if (strcmp(c->argv[0], "*") == 0 ||
           strcmp(c->argv[0], *login_name) == 0) {
         is_alias = TRUE;
@@ -1120,12 +1124,17 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
     /* while() loops should always handle signals. */
     pr_signals_handle();
 
-    /* If AuthAliasOnly is on, ignore this one and continue. */
-    if (auth_alias_only &&
-        *auth_alias_only == TRUE) {
-      c = find_config_next(c, c->next, CONF_PARAM, "UserAlias", TRUE);
-      continue;
+    if (auth_alias_only) {
+      /* If AuthAliasOnly is on, ignore this one and continue. */
+      if (*auth_alias_only == TRUE) {
+        c = find_config_next(c, c->next, CONF_PARAM, "UserAlias", TRUE);
+        continue;
+      }
     }
+
+    /* At this point, we have found an "AuthAliasOnly off" config in
+     * c->parent->set.  See if there's a UserAlias in the same config set.
+     */
 
     is_alias = FALSE;
 
@@ -1134,8 +1143,9 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
 
     if (c &&
         (strcmp(c->argv[0], "*") == 0 ||
-         strcmp(c->argv[0], *login_name) == 0))
+         strcmp(c->argv[0], *login_name) == 0)) {
       is_alias = TRUE;
+    }
   }
 
   if (c) {
@@ -1145,22 +1155,29 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
      * our anon block.
      */
     if (c->parent &&
-        c->parent->config_type == CONF_ANON)
+        c->parent->config_type == CONF_ANON) {
       c = c->parent;
-    else
+
+    } else {
       c = NULL;
+    }
   }
 
   /* Next, search for an anonymous entry. */
 
   if (!c) {
     c = find_config(main_server->conf, CONF_ANON, NULL, FALSE);
+    anon_c = c;
 
-  } else
+  } else {
     find_config_set_top(c);
+    anon_c = c;
+  }
 
   if (c) {
     do {
+      pr_signals_handle();
+
       config_anon_name = get_param_ptr(c->subset, "UserName", FALSE);
 
       if (!config_anon_name)
@@ -1175,18 +1192,23 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
  
     } while ((c = find_config_next(c, c->next, CONF_ANON, NULL,
       FALSE)) != NULL);
+
+    c = anon_c;
   }
 
   if (!is_alias) {
-    auth_alias_only = get_param_ptr(c ? c->subset : main_server->conf,
+    auth_alias_only = get_param_ptr(anon_c ? anon_c->subset : main_server->conf,
       "AuthAliasOnly", FALSE);
 
     if (auth_alias_only &&
         *auth_alias_only == TRUE) {
-      if (c && c->config_type == CONF_ANON)
-        c = NULL;
-      else
+      if (anon_c &&
+          anon_c->config_type == CONF_ANON) {
+        anon_c = NULL;
+
+      } else {
         *login_name = NULL;
+      }
 
       auth_alias_only = get_param_ptr(main_server->conf, "AuthAliasOnly",
         FALSE);
@@ -1195,9 +1217,10 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
           *auth_alias_only == TRUE)
         *login_name = NULL;
 
-      if ((!login_name || !c) &&
-          anon_name)
+      if ((!login_name || !anon_c) &&
+          anon_name) {
         *anon_name = NULL;
+      }
     }
   }
 
