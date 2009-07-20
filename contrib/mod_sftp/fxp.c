@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.42 2009-07-20 18:22:31 castaglia Exp $
+ * $Id: fxp.c,v 1.43 2009-07-20 18:33:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2037,6 +2037,13 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
     abs_path, 'b', direction, 'r', session.user, 'i');
 
   if (cmd) {
+    /* Ideally we could provide a real response code/message for any
+     * configured ExtendedLogs for these aborted uploads.  Something to
+     * refine in the future...
+     */
+    pr_response_clear(&resp_list);
+    pr_response_clear(&resp_err_list);
+
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
   }
