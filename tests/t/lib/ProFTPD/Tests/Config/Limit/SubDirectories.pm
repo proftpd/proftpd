@@ -163,8 +163,8 @@ EOT
         die("MKD succeeded unexpected");
       }
 
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
 
       my $expected;
 
