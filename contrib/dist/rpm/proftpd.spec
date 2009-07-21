@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.66 2009-07-01 02:50:04 castaglia Exp $
+# $Id: proftpd.spec,v 1.67 2009-07-21 16:26:40 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -8,6 +8,7 @@
 # The following modules/support can be added in this manner:
 #
 #   mod_tls
+#   mod_sftp
 #   mod_radius
 #   mod_ldap
 #   mod_wrap
@@ -63,7 +64,7 @@
 %endif
 
 # put mod_ifsession at the end of the list (always)
-%define shared_modules	%{?_with_mod_tls:mod_tls:}mod_sql:mod_radius:mod_ban:mod_ctrls_admin:mod_load:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_ratio:mod_readme:mod_rewrite:mod_site_misc:mod_wrap2:mod_wrap2_file:mod_wrap2_sql%{?_with_nls::mod_lang}:mod_ifsession
+%define shared_modules	%{?_with_mod_tls:mod_tls:}%{?_with_mod_sftp:mod_sftp:}mod_sql:mod_radius:mod_ban:mod_ctrls_admin:mod_load:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_ratio:mod_readme:mod_rewrite:mod_site_misc:mod_wrap2:mod_wrap2_file:mod_wrap2_sql%{?_with_nls::mod_lang}:mod_ifsession
 
 %define unbundled_modules mod_ldap:mod_sql_mysql:mod_sql_postgres:mod_wrap
 
@@ -102,6 +103,12 @@ BuildRoot:		%{_tmppath}/%{name}-%{version}-root
 Requires:		pam >= 0.99, /sbin/chkconfig
 BuildRequires:		pkgconfig, pam-devel, ncurses-devel, zlib-devel
 BuildRequires:		rpm-build >= 4.2
+# For mod_sftp:
+%if 0%{?_with_mod_sftp:1}
+%define _with_openssl   1
+Requires:               zlib
+BuildRequires:          zlib-devel
+%endif
 # For mod_tls:
 %if 0%{?_with_mod_tls:1}
 %define _with_openssl	1
