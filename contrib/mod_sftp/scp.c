@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.21 2009-07-05 01:48:50 castaglia Exp $
+ * $Id: scp.c,v 1.22 2009-07-21 22:20:03 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -577,6 +577,9 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
         sp->best_path = dir_canonical_vpath(scp_pool, sp->path);
       }
     }
+
+    /* Update the session.xfer.path value with this better, fuller path. */
+    session.xfer.path = pstrdup(session.xfer.p, sp->best_path);
   }
 
   pr_trace_msg(trace_channel, 8,
