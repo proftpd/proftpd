@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.168 2009-07-21 23:21:29 castaglia Exp $
+ * $Id: mod_sql.c,v 1.169 2009-07-21 23:38:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -399,6 +399,7 @@ static int check_response(modret_t *mr) {
     end_login(1);
   }
 
+  sql_log(DEBUG_FUNC, "SQLOption noDisconnectOnError in effect, not exiting");
   return -1;
 }
 
@@ -2338,8 +2339,8 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name) {
           mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default",
             argp), "sql_escapestring");
           if (check_response(mr) < 0)
-            return PR_ERROR_MSG(cmd, MOD_SQL_VERSION,
-              "database error");
+            return PR_ERROR_MSG(cmd, MOD_SQL_VERSION, "database error");
+
           esc_arg = (char *) mr->data;
         }
 
@@ -2406,6 +2407,8 @@ MODRET log_master(cmd_rec *cmd) {
 
   if (c) {
     do {
+      pr_signals_handle();
+
       sql_log(DEBUG_FUNC, "%s", ">>> log_master");
 
       qname = c->argv[0];
@@ -2416,22 +2419,20 @@ MODRET log_master(cmd_rec *cmd) {
 	    strcasecmp(type, SQL_FREEFORM_C) == 0 ||
 	    strcasecmp(type, SQL_INSERT_C) == 0) {
 	  mr = process_named_query(cmd, qname);
-	  if (c->argc == 2) {
-            if (check_response(mr) < 0)
-              return mr;
-          }
+          if (check_response(mr) < 0)
+            return mr;
 
 	} else {
 	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
             "FREEFORM query", qname);
 	}
+
       } else {
 	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
       }
 
       sql_log(DEBUG_FUNC, "%s", "<<< log_master");
-    } while((c = find_config_next(c, c->next, 
-				  CONF_PARAM, name, FALSE)) != NULL);
+    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
   }
   
   /* handle implit queries */
@@ -2441,6 +2442,8 @@ MODRET log_master(cmd_rec *cmd) {
 
   if (c) {
     do {
+      pr_signals_handle();
+
       sql_log(DEBUG_FUNC, "%s", ">>> log_master");
 
       qname = c->argv[0];
@@ -2451,22 +2454,20 @@ MODRET log_master(cmd_rec *cmd) {
 	    strcasecmp(type, SQL_FREEFORM_C) == 0 ||
 	    strcasecmp(type, SQL_INSERT_C) == 0) {
           mr = process_named_query(cmd, qname);
-          if (c->argc == 2) {
-            if (check_response(mr) < 0)
-              return mr;
-          }
+          if (check_response(mr) < 0)
+            return mr;
 
 	} else {
 	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
             "FREEFORM query", qname);
 	}
+
       } else {
 	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
       }
 
       sql_log(DEBUG_FUNC, "%s", "<<< log_master");
-    } while((c = find_config_next(c, c->next, 
-				  CONF_PARAM, name, FALSE)) != NULL);
+    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
   }
 
   return PR_DECLINED(cmd);
@@ -2489,6 +2490,8 @@ MODRET err_master(cmd_rec *cmd) {
 
   if (c) {
     do {
+      pr_signals_handle();
+
       sql_log(DEBUG_FUNC, "%s", ">>> err_master");
 
       qname = c->argv[0];
@@ -2499,22 +2502,20 @@ MODRET err_master(cmd_rec *cmd) {
 	    strcasecmp(type, SQL_FREEFORM_C) == 0 ||
 	    strcasecmp(type, SQL_INSERT_C) == 0) {
           mr = process_named_query(cmd, qname);
-          if (c->argc == 2) {
-            if (check_response(mr) < 0)
-              return mr;
-          }
+          if (check_response(mr) < 0)
+            return mr;
 
 	} else {
 	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
             "FREEFORM query", qname);
 	}
+
       } else {
 	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
       }
 
       sql_log(DEBUG_FUNC, "%s", "<<< err_master");
-    } while((c = find_config_next(c, c->next, 
-				  CONF_PARAM, name, FALSE)) != NULL);
+    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
   }
   
   /* handle implicit errors */
@@ -2524,6 +2525,8 @@ MODRET err_master(cmd_rec *cmd) {
 
   if (c) {
     do {
+      pr_signals_handle();
+
       sql_log(DEBUG_FUNC, "%s", ">>> err_master");
 
       qname = c->argv[0];
@@ -2534,22 +2537,20 @@ MODRET err_master(cmd_rec *cmd) {
 	    strcasecmp(type, SQL_FREEFORM_C) == 0 ||
 	    strcasecmp(type, SQL_INSERT_C) == 0) {
           mr = process_named_query(cmd, qname);
-          if (c->argc == 2) {
-            if (check_response(mr) < 0)
-              return mr;
-          }
+          if (check_response(mr) < 0)
+            return mr;
 
 	} else {
 	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
             "FREEFORM query", qname);
 	}
+
       } else {
 	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
       }
 
       sql_log(DEBUG_FUNC, "%s", "<<< err_master");
-    } while((c = find_config_next(c, c->next, 
-				  CONF_PARAM, name, FALSE)) != NULL);
+    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
   }
 
   return PR_DECLINED(cmd);
@@ -2610,8 +2611,7 @@ MODRET info_master(cmd_rec *cmd) {
 	    if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
 			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
 	      mr = process_named_query(cmd, query);
-	      
-              if (MODRET_ISERROR(mr)) {
+              if (check_response(mr) < 0) {
                 memset(outs, '\0', sizeof(outs));
                 break;
 
@@ -2716,7 +2716,7 @@ MODRET info_master(cmd_rec *cmd) {
 			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
 	      mr = process_named_query(cmd, query);
 	      
-              if (MODRET_ISERROR(mr)) {
+              if (check_response(mr) < 0) {
                 memset(outs, '\0', sizeof(outs));
                 break;
 
@@ -2807,6 +2807,8 @@ MODRET errinfo_master(cmd_rec *cmd) {
      */
 
     do {
+      pr_signals_handle();
+
       memset(outs, '\0', sizeof(outs));
       outsp = outs;
 
@@ -2835,7 +2837,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
 			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
 	      mr = process_named_query(cmd, query);
 	      
-              if (MODRET_ISERROR(mr)) {
+              if (check_response(mr) < 0) {
                 memset(outs, '\0', sizeof(outs));
                 break;
 
@@ -2940,7 +2942,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
 			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
 	      mr = process_named_query(cmd, query);
 	      
-              if (MODRET_ISERROR(mr)) {
+              if (check_response(mr) < 0) {
                 memset(outs, '\0', sizeof(outs));
                 break;
 
@@ -3012,8 +3014,10 @@ MODRET sql_cleanup(cmd_rec *cmd) {
   sql_log(DEBUG_FUNC, "%s", ">>> sql_cleanup");
 
   res = _sql_dispatch(cmd, "sql_cleanup");
-  if (check_response(res) < 0)
+  if (check_response(res) < 0) {
+    sql_log(DEBUG_FUNC, "%s", "<<< sql_cleanup");
     return res;
+  }
 
   sql_log(DEBUG_FUNC, "%s", "<<< sql_cleanup");
   return res;
@@ -3174,12 +3178,9 @@ MODRET sql_change(cmd_rec *cmd) {
     /* fixup the cmd_rec */
 
     mr = process_named_query(cmd, cmd->argv[1]);
-    
-    if (MODRET_ISERROR(mr)) {
-      if (check_response(mr) < 0) {
-        sql_log(DEBUG_FUNC, "%s", "<<< sql_change");
-        return mr;
-      }
+    if (check_response(mr) < 0) {
+      sql_log(DEBUG_FUNC, "%s", "<<< sql_change");
+      return mr;
     }
 
   } else {
@@ -3197,9 +3198,12 @@ MODRET sql_escapestr(cmd_rec *cmd) {
 
   mr =_sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", cmd->argv[0]),
     "sql_escapestring");
+  if (check_response(mr) < 0) {
+    sql_log(DEBUG_FUNC, "%s", "<<< sql_escapestr");
+    return mr;
+  }
 
   sql_log(DEBUG_FUNC, "%s", "<<< sql_escapestr");
-
   return mr;
 }
 
