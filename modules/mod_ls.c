@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.164 2009-05-01 15:42:22 castaglia Exp $
+ * $Id: mod_ls.c,v 1.165 2009-07-21 04:32:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -112,9 +112,9 @@ static config_rec *find_ls_limit(char *cmd_name) {
 
   /* Determine whether this command is <Limit>'ed. */
   for (c = session.dir_config; c; c = c->parent) {
+    pr_signals_handle();
 
     if (c->subset) {
-
       for (limit_c = (config_rec *) (c->subset->xas_list); limit_c;
           limit_c = limit_c->next) {
 
@@ -127,8 +127,9 @@ static config_rec *find_ls_limit(char *cmd_name) {
              */
             if (strcasecmp(cmd_name, (char *) (limit_c->argv[i])) == 0 ||
                 strcasecmp("DIRS", (char *) (limit_c->argv[i])) == 0 ||
-                strcasecmp("ALL", (char *) (limit_c->argv[i])) == 0)
+                strcasecmp("ALL", (char *) (limit_c->argv[i])) == 0) {
               break;
+            }
           }
 
           if (i == limit_c->argc)
@@ -1221,9 +1222,21 @@ static void ls_terminate(void) {
 }
 
 static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
-  while (isspace((int) **opt)) {
+  char *ptr;
+
+  /* First, scan for options.  Any leading whitespace before options can
+   * be skipped, as long as there ARE options.
+   */
+  ptr = *opt;
+
+  while (isspace((int) *ptr)) {
     pr_signals_handle();
-    (*opt)++;
+    ptr++;
+  }
+
+  if (*ptr == '-') {
+    /* Options are found; skip past the leading whitespace. */
+    *opt = ptr;
   }
 
   /* Check for standard /bin/ls options */
@@ -1308,8 +1321,19 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
       }
     }
 
-    while (isspace((int) **opt)) {
+    ptr = *opt;
+
+    while (isspace((int) *ptr)) {
       pr_signals_handle();
+      ptr++;
+    }
+
+    if (*ptr == '-') {
+      /* Options are found; skip past the leading whitespace. */
+      *opt = ptr;
+
+    } else {
+      /* Just advance one character. */
       (*opt)++;
     }
   }
@@ -1387,8 +1411,19 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
       }
     }
 
-    while (isspace((int) **opt)) {
+    ptr = *opt;
+
+    while (isspace((int) *ptr)) {
       pr_signals_handle();
+      ptr++;
+    }
+
+    if (*ptr == '+') {
+      /* Options are found; skip past the leading whitespace. */
+      *opt = ptr;
+
+    } else {
+      /* Just advance one character. */
       (*opt)++;
     }
   }
@@ -1413,27 +1448,48 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     parse_list_opts(&arg, &glob_flags, FALSE);
 
   } else {
+    char *ptr;
 
     /* Even if the user-given options are ignored, they still need to
-     * "processed" (ie skip past options) in order to get to the paths.
+     * "processed" (i.e. skip past options) in order to get to the paths.
+     *
+     * First, scan for options.  Any leading whitespace before options can
+     * be skipped, as long as there ARE options.
      */
-    while (*arg && isspace((int) *arg)) {
+    ptr = arg;
+
+    while (isspace((int) *ptr)) {
       pr_signals_handle();
-      arg++;
+      ptr++;
+    }
+
+    if (*ptr == '-') {
+      /* Options are found; skip past the leading whitespace. */
+      arg = ptr;
     }
 
     while (arg && *arg == '-') {
-
       /* Advance to the next whitespace */
       while (*arg != '\0' && !isspace((int) *arg))
         arg++;
 
-      while (isspace((int) *arg))
-        arg++;
-    }
+      ptr = arg;
 
-    while (isspace((int) *arg))
-      arg++;
+      while (isspace((int) *ptr)) {
+        pr_signals_handle();
+        ptr++;
+      }
+
+      if (*ptr == '-') {
+        /* Options are found; skip past the leading whitespace. */
+        arg = ptr;
+
+      } else {
+        /* Just advance one character. */
+        arg++;
+        break;
+      }
+    }
   }
 
   if (list_options)
@@ -2183,29 +2239,53 @@ MODRET ls_nlst(cmd_rec *cmd) {
     parse_list_opts(&target, &glob_flags, FALSE);
 
   } else {
+    char *ptr;
 
     /* Even if the user-given options are ignored, they still need to
-     * "processed" (ie skip past options) in order to get to the paths.
+     * "processed" (i.e. skip past options) in order to get to the paths.
+     *
+     * First, scan for options.  Any leading whitespace before options can
+     * be skipped, as long as there ARE options.
      */
-    while (*target && isspace((int) *target))
-      target++;
+    ptr = target;
+
+    while (isspace((int) *ptr)) {
+      pr_signals_handle();
+      ptr++;
+    }
+
+    if (*ptr == '-') {
+      /* Options are found; skip past the leading whitespace. */
+      target = ptr;
+    }
 
     while (target && *target == '-') {
-
       /* Advance to the next whitespace */
       while (*target != '\0' && !isspace((int) *target))
         target++;
 
-      while (*target && isspace((int) *target))
-        target++;
-    }
+      ptr = target;
 
-    while (*target && isspace((int) *target))
-      target++;
+      while (isspace((int) *ptr)) {
+        pr_signals_handle();
+        ptr++;
+      }
+
+      if (*ptr == '-') {
+        /* Options are found; skip past the leading whitespace. */
+        target = ptr;
+
+      } else {
+        /* Just advance one character. */
+        target++;
+        break;
+      }
+    }
   }
 
-  if (list_options)
+  if (list_options) {
     parse_list_opts(&list_options, &glob_flags, TRUE);
+  }
 
   /* If the target starts with '~' ... */
   if (*target == '~') {
