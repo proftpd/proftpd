@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.94 2009-04-06 22:32:21 castaglia Exp $
+ * $Id: mod_log.c,v 1.95 2009-07-21 15:47:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -407,8 +407,9 @@ static int _parse_classes(char *s) {
                strcasecmp(s, "SECURE") == 0) {
       classes |= CL_SEC;
 
-    } else
-      pr_log_pri(PR_LOG_NOTICE, "ExtendedLog class '%s' is not defined.", s);
+    } else {
+      pr_log_pri(PR_LOG_NOTICE, "ExtendedLog class '%s' is not defined", s);
+    }
 
   } while ((s = nextp));
 
@@ -436,21 +437,25 @@ MODRET set_extendedlog(cmd_rec *cmd) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown syslog level: '",
         tmp, "'", NULL));
 
-    } else
+    } else {
       c->argv[0] = pstrdup(log_pool, cmd->argv[1]);
+    }
 
   } else if (cmd->argv[1][0] != '/') {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "relative paths not allowed: '",
         cmd->argv[1], "'", NULL));
 
-  } else
+  } else {
     c->argv[0] = pstrdup(log_pool, cmd->argv[1]);
+  }
 
-  if (argc > 2)
+  if (argc > 2) {
     c->argv[1] = pstrdup(log_pool, cmd->argv[2]);
+  }
 
-  if (argc > 3)
+  if (argc > 3) {
     c->argv[2] = pstrdup(log_pool, cmd->argv[3]);
+  }
 
   c->argc = argc-1;
   return PR_HANDLED(cmd);
@@ -1104,8 +1109,9 @@ static void do_log(cmd_rec *cmd, logfile_t *lf) {
         lf->lf_fd, strerror(errno));
     }
 
-  } else
+  } else {
     pr_syslog(syslog_sockfd, lf->lf_syslog_level, "%s", logbuf);
+  }
 }
 
 MODRET log_any(cmd_rec *cmd) {
@@ -1172,20 +1178,25 @@ static void find_extendedlogs(void) {
    */
 
   c = find_config(main_server->conf, CONF_PARAM, "ExtendedLog", TRUE);
-
   while (c) {
     logfname = c->argv[0];
 
     if (c->argc > 1) {
       logclasses = _parse_classes(c->argv[1]);
-      if (c->argc > 2)
+      if (c->argc > 2) {
         logfmt_s = c->argv[2];
+      }
     }
 
-    /* No logging for this round.
+    /* No logging for this round.  If, however, this was found in an
+     * <Anonymous> section, add a logfile entry for it anyway; the anonymous
+     * directive might be trying to override a higher-level config; see
+     * Bug#1908.
      */
-    if (logclasses == CL_NONE)
+    if (logclasses == CL_NONE &&
+        c->parent->config_type != CONF_ANON) {
       goto loop_extendedlogs;
+    }
 
     if (logfmt_s) {
       /* search for the format-nickname */
@@ -1252,10 +1263,12 @@ MODRET log_post_pass(cmd_rec *cmd) {
    */
   if (!session.anon_config) {
     for (lf = logs; lf; lf = lf->next) {
-      if (lf->lf_fd != -1 && lf->lf_fd != EXTENDED_LOG_SYSLOG &&
-          lf->lf_conf && lf->lf_conf->config_type == CONF_ANON) {
-        pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'",
-          lf->lf_filename);
+      if (lf->lf_fd != -1 &&
+          lf->lf_fd != EXTENDED_LOG_SYSLOG &&
+          lf->lf_conf &&
+          lf->lf_conf->config_type == CONF_ANON) {
+        pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s' (fd %d)",
+          lf->lf_filename, lf->lf_fd);
         close(lf->lf_fd);
         lf->lf_fd = -1;
       }
@@ -1266,10 +1279,12 @@ MODRET log_post_pass(cmd_rec *cmd) {
      * context.
      */
     for (lf = logs; lf; lf = lf->next) {
-      if (lf->lf_fd != -1 && lf->lf_fd != EXTENDED_LOG_SYSLOG &&
-          lf->lf_conf && lf->lf_conf != session.anon_config) {
-        pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'",
-          lf->lf_filename);
+      if (lf->lf_fd != -1 &&
+          lf->lf_fd != EXTENDED_LOG_SYSLOG &&
+          lf->lf_conf &&
+          lf->lf_conf != session.anon_config) {
+        pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s' (fd %d)",
+          lf->lf_filename, lf->lf_fd);
         close(lf->lf_fd);
         lf->lf_fd = -1;
       }
@@ -1279,7 +1294,8 @@ MODRET log_post_pass(cmd_rec *cmd) {
      * close the outer (this allows overriding inside <Anonymous>).
      */
     for (lf = logs; lf; lf = lf->next) {
-      if (lf->lf_conf && lf->lf_conf == session.anon_config) {
+      if (lf->lf_conf &&
+          lf->lf_conf == session.anon_config) {
         /* This should "override" any lower-level extendedlog with the
          * same filename.
          */
@@ -1290,8 +1306,8 @@ MODRET log_post_pass(cmd_rec *cmd) {
               lfi->lf_fd != EXTENDED_LOG_SYSLOG &&
               !lfi->lf_conf &&
               strcmp(lfi->lf_filename, lf->lf_filename) == 0) {
-            pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'",
-              lf->lf_filename);
+            pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s' (fd %d)",
+              lf->lf_filename, lfi->lf_fd);
             close(lfi->lf_fd);
             lfi->lf_fd = -1;
           }
@@ -1301,8 +1317,8 @@ MODRET log_post_pass(cmd_rec *cmd) {
         if (lf->lf_fd != -1 &&
             lf->lf_fd != EXTENDED_LOG_SYSLOG &&
             lf->lf_classes == CL_NONE) {
-          pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'",
-            lf->lf_filename);
+          pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s' (fd %d)",
+            lf->lf_filename, lf->lf_fd);
           close(lf->lf_fd);
           lf->lf_fd = -1;
         }

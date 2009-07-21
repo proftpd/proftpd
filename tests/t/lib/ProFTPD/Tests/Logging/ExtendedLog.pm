@@ -46,6 +46,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  extlog_bug1908 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
+  },
+
 };
 
 sub new {
@@ -941,6 +946,178 @@ sub extlog_orig_user {
   if ($ex) {
     die($ex);
   }
+
+  unlink($log_file);
+}
+
+sub extlog_bug1908 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/extlog.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "Hello, World!\n";
+
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/ext.log");
+  my $anon_ext_log = File::Spec->rel2abs("$tmpdir/anon-ext.log");
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    ExtendedLog => "$ext_log READ",
+
+    Anonymous => {
+      $home_dir => [
+        "User $user",
+        "Group ftpd",
+        "ExtendedLog $anon_ext_log READ",
+        "ExtendedLog $ext_log NONE",
+      ],
+    },
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+
+      my $conn = $client->retr_raw('test.txt');
+      unless ($conn) {
+        die("Failed to RETR: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192);
+      $conn->close();
+
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  # Now, read in the ExtendedLogs.  Ideally we would NOT see anything in
+  # the ExtendedLog defined in the "server config" context, and WOULD see
+  # lines in the ExtendedLog defined in the <Anonymous> context.
+
+  my $extlog_nlines = 0;
+  if (open(my $fh, "< $ext_log")) {
+    while (my $line = <$fh>) {
+      $extlog_nlines++;
+    }
+    close($fh);
+
+  } else {
+    die("Can't read $ext_log: $!");
+  }
+
+  my $anon_extlog_nlines = 0;
+  if (open(my $fh, "< $anon_ext_log")) {
+    while (my $line = <$fh>) {
+      $anon_extlog_nlines++;
+    }
+    close($fh);
+
+  } else {
+    die("Can't read $anon_ext_log: $!");
+  }
+
+  my $expected = 0;
+  $self->assert($expected == $extlog_nlines,
+    test_msg("Expected $expected, got $extlog_nlines"));
+
+  $expected = 1;
+  $self->assert($expected == $anon_extlog_nlines,
+    test_msg("Expected $expected, got $anon_extlog_nlines"));
 
   unlink($log_file);
 }
