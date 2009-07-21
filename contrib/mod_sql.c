@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.167 2009-06-29 23:02:38 castaglia Exp $
+ * $Id: mod_sql.c,v 1.168 2009-07-21 23:21:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3113,10 +3113,10 @@ MODRET sql_lookup(cmd_rec *cmd) {
   if (cmap.engine == 0)
     return PR_DECLINED(cmd);
 
-  sql_log(DEBUG_FUNC, "%s", ">>> sql_lookup");
-
   if (cmd->argc < 1)
     return PR_ERROR(cmd);
+
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_lookup");
 
   type = named_query_type(cmd, cmd->argv[1]);
   if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
@@ -3142,6 +3142,7 @@ MODRET sql_lookup(cmd_rec *cmd) {
     } else {
       /* We have an error.  Log it and die. */
       if (check_response(mr) < 0) {
+        sql_log(DEBUG_FUNC, "%s", "<<< sql_lookup");
         return mr;
       }
     }
@@ -3161,10 +3162,10 @@ MODRET sql_change(cmd_rec *cmd) {
   if (cmap.engine == 0)
     return PR_DECLINED(cmd);
 
-  sql_log(DEBUG_FUNC, "%s", ">>> sql_change");
-
   if (cmd->argc < 1)
     return PR_ERROR(cmd);
+
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_change");
 
   type = named_query_type(cmd, cmd->argv[1]);
   if (type && ((!strcasecmp(type, SQL_INSERT_C)) || 
@@ -3176,6 +3177,7 @@ MODRET sql_change(cmd_rec *cmd) {
     
     if (MODRET_ISERROR(mr)) {
       if (check_response(mr) < 0) {
+        sql_log(DEBUG_FUNC, "%s", "<<< sql_change");
         return mr;
       }
     }
