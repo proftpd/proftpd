@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.45 2009-07-21 00:11:48 castaglia Exp $
+ * $Id: fxp.c,v 1.46 2009-07-21 00:19:06 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5379,6 +5379,17 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     new_path = sftp_utf8_decode_str(fxp->pool, new_path);
   }
+
+  /* In protocol version 5 and later, there is a flags int which follows.
+   * However, this flags argument is usually used to indicate to servers
+   * that they can use the POSIX rename(2) semantics, i.e. that overwriting
+   * a file at the new/destination path is OK.
+   *
+   * At the moment, since we use rename(2) anyway, even for the older protocol
+   * versions, we don't read in the flags value.  This does mean, however,
+   * that mod_sftp will not properly return an "file already exists" error
+   * if the specified new/destination path already exists.
+   */
 
   args = pstrcat(fxp->pool, old_path, " ", new_path, NULL);
 
