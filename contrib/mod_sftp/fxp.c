@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.44 2009-07-20 21:07:28 castaglia Exp $
+ * $Id: fxp.c,v 1.45 2009-07-21 00:11:48 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -555,16 +555,16 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
   int res = O_RDONLY;
 
   if ((desired_access & SSH2_FXF_WANT_READ_DATA) ||
-      (desired_access & SSH2_FXF_WANT_READ_ATTRIBUTES) ||
-      (desired_access & SSH2_FXF_WANT_READ_NAMED_ATTRS)) {
+      (desired_access & SSH2_FXF_WANT_READ_ATTRIBUTES)) {
 
     if ((desired_access & SSH2_FXF_WANT_WRITE_DATA) ||
-        (desired_access & SSH2_FXF_WANT_WRITE_ATTRIBUTES) ||
-        (desired_access & SSH2_FXF_WANT_WRITE_NAMED_ATTRS)) {
+        (desired_access & SSH2_FXF_WANT_WRITE_ATTRIBUTES)) {
       res = O_RDWR;
 
 #ifdef O_APPEND
-      if (desired_access & SSH2_FXF_WANT_APPEND_DATA) {
+      if ((desired_access & SSH2_FXF_WANT_APPEND_DATA) &&
+          ((flags & SSH2_FXF_ACCESS_APPEND_DATA) ||
+           (flags & SSH2_FXF_ACCESS_APPEND_DATA_ATOMIC))) {
         res |= O_APPEND;
       }
 #endif
@@ -574,33 +574,16 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
     }
 
   } else if ((desired_access & SSH2_FXF_WANT_WRITE_DATA) ||
-             (desired_access & SSH2_FXF_WANT_WRITE_ATTRIBUTES) ||
-             (desired_access & SSH2_FXF_WANT_WRITE_NAMED_ATTRS)) {
+             (desired_access & SSH2_FXF_WANT_WRITE_ATTRIBUTES)) {
     res = O_WRONLY;
 
 #ifdef O_APPEND
-    if (desired_access & SSH2_FXF_WANT_APPEND_DATA) {
+    if ((desired_access & SSH2_FXF_WANT_APPEND_DATA) &&
+        ((flags & SSH2_FXF_ACCESS_APPEND_DATA) ||
+         (flags & SSH2_FXF_ACCESS_APPEND_DATA_ATOMIC))) {
       res |= O_APPEND;
     }
 #endif
-  }
-
-  if ((flags & SSH2_FXF_ACCESS_APPEND_DATA) ||
-      (flags & SSH2_FXF_ACCESS_APPEND_DATA_ATOMIC)) {
-
-    if (res == O_RDONLY) {
-      /* If the APPEND flag is used, but we're read-only, well...we're
-       * not read-only anymore.
-       */
-      res = O_RDWR;
-    }
-
-    res |= O_APPEND;
-
-    /* If we're appending, then it's a write. */
-    if (!(res & O_RDWR)) {
-      res |= O_WRONLY;
-    }
   }
 
   if (flags & SSH2_FXF_OPEN_OR_CREATE) {
