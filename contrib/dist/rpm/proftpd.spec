@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.67 2009-07-21 16:26:40 castaglia Exp $
+# $Id: proftpd.spec,v 1.68 2009-07-21 22:06:31 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -349,6 +349,10 @@ rm -rf %{_builddir}/%{name}-%{version}
 %defattr(-,root,root)
 %{_sbindir}/*
 %{_bindir}/*
+%if 0%{?_with_mod_sftp:1}
+%{_sysconfdir}/blacklist.dat
+%{_sysconfdir}/dhparams.pem
+%endif
 # need to figure out how to exclude from this list...
 %exclude %{_libexecdir}/*.a
 %exclude %{_libexecdir}/*.la
@@ -357,7 +361,6 @@ rm -rf %{_builddir}/%{name}-%{version}
 %exclude %{_libexecdir}/mod_sql_postgres.so
 %exclude %{_libexecdir}/mod_wrap.so
 %{_libdir}/pkgconfig/*.pc
-%{_libdir}/proftpd/*.a
 %{_libexecdir}/*.a
 %{_libexecdir}/*.so
 %dir %{_localstatedir}/run
