@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.46 2009-07-21 00:19:06 castaglia Exp $
+ * $Id: fxp.c,v 1.47 2009-07-21 00:25:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -553,6 +553,10 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
 
   /* Assume that the desired flag is read-only by default. */
   int res = O_RDONLY;
+
+  /* These mappings are found in draft-ietf-secsh-filexfer-05.txt,
+   * section 6.3.1.
+   */
 
   if ((desired_access & SSH2_FXF_WANT_READ_DATA) ||
       (desired_access & SSH2_FXF_WANT_READ_ATTRIBUTES)) {
