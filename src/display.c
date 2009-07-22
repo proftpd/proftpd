@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.14 2009-04-25 21:14:53 castaglia Exp $
+ * $Id: display.c,v 1.15 2009-07-22 21:37:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -305,8 +305,8 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
      *
      * We _could_ just use pr_response_add(), and let the response code
      * automatically handle all of the multiline response formatting.
-     * However, some of the Display files are at times where waiting for
-     * the response chains to be flushed won't work (e.g. login, logout).
+     * However, some of the Display files are at times waiting for the
+     * response chains to be flushed won't work (e.g. login, logout).
      * Thus we have to deal with multiline files appropriately here.
      */
 
@@ -356,7 +356,18 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
         pr_response_send_raw("%s-%s", code, prev);
 
       } else {
-        pr_response_send_raw("%s %s", code, prev);
+        if (session.auth_mech != NULL) {
+          /* Special case handling for when the client has not yet
+           * authenticated (i.e. session.auth_mech is null).  This means
+           * we're handling a DisplayConnect file.  The server will send
+           * a banner string as well, thus if auth_mech is null, we do NOT
+           * want to send this line; if not null, we DO want to send it.
+           *
+           * Without this check, we would end up sending an extra 220 response 
+           * code to the client, which would confuse it.
+           */
+          pr_response_send_raw("%s %s", code, prev);
+        }
       }
     }
   }
