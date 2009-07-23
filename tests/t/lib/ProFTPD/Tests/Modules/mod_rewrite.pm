@@ -92,9 +92,9 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
-  rewrite_cond_or_flags => {
+  rewrite_cond_or_flags_bug3269 => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(bug forking)],
   },
 
 };
@@ -2259,7 +2259,7 @@ sub rewrite_cond_rename_var_bug3029 {
   unlink($log_file);
 }
 
-sub rewrite_cond_or_flags {
+sub rewrite_cond_or_flags_bug3269 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 

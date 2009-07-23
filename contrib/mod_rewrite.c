@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.46 2009-04-25 21:25:19 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.47 2009-07-23 03:11:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2315,24 +2315,43 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
 
           if (!rewrite_match_cond(cmd, conds[i])) {
 
-            /* If this condition is not to be OR'd with the next condition,
-             * or there is no next condition, fail the Rule.
-             */
-            if (!(cond_flags & REWRITE_COND_FLAG_ORNEXT) ||
-                conds[i+1] == NULL) {
+            /* If this is the last condition, fail the Rule. */
+            if (conds[i+1] == NULL) {
               exec_rule = FALSE;
-              rewrite_log("rewrite_fixup(): condition not met, skipping this "
-                "Rule");
+              rewrite_log("rewrite_fixup(): last condition not met, skipping "
+                "this RewriteRule");
               break;
             }
 
-          } else
+            /* If this condition is OR'd with the next condition, just
+             * continue on to the next condition.
+             */
+            if (cond_flags & REWRITE_COND_FLAG_ORNEXT) {
+              rewrite_log("rewrite_fixup(): condition not met but 'ornext' "
+                "flag in effect, continue to next condition");
+              continue;
+            }
+
+            /* Otherwise, fail the Rule. */
+            exec_rule = FALSE;
+            rewrite_log("rewrite_fixup(): condition not met, skipping this "
+              "RewriteRule");
+            break;
+
+          } else {
             rewrite_log("rewrite_fixup(): condition met");
+            exec_rule = TRUE;
+
+            if (cond_flags & REWRITE_COND_FLAG_ORNEXT) {
+              break;
+            }
+          }
         }
 
-      } else
+      } else {
         /* There are no conditions. */
         exec_rule = TRUE;
+      }
     } 
 
     if (exec_rule) {
