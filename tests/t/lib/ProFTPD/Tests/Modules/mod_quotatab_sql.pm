@@ -4170,6 +4170,8 @@ EOS
       $wfh->print("do_update\n");
       $wfh->flush();
 
+      sleep(1);
+
       my $conn = $client->stor_raw('test.txt');
       unless ($conn) {
         die("Failed to STOR test.txt: " . $client->response_code() . " " .
