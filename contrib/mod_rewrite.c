@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.47 2009-07-23 03:11:37 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.48 2009-07-23 14:37:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -765,15 +765,8 @@ static unsigned char rewrite_regexec(const char *string, regex_t *regbuf,
   /* Execute the given regex. */
   while ((res = regexec(regbuf, tmpstr, REWRITE_MAX_MATCHES,
       matches->match_groups, 0)) == 0) {
-
     have_match = TRUE;
     break;
-
-#if 0
-    /* If negated, be done */
-    if (negated)
-      break;
-#endif
   }
 
   /* Invert the return value if necessary. */
@@ -1822,6 +1815,10 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
      * affect the compilation of the regex (e.g. NC) are present.
      */
     cond_flags = rewrite_parse_cond_flags(cmd->tmp_pool, cmd->argv[3]);
+    if (cond_flags == 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": unknown RewriteCondition flags '", cmd->argv[3], "'", NULL));
+    }
 
     if (cond_flags & REWRITE_COND_FLAG_NOCASE)
       regex_flags |= REG_ICASE;
