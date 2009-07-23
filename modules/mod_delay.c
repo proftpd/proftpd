@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.35 2009-07-22 16:57:02 castaglia Exp $
+ * $Id: mod_delay.c,v 1.36 2009-07-23 17:45:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -67,9 +67,23 @@
 # define DELAY_SESS_NVALUES		16
 #endif
 
-#ifndef DELAY_NPROTO
-# define DELAY_NPROTO			4
-#endif
+/* The mod_delay tables have separate entries for different protocols;
+ * the implementation/handling of one protocol means that that protocol can
+ * have different timings from others.  For example, due to the encryption
+ * overhead, authentication via SSL can take longer than without SSL.  Thus
+ * we need to keep the per-protocol timings separate.
+ *
+ * We currently allocate space for three protocols:
+ *
+ *  ftp
+ *  ftps
+ *  ssh2
+ *
+ * If more protocols are supported by proftpd, this this DELAY_NPROTO value
+ * should be increased accordingly.  The delay_table_reset() function will
+ * also need updating, to include the new protocol, as well.
+ */
+#define DELAY_NPROTO			3
 
 #if defined(PR_USE_CTRLS)
 static ctrls_acttab_t delay_acttab[];
