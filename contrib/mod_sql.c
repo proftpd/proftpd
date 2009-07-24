@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.169 2009-07-21 23:38:16 castaglia Exp $
+ * $Id: mod_sql.c,v 1.170 2009-07-24 17:31:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2254,6 +2254,8 @@ static char *named_query_type(cmd_rec *cmd, char *name) {
   if (c)
     return c->argv[0];
 
+  sql_log(DEBUG_FUNC, "no '%s' SQLNamedQuery found", name);
+  errno = ENOENT;
   return NULL;
 }
 
