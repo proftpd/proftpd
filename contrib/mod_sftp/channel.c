@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.11 2009-07-04 00:34:08 castaglia Exp $
+ * $Id: channel.c,v 1.12 2009-07-26 03:16:33 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -462,6 +462,13 @@ static int handle_channel_close(struct ssh2_packet *pkt) {
 static int process_channel_data(struct ssh2_channel *chan,
     struct ssh2_packet *pkt, char *data, uint32_t datalen) {
   int res;
+
+  if (chan->handle_packet == NULL) {
+    pr_trace_msg(trace_channel, 3, "no handler registered for data on "
+      "channel %lu, rejecting packet", (unsigned long) chan->local_channel_id);
+    errno = EACCES;
+    return -1;
+  }
 
   res = chan->handle_packet(pkt, chan->local_channel_id, data, datalen);
 
