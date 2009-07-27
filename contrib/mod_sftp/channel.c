@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.13 2009-07-27 01:00:59 castaglia Exp $
+ * $Id: channel.c,v 1.14 2009-07-27 15:25:37 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -490,7 +490,8 @@ static int process_channel_data(struct ssh2_channel *chan,
     return -1;
   }
 
-  res = chan->handle_packet(pkt, chan->local_channel_id, data, datalen);
+  res = chan->handle_packet(pkt->pool, pkt, chan->local_channel_id, data,
+    datalen);
 
   chan->local_windowsz -= datalen;
 
