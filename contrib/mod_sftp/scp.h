@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.h,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: scp.h,v 1.3 2009-07-27 01:00:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -29,7 +29,7 @@
 #ifndef MOD_SFTP_SCP_H
 #define MOD_SFTP_SCP_H
 
-int sftp_scp_handle_packet(struct ssh2_packet *, uint32_t, char *, uint32_t);
+int sftp_scp_handle_packet(pool *, void *, uint32_t, char *, uint32_t);
 
 int sftp_scp_open_session(uint32_t);
 int sftp_scp_close_session(uint32_t);

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.47 2009-07-21 00:25:51 castaglia Exp $
+ * $Id: fxp.c,v 1.48 2009-07-27 01:00:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -6743,8 +6743,9 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
 }
 
 /* Main entry point */
-int sftp_fxp_handle_packet(struct ssh2_packet *pkt, uint32_t channel_id,
+int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
     char *data, uint32_t datalen) {
+  struct ssh2_packet *pkt;
   struct fxp_packet *fxp;
   int have_cache, res;
 
@@ -6752,6 +6753,8 @@ int sftp_fxp_handle_packet(struct ssh2_packet *pkt, uint32_t channel_id,
     fxp_pool = make_sub_pool(sftp_pool);
     pr_pool_tag(fxp_pool, "SFTP Pool");
   }
+
+  pkt = ssh2;
 
   fxp = fxp_packet_read(channel_id, &data, &datalen, &have_cache);
   while (fxp) {

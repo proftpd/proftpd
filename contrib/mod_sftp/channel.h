@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.h,v 1.3 2009-05-13 23:18:08 castaglia Exp $
+ * $Id: channel.h,v 1.4 2009-07-27 01:00:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -61,7 +61,7 @@ struct ssh2_channel {
 
   /* For channel handling systems (e.g. fxp, scp) */
   int (*prepare)(uint32_t);
-  int (*handle_packet)(struct ssh2_packet *, uint32_t, char *, uint32_t);
+  int (*handle_packet)(pool *, void *, uint32_t, char *, uint32_t);
   int (*finish)(uint32_t);
 };
 

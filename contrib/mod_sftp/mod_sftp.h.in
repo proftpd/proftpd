@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_sftp.h.in,v 1.4 2009-07-21 22:01:10 castaglia Exp $
+ * $Id: mod_sftp.h.in,v 1.5 2009-07-27 01:00:59 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_H
@@ -201,5 +201,14 @@ int sftp_keys_compare_keys(pool *, char *, uint32_t, char *, uint32_t);
 
 /* For use by other SFTP modules. */
 const char *sftp_crypto_get_errors(void);
+
+/* For use by other modules to register 'exec' channel request handlers.
+ */
+int sftp_channel_register_exec_handler(module *, const char *,
+  int (*set_params)(pool *, uint32_t, array_header *),
+  int (*prep_chan)(uint32_t),
+  int (*handle_pkt)(pool *, void *, uint32_t, char *, uint32_t),
+  int (*finish_chan)(uint32_t),
+  int (**write_data)(pool *, uint32_t, char *, uint32_t));
 
 #endif

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.22 2009-07-21 22:20:03 castaglia Exp $
+ * $Id: scp.c,v 1.23 2009-07-27 01:00:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1572,9 +1572,10 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 }
 
 /* Main entry point */
-int sftp_scp_handle_packet(struct ssh2_packet *pkt, uint32_t channel_id,
+int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
     char *data, uint32_t datalen) {
   int res = -1;
+  struct ssh2_packet *pkt;
 
   scp_session = scp_get_session(channel_id);
   if (scp_session == NULL) {
@@ -1583,6 +1584,8 @@ int sftp_scp_handle_packet(struct ssh2_packet *pkt, uint32_t channel_id,
       (unsigned long) channel_id);
     return -1;
   }
+
+  pkt = ssh2;
 
   /* This is a bit of a hack, for playing along better with mod_vroot,
    * which pays attention to the session.curr_phase value.

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.12 2009-07-26 03:16:33 castaglia Exp $
+ * $Id: channel.c,v 1.13 2009-07-27 01:00:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -33,6 +33,26 @@
 #include "interop.h"
 #include "fxp.h"
 #include "scp.h"
+
+extern module sftp_module;
+
+/* Used for maintaining our list of 'exec' channel handlers. */
+struct ssh2_channel_exec_handler {
+  /* The module which registered this handler (err, collection of
+   * callbacks).
+   */
+  module *m;
+
+  /* The 'exec' command for which these handlers should be used. */
+  const char *command;
+
+  int (*set_params)(pool *, uint32_t, array_header *);
+  int (*prepare)(uint32_t);
+  int (*handle_packet)(pool *, void *, uint32_t, char *, uint32_t);
+  int (*finish)(uint32_t);
+};
+
+static array_header *channel_exec_handlers = NULL;
 
 /* Used for buffering up incoming/outgoing packets until the channel windows
  * open.
@@ -709,9 +729,11 @@ static int allow_env(const char *key) {
 
 static int handle_exec_channel(struct ssh2_channel *chan,
     struct ssh2_packet *pkt, char **buf, uint32_t *buflen) {
-  int flags = PR_STR_FL_PRESERVE_WHITESPACE;
+  register unsigned int i;
+  int flags = PR_STR_FL_PRESERVE_WHITESPACE, have_handler = FALSE;
   char *command, *ptr, **reqargv, *word;
   array_header *req;
+  struct ssh2_channel_exec_handler **handlers;
 
   command = sftp_msg_read_string(pkt->pool, buf, buflen);
 
@@ -730,16 +752,30 @@ static int handle_exec_channel(struct ssh2_channel *chan,
 
   reqargv = (char **) req->elts;
 
-  if (strcmp(reqargv[0], "scp") == 0) {
-    if (sftp_scp_set_params(pkt->pool, chan->local_channel_id, req) < 0) {
-      return -1;
+  handlers = channel_exec_handlers->elts;
+  for (i = 0; i < channel_exec_handlers->nelts; i++) {
+    struct ssh2_channel_exec_handler *handler;
+
+    handler = handlers[i];
+
+    if (strcmp(command, handler->command) == 0) {
+      int res;
+
+      res = (handler->set_params)(pkt->pool, chan->local_channel_id, req);
+      if (res < 0) {
+        return -1;
+      }
+
+      chan->prepare = handler->prepare;
+      chan->handle_packet = handler->handle_packet;
+      chan->finish = handler->finish;
+
+      have_handler = TRUE;
+      break;
     }
+  }
 
-    chan->prepare = sftp_scp_open_session;
-    chan->handle_packet = sftp_scp_handle_packet;
-    chan->finish = sftp_scp_close_session;
-
-  } else {
+  if (!have_handler) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported exec command '%s'", command);
     return -1;
@@ -1246,10 +1282,30 @@ int sftp_channel_free(void) {
 }
 
 int sftp_channel_init(void) {
+  struct ssh2_channel_exec_handler *handler;
+
   if (channel_pool == NULL) {
     channel_pool = make_sub_pool(sftp_pool);
     pr_pool_tag(channel_pool, "SSH2 Channel Pool");
   }
+
+  if (channel_exec_handlers == NULL) {
+    /* Initialize our list of 'exec' channel handlers. */
+    channel_exec_handlers = make_array(channel_pool, 1,
+      sizeof(struct ssh2_channel_exec_handler *));
+  }
+
+  handler = pcalloc(channel_pool, sizeof(struct ssh2_channel_exec_handler));
+
+  handler->m = &sftp_module;
+  handler->command = pstrdup(channel_pool, "scp");
+  handler->set_params = sftp_scp_set_params;
+  handler->prepare = sftp_scp_open_session;
+  handler->handle_packet = sftp_scp_handle_packet;
+  handler->finish = sftp_scp_close_session;
+
+  *((struct ssh2_channel_exec_handler **) push_array(channel_exec_handlers)) =
+    handler;
 
   return 0;
 }
@@ -1410,6 +1466,77 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
     pr_trace_msg(trace_channel, 8, "buffering %lu remaining bytes of "
       "outgoing packet", (unsigned long) buflen);
   }
+
+  return 0;
+}
+
+int sftp_channel_register_exec_handler(module *m, const char *command,
+    int (*set_params)(pool *, uint32_t, array_header *),
+    int (*prepare)(uint32_t),
+    int (*handle_packet)(pool *, void *, uint32_t, char *, uint32_t),
+    int (*finish)(uint32_t),
+    int (**write_data)(pool *, uint32_t, char *, uint32_t)) {
+  struct ssh2_channel_exec_handler *handler;
+
+  if (m == NULL ||
+      command == NULL ||
+      set_params == NULL ||
+      prepare == NULL ||
+      handle_packet == NULL ||
+      finish == NULL ||
+      write_data == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (channel_pool == NULL) {
+    channel_pool = make_sub_pool(sftp_pool);
+    pr_pool_tag(channel_pool, "SSH2 Channel Pool");
+  }
+
+  if (channel_exec_handlers == NULL) {
+    /* Initialize our list of 'exec' channel handlers. */
+    channel_exec_handlers = make_array(channel_pool, 1,
+      sizeof(struct ssh2_channel_exec_handler *));
+
+  } else {
+    register unsigned int i;
+    struct ssh2_channel_exec_handler **handlers;
+
+    /* Make sure that another handler for this command hasn't already been
+     * registered.
+     */
+    handlers = channel_exec_handlers->elts;
+    for (i = 0; i < channel_exec_handlers->nelts; i++) {
+      handler = handlers[i];
+
+      if (strcmp(handler->command, command) == 0) {
+        errno = EEXIST;
+        return -1;
+      }
+    }
+  }
+
+  handler = pcalloc(channel_pool, sizeof(struct ssh2_channel_exec_handler));
+
+  handler->m = m;
+  handler->command = pstrdup(channel_pool, command);
+  handler->set_params = set_params;
+  handler->prepare = prepare;
+  handler->handle_packet = handle_packet;
+  handler->finish = finish;
+
+  *((struct ssh2_channel_exec_handler **) push_array(channel_exec_handlers)) =
+    handler;
+
+  /* Send back to the caller, via the value-result argument, the address
+   * of the function which the caller can use for writing data back to
+   * the SSH2 channel.  This pointer trickery means that we don't have to
+   * expose the sftp_channel_write_data() function via the public mod_sftp.h
+   * header file.
+   */
+
+  *write_data = sftp_channel_write_data;
 
   return 0;
 }
