@@ -17065,7 +17065,10 @@ sub scp_log_extlog_var_f_upload {
     while (my $line = <$fh>) {
       chomp($line);
 
-      my $expected = "$upload_file upload.txt";
+      # Due to the way that Net::SSH2's scp support works, the full path is
+      # sent to the server.  Note that the OpenSSH command-line scp tool
+      # does not do this, so the %F value will not always be the full path.
+      my $expected = "$upload_file $upload_file";
       $self->assert($expected eq $line,
         test_msg("Expected '$expected', got '$line'"));
       $ok = 1;
