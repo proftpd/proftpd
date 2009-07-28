@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.48 2009-07-27 01:00:59 castaglia Exp $
+ * $Id: fxp.c,v 1.49 2009-07-28 16:20:03 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -490,7 +490,18 @@ static uint32_t fxp_errno2status(int xerrno, const char **reason) {
       break;
 #endif
 
-#ifdef ENOTEMPTY
+     /* On AIX5, ENOTEMPTY and EEXIST are defined to be the same value.
+      * And using the same value multiple times in a switch statement
+      * causes compiler grief.  See:
+      *
+      *  http://forums.proftpd.org/smf/index.php/topic,3971.0.html
+      *
+      * To handle this, then, we only use ENOTEMPTY if it is defined to
+      * be a different value than EEXIST.  We'll have an AIX-specific
+      * check for this particular error case in the fxp_handle_rmdir()
+      * function.
+      */
+#if defined(ENOTEMPTY) && ENOTEMPTY != EEXIST
     case ENOTEMPTY:
       if (reason) {
         *reason = fxp_strerror(SSH2_FX_DIR_NOT_EMPTY);
@@ -5815,7 +5826,38 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
     errno = 0;
   }
 
+#if defined(ENOTEMPTY) && ENOTEMPTY != EEXIST
   status_code = fxp_errno2status(errno, &reason);
+
+#else
+  /* On AIX5, ENOTEMPTY and EEXIST are defined to the same value.  See:
+   *
+   *  http://forums.proftpd.org/smf/index.php/topic,3971.0.html
+   *
+   * We still want to send the proper SFTP error code/string if we see
+   * these values, though.  The fix for handling this case in
+   * fxp_errno2status() means that we need to do the errno lookup a little
+   * more manually here.
+   */
+
+  if (errno != ENOTEMPTY) {
+    status_code = fxp_errno2status(errno, &reason);
+
+  } else {
+    /* Generic failure code, works for all protocol versions. */
+    status_code = SSH2_FX_FAILURE;
+
+    if (fxp_session->client_version > 3) {
+      status_code = SSH2_FX_FILE_ALREADY_EXISTS;
+    }
+
+    if (fxp_session->client_version > 5) {
+      status_code = SSH2_FX_DIR_NOT_EMPTY;
+    }
+
+    *reason = fxp_strerror(status_code);
+  }
+#endif
 
   pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
     "('%s' [%d])", (unsigned long) status_code, reason,
