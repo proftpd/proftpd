@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.165 2009-07-21 04:32:24 castaglia Exp $
+ * $Id: mod_ls.c,v 1.166 2009-07-29 20:59:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -232,7 +232,7 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
 
   if (session.dir_config) {
     unsigned char *tmp = get_param_ptr(session.dir_config->subset,
-      "ShowSymlinks",FALSE);
+      "ShowSymlinks", FALSE);
 
     if (tmp)
       list_show_symlinks = *tmp;
@@ -1803,7 +1803,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   char cwd_buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   pool *workp;
   unsigned char symhold;
-  int curdir = 0, i, j, count = 0, hidden = 0;
+  int curdir = FALSE, i, j, count = 0, hidden = 0;
   mode_t mode;
   config_rec *c = NULL;
   unsigned char ignore_hidden = FALSE;
@@ -1837,20 +1837,30 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   pr_pool_tag(workp, "mod_ls: nlstdir(): workp (from cmd->tmp_pool)");
 
   if (!*dir || (*dir == '.' && !dir[1]) || strcmp(dir, "./") == 0) {
-    curdir = 1;
+    curdir = TRUE;
     dir = "";
 
-  } else
+  } else {
+
+    /* If dir is not '.', then we need to change directories.  Hence we
+     * push our current working directory onto the stack, do the chdir,
+     * and pop bac, afterwards.
+     */
     push_cwd(cwd_buf, &symhold);
 
-  if (pr_fsio_chdir_canon(dir, !opt_L && list_show_symlinks)) {
-    destroy_pool(workp);
-    return 0;
+    if (pr_fsio_chdir_canon(dir, !opt_L && list_show_symlinks) < 0) {
+      pop_cwd(cwd_buf, &symhold);
+
+      destroy_pool(workp);
+      return 0;
+    }
   }
 
-  if ((list = sreaddir(".", FALSE)) == NULL) {
+  list = sreaddir(".", FALSE);
+  if (list == NULL) {
     if (!curdir)
       pop_cwd(cwd_buf, &symhold);
+
     destroy_pool(workp);
     return 0;
   }
@@ -1871,12 +1881,13 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     p = list[j++];
 
     if (*p == '.') {
-      if (!opt_a && (!opt_A || is_dotdir(p)))
+      if (!opt_a && (!opt_A || is_dotdir(p))) {
         continue;
 
       /* Make sure IgnoreHidden is properly honored. */
-      else if (ignore_hidden)
+      } else if (ignore_hidden) {
         continue;
+      }
     }
 
     i = pr_fsio_readlink(p, file, sizeof(file) - 1);
@@ -1951,7 +1962,6 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 
   if (!curdir)
     pop_cwd(cwd_buf, &symhold);
-
   destroy_pool(workp);
 
   /* Explicitly free the memory allocated for containing the list of
@@ -2185,6 +2195,7 @@ MODRET ls_list(cmd_rec *cmd) {
   list_nfiles.logged = list_ndirs.logged = list_ndepth.logged = FALSE;
 
   opt_l = 1;
+
   return genericlist(cmd);
 }
 

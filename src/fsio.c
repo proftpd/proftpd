@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.81 2009-06-22 18:10:32 castaglia Exp $
+ * $Id: fsio.c,v 1.82 2009-07-29 20:59:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2173,10 +2173,12 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
     /* chdir succeeded, so we set fs_cwd for future references. */
      fs_cwd = fs ? fs : root_fs;
 
-     if (hidesymlink)
+     if (hidesymlink) {
        pr_fs_virtual_path(path, vwd, sizeof(vwd)-1);
-     else
+
+     } else {
        sstrncpy(vwd, resbuf, sizeof(vwd));
+     }
   }
 
   return res;
