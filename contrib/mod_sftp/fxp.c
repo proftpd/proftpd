@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.49 2009-07-28 16:20:03 castaglia Exp $
+ * $Id: fxp.c,v 1.50 2009-07-30 16:03:36 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5855,7 +5855,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
       status_code = SSH2_FX_DIR_NOT_EMPTY;
     }
 
-    *reason = fxp_strerror(status_code);
+    reason = fxp_strerror(status_code);
   }
 #endif
 
