@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.54 2009-06-30 16:41:42 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.55 2009-08-02 21:44:17 castaglia Exp $
  */
 
 /*
@@ -448,6 +448,10 @@ MODRET cmd_open(cmd_rec *cmd) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
     return _build_error(cmd, conn);
   }
+
+  sql_log(DEBUG_FUNC, "MySQL client version: %s", mysql_get_client_info());
+  sql_log(DEBUG_FUNC, "MySQL server version: %s",
+    mysql_get_server_info(conn->mysql));
 
 #ifdef PR_USE_NLS
   if (pr_encode_get_encoding() != NULL) {

@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.44 2009-06-30 16:41:42 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.45 2009-08-02 21:44:17 castaglia Exp $
  */
 
 /*
@@ -353,6 +353,7 @@ const char *get_postgres_encoding(const char *encoding) {
 MODRET cmd_open(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
+  const char *server_version = NULL;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_open");
 
@@ -395,6 +396,11 @@ MODRET cmd_open(cmd_rec *cmd) {
     /* if it didn't work, return an error */
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
     return _build_error( cmd, conn );
+  }
+
+  server_version = PQparameterStatus(conn->postgres, "server_version");
+  if (server_version != NULL) {
+    sql_log(DEBUG_FUNC, "Postgres server version: %s", server_version);
   }
 
 #ifdef PR_USE_NLS
@@ -1457,6 +1463,10 @@ static int sql_postgres_init(void) {
     sql_postgres_mod_load_ev, NULL);
   pr_event_register(&sql_postgres_module, "core.module-unload",
     sql_postgres_mod_unload_ev, NULL);
+
+#if defined(PG_VERSION_STR)
+  pr_log_debug(DEBUG3, MOD_SQL_POSTGRES ": using %s", PG_VERSION_STR);
+#endif
 
   return 0;
 }
