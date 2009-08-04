@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1049 2009-07-29 20:59:03 castaglia Exp $
+$Id: NEWS,v 1.1050 2009-08-04 15:53:27 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -21,6 +21,7 @@ CVS
 - Bug 1908 - ExtendedLog to work properly in <Anonymous> context.
 - Bug 3269 - RewriteCondition OR/ornext flag does not work.
 - Bug 3254 - NLST/LIST and symbolic link problem.
+- Bug 3274 - Timestamp formatting in TransferLog needs padded day-of-month.
 
 1.3.3rc1 - Released 30-Jun-2009
 --------------------------------
