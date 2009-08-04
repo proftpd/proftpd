@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.46 2009-08-02 22:08:17 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.47 2009-08-04 17:32:19 castaglia Exp $
  */
 
 /*
@@ -377,16 +377,77 @@ MODRET cmd_open(cmd_rec *cmd) {
   /* if we're already open (connections > 0) increment connections 
    * reset our timer if we have one, and return HANDLED 
    */
-  if ((entry->connections > 0) && 
-      (PQstatus(conn->postgres) == CONNECTION_OK)) {
-    entry->connections++;
-    if (entry->timer) 
-      pr_timer_reset(entry->timer, &sql_postgres_module);
+  if (entry->connections > 0) { 
+    if (PQstatus(conn->postgres) == CONNECTION_OK) {
+      entry->connections++;
 
-    sql_log(DEBUG_INFO, "connection '%s' count is now %d", entry->name,
-      entry->connections);
-    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
-    return PR_HANDLED(cmd);
+      if (entry->timer) {
+        pr_timer_reset(entry->timer, &sql_postgres_module);
+      }
+
+      sql_log(DEBUG_INFO, "connection '%s' count is now %d", entry->name,
+        entry->connections);
+      sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
+      return PR_HANDLED(cmd);
+
+    } else {
+      char *reason;
+      size_t reason_len;
+
+      /* Unless we've been told not to reconnect, try to reconnect now.
+       * We only try once; if it fails, we return an error.
+       */
+      if (!(pr_sql_opts & SQL_OPT_NO_RECONNECT)) {
+        PQreset(conn->postgres);
+
+        if (PQstatus(conn->postgres) == CONNECTION_OK) {
+          entry->connections++;
+
+          if (entry->timer) {
+            pr_timer_reset(entry->timer, &sql_postgres_module);
+          }
+
+          sql_log(DEBUG_INFO, "connection '%s' count is now %d", entry->name,
+            entry->connections);
+          sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
+          return PR_HANDLED(cmd);
+        }
+      }
+
+      reason = PQerrorMessage(conn->postgres);
+      reason_len = strlen(reason);
+
+      /* Postgres might give us an empty string as the reason; not helpful. */
+      if (reason_len == 0) {
+        reason = "(unknown)";
+        reason_len = strlen(reason);
+      }
+
+      /* The error message returned by Postgres is usually appended with
+       * a newline.  Let's prettify it by removing the newline.  Note
+       * that yes, we are overwriting the pointer given to us by Postgres,
+       * but it's OK.  The Postgres docs say that we're not supposed to
+       * free the memory associated with the returned string anyway.
+       */
+      reason = pstrdup(session.pool, reason);
+
+      if (reason[reason_len-1] == '\n') {
+        reason[reason_len-1] = '\0';
+        reason_len--;
+      }
+
+      sql_log(DEBUG_INFO, "lost connection to database: %s", reason);
+
+      entry->connections = 0;
+      if (entry->timer) {
+        pr_timer_remove(entry->timer, &sql_postgres_module);
+        entry->timer = 0;
+      }
+
+      sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
+      return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
+        "lost connection to database");
+    }
   }
 
   /* make sure we have a new conn struct */

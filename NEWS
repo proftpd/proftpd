@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1051 2009-08-04 15:59:50 castaglia Exp $
+$Id: NEWS,v 1.1052 2009-08-04 17:32:19 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -23,6 +23,8 @@ CVS
 - Bug 3254 - NLST/LIST and symbolic link problem.
 - Bug 3272 - Avoid encoding if to/from charsets are the same.
 - Bug 3274 - Timestamp formatting in TransferLog needs padded day-of-month.
+- Bug 3270 - Lost connections to databases not correctly handled.  This
+  also adds support for a new "noReconnect" SQLOption.
 
 1.3.3rc1 - Released 30-Jun-2009
 --------------------------------

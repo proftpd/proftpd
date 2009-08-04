@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.170 2009-07-24 17:31:24 castaglia Exp $
+ * $Id: mod_sql.c,v 1.171 2009-08-04 17:32:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -91,10 +91,6 @@
 #define SQL_FASTGROUPS         (cmap.authmask & SQL_FAST_GROUPSET)
 #define SQL_FASTUSERS          (cmap.authmask & SQL_FAST_USERSET)
 
-/* SQL options */
-#define SQL_OPT_NO_DISCONNECT_ON_ERROR		0x0001
-#define SQL_OPT_USE_NORMALIZED_GROUP_SCHEMA	0x0002
-
 /*
  * externs, function signatures.. whatever necessary to make
  * the compiler happy..
@@ -102,6 +98,7 @@
 extern pr_response_t *resp_list,*resp_err_list;
 
 module sql_module;
+unsigned long pr_sql_opts = 0UL;
 
 /* For tracking the size of deleted files. */
 static off_t sql_dele_filesz = 0;
@@ -194,8 +191,6 @@ static struct {
 
   array_header *authlist;       /* auth handler list */
   char *defaulthomedir;         /* default homedir if no field specified */
-
-  unsigned long opts;
 
   uid_t minid;                  /* users UID must be this or greater */
   uid_t minuseruid;             /* users UID must be this or greater */
@@ -395,7 +390,7 @@ static int check_response(modret_t *mr) {
   pr_log_debug(DEBUG2, MOD_SQL_VERSION
     ": check the SQLLogFile for more details");
 
-  if (!(cmap.opts & SQL_OPT_NO_DISCONNECT_ON_ERROR)) {
+  if (!(pr_sql_opts & SQL_OPT_NO_DISCONNECT_ON_ERROR)) {
     end_login(1);
   }
 
@@ -1637,7 +1632,7 @@ static int sql_getgroups(cmd_rec *cmd) {
   username = (char *) mr->data;
 
   if (!cmap.groupcustommembers) {
-    if (!(cmap.opts & SQL_OPT_USE_NORMALIZED_GROUP_SCHEMA)) {
+    if (!(pr_sql_opts & SQL_OPT_USE_NORMALIZED_GROUP_SCHEMA)) {
 
       /* Use a SELECT with a LIKE clause:
        *
@@ -4157,9 +4152,13 @@ MODRET set_sqloptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "useNormalizedGroupSchema") == 0) {
       opts |= SQL_OPT_USE_NORMALIZED_GROUP_SCHEMA;
 
-    } else
+    } else if (strcmp(cmd->argv[i], "noReconnect") == 0) {
+      opts |= SQL_OPT_NO_RECONNECT;
+
+    } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown SQLOption '",
         cmd->argv[i], "'", NULL));
+    }
   }
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
@@ -5130,10 +5129,11 @@ static int sql_sess_init(void) {
     FALSE);
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLOptions", FALSE);
-  cmap.opts = 0UL;
-  if (temp_ptr)
-    cmap.opts = *((unsigned long *) temp_ptr);
-  
+  pr_sql_opts = 0UL;
+  if (temp_ptr) {
+    pr_sql_opts = *((unsigned long *) temp_ptr);
+  }
+ 
   temp_ptr = get_param_ptr(main_server->conf, "SQLUserTable", FALSE);
   
   /* if we have no SQLUserTable, SQLUserInfo was not used -- default all */

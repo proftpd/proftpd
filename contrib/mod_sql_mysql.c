@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.55 2009-08-02 21:44:17 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.56 2009-08-04 17:32:19 castaglia Exp $
  */
 
 /*
@@ -410,18 +410,37 @@ MODRET cmd_open(cmd_rec *cmd) {
 
   conn = (db_conn_t *) entry->data;
 
-  /* if we're already open (connections > 0) increment connections 
-   * reset our timer if we have one, and return HANDLED 
+  /* If we're already open (connections > 0), AND our connection to MySQL
+   * is still alive, increment the connection counter, reset our timer (if
+   * we have one), and return HANDLED.
    */
-  if ((entry->connections > 0) && (!mysql_ping(conn->mysql))) {
-    entry->connections++;
-    if (entry->timer)
-      pr_timer_reset(entry->timer, &sql_mysql_module);
+  if (entry->connections > 0) {
+    if (mysql_ping(conn->mysql) == 0) {
+      entry->connections++;
 
-    sql_log(DEBUG_INFO, "connection '%s' count is now %d", entry->name,
-      entry->connections);
-    sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
-    return PR_HANDLED(cmd);
+      if (entry->timer) {
+        pr_timer_reset(entry->timer, &sql_mysql_module);
+      }
+
+      sql_log(DEBUG_INFO, "connection '%s' count is now %d", entry->name,
+        entry->connections);
+      sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
+      return PR_HANDLED(cmd);
+
+    } else {
+      sql_log(DEBUG_INFO, "lost connection to database: %s",
+        mysql_error(conn->mysql));
+
+      entry->connections = 0;
+      if (entry->timer) {
+        pr_timer_remove(entry->timer, &sql_mysql_module);
+        entry->timer = 0;
+      }
+
+      sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
+      return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION,
+        "lost connection to database");
+    }
   }
 
   /* Make sure we have a new conn struct */
@@ -439,6 +458,17 @@ MODRET cmd_open(cmd_rec *cmd) {
    * options from group "client" in the MySQL .cnf files.
    */
   mysql_options(conn->mysql, MYSQL_READ_DEFAULT_GROUP, "client");
+
+#if MYSQL_VERSION_ID >= 50013
+  /* The MYSQL_OPT_RECONNECT option appeared in MySQL 5.0.13, according to
+   *
+   *  http://dev.mysql.com/doc/refman/5.0/en/auto-reconnect.html
+   */
+  if (!(pr_sql_opts & SQL_OPT_NO_RECONNECT)) {
+    my_bool reconnect = TRUE;
+    mysql_options(conn->mysql, MYSQL_OPT_RECONNECT, &reconnect);
+  }
+#endif
 
   if (!mysql_real_connect(conn->mysql, conn->host, conn->user, conn->pass,
       conn->db, (int) strtol(conn->port, (char **) NULL, 10),
