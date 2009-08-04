@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: utf8.c,v 1.5 2009-04-24 16:55:30 castaglia Exp $
+ * $Id: utf8.c,v 1.6 2009-08-04 15:59:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -63,7 +63,9 @@ static int utf8_convert(iconv_t conv, char *inbuf, size_t *inbuflen,
 
     break;
   }
+
   return 0;
+
 # else
   errno = ENOSYS;
   return -1;
@@ -141,6 +143,28 @@ int sftp_utf8_free(void) {
 
 int sftp_utf8_init(void) {
 #if defined(PR_USE_NLS) && defined(HAVE_ICONV)
+
+  /* Run setlocale(3) before calling nl_langinfo(), so that we can pick up
+   * the CODESET from the LANG environment variable.
+   */
+  if (setlocale(LC_MESSAGES, "") == NULL) {
+    pr_trace_msg("sftp", 1,
+      "unable to set LC_MESSAGES using LANG environment variable: %s",
+      strerror(errno));
+    pr_log_pri(PR_LOG_NOTICE, "unable to set LC_MESSAGES: %s",
+      strerror(errno));
+  }
+
+  /* Preserve the POSIX/portable handling of number formatting; local
+   * formatting of decimal points, for example, can cause problems with
+   * numbers in SQL queries.
+   */
+  if (setlocale(LC_NUMERIC, "C") == NULL) {
+    pr_trace_msg("sftp", 1,
+      "unable to set LC_NUMERIC to C locale: %s", strerror(errno));
+    pr_log_pri(PR_LOG_NOTICE, "unable to set LC_NUMERIC: %s",
+      strerror(errno));
+  }
 
   if (local_charset == NULL) {
 # ifdef HAVE_NL_LANGINFO
@@ -222,6 +246,16 @@ char *sftp_utf8_decode_str(pool *p, const char *str) {
   if (decode_conv == (iconv_t) -1) {
     pr_trace_msg("sftp", 1, "decoding conversion handle is invalid, unable to "
       "decode UTF8 string");
+    return (char *) str;
+  }
+
+  /* If the local charset matches the remote charset (i.e. local_charset is
+   * "UTF-8"), then there's no point in converting; the charsets are the
+   * same.  Indeed, on some libiconv implementations, attempting to
+   * convert between the same charsets results in a tightly spinning CPU
+   * (see Bug#3272).
+   */
+  if (strcasecmp(local_charset, "UTF-8") == 0) {
     return (char *) str;
   }
 
