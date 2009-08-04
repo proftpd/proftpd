@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.16 2009-07-01 18:18:10 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.17 2009-08-04 17:34:33 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -1001,6 +1001,14 @@ The currently implemented options are:
     database errors.
 
   <p>
+  <li><code>noReconnect</code><br>
+    <p>
+    If supported by the database client library, <code>mod_sql</code> will
+    try to automatically reconnect <i>once</i>, if it determines that the
+    connection to the database server was lost.  Use "noReconnect" to disable
+    this auto-reconnection attempt.
+
+  <p>
   <li><code>useNormalizedGroupSchema</code><br>
     <p>
     If this option is enabled, then <code>mod_sql</code>, when retrieving all
@@ -1304,7 +1312,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-07-01 18:18:10 $</i><br>
+Last Updated: <i>$Date: 2009-08-04 17:34:33 $</i><br>
 
 <br><hr>
 
