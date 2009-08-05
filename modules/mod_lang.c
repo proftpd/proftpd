@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.24 2009-03-31 03:27:22 castaglia Exp $
+ * $Id: mod_lang.c,v 1.25 2009-08-05 13:34:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -612,6 +612,8 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
       lang_list = make_array(lang_pool, 3, sizeof(char *));
     }
 
+    curr_locale = pstrdup(tmp_pool, setlocale(LC_MESSAGES, NULL));
+
     while ((dent = readdir(dirh)) != NULL) {
       char *mo;
       struct stat st;
@@ -627,7 +629,6 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
         /* Check that dent->d_name is a valid language name according to
          * setlocale(3) before adding it to the list.
          */
-        curr_locale = pstrdup(tmp_pool, setlocale(LC_MESSAGES, NULL));
 
         if (setlocale(LC_MESSAGES, dent->d_name) != NULL) {
           *((char **) push_array(lang_list)) = pstrdup(lang_pool, dent->d_name);
@@ -644,11 +645,11 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
               strerror(errno));
           }
         }
-
-        /* Restore the current locale. */
-        setlocale(LC_MESSAGES, curr_locale);
       }
     }
+
+    /* Restore the current locale. */
+    setlocale(LC_MESSAGES, curr_locale);
 
     closedir(dirh);
 
