@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.25 2009-08-05 13:34:04 castaglia Exp $
+ * $Id: mod_lang.c,v 1.26 2009-08-05 15:07:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -606,7 +606,7 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
   if (dirh != NULL) {
     register unsigned int i;
     struct dirent *dent;
-    char *langs_str = "", **langs = NULL;
+    char *curr_locale, *langs_str = "", **langs = NULL;
 
     if (!lang_list) {
       lang_list = make_array(lang_pool, 3, sizeof(char *));
@@ -624,7 +624,6 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
         "proftpd.mo", NULL);
 
       if (stat(mo, &st) == 0) {
-        char *curr_locale;
 
         /* Check that dent->d_name is a valid language name according to
          * setlocale(3) before adding it to the list.
