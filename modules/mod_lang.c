@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.26 2009-08-05 15:07:30 castaglia Exp $
+ * $Id: mod_lang.c,v 1.27 2009-08-05 21:03:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -126,8 +126,11 @@ static void lang_feat_remove(void) {
 static int lang_set_lang(pool *p, const char *lang) {
   int category = LC_MESSAGES;
   char *curr_lang, *codeset;
+  size_t langlen;
 
-  if (strlen(lang) == 0) {
+  langlen = strlen(lang);
+
+  if (langlen == 0) {
     category = LC_ALL;
   }
 
@@ -135,14 +138,28 @@ static int lang_set_lang(pool *p, const char *lang) {
 
   if (setlocale(category, lang) == NULL) {
     if (errno == ENOENT) {
+
+      if (langlen == 0) {
+        const char *env_lang;
+
+        env_lang = pr_env_get(p, "LANG");
+        pr_log_pri(PR_LOG_NOTICE, "unknown/unsupported LANG language '%s', "
+          "ignoring", env_lang);
+
+      } else {
+        pr_log_pri(PR_LOG_NOTICE, "unknown/unsupported language '%s', ignoring",
+          lang);
+      }
+
       /* The site may have an unknown/bad LANG environment variable set.
        * Report this, and fall back to using "C" as the locale.
        */
-      pr_log_pri(PR_LOG_NOTICE,
-        "unknown/unsupported language '%s' for %s, switching %s from '%s' "
-        "to 'C'", lang, category == LC_MESSAGES ? "LC_MESSAGES" : "LC_ALL",
-        curr_lang, category == LC_MESSAGES ? "LC_MESSAGES" : "LC_ALL");
-      setlocale(category, "C");
+      if (strcmp(curr_lang, "C") != 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "switching %s from '%s' to 'C'", curr_lang,
+          category == LC_MESSAGES ? "LC_MESSAGES" : "LC_ALL");
+        setlocale(category, "C");
+      }
 
     } else {
       pr_log_pri(PR_LOG_NOTICE, "unable to set %s to '%s': %s",
