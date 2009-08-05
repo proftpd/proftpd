@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.14 2009-08-04 15:59:50 castaglia Exp $
+ * $Id: encode.c,v 1.15 2009-08-05 22:03:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -189,26 +189,37 @@ int encode_init(void) {
   }
 
 # ifdef HAVE_ICONV
-  /* Get the iconv handles. */
-  encode_conv = iconv_open(encoding, local_charset);
-  if (encode_conv == (iconv_t) -1) {
-    pr_trace_msg(trace_channel, 1, "error opening conversion handle from '%s' "
-      "to '%s': %s", local_charset, encoding, strerror(errno));
-    return -1;
-  }
+
+  /* If the local charset matches the remote charset, then there's no point
+   * in converting; the charsets are the same.  Indeed, on some libiconv
+   * implementations, attempting to convert between the same charsets results
+   * in a tightly spinning CPU, or worse (see Bug#3272).
+   */
+  if (local_charset != NULL &&
+      encoding != NULL &&
+      strcasecmp(local_charset, encoding) != 0) {
+
+    /* Get the iconv handles. */
+    encode_conv = iconv_open(encoding, local_charset);
+    if (encode_conv == (iconv_t) -1) {
+      pr_trace_msg(trace_channel, 1, "error opening conversion handle "
+        "from '%s' to '%s': %s", local_charset, encoding, strerror(errno));
+      return -1;
+    }
  
-  decode_conv = iconv_open(local_charset, encoding);
-  if (decode_conv == (iconv_t) -1) {
-    int xerrno = errno;
+    decode_conv = iconv_open(local_charset, encoding);
+    if (decode_conv == (iconv_t) -1) {
+      int xerrno = errno;
 
-    pr_trace_msg(trace_channel, 1, "error opening conversion handle from '%s' "
-      "to '%s': %s", encoding, local_charset, strerror(errno));
+      pr_trace_msg(trace_channel, 1, "error opening conversion handle "
+        "from '%s' to '%s': %s", encoding, local_charset, strerror(errno));
 
-    (void) iconv_close(encode_conv);
-    encode_conv = (iconv_t) -1;
+      (void) iconv_close(encode_conv);
+      encode_conv = (iconv_t) -1;
 
-    errno = xerrno;
-    return -1;
+      errno = xerrno;
+      return -1;
+    }
   }
 
   set_supports_telnet_iac(encoding);
@@ -229,18 +240,18 @@ char *pr_decode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
     return NULL;
   }
 
-  if (decode_conv == (iconv_t) -1) {
-    pr_trace_msg(trace_channel, 1, "invalid decoding conversion handle, "
-      "unable to decode string");
-    return pstrdup(p, in);
-  }
-
   /* If the local charset matches the remote charset, then there's no point
    * in converting; the charsets are the same.  Indeed, on some libiconv
    * implementations, attempting to convert between the same charsets results
    * in a tightly spinning CPU (see Bug#3272).
    */
   if (strcasecmp(local_charset, encoding) == 0) {
+    return pstrdup(p, in);
+  }
+
+  if (decode_conv == (iconv_t) -1) {
+    pr_trace_msg(trace_channel, 1, "invalid decoding conversion handle, "
+      "unable to decode string");
     return pstrdup(p, in);
   }
 
