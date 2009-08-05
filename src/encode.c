@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.15 2009-08-05 22:03:57 castaglia Exp $
+ * $Id: encode.c,v 1.16 2009-08-05 22:08:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -195,9 +195,7 @@ int encode_init(void) {
    * implementations, attempting to convert between the same charsets results
    * in a tightly spinning CPU, or worse (see Bug#3272).
    */
-  if (local_charset != NULL &&
-      encoding != NULL &&
-      strcasecmp(local_charset, encoding) != 0) {
+  if (strcasecmp(local_charset, encoding) != 0) {
 
     /* Get the iconv handles. */
     encode_conv = iconv_open(encoding, local_charset);
@@ -245,7 +243,9 @@ char *pr_decode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
    * implementations, attempting to convert between the same charsets results
    * in a tightly spinning CPU (see Bug#3272).
    */
-  if (strcasecmp(local_charset, encoding) == 0) {
+  if (local_charset != NULL &&
+      encoding != NULL &&
+      strcasecmp(local_charset, encoding) == 0) {
     return pstrdup(p, in);
   }
 
