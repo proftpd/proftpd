@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.117 2009-02-12 20:13:42 castaglia Exp $
+ * $Id: data.c,v 1.118 2009-08-05 17:31:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1015,6 +1015,8 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
       do {
         buflen = session.xfer.buflen;        /* how much remains in buf */
         adjlen = 0;
+
+        pr_signals_handle();
 
         len = pr_netio_read(session.d->instrm, buf + buflen,
           session.xfer.bufsize - buflen, 1);
