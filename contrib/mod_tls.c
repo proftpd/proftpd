@@ -822,6 +822,41 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
 }
 #endif
 
+static const char *get_printable_subjaltname(pool *p, const char *data,
+    size_t datalen) {
+  register unsigned int i;
+  char *ptr, *res;
+  size_t reslen = 0;
+
+  /* First, calculate the length of the resulting printable string we'll
+   * be generating.
+   */
+
+  for (i = 0; i < datalen; i++) {
+    if (isprint((int) data[i])) {
+      reslen++;
+
+    } else {
+      reslen += 4;
+    }
+  }
+
+  /* Leave one space in the allocated string for the terminating NUL. */
+  ptr = res = pcalloc(p, reslen + 1);
+
+  for (i = 0; i < datalen; i++) {
+    if (isprint((int) data[i])) {
+      *(ptr++) = data[i];
+
+    } else {
+      snprintf(ptr, reslen - (ptr - res), "\\x%02x", data[i]);
+      ptr += 4;
+    }
+  }
+
+  return res;
+}
+
 static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
   X509 *cert = NULL;
   STACK_OF(GENERAL_NAME) *sk_alt_names;
@@ -869,11 +904,14 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
             if ((size_t) name->d.ia5->length != strlen(cert_dns_name)) {
               tls_log("%s", "client cert dNSName contains embedded NULs, "
                 "rejecting as possible spoof attempt");
+              tls_log("suspicious dNSName value: '%s'",
+                get_printable_subjaltname(conn->pool,
+                  (const char *) name->d.ia5->data,
+                  (size_t) name->d.ia5->length));
 
               GENERAL_NAME_free(name);
               sk_GENERAL_NAME_free(sk_alt_names);
               X509_free(cert);
-              ok = FALSE;
               return FALSE;
 
             } else {
@@ -884,7 +922,6 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
                 GENERAL_NAME_free(name);
                 sk_GENERAL_NAME_free(sk_alt_names);
                 X509_free(cert);
-                ok = FALSE;
                 return FALSE;
               }
             }
