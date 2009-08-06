@@ -76,6 +76,11 @@ my $TESTS = {
     test_class => [qw(bug forking rootprivs)],
   },
 
+  tls_client_cert_verify_failed_embedded_nul_bug3275 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -1773,6 +1778,197 @@ sub tls_implicit_ssl_bug3266 {
 
   if ($ex) {
     die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub tls_client_cert_verify_failed_embedded_nul_bug3275 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/tls.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+#  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-nul-subjaltname.pem');
+
+  # The cert/key with embedded NULs in the subjAltName field were obtained
+  # from:
+  #
+  #  http://people.redhat.com/thoger/certs-with-nuls/
+
+  my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/cert-nul-subjaltname.pem');
+  my $client_key = File::Spec->rel2abs('t/etc/modules/mod_tls/key-nul-subjaltname.pem');
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $log_file,
+        TLSProtocol => 'SSLv3 TLSv1',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $server_cert,
+        TLSCACertificateFile => $ca_cert,
+
+        TLSVerifyClient => 'on',
+
+        # To trigger Bug#3275, we need to verify the subjAltName field in
+        # the present cert, which means enabling DNS resolution
+        TLSOptions => 'dNSNameRequired',
+
+        # We need to enable reverse DNS resolution as well, for this to work
+        UseReverseDNS => 'on',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client;
+
+      eval {
+        # IO::Socket::SSL options
+        my $ssl_opts = {
+          SSL_use_cert => 1,
+          SSL_cert_file => $client_cert,
+          SSL_key_file => $client_key,
+        };
+
+        $client = Net::FTPSSL->new('127.0.0.1',
+          Croak => 1,
+          Encryption => 'E',
+          Port => $port,
+          SSL_Advanced => $ssl_opts,
+        );
+
+        # Net::FTPSSL is rather stupid, and treats the initial 234 response
+        # code (indicating that the SSL/TLS handshake should proceed) as
+        # indicating success _of the handshake_.
+        #
+        # Thus if we want to test if the handshake succeeded, we have to
+        # act as if it did succeed, then try to login (which should fail).
+        # Sigh.
+
+        unless ($client->login($user, $passwd)) {
+          die("Can't login: " . $client->last_message());
+        }
+      };
+
+      if ($@) {
+        die($@);
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  unless ($ex) {
+    die("Test succeeded unexpectedly");
+  }
+
+  # Not quite done yet.  To make sure that this test did as expected, we
+  # need to examine the log file, and look for the phrase 'spoof attempt'.
+  # That indicates that mod_tls saw the embedded NUL.
+  if (open(my $fh, "< $log_file")) {
+    my $ok = 0;
+
+    while (my $line = <$fh>) {
+      chomp($line);
+
+      if ($line =~ /spoof attempt/) {
+        $ok = 1;
+        last;
+      }
+    }
+
+    close($fh);
+
+    unless ($ok) {
+      die("Expected TLSLog 'spoof attempt' not found as expected");
+    }
+
+  } else {
+    die("Can't read $log_file: $!");
   }
 
   unlink($log_file);

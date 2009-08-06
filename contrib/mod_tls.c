@@ -860,14 +860,33 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
             const char *cert_dns_name = (const char *) name->d.ia5->data;
             have_dns_ext = TRUE;
 
-            if (strcmp(cert_dns_name, conn->remote_name) != 0) {
-              tls_log("client cert dNSName value '%s' != client FQDN '%s'",
-                cert_dns_name, conn->remote_name);
+            /* Check for subjectAltName values which contain embedded
+             * NULs.  This can cause verification problems (spoofing),
+             * e.g. if the string is "www.goodguy.com\0www.badguy.com"; the
+             * use of strcmp() only checks "www.goodguy.com".
+             */
+
+            if ((size_t) name->d.ia5->length != strlen(cert_dns_name)) {
+              tls_log("%s", "client cert dNSName contains embedded NULs, "
+                "rejecting as possible spoof attempt");
 
               GENERAL_NAME_free(name);
               sk_GENERAL_NAME_free(sk_alt_names);
               X509_free(cert);
+              ok = FALSE;
               return FALSE;
+
+            } else {
+              if (strcmp(cert_dns_name, conn->remote_name) != 0) {
+                tls_log("client cert dNSName value '%s' != client FQDN '%s'",
+                  cert_dns_name, conn->remote_name);
+
+                GENERAL_NAME_free(name);
+                sk_GENERAL_NAME_free(sk_alt_names);
+                X509_free(cert);
+                ok = FALSE;
+                return FALSE;
+              }
             }
 
             tls_log("%s", "client cert dNSName matches client FQDN");
@@ -2551,8 +2570,9 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       /* Now we can go on with our post-handshake, application level
        * requirement checks.
        */
-      if (!tls_check_client_cert(ssl, conn))
+      if (!tls_check_client_cert(ssl, conn)) {
         return -1;
+      }
     }
 
     /* Setup the TLS environment variables, if requested. */
@@ -5384,8 +5404,10 @@ MODRET tls_auth(cmd_rec *cmd) {
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "TLS/TLS-C negotiation failed on control channel");
 
-      if (tls_required_on_ctrl == 1)
+      if (tls_required_on_ctrl == 1) {
+        pr_response_send(R_550, _("TLS handshake failed"));
         end_login(1);
+      }
 
       /* If we reach this point, the debug logging may show gibberish
        * commands from the client.  In reality, this gibberish is probably
@@ -5412,8 +5434,10 @@ MODRET tls_auth(cmd_rec *cmd) {
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "SSL/TLS-P negotiation failed on control channel");
 
-      if (tls_required_on_ctrl == 1)
+      if (tls_required_on_ctrl == 1) {
+        pr_response_send(R_550, _("TLS handshake failed"));
         end_login(1);
+      }
 
       /* If we reach this point, the debug logging may show gibberish
        * commands from the client.  In reality, this gibberish is probably
