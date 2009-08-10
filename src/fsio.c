@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.82 2009-07-29 20:59:04 castaglia Exp $
+ * $Id: fsio.c,v 1.83 2009-08-10 17:01:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3608,7 +3608,17 @@ off_t pr_fs_getsize(char *path) {
     return 0;
   }
 
-  return calc_fs_size(fs.f_bavail, fs.f_frsize);
+  /* The calc_fs_size() function is only useful for 32-bit numbers;
+   * if either of our two values are in datatypes larger than 4 bytes,
+   * we'll use typecasting.
+   */
+  if (sizeof(fs.f_bavail) > 4 ||
+      sizeof(fs.f_frsize) > 4) {
+    return ((off_t) fs.f_bavail * (off_t) fs.f_frsize);
+
+  } else {
+    return calc_fs_size(fs.f_bavail, fs.f_frsize);
+  }
 
 # elif defined(HAVE_SYS_VFS_H)
   struct statfs fs;
@@ -3619,7 +3629,18 @@ off_t pr_fs_getsize(char *path) {
     return 0;
   }
 
-  return calc_fs_size(fs.f_bavail, fs.f_bsize);
+  /* The calc_fs_size() function is only useful for 32-bit numbers;
+   * if either of our two values are in datatypes larger than 4 bytes,
+   * we'll use typecasting.
+   */
+  if (sizeof(fs.f_bavail) > 4 ||
+      sizeof(fs.f_bsize) > 4) {
+    return ((off_t) fs.f_bavail * (off_t) fs.f_bsize);
+
+  } else {
+    return calc_fs_size(fs.f_bavail, fs.f_bsize);
+  }
+
 # elif defined(HAVE_STATFS)
   struct statfs fs;
 
@@ -3629,7 +3650,18 @@ off_t pr_fs_getsize(char *path) {
     return 0;
   }
 
-  return calc_fs_size(fs.f_bavail, fs.f_bsize);
+  /* The calc_fs_size() function is only useful for 32-bit numbers;
+   * if either of our two values are in datatypes larger than 4 bytes,
+   * we'll use typecasting.
+   */
+  if (sizeof(fs.f_bavail) > 4 ||
+      sizeof(fs.f_bsize) > 4) {
+    return ((off_t) fs.f_bavail * (off_t) fs.f_bsize);
+
+  } else {
+    return calc_fs_size(fs.f_bavail, fs.f_bsize);
+  }
+
 # endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
 }
 #endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1053 2009-08-06 16:58:37 castaglia Exp $
+$Id: NEWS,v 1.1054 2009-08-10 17:01:55 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -26,6 +26,7 @@ CVS
 - Bug 3270 - Lost connections to databases not correctly handled.  This
   also adds support for a new "noReconnect" SQLOption.
 - Bug 3275 - Improper SSL/TLS certificate subjectAltName verification.
+- Bug 3272 - %F/%f Display variables can report wrong size on 64-bit systems.
 
 1.3.3rc1 - Released 30-Jun-2009
 --------------------------------
