@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.353 2009-07-15 05:58:25 castaglia Exp $
+ * $Id: mod_core.c,v 1.354 2009-08-12 22:16:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1926,26 +1926,29 @@ MODRET set_hidefiles(cmd_rec *cmd) {
   config_rec *c = NULL;
   int res;
   unsigned int precedence = 0;
-  unsigned char inverted = FALSE;
+  unsigned char negated = FALSE;
 
   int ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
     cmd->config->config_type : cmd->server->config_type ?
     cmd->server->config_type : CONF_ROOT);
 
   /* This directive must have either 1, or 3, arguments */
-  if (cmd->argc-1 != 1 && cmd->argc-1 != 3)
+  if (cmd->argc-1 != 1 &&
+      cmd->argc-1 != 3) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_DIR|CONF_DYNDIR);
 
   /* Set the precedence for this config_rec based on its configuration
    * context.
    */
-  if (ctxt & CONF_DIR)
+  if (ctxt & CONF_DIR) {
     precedence = 1;
 
-  else
+  } else {
     precedence = 2;
+  }
 
   /* Check for a "none" argument, which is used to nullify inherited
    * HideFiles configurations from parent directories.
@@ -1959,8 +1962,8 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 
   /* Check for a leading '!' prefix, signifying regex negation */
   if (*cmd->argv[1] == '!') {
-    inverted = TRUE;
-    cmd->argv[1]++;
+    negated = TRUE;
+    cmd->argv[1] = cmd->argv[1] + 1;
   }
 
   regexp = pr_regexp_alloc();
@@ -1997,7 +2000,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
     c->argv[0] = pcalloc(c->pool, sizeof(regex_t *));
     *((regex_t **) c->argv[0]) = regexp;
     c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
-    *((unsigned char *) c->argv[1]) = inverted;
+    *((unsigned char *) c->argv[1]) = negated;
     c->argv[2] = pcalloc(c->pool, sizeof(unsigned int));
     *((unsigned int *) c->argv[2]) = precedence;
 
@@ -2012,7 +2015,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
     c->argc = argc + 4;
 
     /* Add 5 to argc for the argv of the config_rec: one for the
-     * regexp, one for the 'inverted' value, one for the precedence,
+     * regexp, one for the 'negated' value, one for the precedence,
      * one for the classifier, and one for the terminating NULL
      */
     c->argv = pcalloc(c->pool, ((argc + 5) * sizeof(char *)));
@@ -2026,9 +2029,9 @@ MODRET set_hidefiles(cmd_rec *cmd) {
     *argv = pcalloc(c->pool, sizeof(regex_t *));
     *((regex_t **) *argv++) = regexp;
 
-    /* Copy in the 'inverted' flag */
+    /* Copy in the 'negated' flag */
     *argv = pcalloc(c->pool, sizeof(unsigned char));
-    *((unsigned char *) *argv++) = inverted;
+    *((unsigned char *) *argv++) = negated;
 
     /* Copy in the precedence. */
     *argv = pcalloc(c->pool, sizeof(unsigned int));
