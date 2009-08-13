@@ -27,10 +27,10 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.52 2009-08-13 19:09:08 castaglia Exp $
+ * $Id: mod_radius.c,v 1.53 2009-08-13 21:12:55 castaglia Exp $
  */
 
-#define MOD_RADIUS_VERSION "mod_radius/0.9"
+#define MOD_RADIUS_VERSION "mod_radius/0.9.1"
 
 #include "conf.h"
 #include "privs.h"
@@ -172,8 +172,6 @@ static struct sockaddr radius_local_sock, radius_remote_sock;
 static const char *radius_nas_identifier = "ftp";
 static char *radius_realm = NULL;
 static time_t radius_session_start = 0;
-static off_t radius_session_bytes_in = 0;
-static off_t radius_session_bytes_out = 0;
 static int radius_session_authtype = RADIUS_AUTH_LOCAL;
 static unsigned char radius_auth_ok = FALSE;
 static unsigned char radius_auth_reject = FALSE;
@@ -2270,6 +2268,8 @@ static unsigned char radius_stop_accting(void) {
   radius_packet_t *request = NULL, *response = NULL;
   radius_server_t *acct_server = NULL;
   unsigned char recvd_response = FALSE, *authenticated = NULL;
+  off_t radius_session_bytes_in = 0;
+  off_t radius_session_bytes_out = 0;
 
   /* Check to see if RADIUS accounting should be done. */
   if (!radius_engine || !radius_acct_server)
@@ -2335,11 +2335,11 @@ static unsigned char radius_stop_accting(void) {
     radius_add_attrib(request, RADIUS_ACCT_SESSION_TIME,
       (unsigned char *) &now, sizeof(int));
 
-    radius_session_bytes_in = htonl(radius_session_bytes_in);
+    radius_session_bytes_in = htonl(session.total_bytes_in);
     radius_add_attrib(request, RADIUS_ACCT_INPUT_OCTETS,
       (unsigned char *) &radius_session_bytes_in, sizeof(int));
 
-    radius_session_bytes_out = htonl(radius_session_bytes_out);
+    radius_session_bytes_out = htonl(session.total_bytes_out);
     radius_add_attrib(request, RADIUS_ACCT_OUTPUT_OCTETS,
       (unsigned char *) &radius_session_bytes_out, sizeof(int));
 
@@ -2789,16 +2789,6 @@ MODRET radius_post_pass(cmd_rec *cmd) {
   if (!radius_start_accting())
     radius_log("error: unable to start accounting");
 
-  return PR_DECLINED(cmd);
-}
-
-MODRET radius_post_retr(cmd_rec *cmd) {
-  radius_session_bytes_out += session.xfer.total_bytes;
-  return PR_DECLINED(cmd);
-}
-
-MODRET radius_post_stor(cmd_rec *cmd) {
-  radius_session_bytes_in += session.xfer.total_bytes;
   return PR_DECLINED(cmd);
 }
 
@@ -3256,8 +3246,6 @@ static int radius_sess_init(void) {
 
   /* Initialize session variables */
   time(&radius_session_start);
-  radius_session_bytes_in = 0;
-  radius_session_bytes_out = 0;
 
   c = find_config(main_server->conf, CONF_PARAM, "RadiusNASIdentifier", FALSE);
   if (c) {
@@ -3411,16 +3399,8 @@ static cmdtable radius_cmdtab[] = {
   { HOOK,		"radius_quota_lookup", G_NONE,
       radius_quota_lookup, FALSE, FALSE },
 
-  { POST_CMD,		C_APPE,	G_NONE,	radius_post_stor,	FALSE, FALSE },
-  { POST_CMD_ERR,	C_APPE,	G_NONE,	radius_post_stor,	FALSE, FALSE },
   { PRE_CMD,		C_PASS, G_NONE, radius_pre_pass,	FALSE, FALSE, CL_AUTH },
   { POST_CMD,		C_PASS, G_NONE, radius_post_pass, 	FALSE, FALSE, CL_AUTH },
-  { POST_CMD,		C_RETR,	G_NONE,	radius_post_retr,	FALSE, FALSE },
-  { POST_CMD_ERR,	C_RETR,	G_NONE,	radius_post_retr,	FALSE, FALSE },
-  { POST_CMD,		C_STOR,	G_NONE,	radius_post_stor,	FALSE, FALSE },
-  { POST_CMD_ERR,	C_STOR,	G_NONE,	radius_post_stor,	FALSE, FALSE },
-  { POST_CMD,		C_STOU,	G_NONE,	radius_post_stor,	FALSE, FALSE },
-  { POST_CMD_ERR,	C_STOU,	G_NONE,	radius_post_stor,	FALSE, FALSE },
   { 0, NULL }
 };
 

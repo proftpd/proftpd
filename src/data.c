@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.118 2009-08-05 17:31:00 castaglia Exp $
+ * $Id: data.c,v 1.119 2009-08-13 21:12:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1146,6 +1146,13 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 
   session.xfer.total_bytes += total;
   session.total_bytes += total;
+  if (session.xfer.direction == PR_NETIO_IO_RD) {
+    session.total_bytes_in += total;
+
+  } else {
+    session.total_bytes_out += total;
+  }
+
   return (len < 0 ? -1 : len);
 }
 
@@ -1223,6 +1230,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
 
         session.xfer.total_bytes += len;
         session.total_bytes += len;
+        session.total_bytes_out += len;
 
         return -1;
       }
@@ -1240,6 +1248,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
 
       session.xfer.total_bytes += len;
       session.total_bytes += len;
+      session.total_bytes_out += len;
       total += len;
 
       pr_signals_handle();
@@ -1331,6 +1340,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
         if (XFER_ABORTED) {
           session.xfer.total_bytes += len;
           session.total_bytes += len;
+          session.total_bytes_out += len;
 
           return -1;
         }
@@ -1338,11 +1348,12 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
         pr_signals_handle();
 
         /* If we got everything in this transaction, we're done. */
-        if (len >= count)
+        if (len >= count) {
           break;
 
-        else 
+        } else {
           count -= len;
+        }
 
 	*offset += len;
 	
@@ -1354,6 +1365,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
 	
 	session.xfer.total_bytes += len;
 	session.total_bytes += len;
+	session.total_bytes_out += len;
 	total += len;
 	
 	continue;
@@ -1380,6 +1392,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
 
   session.xfer.total_bytes += len;
   session.total_bytes += len;
+  session.total_bytes_out += len;
   total += len;
 
   return total;

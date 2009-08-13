@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.258 2009-07-01 00:26:32 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.259 2009-08-13 21:12:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2196,9 +2196,6 @@ MODRET xfer_err_cleanup(cmd_rec *cmd) {
 MODRET xfer_log_stor(cmd_rec *cmd) {
   _log_transfer('i', 'c');
 
-  /* Increment the byte counter. */
-  session.total_bytes_in += session.xfer.total_bytes;
-
   /* Increment the file counters. */
   session.total_files_in++;
   session.total_files_xfer++;
@@ -2215,9 +2212,6 @@ MODRET xfer_log_stor(cmd_rec *cmd) {
 MODRET xfer_log_retr(cmd_rec *cmd) {
 
   _log_transfer('o', 'c');
-
-  /* Increment the byte counter. */
-  session.total_bytes_out += session.xfer.total_bytes;
 
   /* Increment the file counters. */
   session.total_files_out++;
