@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.51 2009-04-05 17:47:22 castaglia Exp $
+ * $Id: mod_radius.c,v 1.52 2009-08-13 19:09:08 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9"
@@ -248,13 +248,13 @@ static unsigned char radius_last_acct_pkt_id = 0;
 static void radius_add_attrib(radius_packet_t *, unsigned char,
   const unsigned char *, size_t);
 static void radius_add_passwd(radius_packet_t *, unsigned char,
-  const char *, char *);
-static void radius_build_packet(radius_packet_t *, const char *,
-  const char *, char *);
+  const unsigned char *, unsigned char *);
+static void radius_build_packet(radius_packet_t *, const unsigned char *,
+  const unsigned char *, unsigned char *);
 static unsigned char radius_chk_var(char *);
 static int radius_closelog(void);
 static int radius_close_socket(int);
-static void radius_get_acct_digest(radius_packet_t *, char *);
+static void radius_get_acct_digest(radius_packet_t *, unsigned char *);
 static radius_attrib_t *radius_get_attrib(radius_packet_t *, unsigned char);
 static void radius_get_rnd_digest(radius_packet_t *);
 static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *,
@@ -284,7 +284,7 @@ static int radius_send_packet(int, radius_packet_t *, radius_server_t *);
 static unsigned char radius_start_accting(void);
 static unsigned char radius_stop_accting(void);
 static int radius_verify_packet(radius_packet_t *, radius_packet_t *,
-  char *);
+  unsigned char *);
 
 /* Support functions
  */
@@ -1740,15 +1740,17 @@ static void radius_add_attrib(radius_packet_t *packet, unsigned char type,
 
 /* Add a RADIUS password attribute to the packet. */
 static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
-    const char *passwd, char *secret) {
+    const unsigned char *passwd, unsigned char *secret) {
 
   MD5_CTX ctx, secret_ctx;
   radius_attrib_t *attrib = NULL;
   unsigned char calculated[RADIUS_VECTOR_LEN];
-  char pwhash[PR_TUNABLE_BUFFER_SIZE];
-  size_t pwlen = strlen(passwd);
-  char *digest = NULL;
+  unsigned char pwhash[PR_TUNABLE_BUFFER_SIZE];
+  unsigned char *digest = NULL;
   register unsigned int i = 0;
+  size_t pwlen, secretlen;
+
+  pwlen = strlen((const char *) passwd);
 
   if (pwlen == 0) {
     pwlen = RADIUS_PASSWD_LEN;
@@ -1769,15 +1771,17 @@ static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
   /* Find the password attribute. */
   attrib = radius_get_attrib(packet, RADIUS_PASSWORD);
 
-  if (type == RADIUS_PASSWORD)
+  if (type == RADIUS_PASSWORD) {
     digest = packet->digest;
 
-  else
+  } else {
     digest = attrib->data;
+  }
 
   /* Encrypt the password.  Password: c[0] = p[0] ^ MD5(secret + digest) */
+  secretlen = strlen((const char *) secret);
   MD5_Init(&secret_ctx);
-  MD5_Update(&secret_ctx, secret, strlen(secret));
+  MD5_Update(&secret_ctx, secret, secretlen);
 
   /* Save this hash for later. */
   ctx = secret_ctx;
@@ -1817,7 +1821,8 @@ static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
     memcpy(attrib->data, pwhash, pwlen);
 }
 
-static void radius_get_acct_digest(radius_packet_t *packet, char *secret) {
+static void radius_get_acct_digest(radius_packet_t *packet,
+    unsigned char *secret) {
   MD5_CTX ctx;
 
   /* Clear the current digest (not needed yet for accounting packets) */
@@ -1829,7 +1834,7 @@ static void radius_get_acct_digest(radius_packet_t *packet, char *secret) {
   MD5_Update(&ctx, (unsigned char *) packet, ntohs(packet->length));
 
   /* Add the secret to the mix. */
-  MD5_Update(&ctx, secret, strlen(secret));
+  MD5_Update(&ctx, secret, strlen((const char *) secret));
 
   /* Set the calculated digest in place in the packet. */
   MD5_Final(packet->digest, &ctx);
@@ -1943,11 +1948,13 @@ static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
 /* Build a RADIUS packet, initializing some of the header and adding
  * common attributes.
  */
-static void radius_build_packet(radius_packet_t *packet, const char *user,
-    const char *passwd, char *secret) {
+static void radius_build_packet(radius_packet_t *packet,
+    const unsigned char *user, const unsigned char *passwd,
+    unsigned char *secret) {
   unsigned int nas_port_type = htonl(RADIUS_NAS_PORT_TYPE_VIRTUAL);
   int nas_port = htonl(main_server->ServerPort);
   char *caller_id = NULL;
+  size_t userlen;
 
   /* Set the packet length. */
   packet->length = htons(RADIUS_HEADER_LEN);
@@ -1959,7 +1966,8 @@ static void radius_build_packet(radius_packet_t *packet, const char *user,
   packet->id = packet->digest[0];
  
   /* Add the user attribute. */ 
-  radius_add_attrib(packet, RADIUS_USER_NAME, user, strlen(user));
+  userlen = strlen((const char *) user);
+  radius_add_attrib(packet, RADIUS_USER_NAME, user, userlen);
 
   /* Add the password attribute, if given. */
   if (passwd) {
@@ -1968,12 +1976,14 @@ static void radius_build_packet(radius_packet_t *packet, const char *user,
   } else if (packet->code != RADIUS_ACCT_REQUEST) {
 
     /* Add a NULL password if necessary. */
-    radius_add_passwd(packet, RADIUS_PASSWORD, "", secret);
+    radius_add_passwd(packet, RADIUS_PASSWORD, (const unsigned char *) "",
+      secret);
   }
 
   /* Add a NAS identifier attribute of the service name, e.g. 'ftp'. */
-  radius_add_attrib(packet, RADIUS_NAS_IDENTIFIER, radius_nas_identifier,
-    strlen(radius_nas_identifier));
+  radius_add_attrib(packet, RADIUS_NAS_IDENTIFIER,
+    (const unsigned char *) radius_nas_identifier,
+    strlen((const char *) radius_nas_identifier));
 
 #ifndef PR_USE_IPV6
   /* Add a NAS IP address attribute. */
@@ -1994,8 +2004,8 @@ static void radius_build_packet(radius_packet_t *packet, const char *user,
    */
   caller_id = (char *) pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr()); 
 
-  radius_add_attrib(packet, RADIUS_CALLING_STATION_ID, caller_id,
-    strlen(caller_id));
+  radius_add_attrib(packet, RADIUS_CALLING_STATION_ID,
+    (const unsigned char *) caller_id, strlen(caller_id));
 }
 
 static radius_server_t *radius_make_server(pool *parent_pool) {
@@ -2071,7 +2081,8 @@ static int radius_close_socket(int sockfd) {
 static radius_packet_t *radius_recv_packet(int sockfd, unsigned int timeout) {
   static unsigned char recvbuf[RADIUS_PACKET_LEN];
   radius_packet_t *packet = NULL;
-  int res = 0, recvlen = -1, sockaddrlen = sizeof(struct sockaddr);
+  int res = 0, recvlen = -1;
+  socklen_t sockaddrlen = sizeof(struct sockaddr);
   struct timeval tv;
   fd_set rset;
 
@@ -2180,8 +2191,10 @@ static unsigned char radius_start_accting(void) {
     /* Build the packet. */
     request->code = RADIUS_ACCT_REQUEST;
     radius_build_packet(request,
-      radius_realm ? pstrcat(radius_pool, session.user, radius_realm, NULL) :
-      session.user, NULL, acct_server->secret);
+      radius_realm ?
+        (const unsigned char *) pstrcat(radius_pool, session.user,
+          radius_realm, NULL) :
+        (const unsigned char *) session.user, NULL, acct_server->secret);
 
     radius_last_acct_pkt_id = request->id;
 
@@ -2191,7 +2204,8 @@ static unsigned char radius_start_accting(void) {
       (unsigned char *) &acct_status, sizeof(int));
 
     snprintf(pid, sizeof(pid), "%08d", (int) getpid());
-    radius_add_attrib(request, RADIUS_ACCT_SESSION_ID, pid, strlen(pid));
+    radius_add_attrib(request, RADIUS_ACCT_SESSION_ID,
+      (const unsigned char *) pid, strlen(pid));
 
     acct_authentic = htonl(RADIUS_AUTH_LOCAL);
     radius_add_attrib(request, RADIUS_ACCT_AUTHENTIC,
@@ -2293,8 +2307,10 @@ static unsigned char radius_stop_accting(void) {
     /* Build the packet. */
     request->code = RADIUS_ACCT_REQUEST;
     radius_build_packet(request,
-      radius_realm ? pstrcat(radius_pool, session.user, radius_realm, NULL) :
-      session.user, NULL, acct_server->secret);
+      radius_realm ?
+        (const unsigned char *) pstrcat(radius_pool, session.user,
+          radius_realm, NULL) :
+        (const unsigned char *) session.user, NULL, acct_server->secret);
 
     /* Use the ID of the last accounting packet sent, plus one.  Be sure
      * to handle the datatype overflow case.
@@ -2308,7 +2324,8 @@ static unsigned char radius_stop_accting(void) {
       (unsigned char *) &acct_status, sizeof(int));
 
     snprintf(pid, sizeof(pid), "%08d", (int) getpid());
-    radius_add_attrib(request, RADIUS_ACCT_SESSION_ID, pid, strlen(pid));
+    radius_add_attrib(request, RADIUS_ACCT_SESSION_ID,
+      (const unsigned char *) pid, strlen(pid));
 
     acct_authentic = htonl(RADIUS_AUTH_LOCAL);
     radius_add_attrib(request, RADIUS_ACCT_AUTHENTIC,
@@ -2380,7 +2397,7 @@ static unsigned char radius_stop_accting(void) {
 
 /* Verify the response packet from the server. */
 static int radius_verify_packet(radius_packet_t *req_packet, 
-    radius_packet_t *resp_packet, char *secret) {
+    radius_packet_t *resp_packet, unsigned char *secret) {
   MD5_CTX ctx;
   unsigned char calculated[RADIUS_VECTOR_LEN] = {'\0'};
   unsigned char replied[RADIUS_VECTOR_LEN] = {'\0'};
@@ -2420,7 +2437,7 @@ static int radius_verify_packet(radius_packet_t *req_packet,
   MD5_Update(&ctx, (unsigned char *) resp_packet, ntohs(resp_packet->length));
 
   if (*secret)
-    MD5_Update(&ctx, secret, strlen(secret));
+    MD5_Update(&ctx, secret, strlen((const char *) secret));
 
   /* Set the calculated digest. */
   MD5_Final(calculated, &ctx);
@@ -2683,7 +2700,8 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
     /* Build the packet. */
     request->code = RADIUS_AUTH_REQUEST;
     radius_build_packet(request, radius_realm ?
-      pstrcat(radius_pool, user, radius_realm, NULL) : user, cmd->arg,
+      (const unsigned char *) pstrcat(radius_pool, user, radius_realm, NULL) :
+      (const unsigned char *) user, (const unsigned char *) cmd->arg,
       auth_server->secret);
 
     radius_add_attrib(request, RADIUS_SERVICE_TYPE, (unsigned char *) &service,
@@ -2813,9 +2831,10 @@ MODRET set_radiusacctserver(cmd_rec *cmd) {
     }
   }
 
-  if (pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[1], NULL) == NULL)
+  if (pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[1], NULL) == NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to resolve server address: ",
       cmd->argv[1], NULL));
+  }
 
   /* Allocate a RADIUS server rec and populate the members */
   radius_server = radius_make_server(radius_pool);
@@ -2823,11 +2842,14 @@ MODRET set_radiusacctserver(cmd_rec *cmd) {
   radius_server->addr = pr_netaddr_get_addr(radius_server->pool, cmd->argv[1],
     NULL);
   radius_server->port = (server_port ? server_port : RADIUS_ACCT_PORT);
-  radius_server->secret = pstrdup(radius_server->pool, cmd->argv[2]);
+  radius_server->secret = (unsigned char *) pstrdup(radius_server->pool,
+    cmd->argv[2]);
 
-  if (cmd->argc-1 == 3) 
-    if ((radius_server->timeout = atoi(cmd->argv[3])) < 0)
+  if (cmd->argc-1 == 3) {
+    if ((radius_server->timeout = atoi(cmd->argv[3])) < 0) {
       CONF_ERROR(cmd, "timeout must be greater than or equal to zero");
+    }
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(radius_server_t *));
@@ -2859,9 +2881,10 @@ MODRET set_radiusauthserver(cmd_rec *cmd) {
         "than 1023", NULL));
   }
 
-  if (pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[1], NULL) == NULL)
+  if (pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[1], NULL) == NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable resolve server address: ",
       cmd->argv[1], NULL));
+  }
 
   /* OK, allocate a RADIUS server rec and populate the members */
   radius_server = radius_make_server(radius_pool);
@@ -2869,11 +2892,14 @@ MODRET set_radiusauthserver(cmd_rec *cmd) {
   radius_server->addr = pr_netaddr_get_addr(radius_server->pool, cmd->argv[1],
     NULL);
   radius_server->port = (server_port ? server_port : RADIUS_AUTH_PORT);
-  radius_server->secret = pstrdup(radius_server->pool, cmd->argv[2]);
+  radius_server->secret = (unsigned char *) pstrdup(radius_server->pool,
+    cmd->argv[2]);
 
-  if (cmd->argc-1 == 3)
-    if ((radius_server->timeout = atoi(cmd->argv[3])) < 0)
+  if (cmd->argc-1 == 3) {
+    if ((radius_server->timeout = atoi(cmd->argv[3])) < 0) {
       CONF_ERROR(cmd, "timeout must be greater than or equal to zero");
+    }
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(radius_server_t *));
