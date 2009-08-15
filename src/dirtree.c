@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.221 2009-08-14 14:36:10 castaglia Exp $
+ * $Id: dirtree.c,v 1.222 2009-08-15 02:43:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -434,7 +434,7 @@ unsigned char dir_hide_file(const char *path) {
       have_class_regex || have_all_regex) {
 
     pr_log_debug(DEBUG4, "checking %sHideFiles pattern for current %s",
-      negated ? "negated " : " ",
+      negated ? "negated " : "",
       have_user_regex ? "user" : have_group_regex ? "group" :
       have_class_regex ? "class" : "session");
 
@@ -442,7 +442,7 @@ unsigned char dir_hide_file(const char *path) {
       destroy_pool(tmp_pool);
 
       pr_log_debug(DEBUG9, "file '%s' did not match %sHideFiles pattern",
-        file_name, negated ? "negated " : " ");
+        file_name, negated ? "negated " : "");
 
       /* The file failed to match the HideFiles regex, which means it should
        * be treated as a "visible" file.  If the regex was negated, though,
@@ -454,7 +454,7 @@ unsigned char dir_hide_file(const char *path) {
       destroy_pool(tmp_pool);
 
       pr_log_debug(DEBUG9, "file '%s' matched %sHideFiles pattern", file_name,
-        negated ? "negated " : " ");
+        negated ? "negated " : "");
 
       /* The file matched the HideFiles regex, which means it should be
        * considered a "hidden" file.  If the regex was negated, though,
