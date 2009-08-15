@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.166 2009-07-29 20:59:04 castaglia Exp $
+ * $Id: mod_ls.c,v 1.167 2009-08-15 01:57:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1323,7 +1323,8 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
 
     ptr = *opt;
 
-    while (isspace((int) *ptr)) {
+    while (*ptr &&
+           isspace((int) *ptr)) {
       pr_signals_handle();
       ptr++;
     }
@@ -1332,9 +1333,14 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
       /* Options are found; skip past the leading whitespace. */
       *opt = ptr;
 
-    } else {
-      /* Just advance one character. */
+    } else if (*(*opt + 1) == ' ') {
+      /* If the next character is a blank space, advance just one character. */
       (*opt)++;
+      break;
+
+    } else {
+      *opt = ptr;
+      break;
     }
   }
 
@@ -1413,7 +1419,8 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
 
     ptr = *opt;
 
-    while (isspace((int) *ptr)) {
+    while (*ptr &&
+           isspace((int) *ptr)) {
       pr_signals_handle();
       ptr++;
     }
@@ -1422,9 +1429,14 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
       /* Options are found; skip past the leading whitespace. */
       *opt = ptr;
 
-    } else {
-      /* Just advance one character. */
+    } else if (*(*opt + 1) == ' ') {
+      /* If the next character is a blank space, advance just one character. */
       (*opt)++;
+      break;
+
+    } else {
+      *opt = ptr;
+      break;
     }
   }
 }
@@ -1475,7 +1487,8 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
       ptr = arg;
 
-      while (isspace((int) *ptr)) {
+      while (*ptr &&
+             isspace((int) *ptr)) {
         pr_signals_handle();
         ptr++;
       }
@@ -1484,16 +1497,23 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
         /* Options are found; skip past the leading whitespace. */
         arg = ptr;
 
-      } else {
-        /* Just advance one character. */
+      } else if (*(arg + 1) == ' ') {
+        /* If the next character is a blank space, advance just one
+         * character.
+         */
         arg++;
+        break;
+
+      } else {
+        arg = ptr;
         break;
       }
     }
   }
 
-  if (list_options)
+  if (list_options) {
     parse_list_opts(&list_options, &glob_flags, TRUE);
+  }
 
   if (arg && *arg) {
     int justone = 1;
@@ -2277,7 +2297,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
       ptr = target;
 
-      while (isspace((int) *ptr)) {
+      while (*ptr &&
+             isspace((int) *ptr)) {
         pr_signals_handle();
         ptr++;
       }
@@ -2286,9 +2307,15 @@ MODRET ls_nlst(cmd_rec *cmd) {
         /* Options are found; skip past the leading whitespace. */
         target = ptr;
 
-      } else {
-        /* Just advance one character. */
+      } else if (*(target + 1) == ' ') {
+        /* If the next character is a blank space, advance just one
+         * character.
+         */
         target++;
+        break;
+
+      } else {
+        target = ptr;
         break;
       }
     }
