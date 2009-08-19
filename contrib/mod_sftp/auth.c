@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.15 2009-07-04 00:34:08 castaglia Exp $
+ * $Id: auth.c,v 1.16 2009-08-19 21:20:00 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -353,6 +353,10 @@ static int setup_env(pool *p, char *user) {
   }
 
   default_chdir = get_default_chdir(p);
+  if (default_chdir) {
+    default_chdir = dir_abs_path(p, default_chdir, TRUE);
+    sstrncpy(session.cwd, default_chdir, sizeof(session.cwd));
+  }
 
   /* Make sure any <Limit LOGIN> sections still allow access. */
   login_acl = login_check_limits(main_server->conf, FALSE, TRUE, &i);
@@ -470,7 +474,7 @@ static int setup_env(pool *p, char *user) {
     }
   }
 
-  if (pr_fsio_chdir_canon(session.cwd, !show_symlinks) == -1) {
+  if (pr_fsio_chdir_canon(session.cwd, !show_symlinks) < 0) {
     if (session.chroot_path != NULL ||
         default_root != NULL) {
 
@@ -499,6 +503,9 @@ static int setup_env(pool *p, char *user) {
         strerror(errno));
       return -1;
     }
+
+  } else {
+    pr_log_debug(DEBUG10, "changed directory to '%s'", session.cwd);
   }
 
   sstrncpy(session.cwd, pr_fs_getcwd(), sizeof(session.cwd));
