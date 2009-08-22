@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.14 2009-07-27 15:25:37 castaglia Exp $
+ * $Id: channel.c,v 1.15 2009-08-22 02:57:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -87,16 +87,6 @@ static array_header *channel_list = NULL;
 
 static uint32_t chan_window_size = SFTP_SSH2_CHANNEL_WINDOW_SIZE;
 static uint32_t chan_packet_size = SFTP_SSH2_CHANNEL_MAX_PACKET_SIZE;
-
-/* Define the maximum SSH2 packet payload size, working backward from the
- * maximum SSH2 packet size:
- *
- *  max payload len = max packet len - max padding len \
- *                                   - padding len field len \
- *                                   - MAC len (EVP_MAX_MD_SIZE) \
- *                                   - packet len field len
- */
-#define SFTP_MAX_PAYLOAD_LEN	(SFTP_MAX_PACKET_LEN - SFTP_MAX_PADDING_LEN - sizeof(char) - EVP_MAX_MD_SIZE - sizeof(uint32_t))
 
 static const char *trace_channel = "ssh2";
 
@@ -204,19 +194,11 @@ static uint32_t get_channel_pending_size(struct ssh2_channel *chan) {
 
 static void drain_pending_channel_data(uint32_t channel_id) {
   struct ssh2_channel *chan;
-  uint32_t header_len;
 
   chan = get_channel(channel_id);
   if (chan == NULL) {
     return;
   }
-
-  /* The header length is 1 byte for the packet type, 4 bytes for the remote
-   * channel ID, and 4 more bytes for the payload length.  These 9 bytes
-   * need to be taken into account when checking/adjusting the remote
-   * window size.
-   */
-  header_len = 1 + (2 * sizeof(uint32_t));
 
   if (chan->outgoing) {
     pool *tmp_pool;
@@ -241,40 +223,39 @@ static void drain_pending_channel_data(uint32_t channel_id) {
            chan->remote_windowsz > 0) {
       struct ssh2_packet *pkt;
       char *buf, *ptr;
-      uint32_t bufsz, buflen, max_payloadsz, payload_len;
+      uint32_t bufsz, buflen, payload_len;
       int res;
 
       pr_signals_handle();
 
-      max_payloadsz = header_len + db->buflen;
+      /* If the remote window size or remote max packet size changes the
+       * length we can send, then payload_len is NOT the same as buflen.  Hence
+       * the separate variable.
+       */
+      payload_len = db->buflen;
 
       /* The maximum size of the CHANNEL_DATA payload we can send to the client
-       * is the smaller of the max SSH2 payload size, remote window size, and
-       * the remote packet size.
+       * is the smaller of the remote window size and the remote packet size.
        */
 
-      if (max_payloadsz > SFTP_MAX_PAYLOAD_LEN)
-        max_payloadsz = SFTP_MAX_PAYLOAD_LEN;
+      if (payload_len > chan->remote_windowsz)
+        payload_len = chan->remote_windowsz;
 
-      if (max_payloadsz > chan->remote_windowsz)
-        max_payloadsz = chan->remote_windowsz;
+      if (payload_len > chan->remote_max_packetsz)
+        payload_len = chan->remote_max_packetsz;
 
-      if (max_payloadsz > chan->remote_max_packetsz)
-        max_payloadsz = chan->remote_max_packetsz;
-
-      if (max_payloadsz <= header_len) {
+      if (payload_len == 0) {
         /* Not enough room to send any data. */
         break;
       }
 
-      /* If the remote window size is small, then payload_len is NOT the
-       * same as db->buflen.  Hence the separate variable.
-       */
-      payload_len = max_payloadsz - header_len;
-
       pkt = sftp_ssh2_packet_create(tmp_pool);
 
-      bufsz = buflen = max_payloadsz;
+      /* In addition to the data itself, we need to allocate room in the
+       * outgoing packet for the type (1 byte), the channel ID (4 bytes),
+       * and for the data length (4 bytes).
+       */
+      bufsz = buflen = payload_len + 9;
       ptr = buf = palloc(pkt->pool, bufsz);
 
       sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_DATA);
@@ -1339,7 +1320,6 @@ int sftp_channel_drain_data(void) {
 int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
     uint32_t buflen) {
   struct ssh2_channel *chan;
-  uint32_t header_len;
   int res;
 
   chan = get_channel(channel_id);
@@ -1347,13 +1327,6 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
     errno = EACCES;
     return -1;
   }
-
-  /* The header length is 1 byte for the packet type, 4 bytes for the remote
-   * channel ID, and 4 more bytes for the payload length.  These 9 bytes
-   * need to be taken into account when checking/adjusting the remote
-   * window size.
-   */
-  header_len = 1 + (2 * sizeof(uint32_t));
 
   /* We may need to send the given buffer in multiple CHANNEL_DATA packets,
    * for example of the remote window size is large but the remote max
@@ -1363,7 +1336,7 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
   while (!(sftp_sess_state & SFTP_SESS_STATE_REKEYING) &&
          chan->remote_windowsz > 0 &&
          buflen > 0) {
-    uint32_t max_payloadsz, payload_len;
+    uint32_t payload_len;
 
     pr_signals_handle();
 
@@ -1372,34 +1345,32 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
     if (chan->remote_windowsz == 0)
       break;
 
-    max_payloadsz = header_len + buflen;
+    /* If the remote window size or remote max packet size changes the
+     * length we can send, then payload_len is NOT the same as buflen.  Hence
+     * the separate variable.
+     */
+    payload_len = buflen;
 
     /* The maximum size of the CHANNEL_DATA payload we can send to the client
-     * is the smaller of the max SSH2 payload size, remote window size, and the
-     * remote packet size.
+     * is the smaller of the remote window size and the remote packet size.
      */ 
 
-    if (max_payloadsz > SFTP_MAX_PAYLOAD_LEN)
-      max_payloadsz = SFTP_MAX_PAYLOAD_LEN;
+    if (payload_len > chan->remote_windowsz)
+      payload_len = chan->remote_windowsz;
 
-    if (max_payloadsz > chan->remote_windowsz)
-      max_payloadsz = chan->remote_windowsz;
+    if (payload_len > chan->remote_max_packetsz)
+      payload_len = chan->remote_max_packetsz;
 
-    if (max_payloadsz > chan->remote_max_packetsz)
-      max_payloadsz = chan->remote_max_packetsz;
-
-    if (max_payloadsz > header_len) {
+    if (payload_len > 0) {
       struct ssh2_packet *pkt;
       char *buf2, *ptr2;
       uint32_t bufsz2, buflen2;
 
-      /* If the remote window size or remote max packet size changes the
-       * length we can send, then payload_len is NOT the same as buflen.  Hence
-       * the separate variable.
+      /* In addition to the data itself, we need to allocate room in the
+       * outgoing packet for the type (1 byte), the channel ID (4 bytes),
+       * and for the data length (4 bytes).
        */
-      payload_len = max_payloadsz - header_len;
-
-      bufsz2 = buflen2 = max_payloadsz;
+      bufsz2 = buflen2 = payload_len + 9;
  
       pkt = sftp_ssh2_packet_create(p);
       ptr2 = buf2 = palloc(pkt->pool, bufsz2);
@@ -1435,19 +1406,11 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
        */
 
     } else {
-      pr_trace_msg(trace_channel, 6, "max payload size of %lu bytes is not "
-        "big enough for the header length (%lu bytes) plus any data",
-        (unsigned long) max_payloadsz, (unsigned long) header_len);
+      pr_trace_msg(trace_channel, 6, "allowed payload size of %lu bytes is too "
+        "small for data (%lu bytes)", (unsigned long) payload_len,
+        (unsigned long) buflen);
 
-      /* XXX It's possible that we end up in a deadlock in this situation.
-       * The client may not send a WINDOW_ADJUST until it's window is
-       * completely closed.  And if the window size is less than the
-       * header length (9 bytes), as of right now, we aren't sending anything.
-       * Thus we would wait forever (or until timeout) for a WINDOW_ADJUST
-       * while the client waits for our last bytes of data.
-       *
-       * For now, leave this case as is, and break out of the while loop.
-       */
+      /* For now, leave this case as is, and break out of the while loop. */
       break;
     }
   }
