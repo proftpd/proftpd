@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.15 2009-08-22 02:57:38 castaglia Exp $
+ * $Id: channel.c,v 1.16 2009-08-24 02:16:52 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -238,16 +238,11 @@ static void drain_pending_channel_data(uint32_t channel_id) {
        * is the smaller of the remote window size and the remote packet size.
        */
 
-      if (payload_len > chan->remote_windowsz)
-        payload_len = chan->remote_windowsz;
-
       if (payload_len > chan->remote_max_packetsz)
         payload_len = chan->remote_max_packetsz;
 
-      if (payload_len == 0) {
-        /* Not enough room to send any data. */
-        break;
-      }
+      if (payload_len > chan->remote_windowsz)
+        payload_len = chan->remote_windowsz;
 
       pkt = sftp_ssh2_packet_create(tmp_pool);
 
@@ -268,7 +263,7 @@ static void drain_pending_channel_data(uint32_t channel_id) {
       pkt->payload_len = (bufsz - buflen);
 
       pr_trace_msg(trace_channel, 9, "sending CHANNEL_DATA (remote channel "
-        "ID %lu, %lu bytes)", (unsigned long) chan->remote_channel_id,
+        "ID %lu, %lu data bytes)", (unsigned long) chan->remote_channel_id,
         (unsigned long) payload_len);
 
       res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
@@ -281,6 +276,11 @@ static void drain_pending_channel_data(uint32_t channel_id) {
       }
 
       chan->remote_windowsz -= payload_len;
+
+      pr_trace_msg(trace_channel, 11,
+        "channel ID %lu remote window size currently at %lu bytes",
+        (unsigned long) chan->remote_channel_id,
+        (unsigned long) chan->remote_windowsz);
 
       /* If we sent this entire databuf, then we can dispose of it, and
        * advance to the next one on the list.  However, we may have only
@@ -1124,6 +1124,19 @@ static int write_channel_open_failed(struct ssh2_packet *pkt,
   return 0;
 }
 
+uint32_t sftp_channel_get_windowsz(uint32_t channel_id) {
+  struct ssh2_channel *chan;
+
+  chan = get_channel(channel_id);
+  if (chan == NULL) {
+    pr_trace_msg(trace_channel, 1, "cannot return window size for unknown "
+      "channel ID %lu", (unsigned long) channel_id);
+    return 0;
+  }
+
+  return chan->remote_windowsz;
+}
+
 unsigned int sftp_channel_set_max_count(unsigned int max) {
   unsigned int prev_max;
 
@@ -1355,11 +1368,11 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
      * is the smaller of the remote window size and the remote packet size.
      */ 
 
-    if (payload_len > chan->remote_windowsz)
-      payload_len = chan->remote_windowsz;
-
     if (payload_len > chan->remote_max_packetsz)
       payload_len = chan->remote_max_packetsz;
+
+    if (payload_len > chan->remote_windowsz)
+      payload_len = chan->remote_windowsz;
 
     if (payload_len > 0) {
       struct ssh2_packet *pkt;
@@ -1385,12 +1398,17 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
       pkt->payload_len = (bufsz2 - buflen2);
 
       pr_trace_msg(trace_channel, 9, "sending CHANNEL_DATA (remote channel "
-        "ID %lu, %lu bytes)", (unsigned long) chan->remote_channel_id,
+        "ID %lu, %lu data bytes)", (unsigned long) chan->remote_channel_id,
         (unsigned long) payload_len);
 
       res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
       if (res == 0) {
         chan->remote_windowsz -= payload_len;
+
+        pr_trace_msg(trace_channel, 11,
+          "channel ID %lu remote window size currently at %lu bytes",
+          (unsigned long) chan->remote_channel_id,
+          (unsigned long) chan->remote_windowsz);
       }
 
       /* If that was the entire payload, we can be done now. */
@@ -1428,7 +1446,7 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
     memcpy(db->buf, buf, buflen);
 
     pr_trace_msg(trace_channel, 8, "buffering %lu remaining bytes of "
-      "outgoing packet", (unsigned long) buflen);
+      "outgoing data", (unsigned long) buflen);
   }
 
   return 0;

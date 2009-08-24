@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.h,v 1.4 2009-07-27 01:00:59 castaglia Exp $
+ * $Id: channel.h,v 1.5 2009-08-24 02:16:52 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -65,6 +65,7 @@ struct ssh2_channel {
   int (*finish)(uint32_t);
 };
 
+uint32_t sftp_channel_get_windowsz(uint32_t);
 unsigned int sftp_channel_set_max_count(unsigned int);
 uint32_t sftp_channel_set_max_packetsz(uint32_t);
 uint32_t sftp_channel_set_max_windowsz(uint32_t);

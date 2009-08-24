@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.23 2009-07-27 01:00:59 castaglia Exp $
+ * $Id: scp.c,v 1.24 2009-08-24 02:16:52 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1268,9 +1268,22 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
     pr_config_get_xfer_bufsz()) + 1;
   chunk = palloc(p, chunksz);
 
-  /* Keep sending chunks until we have sent the entire file. */
+  /* Keep sending chunks until we have sent the entire file, or until the
+   * channel window closes.
+   */
   while (1) {
     pr_signals_handle();
+
+    /* If our channel window has closed, try handling some packets; hopefully
+     * some of them are WINDOW_ADJUST messages.
+     */
+    while (sftp_channel_get_windowsz(channel_id) == 0) {
+      pr_signals_handle();
+
+      if (sftp_ssh2_packet_handle() < 0) {
+        return 1;
+      }
+    }
 
     /* Seek to where we last left off with this file. */
     if (pr_fsio_lseek(sp->fh, sp->sentlen, SEEK_SET) < 0) {
