@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.10 2009-08-25 05:07:14 castaglia Exp $
+ * $Id: kex.c,v 1.11 2009-08-25 15:59:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1821,11 +1821,11 @@ static int set_session_keys(struct sftp_kex *kex) {
   kex_rekey_kex = NULL;
 
   /* If any CBC mode ciphers have been negotiated for the server-to-client
-   * stream, then we need to use the 'cbc-mode' TAP policy.
+   * stream, then we need to use the 'rogaway' TAP policy.
    */
   k = sftp_cipher_get_write_algo();
   if (strncmp(k + strlen(k) - 4, "-cbc", 4) == 0) {
-    const char *policy = "cbc-mode";
+    const char *policy = "rogaway";
 
     pr_trace_msg("ssh2", 4, "CBC mode cipher chosen for server-to-client "
       "messages, automatically enabling '%s' TAP policy", policy);

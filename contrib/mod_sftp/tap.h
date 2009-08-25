@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: tap.h,v 1.3 2009-08-25 05:07:14 castaglia Exp $
+ * $Id: tap.h,v 1.4 2009-08-25 15:59:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -56,11 +56,11 @@ int sftp_tap_send_packet(void);
  *
  *  "paranoid" - always send SSH2_MSG_IGNORE packets, of lengths up to 8KB.
  *
- * Note that there is an additional TAP policy called 'cbc-mode'.  This
+ * Note that there is an additional TAP policy called 'rogaway'.  This
  * policy is automatically used if the negotiated server-to-client cipher
- * is any of the CBC ciphers.  The purpose of the 'cbc-mode' TAP policy is
+ * is any of the CBC ciphers.  The purpose of the 'rogaway' TAP policy is
  * to implement the mitigation of the Rogaway CBC mode attack (see RFC4251,
- * Section 9.3.1) via the use of IGNORE packets.  The use of the 'cbc-mode'
+ * Section 9.3.1) via the use of IGNORE packets.  The use of the 'rogaway'
  * policy is hardcoded, and will override any configured TAP policy.
  */
 int sftp_tap_set_policy(const char *);
