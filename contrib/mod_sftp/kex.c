@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.9 2009-07-04 00:34:08 castaglia Exp $
+ * $Id: kex.c,v 1.10 2009-08-25 05:07:14 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -37,6 +37,7 @@
 #include "crypto.h"
 #include "disconnect.h"
 #include "interop.h"
+#include "tap.h"
 
 #define SFTP_DH_PRIV_KEY_RANDOM_BITS	2048
 
@@ -1818,6 +1819,22 @@ static int set_session_keys(struct sftp_kex *kex) {
 
   sftp_ssh2_packet_rekey_reset();
   kex_rekey_kex = NULL;
+
+  /* If any CBC mode ciphers have been negotiated for the server-to-client
+   * stream, then we need to use the 'cbc-mode' TAP policy.
+   */
+  k = sftp_cipher_get_write_algo();
+  if (strncmp(k + strlen(k) - 4, "-cbc", 4) == 0) {
+    const char *policy = "cbc-mode";
+
+    pr_trace_msg("ssh2", 4, "CBC mode cipher chosen for server-to-client "
+      "messages, automatically enabling '%s' TAP policy", policy);
+
+    if (sftp_tap_set_policy(policy) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error setting TrafficPolicy '%s': %s", policy, strerror(errno));
+    }
+  }
  
   return 0;
 }

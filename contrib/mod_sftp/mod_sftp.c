@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.14 2009-07-03 23:02:09 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.15 2009-08-25 05:07:14 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1405,7 +1405,15 @@ static int sftp_sess_init(void) {
    */
   c = find_config(main_server->conf, CONF_PARAM, "SFTPTrafficPolicy", FALSE);
   if (c) {
-    sftp_tap_set_policy(c->argv[0]);
+    const char *policy = c->argv[0];
+
+    if (sftp_tap_set_policy(policy) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error setting TrafficPolicy '%s': %s", policy, strerror(errno));
+
+    } else {
+      pr_trace_msg("ssh2", 9, "using TAP policy '%s'", policy);
+    }
   }
 
   /* Use our own "authenticated yet?" check. */

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: tap.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: tap.c,v 1.3 2009-08-25 05:07:14 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -57,6 +57,7 @@ static struct sftp_tap_policy tap_policies[] = {
   { "medium",	100,	0,	32,	768,	5,	10,	60 },
   { "high",	10,	0,	16,	2048,	1,	5,	15 },
   { "paranoid",	1,	0,	0,	0,	1,	1,	5 },
+  { "cbc-mode", 1,	0,	64,	256,	0,	0,	0 },
   { NULL,	0,	0,	0,	0,	0,	0,	0 }
 };
 
@@ -245,6 +246,11 @@ int sftp_tap_set_policy(const char *policy) {
 
   if (tap_pool) {
     destroy_pool(tap_pool);
+
+    if (tap_timerno > 0) {
+      pr_timer_remove(tap_timerno, &sftp_module);
+      tap_timerno = -1;
+    }
   }
 
   tap_pool = make_sub_pool(sftp_pool);

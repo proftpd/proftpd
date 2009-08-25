@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: tap.h,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: tap.h,v 1.3 2009-08-25 05:07:14 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -31,7 +31,7 @@
 
 int sftp_tap_have_policy(const char *);
 
-/* May sends an SSH2_MSG_IGNORE packet of random length, filled with random
+/* May send an SSH2_MSG_IGNORE packet of random length, filled with random
  * data to the client, depending on the selected policy.  These messages can
  * be injected into the SSH session in order to make traffic analysis harder.
  * Returns -1 if there was an error while sending the packet.
@@ -55,6 +55,13 @@ int sftp_tap_send_packet(void);
  *           16 to 2048 bytes of random data.
  *
  *  "paranoid" - always send SSH2_MSG_IGNORE packets, of lengths up to 8KB.
+ *
+ * Note that there is an additional TAP policy called 'cbc-mode'.  This
+ * policy is automatically used if the negotiated server-to-client cipher
+ * is any of the CBC ciphers.  The purpose of the 'cbc-mode' TAP policy is
+ * to implement the mitigation of the Rogaway CBC mode attack (see RFC4251,
+ * Section 9.3.1) via the use of IGNORE packets.  The use of the 'cbc-mode'
+ * policy is hardcoded, and will override any configured TAP policy.
  */
 int sftp_tap_set_policy(const char *);
 
