@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.24 2009-08-24 02:16:52 castaglia Exp $
+ * $Id: scp.c,v 1.25 2009-08-25 00:24:18 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1276,6 +1276,12 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
 
     /* If our channel window has closed, try handling some packets; hopefully
      * some of them are WINDOW_ADJUST messages.
+     *
+     * XXX I wonder if this can be more efficient by waiting until we
+     * have a certain amount of data buffered up (N * transfer data size?)
+     * AND the window is closed before handling incoming packets?  That way
+     * we can handle more WINDOW_ADJUSTS at a whack, at the cost of buffering
+     * more data in memory.  Hmm.
      */
     while (sftp_channel_get_windowsz(channel_id) == 0) {
       pr_signals_handle();
