@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: tap.c,v 1.4 2009-08-25 15:59:50 castaglia Exp $
+ * $Id: tap.c,v 1.5 2009-08-26 05:23:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -93,7 +93,12 @@ static int check_packet_times_cb(CALLBACK_FRAME) {
       since_sent >= curr_policy.max_secs) {
     pr_trace_msg(trace_channel, 15, "too much inactivity, attempting "
       "to send TAP packet");
-    sftp_tap_send_packet();
+
+    if (sftp_tap_send_packet() < 0) {
+      pr_trace_msg(trace_channel, 3, "error sending TAP packet: %s",
+        strerror(errno));
+    }
+
     return 1;
   }
 
@@ -108,7 +113,12 @@ static int check_packet_times_cb(CALLBACK_FRAME) {
   if (chance == curr_policy.chance) {
     pr_trace_msg(trace_channel, 15, "perhaps too inactive, attempting to send "
       "a TAP packet");
-    sftp_tap_send_packet();
+
+    if (sftp_tap_send_packet() < 0) {
+      pr_trace_msg(trace_channel, 3, "error sending TAP packet: %s",
+        strerror(errno));
+    }
+
     return 1;
   }
 

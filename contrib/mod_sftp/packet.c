@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.4 2009-05-06 17:38:25 castaglia Exp $
+ * $Id: packet.c,v 1.5 2009-08-26 05:23:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -917,15 +917,26 @@ static int write_packet_padding(struct ssh2_packet *pkt) {
   return 0;
 }
 
+/* Reserve space for TWO packets: one potential TAP packet, and one
+ * definite packet (i.e. the given packet to be sent).
+ */
+#define SFTP_SSH2_PACKET_IOVSZ		12
+static struct iovec packet_iov[SFTP_SSH2_PACKET_IOVSZ];
+static unsigned int packet_niov = 0;
+
 int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
   char buf[SFTP_MAX_PACKET_LEN], mesg_type;
   size_t buflen = 0, bufsz = SFTP_MAX_PACKET_LEN;
   uint32_t packet_len = 0;
-  struct iovec iov[6];
-  int res, niov = 0;
+  int res;
 
   if (sent_version_id) {
-    (void) sftp_tap_send_packet();
+    res = sftp_tap_send_packet();
+    if (res < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error sending TAP packet: %s", strerror(errno));
+      return res;
+    }
   }
 
   mesg_type = peek_mesg_type(pkt);
@@ -939,7 +950,8 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
   }
 
   /* Packet length: padding len + payload + padding */
-  pkt->packet_len = packet_len = sizeof(char) + pkt->payload_len + pkt->padding_len;
+  pkt->packet_len = packet_len = sizeof(char) + pkt->payload_len +
+    pkt->padding_len;
 
   pkt->seqno = packet_server_seqno;
 
@@ -954,27 +966,25 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
     return -1;
   }
 
-  memset(iov, 0, sizeof(iov));
-
   if (buflen > 0) {
     /* We have encrypted data, which means we don't need as many of the
      * iovec slots as for unecrypted data.
      */
 
     if (!sent_version_id) {
-      iov[niov].iov_base = (void *) version_id;
-      iov[niov].iov_len = strlen(version_id);
-      niov++;
+      packet_iov[packet_niov].iov_base = (void *) version_id;
+      packet_iov[packet_niov].iov_len = strlen(version_id);
+      packet_niov++;
     }
 
-    iov[niov].iov_base = (void *) buf;
-    iov[niov].iov_len = buflen;
-    niov++;
+    packet_iov[packet_niov].iov_base = (void *) buf;
+    packet_iov[packet_niov].iov_len = buflen;
+    packet_niov++;
 
     if (pkt->mac_len > 0) {
-      iov[niov].iov_base = (void *) pkt->mac;
-      iov[niov].iov_len = pkt->mac_len;
-      niov++;
+      packet_iov[packet_niov].iov_base = (void *) pkt->mac;
+      packet_iov[packet_niov].iov_len = pkt->mac_len;
+      packet_niov++;
     }
 
   } else {
@@ -984,31 +994,31 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
     packet_len = htonl(packet_len);
 
     if (!sent_version_id) {
-      iov[niov].iov_base = (void *) version_id;
-      iov[niov].iov_len = strlen(version_id);
-      niov++;
+      packet_iov[packet_niov].iov_base = (void *) version_id;
+      packet_iov[packet_niov].iov_len = strlen(version_id);
+      packet_niov++;
     }
 
-    iov[niov].iov_base = (void *) &packet_len;
-    iov[niov].iov_len = sizeof(uint32_t);
-    niov++;
+    packet_iov[packet_niov].iov_base = (void *) &packet_len;
+    packet_iov[packet_niov].iov_len = sizeof(uint32_t);
+    packet_niov++;
 
-    iov[niov].iov_base = (void *) &(pkt->padding_len);
-    iov[niov].iov_len = sizeof(char);
-    niov++;
+    packet_iov[packet_niov].iov_base = (void *) &(pkt->padding_len);
+    packet_iov[packet_niov].iov_len = sizeof(char);
+    packet_niov++;
 
-    iov[niov].iov_base = (void *) pkt->payload;
-    iov[niov].iov_len = pkt->payload_len;
-    niov++;
+    packet_iov[packet_niov].iov_base = (void *) pkt->payload;
+    packet_iov[packet_niov].iov_len = pkt->payload_len;
+    packet_niov++;
 
-    iov[niov].iov_base = (void *) pkt->padding;
-    iov[niov].iov_len = pkt->padding_len;
-    niov++;
+    packet_iov[packet_niov].iov_base = (void *) pkt->padding;
+    packet_iov[packet_niov].iov_len = pkt->padding_len;
+    packet_niov++;
 
     if (pkt->mac_len > 0) {
-      iov[niov].iov_base = (void *) pkt->mac;
-      iov[niov].iov_len = pkt->mac_len;
-      niov++;
+      packet_iov[packet_niov].iov_base = (void *) pkt->mac;
+      packet_iov[packet_niov].iov_len = pkt->mac_len;
+      packet_niov++;
     }
   }
 
@@ -1016,12 +1026,12 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
     return -1;
   }
 
-  res = writev(sockfd, iov, niov);
+  res = writev(sockfd, packet_iov, packet_niov);
   while (res < 0) {
     if (errno == EINTR) {
       pr_signals_handle();
 
-      res = writev(sockfd, iov, niov);
+      res = writev(sockfd, packet_iov, packet_niov);
       continue;
     }
 
@@ -1036,8 +1046,16 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
       end_login(1);
     }
 
+    /* Always clear the iovec array after sending the data. */
+    memset(packet_iov, 0, sizeof(packet_iov));
+    packet_niov = 0;
+
     return -1;
   }
+
+  /* Always clear the iovec array after sending the data. */
+  memset(packet_iov, 0, sizeof(packet_iov));
+  packet_niov = 0;
 
   sent_version_id = TRUE;
   time(&last_sent);

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: tap.h,v 1.4 2009-08-25 15:59:50 castaglia Exp $
+ * $Id: tap.h,v 1.5 2009-08-26 05:23:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -34,7 +34,7 @@ int sftp_tap_have_policy(const char *);
 /* May send an SSH2_MSG_IGNORE packet of random length, filled with random
  * data to the client, depending on the selected policy.  These messages can
  * be injected into the SSH session in order to make traffic analysis harder.
- * Returns -1 if there was an error while sending the packet.
+ * Returns -1 if there was an error while sending the packet, zero otherwise.
  */
 int sftp_tap_send_packet(void);
 
