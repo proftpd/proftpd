@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.16 2009-08-24 02:16:52 castaglia Exp $
+ * $Id: channel.c,v 1.17 2009-08-26 17:23:05 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1020,7 +1020,7 @@ static int handle_channel_req(struct ssh2_packet *pkt) {
 static int handle_channel_window_adjust(struct ssh2_packet *pkt) {
   char adjust_str[32];
   char *buf;
-  uint32_t buflen, channel_id, adjust_len;
+  uint32_t buflen, channel_id, adjust_len, max_adjust_len;
   struct ssh2_channel *chan;
   cmd_rec *cmd;
 
@@ -1044,6 +1044,26 @@ static int handle_channel_window_adjust(struct ssh2_packet *pkt) {
       "no open channel for channel ID %lu", (unsigned long) channel_id);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     return -1;
+  }
+
+  /* As per RFC4254, Section 5.2, we MUST NOT allow the window size to be
+   * increased above 2^32-1 bytes.
+   *
+   * To check this, we cannot simply add the given increment to our current
+   * size; if the given increment is large, it could overflow our data
+   * type.  So instead, we check whether the difference between the max
+   * possible window size and the current window size is larger than the
+   * given increment.  If not, we will only increment the window up to the
+   * max possible window size.
+   */
+  max_adjust_len = SFTP_SSH2_CHANNEL_WINDOW_SIZE - chan->remote_windowsz;
+
+  if (adjust_len > max_adjust_len) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "received WINDOW_ADJUST message whose window size adjustment (%lu bytes) "
+      "exceeds max possible adjustment (%lu bytes), trimming",
+      (unsigned long) adjust_len, (unsigned long) max_adjust_len);
+    adjust_len = max_adjust_len;
   }
 
   pr_trace_msg(trace_channel, 15, "adjusting remote window size "

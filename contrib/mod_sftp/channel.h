@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.h,v 1.5 2009-08-24 02:16:52 castaglia Exp $
+ * $Id: channel.h,v 1.6 2009-08-26 17:23:06 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -38,6 +38,8 @@
 
 #define SFTP_SSH2_CHANNEL_MAX_COUNT		10
 #define SFTP_SSH2_CHANNEL_MAX_PACKET_SIZE	32768
+
+/* Max channel window size, per RFC4254 Section 5.2 is 2^32-1 bytes. */
 #define SFTP_SSH2_CHANNEL_WINDOW_SIZE		(uint32_t) -1
 
 struct ssh2_channel_databuf;
