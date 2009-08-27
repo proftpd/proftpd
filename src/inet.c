@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.115 2009-04-23 03:25:44 castaglia Exp $
+ * $Id: inet.c,v 1.116 2009-08-27 18:38:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -595,11 +595,28 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
 
   if (!no_delay ||
       *no_delay == TRUE) {
+
+    if (c->rfd != -1) {
+      if (setsockopt(c->rfd, IPPROTO_TCP, TCP_NODELAY, (void *) &nodelay,
+          sizeof(nodelay)) < 0) {
+        pr_log_pri(PR_LOG_NOTICE, "error setting read fd %d TCP_NODELAY: %s",
+          c->rfd, strerror(errno));
+      }
+    }
+
+    if (c->wfd != -1) {
+      if (setsockopt(c->wfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
+          sizeof(nodelay)) < 0) {
+        pr_log_pri(PR_LOG_NOTICE, "error setting write fd %d TCP_NODELAY: %s",
+          c->wfd, strerror(errno));
+      }
+    }
+
     if (c->listen_fd != -1) {
       if (setsockopt(c->listen_fd, tcp_level, TCP_NODELAY, (void *) &nodelay,
           sizeof(nodelay)) < 0) {
-        pr_log_pri(PR_LOG_NOTICE, "error setting listen fd TCP_NODELAY: %s",
-          strerror(errno));
+        pr_log_pri(PR_LOG_NOTICE, "error setting listen fd %d TCP_NODELAY: %s",
+          c->listen_fd, strerror(errno));
       }
     }
   }
