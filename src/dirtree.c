@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.222 2009-08-15 02:43:13 castaglia Exp $
+ * $Id: dirtree.c,v 1.223 2009-08-28 17:33:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1525,8 +1525,9 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
   if (S_ISDIR(st.st_mode)) {
     dynpath = pdircat(p, path, "/.ftpaccess", NULL);
 
-  } else
+  } else {
     dynpath = NULL;
+  }
 
   while (path) {
     pr_signals_handle();
@@ -1539,21 +1540,26 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
         *(fullpath + strlen(fullpath) - 1) = '\0';
       }
 
-    } else
+    } else {
       fullpath = path;
+    }
 
-    if (dynpath)
+    if (dynpath) {
       isfile = pr_fsio_stat(dynpath, &st);
 
-    else
+    } else {
       isfile = -1;
+    }
 
     d = dir_match_path(p, fullpath);
 
     if (!d &&
-        isfile != -1) {
+        isfile != -1 &&
+        st.st_size > 0) {
       set = (session.anon_config ? &session.anon_config->subset :
         &main_server->conf);
+
+      pr_trace_msg("ftpaccess", 6, "adding config for '%s'", fullpath);
 
       d = add_config_set(set, fullpath);
       d->config_type = CONF_DIR;
@@ -1564,8 +1570,12 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
       config_rec *newd, *dnext;
 
       if (isfile != -1 &&
+          st.st_size > 0 &&
           strcmp(d->name, fullpath) != 0) {
         set = &d->subset;
+
+        pr_trace_msg("ftpaccess", 6, "adding config for '%s'", fullpath);
+
         newd = add_config_set(set, fullpath);
         newd->config_type = CONF_DIR;
         newd->argc = 1;
@@ -1603,8 +1613,9 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
 	  /* If the file has been removed and no entries exist in this
            * dynamic entry, remove it completely.
            */
-          if (isfile == -1)
+          if (isfile == -1) {
             xaset_remove(*set, (xasetmember_t *) d);
+          }
         }
       }
     }
@@ -1613,23 +1624,31 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
         d &&
         st.st_size > 0 &&
         st.st_mtime > (d->argv[0] ? *((time_t *) d->argv[0]) : 0)) {
+      int res;
 
       /* File has been modified or not loaded yet */
       d->argv[0] = pcalloc(d->pool, sizeof(time_t));
       *((time_t *) d->argv[0]) = st.st_mtime;
 
-      pr_parser_prepare(p, NULL);
-
       d->config_type = CONF_DYNDIR;
 
-      if (pr_parser_parse_file(p, dynpath, d, PR_PARSER_FL_DYNAMIC_CONFIG) < 0)
-        pr_log_debug(DEBUG0, "error parsing '%s': %s", dynpath,
-          strerror(errno));
+      pr_trace_msg("ftpaccess", 3, "parsing '%s'", dynpath);
 
-      d->config_type = CONF_DIR;
+      pr_parser_prepare(p, NULL);
+      res = pr_parser_parse_file(p, dynpath, d, PR_PARSER_FL_DYNAMIC_CONFIG);
       pr_parser_cleanup();
 
-      merge_down(*set, TRUE);
+      if (res == 0) {
+        d->config_type = CONF_DIR;
+        merge_down(*set, TRUE);
+
+        pr_trace_msg("ftpaccess", 3, "fixing up directory configs");
+        fixup_dirs(main_server, CF_SILENT);
+
+      } else {
+        pr_log_debug(DEBUG0, "error parsing '%s': %s", dynpath,
+          strerror(errno));
+      }
     }
 
     if (isfile == -1 &&
