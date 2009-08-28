@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: disconnect.c,v 1.3 2009-03-20 23:02:41 castaglia Exp $
+ * $Id: disconnect.c,v 1.4 2009-08-28 16:14:23 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -54,12 +54,15 @@ static struct disconnect_reason explanations[] = {
   { 0, NULL, NULL }
 };
 
-void sftp_disconnect_conn(uint32_t reason, const char *explain,
+static const char *trace_channel = "ssh2";
+
+void sftp_disconnect_send(uint32_t reason, const char *explain,
     const char *file, int lineno, const char *func) {
   struct ssh2_packet *pkt;
   const char *lang = "en-US";
   char *buf, *ptr;
   uint32_t buflen, bufsz;
+  int sockfd;
 
   /* Send the client a DISCONNECT mesg. */
   pkt = sftp_ssh2_packet_create(sftp_pool);
@@ -86,12 +89,12 @@ void sftp_disconnect_conn(uint32_t reason, const char *explain,
   }
 
   if (strlen(func) > 0) {
-    pr_trace_msg("sftp", 9, "disconnecting (%s) [at %s:%d:%s()]", explain, file,
-      lineno, func);
+    pr_trace_msg(trace_channel, 9, "disconnecting (%s) [at %s:%d:%s()]",
+      explain, file, lineno, func);
 
   } else {
-    pr_trace_msg("sftp", 9, "disconnecting (%s) [at %s:%d]", explain, file,
-      lineno);
+    pr_trace_msg(trace_channel, 9, "disconnecting (%s) [at %s:%d]", explain,
+      file, lineno);
   }
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_DISCONNECT);
@@ -105,8 +108,23 @@ void sftp_disconnect_conn(uint32_t reason, const char *explain,
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "disconnecting (%s)",
     explain);
 
-  (void) sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+  /* If we are called very early in the connection lifetime, then the
+   * sftp_conn variable may not have been set yet, thus the conditional here.
+   */
+  if (sftp_conn != NULL) {
+    sockfd = sftp_conn->wfd;
+
+  } else {
+    sockfd = session.c->wfd;
+  }
+
+  (void) sftp_ssh2_packet_write(sockfd, pkt);
   destroy_pool(pkt->pool);
+}
+
+void sftp_disconnect_conn(uint32_t reason, const char *explain,
+    const char *file, int lineno, const char *func) {
+  sftp_disconnect_send(reason, explain, file, lineno, func);
 
 #ifdef PR_DEVEL_COREDUMP
   abort();

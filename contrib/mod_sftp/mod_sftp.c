@@ -24,10 +24,11 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.15 2009-08-25 05:07:14 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.16 2009-08-28 16:14:23 castaglia Exp $
  */
 
 #include "mod_sftp.h"
+#include "ssh2.h"
 #include "packet.h"
 #include "interop.h"
 #include "crypto.h"
@@ -1106,6 +1107,11 @@ static void sftp_exit_ev(const void *event_data, void *user_data) {
   }
 }
 
+static void sftp_max_conns_ev(const void *event_data, void *user_data) {
+  sftp_disconnect_send(SFTP_SSH2_DISCONNECT_TOO_MANY_CONNECTIONS,
+    "Maximum connections for host reached", __FILE__, __LINE__, "");
+}
+
 #if defined(PR_SHARED_MODULE)
 static void sftp_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_sftp.c", (const char *) event_data) == 0) {
@@ -1189,6 +1195,18 @@ static int sftp_init(void) {
   sftp_keystore_init();
 
   pr_event_register(&sftp_module, "core.exit", sftp_exit_ev, NULL);
+  pr_event_register(&sftp_module, "mod_auth.max-clients",
+    sftp_max_conns_ev, NULL);
+  pr_event_register(&sftp_module, "mod_auth.max-clients-per-class",
+    sftp_max_conns_ev, NULL);
+  pr_event_register(&sftp_module, "mod_auth.max-clients-per-host",
+    sftp_max_conns_ev, NULL);
+  pr_event_register(&sftp_module, "mod_auth.max-clients-per-user",
+    sftp_max_conns_ev, NULL);
+  pr_event_register(&sftp_module, "mod_auth.max-connections-per-host",
+    sftp_max_conns_ev, NULL);
+  pr_event_register(&sftp_module, "mod_auth.max-hosts-per-user",
+    sftp_max_conns_ev, NULL);
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&sftp_module, "core.module-unload", sftp_mod_unload_ev,
     NULL);

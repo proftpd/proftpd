@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.262 2009-07-06 03:13:14 castaglia Exp $
+ * $Id: mod_auth.c,v 1.263 2009-08-28 16:14:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -52,8 +52,8 @@ static char *auth_pass_resp_code = R_230;
 static pr_fh_t *displaylogin_fh = NULL;
 static unsigned int TimeoutSession = 0;
 
-static void auth_scan_scoreboard(void);
-static void auth_count_scoreboard(cmd_rec *, char *);
+static int auth_scan_scoreboard(void);
+static int auth_count_scoreboard(cmd_rec *, char *);
 
 /* auth_cmd_chk_cb() is hooked into the main server's auth_hook function,
  * so that we can deny all commands until authentication is complete.
@@ -103,9 +103,10 @@ static int auth_sess_init(void) {
   int res = 0;
 
   /* Check for a server-specific TimeoutLogin */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutLogin",
-      FALSE)) != NULL)
+  c = find_config(main_server->conf, CONF_PARAM, "TimeoutLogin", FALSE);
+  if (c != NULL) {
     TimeoutLogin = *((int *) c->argv[0]);
+  }
 
   /* Start the login timer */
   if (TimeoutLogin) {
@@ -1369,7 +1370,7 @@ auth_failure:
  * greeting.  A secondary purpose is to enforce any configured
  * MaxConnectionsPerHost limit.
  */
-static void auth_scan_scoreboard(void) {
+static int auth_scan_scoreboard(void) {
   char *key;
   void *v;
   config_rec *c = NULL;
@@ -1389,6 +1390,7 @@ static void auth_scan_scoreboard(void) {
   }
 
   while ((score = pr_scoreboard_entry_read()) != NULL) {
+    pr_signals_handle();
 
     /* Make sure it matches our current server */
     if (strcmp(score->sce_server_addr, curr_server_addr) == 0) {
@@ -1464,9 +1466,11 @@ static void auth_scan_scoreboard(void) {
       end_login(1);
     }
   }
+
+  return 0;
 }
 
-static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
+static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
   char *key;
   void *v;
   pr_scoreboard_entry_t *score = NULL;
@@ -1493,6 +1497,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 
     while ((score = pr_scoreboard_entry_read()) != NULL) {
       unsigned char same_host = FALSE;
+
+      pr_signals_handle();
 
       /* Make sure it matches our current server. */
       if (strcmp(score->sce_server_addr, curr_server_addr) == 0) {
@@ -1702,6 +1708,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
       end_login(0);
     }
   }
+
+  return 0;
 }
 
 MODRET auth_pre_user(cmd_rec *cmd) {
