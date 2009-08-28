@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.13 2009-08-12 21:16:21 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.14 2009-08-28 14:50:53 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -87,7 +87,7 @@ subsystem, for secure file transfer over an SSH2 connection.  The
 </ul>
 
 <p>
-The <code>mod_sftp</code> does <b>not</b> currently support:
+The <code>mod_sftp</code> module does <b>not</b> currently support:
 <ul>
   <li><code>&lt;Anonymous&gt;</code>
   <li><code>DirFakeUser/DirFakeGroup</code>
@@ -284,7 +284,7 @@ The <code>SFTPClientMatch</code> directive is used to tune some of the
 SSH2/SFTP values based on the connecting client, for better interoperability
 with those clients.  The <em>pattern</em> parameter specifies a POSIX regular
 expression which will be matched against the connecting client's SSH version
-banner.  If the client's banner version matchees <em>pattern</em>, then
+banner.  If the client's banner version matches <em>pattern</em>, then
 the configured keys/values are used for that session.
 
 <p>
@@ -1228,8 +1228,9 @@ configuration).  So the above has several TCP packets and ACKs that need to be
 sent back and forth.
 
 <p>
-The <code>mod_sftp</code> avoids one unnecessary TCP packet+ACK by sending its
-version banner and its first key exchange message in the same TCP packet:
+The <code>mod_sftp</code> module avoids one unnecessary TCP packet+ACK by
+sending its version banner and its first key exchange message in the same TCP
+packet:
 <pre>
  (1) <i>client</i> ------------ connect -------------> <i>server</i>
  (2) <i>client</i> <-- version banner/1st key exch---- <i>server</i>
@@ -1283,18 +1284,15 @@ size for all clients:
 </pre>
 
 <p>
-The larger the channel window size, the better.  I don't know why the SSH2
-protocol has this notion of a "window size".  The SSH2 channel window size
-has absolutely <b>no</b> relation to the TCP window size.  And the TCP
-layer handles window sizing and flow control automatically, so why require
-it at the application protocol level?  For whatever the reasons, it is part
-of the SSH2 protocol.  The smaller this SSH2 channel window size, the more
-frequently the peer needs to send a "window size adjustment" SSH2 request
-(which entails its own TCP packet and ACK) in order to keep the window
-size open.  The larger the channel window size, the fewer "window size
-adjustment" requests the peer has to send, and thus the fewer TCP packets/ACKs
-are needed.  Since each TCP packet adds latency, the smaller channel window
-sizes can increase the latency for data transfers.
+The larger the channel window size, the better. (Note that the SSH2 channel
+window size has absolutely <b>no</b> relation to the TCP window size.)
+The smaller this SSH2 channel window size, the more frequently the peer needs
+to send a "window size adjustment" SSH2 request (which entails its own TCP
+packet and ACK) in order to keep the window size open.  The larger the channel
+window size, the fewer "window size adjustment" requests the peer has to send,
+and thus the fewer TCP packets/ACKs are needed.  Since each TCP packet adds
+latency, the smaller channel window sizes can increase the latency for data
+transfers.
 
 <p>
 For this reason, my personal recommendation is to only set smaller channel
@@ -1342,7 +1340,7 @@ section.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-08-12 21:16:21 $</i><br>
+Last Updated: <i>$Date: 2009-08-28 14:50:53 $</i><br>
 
 <br><hr>
 
