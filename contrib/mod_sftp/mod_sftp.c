@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.16 2009-08-28 16:14:23 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.17 2009-08-28 16:20:42 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1109,7 +1109,7 @@ static void sftp_exit_ev(const void *event_data, void *user_data) {
 
 static void sftp_max_conns_ev(const void *event_data, void *user_data) {
   sftp_disconnect_send(SFTP_SSH2_DISCONNECT_TOO_MANY_CONNECTIONS,
-    "Maximum connections for host reached", __FILE__, __LINE__, "");
+    "Maximum connections for host/user reached", __FILE__, __LINE__, "");
 }
 
 #if defined(PR_SHARED_MODULE)
