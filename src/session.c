@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: session.c,v 1.2 2009-02-14 06:02:45 castaglia Exp $
+ * $Id: session.c,v 1.3 2009-08-30 18:49:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -46,7 +46,8 @@ const char *pr_session_get_protocol(int flags) {
   
   } else if (strcmp(sess_proto, "ssh2") == 0 ||
              strcmp(sess_proto, "sftp") == 0 ||
-             strcmp(sess_proto, "scp") == 0) {
+             strcmp(sess_proto, "scp") == 0 ||
+             strcmp(sess_proto, "publickey") == 0) {
     return "SSH2";
   }
 
@@ -102,7 +103,8 @@ const char *pr_session_get_ttyname(pool *p) {
 
     } else if (strcmp(sess_proto, "ssh2") == 0 ||
                strcmp(sess_proto, "sftp") == 0 ||
-               strcmp(sess_proto, "scp") == 0) {
+               strcmp(sess_proto, "scp") == 0 ||
+               strcmp(sess_proto, "publickey") == 0) {
 
       /* Just use the plain "ssh" string for the tty name for these cases. */
       tty_proto = "ssh";
