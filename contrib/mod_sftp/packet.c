@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.6 2009-08-31 18:43:03 castaglia Exp $
+ * $Id: packet.c,v 1.7 2009-08-31 18:47:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -170,14 +170,22 @@ static int packet_read(int sockfd, void *buf, size_t reqlen) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error reading from client (fd %d): %s", sockfd, strerror(errno));
 
+        /* We explicitly disconnect the client here, rather than sending
+         * a DISCONNECT message, because the errors below all indicate
+         * a problem with the TCP connection, such that trying to write
+         * more data on that connection would cause problems.
+         */
         if (errno == ECONNRESET ||
             errno == ECONNABORTED ||
 #ifdef ETIMEDOUT
             errno == ETIMEDOUT ||
-#endif /* No ETIMEDOUT */
+#endif /* ETIMEDOUT */
 #ifdef ENOTCONN
             errno == ENOTCONN ||
-#endif /* No ENOTCONN */
+#endif /* ENOTCONN */
+#ifdef ESHUTDOWN
+            errno == ESHUTDOWN ||
+#endif /* ESHUTDOWNN */
             errno == EPIPE) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "disconnecting client (%s)", strerror(errno));
