@@ -21,14 +21,18 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: ssh2.h,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: ssh2.h,v 1.3 2009-09-01 17:04:32 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_SSH2_H
 #define MOD_SFTP_SSH2_H
 
-/* As per RFC 4253, Section 6.1 */
-#define SFTP_MAX_PACKET_LEN	35000
+/* As per RFC 4253, Section 6.1, we MUST be able to handle a packet whose
+ * length is 35000 bytes; we SHOULD be able to handle larger packets.  We
+ * impose a maximum size here to prevent overly-large packets from being
+ * used by attackers.  The maximum size is a bit arbitrary.
+ */
+#define SFTP_MAX_PACKET_LEN             (1024 * 128)
 
 /* SSH2 package message types */
 

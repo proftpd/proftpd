@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_sftp.h.in,v 1.5 2009-07-27 01:00:59 castaglia Exp $
+ * $Id: mod_sftp.h.in,v 1.6 2009-09-01 17:04:32 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_H
@@ -74,9 +74,6 @@
 #include <zlib.h>
 
 #define SFTP_ID_STRING	"SSH-2.0-" MOD_SFTP_VERSION
-
-/* As per RFC 4253, Section 6.1 */
-#define SFTP_MAX_PACKET_LEN	35000
 
 /* mod_sftp session state flags */
 #define SFTP_SESS_STATE_HAVE_KEX	0x00001

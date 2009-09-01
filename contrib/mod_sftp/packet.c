@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.7 2009-08-31 18:47:50 castaglia Exp $
+ * $Id: packet.c,v 1.8 2009-09-01 17:04:32 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -328,6 +328,26 @@ static void handle_unimplemented_mesg(struct ssh2_packet *pkt) {
 
   pr_trace_msg(trace_channel, 7, "received SSH_MSG_UNIMPLEMENTED for "
     "packet #%lu", (unsigned long) seqno);
+}
+
+/* Attempt to read in a random amount of data (between 2K and the maximum
+ * amount of SSH2 packet data we support) from the socket.  This is used to
+ * help mitigate the plaintext recovery attack described by CPNI-957037.
+ *
+ * Technically this is only necessary if a CBC mode cipher is in use, but
+ * there should be no harm in using for any cipher; we are going to
+ * disconnect the client after reading this data anyway.
+ */
+static void read_packet_discard(int sockfd) {
+  char buf[SFTP_MAX_PACKET_LEN];
+  size_t buflen;
+
+  buflen = 2048 + ((int) (SFTP_MAX_PACKET_LEN * (rand() / (RAND_MAX / + 1.0))));
+
+  pr_trace_msg(trace_channel, 3, "reading %lu bytes of data for discarding",
+    (unsigned long) buflen);
+  packet_read(sockfd, buf, buflen);
+  return;
 }
 
 static int read_packet_len(int sockfd, struct ssh2_packet *pkt,
@@ -688,13 +708,15 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
     pr_trace_msg(trace_channel, 20, "SSH2 packet len = %lu bytes",
       (unsigned long) pkt->packet_len);
 
-    if (pkt->packet_len > SFTP_MAX_PACKET_LEN) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "packet length too long (%lu), exceeds maximum packet length (%lu)",
-        (unsigned long) pkt->packet_len, (unsigned long) SFTP_MAX_PACKET_LEN);
-      return -1;
-    }
-
+    /* In order to mitigate the plaintext recovery attack described in
+     * CPNI-957037:
+     *
+     *  http://www.cpni.gov.uk/Docs/Vulnerability_Advisory_SSH.txt
+     *
+     * we do NOT check that the packet length is sane here; we have to
+     * wait until the MAC check succeeds.
+     */
+ 
     /* Note: Checking for the RFC4253-recommended minimum packet length
      * of 16 bytes causes KEX to fail (the NEWKEYS packet is 12 bytes).
      * Thus that particular check is omitted.
@@ -704,6 +726,71 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
         bufsz) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "no data to be read from socket %d", sockfd);
+      read_packet_discard(sockfd);
+      return -1;
+    }
+
+
+    pr_trace_msg(trace_channel, 20, "SSH2 packet padding len = %u bytes",
+      (unsigned int) pkt->padding_len);
+
+    pkt->payload_len = (pkt->packet_len - pkt->padding_len - 1);
+
+    pr_trace_msg(trace_channel, 20, "SSH2 packet payload len = %lu bytes",
+      (unsigned long) pkt->payload_len);
+
+    /* Read both payload and padding, since we may need to have both before
+     * decrypting the data.
+     */
+    if (read_packet_payload(sockfd, pkt, buf, &offset, &buflen, bufsz) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unable to read payload from socket %d", sockfd);
+      read_packet_discard(sockfd);
+      return -1;
+    }
+
+    memset(buf, 0, sizeof(buf));
+    pkt->mac_len = sftp_mac_get_block_size();
+
+    pr_trace_msg(trace_channel, 20, "SSH2 packet MAC len = %lu bytes",
+      (unsigned long) pkt->mac_len);
+
+    if (read_packet_mac(sockfd, pkt, buf) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unable to read MAC from socket %d", sockfd);
+      read_packet_discard(sockfd);
+      return -1;
+    }
+
+    pkt->seqno = packet_client_seqno;
+    if (sftp_mac_read_data(pkt) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unable to verify MAC on packet from socket %d", sockfd);
+
+      /* In order to further mitigate CPNI-957037, we will read in a
+       * random amount of more data from the network before closing
+       * the connection.
+       */
+      read_packet_discard(sockfd);
+      return -1;
+    }
+
+    /* Now that the MAC check has passed, we can do sanity checks based
+     * on the fields we have read in, and trust that those fields are
+     * correct.
+     */
+
+    if (pkt->packet_len < 5) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "packet length too long (%lu), less than minimum packet length (5)",
+        (unsigned long) pkt->packet_len);
+      return -1;
+    }
+
+    if (pkt->packet_len > SFTP_MAX_PACKET_LEN) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "packet length too long (%lu), exceeds maximum packet length (%lu)",
+        (unsigned long) pkt->packet_len, (unsigned long) SFTP_MAX_PACKET_LEN);
       return -1;
     }
 
@@ -715,6 +802,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "padding length too short (%u), less than minimum padding length (%u)",
         (unsigned int) pkt->padding_len, (unsigned int) SFTP_MIN_PADDING_LEN);
+      read_packet_discard(sockfd);
       return -1;
     }
 
@@ -722,6 +810,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "padding length too long (%u), exceeds packet length (%lu)",
         (unsigned int) pkt->padding_len, (unsigned long) pkt->packet_len);
+      read_packet_discard(sockfd);
       return -1;
     }
 
@@ -745,54 +834,25 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
         "packet length (%lu) not a multiple of the required block size (%lu)",
         (unsigned long) pkt->packet_len + sizeof(uint32_t),
         (unsigned long) req_blocksz);
+      read_packet_discard(sockfd);
       return -1;
     }
 
-    pr_trace_msg(trace_channel, 20, "SSH2 packet padding len = %u bytes",
-      (unsigned int) pkt->padding_len);
-
-    pkt->payload_len = (pkt->packet_len - pkt->padding_len - 1);
-
-    pr_trace_msg(trace_channel, 20, "SSH2 packet payload len = %lu bytes",
-      (unsigned long) pkt->payload_len);
-
+    /* XXX I'm not so sure about this check; we SHOULD have a maximum
+     * payload check, but using the max packet length check for the payload
+     * length seems awkward.
+     */
     if (pkt->payload_len > SFTP_MAX_PACKET_LEN) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "payload length too long (%lu), exceeds maximum payload length (%lu) "
         "(packet len %lu, padding len %u)", (unsigned long) pkt->payload_len,
         (unsigned long) SFTP_MAX_PACKET_LEN, (unsigned long) pkt->packet_len,
         (unsigned int) pkt->padding_len);
+      read_packet_discard(sockfd);
       return -1;
     }
 
-    /* Read both payload and padding, since we may need to have both before
-     * decrypting the data.
-     */
-    if (read_packet_payload(sockfd, pkt, buf, &offset, &buflen, bufsz) < 0) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "unable to read payload from socket %d", sockfd);
-      return -1;
-    }
-
-    memset(buf, 0, sizeof(buf));
-    pkt->mac_len = sftp_mac_get_block_size();
-
-    pr_trace_msg(trace_channel, 20, "SSH2 packet MAC len = %lu bytes",
-      (unsigned long) pkt->mac_len);
-
-    if (read_packet_mac(sockfd, pkt, buf) < 0) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "unable to read MAC from socket %d", sockfd);
-      return -1;
-    }
-
-    pkt->seqno = packet_client_seqno;
-    if (sftp_mac_read_data(pkt) < 0) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "unable to verify MAC on packet from socket %d", sockfd);
-      return -1;
-    }
-
+    /* Sanity checks passed; move on to the reading the packet payload. */
     if (sftp_compress_read_data(pkt) < 0) {
       return -1;
     }
@@ -939,7 +999,7 @@ static struct iovec packet_iov[SFTP_SSH2_PACKET_IOVSZ];
 static unsigned int packet_niov = 0;
 
 int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
-  char buf[SFTP_MAX_PACKET_LEN], mesg_type;
+  char buf[SFTP_MAX_PACKET_LEN * 2], mesg_type;
   size_t buflen = 0, bufsz = SFTP_MAX_PACKET_LEN;
   uint32_t packet_len = 0;
   int res;
