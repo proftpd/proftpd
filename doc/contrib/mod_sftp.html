@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.14 2009-08-28 14:50:53 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.15 2009-09-01 17:18:23 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -1335,12 +1335,28 @@ FTP connections?<br>
 The idea is to use the <code>&lt;Limit LOGIN&gt;</code> to deny all logins to
 any/all virtual host sections <i>except</i> for the <code>mod_sftp</code>
 section.
- 
+
+<p><a name="SFTPPCBCModeAttacks">
+<font color=red>Question</font>: Is it true that using CBC mode ciphers in
+SSH is insecure?<br>
+<font color=blue>Answer</font>: It is true that there are a couple of published
+<i>theoretical</i> attacks against the SSH protocol when CBC ciphers are
+used, including Rogaway, Wai, and Bellare (see RFC4251, Section 9.3.1) and
+<a href="http://www.cpni.gov.uk/Docs/Vulnerability_Advisory_SSH.txt">"Plaintext Recovery Attacks Against SSH"</a> (CPNI-957037).
+
+<p>
+However, these attacks can be mitigated by countermeasures in the SSH
+implementation.  The use of <code>SSH_MSG_IGNORE</code> messages for the
+Rogaway attack, and the delayed checking of packet length fields until the MAC
+check has passed (and then reading in a random amount of additional data from
+the network) to migitate CPNI-957037, are both implemented within the
+<code>mod_sftp</code> module as security measures.
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-08-28 14:50:53 $</i><br>
+Last Updated: <i>$Date: 2009-09-01 17:18:23 $</i><br>
 
 <br><hr>
 
