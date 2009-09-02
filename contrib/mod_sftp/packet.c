@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.8 2009-09-01 17:04:32 castaglia Exp $
+ * $Id: packet.c,v 1.9 2009-09-02 17:58:53 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -686,6 +686,8 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
   char buf[SFTP_MAX_PACKET_LEN];
   size_t buflen, bufsz = SFTP_MAX_PACKET_LEN, offset = 0;
   char mesg_type;
+
+  pr_session_set_idle();
 
   while (1) {
     uint32_t req_blocksz;

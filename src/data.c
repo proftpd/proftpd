@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.119 2009-08-13 21:12:55 castaglia Exp $
+ * $Id: data.c,v 1.120 2009-09-02 17:58:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -632,7 +632,7 @@ void pr_data_close(int quiet) {
 
   session.sf_flags &= (SF_ALL^SF_PASSIVE);
   session.sf_flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
-  session_set_idle();
+  pr_session_set_idle();
 
   if (!quiet)
     pr_response_add(R_226, _("Transfer complete"));
@@ -683,7 +683,7 @@ void pr_data_abort(int err, int quiet) {
 
   session.sf_flags &= (SF_ALL^SF_PASSIVE);
   session.sf_flags &= (SF_ALL^(SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
-  session_set_idle();
+  pr_session_set_idle();
 
   /* Aborts no longer necessary */
   signal(SIGURG, SIG_IGN);

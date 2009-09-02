@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.379 2009-07-15 21:59:45 castaglia Exp $
+ * $Id: main.c,v 1.380 2009-09-02 17:58:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -157,17 +157,6 @@ static int semaphore_fds(fd_set *rfd, int maxfd) {
   }
 
   return maxfd;
-}
-
-void session_set_idle(void) {
-  pr_scoreboard_entry_update(session.pid,
-    PR_SCORE_BEGIN_IDLE, time(NULL),
-    PR_SCORE_CMD, "%s", "idle", NULL, NULL);
-
-  pr_scoreboard_entry_update(session.pid,
-    PR_SCORE_CMD_ARG, "%s", "", NULL, NULL);
-
-  pr_proctitle_set("%s - %s: IDLE", session.user, session.proc_prefix);
 }
 
 void set_auth_check(int (*chk)(cmd_rec*)) {
@@ -477,7 +466,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
       if (session.user &&
           !(session.sf_flags & SF_XFER) &&
           cmd_type == CMD) {
-        session_set_idle();
+        pr_session_set_idle();
       }
 
       destroy_pool(cmd->tmp_pool);

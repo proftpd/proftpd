@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.16 2009-08-19 21:20:00 castaglia Exp $
+ * $Id: auth.c,v 1.17 2009-09-02 17:58:53 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -534,7 +534,7 @@ static int setup_env(pool *p, char *user) {
     PR_SCORE_CWD, session.cwd,
     NULL);
 
-  session_set_idle();
+  pr_session_set_idle();
 
   pr_timer_remove(PR_TIMER_LOGIN, ANY_MODULE);
 

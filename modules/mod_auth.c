@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.263 2009-08-28 16:14:23 castaglia Exp $
+ * $Id: mod_auth.c,v 1.264 2009-09-02 17:58:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1329,7 +1329,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     PR_SCORE_CWD, session.cwd,
     NULL);
 
-  session_set_idle();
+  pr_session_set_idle();
 
   pr_timer_remove(PR_TIMER_LOGIN, &auth_module);
 

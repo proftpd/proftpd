@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: session.h,v 1.1 2009-02-14 03:59:11 castaglia Exp $
+ * $Id: session.h,v 1.2 2009-09-02 17:58:54 castaglia Exp $
  */
 
 #ifndef PR_SESSION_H
@@ -39,6 +39,11 @@ const char *pr_session_get_protocol(int);
  * logging.
  */
 const char *pr_session_get_ttyname(pool *);
+
+/* Marks the current session as "idle" both in the scoreboard and in the
+ * proctitle.
+ */
+int pr_session_set_idle(void);
 
 /* Sets the current protocol name. */
 int pr_session_set_protocol(const char *);
