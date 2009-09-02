@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.9 2009-09-02 17:58:53 castaglia Exp $
+ * $Id: packet.c,v 1.10 2009-09-02 18:13:37 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -330,9 +330,9 @@ static void handle_unimplemented_mesg(struct ssh2_packet *pkt) {
     "packet #%lu", (unsigned long) seqno);
 }
 
-/* Attempt to read in a random amount of data (between 2K and the maximum
- * amount of SSH2 packet data we support) from the socket.  This is used to
- * help mitigate the plaintext recovery attack described by CPNI-957037.
+/* Attempt to read in a random amount of data (up to the maximum amount of
+ * SSH2 packet data we support) from the socket.  This is used to help
+ * mitigate the plaintext recovery attack described by CPNI-957037.
  *
  * Technically this is only necessary if a CBC mode cipher is in use, but
  * there should be no harm in using for any cipher; we are going to
@@ -342,11 +342,16 @@ static void read_packet_discard(int sockfd) {
   char buf[SFTP_MAX_PACKET_LEN];
   size_t buflen;
 
-  buflen = 2048 + ((int) (SFTP_MAX_PACKET_LEN * (rand() / (RAND_MAX / + 1.0))));
+  buflen = SFTP_MAX_PACKET_LEN -
+    ((int) (SFTP_MAX_PACKET_LEN * (rand() / (RAND_MAX + 1.0))));
 
   pr_trace_msg(trace_channel, 3, "reading %lu bytes of data for discarding",
     (unsigned long) buflen);
-  packet_read(sockfd, buf, buflen);
+
+  if (buflen > 0) {
+    packet_read(sockfd, buf, buflen);
+  }
+
   return;
 }
 
