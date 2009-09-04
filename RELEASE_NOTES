@@ -11,6 +11,10 @@ ChangeLog files.
 
   + .ftpaccess files, Bug#3279, merging
 
+  + Changed scoreboard format (Bug#3286), need for "ServerType inetd"
+    server to manually delete their old ScoreboardFiles.  Otherwise they
+    will see "error opening scoreboard: bad version (too old)" errors.
+
   + Changed configuration directives
 
     ExtendedLog
@@ -330,4 +334,4 @@ ChangeLog files.
         this will probably not apply to most modules.
 
  
-Last Updated: $Date: 2009-08-28 17:33:29 $
+Last Updated: $Date: 2009-09-04 17:16:49 $
