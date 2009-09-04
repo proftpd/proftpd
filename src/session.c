@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: session.c,v 1.4 2009-09-02 17:58:54 castaglia Exp $
+ * $Id: session.c,v 1.5 2009-09-04 17:13:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -80,11 +80,25 @@ int pr_session_set_protocol(const char *sess_proto) {
   if (count > 0) {
     res = pr_table_set(session.notes, pstrdup(session.pool, "protocol"),
       pstrdup(session.pool, sess_proto), 0);
+
+    if (res == 0) {
+      /* Update the scoreboard entry for this session with the protocol. */
+      pr_scoreboard_entry_update(session.pid, PR_SCORE_PROTOCOL, sess_proto,
+        NULL);
+    }
+
     return res;
   }
 
   res = pr_table_add(session.notes, pstrdup(session.pool, "protocol"),
     pstrdup(session.pool, sess_proto), 0);
+
+  if (res == 0) {
+    /* Update the scoreboard entry for this session with the protocol. */
+    pr_scoreboard_entry_update(session.pid, PR_SCORE_PROTOCOL, sess_proto,
+      NULL);
+  }
+
   return res;
 }
 

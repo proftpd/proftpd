@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.264 2009-09-02 17:58:54 castaglia Exp $
+ * $Id: mod_auth.c,v 1.265 2009-09-04 17:13:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -152,6 +152,7 @@ static int auth_sess_init(void) {
     PR_SCORE_CLIENT_ADDR, session.c->remote_addr,
     PR_SCORE_CLIENT_NAME, session.c->remote_name,
     PR_SCORE_CLASS, session.class ? session.class->cls_name : "",
+    PR_SCORE_PROTOCOL, "ftp",
     PR_SCORE_BEGIN_SESSION, time(NULL),
     NULL);
 

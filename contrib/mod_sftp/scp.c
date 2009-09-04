@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.26 2009-09-02 22:30:27 castaglia Exp $
+ * $Id: scp.c,v 1.27 2009-09-04 17:13:09 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -731,7 +731,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   }
 
   pr_scoreboard_entry_update(session.pid,
-    PR_SCORE_CMD, "%s", "SCP_STOR", NULL, NULL);
+    PR_SCORE_CMD, "%s", "scp upload", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", sp->best_path, NULL, NULL);
 
@@ -1463,7 +1463,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
   cmd_rec *cmd = NULL;
 
   pr_scoreboard_entry_update(session.pid,
-    PR_SCORE_CMD, "%s", "SCP_RETR", NULL, NULL);
+    PR_SCORE_CMD, "%s", "scp download", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", sp->path, NULL, NULL);
 

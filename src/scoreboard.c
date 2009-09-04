@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.45 2009-01-27 23:29:52 castaglia Exp $
+ * $Id: scoreboard.c,v 1.46 2009-09-04 17:13:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -748,6 +748,9 @@ const char *pr_scoreboard_entry_get(int field) {
 
     case PR_SCORE_CMD_ARG:
       return entry.sce_cmd_arg;
+
+    case PR_SCORE_PROTOCOL:
+      return entry.sce_protocol;
   }
 
   errno = ENOENT;
@@ -887,6 +890,12 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
 
       case PR_SCORE_XFER_ELAPSED:
         entry.sce_xfer_elapsed = va_arg(ap, unsigned long);
+        break;
+
+      case PR_SCORE_PROTOCOL:
+        tmp = va_arg(ap, char *);
+        memset(entry.sce_protocol, '\0', sizeof(entry.sce_protocol));
+        sstrncpy(entry.sce_protocol, tmp, sizeof(entry.sce_protocol));
         break;
 
       default:

@@ -1,7 +1,7 @@
 /*
  * ProFTPD - ftptop: a utility for monitoring proftpd sessions
  * Copyright (c) 2000-2002 TJ Saunders <tj@castaglia.org>
- * Copyright (c) 2003-2008 The ProFTPD Project team
+ * Copyright (c) 2003-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.35 2008-02-10 02:29:22 castaglia Exp $
+ * $Id: ftptop.c,v 1.36 2009-09-04 17:13:10 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.9"
@@ -83,6 +83,7 @@ static const char *program = "ftptop";
 #define FTPTOP_SHOW_DOWNLOAD		0x0001
 #define FTPTOP_SHOW_UPLOAD		0x0002
 #define FTPTOP_SHOW_IDLE		0x0004
+#define FTPTOP_SHOW_AUTH		0x0008
 #define	FTPTOP_SHOW_REG \
   (FTPTOP_SHOW_DOWNLOAD|FTPTOP_SHOW_UPLOAD|FTPTOP_SHOW_IDLE)
 #define FTPTOP_SHOW_RATES		0x0010
@@ -112,7 +113,8 @@ static void usage(void);
 
 static void clear_counters(void) {
 
-  if (ftp_sessions && ftp_nsessions) {
+  if (ftp_sessions &&
+      ftp_nsessions > 0) {
     register unsigned int i = 0;
 
     for (i = 0; i < ftp_nsessions; i++)
@@ -168,11 +170,13 @@ static const char *show_time(time_t *i) {
   memset(sbuf, '\0', sizeof(sbuf));
   l = now - *i;
 
-  if (l < 3600)
+  if (l < 3600) {
     snprintf(sbuf, sizeof(sbuf), "%lum%lus",(l / 60),(l % 60));
-  else
+
+  } else {
     snprintf(sbuf, sizeof(sbuf), "%luh%lum",(l / 3600),
-    ((l - (l / 3600) * 3600) / 60));
+      ((l - (l / 3600) * 3600) / 60));
+  }
 
   return sbuf;
 }
@@ -227,10 +231,19 @@ static const char *show_ftpd_uptime(void) {
 
 static void process_opts(int argc, char *argv[]) {
   int optc = 0;
-  const char *prgopts = "DS:d:f:hIiUV";
+  const char *prgopts = "AaDS:d:f:hIiUV";
 
   while ((optc = getopt(argc, argv, prgopts)) != -1) {
     switch (optc) {
+      case 'A':
+        display_mode = 0U;
+        display_mode |= FTPTOP_SHOW_AUTH;
+        break;
+
+      case 'a':
+        display_mode &= ~FTPTOP_SHOW_AUTH;
+        break;
+ 
       case 'D':
         display_mode = 0U;
         display_mode |= FTPTOP_SHOW_DOWNLOAD;
@@ -320,7 +333,8 @@ static void read_scoreboard(void) {
   static char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   pr_scoreboard_entry_t *score = NULL;
 
-  if ((ftp_sessions = calloc(chunklen, sizeof(char *))) == NULL)
+  ftp_sessions = calloc(chunklen, sizeof(char *));
+  if (ftp_sessions == NULL)
     exit(1);
 
   if (scoreboard_open() < 0)
@@ -340,38 +354,54 @@ static void read_scoreboard(void) {
     /* Clear the buffer for this run. */
     memset(buf, '\0', sizeof(buf));
 
-    /* Determine the status symbol to display. */
-    if (strcmp(score->sce_cmd, "idle") == 0) {
-      status = "I";
-      ftp_nidles++;
+    /* Has the user authenticated yet? */
+    if (strcmp(score->sce_user, "(none)") != 0) {
 
-      if (display_mode != FTPTOP_SHOW_RATES &&
-          !(display_mode & FTPTOP_SHOW_IDLE))
-        continue;
+      /* Determine the status symbol to display. */
+      if (strcmp(score->sce_cmd, "idle") == 0) {
+        status = "I";
+        ftp_nidles++;
 
-    } else if (strcmp(score->sce_cmd, "RETR") == 0) {
-      status = "D";
-      ftp_ndownloads++;
+        if (display_mode != FTPTOP_SHOW_RATES &&
+            !(display_mode & FTPTOP_SHOW_IDLE))
+          continue;
 
-      if (display_mode != FTPTOP_SHOW_RATES &&
-          !(display_mode & FTPTOP_SHOW_DOWNLOAD))
-        continue;
+      } else if (strcmp(score->sce_cmd, "RETR") == 0 ||
+                 strcmp(score->sce_cmd, "READ") == 0 ||
+                 strcmp(score->sce_cmd, "scp download") == 0) {
+        status = "D";
+        ftp_ndownloads++;
 
-    } else if (strcmp(score->sce_cmd, "STOR") == 0 ||
-        strcmp(score->sce_cmd, "APPE") == 0 ||
-        strcmp(score->sce_cmd, "STOU") == 0) {
-      status = "U";
-      ftp_nuploads++;
+        if (display_mode != FTPTOP_SHOW_RATES &&
+            !(display_mode & FTPTOP_SHOW_DOWNLOAD))
+          continue;
 
-      if (display_mode != FTPTOP_SHOW_RATES &&
-          !(display_mode & FTPTOP_SHOW_UPLOAD))
-        continue;
+      } else if (strcmp(score->sce_cmd, "STOR") == 0 ||
+                 strcmp(score->sce_cmd, "APPE") == 0 ||
+                 strcmp(score->sce_cmd, "STOU") == 0 ||
+                 strcmp(score->sce_cmd, "WRITE") == 0 ||
+                 strcmp(score->sce_cmd, "scp upload") == 0) {
+        status = "U";
+        ftp_nuploads++;
 
-    } else if (strcmp(score->sce_cmd, "LIST") == 0 ||
-        strcmp(score->sce_cmd, "NLST") == 0 ||
-        strcmp(score->sce_cmd, "MLST") == 0 ||
-        strcmp(score->sce_cmd, "MLSD") == 0)
-      status = "L";
+        if (display_mode != FTPTOP_SHOW_RATES &&
+            !(display_mode & FTPTOP_SHOW_UPLOAD))
+          continue;
+
+      } else if (strcmp(score->sce_cmd, "LIST") == 0 ||
+                 strcmp(score->sce_cmd, "NLST") == 0 ||
+                 strcmp(score->sce_cmd, "MLST") == 0 ||
+                 strcmp(score->sce_cmd, "MLSD") == 0 ||
+                 strcmp(score->sce_cmd, "READDIR") == 0) {
+        status = "L";
+      }
+
+    } else {
+      status = "A";
+
+      /* Overwrite the "command", for display purposes */
+      util_sstrncpy(score->sce_cmd, "(authenticating)", sizeof(score->sce_cmd));
+    }
 
     if (display_mode != FTPTOP_SHOW_RATES) {
       snprintf(buf, sizeof(buf), FTPTOP_REG_DISPLAY_FMT,
@@ -401,14 +431,21 @@ static void read_scoreboard(void) {
     /* Make sure there is enough memory allocated in the session list.
      * Allocate more if needed.
      */
-    if (ftp_nsessions && ftp_nsessions % chunklen == 0) {
-      if ((ftp_sessions = realloc(ftp_sessions,
-          (ftp_nsessions + chunklen) * sizeof(char *))) == NULL)
+    if (ftp_nsessions &&
+        ftp_nsessions % chunklen == 0) {
+      ftp_sessions = realloc(ftp_sessions,
+        (ftp_nsessions + chunklen) * sizeof(char *));
+
+      if (ftp_sessions == NULL) {
         exit(1);
+      }
     }
 
-    if ((ftp_sessions[ftp_nsessions] = calloc(1, strlen(buf) + 1)) == NULL)
+    ftp_sessions[ftp_nsessions] = calloc(1, strlen(buf) + 1);
+    if (ftp_sessions[ftp_nsessions] == NULL) {
       exit(1);
+    }
+
     strncpy(ftp_sessions[ftp_nsessions++], buf, strlen(buf) + 1);
   }
 
@@ -422,7 +459,8 @@ static void scoreboard_close(void) {
 static int scoreboard_open(void) {
   int res = 0;
 
-  if ((res = util_open_scoreboard(O_RDONLY)) < 0) {
+  res = util_open_scoreboard(O_RDONLY);
+  if (res < 0) {
     switch (res) {
       case UTIL_SCORE_ERR_BAD_MAGIC:
         fprintf(stderr, "%s: error opening scoreboard: bad/corrupted file\n",
@@ -489,11 +527,13 @@ static void show_sessions(void) {
   attroff(A_REVERSE);
 
   /* Write out the scoreboard entries. */
-  if (ftp_sessions && ftp_nsessions) {
+  if (ftp_sessions &&
+      ftp_nsessions > 0) {
     register unsigned int i = 0;
 
-    for (i = 0; i < ftp_nsessions; i++)
+    for (i = 0; i < ftp_nsessions; i++) {
       printw("%s", ftp_sessions[i]);
+    }
   }
 
   wrefresh(stdscr);
@@ -505,10 +545,12 @@ static void toggle_mode(void) {
   if (cached_mode == 0)
     cached_mode = display_mode;
 
-  if (display_mode != FTPTOP_SHOW_RATES)
+  if (display_mode != FTPTOP_SHOW_RATES) {
     display_mode = FTPTOP_SHOW_RATES;
-  else
+
+  } else {
     display_mode = cached_mode;
+  }
 }
 
 static void show_version(void) {
@@ -518,6 +560,8 @@ static void show_version(void) {
 
 static void usage(void) {
   fprintf(stdout, "usage: ftptop [options]\n\n");
+  fprintf(stdout, "\t-A      \t\tshow only authenticatng sessions\n");
+  fprintf(stdout, "\t-a      \t\tignores authenticating connections when listing\n");
   fprintf(stdout, "\t-D      \t\tshow only downloading sessions\n");
   fprintf(stdout, "\t-d <num>\t\trefresh delay in seconds\n");
   fprintf(stdout, "\t-f      \t\tconfigures the ScoreboardFile to use\n");
