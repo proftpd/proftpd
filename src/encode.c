@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.16 2009-08-05 22:08:20 castaglia Exp $
+ * $Id: encode.c,v 1.17 2009-09-04 22:01:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -334,7 +334,8 @@ int pr_encode_enable_encoding(const char *codeset) {
     return -1;
   }
 
-  if (strcasecmp(encoding, codeset) == 0) {
+  if (encoding != NULL &&
+      strcasecmp(encoding, codeset) == 0) {
     pr_trace_msg(trace_channel, 5, "'%s' encoding already being used", codeset);
     return 0;
   }
