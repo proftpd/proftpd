@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.17 2009-09-04 22:01:12 castaglia Exp $
+ * $Id: encode.c,v 1.18 2009-09-05 05:35:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -154,8 +154,10 @@ int encode_init(void) {
   if (local_charset == NULL) {
 #ifdef HAVE_NL_LANGINFO
     /* Look up the current charset.  If there's a problem, default to
-     * UCS-2.
+     * UCS-2.  Make sure we pick up the locale of the environment.
      */
+    (void) setlocale(LC_ALL, "");
+
     local_charset = nl_langinfo(CODESET);
     if (local_charset == NULL ||
         strlen(local_charset) == 0) {
