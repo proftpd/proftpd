@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.380 2009-09-02 17:58:54 castaglia Exp $
+ * $Id: main.c,v 1.381 2009-09-07 01:37:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2971,6 +2971,23 @@ int main(int argc, char *argv[], char **envp) {
   var_init();
   modules_init();
 
+#ifdef PR_USE_NLS
+# ifdef HAVE_LOCALE_H
+  /* Initialize the locale based on environment variables. */
+  if (setlocale(LC_ALL, "") == NULL) {
+    const char *env_lang;
+
+    env_lang = pr_env_get(permanent_pool, "LANG");
+    pr_log_pri(PR_LOG_WARNING, "warning: unknown/unsupported LANG environment "
+      "variable '%s', ignoring", env_lang);
+
+    setlocale(LC_ALL, "C");
+  }
+# endif /* !HAVE_LOCALE_H */
+
+ encode_init();
+#endif /* PR_USE_NLS */
+
   /* Now, once the modules have had a chance to initialize themselves
    * but before the configuration stream is actually parsed, check
    * that the given configuration path is valid.
@@ -3001,10 +3018,6 @@ int main(int argc, char *argv[], char **envp) {
       config_filename);
     exit(1);
   }
-
-#ifdef PR_USE_NLS
-  encode_init();
-#endif /* PR_USE_NLS */
 
   pr_event_generate("core.postparse", NULL);
 

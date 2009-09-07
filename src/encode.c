@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.19 2009-09-05 05:39:14 castaglia Exp $
+ * $Id: encode.c,v 1.20 2009-09-07 01:37:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -152,42 +152,8 @@ int encode_init(void) {
   }
 
   if (local_charset == NULL) {
-#ifdef HAVE_NL_LANGINFO
-    /* Look up the current charset.  If there's a problem, default to
-     * UCS-2.  Make sure we pick up the locale of the environment, but
-     * remember to always set the LC_NUMERIC locale back to "C", lest
-     * the database-related printfs get cranky.
-     */
-    (void) setlocale(LC_ALL, "");
-    (void) setlocale(LC_NUMERIC, "C");
+    local_charset = pr_encode_get_local_charset();
 
-    local_charset = nl_langinfo(CODESET);
-    if (local_charset == NULL ||
-        strlen(local_charset) == 0) {
-      local_charset = "UTF-8";
-      pr_trace_msg(trace_channel, 1,
-        "unable to determine locale, defaulting to 'UTF-8' for %s conversion",
-        encoding);
-
-    } else {
-
-      /* Workaround a stupid bug in many implementations where nl_langinfo()
-       * returns "646" to mean "US-ASCII".  The problem is that iconv_open(3)
-       * doesn't accept "646" as an acceptable encoding.
-       */
-      if (strcmp(local_charset, "646") == 0) {
-        local_charset = "US-ASCII";
-      }
-
-      pr_trace_msg(trace_channel, 1,
-        "converting %s to local character set '%s'", encoding, local_charset);
-    }
-#else
-    local_charset = "UTF-8";
-    pr_trace_msg(trace_channel, 1,
-      "nl_langinfo(3) not supported, defaulting to using 'UTF-8' for "
-      "%s conversion", encoding);
-#endif /* HAVE_NL_LANGINFO */
   } else {
     pr_trace_msg(trace_channel, 3,
       "using '%s' as local charset for %s conversion", local_charset, encoding);
@@ -370,6 +336,44 @@ int pr_encode_enable_encoding(const char *codeset) {
   errno = ENOSYS;
   return -1;
 #endif /* !HAVE_ICONV_H */
+}
+
+const char *pr_encode_get_local_charset(void) {
+  const char *charset = NULL;
+
+#ifdef HAVE_NL_LANGINFO
+  /* Look up the current charset.  If there's a problem, default to
+   * UCS-2.  Make sure we pick up the locale of the environment.
+   */
+  charset = nl_langinfo(CODESET);
+  if (charset == NULL ||
+      strlen(charset) == 0) {
+    charset = "UTF-8";
+    pr_trace_msg(trace_channel, 1,
+      "unable to determine locale, defaulting to 'UTF-8' for %s conversion",
+      encoding);
+
+  } else {
+
+    /* Workaround a stupid bug in many implementations where nl_langinfo()
+     * returns "646" to mean "US-ASCII".  The problem is that iconv_open(3)
+     * doesn't accept "646" as an acceptable encoding.
+     */
+    if (strcmp(charset, "646") == 0) {
+      charset = "US-ASCII";
+    }
+
+    pr_trace_msg(trace_channel, 1,
+      "converting %s to local character set '%s'", encoding, charset);
+    }
+#else
+  charset = "UTF-8";
+  pr_trace_msg(trace_channel, 1,
+    "nl_langinfo(3) not supported, defaulting to using 'UTF-8' for "
+    "%s conversion", encoding);
+#endif /* HAVE_NL_LANGINFO */
+
+  return charset;
 }
 
 const char *pr_encode_get_charset(void) {
