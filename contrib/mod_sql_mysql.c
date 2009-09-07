@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.56 2009-08-04 17:32:19 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.57 2009-09-07 01:24:16 castaglia Exp $
  */
 
 /*
@@ -390,6 +390,9 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
 MODRET cmd_open(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
+#ifdef PR_USE_NLS
+  const char *encoding = NULL;
+#endif
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_open");
 
@@ -484,7 +487,8 @@ MODRET cmd_open(cmd_rec *cmd) {
     mysql_get_server_info(conn->mysql));
 
 #ifdef PR_USE_NLS
-  if (pr_encode_get_encoding() != NULL) {
+  encoding = pr_encode_get_encoding();
+  if (encoding != NULL) {
 
 # if MYSQL_VERSION_ID >= 50007
     /* Configure the connection for the current local character set.
@@ -493,14 +497,23 @@ MODRET cmd_open(cmd_rec *cmd) {
      * as per:
      *
      *  http://dev.mysql.com/doc/refman/5.0/en/mysql-set-character-set.html
+     *
+     * Yes, even though the variable names say "charset", we (and MySQL,
+     * though their documentation says otherwise) actually mean "encoding".
      */
-    if (!mysql_set_character_set(conn->mysql, pr_encode_get_charset())) {
+
+     if (strcasecmp(encoding, "UTF-8") == 0) {
+       /* MySQL prefers the name "utf8", not "UTF-8" */
+       encoding = pstrdup(cmd->tmp_pool, "utf8");
+     }
+
+    if (mysql_set_character_set(conn->mysql, encoding) != 0) {
       sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
       return _build_error(cmd, conn);
     }
 
     sql_log(DEBUG_FUNC, "MySQL connection character set now '%s' (from '%s')",
-      mysql_character_set_name(conn->mysql), pr_encode_get_charset());
+      mysql_character_set_name(conn->mysql), pr_encode_get_encoding());
 
 # else
     /* No mysql_set_character_set() API available.  But
@@ -508,8 +521,12 @@ MODRET cmd_open(cmd_rec *cmd) {
      * to at least see whether there might be a character set discrepancy.
      */
 
-    const char *local_charset = pr_encode_get_charset();
+    const char *local_charset = pr_encode_get_encoding();
     const char *mysql_charset = mysql_character_set_name(conn->mysql);
+
+    if (strcasecmp(mysql_charset, "utf8") == 0) {
+      mysql_charset = pstrdup(cmd->tmp_pool, "UTF-8");
+    }
 
     if (local_charset &&
         mysql_charset &&
