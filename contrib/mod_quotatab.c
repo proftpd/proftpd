@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.48 2009-04-23 22:02:22 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.49 2009-09-07 02:03:52 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -1877,7 +1877,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
           quotatab_log("found %0.2lf bytes in %u files for user '%s' "
             "in %lu secs", byte_count, file_count, session.user,
-            time(NULL) - then);
+            (unsigned long) time(NULL) - then);
 
           quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
             bytes_diff, files_diff);
@@ -1948,7 +1948,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
             quotatab_log("found %0.2lf bytes in %u files for group '%s' "
               "in %lu secs", byte_count, file_count, group_name,
-              time(NULL) - then);
+              (unsigned long) time(NULL) - then);
 
             quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
               bytes_diff, files_diff);
@@ -2000,7 +2000,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
             quotatab_log("found %0.2lf bytes in %u files for class '%s' "
               "in %lu secs", byte_count, file_count, session.class->cls_name,
-              time(NULL) - then);
+              (unsigned long) time(NULL) - then);
 
             quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
               bytes_diff, files_diff);
@@ -2046,7 +2046,8 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
             int files_diff = file_count - sess_tally.files_in_used;
 
             quotatab_log("found %0.2lf bytes in %u files for all "
-              "in %lu secs", byte_count, file_count, time(NULL) - then);
+              "in %lu secs", byte_count, file_count,
+              (unsigned long) time(NULL) - then);
 
             quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
               bytes_diff, files_diff);
