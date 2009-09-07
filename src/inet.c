@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.117 2009-09-07 22:17:47 castaglia Exp $
+ * $Id: inet.c,v 1.118 2009-09-07 22:20:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -308,8 +308,6 @@ static conn_t *init_conn(pool *p, xaset_t *servers, int fd,
        */
 
       if (getsockopt(fd, level, IPV6_V6ONLY, (void *) &off, &len) >= 0) {
-        int res;
-
         if (off != 0) {
           off = 0;
 
@@ -324,8 +322,11 @@ static conn_t *init_conn(pool *p, xaset_t *servers, int fd,
            * to work properly.  Portabiltiy strikes again!
            */
 
-          if (res < 0 &&
-              errno != ENOPROTOOPT) {
+          if (res < 0
+#ifdef ENOPROTOOPT
+              && errno != ENOPROTOOPT
+#endif /* !ENOPROTOOPT */
+              ) {
             pr_log_pri(PR_LOG_NOTICE, "error setting IPV6_V6ONLY: %s",
               strerror(errno));
           }
