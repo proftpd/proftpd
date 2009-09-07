@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.116 2009-08-27 18:38:43 castaglia Exp $
+ * $Id: inet.c,v 1.117 2009-09-07 22:17:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -293,8 +293,7 @@ static conn_t *init_conn(pool *p, xaset_t *servers, int fd,
 
 #if defined(PR_USE_IPV6) && defined(IPV6_V6ONLY)
     if (pr_netaddr_use_ipv6() &&
-        addr_family == AF_INET6 &&
-        !pr_netaddr_is_v4mappedv6(&na)) {
+        addr_family == AF_INET6) {
       int level = ipv6_proto;
       int off;
       socklen_t len = sizeof(off);
@@ -309,14 +308,24 @@ static conn_t *init_conn(pool *p, xaset_t *servers, int fd,
        */
 
       if (getsockopt(fd, level, IPV6_V6ONLY, (void *) &off, &len) >= 0) {
+        int res;
+
         if (off != 0) {
           off = 0;
 
           pr_trace_msg(trace_channel, 5,
             "disabling IPV6_V6ONLY on server socket %d", fd);
 
-          if (setsockopt(fd, level, IPV6_V6ONLY, (void *) &off,
-              len) < 0) {
+          res = setsockopt(fd, level, IPV6_V6ONLY, (void *) &off, len);
+
+          /* Bug#3237 shows that some systems do NOT like setting the V6ONLY
+           * option on an IPv4-mapped IPv6 address.  However, other systems
+           * (e.g. FreeBSD) require that this be done in order for EPSV
+           * to work properly.  Portabiltiy strikes again!
+           */
+
+          if (res < 0 &&
+              errno != ENOPROTOOPT) {
             pr_log_pri(PR_LOG_NOTICE, "error setting IPV6_V6ONLY: %s",
               strerror(errno));
           }
