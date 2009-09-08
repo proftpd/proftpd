@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: utf8.c,v 1.6 2009-08-04 15:59:50 castaglia Exp $
+ * $Id: utf8.c,v 1.7 2009-09-08 17:38:04 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -144,60 +144,9 @@ int sftp_utf8_free(void) {
 int sftp_utf8_init(void) {
 #if defined(PR_USE_NLS) && defined(HAVE_ICONV)
 
-  /* Run setlocale(3) before calling nl_langinfo(), so that we can pick up
-   * the CODESET from the LANG environment variable.
-   */
-  if (setlocale(LC_MESSAGES, "") == NULL) {
-    pr_trace_msg("sftp", 1,
-      "unable to set LC_MESSAGES using LANG environment variable: %s",
-      strerror(errno));
-    pr_log_pri(PR_LOG_NOTICE, "unable to set LC_MESSAGES: %s",
-      strerror(errno));
-  }
-
-  /* Preserve the POSIX/portable handling of number formatting; local
-   * formatting of decimal points, for example, can cause problems with
-   * numbers in SQL queries.
-   */
-  if (setlocale(LC_NUMERIC, "C") == NULL) {
-    pr_trace_msg("sftp", 1,
-      "unable to set LC_NUMERIC to C locale: %s", strerror(errno));
-    pr_log_pri(PR_LOG_NOTICE, "unable to set LC_NUMERIC: %s",
-      strerror(errno));
-  }
-
   if (local_charset == NULL) {
-# ifdef HAVE_NL_LANGINFO
-    /* Look up the current charset.  If there's a problem, default to
-     * UCS-2.
-     */
-    local_charset = nl_langinfo(CODESET);
-    if (local_charset == NULL ||
-        strlen(local_charset) == 0) {
-      local_charset = "UTF-8";
-      pr_trace_msg("sftp", 1,
-        "unable to determine locale, defaulting to 'UTF-8' for "
-        "UTF8 conversion");
+    local_charset = pr_encode_get_local_charset();
 
-    } else {
-
-      /* Workaround a stupid bug in many implementations where nl_langinfo()
-       * returns "646" to mean "US-ASCII".  The problem is that iconv_open(3)
-       * doesn't accept "646" as an acceptable encoding.
-       */
-      if (strcmp(local_charset, "646") == 0) {
-        local_charset = "US-ASCII";
-      }
-
-      pr_trace_msg("sftp", 1, "converting UTF8 to local character set '%s'",
-        local_charset);
-    }
-# else
-    local_charset = "UTF-8";
-    pr_trace_msg("sftp", 1,
-      "nl_langinfo(3) not supported, defaulting to using 'UTF-8' for UTF8 "
-      "conversion");
-# endif /* HAVE_NL_LANGINFO */
   } else {
     pr_trace_msg("sftp", 3,
       "using '%s' as local charset for UTF8 conversion", local_charset);
