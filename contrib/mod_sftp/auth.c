@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.18 2009-09-04 17:13:09 castaglia Exp $
+ * $Id: auth.c,v 1.19 2009-09-08 20:48:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -254,6 +254,9 @@ static void set_userauth_methods(void) {
 
     auth_remaining_meths = pstrdup(auth_pool, auth_avail_meths);
   }
+
+  pr_trace_msg(trace_channel, 9, "offering authentication methods: %s",
+    auth_avail_meths);
 }
 
 static int setup_env(pool *p, char *user) {
