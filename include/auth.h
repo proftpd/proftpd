@@ -24,7 +24,7 @@
 
 /* ProFTPD Auth API
  *
- * $Id: auth.h,v 1.12 2009-03-05 18:56:12 castaglia Exp $
+ * $Id: auth.h,v 1.13 2009-09-08 20:34:03 castaglia Exp $
  */
 
 #ifndef PR_AUTH_H
@@ -105,6 +105,14 @@ int pr_auth_is_valid_shell(xaset_t *, const char *);
 
 /* Add to the list of authenticating-only modules (e.g. PAM). */
 int pr_auth_add_auth_only_module(const char *);
+
+/* Remove the named module from the list of authenticating-only modules. */
+int pr_auth_remove_auth_only_module(const char *);
+
+/* Clear the authenticating-only module list, e.g. when authentication has
+ * completed.
+ */
+int pr_auth_clear_auth_only_modules(void);
 
 /* Enable caching of certain data within the Auth API. */
 int pr_auth_cache_set(int, unsigned int);

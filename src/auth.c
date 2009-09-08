@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.73 2009-07-20 00:18:47 castaglia Exp $
+ * $Id: auth.c,v 1.74 2009-09-08 20:34:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1511,8 +1511,9 @@ int pr_auth_add_auth_only_module(const char *name) {
     return 0;
   }
 
-  if (!auth_module_list)
+  if (auth_module_list == NULL) {
     auth_module_list = xaset_create(auth_pool, NULL);
+  }
 
   /* Prevent duplicates; they could lead to a memory leak. */
   for (elt = (struct auth_module_elt *) auth_module_list->xas_list; elt;
@@ -1525,11 +1526,69 @@ int pr_auth_add_auth_only_module(const char *name) {
 
   elt = pcalloc(auth_pool, sizeof(struct auth_module_elt));
   elt->name = pstrdup(auth_pool, name);
-  xaset_insert_end(auth_module_list, (xasetmember_t *) elt);
 
-  pr_trace_msg(trace_channel, 5, "added '%s' to auth-only module list",
-    name);
+  if (xaset_insert_end(auth_module_list, (xasetmember_t *) elt) < 0) {
+    pr_trace_msg(trace_channel, 1, "error adding '%s' to auth-only "
+      "module set: %s", name, strerror(errno));
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 5, "added '%s' to auth-only module list", name);
   return 0;
+}
+
+int pr_auth_clear_auth_only_modules(void) {
+  if (auth_module_list == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  auth_module_list = NULL;
+  pr_trace_msg(trace_channel, 5, "cleared auth-only module list");
+  return 0;
+}
+
+int pr_auth_remove_auth_only_module(const char *name) {
+  struct auth_module_elt *elt = NULL;
+
+  if (!name) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (!(auth_caching & PR_AUTH_CACHE_FL_AUTH_MODULE)) {
+    /* We won't be using the auth-only module cache, so there's no need to
+     * accept this.
+     */
+    pr_trace_msg(trace_channel, 9, "not removing '%s' to the auth-only list: "
+      "caching of auth-only modules disabled", name);
+    return 0;
+  }
+
+  if (auth_module_list == NULL) {
+    pr_trace_msg(trace_channel, 9, "not removing '%s' from list: "
+      "empty auth-only module list", name);
+    errno = ENOENT;
+    return -1;
+  }
+
+  for (elt = (struct auth_module_elt *) auth_module_list->xas_list; elt;
+      elt = elt->next) {
+    if (strcmp(elt->name, name) == 0) {
+      if (xaset_remove(auth_module_list, (xasetmember_t *) elt) < 0) {
+        pr_trace_msg(trace_channel, 1, "error removing '%s' from auth-only "
+          "module set: %s", name, strerror(errno));
+        return -1;
+      }
+
+      pr_trace_msg(trace_channel, 5, "removed '%s' from auth-only module list",
+        name);
+      return 0;
+    }
+  }
+
+  errno = ENOENT;
+  return -1;
 }
 
 char *pr_auth_get_home(pool *p, char *pw_dir) {
