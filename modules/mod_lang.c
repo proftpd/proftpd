@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.28 2009-09-07 01:37:18 castaglia Exp $
+ * $Id: mod_lang.c,v 1.29 2009-09-08 17:25:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -600,6 +600,11 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
 
       pr_signals_handle();
 
+      if (strcmp(dent->d_name, ".") == 0 ||
+          strcmp(dent->d_name, "..") == 0) {
+        continue;
+      }
+
       mo = pdircat(tmp_pool, locale_path, dent->d_name, "LC_MESSAGES",
         "proftpd.mo", NULL);
 
@@ -626,12 +631,12 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
             *((char **) push_array(lang_list)) = pstrdup(lang_pool,
               locale_name);
 
-            /* If this is the second setlocale() attempt, then we have
-             * automatically appending ".UTF-8" to the file name.  In which
-             * case we want to allow the non-".UTF-8" locale name as an
-             * acceptable alias.
+            /* If this is not the first setlocale() attempt, then we have
+             * automatically appending ".UTF-8" (or ".utf8") to the file name.
+             * In which case we want to allow the non-".UTF-8"/non-".utf8"
+             * locale name as an acceptable alias.
              */
-            if (j == 1) {
+            if (j > 0) {
               if (lang_aliases == NULL) {
                 lang_aliases = pr_table_alloc(lang_pool, 0);
               }
