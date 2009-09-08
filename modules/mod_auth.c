@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.265 2009-09-04 17:13:10 castaglia Exp $
+ * $Id: mod_auth.c,v 1.266 2009-09-08 20:35:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -260,6 +260,9 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   unsigned char have_user_timeout, have_group_timeout, have_class_timeout,
     have_all_timeout, *privsdrop = NULL;
   struct stat st;
+
+  /* Clear the list of auth-only modules. */
+  pr_auth_clear_auth_only_modules();
 
   user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
 
