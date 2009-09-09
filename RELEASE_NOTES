@@ -18,6 +18,8 @@ ChangeLog files.
   + New modules
 
     mod_sql_passwd
+      This module supports MD5 and SHA1 passwords, encoding using base64 or
+      hex, from SQL tables.  See doc/contrib/mod_sql_passwd.html for details.
 
 
   + Changed configuration directives
@@ -339,4 +341,4 @@ ChangeLog files.
         this will probably not apply to most modules.
 
  
-Last Updated: $Date: 2009-09-09 18:17:14 $
+Last Updated: $Date: 2009-09-09 18:47:33 $
