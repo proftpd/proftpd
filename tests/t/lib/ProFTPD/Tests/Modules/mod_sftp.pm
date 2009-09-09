@@ -199,10 +199,9 @@ my $TESTS = {
     test_class => [qw(forking ssh2)],
   },
 
-  # XXX Currently disabled due to buggy handling of compression in libssh2.
   ssh2_compress_c2s_zlib => {
     order => ++$order,
-    test_class => [qw(forking ssh2 inprogress)],
+    test_class => [qw(forking ssh2)],
   },
 
   ssh2_compress_s2c_none => {
@@ -231,6 +230,11 @@ my $TESTS = {
     test_class => [qw(forking ssh2)],
   },
 
+  # This fails because of a bug in Net::SSH2; I've filed a bug report
+  # with fix for it:
+  #
+  #  http://rt.cpan.org/Ticket/Display.html?id=49584
+  #
   ssh2_auth_no_authorized_keys => {
     order => ++$order,
     test_class => [qw(forking ssh2)],
@@ -5774,8 +5778,6 @@ sub ssh2_compress_s2c_zlib {
 
       my $comp = 'zlib';
       $ssh2->method('comp_sc', $comp);
-
-$ssh2->trace(1);
 
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
