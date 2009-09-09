@@ -15,6 +15,11 @@ ChangeLog files.
     server to manually delete their old ScoreboardFiles.  Otherwise they
     will see "error opening scoreboard: bad version (too old)" errors.
 
+  + New modules
+
+    mod_sql_passwd
+
+
   + Changed configuration directives
 
     ExtendedLog
@@ -334,4 +339,4 @@ ChangeLog files.
         this will probably not apply to most modules.
 
  
-Last Updated: $Date: 2009-09-04 17:16:49 $
+Last Updated: $Date: 2009-09-09 18:17:14 $

@@ -24,7 +24,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.h,v 1.8 2009-08-04 17:32:19 castaglia Exp $
+ * $Id: mod_sql.h,v 1.9 2009-09-09 18:17:14 castaglia Exp $
  */
 
 #ifndef MOD_SQL_H
@@ -35,6 +35,11 @@ int sql_log(int, const char *, ...);
 cmd_rec *_sql_make_cmd(pool * cp, int argc, ...);
 int sql_register_backend(const char *, cmdtable *);
 int sql_unregister_backend(const char *);
+
+/* Custom SQLAuthType registration. */
+int sql_register_authtype(const char *name,
+  modret_t *(*callback)(cmd_rec *, const char *, const char *));
+int sql_unregister_authtype(const char *name);
 
 /* data passing structure */
 struct sql_data_struct {

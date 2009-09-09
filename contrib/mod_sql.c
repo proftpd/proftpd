@@ -23,14 +23,14 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.172 2009-08-19 18:30:52 castaglia Exp $
+ * $Id: mod_sql.c,v 1.173 2009-09-09 18:17:14 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_VERSION			"mod_sql/4.2.3"
+#define MOD_SQL_VERSION			"mod_sql/4.2.4"
 
 #if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
@@ -189,7 +189,7 @@ static struct {
    * other information
    */
 
-  array_header *authlist;       /* auth handler list */
+  array_header *auth_list;      /* auth handler list */
   char *defaulthomedir;         /* default homedir if no field specified */
 
   uid_t minid;                  /* users UID must be this or greater */
@@ -592,65 +592,65 @@ static int sql_set_backend(char *backend) {
   return 0;
 }
 
-/*****************************************************************
- *
- * AUTHENTICATION FUNCTIONS
- *
- *****************************************************************/
+/* Default SQL password handlers (a.k.a. "AuthTypes") provided by mod_sql. */
 
-static modret_t *check_auth_crypt(cmd_rec *cmd, const char *c_clear,
-    const char *c_hash) {
-  int success = 0;
+static modret_t *sql_auth_crypt(cmd_rec *cmd, const char *plaintext,
+    const char *ciphertext) {
 
-  if (*c_hash == '\0')
+  if (*ciphertext == '\0') {
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
 
-  success = !strcmp((char *) crypt(c_clear, c_hash), c_hash);
+  if (strcmp((char *) crypt(plaintext, ciphertext), ciphertext) == 0) {
+    return PR_HANDLED(cmd);
+  }
 
-  return success ? PR_HANDLED(cmd) : PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 
-static modret_t *check_auth_plaintext(cmd_rec *cmd, const char *c_clear,
-    const char *c_hash) {
-  int success = 0;
+static modret_t *sql_auth_plaintext(cmd_rec *cmd, const char *plaintext,
+    const char *ciphertext) {
 
-  if (*c_hash == '\0')
+  if (*ciphertext == '\0') {
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
 
-  success = !strcmp(c_clear, c_hash);
+  if (strcmp(plaintext, ciphertext) == 0) {
+    return PR_HANDLED(cmd);
+  }
 
-  return success ? PR_HANDLED(cmd) : PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 
-static modret_t *check_auth_empty(cmd_rec *cmd, const char *c_clear,
-    const char *c_hash) {
-  int success = 0;
+static modret_t *sql_auth_empty(cmd_rec *cmd, const char *plaintext,
+    const char *ciphertext) {
 
-  success = !strcmp(c_hash, "");
+  if (strcmp(ciphertext, "") == 0) {
+    return PR_HANDLED(cmd);
+  }
 
-  return success ? PR_HANDLED(cmd) : PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 
-static modret_t *check_auth_backend(cmd_rec *cmd, const char *c_clear,
-    const char *c_hash) {
+static modret_t *sql_auth_backend(cmd_rec *cmd, const char *plaintext,
+    const char *ciphertext) {
   modret_t *mr = NULL;
 
-  if (*c_hash == '\0')
+  if (*ciphertext == '\0') {
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
 
-  mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 3, "default", c_clear,
-    c_hash), "sql_checkauth");
-
+  mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 3, "default", plaintext,
+    ciphertext), "sql_checkauth");
   return mr;
 }
 
 #if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
-static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
-    const char *c_hash) {
-  /*
-   * c_clear : plaintext password provided by user 
-   * c_hash  : combination digest name and hashed 
-   *           value, of the form {digest}hash 
+static modret_t *sql_auth_openssl(cmd_rec *cmd, const char *plaintext,
+    const char *ciphertext) {
+
+  /* The ciphertext argument is a combined digest name and hashed value, of
+   * the form "{digest}hash".
    */
 
   EVP_MD_CTX md_ctxt;
@@ -663,23 +663,22 @@ static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
    */
   unsigned char buf[EVP_MAX_MD_SIZE*2], mdval[EVP_MAX_MD_SIZE];
   unsigned int mdlen;
-  int res;
 
   char *digestname;             /* ptr to name of the digest function */
   char *hashvalue;              /* ptr to hashed value we're comparing to */
-  char *copyhash;               /* temporary copy of the c_hash string */
+  char *copytext;               /* temporary copy of the ciphertext string */
 
-  if (c_hash[0] != '{') {
+  if (ciphertext[0] != '{') {
     sql_log(DEBUG_WARN, "%s", "no digest found in password hash");
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
-  /* We need a copy of c_hash. */
-  copyhash = pstrdup(cmd->tmp_pool, c_hash);
+  /* We need a copy of the ciphertext. */
+  copytext = pstrdup(cmd->tmp_pool, ciphertext);
 
-  digestname = copyhash + 1;
+  digestname = copytext + 1;
 
-  hashvalue = (char *) strchr(copyhash, '}');
+  hashvalue = (char *) strchr(copytext, '}');
   if (hashvalue == NULL) {
     sql_log(DEBUG_WARN, "%s", "no terminating '}' for digest");
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
@@ -691,72 +690,123 @@ static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
   OpenSSL_add_all_digests();
 
   md = EVP_get_digestbyname(digestname);
-
-  if (!md) {
+  if (md == NULL) {
     sql_log(DEBUG_WARN, "no such digest '%s' supported", digestname);
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
   EVP_DigestInit(&md_ctxt, md);
-  EVP_DigestUpdate(&md_ctxt, c_clear, strlen(c_clear));
+  EVP_DigestUpdate(&md_ctxt, plaintext, strlen(plaintext));
   EVP_DigestFinal(&md_ctxt, mdval, &mdlen);
 
   memset(buf, '\0', sizeof(buf));
   EVP_EncodeInit(&base64_ctxt);
   EVP_EncodeBlock(buf, mdval, (int) mdlen);
 
-  res = strcmp((char *) buf, hashvalue);
+  if (strcmp((char *) buf, hashvalue) == 0) {
+    return PR_HANDLED(cmd);
+  }
 
-  return res ? PR_ERROR_INT(cmd, PR_AUTH_BADPWD) : PR_HANDLED(cmd);
+  return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 #endif
 
-/*
- * support for general-purpose authentication schemes 
- */
-
-#define PLAINTEXT_AUTH_FLAG     1<<0
-#define CRYPT_AUTH_FLAG         1<<1
-#define BACKEND_AUTH_FLAG       1<<2
-#define EMPTY_AUTH_FLAG         1<<3
-#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
-# define OPENSSL_AUTH_FLAG       1<<4
-#endif
-
-typedef modret_t *(*auth_func_ptr) (cmd_rec *, const char *, const char *);
-
-typedef struct {
-  char *name;
-  auth_func_ptr check_function;
-  int flag;
-}
-auth_type_entry;
-
-static auth_type_entry supported_auth_types[] = {
-  {"Plaintext", check_auth_plaintext, PLAINTEXT_AUTH_FLAG},
-  {"Crypt", check_auth_crypt, CRYPT_AUTH_FLAG},
-  {"Backend", check_auth_backend, BACKEND_AUTH_FLAG},
-  {"Empty", check_auth_empty, EMPTY_AUTH_FLAG},
-#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
-  {"OpenSSL", check_auth_openssl, OPENSSL_AUTH_FLAG},
-#endif
-  /*
-   * add additional encryption types below 
-   */
-  {NULL, NULL, 0}
+struct sql_authtype_handler {
+  struct sql_authtype_handler *next, *prev;
+  pool *pool;
+  const char *name;
+  modret_t *(*cb)(cmd_rec *, const char *, const char *); 
 };
 
-static auth_type_entry *get_auth_entry(char *name) {
-  auth_type_entry *ate = supported_auth_types;
+static struct sql_authtype_handler *sql_auth_list = NULL;
 
-  while (ate->name) {
-    pr_signals_handle();
+static struct sql_authtype_handler *sql_get_authtype(const char *name) {
+  if (sql_auth_list) {
+    struct sql_authtype_handler *sah;
 
-    if (strcasecmp(ate->name, name) == 0)
-      return ate;
-    ate++;
+    for (sah = sql_auth_list; sah; sah = sah->next) {
+      if (strcasecmp(sah->name, name) == 0) {
+        return sah;
+      }
+    }
   }
+
+  errno = ENOENT;
   return NULL;
+}
+
+int sql_register_authtype(const char *name,
+    modret_t *(*cb)(cmd_rec *, const char *, const char *)) {
+  struct sql_authtype_handler *sah;
+  pool *p;
+
+  if (name == NULL ||
+      cb == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Check for duplicates. */
+  sah = sql_get_authtype(name);
+  if (sah != NULL) {
+    errno = EEXIST;
+    return -1;
+  }
+
+  if (sql_pool == NULL) {
+    sql_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(sql_pool, MOD_SQL_VERSION);
+  }
+
+  p = pr_pool_create_sz(sql_pool, 128);
+  sah = pcalloc(p, sizeof(struct sql_authtype_handler));
+  sah->pool = p;
+  sah->name = pstrdup(sah->pool, name);
+  sah->cb = cb;
+
+  if (sql_auth_list) {
+    sql_auth_list->prev = sah;
+    sah->next = sql_auth_list;
+  }
+    
+  sql_auth_list = sah;
+  return 0;
+}
+
+int sql_unregister_authtype(const char *name) {
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (sql_auth_list) {
+    struct sql_authtype_handler *sah;
+
+    for (sah = sql_auth_list; sah; sah = sah->next) {
+      if (strcasecmp(sah->name, name) == 0) {
+        if (sah->prev) {
+          sah->prev->next = sah->next;
+
+        } else {
+          /* This backend is the start of the list, so update the list
+           * head pointer as well.
+           */
+          sql_auth_list = sah->next;       
+        }
+
+        if (sah->next) {
+          sah->next->prev = sah->prev;
+        }
+
+        destroy_pool(sah->pool);
+        return 0;
+      }
+    }
+  }
+
+  errno = ENOENT;
+  return -1;
 }
 
 /*****************************************************************
@@ -3768,24 +3818,19 @@ MODRET cmd_auth(cmd_rec *cmd) {
 }
 
 MODRET cmd_check(cmd_rec *cmd) {
-  /*
-   * should we bother to see if the hashed password is what we have in the
+  /* Should we bother to see if the hashed password is what we have in the
    * database? or do we simply assume it is, and ignore the fact that we're
    * being passed the username, too? 
    */
 
-  array_header *ah = cmap.authlist;
-  auth_type_entry *auth_entry;
-  char *c_hash;
-  char *c_clear;
-  int success = 0;
-  int cnt = 0;
-  struct passwd lpw;
+  array_header *ah = cmap.auth_list;
+  int success = FALSE;
   modret_t *mr = NULL;
 
   if (!SQL_USERS ||
-      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+      !(cmap.engine & SQL_ENGINE_FL_AUTH)) {
     return PR_DECLINED(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_check");
 
@@ -3799,20 +3844,24 @@ MODRET cmd_check(cmd_rec *cmd) {
     sql_log(DEBUG_AUTH, "%s", "NULL clear password");
 
   } else {
-    c_hash = cmd->argv[0];
-    c_clear = cmd->argv[2];
+    register unsigned int i;
+    char *ciphertext = cmd->argv[0];
+    char *plaintext = cmd->argv[2];
 
-    if (!ah)
+    if (ah == NULL)
       sql_log(DEBUG_AUTH, "%s", "warning: no SQLAuthTypes configured");
 
-    for (cnt = 0; ah && cnt < ah->nelts; cnt++) {
-      auth_entry = ((auth_type_entry **) ah->elts)[cnt];
-      sql_log(DEBUG_AUTH, "checking SQLAuthType '%s'", auth_entry->name);
+    for (i = 0; ah && i < ah->nelts; i++) {
+      struct sql_authtype_handler *sah;
 
-      mr = auth_entry->check_function(cmd, c_clear, c_hash);
+      sah = ((struct sql_authtype_handler **) ah->elts)[i];
+      sql_log(DEBUG_AUTH, "checking password using SQLAuthType '%s'",
+        sah->name);
+
+      mr = sah->cb(cmd, plaintext, ciphertext);
       if (!MODRET_ISERROR(mr)) {
-	sql_log(DEBUG_AUTH, "'%s' auth handler reports success",
-          auth_entry->name);
+	sql_log(DEBUG_AUTH, "'%s' SQLAuthType handler reports success",
+          sah->name);
 	success = 1;
 	break;
 
@@ -3821,18 +3870,20 @@ MODRET cmd_check(cmd_rec *cmd) {
           char *err_msg;
 
           err_msg = MODRET_ERRMSG(mr);
-          sql_log(DEBUG_AUTH, "'%s' auth handler reports failure: %s",
-            auth_entry->name, err_msg);
+          sql_log(DEBUG_AUTH, "'%s' SQLAuthType handler reports failure: %s",
+            sah->name, err_msg);
 
         } else {
-          sql_log(DEBUG_AUTH, "'%s' auth handler reports failure",
-            auth_entry->name);
+          sql_log(DEBUG_AUTH, "'%s' SQLAuthType handler reports failure",
+            sah->name);
         }
       }
     }
   }
 
   if (success) {
+    struct passwd lpw;
+
     /* This and the associated hack in cmd_uid2name are to support
      * UID reuse in the database -- people (for whatever reason) are
      * reusing UIDs/GIDs multiple times, and the displayed owner in a 
@@ -4763,35 +4814,34 @@ MODRET set_sqlengine(cmd_rec *cmd) {
 }
 
 MODRET set_sqlauthtypes(cmd_rec *cmd) {
-  config_rec *c;
-  array_header *ah;
-  auth_type_entry *auth_entry;
-  auth_type_entry **auth_handle;
-  int cnt;
+  array_header *auth_list;
+  register unsigned int i;
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
   /* Need *at least* one handler. */
-  if (cmd->argc < 2)
-    CONF_ERROR(cmd, "expected at least one handler type");
-
-  ah = make_array(permanent_pool, cmd->argc - 1, sizeof(auth_type_entry *));
-
-  /* Walk through our cmd->argv. */
-  for (cnt = 1; cnt < cmd->argc; cnt++) {
-    auth_entry = get_auth_entry(cmd->argv[cnt]);
-    if (auth_entry == NULL) {
-      sql_log(DEBUG_WARN, "unknown auth handler '%s'", cmd->argv[cnt]);
-      CONF_ERROR(cmd, "unknown auth handler");
-    }
-
-    auth_handle = (auth_type_entry **) push_array(ah);
-    *auth_handle = auth_entry;
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "expected at least one SQLAuthType");
   }
 
-  c = add_config_param(cmd->argv[0], 1, (void *) ah);
-  c->flags |= CF_MERGEDOWN;
+  auth_list = make_array(permanent_pool, cmd->argc-1,
+    sizeof(struct sql_authtype_handler *));
 
+  /* Walk through our cmd->argv. */
+  for (i = 1; i < cmd->argc; i++) {
+    struct sql_authtype_handler *sah;
+
+    sah = sql_get_authtype(cmd->argv[i]);
+    if (sah == NULL) {
+      sql_log(DEBUG_WARN, "unknown SQLAuthType '%s'", cmd->argv[i]);
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown SQLAuthType '",
+        cmd->argv[i], "'", NULL));
+    }
+ 
+    *((struct sql_authtype_handler **) push_array(auth_list)) = sah;
+  }
+
+  (void) add_config_param(cmd->argv[0], 1, auth_list);
   return PR_HANDLED(cmd);
 }
 
@@ -5010,6 +5060,7 @@ static void sql_mod_unload_ev(const void *event_data, void *user_data) {
     destroy_pool(sql_pool);
     sql_pool = NULL;
     sql_backends = NULL;
+    sql_auth_list = NULL;
 
     pr_event_unregister(&sql_module, NULL, NULL);
 
@@ -5039,6 +5090,17 @@ static int sql_init(void) {
 #else
   pr_event_register(&sql_module, "core.preparse", sql_preparse_ev, NULL);
 #endif /* PR_SHARED_MODULE */
+
+  /* Register our built-in auth handlers. */
+  (void) sql_register_authtype("Backend", sql_auth_backend);
+  (void) sql_register_authtype("Crypt", sql_auth_crypt);
+  (void) sql_register_authtype("Empty", sql_auth_empty);
+  (void) sql_register_authtype("Plaintext", sql_auth_plaintext);
+
+#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
+  (void) sql_register_authtype("OpenSSL", sql_auth_openssl);
+#endif /* HAVE_OPENSSL */
+
   return 0;
 }
 
@@ -5368,10 +5430,11 @@ static int sql_sess_init(void) {
     NULL;
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLAuthTypes", FALSE);
-  cmap.authlist = temp_ptr;
+  cmap.auth_list = temp_ptr;
 
-  if (!cmap.authlist)
+  if (cmap.auth_list == NULL) {
     sql_log(DEBUG_INFO, "%s", "error: no SQLAuthTypes configured");
+  }
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLMinID", FALSE);
   if (temp_ptr) {
