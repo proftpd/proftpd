@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql_passwd.html,v 1.1 2009-09-09 18:47:33 castaglia Exp $ -->
+<!-- $Id: mod_sql_passwd.html,v 1.2 2009-09-09 21:15:11 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql_passwd.html,v $ -->
 
 <html>
@@ -25,7 +25,9 @@ or hex-encoded, <i>without</i> the prefix which is required by
 
 <p>
 The <code>mod_sql_passwd</code> module provides support for some of these
-other formats.
+other formats.  When the <code>mod_sql_passwd</code> module is enabled,
+you can configure <code>SQLAuthTypes</code> of "MD5" and "SHA1", as well
+as the existing types supported by <code>mod_sql</code>.
 
 <p>
 This module is contained in the <code>mod_sql_passwd.c</code> file for
@@ -142,9 +144,9 @@ base64-encoded, use:
   &lt;IfModule mod_sql.c&gt;
     ...
 
-    # Now that mod_sql_passwd is used, we can configure "md5" as an
+    # Now that mod_sql_passwd is used, we can configure "MD5" as an
     # SQLAuthType that mod_sql will handle.
-    SQLAuthTypes md5
+    SQLAuthTypes MD5
   &lt;/IfModule&gt;
 </pre>
 
@@ -172,7 +174,7 @@ uppercase, you would use:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-09-09 18:47:33 $</i><br>
+Last Updated: <i>$Date: 2009-09-09 21:15:11 $</i><br>
 
 <br><hr>
 
