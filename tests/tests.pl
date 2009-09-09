@@ -208,6 +208,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_sql)],
     },
 
+    't/modules/mod_sql_passwd.t' => {
+      order => ++$order,
+      test_class => [qw(mod_sql_passwd mod_sql_sqlite)],
+    },
+
     't/modules/mod_sql_sqlite.t' => {
       order => ++$order,
       test_class => [qw(mod_sql_sqlite)],
