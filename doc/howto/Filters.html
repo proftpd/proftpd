@@ -1,4 +1,4 @@
-<!-- $Id: Filters.html,v 1.10 2009-07-04 01:02:00 castaglia Exp $ -->
+<!-- $Id: Filters.html,v 1.11 2009-09-14 17:46:22 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Filters.html,v $ -->
 
 <html>
@@ -109,8 +109,33 @@ can use:
 </pre>
 
 <p>
+In ProFTPD 1.3.3rc1 and later, you can use the <code>AllowFilter</code> and
+<code>DenyFilter</code> configuration directives inside of
+<code>&lt;Limit&gt;</code> sections, so that those <code>Filter</code>
+directives only apply to the FTP commands listed in the
+<code>&lt;Limit&gt;</code> section.  This means you can specify regular
+expression filters for the arguments for specific commands.  For example,
+you may want to configure a directory that only allows uploads of files with
+specific extensions.  You <i>could</i> use <code>PathAllowFilter</code> for
+this -- but <code>PathAllowFilter</code> also applies to the <code>MKD</code>
+command, and you might want to allow users to create subdirectories in your
+special directory.  Thus you only want your regular expression to apply
+to the <code>STOR</code> command in your directory.  Below is an example
+of how to do this using <code>AllowFilter</code>:
+<pre>
+  &lt;Directory <i>/path/to/dir</i>&gt;
+    &lt;Limit STOR&gt;
+      Order deny, allow
+      AllowFilter \.<i>ext</i>$
+    &lt;/Limit&gt;
+  &lt;/Directory&gt;
+</pre>
+The key is the <code>Order</code> directive; without it, the configuration
+will not work as you expect.
+
+<p>
 <hr>
-Last Updated: <i>$Date: 2009-07-04 01:02:00 $</i><br>
+Last Updated: <i>$Date: 2009-09-14 17:46:22 $</i><br>
 <hr>
 
 </body>
