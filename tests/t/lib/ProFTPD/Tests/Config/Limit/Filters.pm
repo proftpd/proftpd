@@ -430,7 +430,7 @@ EOC
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'test.txt: No such file or directory';
+      $expected = 'test.txt: Operation not permitted';
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

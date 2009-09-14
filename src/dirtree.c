@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.223 2009-08-28 17:33:29 castaglia Exp $
+ * $Id: dirtree.c,v 1.224 2009-09-14 18:58:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1300,6 +1300,7 @@ static int check_limit(config_rec *c, cmd_rec *cmd) {
     }
 
     /* Implicit deny */
+    errno = EPERM;
     return -1;
   }
 
