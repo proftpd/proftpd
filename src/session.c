@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: session.c,v 1.5 2009-09-04 17:13:10 castaglia Exp $
+ * $Id: session.c,v 1.6 2009-09-14 20:44:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -56,6 +56,8 @@ const char *pr_session_get_protocol(int flags) {
 }
 
 int pr_session_set_idle(void) {
+  char *user = NULL;
+
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_BEGIN_IDLE, time(NULL),
     PR_SCORE_CMD, "%s", "idle", NULL, NULL);
@@ -63,8 +65,14 @@ int pr_session_set_idle(void) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", "", NULL, NULL);
 
-  pr_proctitle_set("%s - %s: IDLE", session.user, session.proc_prefix);
+  if (session.user) {
+    user = session.user;
 
+  } else {
+    user = "(authenticating)";
+  }
+
+  pr_proctitle_set("%s - %s: IDLE", user, session.proc_prefix);
   return 0;
 }
 
