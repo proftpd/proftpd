@@ -376,20 +376,27 @@ sub filter_stor_allow_bug2067 {
         DelayEngine => 'off',
       },
     },
-
-    Directory => {
-      '~' => {
-        Limit => {
-          'STOR' => {
-            AllowFilter => '\.wmv$',
-          },
-        },
-      },
-    },
-
   };
 
   my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  if (open(my $fh, ">> $config_file")) {
+    print $fh <<EOC;
+<Directory ~>
+  <Limit STOR>
+    Order deny, allow
+    AllowFilter \\.wmv\$
+  </Limit>
+</Directory>
+EOC
+
+    unless (close($fh)) {
+      die("Can't write $config_file: $!");
+    }
+
+  } else {
+    die("Can't open $config_file: $!");
+  }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -419,11 +426,11 @@ sub filter_stor_allow_bug2067 {
 
       my $expected;
 
-      $expected = 250;
+      $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "DELE command successful";
+      $expected = 'test.txt: No such file or directory';
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
