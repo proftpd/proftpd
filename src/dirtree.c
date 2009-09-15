@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.224 2009-09-14 18:58:24 castaglia Exp $
+ * $Id: dirtree.c,v 1.225 2009-09-15 23:18:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -590,7 +590,7 @@ config_rec *add_config_set(xaset_t **set, const char *name) {
 
     /* Find the parent set for the config_rec to be allocated. */
     if ((*set)->xas_list)
-      parent = ((config_rec*)((*set)->xas_list))->parent;
+      parent = ((config_rec *) ((*set)->xas_list))->parent;
 
     /* Now, make a subpool for the config_rec to be allocated.  The default
      * pool size (PR_TUNABLE_NEW_POOL_SIZE, 512 by default) is a bit large
@@ -614,7 +614,6 @@ config_rec *add_config_set(xaset_t **set, const char *name) {
   }
 
   xaset_insert_end(*set, (xasetmember_t *) c);
-
   return c;
 }
 
@@ -626,8 +625,9 @@ config_rec *add_config(server_rec *s, const char *name) {
   pool *p = NULL;
   xaset_t **set = NULL;
 
-  if (!s)
+  if (s == NULL) {
     s = pr_parser_server_ctxt_get();
+  }
 
   c = pr_parser_config_ctxt_get();
 
@@ -639,18 +639,22 @@ config_rec *add_config(server_rec *s, const char *name) {
   } else {
     parent = NULL;
 
-    if (!s->conf || !s->conf->xas_list) {
+    if (s->conf == NULL ||
+        s->conf->xas_list == NULL) {
+
       p = make_sub_pool(s->pool);
       pr_pool_tag(p, "add_config() subpool");
 
-    } else
-      p = ((config_rec*)s->conf->xas_list)->pool;
+    } else {
+      p = ((config_rec *) s->conf->xas_list)->pool;
+    }
 
     set = &s->conf;
   }
 
-  if (!*set)
+  if (!*set) {
     *set = xaset_create(p, NULL);
+  }
 
   c = add_config_set(set, name);
   c->parent = parent;
@@ -2178,12 +2182,14 @@ void pr_config_dump(void (*dumpf)(const char *, ...), xaset_t *s,
   for (c = (config_rec *) s->xas_list; c; c = c->next) {
 
     /* Don't display directives whose name starts with an underscore. */
-    if (*(c->name) != '_')
+    if (c->name != NULL &&
+        *(c->name) != '_') {
       dumpf("%s%s", indent, c->name);
+    }
 
-    if (c->subset)
-      pr_config_dump(dumpf, c->subset,
-        pstrcat(c->pool, indent, " ", NULL));
+    if (c->subset) {
+      pr_config_dump(dumpf, c->subset, pstrcat(c->pool, indent, " ", NULL));
+    }
   }
 }
 
@@ -2733,10 +2739,16 @@ config_rec *pr_conf_add_server_config_param_str(server_rec *s, const char *name,
 }
 
 config_rec *add_config_param(const char *name, int num, ...) {
-  config_rec *c = add_config(NULL, name);
+  config_rec *c;
   void **argv;
   va_list ap;
 
+  if (name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  c = add_config(NULL, name);
   if (c) {
     c->config_type = CONF_PARAM;
     c->argc = num;

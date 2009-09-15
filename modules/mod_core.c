@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.354 2009-08-12 22:16:00 castaglia Exp $
+ * $Id: mod_core.c,v 1.355 2009-09-15 23:18:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -230,9 +230,10 @@ MODRET start_ifmodule(cmd_rec *cmd) {
       not_module ? "!" : "", cmd->argv[1], pr_parser_get_lineno());
     return PR_HANDLED(cmd);
 
-  } else
+  } else {
     pr_log_debug(DEBUG3, "%s: skipping '%s%s' section at line %u", cmd->argv[0],
       not_module ? "!" : "", cmd->argv[1], pr_parser_get_lineno());
+  }
 
   /* Rather than communicating with parse_config_file() via some global
    * variable/flag the need to skip configuration lines, if the requested
@@ -335,8 +336,8 @@ MODRET set_debuglevel(cmd_rec *cmd) {
     CONF_ERROR(cmd, "invalid debug level configured");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[0]) = debuglevel;
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = debuglevel;
 
   return PR_HANDLED(cmd);
 }
