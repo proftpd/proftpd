@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.75 2009-09-15 15:17:52 castaglia Exp $
+ * $Id: auth.c,v 1.76 2009-09-15 23:10:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -221,7 +221,7 @@ static void gidcache_add(gid_t gid, const char *name) {
 static cmd_rec *make_cmd(pool *cp, int argc, ...) {
   va_list args;
   cmd_rec *c;
-  int     i;
+  pool *sub_pool;
 
   c = pcalloc(cp, sizeof(cmd_rec));
 
@@ -229,12 +229,15 @@ static cmd_rec *make_cmd(pool *cp, int argc, ...) {
   c->stash_index = -1;
 
   if (argc) {
+    register unsigned int i;
+
     c->argv = pcalloc(cp, sizeof(void *) * (argc + 1));
 
     va_start(args, argc);
 
-    for (i = 0; i < argc; i++)
+    for (i = 0; i < argc; i++) {
       c->argv[i] = (void *) va_arg(args, char *);
+    }
 
     va_end(args);
 
@@ -242,8 +245,8 @@ static cmd_rec *make_cmd(pool *cp, int argc, ...) {
   }
 
   /* Make sure we provide pool and tmp_pool for the consumers. */
-  c->pool = cp;
-  c->tmp_pool = cp;
+  sub_pool = make_sub_pool(cp);
+  c->pool = c->tmp_pool = sub_pool;
 
   return c;
 }
