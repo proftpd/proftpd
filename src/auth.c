@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.74 2009-09-08 20:34:03 castaglia Exp $
+ * $Id: auth.c,v 1.75 2009-09-15 15:17:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -240,6 +240,10 @@ static cmd_rec *make_cmd(pool *cp, int argc, ...) {
 
     c->argv[argc] = NULL;
   }
+
+  /* Make sure we provide pool and tmp_pool for the consumers. */
+  c->pool = cp;
+  c->tmp_pool = cp;
 
   return c;
 }
