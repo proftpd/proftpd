@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.5 2009-09-16 06:18:03 castaglia Exp $
+ * $Id: crypto.c,v 1.6 2009-09-16 15:09:12 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -160,14 +160,14 @@ static int init_aes_ctr(EVP_CIPHER_CTX *ctx, const unsigned char *key,
   if (key != NULL) {
     int nbits;
 
-#if OPENSSL_VERSION_NUMBER == 0x0090805fL
+# if OPENSSL_VERSION_NUMBER == 0x0090805fL
     /* OpenSSL 0.9.8e had a bug where EVP_CIPHER_CTX_key_length() returned
      * the cipher key length rather than the context key length.
      */
     nbits = ctx->key_len * 8;
-#else
+# else
     nbits = EVP_CIPHER_CTX_key_length(ctx) * 8;
-#endif
+# endif
 
     AES_set_encrypt_key(key, nbits, &(ae->key));
   }
@@ -192,21 +192,68 @@ static int cleanup_aes_ctr(EVP_CIPHER_CTX *ctx) {
   return 1;
 }
 
+# if OPENSSL_VERSION_NUMBER <= 0x0090704fL
+static void aes_ctr_incr(unsigned char *ctr, size_t len) {
+  register unsigned int i;
+
+  for (i = len - 1; i >= 0; i--) {
+    /* Continue on overflow */
+    if (++ctr[i]) {
+      return;
+    }
+  }
+}
+# endif
+
 static int do_aes_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
     const unsigned char *src, unsigned int len) {
   struct aes_ex *ae;
+# if OPENSSL_VERSION_NUMBER <= 0x0090704fL
+  unsigned int n;
+  unsigned char buf[AES_BLOCK_SIZE];
+# endif
 
   if (len == 0)
     return 1;
 
-  /* Thin wrapper around AES_ctr128_encrypt(). */
-
   ae = EVP_CIPHER_CTX_get_app_data(ctx);
   if (ae == NULL)
     return 0;
- 
+
+# if OPENSSL_VERSION_NUMBER <= 0x0090704fL
+  /* In OpenSSL-0.9.7d and earlier, the AES CTR code did not properly handle
+   * the IV as big-endian; this would cause the dreaded "Incorrect MAC
+   * received on packet" error when using clients e.g. PuTTy.  To see
+   * the difference in OpenSSL, you have do manually do:
+   *
+   *  diff -u openssl-0.9.7d/crypto/aes/aes_ctr.c \
+   *    openssl-0.9.7e/crypto/aes/aes_ctr.c
+   *
+   * This change is not documented in OpenSSL's CHANGES file.  Sigh.
+   *
+   * Thus for these versions, we have to use our own AES CTR code.
+   */
+
+  n = 0;
+
+  while ((len--) > 0) {
+    pr_signals_handle();
+
+    if (n == 0) {
+      AES_encrypt(ae->counter, buf, &(ae->key));
+      aes_ctr_incr(ae->counter, AES_BLOCK_SIZE);
+    }
+
+    *(dst++) = *(src++) ^ buf[n];
+    n = (n + 1) % AES_BLOCK_SIZE;
+  }
+
+  return 1;
+# else
+  /* Thin wrapper around AES_ctr128_encrypt(). */
   AES_ctr128_encrypt(src, dst, len, &(ae->key), ae->counter, ae->enc_counter,
     &(ae->num));
+# endif
 
   return 1;
 }

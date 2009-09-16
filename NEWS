@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1063 2009-09-09 18:17:14 castaglia Exp $
+$Id: NEWS,v 1.1064 2009-09-16 15:09:12 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -45,6 +45,7 @@ CVS
   also includes a new mod_sql_passwd contrib module which can handle
   hex- and base64-encoded MD5 and SHA1 passwords, without the leading
   "{digest}" prefix required by the mod_sql OpenSSL SQLAuthType.
+- Bug 3292 - "Incorrect MAC received on packet" error using AES CTR ciphers.
 
 1.3.3rc1 - Released 30-Jun-2009
 --------------------------------
