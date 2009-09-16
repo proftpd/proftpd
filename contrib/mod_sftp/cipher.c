@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: cipher.c,v 1.3 2009-09-16 00:12:08 castaglia Exp $
+ * $Id: cipher.c,v 1.4 2009-09-16 17:26:42 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -211,7 +211,8 @@ static int set_cipher_key(struct sftp_cipher *cipher, const EVP_MD *hash,
   size_t key_sz;
   uint32_t key_len = 0;
 
-  key_sz = sftp_crypto_get_size(EVP_CIPHER_key_length(cipher->cipher),
+  key_sz = sftp_crypto_get_size(cipher->key_len > 0 ?
+      cipher->key_len : EVP_CIPHER_key_length(cipher->cipher),
     EVP_MD_size(hash));
 
   key = malloc(key_sz);
@@ -319,7 +320,7 @@ int sftp_cipher_set_read_algo(const char *algo) {
   }
 
   read_ciphers[idx].cipher = sftp_crypto_get_cipher(algo,
-    &(read_ciphers[idx].discard_len));
+    &(read_ciphers[idx].key_len), &(read_ciphers[idx].discard_len));
   if (read_ciphers[idx].cipher == NULL)
     return -1;
 
@@ -332,6 +333,7 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   const unsigned char *id = NULL;
   char letter, *buf, *ptr;
   uint32_t buflen, bufsz, id_len;
+  int key_len;
   struct sftp_cipher *cipher;
   EVP_CIPHER_CTX *cipher_ctx;
 
@@ -361,6 +363,8 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     return -1;
   }
 
+  key_len = (int) cipher->key_len;
+
   /* Key: HASH(K || H || "C" || session_id) */
   letter = 'C';
   if (set_cipher_key(cipher, hash, ptr, (bufsz - buflen), h, hlen, &letter,
@@ -369,13 +373,43 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     return -1;
   }
 
-  if (EVP_CipherInit(cipher_ctx, cipher->cipher, cipher->key,
-      cipher->iv, 0) != 1) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error initializing %s cipher for decryption: %s", cipher->algo,
-      sftp_crypto_get_errors());
-    pr_memscrub(ptr, bufsz);
-    return -1;
+  if (key_len == 0) {
+    if (EVP_CipherInit(cipher_ctx, cipher->cipher, cipher->key,
+        cipher->iv, 0) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error initializing %s cipher for decryption: %s", cipher->algo,
+        sftp_crypto_get_errors());
+      pr_memscrub(ptr, bufsz);
+      return -1;
+    }
+
+  } else {
+    /* First, initialize the cipher, but don't provide the key or IV yet. */
+    if (EVP_CipherInit(cipher_ctx, cipher->cipher, NULL, NULL, 0) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error initializing %s cipher for decryption: %s", cipher->algo,
+        sftp_crypto_get_errors());
+      pr_memscrub(ptr, bufsz);
+      return -1;
+    }
+
+    /* Next, set the key length. */
+    if (EVP_CIPHER_CTX_set_key_length(cipher_ctx, key_len) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error setting key length (%d bytes) for %s cipher for decryption: %s",
+        key_len, cipher->algo, sftp_crypto_get_errors());
+      pr_memscrub(ptr, bufsz);
+      return -1;
+    }
+
+    /* Now provide the key and IV. */
+    if (EVP_CipherInit(cipher_ctx, NULL, cipher->key, cipher->iv, -1) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error setting key/IV for %s cipher for decryption: %s", cipher->algo,
+        sftp_crypto_get_errors());
+      pr_memscrub(ptr, bufsz);
+      return -1;
+    }
   }
 
   if (set_cipher_discarded(cipher, cipher_ctx) < 0) {
@@ -456,7 +490,7 @@ int sftp_cipher_set_write_algo(const char *algo) {
   }
 
   write_ciphers[idx].cipher = sftp_crypto_get_cipher(algo,
-    &(write_ciphers[idx].discard_len));
+    &(write_ciphers[idx].key_len), &(write_ciphers[idx].discard_len));
   if (write_ciphers[idx].cipher == NULL)
     return -1;
 
@@ -469,6 +503,7 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   const unsigned char *id = NULL;
   char letter, *buf, *ptr;
   uint32_t buflen, bufsz, id_len;
+  int key_len;
   struct sftp_cipher *cipher;
   EVP_CIPHER_CTX *cipher_ctx;
 
@@ -498,6 +533,8 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     return -1;
   }
 
+  key_len = (int) cipher->key_len;
+
   /* Key: HASH(K || H || "D" || session_id) */
   letter = 'D';
   if (set_cipher_key(cipher, hash, ptr, (bufsz - buflen), h, hlen, &letter,
@@ -506,13 +543,43 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     return -1;
   }
 
-  if (EVP_CipherInit(cipher_ctx, cipher->cipher, cipher->key,
-      cipher->iv, 1) != 1) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error initializing %s cipher for encryption: %s", cipher->algo,
-      sftp_crypto_get_errors());
-    pr_memscrub(ptr, bufsz);
-    return -1;
+  if (key_len == 0) {
+    if (EVP_CipherInit(cipher_ctx, cipher->cipher, cipher->key,
+        cipher->iv, 1) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error initializing %s cipher for encryption: %s", cipher->algo,
+        sftp_crypto_get_errors());
+      pr_memscrub(ptr, bufsz);
+      return -1;
+    }
+
+  } else {
+    /* First, initialize the cipher, but don't provide the key or IV yet. */
+    if (EVP_CipherInit(cipher_ctx, cipher->cipher, NULL, NULL, 1) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error initializing %s cipher for encryption: %s", cipher->algo,
+        sftp_crypto_get_errors());
+      pr_memscrub(ptr, bufsz);
+      return -1;
+    }
+
+    /* Next, set the key length. */
+    if (EVP_CIPHER_CTX_set_key_length(cipher_ctx, key_len) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error setting key length (%d bytes) for %s cipher for decryption: %s",
+        key_len, cipher->algo, sftp_crypto_get_errors());
+      pr_memscrub(ptr, bufsz);
+      return -1;
+    }
+
+    /* Now provide the key and IV. */
+    if (EVP_CipherInit(cipher_ctx, NULL, cipher->key, cipher->iv, -1) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error setting key/IV for %s cipher for encryption: %s", cipher->algo,
+        sftp_crypto_get_errors());
+      pr_memscrub(ptr, bufsz);
+      return -1;
+    }
   }
 
   if (set_cipher_discarded(cipher, cipher_ctx) < 0) {

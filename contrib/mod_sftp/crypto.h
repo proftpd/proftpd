@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.h,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: crypto.h,v 1.3 2009-09-16 17:26:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -30,7 +30,7 @@
 #define MOD_SFTP_CRYPTO_H
 
 void sftp_crypto_free(int);
-const EVP_CIPHER *sftp_crypto_get_cipher(const char *, size_t *);
+const EVP_CIPHER *sftp_crypto_get_cipher(const char *, size_t *, size_t *);
 const EVP_MD *sftp_crypto_get_digest(const char *, uint32_t *);
 int sftp_crypto_set_driver(const char *);
 const char *sftp_crypto_get_kexinit_cipher_list(pool *);

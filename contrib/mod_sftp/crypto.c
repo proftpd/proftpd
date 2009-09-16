@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.6 2009-09-16 15:09:12 castaglia Exp $
+ * $Id: crypto.c,v 1.7 2009-09-16 17:26:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -277,7 +277,7 @@ static const EVP_CIPHER *get_aes_cipher(int key_len) {
 }
 #endif /* OpenSSL older than 0.9.7 */
 
-const EVP_CIPHER *sftp_crypto_get_cipher(const char *name,
+const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
     size_t *discard_len) {
   register unsigned int i;
 
@@ -301,6 +301,19 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name,
 #else
       cipher = ciphers[i].get_type();
 #endif /* OpenSSL older than 0.9.7 */
+
+      if (key_len) {
+        if (strcmp(name, "arcfour256") != 0) {
+          *key_len = 0;
+
+        } else {
+          /* The arcfour256 cipher is special-cased here in order to use
+           * a longer key (32 bytes), rather than the normal 16 bytes for the
+           * RC4 cipher.
+           */
+          *key_len = 32;
+        }
+      }
 
       if (discard_len)
         *discard_len = ciphers[i].discard_len;

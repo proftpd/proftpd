@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.18 2009-09-04 17:13:09 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.19 2009-09-16 17:26:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -289,7 +289,7 @@ MODRET set_sftpciphers(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (sftp_crypto_get_cipher(cmd->argv[i], NULL) == NULL) {
+    if (sftp_crypto_get_cipher(cmd->argv[i], NULL, NULL) == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "unsupported cipher algorithm: ", cmd->argv[i], NULL));
     }
