@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: cipher.c,v 1.4 2009-09-16 17:26:42 castaglia Exp $
+ * $Id: cipher.c,v 1.5 2009-09-16 20:47:16 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -156,11 +156,17 @@ static int set_cipher_iv(struct sftp_cipher *cipher, const EVP_MD *hash,
 
   EVP_MD_CTX ctx;
   unsigned char *iv = NULL;
-  size_t iv_sz;
+  size_t cipher_iv_len, iv_sz;
   uint32_t iv_len = 0;
 
-  iv_sz = sftp_crypto_get_size(EVP_CIPHER_iv_length(cipher->cipher),
-    EVP_MD_size(hash));
+  /* Some ciphers do not use IVs; handle this case. */
+  cipher_iv_len = EVP_CIPHER_iv_length(cipher->cipher);
+  if (cipher_iv_len != 0) {
+    iv_sz = sftp_crypto_get_size(cipher_iv_len, EVP_MD_size(hash));
+
+  } else {
+    iv_sz = EVP_MD_size(hash);
+  }
 
   iv = malloc(iv_sz);
   if (iv == NULL) {
@@ -355,6 +361,15 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
 
   id_len = sftp_session_get_id(&id);
 
+  /* First, initialize the cipher, but don't provide the key or IV yet. */
+  if (EVP_CipherInit(cipher_ctx, cipher->cipher, NULL, NULL, 0) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error initializing %s cipher for decryption: %s", cipher->algo,
+      sftp_crypto_get_errors());
+    pr_memscrub(ptr, bufsz);
+    return -1;
+  }
+
   /* IV: HASH(K || H || "A" || session_id) */
   letter = 'A';
   if (set_cipher_iv(cipher, hash, ptr, (bufsz - buflen), h, hlen, &letter, id,
@@ -373,26 +388,7 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     return -1;
   }
 
-  if (key_len == 0) {
-    if (EVP_CipherInit(cipher_ctx, cipher->cipher, cipher->key,
-        cipher->iv, 0) != 1) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error initializing %s cipher for decryption: %s", cipher->algo,
-        sftp_crypto_get_errors());
-      pr_memscrub(ptr, bufsz);
-      return -1;
-    }
-
-  } else {
-    /* First, initialize the cipher, but don't provide the key or IV yet. */
-    if (EVP_CipherInit(cipher_ctx, cipher->cipher, NULL, NULL, 0) != 1) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error initializing %s cipher for decryption: %s", cipher->algo,
-        sftp_crypto_get_errors());
-      pr_memscrub(ptr, bufsz);
-      return -1;
-    }
-
+  if (key_len > 0) {
     /* Next, set the key length. */
     if (EVP_CIPHER_CTX_set_key_length(cipher_ctx, key_len) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -401,15 +397,15 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
       pr_memscrub(ptr, bufsz);
       return -1;
     }
+  }
 
-    /* Now provide the key and IV. */
-    if (EVP_CipherInit(cipher_ctx, NULL, cipher->key, cipher->iv, -1) != 1) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error setting key/IV for %s cipher for decryption: %s", cipher->algo,
-        sftp_crypto_get_errors());
-      pr_memscrub(ptr, bufsz);
-      return -1;
-    }
+  /* Now provide the key and IV. */
+  if (EVP_CipherInit(cipher_ctx, NULL, cipher->key, cipher->iv, -1) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error setting key/IV for %s cipher for decryption: %s", cipher->algo,
+      sftp_crypto_get_errors());
+    pr_memscrub(ptr, bufsz);
+    return -1;
   }
 
   if (set_cipher_discarded(cipher, cipher_ctx) < 0) {
@@ -525,6 +521,15 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
 
   id_len = sftp_session_get_id(&id);
 
+  /* First, initialize the cipher, but don't provide the key or IV yet. */
+  if (EVP_CipherInit(cipher_ctx, cipher->cipher, NULL, NULL, 1) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error initializing %s cipher for encryption: %s", cipher->algo,
+      sftp_crypto_get_errors());
+    pr_memscrub(ptr, bufsz);
+    return -1;
+  }
+
   /* IV: HASH(K || H || "B" || session_id) */
   letter = 'B';
   if (set_cipher_iv(cipher, hash, ptr, (bufsz - buflen), h, hlen, &letter, id,
@@ -543,26 +548,7 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     return -1;
   }
 
-  if (key_len == 0) {
-    if (EVP_CipherInit(cipher_ctx, cipher->cipher, cipher->key,
-        cipher->iv, 1) != 1) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error initializing %s cipher for encryption: %s", cipher->algo,
-        sftp_crypto_get_errors());
-      pr_memscrub(ptr, bufsz);
-      return -1;
-    }
-
-  } else {
-    /* First, initialize the cipher, but don't provide the key or IV yet. */
-    if (EVP_CipherInit(cipher_ctx, cipher->cipher, NULL, NULL, 1) != 1) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error initializing %s cipher for encryption: %s", cipher->algo,
-        sftp_crypto_get_errors());
-      pr_memscrub(ptr, bufsz);
-      return -1;
-    }
-
+  if (key_len > 0) {
     /* Next, set the key length. */
     if (EVP_CIPHER_CTX_set_key_length(cipher_ctx, key_len) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -571,15 +557,15 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
       pr_memscrub(ptr, bufsz);
       return -1;
     }
+  }
 
-    /* Now provide the key and IV. */
-    if (EVP_CipherInit(cipher_ctx, NULL, cipher->key, cipher->iv, -1) != 1) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error setting key/IV for %s cipher for encryption: %s", cipher->algo,
-        sftp_crypto_get_errors());
-      pr_memscrub(ptr, bufsz);
-      return -1;
-    }
+  /* Now provide the key and IV. */
+  if (EVP_CipherInit(cipher_ctx, NULL, cipher->key, cipher->iv, -1) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error setting key/IV for %s cipher for encryption: %s", cipher->algo,
+      sftp_crypto_get_errors());
+    pr_memscrub(ptr, bufsz);
+    return -1;
   }
 
   if (set_cipher_discarded(cipher, cipher_ctx) < 0) {
