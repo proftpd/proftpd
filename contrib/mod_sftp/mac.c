@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mac.c,v 1.3 2009-03-04 17:41:50 castaglia Exp $
+ * $Id: mac.c,v 1.4 2009-09-16 00:12:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -439,7 +439,7 @@ int sftp_mac_read_data(struct ssh2_packet *pkt) {
         "client MAC (len %lu):", (unsigned long) pkt->mac_len);
       for (i = 0; i < mac_len;) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "%02x%02x %02x%02x %02x%02x %02x%02x",
+          "  %02x%02x %02x%02x %02x%02x %02x%02x",
           ((unsigned char *) pkt->mac)[i++], ((unsigned char *) pkt->mac)[i++],
           ((unsigned char *) pkt->mac)[i++], ((unsigned char *) pkt->mac)[i++],
           ((unsigned char *) pkt->mac)[i++], ((unsigned char *) pkt->mac)[i++],
@@ -450,7 +450,7 @@ int sftp_mac_read_data(struct ssh2_packet *pkt) {
         "server MAC (len %lu):", (unsigned long) mac_len);
       for (i = 0; i < mac_len;) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "%02x%02x %02x%02x %02x%02x %02x%02x",
+          "  %02x%02x %02x%02x %02x%02x %02x%02x",
           ((unsigned char *) mac)[i++], ((unsigned char *) mac)[i++],
           ((unsigned char *) mac)[i++], ((unsigned char *) mac)[i++],
           ((unsigned char *) mac)[i++], ((unsigned char *) mac)[i++],
@@ -587,7 +587,7 @@ int sftp_mac_write_data(struct ssh2_packet *pkt) {
     (unsigned long) pkt->mac_len, (unsigned long) pkt->seqno);
   for (i = 0; i < mac_len;) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "%02x%02x %02x%02x %02x%02x %02x%02x",
+      "  %02x%02x %02x%02x %02x%02x %02x%02x",
       ((unsigned char *) pkt->mac)[i++], ((unsigned char *) pkt->mac)[i++],
       ((unsigned char *) pkt->mac)[i++], ((unsigned char *) pkt->mac)[i++],
       ((unsigned char *) pkt->mac)[i++], ((unsigned char *) pkt->mac)[i++],

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: cipher.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: cipher.c,v 1.3 2009-09-16 00:12:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -563,7 +563,7 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, char *buf, size_t *buflen) {
     "encrypted packet data (len %lu):", (unsigned long) *buflen);
   for (i = 0; i < *buflen;) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "%02x%02x %02x%02x %02x%02x %02x%02x",
+      "  %02x%02x %02x%02x %02x%02x %02x%02x",
       ((unsigned char *) buf)[i++], ((unsigned char *) buf)[i++],
       ((unsigned char *) buf)[i++], ((unsigned char *) buf)[i++],
       ((unsigned char *) buf)[i++], ((unsigned char *) buf)[i++],
