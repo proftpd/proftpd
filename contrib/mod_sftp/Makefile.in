@@ -23,7 +23,7 @@ SHARED_MODULE_OBJS=mod_sftp.lo msg.lo packet.lo cipher.lo mac.lo \
 
 # Necessary redefinitions
 INCLUDES=-I. -I../.. -I../../include @INCLUDES@
-CPPFLAGS= -DHAVE_CONFIG_H $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
+CPPFLAGS= $(ADDL_CPPFLAGS) -DHAVE_CONFIG_H $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
 LDFLAGS=-L../../lib @LIBDIRS@
 
 .c.o:

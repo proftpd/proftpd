@@ -2100,6 +2100,8 @@ ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/ *\$//'`
 ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/^ *//'`
 ADDL_DIRS="$ac_addl_dirs"
 
+ADDL_CPPFLAGS="$ac_orig_cppflags"
+
 # Restore the original CPPFLAGS and LDFLAGS settings
 CPPFLAGS="$ac_orig_cppflags"
 LDFLAGS="$ac_orig_ldflags"
@@ -2215,6 +2217,7 @@ AC_SUBST(STATIC_MODULE_OBJS)
 AC_SUBST(BUILD_SHARED_MODULE_OBJS)
 AC_SUBST(BUILD_STATIC_MODULE_ARCHIVES)
 AC_SUBST(BUILD_STATIC_MODULE_OBJS)
+AC_SUBST(ADDL_CPPFLAGS)
 AC_SUBST(ADDL_DIRS)
 AC_SUBST(INCLUDES)
 AC_SUBST(LIBDIRS)
