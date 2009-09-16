@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.4 2009-03-19 17:02:08 castaglia Exp $
+ * $Id: crypto.c,v 1.5 2009-09-16 06:18:03 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -46,7 +46,7 @@ struct sftp_cipher {
   EVP_CIPHER *(*get_type)(void);
 #endif
 
-  /* Is this cipher enabled by default?  (If FALSE, then this cipher must
+  /* Is this cipher enabled by default?  If FALSE, then this cipher must
    * be explicitly requested via SFTPCiphers.
    */
   int enabled;
@@ -113,7 +113,7 @@ struct sftp_digest {
 
   uint32_t mac_len;
 
-  /* Is this MAC enabled by default?  (If FALSE, then this MAC must be
+  /* Is this MAC enabled by default?  If FALSE, then this MAC must be
    * explicitly requested via SFTPDigests.
    */
   int enabled;
