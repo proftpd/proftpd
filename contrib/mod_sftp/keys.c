@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.6 2009-07-20 02:37:09 castaglia Exp $
+ * $Id: keys.c,v 1.7 2009-09-16 20:51:15 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1066,11 +1066,12 @@ int sftp_keys_get_hostkey(const char *path) {
     pkey = PEM_read_PrivateKey(fp, NULL, NULL, "");
   }
 
+  fclose(fp);
+
   if (pkey == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error reading private key from '%s': %s", path,
       sftp_crypto_get_errors());
-    fclose(fp);
     return -1;
   }
 
@@ -1127,11 +1128,10 @@ int sftp_keys_get_hostkey(const char *path) {
     default:
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unknown private key type (%d), ignoring", pkey->type);
-      fclose(fp);
+      EVP_PKEY_free(pkey);
       return -1;
   }
 
-  fclose(fp);
   return 0;
 }
 
