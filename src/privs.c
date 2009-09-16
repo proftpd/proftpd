@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: privs.c,v 1.2 2009-04-06 23:08:50 castaglia Exp $
+ * $Id: privs.c,v 1.3 2009-09-16 16:32:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -61,7 +61,7 @@ static unsigned int root_privs = 0;
 static unsigned int user_privs = 0;
 
 int pr_privs_setup(uid_t uid, gid_t gid, const char *file, int lineno) {
-  pr_log_debug(DEBUG0, "SETUP PRIVS at %s:%d", file, lineno);
+  pr_log_debug(DEBUG9, "SETUP PRIVS at %s:%d", file, lineno);
 
   /* Reset the user/root privs counters. */
   root_privs = user_privs = 0;
