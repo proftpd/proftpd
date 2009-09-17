@@ -1,4 +1,4 @@
-<!-- $Id: Chroot.html,v 1.5 2008-12-10 19:50:04 castaglia Exp $ -->
+<!-- $Id: Chroot.html,v 1.6 2009-09-17 20:54:26 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Chroot.html,v $ -->
 
 <html>
@@ -221,9 +221,38 @@ directory":
 The reasons for this error are explained
 <a href="Authentication.html#homedir">here</a>.
 
+<p><a name="MultipleRoots">
+<font color=red>Question</font>: Is it possible to configure <code>DefaultRoot</code> for all users <i>except</i> some special users, which will have a different root directory?<br>
+<font color=blue>Answer</font>: Yes, this is possible.  ProFTPD supports
+having multiple <code>DefaultRoot</code> directives in the proftpd.conf at the
+same time; <code>proftpd</code> checks all of them
+<i>in the order they appear</i>.  The first one which matches the logging-in
+user is applied.
+
+<p>
+To illustrate, here's an example.  Keep in mind that the optional parameters to
+the <code>DefaultRoot</code> directive are <i>group</i> names, <b>not</b> user
+names.
+<pre>
+  DefaultRoot /path/to/admin/dir admin-group
+  DefaultRoot /path/to/special/dir special-group
+  DefaultRoot ~  <font color=blue># everyone else</font>
+</pre>
+
+<p>
+If the logging-in user is a member of group 'admin-group', then
+<code>proftpd</code> will chroot to the <code>/path/to/admin/dir</code>
+directory.  If the logging-in user is not a member of group 'admin-group' but
+<b>is</b> a member of group 'special-group', then
+<code>/path/to/special/dir</code> is used for the chroot.  And if the user
+is not a member of either of these groups, then the normal home directory is
+used for the chroot.  It's always a good idea of have a "applies to everyone"
+<code>DefaultRoot</code> directive in your proftpd.conf, at the
+<i>end of the list</i> of <code>DefaultRoot</code>s, as a catch-all.
+
 <p>
 <hr>
-Last Updated: $Date: 2008-12-10 19:50:04 $<br>
+Last Updated: $Date: 2009-09-17 20:54:26 $<br>
 <hr>
 
 </body>
