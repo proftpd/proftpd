@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.8 2009-09-17 05:54:32 castaglia Exp $
+ * $Id: crypto.c,v 1.9 2009-09-17 17:30:09 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -82,7 +82,15 @@ static struct sftp_cipher ciphers[] = {
   { "aes128-cbc",	"aes-128-cbc",	0,	EVP_aes_128_cbc,	TRUE },
 #endif
 
+#if 0
+  /* This works on Mac OSX 10.4 PPC, but not on Ubuntu 9.04 Intel; tested
+   * against OpenSSL 0.9.7d and 0.9.8g, using PuTTy-0.60.  This suggests
+   * an endian-ness issue; until I've tracked it down, I have to disable
+   * support for this cipher.
+   */
   { "blowfish-ctr",	NULL,		0,	NULL,			TRUE },
+#endif
+
   { "blowfish-cbc",	"bf-cbc",	0,	EVP_bf_cbc,		TRUE },
   { "cast128-cbc",	"cast5-cbc",	0,	EVP_cast5_cbc,		TRUE },
   { "arcfour256",	"rc4",		1536,	EVP_rc4,		TRUE },
