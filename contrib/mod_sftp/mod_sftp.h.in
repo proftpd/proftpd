@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_sftp.h.in,v 1.6 2009-09-01 17:04:32 castaglia Exp $
+ * $Id: mod_sftp.h.in,v 1.7 2009-09-17 17:16:20 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_H
@@ -56,6 +56,7 @@
 #endif
 
 #include <openssl/bio.h>
+#include <openssl/blowfish.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
