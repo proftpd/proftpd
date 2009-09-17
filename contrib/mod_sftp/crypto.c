@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.7 2009-09-16 17:26:43 castaglia Exp $
+ * $Id: crypto.c,v 1.8 2009-09-17 05:54:32 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -65,10 +65,11 @@ struct sftp_cipher {
  */
 
 static struct sftp_cipher ciphers[] = {
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
-  /* XXX The handling of the openssl_name and get_type fields is done in
+  /* The handling of NULL openssl_name and get_type fields is done in
    * sftp_crypto_get_cipher(), as special cases.
    */
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
   { "aes256-ctr",	NULL,		0,	NULL,			TRUE },
   { "aes192-ctr",	NULL,		0,	NULL,			TRUE },
   { "aes128-ctr",	NULL,		0,	NULL,			TRUE },
@@ -80,6 +81,8 @@ static struct sftp_cipher ciphers[] = {
 
   { "aes128-cbc",	"aes-128-cbc",	0,	EVP_aes_128_cbc,	TRUE },
 #endif
+
+  { "blowfish-ctr",	NULL,		0,	NULL,			TRUE },
   { "blowfish-cbc",	"bf-cbc",	0,	EVP_bf_cbc,		TRUE },
   { "cast128-cbc",	"cast5-cbc",	0,	EVP_cast5_cbc,		TRUE },
   { "arcfour256",	"rc4",		1536,	EVP_rc4,		TRUE },
@@ -131,9 +134,129 @@ static struct sftp_digest digests[] = {
 
 static const char *trace_channel = "ssh2";
 
+static void ctr_incr(unsigned char *ctr, size_t len) {
+  register unsigned int i;
+
+  for (i = len - 1; i >= 0; i--) {
+    /* If we haven't overflowed, we're done. */
+    if (++ctr[i]) {
+      return;
+    }
+  }
+}
+
+/* Blowfish CTR mode implementation */
+
+struct bf_ctr_ex {
+  BF_KEY key;
+  unsigned char counter[BF_BLOCK];
+};
+
+static int init_bf_ctr(EVP_CIPHER_CTX *ctx, const unsigned char *key,
+    const unsigned char *iv, int enc) {
+  struct bf_ctr_ex *bce;
+
+  bce = EVP_CIPHER_CTX_get_app_data(ctx);
+  if (bce == NULL) {
+
+    /* Allocate our data structure. */
+    bce = calloc(1, sizeof(struct bf_ctr_ex));
+    if (bce == NULL) {
+      pr_log_pri(PR_LOG_ERR, MOD_SFTP_VERSION ": Out of memory!");
+      _exit(1);
+    }
+
+    EVP_CIPHER_CTX_set_app_data(ctx, bce);
+  }
+
+  if (key != NULL) {
+    int key_len;
+
+# if OPENSSL_VERSION_NUMBER == 0x0090805fL
+    /* OpenSSL 0.9.8e had a bug where EVP_CIPHER_CTX_key_length() returned
+     * the cipher key length rather than the context key length.
+     */
+    key_len = ctx->key_len;
+# else
+    key_len = EVP_CIPHER_CTX_key_length(ctx);
+# endif
+
+    BF_set_key(&(bce->key), key_len, key);
+  }
+
+  if (iv != NULL) {
+    memcpy(bce->counter, iv, BF_BLOCK);
+  }
+
+  return 1;
+}
+
+static int cleanup_bf_ctr(EVP_CIPHER_CTX *ctx) {
+  struct bf_ctr_ex *bce;
+
+  bce = EVP_CIPHER_CTX_get_app_data(ctx);
+  if (bce != NULL) {
+    pr_memscrub(bce, sizeof(struct bf_ctr_ex));
+    free(bce);
+    EVP_CIPHER_CTX_set_app_data(ctx, NULL);
+  }
+
+  return 1;
+}
+
+static int do_bf_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
+    const unsigned char *src, unsigned int len) {
+  struct bf_ctr_ex *bce;
+  unsigned int n;
+  unsigned char buf[BF_BLOCK];
+
+  if (len == 0)
+    return 1;
+
+  bce = EVP_CIPHER_CTX_get_app_data(ctx);
+  if (bce == NULL)
+    return 0;
+
+  n = 0;
+
+  while ((len--) > 0) {
+    pr_signals_handle();
+
+    if (n == 0) {
+      memcpy(buf, bce->counter, BF_BLOCK);
+      BF_encrypt((BF_LONG *) buf, &(bce->key));
+      ctr_incr(bce->counter, BF_BLOCK);
+    }
+
+    *(dst++) = *(src++) ^ buf[n];
+    n = (n + 1) % BF_BLOCK;
+  }
+
+  return 1;
+}
+
+static const EVP_CIPHER *get_bf_ctr_cipher(void) {
+  static EVP_CIPHER bf_ctr_cipher;
+
+  memset(&bf_ctr_cipher, 0, sizeof(EVP_CIPHER));
+
+  bf_ctr_cipher.nid = NID_undef;
+  bf_ctr_cipher.block_size = BF_BLOCK;
+  bf_ctr_cipher.iv_len = BF_BLOCK;
+  bf_ctr_cipher.key_len = 32;
+  bf_ctr_cipher.init = init_bf_ctr;
+  bf_ctr_cipher.cleanup = cleanup_bf_ctr;
+  bf_ctr_cipher.do_cipher = do_bf_ctr;
+
+  bf_ctr_cipher.flags = EVP_CIPH_CBC_MODE|EVP_CIPH_VARIABLE_LENGTH|EVP_CIPH_ALWAYS_CALL_INIT|EVP_CIPH_CUSTOM_IV;
+
+  return &bf_ctr_cipher;
+}
+
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 
-struct aes_ex {
+/* AES CTR mode implementation */
+struct aes_ctr_ex {
   AES_KEY key;
   unsigned char counter[AES_BLOCK_SIZE];
   unsigned char enc_counter[AES_BLOCK_SIZE];
@@ -142,19 +265,19 @@ struct aes_ex {
 
 static int init_aes_ctr(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     const unsigned char *iv, int enc) {
-  struct aes_ex *ae;
+  struct aes_ctr_ex *ace;
 
-  ae = EVP_CIPHER_CTX_get_app_data(ctx);
-  if (ae == NULL) {
+  ace = EVP_CIPHER_CTX_get_app_data(ctx);
+  if (ace == NULL) {
 
     /* Allocate our data structure. */
-    ae = calloc(1, sizeof(struct aes_ex));
-    if (ae == NULL) {
+    ace = calloc(1, sizeof(struct aes_ctr_ex));
+    if (ace == NULL) {
       pr_log_pri(PR_LOG_ERR, MOD_SFTP_VERSION ": Out of memory!");
       _exit(1);
     }
 
-    EVP_CIPHER_CTX_set_app_data(ctx, ae);
+    EVP_CIPHER_CTX_set_app_data(ctx, ace);
   }
 
   if (key != NULL) {
@@ -169,45 +292,32 @@ static int init_aes_ctr(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     nbits = EVP_CIPHER_CTX_key_length(ctx) * 8;
 # endif
 
-    AES_set_encrypt_key(key, nbits, &(ae->key));
+    AES_set_encrypt_key(key, nbits, &(ace->key));
   }
 
   if (iv != NULL) {
-    memcpy(ae->counter, iv, AES_BLOCK_SIZE);
+    memcpy(ace->counter, iv, AES_BLOCK_SIZE);
   }
 
   return 1;
 }
 
 static int cleanup_aes_ctr(EVP_CIPHER_CTX *ctx) {
-  struct aes_ex *ae;
+  struct aes_ctr_ex *ace;
 
-  ae = EVP_CIPHER_CTX_get_app_data(ctx);
-  if (ae != NULL) {
-    pr_memscrub(ae, sizeof(struct aes_ex));
-    free(ae);
+  ace = EVP_CIPHER_CTX_get_app_data(ctx);
+  if (ace != NULL) {
+    pr_memscrub(ace, sizeof(struct aes_ctr_ex));
+    free(ace);
     EVP_CIPHER_CTX_set_app_data(ctx, NULL);
   }
 
   return 1;
 }
 
-# if OPENSSL_VERSION_NUMBER <= 0x0090704fL
-static void aes_ctr_incr(unsigned char *ctr, size_t len) {
-  register unsigned int i;
-
-  for (i = len - 1; i >= 0; i--) {
-    /* Continue on overflow */
-    if (++ctr[i]) {
-      return;
-    }
-  }
-}
-# endif
-
 static int do_aes_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
     const unsigned char *src, unsigned int len) {
-  struct aes_ex *ae;
+  struct aes_ctr_ex *ace;
 # if OPENSSL_VERSION_NUMBER <= 0x0090704fL
   unsigned int n;
   unsigned char buf[AES_BLOCK_SIZE];
@@ -216,8 +326,8 @@ static int do_aes_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
   if (len == 0)
     return 1;
 
-  ae = EVP_CIPHER_CTX_get_app_data(ctx);
-  if (ae == NULL)
+  ace = EVP_CIPHER_CTX_get_app_data(ctx);
+  if (ace == NULL)
     return 0;
 
 # if OPENSSL_VERSION_NUMBER <= 0x0090704fL
@@ -240,8 +350,8 @@ static int do_aes_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
     pr_signals_handle();
 
     if (n == 0) {
-      AES_encrypt(ae->counter, buf, &(ae->key));
-      aes_ctr_incr(ae->counter, AES_BLOCK_SIZE);
+      AES_encrypt(ace->counter, buf, &(ace->key));
+      ctr_incr(ace->counter, AES_BLOCK_SIZE);
     }
 
     *(dst++) = *(src++) ^ buf[n];
@@ -251,29 +361,29 @@ static int do_aes_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
   return 1;
 # else
   /* Thin wrapper around AES_ctr128_encrypt(). */
-  AES_ctr128_encrypt(src, dst, len, &(ae->key), ae->counter, ae->enc_counter,
-    &(ae->num));
+  AES_ctr128_encrypt(src, dst, len, &(ace->key), ace->counter, ace->enc_counter,
+    &(ace->num));
 # endif
 
   return 1;
 }
 
-static const EVP_CIPHER *get_aes_cipher(int key_len) {
-  static EVP_CIPHER aes_cipher;
+static const EVP_CIPHER *get_aes_ctr_cipher(int key_len) {
+  static EVP_CIPHER aes_ctr_cipher;
 
-  memset(&aes_cipher, 0, sizeof(EVP_CIPHER));
+  memset(&aes_ctr_cipher, 0, sizeof(EVP_CIPHER));
 
-  aes_cipher.nid = NID_undef;
-  aes_cipher.block_size = AES_BLOCK_SIZE;
-  aes_cipher.iv_len = AES_BLOCK_SIZE;
-  aes_cipher.key_len = key_len;
-  aes_cipher.init = init_aes_ctr;
-  aes_cipher.cleanup = cleanup_aes_ctr;
-  aes_cipher.do_cipher = do_aes_ctr;
+  aes_ctr_cipher.nid = NID_undef;
+  aes_ctr_cipher.block_size = AES_BLOCK_SIZE;
+  aes_ctr_cipher.iv_len = AES_BLOCK_SIZE;
+  aes_ctr_cipher.key_len = key_len;
+  aes_ctr_cipher.init = init_aes_ctr;
+  aes_ctr_cipher.cleanup = cleanup_aes_ctr;
+  aes_ctr_cipher.do_cipher = do_aes_ctr;
 
-  aes_cipher.flags = EVP_CIPH_CBC_MODE|EVP_CIPH_VARIABLE_LENGTH|EVP_CIPH_ALWAYS_CALL_INIT|EVP_CIPH_CUSTOM_IV;
+  aes_ctr_cipher.flags = EVP_CIPH_CBC_MODE|EVP_CIPH_VARIABLE_LENGTH|EVP_CIPH_ALWAYS_CALL_INIT|EVP_CIPH_CUSTOM_IV;
 
-  return &aes_cipher;
+  return &aes_ctr_cipher;
 }
 #endif /* OpenSSL older than 0.9.7 */
 
@@ -285,22 +395,23 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
     if (strcmp(ciphers[i].name, name) == 0) {
       const EVP_CIPHER *cipher;
 
+      if (strcmp(name, "blowfish-ctr") == 0) {
+        cipher = get_bf_ctr_cipher();
+
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-      if (strcmp(name, "aes256-ctr") == 0) {
-        cipher = get_aes_cipher(32);
+      } else if (strcmp(name, "aes256-ctr") == 0) {
+        cipher = get_aes_ctr_cipher(32);
 
       } else if (strcmp(name, "aes192-ctr") == 0) {
-        cipher = get_aes_cipher(24);
+        cipher = get_aes_ctr_cipher(24);
 
       } else if (strcmp(name, "aes128-ctr") == 0) {
-        cipher = get_aes_cipher(16);
+        cipher = get_aes_ctr_cipher(16);
+#endif /* OpenSSL older than 0.9.7 */
 
       } else {
         cipher = ciphers[i].get_type();
       }
-#else
-      cipher = ciphers[i].get_type();
-#endif /* OpenSSL older than 0.9.7 */
 
       if (key_len) {
         if (strcmp(name, "arcfour256") != 0) {
@@ -370,23 +481,23 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
                 pstrdup(p, ciphers[j].name), NULL);
 
             } else {
+              /* The CTR modes are special cases. */
+
+              if (strcmp(ciphers[j].name, "blowfish-ctr") == 0
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-              /* XXX The AES CTR modes are special cases. */
-              if (strcmp(ciphers[j].name, "aes256-ctr") == 0 ||
+                  || strcmp(ciphers[j].name, "aes256-ctr") == 0 ||
                   strcmp(ciphers[j].name, "aes192-ctr") == 0 ||
-                  strcmp(ciphers[j].name, "aes128-ctr") == 0) {
+                  strcmp(ciphers[j].name, "aes128-ctr") == 0
+#endif
+                  ) {
                 res = pstrcat(p, res, *res ? "," : "",
                   pstrdup(p, ciphers[j].name), NULL);
        
               } else {
-#endif
                 pr_trace_msg(trace_channel, 3,
                   "unable to use '%s' cipher: Unsupported by OpenSSL",
                   ciphers[j].name);
-
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
               }
-#endif
             }
 
           } else {
@@ -408,23 +519,23 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
               pstrdup(p, ciphers[i].name), NULL);
 
           } else {
+            /* The CTR modes are special cases. */
+
+            if (strcmp(ciphers[i].name, "blowfish-ctr") == 0
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-            /* XXX The AES CTR modes are special cases. */
-            if (strcmp(ciphers[i].name, "aes256-ctr") == 0 ||
+                || strcmp(ciphers[i].name, "aes256-ctr") == 0 ||
                 strcmp(ciphers[i].name, "aes192-ctr") == 0 ||
-                strcmp(ciphers[i].name, "aes128-ctr") == 0) {
+                strcmp(ciphers[i].name, "aes128-ctr") == 0
+#endif
+                ) {
               res = pstrcat(p, res, *res ? "," : "",
                 pstrdup(p, ciphers[i].name), NULL);
 
             } else {       
-#endif
               pr_trace_msg(trace_channel, 3,
                 "unable to use '%s' cipher: Unsupported by OpenSSL",
                 ciphers[i].name);
-
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
             }
-#endif
           }
 
         } else {
