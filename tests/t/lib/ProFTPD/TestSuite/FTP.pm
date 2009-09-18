@@ -1560,7 +1560,7 @@ sub get_connect_exception {
 sub host {
   my $self = shift;
   my $host = shift;
-  $host = '' unless defined($passwd);
+  $host = '' unless defined($host);
   my $code;
 
   $code = $self->{ftp}->quot('HOST', $host);
