@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.381 2009-09-07 01:37:18 castaglia Exp $
+ * $Id: main.c,v 1.382 2009-09-21 21:06:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2538,10 +2538,10 @@ static void show_settings(void) {
       uts.release, uts.machine);
 
   } else {
-    printf("  Platform: " PR_PLATFORM "\n");
+    printf("  Platform: " PR_PLATFORM " [unavailable]\n");
   }
 #else
-  printf("  Platform: " PR_PLATFORM "\n");
+  printf("  Platform: " PR_PLATFORM " [unknown]\n");
 #endif /* !HAVE_UNAME */
 
   printf("  Built: " BUILD_STAMP "\n");
