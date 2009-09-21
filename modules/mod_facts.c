@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.22 2009-04-09 15:59:38 castaglia Exp $
+ * $Id: mod_facts.c,v 1.23 2009-09-21 22:55:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -250,7 +250,7 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
  * flushed out.
  *
  * This handling is different from the MLST handler's use of
- * facts_mlinfo_send() because MLST gets to send its line back on the control
+ * facts_mlinfo_add() because MLST gets to send its line back on the control
  * channel, wherease MLSD's output is sent via a data transfer, much like
  * LIST or NLST.
  */
@@ -370,13 +370,13 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path) {
   return 0;
 }
 
-static void facts_mlinfo_send(struct mlinfo *info) {
+static void facts_mlinfo_add(struct mlinfo *info) {
   char buf[PR_TUNABLE_BUFFER_SIZE];
 
   (void) facts_mlinfo_fmt(info, buf, sizeof(buf));
 
-  /* The trailing CRLF will be added by pr_response_send_raw(). */
-  pr_response_send_raw("%s", buf);
+  /* The trailing CRLF will be added by pr_response_add(). */
+  pr_response_add(R_DUP, "%s", buf);
 }
 
 static void facts_mlst_feat_add(pool *p) {
@@ -980,8 +980,8 @@ MODRET facts_mlst(cmd_rec *cmd) {
     /* Simply send an empty list, much like we do for a STAT command for
      * a hidden file.
      */
-    pr_response_send_raw(_("%s- Start of list for %s"), R_250, path);
-    pr_response_send_raw(_("%s End of list"), R_250);
+    pr_response_add(R_250, _("Start of list for %s"), path);
+    pr_response_add(R_250, _("End of list"));
 
     return PR_HANDLED(cmd);
   }
@@ -999,9 +999,9 @@ MODRET facts_mlst(cmd_rec *cmd) {
    */
   info.path = path;
 
-  pr_response_send_raw(_("%s- Start of list for %s"), R_250, path);
-  facts_mlinfo_send(&info);
-  pr_response_send_raw(_("%s End of list"), R_250);
+  pr_response_add(R_250, _("Start of list for %s"), path);
+  facts_mlinfo_add(&info);
+  pr_response_add(R_250, _("End of list"));
 
   return PR_HANDLED(cmd);
 }
