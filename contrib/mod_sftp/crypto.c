@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.9 2009-09-17 17:30:09 castaglia Exp $
+ * $Id: crypto.c,v 1.10 2009-09-22 16:23:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -82,15 +82,7 @@ static struct sftp_cipher ciphers[] = {
   { "aes128-cbc",	"aes-128-cbc",	0,	EVP_aes_128_cbc,	TRUE },
 #endif
 
-#if 0
-  /* This works on Mac OSX 10.4 PPC, but not on Ubuntu 9.04 Intel; tested
-   * against OpenSSL 0.9.7d and 0.9.8g, using PuTTy-0.60.  This suggests
-   * an endian-ness issue; until I've tracked it down, I have to disable
-   * support for this cipher.
-   */
   { "blowfish-ctr",	NULL,		0,	NULL,			TRUE },
-#endif
-
   { "blowfish-cbc",	"bf-cbc",	0,	EVP_bf_cbc,		TRUE },
   { "cast128-cbc",	"cast5-cbc",	0,	EVP_cast5_cbc,		TRUE },
   { "arcfour256",	"rc4",		1536,	EVP_rc4,		TRUE },
@@ -231,8 +223,37 @@ static int do_bf_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
     pr_signals_handle();
 
     if (n == 0) {
-      memcpy(buf, bce->counter, BF_BLOCK);
-      BF_encrypt((BF_LONG *) buf, &(bce->key));
+      BF_LONG ctr[2];
+
+      /* Ideally, we would not be using htonl/ntohl here, and the following
+       * code would be as simple as:
+       *
+       *  memcpy(buf, bce->counter, BF_BLOCK);
+       *  BF_encrypt((BF_LONG *) buf, &(bce->key));
+       *
+       * However, the above is susceptible to endianness issues.  The only
+       * client that I could find which implements the blowfish-ctr cipher,
+       * PuTTy, uses its own big-endian Blowfish implementation.  So the
+       * above code will work with PuTTy, but only on big-endian machines.
+       * For little-endian machines, we need to handle the endianness
+       * ourselves.  Whee.
+       */
+
+      memcpy(&(ctr[0]), bce->counter, sizeof(BF_LONG));
+      memcpy(&(ctr[1]), bce->counter + sizeof(BF_LONG), sizeof(BF_LONG));
+
+      /* Convert to big-endian values before encrypting the counter... */
+      ctr[0] = htonl(ctr[0]);
+      ctr[1] = htonl(ctr[1]);
+
+      BF_encrypt(ctr, &(bce->key));
+
+      /* ...and convert back to little-endian before XOR'ing the counter in. */
+      ctr[0] = ntohl(ctr[0]);
+      ctr[1] = ntohl(ctr[1]);
+
+      memcpy(buf, ctr, BF_BLOCK);
+
       ctr_incr(bce->counter, BF_BLOCK);
     }
 
