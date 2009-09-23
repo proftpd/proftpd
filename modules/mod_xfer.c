@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.260 2009-09-01 18:39:12 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.261 2009-09-23 16:00:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1028,12 +1028,12 @@ static int stor_complete(void) {
   return res;
 }
 
-static int get_hidden_store_path(cmd_rec *cmd, char *path) {
+static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix) {
   char *c = NULL, *hidden_path;
   int dotcount = 0, foundslash = 0, basenamestart = 0, maxlen;
 
   /* We have to also figure out the temporary hidden file name for receiving
-   * this transfer.  Length is +5 due to .in. prepended and "." at end.
+   * this transfer.  Length is +(N+1) due to prepended prefix and "." at end.
    */
 
   /* Figure out where the basename starts */
@@ -1068,15 +1068,18 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path) {
   if (!basenamestart) {
     session.xfer.xfer_type = STOR_DEFAULT;
 
+    pr_log_debug(DEBUG6, "could not determine HiddenStores path for '%s'",
+      path);
+
     /* This probably shouldn't happen */
     pr_response_add_err(R_451, _("%s: Bad file name"), path);
     return -1;
   }
 
-  /* Add five for the ".in." and "." characters, plus one for a terminating
+  /* Add N+1 for the prefix and "." characters, plus one for a terminating
    * NUL.
    */
-  maxlen = strlen(path) + 6;
+  maxlen = strlen(path) + strlen(prefix) + 2;
 
   if (maxlen > PR_TUNABLE_PATH_MAX) {
     session.xfer.xfer_type = STOR_DEFAULT;
@@ -1098,7 +1101,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path) {
   if (!foundslash) {
 
     /* Simple local file name */
-    hidden_path = pstrcat(cmd->tmp_pool, ".in.", path, ".", NULL);
+    hidden_path = pstrcat(cmd->tmp_pool, prefix, path, ".", NULL);
 
     pr_log_pri(PR_LOG_DEBUG, "HiddenStore: local path, will rename %s to %s",
       hidden_path, path);
@@ -1109,7 +1112,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path) {
     hidden_path = pstrndup(cmd->pool, path, maxlen);
     hidden_path[basenamestart] = '\0';
 
-    hidden_path = pstrcat(cmd->pool, hidden_path, ".in.",
+    hidden_path = pstrcat(cmd->pool, hidden_path, prefix,
       path + basenamestart, ".", NULL);
 
     pr_log_pri(PR_LOG_DEBUG, "HiddenStore: complex path, will rename %s to %s",
@@ -1168,8 +1171,8 @@ MODRET xfer_post_mode(cmd_rec *cmd) {
 MODRET xfer_pre_stor(cmd_rec *cmd) {
   char *path;
   mode_t fmode;
-  unsigned char *hidden_stores = NULL, *allow_overwrite = NULL,
-    *allow_restart = NULL;
+  unsigned char *allow_overwrite = NULL, *allow_restart = NULL;
+  config_rec *c;
 
   if (cmd->argc < 2) {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
@@ -1237,9 +1240,10 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_NOTICE, "notice: error adding 'mod_xfer.store-path': %s",
       strerror(errno));
 
-  hidden_stores = get_param_ptr(CURRENT_CONF, "HiddenStores", FALSE);
-  if (hidden_stores!= NULL &&
-      *hidden_stores == TRUE) {
+  c = find_config(CURRENT_CONF, CONF_PARAM, "HiddenStores", FALSE);
+  if (c &&
+      *((int *) c->argv[0]) == TRUE) {
+    char *prefix = c->argv[1];
 
     /* If we're using HiddenStores, then REST won't work. */
     if (session.restart_pos) {
@@ -1248,7 +1252,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    if (get_hidden_store_path(cmd, path) < 0) {
+    if (get_hidden_store_path(cmd, path, prefix) < 0) {
       return PR_ERROR(cmd);
     }
   }
@@ -2364,21 +2368,56 @@ MODRET set_displayfiletransfer(cmd_rec *cmd) {
 }
 
 MODRET set_hiddenstores(cmd_rec *cmd) {
-  int bool = -1;
+  int bool = -1, add_periods = TRUE;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
-    CONF_ERROR(cmd, "expected Boolean parameter");
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
 
-  c = add_config_param("HiddenStores", 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  /* Handle the case where the admin may, for some reason, want a custom
+   * prefix which could also be construed to be a Boolean value by
+   * get_boolean(): if the value begins AND ends with a period, then treat
+   * it as a custom prefix.
+   */
+  if ((cmd->argv[1])[0] == '.' &&
+      (cmd->argv[1])[strlen(cmd->argv[1])-1] == '.') {
+    add_periods = FALSE;
+    bool = -1;
+
+  } else {
+    bool = get_boolean(cmd, 1);
+  }
+
+  if (bool == -1) {
+    /* If the parameter is not a Boolean parameter, assume that the
+     * admin is configuring a specific prefix to use instead of the
+     * default ".in.".
+     */
+
+    c->argv[0] = pcalloc(c->pool, sizeof(int));
+    *((int *) c->argv[0]) = TRUE;
+
+    if (add_periods) {
+      /* Automatically add the leading and trailing periods. */
+      c->argv[1] = pstrcat(c->pool, ".", cmd->argv[1], ".", NULL);
+
+    } else {
+      c->argv[1] = pstrdup(c->pool, cmd->argv[1]);
+    }
+
+  } else {
+    c->argv[0] = pcalloc(c->pool, sizeof(int));
+    *((int *) c->argv[0]) = bool;
+
+    if (bool) {
+      /* The default HiddenStore prefix */
+      c->argv[1] = pstrdup(c->pool, ".in.");
+    }
+  }
+
   c->flags |= CF_MERGEDOWN;
-
   return PR_HANDLED(cmd);
 }
 
