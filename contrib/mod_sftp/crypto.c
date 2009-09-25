@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.10 2009-09-22 16:23:59 castaglia Exp $
+ * $Id: crypto.c,v 1.11 2009-09-25 00:25:52 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -99,6 +99,7 @@ static struct sftp_cipher ciphers[] = {
   { "arcfour",		"rc4",		0,	EVP_rc4,		FALSE },
 #endif
 
+  { "3des-ctr",		NULL,		0,	NULL,			TRUE },
   { "3des-cbc",		"des-ede3-cbc",	0,	EVP_des_ede3_cbc,	TRUE },
   { "none",		"null",		0,	EVP_enc_null,		FALSE },
   { NULL, NULL, 0, NULL, FALSE }
@@ -282,6 +283,123 @@ static const EVP_CIPHER *get_bf_ctr_cipher(void) {
   return &bf_ctr_cipher;
 }
 
+/* 3DES CTR mode implementation */
+
+struct des3_ctr_ex {
+  DES_key_schedule sched[3];
+  unsigned char counter[8];
+};
+
+static int init_des3_ctr(EVP_CIPHER_CTX *ctx, const unsigned char *key,
+    const unsigned char *iv, int enc) {
+  struct des3_ctr_ex *dce;
+
+  dce = EVP_CIPHER_CTX_get_app_data(ctx);
+  if (dce == NULL) {
+
+    /* Allocate our data structure. */
+    dce = calloc(1, sizeof(struct des3_ctr_ex));
+    if (dce == NULL) {
+      pr_log_pri(PR_LOG_ERR, MOD_SFTP_VERSION ": Out of memory!");
+      _exit(1);
+    }
+
+    EVP_CIPHER_CTX_set_app_data(ctx, dce);
+  }
+
+  if (key != NULL) {
+    register unsigned int i;
+    unsigned char *ptr;
+
+    ptr = (unsigned char *) key;
+
+    for (i = 0; i < 3; i++) {
+      DES_cblock material[8];
+      memcpy(material, ptr, 8);
+      ptr += 8;
+
+      DES_set_key_unchecked(material, &(dce->sched[i]));
+    }
+  }
+
+  if (iv != NULL) {
+    memcpy(dce->counter, iv, 8);
+  }
+
+  return 1;
+}
+
+static int cleanup_des3_ctr(EVP_CIPHER_CTX *ctx) {
+  struct des3_ctr_ex *dce;
+
+  dce = EVP_CIPHER_CTX_get_app_data(ctx);
+  if (dce != NULL) {
+    pr_memscrub(dce, sizeof(struct des3_ctr_ex));
+    free(dce);
+    EVP_CIPHER_CTX_set_app_data(ctx, NULL);
+  }
+
+  return 1;
+}
+
+static int do_des3_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
+    const unsigned char *src, unsigned int len) {
+  struct des3_ctr_ex *dce;
+  unsigned int n;
+  unsigned char buf[8];
+
+  if (len == 0)
+    return 1;
+
+  dce = EVP_CIPHER_CTX_get_app_data(ctx);
+  if (dce == NULL)
+    return 0;
+
+  n = 0;
+
+  while ((len--) > 0) {
+    pr_signals_handle();
+
+    if (n == 0) {
+      DES_LONG ctr[2];
+
+      memcpy(&(ctr[0]), dce->counter, sizeof(DES_LONG));
+      memcpy(&(ctr[1]), dce->counter + sizeof(DES_LONG), sizeof(DES_LONG));
+
+      DES_encrypt1(ctr, &(dce->sched[0]), DES_ENCRYPT);
+      DES_encrypt1(ctr, &(dce->sched[1]), DES_DECRYPT);
+      DES_encrypt1(ctr, &(dce->sched[2]), DES_ENCRYPT);
+
+      memcpy(buf, ctr, 8);
+
+      ctr_incr(dce->counter, 8);
+    }
+
+    *(dst++) = *(src++) ^ buf[n];
+    n = (n + 1) % 8;
+  }
+
+  return 1;
+}
+
+static const EVP_CIPHER *get_des3_ctr_cipher(void) {
+  static EVP_CIPHER des3_ctr_cipher;
+
+  memset(&des3_ctr_cipher, 0, sizeof(EVP_CIPHER));
+
+  des3_ctr_cipher.nid = NID_undef;
+  des3_ctr_cipher.block_size = 8;
+  des3_ctr_cipher.iv_len = 8;
+  des3_ctr_cipher.key_len = 24;
+  des3_ctr_cipher.init = init_des3_ctr;
+  des3_ctr_cipher.cleanup = cleanup_des3_ctr;
+  des3_ctr_cipher.do_cipher = do_des3_ctr;
+
+  des3_ctr_cipher.flags = EVP_CIPH_CBC_MODE|EVP_CIPH_VARIABLE_LENGTH|EVP_CIPH_ALWAYS_CALL_INIT|EVP_CIPH_CUSTOM_IV;
+
+  return &des3_ctr_cipher;
+}
+
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 
 /* AES CTR mode implementation */
@@ -427,6 +545,9 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
       if (strcmp(name, "blowfish-ctr") == 0) {
         cipher = get_bf_ctr_cipher();
 
+      } else if (strcmp(name, "3des-ctr") == 0) {
+        cipher = get_des3_ctr_cipher();
+
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
       } else if (strcmp(name, "aes256-ctr") == 0) {
         cipher = get_aes_ctr_cipher(32);
@@ -512,7 +633,8 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
             } else {
               /* The CTR modes are special cases. */
 
-              if (strcmp(ciphers[j].name, "blowfish-ctr") == 0
+              if (strcmp(ciphers[j].name, "blowfish-ctr") == 0 ||
+                  strcmp(ciphers[j].name, "3des-ctr") == 0
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
                   || strcmp(ciphers[j].name, "aes256-ctr") == 0 ||
                   strcmp(ciphers[j].name, "aes192-ctr") == 0 ||
@@ -550,7 +672,8 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
           } else {
             /* The CTR modes are special cases. */
 
-            if (strcmp(ciphers[i].name, "blowfish-ctr") == 0
+            if (strcmp(ciphers[i].name, "blowfish-ctr") == 0 ||
+                strcmp(ciphers[i].name, "3des-ctr") == 0
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
                 || strcmp(ciphers[i].name, "aes256-ctr") == 0 ||
                 strcmp(ciphers[i].name, "aes192-ctr") == 0 ||
