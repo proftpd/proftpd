@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.11 2009-09-25 00:25:52 castaglia Exp $
+ * $Id: crypto.c,v 1.12 2009-09-26 23:52:44 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -288,7 +288,19 @@ static const EVP_CIPHER *get_bf_ctr_cipher(void) {
 struct des3_ctr_ex {
   DES_key_schedule sched[3];
   unsigned char counter[8];
+  int big_endian;
 };
+
+static uint32_t byteswap32(uint32_t nl) {
+  uint32_t lel;
+
+  lel = (((nl & 0x000000ff) << 24) |
+         ((nl & 0x0000ff00) << 8) |
+         ((nl & 0x00ff0000) >> 8) |
+         ((nl & 0xff000000) >> 24));
+
+  return lel;
+}
 
 static int init_des3_ctr(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     const unsigned char *iv, int enc) {
@@ -303,6 +315,11 @@ static int init_des3_ctr(EVP_CIPHER_CTX *ctx, const unsigned char *key,
       pr_log_pri(PR_LOG_ERR, MOD_SFTP_VERSION ": Out of memory!");
       _exit(1);
     }
+
+    /* Simple test to see if we're on a big- or little-endian machine:
+     * on big-endian machines, the ntohl() et al will be no-ops.
+     */
+    dce->big_endian = (ntohl(1234) == 1234);
 
     EVP_CIPHER_CTX_set_app_data(ctx, dce);
   }
@@ -366,9 +383,24 @@ static int do_des3_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
       memcpy(&(ctr[0]), dce->counter, sizeof(DES_LONG));
       memcpy(&(ctr[1]), dce->counter + sizeof(DES_LONG), sizeof(DES_LONG));
 
+      if (dce->big_endian) {
+        /* If we are on a big-endian, we need to initialize the counter using
+         * little-endian values, since that is what OpenSSL's DES_encrypt1()
+         * function expects.
+         */
+
+        ctr[0] = byteswap32(ctr[0]);
+        ctr[1] = byteswap32(ctr[1]);
+      }
+
       DES_encrypt1(ctr, &(dce->sched[0]), DES_ENCRYPT);
       DES_encrypt1(ctr, &(dce->sched[1]), DES_DECRYPT);
       DES_encrypt1(ctr, &(dce->sched[2]), DES_ENCRYPT);
+
+      if (dce->big_endian) {
+        ctr[0] = byteswap32(ctr[0]);
+        ctr[1] = byteswap32(ctr[1]);
+      }
 
       memcpy(buf, ctr, 8);
 
