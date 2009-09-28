@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.266 2009-09-08 20:35:30 castaglia Exp $
+ * $Id: mod_auth.c,v 1.267 2009-09-28 21:22:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -946,10 +946,20 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
     if ((add_userdir && *add_userdir == TRUE) &&
         strcmp(u, user) != 0) {
-      session.chroot_path = dir_realpath(p, pdircat(p, c->name, u, NULL));
+      char *userdir_path = pdircat(p, c->name, u, NULL);
+
+      session.chroot_path = dir_realpath(p, userdir_path);
+      if (session.chroot_path == NULL) {
+        pr_log_debug(DEBUG8, "error resolving '%s': %s", userdir_path,
+          strerror(errno));
+      }
 
     } else {
       session.chroot_path = dir_realpath(p, c->name);
+      if (session.chroot_path == NULL) {
+        pr_log_debug(DEBUG8, "error resolving '%s': %s", c->name,
+          strerror(errno));
+      }
     }
 
     if (session.chroot_path &&
