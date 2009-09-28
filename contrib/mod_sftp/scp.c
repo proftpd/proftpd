@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.27 2009-09-04 17:13:09 castaglia Exp $
+ * $Id: scp.c,v 1.28 2009-09-28 20:38:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1823,6 +1823,7 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
     if (reqargv[i]) {
       struct scp_path *sp;
       size_t pathlen;
+      char *glob_path;
 
       if (use_glob &&
           (scp_opts & SFTP_SCP_OPT_ISSRC) &&
@@ -1836,7 +1837,24 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
 
         memset(&gl, 0, sizeof(gl));
 
-        res = pr_fs_glob(reqargv[i], GLOB_NOSORT|GLOB_BRACE, NULL, &gl);
+        glob_path = pstrdup(paths->pool, reqargv[i]);
+        pathlen = strlen(glob_path);
+
+        /* Remove any enclosing shell quotations, e.g. single and double
+         * quotation marks.  Some SCP clients (i.e. newer libssh2) will
+         * quote the paths, assuming that the handling server (us) uses
+         * a shell to handle the command.  Sigh.
+         */
+        if ((glob_path[0] == '\'' &&
+             glob_path[pathlen-1] == '\'') ||
+            (glob_path[0] == '"' &&
+             glob_path[pathlen-1] == '"')) {
+          glob_path[pathlen-1] = '\0';
+          glob_path = (glob_path + 1);
+          pathlen -= 2;
+        }
+
+        res = pr_fs_glob(glob_path, GLOB_NOSORT|GLOB_BRACE, NULL, &gl);
         switch (res) {
           case 0: {
             register unsigned int j;
@@ -1884,6 +1902,20 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
         sp = pcalloc(paths->pool, sizeof(struct scp_path));
         sp->path = pstrdup(paths->pool, reqargv[i]);
         pathlen = strlen(sp->path);
+
+        /* Remove any enclosing shell quotations, e.g. single and double
+         * quotation marks.  Some SCP clients (i.e. newer libssh2) will
+         * quote the paths, assuming that the handling server (us) uses
+         * a shell to handle the command.  Sigh.
+         */
+        if ((sp->path[0] == '\'' &&
+             sp->path[pathlen-1] == '\'') ||
+            (sp->path[0] == '"' &&
+             sp->path[pathlen-1] == '"')) {
+          sp->path[pathlen-1] = '\0';
+          sp->path = (sp->path + 1);
+          pathlen -= 2;
+        } 
 
         /* Trim any trailing path separators.  It's important. */
         while (pathlen > 1 &&
