@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.167 2009-08-15 01:57:30 castaglia Exp $
+ * $Id: mod_ls.c,v 1.168 2009-09-28 21:27:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -274,8 +274,14 @@ static int sendline(int flags, char *fmt, ...) {
       res = pr_data_xfer(listbuf, listbuflen);
       if (res < 0 &&
           errno != 0) {
+        int xerrno = errno;
+
+        if (session.d) {
+          xerrno = PR_NETIO_ERRNO(session.d->outstrm);
+        }
+
         pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s", res,
-          strerror(PR_NETIO_ERRNO(session.d->outstrm)));
+          strerror(xerrno));
       }
 
       memset(listbuf, '\0', listbufsz);
@@ -295,8 +301,14 @@ static int sendline(int flags, char *fmt, ...) {
     res = pr_data_xfer(listbuf, strlen(listbuf));
     if (res < 0 &&
         errno != 0) {
+      int xerrno = errno;
+
+      if (session.d) {
+        xerrno = PR_NETIO_ERRNO(session.d->outstrm);
+      }
+
       pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s", res,
-        strerror(PR_NETIO_ERRNO(session.d->outstrm)));
+        strerror(xerrno));
     }
 
     memset(listbuf, '\0', listbufsz);
@@ -1246,7 +1258,9 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
     while ((*opt)++ && isalnum((int) **opt)) {
       switch (**opt) {
         case '1':
-          opt_l = opt_C = 0;
+          if (strcmp(session.curr_cmd, C_STAT) != 0) {
+            opt_l = opt_C = 0;
+          }
           break;
 
         case 'A':
