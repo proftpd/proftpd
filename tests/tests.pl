@@ -81,6 +81,7 @@ if (scalar(@ARGV) > 0) {
     t/commands/stor.t
     t/commands/stou.t
     t/commands/appe.t
+    t/commands/stat.t
     t/commands/abor.t
     t/commands/mlsd.t
     t/commands/mlst.t
