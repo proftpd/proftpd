@@ -570,7 +570,7 @@ sub xcwd_ok {
   unlink($log_file);
 }
 
-sub cwd_symlinks_traversing {
+sub cwd_symlinks_traversing_bug3297 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -782,7 +782,7 @@ sub cwd_symlinks_traversing {
   unlink($log_file);
 }
 
-sub cwd_symlinks_oneshot {
+sub cwd_symlinks_oneshot_bug3297 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
