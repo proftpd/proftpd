@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1068 2009-09-29 20:50:28 castaglia Exp $
+$Id: NEWS,v 1.1069 2009-09-29 21:46:04 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -49,6 +49,8 @@ CVS
 - Bug 3293 - SFTPCipher arcfour256 does not work properly.
 - Bug 3294 - Support configurable HiddenStores prefixes.
 - Bug 3295 - proftpd segfaults when STAT is used with ListOptions "-1".
+- Bug 3296 - mod_quotatab should reject an upload via APPE if the quota is
+  already exceeded.
 - Bug 3297 - Symlinks to directories which end in trailing slashes may not be
   handled properly.
 
