@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.83 2009-08-10 17:01:55 castaglia Exp $
+ * $Id: fsio.c,v 1.84 2009-09-29 20:50:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1590,13 +1590,13 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
       }
 
       /* Handle "./" */
-      if (!strncmp(where, "./", 2)) {
+      if (strncmp(where, "./", 2) == 0) {
         where += 2;
         continue;
       }
 
       /* Handle "../" */
-      if (!strncmp(where, "../", 3)) {
+      if (strncmp(where, "../", 3) == 0) {
         where += 3;
         ptr = last = workpath;
 
@@ -1611,16 +1611,16 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
       }
 
       ptr = strchr(where, '/');
-
-      if (!ptr) {
+      if (ptr == NULL) {
         size_t wherelen = strlen(where);
 
         ptr = where;
         if (wherelen >= 1)
           ptr += (wherelen - 1);
 
-      } else
+      } else {
         *ptr = '\0';
+      }
 
       sstrncpy(namebuf, workpath, sizeof(namebuf));
 
@@ -1668,6 +1668,10 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
         *(linkpath + len) = '\0';
         if (*linkpath == '/')
           *workpath = '\0';
+
+        /* Trim any trailing slash. */
+        if (linkpath[len-1] == '/')
+          linkpath[len-1] = '\0';
 
         if (*linkpath == '~') {
           char tmpbuf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
@@ -1831,6 +1835,10 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
 
         if (*linkpath == '/')
           *workpath = '\0';
+
+        /* Trim any trailing slash. */
+        if (linkpath[len-1] == '/')
+          linkpath[len-1] = '\0';
 
         if (*linkpath == '~') {
           char tmpbuf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
