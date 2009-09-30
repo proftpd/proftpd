@@ -2729,11 +2729,12 @@ static void tls_cleanup(int flags) {
      * be depriving those modules of OpenSSL functionality.
      *
      * At the moment, the modules known to use OpenSSL are mod_ldap,
-     * mod_sftp, and mod_sql.
+     * mod_sftp, mod_sql, and mod_sql_passwd.
      */
     if (pr_module_get("mod_ldap.c") == NULL &&
         pr_module_get("mod_sftp.c") == NULL &&
-        pr_module_get("mod_sql.c") == NULL) {
+        pr_module_get("mod_sql.c") == NULL &&
+        pr_module_get("mod_sql_passwd.c") == NULL) {
       ERR_free_strings();
       ERR_remove_state(0);
       EVP_cleanup();
