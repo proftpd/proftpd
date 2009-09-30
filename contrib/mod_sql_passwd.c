@@ -21,10 +21,11 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.1 2009-09-09 18:17:14 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.2 2009-09-30 20:51:44 castaglia Exp $
  */
 
 #include "conf.h"
+#include "privs.h"
 #include "mod_sql.h"
 
 #define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.0"
@@ -48,6 +49,9 @@ static int sql_passwd_engine = FALSE;
 #define SQL_PASSWD_USE_HEX_LC		2
 #define SQL_PASSWD_USE_HEX_UC		3
 static unsigned int sql_passwd_encoding = SQL_PASSWD_USE_HEX_LC;
+
+static char *sql_passwd_salt = NULL;
+static size_t sql_passwd_salt_len = 0;
 
 static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext, const char *digest) {
@@ -81,6 +85,15 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
 
   EVP_DigestInit(&md_ctxt, md);
   EVP_DigestUpdate(&md_ctxt, plaintext, strlen(plaintext));
+
+  if (sql_passwd_salt_len > 0) {
+    /* If we have salt data, add it to the mix. */
+    pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION
+      ": adding %u bytes of salt data", sql_passwd_salt_len);
+    EVP_DigestUpdate(&md_ctxt, (unsigned char *) sql_passwd_salt,
+      sql_passwd_salt_len);
+  }
+
   EVP_DigestFinal(&md_ctxt, mdval, &mdlen);
 
   memset(buf, '\0', sizeof(buf));
@@ -202,6 +215,15 @@ MODRET set_sqlpasswdengine(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: SQLPasswordSaltFile path|"none" */
+MODRET set_sqlpasswdsaltfile(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return PR_HANDLED(cmd);
+}
+
 /* Initialization routines
  */
 
@@ -243,6 +265,85 @@ static int sql_passwd_sess_init(void) {
     sql_passwd_encoding = *((unsigned int *) c->argv[0]);
   }
 
+  c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordSaltFile", FALSE);
+  if (c) {
+    char *path;
+
+    path = c->argv[0];
+    if (strcasecmp(path, "none") != 0) {
+      int fd;
+
+      PRIVS_ROOT
+      fd = open(path, O_RDONLY);
+      PRIVS_RELINQUISH
+
+      if (fd >= 0) {
+        char buf[512];
+        ssize_t nread;
+   
+        nread = read(fd, buf, sizeof(buf));
+        while (nread > 0) {
+          pr_signals_handle();
+
+          if (sql_passwd_salt == NULL) {
+
+            /* If the very last byte in the buffer is a newline, trim it. */
+            if (buf[nread-1] == '\n') {
+              buf[nread-1] = '\0';
+              nread--;
+            }
+
+            sql_passwd_salt_len = nread;
+            sql_passwd_salt = palloc(session.pool, sql_passwd_salt_len);
+            memcpy(sql_passwd_salt, buf, nread);
+
+          } else {
+            char *ptr, *tmp;
+
+            /* Allocate a larger buffer for the salt. */
+            ptr = tmp = palloc(session.pool, sql_passwd_salt_len + nread);
+            memcpy(tmp, sql_passwd_salt, sql_passwd_salt_len);
+            tmp += sql_passwd_salt_len;
+
+            memcpy(tmp, buf, nread);
+            sql_passwd_salt_len += nread;
+
+            /* XXX Yes, this is a minor memory leak; we are overwriting the
+             * previously allocated memory for the salt.  But it's per-session,
+             * so it's not a great concern at this point.
+             */
+            sql_passwd_salt = ptr;
+          }
+
+          nread = read(fd, buf, sizeof(buf));
+        }
+
+        if (nread < 0) {
+          pr_log_debug(DEBUG1, MOD_SQL_PASSWD_VERSION
+            ": error reading salt data from SQLPasswordSaltFile '%s': %s",
+            path, strerror(errno));
+          sql_passwd_salt = NULL;
+        }
+
+        (void) close(fd);
+
+        /* If the very last byte in the buffer is a newline, trim it.  This
+         * is to deal with cases where the SaltFile may have been written
+         * with an editor (e.g. vi) which automatically adds a trailing newline.
+         */
+        if (sql_passwd_salt[sql_passwd_salt_len-1] == '\n') {
+          sql_passwd_salt[sql_passwd_salt_len-1] = '\0';
+          sql_passwd_salt_len--;
+        }
+ 
+      } else {
+        pr_log_debug(DEBUG1, MOD_SQL_PASSWD_VERSION
+          ": unable to read SQLPasswordSaltFile '%s': %s", path,
+          strerror(errno));
+      }
+    }
+  }
+
   return 0;
 }
 
@@ -252,6 +353,7 @@ static int sql_passwd_sess_init(void) {
 static conftable sql_passwd_conftab[] = {
   { "SQLPasswordEncoding",	set_sqlpasswdencoding,	NULL },
   { "SQLPasswordEngine",	set_sqlpasswdengine,	NULL },
+  { "SQLPasswordSaltFile",	set_sqlpasswdsaltfile,	NULL },
 
   { NULL, NULL, NULL }
 };
