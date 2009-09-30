@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.3 2009-09-30 22:18:05 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.4 2009-09-30 22:21:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -365,7 +365,9 @@ static int sql_passwd_sess_init(void) {
           sql_passwd_salt_suffix = FALSE;
 
         } else {
-          /* The default, for better/worse, is to use suffix the salt. */
+          /* The default, for better/worse, is to append the salt as
+           * a suffix.
+           */
           sql_passwd_salt_suffix = TRUE;
         }
 
