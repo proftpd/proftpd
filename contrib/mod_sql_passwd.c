@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.2 2009-09-30 20:51:44 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.3 2009-09-30 22:18:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -52,6 +52,7 @@ static unsigned int sql_passwd_encoding = SQL_PASSWD_USE_HEX_LC;
 
 static char *sql_passwd_salt = NULL;
 static size_t sql_passwd_salt_len = 0;
+static unsigned int sql_passwd_salt_suffix = TRUE;
 
 static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext, const char *digest) {
@@ -84,9 +85,24 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
   }
 
   EVP_DigestInit(&md_ctxt, md);
+
+  /* If a salt is configured, do we use the salt as a prefix (i.e. throw
+   * it into the digest before the user-supplied password) or as a suffix?
+   */
+
+  if (sql_passwd_salt_len > 0 &&
+      sql_passwd_salt_suffix == FALSE) {
+    /* If we have salt data, add it to the mix. */
+    pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION
+      ": adding %u bytes of salt data", sql_passwd_salt_len);
+    EVP_DigestUpdate(&md_ctxt, (unsigned char *) sql_passwd_salt,
+      sql_passwd_salt_len);
+  }
+
   EVP_DigestUpdate(&md_ctxt, plaintext, strlen(plaintext));
 
-  if (sql_passwd_salt_len > 0) {
+  if (sql_passwd_salt_len > 0 &&
+      sql_passwd_salt_suffix == TRUE) {
     /* If we have salt data, add it to the mix. */
     pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION
       ": adding %u bytes of salt data", sql_passwd_salt_len);
@@ -215,12 +231,17 @@ MODRET set_sqlpasswdengine(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: SQLPasswordSaltFile path|"none" */
+/* usage: SQLPasswordSaltFile path|"none" ["prefix"|"suffix"] */
 MODRET set_sqlpasswdsaltfile(cmd_rec *cmd) {
-  CHECK_ARGS(cmd, 1);
+  if (cmd->argc < 2 ||
+      cmd->argc > 3) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  (void) add_config_param_str(cmd->argv[0], 2, cmd->argv[1],
+    cmd->argc == 3 ? cmd->argv[2] : "suffix");
   return PR_HANDLED(cmd);
 }
 
@@ -268,8 +289,11 @@ static int sql_passwd_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordSaltFile", FALSE);
   if (c) {
     char *path;
+    char *suffix;
 
     path = c->argv[0];
+    suffix = c->argv[1];
+
     if (strcasecmp(path, "none") != 0) {
       int fd;
 
@@ -335,7 +359,16 @@ static int sql_passwd_sess_init(void) {
           sql_passwd_salt[sql_passwd_salt_len-1] = '\0';
           sql_passwd_salt_len--;
         }
- 
+
+        /* Determine whether to use the obtained salt as a prefix or suffix. */ 
+        if (strcasecmp(suffix, "prefix") == 0) {
+          sql_passwd_salt_suffix = FALSE;
+
+        } else {
+          /* The default, for better/worse, is to use suffix the salt. */
+          sql_passwd_salt_suffix = TRUE;
+        }
+
       } else {
         pr_log_debug(DEBUG1, MOD_SQL_PASSWD_VERSION
           ": unable to read SQLPasswordSaltFile '%s': %s", path,

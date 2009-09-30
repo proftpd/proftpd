@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql_passwd.html,v 1.3 2009-09-30 21:05:23 castaglia Exp $ -->
+<!-- $Id: mod_sql_passwd.html,v 1.4 2009-09-30 22:18:05 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql_passwd.html,v $ -->
 
 <html>
@@ -98,7 +98,7 @@ registered <code>SQLAuthType</code> handlers.
 
 <hr>
 <h2><a name="SQLPasswordSaltFile">SQLPasswordSaltFile</a></h2>
-<strong>Syntax:</strong> SQLPasswordSaltFile <em>path|"none"</em><br>
+<strong>Syntax:</strong> SQLPasswordSaltFile <em>path|"none" ["prefix"|"suffix"]</em><br>
 <strong>Default:</strong> <em>none</em><br>
 <strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>
 <strong>Module:</strong> mod_sql_passwd<br>
@@ -116,6 +116,21 @@ the <code>mod_sql_passwd</code> file will automatically trim the last newline
 in the salt data, if there is one.  This means that if your salt <b>must</b>
 end in a newline character, then your <code>SQLPasswordSaltFile</code> must
 contain "<i>salt</i>\n\n".
+
+<p>
+When using salted passwords, some systems will add the salt as a prefix to
+the data, and others will append the salt as a suffix.  The optional second
+parameter to <code>SQLPasswordSaltFile</code> controls how this module will
+use the salt:
+<pre>
+  SQLPasswordSaltFile /path/to/salt prefix
+</pre>
+tells <code>mod_sql_passwd</code> to use the salt as a prefix, and:
+<pre>
+  SQLPasswordSaltFile /path/to/salt suffix
+</pre>
+will cause the salt to be appended as a sufix.  <b>Note</b> that the default
+behavior is to append the salt as a suffix.
 
 <p>
 If no <code>SQLPasswordSaltFile</code> is configured, then no salting is done.
@@ -199,7 +214,7 @@ uppercase, you would use:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-09-30 21:05:23 $</i><br>
+Last Updated: <i>$Date: 2009-09-30 22:18:05 $</i><br>
 
 <br><hr>
 
