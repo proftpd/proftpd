@@ -147,7 +147,6 @@
 ../modules/mod_auth_file.c
 ../modules/mod_auth_pam.c
 ../modules/mod_auth_unix.c
-../modules/mod_ban.c
 ../modules/mod_cap.c
 ../modules/mod_core.c
 ../modules/mod_ctrls.c
@@ -159,12 +158,7 @@
 ../modules/mod_lang.c
 ../modules/mod_log.c
 ../modules/mod_ls.c
-../modules/mod_quotatab.c
-../modules/mod_quotatab_sql.c
 ../modules/mod_site.c
-../modules/mod_sql.c
-../modules/mod_sql_passwd.c
-../modules/mod_sql_sqlite.c
 ../modules/module_glue.c
 ../modules/mod_xfer.c
 ../src/auth.c
