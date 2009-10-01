@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.50 2009-09-29 21:46:04 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.51 2009-10-01 16:13:38 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -491,16 +491,29 @@ static quota_regtab_t *quotatab_get_backend(const char *backend,
 }
 
 /* Returns TRUE if the given path is to be ignored, FALSE otherwise. */
-static int quotatab_ignore_path(const char *path) {
-  if (!path)
+static int quotatab_ignore_path(pool *p, const char *path) {
+  char *abs_path;
+
+  if (path == NULL) {
     return FALSE;
+  }
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  if (quota_exclude_re == NULL)
+  if (quota_exclude_re == NULL) {
     return FALSE;
+  }
 
-  if (regexec(quota_exclude_re, path, 0, NULL, 0) == 0)
+  /* Always apply the filter to the absolute path. */
+  abs_path = dir_abs_path(p, path, TRUE);
+  if (abs_path == NULL) {
+    quotatab_log("unable to resolve absolute path for '%s': %s", path,
+      strerror(errno));
+    abs_path = (char *) path;
+  }
+
+  if (regexec(quota_exclude_re, abs_path, 0, NULL, 0) == 0) {
     return TRUE;
+  }
 
   return FALSE;
 #else
@@ -520,7 +533,7 @@ static int quotatab_scan_dir(pool *p, const char *path, uid_t uid,
     return -1;
   }
 
-  if (quotatab_ignore_path(path)) {
+  if (quotatab_ignore_path(p, path)) {
     quotatab_log("path '%s' matches QuotaExcludeFilter '%s', ignoring",
       path, quota_exclude_filter);
     return 0;
@@ -1261,8 +1274,8 @@ MODRET set_quotaexcludefilter(cmd_rec *cmd) {
   }
 
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
-  c->argv[1] = pstrdup(c->pool, cmd->argv[1]);
-  c->argv[2] = (void *) re;
+  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+  c->argv[1] = (void *) re;
   return PR_HANDLED(cmd);
 
 #else
@@ -1537,7 +1550,7 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
   if (!use_quotas)
     return PR_DECLINED(cmd);
 
-  if (quotatab_ignore_path(cmd->arg)) {
+  if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
@@ -1633,7 +1646,7 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
   if (!use_quotas)
     return PR_DECLINED(cmd);
 
-  if (quotatab_ignore_path(cmd->arg)) {
+  if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
@@ -1763,7 +1776,7 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
   if (!use_quotas)
     return PR_DECLINED(cmd); 
 
-  if (quotatab_ignore_path(cmd->arg)) {
+  if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
@@ -2351,7 +2364,7 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
   if (!use_quotas)
     return PR_DECLINED(cmd);
 
-  if (quotatab_ignore_path(cmd->arg)) {
+  if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
@@ -2422,7 +2435,7 @@ MODRET quotatab_post_retr(cmd_rec *cmd) {
   if (!use_quotas)
     return PR_DECLINED(cmd);
 
-  if (quotatab_ignore_path(cmd->arg)) {
+  if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
@@ -2485,7 +2498,7 @@ MODRET quotatab_post_retr_err(cmd_rec *cmd) {
   if (!use_quotas)
     return PR_DECLINED(cmd);
 
-  if (quotatab_ignore_path(cmd->arg)) {
+  if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
@@ -2582,7 +2595,7 @@ MODRET quotatab_post_rmd(cmd_rec *cmd) {
   if (!use_quotas || !use_dirs)
     return PR_DECLINED(cmd);
 
-  if (quotatab_ignore_path(cmd->arg)) {
+  if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
@@ -2626,7 +2639,7 @@ MODRET quotatab_post_rnto(cmd_rec *cmd) {
   if (!use_quotas)
     return PR_DECLINED(cmd);
 
-  if (quotatab_ignore_path(cmd->arg)) {
+  if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
@@ -2652,7 +2665,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
   if (!use_quotas)
     return PR_DECLINED(cmd);
 
-  if (quotatab_ignore_path(cmd->arg)) {
+  if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
@@ -2736,7 +2749,7 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
   if (!use_quotas)
     return PR_DECLINED(cmd);
 
-  if (quotatab_ignore_path(cmd->arg)) {
+  if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
@@ -2865,7 +2878,7 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
   if (!use_quotas)
     return PR_DECLINED(cmd);
 
-  if (quotatab_ignore_path(cmd->arg)) {
+  if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
@@ -3257,9 +3270,10 @@ static int quotatab_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "QuotaExcludeFilter", FALSE);
-  if (c && c->argc == 3) {
-     quota_exclude_filter = c->argv[1];
-     quota_exclude_re = c->argv[2];
+  if (c &&
+      c->argc == 2) {
+     quota_exclude_filter = c->argv[0];
+     quota_exclude_re = c->argv[1];
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "QuotaOptions", FALSE);
