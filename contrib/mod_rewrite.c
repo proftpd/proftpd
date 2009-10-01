@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.48 2009-07-23 14:37:16 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.49 2009-10-01 00:12:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -277,7 +277,7 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
 
   } else if (strcmp(var, "%t") == 0) {
     char *timestr = pcalloc(cmd->tmp_pool, 80 * sizeof(char));
-    snprintf(timestr, 80, "%lu", time(NULL));
+    snprintf(timestr, 80, "%lu", (unsigned long) time(NULL));
     timestr[79] = '\0';
     return timestr;
 
