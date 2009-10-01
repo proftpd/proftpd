@@ -61,7 +61,7 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
-  sql_passwd_salt_file_prefix => {
+  sql_passwd_salt_file_prepend => {
     order => ++$order,
     test_class => [qw(forking)],
   },
@@ -1551,7 +1551,7 @@ EOS
   unlink($log_file);
 }
 
-sub sql_passwd_salt_file_prefix {
+sub sql_passwd_salt_file_prepend {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -1655,7 +1655,7 @@ EOS
       'mod_sql_passwd.c' => {
         SQLPasswordEngine => 'on',
         SQLPasswordEncoding => 'hex',
-        SQLPasswordSaltFile => "$salt_file prefix",
+        SQLPasswordSaltFile => "$salt_file prepend",
       },
     },
   };
