@@ -15,6 +15,13 @@ ChangeLog files.
     server to manually delete their old ScoreboardFiles.  Otherwise they
     will see "error opening scoreboard: bad version (too old)" errors.
 
+  + Changed SQL connection policy (Bug#3290).  Important for clients which
+    connect but don't authenticated (e.g. mod_ban, mod_dnsbl, mod_wrap2_sql,
+    etc which will reject connected clients prior to authentication); saves
+    on unnecessary database connections in such cases.  For sites which
+    require the old behavior, there is a new "PERCONNECTION" connection
+    policy.
+
   + New modules
 
     mod_sql_passwd
@@ -345,4 +352,4 @@ ChangeLog files.
         this will probably not apply to most modules.
 
  
-Last Updated: $Date: 2009-09-23 16:01:13 $
+Last Updated: $Date: 2009-10-02 21:26:53 $

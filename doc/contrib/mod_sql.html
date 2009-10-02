@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.18 2009-09-09 18:45:18 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.19 2009-10-02 21:26:53 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -353,9 +353,15 @@ A given database connection is governed by a connection policy that specifies
 when a connection should be opened and when it should be closed.  There are 
 three options:
 <ul>
+  <li><b>PERCONNECTION</b><br>
+    Open a database connection when the client connects to the server,
+    and close the database connection when the client disconnects.<br>
+  </li>
+  <br>
+
   <li><b>PERSESSION</b><br>
-    Open a database connection at the start of the session and close the
-    database connection at the end of the session.<br>
+    Open a database connection on first use (<i>e.g.</i> during authentication)
+    and close the database connection at the end of the session.<br>
   </li>
   <br>
 
@@ -1320,7 +1326,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-09-09 18:45:18 $</i><br>
+Last Updated: <i>$Date: 2009-10-02 21:26:53 $</i><br>
 
 <br><hr>
 
