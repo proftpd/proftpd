@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.267 2009-09-28 21:22:22 castaglia Exp $
+ * $Id: mod_auth.c,v 1.268 2009-10-02 23:38:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -75,9 +75,16 @@ static int auth_cmd_chk_cb(cmd_rec *cmd) {
  */
 
 static int auth_login_timeout_cb(CALLBACK_FRAME) {
-  pr_event_generate("core.timeout-login", NULL);
   pr_response_send_async(R_421,
-    _("Login Timeout (%d seconds): closing control connection"), TimeoutLogin);
+    _("Login timeout (%d seconds): closing control connection"), TimeoutLogin);
+
+  /* It's possible that any listeners of this event might terminate the
+   * session process themselves (e.g. mod_ban).  So write out that the
+   * TimeoutLogin has been exceeded to the log here, in addition to the
+   * scheduled session exit message.
+   */
+  pr_log_pri(PR_LOG_NOTICE, "Login timeout exceeded, disconnected");
+  pr_event_generate("core.timeout-login", NULL);
 
   session_exit(PR_LOG_NOTICE, "Session timed out, disconnected", 0, NULL);
 

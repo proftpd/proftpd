@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.46 2009-09-04 17:13:10 castaglia Exp $
+ * $Id: scoreboard.c,v 1.47 2009-10-02 23:38:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -49,6 +49,8 @@ static struct flock entry_lock;
 static unsigned char scoreboard_read_locked = FALSE;
 static unsigned char scoreboard_write_locked = FALSE;
 
+static const char *trace_channel = "scoreboard";
+
 /* Internal routines */
 
 static char *handle_score_str(const char *fmt, va_list cmdap) {
@@ -61,6 +63,8 @@ static char *handle_score_str(const char *fmt, va_list cmdap) {
 
 static int read_scoreboard_header(pr_scoreboard_header_t *sch) {
   int res = 0;
+
+  pr_trace_msg(trace_channel, 7, "reading scoreboard header");
 
   /* NOTE: reading a struct from a file using read(2) -- bad (in general). */
   while ((res = read(scoreboard_fd, sch, sizeof(pr_scoreboard_header_t))) !=
@@ -335,6 +339,8 @@ int pr_close_scoreboard(void) {
   if (scoreboard_read_locked || scoreboard_write_locked)
     unlock_scoreboard();
 
+  pr_trace_msg(trace_channel, 4, "closing scoreboard fd %d", scoreboard_fd);
+
   while (close(scoreboard_fd) < 0) {
     if (errno == EINTR) {
       pr_signals_handle();
@@ -368,9 +374,10 @@ void pr_delete_scoreboard(void) {
   if (*scoreboard_file) {
     struct stat st;
 
-    if (stat(scoreboard_file, &st) == 0)
+    if (stat(scoreboard_file, &st) == 0) {
       pr_log_debug(DEBUG3, "deleting existing scoreboard '%s'",
         scoreboard_file);
+    }
 
     (void) unlink(scoreboard_file);
   }
@@ -457,6 +464,8 @@ int pr_open_scoreboard(int flags) {
     /* Write-lock the scoreboard file. */
     if (wlock_scoreboard() < 0)
       return -1;
+
+    pr_trace_msg(trace_channel, 7, "writing scoreboard header");
 
     while (write(scoreboard_fd, &header, sizeof(header)) != sizeof(header)) {
       int wr_errno = errno;
@@ -577,6 +586,8 @@ int pr_scoreboard_entry_add(void) {
     return -1;
   }
 
+  pr_trace_msg(trace_channel, 3, "adding new scoreboard entry");
+
   /* Write-lock the scoreboard file. */
   if (wlock_scoreboard() < 0)
     return -1;
@@ -639,9 +650,11 @@ int pr_scoreboard_entry_del(unsigned char verbose) {
   }
 
   if (!have_entry) {
-    errno = EPERM;
+    errno = ENOENT;
     return -1;
   }
+
+  pr_trace_msg(trace_channel, 3, "deleting scoreboard entry");
 
   memset(&entry, '\0', sizeof(entry));
 
@@ -683,6 +696,8 @@ pr_scoreboard_entry_t *pr_scoreboard_entry_read(void) {
     if (rlock_scoreboard() < 0)
       return NULL; 
   }
+
+  pr_trace_msg(trace_channel, 5, "reading scoreboard entry");
 
   memset(&scan_entry, '\0', sizeof(scan_entry));
 
@@ -771,6 +786,8 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
     errno = EPERM;
     return -1;
   }
+
+  pr_trace_msg(trace_channel, 3, "updating scoreboard entry");
 
   /* If updating some fields, clear the begin_idle field.
    */

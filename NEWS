@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1071 2009-10-02 21:22:56 castaglia Exp $
+$Id: NEWS,v 1.1072 2009-10-02 23:38:57 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -56,6 +56,7 @@ CVS
 - Bug 3298 - QuotaExcludeFilter directive ignored by mod_quotatab.
 - Bug 3290 - Change default mod_sql connection policy to open database
   connection on first use.
+- Bug 3281 - TimeoutLogin not handled properly by mod_ban.
 
 1.3.3rc1 - Released 30-Jun-2009
 --------------------------------

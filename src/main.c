@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.382 2009-09-21 21:06:28 castaglia Exp $
+ * $Id: main.c,v 1.383 2009-10-02 23:38:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -180,18 +180,24 @@ static void end_login_noexit(void) {
     /* For standalone daemons, we only clear the scoreboard slot if we are
      * an exiting child process.
      */
-    if (!is_master &&
-        pr_scoreboard_entry_del(TRUE) < 0 &&
-        errno != EINVAL)
-      pr_log_debug(DEBUG1, "error deleting scoreboard entry: %s",
-        strerror(errno));
+
+    if (!is_master) {
+      if (pr_scoreboard_entry_del(TRUE) < 0 &&
+          errno != EINVAL &&
+          errno != ENOENT) {
+        pr_log_debug(DEBUG1, "error deleting scoreboard entry: %s",
+          strerror(errno));
+      }
+    }
 
   } else if (ServerType == SERVER_INETD) {
     /* For inetd-spawned daemons, we always clear the scoreboard slot. */
     if (pr_scoreboard_entry_del(TRUE) < 0 &&
-        errno != EINVAL)
+        errno != EINVAL &&
+        errno != ENOENT) {
       pr_log_debug(DEBUG1, "error deleting scoreboard entry: %s",
         strerror(errno));
+    }
   }
 
   /* If session.user is set, we have a valid login. */
@@ -1886,7 +1892,10 @@ static void handle_segv(int signo, siginfo_t *info, void *ptr) {
 
 static RETSIGTYPE sig_terminate(int signo) {
 
-  /* Make sure the scoreboard slot is properly cleared. */
+  /* Make sure the scoreboard slot is properly cleared.  Note that this is
+   * possibly redundant, as it should already be handled properly in
+   * end_login_noexit().
+   */
   pr_scoreboard_entry_del(FALSE);
 
   /* Capture the signal number for later display purposes. */

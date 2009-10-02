@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.29 2009-06-10 16:18:22 castaglia Exp $
+ * $Id: mod_ban.c,v 1.30 2009-10-02 23:38:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -312,6 +312,7 @@ static int ban_disconnect_class(const char *class) {
   pr_scoreboard_entry_t *score = NULL;
   unsigned char kicked_class = FALSE;
   unsigned int nclients = 0;
+  pid_t session_pid;
 
   if (!class) {
     errno = EINVAL;
@@ -319,7 +320,8 @@ static int ban_disconnect_class(const char *class) {
   }
 
   /* Iterate through the scoreboard, and send a SIGTERM to each
-   * pid whose class matches the given class.
+   * PID whose class matches the given class.  Make sure that we exclude
+   * our own PID from that list; our own termination is handled elsewhere.
    */
 
   if (pr_rewind_scoreboard() < 0 &&
@@ -328,10 +330,13 @@ static int ban_disconnect_class(const char *class) {
       "error rewinding scoreboard: %s", strerror(errno));
   }
 
+  session_pid = getpid();
+
   while ((score = pr_scoreboard_entry_read()) != NULL) {
     pr_signals_handle();
 
-    if (strcmp(class, score->sce_class) == 0) {
+    if (score->sce_pid != session_pid &&
+        strcmp(class, score->sce_class) == 0) {
       int res = 0;
 
       PRIVS_ROOT
@@ -375,6 +380,7 @@ static int ban_disconnect_host(const char *host) {
   pr_scoreboard_entry_t *score = NULL;
   unsigned char kicked_host = FALSE;
   unsigned int nclients = 0;
+  pid_t session_pid;
 
   if (!host) {
     errno = EINVAL;
@@ -382,7 +388,8 @@ static int ban_disconnect_host(const char *host) {
   }
 
   /* Iterate through the scoreboard, and send a SIGTERM to each
-   * pid whose address matches the given host.
+   * PID whose address matches the given host.  Make sure that we exclude
+   * our own PID from that list; our own termination is handled elsewhere.
    */
 
   if (pr_rewind_scoreboard() < 0 &&
@@ -391,10 +398,13 @@ static int ban_disconnect_host(const char *host) {
       "error rewinding scoreboard: %s", strerror(errno));
   }
 
+  session_pid = getpid();
+
   while ((score = pr_scoreboard_entry_read()) != NULL) {
     pr_signals_handle();
 
-    if (strcmp(host, score->sce_client_addr) == 0) {
+    if (score->sce_pid != session_pid &&
+        strcmp(host, score->sce_client_addr) == 0) {
       int res = 0;
 
       PRIVS_ROOT
@@ -438,6 +448,7 @@ static int ban_disconnect_user(const char *user) {
   pr_scoreboard_entry_t *score = NULL;
   unsigned char kicked_user = FALSE;
   unsigned int nclients = 0;
+  pid_t session_pid;
 
   if (!user) {
     errno = EINVAL;
@@ -445,7 +456,8 @@ static int ban_disconnect_user(const char *user) {
   }
 
   /* Iterate through the scoreboard, and send a SIGTERM to each
-   * pid whose name matches the given user name.
+   * PID whose name matches the given user name.  Make sure that we exclude
+   * our own PID from that list; our own termination is handled elsewhere.
    */
 
   if (pr_rewind_scoreboard() < 0 &&
@@ -454,10 +466,13 @@ static int ban_disconnect_user(const char *user) {
       "error rewinding scoreboard: %s", strerror(errno));
   }
 
+  session_pid = getpid();
+
   while ((score = pr_scoreboard_entry_read()) != NULL) {
     pr_signals_handle();
 
-    if (strcmp(user, score->sce_user) == 0) {
+    if (score->sce_pid != session_pid &&
+        strcmp(user, score->sce_user) == 0) {
       int res = 0;
 
       PRIVS_ROOT
@@ -1819,15 +1834,19 @@ static void ban_handle_event(unsigned int ev_type, int ban_type,
     }
 
     if (bee->bee_count_curr >= bee->bee_count_max) {
+      int res;
+
       /* Threshold has been reached, add an entry to the ban list.
        * Check for an existing entry first, though.
        */
 
-      if (ban_list_exists(ban_type, main_server->sid, src, NULL) < 0) {
+      res = ban_list_exists(ban_type, main_server->sid, src, NULL);
+      if (res < 0) {
         const char *reason = pstrcat(tmp_pool, event, " autoban at ",
           pr_strtime(time(NULL)), NULL);
 
         ban_list_expire();
+
         if (ban_list_add(ban_type, main_server->sid, src, reason,
             tmpl->bee_expires, tmpl->bee_mesg) < 0) {
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
