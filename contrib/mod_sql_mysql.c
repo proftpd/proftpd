@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.57 2009-09-07 01:24:16 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.58 2009-10-02 21:22:56 castaglia Exp $
  */
 
 /*
@@ -448,8 +448,7 @@ MODRET cmd_open(cmd_rec *cmd) {
 
   /* Make sure we have a new conn struct */
   conn->mysql = mysql_init(NULL);
-
-  if (!conn->mysql) {
+  if (conn->mysql == NULL) {
     pr_log_pri(PR_LOG_ERR, MOD_SQL_MYSQL_VERSION
       ": failed to allocate memory for MYSQL structure.  Shutting down.");
     sql_log(DEBUG_WARN, "%s", "failed to allocate memory for MYSQL structure. "
@@ -546,8 +545,19 @@ MODRET cmd_open(cmd_rec *cmd) {
   /* bump connections */
   entry->connections++;
 
-  /* set up our timer if necessary */
-  if (entry->ttl > 0) {
+  if (pr_sql_conn_policy == SQL_CONN_POLICY_PERSESSION) {
+    /* If the connection policy is PERSESSION... */
+    if (entry->connections == 1) {
+      /* ...and we are actually opening the first connection to the database;
+       * we want to make sure this connection stays open, after this first use
+       * (as per Bug#3290).  To do this, we re-bump the connection count.
+       */
+      entry->connections++;
+    } 
+ 
+  } else if (entry->ttl > 0) { 
+    /* Set up our timer if necessary */
+
     entry->timer = pr_timer_add(entry->ttl, -1, &sql_mysql_module,
       sql_timer_cb, "mysql connection ttl");
     sql_log(DEBUG_INFO, "connection '%s' - %d second timer started",
@@ -722,12 +732,11 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
   havehost = strchr(db, '@');
   haveport = strchr(db, ':');
 
-  /*
-   * if haveport, parse it, otherwise default it. 
-   * if haveport, set it to '\0'
+  /* If haveport, parse it, otherwise default it. 
+   * If haveport, set it to '\0'.
    *
-   * if havehost, parse it, otherwise default it.
-   * if havehost, set it to '\0'
+   * If havehost, parse it, otherwise default it.
+   * If havehost, set it to '\0'.
    */
 
   if (haveport) {
@@ -768,10 +777,15 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
       "named connection already exists");
   }
 
-  entry->ttl = (cmd->argc == 5) ? 
-    (int) strtol(cmd->argv[4], (char **)NULL, 10) : 0;
-  if (entry->ttl < 0) 
-    entry->ttl = 0;
+  if (cmd->argc == 5) { 
+    entry->ttl = (int) strtol(cmd->argv[4], (char **) NULL, 10);
+    if (entry->ttl >= 1) {
+      pr_sql_conn_policy = SQL_CONN_POLICY_TIMER;
+ 
+    } else {
+      entry->ttl = 0;
+    }
+  }
 
   entry->timer = 0;
   entry->connections = 0;

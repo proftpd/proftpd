@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.15 2009-06-30 16:41:42 castaglia Exp $
+ * $Id: mod_sql_sqlite.c,v 1.16 2009-10-02 21:22:56 castaglia Exp $
  * $Libraries: -lsqlite3 $
  */
 
@@ -257,8 +257,18 @@ MODRET sql_sqlite_open(cmd_rec *cmd) {
 
   entry->nconn++;
 
-  /* Set up our timer, if necessary. */
-  if (entry->ttl > 0) {
+  if (pr_sql_conn_policy == SQL_CONN_POLICY_PERSESSION) {
+    /* If the connection policy is PERSESSION... */
+    if (entry->nconn == 1) {
+      /* ...and we are actually opening the first connection to the database;
+       * we want to make sure this connection stays open, after this first use
+       * (as per Bug#3290).  To do this, we re-bump the connection count.
+       */
+      entry->nconn++;
+    }
+
+  } else if (entry->ttl > 0) {
+    /* Set up our timer, if necessary. */
     entry->timer = pr_timer_add(entry->ttl, -1, &sql_sqlite_module,
       sql_sqlite_timer_cb, "sqlite connection ttl");
 
@@ -389,10 +399,15 @@ MODRET sql_sqlite_def_conn(cmd_rec *cmd) {
       "named connection already exists");
   }
 
-  entry->ttl = (cmd->argc == 5) ? 
-    (int) strtol(cmd->argv[4], (char **) NULL, 10) : 0;
-  if (entry->ttl < 0) 
-    entry->ttl = 0;
+  if (cmd->argc == 5) {
+    entry->ttl = (int) strtol(cmd->argv[4], (char **) NULL, 10);
+    if (entry->ttl >= 1) {
+      pr_sql_conn_policy = SQL_CONN_POLICY_TIMER;
+
+    } else {
+      entry->ttl = 0;
+    }
+  }
 
   entry->timer = 0;
   entry->nconn = 0;

@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.173 2009-09-09 18:17:14 castaglia Exp $
+ * $Id: mod_sql.c,v 1.174 2009-10-02 21:22:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -98,7 +98,9 @@
 extern pr_response_t *resp_list,*resp_err_list;
 
 module sql_module;
+
 unsigned long pr_sql_opts = 0UL;
+unsigned int pr_sql_conn_policy = 0;
 
 /* For tracking the size of deleted files. */
 static off_t sql_dele_filesz = 0;
@@ -5112,7 +5114,7 @@ static int sql_sess_init(void) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   sql_data_t *sd = NULL;
-  int percall = 0, res = 0;
+  int res = 0;
   char *fieldset = NULL;
   pool *tmp_pool = NULL;
 
@@ -5501,8 +5503,15 @@ static int sql_sess_init(void) {
       "warning: no SQLConnectInfo specified. mod_sql is OFF");
 
   } else {
-    if (strcasecmp(c->argv[3], "percall") == 0)
-      percall = 1;
+    pr_sql_conn_policy = SQL_CONN_POLICY_PERSESSION;
+
+    if (strcasecmp(c->argv[3], "perconn") == 0 ||
+        strcasecmp(c->argv[3], "perconnection") == 0) {
+      pr_sql_conn_policy = SQL_CONN_POLICY_PERCONN;
+
+    } else if (strcasecmp(c->argv[3], "percall") == 0) {
+      pr_sql_conn_policy = SQL_CONN_POLICY_PERCALL;
+    }
 
     cmd = _sql_make_cmd(tmp_pool, 5, "default", c->argv[1], c->argv[2],
       c->argv[0], c->argv[3]);
@@ -5511,19 +5520,18 @@ static int sql_sess_init(void) {
       return -1;
 
     SQL_FREE_CMD(cmd);
-  
-    if (!percall) {
+
+    if (pr_sql_conn_policy == SQL_CONN_POLICY_PERCONN) {
+      /* Open a database connection now, so that we have a database connection
+       * for the lifetime of the client's connection to the server.
+       */
       cmd = _sql_make_cmd(tmp_pool, 1, "default");
       mr = _sql_dispatch(cmd, "sql_open");
       if (check_response(mr) < 0)
         return -1;
 
       SQL_FREE_CMD(cmd);
-      sql_log(DEBUG_INFO, "%s", "backend successfully connected.");
-
-    } else {
-      sql_log(DEBUG_INFO, "%s",
-        "backend will not be checked until first use.");
+      sql_log(DEBUG_INFO, "%s", "backend successfully connected");
     }
 
     cmap.engine = SQL_ENGINE_FL_AUTH|SQL_ENGINE_FL_LOG;

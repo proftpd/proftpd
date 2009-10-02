@@ -24,7 +24,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.h,v 1.9 2009-09-09 18:17:14 castaglia Exp $
+ * $Id: mod_sql.h,v 1.10 2009-10-02 21:22:56 castaglia Exp $
  */
 
 #ifndef MOD_SQL_H
@@ -93,7 +93,15 @@ extern unsigned long pr_sql_opts;
 #define SQL_OPT_NO_DISCONNECT_ON_ERROR          0x0001
 #define SQL_OPT_USE_NORMALIZED_GROUP_SCHEMA     0x0002
 #define SQL_OPT_NO_RECONNECT                    0x0004
-                
+
+/* SQL connection policy */
+extern unsigned int pr_sql_conn_policy;
+
+#define SQL_CONN_POLICY_PERSESSION	1
+#define SQL_CONN_POLICY_TIMER		2
+#define SQL_CONN_POLICY_PERCALL		3
+#define SQL_CONN_POLICY_PERCONN		4
+
 #endif /* MOD_SQL_H */
 
 
