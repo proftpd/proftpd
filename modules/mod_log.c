@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.96 2009-10-03 19:03:16 castaglia Exp $
+ * $Id: mod_log.c,v 1.97 2009-10-03 19:35:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -327,6 +327,10 @@ static void logformat(char *nickname, char *fmts) {
 
           case '%':
             *outs++ = '%';
+            break;
+
+          default:
+            *outs++ = *tmp;
             break;
         }
 
@@ -1086,9 +1090,10 @@ static void do_log(cmd_rec *cmd, logfile_t *lf) {
   bp = logbuf;
 
   while (*f && size) {
+    pr_signals_handle();
+
     if (*f == META_START) {
       s = get_next_meta(cmd->tmp_pool, cmd, &f);
-
       if (s) {
         size_t tmp;
 
@@ -1210,11 +1215,13 @@ static void find_extendedlogs(void) {
 
     if (logfmt_s) {
       /* search for the format-nickname */
-      for (logfmt = formats; logfmt; logfmt = logfmt->next)
-        if (strcmp(logfmt->lf_nickname, logfmt_s) == 0)
+      for (logfmt = formats; logfmt; logfmt = logfmt->next) {
+        if (strcmp(logfmt->lf_nickname, logfmt_s) == 0) {
           break;
+        }
+      }
 
-      if (!logfmt) {
+      if (logfmt == NULL) {
         pr_log_pri(PR_LOG_NOTICE,
           "ExtendedLog '%s' uses unknown format nickname '%s'", logfname,
           logfmt_s);
