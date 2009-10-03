@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.95 2009-07-21 15:47:54 castaglia Exp $
+ * $Id: mod_log.c,v 1.96 2009-10-03 19:03:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -362,18 +362,22 @@ MODRET set_logformat(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-static int _parse_classes(char *s) {
-  int classes = 0;
+static int parse_classes(char *s) {
+  int classes = CL_NONE;
   char *nextp = NULL;
 
   do {
+    pr_signals_handle();
 
-    if ((nextp = strchr(s, ',')))
+    nextp = strchr(s, ',');
+    if (nextp != NULL) {
       *nextp++ = '\0';
 
-    if (!nextp) {
-      if ((nextp = strchr(s, '|')))
+    } else {
+      nextp = strchr(s, '|');
+      if (nextp != NULL) {
         *nextp++ = '\0';
+      }
     }
 
     if (strcasecmp(s, "NONE") == 0) {
@@ -411,7 +415,10 @@ static int _parse_classes(char *s) {
       pr_log_pri(PR_LOG_NOTICE, "ExtendedLog class '%s' is not defined", s);
     }
 
-  } while ((s = nextp));
+    /* Advance to the next class in the list. */
+    s = nextp;
+
+  } while (s);
 
   return classes;
 }
@@ -1163,10 +1170,9 @@ static int log_init(void) {
 
 static void find_extendedlogs(void) {
   config_rec *c;
-  char *logfname;
+  char *logfname, *logfmt_s;
   int logclasses = CL_ALL;
   logformat_t *logfmt;
-  char *logfmt_s = NULL;
   logfile_t *extlog = NULL;
 
   /* We _do_ actually want the recursion here.  The reason is that we want
@@ -1179,10 +1185,14 @@ static void find_extendedlogs(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "ExtendedLog", TRUE);
   while (c) {
+    pr_signals_handle();
+
     logfname = c->argv[0];
+    logfmt_s = NULL;
 
     if (c->argc > 1) {
-      logclasses = _parse_classes(c->argv[1]);
+      logclasses = parse_classes((char *) c->argv[1]);
+
       if (c->argc > 2) {
         logfmt_s = c->argv[2];
       }
@@ -1194,7 +1204,7 @@ static void find_extendedlogs(void) {
      * Bug#1908.
      */
     if (logclasses == CL_NONE &&
-        c->parent->config_type != CONF_ANON) {
+        (c->parent != NULL && c->parent->config_type != CONF_ANON)) {
       goto loop_extendedlogs;
     }
 
