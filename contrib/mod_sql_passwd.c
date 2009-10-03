@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.6 2009-10-03 16:34:21 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.7 2009-10-03 16:35:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -95,7 +95,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       sql_passwd_salt_append == FALSE) {
     /* If we have salt data, add it to the mix. */
     pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION
-      ": adding %u bytes of salt data", sql_passwd_salt_len);
+      ": adding %lu bytes of salt data", (unsigned long) sql_passwd_salt_len);
     EVP_DigestUpdate(&md_ctxt, (unsigned char *) sql_passwd_salt,
       sql_passwd_salt_len);
   }
@@ -106,7 +106,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       sql_passwd_salt_append == TRUE) {
     /* If we have salt data, add it to the mix. */
     pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION
-      ": adding %u bytes of salt data", sql_passwd_salt_len);
+      ": adding %lu bytes of salt data", (unsigned long) sql_passwd_salt_len);
     EVP_DigestUpdate(&md_ctxt, (unsigned char *) sql_passwd_salt,
       sql_passwd_salt_len);
   }
