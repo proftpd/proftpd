@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.5 2009-10-01 15:25:34 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.6 2009-10-03 16:34:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -52,7 +52,7 @@ static unsigned int sql_passwd_encoding = SQL_PASSWD_USE_HEX_LC;
 
 static char *sql_passwd_salt = NULL;
 static size_t sql_passwd_salt_len = 0;
-static unsigned int sql_passwd_salt_apprend = TRUE;
+static unsigned int sql_passwd_salt_append = TRUE;
 
 static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext, const char *digest) {
