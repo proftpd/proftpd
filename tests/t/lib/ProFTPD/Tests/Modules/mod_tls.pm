@@ -86,6 +86,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  tls_opts_std_env_vars_client_vars => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
 };
 
 sub new {
@@ -2138,6 +2143,185 @@ sub tls_opts_std_env_vars {
           test_msg("Expected cipher, got '$cipher"));      
         $self->assert(length($libversion) > 0,
           test_msg("Expected cipher, got '$libversion"));      
+
+        $ok = 1;
+        last;
+
+      } else {
+        die("Mismatched ExtendedLog line '$line'");
+      }
+    }
+
+    close($fh);
+
+    unless ($ok) {
+      die("Unexpected environment variable values in ExtendedLog");
+    }
+
+  } else {
+    die("Can't read $ext_log: $!");
+  }
+
+  unlink($log_file);
+}
+
+sub tls_opts_std_env_vars_client_vars {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/tls.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/client-cert.pem');
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    LogFormat => 'custom "TLS_CLIENT_S_DN=\'%{TLS_CLIENT_S_DN}e\' TLS_CLIENT_I_DN=\'%{TLS_CLIENT_I_DN}e\'"',
+    ExtendedLog => "$ext_log AUTH custom",
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $log_file,
+        TLSProtocol => 'SSLv3 TLSv1',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+        TLSOptions => 'StdEnvVars',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      # IO::Socket::SSL options
+      my $ssl_opts = {
+        SSL_use_cert => 1,
+        SSL_cert_file => $client_cert,
+        SSL_key_file => $client_cert,
+      };
+
+      my $client = Net::FTPSSL->new('127.0.0.1',
+        Croak => 1,
+        Encryption => 'E',
+        Port => $port,
+        SSL_Advanced => $ssl_opts,
+      );
+
+      unless ($client) {
+        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      }
+
+      unless ($client->login($user, $passwd)) {
+        die("Can't login: " . $client->last_message());
+      }
+
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  # Open the ExtendedLog, and check for the expected environment variables
+  if (open(my $fh, "< $ext_log")) {
+    my $ok = 0;
+
+    while (my $line = <$fh>) {
+      chomp($line);
+
+      if ($line =~ /TLS_CLIENT_S_DN='(.*?)' TLS_CLIENT_I_DN='(.*?)'/) {
+        my $subj_dn = $1;
+        my $issuer_dn = $2;
+
+        $self->assert(length($subj_dn) > 0,
+          test_msg("Expected subject DN, got '$subj_dn'"));      
+        $self->assert(length($issuer_dn) > 0,
+          test_msg("Expected issuer DN, got '$issuer_dn'"));      
 
         $ok = 1;
         last;
