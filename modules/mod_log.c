@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.97 2009-10-03 19:35:24 castaglia Exp $
+ * $Id: mod_log.c,v 1.98 2009-10-04 00:23:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -417,6 +417,7 @@ static int parse_classes(char *s) {
 
     } else {
       pr_log_pri(PR_LOG_NOTICE, "ExtendedLog class '%s' is not defined", s);
+      return -1;
     }
 
     /* Advance to the next class in the list. */
@@ -461,7 +462,17 @@ MODRET set_extendedlog(cmd_rec *cmd) {
   }
 
   if (argc > 2) {
-    c->argv[1] = pstrdup(log_pool, cmd->argv[2]);
+    int res;
+
+    /* Parse the given class names, to make sure that they are all valid. */
+    res = parse_classes(cmd->argv[2]);
+    if (res < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid log class in '",
+        cmd->argv[2], NULL));    
+    }
+
+    c->argv[1] = palloc(c->pool, sizeof(int));
+    *((int *) c->argv[1]) = res;
   }
 
   if (argc > 3) {
@@ -1196,7 +1207,7 @@ static void find_extendedlogs(void) {
     logfmt_s = NULL;
 
     if (c->argc > 1) {
-      logclasses = parse_classes((char *) c->argv[1]);
+      logclasses = *((int *) c->argv[1]);
 
       if (c->argc > 2) {
         logfmt_s = c->argv[2];
