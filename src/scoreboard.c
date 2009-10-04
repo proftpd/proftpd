@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.47 2009-10-02 23:38:57 castaglia Exp $
+ * $Id: scoreboard.c,v 1.48 2009-10-04 19:52:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -772,6 +772,63 @@ const char *pr_scoreboard_entry_get(int field) {
   return NULL;
 }
 
+/* Given a NUL-terminated string -- possibly UTF8-encoded -- and a maximum
+ * buffer length, return the number of bytes in the string which can fit in
+ * that buffer without truncating a character.  This is needed since UTF8
+ * characters are variable-width.
+ */
+static size_t str_getlen(const char *str, size_t maxsz) {
+#ifdef PR_USE_NLS
+  register unsigned int i = 0;
+
+  while (str[i] > 0 &&
+         i < maxsz) {
+ascii:
+    pr_signals_handle();
+    i++;
+  }
+
+  while (str[i] &&
+         i < maxsz) {
+    size_t len;
+
+    if (str[i] > 0) {
+      goto ascii;
+    }
+
+    pr_signals_handle();
+
+    len = 0;
+
+    switch (str[i] & 0xF0) {
+      case 0xE0:
+        len = 3;
+        break;
+
+      case 0xF0:
+        len = 4;
+        break;
+
+      default:
+        len = 2;
+        break;
+    }
+
+    if ((i + len) < maxsz) {
+      i += len;
+
+    } else {
+      break;
+    }
+  }
+
+  return i;
+#else
+  /* No UTF8 support in this proftpd build; just return the max size. */
+  return maxsz;
+#endif /* !PR_USE_NLS */
+}
+
 int pr_scoreboard_entry_update(pid_t pid, ...) {
   va_list ap;
   char *tmp = NULL;
@@ -801,7 +858,8 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
       case PR_SCORE_USER:
         tmp = va_arg(ap, char *);
         memset(entry.sce_user, '\0', sizeof(entry.sce_user));
-        sstrncpy(entry.sce_user, tmp, sizeof(entry.sce_user));
+        sstrncpy(entry.sce_user, tmp,
+          str_getlen(tmp, sizeof(entry.sce_user)-1) + 1);
         break;
 
       case PR_SCORE_CLIENT_ADDR: {
@@ -816,11 +874,17 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
 
       case PR_SCORE_CLIENT_NAME: {
           char *remote_name = va_arg(ap, char *);
-          
-          snprintf(entry.sce_client_name, sizeof(entry.sce_client_name),
-            "%s", remote_name ? remote_name : "(unknown)");
-          entry.sce_client_name[sizeof(entry.sce_client_name) - 1] = '\0';
 
+          if (remote_name == NULL) {
+            remote_name = "(unknown)";
+          }
+
+          memset(entry.sce_client_name, '\0', sizeof(entry.sce_client_name));
+
+          snprintf(entry.sce_client_name,
+            str_getlen(remote_name, sizeof(entry.sce_client_name)-1),
+            "%s", remote_name);
+          entry.sce_client_name[sizeof(entry.sce_client_name)-1] = '\0';
         }
         break;
 
@@ -833,7 +897,8 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
       case PR_SCORE_CWD:
         tmp = va_arg(ap, char *);
         memset(entry.sce_cwd, '\0', sizeof(entry.sce_cwd));
-        sstrncpy(entry.sce_cwd, tmp, sizeof(entry.sce_cwd));
+        sstrncpy(entry.sce_cwd, tmp,
+          str_getlen(tmp, sizeof(entry.sce_cwd)-1) + 1);
         break;
 
       case PR_SCORE_CMD: {
@@ -853,7 +918,8 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
           argstr = handle_score_str(tmp, ap);
 
           memset(entry.sce_cmd_arg, '\0', sizeof(entry.sce_cmd_arg));
-          sstrncpy(entry.sce_cmd_arg, argstr, sizeof(entry.sce_cmd_arg));
+          sstrncpy(entry.sce_cmd_arg, argstr,
+            str_getlen(argstr, sizeof(entry.sce_cmd_arg)-1) + 1);
           tmp = va_arg(ap, void *);
         }
         break;

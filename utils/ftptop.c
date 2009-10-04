@@ -26,7 +26,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.36 2009-09-04 17:13:10 castaglia Exp $
+ * $Id: ftptop.c,v 1.37 2009-10-04 19:52:54 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.9"
@@ -37,6 +37,10 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <time.h>
+
+#if defined(PR_USE_NLS) && defined(HAVE_LOCALE_H)
+# include <locale.h>
+#endif
 
 static const char *program = "ftptop";
 
@@ -65,11 +69,11 @@ static const char *program = "ftptop";
 
 /* These are for displaying "PID S USER CLIENT SERVER TIME COMMAND" */
 #define FTPTOP_REG_HEADER_FMT	"%-5s %s %-8s %-20s %-15s %-4s %-*s\n"
-#define FTPTOP_REG_DISPLAY_FMT	"%-5u %s %-8.8s %-20.20s %-15s %-6.6s %4s %-*.*s\n"
+#define FTPTOP_REG_DISPLAY_FMT	"%-5u %s %-*.*s %-*.*s %-15s %-6.6s %4s %-*.*s\n"
 
 /* These are for displaying tranfer data: "PID S USER CLIENT KB/s %DONE" */
 #define FTPTOP_XFER_HEADER_FMT	"%-5s %s %-8s %-44s %-10s %-*s\n"
-#define FTPTOP_XFER_DISPLAY_FMT	"%-5u %s %-8.8s %-44.44s %-10.2f %-*s\n"
+#define FTPTOP_XFER_DISPLAY_FMT	"%-5u %s %-*.*s %-*.*s %-10.2f %-*.*s\n"
 
 #define FTPTOP_REG_ARG_MIN_SIZE		20
 #define FTPTOP_XFER_DONE_MIN_SIZE	6
@@ -156,6 +160,64 @@ static char *calc_percent_done(off_t size, off_t done) {
   }
 
   return sbuf;
+}
+
+/* Given a NUL-terminated string -- possibly UTF8-encoded -- and a maximum
+ * CHARACTER length, return the number of bytes in the string which can fit in
+ * that max length  without truncating a character.  This is needed since UTF8
+ * characters are variable-width.
+ */
+static int str_getscreenlen(const char *str, size_t max_chars) {
+#ifdef PR_USE_NLS
+  register unsigned int i = 0;
+  int nbytes = 0, nchars = 0;
+
+  while (str[i] > 0 &&
+         i < max_chars) {
+ascii:
+    i++;
+    nbytes++;
+    nchars++;
+  }
+
+  while (str[i] &&
+         nchars < max_chars) {
+    size_t len;
+
+    if (str[i] > 0) {
+      goto ascii;
+    }
+
+    len = 0;
+
+    switch (str[i] & 0xF0) {
+      case 0xE0:
+        len = 3;
+        break;
+
+      case 0xF0:
+        len = 4;
+        break;
+
+      default:
+        len = 2;
+        break;
+    }
+
+    /* Increment the index with the given length, but increment the
+     * character count only one.
+     */
+
+    i += len;
+    nbytes += len;
+    nchars++;
+  }
+
+  return nbytes;
+#else
+  /* No UTF8 support in this proftpd build; just return the max characters. */
+  return (int) max_chars;
+#endif /* !PR_USE_NLS */
 }
 
 /* Borrowed from ftpwho.c */
@@ -404,24 +466,37 @@ static void read_scoreboard(void) {
     }
 
     if (display_mode != FTPTOP_SHOW_RATES) {
+      int user_namelen, client_namelen, cmd_arglen;
+
+      user_namelen = str_getscreenlen(score->sce_user, 8);
+      client_namelen = str_getscreenlen(score->sce_client_name, 20);
+      cmd_arglen = str_getscreenlen(score->sce_cmd_arg, FTPTOP_REG_ARG_SIZE);
+
       snprintf(buf, sizeof(buf), FTPTOP_REG_DISPLAY_FMT,
-        (unsigned int) score->sce_pid, status, score->sce_user,
-        score->sce_client_name, score->sce_server_addr,
+        (unsigned int) score->sce_pid, status,
+        user_namelen, user_namelen, score->sce_user,
+        client_namelen, client_namelen, score->sce_client_name,
+        score->sce_server_addr,
         show_time(&score->sce_begin_session), score->sce_cmd,
-       FTPTOP_REG_ARG_SIZE, FTPTOP_REG_ARG_SIZE, score->sce_cmd_arg);
+        cmd_arglen, cmd_arglen, score->sce_cmd_arg);
       buf[sizeof(buf)-1] = '\0';
 
     } else {
+      int user_namelen, client_namelen;
+
+      user_namelen = str_getscreenlen(score->sce_user, 8);
+      client_namelen = str_getscreenlen(score->sce_client_name, 44);
 
       /* Skip sessions unless they are actually transferring data */
       if (*status != 'U' && *status != 'D')
         continue;
 
       snprintf(buf, sizeof(buf), FTPTOP_XFER_DISPLAY_FMT,
-        (unsigned int) score->sce_pid, status, score->sce_user,
-        score->sce_client_name,
+        (unsigned int) score->sce_pid, status,
+        user_namelen, user_namelen, score->sce_user,
+        client_namelen, client_namelen, score->sce_client_name,
         (score->sce_xfer_len / 1024.0) / (score->sce_xfer_elapsed / 1000),
-        FTPTOP_XFER_DONE_SIZE,
+        FTPTOP_XFER_DONE_SIZE, FTPTOP_XFER_DONE_SIZE,
         *status == 'D' ?
           calc_percent_done(score->sce_xfer_size, score->sce_xfer_done) :
           "(n/a)");
@@ -518,11 +593,13 @@ static void show_sessions(void) {
 
   attron(A_REVERSE);
 
-  if (display_mode != FTPTOP_SHOW_RATES)
+  if (display_mode != FTPTOP_SHOW_RATES) {
     printw(FTPTOP_REG_HEADER_FMT, "PID", "S", "USER", "CLIENT", "SERVER",
       "TIME", FTPTOP_REG_ARG_SIZE, "COMMAND");
-  else
+
+  } else {
     printw(FTPTOP_XFER_HEADER_FMT, "PID", "S", "USER", "CLIENT", "KB/s", FTPTOP_XFER_DONE_SIZE, "%DONE");
+  }
 
   attroff(A_REVERSE);
 
@@ -596,6 +673,10 @@ int main(int argc, char *argv[]) {
   /* Install signal handlers. */
   signal(SIGINT, finish);
   signal(SIGTERM, finish);
+
+#if defined(PR_USE_NLS) && defined(HAVE_LOCALE_H)
+  (void) setlocale(LC_ALL, "");
+#endif
 
   /* Initialize the display. */
   initscr();
