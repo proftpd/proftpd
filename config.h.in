@@ -729,6 +729,9 @@
 /* Define if you have the ncurses library (-lncurses).  */
 #undef HAVE_LIBNCURSES
 
+/* Define if you have the ncurses library (-lncursesw).  */
+#undef HAVE_LIBNCURSESW
+
 /* Define if you have the nsl library (-lnsl).  */
 #undef HAVE_LIBNSL
 
@@ -863,6 +866,9 @@
 
 /* Define if ncurses support, if available, should be used.  */
 #undef PR_USE_NCURSES
+
+/* Define if ncursesw support, if available, should be used.  */
+#undef PR_USE_NCURSESW
 
 /* Define if OpenSSL support, if available, should be used.  */
 #undef PR_USE_OPENSSL

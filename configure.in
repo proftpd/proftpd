@@ -1738,11 +1738,30 @@ if test x"$ac_cv_header_curses_h" = xyes; then
     ])
 fi
 
+pr_have_ncursesw="no"
 if test x"$ac_cv_header_ncurses_h" = xyes; then
-  AC_CHECK_LIB(ncurses, initscr,
-    [ CURSES_LIBS="-lncurses"
-      AC_DEFINE(HAVE_LIBNCURSES, 1, [Define if you have ncurses])
-    ])
+  dnl If NLS support has been enabled, then check for the locale-sensitive
+  dnl libncursesw library first; if not found, or if no NLS support, then
+  dnl check for libncurses.
+
+  if test x"$enable_nls" = xyes ; then
+    AC_CHECK_LIB(ncursesw, initscr,
+      [ CURSES_LIBS="-lncursesw"
+        pr_have_ncursesw="yes"
+        AC_DEFINE(HAVE_LIBNCURSESW, 1, [Define if you have ncursesw])
+      ], [
+        AC_CHECK_LIB(ncurses, initscr,
+          [ CURSES_LIBS="-lncurses"
+            AC_DEFINE(HAVE_LIBNCURSES, 1, [Define if you have ncurses])
+          ])
+      ])
+
+  else 
+    AC_CHECK_LIB(ncurses, initscr,
+      [ CURSES_LIBS="-lncurses"
+        AC_DEFINE(HAVE_LIBNCURSES, 1, [Define if you have ncurses])
+      ])
+  fi
 fi
 
 if test x"$enable_curses" != xno ; then
@@ -1750,7 +1769,11 @@ if test x"$enable_curses" != xno ; then
 fi
 
 if test x"$enable_ncurses" != xno ; then
-  AC_DEFINE(PR_USE_NCURSES)
+  if test x"$pr_have_ncursesw" = xyes ; then
+    AC_DEFINE(PR_USE_NCURSESW)
+  else
+    AC_DEFINE(PR_USE_NCURSES)
+  fi
 fi
 
 if test x"$enable_ident" != xno ; then
