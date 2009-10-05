@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.175 2009-10-05 16:52:31 castaglia Exp $
+ * $Id: mod_sql.c,v 1.176 2009-10-05 22:52:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2322,7 +2322,7 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name) {
   modret_t *mr = NULL;
   int num = 0;
 
-  sql_log(DEBUG_FUNC, "%s", ">>> process_named_query");
+  sql_log(DEBUG_FUNC, ">>> process_named_query '%s'", name);
 
   /* Check for a query by that name */
 
@@ -2442,7 +2442,7 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name) {
     mr = PR_ERROR(cmd);
   }
  
-  sql_log(DEBUG_FUNC, "%s", "<<< process_named_query");
+  sql_log(DEBUG_FUNC, "<<< process_named_query '%s'", name);
 
   return mr;
 }
