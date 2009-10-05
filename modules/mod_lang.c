@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.29 2009-09-08 17:25:13 castaglia Exp $
+ * $Id: mod_lang.c,v 1.30 2009-10-05 22:23:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -722,6 +722,7 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
 static void lang_restart_ev(const void *event_data, void *user_data) {
   destroy_pool(lang_pool);
   lang_list = NULL;
+  lang_aliases = NULL;
 
   lang_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(lang_pool, MOD_LANG_VERSION);
