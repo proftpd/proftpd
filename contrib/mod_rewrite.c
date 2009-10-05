@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.49 2009-10-01 00:12:44 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.50 2009-10-05 22:47:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -221,7 +221,7 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
 
   } else if (strcmp(var, "%P") == 0) {
     char *pid = pcalloc(cmd->tmp_pool, 8 * sizeof(char));
-    snprintf(pid, 8, "%u", getpid());
+    snprintf(pid, 8, "%lu", (unsigned long) getpid());
     pid[7] = '\0';
     return pid;
 

@@ -26,7 +26,7 @@
  * This is mod_shaper, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_shaper.c,v 1.1 2009-04-27 23:10:43 castaglia Exp $
+ * $Id: mod_shaper.c,v 1.2 2009-10-05 22:47:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2172,18 +2172,19 @@ static void shaper_sigusr2_ev(const void *event_data, void *user_data) {
   switch (res) {
     case -1:
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
-        "error receiving updates for pid %u: %s", getpid(), strerror(errno));
+        "error receiving updates for pid %lu: %s", (unsigned long) getpid(),
+        strerror(errno));
       break;
 
     case 0:
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
-        "received signal, no updates for pid %u", getpid());
+        "received signal, no updates for pid %lu", (unsigned long) getpid());
       break;
 
     default:
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
-        "received signal, read in %d %s for pid %u", res,
-        res == 1 ? "update" : "updates", getpid());
+        "received signal, read in %d %s for pid %lu", res,
+        res == 1 ? "update" : "updates", (unsigned long) getpid());
   }
 
   return;
