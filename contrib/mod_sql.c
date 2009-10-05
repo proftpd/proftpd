@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.174 2009-10-02 21:22:56 castaglia Exp $
+ * $Id: mod_sql.c,v 1.175 2009-10-05 16:52:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2205,7 +2205,8 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
     case 'T':
       argp = arg;
-      if (session.xfer.p) {
+      if (session.xfer.p &&
+          session.xfer.start_time.tv_sec > 0) {
         struct timeval end_time;
       
         gettimeofday(&end_time, NULL);
