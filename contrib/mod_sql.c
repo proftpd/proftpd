@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.176 2009-10-05 22:52:10 castaglia Exp $
+ * $Id: mod_sql.c,v 1.177 2009-10-05 23:26:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2461,12 +2461,11 @@ MODRET log_master(cmd_rec *cmd) {
   name = pstrcat(cmd->tmp_pool, "SQLLog_", cmd->argv[0], NULL);
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
-
   if (c) {
     do {
       pr_signals_handle();
 
-      sql_log(DEBUG_FUNC, "%s", ">>> log_master");
+      sql_log(DEBUG_FUNC, ">>> log_master (%s)", name);
 
       qname = c->argv[0];
       type = named_query_type(cmd, qname);
@@ -2488,20 +2487,19 @@ MODRET log_master(cmd_rec *cmd) {
 	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
       }
 
-      sql_log(DEBUG_FUNC, "%s", "<<< log_master");
+      sql_log(DEBUG_FUNC, "<<< log_master (%s)", name);
     } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
   }
   
-  /* handle implit queries */
+  /* handle implicit queries */
   name = pstrcat(cmd->tmp_pool, "SQLLog_*", NULL);
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
-
   if (c) {
     do {
       pr_signals_handle();
 
-      sql_log(DEBUG_FUNC, "%s", ">>> log_master");
+      sql_log(DEBUG_FUNC, ">>> log_master (%s)", name);
 
       qname = c->argv[0];
       type = named_query_type(cmd, qname);
@@ -2523,7 +2521,7 @@ MODRET log_master(cmd_rec *cmd) {
 	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
       }
 
-      sql_log(DEBUG_FUNC, "%s", "<<< log_master");
+      sql_log(DEBUG_FUNC, "<<< log_master (%s)", name);
     } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
   }
 
@@ -2544,12 +2542,11 @@ MODRET err_master(cmd_rec *cmd) {
   name = pstrcat(cmd->tmp_pool, "SQLLog_ERR_", cmd->argv[0], NULL);
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
-
   if (c) {
     do {
       pr_signals_handle();
 
-      sql_log(DEBUG_FUNC, "%s", ">>> err_master");
+      sql_log(DEBUG_FUNC, ">>> err_master (%s)", name);
 
       qname = c->argv[0];
       type = named_query_type(cmd, qname);
@@ -2571,7 +2568,7 @@ MODRET err_master(cmd_rec *cmd) {
 	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
       }
 
-      sql_log(DEBUG_FUNC, "%s", "<<< err_master");
+      sql_log(DEBUG_FUNC, "<<< err_master (%s)", name);
     } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
   }
   
@@ -2579,12 +2576,11 @@ MODRET err_master(cmd_rec *cmd) {
   name = pstrcat(cmd->tmp_pool, "SQLLog_ERR_*", NULL);
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
-
   if (c) {
     do {
       pr_signals_handle();
 
-      sql_log(DEBUG_FUNC, "%s", ">>> err_master");
+      sql_log(DEBUG_FUNC, ">>> err_master (%s)", name);
 
       qname = c->argv[0];
       type = named_query_type(cmd, qname);
@@ -2606,7 +2602,7 @@ MODRET err_master(cmd_rec *cmd) {
 	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
       }
 
-      sql_log(DEBUG_FUNC, "%s", "<<< err_master");
+      sql_log(DEBUG_FUNC, "<<< err_master (%s)", name);
     } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
   }
 
@@ -2631,7 +2627,7 @@ MODRET info_master(cmd_rec *cmd) {
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   if (c) {
-    sql_log(DEBUG_FUNC, "%s", ">>> info_master");
+    sql_log(DEBUG_FUNC, ">>> info_master (%s)", name);
 
     /* we now have at least one config_rec.  Take the output string from 
      * each, and process it -- resolve tags, and when we find a named 
@@ -2727,7 +2723,7 @@ MODRET info_master(cmd_rec *cmd) {
 
     } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
-    sql_log(DEBUG_FUNC, "%s", "<<< info_master");
+    sql_log(DEBUG_FUNC, "<<< info_master (%s)", name);
   }
 
   /* process implicit handlers */
@@ -2735,7 +2731,7 @@ MODRET info_master(cmd_rec *cmd) {
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   if (c) {
-    sql_log(DEBUG_FUNC, "%s", ">>> info_master");
+    sql_log(DEBUG_FUNC, ">>> info_master (%s)", name);
 
     /* we now have at least one config_rec.  Take the output string from 
      * each, and process it -- resolve tags, and when we find a named 
@@ -2832,7 +2828,7 @@ MODRET info_master(cmd_rec *cmd) {
 
     } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
-    sql_log(DEBUG_FUNC, "%s", "<<< info_master");
+    sql_log(DEBUG_FUNC, "<<< info_master (%s)", name);
   }
 
   return PR_DECLINED(cmd);
@@ -2856,7 +2852,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   if (c) {
-    sql_log(DEBUG_FUNC, "%s", ">>> errinfo_master");
+    sql_log(DEBUG_FUNC, ">>> errinfo_master (%s)", name);
 
     /* we now have at least one config_rec.  Take the output string from 
      * each, and process it -- resolve tags, and when we find a named 
@@ -2953,7 +2949,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
 
     } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
-    sql_log(DEBUG_FUNC, "%s", "<<< errinfo_master");
+    sql_log(DEBUG_FUNC, "<<< errinfo_master (%s)", name);
   }
 
   /* process implicit handlers */
@@ -2961,7 +2957,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   if (c) {
-    sql_log(DEBUG_FUNC, "%s", ">>> errinfo_master");
+    sql_log(DEBUG_FUNC, ">>> errinfo_master (%s)", name);
 
     /* we now have at least one config_rec.  Take the output string from 
      * each, and process it -- resolve tags, and when we find a named 
@@ -3059,7 +3055,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
 
     } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
-    sql_log(DEBUG_FUNC, "%s", "<<< errinfo_master");
+    sql_log(DEBUG_FUNC, "<<< errinfo_master (%s)", name);
   }
 
   return PR_DECLINED(cmd);
