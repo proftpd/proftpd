@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.356 2009-10-05 21:07:50 castaglia Exp $
+ * $Id: mod_core.c,v 1.357 2009-10-05 21:21:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4260,6 +4260,7 @@ MODRET core_dele(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+#ifdef EISDIR
   /* If the path is a directory, try to return a good error message (e.g.
    * EISDIR).
    */
@@ -4273,6 +4274,7 @@ MODRET core_dele(cmd_rec *cmd) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EISDIR));
     return PR_ERROR(cmd);
   }
+#endif /* !EISDIR */
  
   if (pr_fsio_unlink(path) < 0) {
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
