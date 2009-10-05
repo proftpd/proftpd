@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.384 2009-10-04 19:47:51 castaglia Exp $
+ * $Id: main.c,v 1.385 2009-10-05 16:59:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2624,17 +2624,13 @@ static void show_settings(void) {
   printf("    - Lastlog support\n");
 #endif /* PR_USE_LASTLOG */
 
-#if defined(PR_USE_NCURSES) && defined(HAVE_LIBNCURSES)
+#if defined(PR_USE_NCURSESW) && defined(HAVE_LIBNCURSESW)
+  printf("    + ncursesw support\n");
+#elif defined(PR_USE_NCURSES) && defined(HAVE_LIBNCURSES)
   printf("    + ncurses support\n");
 #else
   printf("    - ncurses support\n");
-#endif /* PR_USE_NCURSES && HAVE_LIBNCURSES */
-
-#if defined(PR_USE_NCURSESW) && defined(HAVE_LIBNCURSESW)
-  printf("    + ncursesw support\n");
-#else
-  printf("    - ncursesw support\n");
-#endif /* PR_USE_NCURSESW && HAVE_LIBNCURSESW */
+#endif
 
 #ifdef PR_USE_NLS
   printf("    + NLS support\n");
