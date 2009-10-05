@@ -300,7 +300,7 @@ auth_group_write($auth_group_file, 'test1', $gid+2, $user);
     die($ex);
   }
 
-#  unlink($log_file);
+  unlink($log_file);
 }
 
 1;
