@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.23 2009-09-21 22:55:38 castaglia Exp $
+ * $Id: mod_facts.c,v 1.24 2009-10-05 01:06:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -160,14 +160,6 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
   size_t buflen = 0;
 
   memset(buf, '\0', bufsz);
-
-  /* Make sure the first byte is a leading space character, as per RFC,
-   * if the command is MLST.  MLSD entries do not have the leading space.
-   */
-  if (strcmp(session.curr_cmd, C_MLST) == 0) {
-    buf[0] = ' ';
-    buflen = 1;
-  }
 
   ptr = buf + buflen;
 
