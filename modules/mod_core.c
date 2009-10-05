@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.355 2009-09-15 23:18:17 castaglia Exp $
+ * $Id: mod_core.c,v 1.356 2009-10-05 21:07:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4244,6 +4244,7 @@ MODRET core_dele(cmd_rec *cmd) {
   }
 
   if (!dir_check_canon(cmd->tmp_pool, cmd, cmd->group, path, NULL)) {
+    pr_log_debug(DEBUG7, "deleting '%s' denied by <Limit> configuration", path);
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return PR_ERROR(cmd);
   }
@@ -4259,6 +4260,20 @@ MODRET core_dele(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  /* If the path is a directory, try to return a good error message (e.g.
+   * EISDIR).
+   */
+  if (S_ISDIR(st.st_mode)) {
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      "error deleting '%s': %s", cmd->argv[0], session.user,
+      (unsigned long) session.uid, (unsigned long) session.gid, path,
+      strerror(EISDIR));
+
+    pr_log_debug(DEBUG3, "error deleting '%s': %s", path, strerror(EISDIR));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EISDIR));
+    return PR_ERROR(cmd);
+  }
+ 
   if (pr_fsio_unlink(path) < 0) {
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
       "error deleting '%s': %s", cmd->argv[0], session.user,
