@@ -1,4 +1,4 @@
-<!-- $Id: ServerType.html,v 1.5 2009-03-04 06:11:47 castaglia Exp $ -->
+<!-- $Id: ServerType.html,v 1.6 2009-10-06 15:44:11 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/ServerType.html,v $ -->
 
 <html>
@@ -169,7 +169,7 @@ some shell wrapper script), this kind of error message will appear in your
 More information might be found by <a href="Debugging.html">debugging</a> your
 configuration.
 
-<p>
+<p><a name="Switching">
 <b>Switching Modes</b><br>
 Changing from one <code>ServerType</code> mode to the other is a simple
 process, as long as the few steps involved are followed.
@@ -200,9 +200,47 @@ changes seen.  Check your <code>proftpd.conf</code> to see that
 </pre>
 is there.
 
+<p><a name="FAQ">
+<b>Frequently Asked Questions</b><br>
+
+<font color=red>Question</font>: I have configured:
+<pre>
+  IdentLookups off
+  ServerIdent off
+</pre>
+in my <code>proftpd.conf</code>, but my logins are still slow.  Why?<br>
+<font color=blue>Answer</font>:  Another source of slow logins can be
+<code>xinetd</code>, or <code>tcpwrappers</code> compiled for reverse DNS
+lookups (<i>i.e.</i> with the <code>-DPARANOID</code> option).
+
+<p>
+If you are using <code>ServerType inetd</code>, <i>and</i> you are using
+<code>xinetd</code> to run <code>proftpd</code>, then you should check your
+<code>/etc/xinetd.conf</code> (or <code>/etc/xinetd.d/proftpd</code> or
+similar) file for the <code>USERID</code> parameter, <i>e.g.</i>:
+<pre>
+  log_on_success          += DURATION USERID
+  log_on_failure          += USERID
+</pre>
+As per the <code>xinetd.conf</code> documentation, the use of
+<code>USERID</code> in your configuration causes <code>xinetd</code> to do
+an IDENTD lookup:
+<pre>
+        USERID      logs the user id of the remote user  using
+                    the   RFC  1413  identification  protocol.
+                    This option is available only  for  multi-
+                    threaded stream services.
+</pre>
+Removing <code>USERID</code> from your <code>xinetd</code> configuration
+for proftpd often suffices to fix the slow logins.
+
+<p>
+Another solution is simply to <a href="#Switching">switch</a> your
+<code>ServerType</code> to "standalone".
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2009-03-04 06:11:47 $</i><br>
+Last Updated: <i>$Date: 2009-10-06 15:44:11 $</i><br>
 <hr>
 
 </body>
