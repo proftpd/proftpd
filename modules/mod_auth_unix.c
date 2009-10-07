@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.40 2009-04-03 14:30:21 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.41 2009-10-07 20:38:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -122,6 +122,11 @@ extern unsigned char persistent_passwd;
 #define SP_CVT_DAYS(x)	((x) == (time_t)-1 ? (x) : ((x) * 86400))
 
 #endif /* PR_USE_SHADOW */
+
+/* mod_auth_unix option flags */
+#define AUTH_UNIX_OPT_AIX_NO_RLOGIN		0x0001
+
+static auth_unix_opts = 0UL;
 
 static void p_setpwent(void) {
   if (pwdf)
@@ -592,18 +597,23 @@ MODRET pw_auth(cmd_rec *cmd) {
 MODRET pw_authz(cmd_rec *cmd) {
 
 #ifdef HAVE_LOGINRESTRICTIONS
-  int code = 0;
+  int code = 0, mode = S_RLOGIN;
   char *reason = NULL;
 #endif
 
   /* XXX Any other implementations here? */
 
 #ifdef HAVE_LOGINRESTRICTIONS
+
+  if (auth_unix_opts & AUTH_UNIX_OPT_AIX_NO_RLOGIN) {
+    mode = 0;
+  }
+
   /* Check for account login restrictions and such using AIX-specific
    * functions.
    */
   PRIVS_ROOT
-  if (loginrestrictions(cmd->argv[0], S_RLOGIN, NULL, &reason) != 0) {
+  if (loginrestrictions(cmd->argv[0], mode, NULL, &reason) != 0) {
     PRIVS_RELINQUISH
 
     if (reason &&
@@ -1063,6 +1073,36 @@ MODRET pw_getgroups(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+/* usage: AuthUnixOptions opt1 ... */
+MODRET set_authunixoptions(cmd_rec *cmd) {
+  config_rec *c;
+  register unsigned int i;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc == 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "aixNoRLogin") == 0) {
+      opts |= AUTH_UNIX_OPT_AIX_NO_RLOGIN;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown AuthUnixOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  return PR_HANDLED(cmd);
+}
+
 MODRET set_persistentpasswd(cmd_rec *cmd) {
   int bool = -1;
 
@@ -1100,7 +1140,15 @@ static int auth_unix_init(void) {
 }
 
 static int auth_unix_sess_init(void) {
+  config_rec *c;
+
   pr_event_register(&auth_unix_module, "core.exit", auth_unix_exit_ev, NULL);
+
+  c = find_config(main_server->conf, CONF_PARAM, "AuthUnixOptions", FALSE);
+  if (c) {
+    auth_unix_opts = *((unsigned long *) c->argv[0]);
+  }
+ 
   return 0;
 }
 
@@ -1108,6 +1156,7 @@ static int auth_unix_sess_init(void) {
  */
 
 static conftable auth_unix_conftab[] = {
+  { "AuthUnixOptions",		set_authunixoptions,		NULL },
   { "PersistentPasswd",		set_persistentpasswd,		NULL },
   { NULL,			NULL,				NULL }
 };
