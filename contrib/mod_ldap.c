@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.20-20090817
+ * mod_ldap v2.8.20
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.76 2009-10-12 23:51:09 jwm Exp $
+ * $Id: mod_ldap.c,v 1.77 2009-10-12 23:52:40 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -59,7 +59,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.8.20-20090817"
+#define MOD_LDAP_VERSION	"mod_ldap/2.8.20"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001021002
 # error MOD_LDAP_VERSION " requires ProFTPD 1.2.10rc2 or later"
