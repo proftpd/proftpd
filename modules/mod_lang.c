@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.30 2009-10-05 22:23:28 castaglia Exp $
+ * $Id: mod_lang.c,v 1.31 2009-10-12 23:11:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -191,6 +191,25 @@ static int lang_set_lang(pool *p, const char *lang) {
     curr_lang = setlocale(LC_MESSAGES, NULL);
     pr_log_debug(DEBUG4, MOD_LANG_VERSION ": using %s messages",
       *lang ? lang : curr_lang);
+
+
+    /* Set LC_COLLATE for strcoll(3), for sorted directory listings. */
+    if (setlocale(LC_COLLATE, curr_lang) == NULL) {
+      pr_log_pri(PR_LOG_NOTICE, "unable to set LC_COLLATE to '%s': %s",
+        curr_lang, strerror(errno));
+    }
+
+    /* Set LC_CTYPE for conversion, case-sensitive comparisons, and regexes. */
+    if (setlocale(LC_CTYPE, curr_lang) == NULL) {
+      pr_log_pri(PR_LOG_NOTICE, "unable to set LC_CTYPE to '%s': %s",
+        curr_lang, strerror(errno));
+    }
+
+    /* Set LC_MONETARY, for handling e.g the Euro symbol. */
+    if (setlocale(LC_MONETARY, curr_lang) == NULL) {
+      pr_log_pri(PR_LOG_NOTICE, "unable to set LC_MONETARY to '%s': %s",
+        curr_lang, strerror(errno));
+    }
   }
 
   /* In order to make gettext lookups work properly on some platforms
