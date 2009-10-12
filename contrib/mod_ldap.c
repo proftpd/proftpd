@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.20-20090124
+ * mod_ldap v2.8.20-20090817
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.75 2009-01-25 03:24:17 jwm Exp $
+ * $Id: mod_ldap.c,v 1.76 2009-10-12 23:51:09 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -59,7 +59,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.8.20-20090124"
+#define MOD_LDAP_VERSION	"mod_ldap/2.8.20-20090817"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001021002
 # error MOD_LDAP_VERSION " requires ProFTPD 1.2.10rc2 or later"
@@ -75,26 +75,29 @@
 #include <lber.h>
 #include <ldap.h>
 
+#if defined(LDAP_API_FEATURE_X_OPENLDAP) && (LDAP_VENDOR_VERSION >= 192)
+# define LDAP_UNBIND(ld) (ldap_unbind_ext_s(ld, NULL, NULL))
+#else
+# define LDAP_UNBIND(ld) (ldap_unbind_s(ld))
+static char *ldap_server;
+static int ldap_port = LDAP_PORT;
+#endif
+
 #if LDAP_API_VERSION >= 2000
 # define LDAP_VALUE_T struct berval
 # define LDAP_GET_VALUES(ld, entry, attr) ldap_get_values_len(ld, entry, attr)
 # define LDAP_VALUE(values, i) (values[i]->bv_val)
 # define LDAP_COUNT_VALUES(values) (ldap_count_values_len(values))
 # define LDAP_VALUE_FREE(values) (ldap_value_free_len(values))
-# define LDAP_UNBIND(ld) (ldap_unbind_ext_s(ld, NULL, NULL))
 # define LDAP_SEARCH(ld, base, scope, filter, attrs, timeout, sizelimit, res) \
    ldap_search_ext_s(ld, base, scope, filter, attrs, 0, NULL, NULL, \
                      timeout, sizelimit, res)
 #else /* LDAP_API_VERSION >= 2000 */
-static char *ldap_server;
-static int ldap_port = LDAP_PORT;
-
 # define LDAP_VALUE_T char
 # define LDAP_GET_VALUES(ld, entry, attr) ldap_get_values(ld, entry, attr)
 # define LDAP_VALUE(values, i) (values[i])
 # define LDAP_COUNT_VALUES(values) (ldap_count_values(values))
 # define LDAP_VALUE_FREE(values) (ldap_value_free(values))
-# define LDAP_UNBIND(ld) (ldap_unbind_s(ld))
 
 static void
 pr_ldap_set_sizelimit(LDAP *limit_ld, int limit)
@@ -203,7 +206,7 @@ pr_ldap_connect(LDAP **conn_ld, int do_bind)
   struct berval bindcred;
 #endif
 
-#if LDAP_API_VERSION >= 2000
+#if defined(LDAP_API_FEATURE_X_OPENLDAP) && (LDAP_VENDOR_VERSION >= 19905)
   ret = ldap_initialize(conn_ld, ldap_server_url);
   if (ret != LDAP_SUCCESS) {
     pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_connect(): ldap_initialize() to %s failed: %s", ldap_server_url, ldap_err2string(ret));
@@ -211,14 +214,14 @@ pr_ldap_connect(LDAP **conn_ld, int do_bind)
     return -1;
   }
   pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": connected to %s", ldap_server_url);
-#else /* LDAP_API_VERSION >= 2000 */
+#else /* LDAP_API_FEATURE_X_OPENLDAP && LDAP_VENDOR_VERSION >= 19905 */
   *conn_ld = ldap_init(ldap_server, ldap_port);
   if (!conn_ld) {
     pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_connect(): ldap_init() to %s:%d failed: %s", ldap_server, ldap_port, strerror(errno));
     return -1;
   }
   pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": connected to %s:%d", ldap_server, ldap_port);
-#endif
+#endif /* LDAP_API_FEATURE_X_OPENLDAP && LDAP_VENDOR_VERSION >= 19905 */
 
 
   version = -1;
@@ -2100,7 +2103,7 @@ ldap_getconf(void)
       }
 #endif /* LDAP_OPT_X_TLS_HARD */
 
-#if LDAP_API_VERSION < 2000
+#if !(defined(LDAP_API_FEATURE_X_OPENLDAP) && (LDAP_VENDOR_VERSION >= 19905))
       /* Need to keep parsed host and port for pre-2000 ldap_init(). */
       if (url->lud_host != NULL) {
         ldap_server = pstrdup(session.pool, url->lud_host);
@@ -2108,7 +2111,7 @@ ldap_getconf(void)
       if (url->lud_port != 0) {
         ldap_port = url->lud_port;
       }
-#endif /* LDAP_API_VERSION < 2000 */
+#endif /* !(LDAP_API_FEATURE_X_OPENLDAP && LDAP_VENDOR_VERSION >= 19905) */
 
       if (url->lud_scope != LDAP_SCOPE_DEFAULT) {
         ldap_search_scope = url->lud_scope;
@@ -2119,10 +2122,10 @@ ldap_getconf(void)
       ldap_server_url = pstrcat(session.pool,
         "ldap://", c->argv[0], "/", NULL);
 
-#if LDAP_API_VERSION < 2000
+#if !(defined(LDAP_API_FEATURE_X_OPENLDAP) && (LDAP_VENDOR_VERSION >= 19905))
       ldap_server = pstrdup(session.pool, c->argv[0]);
       ldap_port = LDAP_PORT;
-#endif /* LDAP_API_VERSION < 2000 */
+#endif /* LDAP_API_FEATURE_X_OPENLDAP && LDAP_VENDOR_VERSION >= 19905 */
     }
   }
 
