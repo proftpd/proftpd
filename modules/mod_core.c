@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.357 2009-10-05 21:21:48 castaglia Exp $
+ * $Id: mod_core.c,v 1.358 2009-10-13 15:30:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3959,12 +3959,14 @@ MODRET core_rmd(cmd_rec *cmd) {
   cmd->argv[0] = cmd_name;
 
   if (pr_fsio_rmdir(dir) < 0) {
+    int xerrno = errno;
+
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
       "error removing directory '%s': %s", cmd->argv[0], session.user,
       (unsigned long) session.uid, (unsigned long) session.gid, dir,
-      strerror(errno));
+      strerror(xerrno));
 
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
     return PR_ERROR(cmd);
   }
 
@@ -4277,13 +4279,15 @@ MODRET core_dele(cmd_rec *cmd) {
 #endif /* !EISDIR */
  
   if (pr_fsio_unlink(path) < 0) {
+    int xerrno = errno;
+
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
       "error deleting '%s': %s", cmd->argv[0], session.user,
       (unsigned long) session.uid, (unsigned long) session.gid, path,
-      strerror(errno));
+      strerror(xerrno));
 
-    pr_log_debug(DEBUG3, "error deleting '%s': %s", path, strerror(errno));
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    pr_log_debug(DEBUG3, "error deleting '%s': %s", path, strerror(xerrno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
     return PR_ERROR(cmd);
   }
 
@@ -4382,14 +4386,16 @@ MODRET core_rnto(cmd_rec *cmd) {
         (unsigned long) session.uid, (unsigned long) session.gid,
         session.xfer.path, path, strerror(xerrno));
 
-      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg, strerror(xerrno));
+      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
+        strerror(xerrno));
       return PR_ERROR(cmd);
     }
 
     /* Once copied, unlink the original file. */
-    if (pr_fsio_unlink(session.xfer.path) < 0)
+    if (pr_fsio_unlink(session.xfer.path) < 0) {
       pr_log_debug(DEBUG0, "error unlinking '%s': %s", session.xfer.path,
         strerror(errno));
+    }
   }
 
   /* Change the xfer path to the name of the destination file, for logging. */

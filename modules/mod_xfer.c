@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.261 2009-09-23 16:00:17 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.262 2009-10-13 15:30:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -633,10 +633,14 @@ static int transmit_normal(char *buf, long bufsz) {
   long sz = pr_fsio_read(retr_fh, buf, bufsz);
 
   if (sz < 0) {
+    int xerrno = errno;
+
     (void) pr_trace_msg("fileperms", 1, "RETR, user '%s' (UID %lu, GID %lu): "
       "error reading from '%s': %s", session.user,
       (unsigned long) session.uid, (unsigned long) session.gid,
-      retr_fh->fh_path, strerror(errno));
+      retr_fh->fh_path, strerror(xerrno));
+
+    errno = xerrno;
     return 0;
   }
 
@@ -1469,7 +1473,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
         "error opening '%s': %s", cmd->argv[0], session.user,
         (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path_hidden, strerror(errno));
+        session.xfer.path_hidden, strerror(ferrno));
     }
 
   } else if (session.xfer.xfer_type == STOR_APPEND) {
@@ -1489,7 +1493,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
         "error opening '%s': %s", cmd->argv[0], session.user,
         (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path, strerror(errno));
+        session.xfer.path, strerror(ferrno));
     }
 
   } else {
@@ -1502,7 +1506,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
         "error opening '%s': %s", cmd->argv[0], session.user,
         (unsigned long) session.uid, (unsigned long) session.gid, path,
-        strerror(errno));
+        strerror(ferrno));
     }
   }
 
@@ -1871,12 +1875,14 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
   retr_fh = pr_fsio_open(dir, O_RDONLY);
   if (retr_fh == NULL) {
+    int xerrno = errno;
+
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
       "error opening '%s': %s", cmd->argv[0], session.user,
       (unsigned long) session.uid, (unsigned long) session.gid,
-      dir, strerror(errno));
+      dir, strerror(xerrno));
 
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
     return PR_ERROR(cmd);
   }
 
@@ -1914,11 +1920,11 @@ MODRET xfer_retr(cmd_rec *cmd) {
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
         "error seeking to byte %" PR_LU " of '%s': %s", cmd->argv[0],
         session.user, (unsigned long) session.uid, (unsigned long) session.gid,
-        (pr_off_t) session.restart_pos, dir, strerror(errno));
+        (pr_off_t) session.restart_pos, dir, strerror(xerrno));
 
       pr_log_debug(DEBUG0, "error seeking to offset %" PR_LU
         "for file %s: %s", (pr_off_t) session.restart_pos, dir,
-        strerror(errno));
+        strerror(xerrno));
       pr_response_add_err(R_554, _("%s: invalid REST argument"), cmd->arg);
       return PR_ERROR(cmd);
     }
