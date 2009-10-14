@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.41 2009-10-07 20:38:15 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.42 2009-10-14 18:49:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -126,7 +126,7 @@ extern unsigned char persistent_passwd;
 /* mod_auth_unix option flags */
 #define AUTH_UNIX_OPT_AIX_NO_RLOGIN		0x0001
 
-static auth_unix_opts = 0UL;
+static unsigned long auth_unix_opts = 0UL;
 
 static void p_setpwent(void) {
   if (pwdf)
