@@ -196,12 +196,14 @@ sub mlsd_ok_raw_active {
       my $res = {};
       my $lines = [split(/\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$1} = 1;
         }
       }
 
       my $expected = {
+        '.' => 1,
+        '..' => 1,
         'cmds.conf' => 1,
         'cmds.group' => 1,
         'cmds.passwd' => 1,
@@ -339,12 +341,14 @@ sub mlsd_ok_raw_passive {
       my $res = {};
       my $lines = [split(/\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$1} = 1;
         }
       }
 
       my $expected = {
+        '.' => 1,
+        '..' => 1,
         'cmds.conf' => 1,
         'cmds.group' => 1,
         'cmds.passwd' => 1,
