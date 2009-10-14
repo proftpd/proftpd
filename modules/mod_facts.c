@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.25 2009-10-14 18:31:07 castaglia Exp $
+ * $Id: mod_facts.c,v 1.26 2009-10-14 23:45:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -292,7 +292,8 @@ static void facts_mlinfobuf_flush(void) {
   facts_mlinfobuf_init();
 }
 
-static int facts_mlinfo_get(struct mlinfo *info, const char *path) {
+static int facts_mlinfo_get(struct mlinfo *info, const char *path,
+    const char *dent_name) {
   char *perm = "";
 
   if (pr_fsio_stat(path, &(info->st)) < 0) {
@@ -326,19 +327,21 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path) {
   } else {
     info->type = "dir";
 
-    if (path[0] != '.') {
+    if (dent_name[0] != '.') {
       if (strcmp(path, pr_fs_getcwd()) == 0) {
         info->type = "cdir";
       }
 
     } else {
-      if (path[1] == '\0') {
+      if (dent_name[1] == '\0') {
         info->type = "cdir";
       }
 
-      if (path[1] == '.' &&
-          path[2] == '\0') {
-        info->type = "pdir";
+      if (strlen(dent_name) >= 2) {
+        if (dent_name[1] == '.' &&
+            dent_name[2] == '\0') {
+          info->type = "pdir";
+        }
       }
     }
 
@@ -917,7 +920,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     memset(&info, 0, sizeof(struct mlinfo));
 
     info.pool = cmd->tmp_pool;
-    if (facts_mlinfo_get(&info, rel_path) < 0) {
+    if (facts_mlinfo_get(&info, rel_path, dent->d_name) < 0) {
       pr_log_debug(DEBUG3, MOD_FACTS_VERSION
         ": MLSD: unable to get info for '%s': %s", abs_path, strerror(errno));
       continue;
@@ -983,7 +986,7 @@ MODRET facts_mlst(cmd_rec *cmd) {
   info.pool = cmd->tmp_pool;
 
   pr_fs_clear_cache();
-  if (facts_mlinfo_get(&info, decoded_path) < 0) {
+  if (facts_mlinfo_get(&info, decoded_path, decoded_path) < 0) {
     pr_response_add_err(R_550, _("'%s' cannot be listed"), path);
     return PR_ERROR(cmd);
   }
