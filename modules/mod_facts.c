@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.24 2009-10-05 01:06:38 castaglia Exp $
+ * $Id: mod_facts.c,v 1.25 2009-10-14 18:31:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -819,7 +819,7 @@ MODRET facts_mfmt(cmd_rec *cmd) {
 }
 
 MODRET facts_mlsd(cmd_rec *cmd) {
-  const char *path, *decoded_path;
+  const char *path, *decoded_path, *best_path;
   struct mlinfo info;
   DIR *dirh;
   struct dirent *dent;
@@ -864,14 +864,16 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  dirh = pr_fsio_opendir(decoded_path);
+  best_path = dir_best_path(cmd->tmp_pool, decoded_path);
+
+  dirh = pr_fsio_opendir(best_path);
   if (dirh == NULL) {
     int xerrno = errno;
 
     pr_trace_msg("fileperms", 1, "MLSD, user '%s' (UID %lu, GID %lu): "
       "error opening directory '%s': %s", session.user,
       (unsigned long) session.uid, (unsigned long) session.gid,
-      decoded_path, strerror(xerrno));
+      best_path, strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
     return PR_ERROR(cmd);
@@ -893,7 +895,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
     pr_signals_handle();
 
-    rel_path = pdircat(cmd->tmp_pool, decoded_path, dent->d_name, NULL);
+    rel_path = pdircat(cmd->tmp_pool, best_path, dent->d_name, NULL);
 
     /* Check that the file can be listed. */
     abs_path = dir_realpath(cmd->tmp_pool, rel_path);
