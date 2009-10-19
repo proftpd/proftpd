@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.48 2009-10-02 21:22:56 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.49 2009-10-19 21:58:58 castaglia Exp $
  */
 
 /*
@@ -56,6 +56,11 @@
  */
 #ifdef PR_USE_NLS
 extern const char *pg_encoding_to_char(int encoding);
+
+/* And this is the mod_sql_postgres-specific function mapping iconv
+ * locales to Postgres encodings.
+ */
+const char *get_postgres_encoding(const char *encoding);
 #endif
 
 /* 
