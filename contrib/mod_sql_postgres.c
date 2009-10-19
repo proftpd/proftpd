@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.49 2009-10-19 21:58:58 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.50 2009-10-19 22:07:13 castaglia Exp $
  */
 
 /*
@@ -60,7 +60,7 @@ extern const char *pg_encoding_to_char(int encoding);
 /* And this is the mod_sql_postgres-specific function mapping iconv
  * locales to Postgres encodings.
  */
-const char *get_postgres_encoding(const char *encoding);
+static const char *get_postgres_encoding(const char *encoding);
 #endif
 
 /* 
@@ -263,7 +263,7 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
 }
 
 #ifdef PR_USE_NLS
-const char *get_postgres_encoding(const char *encoding) {
+static const char *get_postgres_encoding(const char *encoding) {
 
   /* XXX Hack to deal with Postgres' incredibly broken behavior when
    * handling the 'ASCII' encoding.  Specifically, Postgres chokes on
