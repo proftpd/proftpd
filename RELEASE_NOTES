@@ -15,12 +15,26 @@ ChangeLog files.
     server to manually delete their old ScoreboardFiles.  Otherwise they
     will see "error opening scoreboard: bad version (too old)" errors.
 
+
   + Changed SQL connection policy (Bug#3290).  Important for clients which
     connect but don't authenticated (e.g. mod_ban, mod_dnsbl, mod_wrap2_sql,
     etc which will reject connected clients prior to authentication); saves
     on unnecessary database connections in such cases.  For sites which
     require the old behavior, there is a new "PERCONNECTION" connection
     policy.
+
+    NOTE: If you are using mod_sql for logging purposes only, e.g. you have
+    the following in your mod_sql config:
+
+      SQLEngine log
+
+    then this connection policy change may affect you.  If the database
+    connection is opened after a chroot has occurred (via DefaultRoot or
+    <Anonymous> login), the database connection may fail.  And since now
+    the connection is delayed until first use, and the first use for logging
+    may occur after the chroot, the logging may fail.  For such sites, then,
+    you will need to use the "PERCONNECTION" connection policy explicitly.
+
 
   + New modules
 
@@ -352,4 +366,4 @@ ChangeLog files.
         this will probably not apply to most modules.
 
  
-Last Updated: $Date: 2009-10-02 21:26:53 $
+Last Updated: $Date: 2009-10-20 00:19:53 $
