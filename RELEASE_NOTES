@@ -9,12 +9,17 @@ ChangeLog files.
 1.3.3rc2
 ---------
 
-  + .ftpaccess files, Bug#3279, merging
+  + When handling .ftpaccess files, proftpd was merging them into the
+    main configuration such that the .ftpaccess files configurations would
+    override the main configuration.  This was never the intended behavior,
+    and has been fixed (Bug#3279).
+
+    However, this does mean that sites which use .ftpaccess files may see
+    a change in the behavior of their proftpd.
 
   + Changed scoreboard format (Bug#3286), need for "ServerType inetd"
     server to manually delete their old ScoreboardFiles.  Otherwise they
     will see "error opening scoreboard: bad version (too old)" errors.
-
 
   + Changed SQL connection policy (Bug#3290).  Important for clients which
     connect but don't authenticated (e.g. mod_ban, mod_dnsbl, mod_wrap2_sql,
@@ -35,6 +40,25 @@ ChangeLog files.
     may occur after the chroot, the logging may fail.  For such sites, then,
     you will need to use the "PERCONNECTION" connection policy explicitly.
 
+  + Support for "implicit" FTPS.  To enable this, use:
+
+      TLSOptions UseImplicitSSL
+
+    WARNING: Using this setting will cause mod_tls to handle ALL connections
+    to the vhost as implicit FTPS connections.  It is NOT possible to support
+    both plain FTP (or explicit FTPS) clients AND implicit FTPS clients on the
+    same address/port.  Therefore this setting should ONLY ever be used in
+    order to support braindead/broken FTPS clients, and then only for as long
+    as it takes to fix/replace those broken clients.
+
+    Note that "implicit" FTPS was explicitly DROPPED from the RFC which
+    defines FTP over SSL/TLS; the only clients which use this feature are
+    outdated clients based on older, now-invalidated versions of the
+    specification.  Please update your FTPS clients to one which uses
+    explicit FTPS as soon as possible.
+
+  + Re-enable disabling of Nagle algorithm; this drastically helps speed
+    up transfers of multiple small files.
 
   + New modules
 
@@ -42,6 +66,23 @@ ChangeLog files.
       This module supports MD5 and SHA1 passwords, encoding using base64 or
       hex, from SQL tables.  See doc/contrib/mod_sql_passwd.html for details.
 
+  + New configuration directives
+
+    AuthUnixOptions
+
+      In Bug#1896, support for checking some AIX-specific functions for
+      whether a login should be accepted was added; this happens only on AIX
+      server, of course.
+
+      However, some AIX admins like to configure "rlogin=false", yet still
+      want to allow FTP logins.  To enable this specific behavior, a new
+      AuthUnixOptions directive was added, with a setting which is only
+      honored on AIX:
+
+        AuthUnixOptions aixNoRLogin
+
+      If this setting is used on any other server, it is silently ignored.
+      Bug#3300 has the full details.
 
   + Changed configuration directives
 
@@ -64,7 +105,26 @@ ChangeLog files.
 
     HiddenStores
 
-      Support for custom prefixes instead of the usual ".in.".
+      The HiddenStores directive can now be used to customize and change
+      the prefix which is prepended to the HiddenStore files.  The default
+      prefix is ".in.", but if you wish to use a different prefix for any
+      reason, you can use something like:
+
+        HiddenStores foo
+
+      This will cause the prefix to be ".foo.".
+
+    SQLOptions
+
+      When the connection to the database is lost, mod_sql now will try
+      only once to automatically reconnect (if such reconnect functionality
+      is supported by the database, e.g. MySQL or Postgres).  To disable this
+      reconnect behavior, there is a new "noReconnect" SQLOptions setting:
+
+        SQLOptions noReconnect
+
+      See Bug#3270 for the full details of this behavior change.  It should
+      be transparent for most sites.
 
 
 1.3.3rc1
@@ -366,4 +426,4 @@ ChangeLog files.
         this will probably not apply to most modules.
 
  
-Last Updated: $Date: 2009-10-20 00:19:53 $
+Last Updated: $Date: 2009-10-20 17:03:03 $
