@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.50 2009-10-19 22:07:13 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.51 2009-10-20 01:11:18 castaglia Exp $
  */
 
 /*
@@ -303,6 +303,10 @@ static const char *get_postgres_encoding(const char *encoding) {
     return "LATIN1";
   }
 
+  if (strcasecmp(encoding, "ISO-8859-15") == 0) {
+    return "LATIN9";
+  }
+
   if (strcasecmp(encoding, "EUC-CN") == 0 ||
       strcasecmp(encoding, "EUCCN") == 0) {
     return "EUC_CN";
@@ -331,7 +335,7 @@ static const char *get_postgres_encoding(const char *encoding) {
   if (strcasecmp(encoding, "UTF8") == 0 ||
       strcasecmp(encoding, "UTF-8") == 0 ||
       strcasecmp(encoding, "UTF8-MAC") == 0) {
-    return "UNICODE";
+    return "UTF8";
   }
 
   return encoding;
@@ -488,7 +492,7 @@ MODRET cmd_open(cmd_rec *cmd) {
 
     sql_log(DEBUG_FUNC, "Postgres connection character set now '%s' "
       "(from '%s')", pg_encoding_to_char(PQclientEncoding(conn->postgres)),
-      pr_encode_get_charset());
+      pr_encode_get_encoding());
   }
 #endif /* !PR_USE_NLS */
 
