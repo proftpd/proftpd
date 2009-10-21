@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.18 2009-10-07 18:37:13 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.19 2009-10-21 16:39:45 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -1362,11 +1362,20 @@ check has passed (and then reading in a random amount of additional data from
 the network) to migitate CPNI-957037, are both implemented within the
 <code>mod_sftp</code> module as security measures.
 
+<p><a name="SFTPListOptions">
+<font color=red>Question</font>: I am trying to use <code>ListOptions</code>
+to change what is displayed for files in my SFTP clients, but it is not working.
+Why?<br>
+<font color=blue>Answer</font>: Unlike FTP, in SFTP it is the <i>client</i>,
+<b>not</b> the server, which determines what to display to the end user.
+Thus the <code>ListOptions</code> directive is not honored by
+<code>mod_sftp</code>.
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-10-07 18:37:13 $</i><br>
+Last Updated: <i>$Date: 2009-10-21 16:39:45 $</i><br>
 
 <br><hr>
 
