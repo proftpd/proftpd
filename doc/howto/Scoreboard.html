@@ -1,4 +1,4 @@
-<!-- $Id: Scoreboard.html,v 1.3 2009-02-18 21:55:39 castaglia Exp $ -->
+<!-- $Id: Scoreboard.html,v 1.4 2009-10-21 16:42:34 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Scoreboard.html,v $ -->
 
 <html>
@@ -150,8 +150,24 @@ the FTP sessions were no longer slow.
 </ul>
 
 <p>
+<font color=red>Question</font>: What should I do if I see this error in my
+logs:
+<pre>
+  error opening scoreboard: bad version (too old)
+</pre>
+<font color=blue>Answer</font>: This error usually only happens for servers
+which have:
+<pre>
+  ServerType inetd
+</pre>
+in their <code>proftpd.conf</code> files.  It indicates that the existing
+<code>ScoreboardFile</code> is using a format which is too old for the running
+code.  The fix is simple: delete that old <code>ScoreboardFile</code>.  The
+daemon will automatically create a new scoreboard in the correct format.
+
+<p>
 <hr>
-<i>$Date: 2009-02-18 21:55:39 $</i><br>
+<i>$Date: 2009-10-21 16:42:34 $</i><br>
 
 </body>
 </html>
