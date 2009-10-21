@@ -103,6 +103,7 @@ if (scalar(@ARGV) > 0) {
     t/config/hiddenstores.t
     t/config/hidefiles.t
     t/config/hidegroup.t
+    t/config/hidenoaccess.t
     t/config/hideuser.t
     t/config/maxinstances.t
     t/config/maxloginattempts.t
