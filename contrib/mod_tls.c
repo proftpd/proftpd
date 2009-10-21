@@ -6976,6 +6976,7 @@ static int tls_sess_init(void) {
    * session down before the connection is closed.
    */
   pr_event_register(&tls_module, "core.timeout-idle", tls_timeout_ev, NULL);
+  pr_event_register(&tls_module, "core.timeout-login", tls_timeout_ev, NULL);
   pr_event_register(&tls_module, "core.timeout-no-transfer", tls_timeout_ev,
     NULL);
   pr_event_register(&tls_module, "core.timeout-session", tls_timeout_ev, NULL);
