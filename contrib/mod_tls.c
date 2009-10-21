@@ -6581,6 +6581,21 @@ static void tls_sess_exit_ev(const void *event_data, void *user_data) {
   return;
 }
 
+static void tls_timeout_ev(const void *event_data, void *user_data) {
+
+  if (session.c &&
+      ctrl_ssl != NULL &&
+      (tls_flags & TLS_SESS_ON_CTRL)) {
+    /* Try to properly close the SSL session down on the control channel,
+     * if there is one.
+     */ 
+    tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, 0);
+    tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
+      ctrl_ssl = NULL;
+  }
+
+}
+
 static void tls_get_passphrases(void) {
   server_rec *s = NULL;
   char buf[256];
@@ -6955,6 +6970,16 @@ static int tls_sess_init(void) {
   tls_netio_install_data();
 
   pr_event_register(&tls_module, "core.exit", tls_sess_exit_ev, NULL);
+
+  /* There are several timeouts which can cause the client to be disconnected;
+   * register a listener for them which can politely/cleanly shut the SSL/TLS
+   * session down before the connection is closed.
+   */
+  pr_event_register(&tls_module, "core.timeout-idle", tls_timeout_ev, NULL);
+  pr_event_register(&tls_module, "core.timeout-no-transfer", tls_timeout_ev,
+    NULL);
+  pr_event_register(&tls_module, "core.timeout-session", tls_timeout_ev, NULL);
+  pr_event_register(&tls_module, "core.timeout-stalled", tls_timeout_ev, NULL);
 
   /* Check to see if a passphrase has been entered for this server. */
   tls_pkey = tls_lookup_pkey();
