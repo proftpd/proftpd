@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.385 2009-10-05 16:59:24 castaglia Exp $
+ * $Id: main.c,v 1.386 2009-10-21 01:41:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1469,7 +1469,7 @@ static void daemon_loop(void) {
   fd_set listenfds;
   conn_t *listen_conn;
   int fd, maxfd;
-  int i, err_count = 0;
+  int i, err_count = 0, xerrno;
   unsigned long nconnects = 0UL;
   time_t last_error;
   struct timeval tv;
@@ -1539,8 +1539,11 @@ static void daemon_loop(void) {
     running = 1;
 
     i = select(maxfd + 1, &listenfds, NULL, NULL, &tv);
+    if (i < 0) {
+      xerrno = errno;
+    }
 
-    if (i == -1 && errno == EINTR) {
+    if (i == -1 && xerrno == EINTR) {
       pr_signals_handle();
       continue;
     }
@@ -1577,7 +1580,7 @@ static void daemon_loop(void) {
       }
 
       pr_log_pri(PR_LOG_NOTICE, "select() failed in daemon_loop(): %s",
-        strerror(errno));
+        strerror(xerrno));
     }
 
     if (i == 0)
@@ -1610,6 +1613,10 @@ static void daemon_loop(void) {
 
     pr_signals_handle();
 
+    if (i < 0) {
+      continue;
+    }
+
     /* Accept the connection. */
     listen_conn = pr_ipbind_accept_conn(&listenfds, &fd);
 
@@ -1639,8 +1646,9 @@ static void daemon_loop(void) {
         close(fd);
 
       /* Fork off a child to handle the connection. */
-      } else
+      } else {
         fork_server(fd, listen_conn, FALSE);
+      }
     }
 #ifdef PR_DEVEL_NO_DAEMON
     /* Do not continue the while() loop here if not daemonizing. */
