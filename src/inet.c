@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.119 2009-09-21 23:50:00 castaglia Exp $
+ * $Id: inet.c,v 1.120 2009-10-22 00:40:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -319,7 +319,7 @@ static conn_t *init_conn(pool *p, xaset_t *servers, int fd,
           /* Bug#3237 shows that some systems do NOT like setting the V6ONLY
            * option on an IPv4-mapped IPv6 address.  However, other systems
            * (e.g. FreeBSD) require that this be done in order for EPSV
-           * to work properly.  Portabiltiy strikes again!
+           * to work properly.  Portability strikes again!
            */
 
           if (res < 0
