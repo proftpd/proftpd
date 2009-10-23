@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.386 2009-10-21 01:41:46 castaglia Exp $
+ * $Id: main.c,v 1.387 2009-10-23 16:16:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1469,7 +1469,7 @@ static void daemon_loop(void) {
   fd_set listenfds;
   conn_t *listen_conn;
   int fd, maxfd;
-  int i, err_count = 0, xerrno;
+  int i, err_count = 0, xerrno = 0;
   unsigned long nconnects = 0UL;
   time_t last_error;
   struct timeval tv;
