@@ -25,14 +25,15 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.96 2009-03-30 23:16:12 castaglia Exp $
+ * $Id: log.c,v 1.97 2009-10-26 22:09:37 castaglia Exp $
  */
 
 #include "conf.h"
 
 #include <signal.h>
 
-#define LOGBUFFER_SIZE	2048
+/* Max path length plus 64 bytes for additional info. */
+#define LOGBUFFER_SIZE		(PR_TUNABLE_PATH_MAX + 64)
 
 static int syslog_open = FALSE;
 static int syslog_discard = FALSE;

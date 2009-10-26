@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.98 2009-10-04 00:23:33 castaglia Exp $
+ * $Id: mod_log.c,v 1.99 2009-10-26 22:09:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,9 @@ extern pr_response_t *resp_list, *resp_err_list;
 
 module log_module;
 
-#define EXTENDED_LOG_BUFFER_SIZE		1025
+/* Max path length plus 64 bytes for additional info. */
+#define EXTENDED_LOG_BUFFER_SIZE		(PR_TUNABLE_PATH_MAX + 64)
+
 #define EXTENDED_LOG_MODE			0644
 
 typedef struct logformat_struc	logformat_t;

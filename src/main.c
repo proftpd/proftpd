@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.387 2009-10-23 16:16:09 castaglia Exp $
+ * $Id: main.c,v 1.388 2009-10-26 22:09:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -96,7 +96,11 @@ static char shutmsg[81] = {'\0'};
 
 static unsigned char have_dead_child = FALSE;
 
-#define PR_DEFAULT_CMD_BUFSZ	512
+/* The default command buffer size SHOULD be large enough to handle the
+ * maximum path length, plus 4 bytes for the FTP command, plus 1 for the
+ * whitespace separating command from path, and 2 for the terminating CRLF.
+ */
+#define PR_DEFAULT_CMD_BUFSZ	(PR_TUNABLE_PATH_MAX + 7)
 
 /* From mod_auth_unix.c */
 extern unsigned char persistent_passwd;
@@ -553,7 +557,7 @@ static long get_max_cmd_len(size_t buflen) {
 
 int pr_cmd_read(cmd_rec **res) {
   static long cmd_bufsz = -1;
-  char buf[PR_TUNABLE_BUFFER_SIZE+1] = {'\0'};
+  char buf[PR_DEFAULT_CMD_BUFSZ+1] = {'\0'};
   char *cp;
   size_t buflen;
 
