@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.100 2009-10-26 22:12:07 castaglia Exp $
+ * $Id: mod_log.c,v 1.101 2009-10-26 23:01:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -582,7 +582,7 @@ static struct tm *_get_gmtoff(int *tz) {
 
 static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
   unsigned char *m;
-  char arg[512] = {'\0'}, *argp = NULL, *pass;
+  char arg[PR_TUNABLE_PATH_MAX+1] = {'\0'}, *argp = NULL, *pass;
 
   /* This function can cause potential problems.  Custom logformats
    * might overrun the arg buffer.  Fixing this problem involves a

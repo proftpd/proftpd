@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.177 2009-10-05 23:26:24 castaglia Exp $
+ * $Id: mod_sql.c,v 1.178 2009-10-26 23:01:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1938,7 +1938,7 @@ static int resolve_numeric_tag(cmd_rec *cmd, char *tag) {
 }
 
 static char *resolve_short_tag(cmd_rec *cmd, char tag) {
-  char arg[256], *argp = NULL;
+  char arg[PR_TUNABLE_PATH_MAX+1], *argp = NULL;
 
   memset(arg, '\0', sizeof(arg));
 
