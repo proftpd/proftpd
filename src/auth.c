@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.76 2009-09-15 23:10:09 castaglia Exp $
+ * $Id: auth.c,v 1.77 2009-10-27 16:45:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1172,9 +1172,8 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
 
   /* Next, search for an anonymous entry. */
 
-  if (!c) {
+  if (c == NULL) {
     c = find_config(main_server->conf, CONF_ANON, NULL, FALSE);
-    anon_c = c;
 
   } else {
     find_config_set_top(c);
