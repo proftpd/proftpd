@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.77 2009-10-27 16:45:06 castaglia Exp $
+ * $Id: auth.c,v 1.78 2009-10-28 21:48:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1198,8 +1198,6 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
  
     } while ((c = find_config_next(c, c->next, CONF_ANON, NULL,
       FALSE)) != NULL);
-
-    c = anon_c;
   }
 
   if (!is_alias) {
