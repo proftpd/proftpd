@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: cipher.c,v 1.6 2009-09-16 20:51:15 castaglia Exp $
+ * $Id: cipher.c,v 1.7 2009-10-29 15:24:04 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -326,7 +326,9 @@ int sftp_cipher_set_read_algo(const char *algo) {
   }
 
   read_ciphers[idx].cipher = sftp_crypto_get_cipher(algo,
-    &(read_ciphers[idx].key_len), &(read_ciphers[idx].discard_len));
+    (size_t *) &(read_ciphers[idx].key_len),
+    &(read_ciphers[idx].discard_len));
+
   if (read_ciphers[idx].cipher == NULL)
     return -1;
 
@@ -486,7 +488,9 @@ int sftp_cipher_set_write_algo(const char *algo) {
   }
 
   write_ciphers[idx].cipher = sftp_crypto_get_cipher(algo,
-    &(write_ciphers[idx].key_len), &(write_ciphers[idx].discard_len));
+    (size_t *) &(write_ciphers[idx].key_len),
+    &(write_ciphers[idx].discard_len));
+
   if (write_ciphers[idx].cipher == NULL)
     return -1;
 
