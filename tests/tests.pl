@@ -231,6 +231,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_unique_id)],
     },
 
+    't/modules/mod_wrap.t' => {
+      order => ++$order,
+      test_class => [qw(mod_wrap)],
+    },
+
     't/modules/mod_wrap2_file.t' => {
       order => ++$order,
       test_class => [qw(mod_wrap2_file)],
