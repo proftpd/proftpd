@@ -2192,6 +2192,9 @@ if test x"$devel" = xyes ; then
     dnl options.  Check if they are supported.  They will be added to
     dnl CFLAGS if supported.
     PR_CHECK_CC_OPT(Wfloat-equal)
+    PR_CHECK_CC_OPT(Wformat-security)
+    PR_CHECK_CC_OPT(Wstack-protector)
+    PR_CHECK_CC_OPT(fstack-protector-all)
   fi
 
   dnl Do not strip symbols from developer object files.
