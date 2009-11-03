@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.52 2009-11-03 02:31:52 castaglia Exp $
+ * $Id: fxp.c,v 1.53 2009-11-03 06:32:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -376,6 +376,9 @@ static uint32_t fxp_errno2status(int xerrno, const char **reason) {
 
     case EBADF:
     case ENOENT:
+#ifdef ENXIO
+    case ENXIO:
+#endif
       status_code = SSH2_FX_NO_SUCH_FILE;
       if (reason) {
         *reason = fxp_strerror(status_code);
@@ -634,6 +637,15 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
       res |= O_WRONLY;
     }
   }
+
+  return res;
+}
+
+static int fxp_set_block(pr_fh_t *fh) {
+  int flags, res;
+
+  flags = fcntl(fh->fh_fd, F_GETFL); 
+  res = fcntl(fh->fh_fd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
 
   return res;
 }
@@ -4131,6 +4143,13 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     }
   }
 
+  /* We automatically add the O_NONBLOCK flag to the set of open() flags
+   * in order to deal with writing to a FIFO whose other end may not be
+   * open.  Then, after a successful open, we return the file to blocking
+   * mode.
+   */
+  open_flags |= O_NONBLOCK;
+
   fh = pr_fsio_open(hiddenstore_path ? hiddenstore_path : path, open_flags);
   if (fh == NULL) {
     uint32_t status_code;
@@ -4168,6 +4187,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
+
+  fxp_set_block(fh);
 
   /* If the SFTPOption for ignoring perms for SFTP uploads is set, handle
    * it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.

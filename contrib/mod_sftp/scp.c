@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.28 2009-09-28 20:38:27 castaglia Exp $
+ * $Id: scp.c,v 1.29 2009-11-03 06:32:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -238,6 +238,15 @@ static struct scp_session *scp_get_session(uint32_t channel_id) {
 
   errno = ENOENT;
   return NULL;
+}
+
+static int scp_set_block(pr_fh_t *fh) {
+  int flags, res;
+
+  flags = fcntl(fh->fh_fd, F_GETFL);
+  res = fcntl(fh->fh_fd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+
+  return res;
 }
 
 static void reset_path(struct scp_path *sp) {
@@ -774,8 +783,14 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
     return 1;
   }
 
+  /* We automatically add the O_NONBLOCK flag to the set of open() flags
+   * in order to deal with writing to a FIFO whose other end may not be
+   * open.  Then, after a successful open, we return the file to blocking
+   * mode.
+   */
+
   sp->fh = pr_fsio_open(hiddenstore_path ? hiddenstore_path : sp->best_path,
-    O_WRONLY|O_CREAT);
+    O_WRONLY|O_CREAT|O_NONBLOCK);
   if (sp->fh == NULL) {
     int xerrno = errno;
 
@@ -801,6 +816,8 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   if (hiddenstore_path) {
     sp->hiddenstore = TRUE;
   }
+
+  scp_set_block(sp->fh);
 
   write_confirm(p, channel_id, 0, NULL);
   return 0;
