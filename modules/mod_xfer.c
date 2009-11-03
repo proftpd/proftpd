@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.262 2009-10-13 15:30:50 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.263 2009-11-03 00:26:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1215,8 +1215,15 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     /* Make an exception for the non-regular /dev/null file.  This will allow
      * network link testing by uploading as much data as necessary directly
      * to /dev/null.
+     *
+     * On Linux, allow another exception for /dev/full; this is useful for
+     * tests which want to simulate running out-of-space scenarios.
      */
-    if (strcasecmp(path, "/dev/null") != 0) {
+    if (strcasecmp(path, "/dev/null") != 0
+#ifdef LINUX
+        && strcasecmp(path, "/dev/full") != 0
+#endif
+       ) {
       pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
       return PR_ERROR(cmd);
     }
