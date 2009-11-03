@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.53 2009-11-03 06:32:51 castaglia Exp $
+ * $Id: fxp.c,v 1.54 2009-11-03 06:35:48 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1120,11 +1120,20 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
     if (attrs->st_size &&
         st.st_size != attrs->st_size) {
 
-      if (fh != NULL) {
-        res = pr_fsio_ftruncate(fh, attrs->st_size);
+      /* If we're dealing with a FIFO, just pretend that the truncate(2)
+       * succeeded; FIFOs don't handle truncation well.  And it won't
+       * necessarily matter to the client, right?
+       */
+      if (S_ISREG(st.st_mode)) {
+        if (fh != NULL) {
+          res = pr_fsio_ftruncate(fh, attrs->st_size);
+
+        } else {
+          res = pr_fsio_truncate(path, attrs->st_size);
+        }
 
       } else {
-        res = pr_fsio_truncate(path, attrs->st_size);
+        res = 0;
       }
 
       if (res < 0) {
@@ -4645,35 +4654,37 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (pr_fsio_lseek(fxh->fh, offset, SEEK_SET) < 0) {
-    uint32_t status_code;
-    const char *reason;
-    int xerrno = errno;
+  if (S_ISREG(st.st_mode)) {
+    if (pr_fsio_lseek(fxh->fh, offset, SEEK_SET) < 0) {
+      uint32_t status_code;
+      const char *reason;
+      int xerrno = errno;
 
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error seeking to offset (%" PR_LU " bytes) for '%s': %s",
-      (pr_off_t) offset, fxh->fh->fh_path, strerror(xerrno));
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error seeking to offset (%" PR_LU " bytes) for '%s': %s",
+        (pr_off_t) offset, fxh->fh->fh_path, strerror(xerrno));
 
-    status_code = fxp_errno2status(xerrno, &reason);
+      status_code = fxp_errno2status(xerrno, &reason);
 
-    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+        "('%s' [%d])", (unsigned long) status_code, reason,
+        xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
-    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
-      NULL);
+      fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+        NULL);
   
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
   
-    return fxp_packet_write(resp);
+      return fxp_packet_write(resp);
 
-  } else {
-    /* No error. */
-    errno = 0;
+    } else {
+      /* No error. */
+      errno = 0;
+    }
   }
 
   cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, NULL);
@@ -6526,30 +6537,32 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (pr_fsio_lseek(fxh->fh, offset, SEEK_SET) < 0) {
-    const char *reason;
-    int xerrno = errno;
+  if (S_ISREG(st.st_mode)) {
+    if (pr_fsio_lseek(fxh->fh, offset, SEEK_SET) < 0) {
+      const char *reason;
+      int xerrno = errno;
 
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error seeking to offset (%" PR_LU " bytes) for '%s': %s",
-      (pr_off_t) offset, fxh->fh->fh_path, strerror(xerrno));
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error seeking to offset (%" PR_LU " bytes) for '%s': %s",
+        (pr_off_t) offset, fxh->fh->fh_path, strerror(xerrno));
 
-    status_code = fxp_errno2status(xerrno, &reason);
+      status_code = fxp_errno2status(xerrno, &reason);
 
-    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+        "('%s' [%d])", (unsigned long) status_code, reason,
+        xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
-    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
-      NULL);
+      fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+        NULL);
   
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
   
-    return fxp_packet_write(resp);
+      return fxp_packet_write(resp);
+    }
   }
 
   /* If the open flags have O_APPEND, treat this as an APPE command, rather
