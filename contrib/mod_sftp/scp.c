@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.29 2009-11-03 06:32:51 castaglia Exp $
+ * $Id: scp.c,v 1.30 2009-11-03 06:37:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1313,12 +1313,14 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
       }
     }
 
-    /* Seek to where we last left off with this file. */
-    if (pr_fsio_lseek(sp->fh, sp->sentlen, SEEK_SET) < 0) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error seeking to offset %" PR_LU " in '%s': %s",
-        (pr_off_t) sp->sentlen, sp->path, strerror(errno));
-      return 1;
+    if (S_ISREG(st->st_mode)) {
+      /* Seek to where we last left off with this file. */
+      if (pr_fsio_lseek(sp->fh, sp->sentlen, SEEK_SET) < 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error seeking to offset %" PR_LU " in '%s': %s",
+          (pr_off_t) sp->sentlen, sp->path, strerror(errno));
+        return 1;
+      }
     }
 
     chunklen = pr_fsio_read(sp->fh, chunk, chunksz - 1);
@@ -1514,7 +1516,11 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
     return 1;
   }
 
-  if (!S_ISREG(st.st_mode)) {
+  if (!S_ISREG(st.st_mode)
+#ifdef S_ISFIFO
+      && !S_ISFIFO(st.st_mode)
+#endif
+     ) {
     if (S_ISDIR(st.st_mode)) {
       if (scp_opts & SFTP_SCP_OPT_RECURSE) {
         res = send_dir(p, channel_id, sp, &st);
