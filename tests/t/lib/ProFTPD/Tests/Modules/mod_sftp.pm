@@ -17259,8 +17259,8 @@ sub scp_upload_fifo_bug3312 {
       my ($err_code, $err_name, $err_str) = $ssh2->error();
       chomp($err_str);
 
-      my $expected = "$fifo: No such device or address";
-      $self->assert($expected eq $err_str,
+      my $expected = "$fifo: (No such device or address|Device not configured)";
+      $self->assert(qr/$expected/, $err_str,
         test_msg("Expected '$expected', got '$err_str'"));
 
       $ssh2->disconnect();
