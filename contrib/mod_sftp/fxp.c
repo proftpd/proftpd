@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.54 2009-11-03 06:35:48 castaglia Exp $
+ * $Id: fxp.c,v 1.55 2009-11-03 08:09:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2484,6 +2484,27 @@ static int fxp_packet_write(struct fxp_packet *fxp) {
 
 /* Miscellaneous */
 
+static void fxp_version_add_statvfs_exts(pool *p, char **buf,
+    uint32_t *buflen) {
+#ifdef HAVE_SYS_STATVFS_H
+  struct fxp_extpair fstatvfs_ext, statvfs_ext;
+
+  (void) p;
+
+  /* These are OpenSSH-specific SFTP extensions. */
+
+  statvfs_ext.ext_name = "statvfs@openssh.com";
+  statvfs_ext.ext_data = "2";
+  statvfs_ext.ext_datalen = 1;
+  fxp_msg_write_extpair(buf, buflen, &statvfs_ext);
+
+  fstatvfs_ext.ext_name = "fstatvfs@openssh.com";
+  fstatvfs_ext.ext_data = "2";
+  fstatvfs_ext.ext_datalen = 1;
+  fxp_msg_write_extpair(buf, buflen, &fstatvfs_ext);
+#endif
+}
+
 static void fxp_version_add_newline_ext(pool *p, char **buf, uint32_t *buflen) {
   struct fxp_extpair ext;
 
@@ -2777,6 +2798,82 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   return fxp_packet_write(resp);
 }
 
+#ifdef HAVE_SYS_STATVFS_H
+static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, cmd_rec *cmd,
+    const char *path) {
+  char *buf, *ptr;
+  const char *reason;
+  uint32_t buflen, bufsz, status_code;
+  struct fxp_packet *resp;
+
+# if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && \
+   defined(SOLARIS2) && !defined(SOLARIS2_5_1) && !defined(SOLARIS2_6) && \
+   !defined(SOLARIS2_7)
+  /* Note: somewhere along the way, Sun decided that the prototype for
+   * its statvfs64(2) function would include a statvfs64_t rather than
+   * struct statvfs64.  In 2.6 and 2.7, it's struct statvfs64, and
+   * in 8, 9 it's statvfs64_t.  This should silence compiler warnings.
+   * (The statvfs_t will be redefined to a statvfs64_t as appropriate on
+   * LFS systems).
+   */
+  statvfs_t fs;
+#  else
+  struct statvfs fs;
+# endif /* LFS && !Solaris 2.5.1 && !Solaris 2.6 && !Solaris 2.7 */
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  if (statvfs(path, &fs) < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3, "statvfs() error using '%s': %s",
+      path, strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason,
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+
+  pr_trace_msg(trace_channel, 8,
+    "sending response: EXTENDED_REPLY <statvfs data of '%s'>", path);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
+  sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+  fxp_msg_write_long(&buf, &buflen, fs.f_bsize);
+  fxp_msg_write_long(&buf, &buflen, fs.f_frsize);
+  fxp_msg_write_long(&buf, &buflen, fs.f_blocks);
+  fxp_msg_write_long(&buf, &buflen, fs.f_bfree);
+  fxp_msg_write_long(&buf, &buflen, fs.f_bavail);
+  fxp_msg_write_long(&buf, &buflen, fs.f_files);
+  fxp_msg_write_long(&buf, &buflen, fs.f_ffree);
+  fxp_msg_write_long(&buf, &buflen, fs.f_favail);
+  fxp_msg_write_long(&buf, &buflen, fs.f_fsid);
+  fxp_msg_write_long(&buf, &buflen, fs.f_flag);
+  fxp_msg_write_long(&buf, &buflen, fs.f_namemax);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+#endif /* !HAVE_SYS_STATVFS_H */
+
 static int fxp_handle_extended(struct fxp_packet *fxp) {
   char *buf, *ptr, *ext_request_name;
   uint32_t buflen, bufsz, status_code;
@@ -2794,21 +2891,57 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", ext_request_name, NULL, NULL);
 
-  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-    "client requested '%s' extension, rejecting", ext_request_name);
-
   pr_trace_msg(trace_channel, 7, "received request: EXTENDED %s",
     ext_request_name);
 
-  pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+#ifdef HAVE_SYS_STATVFS_H
+  if (strcmp(ext_request_name, "statvfs@openssh.com") == 0) {
+    const char *path;
 
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+    path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+    return fxp_handle_ext_statvfs(fxp, cmd, path);
 
+  } else if (strcmp(ext_request_name, "fstatvfs@openssh.com") == 0) {
+    const char *handle, *path;
+    struct fxp_handle *fxh;
+
+    handle = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+    fxh = fxp_handle_get(handle);
+    if (fxh == NULL) {
+      status_code = SSH2_FX_INVALID_HANDLE;
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+        (unsigned long) status_code, fxp_strerror(status_code));
+
+      fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+        fxp_strerror(status_code), NULL);
+
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+    }
+
+    path = fxh->fh ? fxh->fh->fh_path : fxh->dir;
+    return fxp_handle_ext_statvfs(fxp, cmd, path);
+  }
+#endif
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+    "client requested '%s' extension, rejecting", ext_request_name);
   status_code = SSH2_FX_OP_UNSUPPORTED;
+
+  pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
   pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
     (unsigned long) status_code, fxp_strerror(status_code));
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
 
   fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
     fxp_strerror(status_code), NULL);
@@ -3156,6 +3289,8 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
     (unsigned long) fxp_session->client_version);
 
   sftp_msg_write_int(&buf, &buflen, fxp_session->client_version);
+
+  fxp_version_add_statvfs_exts(fxp->pool, &buf, &buflen);
 
   if (fxp_session->client_version >= 4) {
     fxp_version_add_newline_ext(fxp->pool, &buf, &buflen);

@@ -21,10 +21,14 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.h,v 1.4 2009-07-27 01:00:59 castaglia Exp $
+ * $Id: fxp.h,v 1.5 2009-11-03 08:09:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
+
+#ifdef HAVE_SYS_STATVFS_H
+# include <sys/statvfs.h>
+#endif
 
 #ifndef MOD_SFTP_FXP_H
 #define MOD_SFTP_FXP_H
