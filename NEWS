@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1082 2009-11-03 06:37:38 castaglia Exp $
+$Id: NEWS,v 1.1083 2009-11-03 06:39:13 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -17,7 +17,7 @@ CVS
 - Bug 3307 - All FTP logins treated as anonymous logins.
 - Bug 3312 - Uploading via SFTP/SCP to FIFO whose reader is closed causes
   session to hang.
-- Bug 3313 - Uploading via SFTP to FIFOs fails due to illegal lseek(3),
+- Bug 3313 - Uploading via SFTP to FIFOs fails due to illegal lseek(2),
   truncate(2) calls.
 - Bug 3314 - Downloading from FIFOs via SFTP/SCP fails.
 
