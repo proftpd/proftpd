@@ -37469,6 +37469,45 @@ echo "${ECHO_T}no" >&6; }
    fi
    rm -f conftest*
 
+    { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wformat-security" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wformat-security... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wformat-security conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Wformat-security"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
+    { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wstack-protector" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wstack-protector... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wstack-protector conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Wstack-protector"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
+    { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -fstack-protector-all" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -fstack-protector-all... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -fstack-protector-all conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -fstack-protector-all"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
   fi
 
     INSTALL_STRIP=""
