@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.10 2009-09-02 18:13:37 castaglia Exp $
+ * $Id: packet.c,v 1.11 2009-11-03 04:10:35 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -158,6 +158,9 @@ static int packet_read(int sockfd, void *buf, size_t reqlen) {
       return -1;
     }
 
+    /* The socket we accept is blocking, thus there's no need to handle
+     * EAGAIN/EWOULDBLOCK errors.
+     */
     res = read(sockfd, ptr, remainlen);
 
     while (res <= 0) {
@@ -1107,6 +1110,9 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
     return -1;
   }
 
+  /* The socket we accept is blocking, thus there's no need to handle
+   * EAGAIN/EWOULDBLOCK errors.
+   */
   res = writev(sockfd, packet_iov, packet_niov);
   while (res < 0) {
     if (errno == EINTR) {
