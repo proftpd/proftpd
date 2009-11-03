@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keystore.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: keystore.c,v 1.3 2009-11-03 19:03:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -269,25 +269,37 @@ int sftp_keystore_verify_user_key(pool *p, const char *user, char *key_data,
 
   for (i = 0; i < c->argc; i++) {
     struct sftp_keystore_store *sks;
-    char *store_type, *ptr;
+    char *store_type, *path, *ptr, *session_user;
 
     pr_signals_handle();
 
     res = -1;
     store_type = c->argv[i];
 
-    pr_trace_msg(trace_channel, 2,
-      "using SFTPAuthorizedUserKeys '%s' for public key authentication for "
-      "user '%s'", store_type, user);
-
     ptr = strchr(store_type, ':');
     *ptr = '\0';
+
+    path = ptr + 1;
+
+    /* Check for any variables in the configured path.
+     *
+     * Note that path_subst_uservar() relies on the session.user variable
+     * being set, hence why we cache/restore its value.
+     */
+    session_user = session.user;
+    session.user = user;
+    path = path_subst_uservar(p, &path);
+    session.user = session_user;
+
+    pr_trace_msg(trace_channel, 2,
+      "using SFTPAuthorizedUserKeys '%s' for public key authentication for "
+      "user '%s'", path, user);
 
     sks = keystore_get_store(store_type, SFTP_SSH2_USER_KEY_STORE);
     if (sks) {
       sftp_keystore_t *store;
 
-      store = (sks->store_open)(p, SFTP_SSH2_USER_KEY_STORE, ptr + 1, user);
+      store = (sks->store_open)(p, SFTP_SSH2_USER_KEY_STORE, path, user);
       if (store) {
         if (store->verify_user_key != NULL) {
           res = (store->verify_user_key)(store, p, user, key_data, key_len);
