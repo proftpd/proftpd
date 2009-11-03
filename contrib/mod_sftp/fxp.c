@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.51 2009-09-28 18:55:46 castaglia Exp $
+ * $Id: fxp.c,v 1.52 2009-11-03 02:31:52 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -351,6 +351,13 @@ static const char *fxp_strerror(uint32_t status) {
 
 static uint32_t fxp_errno2status(int xerrno, const char **reason) {
   uint32_t status_code = SSH2_FX_FAILURE;
+
+  /* Provide a default reason string; it will be overwritten below by a
+   * more appropriate string as necessary.
+   */ 
+  if (reason) {
+    *reason = fxp_strerror(status_code);
+  }
 
   switch (xerrno) {
     case 0:
