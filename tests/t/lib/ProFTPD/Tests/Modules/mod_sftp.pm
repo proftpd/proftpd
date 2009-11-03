@@ -310,11 +310,6 @@ my $TESTS = {
     test_class => [qw(forking sftp ssh2)],
   },
 
-  sftp_setstat_sgid => {
-    order => ++$order,
-    test_class => [qw(forking sftp ssh2)],
-  },
-
   sftp_fsetstat => {
     order => ++$order,
     test_class => [qw(forking sftp ssh2)],
