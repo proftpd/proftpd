@@ -742,7 +742,6 @@ sub testsuite_get_runnable_tests {
 
   # Special handling of any 'feature_*' test classes; if the compiled proftpd
   # has these features enabled, include those tests.
-
   my $skip_tests = [];
   foreach my $test (keys(%$tests)) {
     foreach my $class (@{ $tests->{$test}->{test_class} }) {
@@ -763,7 +762,6 @@ sub testsuite_get_runnable_tests {
 
   # Special handling of any 'mod_*' test classes; if the compiled proftpd
   # has these as static modules, include those tests.
-
   $skip_tests = [];
   foreach my $test (keys(%$tests)) {
     foreach my $class (@{ $tests->{$test}->{test_class} }) {
@@ -804,6 +802,26 @@ sub testsuite_get_runnable_tests {
       }
     }
  
+    foreach my $skip_test (@$skip_tests) {
+      delete($tests->{$skip_test});
+    }
+  }
+
+  # Special handling of any 'os_*' test classes; if the machine running
+  # these tests matches the configured OS, include these tests.
+  $skip_tests = [];
+  foreach my $test (keys(%$tests)) {
+    foreach my $class (@{ $tests->{$test}->{test_class} }) {
+      if ($class =~ /^os_(\S+)$/) {
+        my $os = $1;
+
+        unless ($os =~ /$^O/i) {
+          push(@$skip_tests, $test);
+          last;
+        }
+      }
+    }
+
     foreach my $skip_test (@$skip_tests) {
       delete($tests->{$skip_test});
     }
