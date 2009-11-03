@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.19 2009-10-21 16:39:45 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.20 2009-11-03 19:12:32 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -222,6 +222,16 @@ format (see the <a href="#Usage">Usage</a> section), in no particular order.
 <p>
 <b>Note</b> that a <code>SFTPAuthorizedUserKeys</code> directive is
 required for <code>mod_sftp</code> to handle sessions properly.
+
+<p>
+The configured path for a file containing authorized keys can use the
+<code>%u</code> variable, which will be interpolated with the name of the user
+being authenticated.  This feature supports having per-user files of authorized
+keys that reside in a central location, rather than requiring (or allowing)
+users to manage their own authorized keys.  For example:
+<pre>
+  SFTPAuthorizedUserKeys file:/etc/sftp/authorized_keys/%u
+</pre>
 
 <p>
 <hr>
@@ -1375,7 +1385,7 @@ Thus the <code>ListOptions</code> directive is not honored by
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-10-21 16:39:45 $</i><br>
+Last Updated: <i>$Date: 2009-11-03 19:12:32 $</i><br>
 
 <br><hr>
 
