@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.19 2009-09-08 20:48:50 castaglia Exp $
+ * $Id: auth.c,v 1.20 2009-11-04 17:50:31 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -51,7 +51,7 @@ static const char *auth_avail_meths = NULL;
 static const char *auth_remaining_meths = NULL;
 static unsigned int auth_meths_enabled = 0;
 
-static int auth_sent_userauth_banner = FALSE;
+static int auth_sent_userauth_banner_file = FALSE;
 static int auth_sent_userauth_success = FALSE;
 
 static const char *auth_user = NULL;
@@ -553,7 +553,7 @@ static int setup_env(pool *p, char *user) {
   return 0;
 }
 
-static int send_userauth_banner(void) {
+static int send_userauth_banner_file(void) {
   struct ssh2_packet *pkt;
   char *buf, *ptr, *mesg = "", *path;
   char data[PR_TUNABLE_BUFFER_SIZE];
@@ -563,7 +563,7 @@ static int send_userauth_banner(void) {
   pr_fh_t *fh;
   pool *sub_pool;
 
-  if (auth_sent_userauth_banner) {
+  if (auth_sent_userauth_banner_file) {
     /* Already sent the banner; no need to do it again. */
     return 0;
   }
@@ -611,6 +611,8 @@ static int send_userauth_banner(void) {
     mesg = pstrcat(sub_pool, mesg, *mesg ? "\r\n" : "", data, NULL);
   }
 
+  pr_fsio_close(fh);
+
   pkt = sftp_ssh2_packet_create(auth_pool);
 
   buflen = bufsz = strlen(mesg) + 32;
@@ -618,6 +620,8 @@ static int send_userauth_banner(void) {
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_USER_AUTH_BANNER);
   sftp_msg_write_string(&buf, &buflen, mesg);
+
+  /* XXX locale of banner */
   sftp_msg_write_string(&buf, &buflen, "");
 
   pkt->payload = ptr;
@@ -628,15 +632,17 @@ static int send_userauth_banner(void) {
 
   res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
   if (res < 0) {
-    destroy_pool(sub_pool);
     destroy_pool(pkt->pool);
+    destroy_pool(sub_pool);
+
     return -1;
   }
 
-  auth_sent_userauth_banner = TRUE;
+  auth_sent_userauth_banner_file = TRUE;
 
-  destroy_pool(sub_pool);
   destroy_pool(pkt->pool);
+  destroy_pool(sub_pool);
+
   return 0;
 }
 
@@ -1091,14 +1097,63 @@ char *sftp_auth_get_default_dir(void) {
   return auth_default_dir;
 }
 
+int sftp_auth_send_banner(const char *banner) {
+  struct ssh2_packet *pkt;
+  char *buf, *ptr;
+  uint32_t buflen, bufsz;
+  size_t banner_len;
+  int res;
+
+  if (banner == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Make sure that the given banner string ends in CRLF, as required by
+   * RFC4252 Section 5.4.
+   */
+  banner_len = strlen(banner);
+  if (banner[banner_len-2] != '\r' ||
+      banner[banner_len-1] != '\n') {
+    banner = pstrcat(auth_pool, banner, "\r\n", NULL);
+    banner_len = strlen(banner);
+  }
+ 
+  pkt = sftp_ssh2_packet_create(auth_pool);
+
+  buflen = bufsz = banner_len + 32;
+  ptr = buf = palloc(pkt->pool, bufsz);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_USER_AUTH_BANNER);
+  sftp_msg_write_string(&buf, &buflen, banner);
+
+  /* XXX locale of banner */
+  sftp_msg_write_string(&buf, &buflen, "");
+
+  pkt->payload = ptr;
+  pkt->payload_len = (bufsz - buflen);
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+    "sending userauth banner");
+
+  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+  if (res < 0) {
+    destroy_pool(pkt->pool);
+    return -1;
+  }
+
+  destroy_pool(pkt->pool);
+  return 0;
+}
+
 int sftp_auth_handle(struct ssh2_packet *pkt) {
   char *service = NULL;
   int res;
 
-  /* The send_userauth_banner() function makes sure that the banner
-   * is not sent multiple times.
+  /* The send_userauth_banner_file() function makes sure that the
+   * SFTPDisplayBanner file is not sent multiple times.
    */
-  if (send_userauth_banner() < 0) {
+  if (send_userauth_banner_file() < 0) {
     return -1;
   }
 

@@ -26,7 +26,7 @@
  * This is mod_sftp_pam, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_pam.c,v 1.4 2009-09-08 20:39:03 castaglia Exp $
+ * $Id: mod_sftp_pam.c,v 1.5 2009-11-04 17:50:31 castaglia Exp $
  * $Libraries: -lpam $
  */
 
@@ -38,7 +38,7 @@
 # error "mod_sftp_pam requires PAM support on your system"
 #endif
 
-#define MOD_SFTP_PAM_VERSION		"mod_sftp_pam/0.0"
+#define MOD_SFTP_PAM_VERSION		"mod_sftp_pam/0.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030202
@@ -127,6 +127,9 @@ static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
     return PAM_CONV_ERR;
   }
 
+  pr_trace_msg(trace_channel, 9, "handling %d PAM %s", nmsgs,
+    nmsgs == 1 ? "message" : "messages");
+
   /* First, send these messages to the client. */
 
   list = make_array(sftppam_driver.driver_pool, 1,
@@ -134,11 +137,18 @@ static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
   for (i = 0; i < nmsgs; i++) {
     sftp_kbdint_challenge_t *challenge;
 
-    /* Skip PAM_TEXT_INFO and PAM_ERROR_MSG messages; we don't want to send
-     * these to the client.
+    /* Skip PAM_ERROR_MSG messages; we don't want to send these to the client.
      */
-    if (SFTP_PAM_MSG_MEMBER(msgs, i, msg_style) == PAM_TEXT_INFO ||
-        SFTP_PAM_MSG_MEMBER(msgs, i, msg_style) == PAM_ERROR_MSG) {
+    if (SFTP_PAM_MSG_MEMBER(msgs, i, msg_style) == PAM_TEXT_INFO) {
+      pr_trace_msg(trace_channel, 9, "sending PAM_TEXT_INFO '%s' to client",
+        SFTP_PAM_MSG_MEMBER(msgs, i, msg));
+
+      sftp_auth_send_banner(SFTP_PAM_MSG_MEMBER(msgs, i, msg));
+      continue;
+
+    } else if (SFTP_PAM_MSG_MEMBER(msgs, i, msg_style) == PAM_ERROR_MSG) {
+      pr_trace_msg(trace_channel, 5, "skipping PAM_ERROR_MSG '%s'",
+        SFTP_PAM_MSG_MEMBER(msgs, i, msg));
       continue;
     }
 
@@ -152,6 +162,11 @@ static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
     } else {
       challenge->display_response = FALSE;
     }
+  }
+
+  if (list->nelts == 0) {
+    /* Nothing to see here, move along. */
+    return PAM_SUCCESS;
   }
 
   if (sftp_kbdint_send_challenge(NULL, NULL, list->nelts, list->elts) < 0) {
@@ -364,7 +379,7 @@ static int sftppam_driver_authenticate(sftp_kbdint_driver_t *driver,
   pr_signals_block();
   PRIVS_ROOT
 
-  res = pam_authenticate(sftppam_pamh, PAM_SILENT);
+  res = pam_authenticate(sftppam_pamh, 0);
   if (res != PAM_SUCCESS) {
     switch (res) {
       case PAM_USER_UNKNOWN:
@@ -386,7 +401,7 @@ static int sftppam_driver_authenticate(sftp_kbdint_driver_t *driver,
     return -1;
   }
 
-  res = pam_acct_mgmt(sftppam_pamh, PAM_SILENT);
+  res = pam_acct_mgmt(sftppam_pamh, 0);
   if (res != PAM_SUCCESS) {
     switch (res) {
 #ifdef PAM_AUTHTOKEN_REQD
@@ -432,7 +447,7 @@ static int sftppam_driver_authenticate(sftp_kbdint_driver_t *driver,
     return -1;
   }
  
-  res = pam_open_session(sftppam_pamh, PAM_SILENT);
+  res = pam_open_session(sftppam_pamh, 0);
   if (res != PAM_SUCCESS) { 
     sftppam_auth_code = PR_AUTH_DISABLEDPWD;
 
