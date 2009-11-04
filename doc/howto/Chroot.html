@@ -1,4 +1,4 @@
-<!-- $Id: Chroot.html,v 1.6 2009-09-17 20:54:26 castaglia Exp $ -->
+<!-- $Id: Chroot.html,v 1.7 2009-11-04 20:27:56 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Chroot.html,v $ -->
 
 <html>
@@ -87,16 +87,16 @@ on different filesystems.  This means that if <code>/var</code> and
 (or <code>/etc/vfstab</code>), then a file in <code>/var/tmp</code> cannot be
 hardlinked with a file in <code>/home</code>:
 <pre>
-  <b>> pwd</b>
+  <b># pwd</b>
   /var/tmp
-  <b>> ln /home/tj/tmp/tmpfile tmplink</b>
+  <b># ln /home/tj/tmp/tmpfile tmplink</b>
   ln: cannot create hard link `tmplink' to `/home/tj/tmp/tmpfile': Invalid cross-device link
 </pre>
 A <i>symbolic</i> link (also referred to as a &quot;symlink&quot;) is a file
 whose contents contain the name of the file to which the symbolic link
 points.  For example:
 <pre>
-  lrwxrwxrwx   1 root     root           11 Mar  2  2000 rmt -> /sbin/rmt
+  lrwxrwxrwx   1 root     root           11 Mar  2  2000 rmt -&gt; /sbin/rmt
 </pre>
 The file <code>rmt</code> contains the nine characters <code>/sbin/rmt</code>.
 The reason symbolic links fail when <code>chroot(2)</code> is used to
@@ -110,14 +110,55 @@ Symbolic links that point to nonexistent files are known as <i>dangling</i>
 symbolic links.  Note that symbolic links to files underneath the new
 root, such as symlinks to a file in the same directory:
 <pre>
-  <b>> pwd</b>
+  <b># pwd</b>
   /var/ftp
-  <b>> ls -l</b>
+  <b># ls -l</b>
   -rw-r--r--   1 root     root            0 Jan 16 11:50 tmpfile
-  lrwxrwxrwx   1 root     root            7 Jan 16 11:50 tmplink -> tmpfile
+  lrwxrwxrwx   1 root     root            7 Jan 16 11:50 tmplink -&gt; tmpfile
 </pre>
 will be unaffected; only paths that point outside/above the new root will be
 affected.
+
+<p>
+<B>Link Creation Tricks</b><br>
+Knowing the above, it is now possible to demonstrate how <i>some</i> symlinks
+<i>can</i> work within a chrooted session, depending on how you create them.
+
+<p>
+Here is an example to demonstrate this point.  Assume the following
+directory structure:
+<pre>
+  /path/to/ftp/
+  /path/to/ftp/folders/
+  /path/to/ftp/folders/incoming/
+  /path/to/ftp/incoming --&gt; /path/to/ftp/folders/incoming/ (<i>symlink</i>)
+</pre>
+And assume that you have the following in your <code>proftpd.conf</code>:
+<pre>
+  DefaultRoot /path/to/ftp/
+</pre>
+
+<p>
+If the symlink is created using:
+<pre>
+  # ln -s /path/to/ftp/folders/incoming /path/to/ftp/incoming
+</pre>
+then that symlink will <b>not</b> work in the chrooted session; the path you
+gave ("/path/to/ftp/folders/incoming") is an absolute path, and will not exist
+after the chroot.
+
+<p>
+Instead, if you create the symlink using:
+<pre>
+  # cd /path/to/ftp
+  # ln -s folders/incoming incoming 
+</pre>
+then that symlink should work within the chroot; the key is to use relative
+paths which <i>do not go above your <code>DefaultRoot</code> directory</i>.
+
+<p>
+If your symlink <i>does</i> need to go above the <code>DefaultRoot</code>
+directory, then you need to use one of the other tricks described below.
 
 <p>
 <b>Filesystem Tricks</b><br>
@@ -252,7 +293,7 @@ used for the chroot.  It's always a good idea of have a "applies to everyone"
 
 <p>
 <hr>
-Last Updated: $Date: 2009-09-17 20:54:26 $<br>
+Last Updated: $Date: 2009-11-04 20:27:56 $<br>
 <hr>
 
 </body>
