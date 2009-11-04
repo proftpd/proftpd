@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.20 2009-11-04 17:50:31 castaglia Exp $
+ * $Id: auth.c,v 1.21 2009-11-04 18:01:33 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1107,6 +1107,15 @@ int sftp_auth_send_banner(const char *banner) {
   if (banner == NULL) {
     errno = EINVAL;
     return -1;
+  }
+
+  /* If the client has finished authenticating, then we can no longer
+   * send USERAUTH_BANNER messages.
+   */
+  if (sftp_sess_state & SFTP_SESS_STATE_HAVE_AUTH) {
+    pr_trace_msg(trace_channel, 1,
+      "unable to send banner: client has authenticated");
+    return 0;
   }
 
   /* Make sure that the given banner string ends in CRLF, as required by
