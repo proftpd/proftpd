@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.97 2009-10-26 22:09:37 castaglia Exp $
+ * $Id: log.c,v 1.98 2009-11-04 20:19:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -339,6 +339,10 @@ void log_closesyslog(void) {
   syslog_sockfd = -1;
 
   syslog_open = FALSE;
+}
+
+int log_getfacility(void) {
+  return set_facility;
 }
 
 void log_setfacility(int f) {

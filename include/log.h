@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.31 2009-02-21 06:19:31 castaglia Exp $
+ * $Id: log.h,v 1.32 2009-11-04 20:19:05 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -135,6 +135,7 @@ int pr_log_vwritefile(int, const char *, const char *, va_list ap);
  */
 void log_closesyslog(void);
 int log_opensyslog(const char *);
+int log_getfacility(void);
 void log_setfacility(int);
 
 void pr_log_pri(int, const char *, ...)
