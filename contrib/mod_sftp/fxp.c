@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.55 2009-11-03 08:09:20 castaglia Exp $
+ * $Id: fxp.c,v 1.56 2009-11-04 20:51:12 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5563,12 +5563,10 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
   int xerrno = 0;
 
   old_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+  new_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     old_path = sftp_utf8_decode_str(fxp->pool, old_path);
-  }
-
-  new_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     new_path = sftp_utf8_decode_str(fxp->pool, new_path);
   }
 
@@ -5589,7 +5587,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     new_path);
 
   pr_scoreboard_entry_update(session.pid,
-    PR_SCORE_CMD, "%s", "REALPATH", NULL, NULL);
+    PR_SCORE_CMD, "%s", "RENAME", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", args, NULL, NULL);
 
