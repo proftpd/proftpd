@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.20 2009-06-30 17:09:09 castaglia Exp $
+ * $Id: mod_cap.c,v 1.21 2009-11-04 23:02:10 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -67,6 +67,7 @@ static unsigned int cap_flags = 0;
 #define CAP_USE_DAC_READ_SEARCH	0x0004
 #define CAP_USE_SETUID		0x0008
 #define CAP_USE_AUDIT_WRITE	0x0010
+#define CAP_USE_FOWNER		0x0020
 
 /* log current capabilities */
 static void lp_debug(void) {
@@ -185,6 +186,10 @@ MODRET set_caps(cmd_rec *cmd) {
       if (*cmd->argv[i] == '+')
         flags |= CAP_USE_DAC_READ_SEARCH;
 
+    } else if (strcasecmp(cp, "CAP_FOWNER") == 0) {
+      if (*cmd->argv[i] == '+')
+        flags |= CAP_USE_FOWNER;
+
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown capability: '",
         cp, "'", NULL));
@@ -275,6 +280,9 @@ MODRET cap_post_pass(cmd_rec *cmd) {
     res = lp_add_cap(CAP_AUDIT_WRITE, CAP_PERMITTED);
 #endif
 
+  if (res != -1 && (cap_flags & CAP_USE_FOWNER))
+    res = lp_add_cap(CAP_FOWNER, CAP_PERMITTED);
+
   if (res != -1)
     res = lp_set_cap();
 
@@ -315,6 +323,9 @@ MODRET cap_post_pass(cmd_rec *cmd) {
   if (res != -1 && (cap_flags & CAP_USE_AUDIT_WRITE))
     res = lp_add_cap(CAP_AUDIT_WRITE, CAP_EFFECTIVE);
 #endif
+
+  if (res != -1 && (cap_flags & CAP_USE_FOWNER))
+    res = lp_add_cap(CAP_FOWNER, CAP_EFFECTIVE);
 
   if (res != -1)
     res = lp_set_cap();
@@ -375,6 +386,11 @@ static int cap_sess_init(void) {
       if (cap_flags & CAP_USE_DAC_READ_SEARCH) {
         pr_log_debug(DEBUG3, MOD_CAP_VERSION
           ": adding CAP_DAC_READ_SEARCH capability");
+      }
+
+      if (cap_flags & CAP_USE_FOWNER) {
+        pr_log_debug(DEBUG3, MOD_CAP_VERSION
+          ": adding CAP_FOWNER capability");
       }
     }
 
