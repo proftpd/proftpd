@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.19 2009-09-16 17:26:43 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.20 2009-11-04 18:48:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -128,6 +128,7 @@ static int sftp_get_client_version(conn_t *conn) {
 
 static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
   int res;
+  char buf[256];
   const char *k, *v;
 
   pr_session_set_protocol("ssh2");
@@ -159,6 +160,14 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
 
   k = pstrdup(session.pool, "SFTP_LIBRARY_VERSION");
   v = pstrdup(session.pool, OPENSSL_VERSION_TEXT);
+  pr_env_set(session.pool, k, v);
+
+  memset(buf, '\0', sizeof(buf));
+  k = pstrdup(session.pool, "SSH_CONNECTION");
+  snprintf(buf, sizeof(buf)-1, "%.50s %d %.50s %d",
+    pr_netaddr_get_ipstr(conn->remote_addr), conn->remote_port,
+    pr_netaddr_get_ipstr(conn->local_addr), conn->local_port);
+  v = pstrdup(session.pool, buf);
   pr_env_set(session.pool, k, v);
 
   while (1) {
