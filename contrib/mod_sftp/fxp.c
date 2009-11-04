@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.56 2009-11-04 20:51:12 castaglia Exp $
+ * $Id: fxp.c,v 1.57 2009-11-04 21:07:06 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2484,24 +2484,29 @@ static int fxp_packet_write(struct fxp_packet *fxp) {
 
 /* Miscellaneous */
 
-static void fxp_version_add_statvfs_exts(pool *p, char **buf,
+static void fxp_version_add_openssh_exts(pool *p, char **buf,
     uint32_t *buflen) {
-#ifdef HAVE_SYS_STATVFS_H
-  struct fxp_extpair fstatvfs_ext, statvfs_ext;
+  struct fxp_extpair ext;
 
   (void) p;
 
   /* These are OpenSSH-specific SFTP extensions. */
 
-  statvfs_ext.ext_name = "statvfs@openssh.com";
-  statvfs_ext.ext_data = "2";
-  statvfs_ext.ext_datalen = 1;
-  fxp_msg_write_extpair(buf, buflen, &statvfs_ext);
+  ext.ext_name = "posix-rename@openssh.com";
+  ext.ext_data = "1";
+  ext.ext_datalen = 1;
+  fxp_msg_write_extpair(buf, buflen, &ext);
 
-  fstatvfs_ext.ext_name = "fstatvfs@openssh.com";
-  fstatvfs_ext.ext_data = "2";
-  fstatvfs_ext.ext_datalen = 1;
-  fxp_msg_write_extpair(buf, buflen, &fstatvfs_ext);
+#ifdef HAVE_SYS_STATVFS_H
+  ext.ext_name = "statvfs@openssh.com";
+  ext.ext_data = "2";
+  ext.ext_datalen = 1;
+  fxp_msg_write_extpair(buf, buflen, &ext);
+
+  ext.ext_name = "fstatvfs@openssh.com";
+  ext.ext_data = "2";
+  ext.ext_datalen = 1;
+  fxp_msg_write_extpair(buf, buflen, &ext);
 #endif
 }
 
@@ -2798,6 +2803,219 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   return fxp_packet_write(resp);
 }
 
+static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
+    char *dst) {
+  char *buf, *ptr, *args;
+  const char *reason;
+  uint32_t buflen, bufsz, status_code;
+  struct fxp_packet *resp;
+  cmd_rec *cmd, *cmd2, *cmd3;
+  int res, xerrno;
+
+  args = pstrcat(fxp->pool, src, " ", dst, NULL);
+
+  cmd = fxp_cmd_alloc(fxp->pool, "RENAME", args);
+  cmd->class = CL_MISC;
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  cmd2 = fxp_cmd_alloc(fxp->pool, C_RNTO, dst);
+  if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "RENAME to '%s' blocked by '%s' handler", dst, cmd2->argv[0]);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  dst = cmd2->arg;
+
+  cmd3 = fxp_cmd_alloc(fxp->pool, C_RNFR, src);
+  if (pr_cmd_dispatch_phase(cmd3, PRE_CMD, 0) < 0) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "RENAME from '%s' blocked by '%s' handler", src, cmd3->argv[0]);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  src = cmd3->arg;
+
+  if (!dir_check(fxp->pool, cmd3, G_DIRS, src, NULL) ||
+      !dir_check(fxp->pool, cmd2, G_WRITE, dst, NULL)) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "RENAME of '%s' to '%s' blocked by <Limit> configuration",
+      src, dst);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (strcmp(src, dst) == 0) {
+    xerrno = EEXIST;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "RENAME of '%s' to same path '%s', rejecting", src, dst);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason,
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+      NULL);
+
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (fxp_path_pass_regex_filters(fxp->pool, "RENAME", src) < 0 ||
+      fxp_path_pass_regex_filters(fxp->pool, "RENAME", dst) < 0) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "RENAME of '%s' to '%s' blocked by PathFilter configuration", src, dst);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  res = pr_fsio_rename(src, dst);
+  if (res < 0) {
+    if (errno != EXDEV) {
+      xerrno = errno;
+
+      (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %lu, "
+        "GID %lu): error renaming '%s' to '%s': %s", session.user,
+        (unsigned long) session.uid, (unsigned long) session.gid,
+        src, dst, strerror(xerrno));
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error renaming '%s' to '%s': %s", src, dst, strerror(xerrno));
+
+      errno = xerrno;
+
+    } else {
+      /* In this case, we should manually copy the file from the source
+       * path to the destination path.
+       */
+      errno = 0;
+
+      res = pr_fs_copy_file(src, dst);
+      if (res < 0) {
+        xerrno = errno;
+
+        (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %lu, "
+          "GID %lu): error copying '%s' to '%s': %s", session.user,
+          (unsigned long) session.uid, (unsigned long) session.gid,
+          src, dst, strerror(xerrno));
+
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error copying '%s' to '%s': %s", src, dst, strerror(xerrno));
+
+        errno = xerrno;
+
+      } else {
+        /* Once copied, remove the original path. */
+        if (pr_fsio_unlink(src) < 0) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "error deleting '%s': %s", src, strerror(errno));
+        }
+
+        xerrno = errno = 0;
+      }
+    }
+
+  } else {
+    /* No errors. */
+    xerrno = errno = 0;
+  }
+
+  status_code = fxp_errno2status(xerrno, &reason);
+
+  pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+    "('%s' [%d])", (unsigned long) status_code, reason,
+    xerrno != EOF ? strerror(errno) : "End of file", xerrno);
+
+  fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+  pr_cmd_dispatch_phase(cmd3, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
+  pr_cmd_dispatch_phase(cmd2, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
+  pr_cmd_dispatch_phase(cmd, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
 #ifdef HAVE_SYS_STATVFS_H
 static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, cmd_rec *cmd,
     const char *path) {
@@ -2894,14 +3112,29 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
   pr_trace_msg(trace_channel, 7, "received request: EXTENDED %s",
     ext_request_name);
 
+  if (strcmp(ext_request_name, "posix-rename@openssh.com") == 0) {
+    char *src, *dst;
+
+    src = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+    dst = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+    if (fxp_session->client_version >= fxp_utf8_protocol_version) {
+      src = sftp_utf8_decode_str(fxp->pool, src);
+      dst = sftp_utf8_decode_str(fxp->pool, dst);
+    }
+
+    return fxp_handle_ext_posix_rename(fxp, src, dst);
+  }
+
 #ifdef HAVE_SYS_STATVFS_H
   if (strcmp(ext_request_name, "statvfs@openssh.com") == 0) {
     const char *path;
 
     path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
     return fxp_handle_ext_statvfs(fxp, cmd, path);
+  }
 
-  } else if (strcmp(ext_request_name, "fstatvfs@openssh.com") == 0) {
+  if (strcmp(ext_request_name, "fstatvfs@openssh.com") == 0) {
     const char *handle, *path;
     struct fxp_handle *fxh;
 
@@ -3290,7 +3523,7 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
 
   sftp_msg_write_int(&buf, &buflen, fxp_session->client_version);
 
-  fxp_version_add_statvfs_exts(fxp->pool, &buf, &buflen);
+  fxp_version_add_openssh_exts(fxp->pool, &buf, &buflen);
 
   if (fxp_session->client_version >= 4) {
     fxp_version_add_newline_ext(fxp->pool, &buf, &buflen);
