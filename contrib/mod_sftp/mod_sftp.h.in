@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_sftp.h.in,v 1.8 2009-09-25 00:25:52 castaglia Exp $
+ * $Id: mod_sftp.h.in,v 1.9 2009-11-05 17:40:45 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_H
@@ -94,6 +94,11 @@ extern pool *sftp_pool;
 extern conn_t *sftp_conn;
 extern unsigned int sftp_sess_state;
 extern unsigned long sftp_opts;
+
+/* Used by other SFTP modules (e.g. mod_sftp_pam) for sending USERAUTH_BANNER
+ * messages to the client.
+ */
+int sftp_auth_send_banner(const char *);
 
 /* API for modules that which to register "keyboard-interactive" auth
  * drivers (see RFC4256).

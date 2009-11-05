@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keystore.c,v 1.3 2009-11-03 19:03:20 castaglia Exp $
+ * $Id: keystore.c,v 1.4 2009-11-05 17:40:45 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -287,7 +287,7 @@ int sftp_keystore_verify_user_key(pool *p, const char *user, char *key_data,
      * being set, hence why we cache/restore its value.
      */
     session_user = session.user;
-    session.user = user;
+    session.user = (char *) user;
     path = path_subst_uservar(p, &path);
     session.user = session_user;
 

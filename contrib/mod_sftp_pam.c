@@ -26,7 +26,7 @@
  * This is mod_sftp_pam, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_pam.c,v 1.5 2009-11-04 17:50:31 castaglia Exp $
+ * $Id: mod_sftp_pam.c,v 1.6 2009-11-05 17:40:45 castaglia Exp $
  * $Libraries: -lpam $
  */
 
@@ -147,8 +147,8 @@ static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
       continue;
 
     } else if (SFTP_PAM_MSG_MEMBER(msgs, i, msg_style) == PAM_ERROR_MSG) {
-      pr_trace_msg(trace_channel, 5, "skipping PAM_ERROR_MSG '%s'",
-        SFTP_PAM_MSG_MEMBER(msgs, i, msg));
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_PAM_VERSION,
+        "received PAM_ERROR_MSG '%s'", SFTP_PAM_MSG_MEMBER(msgs, i, msg));
       continue;
     }
 

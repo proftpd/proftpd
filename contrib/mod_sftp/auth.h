@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.h,v 1.4 2009-11-04 17:50:31 castaglia Exp $
+ * $Id: auth.h,v 1.5 2009-11-05 17:40:45 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -55,10 +55,5 @@ int sftp_auth_password(struct ssh2_packet *, const char *, const char *,
 /* Handles 'publickey' user authentication. */
 int sftp_auth_publickey(struct ssh2_packet *, const char *, const char *,
   const char *, char **, uint32_t *, int *);
-
-/* Used by other SFTP modules (e.g. mod_sftp_pam) for sending USERAUTH_BANNER
- * messages to the client.
- */
-int sftp_auth_send_banner(const char *);
 
 #endif
