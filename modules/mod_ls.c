@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.168 2009-09-28 21:27:27 castaglia Exp $
+ * $Id: mod_ls.c,v 1.169 2009-11-05 18:24:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -355,7 +355,7 @@ static char months[12][4] =
 static int listfile(cmd_rec *cmd, pool *p, const char *name) {
   int rval = 0, len;
   time_t mtime;
-  char m[1024] = {'\0'}, l[1024] = {'\0'}, s[16] = {'\0'};
+  char m[PR_TUNABLE_PATH_MAX+1] = {'\0'}, l[PR_TUNABLE_PATH_MAX+1] = {'\0'}, s[16] = {'\0'};
   struct stat st;
   struct tm *t = NULL;
   char suffix[2];
