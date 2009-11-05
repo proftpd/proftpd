@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.7 2009-10-03 16:35:38 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.8 2009-11-05 17:46:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -296,16 +296,28 @@ static int sql_passwd_sess_init(void) {
     append = c->argv[1];
 
     if (strcasecmp(path, "none") != 0) {
-      int fd;
+      int fd, xerrno = 0;;
 
       PRIVS_ROOT
-      fd = open(path, O_RDONLY);
+      fd = open(path, O_RDONLY|O_NONBLOCK);
+      if (fd < 0) {
+        xerrno = errno;
+      }
       PRIVS_RELINQUISH
 
       if (fd >= 0) {
+        int flags;
         char buf[512];
         ssize_t nread;
-   
+  
+        /* Set this descriptor for blocking. */
+        flags = fcntl(fd, F_GETFL);
+        if (fcntl(fd, F_SETFL, flags & (U32BITS^O_NONBLOCK)) < 0) {
+          pr_log_debug(DEBUG3, MOD_SQL_PASSWD_VERSION
+            ": error setting blocking mode on SQLPasswordSaltFile '%s': %s",
+            path, strerror(errno));
+        }
+ 
         nread = read(fd, buf, sizeof(buf));
         while (nread > 0) {
           pr_signals_handle();
@@ -375,7 +387,7 @@ static int sql_passwd_sess_init(void) {
       } else {
         pr_log_debug(DEBUG1, MOD_SQL_PASSWD_VERSION
           ": unable to read SQLPasswordSaltFile '%s': %s", path,
-          strerror(errno));
+          strerror(xerrno));
       }
     }
   }

@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD xferlog(5) logging support.
- * $Id: xferlog.c,v 1.5 2009-05-08 23:13:34 castaglia Exp $
+ * $Id: xferlog.c,v 1.6 2009-11-05 17:46:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -51,6 +51,11 @@ int xferlog_open(const char *path) {
   if (xferlogfd == -1) {
     pr_log_debug(DEBUG6, "opening TransferLog '%s'", path);
     pr_log_openfile(path, &xferlogfd, PR_LOG_XFER_MODE);
+
+    if (xferlogfd < 0) {
+      pr_log_pri(PR_LOG_NOTICE, "unable to open TransferLog '%s': %s",
+        path, strerror(errno));
+    }
   }
 
   return xferlogfd;

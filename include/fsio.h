@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.23 2009-03-30 18:43:50 castaglia Exp $
+ * $Id: fsio.h,v 1.24 2009-11-05 17:46:54 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -283,6 +283,7 @@ off_t pr_fsio_lseek(pr_fh_t *, off_t, int);
 char *pr_fsio_getline(char *, int, pr_fh_t *, unsigned int *);
 char *pr_fsio_gets(char *, size_t, pr_fh_t *);
 int pr_fsio_puts(const char *, pr_fh_t *);
+int pr_fsio_set_block(pr_fh_t *);
 
 pr_fs_t *pr_register_fs(pool *, const char *, const char *);
 pr_fs_t *pr_create_fs(pool *, const char *);

@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.98 2009-11-04 20:19:05 castaglia Exp $
+ * $Id: log.c,v 1.99 2009-11-05 17:46:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -47,12 +47,21 @@ static int systemlog_fd = -1;
 
 int syslog_sockfd = -1;
 
+static int fd_set_block(int fd) {
+  int flags, res;
+
+  flags = fcntl(fd, F_GETFL);
+  res = fcntl(fd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+
+  return res;
+}
+
 int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   int res;
   pool *tmp_pool = NULL;
   char *tmp = NULL, *lf;
   unsigned char have_stat = FALSE, *allow_log_symlinks = NULL;
-  struct stat sbuf;
+  struct stat st;
 
   /* Sanity check */
   if (!log_file || !log_fd) {
@@ -79,7 +88,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
    */
   *tmp = '\0';
 
-  if (stat(lf, &sbuf) == -1) {
+  if (stat(lf, &st) < 0) {
     int xerrno = errno;
     pr_log_debug(DEBUG0, "error: unable to stat() %s: %s", lf,
       strerror(errno));
@@ -90,7 +99,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   }
 
   /* The path must be in a valid directory */
-  if (!S_ISDIR(sbuf.st_mode)) {
+  if (!S_ISDIR(st.st_mode)) {
     pr_log_debug(DEBUG0, "error: %s is not a directory", lf);
     destroy_pool(tmp_pool);
 
@@ -99,7 +108,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   }
 
   /* Do not log to world-writeable directories */
-  if (sbuf.st_mode & S_IWOTH) {
+  if (st.st_mode & S_IWOTH) {
     pr_log_pri(PR_LOG_NOTICE, "error: %s is a world writeable directory", lf);
     destroy_pool(tmp_pool);
     return PR_LOG_WRITABLE_DIR;
@@ -113,8 +122,14 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   allow_log_symlinks = get_param_ptr(main_server->conf, "AllowLogSymlinks",
     FALSE);
 
-  if (!allow_log_symlinks || *allow_log_symlinks == FALSE) {
-    int flags = O_APPEND|O_CREAT|O_WRONLY;
+  if (allow_log_symlinks == NULL ||
+      *allow_log_symlinks == FALSE) {
+    int flags = O_APPEND|O_CREAT|O_WRONLY|O_NONBLOCK;
+
+    /* Use the O_NONBLOCK flag when opening log files, as they might be
+     * FIFOs whose other end is not currently running; we do not want to
+     * block indefinitely in such cases.
+     */
 
 #ifdef O_NOFOLLOW
     /* On systems that support the O_NOFOLLOW flag (e.g. Linux and FreeBSD),
@@ -135,7 +150,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
 #endif /* O_NOFOLLOW or SOLARIS2 */
 
     *log_fd = open(lf, flags, log_mode);
-    if (*log_fd == -1) {
+    if (*log_fd < 0) {
 
       if (errno != EEXIST) {
         destroy_pool(tmp_pool);
@@ -176,7 +191,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
         flags &= ~O_EXCL;
 
         *log_fd = open(lf, flags, log_mode);
-        if (*log_fd == -1) {
+        if (*log_fd < 0) {
           destroy_pool(tmp_pool);
           return -1;
         }
@@ -185,7 +200,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
          * above and the lstat() call below...
          */
 
-        if (lstat(lf, &sbuf) != -1)
+        if (lstat(lf, &st) != -1)
           have_stat = TRUE;
 #else
         destroy_pool(tmp_pool);
@@ -195,10 +210,12 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
     }
 
     /* Stat the file using the descriptor, not the path */
-    if (!have_stat && fstat(*log_fd, &sbuf) != -1)
+    if (!have_stat &&
+        fstat(*log_fd, &st) != -1)
       have_stat = TRUE;
 
-    if (!have_stat || S_ISLNK(sbuf.st_mode)) {
+    if (!have_stat ||
+        S_ISLNK(st.st_mode)) {
       pr_log_debug(DEBUG0, !have_stat ? "error: unable to stat %s" :
         "error: %s is a symbolic link", lf);
 
@@ -209,8 +226,15 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
     }
 
   } else {
-    *log_fd = open(lf, O_CREAT|O_APPEND|O_WRONLY, log_mode);
-    if (*log_fd == -1) {
+    int flags = O_CREAT|O_APPEND|O_WRONLY|O_NONBLOCK;
+
+    /* Use the O_NONBLOCK flag when opening log files, as they might be
+     * FIFOs whose other end is not currently running; we do not want to
+     * block indefinitely in such cases.
+     */
+
+    *log_fd = open(lf, flags, log_mode);
+    if (*log_fd < 0) {
       destroy_pool(tmp_pool);
       return -1;
     }
@@ -228,6 +252,9 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
       *log_fd = res;
     }
   }
+
+  /* Return the fd to blocking mode. */
+  fd_set_block(*log_fd);
 
   destroy_pool(tmp_pool);
   return 0;

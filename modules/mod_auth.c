@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.268 2009-10-02 23:38:57 castaglia Exp $
+ * $Id: mod_auth.c,v 1.269 2009-11-05 17:46:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1143,10 +1143,12 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
       xferlog = PR_XFERLOG_PATH;
   }
 
-  if (strcasecmp(xferlog, "NONE") == 0)
+  if (strcasecmp(xferlog, "NONE") == 0) {
     xferlog_open(NULL);
-  else
+
+  } else {
     xferlog_open(xferlog);
+  }
 
   res = set_groups(p, pw->pw_gid, session.gids);
   if (res < 0) {

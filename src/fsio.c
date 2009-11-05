@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.84 2009-09-29 20:50:28 castaglia Exp $
+ * $Id: fsio.c,v 1.85 2009-11-05 17:46:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3681,6 +3681,20 @@ int pr_fsio_puts(const char *buf, pr_fh_t *fh) {
   }
 
   return pr_fsio_write(fh, buf, strlen(buf));
+}
+
+int pr_fsio_set_block(pr_fh_t *fh) {
+  int flags, res;
+
+  if (fh == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  flags = fcntl(fh->fh_fd, F_GETFL);
+  res = fcntl(fh->fh_fd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+
+  return res;
 }
 
 void pr_resolve_fs_map(void) {

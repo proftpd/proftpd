@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.30 2009-11-03 06:37:38 castaglia Exp $
+ * $Id: scp.c,v 1.31 2009-11-05 17:46:54 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -238,15 +238,6 @@ static struct scp_session *scp_get_session(uint32_t channel_id) {
 
   errno = ENOENT;
   return NULL;
-}
-
-static int scp_set_block(pr_fh_t *fh) {
-  int flags, res;
-
-  flags = fcntl(fh->fh_fd, F_GETFL);
-  res = fcntl(fh->fh_fd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
-
-  return res;
 }
 
 static void reset_path(struct scp_path *sp) {
@@ -817,7 +808,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
     sp->hiddenstore = TRUE;
   }
 
-  scp_set_block(sp->fh);
+  pr_fsio_set_block(sp->fh);
 
   write_confirm(p, channel_id, 0, NULL);
   return 0;

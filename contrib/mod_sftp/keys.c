@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.7 2009-09-16 20:51:15 castaglia Exp $
+ * $Id: keys.c,v 1.8 2009-11-05 17:46:54 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1021,6 +1021,10 @@ int sftp_keys_get_hostkey(const char *path) {
 
   pr_signals_block();
   PRIVS_ROOT
+
+  /* XXX Would we ever want to allow host keys to be read from FIFOs?  If
+   * so, we would need to include the O_NONBLOCK flag here.
+   */
   fd = open(path, O_RDONLY, 0);
   PRIVS_RELINQUISH
   pr_signals_unblock();

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.57 2009-11-04 21:07:06 castaglia Exp $
+ * $Id: fxp.c,v 1.58 2009-11-05 17:46:54 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -637,15 +637,6 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
       res |= O_WRONLY;
     }
   }
-
-  return res;
-}
-
-static int fxp_set_block(pr_fh_t *fh) {
-  int flags, res;
-
-  flags = fcntl(fh->fh_fd, F_GETFL); 
-  res = fcntl(fh->fh_fd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
 
   return res;
 }
@@ -4565,7 +4556,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  fxp_set_block(fh);
+  pr_fsio_set_block(fh);
 
   /* If the SFTPOption for ignoring perms for SFTP uploads is set, handle
    * it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.
