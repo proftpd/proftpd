@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.19 2008-06-05 04:13:38 castaglia Exp $
+ * $Id: netacl.c,v 1.20 2009-11-05 02:19:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -322,6 +322,30 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
       acl->pattern = pstrdup(p, aclstr);
     }
 
+  } else if (strchr(aclstr, '.') == NULL) {
+
+    /* Check if the given rule is negated. */
+    if (*aclstr == '!') {
+      acl->negated = TRUE;
+      aclstr++;
+    }
+
+    /* If there are any glob characters (e.g. '{', '[', '*', or '?'), or if the
+     * first character is a '.', then treat the rule as a glob.
+     */
+    if (strpbrk(aclstr, "{[*?")) {
+      acl->type = PR_NETACL_TYPE_DNSGLOB;
+      acl->pattern = pstrdup(p, aclstr);
+
+    } else if (*aclstr == '.') {
+      acl->type = PR_NETACL_TYPE_DNSGLOB;
+      acl->pattern = pstrcat(p, "*", aclstr, NULL);
+
+    } else {
+      acl->type = PR_NETACL_TYPE_DNSMATCH;
+      acl->pattern = pstrdup(p, aclstr);
+    }
+
   } else {
 
     /* Check if the given rule is negated. */
@@ -330,17 +354,55 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
       aclstr++;
     }
 
-    /* If the last character is a '.', then treat the rule as a glob. */
+    /* If the last character is a '.', then treat the rule as an IP glob. */
     if (aclstr[strlen(aclstr)-1] == '.') {
       acl->type = PR_NETACL_TYPE_IPGLOB;
       acl->pattern = pstrcat(p, aclstr, "*", NULL);
 
     } else {
-      acl->type = PR_NETACL_TYPE_IPMATCH;
-      acl->addr = pr_netaddr_get_addr(p, aclstr, NULL);
+      register unsigned int i;
+      int use_dns = FALSE;
 
-      if (!acl->addr) 
-        return NULL;
+      /* If there are only digits and periods, it's an IP match.  Otherwise,
+       * it is a DNS glob (if there are glob characters) or a DNS match.
+       */
+      for (i = 0; i < strlen(aclstr); i++) {
+        if (aclstr[i] == '.') {
+          continue;
+        }
+
+        if (isdigit((int) aclstr[i]) == 0) {
+          /* Not a digit. */
+          use_dns = TRUE;
+          break;
+        }
+      }
+
+      if (!use_dns) {
+        acl->type = PR_NETACL_TYPE_IPMATCH;
+        acl->addr = pr_netaddr_get_addr(p, aclstr, NULL);
+
+        if (!acl->addr) 
+           return NULL;
+
+      } else {
+
+        /* If there are any glob characters (e.g. '{', '[', '*', or '?'), or
+         * if the first character is a '.', then treat the rule as a glob.
+         */
+        if (strpbrk(aclstr, "{[*?")) {
+          acl->type = PR_NETACL_TYPE_DNSGLOB;
+          acl->pattern = pstrdup(p, aclstr);
+
+        } else if (*aclstr == '.') {
+          acl->type = PR_NETACL_TYPE_DNSGLOB;
+          acl->pattern = pstrcat(p, "*", aclstr, NULL);
+
+        } else {
+          acl->type = PR_NETACL_TYPE_DNSMATCH;
+          acl->pattern = pstrdup(p, aclstr);
+        }
+      }
     }
   }
 

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.358 2009-10-13 15:30:50 castaglia Exp $
+ * $Id: mod_core.c,v 1.359 2009-11-05 02:19:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1037,10 +1037,13 @@ MODRET add_from(cmd_rec *cmd) {
          }
 
         acl = pr_netacl_create(cmd->tmp_pool, ent);
-        if (!acl) {
+        if (acl == NULL) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad ACL definition '",
             *(cargv + 1), "': ", strerror(errno), NULL));
         }
+
+        pr_trace_msg("netacl", 9, "'%s' parsed into netacl '%s'", ent,
+          pr_netacl_get_str(cmd->tmp_pool, acl));
 
         if (pr_class_add_acl(acl) < 0) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error adding rule '", ent,
