@@ -92,6 +92,7 @@ if (scalar(@ARGV) > 0) {
     t/config/allowoverwrite.t
     t/config/authaliasonly.t
     t/config/authusingalias.t
+    t/config/classes.t
     t/config/createhome.t
     t/config/deleteabortedstores.t
     t/config/dirfakemode.t
