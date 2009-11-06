@@ -6088,8 +6088,7 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (strcasecmp(cmd->argv[1], "off") == 0 ||
-      strcasecmp(cmd->argv[1], "none") == 0) {
+  if (strcasecmp(cmd->argv[1], "none") == 0) {
     add_config_param(cmd->argv[0], 0);
     return PR_HANDLED(cmd);
   }
