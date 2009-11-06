@@ -6552,6 +6552,9 @@ static void tls_sess_exit_ev(const void *event_data, void *user_data) {
 
     res = SSL_CTX_sess_timeouts(ssl_ctx);
     tls_log("[stat]: SSL session cache timeouts: %ld", res);
+
+    res = SSL_CTX_sess_cache_full(ssl_ctx);
+    tls_log("[stat]: SSL session cache size exceeded: %ld", res);
   }
 
   /* OpenSSL cleanup */
