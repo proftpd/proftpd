@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.58 2009-11-05 17:46:54 castaglia Exp $
+ * $Id: fxp.c,v 1.59 2009-11-06 01:56:48 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2475,6 +2475,13 @@ static int fxp_packet_write(struct fxp_packet *fxp) {
 
 /* Miscellaneous */
 
+static void fxp_version_add_std_exts(pool *p, char **buf, uint32_t *buflen) {
+
+  (void) p;
+
+  /* These are "standard" extensions. */
+}
+
 static void fxp_version_add_openssh_exts(pool *p, char **buf,
     uint32_t *buflen) {
   struct fxp_extpair ext;
@@ -3514,6 +3521,7 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
 
   sftp_msg_write_int(&buf, &buflen, fxp_session->client_version);
 
+  fxp_version_add_std_exts(fxp->pool, &buf, &buflen);
   fxp_version_add_openssh_exts(fxp->pool, &buf, &buflen);
 
   if (fxp_session->client_version >= 4) {
