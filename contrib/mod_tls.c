@@ -534,7 +534,10 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
       tls_log("[info] %s: failed in %s: %s", str,
         SSL_state_string_long(ssl), tls_get_errors());
 
-    } else if (ret < 0 && errno != 0) {
+    } else if (ret < 0 &&
+               errno != 0 &&
+               errno != EAGAIN) {
+      /* Ignore EAGAIN errors */
       tls_log("[info] %s: error in %s (errno %d: %s)",
         str, SSL_state_string_long(ssl), errno, strerror(errno));
     }
