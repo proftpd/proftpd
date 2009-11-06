@@ -2788,9 +2788,7 @@ static void tls_end_sess(SSL *ssl, int strms, int flags) {
           break;
 
         case SSL_ERROR_ZERO_RETURN:
-          tls_log("SSL_shutdown error: ZERO_RETURN");
-          pr_log_debug(DEBUG0, MOD_TLS_VERSION
-            ": SSL_shutdown error: ZERO_RETURN");
+          /* Clean shutdown, nothing we need to do. */
           break;
 
         case SSL_ERROR_SYSCALL:
