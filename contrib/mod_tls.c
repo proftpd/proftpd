@@ -6537,11 +6537,11 @@ static void tls_sess_exit_ev(const void *event_data, void *user_data) {
     res = SSL_CTX_sess_accept_renegotiate(ssl_ctx);
     tls_log("[stat]: SSL sessions renegotiated: %ld", res);
 
-    res = SSL_CTX_sess_number(ssl_ctx);
-    tls_log("[stat]: SSL sessions in cache: %ld", res);
-
     res = SSL_CTX_sess_hits(ssl_ctx);
     tls_log("[stat]: SSL sessions resumed: %ld", res);
+
+    res = SSL_CTX_sess_number(ssl_ctx);
+    tls_log("[stat]: SSL sessions in cache: %ld", res);
 
     res = SSL_CTX_sess_cb_hits(ssl_ctx);
     tls_log("[stat]: SSL session cache hits: %ld", res);
