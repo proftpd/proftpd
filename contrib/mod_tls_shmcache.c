@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_shmcache.c,v 1.4 2009-11-07 19:46:03 castaglia Exp $
+ *  $Id: mod_tls_shmcache.c,v 1.5 2009-11-07 20:11:41 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -37,6 +37,10 @@
 
 #include <sys/ipc.h>
 #include <sys/shm.h>
+
+#ifdef HAVE_MLOCK
+# include <sys/mman.h>
+#endif
 
 #define MOD_TLS_SHMCACHE_VERSION		"mod_tls_shmcache/0.1"
 
@@ -129,6 +133,7 @@ struct shmcache_data {
 static tls_sess_cache_t shmcache;
 
 static struct shmcache_data *shmcache_data = NULL;
+static size_t shmcache_datasz = NULL;
 static int shmcache_shmid = -1;
 static pr_fh_t *shmcache_fh = NULL;
 
@@ -441,7 +446,6 @@ static struct shmcache_data *shmcache_get_shm(pr_fh_t *fh,
     }
 
   } else {
-
     /* Make sure the memory is initialized. */
     if (shmcache_lock_shm(F_WRLCK) < 0) {
       pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
@@ -455,6 +459,8 @@ static struct shmcache_data *shmcache_get_shm(pr_fh_t *fh,
         ": error unlocking shmcache: %s", strerror(errno));
     }
   }
+
+  shmcache_datasz = shm_size;
 
   shmcache_shmid = shmid;
   pr_log_debug(DEBUG9, MOD_TLS_SHMCACHE_VERSION
@@ -1520,6 +1526,35 @@ static int tls_shmcache_init(void) {
 static int tls_shmcache_sess_init(void) {
   pr_event_unregister(&tls_shmcache_module, "core.exit",
     shmcache_daemon_exit_ev);
+
+#ifdef HAVE_MLOCK
+  if (shmcache_data != NULL) {
+    int res, xerrno = 0;
+
+    /* Make sure the memory is pinned in RAM where possible.
+     *
+     * Since this is a session process, we do not need to worry about
+     * explicitly unlocking the locked memory; that will happen automatically
+     * when the session process exits.
+     */
+    PRIVS_ROOT
+    res = mlock(shmcache_data, shmcache_datasz);
+    xerrno = errno;
+    PRIVS_RELINQUISH
+
+    if (res < 0) {
+      pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
+        ": error locking 'shm' cache (%lu bytes) into memory: %s",
+        (unsigned long) shmcache_datasz, strerror(xerrno));
+
+    } else {
+      pr_log_debug(DEBUG5, MOD_TLS_SHMCACHE_VERSION
+        ": 'shm' cache locked into memory (%lu bytes)",
+        (unsigned long) shmcache_datasz);
+    }
+  }
+#endif
+
   return 0;
 }
 
