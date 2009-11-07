@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_shmcache.c,v 1.3 2009-03-10 06:53:09 castaglia Exp $
+ *  $Id: mod_tls_shmcache.c,v 1.4 2009-11-07 19:46:03 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -38,7 +38,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#define MOD_TLS_SHMCACHE_VERSION		"mod_tls_shmcache/0.0"
+#define MOD_TLS_SHMCACHE_VERSION		"mod_tls_shmcache/0.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030301
@@ -252,6 +252,9 @@ static int shmcache_lock_shm(int lock_type) {
       errno = xerrno;
       return -1;
     }
+
+    errno = xerrno;
+    return -1;
   }
 
   pr_trace_msg(trace_channel, 9, "%s of shmcache fd %d succeeded", lock_desc,
@@ -547,8 +550,11 @@ static unsigned int shmcache_flush(void) {
  */
 
 static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
+  int fd;
   char *ptr;
   size_t requested_size;
+
+  pr_trace_msg(trace_channel, 9, "opening shmcache cache %p", cache);
 
   /* The info string must be formatted like:
    *
@@ -664,8 +670,29 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
     return -1;
   }
 
+  /* Make sure that we don't inadvertently get one of the Big Three file
+   * descriptors (stdin/stdout/stderr), as can happen especially if the
+   * server has restarted.
+   */
+  fd = PR_FH_FD(shmcache_fh);
+  if (fd <= STDERR_FILENO) {
+    int res;
+
+    res = pr_fs_get_usable_fd(fd);
+    if (res < 0) { 
+      pr_log_debug(DEBUG0,
+        "warning: unable to find good fd for shmcache fd %d: %s",
+        fd, strerror(errno));
+ 
+    } else {
+      close(fd);
+      PR_FH_FD(shmcache_fh) = res;
+    }
+  }
+
   pr_log_debug(DEBUG10, MOD_TLS_SHMCACHE_VERSION
-    ": requested shmcache file: %s", shmcache_fh->fh_path);
+    ": requested shmcache file: %s (fd %d)", shmcache_fh->fh_path,
+    PR_FH_FD(shmcache_fh));
   pr_log_debug(DEBUG10, MOD_TLS_SHMCACHE_VERSION
     ": requested shmcache size: %lu bytes", (unsigned long) requested_size);
 
@@ -689,6 +716,8 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
 }
 
 static int shmcache_close(tls_sess_cache_t *cache) {
+  pr_trace_msg(trace_channel, 9, "closing shmcache cache %p", cache);
+
   if (cache != NULL &&
       cache->cache_pool != NULL) {
     destroy_pool(cache->cache_pool);
@@ -732,6 +761,7 @@ static int shmcache_close(tls_sess_cache_t *cache) {
   }
 
   pr_fsio_close(shmcache_fh);
+  shmcache_fh = NULL;
   return 0;
 }
 
@@ -805,6 +835,8 @@ static int shmcache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
   register unsigned int i;
   unsigned int h, idx, last;
   int found_slot = FALSE, need_lock = TRUE, res = 0, sess_len;
+
+  pr_trace_msg(trace_channel, 9, "adding session to shmcache cache %p", cache);
 
   /* First we need to find out how much space is needed for the serialized
    * session data.  There is no known maximum size for SSL session data;
@@ -945,6 +977,9 @@ static SSL_SESSION *shmcache_get(tls_sess_cache_t *cache,
   unsigned int h, idx;
   SSL_SESSION *sess = NULL;
 
+  pr_trace_msg(trace_channel, 9, "getting session from shmcache cache %p",
+    cache); 
+
   /* Look for the requested session in the "large session" list first. */
   if (shmcache_sess_list != NULL) {
     register unsigned int i;
@@ -1057,6 +1092,9 @@ static int shmcache_delete(tls_sess_cache_t *cache,
   unsigned int h, idx;
   int res;
 
+  pr_trace_msg(trace_channel, 9, "removing session from shmcache cache %p",
+    cache);
+
   /* Look for the requested session in the "large session" list first. */
   if (shmcache_sess_list != NULL) {
     register unsigned int i;
@@ -1146,6 +1184,8 @@ static int shmcache_clear(tls_sess_cache_t *cache) {
   register unsigned int i;
   int res;
 
+  pr_trace_msg(trace_channel, 9, "clearing shmcache cache %p", cache); 
+
   if (shmcache_shmid < 0) {
     errno = EINVAL;
     return -1;
@@ -1194,6 +1234,8 @@ static int shmcache_remove(tls_sess_cache_t *cache) {
   struct shmid_ds ds;
   const char *cache_file;
 
+  pr_trace_msg(trace_channel, 9, "removing shmcache cache %p", cache); 
+
   cache_file = shmcache_fh->fh_path;
   (void) shmcache_close(cache);
 
@@ -1230,6 +1272,8 @@ static int shmcache_status(tls_sess_cache_t *cache,
   int res, xerrno = 0;
   struct shmid_ds ds;
   pool *tmp_pool;
+
+  pr_trace_msg(trace_channel, 9, "checking shmcache cache %p", cache); 
 
   if (shmcache_lock_shm(F_RDLCK) < 0) {
     pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
@@ -1389,24 +1433,57 @@ static int shmcache_status(tls_sess_cache_t *cache,
 /* Event Handlers
  */
 
+/* Daemon PID */
+extern pid_t mpid;
+
+static void shmcache_daemon_exit_ev(const void *event_data, void *user_data) {
+  if (mpid == getpid() &&
+      ServerType == SERVER_STANDALONE) {
+
+    /* Remove external session caches on shutdown; the security policy/config
+     * may have changed, e.g. becoming more strict, and allow clients to
+     * resumed cached sessions from a more relaxed security config is not a 
+     * Good Thing at all.
+     */
+    shmcache_remove(NULL);
+  }
+}
+
 #if defined(PR_SHARED_MODULE)
 static void shmcache_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_tls_shmcache.c", (const char *) event_data) == 0) {
     pr_event_unregister(&tls_shmcache_module, NULL, NULL);
     tls_sess_cache_unregister("shm");
-    shmcache_close(NULL);
+
+    /* This clears our cache by detaching and destroying the shared memory
+     * segment.
+     */
+    shmcache_remove(NULL);
   }
 }
 #endif /* !PR_SHARED_MODULE */
+
+static void shmcache_restart_ev(const void *event_data, void *user_data) {
+  /* Clear external session caches on shutdown; the security policy/config
+   * may have changed, e.g. becoming more strict, and allow clients to
+   * resumed cached sessions from a more relaxed security config is not a 
+   * Good Thing at all.
+   */
+  shmcache_clear(NULL);
+}
 
 /* Initialization functions
  */
 
 static int tls_shmcache_init(void) {
+  pr_event_register(&tls_shmcache_module, "core.exit", shmcache_daemon_exit_ev,
+    NULL);
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&tls_shmcache_module, "core.module-unload",
     shmcache_mod_unload_ev, NULL);
 #endif /* !PR_SHARED_MODULE */
+  pr_event_register(&tls_shmcache_module, "core.restart", shmcache_restart_ev,
+    NULL);
 
   /* Prepare our cache handler. */
   memset(&shmcache, 0, sizeof(shmcache));
@@ -1440,6 +1517,12 @@ static int tls_shmcache_init(void) {
   return 0;
 }
 
+static int tls_shmcache_sess_init(void) {
+  pr_event_unregister(&tls_shmcache_module, "core.exit",
+    shmcache_daemon_exit_ev);
+  return 0;
+}
+
 /* Module API tables
  */
 
@@ -1465,7 +1548,7 @@ module tls_shmcache_module = {
   tls_shmcache_init,
 
   /* Session initialization function */
-  NULL,
+  tls_shmcache_sess_init,
 
   /* Module version */
   MOD_TLS_SHMCACHE_VERSION
