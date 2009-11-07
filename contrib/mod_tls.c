@@ -542,34 +542,48 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
        */
       if (!tls_need_init_handshake) {
 
-        /* Yes, this is indeed a session renegotiation. */
-        if (!(tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS)) {
-          tls_log("warning: client-initiated session renegotiation "
-            "detected, aborting connection");
-          pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
-            ": client-initiated session renegotiation detected, "
-            "aborting connection");
+        /* Yes, this is indeed a session renegotiation. If it's a
+         * renegotiation that we requested, allow it.  Otherwise, it's a
+         * client-initiated renegotiation, and we probably don't want to
+         * allow it.
+         */
 
-          tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, 0);
-          tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
-            ctrl_ssl = NULL;
+        if (!(tls_flags & TLS_SESS_CTRL_RENEGOTIATING) &&
+            !(tls_flags & TLS_SESS_DATA_RENEGOTIATING)) {
 
-          end_login(1);
+          if (!(tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS)) {
+            tls_log("warning: client-initiated session renegotiation "
+              "detected, aborting connection");
+            pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+              ": client-initiated session renegotiation detected, "
+              "aborting connection");
+
+            tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, 0);
+            tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
+              ctrl_ssl = NULL;
+
+            end_login(1);
+          }
         }
       }
 
     } else if (ssl_state & SSL_ST_RENEGOTIATE) {
 #if OPENSSL_VERSION_NUMBER >= 0x009080cfL
       if (!tls_need_init_handshake) {
-        /* In OpenSSL-0.9.8l and later, SSL session renegotiations are
-         * automatically disabled.  Thus if the admin has not explicitly
-         * configured support for client-initiated renegotations via the
-         * AllowClientRenegotiations TLSOption, then we need to disconnect
-         * the client here.  Otherwise, the client would hang (up to the
-         * TLSTimeoutHandshake limit).  Since we know, right now, that the
-         * handshake won't succeed, just drop the connection.
-         */
-         if (!(tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS)) {
+
+        if (!(tls_flags & TLS_SESS_CTRL_RENEGOTIATING) &&
+            !(tls_flags & TLS_SESS_DATA_RENEGOTIATING)) {
+
+          /* In OpenSSL-0.9.8l and later, SSL session renegotiations are
+           * automatically disabled.  Thus if the admin has not explicitly
+           * configured support for client-initiated renegotations via the
+           * AllowClientRenegotiations TLSOption, then we need to disconnect
+           * the client here.  Otherwise, the client would hang (up to the
+           * TLSTimeoutHandshake limit).  Since we know, right now, that the
+           * handshake won't succeed, just drop the connection.
+           */
+
+          if (!(tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS)) {
             tls_log("warning: client-initiated session renegotiation detected, "
               "aborting connection");
             pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
@@ -582,7 +596,8 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
 
             end_login(1);
           }
-       }
+        }
+      }
 #endif
     }
 
@@ -601,6 +616,15 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
     }
 
     tls_need_init_handshake = FALSE;
+
+    /* Clear the flags set for server-requested renegotiations. */
+    if (tls_flags & TLS_SESS_CTRL_RENEGOTIATING) {
+      tls_flags &= ~TLS_SESS_CTRL_RENEGOTIATING;
+    }
+
+    if (tls_flags & ~TLS_SESS_DATA_RENEGOTIATING) {
+      tls_flags &= ~TLS_SESS_DATA_RENEGOTIATING;
+    }
 
     if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
       tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
@@ -1873,14 +1897,15 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
 
 static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
   if (tls_flags & TLS_SESS_ON_CTRL) {
-    tls_log("%s", "requesting TLS renegotiation on control channel");
+    tls_flags |= TLS_SESS_CTRL_RENEGOTIATING;
+
+    tls_log("requesting TLS renegotiation on control channel "
+      "(%lu sec renegotiation interval)", p1);
     SSL_renegotiate(ctrl_ssl);
     /* SSL_do_handshake(ctrl_ssl); */
 
     pr_timer_add(tls_renegotiate_timeout, 0, &tls_module,
       tls_renegotiate_timeout_cb, "SSL/TLS renegotation");
-
-    tls_flags |= TLS_SESS_CTRL_RENEGOTIATING;
 
     /* Restart the timer. */
     return 1;
@@ -5197,14 +5222,16 @@ static int tls_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
     if (tls_data_renegotiate_limit &&
         session.xfer.total_bytes >= tls_data_renegotiate_limit) {
-      tls_log("%s", "requesting TLS renegotiation on data channel");
+      tls_flags |= TLS_SESS_DATA_RENEGOTIATING;
+
+      tls_log("requesting TLS renegotiation on data channel "
+        "(%" PR_LU " KB data limit)",
+        (pr_off_t) (tls_data_renegotiate_limit / 1024));
       SSL_renegotiate((SSL *) nstrm->strm_data);
       /* SSL_do_handshake((SSL *) nstrm->strm_data); */
 
       pr_timer_add(tls_renegotiate_timeout, 0, &tls_module,
         tls_renegotiate_timeout_cb, "SSL/TLS renegotiation");
-
-      tls_flags |= TLS_SESS_DATA_RENEGOTIATING;
     }
 #endif
 
