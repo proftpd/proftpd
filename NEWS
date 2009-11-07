@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1087 2009-11-07 00:55:47 castaglia Exp $
+$Id: NEWS,v 1.1088 2009-11-07 03:36:14 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -24,6 +24,8 @@ CVS
 - Bug 3316 - Messages from PAM modules are ignored when authenticating SSH
   clients via 'keyboard-interactive'.
 - Bug 3317 - mod_wrap/libwrap should honor SyslogFacility setting.
+- Bug 3311 - configure script should automatically detect when -ldl is needed
+  by OpenSSL.
 - Bug 3324 - Vulnerability in SSL/TLS protocol during renegotiation
   (CVE-2009-3555).
 

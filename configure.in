@@ -1883,7 +1883,7 @@ all_modules="$my_core_modules $my_static_modules $my_shared_modules";
 
 pr_use_openssl="no"
 
-AC_MSG_CHECKING([checking for duplicate module build requests])
+AC_MSG_CHECKING([for duplicate module build requests])
 for i in $all_modules; do
   once=no;
 
@@ -1892,6 +1892,9 @@ for i in $all_modules; do
     pr_use_openssl=yes
 
   elif test x"$i" = x"mod_sftp"; then
+    pr_use_openssl=yes
+
+  elif test x"$i" = x"mod_sql_passwd"; then
     pr_use_openssl=yes
   fi
 
@@ -1912,6 +1915,74 @@ AC_MSG_RESULT([no])
 if test x"$pr_use_openssl" = xyes; then
   AC_DEFINE(PR_USE_OPENSSL, 1, [Define if using OpenSSL support.])
   ac_build_addl_libs="$ac_build_addl_libs -lssl -lcrypto"
+
+  AC_MSG_CHECKING([whether linking with OpenSSL functions succeeds])
+  AC_TRY_LINK(
+    [
+      #include <openssl/evp.h>
+    ],
+    [
+      SSLeay_add_all_algorithms();
+    ],
+    [
+      AC_MSG_RESULT(yes)
+    ],
+    [
+      AC_MSG_RESULT(no)
+
+      AC_MSG_CHECKING([whether linking with OpenSSL functions requires -ldl])
+      saved_libs="$LIBS"
+
+      dnl Splice out -lsupp, since that library hasn't been built yet
+      LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+      LIBS="$LIBS -lcrypto -ldl"
+
+      AC_TRY_LINK(
+        [
+          #include <openssl/evp.h>
+        ],
+        [
+          SSLeay_add_all_algorithms();
+        ],
+        [
+          AC_MSG_RESULT(yes)
+          LIBS="$saved_libs -ldl"
+        ],
+        [
+          AC_MSG_RESULT(no)
+          LIBS="$saved_libs"
+        ]
+      ) 
+
+      AC_MSG_CHECKING([whether linking with OpenSSL functions requires -lz])
+      saved_libs="$LIBS"
+
+      dnl Splice out -lsupp, since that library hasn't been built yet
+      LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+      LIBS="$LIBS -lcrypto -lz"
+
+      AC_TRY_LINK(
+        [
+          #include <openssl/evp.h>
+          #include <openssl/bio.h>
+          #include <openssl/comp.h>
+        ],
+        [
+          BIO *bio;
+          SSLeay_add_all_algorithms();
+          bio = BIO_new(BIO_f_zlib());
+        ],
+        [
+          AC_MSG_RESULT(yes)
+          LIBS="$saved_libs -lz"
+        ],
+        [
+          AC_MSG_RESULT(no)
+          LIBS="$saved_libs"
+        ]
+      )
+    ]
+  )
 fi
 
 for module in $ac_shared_modules ; do
