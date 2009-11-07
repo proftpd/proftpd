@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.23 2009-11-06 18:57:34 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.24 2009-11-07 00:53:14 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -453,6 +453,27 @@ site's security needs, the ability to require SSL/TLS on a per-user basis
 may or may not be worth the ability to require SSL/TLS for the USER and PASS
 commands.
 
+<p><a name="TLSRequiredPlusPerUser">
+<font color=red>Question</font>: When I use the following in my
+<code>proftpd.conf</code>:
+<pre>
+  TLSRequired on <font color=green># or "TLSRequired auth", or "TLSRequired auth+data"</font>
+  TLSOptions AllowPerUser
+</pre>
+I get the following error when I try to start <code>proftpd:
+<pre>
+  cannot enforce both 'TLSRequired auth' and 'TLSOptions AllowPerUser' at the same time
+</pre>
+<font color=blue>Answer</font>: The reason this error occurs is because
+you have a configuration which is impossible to support.  The
+<code>TLSRequired</code> setting (<i>e.g.</i> "on", "auth", or "auth+data")
+requires that SSL/TLS be in use during authentication.  But in order to
+support the <code>TLSOption AllowPerUser</code> setting, the
+<code>mod_tls</code> <b>cannot</b> require that SSL/TLS be in use during
+authentication, since it does not know the user until <i>after</i>
+authentication has completed.  The requested configuration cannot be supported,
+and thus the server will refuse to start.
+
 <p><a name="TLSFXP">
 <font color=red>Question</font>: Why does <code>mod_tls</code> break FXP
 transfers?<br>
@@ -868,7 +889,7 @@ OpenSSL library will adjust the ordering as appropriate.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2009-11-06 18:57:34 $</i><br>
+Last Updated: <i>$Date: 2009-11-07 00:53:14 $</i><br>
 <hr>
 
 </body>
