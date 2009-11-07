@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.59 2009-11-06 01:56:48 castaglia Exp $
+ * $Id: fxp.c,v 1.60 2009-11-07 18:46:14 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4575,6 +4575,21 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       "configured, ignoring perms sent by client");
     attr_flags &= ~SSH2_FX_ATTR_PERMISSIONS;
   }
+
+  /* If the client provided a suggested size in the OPEN, ignore it.
+   * Trying to honor the suggested size by truncating the file here can
+   * cause problems, as when the client is resuming a transfer and the
+   * resumption fails; the file would then be worse off than before due to the
+   * truncation.  See:
+   *
+   *  http://winscp.net/tracker/show_bug.cgi?id=351
+   *
+   * The truncation isn't really needed anyway, since the ensuing READ/WRITE
+   * requests will contain the offsets into the file at which to begin
+   * reading/write the file contents.
+   */
+
+  attr_flags &= ~SSH2_FX_ATTR_SIZE;
 
   res = fxp_attrs_set(fh, fh->fh_path, attrs, attr_flags, &buf, &buflen, fxp);
   if (res < 0) {
