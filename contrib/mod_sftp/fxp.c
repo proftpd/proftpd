@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.60 2009-11-07 18:46:14 castaglia Exp $
+ * $Id: fxp.c,v 1.61 2009-11-07 22:34:39 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -220,6 +220,11 @@ static int fxp_use_gmt = TRUE;
 static unsigned int fxp_min_client_version = 1;
 static unsigned int fxp_max_client_version = 6;
 static unsigned int fxp_utf8_protocol_version = 4;
+
+/* For handling "version-select" requests properly (or rejecting them as
+ * necessary.
+ */
+static int allow_version_select = FALSE;
 
 /* Use a struct to maintain the per-channel FXP-specific values. */
 struct fxp_session {
@@ -2475,11 +2480,62 @@ static int fxp_packet_write(struct fxp_packet *fxp) {
 
 /* Miscellaneous */
 
-static void fxp_version_add_std_exts(pool *p, char **buf, uint32_t *buflen) {
+static void fxp_version_add_version_ext(pool *p, char **buf, uint32_t *buflen) {
+  register unsigned int i;
+  struct fxp_extpair ext;
+  char *versions_str = "";
 
-  (void) p;
+  ext.ext_name = "versions";
 
-  /* These are "standard" extensions. */
+  /* The versions we report to the client depend on the min/max client
+   * versions, which may have been configured differently via SFTPClientMatch.
+   */
+
+  for (i = fxp_min_client_version; i <= fxp_max_client_version; i++) {
+    switch (i) {
+      case 1:
+        versions_str = pstrcat(p, versions_str, *versions_str ? "," : "",
+          "1", NULL);
+        break;
+
+      case 2:
+        versions_str = pstrcat(p, versions_str, *versions_str ? "," : "",
+          "2", NULL);
+        break;
+
+      case 3:
+        versions_str = pstrcat(p, versions_str, *versions_str ? "," : "",
+          "3", NULL);
+        break;
+
+#ifdef PR_USE_NLS
+      /* We can only advertise support for these protocol versions if
+       * --enable-nls has been used, as they require UTF8 support.
+       */
+      case 4:
+        versions_str = pstrcat(p, versions_str, *versions_str ? "," : "",
+          "4", NULL);
+        break;
+
+      case 5:
+        versions_str = pstrcat(p, versions_str, *versions_str ? "," : "",
+          "5", NULL);
+        break;
+
+      case 6:
+        versions_str = pstrcat(p, versions_str, *versions_str ? "," : "",
+          "6", NULL);
+        break;
+#endif
+    }
+  }
+
+  ext.ext_data = versions_str;
+  ext.ext_datalen = strlen(ext.ext_data);
+
+  pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
+    ext.ext_data);
+  fxp_msg_write_extpair(buf, buflen, &ext);
 }
 
 static void fxp_version_add_openssh_exts(pool *p, char **buf,
@@ -2493,17 +2549,26 @@ static void fxp_version_add_openssh_exts(pool *p, char **buf,
   ext.ext_name = "posix-rename@openssh.com";
   ext.ext_data = "1";
   ext.ext_datalen = 1;
+
+  pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
+    ext.ext_data);
   fxp_msg_write_extpair(buf, buflen, &ext);
 
 #ifdef HAVE_SYS_STATVFS_H
   ext.ext_name = "statvfs@openssh.com";
   ext.ext_data = "2";
   ext.ext_datalen = 1;
+
+  pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
+    ext.ext_data);
   fxp_msg_write_extpair(buf, buflen, &ext);
 
   ext.ext_name = "fstatvfs@openssh.com";
   ext.ext_data = "2";
   ext.ext_datalen = 1;
+
+  pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'",
+    ext.ext_name, ext.ext_data);
   fxp_msg_write_extpair(buf, buflen, &ext);
 #endif
 }
@@ -2517,6 +2582,7 @@ static void fxp_version_add_newline_ext(pool *p, char **buf, uint32_t *buflen) {
   ext.ext_data = "\n";
   ext.ext_datalen = 1;
 
+  pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '\n'", ext.ext_name);
   fxp_msg_write_extpair(buf, buflen, &ext);
 }
 
@@ -2557,6 +2623,7 @@ static void fxp_version_add_supported_ext(pool *p, char **buf,
   ext.ext_data = attrs_ptr;
   ext.ext_datalen = (attrs_sz - attrs_len);
 
+  pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s", ext.ext_name);
   fxp_msg_write_extpair(buf, buflen, &ext);
 }
 
@@ -2608,12 +2675,18 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
   fxp_msg_write_short(&attrs_buf, &attrs_len, open_lock_mask);
   fxp_msg_write_short(&attrs_buf, &attrs_len, lock_mask);
 
+  /* Attribute extensions */
   sftp_msg_write_int(&attrs_buf, &attrs_len, 0);
+
+  /* Additional protocol extensions (why these appear in 'supported2' is
+   * confusing to me, too).
+   */
   sftp_msg_write_int(&attrs_buf, &attrs_len, 0);
 
   ext.ext_data = attrs_ptr;
   ext.ext_datalen = (attrs_sz - attrs_len);
 
+  pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s", ext.ext_name);
   fxp_msg_write_extpair(buf, buflen, &ext);
 }
 
@@ -3090,6 +3163,118 @@ static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, cmd_rec *cmd,
 }
 #endif /* !HAVE_SYS_STATVFS_H */
 
+static int fxp_handle_ext_version_select(struct fxp_packet *fxp,
+    char *version_str) {
+  char *buf, *ptr;
+  uint32_t buflen, bufsz, status_code;
+  const char *reason;
+  struct fxp_packet *resp;
+  int res = 0, version = 0;
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  if (!allow_version_select) {
+    int xerrno = EACCES;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client sent 'version-select' request at inappropriate time, rejecting");
+
+    status_code = SSH2_FX_FAILURE;
+    reason = "Failure";
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    (void) fxp_packet_write(resp);
+
+    errno = EINVAL;
+    return -1;
+  }
+
+  version = atoi(version_str);
+
+  if (version > fxp_max_client_version) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client requested SFTP protocol version %d via 'version-select', "
+      "which exceeds SFTPClientMatch max SFTP protocol version %u, rejecting",
+      version, fxp_max_client_version);
+    res = -1;
+  }
+
+  if (version < fxp_min_client_version) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client requested SFTP protocol version %d via 'version-select', "
+      "which is less than SFTPClientMatch min SFTP protocol version %u, "
+      "rejecting", version, fxp_min_client_version);
+    res = -1;
+  }
+
+#ifndef PR_USE_NLS
+  /* If NLS supported was enabled in the proftpd build, then we can support
+   * UTF8, and thus every other version of SFTP.  Otherwise, we can only
+   * support up to version 3.
+   */
+  if (version > 3) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client requested SFTP protocol version %d via 'version-select', "
+      "but we can only support protocol version 3 due to lack of "
+      "UTF8 support (requires --enable-nls)", version);
+    res = -1;
+  }
+#endif
+
+  if (res < 0) {
+    int xerrno = EINVAL;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client sent 'version-select' request at inappropriate time, rejecting");
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    (void) fxp_packet_write(resp);
+
+    errno = EINVAL;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 7, "client requested switch to SFTP protocol "
+    "version %d via 'version-select'", version);
+  fxp_session->client_version = (unsigned long) version;
+
+  status_code = SSH2_FX_OK;
+  reason = "OK";
+
+  pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+    (unsigned long) status_code, reason);
+
+  fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  allow_version_select = FALSE;
+  return fxp_packet_write(resp);
+}
+
 static int fxp_handle_extended(struct fxp_packet *fxp) {
   char *buf, *ptr, *ext_request_name;
   uint32_t buflen, bufsz, status_code;
@@ -3109,6 +3294,14 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
   pr_trace_msg(trace_channel, 7, "received request: EXTENDED %s",
     ext_request_name);
+
+  if (strcmp(ext_request_name, "version-select") == 0) {
+    char *version_str;
+
+    version_str = sftp_msg_read_string(fxp->pool, &fxp->payload,
+      &fxp->payload_sz);
+    return fxp_handle_ext_version_select(fxp, version_str);
+  }
 
   if (strcmp(ext_request_name, "posix-rename@openssh.com") == 0) {
     char *src, *dst;
@@ -3521,7 +3714,7 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
 
   sftp_msg_write_int(&buf, &buflen, fxp_session->client_version);
 
-  fxp_version_add_std_exts(fxp->pool, &buf, &buflen);
+  fxp_version_add_version_ext(fxp->pool, &buf, &buflen);
   fxp_version_add_openssh_exts(fxp->pool, &buf, &buflen);
 
   if (fxp_session->client_version >= 4) {
@@ -7265,6 +7458,7 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
          */
         if (fxp_session->client_version == 0) {
           res = fxp_handle_init(fxp);
+          allow_version_select = TRUE;
 
         } else {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -7277,6 +7471,7 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
         break;
 
       case SFTP_SSH2_FXP_CLOSE:
+        allow_version_select = FALSE;
         res = fxp_handle_close(fxp);
         break;
 
@@ -7285,82 +7480,102 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
         break;
 
       case SFTP_SSH2_FXP_FSETSTAT:
+        allow_version_select = FALSE;
         res = fxp_handle_fsetstat(fxp);
         break;
 
       case SFTP_SSH2_FXP_FSTAT:
+        allow_version_select = FALSE;
         res = fxp_handle_fstat(fxp);
         break;
 
       case SFTP_SSH2_FXP_LINK:
+        allow_version_select = FALSE;
         res = fxp_handle_link(fxp);
         break;
 
       case SFTP_SSH2_FXP_LOCK:
+        allow_version_select = FALSE;
         res = fxp_handle_lock(fxp);
         break;
 
       case SFTP_SSH2_FXP_LSTAT:
+        allow_version_select = FALSE;
         res = fxp_handle_lstat(fxp);
         break;
 
       case SFTP_SSH2_FXP_MKDIR:
+        allow_version_select = FALSE;
         res = fxp_handle_mkdir(fxp);
         break;
 
       case SFTP_SSH2_FXP_OPEN:
+        allow_version_select = FALSE;
         res = fxp_handle_open(fxp);
         break;
 
       case SFTP_SSH2_FXP_OPENDIR:
+        allow_version_select = FALSE;
         res = fxp_handle_opendir(fxp);
         break;
 
       case SFTP_SSH2_FXP_READ:
+        allow_version_select = FALSE;
         res = fxp_handle_read(fxp);
         break;
 
       case SFTP_SSH2_FXP_READDIR:
+        allow_version_select = FALSE;
         res = fxp_handle_readdir(fxp);
         break;
 
       case SFTP_SSH2_FXP_READLINK:
+        allow_version_select = FALSE;
         res = fxp_handle_readlink(fxp);
         break;
 
       case SFTP_SSH2_FXP_REALPATH:
+        allow_version_select = FALSE;
         res = fxp_handle_realpath(fxp);
         break;
 
       case SFTP_SSH2_FXP_REMOVE:
+        allow_version_select = FALSE;
         res = fxp_handle_remove(fxp);
         break;
 
       case SFTP_SSH2_FXP_RENAME:
+        allow_version_select = FALSE;
         res = fxp_handle_rename(fxp);
         break;
 
       case SFTP_SSH2_FXP_RMDIR:
+        allow_version_select = FALSE;
         res = fxp_handle_rmdir(fxp);
         break;
 
       case SFTP_SSH2_FXP_SETSTAT:
+        allow_version_select = FALSE;
         res = fxp_handle_setstat(fxp);
         break;
 
       case SFTP_SSH2_FXP_STAT:
+        allow_version_select = FALSE;
         res = fxp_handle_stat(fxp);
         break;
 
       case SFTP_SSH2_FXP_SYMLINK:
+        allow_version_select = FALSE;
         res = fxp_handle_symlink(fxp);
         break;
 
       case SFTP_SSH2_FXP_WRITE:
+        allow_version_select = FALSE;
         res = fxp_handle_write(fxp);
         break;
 
       case SFTP_SSH2_FXP_UNLOCK:
+        allow_version_select = FALSE;
         res = fxp_handle_unlock(fxp);
         break;
 
