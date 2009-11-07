@@ -21,7 +21,7 @@ ChangeLog files.
 
   + Added a workaround in mod_tls to deal with the vulnerability found in
     SSL/TLS protocol during renegotiation (CVE-2009-3555).  Good
-    description of this vulnerability can be found here:
+    descriptions of this vulnerability can be found here:
 
       http://extendedsubset.com/?p=8
       http://www.educatedguesswork.org/2009/11/understanding_the_tls_renegoti.html
@@ -465,4 +465,4 @@ ChangeLog files.
         this will probably not apply to most modules.
 
  
-Last Updated: $Date: 2009-11-07 01:06:25 $
+Last Updated: $Date: 2009-11-07 03:44:35 $
