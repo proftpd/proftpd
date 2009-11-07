@@ -512,6 +512,8 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
   const char *str = "(unknown)";
   int w;
 
+  pr_signals_handle();
+
   w = where & ~SSL_ST_MASK;
 
   if (w & SSL_ST_CONNECT) {
