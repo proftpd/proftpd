@@ -37123,8 +37123,8 @@ all_modules="$my_core_modules $my_static_modules $my_shared_modules";
 
 pr_use_openssl="no"
 
-{ echo "$as_me:$LINENO: checking checking for duplicate module build requests" >&5
-echo $ECHO_N "checking checking for duplicate module build requests... $ECHO_C" >&6; }
+{ echo "$as_me:$LINENO: checking for duplicate module build requests" >&5
+echo $ECHO_N "checking for duplicate module build requests... $ECHO_C" >&6; }
 for i in $all_modules; do
   once=no;
 
@@ -37132,6 +37132,9 @@ for i in $all_modules; do
     pr_use_openssl=yes
 
   elif test x"$i" = x"mod_sftp"; then
+    pr_use_openssl=yes
+
+  elif test x"$i" = x"mod_sql_passwd"; then
     pr_use_openssl=yes
   fi
 
@@ -37160,6 +37163,195 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
   ac_build_addl_libs="$ac_build_addl_libs -lssl -lcrypto"
+
+  { echo "$as_me:$LINENO: checking whether linking with OpenSSL functions succeeds" >&5
+echo $ECHO_N "checking whether linking with OpenSSL functions succeeds... $ECHO_C" >&6; }
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+      #include <openssl/evp.h>
+
+int
+main ()
+{
+
+      SSLeay_add_all_algorithms();
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+
+      { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+      { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+
+      { echo "$as_me:$LINENO: checking whether linking with OpenSSL functions requires -ldl" >&5
+echo $ECHO_N "checking whether linking with OpenSSL functions requires -ldl... $ECHO_C" >&6; }
+      saved_libs="$LIBS"
+
+            LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+      LIBS="$LIBS -lcrypto -ldl"
+
+      cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+          #include <openssl/evp.h>
+
+int
+main ()
+{
+
+          SSLeay_add_all_algorithms();
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+
+          { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+          LIBS="$saved_libs -ldl"
+
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+          { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+          LIBS="$saved_libs"
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+
+      { echo "$as_me:$LINENO: checking whether linking with OpenSSL functions requires -lz" >&5
+echo $ECHO_N "checking whether linking with OpenSSL functions requires -lz... $ECHO_C" >&6; }
+      saved_libs="$LIBS"
+
+            LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+      LIBS="$LIBS -lcrypto -lz"
+
+      cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+          #include <openssl/evp.h>
+          #include <openssl/bio.h>
+          #include <openssl/comp.h>
+
+int
+main ()
+{
+
+          BIO *bio;
+          SSLeay_add_all_algorithms();
+          bio = BIO_new(BIO_f_zlib());
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+
+          { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+          LIBS="$saved_libs -lz"
+
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+          { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+          LIBS="$saved_libs"
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
 fi
 
 for module in $ac_shared_modules ; do
