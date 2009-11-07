@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.62 2009-11-07 22:40:17 castaglia Exp $
+ * $Id: fxp.c,v 1.63 2009-11-07 22:41:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2494,8 +2494,9 @@ static void fxp_version_add_version_ext(pool *p, char **buf, uint32_t *buflen) {
   for (i = fxp_min_client_version; i <= fxp_max_client_version; i++) {
     switch (i) {
       case 1:
-        versions_str = pstrcat(p, versions_str, *versions_str ? "," : "",
-          "1", NULL);
+        /* Skip version 1; it is not in the list of version strings defined
+         * in Section 4.6 of the SFTP Draft.
+         */
         break;
 
       case 2:
