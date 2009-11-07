@@ -569,8 +569,8 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
         }
       }
 
-    } else if (ssl_state & SSL_ST_RENEGOTIATE) {
 #if OPENSSL_VERSION_NUMBER >= 0x009080cfL
+    } else if (ssl_state & SSL_ST_RENEGOTIATE) {
       if (!tls_need_init_handshake) {
 
         if (!(tls_flags & TLS_SESS_CTRL_RENEGOTIATING) &&
@@ -1899,18 +1899,31 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
 
 static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
   if (tls_flags & TLS_SESS_ON_CTRL) {
-    tls_flags |= TLS_SESS_CTRL_RENEGOTIATING;
 
-    tls_log("requesting TLS renegotiation on control channel "
-      "(%lu sec renegotiation interval)", p1);
-    SSL_renegotiate(ctrl_ssl);
-    /* SSL_do_handshake(ctrl_ssl); */
+    if (TRUE
+#if OPENSSL_VERSION_NUMBER >= 0x009080cfL
+        /* In OpenSSL-0.9.8l and later, SSL session renegotiations
+         * (both client- and server-initiated) are automatically disabled.
+         * Unless the admin explicitly configured support for
+         * client-initiated renegotations via the AllowClientRenegotiations
+         * TLSOption, we can't request renegotiations ourselves.
+         */
+        && (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) 
+#endif
+      ) {
+      tls_flags |= TLS_SESS_CTRL_RENEGOTIATING;
 
-    pr_timer_add(tls_renegotiate_timeout, 0, &tls_module,
-      tls_renegotiate_timeout_cb, "SSL/TLS renegotation");
+      tls_log("requesting TLS renegotiation on control channel "
+        "(%lu sec renegotiation interval)", p1);
+      SSL_renegotiate(ctrl_ssl);
+      /* SSL_do_handshake(ctrl_ssl); */
+  
+      pr_timer_add(tls_renegotiate_timeout, 0, &tls_module,
+        tls_renegotiate_timeout_cb, "SSL/TLS renegotation");
 
-    /* Restart the timer. */
-    return 1;
+      /* Restart the timer. */
+      return 1;
+    }
   }
 
   return 0;
@@ -5223,7 +5236,19 @@ static int tls_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
     if (tls_data_renegotiate_limit &&
-        session.xfer.total_bytes >= tls_data_renegotiate_limit) {
+        session.xfer.total_bytes >= tls_data_renegotiate_limit
+
+#if OPENSSL_VERSION_NUMBER >= 0x009080cfL
+        /* In OpenSSL-0.9.8l and later, SSL session renegotiations
+         * (both client- and server-initiated) are automatically disabled.
+         * Unless the admin explicitly configured support for
+         * client-initiated renegotations via the AllowClientRenegotiations
+         * TLSOption, we can't request renegotiations ourselves.
+         */
+        && (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS)
+#endif
+      ) {
+
       tls_flags |= TLS_SESS_DATA_RENEGOTIATING;
 
       tls_log("requesting TLS renegotiation on data channel "
