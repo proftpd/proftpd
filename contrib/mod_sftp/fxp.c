@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.61 2009-11-07 22:34:39 castaglia Exp $
+ * $Id: fxp.c,v 1.62 2009-11-07 22:40:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2536,6 +2536,14 @@ static void fxp_version_add_version_ext(pool *p, char **buf, uint32_t *buflen) {
   pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
     ext.ext_data);
   fxp_msg_write_extpair(buf, buflen, &ext);
+
+  /* The sending of this extension is necessary in order to support any
+   * 'version-select' requests from the client, as per Section 4.6 of the
+   * SFTP Draft.  That is, if we don't send the 'versions' extension and the
+   * client tries to send us a 'version-select', then we MUST close the
+   * connection.
+   */
+  allow_version_select = TRUE;
 }
 
 static void fxp_version_add_openssh_exts(pool *p, char **buf,
@@ -7458,7 +7466,6 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
          */
         if (fxp_session->client_version == 0) {
           res = fxp_handle_init(fxp);
-          allow_version_select = TRUE;
 
         } else {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
