@@ -61,7 +61,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.4"
+#define MOD_TLS_VERSION		"mod_tls/2.4.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001 
@@ -384,16 +384,16 @@ static int tls_required_on_data = 0;
 static unsigned char *tls_authenticated = NULL;
 
 /* mod_tls session flags */
-#define	TLS_SESS_ON_CTRL		0x0001
-#define TLS_SESS_ON_DATA		0x0002
-#define TLS_SESS_PBSZ_OK		0x0004
-#define TLS_SESS_TLS_REQUIRED		0x0010
-#define TLS_SESS_VERIFY_CLIENT		0x0020
-#define TLS_SESS_NO_PASSWD_NEEDED	0x0040
-#define TLS_SESS_NEED_DATA_PROT		0x0100
-#define TLS_SESS_CTRL_RENEGOTIATING	0x0200
-#define TLS_SESS_DATA_RENEGOTIATING	0x0400
-#define TLS_SESS_HAVE_CCC		0x0800
+#define	TLS_SESS_ON_CTRL			0x0001
+#define TLS_SESS_ON_DATA			0x0002
+#define TLS_SESS_PBSZ_OK			0x0004
+#define TLS_SESS_TLS_REQUIRED			0x0010
+#define TLS_SESS_VERIFY_CLIENT			0x0020
+#define TLS_SESS_NO_PASSWD_NEEDED		0x0040
+#define TLS_SESS_NEED_DATA_PROT			0x0100
+#define TLS_SESS_CTRL_RENEGOTIATING		0x0200
+#define TLS_SESS_DATA_RENEGOTIATING		0x0400
+#define TLS_SESS_HAVE_CCC			0x0800
 
 /* mod_tls option flags */
 #define TLS_OPT_NO_CERT_REQUEST				0x0001
@@ -406,6 +406,7 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_OPT_ENABLE_DIAGS				0x0080
 #define TLS_OPT_NO_SESSION_REUSE_REQUIRED		0x0100
 #define TLS_OPT_USE_IMPLICIT_SSL			0x0200
+#define TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS		0x0400
 
 /* mod_tls cleanup flags */
 #define TLS_CLEANUP_FL_SESS_INIT	0x0001
@@ -505,11 +506,13 @@ static pool *tls_act_pool = NULL;
 static ctrls_acttab_t tls_acttab[];
 #endif /* PR_USE_CTRLS */
 
+static int tls_need_init_handshake = TRUE;
+
 static void tls_diags_cb(const SSL *ssl, int where, int ret) {
-  const char *str;
+  const char *str = "(unknown)";
   int w;
 
-  w = where &~ SSL_ST_MASK;
+  w = where & ~SSL_ST_MASK;
 
   if (w & SSL_ST_CONNECT) {
     str = "connecting";
@@ -518,28 +521,116 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
     str = "accepting";
 
   } else {
-    str = "(unknown)";
+    int ssl_state;
+
+    ssl_state = SSL_get_state(ssl);
+    if (ssl_state == SSL_ST_OK) {
+      str = "ok";
+    }
   }
 
-  if (where & SSL_CB_LOOP) {
-    tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
+  if (where & SSL_CB_ACCEPT_LOOP) {
+    int ssl_state;
+
+    ssl_state = SSL_get_state(ssl);
+
+    if (ssl_state == SSL3_ST_SR_CLNT_HELLO_A ||
+        ssl_state == SSL23_ST_SR_CLNT_HELLO_A) {
+
+      /* If we have already completed our initial handshake, then this might
+       * a session renegotiation.
+       */
+      if (!tls_need_init_handshake) {
+
+        /* Yes, this is indeed a session renegotiation. */
+        if (!(tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS)) {
+          tls_log("warning: client-initiated session renegotiation "
+            "detected, aborting connection");
+          pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+            ": client-initiated session renegotiation detected, "
+            "aborting connection");
+
+          tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, 0);
+          tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
+            ctrl_ssl = NULL;
+
+          end_login(1);
+        }
+      }
+
+    } else if (ssl_state & SSL_ST_RENEGOTIATE) {
+#if OPENSSL_VERSION_NUMBER >= 0x009080cfL
+      if (!tls_need_init_handshake) {
+        /* In OpenSSL-0.9.8l and later, SSL session renegotiations are
+         * automatically disabled.  Thus if the admin has not explicitly
+         * configured support for client-initiated renegotations via the
+         * AllowClientRenegotiations TLSOption, then we need to disconnect
+         * the client here.  Otherwise, the client would hang (up to the
+         * TLSTimeoutHandshake limit).  Since we know, right now, that the
+         * handshake won't succeed, just drop the connection.
+         */
+         if (!(tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS)) {
+            tls_log("warning: client-initiated session renegotiation detected, "
+              "aborting connection");
+            pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+              ": client-initiated session renegotiation detected, "
+              "aborting connection");
+
+            tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, 0);
+            tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
+              ctrl_ssl = NULL;
+
+            end_login(1);
+          }
+       }
+#endif
+    }
+
+    if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+      tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
+    }
+
+  } else if (where & SSL_CB_HANDSHAKE_DONE) {
+    if (!tls_need_init_handshake) {
+      /* If this is an accepted renegotiation, log the possibly-changed
+       * ciphersuite et al.
+       */
+      tls_log("%s renegotiation accepted, using cipher %s (%d bits)",
+        SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+        SSL_get_cipher_bits(ssl, NULL));
+    }
+
+    tls_need_init_handshake = FALSE;
+
+    if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+      tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
+    }
+
+  } else if (where & SSL_CB_LOOP) {
+    if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+      tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
+    }
 
   } else if (where & SSL_CB_ALERT) {
-    str = (where & SSL_CB_READ) ? "reading" : "writing";
-    tls_log("[info] %s: SSL/TLS alert %s: %s", str,
-      SSL_alert_type_string_long(ret), SSL_alert_desc_string_long(ret));
+    if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+      str = (where & SSL_CB_READ) ? "reading" : "writing";
+      tls_log("[info] %s: SSL/TLS alert %s: %s", str,
+        SSL_alert_type_string_long(ret), SSL_alert_desc_string_long(ret));
+    }
 
   } else if (where & SSL_CB_EXIT) {
-    if (ret == 0) {
-      tls_log("[info] %s: failed in %s: %s", str,
-        SSL_state_string_long(ssl), tls_get_errors());
+    if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+      if (ret == 0) {
+        tls_log("[info] %s: failed in %s: %s", str,
+          SSL_state_string_long(ssl), tls_get_errors());
 
-    } else if (ret < 0 &&
-               errno != 0 &&
-               errno != EAGAIN) {
-      /* Ignore EAGAIN errors */
-      tls_log("[info] %s: error in %s (errno %d: %s)",
-        str, SSL_state_string_long(ssl), errno, strerror(errno));
+      } else if (ret < 0 &&
+                 errno != 0 &&
+                 errno != EAGAIN) {
+        /* Ignore EAGAIN errors */
+        tls_log("[info] %s: error in %s (errno %d: %s)",
+          str, SSL_state_string_long(ssl), errno, strerror(errno));
+      }
     }
   }
 }
@@ -2590,6 +2681,17 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   } else if (conn == session.d) {
     tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = (void *) ssl;
   }
+
+#if OPENSSL_VERSION_NUMBER >= 0x009080cfL
+  /* In OpenSSL-0.9.8l and later, SSL session renegotiations are automatically
+   * disabled.  Thus if the admin explicitly configured support for
+   * client-initiated renegotations via the AllowClientRenegotiations
+   * TLSOption, then we need to do some hackery to enable renegotiations.
+   */
+  if (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) {
+    ssl->s3->flags |= SSL3_FLAGS_ALLOW_UNSAFE_LEGACY_RENEGOTIATION;
+  }
+#endif
 
   /* TLS handshake on the control channel... */
   if (!on_data) {
@@ -5961,6 +6063,10 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "AllowPerUser") == 0) {
       opts |= TLS_OPT_ALLOW_PER_USER;
 
+    } else if (strcmp(cmd->argv[i], "AllowClientRenegotiation") == 0 ||
+               strcmp(cmd->argv[i], "AllowClientRenegotiations") == 0) {
+      opts |= TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS;
+
     } else if (strcmp(cmd->argv[i], "EnableDiags") == 0) {
       opts |= TLS_OPT_ENABLE_DIAGS;
 
@@ -6993,14 +7099,20 @@ static int tls_sess_init(void) {
     SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx, (void *) tls_pkey);
   }
 
-  /* Install a callback for logging OpenSSL diagnostic information, if
-   * requested.
+  /* We always install an info callback, in order to watch for
+   * client-initiated session renegotiations (Bug#3324).  If EnableDiags
+   * is enabled, that info callback will also log the OpenSSL diagnostic
+   * information.
+   */
+  SSL_CTX_set_info_callback(ssl_ctx, tls_diags_cb);
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+  /* Install a callback for logging OpenSSL message information,
+   * if requested.
    */
   if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
     tls_log("%s",
       "TLSOption EnableDiags enabled, setting diagnostics callback");
-    SSL_CTX_set_info_callback(ssl_ctx, tls_diags_cb);
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
     SSL_CTX_set_msg_callback(ssl_ctx, tls_msg_cb);
 #endif
   }
