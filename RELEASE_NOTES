@@ -19,6 +19,31 @@ ChangeLog files.
 
   + Support for CapabilitiesSet +CAP_FOWNER
 
+  + Added a workaround in mod_tls to deal with the vulnerability found in
+    SSL/TLS protocol during renegotiation (CVE-2009-3555).  Good
+    description of this vulnerability can be found here:
+
+      http://extendedsubset.com/?p=8
+      http://www.educatedguesswork.org/2009/11/understanding_the_tls_renegoti.html
+
+    The workaround implemented in mod_tls (Bug#3324) is one of the suggested
+    mitigation approaches: the server now refuses all client-initiated
+    SSL/TLS session renegotiations.
+
+  + Changed configuration directives
+
+    CapabilitiesSet
+
+      The CAP_FOWNER capability can now be explicitly requested when
+      using the mod_cap module:
+
+        <IfModule mod_cap.c>
+          CapabilitiesSet +CAP_FOWNER
+        </IfModule>
+
+      For operations allowed on files, this capability overrides the
+      restriction that the file owner ID must match the process user ID.
+
 
 1.3.3rc2
 ---------
@@ -440,4 +465,4 @@ ChangeLog files.
         this will probably not apply to most modules.
 
  
-Last Updated: $Date: 2009-11-04 23:02:10 $
+Last Updated: $Date: 2009-11-07 01:06:25 $
