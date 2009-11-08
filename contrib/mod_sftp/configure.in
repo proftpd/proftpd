@@ -46,6 +46,7 @@ AC_ARG_WITH(libraries,
     LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
   ])
 
+
 dnl Check for a crippled OpenSSL library (e.g. Solaris 10).  More details
 dnl can be found in:
 dnl
@@ -57,6 +58,7 @@ dnl So for those users stuck using the Solaris 10 whose OpenSSL does
 dnl not provide support for AES ciphers longer than 128 bits, we need to
 dnl check and disable those symbols.  Otherwise mod_sftp fails to build due
 dnl to linker errors.
+saved_libs="$LIBS"
 LIBS="$LIBS -lcrypto"
 AC_MSG_CHECKING([whether OpenSSL has crippled AES support])
 AC_TRY_LINK(
@@ -67,7 +69,6 @@ AC_TRY_LINK(
   ],
   [
     EVP_CIPHER *c;
-
     c = EVP_aes_192_cbc();
     c = EVP_aes_256_cbc();
   ],
@@ -79,6 +80,44 @@ AC_TRY_LINK(
     AC_DEFINE(HAVE_AES_CRIPPLED_OPENSSL, 1, [OpenSSL is missing AES192 and AES256 support])
   ]
 )
+
+AC_MSG_CHECKING([whether OpenSSL supports SHA256])
+AC_TRY_LINK(
+  [
+    #include <openssl/evp.h>
+  ],
+  [
+    EVP_MD *md;
+    md = EVP_sha256();
+  ],
+  [
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_SHA256_OPENSSL, 1, [OpenSSL supports SHA224/SHA256])
+  ],
+  [
+    AC_MSG_RESULT(no)
+  ]
+)
+
+AC_MSG_CHECKING([whether OpenSSL supports SHA512])
+AC_TRY_LINK(
+  [
+    #include <openssl/evp.h>
+  ],
+  [
+    EVP_MD *md;
+    md = EVP_sha512();
+  ],
+  [
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_SHA512_OPENSSL, 1, [OpenSSL supports SHA384/SHA512])
+  ],
+  [
+    AC_MSG_RESULT(no)
+  ]
+)
+
+LIBS="$saved_libs"
 
 INCLUDES="$ac_build_addl_includes"
 LIBDIRS="$ac_build_addl_libdirs"

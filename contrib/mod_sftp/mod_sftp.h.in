@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_sftp.h.in,v 1.9 2009-11-05 17:40:45 castaglia Exp $
+ * $Id: mod_sftp.h.in,v 1.10 2009-11-08 03:28:53 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_H
@@ -47,6 +47,12 @@
 
 /* Define if you have OpenSSL with crippled AES support. */
 #undef HAVE_AES_CRIPPLED_OPENSSL
+
+/* Define if you have OpenSSL with SHA256 support. */
+#undef HAVE_SHA256_OPENSSL
+
+/* Define if you have OpenSSL with SHA512 support. */
+#undef HAVE_SHA512_OPENSSL
 
 #define MOD_SFTP_VERSION	"mod_sftp/0.9.7"
 
