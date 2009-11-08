@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.66 2009-11-08 20:37:31 castaglia Exp $
+ * $Id: fxp.c,v 1.67 2009-11-08 21:23:33 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -220,6 +220,7 @@ static int fxp_use_gmt = TRUE;
 static unsigned int fxp_min_client_version = 1;
 static unsigned int fxp_max_client_version = 6;
 static unsigned int fxp_utf8_protocol_version = 4;
+static unsigned long fxp_ext_flags = SFTP_FXP_EXT_DEFAULT;
 
 /* For handling "version-select" requests properly (or rejecting them as
  * necessary.
@@ -2551,6 +2552,10 @@ static void fxp_version_add_version_ext(pool *p, char **buf, uint32_t *buflen) {
   struct fxp_extpair ext;
   char *versions_str = "";
 
+  if (!(fxp_ext_flags & SFTP_FXP_EXT_VERSION_SELECT)) {
+    return;
+  }
+
   ext.ext_name = "versions";
 
   /* The versions we report to the client depend on the min/max client
@@ -2615,36 +2620,42 @@ static void fxp_version_add_version_ext(pool *p, char **buf, uint32_t *buflen) {
 
 static void fxp_version_add_openssh_exts(pool *p, char **buf,
     uint32_t *buflen) {
-  struct fxp_extpair ext;
-
   (void) p;
 
   /* These are OpenSSH-specific SFTP extensions. */
 
-  ext.ext_name = "posix-rename@openssh.com";
-  ext.ext_data = "1";
-  ext.ext_datalen = 1;
+  if (fxp_ext_flags & SFTP_FXP_EXT_POSIX_RENAME) {
+    struct fxp_extpair ext;
 
-  pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
-    ext.ext_data);
-  fxp_msg_write_extpair(buf, buflen, &ext);
+    ext.ext_name = "posix-rename@openssh.com";
+    ext.ext_data = "1";
+    ext.ext_datalen = 1;
+
+    pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
+      ext.ext_data);
+    fxp_msg_write_extpair(buf, buflen, &ext);
+  }
 
 #ifdef HAVE_SYS_STATVFS_H
-  ext.ext_name = "statvfs@openssh.com";
-  ext.ext_data = "2";
-  ext.ext_datalen = 1;
+  if (fxp_ext_flags & SFTP_FXP_EXT_STATVFS) {
+    struct fxp_extpair ext;
 
-  pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
-    ext.ext_data);
-  fxp_msg_write_extpair(buf, buflen, &ext);
+    ext.ext_name = "statvfs@openssh.com";
+    ext.ext_data = "2";
+    ext.ext_datalen = 1;
 
-  ext.ext_name = "fstatvfs@openssh.com";
-  ext.ext_data = "2";
-  ext.ext_datalen = 1;
+    pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
+      ext.ext_data);
+    fxp_msg_write_extpair(buf, buflen, &ext);
 
-  pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'",
-    ext.ext_name, ext.ext_data);
-  fxp_msg_write_extpair(buf, buflen, &ext);
+    ext.ext_name = "fstatvfs@openssh.com";
+    ext.ext_data = "2";
+    ext.ext_datalen = 1;
+
+    pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'",
+      ext.ext_name, ext.ext_data);
+    fxp_msg_write_extpair(buf, buflen, &ext);
+  }
 #endif
 }
 
@@ -2709,6 +2720,7 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
   char *attrs_buf, *attrs_ptr;
   uint32_t file_mask, bits_mask, open_mask, access_mask, max_read_size;
   uint16_t open_lock_mask, lock_mask;
+  int ext_count;
 
   ext.ext_name = "supported2";
 
@@ -2753,16 +2765,30 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
   /* Attribute extensions */
   sftp_msg_write_int(&attrs_buf, &attrs_len, 0);
 
+  ext_count = 2;
+
+  if (!(fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE)) {
+    ext_count--;
+  }
+
+  if (!(fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE)) {
+    ext_count--;
+  }
+
   /* Additional protocol extensions (why these appear in 'supported2' is
    * confusing to me, too).
    */
-  sftp_msg_write_int(&attrs_buf, &attrs_len, 2);
+  sftp_msg_write_int(&attrs_buf, &attrs_len, ext_count);
 
-  pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: check-file");
-  sftp_msg_write_string(&attrs_buf, &attrs_len, "check-file");
+  if (fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) {
+    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: check-file");
+    sftp_msg_write_string(&attrs_buf, &attrs_len, "check-file");
+  }
 
-  pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
-  sftp_msg_write_string(&attrs_buf, &attrs_len, "copy-file");
+  if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
+    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
+    sftp_msg_write_string(&attrs_buf, &attrs_len, "copy-file");
+  }
  
   ext.ext_data = attrs_ptr;
   ext.ext_datalen = (attrs_sz - attrs_len);
@@ -3924,7 +3950,8 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
   pr_trace_msg(trace_channel, 7, "received request: EXTENDED %s",
     ext_request_name);
 
-  if (strcmp(ext_request_name, "version-select") == 0) {
+  if ((fxp_ext_flags & SFTP_FXP_EXT_VERSION_SELECT) &&
+      strcmp(ext_request_name, "version-select") == 0) {
     char *version_str;
 
     version_str = sftp_msg_read_string(fxp->pool, &fxp->payload,
@@ -3936,7 +3963,8 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     return res;
   }
 
-  if (strcmp(ext_request_name, "check-file-name") == 0) {
+  if ((fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) &&
+      strcmp(ext_request_name, "check-file-name") == 0) {
     char *path, *digest_list;
     off_t offset, len;
     uint32_t blocksz;
@@ -3955,7 +3983,8 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     return res;
   }
 
-  if (strcmp(ext_request_name, "check-file-handle") == 0) {
+  if ((fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) &&
+      strcmp(ext_request_name, "check-file-handle") == 0) {
     char *handle, *path, *digest_list;
     off_t offset, len;
     uint32_t blocksz;
@@ -4023,7 +4052,8 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     return res;
   }
 
-  if (strcmp(ext_request_name, "copy-file") == 0) {
+  if ((fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) &&
+      strcmp(ext_request_name, "copy-file") == 0) {
     char *src, *dst;
     int overwrite;
 
@@ -4037,7 +4067,8 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     return res;
   }
 
-  if (strcmp(ext_request_name, "posix-rename@openssh.com") == 0) {
+  if ((fxp_ext_flags & SFTP_FXP_EXT_POSIX_RENAME) &&
+      strcmp(ext_request_name, "posix-rename@openssh.com") == 0) {
     char *src, *dst;
 
     src = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
@@ -4055,7 +4086,8 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
   }
 
 #ifdef HAVE_SYS_STATVFS_H
-  if (strcmp(ext_request_name, "statvfs@openssh.com") == 0) {
+  if ((fxp_ext_flags & SFTP_FXP_EXT_STATVFS) &&
+      strcmp(ext_request_name, "statvfs@openssh.com") == 0) {
     const char *path;
 
     path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
@@ -4066,7 +4098,8 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     return res;
   }
 
-  if (strcmp(ext_request_name, "fstatvfs@openssh.com") == 0) {
+  if ((fxp_ext_flags & SFTP_FXP_EXT_STATVFS) &&
+      strcmp(ext_request_name, "fstatvfs@openssh.com") == 0) {
     const char *handle, *path;
     struct fxp_handle *fxh;
 
@@ -8331,6 +8364,11 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
   }
 
   fxp_session = NULL;
+  return 0;
+}
+
+int sftp_fxp_set_extensions(unsigned long ext_flags) {
+  fxp_ext_flags = ext_flags;
   return 0;
 }
 

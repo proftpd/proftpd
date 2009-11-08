@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.h,v 1.5 2009-11-03 08:09:20 castaglia Exp $
+ * $Id: fxp.h,v 1.6 2009-11-08 21:23:33 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -65,10 +65,22 @@
 #define SFTP_SSH2_FXP_EXTENDED		200
 #define SFTP_SSH2_FXP_EXTENDED_REPLY	201
 
+/* SFTP Extensions */
+#define SFTP_FXP_EXT_CHECK_FILE		0x0001
+#define SFTP_FXP_EXT_COPY_FILE		0x0002
+#define SFTP_FXP_EXT_VERSION_SELECT	0x0004
+#define SFTP_FXP_EXT_POSIX_RENAME	0x0008
+#define SFTP_FXP_EXT_STATVFS		0x0010
+
+#define SFTP_FXP_EXT_DEFAULT \
+  (SFTP_FXP_EXT_CHECK_FILE|SFTP_FXP_EXT_COPY_FILE|SFTP_FXP_EXT_VERSION_SELECT|SFTP_FXP_EXT_POSIX_RENAME|SFTP_FXP_EXT_STATVFS)
+
 int sftp_fxp_handle_packet(pool *, void *, uint32_t, char *, uint32_t);
 
 int sftp_fxp_open_session(uint32_t);
 int sftp_fxp_close_session(uint32_t);
+
+int sftp_fxp_set_extensions(unsigned long);
 
 int sftp_fxp_set_protocol_version(unsigned int, unsigned int);
 

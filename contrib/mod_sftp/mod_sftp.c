@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.20 2009-11-04 18:48:17 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.21 2009-11-08 21:23:33 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -818,6 +818,105 @@ MODRET set_sftpengine(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: SFTPExtensions ext1 ... extN */
+MODRET set_sftpextensions(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+  unsigned long ext_flags = SFTP_FXP_EXT_DEFAULT;
+
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    char action, *ext;
+
+    ext = cmd->argv[i];
+    action = *ext;
+
+    if (action != '-' &&
+        action != '+') {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad option: '", ext, "'",
+        NULL));
+    }
+
+    ext++;
+
+    if (strcasecmp(ext, "checkFile") == 0) {
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_CHECK_FILE;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_CHECK_FILE;
+          break;
+      }
+
+    } else if (strcasecmp(ext, "copyFile") == 0) {
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_COPY_FILE;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_COPY_FILE;
+          break;
+      }
+
+    } else if (strcasecmp(ext, "versionSelect") == 0) {
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_VERSION_SELECT;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_VERSION_SELECT;
+          break;
+      }
+
+    } else if (strcasecmp(ext, "posixRename") == 0) {
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_POSIX_RENAME;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_POSIX_RENAME;
+          break;
+      }
+
+    } else if (strcasecmp(ext, "statvfs") == 0) {
+#ifdef HAVE_SYS_STATVFS_H
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_STATVFS;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_STATVFS;
+          break;
+      }
+#else
+      pr_log_debug(DEBUG0, "%s: statvfs@openssh.com extension not supported "
+        "on this system; requires statvfs(3) support", cmd->argv[0]);
+#endif /* !HAVE_SYS_STATVFS_H */
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown extension: '",
+        ext, "'", NULL)); 
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = ext_flags;
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: SFTPHostKey path */
 MODRET set_sftphostkey(cmd_rec *cmd) {
   struct stat st;
@@ -1371,6 +1470,11 @@ static int sftp_sess_init(void) {
 
   pr_response_block(TRUE);
 
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPExtensions", FALSE);
+  if (c) {
+    sftp_fxp_set_extensions(*((unsigned long *) c->argv[0]));
+  }
+
   sftp_fxp_use_gmt(times_gmt);
 
   /* Check for any rekey policy. */
@@ -1496,6 +1600,7 @@ static conftable sftp_conftab[] = {
   { "SFTPDigests",		set_sftpdigests,		NULL },
   { "SFTPDisplayBanner",	set_sftpdisplaybanner,		NULL },
   { "SFTPEngine",		set_sftpengine,			NULL },
+  { "SFTPExtensions",		set_sftpextensions,		NULL },
   { "SFTPHostKey",		set_sftphostkey,		NULL },
   { "SFTPKeyBlacklist",		set_sftpkeyblacklist,		NULL },
   { "SFTPKeyExchanges",		set_sftpkeyexchanges,		NULL },
