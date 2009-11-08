@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.85 2009-11-05 17:46:55 castaglia Exp $
+ * $Id: fsio.c,v 1.86 2009-11-08 19:58:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -609,7 +609,7 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   struct stat src_st, dst_st;
   char *buf;
   size_t bufsz;
-  int res;
+  int dst_existed = FALSE, res;
 
   if (src == NULL ||
       dst == NULL) {
@@ -617,12 +617,17 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     return -1;
   }
 
-  src_fh = pr_fsio_open(src, O_RDONLY);
-  if (!src_fh) {
+  /* Use a nonblocking open() for the path; it could be a FIFO, and we don't
+   * want to block forever if the other end of the FIFO is not running.
+   */
+  src_fh = pr_fsio_open(src, O_RDONLY|O_NONBLOCK);
+  if (src_fh == NULL) {
     pr_log_pri(PR_LOG_WARNING, "error opening source file '%s' "
       "for copying: %s", src, strerror(errno));
     return -1;
   }
+
+  pr_fsio_set_block(src_fh);
 
   /* Do not allow copying of directories. open(2) may not fail when
    * opening the source path, since it is only doing a read-only open,
@@ -640,8 +645,20 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     return -1;
   }
 
-  dst_fh = pr_fsio_open(dst, O_WRONLY|O_CREAT);
-  if (!dst_fh) {
+  /* We use stat() here, not lstat(), since open() would follow a symlink
+   * to its target, and what we really want to know here is whether the
+   * ultimate destination file exists or not.
+   */
+  if (pr_fsio_stat(dst, &dst_st) == 0) {
+    dst_existed = TRUE;
+    pr_fs_clear_cache();
+  }
+
+  /* Use a nonblocking open() for the path; it could be a FIFO, and we don't
+   * want to block forever if the other end of the FIFO is not running.
+   */
+  dst_fh = pr_fsio_open(dst, O_WRONLY|O_CREAT|O_NONBLOCK);
+  if (dst_fh == NULL) {
     int xerrno = errno;
 
     pr_fsio_close(src_fh);
@@ -652,6 +669,8 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     return -1;
   }
 
+  pr_fsio_set_block(dst_fh);
+
   /* Stat the source file to find its optimal copy block size. */
   if (pr_fsio_fstat(src_fh, &src_st) < 0) {
     int xerrno = errno;
@@ -660,7 +679,11 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 
     pr_fsio_close(src_fh);
     pr_fsio_close(dst_fh);
-    pr_fsio_unlink(dst);
+
+    if (!dst_existed) {
+      /* Don't unlink the destination file if it already existed. */
+      pr_fsio_unlink(dst);
+    }
 
     errno = xerrno;
     return -1;
@@ -695,8 +718,12 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     exit(1);
   }
 
-  /* Make sure the destination file starts with a zero size. */
-  pr_fsio_truncate(dst, 0);
+#ifdef S_ISFIFO
+  if (!S_ISFIFO(dst_st.st_mode)) {
+    /* Make sure the destination file starts with a zero size. */
+    pr_fsio_truncate(dst, 0);
+  }
+#endif
 
   while ((res = pr_fsio_read(src_fh, buf, bufsz)) > 0) {
     pr_signals_handle();
@@ -706,8 +733,6 @@ int pr_fs_copy_file(const char *src, const char *dst) {
         strerror(errno));
       break;
     }
-
-    pr_signals_handle();
   }
 
   free(buf);
@@ -743,9 +768,10 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     /* Linux provides the handy perm_copy_fd(3) function in its libacl
      * library just for this purpose.
      */
-    if (perm_copy_fd(src, PR_FH_FD(src_fh), dst, PR_FH_FD(dst_fh), NULL) < 0)
+    if (perm_copy_fd(src, PR_FH_FD(src_fh), dst, PR_FH_FD(dst_fh), NULL) < 0) {
       pr_log_debug(DEBUG3, "error copying ACL to destination file: %s",
         strerror(errno));
+    }
 
 #  else
     acl_t src_acl = acl_get_fd(PR_FH_FD(src_fh));
@@ -769,11 +795,11 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     int nents;
 
     nents = facl(PR_FH_FD(src_fh), GETACLCNT, 0, NULL);
-    if (nents < 0)
+    if (nents < 0) {
       pr_log_debug(DEBUG3, "error getting source file ACL count: %s",
         strerror(errno));
 
-    else {
+    } else {
       aclent_t *acls;
 
       acls = malloc(sizeof(aclent_t) * nents);
@@ -782,14 +808,15 @@ int pr_fs_copy_file(const char *src, const char *dst) {
         exit(1);
       }
 
-      if (facl(PR_FH_FD(src_fh), GETACL, nents, acls) < 0)
+      if (facl(PR_FH_FD(src_fh), GETACL, nents, acls) < 0) {
         pr_log_debug(DEBUG3, "error getting source file ACLs: %s",
           strerror(errno));
 
-      else {
-        if (facl(PR_FH_FD(dst_fh), SETACL, nents, acls) < 0)
+      } else {
+        if (facl(PR_FH_FD(dst_fh), SETACL, nents, acls) < 0) {
           pr_log_debug(DEBUG3, "error setting dest file ACLs: %s",
             strerror(errno));
+        }
       }
 
       free(acls);
@@ -799,9 +826,12 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 #endif /* HAVE_POSIX_ACL */
 
   pr_fsio_close(src_fh);
-  if (pr_fsio_close(dst_fh) < 0)
+
+  res = pr_fsio_close(dst_fh);
+  if (res < 0) {
     pr_log_pri(PR_LOG_WARNING, "error closing '%s': %s", dst,
       strerror(errno));
+  }
 
   return res;
 }
