@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.65 2009-11-08 20:25:41 castaglia Exp $
+ * $Id: fxp.c,v 1.66 2009-11-08 20:37:31 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2756,10 +2756,13 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
   /* Additional protocol extensions (why these appear in 'supported2' is
    * confusing to me, too).
    */
-  sftp_msg_write_int(&attrs_buf, &attrs_len, 1);
+  sftp_msg_write_int(&attrs_buf, &attrs_len, 2);
 
   pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: check-file");
   sftp_msg_write_string(&attrs_buf, &attrs_len, "check-file");
+
+  pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
+  sftp_msg_write_string(&attrs_buf, &attrs_len, "copy-file");
  
   ext.ext_data = attrs_ptr;
   ext.ext_datalen = (attrs_sz - attrs_len);
@@ -3144,6 +3147,177 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
 
   BIO_free_all(bio);
   pr_fsio_close(fh);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
+static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
+    char *dst, int overwrite) {
+  char *buf, *ptr, *args;
+  const char *reason;
+  uint32_t buflen, bufsz, status_code;
+  struct fxp_packet *resp;
+  cmd_rec *cmd;
+  int res, xerrno;
+  struct stat st;
+
+  args = pstrcat(fxp->pool, src, " ", dst, NULL);
+
+  cmd = fxp_cmd_alloc(fxp->pool, "COPY", args);
+  cmd->class = CL_WRITE;
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "COPY of '%s' to '%s' blocked by '%s' handler", src, dst, cmd->argv[0]);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (strcmp(src, dst) == 0) {
+    xerrno = EEXIST;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "COPY of '%s' to same path '%s', rejecting", src, dst);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason,
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  res = pr_fsio_stat(dst, &st);
+  if (res == 0) {
+    unsigned char *allow_overwrite = NULL;
+
+    allow_overwrite = get_param_ptr(get_dir_ctxt(fxp->pool, dst),
+      "AllowOverwrite", FALSE);
+
+    if (!overwrite ||
+        (allow_overwrite == NULL ||
+         *allow_overwrite == FALSE)) {
+      xerrno = EACCES;
+
+      if (!overwrite) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "'%s' exists and client did not request COPY overwrites", dst);
+
+      } else {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "AllowOverwrite permission denied for '%s'", dst);
+      }
+
+      status_code = fxp_errno2status(xerrno, &reason);
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+        (unsigned long) status_code, reason);
+
+      fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+        NULL);
+
+      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+    }
+  }
+
+  if (fxp_path_pass_regex_filters(fxp->pool, "COPY", src) < 0 ||
+      fxp_path_pass_regex_filters(fxp->pool, "COPY", dst) < 0) {
+    xerrno = errno;
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, reason);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  res = pr_fs_copy_file(src, dst);
+  if (res < 0) {
+    xerrno = errno;
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error copying '%s' to '%s': %s", src, dst, strerror(xerrno));
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, reason);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  /* No errors. */
+  xerrno = errno = 0;
+
+  /* XXX could this fail due to mod_quotatab? */
+  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+
+  status_code = fxp_errno2status(xerrno, &reason);
+
+  pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+    (unsigned long) status_code, reason);
+
+  fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
@@ -3844,6 +4018,20 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
     res = fxp_handle_ext_check_file(fxp, digest_list, path, offset, len,
       blocksz);
+    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+    return res;
+  }
+
+  if (strcmp(ext_request_name, "copy-file") == 0) {
+    char *src, *dst;
+    int overwrite;
+
+    src = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+    dst = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+    overwrite = sftp_msg_read_bool(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+    res = fxp_handle_ext_copy_file(fxp, src, dst, overwrite);
     pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
     return res;
