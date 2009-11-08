@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.64 2009-11-08 19:20:01 castaglia Exp $
+ * $Id: fxp.c,v 1.65 2009-11-08 20:25:41 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -851,13 +851,13 @@ static int fxp_path_pass_regex_filters(pool *p, const char *request,
     case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "path '%s' for %s denied by PathAllowFilter", path, request);
-      errno = EPERM;
+      errno = EACCES;
       return -1;
 
     case PR_FILTER_ERR_FAILS_DENY_FILTER:
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "path '%s' for %s denied by PathDenyFilter", path, request);
-      errno = EPERM;
+      errno = EACCES;
       return -1;
   }
 
@@ -3273,10 +3273,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
 
   if (fxp_path_pass_regex_filters(fxp->pool, "RENAME", src) < 0 ||
       fxp_path_pass_regex_filters(fxp->pool, "RENAME", dst) < 0) {
-    status_code = SSH2_FX_PERMISSION_DENIED;
-
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "RENAME of '%s' to '%s' blocked by PathFilter configuration", src, dst);
+    status_code = fxp_errno2status(errno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -4945,10 +4942,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   }
 
   if (fxp_path_pass_regex_filters(fxp->pool, "MKDIR", path) < 0) {
-    status_code = SSH2_FX_PERMISSION_DENIED;
-
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "MKDIR of '%s' blocked by PathFilter configuration", path);
+    status_code = fxp_errno2status(errno, NULL);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -5769,16 +5763,15 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   /* XXX Check MaxRetrieveFileSize */
 
   if (fxp_path_pass_regex_filters(fxp->pool, "READ", fxh->fh->fh_path) < 0) {
-    uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
+    uint32_t status_code;
+    const char *reason;
 
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "READ of '%s' blocked by PathFilter configuration", fxh->fh->fh_path);
+    status_code = fxp_errno2status(errno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
-      (unsigned long) status_code, fxp_strerror(status_code));
+      (unsigned long) status_code, reason);
 
-    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
-      fxp_strerror(status_code), NULL);
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
 
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
@@ -6433,10 +6426,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
   cmd->argv[0] = cmd_name;
 
   if (fxp_path_pass_regex_filters(fxp->pool, "REMOVE", path) < 0) {
-    status_code = SSH2_FX_PERMISSION_DENIED;
-
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "REMOVE of '%s' blocked by PathFilter configuration", path);
+    status_code = fxp_errno2status(errno, NULL);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -6750,11 +6740,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
 
   if (fxp_path_pass_regex_filters(fxp->pool, "RENAME", old_path) < 0 ||
       fxp_path_pass_regex_filters(fxp->pool, "RENAME", new_path) < 0) {
-    status_code = SSH2_FX_PERMISSION_DENIED;
-
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "RENAME of '%s' to '%s' blocked by PathFilter configuration", old_path,
-      new_path);
+    status_code = fxp_errno2status(errno, NULL);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -6962,10 +6948,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   }
 
   if (fxp_path_pass_regex_filters(fxp->pool, "RMDIR", path) < 0) {
-    status_code = SSH2_FX_PERMISSION_DENIED;
-
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "RMDIR of '%s' blocked by PathFilter configuration", path);
+    status_code = fxp_errno2status(errno, NULL);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -7650,10 +7633,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   /* XXX Check MaxStoreFileSize */
 
   if (fxp_path_pass_regex_filters(fxp->pool, "WRITE", fxh->fh->fh_path) < 0) {
-    status_code = SSH2_FX_PERMISSION_DENIED;
-
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "WRITE to '%s' blocked by PathFilter configuration", fxh->fh->fh_path);
+    status_code = fxp_errno2status(errno, NULL);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
