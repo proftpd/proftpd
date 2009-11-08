@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.63 2009-11-07 22:41:51 castaglia Exp $
+ * $Id: fxp.c,v 1.64 2009-11-08 19:20:01 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -244,6 +244,72 @@ static const char *trace_channel = "sftp";
 static struct fxp_handle *fxp_handle_get(const char *);
 static struct fxp_packet *fxp_packet_create(pool *, uint32_t);
 static int fxp_packet_write(struct fxp_packet *);
+
+/* XXX These two namelist-related functions are the same as the ones
+ * in kex.c; the code should be refactored out into a misc.c or utils.c
+ * or somesuch.
+ */
+
+static array_header *fxp_parse_namelist(pool *p, const char *names) {
+  char *ptr;
+  array_header *list;
+
+  list = make_array(p, 0, sizeof(const char *));
+
+  ptr = strchr(names, ',');
+  while (ptr) {
+    char *elt;
+
+    pr_signals_handle();
+
+    elt = pcalloc(p, (ptr - names) + 1);
+    memcpy(elt, names, (ptr - names));
+
+    *((const char **) push_array(list)) = elt;
+    names = ++ptr;
+
+    ptr = strchr(names, ',');
+  }
+  *((const char **) push_array(list)) = pstrdup(p, names);
+
+  return list;
+}
+
+static const char *fxp_get_shared_name(pool *p, const char *c2s_names,
+    const char *s2c_names) {
+  register unsigned int i;
+  const char *name = NULL, **client_names, **server_names;
+  pool *tmp_pool;
+  array_header *client_list, *server_list;
+
+  tmp_pool = make_sub_pool(p);
+  pr_pool_tag(tmp_pool, "SFTP shared name pool");
+
+  client_list = fxp_parse_namelist(tmp_pool, c2s_names);
+  client_names = (const char **) client_list->elts;
+
+  server_list = fxp_parse_namelist(tmp_pool, s2c_names);
+  server_names = (const char **) server_list->elts;
+
+  for (i = 0; i < client_list->nelts; i++) {
+    register unsigned int j;
+
+    if (name)
+      break;
+
+    for (j = 0; j < server_list->nelts; j++) {
+      if (strcmp(client_names[i], server_names[j]) == 0) {
+        name = client_names[i];
+        break;
+      }
+    }
+  }
+
+  name = pstrdup(p, name);
+  destroy_pool(tmp_pool);
+
+  return name;
+}
 
 static struct fxp_session *fxp_get_session(uint32_t channel_id) {
   struct fxp_session *sess;
@@ -2690,8 +2756,11 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
   /* Additional protocol extensions (why these appear in 'supported2' is
    * confusing to me, too).
    */
-  sftp_msg_write_int(&attrs_buf, &attrs_len, 0);
+  sftp_msg_write_int(&attrs_buf, &attrs_len, 1);
 
+  pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: check-file");
+  sftp_msg_write_string(&attrs_buf, &attrs_len, "check-file");
+ 
   ext.ext_data = attrs_ptr;
   ext.ext_datalen = (attrs_sz - attrs_len);
 
@@ -2699,187 +2768,387 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
   fxp_msg_write_extpair(buf, buflen, &ext);
 }
 
-/* Request handlers */
+/* SFTP Extension handlers */
 
-static int fxp_handle_close(struct fxp_packet *fxp) {
-  int xerrno = 0, res = 0;
-  char *buf, *ptr, *name;
-  const char *reason;
+static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
+    char *path, off_t offset, off_t len, uint32_t blocksz) {
+  char *buf, *ptr, *supported_digests;
+  const char *digest_name, *reason;
   uint32_t buflen, bufsz, status_code;
-  struct fxp_handle *fxh;
   struct fxp_packet *resp;
-  cmd_rec *cmd;
+  int data_len, res, xerrno = 0;
+  struct stat st;
+  pr_fh_t *fh;
+  unsigned int nblocks;
+  off_t range_len, total_len;
+  void *data;
+  BIO *bio, *fd_bio, *md_bio;
+  const EVP_MD *md;
 
-  name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+  pr_trace_msg(trace_channel, 8, "client sent check-file request: "
+    "path = '%s', digests = '%s', offset = %" PR_LU ", len = %" PR_LU
+    ", block size = %lu", path, digest_list, (pr_off_t) offset, (pr_off_t) len,
+    (unsigned long) blocksz);
 
-  cmd = fxp_cmd_alloc(fxp->pool, "CLOSE", name);
-  cmd->class = CL_READ|CL_WRITE;
-
-  pr_scoreboard_entry_update(session.pid,
-    PR_SCORE_CMD, "%s", "CLOSE", NULL, NULL);
-  pr_scoreboard_entry_update(session.pid,
-    PR_SCORE_CMD_ARG, "%s", name, NULL, NULL);
-
-  pr_trace_msg(trace_channel, 7, "received request: CLOSE %s", name);
-
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  /* We could end up with lots of digests to write, if the file is large
+   * and/or the block size is small.  Be prepared.
+   */
+  buflen = bufsz = (FXP_RESPONSE_DATA_DEFAULT_SZ * 2);
   buf = ptr = palloc(fxp->pool, bufsz);
 
-  fxh = fxp_handle_get(name);
-  if (fxh == NULL) {
-    status_code = SSH2_FX_INVALID_HANDLE;
+  /* The minimum block size required by this extension is 256 bytes. */
+  if (blocksz != 0 &&
+      blocksz < 256) {
+    xerrno = EINVAL;
 
-    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
-      (unsigned long) status_code, fxp_strerror(status_code));
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "SFTP client check-file request sent invalid block size "
+      "(%lu bytes <= 256)", (unsigned long) blocksz);
 
-    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
-      fxp_strerror(status_code), NULL);
-
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
-    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
-
-    return fxp_packet_write(resp);
-  }
-
-  if (fxh->dirh == NULL &&
-      fxh->fh == NULL) {
-    status_code = SSH2_FX_INVALID_HANDLE;
-
-    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
-      (unsigned long) status_code, fxp_strerror(status_code));
-
-    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
-      fxp_strerror(status_code), NULL);
- 
-    fxp_handle_delete(fxh);
-    destroy_pool(fxh->pool);
-
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
-    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
-  
-    return fxp_packet_write(resp);
-  }
-
-  pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
-
-  if (fxh->fh != NULL) {
-    char *curr_path = NULL, *real_path = NULL;
-    cmd_rec *cmd2 = NULL;
-
-    curr_path = pstrdup(fxp->pool, fxh->fh->fh_path);
-    real_path = curr_path;
-    if (fxh->fh_real_path) {
-      real_path = fxh->fh_real_path;
-    }
- 
-    res = pr_fsio_close(fxh->fh);
-    if (res < 0) 
-      xerrno = errno;
-
-    pr_scoreboard_entry_update(session.pid,
-      PR_SCORE_CMD_ARG, "%s", real_path, NULL, NULL);
-
-    if (fxh->fh_real_path != NULL &&
-        res == 0) {
-      /* This is a HiddenStores file, and needs to be renamed to the real
-       * path.
-       */
-
-      pr_trace_msg(trace_channel, 8, "renaming HiddenStores path '%s' to '%s'",
-        curr_path, real_path);
-
-      res = pr_fsio_rename(curr_path, real_path);
-      if (res < 0) {
-        xerrno = errno;
-
-        pr_log_pri(PR_LOG_WARNING, "Rename of %s to %s failed: %s",
-          curr_path, real_path, strerror(xerrno));
-
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "renaming of HiddenStore path '%s' to '%s' failed: %s",
-          curr_path, real_path, strerror(xerrno));
-
-        pr_fsio_unlink(curr_path);
-      }
-    }
-
-    if (fxh->fh_flags & O_APPEND) {
-      cmd2 = fxp_cmd_alloc(fxp->pool, C_APPE, pstrdup(fxp->pool, real_path));
-
-    } else if ((fxh->fh_flags & O_WRONLY) ||
-               (fxh->fh_flags & O_RDWR)) {
-      cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, pstrdup(fxp->pool, real_path));
-
-    } else if (fxh->fh_flags == O_RDONLY) {
-      cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, pstrdup(fxp->pool, real_path));
-    }
-
-    fxh->fh = NULL;
-
-    if (cmd2) {
-      int post_phase = POST_CMD, log_phase = LOG_CMD;
-
-      if (res < 0 &&
-          xerrno != EOF) {
-        post_phase = POST_CMD_ERR;
-        log_phase = LOG_CMD_ERR;
-      }
-
-      /* XXX We don't really care about the success of this dispatch, since
-       * there's not much that we can do, in this code, at this point.
-       */
-      (void) pr_cmd_dispatch_phase(cmd2, post_phase, 0);
-      (void) pr_cmd_dispatch_phase(cmd2, log_phase, 0);
-    }
-
-  } else if (fxh->dirh != NULL) {
-    pr_scoreboard_entry_update(session.pid,
-      PR_SCORE_CMD_ARG, "%s", fxh->dir, NULL, NULL);
-
-    res = pr_fsio_closedir(fxh->dirh);
-    if (res < 0)
-      xerrno = errno;
-    fxh->dirh = NULL;
-  }
-
-  /* Clear out any transfer-specific data. */
-  if (session.xfer.p) {
-    destroy_pool(session.xfer.p);
-  }
-  memset(&session.xfer, 0, sizeof(session.xfer));
-
-  if (res < 0) {
     status_code = fxp_errno2status(xerrno, &reason);
-
-    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
-
-  } else {
-    errno = 0;
-    status_code = fxp_errno2status(0, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, reason);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
   }
 
-  fxp_handle_delete(fxh);
-  destroy_pool(fxh->pool);
+  res = pr_fsio_lstat(path, &st);
+  if (res < 0) {
+    xerrno = errno;
 
-  fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to lstat path '%s': %s", path, strerror(xerrno));
 
-  pr_cmd_dispatch_phase(cmd, res < 0 ? LOG_CMD_ERR : LOG_CMD, 0);
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (S_ISDIR(st.st_mode)) {
+    xerrno = EISDIR;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "SFTP client check-file requested on a directory, denying");
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (!S_ISREG(st.st_mode) &&
+      !S_ISLNK(st.st_mode)) {
+    xerrno = EINVAL;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "SFTP client check-file request not for file or symlink, denying");
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, reason);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (offset >= st.st_size) {
+    xerrno = EINVAL;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client check-file request sent invalid offset (%" PR_LU
+      " >= %" PR_LU " file size)", (pr_off_t) offset, (pr_off_t) st.st_size);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, reason);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  supported_digests = "md5,sha1";
+#ifdef HAVE_SHA256_OPENSSL
+  supported_digests = pstrcat(fxp->pool, supported_digests, ",sha224,sha256",
+    NULL);
+#endif
+#ifdef HAVE_SHA512_OPENSSL
+  supported_digests = pstrcat(fxp->pool, supported_digests, ",sha384,sha512",
+    NULL);
+#endif
+
+  digest_name = fxp_get_shared_name(fxp->pool, digest_list, supported_digests);
+  if (digest_name == NULL) {
+    xerrno = EINVAL;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "no supported digests in client check-file request "
+      "(client sent '%s', server supports '%s')", digest_list,
+      supported_digests);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, reason);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    (void) fxp_packet_write(resp);
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (len == 0) {
+    range_len = st.st_size - offset;
+
+  } else {
+    range_len = offset + len;
+  }
+
+  if (blocksz == 0) {
+    nblocks = 1;
+
+  } else {
+    nblocks = range_len / blocksz;
+    if (range_len % blocksz != 0) {
+      nblocks++;
+    }
+  }
+
+  pr_trace_msg(trace_channel, 15, "for check-file request on '%s', "
+    "calculate %s digest of %u %s", path, digest_name, nblocks,
+    nblocks == 1 ? "block/checksum" : "nblocks/checksums");
+
+  fh = pr_fsio_open(path, O_RDONLY);
+  if (fh == NULL) {
+    xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to open path '%s': %s", path, strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (pr_fsio_lseek(fh, offset, SEEK_SET) < 0) {
+    xerrno = errno;
+
+    pr_fsio_close(fh);
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to seek to offset %" PR_LU " in '%s': %s", (pr_off_t) offset,
+      path, strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  md = EVP_get_digestbyname(digest_name);
+  if (md == NULL) {
+    xerrno = EINVAL;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to support %s digests: %s", digest_name,
+      sftp_crypto_get_errors());
+
+    pr_fsio_close(fh);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, reason);
+
+    /* Since we already started writing the EXTENDED_REPLY, we have
+     * to reset the pointers and overwrite the existing message.
+     */
+    buf = ptr;
+    buflen = bufsz;
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  md_bio = BIO_new(BIO_f_md());
+
+  /* XXX Check the return value here */
+  BIO_set_md(md_bio, md);
+
+  fd_bio = BIO_new(BIO_s_fd());
+  BIO_set_fd(fd_bio, PR_FH_FD(fh), BIO_NOCLOSE);
+
+  bio = BIO_push(md_bio, fd_bio);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
+  sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+  sftp_msg_write_string(&buf, &buflen, digest_name);
+
+  pr_trace_msg(trace_channel, 8,
+    "sending response: EXTENDED_REPLY %s digest of %u %s", digest_name,
+    nblocks, nblocks == 1 ? "block" : "blocks");
+
+  if (blocksz == 0) {
+    data_len = st.st_blksize;
+
+  } else {
+    data_len = blocksz;
+  }
+
+  data = palloc(fxp->pool, data_len);
+
+  while (TRUE) {
+    pr_signals_handle();
+
+    res = BIO_read(bio, data, data_len);
+    if (res < 0) {
+      if (BIO_should_read(fd_bio)) {
+        continue;
+      }
+
+      /* error */
+      xerrno = errno;
+
+      pr_fsio_close(fh);
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error reading from '%s': %s", path, strerror(xerrno));
+
+      status_code = fxp_errno2status(xerrno, &reason);
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+        "('%s' [%d])", (unsigned long) status_code, reason,
+        strerror(xerrno), xerrno);
+
+      /* Since we already started writing the EXTENDED_REPLY, we have
+       * to reset the pointers and overwrite the existing message.
+       */
+      buf = ptr;
+      buflen = bufsz;
+
+      fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+        reason, NULL);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+
+    } else if (res == 0) {
+      if (BIO_should_retry(fd_bio) != 0) {
+        continue;
+      }
+
+      /* EOF */
+      break;
+    }
+
+    if (blocksz != 0) {
+      unsigned char digest[EVP_MAX_MD_SIZE];
+      unsigned int digest_len;
+
+      BIO_flush(bio);
+      digest_len = BIO_gets(md_bio, digest, sizeof(digest));
+
+      sftp_msg_write_data(&buf, &buflen, (const char *) digest, digest_len,
+        FALSE);
+
+      BIO_reset(md_bio);
+
+      total_len += res; 
+      if (len > 0 &&
+          total_len >= len) {
+        break;
+      }
+    }
+  }
+
+  if (blocksz == 0) {
+    unsigned char digest[EVP_MAX_MD_SIZE];
+    unsigned int digest_len;
+
+    BIO_flush(bio);
+    digest_len = BIO_gets(md_bio, digest, sizeof(digest));
+
+    sftp_msg_write_data(&buf, &buflen, (const char *) digest, digest_len,
+      FALSE);
+  }
+
+  BIO_free_all(bio);
+  pr_fsio_close(fh);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
   resp->payload_sz = (bufsz - buflen);
-  
+
   return fxp_packet_write(resp);
 }
 
@@ -3097,8 +3366,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
 }
 
 #ifdef HAVE_SYS_STATVFS_H
-static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, cmd_rec *cmd,
-    const char *path) {
+static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
   char *buf, *ptr;
   const char *reason;
   uint32_t buflen, bufsz, status_code;
@@ -3136,16 +3404,12 @@ static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, cmd_rec *cmd,
 
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
     resp->payload_sz = (bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
-
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
   pr_trace_msg(trace_channel, 8,
     "sending response: EXTENDED_REPLY <statvfs data of '%s'>", path);
@@ -3284,7 +3548,192 @@ static int fxp_handle_ext_version_select(struct fxp_packet *fxp,
   return fxp_packet_write(resp);
 }
 
+/* Request handlers */
+
+static int fxp_handle_close(struct fxp_packet *fxp) {
+  int xerrno = 0, res = 0;
+  char *buf, *ptr, *name;
+  const char *reason;
+  uint32_t buflen, bufsz, status_code;
+  struct fxp_handle *fxh;
+  struct fxp_packet *resp;
+  cmd_rec *cmd;
+
+  name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+  cmd = fxp_cmd_alloc(fxp->pool, "CLOSE", name);
+  cmd->class = CL_READ|CL_WRITE;
+
+  pr_scoreboard_entry_update(session.pid,
+    PR_SCORE_CMD, "%s", "CLOSE", NULL, NULL);
+  pr_scoreboard_entry_update(session.pid,
+    PR_SCORE_CMD_ARG, "%s", name, NULL, NULL);
+
+  pr_trace_msg(trace_channel, 7, "received request: CLOSE %s", name);
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  fxh = fxp_handle_get(name);
+  if (fxh == NULL) {
+    status_code = SSH2_FX_INVALID_HANDLE;
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (fxh->dirh == NULL &&
+      fxh->fh == NULL) {
+    status_code = SSH2_FX_INVALID_HANDLE;
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+ 
+    fxp_handle_delete(fxh);
+    destroy_pool(fxh->pool);
+
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+  
+    return fxp_packet_write(resp);
+  }
+
+  pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
+
+  if (fxh->fh != NULL) {
+    char *curr_path = NULL, *real_path = NULL;
+    cmd_rec *cmd2 = NULL;
+
+    curr_path = pstrdup(fxp->pool, fxh->fh->fh_path);
+    real_path = curr_path;
+    if (fxh->fh_real_path) {
+      real_path = fxh->fh_real_path;
+    }
+ 
+    res = pr_fsio_close(fxh->fh);
+    if (res < 0) 
+      xerrno = errno;
+
+    pr_scoreboard_entry_update(session.pid,
+      PR_SCORE_CMD_ARG, "%s", real_path, NULL, NULL);
+
+    if (fxh->fh_real_path != NULL &&
+        res == 0) {
+      /* This is a HiddenStores file, and needs to be renamed to the real
+       * path.
+       */
+
+      pr_trace_msg(trace_channel, 8, "renaming HiddenStores path '%s' to '%s'",
+        curr_path, real_path);
+
+      res = pr_fsio_rename(curr_path, real_path);
+      if (res < 0) {
+        xerrno = errno;
+
+        pr_log_pri(PR_LOG_WARNING, "Rename of %s to %s failed: %s",
+          curr_path, real_path, strerror(xerrno));
+
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "renaming of HiddenStore path '%s' to '%s' failed: %s",
+          curr_path, real_path, strerror(xerrno));
+
+        pr_fsio_unlink(curr_path);
+      }
+    }
+
+    if (fxh->fh_flags & O_APPEND) {
+      cmd2 = fxp_cmd_alloc(fxp->pool, C_APPE, pstrdup(fxp->pool, real_path));
+
+    } else if ((fxh->fh_flags & O_WRONLY) ||
+               (fxh->fh_flags & O_RDWR)) {
+      cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, pstrdup(fxp->pool, real_path));
+
+    } else if (fxh->fh_flags == O_RDONLY) {
+      cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, pstrdup(fxp->pool, real_path));
+    }
+
+    fxh->fh = NULL;
+
+    if (cmd2) {
+      int post_phase = POST_CMD, log_phase = LOG_CMD;
+
+      if (res < 0 &&
+          xerrno != EOF) {
+        post_phase = POST_CMD_ERR;
+        log_phase = LOG_CMD_ERR;
+      }
+
+      /* XXX We don't really care about the success of this dispatch, since
+       * there's not much that we can do, in this code, at this point.
+       */
+      (void) pr_cmd_dispatch_phase(cmd2, post_phase, 0);
+      (void) pr_cmd_dispatch_phase(cmd2, log_phase, 0);
+    }
+
+  } else if (fxh->dirh != NULL) {
+    pr_scoreboard_entry_update(session.pid,
+      PR_SCORE_CMD_ARG, "%s", fxh->dir, NULL, NULL);
+
+    res = pr_fsio_closedir(fxh->dirh);
+    if (res < 0)
+      xerrno = errno;
+    fxh->dirh = NULL;
+  }
+
+  /* Clear out any transfer-specific data. */
+  if (session.xfer.p) {
+    destroy_pool(session.xfer.p);
+  }
+  memset(&session.xfer, 0, sizeof(session.xfer));
+
+  if (res < 0) {
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason,
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+  } else {
+    errno = 0;
+    status_code = fxp_errno2status(0, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, reason);
+  }
+
+  fxp_handle_delete(fxh);
+  destroy_pool(fxh->pool);
+
+  fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+  pr_cmd_dispatch_phase(cmd, res < 0 ? LOG_CMD_ERR : LOG_CMD, 0);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+  
+  return fxp_packet_write(resp);
+}
+
 static int fxp_handle_extended(struct fxp_packet *fxp) {
+  int res;
   char *buf, *ptr, *ext_request_name;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
@@ -3309,7 +3758,98 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
     version_str = sftp_msg_read_string(fxp->pool, &fxp->payload,
       &fxp->payload_sz);
-    return fxp_handle_ext_version_select(fxp, version_str);
+
+    res = fxp_handle_ext_version_select(fxp, version_str);
+    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+    return res;
+  }
+
+  if (strcmp(ext_request_name, "check-file-name") == 0) {
+    char *path, *digest_list;
+    off_t offset, len;
+    uint32_t blocksz;
+
+    path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+    digest_list = sftp_msg_read_string(fxp->pool, &fxp->payload,
+      &fxp->payload_sz);
+    offset = fxp_msg_read_long(fxp->pool, &fxp->payload, &fxp->payload_sz);
+    len = fxp_msg_read_long(fxp->pool, &fxp->payload, &fxp->payload_sz);
+    blocksz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+    res = fxp_handle_ext_check_file(fxp, digest_list, path, offset, len,
+      blocksz);
+    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+    return res;
+  }
+
+  if (strcmp(ext_request_name, "check-file-handle") == 0) {
+    char *handle, *path, *digest_list;
+    off_t offset, len;
+    uint32_t blocksz;
+    struct fxp_handle *fxh;
+
+    handle = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+    fxh = fxp_handle_get(handle);
+    if (fxh == NULL ||
+        fxh->dirh != NULL) {
+      status_code = SSH2_FX_INVALID_HANDLE;
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+        (unsigned long) status_code, fxp_strerror(status_code));
+
+      fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+        fxp_strerror(status_code), NULL);
+
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+    }
+
+    /* Make sure the file was opened with read permissions; if it was opened
+     * write-only, for example, we need to return EACCES.
+     */
+    if (fxh->fh_flags & O_WRONLY) {
+      status_code = SSH2_FX_PERMISSION_DENIED;
+   
+      pr_trace_msg(trace_channel, 9, "file %s opened write-only, "
+        "unable to obtain file checksum (%s)", fxh->fh->fh_path,
+        strerror(EACCES));
+ 
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+        (unsigned long) status_code, fxp_strerror(status_code));
+
+      fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+        fxp_strerror(status_code), NULL);
+
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+    }
+
+    path = fxh->fh->fh_path;
+
+    digest_list = sftp_msg_read_string(fxp->pool, &fxp->payload,
+      &fxp->payload_sz);
+    offset = fxp_msg_read_long(fxp->pool, &fxp->payload, &fxp->payload_sz);
+    len = fxp_msg_read_long(fxp->pool, &fxp->payload, &fxp->payload_sz);
+    blocksz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+    res = fxp_handle_ext_check_file(fxp, digest_list, path, offset, len,
+      blocksz);
+    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+    return res;
   }
 
   if (strcmp(ext_request_name, "posix-rename@openssh.com") == 0) {
@@ -3323,7 +3863,10 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       dst = sftp_utf8_decode_str(fxp->pool, dst);
     }
 
-    return fxp_handle_ext_posix_rename(fxp, src, dst);
+    res = fxp_handle_ext_posix_rename(fxp, src, dst);
+    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+    return res;
   }
 
 #ifdef HAVE_SYS_STATVFS_H
@@ -3331,7 +3874,11 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     const char *path;
 
     path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-    return fxp_handle_ext_statvfs(fxp, cmd, path);
+
+    res = fxp_handle_ext_statvfs(fxp, path);
+    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+    return res;
   }
 
   if (strcmp(ext_request_name, "fstatvfs@openssh.com") == 0) {
@@ -3360,7 +3907,11 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     }
 
     path = fxh->fh ? fxh->fh->fh_path : fxh->dir;
-    return fxp_handle_ext_statvfs(fxp, cmd, path);
+
+    res = fxp_handle_ext_statvfs(fxp, path);
+    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+    return res;
   }
 #endif
 
