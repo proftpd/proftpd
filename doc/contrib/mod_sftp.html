@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.24 2009-11-08 20:43:15 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.25 2009-11-09 01:27:17 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -129,6 +129,7 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#SFTPDigests">SFTPDigests</a>
   <li><a href="#SFTPDisplayBanner">SFTPDisplayBanner</a>
   <li><a href="#SFTPEngine">SFTPEngine</a>
+  <li><a href="#SFTPExtensions">SFTPExtensions</a>
   <li><a href="#SFTPHostKey">SFTPHostKey</a>
   <li><a href="#SFTPKeyBlacklist">SFTPKeyBlacklist</a>
   <li><a href="#SFTPKeyExchanges">SFTPKeyExchanges</a>
@@ -508,6 +509,36 @@ engine (<i>e.g.</i> <code>mod_sftp</code>).  This is usually used inside a
 <code>&lt;VirtualHost&gt;</code> section to enable SFTP sessions for a
 particular virtual host. By default <code>mod_sftp</code> is disabled for both
 the main server and all configured virtual hosts.
+
+<p>
+<hr>
+<h2><a name="SFTPExtensions">SFTPExtensions</a></h2>
+<strong>Syntax:</strong> SFTPExtensions <em>ext1 ... extN</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Module:</strong> mod_sftp<br>
+<strong>Compatibility:</strong> 1.3.3rc3 and later
+
+<p>
+The <code>SFTPExtensions</code> directive can be used to enable/disable
+support for the various SFTP extensions supported by <code>mod_sftp</code>.
+The extension names used for the <code>SFTPExtensions</code> directive are:
+<ul>
+  <li>checkFile
+  <li>copyFile
+  <li>versionSelect
+  <li>posixRename
+  <li>statvfs
+</ul>
+All extensions are enabled by default.
+
+<p>
+To enable an extension, preface the extension name with a '+' (plus) character;
+to disable the extension, use a '-' (minus) character prefix.  For example:
+<pre>
+  # Allow the copy-file extension, but not version-select
+  SFTPExtensions +copyFile -versionSelect
+</pre>
 
 <p>
 <hr>
@@ -1385,7 +1416,7 @@ Thus the <code>ListOptions</code> directive is not honored by
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-11-08 20:43:15 $</i><br>
+Last Updated: <i>$Date: 2009-11-09 01:27:17 $</i><br>
 
 <br><hr>
 

@@ -11,13 +11,14 @@ ChangeLog files.
 
   + Added Taiwan translation.
 
-  + Added support in mod_sftp for the following OpenSSH SFTP extentions:
+  + Added support in mod_sftp for the following SFTP extentions:
 
+      check-file
+      copy-file
+      version-select
       posix-rename@openssh.com
       fstatvfs@openssh.com
       statvfs@openssh.com
-
-  + Support for CapabilitiesSet +CAP_FOWNER
 
   + Added a workaround in mod_tls to deal with the vulnerability found in
     SSL/TLS protocol during renegotiation (CVE-2009-3555).  Good
@@ -29,6 +30,10 @@ ChangeLog files.
     The workaround implemented in mod_tls (Bug#3324) is one of the suggested
     mitigation approaches: the server now refuses all client-initiated
     SSL/TLS session renegotiations.
+
+  + New configuration directives
+
+    SFTPExtensions
 
   + Changed configuration directives
 
@@ -465,4 +470,4 @@ ChangeLog files.
         this will probably not apply to most modules.
 
  
-Last Updated: $Date: 2009-11-07 03:44:35 $
+Last Updated: $Date: 2009-11-09 01:27:17 $
