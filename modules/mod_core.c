@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.359 2009-11-05 02:19:03 castaglia Exp $
+ * $Id: mod_core.c,v 1.360 2009-11-09 00:50:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4255,12 +4255,13 @@ MODRET core_dele(cmd_rec *cmd) {
   }
 
   /* Stat the path, before it is deleted, so that the size of the file
-   * being deleted can be logged.
+   * being deleted can be logged.  Note that unlink() doesn't follow symlinks,
+   * so we need to use lstat(), not stat(), lest we log the wrong size.
    */
   memset(&st, 0, sizeof(st));
   pr_fs_clear_cache();
-  if (pr_fsio_stat(path, &st) < 0) {
-    pr_log_debug(DEBUG3, "unable to stat '%s': %s", path, strerror(errno));
+  if (pr_fsio_lstat(path, &st) < 0) {
+    pr_log_debug(DEBUG3, "unable to lstat '%s': %s", path, strerror(errno));
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return PR_ERROR(cmd);
   }
