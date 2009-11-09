@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.51 2009-10-01 16:13:38 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.52 2009-11-09 03:47:51 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -1539,6 +1539,7 @@ MODRET quotatab_pre_appe(cmd_rec *cmd) {
     quotatab_disk_nbytes = st.st_size;
   }
 
+  have_quota_update = QUOTA_HAVE_WRITE_UPDATE;
   return PR_DECLINED(cmd);
 }
 
@@ -1750,6 +1751,11 @@ MODRET quotatab_pre_dele(cmd_rec *cmd) {
   quotatab_have_dele_st = FALSE;
 
   if (path) {
+    if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
+      quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
+        cmd->argv[0], cmd->arg, quota_exclude_filter);
+      return PR_DECLINED(cmd);
+    }
 
     /* Briefly cache the size (in bytes) of the file to be deleted, so that
      * if successful, the byte counts can be adjusted correctly.
@@ -1767,6 +1773,7 @@ MODRET quotatab_pre_dele(cmd_rec *cmd) {
     quotatab_disk_nbytes = 0;
   }
 
+  have_quota_update = QUOTA_HAVE_WRITE_UPDATE;
   return PR_DECLINED(cmd);
 }
 
@@ -2616,6 +2623,12 @@ MODRET quotatab_pre_rnto(cmd_rec *cmd) {
   /* Sanity check */
   if (!use_quotas)
     return PR_DECLINED(cmd);
+
+  if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
+    quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
+      cmd->argv[0], cmd->arg, quota_exclude_filter);
+    return PR_DECLINED(cmd);
+  }
 
   /* Briefly cache the size (in bytes) of the file being overwritten, so that
    * if successful, the byte counts can be adjusted correctly.
