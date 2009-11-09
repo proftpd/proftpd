@@ -22,12 +22,12 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.10 2009-03-24 06:23:27 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.11 2009-11-09 04:40:51 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_SITE_MISC_VERSION		"mod_site_misc/1.2"
+#define MOD_SITE_MISC_VERSION		"mod_site_misc/1.3"
 
 static int site_misc_check_filters(cmd_rec *cmd, const char *path) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
@@ -559,6 +559,16 @@ MODRET site_misc_utime(cmd_rec *cmd) {
 /* Initialization functions
  */
 
+static int site_misc_sess_init(void) {
+  /* Advertise support for these SITE commands */
+  pr_feat_add("SITE MKDIR");
+  pr_feat_add("SITE RMDIR");
+  pr_feat_add("SITE SYMLINK");
+  pr_feat_add("SITE UTIME");
+
+  return 0;
+}
+
 /* Module API tables
  */
 
@@ -592,7 +602,7 @@ module site_misc_module = {
   NULL,
 
   /* Session initialization function */
-  NULL,
+  site_misc_sess_init,
 
   /* Module version */
   MOD_SITE_MISC_VERSION
