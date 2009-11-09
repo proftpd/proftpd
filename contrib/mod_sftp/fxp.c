@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.67 2009-11-08 21:23:33 castaglia Exp $
+ * $Id: fxp.c,v 1.68 2009-11-09 06:41:49 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3183,7 +3183,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
 
 static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     char *dst, int overwrite) {
-  char *buf, *ptr, *args;
+  char *abs_path, *buf, *ptr, *args;
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
@@ -3193,11 +3193,18 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
 
   args = pstrcat(fxp->pool, src, " ", dst, NULL);
 
-  cmd = fxp_cmd_alloc(fxp->pool, "COPY", args);
+  /* We need to provide an actual argv in this COPY cmd_rec, so we can't
+   * use fxp_cmd_alloc(); we have to allocate the cmd_rec ourselves.
+   */
+  cmd = pr_cmd_alloc(fxp->pool, 3, pstrdup(fxp->pool, "COPY"), src, dst);
+  cmd->arg = args;
+  cmd->tmp_pool = pr_pool_create_sz(fxp->pool, 64);
   cmd->class = CL_WRITE;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
+
+  /* XXX use dir_check() on SITE_COPY, since that is used by mod_copy. */
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -3333,10 +3340,16 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
   /* No errors. */
   xerrno = errno = 0;
 
-  /* XXX could this fail due to mod_quotatab? */
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+  pr_fs_clear_cache();
+  pr_fsio_stat(dst, &st);
 
+  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+
+  /* Write a TransferLog entry as well. */
+  abs_path = dir_abs_path(fxp->pool, dst, TRUE);
+  xferlog_write(0, session.c->remote_name, st.st_size, abs_path, 'b', 'i',
+    'r', session.user, 'c');
 
   status_code = fxp_errno2status(xerrno, &reason);
 
