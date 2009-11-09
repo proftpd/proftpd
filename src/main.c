@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.388 2009-10-26 22:09:37 castaglia Exp $
+ * $Id: main.c,v 1.389 2009-11-09 22:09:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3005,6 +3005,13 @@ int main(int argc, char *argv[], char **envp) {
       "variable '%s', ignoring", env_lang);
 
     setlocale(LC_ALL, "C");
+
+  } else {
+    /* Make sure that LC_NUMERIC is always set to "C", so as not to interfere
+     * with formatting of strings (like printing out floats in SQL query
+     * strings).
+     */
+    setlocale(LC_NUMERIC, "C");
   }
 # endif /* !HAVE_LOCALE_H */
 
