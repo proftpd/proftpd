@@ -6981,6 +6981,12 @@ static int tls_sess_init(void) {
   unsigned long *opts = NULL;
   config_rec *c = NULL;
 
+  /* Unregister the listener for the 'core.exit' event that was registered
+   * for the daemon process; we inherited it due to the fork, but we don't
+   * want that listener being invoked when we exit.
+   */
+  pr_event_unregister(&tls_module, "core.exit", tls_daemon_exit_ev);
+
   /* First, check to see whether mod_tls is even enabled. */
   tmp = get_param_ptr(main_server->conf, "TLSEngine", FALSE);
   if (tmp != NULL &&
