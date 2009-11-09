@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.68 2009-11-09 06:41:49 castaglia Exp $
+ * $Id: fxp.c,v 1.69 2009-11-09 18:34:24 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3141,14 +3141,13 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     }
 
     if (blocksz != 0) {
-      unsigned char digest[EVP_MAX_MD_SIZE];
+      char digest[EVP_MAX_MD_SIZE];
       unsigned int digest_len;
 
       BIO_flush(bio);
       digest_len = BIO_gets(md_bio, digest, sizeof(digest));
 
-      sftp_msg_write_data(&buf, &buflen, (const char *) digest, digest_len,
-        FALSE);
+      sftp_msg_write_data(&buf, &buflen, digest, digest_len, FALSE);
 
       BIO_reset(md_bio);
 
@@ -3161,14 +3160,13 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
   }
 
   if (blocksz == 0) {
-    unsigned char digest[EVP_MAX_MD_SIZE];
+    char digest[EVP_MAX_MD_SIZE];
     unsigned int digest_len;
 
     BIO_flush(bio);
     digest_len = BIO_gets(md_bio, digest, sizeof(digest));
 
-    sftp_msg_write_data(&buf, &buflen, (const char *) digest, digest_len,
-      FALSE);
+    sftp_msg_write_data(&buf, &buflen, digest, digest_len, FALSE);
   }
 
   BIO_free_all(bio);
