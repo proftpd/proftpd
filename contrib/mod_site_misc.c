@@ -22,7 +22,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.11 2009-11-09 04:40:51 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.12 2009-11-10 05:02:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -354,6 +354,8 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
 
   if (strcasecmp(cmd->argv[1], "SYMLINK") == 0) {
+    struct stat st;
+    int res;
     char *cmd_name, *src, *dst;
     unsigned char *authenticated;
 
@@ -371,7 +373,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
 
     cmd_name = cmd->argv[0];
     cmd->argv[0] = "SITE_SYMLINK";
-    if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, src, NULL)) {
+    if (!dir_check(cmd->tmp_pool, cmd, G_READ, src, NULL)) {
       cmd->argv[0] = cmd_name;
       pr_response_add_err(R_550, "%s: %s", cmd->argv[2], strerror(EPERM));
       return PR_ERROR(cmd);
@@ -388,6 +390,19 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
 
     if (site_misc_check_filters(cmd, dst) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
+      return PR_ERROR(cmd);
+    }
+
+    /* Make sure the source path exists.  The symlink(2) man page suggests
+     * that the system call will do this, but experimentally (Mac OSX 10.4)
+     * I've seen symlink(2) happily link two names, neither of which exist
+     * in the filesystem.
+     */
+       
+    pr_fs_clear_cache();
+    res = pr_fsio_stat(src, &st);
+    if (res < 0) {
+      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
       return PR_ERROR(cmd);
     }
 
