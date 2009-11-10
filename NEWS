@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1093 2009-11-08 20:37:31 castaglia Exp $
+$Id: NEWS,v 1.1094 2009-11-10 01:03:50 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -35,6 +35,8 @@ CVS
 - Bug 3321 - Support the "check-file-name" and "check-file-handle" SFTP
   extensions.
 - Bug 3320 - Support the "copy-file" SFTP extension.
+- Bug 3328 - Failed database transaction can cause mod_quotatab to loop
+  endlessly.
 
 1.3.3rc2 - Released 20-Oct-2009
 --------------------------------
