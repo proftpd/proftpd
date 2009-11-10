@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1094 2009-11-10 01:03:50 castaglia Exp $
+$Id: NEWS,v 1.1095 2009-11-10 17:23:49 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -37,6 +37,10 @@ CVS
 - Bug 3320 - Support the "copy-file" SFTP extension.
 - Bug 3328 - Failed database transaction can cause mod_quotatab to loop
   endlessly.
+- Bug 3307 - Transparently handle the X-variant commands when checking <Limit>
+  permissions.  The fix for this issue has been reimplemented to be more
+  transparent; some existing configurations were broken by the previous
+  implementation.
 
 1.3.3rc2 - Released 20-Oct-2009
 --------------------------------

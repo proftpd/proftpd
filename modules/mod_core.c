@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.360 2009-11-09 00:50:39 castaglia Exp $
+ * $Id: mod_core.c,v 1.361 2009-11-10 17:23:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2350,9 +2350,12 @@ MODRET end_global(cmd_rec *cmd) {
 }
 
 MODRET add_limit(cmd_rec *cmd) {
+  register unsigned int i;
   config_rec *c = NULL;
-  int cargc;
-  char **cargv;
+  int cargc, have_cdup = FALSE, have_xcup = FALSE, have_mkd = FALSE,
+    have_xmkd = FALSE, have_pwd = FALSE, have_xpwd = FALSE, have_rmd = FALSE,
+    have_xrmd = FALSE;
+  char **cargv, **elts;
   array_header *list;
 
   if (cmd->argc < 2)
@@ -2377,6 +2380,77 @@ MODRET add_limit(cmd_rec *cmd) {
         *((char **) push_array(list)) = pstrdup(c->pool, ent);
       }
     }
+  }
+
+  /* Now iterate though the list, looking for the following commands:
+   *
+   *  CDUP/XCUP
+   *  MKD/XMKD
+   *  PWD/XPWD
+   *  RMD/XRMD
+   *
+   * If we see one of these without its counterpart, automatically add
+   * the counterpart (see Bug#3077).
+   */
+
+  elts = (char **) list->elts;
+  for (i = 0; i < list->nelts; i++) {
+    if (strcasecmp(elts[i], "CDUP") == 0) {
+      have_cdup = TRUE;
+
+    } else if (strcasecmp(elts[i], "XCUP") == 0) {
+      have_xcup = TRUE; 
+
+    } else if (strcasecmp(elts[i], "MKD") == 0) {
+      have_mkd = TRUE;
+
+    } else if (strcasecmp(elts[i], "XMKD") == 0) {
+      have_xmkd = TRUE;
+
+    } else if (strcasecmp(elts[i], "PWD") == 0) {
+      have_pwd = TRUE;
+
+    } else if (strcasecmp(elts[i], "XPWD") == 0) {
+      have_xpwd = TRUE;
+
+    } else if (strcasecmp(elts[i], "RMD") == 0) {
+      have_rmd = TRUE;
+
+    } else if (strcasecmp(elts[i], "XRMD") == 0) {
+      have_xrmd = TRUE;
+    }
+  }
+
+  if (have_cdup && !have_xcup) {
+    *((char **) push_array(list)) = pstrdup(c->pool, "XCUP");
+  }
+
+  if (!have_cdup && have_xcup) {
+    *((char **) push_array(list)) = pstrdup(c->pool, "CDUP");
+  }
+
+  if (have_mkd && !have_xmkd) {
+    *((char **) push_array(list)) = pstrdup(c->pool, "XMKD");
+  }
+
+  if (!have_mkd && have_xmkd) {
+    *((char **) push_array(list)) = pstrdup(c->pool, "MKD");
+  }
+
+  if (have_pwd && !have_xpwd) {
+    *((char **) push_array(list)) = pstrdup(c->pool, "XPWD");
+  }
+
+  if (!have_pwd && have_xpwd) {
+    *((char **) push_array(list)) = pstrdup(c->pool, "PWD");
+  }
+
+  if (have_rmd && !have_xrmd) {
+    *((char **) push_array(list)) = pstrdup(c->pool, "XRMD");
+  }
+
+  if (!have_rmd && have_xrmd) {
+    *((char **) push_array(list)) = pstrdup(c->pool, "RMD");
   }
 
   c->argc = list->nelts;
@@ -2978,22 +3052,9 @@ static const char *quote_dir(cmd_rec *cmd, char *dir) {
 }
 
 MODRET core_pwd(cmd_rec *cmd) {
-  char *cmd_name;
-
   CHECK_CMD_ARGS(cmd, 1);
 
-  cmd_name = cmd->argv[0];
-  cmd->argv[0] = C_PWD;
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.vwd, NULL)) {
-    cmd->argv[0] = cmd_name;
-    pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(EACCES));
-    return PR_ERROR(cmd);
-  }
-
-  cmd_name = cmd->argv[0];
-  cmd->argv[0] = C_XPWD;
-  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.vwd, NULL)) {
-    cmd->argv[0] = cmd_name;
     pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(EACCES));
     return PR_ERROR(cmd);
   }
@@ -3709,29 +3770,6 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
 
       allowed_access = dir_check_full(cmd->tmp_pool, cmd, cmd->group, dir,
         NULL);
-
-      if (allowed_access &&
-          strcmp(cmd->argv[0], C_XCWD) == 0) {
-        char *cmd_name;
-
-        cmd_name = cmd->argv[0];
-        cmd->argv[0] = C_CWD;
-        allowed_access = (allowed_access && dir_check_full(cmd->tmp_pool,
-                          cmd, cmd->group, dir, NULL));
-        cmd->argv[0] = cmd_name;
-      }
-
-      if (allowed_access &&
-          strcmp(cmd->argv[0], C_XCUP) == 0) {
-        char *cmd_name;
-
-        cmd_name = cmd->argv[0];
-        cmd->argv[0] = C_CDUP;
-        allowed_access = (allowed_access && dir_check_full(cmd->tmp_pool,
-                          cmd, cmd->group, dir, NULL));
-        cmd->argv[0] = cmd_name;
-      }
-
       if (!allowed_access)
         use_cdpath = TRUE;
     }
@@ -3782,29 +3820,6 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
 
       allowed_access = dir_check_full(cmd->tmp_pool, cmd, cmd->group, dir,
         NULL);
-
-      if (allowed_access &&
-          strcmp(cmd->argv[0], C_XCWD) == 0) {
-        char *cmd_name;
-
-        cmd_name = cmd->argv[0];
-        cmd->argv[0] = C_CWD;
-        allowed_access = (allowed_access && dir_check_full(cmd->tmp_pool,
-                          cmd, cmd->group, dir, NULL));
-        cmd->argv[0] = cmd_name;
-      }
-
-      if (allowed_access &&
-          strcmp(cmd->argv[0], C_XCUP) == 0) {
-        char *cmd_name;
-
-        cmd_name = cmd->argv[0];
-        cmd->argv[0] = C_CDUP;
-        allowed_access = (allowed_access && dir_check_full(cmd->tmp_pool,
-                          cmd, cmd->group, dir, NULL));
-        cmd->argv[0] = cmd_name;
-      }
-
       if (!allowed_access)
         use_cdpath = TRUE;
     }
@@ -3909,7 +3924,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
 
 MODRET core_rmd(cmd_rec *cmd) {
   int res;
-  char *cmd_name, *dir;
+  char *dir;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -3943,23 +3958,10 @@ MODRET core_rmd(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  cmd_name = cmd->argv[0];
-  cmd->argv[0] = C_RMD;
-
   if (!dir_check_canon(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
-    cmd->argv[0] = cmd_name;
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
     return PR_ERROR(cmd);
   }
-
-  cmd->argv[0] = C_XRMD;
-  if (!dir_check_canon(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
-    cmd->argv[0] = cmd_name;
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
-    return PR_ERROR(cmd);
-  }
-
-  cmd->argv[0] = cmd_name;
 
   if (pr_fsio_rmdir(dir) < 0) {
     int xerrno = errno;
@@ -3979,7 +3981,7 @@ MODRET core_rmd(cmd_rec *cmd) {
 
 MODRET core_mkd(cmd_rec *cmd) {
   int res;
-  char *cmd_name, *dir;
+  char *dir;
   struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
@@ -4010,31 +4012,16 @@ MODRET core_mkd(cmd_rec *cmd) {
   }
 
   dir = dir_canonical_path(cmd->tmp_pool, dir);
-
   if (!dir) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EINVAL));
     return PR_ERROR(cmd);
   }
 
-  cmd_name = cmd->argv[0];
-  cmd->argv[0] = C_MKD;
-
   if (!dir_check_canon(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
-    cmd->argv[0] = cmd_name;
     pr_log_debug(DEBUG8, "%s command denied by <Limit> config", cmd->argv[0]);
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
     return PR_ERROR(cmd);
   }
-
-  cmd->argv[0] = C_XMKD;
-  if (!dir_check_canon(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
-    cmd->argv[0] = cmd_name;
-    pr_log_debug(DEBUG8, "%s command denied by <Limit> config", cmd->argv[0]);
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
-    return PR_ERROR(cmd);
-  }
-
-  cmd->argv[0] = cmd_name;
 
   if (pr_fsio_mkdir(dir, 0777) < 0) {
     int xerrno = errno;
