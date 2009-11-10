@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.56 2009-11-10 01:03:50 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.57 2009-11-10 01:08:00 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -3417,6 +3417,9 @@ static void quotatab_exit_ev(const void *event_data, void *user_data) {
   if (have_quota_update) {
     /* The session may be ending abruptly, aborted or somesuch in mid-transfer,
      * before the change of quota state has been persisted.
+     *
+     * Note that it is IMPORTANT that the have_quota_update flag be cleared
+     * BEFORE writing to the tally table; see Bug#3328.
      */
 
     switch (have_quota_update) {
