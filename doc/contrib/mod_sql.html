@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.19 2009-10-02 21:26:53 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.20 2009-11-11 17:51:14 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -234,7 +234,11 @@ The current supported authentication methods are:
 
   <li><b>Crypt</b><br>
     Allows passwords in the database to be of Unix <code>crypt(3)</code>
-    form.<br>
+    form.  <b>Note</b> that the traditional Unix <code>crypt(3)</code>
+    function only uses the first 8 characters of a password.  If you have
+    passwords longer than 8 characters, and some of those passwords have
+    the same first 8 characters, then those users may be able to log into
+    each others accounts.<br>
   </li>
   <br>
 
@@ -1326,7 +1330,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-10-02 21:26:53 $</i><br>
+Last Updated: <i>$Date: 2009-11-11 17:51:14 $</i><br>
 
 <br><hr>
 
