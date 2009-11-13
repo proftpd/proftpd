@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.59 2009-11-13 18:26:25 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.60 2009-11-13 18:29:42 castaglia Exp $
  */
 
 /*
@@ -371,7 +371,7 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
   /* We might be dealing with multiple result sets here, as when a stored
    * procedure was called which produced more results than we expect.
    *
-   * We only want the first result set, for simply iterate through and free
+   * We only want the first result set, so simply iterate through and free
    * up any remaining result sets.
    */
   while (mysql_next_result(mysql) == 0) {
