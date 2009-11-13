@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.25 2009-11-09 01:27:17 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.26 2009-11-13 02:29:16 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -84,7 +84,7 @@ subsystem, for secure file transfer over an SSH2 connection.  The
   <li>Blacklisted public keys
   <li>Configurable traffic analysis protection
   <li>Passphrase-protected host keys
-  <li>SFTP extensions: check-file, copy-file, version-select, posix-rename@openssh.com, statvfs@openssh.com, fstatvfs@openssh.com
+  <li>SFTP extensions: check-file, copy-file, vendor-id, version-select, posix-rename@openssh.com, statvfs@openssh.com, fstatvfs@openssh.com
 </ul>
 
 <p>
@@ -526,11 +526,12 @@ The extension names used for the <code>SFTPExtensions</code> directive are:
 <ul>
   <li>checkFile
   <li>copyFile
+  <li>vendorID
   <li>versionSelect
   <li>posixRename
   <li>statvfs
 </ul>
-All extensions are enabled by default.
+All extensions <i>except</i> <code>vendorID</code> are enabled by default.
 
 <p>
 To enable an extension, preface the extension name with a '+' (plus) character;
@@ -1416,7 +1417,7 @@ Thus the <code>ListOptions</code> directive is not honored by
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-11-09 01:27:17 $</i><br>
+Last Updated: <i>$Date: 2009-11-13 02:29:16 $</i><br>
 
 <br><hr>
 

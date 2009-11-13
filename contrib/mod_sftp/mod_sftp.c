@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.21 2009-11-08 21:23:33 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.22 2009-11-13 02:29:16 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -863,6 +863,17 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
 
         case '+':
           ext_flags |= SFTP_FXP_EXT_COPY_FILE;
+          break;
+      }
+
+    } else if (strcasecmp(ext, "vendorID") == 0) {
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_VENDOR_ID;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_VENDOR_ID;
           break;
       }
 

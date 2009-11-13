@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.69 2009-11-09 18:34:24 castaglia Exp $
+ * $Id: fxp.c,v 1.70 2009-11-13 02:29:16 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2547,6 +2547,43 @@ static int fxp_packet_write(struct fxp_packet *fxp) {
 
 /* Miscellaneous */
 
+static void fxp_version_add_vendor_id_ext(pool *p, char **buf,
+    uint32_t *buflen) {
+  char *buf2, *ptr2;
+  const char *vendor_name, *product_name, *product_version;
+  uint32_t bufsz2, buflen2;
+  uint64_t build_number;
+  struct fxp_extpair ext;
+
+  if (!(fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID)) {
+    return;
+  }
+
+  bufsz2 = buflen2 = 512;
+  ptr2 = buf2 = sftp_msg_getbuf(p, bufsz2);
+
+  vendor_name = "ProFTPD Project";
+  product_name = "mod_sftp";
+  product_version = MOD_SFTP_VERSION;
+  build_number = pr_version_get_number();
+
+  sftp_msg_write_string(&buf2, &buflen2, vendor_name);
+  sftp_msg_write_string(&buf2, &buflen2, product_name);
+  sftp_msg_write_string(&buf2, &buflen2, product_version);
+  fxp_msg_write_long(&buf2, &buflen2, build_number);
+
+  ext.ext_name = "vendor-id";
+  ext.ext_data = ptr2;
+  ext.ext_datalen = (bufsz2 - buflen2);
+
+  pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = "
+     "{ vendorName = '%s', productName = '%s', productVersion = '%s', "
+     "buildNumber = %" PR_LU " }", ext.ext_name, vendor_name, product_name,
+     product_version, (pr_off_t) build_number);
+
+  fxp_msg_write_extpair(buf, buflen, &ext);
+}
+
 static void fxp_version_add_version_ext(pool *p, char **buf, uint32_t *buflen) {
   register unsigned int i;
   struct fxp_extpair ext;
@@ -3644,6 +3681,55 @@ static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
 }
 #endif /* !HAVE_SYS_STATVFS_H */
 
+static int fxp_handle_ext_vendor_id(struct fxp_packet *fxp) {
+  char *buf, *ptr, *vendor_name, *product_name, *product_version;
+  uint32_t buflen, bufsz, status_code;
+  uint64_t build_number;
+  const char *reason;
+  struct fxp_packet *resp;
+
+  vendor_name = sftp_msg_read_string(fxp->pool, &fxp->payload,
+    &fxp->payload_sz);
+
+  product_name = sftp_msg_read_string(fxp->pool, &fxp->payload,
+    &fxp->payload_sz);
+
+  product_version = sftp_msg_read_string(fxp->pool, &fxp->payload,
+    &fxp->payload_sz);
+
+  build_number = fxp_msg_read_long(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
+    vendor_name = sftp_utf8_decode_str(fxp->pool, vendor_name);
+    product_name = sftp_utf8_decode_str(fxp->pool, product_name);
+    product_version = sftp_utf8_decode_str(fxp->pool, product_version);
+  }
+
+  pr_trace_msg(trace_channel, 7, "client specs:");
+  pr_trace_msg(trace_channel, 7, "+ Vendor Name: %s", vendor_name);
+  pr_trace_msg(trace_channel, 7, "+ Product Name: %s", product_name);
+  pr_trace_msg(trace_channel, 7, "+ Product Version: %s", product_version);
+  pr_trace_msg(trace_channel, 7, "+ Build Number: %" PR_LU,
+    (pr_off_t) build_number);
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  status_code = SSH2_FX_OK;
+  reason = "OK";
+
+  pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+    (unsigned long) status_code, reason);
+
+  fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
 static int fxp_handle_ext_version_select(struct fxp_packet *fxp,
     char *version_str) {
   char *buf, *ptr;
@@ -3960,6 +4046,13 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
   pr_trace_msg(trace_channel, 7, "received request: EXTENDED %s",
     ext_request_name);
+
+  if (strcmp(ext_request_name, "vendor-id") == 0) {
+    res = fxp_handle_ext_vendor_id(fxp);
+    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+    return res;
+  }
 
   if ((fxp_ext_flags & SFTP_FXP_EXT_VERSION_SELECT) &&
       strcmp(ext_request_name, "version-select") == 0) {
@@ -4503,6 +4596,7 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
 
   sftp_msg_write_int(&buf, &buflen, fxp_session->client_version);
 
+  fxp_version_add_vendor_id_ext(fxp->pool, &buf, &buflen);
   fxp_version_add_version_ext(fxp->pool, &buf, &buflen);
   fxp_version_add_openssh_exts(fxp->pool, &buf, &buflen);
 

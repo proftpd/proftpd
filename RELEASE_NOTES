@@ -15,6 +15,7 @@ ChangeLog files.
 
       check-file
       copy-file
+      vendor-id
       version-select
       posix-rename@openssh.com
       fstatvfs@openssh.com
@@ -470,4 +471,4 @@ ChangeLog files.
         this will probably not apply to most modules.
 
  
-Last Updated: $Date: 2009-11-09 01:27:17 $
+Last Updated: $Date: 2009-11-13 02:29:14 $
