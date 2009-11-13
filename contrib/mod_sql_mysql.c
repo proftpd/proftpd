@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.58 2009-10-02 21:22:56 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.59 2009-11-13 18:26:25 castaglia Exp $
  */
 
 /*
@@ -333,7 +333,7 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
 
   mysql = conn->mysql;
 
-  /* would much rather use mysql_use_result here but without knowing
+  /* Would much rather use mysql_use_result here but without knowing
    * the number of rows returned we can't presize the data[] array.
    */
 
@@ -354,7 +354,7 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
       data[i++] = pstrdup(cmd->tmp_pool, row[cnt]);
   }
   
-  /* at this point either we finished correctly or an error occurred in the
+  /* At this point either we finished correctly or an error occurred in the
    * fetch.  Do the right thing.
    */
   if (mysql_errno(mysql)) {
@@ -363,11 +363,25 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
     return mr;
   }
 
-  mysql_free_result( result );
+  mysql_free_result(result);
   data[i] = NULL;
   sd->data = data;
 
-  return mod_create_data( cmd, (void *) sd );
+#ifdef CLIENT_MULTI_RESULTS
+  /* We might be dealing with multiple result sets here, as when a stored
+   * procedure was called which produced more results than we expect.
+   *
+   * We only want the first result set, for simply iterate through and free
+   * up any remaining result sets.
+   */
+  while (mysql_next_result(mysql) == 0) {
+    pr_signals_handle();
+    result = mysql_store_result(mysql);
+    mysql_free_result(result);
+  }
+#endif
+
+  return mod_create_data(cmd, (void *) sd);
 }
 
 /*
@@ -390,6 +404,7 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
 MODRET cmd_open(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
+  unsigned long client_flags = CLIENT_INTERACTIVE;
 #ifdef PR_USE_NLS
   const char *encoding = NULL;
 #endif
@@ -472,9 +487,16 @@ MODRET cmd_open(cmd_rec *cmd) {
   }
 #endif
 
+#ifdef CLIENT_MULTI_RESULTS
+  /* Enable mod_sql_mysql to deal with multiple result sets which may be
+   * returned from calling stored procedures.
+   */
+  client_flags |= CLIENT_MULTI_RESULTS;
+#endif
+
   if (!mysql_real_connect(conn->mysql, conn->host, conn->user, conn->pass,
       conn->db, (int) strtol(conn->port, (char **) NULL, 10),
-      conn->unix_sock, CLIENT_INTERACTIVE)) {
+      conn->unix_sock, client_flags)) {
 
     /* If it didn't work, return an error. */
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
