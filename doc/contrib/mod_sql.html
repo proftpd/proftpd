@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.20 2009-11-11 17:51:14 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.21 2009-11-13 18:59:38 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -613,7 +613,7 @@ options, you will need to supply some additional <code>SQLNamedQuery</code>
 names in your custom <code>SQLGroupInfo</code> directive.  The
 <code>SQLGroupInfo</code> directive supports:
 <pre>
-  SQLGroupInfo custom:/<i>lookup-by-name</i>/<i>lookup-by-id</i>/<i>lookup-by-member/[/<i>groupset-lookup</i>[/<i>groupsetfast-lookup</i>]]
+  SQLGroupInfo custom:/<i>lookup-by-name</i>/<i>lookup-by-id</i>/<i>lookup-by-member</i>/[/<i>groupset-lookup</i>[/<i>groupsetfast-lookup</i>]]
 </pre>
 where <em>groupset-lookup</em> is the name of a SELECT
 <code>SQLNamedQuery</code> that returns the names (and <i>only the names</i>)
@@ -635,6 +635,19 @@ To provide a concrete example:
 With a configuration similar to these, using either of the <em>groupset</em> or
 <em>groupsetfast</em> in your <code>SQLAuthenticate</code> directive will
 work as expected.
+
+<p>
+Another consideration when using custom <code>SQLGroupInfo</code> queries
+is their relationship to the "useNormalizedGroupSchema" <code>SQLOption</code>.
+<i>I.e.</i> does using the "useNormalizedGroupSchema" option affect how
+the results of custom <code>SQLGroupInfo</code> queries are handled?  No.
+If custom <code>SQLGroupInfo</code> queries are used, <code>mod_sql</code>
+<i>automatically</i> assumes that the custom group members query will return
+<i>N</i> rows, where each row contains 3 columns: group name, group ID,
+and member name.  That is, the custom <code>SQLGroupInfo</code> queries act as
+if "useNormalizedGroupSchema" is always in effect.  (When support for custom
+<code>SQLGroupInfo</code> queries was added, there was no good reason for
+supporting the old, inefficient comma-delimited format for the members column.)
 
 <p>
 <b>See Also</b>:
@@ -1330,7 +1343,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-11-11 17:51:14 $</i><br>
+Last Updated: <i>$Date: 2009-11-13 18:59:38 $</i><br>
 
 <br><hr>
 
