@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.71 2009-11-13 07:34:56 castaglia Exp $
+ * $Id: fxp.c,v 1.72 2009-11-13 15:56:58 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -151,6 +151,10 @@
 #define SSH2_FX_OWNER_INVALID			29
 #define SSH2_FX_GROUP_INVALID			30
 #define SSH2_FX_NO_MATCHING_BYTE_RANGE_LOCK	31
+
+/* statvfs@openssh.com extension flags */
+#define SSH2_FXE_STATVFS_ST_RDONLY		0x1
+#define SSH2_FXE_STATVFS_ST_NOSUID		0x2
 
 extern pr_response_t *resp_list, *resp_err_list;
 
@@ -3680,13 +3684,13 @@ static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
    */
 #ifdef ST_RDONLY
   if (fs.f_flag & ST_RDONLY) {
-    fs_flags |= 0x01;
+    fs_flags |= SSH2_FXE_STATVFS_ST_RDONLY;
   }
 #endif
 
 #ifdef ST_NOSUID
   if (fs.f_flag & ST_NOSUID) {
-    fs_flags |= 0x02;
+    fs_flags |= SSH2_FXE_STATVFS_ST_NOSUID;
   }
 #endif
 
@@ -3725,12 +3729,10 @@ static int fxp_handle_ext_vendor_id(struct fxp_packet *fxp) {
     product_version = sftp_utf8_decode_str(fxp->pool, product_version);
   }
 
-  pr_trace_msg(trace_channel, 7, "client specs:");
-  pr_trace_msg(trace_channel, 7, "+ Vendor Name: %s", vendor_name);
-  pr_trace_msg(trace_channel, 7, "+ Product Name: %s", product_name);
-  pr_trace_msg(trace_channel, 7, "+ Product Version: %s", product_version);
-  pr_trace_msg(trace_channel, 7, "+ Build Number: %" PR_LU,
-    (pr_off_t) build_number);
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+    "client sent 'vendor-id' extension: { vendorName = '%s', "
+    "productName = '%s', productVersion = '%s', buildNumber = %" PR_LU " }",
+    vendor_name, product_name, product_version, (pr_off_t) build_number);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
