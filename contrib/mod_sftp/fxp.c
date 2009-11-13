@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.70 2009-11-13 02:29:16 castaglia Exp $
+ * $Id: fxp.c,v 1.71 2009-11-13 07:34:56 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3616,6 +3616,7 @@ static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
+  uint64_t fs_flags = 0;
 
 # if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && \
    defined(SOLARIS2) && !defined(SOLARIS2_5_1) && !defined(SOLARIS2_6) && \
@@ -3670,7 +3671,26 @@ static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
   fxp_msg_write_long(&buf, &buflen, fs.f_ffree);
   fxp_msg_write_long(&buf, &buflen, fs.f_favail);
   fxp_msg_write_long(&buf, &buflen, fs.f_fsid);
-  fxp_msg_write_long(&buf, &buflen, fs.f_flag);
+
+  /* These flags and values are defined by OpenSSH's PROTOCOL document.
+   *
+   * Other platforms support more fs.f_flag values than just ST_RDONLY
+   * and ST_NOSUID, but those are the only two flags handled by OpenSSH;
+   * thus we cannot simply send fs.f_flag directly to the client as is.
+   */
+#ifdef ST_RDONLY
+  if (fs.f_flag & ST_RDONLY) {
+    fs_flags |= 0x01;
+  }
+#endif
+
+#ifdef ST_NOSUID
+  if (fs.f_flag & ST_NOSUID) {
+    fs_flags |= 0x02;
+  }
+#endif
+
+  fxp_msg_write_long(&buf, &buflen, fs_flags);
   fxp_msg_write_long(&buf, &buflen, fs.f_namemax);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
