@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.361 2009-11-10 17:23:49 castaglia Exp $
+ * $Id: mod_core.c,v 1.362 2009-11-14 18:23:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1005,10 +1005,13 @@ MODRET add_from(cmd_rec *cmd) {
     if (strcasecmp("all", *(cargv + 1)) == 0 ||
         strcasecmp("none", *(cargv + 1)) == 0) {
       pr_netacl_t *acl = pr_netacl_create(cmd->tmp_pool, *(cargv + 1));
-      if (!acl) {
+      if (acl == NULL) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad ACL definition '",
           *(cargv + 1), "': ", strerror(errno), NULL));
       }
+
+      pr_trace_msg("netacl", 9, "'%s' parsed into netacl '%s'", *(cargv + 1),
+        pr_netacl_get_str(cmd->tmp_pool, acl));
 
       if (pr_class_add_acl(acl) < 0) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error adding rule '",
@@ -2649,10 +2652,13 @@ MODRET set_allowdeny(cmd_rec *cmd) {
         }
 
         acl = pr_netacl_create(c->pool, ent);
-        if (!acl) {
+        if (acl == NULL) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad ACL definition '",
             ent, "': ", strerror(errno), NULL));     
         }
+
+        pr_trace_msg("netacl", 9, "'%s' parsed into netacl '%s'", ent,
+          pr_netacl_get_str(cmd->tmp_pool, acl));
 
         *((pr_netacl_t **) push_array(list)) = acl;
       }
