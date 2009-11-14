@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.73 2009-11-14 19:15:20 castaglia Exp $
+ * $Id: fxp.c,v 1.74 2009-11-14 22:57:57 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5621,9 +5621,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
    * open.  Then, after a successful open, we return the file to blocking
    * mode.
    */
-  open_flags |= O_NONBLOCK;
-
-  fh = pr_fsio_open(hiddenstore_path ? hiddenstore_path : path, open_flags);
+  fh = pr_fsio_open(hiddenstore_path ? hiddenstore_path : path,
+    open_flags|O_NONBLOCK);
   if (fh == NULL) {
     uint32_t status_code;
     const char *reason;
@@ -5708,9 +5707,6 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
   fxh = fxp_handle_create(fxp_pool);
   fxh->fh = fh;
-
-  /* Make sure to clear the O_NONBLOCK bit that we set earlier. */
-  open_flags &= ~O_NONBLOCK;
   fxh->fh_flags = open_flags;
 
   if (hiddenstore_path) {
