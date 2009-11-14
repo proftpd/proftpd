@@ -628,7 +628,7 @@ AC_ARG_ENABLE(shadow,
       use_shadow=""
       force_shadow="no"
     else
-      AC_DEFINE(PR_USE_SHADOW)
+      AC_DEFINE(PR_USE_SHADOW, 1, [Define if using shadow password support.])
       force_shadow="yes"
     fi ])
 
@@ -650,7 +650,7 @@ AC_ARG_ENABLE(sia,
       AC_CHECK_LIB(sec, getprpwent)
       AC_CHECK_FUNCS(getprpwent)
 
-      AC_DEFINE(PR_USE_SIA)
+      AC_DEFINE(PR_USE_SIA, 1, [Define if using Tru64 SIA support.])
     fi
   ])
 
@@ -950,7 +950,7 @@ AC_CACHE_CHECK(for _pw_stayopen variable,pr_cv_var__pw_stayopen,
     pr_cv_var__pw_stayopen="yes", pr_cv_var__pw_stayopen="no"))
 
 if test "$pr_cv_var__pw_stayopen" = "yes"; then
-  AC_DEFINE(HAVE__PW_STAYOPEN)
+  AC_DEFINE(HAVE__PW_STAYOPEN, 1, [Define if you have __pw_stayopen variable.])
 fi
 
 AC_CHECK_HEADERS(krb.h login.h prot.h usersec.h)
@@ -967,7 +967,7 @@ AC_CHECK_HEADERS(hpsecurity.h, [
 #include <hpsecurity.h>
   ], [],
   [
-    AC_DEFINE(HAVE_HPSECURITY_H)
+    AC_DEFINE(HAVE_HPSECURITY_H, 1, [Define you have <hpsecurity.h>])
     AC_SEARCH_LIBS(getprpwnam, sec)
     AC_MSG_RESULT(yes)
   ], [
@@ -1003,7 +1003,7 @@ AC_CHECK_HEADERS(fcntl.h sys/ioctl.h sys/resource.h sys/time.h junistd.h memory.
 if test x"$force_shadow" != xno ; then
   AC_CHECK_HEADERS(shadow.h,
     [ if test "$use_shadow" = "" && test -f /etc/shadow ; then
-        AC_DEFINE(PR_USE_SHADOW)
+        AC_DEFINE(PR_USE_SHADOW, 1, [Define if using shadow password support.])
 
         AC_CHECK_MEMBER(struct spwd.sp_warn,
           [AC_DEFINE(HAVE_SPWD_SP_WARN)],,
@@ -1047,9 +1047,10 @@ if test x"$enable_auth_pam" != xno ; then
   if test `echo $ac_static_modules | grep -c mod_auth_pam` = "1"; then
 
 	AC_CHECK_LIB(pam, pam_start,
-		[AC_DEFINE(HAVE_PAM)],
+		[AC_DEFINE(HAVE_PAM, 1, [Define if you have PAM support.])],
 		[AC_CHECK_LIB(pam, pam_end,
-				[AC_DEFINE(HAVE_PAM)
+				[AC_DEFINE(HAVE_PAM, 1,
+                                  [Define if you have PAM support.])
 					LIBS="$LIBS -ldl"],,
 				[-ldl])])
   fi
@@ -1115,7 +1116,7 @@ dnl right?"  Yeah, whatever.
 AC_MSG_CHECKING(whether netdb.h requires _USE_IRS)
 AC_EGREP_HEADER(_USE_IRS, netdb.h,
   [
-    AC_DEFINE(_USE_IRS, 1, [if netdb.h requires _USE_IRS])
+    AC_DEFINE(_USE_IRS, 1, [Define if netdb.h requires _USE_IRS])
     AC_MSG_RESULT(yes)
   ],
   [
@@ -1166,7 +1167,7 @@ AC_TRY_COMPILE([
     dup[1] = tzname[1];
   ],
   [
-    AC_DEFINE(HAVE_TZNAME)
+    AC_DEFINE(HAVE_TZNAME, 1, [Define if you have the tzname variable.])
     AC_MSG_RESULT(yes)
   ], [
     AC_MSG_RESULT(no)
@@ -1190,7 +1191,7 @@ AC_CACHE_CHECK([for timer_t], pr_cv_header_timer_t,
 			pr_cv_header_timer_t="yes",pr_cv_header_timer_t="no")))
 
 if test "$pr_cv_header_timer_t" = "yes"; then
-  AC_DEFINE(HAVE_TIMER_T)
+  AC_DEFINE(HAVE_TIMER_T, 1, [Define if you have the timer_t type])
 fi
 
 AC_HEADER_TIME
@@ -1245,19 +1246,19 @@ if test $have_utmp; then
 			pr_cv_header_ut_exit="yes",
 			pr_cv_header_ut_exit="no"))
   if test "$pr_cv_header_utmaxtype" = "yes"; then
-    AC_DEFINE(HAVE_UTMAXTYPE, 1, [If struct utmp has ut_user.])
+    AC_DEFINE(HAVE_UTMAXTYPE, 1, [Define if struct utmp has ut_user.])
   fi
   if test "$pr_cv_header_ut_host" = "yes"; then
-    AC_DEFINE(HAVE_UT_UT_HOST, 1, [If struct utmp has ut_host.])
+    AC_DEFINE(HAVE_UT_UT_HOST, 1, [Define if struct utmp has ut_host.])
   fi
   if test "$pr_cv_header_ut_exit" = "yes"; then
-    AC_DEFINE(HAVE_UT_UT_EXIT, 1, [If struct utmp has ut_exit.])
+    AC_DEFINE(HAVE_UT_UT_EXIT, 1, [Define if struct utmp has ut_exit.])
   fi
 fi
 
 dnl See if various LOG_ macros are defined
 if test "$have_syslog_h" = "yes"; then
-  AC_DEFINE(HAVE_SYSLOG_H)
+  AC_DEFINE(HAVE_SYSLOG_H, 1, [Define if you have <syslog.h>])
 
   AC_CACHE_CHECK(whether syslog.h defines LOG_CRON,
   		pr_cv_header_syslog_log_cron,
@@ -1280,10 +1281,10 @@ if test "$have_syslog_h" = "yes"; then
 	pr_cv_header_syslog_log_ftp="no") )
 
   if test "$pr_cv_header_syslog_log_cron" = "yes"; then
-    AC_DEFINE(HAVE_LOG_CRON)
+    AC_DEFINE(HAVE_LOG_CRON, 1, [Define if you have LOG_CRON])
   fi
   if test "$pr_cv_header_syslog_log_ftp" = "yes"; then
-    AC_DEFINE(HAVE_LOG_FTP)
+    AC_DEFINE(HAVE_LOG_FTP, 1, [Define if you have LOG_FTP])
   fi
 fi
 
@@ -1336,7 +1337,8 @@ AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS(bcopy crypt fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo futimes nl_langinfo)
 AC_CHECK_FUNC(gai_strerror,
-  AC_DEFINE(HAVE_GAI_STRERROR),
+  AC_DEFINE(HAVE_GAI_STRERROR, 1,
+    [Define if you have the gai_strerror() function]),
   LIB_OBJS="$LIB_OBJS glibc-gai_strerror.o"
 )
 
@@ -1438,7 +1440,7 @@ changequote([, ])dnl
     AC_MSG_WARN(Disabling broken FreeBSD setpassent(), see README for details.)
         ;;
   *:no) ;;
-  *) AC_DEFINE(HAVE_SETPASSENT) ;;
+  *) AC_DEFINE(HAVE_SETPASSENT, 1, [Define if you have setpassent()]) ;;
 esac])
 
 dnl Controls
@@ -1456,7 +1458,7 @@ fi
 
 dnl Controls-related checks
 AC_CHECK_MEMBER(struct cmsgcred.cmcred_uid,
-  [AC_DEFINE(HAVE_STRUCT_CMSGCRED)],,
+  [AC_DEFINE(HAVE_STRUCT_CMSGCRED, 1, [Define if you have struct cmsgcred])],,
   [
     #if HAVE_SYS_TYPES_H
     # include <sys/types.h>
@@ -1470,7 +1472,7 @@ AC_CHECK_MEMBER(struct cmsgcred.cmcred_uid,
   ])
 
 AC_CHECK_MEMBER(struct sockcred.sc_uid,
-  [AC_DEFINE(HAVE_STRUCT_SOCKCRED)],,
+  [AC_DEFINE(HAVE_STRUCT_SOCKCRED, 1, [Define if you have struct sockcred])],,
   [
     #if HAVE_SYS_TYPES_H
     # include <sys/types.h>
@@ -1485,7 +1487,7 @@ AC_CHECK_MEMBER(struct sockcred.sc_uid,
 
 dnl IPv4/IPv6-related checks
 AC_CHECK_MEMBER(struct sockaddr_in.sin_len,
-  [AC_DEFINE(SIN_LEN)],,
+  [AC_DEFINE(SIN_LEN, 1, [Define if you have sockaddr_in.sin_len])],,
   [
     #if HAVE_SYS_TYPES_H
     # include <sys/types.h>
@@ -1500,9 +1502,9 @@ AC_CHECK_MEMBER(struct sockaddr_in.sin_len,
 
 dnl Largefile support
 if test x"$enable_largefile" = xno; then
-  AC_DEFINE(PR_USE_LARGEFILES, 0)
+  AC_DEFINE(PR_USE_LARGEFILES, 0, [Define if you have largefile support])
 else
-  AC_DEFINE(PR_USE_LARGEFILES, 1)
+  AC_DEFINE(PR_USE_LARGEFILES, 1, [Define if you have largefile support])
 fi
 
 PR_CHECK_STRUCT_ADDRINFO
@@ -1566,29 +1568,32 @@ AC_CACHE_CHECK(
 
 dnl Now, set the appropriate defines based on our investigations...
 if test "$pr_cv_func_facl" != "none"; then
-  AC_DEFINE(HAVE_POSIX_ACL)
+  AC_DEFINE(HAVE_POSIX_ACL, 1, [Define if you have POSIX ACL support])
 
   case "$pr_cv_func_facl" in
     "BSD")
-      AC_DEFINE(HAVE_BSD_POSIX_ACL)
+      AC_DEFINE(HAVE_BSD_POSIX_ACL, 1,
+        [Define if you have BSD-flavoured POSIX ACL support])
       ;;
 
     "Linux")
-      AC_DEFINE(HAVE_LIBACL, 1)
-      AC_DEFINE(HAVE_LINUX_POSIX_ACL)
+      AC_DEFINE(HAVE_LIBACL, 1, [Define if you have libacl])
+      AC_DEFINE(HAVE_LINUX_POSIX_ACL, 1,
+        [Define if you have Linux-flavoured POSIX ACL support])
       AC_CHECK_LIB(acl, perm_copy_fd,
-        [AC_DEFINE(HAVE_PERM_COPY_FD)])
+        [AC_DEFINE(HAVE_PERM_COPY_FD, 1, [Define if you have perm_copy_fd])])
       ;;
 
     "Solaris")
-      AC_DEFINE(HAVE_LIBSEC, 1)
-      AC_DEFINE(HAVE_SOLARIS_POSIX_ACL)
+      AC_DEFINE(HAVE_LIBSEC, 1, [Define if you have libsec])
+      AC_DEFINE(HAVE_SOLARIS_POSIX_ACL, 1,
+        [Define if you have Solaris-flavoured POSIX ACL support])
       ;;
   esac
 fi
 
 if test x"$enable_facl" = xyes ; then
-  AC_DEFINE(PR_USE_FACL, 1)
+  AC_DEFINE(PR_USE_FACL, 1, [Define if using POSIX ACL support.])
 
   case "$pr_cv_func_facl" in
     "Linux")
@@ -1691,32 +1696,38 @@ if test x"$enable_sendfile" != xno ; then
   dnl Now, set the appropriate defines based on our investigations...
 
   if test "$pr_cv_func_sendfile" != "none"; then
-    AC_DEFINE(HAVE_SENDFILE)
-    AC_DEFINE(PR_USE_SENDFILE, 1)
+    AC_DEFINE(HAVE_SENDFILE, 1, [Define if you have <sendfile.h>])
+    AC_DEFINE(PR_USE_SENDFILE, 1,
+      [Define if using sendfile support.])
   fi
 
   case "$pr_cv_func_sendfile" in
     "Linux")
       AC_CHECK_HEADERS(sys/sendfile.h)
-      AC_DEFINE(HAVE_LINUX_SENDFILE)
+      AC_DEFINE(HAVE_LINUX_SENDFILE, 1,
+        [Define if using Linux sendfile support.])
       ;;
 
     "BSD")
-      AC_DEFINE(HAVE_BSD_SENDFILE)
+      AC_DEFINE(HAVE_BSD_SENDFILE, 1,
+        [Define if using BSD sendfile support.])
       ;;
 
     "AIX")
-      AC_DEFINE(HAVE_AIX_SENDFILE)
+      AC_DEFINE(HAVE_AIX_SENDFILE, 1,
+        [Define if using AIX sendfile support.])
       ;;
 
     "Solaris")
       AC_CHECK_HEADERS(sys/sendfile.h)
-      AC_DEFINE(HAVE_SOLARIS_SENDFILE)
+      AC_DEFINE(HAVE_SOLARIS_SENDFILE, 1,
+        [Define if using Solaris sendfile support.])
       ac_build_addl_libs="-lsendfile $ac_build_addl_libs"
       ;;
 
     "Mac OSX")
-      AC_DEFINE(HAVE_MACOSX_SENDFILE)
+      AC_DEFINE(HAVE_MACOSX_SENDFILE, 1,
+        [Define if using Mac OSX sendfile support.])
       ;;
   esac
 fi
@@ -1765,14 +1776,14 @@ if test x"$ac_cv_header_ncurses_h" = xyes; then
 fi
 
 if test x"$enable_curses" != xno ; then
-  AC_DEFINE(PR_USE_CURSES)
+  AC_DEFINE(PR_USE_CURSES, 1, [Define if using curses support])
 fi
 
 if test x"$enable_ncurses" != xno ; then
   if test x"$pr_have_ncursesw" = xyes ; then
-    AC_DEFINE(PR_USE_NCURSESW)
+    AC_DEFINE(PR_USE_NCURSESW, 1, [Define if using ncursesw support])
   else
-    AC_DEFINE(PR_USE_NCURSES)
+    AC_DEFINE(PR_USE_NCURSES, 1, [Define if using ncurses support])
   fi
 fi
 
@@ -1823,7 +1834,7 @@ else
 			pf_cv_var_progname="yes", pf_cv_var_progname="no"))
 
     if test "$pf_cv_var_progname" = "yes"; then
-	AC_DEFINE(HAVE___PROGNAME)
+	AC_DEFINE(HAVE___PROGNAME, 1, [Define if you have __progname])
     fi
 
     AC_CACHE_CHECK(which argv replacement method to use,
@@ -1854,9 +1865,9 @@ AC_TRY_RUN(
       return (fprintf(stderr, "%llu\n", (unsigned long long) 1) == 2 ? 0 : 1);
     }
   ],
-  AC_MSG_RESULT(yes); AC_DEFINE(HAVE_LLU),
-  AC_MSG_RESULT(no); AC_DEFINE(HAVE_LU),
-  AC_MSG_RESULT(cross-compiling); AC_DEFINE(HAVE_LU)
+  AC_MSG_RESULT(yes); AC_DEFINE(HAVE_LLU, 1, [Define if you have %llu support]),
+  AC_MSG_RESULT(no); AC_DEFINE(HAVE_LU, 1, [Define if you have %lu support]),
+  AC_MSG_RESULT(cross-compiling); AC_DEFINE(HAVE_LU, 1, [Define if you have %lu support])
 )
 
 dnl Add the proftpd support library
@@ -2263,6 +2274,7 @@ if test x"$devel" = xyes ; then
     dnl options.  Check if they are supported.  They will be added to
     dnl CFLAGS if supported.
     PR_CHECK_CC_OPT(Wfloat-equal)
+    PR_CHECK_CC_OPT(Wunreachable-code)
     PR_CHECK_CC_OPT(Wformat-security)
     PR_CHECK_CC_OPT(Wstack-protector)
     PR_CHECK_CC_OPT(fstack-protector-all)
