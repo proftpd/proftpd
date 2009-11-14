@@ -21439,7 +21439,8 @@ echo "$as_me: WARNING: AIX does not support traditional shadowed passwords" >&2;
       use_shadow=""
       force_shadow="no"
     else
-      cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define PR_USE_SHADOW 1
 _ACEOF
 
@@ -21928,7 +21929,8 @@ fi
 done
 
 
-      cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define PR_USE_SIA 1
 _ACEOF
 
@@ -23209,7 +23211,8 @@ fi
 echo "${ECHO_T}$pr_cv_var__pw_stayopen" >&6; }
 
 if test "$pr_cv_var__pw_stayopen" = "yes"; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE__PW_STAYOPEN 1
 _ACEOF
 
@@ -23620,7 +23623,8 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
 	 test ! -s conftest.err
        } && test -s conftest.$ac_objext; then
 
-    cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_HPSECURITY_H 1
 _ACEOF
 
@@ -24510,7 +24514,8 @@ if test `eval echo '${'$as_ac_Header'}'` = yes; then
 #define `echo "HAVE_$ac_header" | $as_tr_cpp` 1
 _ACEOF
   if test "$use_shadow" = "" && test -f /etc/shadow ; then
-        cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define PR_USE_SHADOW 1
 _ACEOF
 
@@ -24965,7 +24970,8 @@ fi
 { echo "$as_me:$LINENO: result: $ac_cv_lib_pam_pam_start" >&5
 echo "${ECHO_T}$ac_cv_lib_pam_pam_start" >&6; }
 if test $ac_cv_lib_pam_pam_start = yes; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_PAM 1
 _ACEOF
 
@@ -25032,7 +25038,8 @@ fi
 { echo "$as_me:$LINENO: result: $ac_cv_lib_pam_pam_end" >&5
 echo "${ECHO_T}$ac_cv_lib_pam_pam_end" >&6; }
 if test $ac_cv_lib_pam_pam_end = yes; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_PAM 1
 _ACEOF
 
@@ -27336,7 +27343,8 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
 	 test ! -s conftest.err
        } && test -s conftest.$ac_objext; then
 
-    cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_TZNAME 1
 _ACEOF
 
@@ -27963,7 +27971,8 @@ fi
 echo "${ECHO_T}$pr_cv_header_timer_t" >&6; }
 
 if test "$pr_cv_header_timer_t" = "yes"; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_TIMER_T 1
 _ACEOF
 
@@ -31440,7 +31449,8 @@ _ACEOF
 fi
 
 if test "$have_syslog_h" = "yes"; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_SYSLOG_H 1
 _ACEOF
 
@@ -31506,13 +31516,15 @@ fi
 echo "${ECHO_T}$pr_cv_header_syslog_log_ftp" >&6; }
 
   if test "$pr_cv_header_syslog_log_cron" = "yes"; then
-    cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_LOG_CRON 1
 _ACEOF
 
   fi
   if test "$pr_cv_header_syslog_log_ftp" = "yes"; then
-    cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_LOG_FTP 1
 _ACEOF
 
@@ -32570,7 +32582,8 @@ fi
 { echo "$as_me:$LINENO: result: $ac_cv_func_gai_strerror" >&5
 echo "${ECHO_T}$ac_cv_func_gai_strerror" >&6; }
 if test $ac_cv_func_gai_strerror = yes; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_GAI_STRERROR 1
 _ACEOF
 
@@ -34003,7 +34016,8 @@ if test $ac_cv_func_setpassent = yes; then
 echo "$as_me: WARNING: Disabling broken FreeBSD setpassent()" >&2;}
         ;;
   *:no) ;;
-  *) cat >>confdefs.h <<\_ACEOF
+  *)
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_SETPASSENT 1
 _ACEOF
  ;;
@@ -34232,7 +34246,8 @@ fi
 { echo "$as_me:$LINENO: result: $ac_cv_member_struct_cmsgcred_cmcred_uid" >&5
 echo "${ECHO_T}$ac_cv_member_struct_cmsgcred_cmcred_uid" >&6; }
 if test $ac_cv_member_struct_cmsgcred_cmcred_uid = yes; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_STRUCT_CMSGCRED 1
 _ACEOF
 
@@ -34355,7 +34370,8 @@ fi
 { echo "$as_me:$LINENO: result: $ac_cv_member_struct_sockcred_sc_uid" >&5
 echo "${ECHO_T}$ac_cv_member_struct_sockcred_sc_uid" >&6; }
 if test $ac_cv_member_struct_sockcred_sc_uid = yes; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_STRUCT_SOCKCRED 1
 _ACEOF
 
@@ -34478,7 +34494,8 @@ fi
 { echo "$as_me:$LINENO: result: $ac_cv_member_struct_sockaddr_in_sin_len" >&5
 echo "${ECHO_T}$ac_cv_member_struct_sockaddr_in_sin_len" >&6; }
 if test $ac_cv_member_struct_sockaddr_in_sin_len = yes; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define SIN_LEN 1
 _ACEOF
 
@@ -34486,12 +34503,14 @@ fi
 
 
 if test x"$enable_largefile" = xno; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define PR_USE_LARGEFILES 0
 _ACEOF
 
 else
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define PR_USE_LARGEFILES 1
 _ACEOF
 
@@ -35196,25 +35215,29 @@ fi
 echo "${ECHO_T}$pr_cv_func_facl" >&6; }
 
 if test "$pr_cv_func_facl" != "none"; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_POSIX_ACL 1
 _ACEOF
 
 
   case "$pr_cv_func_facl" in
     "BSD")
-      cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_BSD_POSIX_ACL 1
 _ACEOF
 
       ;;
 
     "Linux")
-      cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_LIBACL 1
 _ACEOF
 
-      cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_LINUX_POSIX_ACL 1
 _ACEOF
 
@@ -35280,7 +35303,8 @@ fi
 { echo "$as_me:$LINENO: result: $ac_cv_lib_acl_perm_copy_fd" >&5
 echo "${ECHO_T}$ac_cv_lib_acl_perm_copy_fd" >&6; }
 if test $ac_cv_lib_acl_perm_copy_fd = yes; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_PERM_COPY_FD 1
 _ACEOF
 
@@ -35289,11 +35313,13 @@ fi
       ;;
 
     "Solaris")
-      cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_LIBSEC 1
 _ACEOF
 
-      cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_SOLARIS_POSIX_ACL 1
 _ACEOF
 
@@ -35302,7 +35328,8 @@ _ACEOF
 fi
 
 if test x"$enable_facl" = xyes ; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define PR_USE_FACL 1
 _ACEOF
 
@@ -35608,11 +35635,13 @@ echo "${ECHO_T}$pr_cv_func_sendfile" >&6; }
 
 
   if test "$pr_cv_func_sendfile" != "none"; then
-    cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_SENDFILE 1
 _ACEOF
 
-    cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define PR_USE_SENDFILE 1
 _ACEOF
 
@@ -35760,21 +35789,24 @@ fi
 
 done
 
-      cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_LINUX_SENDFILE 1
 _ACEOF
 
       ;;
 
     "BSD")
-      cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_BSD_SENDFILE 1
 _ACEOF
 
       ;;
 
     "AIX")
-      cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_AIX_SENDFILE 1
 _ACEOF
 
@@ -35921,7 +35953,8 @@ fi
 
 done
 
-      cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_SOLARIS_SENDFILE 1
 _ACEOF
 
@@ -35929,7 +35962,8 @@ _ACEOF
       ;;
 
     "Mac OSX")
-      cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_MACOSX_SENDFILE 1
 _ACEOF
 
@@ -36316,7 +36350,8 @@ fi
 fi
 
 if test x"$enable_curses" != xno ; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define PR_USE_CURSES 1
 _ACEOF
 
@@ -36324,12 +36359,14 @@ fi
 
 if test x"$enable_ncurses" != xno ; then
   if test x"$pr_have_ncursesw" = xyes ; then
-    cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define PR_USE_NCURSESW 1
 _ACEOF
 
   else
-    cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define PR_USE_NCURSES 1
 _ACEOF
 
@@ -36987,7 +37024,8 @@ fi
 echo "${ECHO_T}$pf_cv_var_progname" >&6; }
 
     if test "$pf_cv_var_progname" = "yes"; then
-	cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define HAVE___PROGNAME 1
 _ACEOF
 
@@ -37043,7 +37081,8 @@ fi
 echo $ECHO_N "checking whether printf supports %llu format... $ECHO_C" >&6; };
 if test "$cross_compiling" = yes; then
   { echo "$as_me:$LINENO: result: cross-compiling" >&5
-echo "${ECHO_T}cross-compiling" >&6; }; cat >>confdefs.h <<\_ACEOF
+echo "${ECHO_T}cross-compiling" >&6; };
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_LU 1
 _ACEOF
 
@@ -37082,7 +37121,8 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
   echo "$as_me:$LINENO: \$? = $ac_status" >&5
   (exit $ac_status); }; }; then
   { echo "$as_me:$LINENO: result: yes" >&5
-echo "${ECHO_T}yes" >&6; }; cat >>confdefs.h <<\_ACEOF
+echo "${ECHO_T}yes" >&6; };
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_LLU 1
 _ACEOF
 
@@ -37093,7 +37133,8 @@ sed 's/^/| /' conftest.$ac_ext >&5
 
 ( exit $ac_status )
 { echo "$as_me:$LINENO: result: no" >&5
-echo "${ECHO_T}no" >&6; }; cat >>confdefs.h <<\_ACEOF
+echo "${ECHO_T}no" >&6; };
+cat >>confdefs.h <<\_ACEOF
 #define HAVE_LU 1
 _ACEOF
 
@@ -37655,6 +37696,19 @@ echo $ECHO_N "checking whether ${CC-cc} accepts -Wfloat-equal... $ECHO_C" >&6; }
      { echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6; }
      CFLAGS="$CFLAGS -Wfloat-equal"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
+    { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wunreachable-code" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wunreachable-code... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wunreachable-code conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Wunreachable-code"
    else
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
