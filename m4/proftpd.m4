@@ -60,7 +60,8 @@ AC_DEFUN([PR_CHECK_SS_FAMILY],
   ],
   [
     AC_MSG_RESULT(yes)
-    AC_DEFINE(HAVE_SS_FAMILY)
+    AC_DEFINE(HAVE_SS_FAMILY, 1,
+      [Define if you have sockaddr_storage.ss_family.])
   ],
   [
     AC_MSG_RESULT(no)
@@ -79,7 +80,8 @@ AC_DEFUN([PR_CHECK_SS_FAMILY],
     ],
     [
       AC_MSG_RESULT(yes)
-      AC_DEFINE(HAVE___SS_FAMILY)
+      AC_DEFINE(HAVE___SS_FAMILY, 1,
+        [Define if you have sockaddr_store.__ss_family.])
     ],
     [
       AC_MSG_RESULT(no)
@@ -107,7 +109,8 @@ AC_DEFUN([PR_CHECK_STRUCT_ADDRINFO],
   } while(0)
  ],
  [AC_MSG_RESULT(yes)
-  AC_DEFINE(HAVE_STRUCT_ADDRINFO,, [define if you have struct addrinfo])
+  AC_DEFINE(HAVE_STRUCT_ADDRINFO, 1,
+    [Define if you have struct addrinfo])
  ],
  [AC_MSG_RESULT(no)
  ])
@@ -132,7 +135,7 @@ AC_DEFUN([PR_CHECK_STRUCT_SS],
   } while(0)
  ],
  [AC_MSG_RESULT(yes)
-  AC_DEFINE(HAVE_STRUCT_SS,, [define if you have struct sockaddr_storage])
+  AC_DEFINE(HAVE_STRUCT_SS, 1, [Define if you have struct sockaddr_storage])
  ],
  [AC_MSG_RESULT(no)
  ])
@@ -159,7 +162,8 @@ AC_DEFUN([PR_CHECK_SS_LEN],
   ],
   [
     AC_MSG_RESULT(yes)
-    AC_DEFINE(HAVE_SS_LEN)
+    AC_DEFINE(HAVE_SS_LEN, 1,
+      [Define if you have sockaddr_storage.ss_len.])
   ],
   [
     AC_MSG_RESULT(no)
@@ -178,7 +182,8 @@ AC_DEFUN([PR_CHECK_SS_LEN],
     ],
     [
       AC_MSG_RESULT(yes)
-      AC_DEFINE(HAVE___SS_LEN)
+      AC_DEFINE(HAVE___SS_LEN, 1, 
+        [Define if you have sockaddr_storage.__ss_len.])
     ],
     [
       AC_MSG_RESULT(no)
