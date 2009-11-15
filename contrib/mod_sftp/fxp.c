@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.75 2009-11-14 23:29:17 castaglia Exp $
+ * $Id: fxp.c,v 1.76 2009-11-15 20:18:11 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3028,10 +3028,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     resp->payload = ptr;
     resp->payload_sz = (bufsz - buflen);
 
-    (void) fxp_packet_write(resp);
-
-    errno = xerrno;
-    return -1;
+    return fxp_packet_write(resp);
   }
 
   if (len == 0) {
