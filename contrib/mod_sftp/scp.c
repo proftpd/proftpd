@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.31 2009-11-05 17:46:54 castaglia Exp $
+ * $Id: scp.c,v 1.32 2009-11-15 20:13:30 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -31,7 +31,7 @@
 #include "channel.h"
 #include "scp.h"
 
-#define SFTP_SCP_ST_MODE_MASK	(S_ISUID|S_ISGID|S_IRWXU|S_IRWXG|S_IRWXO)
+#define SFTP_SCP_ST_MODE_MASK	(S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO)
 
 struct scp_path {
   char *path;
