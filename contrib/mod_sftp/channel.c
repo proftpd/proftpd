@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.18 2009-11-16 05:40:46 castaglia Exp $
+ * $Id: channel.c,v 1.19 2009-11-16 05:41:39 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -701,6 +701,7 @@ static int allow_env(const char *key) {
     "SFTP_SERVER_MAC_ALGO",
     "SFTP_SERVER_COMPRESSION_ALGO",
     "SHLIB_PATH",
+    "TZ",
     NULL
   };
 
