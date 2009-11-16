@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.226 2009-11-15 00:23:10 castaglia Exp $
+ * $Id: dirtree.c,v 1.227 2009-11-16 03:56:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -715,9 +715,7 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
        */
       path_len = strlen(tmp_path);
       if (path_len > 2 &&
-          ((tmp_path[path_len-2] != '/' && tmp_path[path_len-1] != '*') ||
-           (tmp_path[path_len-2] == '/' && tmp_path[path_len-1] != '*') ||
-           (tmp_path[path_len-2] != '/' && tmp_path[path_len-1] == '*'))) {
+          !(tmp_path[path_len-2] == '/' && tmp_path[path_len-1] == '*')) {
 
         /* Trim a trailing path separator, if present. */
         if (*tmp_path && *(tmp_path + path_len - 1) == '/' && path_len > 1) {
