@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.19 2009-11-16 05:41:39 castaglia Exp $
+ * $Id: channel.c,v 1.20 2009-11-16 05:48:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -679,13 +679,18 @@ static int handle_channel_eof(struct ssh2_packet *pkt) {
 }
 
 static int allow_env(const char *key) {
+  register unsigned int i;
 
   /* The following is a hardcoded list of environment variables set by
    * mod_sftp itself.  These are not allowed to be changed by the client.
+   *
+   * XXX At some point, this should be changed to use a table; lookups of
+   * barred keys will be much faster, especially as the list of barred
+   * keys grows.
    */
 
-  register unsigned int i;
   const char *prohibited_keys[] = {
+    "HOME",
     "LD_LIBRARY_PATH",
     "LD_PRELOAD",
     "LD_RUN_PATH",
@@ -701,7 +706,9 @@ static int allow_env(const char *key) {
     "SFTP_SERVER_MAC_ALGO",
     "SFTP_SERVER_COMPRESSION_ALGO",
     "SHLIB_PATH",
+    "TMPDIR",
     "TZ",
+    "USER",
     NULL
   };
 
