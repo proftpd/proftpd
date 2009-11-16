@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.77 2009-11-16 05:14:40 castaglia Exp $
+ * $Id: fxp.c,v 1.78 2009-11-16 05:16:32 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2811,6 +2811,12 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
    *  check-file
    *  copy-file
    *  vendor-id
+   *
+   * Note that we don't have to advertise the @openssh.com extensions, since
+   * they occur for protocol versions which don't support 'supported2'.  And
+   * we don't have to list 'version-select', since the sending of the
+   * 'versions' extension in our VERSION automatically enables use of this
+   * extension by the client.
    */
   ext_count = 3;
 
