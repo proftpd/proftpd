@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.17 2009-08-26 17:23:05 castaglia Exp $
+ * $Id: channel.c,v 1.18 2009-11-16 05:40:46 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -686,6 +686,11 @@ static int allow_env(const char *key) {
 
   register unsigned int i;
   const char *prohibited_keys[] = {
+    "LD_LIBRARY_PATH",
+    "LD_PRELOAD",
+    "LD_RUN_PATH",
+    "LIBPATH",
+    "PATH",
     "SFTP",
     "SFTP_LIBRARY_VERSION",
     "SFTP_CLIENT_CIPHER_ALGO",
@@ -695,6 +700,7 @@ static int allow_env(const char *key) {
     "SFTP_SERVER_CIPHER_ALGO",
     "SFTP_SERVER_MAC_ALGO",
     "SFTP_SERVER_COMPRESSION_ALGO",
+    "SHLIB_PATH",
     NULL
   };
 
