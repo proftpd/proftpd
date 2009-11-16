@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.76 2009-11-15 20:18:11 castaglia Exp $
+ * $Id: fxp.c,v 1.77 2009-11-16 05:14:40 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2806,7 +2806,13 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
   /* Attribute extensions */
   sftp_msg_write_int(&attrs_buf, &attrs_len, 0);
 
-  ext_count = 2;
+  /* The possible extensions to advertise here are:
+   *
+   *  check-file
+   *  copy-file
+   *  vendor-id
+   */
+  ext_count = 3;
 
   if (!(fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE)) {
     ext_count--;
@@ -2830,6 +2836,9 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
     pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
     sftp_msg_write_string(&attrs_buf, &attrs_len, "copy-file");
   }
+
+  pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: vendor-id");
+  sftp_msg_write_string(&attrs_buf, &attrs_len, "vendor-id");
  
   ext.ext_data = attrs_ptr;
   ext.ext_datalen = (attrs_sz - attrs_len);
