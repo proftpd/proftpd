@@ -5,6 +5,7 @@ config.status
 libtool
 Makefile
 stamp-h1
+.deps
 .libs
 *.lo
 *.la
