@@ -15073,7 +15073,7 @@ if test "${enable_dso+set}" = set; then
       ac_build_core_modules="$ac_build_core_modules modules/mod_dso.o"
 
       MAIN_LDFLAGS="-L\$(top_srcdir)/lib/libltdl -dlopen self -export-dynamic"
-      MAIN_LIBS="\$(LIBLTDL)"
+      MAIN_LIBS="\$(top_builddir)/lib/libltdl/libltdlc.la"
 
       MODULE_LDFLAGS="-avoid-version -export-dynamic -module"
 
@@ -31829,7 +31829,6 @@ my_libs="\"$LIBRARIES $LIBS\""
 cat >>confdefs.h <<_ACEOF
 #define PR_BUILD_LIBS $my_libs
 _ACEOF
-
 
 
 
