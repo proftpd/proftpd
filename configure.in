@@ -54,8 +54,8 @@ fi
 
 dnl AC_PROG_LIBTOOL relies on this variable
 top_builddir=.
-AC_LIBTOOL_DLOPEN([lib/libltdl])
-AC_LIBLTDL_CONVENIENCE([lib/libltdl])
+LT_INIT([dlopen])
+LTDL_INIT([convenience])
 
 dnl Checks for programs.
 AC_PROG_CC

@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.20 2009-09-12 05:05:15 castaglia Exp $
+ * $Id: mod_dso.c,v 1.21 2009-11-17 18:27:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,7 +34,7 @@
 /* Make sure we use the libltdl shipped with proftpd, not the system libltdl. */
 #include "lib/libltdl/ltdl.h"
 
-#define MOD_DSO_VERSION		"mod_dso/0.4"
+#define MOD_DSO_VERSION		"mod_dso/0.5"
 
 /* From modules/module_glue.c */
 extern module *static_modules[];
@@ -73,11 +73,12 @@ static int dso_load_file(char *path) {
 
 static int dso_load_module(char *name) {
   int res;
-  lt_ptr mh = NULL;
   char *symbol_name, *path, *tmp;
   module *m;
+  lt_ptr mh = NULL;
+  lt_dladvise advise;
 
-  if (!name) {
+  if (name == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -92,10 +93,34 @@ static int dso_load_module(char *name) {
   pr_log_debug(DEBUG7, "loading '%s'", name);
 
   tmp = strrchr(name, '.');
-  if (!tmp) {
+  if (tmp == NULL) {
     errno = EINVAL;
     return -1;
   }
+
+  if (lt_dladvise_init(&advise) < 0) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_DSO_VERSION
+      ": unable to initialise advise: %s", lt_dlerror());
+    errno = EPERM;
+    return -1;
+  }
+
+  if (lt_dladvise_ext(&advise) < 0) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_DSO_VERSION
+      ": unable to setting 'ext' advise hint: %s", lt_dlerror());
+    lt_dladvise_destroy(&advise);
+    errno = EPERM;
+    return -1;
+  }
+
+  if (lt_dladvise_global(&advise) < 0) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_DSO_VERSION
+      ": unable to setting 'global' advise hint: %s", lt_dlerror());
+    lt_dladvise_destroy(&advise);
+    errno = EPERM;
+    return -1;
+  }
+
   *tmp = '\0';
 
   /* Load file: $prefix/libexec/<module> */
@@ -103,7 +128,7 @@ static int dso_load_module(char *name) {
 
   pr_trace_msg(trace_channel, 5, "loading module '%s'", path);
 
-  mh = lt_dlopenext(path);
+  mh = lt_dlopenadvise(path, advise);
   if (mh == NULL) {
     *tmp = '.';
 
@@ -111,6 +136,8 @@ static int dso_load_module(char *name) {
       name, lt_dlerror(), strerror(errno));
     pr_log_debug(DEBUG3, MOD_DSO_VERSION
       ": defaulting to 'self' for symbol resolution");
+
+    lt_dladvise_destroy(&advise);
 
     mh = lt_dlopen(NULL);
     if (mh == NULL) {
@@ -125,6 +152,8 @@ static int dso_load_module(char *name) {
       return -1;
     }
   }
+
+  lt_dladvise_destroy(&advise);
 
   /* Tease name of the module structure out of the given name:
    *  <module>.<ext> --> <module>_module
