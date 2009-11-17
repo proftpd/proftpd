@@ -22,6 +22,10 @@ all:
 Makefile: Makefile.in ../config.status
 	cd ../ && ./config.status
 
+# Special instructions for mod_dso, to include the libltdl headers
+mod_dso.o:
+	$(CC) $(CPPFLAGS) -I../lib/libltdl $(CFLAGS) -c mod_dso.c
+
 .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
