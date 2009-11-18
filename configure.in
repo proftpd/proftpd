@@ -55,7 +55,6 @@ fi
 dnl AC_PROG_LIBTOOL relies on this variable
 top_builddir=.
 LT_INIT([dlopen])
-LTDL_INIT([convenience])
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -505,7 +504,7 @@ AC_ARG_ENABLE(dso,
       ac_build_core_modules="$ac_build_core_modules modules/mod_dso.o"
 
       MAIN_LDFLAGS="-L\$(top_srcdir)/lib/libltdl -dlopen self -export-dynamic"
-      MAIN_LIBS="\$(top_builddir)/lib/libltdl/libltdlc.la"
+      MAIN_LIBS="\$(LIBLTDL)"
 
       MODULE_LDFLAGS="-avoid-version -export-dynamic -module"
 
@@ -515,7 +514,8 @@ AC_ARG_ENABLE(dso,
       AC_DEFINE(PR_USE_DSO, 1, [Define if using DSO support.])
 
       dnl Run configure scripts in subdirectories
-      AC_CONFIG_SUBDIRS(lib/libltdl)
+      LT_CONFIG_LTDL_DIR([lib/libltdl])
+      LTDL_INIT([convenience])
     fi
   ])
 
@@ -2313,6 +2313,7 @@ AC_SUBST(INSTALL_DEPS)
 AC_SUBST(LIB_DEPS)
 AC_SUBST(LIB_OBJS)
 AC_SUBST(LIBTOOL_DEPS)
+AC_SUBST(LIBLTDL)
 AC_SUBST(MAIN_LDFLAGS)
 AC_SUBST(MAIN_LIBS)
 AC_SUBST(MODULE_DEPS)
