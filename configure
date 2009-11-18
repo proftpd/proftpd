@@ -817,6 +817,7 @@ target_vendor
 target_os
 OSREL
 OSTYPE
+CONFIG_SHELL
 LIBTOOL
 CC
 CFLAGS
@@ -869,6 +870,10 @@ LT_DLPREOPEN
 LIBADD_DL
 sys_symbol_underscore
 ARGZ_H
+INSTALL_LTDL_TRUE
+INSTALL_LTDL_FALSE
+CONVENIENCE_LTDL_TRUE
+CONVENIENCE_LTDL_FALSE
 subdirs
 LT_CONFIG_H
 LTDLOPEN
@@ -2243,6 +2248,8 @@ _ACEOF
 if test "$OSTYPE" = "-DRHAPSODY5"; then
   CFLAGS="$CFLAGS -traditional-cpp -D__OT__"
 fi
+
+
 
 top_builddir=.
 case `pwd` in
@@ -3842,13 +3849,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:3845: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:3852: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:3848: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:3855: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:3851: output\"" >&5)
+  (eval echo "\"\$as_me:3858: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -5070,7 +5077,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 5073 "configure"' > conftest.$ac_ext
+  echo '#line 5080 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -6920,11 +6927,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:6923: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:6930: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:6927: \$? = $ac_status" >&5
+   echo "$as_me:6934: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7259,11 +7266,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7262: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7269: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7266: \$? = $ac_status" >&5
+   echo "$as_me:7273: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7364,11 +7371,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7367: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7374: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7371: \$? = $ac_status" >&5
+   echo "$as_me:7378: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -7419,11 +7426,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7422: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7429: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7426: \$? = $ac_status" >&5
+   echo "$as_me:7433: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -10188,7 +10195,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10191 "configure"
+#line 10198 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -10284,7 +10291,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10287 "configure"
+#line 10294 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13929,7 +13936,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 13932 "configure"
+#line 13939 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14786,6 +14793,21 @@ case ,${enable_ltdl_install},${enable_ltdl_convenience} in
   *) enable_ltdl_convenience=yes ;;
 esac
 
+ if test x"${enable_ltdl_install-no}" != xno; then
+  INSTALL_LTDL_TRUE=
+  INSTALL_LTDL_FALSE='#'
+else
+  INSTALL_LTDL_TRUE='#'
+  INSTALL_LTDL_FALSE=
+fi
+
+  if test x"${enable_ltdl_convenience-no}" != xno; then
+  CONVENIENCE_LTDL_TRUE=
+  CONVENIENCE_LTDL_FALSE='#'
+else
+  CONVENIENCE_LTDL_TRUE='#'
+  CONVENIENCE_LTDL_FALSE=
+fi
 
 
 
@@ -31965,6 +31987,20 @@ LIBOBJS=$ac_libobjs
 LTLIBOBJS=$ac_ltlibobjs
 
 
+if test -z "${INSTALL_LTDL_TRUE}" && test -z "${INSTALL_LTDL_FALSE}"; then
+  { { echo "$as_me:$LINENO: error: conditional \"INSTALL_LTDL\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+echo "$as_me: error: conditional \"INSTALL_LTDL\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${CONVENIENCE_LTDL_TRUE}" && test -z "${CONVENIENCE_LTDL_FALSE}"; then
+  { { echo "$as_me:$LINENO: error: conditional \"CONVENIENCE_LTDL\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+echo "$as_me: error: conditional \"CONVENIENCE_LTDL\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
 LT_CONFIG_H=config.h
 
     _ltdl_libobjs=
@@ -32836,6 +32872,7 @@ target_vendor!$target_vendor$ac_delim
 target_os!$target_os$ac_delim
 OSREL!$OSREL$ac_delim
 OSTYPE!$OSTYPE$ac_delim
+CONFIG_SHELL!$CONFIG_SHELL$ac_delim
 LIBTOOL!$LIBTOOL$ac_delim
 CC!$CC$ac_delim
 CFLAGS!$CFLAGS$ac_delim
@@ -32881,7 +32918,6 @@ LTDLDEPS!$LTDLDEPS$ac_delim
 LTDLINCL!$LTDLINCL$ac_delim
 INCLTDL!$INCLTDL$ac_delim
 LT_DLLOADERS!$LT_DLLOADERS$ac_delim
-LIBADD_DLOPEN!$LIBADD_DLOPEN$ac_delim
 _ACEOF
 
   if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 97; then
@@ -32923,12 +32959,17 @@ _ACEOF
 ac_delim='%!_!# '
 for ac_last_try in false false false false false :; do
   cat >conf$$subs.sed <<_ACEOF
+LIBADD_DLOPEN!$LIBADD_DLOPEN$ac_delim
 LIBADD_SHL_LOAD!$LIBADD_SHL_LOAD$ac_delim
 LIBADD_DLD_LINK!$LIBADD_DLD_LINK$ac_delim
 LT_DLPREOPEN!$LT_DLPREOPEN$ac_delim
 LIBADD_DL!$LIBADD_DL$ac_delim
 sys_symbol_underscore!$sys_symbol_underscore$ac_delim
 ARGZ_H!$ARGZ_H$ac_delim
+INSTALL_LTDL_TRUE!$INSTALL_LTDL_TRUE$ac_delim
+INSTALL_LTDL_FALSE!$INSTALL_LTDL_FALSE$ac_delim
+CONVENIENCE_LTDL_TRUE!$CONVENIENCE_LTDL_TRUE$ac_delim
+CONVENIENCE_LTDL_FALSE!$CONVENIENCE_LTDL_FALSE$ac_delim
 subdirs!$subdirs$ac_delim
 LT_CONFIG_H!$LT_CONFIG_H$ac_delim
 LTDLOPEN!$LTDLOPEN$ac_delim
@@ -32970,7 +33011,7 @@ ltdl_LIBOBJS!$ltdl_LIBOBJS$ac_delim
 ltdl_LTLIBOBJS!$ltdl_LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 45; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 50; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
