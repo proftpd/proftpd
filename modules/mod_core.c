@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.362 2009-11-14 18:23:01 castaglia Exp $
+ * $Id: mod_core.c,v 1.363 2009-11-18 06:38:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4486,7 +4486,7 @@ MODRET core_feat(cmd_rec *cmd) {
 
   feat = pr_feat_get();
   if (feat) {
-    feat = pstrcat(cmd->tmp_pool, _("Features:\n "), feat, NULL);
+    feat = pstrcat(cmd->tmp_pool, _("Features:\r\n "), feat, NULL);
     while (TRUE) {
       const char *next;
 
@@ -4497,7 +4497,7 @@ MODRET core_feat(cmd_rec *cmd) {
         break;
       }
 
-      feat = pstrcat(cmd->tmp_pool, feat, "\n ", next, NULL);
+      feat = pstrcat(cmd->tmp_pool, feat, "\r\n ", next, NULL);
     }
 
     pr_response_add(R_211, "%s", feat);
