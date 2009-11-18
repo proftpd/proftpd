@@ -5,6 +5,7 @@ top_srcdir=@top_srcdir@
 srcdir=@srcdir@
 
 GLUE_MODULE_OBJS=@GLUE_MODULE_OBJS@
+LTDLINCL=@LTDLINCL@
 SHARED_CFLAGS=-DPR_SHARED_MODULE
 SHARED_LDFLAGS=-avoid-version -export-dynamic -module
 VPATH=@srcdir@
@@ -24,7 +25,7 @@ Makefile: Makefile.in ../config.status
 
 # Special instructions for mod_dso, to include the libltdl headers
 mod_dso.o:
-	$(CC) $(CPPFLAGS) -I../lib/libltdl $(CFLAGS) -c mod_dso.c
+	$(CC) $(CPPFLAGS) $(LTDLINCL) $(CFLAGS) -c mod_dso.c
 
 .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
