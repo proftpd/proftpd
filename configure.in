@@ -52,7 +52,11 @@ if test "$OSTYPE" = "-DRHAPSODY5"; then
   CFLAGS="$CFLAGS -traditional-cpp -D__OT__"
 fi
 
-dnl AC_PROG_LIBTOOL relies on this variable
+dnl This needs to happen here, prior to the creation of the libtool script,
+dnl so that that script uses the correct shell-isms
+AC_SUBST(CONFIG_SHELL)
+
+dnl AC_PROG_LIBTOOL relies on the top_builddir variable
 top_builddir=.
 LT_INIT([dlopen])
 
