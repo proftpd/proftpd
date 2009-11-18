@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.78 2009-11-16 05:16:32 castaglia Exp $
+ * $Id: fxp.c,v 1.79 2009-11-18 07:01:25 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2866,7 +2866,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
   pr_fh_t *fh;
   cmd_rec *cmd;
   unsigned int nblocks;
-  off_t range_len, total_len;
+  off_t range_len, total_len = 0;
   void *data;
   BIO *bio, *fd_bio, *md_bio;
   const EVP_MD *md;
@@ -4138,6 +4138,9 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
   pr_trace_msg(trace_channel, 7, "received request: EXTENDED %s",
     ext_request_name);
 
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
   if (strcmp(ext_request_name, "vendor-id") == 0) {
     res = fxp_handle_ext_vendor_id(fxp);
     pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
@@ -4336,9 +4339,6 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
   pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
     (unsigned long) status_code, fxp_strerror(status_code));
-
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
 
   fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
     fxp_strerror(status_code), NULL);
