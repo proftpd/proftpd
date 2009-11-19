@@ -204,8 +204,13 @@ config.h: stamp-h
 stamp-h: config.h.in config.status
 	./config.status
 
-${srcdir}/configure: configure.in
-	cd ${srcdir} && autoconf
+# This target tends to cause more problems than its worth; there are many
+# differences between autoconf versions, installed macros, etc between the
+# machine used to generate the shipping configure script and the machine on
+# which this target might trigger.  So try to keep the craziness down by
+# avoiding this altogether.
+#${srcdir}/configure: configure.in
+#	cd ${srcdir} && autoconf
 
 Make.rules: Make.rules.in config.status
 	./config.status
