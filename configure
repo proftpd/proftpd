@@ -10514,6 +10514,10 @@ CC="$lt_save_CC"
 
 
 
+if test x"$CONFIG_SHELL" = x; then
+  CONFIG_SHELL="$SHELL"
+fi
+
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -13931,7 +13935,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 13934 "configure"
+#line 13938 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
