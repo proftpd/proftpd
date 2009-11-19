@@ -417,19 +417,9 @@ AC_SUBST([LTDLOPEN])
 
 # _LT_ENABLE_INSTALL
 # ------------------
-m4_define([_LT_ENABLE_INSTALL],
-[AC_ARG_ENABLE([ltdl-install],
-    [AS_HELP_STRING([--enable-ltdl-install], [install libltdl])])
-
-case ,${enable_ltdl_install},${enable_ltdl_convenience} in
-  *yes*) ;;
-  *) enable_ltdl_convenience=yes ;;
-esac
-
-m4_ifdef([AM_CONDITIONAL],
-[AM_CONDITIONAL(INSTALL_LTDL, test x"${enable_ltdl_install-no}" != xno)
- AM_CONDITIONAL(CONVENIENCE_LTDL, test x"${enable_ltdl_convenience-no}" != xno)])
-])# _LT_ENABLE_INSTALL
+dnl NOTE: I have deliberately emasculated this macro, since proftpd will never
+dnl provide an installable libltdl.
+m4_define([_LT_ENABLE_INSTALL])
 
 
 # LT_SYS_DLOPEN_DEPLIBS
