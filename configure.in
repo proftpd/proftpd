@@ -519,7 +519,11 @@ AC_ARG_ENABLE(dso,
 
       dnl Run configure scripts in subdirectories
       LT_CONFIG_LTDL_DIR([lib/libltdl])
-      LTDL_INIT([convenience])
+
+      dnl Even though this macro is deprecated, we need to use it to
+      dnl specifically tell ltdl that it is NOT to use any system directories,
+      dnl and ONLY to use this bundled location.
+      LTDL_CONVENIENCE([lib/libltdl])
     fi
   ])
 
