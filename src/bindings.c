@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.37 2009-09-08 18:39:54 castaglia Exp $
+ * $Id: bindings.c,v 1.38 2009-11-19 18:55:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -77,6 +77,69 @@ static unsigned int ipbind_hash_addr(pr_netaddr_t *addr) {
 
   key ^= (key >> 16);
   return ((key >> 8) ^ key) % PR_BINDINGS_TABLE_SIZE;
+}
+
+static pool *listening_conn_pool = NULL;
+static xaset_t *listening_conn_list = NULL;
+struct listener_rec {
+  struct listener_rec *next, *prev;
+
+  pool *pool;
+  pr_netaddr_t *addr;
+  unsigned int port;
+  conn_t *conn;
+  int claimed;
+};
+
+static conn_t *get_listening_conn(pr_netaddr_t *addr, unsigned int port) {
+  conn_t *l;
+  pool *p;
+  struct listener_rec *lr;
+
+  if (listening_conn_list) {
+
+    for (lr = (struct listener_rec *) listening_conn_list->xas_list; lr; lr = lr->next) {
+      int use_elt = FALSE;
+
+      if (addr != NULL &&
+          lr->addr != NULL &&
+          strcmp(pr_netaddr_get_ipstr(addr), pr_netaddr_get_ipstr(lr->addr)) == 0 &&
+          port == lr->port) {
+        use_elt = TRUE;
+
+      } else if (addr == NULL &&
+                 port == lr->port) {
+        use_elt = TRUE;
+      }
+
+      if (use_elt) { 
+        lr->claimed = TRUE;
+        return lr->conn;
+      }
+    }
+  }
+
+  if (listening_conn_pool == NULL) {
+    listening_conn_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(listening_conn_pool, "Listening Connection Pool");
+
+    listening_conn_list = xaset_create(listening_conn_pool, NULL);
+  }
+
+  p = make_sub_pool(listening_conn_pool); 
+  pr_pool_tag(p, "Listening conn subpool");
+
+  l = pr_inet_create_conn(p, server_list, -1, addr, port, FALSE);
+
+  lr = pcalloc(p, sizeof(struct listener_rec));
+  lr->pool = p;
+  lr->conn = l;
+  lr->addr = addr;
+  lr->port = port;
+  lr->claimed = TRUE;
+
+  xaset_insert(listening_conn_list, (xasetmember_t *) lr);
+  return l;
 }
 
 /* Slight (clever?) optimization: the loop in server_loop() always
@@ -162,8 +225,7 @@ int pr_ipbind_add_binds(server_rec *serv) {
      */
     if (SocketBindTight &&
         serv->ServerPort) {
-      listen_conn = pr_inet_create_conn(serv->pool, server_list, -1, addr,
-        serv->ServerPort, FALSE);
+      listen_conn = get_listening_conn(addr, serv->ServerPort);
 
       PR_CREATE_IPBIND(serv, addr);
       PR_OPEN_IPBIND(addr, serv->ServerPort, listen_conn, FALSE, FALSE, TRUE);
@@ -829,12 +891,28 @@ void free_bindings(void) {
   }
 
   memset(ipbind_table, 0, sizeof(ipbind_table));
+
+  /* Mark all listening conns as "unclaimed"; any that remaining unclaimed
+   * after init_bindings() can be closed.
+   */
+  if (listening_conn_list) {
+    struct listener_rec *lr;
+
+    for (lr = (struct listener_rec *) listening_conn_list->xas_list; lr; lr = lr->next) {
+      lr->claimed = FALSE;
+    }
+  }
 }
 
 static void init_inetd_bindings(void) {
   int res = 0;
   server_rec *serv = NULL;
   unsigned char *default_server = NULL, is_default = FALSE;
+
+  /* We explicitly do NOT use the get_listening_conn() function here, since
+   * inetd-run daemons will not a) handle restarts, and thus b) will not have
+   * already-open connections to choose from.
+   */
 
   main_server->listen = pr_inet_create_conn(main_server->pool,
     server_list, STDIN_FILENO, NULL, INPORT_ANY, FALSE);
@@ -916,10 +994,8 @@ static void init_standalone_bindings(void) {
 #endif /* PR_USE_IPV6 */
     }
 
-    main_server->listen =
-      pr_inet_create_conn(main_server->pool, server_list, -1,
-        (SocketBindTight ? main_server->addr : NULL),
-        main_server->ServerPort, FALSE);
+    main_server->listen = get_listening_conn(
+      (SocketBindTight ? main_server->addr : NULL), main_server->ServerPort);
 
   } else
     main_server->listen = NULL;
@@ -961,8 +1037,8 @@ static void init_standalone_bindings(void) {
 #endif /* PR_USE_IPV6 */
         }
 
-        serv->listen = pr_inet_create_conn(serv->pool, server_list, -1,
-          (SocketBindTight ? serv->addr : NULL), serv->ServerPort, FALSE);
+        serv->listen = get_listening_conn((SocketBindTight ? serv->addr : NULL),
+          serv->ServerPort);
 
         PR_CREATE_IPBIND(serv, serv->addr);
         PR_OPEN_IPBIND(serv->addr, serv->ServerPort, serv->listen, is_default,
@@ -1002,6 +1078,20 @@ static void init_standalone_bindings(void) {
       PR_OPEN_IPBIND(serv->addr, serv->ServerPort, NULL, is_default, FALSE,
         TRUE);
       PR_ADD_IPBINDS(serv);
+    }
+  }
+
+  /* Any "unclaimed" listening conns can be removed and closed. */
+  if (listening_conn_list) {
+    struct listener_rec *lr, *lrn;
+
+    for (lr = (struct listener_rec *) listening_conn_list->xas_list; lr; lr = lrn) {
+      lrn = lr->next;
+
+      if (!lr->claimed) {
+        xaset_remove(listening_conn_list, (xasetmember_t *) lr);
+        destroy_pool(lr->pool);
+      }
     }
   }
 
