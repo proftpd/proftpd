@@ -60,6 +60,12 @@ dnl AC_PROG_LIBTOOL relies on the top_builddir variable
 top_builddir=.
 LT_INIT([dlopen])
 
+dnl If LT_INIT provides an empty value for CONFIG_SHELL for some reason (it
+dnl happens on my Mac OSX 10.5 machine, for example), have a fallback.
+if test x"$CONFIG_SHELL" = x; then
+  CONFIG_SHELL="$SHELL"
+fi
+
 dnl Checks for programs.
 AC_PROG_CC
 AC_PROG_MAKE_SET
