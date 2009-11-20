@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.170 2009-11-20 04:53:02 castaglia Exp $
+ * $Id: mod_ls.c,v 1.171 2009-11-20 05:10:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1460,7 +1460,8 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
  */
 static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
   int skiparg = 0;
-  int glob_flags = GLOB_PERIOD;
+  int glob_flags = 0;
+
   char *arg = (char*) opt;
 
   ls_curtime = time(NULL);
@@ -1613,17 +1614,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     }
 
     if (!a) {
-      int list_dir_as_file = FALSE;
       char **path;
-
-      /* If glob characters are present, and if recursion has not been
-       * explicitly requested, then do not recurse.  Do this by treating
-       * directories as files for listing purposes.
-       */
-      if (use_globbing &&
-          strpbrk(target, "[*?") != NULL &&
-          !opt_R)
-        list_dir_as_file = TRUE;
 
       path = g.gl_pathv;
 
@@ -1649,8 +1640,8 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
           }
 
           if (opt_d ||
-              !(S_ISDIR(target_mode)) ||
-              (S_ISDIR(target_mode) && list_dir_as_file)) {
+              !(S_ISDIR(target_mode))) {
+
             if (listfile(cmd, cmd->tmp_pool, *path) < 0) {
               ls_terminate();
               if (use_globbing && globbed)
@@ -2260,7 +2251,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
   size_t targetlen = 0;
   config_rec *c = NULL;
   int count = 0, res = 0, hidden = 0;
-  int glob_flags = GLOB_PERIOD|GLOB_NOSORT;
+  int glob_flags = GLOB_NOSORT;
   unsigned char *tmp = NULL;
 
   list_nfiles.curr = list_ndirs.curr = list_ndepth.curr = 0;
