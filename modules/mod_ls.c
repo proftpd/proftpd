@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.169 2009-11-05 18:24:10 castaglia Exp $
+ * $Id: mod_ls.c,v 1.170 2009-11-20 04:53:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1555,8 +1555,9 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       if (pw) {
         snprintf(pbuffer, sizeof(pbuffer), "%s%s", pw->pw_dir, p);
 
-      } else
+      } else {
         pbuffer[0] = '\0';
+      }
     }
 
     target = *pbuffer ? pbuffer : arg;
@@ -1571,7 +1572,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     /* If there are no globbing characters in the given target,
      * we can check to see if it even exists.
      */
-    if (strpbrk(target, "{[*?") == NULL) {
+    if (strpbrk(target, "[*?") == NULL) {
       struct stat st;
 
       pr_fs_clear_cache();
@@ -1592,7 +1593,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       skiparg = FALSE;
 
       if (use_globbing &&
-          strpbrk(target, "{[*?") != NULL) {
+          strpbrk(target, "[*?") != NULL) {
         a = pr_fs_glob(target, glob_flags, NULL, &g);
         if (a == 0) {
           pr_log_debug(DEBUG8, "LIST: glob(3) returned %lu paths",
@@ -1620,7 +1621,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
        * directories as files for listing purposes.
        */
       if (use_globbing &&
-          strpbrk(target, "{[*?") != NULL &&
+          strpbrk(target, "[*?") != NULL &&
           !opt_R)
         list_dir_as_file = TRUE;
 
@@ -1629,23 +1630,28 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       if (path && path[0] && path[1])
         justone = 0;
 
-      while (path && *path) {
+      while (path &&
+             *path) {
         struct stat st;
+
+        pr_signals_handle();
 
         if (pr_fsio_lstat(*path, &st) == 0) {
           mode_t target_mode, lmode;
           target_mode = st.st_mode;
 
-          if (S_ISLNK(st.st_mode) && (lmode = file_mode((char*)*path)) != 0) {
+          if (S_ISLNK(st.st_mode) &&
+              (lmode = file_mode((char *) *path)) != 0) {
             if (opt_L || !list_show_symlinks)
               st.st_mode = lmode;
+
             target_mode = lmode;
           }
 
           if (opt_d ||
               !(S_ISDIR(target_mode)) ||
               (S_ISDIR(target_mode) && list_dir_as_file)) {
-            if (listfile(cmd, NULL, *path) < 0) {
+            if (listfile(cmd, cmd->tmp_pool, *path) < 0) {
               ls_terminate();
               if (use_globbing && globbed)
                 pr_fs_globfree(&g);
@@ -1655,8 +1661,9 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
             **path = '\0';
           }
 
-        } else 
+        } else {
           **path = '\0';
+        }
 
         path++;
       }
@@ -1669,9 +1676,18 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
         return -1;
       }
 
+      /* At this point, the only paths left in g.gl_pathv should be
+       * directories; anything else should have been listed/handled
+       * above.
+       */
+
       path = g.gl_pathv;
-      while (path && *path) {
-        if (**path && ls_perms_full(cmd->tmp_pool, cmd, *path, NULL)) {
+      while (path &&
+             *path) {
+        pr_signals_handle();
+
+        if (**path &&
+            ls_perms_full(cmd->tmp_pool, cmd, *path, NULL)) {
           char cwd_buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
           unsigned char symhold;
 
@@ -1694,7 +1710,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
             int res = 0;
 
             list_ndepth.curr++;
-            res = listdir(cmd, NULL, *path);
+            res = listdir(cmd, cmd->tmp_pool, *path);
             list_ndepth.curr--;
 
             pop_cwd(cwd_buf, &symhold);
@@ -1722,17 +1738,18 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       }
 
     } else if (!skiparg) {
-      if (a == GLOB_NOSPACE)
+      if (a == GLOB_NOSPACE) {
         pr_response_add(R_226, _("Out of memory during globbing of %s"),
           pr_fs_encode_path(cmd->tmp_pool, arg));
 
-      else if (a == GLOB_ABORTED)
+      } else if (a == GLOB_ABORTED) {
         pr_response_add(R_226, _("Read error during globbing of %s"),
           pr_fs_encode_path(cmd->tmp_pool, arg));
 
-      else if (a != GLOB_NOMATCH)
+      } else if (a != GLOB_NOMATCH) {
         pr_response_add(R_226, _("Unknown error during globbing of %s"),
           pr_fs_encode_path(cmd->tmp_pool, arg));
+      }
     }
 
     if (!skiparg && use_globbing && globbed)
@@ -2402,7 +2419,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
   /* If the target is a glob, get the listing of files/dirs to send. */
   if (use_globbing &&
-      strpbrk(target, "{[*?") != NULL) {
+      strpbrk(target, "[*?") != NULL) {
     glob_t g;
     char **path, *p;
 
