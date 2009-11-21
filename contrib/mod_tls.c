@@ -545,12 +545,13 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
       if (!tls_need_init_handshake) {
 
         /* Yes, this is indeed a session renegotiation. If it's a
-         * renegotiation that we requested, allow it.  Otherwise, it's a
-         * client-initiated renegotiation, and we probably don't want to
-         * allow it.
+         * renegotiation that we requested, allow it.  If it is from a
+         * data connection, allow it.  Otherwise, it's a client-initiated
+         * renegotiation, and we probably don't want to allow it.
          */
 
-        if (!(tls_flags & TLS_SESS_CTRL_RENEGOTIATING) &&
+        if (ssl == ctrl_ssl &&
+            !(tls_flags & TLS_SESS_CTRL_RENEGOTIATING) &&
             !(tls_flags & TLS_SESS_DATA_RENEGOTIATING)) {
 
           if (!(tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS)) {
@@ -5455,8 +5456,10 @@ MODRET tls_any(cmd_rec *cmd) {
   /* Some commands need not be hindered. */
   if (strcmp(cmd->argv[0], C_SYST) == 0 ||
       strcmp(cmd->argv[0], C_AUTH) == 0 ||
-      strcmp(cmd->argv[0], C_QUIT) == 0)
+      strcmp(cmd->argv[0], C_FEAT) == 0 ||
+      strcmp(cmd->argv[0], C_QUIT) == 0) {
     return PR_DECLINED(cmd);
+  }
 
   if (tls_required_on_auth == 1 &&
       !(tls_flags & TLS_SESS_ON_CTRL)) {
@@ -5507,6 +5510,7 @@ MODRET tls_any(cmd_rec *cmd) {
     if (!(tls_flags & TLS_SESS_NEED_DATA_PROT)) {
       if (strcmp(cmd->argv[0], C_APPE) == 0 ||
           strcmp(cmd->argv[0], C_LIST) == 0 ||
+          strcmp(cmd->argv[0], C_MLSD) == 0 ||
           strcmp(cmd->argv[0], C_NLST) == 0 ||
           strcmp(cmd->argv[0], C_RETR) == 0 ||
           strcmp(cmd->argv[0], C_STOR) == 0 ||
@@ -5531,6 +5535,7 @@ MODRET tls_any(cmd_rec *cmd) {
 
     if (strcmp(cmd->argv[0], C_APPE) == 0 ||
         strcmp(cmd->argv[0], C_LIST) == 0 ||
+        strcmp(cmd->argv[0], C_MLSD) == 0 ||
         strcmp(cmd->argv[0], C_NLST) == 0 ||
         strcmp(cmd->argv[0], C_RETR) == 0 ||
         strcmp(cmd->argv[0], C_STOR) == 0 ||
@@ -5771,7 +5776,8 @@ MODRET tls_post_pass(cmd_rec *cmd) {
        * TLSRequired policy, and if the current session does not make the
        * cut, well, then the session gets cut.
        */
-      if (tls_required_on_ctrl == 1 &&
+      if ((tls_required_on_ctrl == 1 ||
+           tls_required_on_auth == 1) &&
           (!tls_flags & TLS_SESS_ON_CTRL)) {
         tls_log("SSL/TLS required but absent on control channel, "
           "disconnecting");
@@ -6635,7 +6641,7 @@ static void tls_mod_unload_ev(const void *event_data, void *user_data) {
 /* Daemon PID */
 extern pid_t mpid;
 
-static void tls_daemon_exit_ev(const void *event_data, void *user_data) {
+static void tls_shutdown_ev(const void *event_data, void *user_data) {
   if (mpid == getpid())
     tls_scrub_pkeys();
 
@@ -6682,7 +6688,7 @@ static void tls_restart_ev(const void *event_data, void *user_data) {
   tls_closelog();
 }
 
-static void tls_sess_exit_ev(const void *event_data, void *user_data) {
+static void tls_exit_ev(const void *event_data, void *user_data) {
 
   /* If diags are enabled, log some OpenSSL stats. */
   if (ssl_ctx != NULL && 
@@ -6878,26 +6884,115 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
 
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
     unsigned long *opts;
-    config_rec *c;
-    int on_auth = FALSE;
+    config_rec *toplevel_c = NULL, *other_c = NULL;
+    int toplevel_auth_requires_ssl = FALSE, other_auth_requires_ssl = TRUE;
 
     opts = get_param_ptr(s->conf, "TLSOptions", FALSE);
     if (opts == NULL) {
       continue;
     }
 
-    c = find_config(s->conf, CONF_PARAM, "TLSRequired", FALSE);
-    if (c == NULL) {
+    /* The purpose of this check is to watch for configurations such as:
+     *
+     *  <IfModule mod_tls.c>
+     *    ...
+     *    TLSRequired on
+     *    ...
+     *    TLSOptions AllowPerUser
+     *    ...
+     *  </IfModule>
+     *
+     * This policy cannot be enforced; we cannot require use of SSL/TLS
+     * (specifically at authentication time, when we do NOT know the user)
+     * AND also allow per-user SSL/TLS requirements.  It's a chicken-and-egg
+     * problem.
+     *
+     * However, we DO want to allow configurations like:
+     *
+     *  <IfModule mod_tls.c>
+     *    ...
+     *    TLSRequired on
+     *    ...
+     *    TLSOptions AllowPerUser
+     *    ...
+     *  </IfModule>
+     *
+     *  <Anonymous ...>
+     *    ... 
+     *    <IfModule mod_tls.c>
+     *      TLSRequired off
+     *    </IfModule>
+     *  </Anonymous>
+     *
+     * Thus this check is a bit tricky.  We look first in this server_rec's
+     * config list for a top-level TLSRequired setting.  If it is 'on' AND
+     * if the AllowPerUser TLSOption is set, AND we find no other TLSRequired
+     * configs deeper in the server_rec whose value is 'off', then log the
+     * error and quit.  Otherwise, let things proceed.
+     *
+     * If the mod_ifsession module is present, skip this check as well; we
+     * will not be able to suss out any TLSRequired settings which are
+     * lurking in mod_ifsession's grasp until authentication time.
+     *
+     * I still regret adding support for the AllowPerUser TLSOption.  Users
+     * just cannot seem to wrap their minds around the fact that the user
+     * is not known at the time when the SSL/TLS session is done.  Sigh.
+     */
+
+    if (pr_module_exists("mod_ifsession.c")) {
       continue;
     }
 
-    on_auth = *((int *) c->argv[2]);
+    toplevel_c = find_config(s->conf, CONF_PARAM, "TLSRequired", FALSE);
+    if (toplevel_c) {
+      toplevel_auth_requires_ssl = *((int *) toplevel_c->argv[2]);
+    }
 
-    if (on_auth == TRUE &&
-        (*opts & TLS_OPT_ALLOW_PER_USER)) {
-      pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": Server %s: cannot enforce both "
-        "'TLSRequired auth' and 'TLSOptions AllowPerUser' at the same time",
-        s->ServerName);
+    /* If this toplevel TLSRequired value is 'off', then we need check no
+     * further.
+     */
+    if (!toplevel_auth_requires_ssl) {
+      continue;
+    }
+
+    /* This time, we recurse deeper into the server_rec's configs.
+     * We need only pay attention to settings we find in the CONF_DIR or
+     * CONF_ANON config contexts.  And we need only look until we find such
+     * a setting does not require SSL/TLS during authentication, for at that
+     * point we know it is not a misconfiguration.
+     */
+    find_config_set_top(NULL);
+    other_c = find_config(s->conf, CONF_PARAM, "TLSRequired", TRUE);
+    while (other_c) {
+      int auth_requires_ssl;
+
+      pr_signals_handle();
+
+      if (other_c->parent == NULL ||
+          (other_c->parent->config_type != CONF_ANON &&
+           other_c->parent->config_type != CONF_DIR)) {
+        /* Not what we're looking for; continue on. */ 
+        other_c = find_config_next(other_c, other_c->next, CONF_PARAM,
+          "TLSRequired", TRUE);
+        continue;
+      }
+
+      auth_requires_ssl = *((int *) other_c->argv[2]);
+      if (!auth_requires_ssl) {
+        other_auth_requires_ssl = FALSE;
+        break;
+      }
+
+      other_c = find_config_next(other_c, other_c->next, CONF_PARAM,
+        "TLSRequired", TRUE);
+    }
+
+    if ((*opts & TLS_OPT_ALLOW_PER_USER) &&
+        toplevel_auth_requires_ssl == TRUE &&
+        other_auth_requires_ssl == TRUE) {
+      pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": Server %s: cannot enforce "
+        "both 'TLSRequired auth' and 'TLSOptions AllowPerUser' at the "
+        "same time", s->ServerName);
       end_login(1);
     }
   }
@@ -6946,7 +7041,7 @@ static int tls_init(void) {
 
   pr_log_debug(DEBUG2, MOD_TLS_VERSION ": using " OPENSSL_VERSION_TEXT);
 
-  pr_event_register(&tls_module, "core.exit", tls_daemon_exit_ev, NULL);
+  pr_event_register(&tls_module, "core.exit", tls_shutdown_ev, NULL);
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&tls_module, "core.module-unload", tls_mod_unload_ev, NULL);
 #endif /* PR_SHARED_MODULE */
@@ -6985,7 +7080,7 @@ static int tls_sess_init(void) {
    * for the daemon process; we inherited it due to the fork, but we don't
    * want that listener being invoked when we exit.
    */
-  pr_event_unregister(&tls_module, "core.exit", tls_daemon_exit_ev);
+  pr_event_unregister(&tls_module, "core.exit", tls_shutdown_ev);
 
   /* First, check to see whether mod_tls is even enabled. */
   tmp = get_param_ptr(main_server->conf, "TLSEngine", FALSE);
@@ -7139,7 +7234,7 @@ static int tls_sess_init(void) {
   /* Install our data channel NetIO handlers. */
   tls_netio_install_data();
 
-  pr_event_register(&tls_module, "core.exit", tls_sess_exit_ev, NULL);
+  pr_event_register(&tls_module, "core.exit", tls_exit_ev, NULL);
 
   /* There are several timeouts which can cause the client to be disconnected;
    * register a listener for them which can politely/cleanly shut the SSL/TLS
