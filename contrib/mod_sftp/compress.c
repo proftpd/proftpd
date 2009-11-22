@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: compress.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: compress.c,v 1.3 2009-11-22 22:18:13 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -218,7 +218,7 @@ int sftp_compress_read_data(struct ssh2_packet *pkt) {
 
   if (comp->use_zlib &&
       comp->stream_ready) {
-    unsigned char buf[8192], *input;
+    unsigned char buf[16382], *input;
     char *payload;
     uint32_t input_len, payload_len = 0, payload_sz;
     pool *sub_pool;
@@ -255,50 +255,47 @@ int sftp_compress_read_data(struct ssh2_packet *pkt) {
       stream->avail_out = sizeof(buf);
 
       zres = inflate(stream, Z_SYNC_FLUSH);
+      if (zres == Z_OK) {
+        copy_len = sizeof(buf) - stream->avail_out;
 
-      switch (zres) {
-        case Z_OK:
-          copy_len = sizeof(buf) - stream->avail_out;
+        /* Allocate more space for the data if necessary. */
+        if ((payload_len + copy_len) > payload_sz) {
+          uint32_t new_sz;
+          char *tmp;
 
-          /* Allocate more space for the data if necessary. */
-          if ((payload_len + copy_len) > payload_sz) {
-            uint32_t new_sz;
-            char *tmp;
+          new_sz = payload_sz * 2;
+          tmp = palloc(sub_pool, new_sz);
+          memcpy(tmp, payload, payload_len);
+          payload = tmp;
+        }
 
-            new_sz = payload_sz * 2;
-            tmp = palloc(sub_pool, new_sz);
-            memcpy(tmp, payload, payload_len);
-            payload = tmp;
-          }
-
+        if (copy_len > 0) {
           memcpy(payload + payload_len, buf, copy_len);
           payload_len += copy_len;
-          break;
+        }
 
-        case Z_BUF_ERROR:
-          /* Make sure that pkt->payload has enough room for the uncompressed
-           * data.  If not, allocate a larger buffer.
-           */
-          if (pkt->payload_len < payload_len) {
-            pkt->payload = palloc(pkt->pool, payload_len);
-          }
+        continue;
 
-          memcpy(pkt->payload, payload, payload_len);
-          pkt->payload_len = payload_len;
+      } else if (zres == Z_BUF_ERROR) {
+        /* Make sure that pkt->payload has enough room for the uncompressed
+         * data.  If not, allocate a larger buffer.
+         */
+        if (pkt->payload_len < payload_len) {
+          pkt->payload = palloc(pkt->pool, payload_len);
+        }
 
-          destroy_pool(sub_pool);
-          return 0;
-
-        default:
-          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "unhandled zlib error (%d) while decompressing", zres);
-          destroy_pool(sub_pool);
-          return -1;
+        memcpy(pkt->payload, payload, payload_len);
+        pkt->payload_len = payload_len;
+        break;
       }
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unhandled zlib error (%d) while decompressing", zres);
+      destroy_pool(sub_pool);
+      return -1;
     }
 
     destroy_pool(sub_pool);
-    return 0;
   }
 
   return 0;
