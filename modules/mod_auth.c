@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.269 2009-11-05 17:46:54 castaglia Exp $
+ * $Id: mod_auth.c,v 1.270 2009-11-22 21:44:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -104,6 +104,14 @@ static int auth_session_timeout_cb(CALLBACK_FRAME) {
   return 0;
 }
 
+/* Event listeners
+ */
+
+static void auth_exit_ev(const void *event_data, void *user_data) {
+  /* Close the scoreboard descriptor that we opened. */
+  (void) pr_close_scoreboard();
+}
+
 static int auth_sess_init(void) {
   config_rec *c = NULL;
   unsigned char *tmp = NULL;
@@ -145,6 +153,8 @@ static int auth_sess_init(void) {
         break;
     }
   }
+
+  pr_event_register(&auth_module, "core.exit", auth_exit_ev, NULL);
 
   /* Create an entry in the scoreboard for this session. */
   if (pr_scoreboard_entry_add() < 0)
