@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.11 2009-08-25 15:59:50 castaglia Exp $
+ * $Id: kex.c,v 1.12 2009-11-22 19:46:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3058,6 +3058,18 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
   destroy_kex(kex);
   return 0;
+}
+
+int sftp_kex_free(void) {
+  if (kex_dhparams_fp != NULL) {
+    (void) fclose(kex_dhparams_fp);
+    kex_dhparams_fp = NULL;
+  }
+
+  if (kex_pool) {
+    destroy_pool(kex_pool);
+    kex_pool = NULL;
+  }
 }
 
 int sftp_kex_init(const char *client_version, const char *server_version) {

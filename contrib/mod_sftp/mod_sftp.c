@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.22 2009-11-13 02:29:16 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.23 2009-11-22 19:46:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1219,6 +1219,7 @@ static void sftp_exit_ev(const void *event_data, void *user_data) {
   sftp_channel_free();
 
   sftp_keys_free();
+  sftp_kex_free();
 
   if (session.pid &&
       session.pid != mpid) {

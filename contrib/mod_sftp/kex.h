@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key exchange (kex)
- * Copyright (c) 2008 TJ Saunders
+ * Copyright (c) 2008-2009 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.h,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: kex.h,v 1.3 2009-11-22 19:46:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -31,6 +31,7 @@
 
 int sftp_kex_handle(struct ssh2_packet *);
 int sftp_kex_init(const char *, const char *);
+int sftp_kex_free(void);
 
 int sftp_kex_rekey(void);
 int sftp_kex_rekey_set_interval(int);
