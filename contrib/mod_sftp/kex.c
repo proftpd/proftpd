@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.13 2009-11-22 21:30:45 castaglia Exp $
+ * $Id: kex.c,v 1.14 2009-11-22 21:46:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1674,6 +1674,7 @@ static int write_kexinit(struct ssh2_packet *pkt, struct sftp_kex *kex) {
    * If that fails (e.g. if the PRNG hasn't been seeded well), use
    * pseudo-cryptographically secure bytes.
    */
+  memset(cookie, 0, sizeof(cookie));
   if (RAND_bytes(cookie, sizeof(cookie)) != 1) {
     RAND_pseudo_bytes(cookie, sizeof(cookie));
   }

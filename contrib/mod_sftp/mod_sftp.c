@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.23 2009-11-22 19:46:50 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.24 2009-11-22 21:46:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1226,6 +1226,9 @@ static void sftp_exit_ev(const void *event_data, void *user_data) {
     sftp_crypto_free(0);
     sftp_utf8_free();
   }
+
+  (void) close(sftp_logfd);
+  sftp_logfd = -1;
 }
 
 static void sftp_max_conns_ev(const void *event_data, void *user_data) {
