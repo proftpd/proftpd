@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.36 2009-07-23 17:45:35 castaglia Exp $
+ * $Id: mod_delay.c,v 1.37 2009-11-22 19:34:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1163,6 +1163,9 @@ MODRET delay_post_pass(cmd_rec *cmd) {
       delay_tab.dt_path, strerror(errno));
   }
 
+  (void) close(delay_tab.dt_fd);
+  delay_tab.dt_fd = -1;
+
   /* If the current interval is less than the median interval, we
    * need to delay ourselves a little.
    */
@@ -1264,7 +1267,35 @@ MODRET delay_pre_user(cmd_rec *cmd) {
 /* Event handlers
  */
 
-static void delay_exit_ev(const void *event_data, void *user_data) {
+static void delay_postparse_ev(const void *event_data, void *user_data) {
+  config_rec *c;
+
+  c = find_config(main_server->conf, CONF_PARAM, "DelayEngine", FALSE);
+  if (c && *((unsigned int *) c->argv[0]) == FALSE)
+    delay_engine = FALSE;
+
+  if (!delay_engine)
+    return;
+
+  c = find_config(main_server->conf, CONF_PARAM, "DelayTable", FALSE);
+  if (c)
+    delay_tab.dt_path = c->argv[0];
+
+  (void) delay_table_init();
+  return;
+}
+
+static void delay_restart_ev(const void *event_data, void *user_data) {
+  if (delay_pool)
+    destroy_pool(delay_pool);
+
+  delay_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(delay_pool, MOD_DELAY_VERSION);
+
+  return;
+}
+
+static void delay_shutdown_ev(const void *event_data, void *user_data) {
   pr_fh_t *fh;
   char *data;
   size_t datalen;
@@ -1334,34 +1365,6 @@ static void delay_exit_ev(const void *event_data, void *user_data) {
   return;
 }
 
-static void delay_postparse_ev(const void *event_data, void *user_data) {
-  config_rec *c;
-
-  c = find_config(main_server->conf, CONF_PARAM, "DelayEngine", FALSE);
-  if (c && *((unsigned int *) c->argv[0]) == FALSE)
-    delay_engine = FALSE;
-
-  if (!delay_engine)
-    return;
-
-  c = find_config(main_server->conf, CONF_PARAM, "DelayTable", FALSE);
-  if (c)
-    delay_tab.dt_path = c->argv[0];
-
-  (void) delay_table_init();
-  return;
-}
-
-static void delay_restart_ev(const void *event_data, void *user_data) {
-  if (delay_pool)
-    destroy_pool(delay_pool);
-
-  delay_pool = make_sub_pool(permanent_pool);
-  pr_pool_tag(delay_pool, MOD_DELAY_VERSION);
-
-  return;
-}
-
 /* Initialization functions
  */
 
@@ -1369,7 +1372,7 @@ static int delay_init(void) {
   delay_tab.dt_path = PR_RUN_DIR "/proftpd.delay";
   delay_tab.dt_data = NULL;
 
-  pr_event_register(&delay_module, "core.exit", delay_exit_ev, NULL);
+  pr_event_register(&delay_module, "core.exit", delay_shutdown_ev, NULL);
   pr_event_register(&delay_module, "core.postparse", delay_postparse_ev, NULL);
   pr_event_register(&delay_module, "core.restart", delay_restart_ev, NULL);
 
@@ -1400,7 +1403,7 @@ static int delay_sess_init(void) {
   config_rec *c;
   int xerrno = errno;
 
-  pr_event_unregister(&delay_module, "core.exit", delay_exit_ev);
+  pr_event_unregister(&delay_module, "core.exit", delay_shutdown_ev);
 
   if (!delay_engine)
     return 0;
@@ -1427,7 +1430,7 @@ static int delay_sess_init(void) {
   }
   PRIVS_RELINQUISH
 
-  if (!fh) {
+  if (fh == NULL) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": unable to open DelayTable '%s': %s", delay_tab.dt_path,
       strerror(xerrno));
