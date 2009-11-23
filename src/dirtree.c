@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.227 2009-11-16 03:56:40 castaglia Exp $
+ * $Id: dirtree.c,v 1.228 2009-11-23 22:35:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -739,6 +739,9 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
       pr_trace_msg("directory", 9,
         "checking if <Directory %s> is a glob match for %s", tmp_path, path);
 
+      /* The flags argument here needs to include PR_FNM_PATHNAME in order
+       * to prevent globs from matching the '/' character.
+       */
       if (pr_fnmatch(tmp_path, path, 0) == 0) {
         pr_trace_msg("directory", 8,
           "<Directory %s> is a glob match for '%s'", tmp_path, path);
