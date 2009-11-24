@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.21 2009-11-16 06:12:04 castaglia Exp $
+ * $Id: channel.c,v 1.22 2009-11-24 17:29:58 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -87,6 +87,8 @@ static array_header *channel_list = NULL;
 
 static uint32_t chan_window_size = SFTP_SSH2_CHANNEL_WINDOW_SIZE;
 static uint32_t chan_packet_size = SFTP_SSH2_CHANNEL_MAX_PACKET_SIZE;
+
+static array_header *accepted_envs = NULL;
 
 static const char *trace_channel = "ssh2";
 
@@ -680,6 +682,7 @@ static int handle_channel_eof(struct ssh2_packet *pkt) {
 
 static int allow_env(const char *key) {
   register unsigned int i;
+  char **elts;
 
   /* The following is a hardcoded list of environment variables set by
    * mod_sftp itself.  These are not allowed to be changed by the client.
@@ -689,7 +692,7 @@ static int allow_env(const char *key) {
    * keys grows.
    */
 
-  const char *prohibited_keys[] = {
+  const char *prohibited_envs[] = {
     "DYLD_LIBRARY_PATH", /* Mac OSX */
     "HOME",
     "LD_CONFIG",         /* Solaris */
@@ -721,15 +724,21 @@ static int allow_env(const char *key) {
     NULL
   };
 
-  /* XXX Allow the admin to configure a list of prohibited env vars as well? */
-
-  for (i = 0; prohibited_keys[i]; i++) {
-    if (strcasecmp(key, prohibited_keys[i]) == 0) {
+  for (i = 0; prohibited_envs[i]; i++) {
+    if (strcasecmp(key, prohibited_envs[i]) == 0) {
       return FALSE;
     }
   }
 
-  return TRUE;
+  elts = accepted_envs->elts;
+  for (i = 0; i < accepted_envs->nelts; i++) {
+    if (pr_fnmatch(elts[i], key, 0) == 0) {
+      return TRUE;
+    }
+  }
+
+  /* Bar all environment variables by default. */
+  return FALSE;
 }
 
 static int handle_exec_channel(struct ssh2_channel *chan,
@@ -1321,6 +1330,7 @@ int sftp_channel_free(void) {
 
 int sftp_channel_init(void) {
   struct ssh2_channel_exec_handler *handler;
+  config_rec *c;
 
   if (channel_pool == NULL) {
     channel_pool = make_sub_pool(sftp_pool);
@@ -1344,6 +1354,25 @@ int sftp_channel_init(void) {
 
   *((struct ssh2_channel_exec_handler **) push_array(channel_exec_handlers)) =
     handler;
+
+  accepted_envs = make_array(channel_pool, 0, sizeof(char *));
+
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPAcceptEnv", FALSE);
+  if (c) {
+    register unsigned int i;
+    array_header *envs; 
+    char **elts;
+
+    envs = c->argv[0];
+    elts = envs->elts;
+    for (i = 0; i < envs->nelts; i++) {
+      *((char **) push_array(accepted_envs)) = pstrdup(channel_pool, elts[i]);
+    }
+
+  } else {
+    /* Allow the LANG environment variable by default. */
+    *((char **) push_array(accepted_envs)) = pstrdup(channel_pool, "LANG");
+  }
 
   return 0;
 }

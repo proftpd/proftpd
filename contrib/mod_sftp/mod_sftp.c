@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.24 2009-11-22 21:46:02 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.25 2009-11-24 17:29:58 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -184,6 +184,29 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
 
 /* Configuration handlers
  */
+
+/* usage: SFTPAcceptEnv env1 ... envN */
+MODRET set_sftpacceptenv(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+  array_header *accepted_envs;
+
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  accepted_envs = make_array(c->pool, 0, sizeof(char *));
+
+  for (i = 1; i < cmd->argc; i++) {
+    *((char **) push_array(accepted_envs)) = pstrdup(c->pool, cmd->argv[i]);
+  }
+  c->argv[0] = (void *) accepted_envs;
+
+  return PR_HANDLED(cmd);
+}
 
 /* usage: SFTPAuthMethods meth1 ... methN */
 MODRET set_sftpauthmeths(cmd_rec *cmd) {
@@ -1604,6 +1627,7 @@ static int sftp_sess_init(void) {
  */
 
 static conftable sftp_conftab[] = {
+  { "SFTPAcceptEnv",		set_sftpacceptenv,		NULL },
   { "SFTPAuthMethods",		set_sftpauthmeths,		NULL },
   { "SFTPAuthorizedHostKeys",	set_sftpauthorizedkeys,		NULL },
   { "SFTPAuthorizedUserKeys",	set_sftpauthorizedkeys,		NULL },
