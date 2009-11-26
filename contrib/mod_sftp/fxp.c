@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.79 2009-11-18 07:01:25 castaglia Exp $
+ * $Id: fxp.c,v 1.80 2009-11-26 18:38:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5646,19 +5646,32 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
   if (cmd2) {
     if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
-      /* One of the PRE_CMD phase handlers rejected the command. */
+      int xerrno = errno;
+      const char *reason;
       uint32_t status_code;
+
+      /* One of the PRE_CMD phase handlers rejected the command. */
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "OPEN command for '%s' blocked by '%s' handler", path, cmd2->argv[0]);
 
-      status_code = SSH2_FX_PERMISSION_DENIED;
+      /* Hopefully the command handlers set an appropriate errno value.  If
+       * they didn't, however, we need to be prepared with a fallback.
+       */
+      if (xerrno != ENOENT &&
+          xerrno != EACCES &&
+          xerrno != EPERM) {
+        xerrno = EACCES;
+      }
 
-      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
-        (unsigned long) status_code, fxp_strerror(status_code));
+      status_code = fxp_errno2status(xerrno, &reason);
 
-      fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
-        fxp_strerror(status_code), NULL);
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+        "('%s' [%d])", (unsigned long) status_code, reason,
+        xerrno != EOF ? strerror(errno) : "End of file", xerrno);
+
+      fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+        NULL);
 
       pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
       pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
