@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.264 2009-11-03 06:37:38 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.265 2009-11-26 18:47:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1180,6 +1180,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -1194,6 +1195,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
   if (xfer_check_limit(cmd) < 0) {
     pr_response_add_err(R_451, _("%s: Too many transfers"), cmd->arg);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -1205,6 +1207,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       (!allow_overwrite || *allow_overwrite == FALSE)) {
     pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
     pr_response_add_err(R_550, _("%s: Overwrite permission denied"), cmd->arg);
+    errno = EACCES;
     return PR_ERROR(cmd);
   }
 
@@ -1225,6 +1228,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 #endif
        ) {
       pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
+      errno = EPERM;
       return PR_ERROR(cmd);
     }
   }
@@ -1242,6 +1246,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       cmd->arg);
     session.restart_pos = 0L;
     session.xfer.xfer_type = STOR_DEFAULT;
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -1260,6 +1265,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     if (session.restart_pos) {
       pr_response_add_err(R_501,
         _("REST not compatible with server configuration"));
+      errno = EINVAL;
       return PR_ERROR(cmd);
     }
 
@@ -1423,6 +1429,7 @@ MODRET xfer_pre_appe(cmd_rec *cmd) {
 
   if (xfer_check_limit(cmd) < 0) {
     pr_response_add_err(R_451, _("%s: Too many transfers"), cmd->arg);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -1817,6 +1824,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -1831,6 +1839,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
   if (xfer_check_limit(cmd) < 0) {
     pr_response_add_err(R_451, _("%s: Too many transfers"), cmd->arg);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -1846,6 +1855,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 #endif
      ) {
     pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -1859,6 +1869,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     pr_response_add_err(R_451, _("%s: Restart not permitted, try again"),
       cmd->arg);
     session.restart_pos = 0L;
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -2838,13 +2849,11 @@ MODRET set_transferrate(cmd_rec *cmd) {
   if (tmp) {
     cmd->argv[2] = ++tmp;
 
-    if ((freebytes = strtoul(cmd->argv[2], &endp, 10)) < 0)
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        "negative values not allowed: '", cmd->argv[2], "'", NULL));
-
-    if (endp && *endp)
+    freebytes = strtoul(cmd->argv[2], &endp, 10);
+    if (endp && *endp) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid number: '",
         cmd->argv[2], "'", NULL));
+    }
   }
 
   /* Construct the config_rec */
