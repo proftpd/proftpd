@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.80 2009-11-26 18:38:47 castaglia Exp $
+ * $Id: fxp.c,v 1.81 2009-11-26 19:18:34 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5660,7 +5660,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
        */
       if (xerrno != ENOENT &&
           xerrno != EACCES &&
-          xerrno != EPERM) {
+          xerrno != EPERM &&
+          xerrno != EINVAL) {
         xerrno = EACCES;
       }
 
