@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.22 2009-11-24 17:29:58 castaglia Exp $
+ * $Id: channel.c,v 1.23 2009-11-30 17:26:03 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1359,16 +1359,22 @@ int sftp_channel_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPAcceptEnv", FALSE);
   if (c) {
-    register unsigned int i;
-    array_header *envs; 
-    char **elts;
+    while (c) {
+      register unsigned int i;
+      array_header *envs; 
+      char **elts;
 
-    envs = c->argv[0];
-    elts = envs->elts;
-    for (i = 0; i < envs->nelts; i++) {
-      *((char **) push_array(accepted_envs)) = pstrdup(channel_pool, elts[i]);
+      pr_signals_handle();
+
+      envs = c->argv[0];
+      elts = envs->elts;
+      for (i = 0; i < envs->nelts; i++) {
+        *((char **) push_array(accepted_envs)) = pstrdup(channel_pool, elts[i]);
+      }
+
+      c = find_config_next(c, c->next, CONF_PARAM, "SFTPAcceptEnv", FALSE);
     }
-
+   
   } else {
     /* Allow the LANG environment variable by default. */
     *((char **) push_array(accepted_envs)) = pstrdup(channel_pool, "LANG");

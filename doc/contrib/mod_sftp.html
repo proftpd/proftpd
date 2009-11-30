@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.29 2009-11-19 23:09:41 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.30 2009-11-30 17:26:03 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -119,6 +119,7 @@ questions, concerns, or suggestions regarding this module.
 
 <h2>Directives</h2>
 <ul>
+  <li><a href="#SFTPAcceptEnv">SFTPAcceptEnv</a>
   <li><a href="#SFTPAuthMethods">SFTPAuthMethods</a>
   <li><a href="#SFTPAuthorizedHostKeys">SFTPAuthorizedHostKeys</a>
   <li><a href="#SFTPAuthorizedUserKeys">SFTPAuthorizedUserKeys</a>
@@ -141,6 +142,28 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#SFTPRekey">SFTPRekey</a>
   <li><a href="#SFTPTrafficPolicy">SFTPTrafficPolicy</a>
 </ul>
+
+<p>
+<hr>
+<h2><a name="SFTPAcceptEnv">SFTPAcceptEnv</a></h2>
+<strong>Syntax:</strong> SFTPAcceptEnv <em>env1 ...</em><br>
+<strong>Default:</strong> <em>LANG</em><br>
+<strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Gl
+obal&gt;<br>
+<strong>Module:</strong> mod_sftp<br>
+<strong>Compatibility:</strong> 1.3.3rc3 and later
+
+<p>
+The <code>SFTPAcceptEnv</code> directive specifies which environment variables
+sent by the client, if any, will be used in the session environment.
+Environment variables are specified by name, and may contain the '*' and '?'
+wildcard characters.  Multiple environment variables may be configured, either
+separated by whitespace or spread across multiple <code>SFTPAcceptEnv</code>
+directives.
+
+<p>
+Be warned that some environment variables may have special meaning to
+underlying libraries; care should be taken in the use of this directive.
 
 <p>
 <hr>
@@ -1440,7 +1463,7 @@ Thus the <code>ListOptions</code> directive is not honored by
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-11-19 23:09:41 $</i><br>
+Last Updated: <i>$Date: 2009-11-30 17:26:03 $</i><br>
 
 <br><hr>
 
