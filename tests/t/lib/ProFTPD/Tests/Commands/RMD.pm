@@ -272,7 +272,7 @@ sub rmd_fails_enoent {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "$sub_dir: Operation not permitted";
+      $expected = "$sub_dir: No such file or directory";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));

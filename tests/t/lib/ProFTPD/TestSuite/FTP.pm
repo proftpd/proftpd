@@ -10,8 +10,8 @@ my $conn_ex;
 
 sub new {
   my $class = shift;
-  my ($addr, $port, $use_pasv, $timeout) = @_;
-  $use_pasv = 0 unless defined($use_pasv);
+  my ($addr, $port, $use_port, $timeout) = @_;
+  $use_port = 0 unless defined($use_port);
   $timeout = 10 unless defined($timeout);
  
   my $ftp;
@@ -27,11 +27,11 @@ sub new {
       Port => $port,
   );
 
-  if ($use_pasv) {
-    $opts{Passive} = 1;
+  if ($use_port) {
+    $opts{Passive} = 0;
 
   } else {
-    $opts{Passive} = 0;
+    $opts{Passive} = 1;
   }
 
   if ($ENV{TEST_VERBOSE}) {
@@ -1554,6 +1554,32 @@ sub opts {
 
 sub get_connect_exception {
   return $conn_ex;
+}
+
+sub stat {
+  my $self = shift;
+  my $path = shift;
+  $path = '' unless defined($path);
+  my $code;
+
+  $code = $self->{ftp}->quot('STAT', $path);
+  unless ($code) {
+    croak("STAT command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("STAT command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
 }
 
 # From the FTP HOST command RFCXXXX (currently in Draft form)

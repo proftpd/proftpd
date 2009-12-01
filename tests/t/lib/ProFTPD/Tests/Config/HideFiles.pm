@@ -2635,8 +2635,8 @@ EOD
           $client->response_msg());
       }
 
-      my $buf;
-      my $tmp;
+      $tmp = $buf = '';
+
       while ($conn->read($tmp, 8192)) {
         $buf .= $tmp;
       }
