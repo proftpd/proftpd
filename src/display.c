@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.15 2009-07-22 21:37:42 castaglia Exp $
+ * $Id: display.c,v 1.16 2009-12-02 03:59:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -335,6 +335,16 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code) {
     }
 
     prev = pstrdup(p, outs);
+  }
+
+  /* Do we have any remaining lines to send? */
+  if (prev) {
+    if (MultilineRFC2228) {
+      pr_response_send_raw("%s-%s", code, prev);
+
+    } else {
+      pr_response_send_raw(" %s", prev);
+    }
   }
 
   if (first != NULL) {
