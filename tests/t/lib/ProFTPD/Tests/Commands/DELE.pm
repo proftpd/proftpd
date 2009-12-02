@@ -422,9 +422,8 @@ sub dele_fails_eperm {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "$test_file: Operation not permitted";
-      chomp($resp_msg);
-      $self->assert($expected eq $resp_msg,
+      $expected = "$test_file: (Operation not permitted|Permission denied)";
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
