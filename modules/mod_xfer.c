@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.265 2009-11-26 18:47:25 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.266 2009-12-02 04:45:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1546,7 +1546,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
 
     /* Make sure that the requested offset is valid (within the size of the
-     * file being resumed.
+     * file being resumed).
      */
     if (stor_fh &&
         session.restart_pos > st.st_size) {
@@ -1923,7 +1923,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (session.restart_pos) {
 
     /* Make sure that the requested offset is valid (within the size of the
-     * file being resumed.
+     * file being resumed).
      */
     if (session.restart_pos > st.st_size) {
       pr_response_add_err(R_554, _("%s: invalid REST argument"), cmd->arg);
