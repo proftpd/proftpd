@@ -470,7 +470,6 @@ sub ban_ifclass_engine_on {
 
     IfModules => {
       'mod_ban.c' => {
-        BanEngine => 'on',
         BanLog => $log_file,
 
         # This says to ban a client which exceeds the MaxLoginAttempts
@@ -520,6 +519,25 @@ EOI
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       my ($resp_code, $resp_msg);
+
+      eval { $client->login($user, 'foo') };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+
+      } else {
+        $resp_code = $client->response_code();
+        $resp_msg = $client->response_msg();
+      }
+
+      my $expected;
+
+      $expected = 530;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = "Login incorrect.";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
 
       eval { $client->login($user, 'foo') };
       unless ($@) {
