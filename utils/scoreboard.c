@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support (modified for use by external utilities).
  *
- * $Id: scoreboard.c,v 1.12 2009-02-18 21:33:17 castaglia Exp $
+ * $Id: scoreboard.c,v 1.13 2009-12-03 21:45:24 castaglia Exp $
  */
 
 #include "utils.h"
@@ -237,18 +237,22 @@ pr_scoreboard_entry_t *util_scoreboard_entry_read(void) {
 
   /* NOTE: use readv(2)? */
   errno = 0;
-  while (TRUE) {
+  while (scan_entry.sce_pid == 0) {
     while ((res = read(util_scoreboard_fd, &scan_entry,
         sizeof(scan_entry))) <= 0) {
-      if (res < 0 && errno == EINTR)
-        continue;
 
-      else {
+      if (res < 0 &&
+          errno == EINTR) {
+        continue;
+ 
+      } else {
         unlock_scoreboard();
 
-        if (errno)
+        if (errno) {
           fprintf(stdout, "error reading scoreboard entry: %s\n",
             strerror(errno));
+        }
+
         return NULL;
       }
     }
@@ -256,9 +260,7 @@ pr_scoreboard_entry_t *util_scoreboard_entry_read(void) {
     if (scan_entry.sce_pid) {
       unlock_scoreboard();
       return &scan_entry;
-
-    } else
-      continue;
+    }
   }
 
   unlock_scoreboard();
