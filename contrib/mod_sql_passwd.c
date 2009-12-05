@@ -21,14 +21,14 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.8 2009-11-05 17:46:54 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.9 2009-12-05 23:46:52 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.0"
+#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030302 
@@ -167,6 +167,16 @@ static modret_t *sql_passwd_sha1(cmd_rec *cmd, const char *plaintext,
   return sql_passwd_auth(cmd, plaintext, ciphertext, "sha1");
 }
 
+static modret_t *sql_passwd_sha256(cmd_rec *cmd, const char *plaintext,
+    const char *ciphertext) {
+  return sql_passwd_auth(cmd, plaintext, ciphertext, "sha256");
+}
+
+static modret_t *sql_passwd_sha512(cmd_rec *cmd, const char *plaintext,
+    const char *ciphertext) {
+  return sql_passwd_auth(cmd, plaintext, ciphertext, "sha512");
+}
+
 /* Event handlers
  */
 
@@ -175,6 +185,8 @@ static void sql_passwd_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_sql_passwd.c", (const char *) event_data) == 0) {
     sql_unregister_authtype("md5");
     sql_unregister_authtype("sha1");
+    sql_unregister_authtype("sha256");
+    sql_unregister_authtype("sha512");
 
     pr_event_unregister(&sql_passwd_module, NULL, NULL);
   }
@@ -259,18 +271,39 @@ static int sql_passwd_init(void) {
   if (sql_register_authtype("md5", sql_passwd_md5) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_SQL_PASSWD_VERSION
       ": unable to register 'md5' SQLAuthType handler: %s", strerror(errno));
-  }
 
-  pr_log_debug(DEBUG6, MOD_SQL_PASSWD_VERSION
-    ": registered 'md5' SQLAuthType handler");
+  } else {
+    pr_log_debug(DEBUG6, MOD_SQL_PASSWD_VERSION
+      ": registered 'md5' SQLAuthType handler");
+  }
 
   if (sql_register_authtype("sha1", sql_passwd_sha1) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_SQL_PASSWD_VERSION
       ": unable to register 'sha1' SQLAuthType handler: %s", strerror(errno));
+
+  } else {
+    pr_log_debug(DEBUG6, MOD_SQL_PASSWD_VERSION
+      ": registered 'sha1' SQLAuthType handler");
   }
 
-  pr_log_debug(DEBUG6, MOD_SQL_PASSWD_VERSION
-    ": registered 'sha1' SQLAuthType handler");
+  if (sql_register_authtype("sha256", sql_passwd_sha256) < 0) {
+    pr_log_pri(PR_LOG_WARNING, MOD_SQL_PASSWD_VERSION
+      ": unable to register 'sha256' SQLAuthType handler: %s", strerror(errno));
+
+  } else {
+    pr_log_debug(DEBUG6, MOD_SQL_PASSWD_VERSION
+      ": registered 'sha256' SQLAuthType handler");
+  }
+
+  if (sql_register_authtype("sha512", sql_passwd_sha512) < 0) {
+    pr_log_pri(PR_LOG_WARNING, MOD_SQL_PASSWD_VERSION
+      ": unable to register 'sha512' SQLAuthType handler: %s", strerror(errno));
+
+  } else {
+    pr_log_debug(DEBUG6, MOD_SQL_PASSWD_VERSION
+      ": registered 'sha512' SQLAuthType handler");
+  }
+
   return 0;
 }
 
