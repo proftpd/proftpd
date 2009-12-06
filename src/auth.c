@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.78 2009-10-28 21:48:41 castaglia Exp $
+ * $Id: auth.c,v 1.79 2009-12-06 17:08:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -514,6 +514,9 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
 
   uidcache_add(res->pw_uid, name);
 
+  /* Get the (possibly rewritten) home directory. */
+  res->pw_dir = pr_auth_get_home(p, res->pw_dir);
+
   pr_log_debug(DEBUG10, "retrieved UID %lu for user '%s'",
     (unsigned long) res->pw_uid, name);
   return res;
@@ -551,6 +554,9 @@ struct passwd *pr_auth_getpwuid(pool *p, uid_t uid) {
     pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
+
+  /* Get the (possibly rewritten) home directory. */
+  res->pw_dir = pr_auth_get_home(p, res->pw_dir);
 
   pr_log_debug(DEBUG10, "retrieved user '%s' for UID %lu",
     res->pw_name, (unsigned long) uid);
@@ -1620,6 +1626,7 @@ char *pr_auth_get_home(pool *p, char *pw_dir) {
    * in the rewriting of the home directory can also do so.
    */
 
+  (void) pr_table_remove(session.notes, "mod_auth.home-dir", NULL);
   if (pr_table_add(session.notes, "mod_auth.home-dir",
       pstrdup(p, pw_dir), 0) < 0) {
     pr_trace_msg(trace_channel, 3,

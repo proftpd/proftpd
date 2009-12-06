@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.270 2009-11-22 21:44:20 castaglia Exp $
+ * $Id: mod_auth.c,v 1.271 2009-12-06 17:08:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -560,6 +560,8 @@ static char *get_default_root(pool *p) {
   c = find_config(main_server->conf, CONF_PARAM, "DefaultRoot", FALSE);
 
   while (c) {
+    pr_signals_handle();
+
     /* Check the groups acl */
     if (c->argc < 2) {
       dir = c->argv[0];
@@ -573,37 +575,36 @@ static char *get_default_root(pool *p) {
       break;
     }
 
-    c = find_config_next(c,c->next, CONF_PARAM, "DefaultRoot", FALSE);
+    c = find_config_next(c, c->next, CONF_PARAM, "DefaultRoot", FALSE);
   }
 
   if (dir) {
-
     /* Check for any expandable variables. */
     dir = path_subst_uservar(p, &dir);
 
-    if (strcmp(dir, "/") == 0)
+    if (strcmp(dir, "/") == 0) {
       dir = NULL;
 
-    else {
+    } else {
       char *realdir;
       int xerrno = 0;
 
       /* We need to be the final user here so that if the user has their home
-       * directory with a mode the user proftpd is running (ie the User
+       * directory with a mode the user proftpd is running (i.e. the User
        * directive) as can not traverse down, we can still have the default
        * root.
        */
 
       PRIVS_USER
       realdir = dir_realpath(p, dir);
-      if (!realdir)
+      if (realdir == NULL)
         xerrno = errno;
       PRIVS_RELINQUISH
 
-      if (realdir)
+      if (realdir) {
         dir = realdir;
 
-      else {
+      } else {
         /* Try to provide a more informative message. */
         char interp_dir[PR_TUNABLE_PATH_MAX + 1];
 
@@ -623,15 +624,15 @@ static char *get_default_root(pool *p) {
 static struct passwd *passwd_dup(pool *p, struct passwd *pw) {
   struct passwd *npw;
 
-  npw = pcalloc(p,sizeof(struct passwd));
+  npw = pcalloc(p, sizeof(struct passwd));
 
-  npw->pw_name = pstrdup(p,pw->pw_name);
-  npw->pw_passwd = pstrdup(p,pw->pw_passwd);
+  npw->pw_name = pstrdup(p, pw->pw_name);
+  npw->pw_passwd = pstrdup(p, pw->pw_passwd);
   npw->pw_uid = pw->pw_uid;
   npw->pw_gid = pw->pw_gid;
-  npw->pw_gecos = pstrdup(p,pw->pw_gecos);
-  npw->pw_dir = pstrdup(p,pw->pw_dir);
-  npw->pw_shell = pstrdup(p,pw->pw_shell);
+  npw->pw_gecos = pstrdup(p, pw->pw_gecos);
+  npw->pw_dir = pstrdup(p, pw->pw_dir);
+  npw->pw_shell = pstrdup(p, pw->pw_shell);
 
   return npw;
 }
@@ -717,8 +718,6 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   /* Set the login_uid and login_uid */
   session.login_uid = pw->pw_uid;
   session.login_gid = pw->pw_gid;
-
-  pw->pw_dir = pr_auth_get_home(p, pw->pw_dir);
 
   /* Check for any expandable variables in session.cwd. */
   pw->pw_dir = path_subst_uservar(p, &pw->pw_dir);
