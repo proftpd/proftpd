@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.79 2009-12-06 17:08:06 castaglia Exp $
+ * $Id: auth.c,v 1.80 2009-12-06 17:19:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -554,9 +554,6 @@ struct passwd *pr_auth_getpwuid(pool *p, uid_t uid) {
     pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
-
-  /* Get the (possibly rewritten) home directory. */
-  res->pw_dir = pr_auth_get_home(p, res->pw_dir);
 
   pr_log_debug(DEBUG10, "retrieved user '%s' for UID %lu",
     res->pw_name, (unsigned long) uid);
