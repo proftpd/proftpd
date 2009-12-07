@@ -11,7 +11,7 @@ ChangeLog files.
 
   + Added Taiwan translation.
 
-  + Added support in mod_sftp for the following SFTP extentions:
+  + Added support in mod_sftp for the following SFTP extensions:
 
       check-file
       copy-file
@@ -32,12 +32,19 @@ ChangeLog files.
     mitigation approaches: the server now refuses all client-initiated
     SSL/TLS session renegotiations.
 
+  + Updated to the bundled libtool to 2.2.4 (plus patch) to deal with a
+    libtool vulnerability (CVE-2009-3736).
+
   + Added support for SHA256 and SHA512 passwords to the mod_sql_passwd
     module.
 
   + New configuration directives
 
     SFTPExtensions
+
+      The SFTPExtensions directive can be used to selectively enable/disable
+      mod_sftp's support for specific SFTP extensions.  See
+      doc/contrib/mod_sftp.html#SFTPExtensions for more details.
 
   + Changed configuration directives
 
@@ -474,4 +481,4 @@ ChangeLog files.
         this will probably not apply to most modules.
 
  
-Last Updated: $Date: 2009-12-05 23:46:52 $
+Last Updated: $Date: 2009-12-07 16:44:34 $
