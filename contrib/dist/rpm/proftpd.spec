@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.69 2009-10-20 21:13:00 castaglia Exp $
+# $Id: proftpd.spec,v 1.70 2009-12-07 16:20:22 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -179,7 +179,7 @@ Requires:	proftpd, mysql, krb5-libs
 BuildRequires:	mysql-devel, krb5-devel
 
 %description mysql
-This optional package contains the modules using Postgres.
+This optional package contains the modules using MySQL.
 
 %package postgres
 Summary:	ProFTPD -- Modules relying on Postgres.
@@ -188,7 +188,7 @@ Requires:	proftpd, postgresql, krb5-libs, openssl
 BuildRequires:	postgresql-devel, krb5-devel, openssl-devel
 
 %description postgres
-This optional package contains the modules using SQL.
+This optional package contains the modules using Postgres.
 
 %package wrap
 Summary:	ProFTPD -- Modules relying on TCP Wrappers.
@@ -197,7 +197,7 @@ Requires:	proftpd, tcp_wrappers
 BuildRequires:	tcp_wrappers
 
 %description wrap
-This optional package contains the modules using SQL.
+This optional package contains the modules using tcpwrappers/libwrap.
 
 %package devel
 Summary:	ProFTPD -- Header files for developers.
