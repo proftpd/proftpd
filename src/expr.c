@@ -23,7 +23,7 @@
  */
 
 /* Expression API implementation
- * $Id: expr.c,v 1.3 2009-12-09 23:41:11 castaglia Exp $
+ * $Id: expr.c,v 1.4 2009-12-09 23:45:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -220,10 +220,12 @@ int pr_expr_eval_group_or(char **expr) {
       found = !found;
 
     } else if (session.groups) {
-      register int i = 0;
+      register unsigned int i = 0;
+      char **elts = session.groups->elts;
 
-      for (i = session.groups->nelts-1; i >= 0; i--) {
-        if (strcmp(*(((char **) session.groups->elts) + i), grp) == 0) {
+      for (i = 0; i < session.groups->nelts; i++) {
+        if (elts[i] != NULL &&
+            strcmp(elts[i], grp) == 0) {
           found = !found;
           break;
         }
