@@ -2723,8 +2723,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = (void *) ssl;
   }
 
-#if OPENSSL_VERSION_NUMBER >= 0x009080cfL
-  /* In OpenSSL-0.9.8l and later, SSL session renegotiations are automatically
+#if OPENSSL_VERSION_NUMBER == 0x009080cfL
+  /* In OpenSSL-0.9.8l, SSL session renegotiations are automatically
    * disabled.  Thus if the admin explicitly configured support for
    * client-initiated renegotations via the AllowClientRenegotiations
    * TLSOption, then we need to do some hackery to enable renegotiations.
@@ -7128,6 +7128,21 @@ static int tls_sess_init(void) {
   opts = get_param_ptr(main_server->conf, "TLSOptions", FALSE);
   if (opts != NULL)
     tls_opts = *opts;
+
+#if OPENSSL_VERSION_NUMBER > 0x009080cfL
+  /* The OpenSSL team realized that the flag added in 0.9.8l, the
+   * SSL3_FLAGS_ALLOW_UNSAFE_LEGACY_RENEGOTIATION flag, was a bad idea.
+   * So in later versions, it was changed to a context flag,
+   * SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION.
+   */
+  if (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) {
+    int ssl_opts;
+
+    ssl_opts = SSL_CTX_get_options(ssl_ctx);
+    ssl_opts |= SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION;
+    SSL_CTX_set_options(ssl_ctx, ssl_opts);
+  }
+#endif
 
   tmp = get_param_ptr(main_server->conf, "TLSVerifyClient", FALSE);
   if (tmp!= NULL &&
