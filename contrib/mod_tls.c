@@ -574,7 +574,8 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
     } else if (ssl_state & SSL_ST_RENEGOTIATE) {
       if (!tls_need_init_handshake) {
 
-        if (!(tls_flags & TLS_SESS_CTRL_RENEGOTIATING) &&
+        if (ssl == ctrl_ssl &&
+            !(tls_flags & TLS_SESS_CTRL_RENEGOTIATING) &&
             !(tls_flags & TLS_SESS_DATA_RENEGOTIATING)) {
 
           /* In OpenSSL-0.9.8l and later, SSL session renegotiations are
@@ -3711,7 +3712,7 @@ static void tls_setup_environ(SSL *ssl) {
     }
 
     /* Process the SSL cipher-related environ variables. */
-    cipher = SSL_get_current_cipher(ssl);
+    cipher = (SSL_CIPHER *) SSL_get_current_cipher(ssl);
     if (cipher) {
       char buf[10] = {'\0'};
       int cipher_bits_used = 0, cipher_bits_possible = 0;
