@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.271 2009-12-06 17:08:06 castaglia Exp $
+ * $Id: mod_auth.c,v 1.272 2009-12-10 17:45:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1206,24 +1206,19 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
    * sigh.
    */
 
-#ifndef __hpux
-  pr_signals_block();
-
   PRIVS_ROOT
 
-# ifndef PR_DEVEL_COREDUMP
-  setuid(PR_ROOT_UID);
-  setgid(PR_ROOT_GID);
-# endif /* PR_DEVEL_COREDUMP */
+#ifndef PR_DEVEL_COREDUMP
+# ifdef __hpux
+    setresuid(0, 0, 0);
+    setresgid(0, 0, 0);
+# else
+    setuid(PR_ROOT_UID);
+    setgid(PR_ROOT_GID);
+# endif /* __hpux */
+#endif /* PR_DEVEL_COREDUMP */
 
   PRIVS_SETUP(pw->pw_uid, pw->pw_gid)
-
-  pr_signals_unblock();
-#else
-  session.uid = session.ouid = pw->pw_uid;
-  session.gid = pw->pw_gid;
-  PRIVS_RELINQUISH
-#endif /* __hpux */
 
 #ifdef HAVE_GETEUID
   if (getegid() != pw->pw_gid ||
