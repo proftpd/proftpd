@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.21 2009-11-04 18:01:33 castaglia Exp $
+ * $Id: auth.c,v 1.22 2009-12-10 18:24:42 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -815,7 +815,17 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   /* Dispatch these as a PRE_CMDs, so that mod_delay's tactics can be used
    * to ameliorate any timing-based attacks.
    */
-  pr_cmd_dispatch_phase(user_cmd, PRE_CMD, 0);
+  if (pr_cmd_dispatch_phase(user_cmd, PRE_CMD, 0) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "authentication request for user '%s' blocked by '%s' handler",
+      orig_user, user_cmd->argv[0]);
+
+    pr_cmd_dispatch_phase(user_cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(user_cmd, LOG_CMD_ERR, 0);
+
+    return -1;
+  }
+
   if (strcmp(orig_user, user_cmd->arg) == 0) {
     user = orig_user;
 
@@ -895,7 +905,16 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   set_userauth_methods();
 
-  pr_cmd_dispatch_phase(pass_cmd, PRE_CMD, 0);
+  if (pr_cmd_dispatch_phase(pass_cmd, PRE_CMD, 0) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "authentication request for user '%s' blocked by '%s' handler",
+      orig_user, pass_cmd->argv[0]);
+
+    pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+
+    return -1;
+  }
 
   if (strcmp(method, "none") == 0) {
     /* If the client requested the "none" auth method at this point, then
