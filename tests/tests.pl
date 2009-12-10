@@ -91,6 +91,7 @@ if (scalar(@ARGV) > 0) {
     t/config/accessgrantmsg.t
     t/config/allowoverwrite.t
     t/config/authaliasonly.t
+    t/config/authgroupfile.t
     t/config/authusingalias.t
     t/config/classes.t
     t/config/createhome.t

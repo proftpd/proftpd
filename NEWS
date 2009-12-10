@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1108 2009-12-10 15:53:26 castaglia Exp $
+$Id: NEWS,v 1.1109 2009-12-10 17:40:01 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -58,6 +58,7 @@ CVS
   chrooted sessions.
 - Bug 3349 - SSL_SESSION_cmp not available in OpenSSL 1.0.0 betas.
 - Bug 3350 - Segfault caused by scrubbing zero-length portion of memory.
+- Bug 3347 - mod_auth_file handles 'getgroups' request incorrectly.
 
 1.3.3rc2 - Released 20-Oct-2009
 --------------------------------
