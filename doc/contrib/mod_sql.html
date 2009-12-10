@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.21 2009-11-13 18:59:38 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.22 2009-12-10 22:49:10 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -1236,7 +1236,7 @@ same information as above, only this query is given a <i>UID</i> instead of
 a user name.  For example:
 <pre>
   SQLNamedQuery get-user-by-name SELECT "userid, passwd, uid, gid, homedir, shell FROM ftpusers WHERE userid = '%U'"
-  SQLNamedQuery get-user-by-name SELECT "userid, passwd, uid, gid, homedir, shell FROM ftpusers WHERE uid = %{0}"
+  SQLNamedQuery get-user-by-id SELECT "userid, passwd, uid, gid, homedir, shell FROM ftpusers WHERE uid = %{0}"
 
   SQLUserInfo custom:/get-user-by-name/get-user-by-id
 </pre>
@@ -1343,7 +1343,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-11-13 18:59:38 $</i><br>
+Last Updated: <i>$Date: 2009-12-10 22:49:10 $</i><br>
 
 <br><hr>
 
