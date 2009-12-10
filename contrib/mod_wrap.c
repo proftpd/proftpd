@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.22 2009-11-13 17:20:57 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.23 2009-12-10 17:59:14 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.3"
@@ -1004,5 +1004,8 @@ module wrap_module = {
   NULL,
 
   /* Session initialization */
-  wrap_sess_init
+  wrap_sess_init,
+
+  /* Module version */
+  MOD_WRAP_VERSION
 };
