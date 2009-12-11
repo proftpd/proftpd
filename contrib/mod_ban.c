@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.30 2009-10-02 23:38:57 castaglia Exp $
+ * $Id: mod_ban.c,v 1.31 2009-12-11 23:03:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -298,11 +298,12 @@ static int ban_lock_shm(int flags) {
   }
 
   if ((flags & LOCK_SH) ||
-      (flags & LOCK_EX))
+      (flags & LOCK_EX)) {
     ban_nlocks++;
 
-  else if (flags & LOCK_UN)
+  } else if (flags & LOCK_UN) {
     ban_nlocks--;
+  }
 
   return 0;
 #endif /* HAVE_FLOCK */
@@ -1030,7 +1031,6 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     }
 
     ban_lock_shm(LOCK_UN);
-    return 0;
 
   /* Handle 'ban host' requests */
   } else if (strcmp(reqargv[0], "host") == 0) {
@@ -1079,7 +1079,6 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     }
 
     ban_lock_shm(LOCK_UN);
-    return 0;
 
   /* Handle 'ban class' requests */
   } else if (strcmp(reqargv[0], "class") == 0) {
@@ -1118,7 +1117,6 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     }
 
     ban_lock_shm(LOCK_UN);
-    return 0;
 
   /* Handle 'ban info' requests */
   } else if (strcmp(reqargv[0], "info") == 0) {
@@ -1321,7 +1319,6 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     }
 
     ban_lock_shm(LOCK_UN);
-    return 0;
 
   } else {
     pr_ctrls_add_response(ctrl, "unknown ban type requested: '%s'",
@@ -1390,7 +1387,6 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     }
 
     ban_lock_shm(LOCK_UN);
-    return 0;
 
   /* Handle 'permit host' requests */
   } else if (strcmp(reqargv[0], "host") == 0) {
@@ -1436,7 +1432,6 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     }
 
     ban_lock_shm(LOCK_UN);
-    return 0;
 
   /* Handle 'permit class' requests */
   } else if (strcmp(reqargv[0], "class") == 0) {
@@ -1473,7 +1468,6 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     }
 
     ban_lock_shm(LOCK_UN);
-    return 0;
  
   } else {
     pr_ctrls_add_response(ctrl, "unknown ban type requested: '%s'",
@@ -1548,7 +1542,8 @@ MODRET set_banctrlsacls(cmd_rec *cmd) {
 
 /* usage: BanEngine on|off */
 MODRET set_banengine(cmd_rec *cmd) {
-  int bool = -1;
+  int bool = -1, ctxt_type;
+  config_rec *c;
 
   CHECK_ARGS(cmd, 1);
 
@@ -1556,26 +1551,23 @@ MODRET set_banengine(cmd_rec *cmd) {
   if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
-  if (ban_engine == -1) {
-    CHECK_CONF(cmd, CONF_ROOT);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-    /* If ban_engine has not been initialized yet, we can do it here. */
-    ban_engine = bool;
+  ctxt_type = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+     cmd->config->config_type : cmd->server->config_type ?
+     cmd->server->config_type : CONF_ROOT);
 
-  } else {
-    config_rec *c;
-
-    CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-    /* If we're here, then ban_engine has been initialized.  This probably
-     * means we're being called by mod_ifsession, in which case we will
-     * stash the BanEngine value in a config_rec.
+  if (ban_engine == -1 &&
+      ctxt_type == CONF_ROOT) {
+    /* If ban_engine has not been initialized yet, and this is the
+     * "server config" section, we can do it here.
      */
-
-    c = add_config_param(cmd->argv[0], 1, NULL);
-    c->argv[0] = palloc(c->pool, sizeof(int));
-    *((int *) c->argv[0]) = bool;
+    ban_engine = bool;
   }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = bool;
 
   return PR_HANDLED(cmd);
 }
@@ -2277,8 +2269,10 @@ static int ban_sess_init(void) {
   if (c) {
     int use_bans = *((int *) c->argv[0]);
 
-    if (!use_bans)
+    if (!use_bans) {
+      ban_engine = FALSE;
       return 0;
+    }
   }
 
   tmp_pool = make_sub_pool(ban_pool);
