@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2008 The ProFTPD Project team
+ * Copyright (c) 2004-2009 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.14 2008-12-21 00:55:26 castaglia Exp $
+ * $Id: table.c,v 1.15 2009-12-11 23:09:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1003,10 +1003,8 @@ int pr_table_ctl(pr_table_t *tab, int cmd, void *arg) {
 
     default:
       errno = EINVAL;
-      return -1;
   }
 
-  errno = EACCES;
   return -1;
 }
 
