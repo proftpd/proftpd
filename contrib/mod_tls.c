@@ -2606,7 +2606,7 @@ static int tls_get_block(conn_t *conn) {
 }
 
 static int tls_accept(conn_t *conn, unsigned char on_data) {
-  int blocking, res = 0;
+  int blocking, res = 0, xerrno = 0;
   char *subj = NULL;
   static unsigned char logged_data = FALSE;
   SSL *ssl = NULL;
@@ -2644,6 +2644,9 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   retry:
   pr_signals_handle();
   res = SSL_accept(ssl);
+  if (res == -1) {
+    xerrno = errno;
+  }
 
   if (blocking) {
     /* Return the connection to blocking mode. */
@@ -2694,17 +2697,19 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
           } else if (res == -1) {
             /* Check errno */
-            tls_log("%s: %s", msg, strerror(errno));
+            tls_log("%s: system call error: [%d] %s", msg, xerrno,
+              strerror(xerrno));
           }
 
-        } else
-          tls_log("%s: %s", msg, tls_get_errors());
+        } else {
+          tls_log("%s: system call error: %s", msg, tls_get_errors());
+        }
 
         break;
       }
 
       case SSL_ERROR_SSL:
-        tls_log("%s: %s", msg, tls_get_errors());
+        tls_log("%s: protocol error: %s", msg, tls_get_errors());
         break;
     }
 
