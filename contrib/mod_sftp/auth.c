@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.22 2009-12-10 18:24:42 castaglia Exp $
+ * $Id: auth.c,v 1.23 2009-12-12 00:47:39 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -794,6 +794,23 @@ static int send_userauth_methods(void) {
   return 0;
 }
 
+static void incr_auth_attempts(const char *user) {
+  auth_attempts++;
+
+  if (auth_attempts >= auth_attempts_max) {
+    pr_log_auth(PR_LOG_NOTICE,
+      "Maximum login attempts (%u) exceeded, connection refused",
+      auth_attempts_max);
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "Maximum login attempts (%u) exceeded, refusing connection for user '%s'",
+      auth_attempts_max, user);
+    pr_event_generate("mod_auth.max-login-attempts", session.c);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  return;
+}
+
 /* Return -1 on error, 0 to continue, and 1 if the authentication succeeded. */
 static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   char *buf, *orig_user, *user, *method;
@@ -943,7 +960,6 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
-      auth_attempts++;
 
       if (send_userauth_methods() < 0) {
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
@@ -958,6 +974,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
       pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
+      incr_auth_attempts(user);
       return 0;
     }
 
@@ -968,7 +985,6 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
-      auth_attempts++;
 
       if (send_userauth_methods() < 0) {
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
@@ -983,6 +999,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
       pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
+      incr_auth_attempts(user);
       return 0;
     }
 
@@ -993,7 +1010,6 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
-      auth_attempts++;
 
       if (send_userauth_methods() < 0) {
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
@@ -1008,6 +1024,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
       pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
+      incr_auth_attempts(user);
       return 0;
     }
 
@@ -1018,7 +1035,6 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
-      auth_attempts++;
 
       if (send_userauth_methods() < 0) {
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
@@ -1033,12 +1049,11 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
       pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
+      incr_auth_attempts(user);
       return 0;
     }
 
   } else {
-    auth_attempts++;
-
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
@@ -1053,8 +1068,6 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   if (res <= 0) {
     int xerrno = errno;
 
-    auth_attempts++;
-
     pr_cmd_dispatch_phase(cmd, res == 0 ? POST_CMD : POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
@@ -1066,12 +1079,20 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       }
     }
 
+    if (res < 0) {
+      incr_auth_attempts(user);
+    }
+
     return res;
   }
 
-  if (setup_env(pkt->pool, user) < 0) {
-    auth_attempts++;
+  /* Past this point we will not call incr_auth_attempts(); the client has
+   * successfully authenticated at this point, and should not be penalized
+   * if an internal error causes the rest of the login process to fail.
+   * Right?
+   */
 
+  if (setup_env(pkt->pool, user) < 0) {
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
