@@ -26,7 +26,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.37 2009-10-04 19:52:54 castaglia Exp $
+ * $Id: ftptop.c,v 1.38 2009-12-13 20:17:30 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.9"
@@ -703,11 +703,13 @@ int main(int argc, char *argv[]) {
 #endif
 
     if (c != -1) {
-      if (tolower(c) == 'q')
-        finish(0);
+      if (tolower(c) == 'q') {
+        break;
+      }
 
-      if (tolower(c) == 't')
+      if (tolower(c) == 't') {
         toggle_mode();
+      }
     }
 
     show_sessions();
@@ -715,6 +717,7 @@ int main(int argc, char *argv[]) {
 
   /* done */
   finish(0);
+  return 0;
 }
 
 #else /* defined(HAVE_CURSES) || defined(HAVE_NCURSES) */
