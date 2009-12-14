@@ -2538,6 +2538,26 @@ static int tls_init_server(void) {
 
   PRIVS_RELINQUISH
 
+  /* Log a warning if the server was badly misconfigured, and has no server
+   * certs at all.  The client will probably see this situation as something
+   * like:
+   *
+   *  error:14094410:SSL routines:SSL3_READ_BYTES:sslv3 alert handshake failure
+   *
+   * And the TLSLog will show the error as:
+   *
+   *  error:1408A0C1:SSL routines:SSL3_GET_CLIENT_HELLO:no shared cipher
+   */
+  if (tls_rsa_cert_file == NULL &&
+      tls_dsa_cert_file == NULL &&
+      tls_pkcs12_file == NULL) {
+    tls_log("no TLSRSACertificateFile, TLSDSACertificateFile, or TLSPKCS12File "
+      "configured; unable to handle SSL/TLS connections");
+    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+      ": no TLSRSACertificateFile, TLSDSACertificateFile, or TLSPKCS12File "
+      "configured; unable to handle SSL/TLS connections");
+  }
+
   /* Set up the CRL. */
   if (tls_crl_file || tls_crl_path) {
     tls_crl_store = X509_STORE_new();
@@ -7198,21 +7218,23 @@ static int tls_sess_init(void) {
   /* Open the TLSLog, if configured */
   res = tls_openlog();
   if (res < 0) {
-    if (res == -1)
+    if (res == -1) {
       pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
         ": notice: unable to open TLSLog: %s", strerror(errno));
 
-    else if (res == PR_LOG_WRITABLE_DIR)
+    } else if (res == PR_LOG_WRITABLE_DIR) {
       pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
         ": notice: unable to open TLSLog: parent directory is world writable");
 
-    else if (res == PR_LOG_SYMLINK)
+    } else if (res == PR_LOG_SYMLINK) {
       pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
         ": notice: unable to open TLSLog: cannot log to a symbolic link");
+    }
   }
 
   /* If UseReverseDNS is set to off, disable TLS_OPT_VERIFY_CERT_FQDN. */
-  if ((tls_opts & TLS_OPT_VERIFY_CERT_FQDN) && !ServerUseReverseDNS) {
+  if ((tls_opts & TLS_OPT_VERIFY_CERT_FQDN) &&
+      !ServerUseReverseDNS) {
     tls_opts &= ~TLS_OPT_VERIFY_CERT_FQDN;
     tls_log("%s", "reverse DNS off, disabling TLSOption dNSNameRequired");
   }
