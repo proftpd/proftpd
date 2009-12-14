@@ -1,4 +1,4 @@
-<!-- $Id: mod_wrap.html,v 1.2 2009-03-29 00:39:58 castaglia Exp $ -->
+<!-- $Id: mod_wrap.html,v 1.3 2009-12-14 21:29:35 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_wrap.html,v $ -->
 
 <html>
@@ -262,14 +262,16 @@ in <code>mod_wrap</code>.
 
 <p>
 Users who encounter this issue will usually find log messages that look
-like the following in their syslog:
+like the any/all of the following in their syslog:
 <pre>
   proftpd: warning: can't verify hostname: gethostbyname(<i>dns-name</i>) failed
+  proftpd: warning: can't verify hostname: getaddrinfo(anothername.net, AF_INET) failed
+  proftpd: warning: host name/name mismatch: somedomain.com != vs-23.somename.com
 </pre>
-This log message does <b>not</b>, in fact, come from <code>proftpd</code>.
-Instead, it comes from the <code>libwrap</code> library, which is used by
+These log messages do <b>not</b>, in fact, come from <code>proftpd</code>.
+Instead, they come from the <code>libwrap</code> library, which is used by
 the <code>mod_wrap</code> module.  In particular, the <code>libwrap</code>
-library emits this log message when it has been compiled with the
+library emits these log messages when it has been compiled with the
 <code>-DPARANOID</code> compile-time option (and most installations of the
 <code>libwrap</code> library are compiled this way).
 
@@ -319,7 +321,7 @@ proftpd:
 <p>
 <hr>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-03-29 00:39:58 $</i><br>
+Last Updated: <i>$Date: 2009-12-14 21:29:35 $</i><br>
 
 <br><hr>
 
