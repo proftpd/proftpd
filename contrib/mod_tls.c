@@ -1935,8 +1935,9 @@ static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
 static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
   FILE *fp = NULL;
 
-  if (tls_tmp_dh)
+  if (tls_tmp_dh) {
     return tls_tmp_dh;
+  }
 
   if (tls_dhparam_file) {
     fp = fopen(tls_dhparam_file, "r");
@@ -1944,36 +1945,46 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
       tls_tmp_dh = PEM_read_DHparams(fp, NULL, NULL, NULL);
       fclose(fp);
 
-      if (tls_tmp_dh)
+      if (tls_tmp_dh) {
         return tls_tmp_dh;
+      }
 
-    } else
+    } else {
       pr_log_debug(DEBUG3, MOD_TLS_VERSION
         ": unable to open TLSDHParamFile '%s': %s", tls_dhparam_file,
           strerror(errno));
+    }
   }
 
   switch (keylength) {
     case 512:
-      return (tls_tmp_dh = get_dh512());
+      tls_tmp_dh = get_dh512();
+      break;
 
     case 768:
-      return (tls_tmp_dh = get_dh768());
+      tls_tmp_dh = get_dh768();
+      break;
 
      case 1024:
-       return (tls_tmp_dh = get_dh1024());
+       tls_tmp_dh = get_dh1024();
+       break;
 
      case 1536:
-       return (tls_tmp_dh = get_dh1536());
+       tls_tmp_dh = get_dh1536();
+       break;
 
      case 2048:
-       return (tls_tmp_dh = get_dh2048());
+       tls_tmp_dh = get_dh2048();
+       break;
 
      default:
-       return (tls_tmp_dh = get_dh1024());
+       tls_log("unsupported DH key length %d requested, returning 1024 bits",
+         keylength);
+       tls_tmp_dh = get_dh1024();
+       break;
   }
 
-  return NULL;
+  return tls_tmp_dh;
 }
 
 /* Post 0.9.7a, RSA blinding is turned on by default, so there is no need to
@@ -3934,7 +3945,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   X509_CRL *crl = NULL;
   X509_STORE_CTX store_ctx;
   int n, rc;
-  register unsigned int i = 0;
+  register int i = 0;
 
   /* Unless a revocation store for CRLs was created we cannot do any
    * CRL-based verification, of course.
