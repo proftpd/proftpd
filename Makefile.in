@@ -25,7 +25,7 @@ BUILD_BIN=proftpd$(EXEEXT) ftpcount$(EXEEXT) ftpdctl$(EXEEXT) ftpscrub$(EXEEXT) 
 all: $(BUILD_BIN)
 
 include/buildstamp.h:
-	echo \#define BUILD_STAMP \"`date`\" >include/buildstamp.h
+	echo \#define BUILD_STAMP \"`date +"%a %b %e %Y %H:%M:%S %Z"`\" > include/buildstamp.h
 
 dummy:
 
