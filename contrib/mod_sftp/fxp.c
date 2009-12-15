@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.81 2009-11-26 19:18:34 castaglia Exp $
+ * $Id: fxp.c,v 1.82 2009-12-15 22:31:36 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3689,7 +3689,7 @@ static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
-  uint64_t fs_flags = 0;
+  uint64_t fs_id = 0, fs_flags = 0;
 
 # if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && \
    defined(SOLARIS2) && !defined(SOLARIS2_5_1) && !defined(SOLARIS2_6) && \
@@ -3743,7 +3743,24 @@ static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
   fxp_msg_write_long(&buf, &buflen, fs.f_files);
   fxp_msg_write_long(&buf, &buflen, fs.f_ffree);
   fxp_msg_write_long(&buf, &buflen, fs.f_favail);
-  fxp_msg_write_long(&buf, &buflen, fs.f_fsid);
+
+  /* AIX requires this machination because a) its statvfs struct has
+   * non-standard data types for the fsid value:
+   *
+   *  https://lists.dulug.duke.edu/pipermail/rpm-devel/2006-July/001236.html
+   *  https://lists.dulug.duke.edu/pipermail/rpm-devel/2006-July/001264.html
+   *  https://lists.dulug.duke.edu/pipermail/rpm-devel/2006-July/001265.html
+   *  https://lists.dulug.duke.edu/pipermail/rpm-devel/2006-July/001268.html
+   *
+   * and b) it does not really matter what value is written; the client is
+   * not going to be able to do much with this value anyway.  From that
+   * perspective, I'm not sure why the OpenSSH extension even includes the
+   * value in the response (*shrug*).
+   */
+#if !defined(AIX4) && !defined(AIX5)
+  memcpy(&fs_id, &(fs.f_fsid), sizeof(fs_id));
+#endif
+  fxp_msg_write_long(&buf, &buflen, fs_id);
 
   /* These flags and values are defined by OpenSSH's PROTOCOL document.
    *
