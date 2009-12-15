@@ -7335,8 +7335,8 @@ static int tls_sess_init(void) {
     tls_log("%s",
       "TLSOption EnableDiags enabled, setting diagnostics callback");
     SSL_CTX_set_msg_callback(ssl_ctx, tls_msg_cb);
-#endif
   }
+#endif
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   /* Handle any requested crypto accelerators/drivers. */
