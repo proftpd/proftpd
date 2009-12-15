@@ -26,7 +26,7 @@
  * This is mod_shaper, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_shaper.c,v 1.3 2009-12-15 00:37:20 castaglia Exp $
+ * $Id: mod_shaper.c,v 1.4 2009-12-15 01:13:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -212,8 +212,10 @@ static int shaper_msg_recv(void) {
     sizeof(long double);
 
   msg = malloc(sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
-  if (!msg)
+  if (msg == NULL) {
+    pr_log_pri(PR_LOG_CRIT, "Out of memory!");
     end_login(1);
+  }
 
   msglen = msgrcv(shaper_qid, msg, msgsz, getpid(), IPC_NOWAIT|MSG_NOERROR);
   while (msglen > 0) {
@@ -232,9 +234,10 @@ static int shaper_msg_recv(void) {
       "received prio %u, rate %3.2Lf down, %3.2Lf up", prio, downrate,
       uprate);
 
-    if (shaper_rate_alter(prio, downrate, uprate) < 0)
+    if (shaper_rate_alter(prio, downrate, uprate) < 0) {
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
         "error altering rate for current session: %s", strerror(errno));
+    }
 
     msglen = msgrcv(shaper_qid, msg, msgsz, getpid(), IPC_NOWAIT|MSG_NOERROR);
   }
@@ -260,14 +263,22 @@ static int shaper_msg_send(pid_t dst_pid, unsigned int prio,
     sizeof(long double);
 
   msg = malloc(sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
-  if (!msg)
+  if (msg == NULL) {
+    pr_log_pri(PR_LOG_CRIT, "Out of memory!");
     end_login(1);
+  }
 
   msg->mtype = dst_pid;
   memcpy(msg->mtext, &prio, sizeof(unsigned int));
   memcpy(msg->mtext + sizeof(unsigned int), &downrate, sizeof(long double));
   memcpy(msg->mtext + sizeof(unsigned int) + sizeof(long double), &uprate,
     sizeof(long double));
+
+  /* Remove any old messages in the queue for the destination PID.  This
+   * helps keep the queue clear and moving, more resistant to (inadvertent
+   * or not) DoS situations.
+   */
+  shaper_msg_clear(dst_pid);
 
   while (msgsnd(shaper_qid, msg, msgsz, IPC_NOWAIT) < 0) {
     pr_signals_handle();
@@ -349,8 +360,10 @@ static void shaper_msg_clear(pid_t dst_pid) {
     sizeof(long double);
 
   msg = malloc(sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
-  if (!msg)
+  if (msg == NULL) {
+    pr_log_pri(PR_LOG_CRIT, "Out of memory!");
     end_login(1);
+  }
 
   (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
     "clearing queue ID %d of messages for process ID %lu", shaper_qid,
@@ -2013,8 +2026,9 @@ static void shaper_shutdown_ev(const void *event_data, void *user_data) {
       shaper_remove_queue();
     }
 
-    if (shaper_tab_path)
+    if (shaper_tab_path) {
       pr_fsio_unlink(shaper_tab_path);
+    }
   }
 
   return;
@@ -2023,9 +2037,10 @@ static void shaper_shutdown_ev(const void *event_data, void *user_data) {
 static void shaper_sess_exit_ev(const void *event_data, void *user_data) {
 
   /* Remove this session from the ShaperTable. */
-  if (shaper_table_sess_remove(getpid()) < 0)
+  if (shaper_table_sess_remove(getpid()) < 0) {
     (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
       "error removing session from ShaperTable: %s", strerror(errno));
+  }
 
   /* Clear any messages for this session from the queue as well. */
   shaper_msg_clear(getpid());
