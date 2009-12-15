@@ -26,7 +26,7 @@
  * This is mod_shaper, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_shaper.c,v 1.2 2009-10-05 22:47:20 castaglia Exp $
+ * $Id: mod_shaper.c,v 1.3 2009-12-15 00:37:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1655,13 +1655,10 @@ static int shaper_handle_shaper(pr_ctrls_t *ctrl, int reqargc,
     }
 
     return shaper_handle_sess(ctrl, --reqargc, ++reqargv);
-
-  } else {
-    pr_ctrls_add_response(ctrl, "unknown shaper action: '%s'", reqargv[0]);
-    return -1;
   }
 
-  return 0;
+  pr_ctrls_add_response(ctrl, "unknown shaper action: '%s'", reqargv[0]);
+  return -1;
 }
 
 /* Configuration handlers
@@ -2003,7 +2000,7 @@ MODRET shaper_post_err_pass(cmd_rec *cmd) {
 /* Event handlers
  */
 
-static void shaper_daemon_exit_ev(const void *event_data, void *user_data) {
+static void shaper_shutdown_ev(const void *event_data, void *user_data) {
 
   /* Remove the queue from the system, and delete the ShaperTable.  We can
    * only do this reliably when the standalone daemon process exits; if it's
@@ -2228,8 +2225,7 @@ static int shaper_init(void) {
     }
   }
 
-  pr_event_register(&shaper_module, "core.exit", shaper_daemon_exit_ev,
-    NULL);
+  pr_event_register(&shaper_module, "core.exit", shaper_shutdown_ev, NULL);
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&shaper_module, "core.module-unload", shaper_mod_unload_ev,
     NULL);
@@ -2243,7 +2239,7 @@ static int shaper_init(void) {
 }
 
 static int shaper_sess_init(void) {
-  pr_event_unregister(&shaper_module, "core.exit", shaper_daemon_exit_ev);
+  pr_event_unregister(&shaper_module, "core.exit", shaper_shutdown_ev);
 
   /* The ShaperTable scrubbing timer should only run in the daemon. */
   pr_timer_remove(shaper_scrub_timer_id, &shaper_module);
