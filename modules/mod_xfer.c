@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.267 2009-12-07 23:24:28 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.268 2009-12-15 06:22:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1954,7 +1954,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
         (pr_off_t) session.restart_pos, dir, strerror(xerrno));
 
       pr_log_debug(DEBUG0, "error seeking to offset %" PR_LU
-        "for file %s: %s", (pr_off_t) session.restart_pos, dir,
+        " for file %s: %s", (pr_off_t) session.restart_pos, dir,
         strerror(xerrno));
       pr_response_add_err(R_554, _("%s: invalid REST argument"), cmd->arg);
       return PR_ERROR(cmd);
