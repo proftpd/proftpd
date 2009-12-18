@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_shmcache.c,v 1.5 2009-11-07 20:11:41 castaglia Exp $
+ *  $Id: mod_tls_shmcache.c,v 1.6 2009-12-18 17:36:57 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -1239,6 +1239,10 @@ static int shmcache_remove(tls_sess_cache_t *cache) {
   int res;
   struct shmid_ds ds;
   const char *cache_file;
+
+  if (shmcache_fh == NULL) {
+    return 0;
+  }
 
   pr_trace_msg(trace_channel, 9, "removing shmcache cache %p", cache); 
 
