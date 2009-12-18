@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_shmcache.c,v 1.6 2009-12-18 17:36:57 castaglia Exp $
+ *  $Id: mod_tls_shmcache.c,v 1.7 2009-12-18 17:40:13 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -133,7 +133,7 @@ struct shmcache_data {
 static tls_sess_cache_t shmcache;
 
 static struct shmcache_data *shmcache_data = NULL;
-static size_t shmcache_datasz = NULL;
+static size_t shmcache_datasz = 0;
 static int shmcache_shmid = -1;
 static pr_fh_t *shmcache_fh = NULL;
 
@@ -1446,7 +1446,7 @@ static int shmcache_status(tls_sess_cache_t *cache,
 /* Daemon PID */
 extern pid_t mpid;
 
-static void shmcache_daemon_exit_ev(const void *event_data, void *user_data) {
+static void shmcache_shutdown_ev(const void *event_data, void *user_data) {
   if (mpid == getpid() &&
       ServerType == SERVER_STANDALONE) {
 
@@ -1486,7 +1486,7 @@ static void shmcache_restart_ev(const void *event_data, void *user_data) {
  */
 
 static int tls_shmcache_init(void) {
-  pr_event_register(&tls_shmcache_module, "core.exit", shmcache_daemon_exit_ev,
+  pr_event_register(&tls_shmcache_module, "core.exit", shmcache_shutdown_ev,
     NULL);
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&tls_shmcache_module, "core.module-unload",
@@ -1528,8 +1528,7 @@ static int tls_shmcache_init(void) {
 }
 
 static int tls_shmcache_sess_init(void) {
-  pr_event_unregister(&tls_shmcache_module, "core.exit",
-    shmcache_daemon_exit_ev);
+  pr_event_unregister(&tls_shmcache_module, "core.exit", shmcache_shutdown_ev);
 
 #ifdef HAVE_MLOCK
   if (shmcache_data != NULL) {
