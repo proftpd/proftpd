@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.86 2009-11-08 19:58:03 castaglia Exp $
+ * $Id: fsio.c,v 1.87 2009-12-20 01:19:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -112,7 +112,7 @@ static int sys_unlink(pr_fs_t *fs, const char *path) {
 
 static int sys_open(pr_fh_t *fh, const char *path, int flags) {
 
-#ifdef CYGWIN
+#ifdef O_BINARY
   /* On Cygwin systems, we need the open(2) equivalent of fopen(3)'s "b"
    * option.  Cygwin defines an O_BINARY flag for this purpose.
    */
