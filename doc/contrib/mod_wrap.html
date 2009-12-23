@@ -1,4 +1,4 @@
-<!-- $Id: mod_wrap.html,v 1.3 2009-12-14 21:29:35 castaglia Exp $ -->
+<!-- $Id: mod_wrap.html,v 1.4 2009-12-23 23:46:35 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_wrap.html,v $ -->
 
 <html>
@@ -296,7 +296,7 @@ this issue).
 Use of <code>mod_wrap</code> is straightforward, with some minor caveats.  If
 you're using Solaris, you'll need to obtain and build the tcpwrappers library,
 as this library does not come installed on stock Solaris systems.  If you're
-using FreeBSD-4.4-STABLE (and possibly other versions), you'll need to change
+using FreeBSD or Mac OSX (and possibly other versions), you'll need to change
 the following line in the header of <code>mod_wrap.c</code>:
 <pre>
  * $Libraries: -lwrap -lnsl$
@@ -307,7 +307,7 @@ to be:
 </pre>
 This line is needed on Linux and Solaris machines, to properly link against
 the <code>libnsl.a</code> library, which implements the NIS/YP functions.
-In FreeBSD, these functions are implemented in <code>libc</code>.
+In FreeBSD and Mac OSX, these functions are implemented in <code>libc</code>.
 
 <p>
 Then, you need simply follow the normal steps for using third-party modules in
@@ -321,7 +321,7 @@ proftpd:
 <p>
 <hr>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-12-14 21:29:35 $</i><br>
+Last Updated: <i>$Date: 2009-12-23 23:46:35 $</i><br>
 
 <br><hr>
 
