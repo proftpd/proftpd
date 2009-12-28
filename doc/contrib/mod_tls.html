@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.25 2009-11-07 03:41:45 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.26 2009-12-28 20:32:03 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -265,6 +265,13 @@ Example:
 <pre>
   TLSCertificateChainFile /etc/ftpd/client-ca-list.pem
 </pre>
+
+<p>
+<b>Note</b>: If you use the <code>NoCertRequest</code>
+<a href="#TLSOptions"><code>TLSOption</code></a>, then any configured
+<code>TLSCertificateChainFile</code> directive will be ignored.  It is a waste
+of time to construct a certificate chain to send to the client if the server
+does not request that the client send a certificate to be verified.
 
 <p>
 <hr>
@@ -652,7 +659,7 @@ The currently implemented options are:
   <li><code>NoCertRequest</code><br>
     <p>
     Some FTP clients are known to be buggy when handling a server's certificate
-    request.  This option causes the server not to include such a request
+    request.  This option causes the server to <b>not</b> send such a request
     during an SSL handshake.
 
   <p>
@@ -1528,7 +1535,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-11-07 03:41:45 $</i><br>
+Last Updated: <i>$Date: 2009-12-28 20:32:03 $</i><br>
 
 <hr>
 <font size=2><b><i>
