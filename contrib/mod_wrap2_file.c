@@ -2,7 +2,7 @@
  * ProFTPD: mod_wrap2_file -- a mod_wrap2 sub-module for supplying IP-based
  *                            access control data via file-based tables
  *
- * Copyright (c) 2002-2009 TJ Saunders
+ * Copyright (c) 2002-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_file.c,v 1.8 2009-03-11 04:50:03 castaglia Exp $
+ * $Id: mod_wrap2_file.c,v 1.9 2010-01-03 21:05:24 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -93,11 +93,37 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
       if (filetab_clients_list == NULL)
         filetab_clients_list = make_array(filetab->tab_pool, 0, sizeof(char *));
 
-      /* If there are commas or whitespace in the line, parse them as separate
+      /* Check for another ':' delimiter.  If present, anything following that
+       * delimiter is an option/shell command (as per the hosts_access(5) man
+       * page syntax description).
+       *
+       * If there are commas or whitespace in the line, parse them as separate
        * client names.  Otherwise, a comma- or space-delimited list of names
        * will be treated as a single name, and violate the principle of least
        * surprise for the site admin.
        */
+
+      ptr = wrap2_strsplit(res, ':');    
+      if (ptr != NULL) {
+        if (filetab_options_list == NULL)
+          filetab_options_list = make_array(filetab->tab_pool, 0, 
+            sizeof(char *));
+
+        /* Skip redundant whitespaces */
+        while (*ptr == ' ' ||
+               *ptr == '\t') {
+          pr_signals_handle();
+          ptr++;
+        }
+
+        *((char **) push_array(filetab_options_list)) =
+          pstrdup(filetab->tab_pool, ptr);
+
+      } else {
+        /* No options present. */
+        ptr = res;
+      }
+
       ptr = strpbrk(res, ", \t");
       if (ptr != NULL) {
         char *dup = pstrdup(filetab->tab_pool, res);
@@ -109,12 +135,14 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
           pr_signals_handle();
 
           wordlen = strlen(word);
-          if (wordlen == 0)
+          if (wordlen == 0) {
             continue;
+          }
 
           /* Remove any trailing comma */
-          if (word[wordlen-1] == ',')
+          if (word[wordlen-1] == ',') {
             word[wordlen-1] = '\0';
+          }
 
           *((char **) push_array(filetab_clients_list)) = word;
 
@@ -131,21 +159,13 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
           pstrdup(filetab->tab_pool, res);
       }
  
-      res = wrap2_strsplit(res, ':');    
-      if (res) {
-        if (filetab_options_list == NULL)
-          filetab_options_list = make_array(filetab->tab_pool, 0, 
-            sizeof(char *));
-
-        *((char **) push_array(filetab_options_list)) =
-          pstrdup(filetab->tab_pool, res);
-      }
-
     } else {
       wrap2_log("file '%s': skipping irrevelant daemon/service ('%s') line %u",
         filetab->tab_name, service, lineno);
     }
   }
+
+  return;
 }
 
 static int filetab_close_cb(wrap2_table_t *filetab) {
