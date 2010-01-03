@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_wrap2 -- tcpwrappers-like access control
  *
- * Copyright (c) 2000-2009 TJ Saunders
+ * Copyright (c) 2000-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -587,8 +587,9 @@ static unsigned char wrap2_match_client(char *tok, wrap2_conn_t *conn) {
     /* Plain host */
     match = wrap2_match_host(tok, conn->client);
 
-    if (match)
+    if (match) {
       wrap2_log("client matches '%s'", tok);
+    }
 
   } else {
 
@@ -596,8 +597,9 @@ static unsigned char wrap2_match_client(char *tok, wrap2_conn_t *conn) {
     match = (wrap2_match_host(host, conn->client) &&
       wrap2_match_string(tok, wrap2_get_user(conn)));
 
-    if (match)
+    if (match) {
       wrap2_log("client matches '%s@%s'", tok, host);
+    }
   }
 
   return match;
@@ -658,7 +660,7 @@ static unsigned char wrap2_match_list(array_header *list, wrap2_conn_t *conn,
       register unsigned int j;
 
       /* If yes, look for exceptions */
-      for (j = i + 1; j < list->nelts; j++) {      
+      for (j = i + 1; j < list->nelts; j++) {
         token = wrap2_skip_whitespace(tokens[j]);
         if (strcasecmp(token, "EXCEPT") == 0) {
           return (wrap2_match_list(list, conn, match_token, j+1) == 0);
@@ -903,6 +905,7 @@ static int wrap2_handle_opts(array_header *options, wrap2_conn_t *conn) {
 
 static int wrap2_match_table(wrap2_table_t *tab, wrap2_conn_t *conn) {
   register unsigned int i;
+  int res;
   array_header *daemon_list = NULL, *client_list = NULL, *options_list = NULL;
 
   /* Build daemon list. */
@@ -944,22 +947,28 @@ static int wrap2_match_table(wrap2_table_t *tab, wrap2_conn_t *conn) {
     }
   }
 
-  if (wrap2_match_list(daemon_list, conn, wrap2_match_daemon, 0) &&
-      wrap2_match_list(client_list, conn, wrap2_match_client, 0)) {
-#ifdef WRAP2_USE_OPTIONS
-    int res = 0;
-    res = wrap2_handle_opts(options_list, conn);
-
-    if (res == WRAP2_OPT_ALLOW)
-      return WRAP2_TAB_ALLOW;
-
-    if (res == WRAP2_OPT_DENY)
-      return WRAP2_TAB_DENY;
-#endif
-    return WRAP2_TAB_MATCH;
+  res = wrap2_match_list(daemon_list, conn, wrap2_match_daemon, 0);
+  if (FALSE) {
+    return 0;
   }
 
-  return 0;
+  res = wrap2_match_list(client_list, conn, wrap2_match_client, 0);
+  if (FALSE) {
+    return 0;
+  }
+
+#ifdef WRAP2_USE_OPTIONS
+  res = wrap2_handle_opts(options_list, conn);
+  if (res == WRAP2_OPT_ALLOW) {
+    return WRAP2_TAB_ALLOW;
+  }
+
+  if (res == WRAP2_OPT_DENY) {
+    return WRAP2_TAB_DENY;
+  }
+#endif
+
+  return WRAP2_TAB_MATCH;
 }
 
 static unsigned char wrap2_allow_access(wrap2_conn_t *conn) {
@@ -998,8 +1007,9 @@ static unsigned char wrap2_allow_access(wrap2_conn_t *conn) {
       return FALSE;
     }
 
-  } else
+  } else {
     wrap2_log("error opening allow table: %s", strerror(errno));
+  }
 
   /* Open deny table. */
   deny_tab = wrap2_open_table(wrap2_deny_table);
@@ -1020,8 +1030,9 @@ static unsigned char wrap2_allow_access(wrap2_conn_t *conn) {
       return FALSE; 
     }
 
-  } else
+  } else {
     wrap2_log("error opening deny table: %s", strerror(errno));
+  }
 
   wrap2_allow_table = wrap2_deny_table = NULL;
   return TRUE;
@@ -1411,7 +1422,7 @@ MODRET set_wrapusertables(cmd_rec *cmd) {
  */
 
 MODRET wrap2_pre_pass(cmd_rec *cmd) {
-  wrap2_conn_t con;
+  wrap2_conn_t conn;
   unsigned char have_tables = FALSE;
   char *user = NULL;
   config_rec *c = NULL;
@@ -1559,19 +1570,19 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
 
   wrap2_log("looking under service name '%s'", wrap2_service_name);
 
-  memset(&con, '\0', sizeof(con));
+  memset(&conn, '\0', sizeof(conn));
 
-  wrap2_conn_set(&con, WRAP2_CONN_DAEMON, wrap2_service_name,
+  wrap2_conn_set(&conn, WRAP2_CONN_DAEMON, wrap2_service_name,
     WRAP2_CONN_SOCK_FD, session.c->rfd, 0);
 
   wrap2_log("%s", "checking access rules for connection");
 
-  if (strcasecmp(wrap2_get_hostname(con.client), WRAP2_PARANOID) == 0 ||
-      !wrap2_allow_access(&con)) {
+  if (strcasecmp(wrap2_get_hostname(conn.client), WRAP2_PARANOID) == 0 ||
+      !wrap2_allow_access(&conn)) {
     char *msg = NULL;
 
     /* Log the denied connection */
-    wrap2_log("refused connection from %s", wrap2_get_client(&con));
+    wrap2_log("refused connection from %s", wrap2_get_client(&conn));
 
     /* Broadcast this event to any interested listeners.  We use the same
      * event name as mod_wrap for consistency.
@@ -1590,7 +1601,7 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
     end_login(0);
   }
 
-  wrap2_log("allowed connection from %s", wrap2_get_client(&con));
+  wrap2_log("allowed connection from %s", wrap2_get_client(&conn));
   return PR_DECLINED(cmd);
 }
 
