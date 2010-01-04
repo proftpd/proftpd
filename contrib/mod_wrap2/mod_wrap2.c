@@ -407,14 +407,10 @@ static unsigned char wrap2_match_string(const char *tok, const char *str) {
 
     /* Prefix */
     return (strncasecmp(tok, str, len) == 0);
-
-  } else {
-
-    /* Exact match */
-    return (strcasecmp(tok, str) == 0);
   }
 
-  return FALSE;
+  /* Exact match */
+  return (strcasecmp(tok, str) == 0);
 }
 
 static unsigned long wrap2_addr_a2n(const char *str) {
@@ -570,8 +566,6 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
         wrap2_match_string(tok, wrap2_get_hostname(host))) {
       return TRUE;
     }
-
-    return FALSE;
   }
 
   return FALSE;
@@ -948,12 +942,12 @@ static int wrap2_match_table(wrap2_table_t *tab, wrap2_conn_t *conn) {
   }
 
   res = wrap2_match_list(daemon_list, conn, wrap2_match_daemon, 0);
-  if (FALSE) {
+  if (res == FALSE) {
     return 0;
   }
 
   res = wrap2_match_list(client_list, conn, wrap2_match_client, 0);
-  if (FALSE) {
+  if (res == FALSE) {
     return 0;
   }
 
