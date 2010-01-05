@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1117 2009-12-18 17:36:57 castaglia Exp $
+$Id: NEWS,v 1.1118 2010-01-05 23:17:20 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -16,6 +16,7 @@ CVS
 - Bug 3357 - mod_sftp fails to compile on AIX.
 - Bug 3356 - Build timestamp using date(1) can fail depending on environment.
 - Bug 3359 - mod_tls_shmcache segfaults during syntax check.
+- Bug 3362 - Regression in handling of MaxLoginAttempts in 1.3.3rc1.
 
 1.3.3rc3 - Released 10-Dec-2009
 --------------------------------

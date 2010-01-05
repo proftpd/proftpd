@@ -137,6 +137,9 @@ sub maxloginattempts_one {
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
+      # A MaxLoginAttempts of one should have caused our connection to be
+      # closed above.
+
       eval { ($resp_code, $resp_msg) = $client->login($user, 'foo') };
       unless ($@) {
         die("Logged in unexpectedly ($resp_code $resp_msg)");
@@ -146,13 +149,9 @@ sub maxloginattempts_one {
         $resp_msg = $client->response_msg(0);
       }
 
-      $expected = 530;
+      $expected = 599;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Login incorrect.";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -163,7 +162,7 @@ sub maxloginattempts_one {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 2) };
+    eval { server_wait($config_file, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -271,13 +270,9 @@ sub maxloginattempts_absent {
 
         my $expected;
 
-        $expected = 530;
+        $expected = 599;
         $self->assert($expected == $resp_code,
           test_msg("Expected $expected, got $resp_code"));
-
-        $expected = "Login incorrect.";
-        $self->assert($expected eq $resp_msg,
-          test_msg("Expected '$expected', got '$resp_msg'"));
       }
     };
 
@@ -289,7 +284,7 @@ sub maxloginattempts_absent {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 2) };
+    eval { server_wait($config_file, $rfh) };
     if ($@) {
       warn($@);
       exit 1;

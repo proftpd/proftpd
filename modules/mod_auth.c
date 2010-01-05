@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.272 2009-12-10 17:45:29 castaglia Exp $
+ * $Id: mod_auth.c,v 1.273 2010-01-05 23:17:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2016,11 +2016,13 @@ MODRET auth_pass(cmd_rec *cmd) {
     }
 
     if (max_logins > 0 &&
-        auth_tries++ >= max_logins) {
-      if (denymsg)
+        ++auth_tries >= max_logins) {
+      if (denymsg) {
         pr_response_send(R_530, "%s", denymsg);
-      else
+
+      } else {
         pr_response_send(R_530, _("Login incorrect."));
+      }
 
       pr_log_auth(PR_LOG_NOTICE,
         "Maximum login attempts (%u) exceeded, connection refused", max_logins);
