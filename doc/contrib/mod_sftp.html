@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.30 2009-11-30 17:26:03 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.31 2010-01-06 00:41:06 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -1314,10 +1314,10 @@ not displayed well.
 This pre-emptive sending of the first key exchange message is an optimization.
 The SSH2 protocol (and many SSH2 servers) start off doing:
 <pre>
- (1) <i>client</i> ------------ connect -------------> <i>server</i>
- (2) <i>client</i> <-------- version banner ---------- <i>server</i>
- (3) <i>client</i> --- client's first key exchange --> <i>server</i>
- (4) <i>client</i> <-- server's first key exchange --- <i>server</i>
+ (1) <i>client</i> ------------ connect -------------&gt; <i>server</i>
+ (2) <i>client</i> &lt;-------- version banner ---------- <i>server</i>
+ (3) <i>client</i> --- client's first key exchange --&gt; <i>server</i>
+ (4) <i>client</i> &lt;-- server's first key exchange --- <i>server</i>
 </pre>
 So you can see that there's some back and forth.  The "first key exchange"
 messages sent by the client are always the same for that client, likewise the
@@ -1330,9 +1330,9 @@ The <code>mod_sftp</code> module avoids one unnecessary TCP packet+ACK by
 sending its version banner and its first key exchange message in the same TCP
 packet:
 <pre>
- (1) <i>client</i> ------------ connect -------------> <i>server</i>
- (2) <i>client</i> <-- version banner/1st key exch---- <i>server</i>
- (3) <i>client</i> --- client's first key exchange --> <i>server</i>
+ (1) <i>client</i> ------------ connect -------------&gt; <i>server</i>
+ (2) <i>client</i> &lt;-- version banner/1st key exch---- <i>server</i>
+ (3) <i>client</i> --- client's first key exchange --&gt; <i>server</i>
 </pre>
 This helps cut down on the latency during startup, since <code>mod_sftp</code>
 saves on one TCP round-trip time.
@@ -1459,16 +1459,44 @@ Why?<br>
 Thus the <code>ListOptions</code> directive is not honored by
 <code>mod_sftp</code>.
 
+<p><a name="SFTPUploadChmod">
+<font color=red>Question</font>: If I use a configuration like this:
+<pre>
+  &lt;Directory /path/to/upload&gt;
+    &lt;Limit WRITE&gt;
+      AllowAll
+    &lt;/Limit&gt;
+
+    &lt;Limit SITE_CHMOD&gt;
+      DenyAll
+    &lt;/Limit&gt;
+  &lt;/Directory&gt;
+</pre>
+then why do my SFTP uploads fail, when the same configuration allows uploads to succeed using FTP?<br>
+<font color=blue>Answer</font>: When a file is uploaded using FTP, the only
+parts of the file uploaded are its <i>contents</i> but <b>not</b> the file
+<i>metadata</i> (<i>e.g.</i> not the file timestamps or permissions).  Separate
+FTP commands are used to sent the file metadata to the server.
+
+<p>
+However, the SFTP protocol sends the file metadata <i>as part of the normal upload</i>.  In the configuration above, the limit on <code>SITE CHMOD</code>
+is being applied to the SFTP upload.  If you do not want this, and want
+your SFTP uploads to be more like your FTP uploads, then you should use:
+<pre>
+  SFTPOptions IgnoreSFTPUploadPerms
+</pre>
+in your <code>mod_sftp</code> configuration.
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-11-30 17:26:03 $</i><br>
+Last Updated: <i>$Date: 2010-01-06 00:41:06 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2008-2009 TJ Saunders<br>
+&copy; Copyright 2008-2010 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
