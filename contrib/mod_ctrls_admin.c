@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ctrls_admin -- a module implementing admin control handlers
  *
- * Copyright (c) 2000-2009 TJ Saunders
+ * Copyright (c) 2000-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,14 +25,14 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.38 2009-04-23 23:57:58 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.39 2010-01-06 23:24:36 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_ctrls.h"
 
-#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.5"
+#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.6"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030001
@@ -61,6 +61,9 @@ static ctrls_acttab_t ctrls_admin_acttab[];
 
 /* Pool for this module's use */
 static pool *ctrls_admin_pool = NULL;
+
+static unsigned int ctrls_admin_nrestarts = 0;
+static time_t ctrls_admin_start = 0;
 
 /* Support routines
  */
@@ -595,16 +598,35 @@ static int ctrls_handle_restart(pr_ctrls_t *ctrl, int reqargc,
   }
 
   /* Be pedantic */
-  if (reqargc != 0) {
+  if (reqargc > 1) {
     pr_ctrls_add_response(ctrl, "bad number of arguments");
     return -1;
   }
 
-  PRIVS_ROOT
-  raise(SIGHUP);
-  PRIVS_RELINQUISH
+  if (reqargc == 0) {
+    PRIVS_ROOT
+    raise(SIGHUP);
+    PRIVS_RELINQUISH
 
-  pr_ctrls_add_response(ctrl, "restarted server");
+    pr_ctrls_add_response(ctrl, "restarted server");
+
+  } else if (reqargc == 1) {
+    if (strcmp(reqargv[0], "count") == 0) {
+      struct tm *tm;
+
+      tm = pr_gmtime(ctrl->ctrls_tmp_pool, &ctrls_admin_start);
+      pr_ctrls_add_response(ctrl,
+        "server restarted %u %s since %04d-%02d-%02d %02d:%02d:%02d GMT",
+        ctrls_admin_nrestarts, ctrls_admin_nrestarts != 1 ? "times" : "time",
+        tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
+        tm->tm_sec);
+
+    } else {
+      pr_ctrls_add_response(ctrl, "unsupported parameter '%s'", reqargv[0]);
+      return -1;
+    }
+  }
+
   return 0;
 }
 
@@ -1147,6 +1169,7 @@ static void ctrls_admin_restart_ev(const void *event_data, void *user_data) {
     pr_ctrls_init_acl(ctrls_admin_acttab[i].act_acl);
   }
 
+  ctrls_admin_nrestarts++;
   return;
 }
 
@@ -1216,6 +1239,7 @@ static int ctrls_admin_init(void) {
   pr_event_register(&ctrls_admin_module, "core.startup",
     ctrls_admin_startup_ev, NULL);
 
+  time(&ctrls_admin_start);
   return 0;
 }
 
