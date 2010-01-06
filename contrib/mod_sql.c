@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.178 2009-10-26 23:01:41 castaglia Exp $
+ * $Id: mod_sql.c,v 1.179 2010-01-06 23:05:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -876,7 +876,7 @@ static char *sql_prepare_where(int flags, cmd_rec *cmd, int cnt, ...) {
         char *tag = NULL;
 
         if (*(++tmp) == '{') {
-          char *query;
+          char *query = NULL;
 
           if (*tmp != '\0')
             query = ++tmp;
@@ -2316,8 +2316,8 @@ static char *named_query_type(cmd_rec *cmd, char *name) {
 
 static modret_t *process_named_query(cmd_rec *cmd, char *name) {
   config_rec *c;
-  char *query, *tmp, *argp;
-  char outs[SQL_MAX_STMT_LEN] = {'\0'}, *outsp;
+  char *query = NULL, *tmp = NULL, *argp = NULL;
+  char outs[SQL_MAX_STMT_LEN] = {'\0'}, *outsp = NULL;
   char *esc_arg = NULL;
   modret_t *mr = NULL;
   int num = 0;
@@ -2335,11 +2335,11 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name) {
     outsp = outs;
 
     for (tmp = c->argv[1]; *tmp; ) {
-      char *tag = 0;
+      char *tag = NULL;
 
       if (*tmp == '%') {
         if (*(++tmp) == '{') {
-          char *tmp_query;
+          char *tmp_query = NULL;
 	  
           if (*tmp != '\0')
             tmp_query = ++tmp;
@@ -2461,68 +2461,68 @@ MODRET log_master(cmd_rec *cmd) {
   name = pstrcat(cmd->tmp_pool, "SQLLog_", cmd->argv[0], NULL);
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
-  if (c) {
-    do {
-      pr_signals_handle();
+  while (c) {
+    pr_signals_handle();
 
-      sql_log(DEBUG_FUNC, ">>> log_master (%s)", name);
+    sql_log(DEBUG_FUNC, ">>> log_master (%s)", name);
 
-      qname = c->argv[0];
-      type = named_query_type(cmd, qname);
+    qname = c->argv[0];
+    type = named_query_type(cmd, qname);
 
-      if (type) {
-	if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
-	    strcasecmp(type, SQL_FREEFORM_C) == 0 ||
-	    strcasecmp(type, SQL_INSERT_C) == 0) {
-	  mr = process_named_query(cmd, qname);
-          if (check_response(mr) < 0)
-            return mr;
-
-	} else {
-	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
-            "FREEFORM query", qname);
-	}
+    if (type) {
+      if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
+          strcasecmp(type, SQL_FREEFORM_C) == 0 ||
+          strcasecmp(type, SQL_INSERT_C) == 0) {
+        mr = process_named_query(cmd, qname);
+        if (check_response(mr) < 0)
+          return mr;
 
       } else {
-	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
+        sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
+          "FREEFORM query", qname);
       }
 
-      sql_log(DEBUG_FUNC, "<<< log_master (%s)", name);
-    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
+    } else {
+      sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
+    }
+
+    sql_log(DEBUG_FUNC, "<<< log_master (%s)", name);
+
+    c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
   
   /* handle implicit queries */
   name = pstrcat(cmd->tmp_pool, "SQLLog_*", NULL);
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
-  if (c) {
-    do {
-      pr_signals_handle();
+  while (c) {
+    pr_signals_handle();
 
-      sql_log(DEBUG_FUNC, ">>> log_master (%s)", name);
+    sql_log(DEBUG_FUNC, ">>> log_master (%s)", name);
 
-      qname = c->argv[0];
-      type = named_query_type(cmd, qname);
+    qname = c->argv[0];
+    type = named_query_type(cmd, qname);
 
-      if (type) {
-	if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
-	    strcasecmp(type, SQL_FREEFORM_C) == 0 ||
-	    strcasecmp(type, SQL_INSERT_C) == 0) {
-          mr = process_named_query(cmd, qname);
-          if (check_response(mr) < 0)
-            return mr;
-
-	} else {
-	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
-            "FREEFORM query", qname);
-	}
+    if (type) {
+      if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
+          strcasecmp(type, SQL_FREEFORM_C) == 0 ||
+          strcasecmp(type, SQL_INSERT_C) == 0) {
+        mr = process_named_query(cmd, qname);
+        if (check_response(mr) < 0)
+          return mr;
 
       } else {
-	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
+        sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
+          "FREEFORM query", qname);
       }
 
-      sql_log(DEBUG_FUNC, "<<< log_master (%s)", name);
-    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
+    } else {
+      sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
+    }
+
+    sql_log(DEBUG_FUNC, "<<< log_master (%s)", name);
+
+    c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
 
   return PR_DECLINED(cmd);
@@ -2542,68 +2542,68 @@ MODRET err_master(cmd_rec *cmd) {
   name = pstrcat(cmd->tmp_pool, "SQLLog_ERR_", cmd->argv[0], NULL);
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
-  if (c) {
-    do {
-      pr_signals_handle();
+  while (c) {
+    pr_signals_handle();
 
-      sql_log(DEBUG_FUNC, ">>> err_master (%s)", name);
+    sql_log(DEBUG_FUNC, ">>> err_master (%s)", name);
 
-      qname = c->argv[0];
-      type = named_query_type(cmd, qname);
+    qname = c->argv[0];
+    type = named_query_type(cmd, qname);
 
-      if (type) {
-	if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
-	    strcasecmp(type, SQL_FREEFORM_C) == 0 ||
-	    strcasecmp(type, SQL_INSERT_C) == 0) {
-          mr = process_named_query(cmd, qname);
-          if (check_response(mr) < 0)
-            return mr;
-
-	} else {
-	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
-            "FREEFORM query", qname);
-	}
+    if (type) {
+      if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
+          strcasecmp(type, SQL_FREEFORM_C) == 0 ||
+          strcasecmp(type, SQL_INSERT_C) == 0) {
+        mr = process_named_query(cmd, qname);
+        if (check_response(mr) < 0)
+          return mr;
 
       } else {
-	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
+        sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
+         "FREEFORM query", qname);
       }
 
-      sql_log(DEBUG_FUNC, "<<< err_master (%s)", name);
-    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
+    } else {
+      sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
+    }
+
+    sql_log(DEBUG_FUNC, "<<< err_master (%s)", name);
+
+    c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
   
   /* handle implicit errors */
   name = pstrcat(cmd->tmp_pool, "SQLLog_ERR_*", NULL);
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
-  if (c) {
-    do {
-      pr_signals_handle();
+  while (c) {
+    pr_signals_handle();
 
-      sql_log(DEBUG_FUNC, ">>> err_master (%s)", name);
+    sql_log(DEBUG_FUNC, ">>> err_master (%s)", name);
 
-      qname = c->argv[0];
-      type = named_query_type(cmd, qname);
+    qname = c->argv[0];
+    type = named_query_type(cmd, qname);
 
-      if (type) {
-	if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
-	    strcasecmp(type, SQL_FREEFORM_C) == 0 ||
-	    strcasecmp(type, SQL_INSERT_C) == 0) {
-          mr = process_named_query(cmd, qname);
-          if (check_response(mr) < 0)
-            return mr;
-
-	} else {
-	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
-            "FREEFORM query", qname);
-	}
+    if (type) {
+      if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
+          strcasecmp(type, SQL_FREEFORM_C) == 0 ||
+          strcasecmp(type, SQL_INSERT_C) == 0) {
+        mr = process_named_query(cmd, qname);
+        if (check_response(mr) < 0)
+          return mr;
 
       } else {
-	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
+        sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
+          "FREEFORM query", qname);
       }
 
-      sql_log(DEBUG_FUNC, "<<< err_master (%s)", name);
-    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
+    } else {
+      sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
+    }
+
+    sql_log(DEBUG_FUNC, "<<< err_master (%s)", name);
+
+    c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
 
   return PR_DECLINED(cmd);
@@ -2626,7 +2626,7 @@ MODRET info_master(cmd_rec *cmd) {
   name = pstrcat(cmd->tmp_pool, "SQLShowInfo_", cmd->argv[0], NULL);
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
-  if (c) {
+  while (c) {
     sql_log(DEBUG_FUNC, ">>> info_master (%s)", name);
 
     /* we now have at least one config_rec.  Take the output string from 
@@ -2634,103 +2634,102 @@ MODRET info_master(cmd_rec *cmd) {
      * query, run it and get info from it. 
      */
 
-    do {
-      pr_signals_handle();
+    pr_signals_handle();
 
-      memset(outs, '\0', sizeof(outs));
-      outsp = outs;
+    memset(outs, '\0', sizeof(outs));
+    outsp = outs;
 
-      for (tmp = c->argv[1]; *tmp; ) {
-	if (*tmp == '%') {
-	  /* is the tag a named_query reference?  If so, process the 
-	   * named query, otherwise process it as a normal tag.. 
-	   */
+    for (tmp = c->argv[1]; *tmp; ) {
+      if (*tmp == '%') {
+        /* is the tag a named_query reference?  If so, process the 
+         * named query, otherwise process it as a normal tag.. 
+         */
 	  
-	  if (*(++tmp) == '{') {
-	    char *query;
+        if (*(++tmp) == '{') {
+	  char *query = NULL;
 
-	    if (*tmp != '\0')
-              query = ++tmp;
+	  if (*tmp != '\0')
+            query = ++tmp;
 	    
-	    /* get the name of the query */
-	    while (*tmp && *tmp != '}')
-              tmp++;
+          /* get the name of the query */
+          while (*tmp && *tmp != '}')
+            tmp++;
 	    
-	    query = pstrndup(cmd->tmp_pool, query, (tmp - query));
+          query = pstrndup(cmd->tmp_pool, query, (tmp - query));
 
-	    /* make sure it's a SELECT query */
+          /* make sure it's a SELECT query */
 	    
-	    type = named_query_type(cmd, query);
-	    if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
-			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
-	      mr = process_named_query(cmd, query);
-              if (check_response(mr) < 0) {
+          type = named_query_type(cmd, query);
+          if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
+                       strcasecmp(type, SQL_FREEFORM_C) == 0)) {
+            mr = process_named_query(cmd, query);
+            if (check_response(mr) < 0) {
+              memset(outs, '\0', sizeof(outs));
+              break;
+
+            } else {
+              sd = (sql_data_t *) mr->data;
+              if (sd->rnum == 0 ||
+                  sd->data[0] == NULL) {
+                /* If no data was returned, show nothing.  Just continue
+                 * on to the next SQLShowInfo.
+                 */
                 memset(outs, '\0', sizeof(outs));
                 break;
 
-	      } else {
-		sd = (sql_data_t *) mr->data;
-                if (sd->rnum == 0 ||
-                    sd->data[0] == NULL) {
-                  /* If no data was returned, show nothing.  Just continue
-                   * on to the next SQLShowInfo.
+              } else {
+                if (strcasecmp(sd->data[0], "null") == 0) {
+                  /* Treat the text "null" the same as a real null; just
+                   * continue on.
                    */
                   memset(outs, '\0', sizeof(outs));
                   break;
-
-                } else {
-                  if (strcasecmp(sd->data[0], "null") == 0) {
-                    /* Treat the text "null" the same as a real null; just
-                     * continue on.
-                     */
-                    memset(outs, '\0', sizeof(outs));
-                    break;
-                  }
-
-                  argp = sd->data[0];
                 }
+
+                argp = sd->data[0];
               }
+            }
 
-	    } else {
-              /* Can't use an INSERT/UPDATE query for retrieving info.  Skip
-               * to the next SQLShowInfo.
-               */
-              memset(outs, '\0', sizeof(outs));
-              break;
-	    }
+          } else {
+            /* Can't use an INSERT/UPDATE query for retrieving info.  Skip
+             * to the next SQLShowInfo.
+             */
+            memset(outs, '\0', sizeof(outs));
+            break;
+          }
 
-	  } else {
-	    argp = resolve_short_tag(cmd, *tmp);
-	  }
+        } else {
+          argp = resolve_short_tag(cmd, *tmp);
+        }
 
-	  sstrcat(outs, argp, sizeof(outs));
-	  outsp += strlen(argp);
+        sstrcat(outs, argp, sizeof(outs));
+        outsp += strlen(argp);
 
-	  if (*tmp != '\0')
-            tmp++;
+        if (*tmp != '\0')
+          tmp++;
 
-	} else {
-	  *outsp++ = *tmp++;
-	}
+      } else {
+        *outsp++ = *tmp++;
       }
+    }
       
-      *outsp++ = 0;
+    *outsp++ = 0;
 
-      /* Add the response, if we have one. */
-      if (strlen(outs) > 0) {
-        pr_response_add(c->argv[0], "%s", outs);
-      }
-
-    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
+    /* Add the response, if we have one. */
+    if (strlen(outs) > 0) {
+      pr_response_add(c->argv[0], "%s", outs);
+    }
 
     sql_log(DEBUG_FUNC, "<<< info_master (%s)", name);
+
+    c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
 
   /* process implicit handlers */
   name = pstrcat(cmd->tmp_pool, "SQLShowInfo_*", NULL);
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
-  if (c) {
+  while (c) {
     sql_log(DEBUG_FUNC, ">>> info_master (%s)", name);
 
     /* we now have at least one config_rec.  Take the output string from 
@@ -2738,97 +2737,95 @@ MODRET info_master(cmd_rec *cmd) {
      * query, run it and get info from it. 
      */
 
-    do {
-      pr_signals_handle();
+    pr_signals_handle();
 
-      memset(outs, '\0', sizeof(outs));
-      outsp = outs;
+    memset(outs, '\0', sizeof(outs));
+    outsp = outs;
 
-      for (tmp = c->argv[1]; *tmp; ) {
-	if (*tmp == '%') {
-	  /* is the tag a named_query reference?  If so, process the 
-	   * named query, otherwise process it as a normal tag.. 
-	   */
-	  
-	  if (*(++tmp) == '{') {
-	    char *query;
+    for (tmp = c->argv[1]; *tmp; ) {
+      if (*tmp == '%') {
+        /* is the tag a named_query reference?  If so, process the 
+         * named query, otherwise process it as a normal tag.. 
+         */
+        if (*(++tmp) == '{') {
+          char *query = NULL;
 
-	    if (*tmp != '\0')
-              query = ++tmp;
-	    
-	    /* get the name of the query */
-	    while (*tmp && *tmp != '}')
-              tmp++;
-	    
-	    query = pstrndup(cmd->tmp_pool, query, (tmp - query));
+          if (*tmp != '\0')
+            query = ++tmp;
 
-	    /* make sure it's a SELECT query */
-	    
-	    type = named_query_type(cmd, query);
-	    if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
-			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
-	      mr = process_named_query(cmd, query);
-	      
-              if (check_response(mr) < 0) {
+          /* get the name of the query */
+          while (*tmp && *tmp != '}')
+            tmp++;
+
+          query = pstrndup(cmd->tmp_pool, query, (tmp - query));
+
+          /* make sure it's a SELECT query */
+
+          type = named_query_type(cmd, query);
+          if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
+                       strcasecmp(type, SQL_FREEFORM_C) == 0)) {
+            mr = process_named_query(cmd, query);
+
+            if (check_response(mr) < 0) {
+              memset(outs, '\0', sizeof(outs));
+              break;
+
+            } else {
+              sd = (sql_data_t *) mr->data;
+              if (sd->rnum == 0 ||
+                  sd->data[0] == NULL) {
+                /* If no data was returned, show nothing.  Just continue
+                 * on to the next SQLShowInfo.
+                 */
                 memset(outs, '\0', sizeof(outs));
                 break;
 
-	      } else {
-		sd = (sql_data_t *) mr->data;
-                if (sd->rnum == 0 ||
-                    sd->data[0] == NULL) {
-                  /* If no data was returned, show nothing.  Just continue
-                   * on to the next SQLShowInfo.
+              } else {
+                if (strcasecmp(sd->data[0], "null") == 0) {
+                  /* Treat the text "null" the same as a real null; just
+                   * continue on.
                    */
                   memset(outs, '\0', sizeof(outs));
                   break;
-
-                } else {
-                  if (strcasecmp(sd->data[0], "null") == 0) {
-                    /* Treat the text "null" the same as a real null; just
-                     * continue on.
-                     */
-                    memset(outs, '\0', sizeof(outs));
-                    break;
-                  }
-
-                  argp = sd->data[0];
                 }
-              }
 
-            } else {
-              /* Can't use an INSERT/UPDATE query for retrieving info.  Skip
-               * to the next SQLShowInfo.
-               */
-              memset(outs, '\0', sizeof(outs));
-              break;
+                argp = sd->data[0];
+              }
             }
 
-	  } else {
-	    argp = resolve_short_tag(cmd, *tmp);
-	  }
+          } else {
+            /* Can't use an INSERT/UPDATE query for retrieving info.  Skip
+             * to the next SQLShowInfo.
+             */
+            memset(outs, '\0', sizeof(outs));
+            break;
+          }
 
-	  sstrcat(outs, argp, sizeof(outs));
-	  outsp += strlen(argp);
+        } else {
+          argp = resolve_short_tag(cmd, *tmp);
+        }
 
-	  if (*tmp != '\0')
-            tmp++;
+        sstrcat(outs, argp, sizeof(outs));
+        outsp += strlen(argp);
 
-	} else {
-	  *outsp++ = *tmp++;
-	}
+        if (*tmp != '\0')
+          tmp++;
+
+      } else {
+        *outsp++ = *tmp++;
       }
+    }
       
-      *outsp++ = 0;
+    *outsp++ = 0;
 
-      /* Add the response, if we have one. */
-      if (strlen(outs) > 0) {
-        pr_response_add(c->argv[0], "%s", outs);
-      }
-
-    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
+    /* Add the response, if we have one. */
+    if (strlen(outs) > 0) {
+      pr_response_add(c->argv[0], "%s", outs);
+    }
 
     sql_log(DEBUG_FUNC, "<<< info_master (%s)", name);
+
+    c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
 
   return PR_DECLINED(cmd);
@@ -2838,7 +2835,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
   char *type = NULL;
   char *name = NULL;
   config_rec *c = NULL;
-  char outs[SQL_MAX_STMT_LEN] = {'\0'}, *outsp;
+  char outs[SQL_MAX_STMT_LEN] = {'\0'}, *outsp = NULL;
   char *argp = NULL; 
   char *tmp = NULL;
   modret_t *mr = NULL;
@@ -2851,7 +2848,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
   name = pstrcat(cmd->tmp_pool, "SQLShowInfo_ERR_", cmd->argv[0], NULL);
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
-  if (c) {
+  while (c) {
     sql_log(DEBUG_FUNC, ">>> errinfo_master (%s)", name);
 
     /* we now have at least one config_rec.  Take the output string from 
@@ -2859,104 +2856,103 @@ MODRET errinfo_master(cmd_rec *cmd) {
      * query, run it and get info from it. 
      */
 
-    do {
-      pr_signals_handle();
+    pr_signals_handle();
 
-      memset(outs, '\0', sizeof(outs));
-      outsp = outs;
+    memset(outs, '\0', sizeof(outs));
+    outsp = outs;
 
-      for (tmp = c->argv[1]; *tmp; ) {
-	if (*tmp == '%') {
-	  /* is the tag a named_query reference?  If so, process the 
-	   * named query, otherwise process it as a normal tag.. 
-	   */
-	  
-	  if (*(++tmp) == '{') {
-	    char *query;
+    for (tmp = c->argv[1]; *tmp; ) {
+      if (*tmp == '%') {
+        /* is the tag a named_query reference?  If so, process the 
+         * named query, otherwise process it as a normal tag.. 
+         */
 
-	    if (*tmp != '\0')
-              query = ++tmp;
+        if (*(++tmp) == '{') {
+          char *query = NULL;
+
+          if (*tmp != '\0')
+            query = ++tmp;
 	    
-	    /* get the name of the query */
-	    while (*tmp && *tmp != '}') 
-              tmp++;
+          /* get the name of the query */
+	  while (*tmp && *tmp != '}') 
+            tmp++;
 	    
-	    query = pstrndup(cmd->tmp_pool, query, (tmp - query));
+          query = pstrndup(cmd->tmp_pool, query, (tmp - query));
 
-	    /* make sure it's a SELECT query */
-	    
-	    type = named_query_type(cmd, query);
-	    if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
-			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
-	      mr = process_named_query(cmd, query);
-	      
-              if (check_response(mr) < 0) {
+          /* make sure it's a SELECT query */
+
+          type = named_query_type(cmd, query);
+          if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
+                       strcasecmp(type, SQL_FREEFORM_C) == 0)) {
+            mr = process_named_query(cmd, query);
+
+            if (check_response(mr) < 0) {
+              memset(outs, '\0', sizeof(outs));
+              break;
+
+            } else {
+              sd = (sql_data_t *) mr->data;
+              if (sd->rnum == 0 ||
+                  sd->data[0] == NULL) {
+                /* If no data was returned, show nothing.  Just continue
+                 * on to the next SQLShowInfo.
+                 */
                 memset(outs, '\0', sizeof(outs));
                 break;
 
-	      } else {
-		sd = (sql_data_t *) mr->data;
-                if (sd->rnum == 0 ||
-                    sd->data[0] == NULL) {
-                  /* If no data was returned, show nothing.  Just continue
-                   * on to the next SQLShowInfo.
+              } else {
+                if (strcasecmp(sd->data[0], "null") == 0) {
+                  /* Treat the text "null" the same as a real null; just
+                   * continue on.
                    */
                   memset(outs, '\0', sizeof(outs));
                   break;
-
-                } else {
-                  if (strcasecmp(sd->data[0], "null") == 0) {
-                    /* Treat the text "null" the same as a real null; just
-                     * continue on.
-                     */
-                    memset(outs, '\0', sizeof(outs));
-                    break;
-                  }
-
-                  argp = sd->data[0];
                 }
-              }
 
-            } else {
-              /* Can't use an INSERT/UPDATE query for retrieving info.  Skip
-               * to the next SQLShowInfo.
-               */
-              memset(outs, '\0', sizeof(outs));
-              break;
+                argp = sd->data[0];
+              }
             }
 
-	  } else {
-	    argp = resolve_short_tag(cmd, *tmp);
-	  }
+          } else {
+            /* Can't use an INSERT/UPDATE query for retrieving info.  Skip
+             * to the next SQLShowInfo.
+             */
+            memset(outs, '\0', sizeof(outs));
+            break;
+          }
 
-	  sstrcat(outs, argp, sizeof(outs));
-	  outsp += strlen(argp);
+        } else {
+          argp = resolve_short_tag(cmd, *tmp);
+        }
 
-	  if (*tmp != '\0')
-            tmp++;
+        sstrcat(outs, argp, sizeof(outs));
+        outsp += strlen(argp);
 
-	} else {
-	  *outsp++ = *tmp++;
-	}
+        if (*tmp != '\0')
+          tmp++;
+
+      } else {
+        *outsp++ = *tmp++;
       }
+    }
       
-      *outsp++ = 0;
+    *outsp++ = 0;
 
-      /* Add the response, if we have one. */
-      if (strlen(outs) > 0) {
-        pr_response_add_err(c->argv[0], "%s", outs);
-      }
-
-    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
+    /* Add the response, if we have one. */
+    if (strlen(outs) > 0) {
+      pr_response_add_err(c->argv[0], "%s", outs);
+    }
 
     sql_log(DEBUG_FUNC, "<<< errinfo_master (%s)", name);
+
+    c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
 
   /* process implicit handlers */
   name = pstrcat(cmd->tmp_pool, "SQLShowInfo_ERR_*", NULL);
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
-  if (c) {
+  while (c) {
     sql_log(DEBUG_FUNC, ">>> errinfo_master (%s)", name);
 
     /* we now have at least one config_rec.  Take the output string from 
@@ -2964,98 +2960,97 @@ MODRET errinfo_master(cmd_rec *cmd) {
      * query, run it and get info from it. 
      */
 
-    do {
-      pr_signals_handle();
+    pr_signals_handle();
 
-      memset(outs, '\0', sizeof(outs));
-      outsp = outs;
+    memset(outs, '\0', sizeof(outs));
+    outsp = outs;
 
-      for (tmp = c->argv[1]; *tmp; ) {
-	if (*tmp == '%') {
-	  /* is the tag a named_query reference?  If so, process the 
-	   * named query, otherwise process it as a normal tag.. 
-	   */
+    for (tmp = c->argv[1]; *tmp; ) {
+      if (*tmp == '%') {
+        /* is the tag a named_query reference?  If so, process the 
+         * named query, otherwise process it as a normal tag.. 
+         */
 	  
-	  if (*(++tmp) == '{') {
-	    char *query;
+        if (*(++tmp) == '{') {
+          char *query = NULL;
 
-	    if (*tmp != '\0')
-              query = ++tmp;
-	    
-	    /* get the name of the query */
-	    while (*tmp && *tmp != '}')
-              tmp++;
-	    
-	    query = pstrndup(cmd->tmp_pool, query, (tmp - query));
+          if (*tmp != '\0')
+            query = ++tmp;
 
-	    /* make sure it's a SELECT query */
+          /* get the name of the query */
+          while (*tmp && *tmp != '}')
+            tmp++;
 	    
-	    type = named_query_type(cmd, query);
-	    if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
-			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
-	      mr = process_named_query(cmd, query);
-	      
-              if (check_response(mr) < 0) {
+          query = pstrndup(cmd->tmp_pool, query, (tmp - query));
+
+          /* make sure it's a SELECT query */
+	    
+          type = named_query_type(cmd, query);
+          if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
+                       strcasecmp(type, SQL_FREEFORM_C) == 0)) {
+            mr = process_named_query(cmd, query);
+
+            if (check_response(mr) < 0) {
+              memset(outs, '\0', sizeof(outs));
+              break;
+
+            } else {
+              sd = (sql_data_t *) mr->data;
+              if (sd->rnum == 0 ||
+                  sd->data[0] == NULL) {
+                /* If no data was returned, show nothing.  Just continue
+                 * on to the next SQLShowInfo.
+                 */
                 memset(outs, '\0', sizeof(outs));
                 break;
 
-	      } else {
-		sd = (sql_data_t *) mr->data;
-                if (sd->rnum == 0 ||
-                    sd->data[0] == NULL) {
-                  /* If no data was returned, show nothing.  Just continue
-                   * on to the next SQLShowInfo.
+              } else {
+                if (strcasecmp(sd->data[0], "null") == 0) {
+                  /* Treat the text "null" the same as a real null; just
+                   * continue on.
                    */
                   memset(outs, '\0', sizeof(outs));
                   break;
-
-                } else {
-                  if (strcasecmp(sd->data[0], "null") == 0) {
-                    /* Treat the text "null" the same as a real null; just
-                     * continue on.
-                     */
-                    memset(outs, '\0', sizeof(outs));
-                    break;
-                  }
-
-                  argp = sd->data[0];
                 }
-              }
 
-            } else {
-              /* Can't use an INSERT/UPDATE query for retrieving info.  Skip
-               * to the next SQLShowInfo.
-               */
-              memset(outs, '\0', sizeof(outs));
-              break;
-              continue;
+                argp = sd->data[0];
+              }
             }
 
-	  } else {
-	    argp = resolve_short_tag(cmd, *tmp);
-	  }
+          } else {
+            /* Can't use an INSERT/UPDATE query for retrieving info.  Skip
+             * to the next SQLShowInfo.
+             */
+            memset(outs, '\0', sizeof(outs));
+            break;
+            continue;
+          }
 
-	  sstrcat(outs, argp, sizeof(outs));
-	  outsp += strlen(argp);
+        } else {
+          argp = resolve_short_tag(cmd, *tmp);
+        }
 
-	  if (*tmp != '\0')
-            tmp++;
+        sstrcat(outs, argp, sizeof(outs));
+        outsp += strlen(argp);
 
-	} else {
-	  *outsp++ = *tmp++;
-	}
+        if (*tmp != '\0')
+          tmp++;
+
+      } else {
+        *outsp++ = *tmp++;
       }
+    }
       
-      *outsp++ = 0;
+    *outsp++ = 0;
 
-      /* Add the response, if we have one. */
-      if (strlen(outs) > 0) {
-        pr_response_add(c->argv[0], "%s", outs);
-      }
-
-    } while ((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
+    /* Add the response, if we have one. */
+    if (strlen(outs) > 0) {
+      pr_response_add(c->argv[0], "%s", outs);
+    }
 
     sql_log(DEBUG_FUNC, "<<< errinfo_master (%s)", name);
+
+    c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
 
   return PR_DECLINED(cmd);
@@ -4459,7 +4454,6 @@ MODRET set_sqllog(cmd_rec *cmd) {
       *namep = toupper(*namep);
     
     name = pstrcat(cmd->tmp_pool, "SQLLog_", name, NULL);
-    
     if (cmd->argc == 4 &&
         strcasecmp(cmd->argv[3], "IGNORE_ERRORS") == 0) {
       c = add_config_param_str(name, 2, cmd->argv[2], "ignore");
