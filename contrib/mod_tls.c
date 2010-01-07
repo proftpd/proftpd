@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2009 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2010 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -1657,12 +1657,26 @@ static int tls_get_passphrase(server_rec *s, const char *path,
   register unsigned int attempt;
 
   if (path) {
+    int fd, res;
+
     /* Open an fp on the cert file. */
     PRIVS_ROOT
-    keyf = fopen(path, "r");
+    fd = open(path, O_RDONLY);
     PRIVS_RELINQUISH
 
-    if (!keyf) {
+    if (fd < 0) {
+      SYSerr(SYS_F_FOPEN, errno);
+      return -1;
+    }
+
+    /* Make sure the fd isn't one of the big three. */
+    res = pr_fs_get_usable_fd(fd);
+    if (res >= 0) {
+      fd = res;
+    }
+
+    keyf = fdopen(fd, "r");
+    if (keyf == NULL) {
       SYSerr(SYS_F_FOPEN, errno);
       return -1;
     }
