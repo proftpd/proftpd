@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.228 2009-11-23 22:35:37 castaglia Exp $
+ * $Id: dirtree.c,v 1.229 2010-01-07 19:22:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -610,7 +610,7 @@ config_rec *add_config_set(xaset_t **set, const char *name) {
 
   if (name) {
     c->name = pstrdup(conf_pool, name);
-    c->config_id = pr_config_set_id(name);
+    c->config_id = pr_config_set_id(c->name);
   }
 
   xaset_insert_end(*set, (xasetmember_t *) c);
@@ -3252,7 +3252,8 @@ char *get_full_cmd(cmd_rec *cmd) {
 }
 
 unsigned int pr_config_get_id(const char *name) {
-  void *ptr;
+  void *ptr = NULL;
+  unsigned int id = 0;
 
   if (!name) {
     errno = EINVAL;
@@ -3264,17 +3265,19 @@ unsigned int pr_config_get_id(const char *name) {
     return 0;
   }
 
-  ptr = pr_table_get(config_tab, name, 0);
-  if (!ptr) {
+  ptr = pr_table_get(config_tab, name, NULL);
+  if (ptr == NULL) {
     errno = ENOENT;
     return 0;
   }
 
-  return *((unsigned int *) ptr);
+  id = *((unsigned int *) ptr);
+  return id;
 }
 
 unsigned int pr_config_set_id(const char *name) {
-  unsigned int *ptr;
+  unsigned int *ptr = NULL;
+  unsigned int id;
 
   if (!name) {
     errno = EINVAL;
@@ -3291,16 +3294,19 @@ unsigned int pr_config_set_id(const char *name) {
 
   if (pr_table_add(config_tab, name, ptr, sizeof(unsigned int *)) < 0) {
     if (errno == EEXIST) {
-      return pr_config_get_id(name);
+      id = pr_config_get_id(name);
 
     } else {
       pr_log_debug(DEBUG0, "error adding '%s' to config ID table: %s",
         name, strerror(errno));
       return 0;
     }
+
+  } else {
+    id = *ptr;
   }
 
-  return *ptr;
+  return id;
 }
 
 int pr_config_get_xfer_bufsz(void) {
