@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
  *
- * Copyright (c) 2004-2009 TJ Saunders
+ * Copyright (c) 2004-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.32 2010-01-08 18:03:29 castaglia Exp $
+ * $Id: mod_ban.c,v 1.33 2010-01-08 18:53:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1808,12 +1808,11 @@ static void ban_handle_event(unsigned int ev_type, int ban_type,
     if (ban_event_list_add(ev_type, main_server->sid, src, tmpl->bee_count_max,
         tmpl->bee_window, tmpl->bee_expires) < 0) {
       (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-        "error adding ban event for %s (SID %u): %s", event, main_server->sid,
-        strerror(errno));
+        "error adding ban event for %s: %s", event, strerror(errno));
 
     } else {
       (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-        "added ban event for %s (SID %u)", event, main_server->sid);
+        "added ban event for %s", event);
     }
 
     bee = ban_event_list_get(ev_type, main_server->sid, src);
