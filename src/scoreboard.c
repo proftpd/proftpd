@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.50 2010-01-10 20:08:10 castaglia Exp $
+ * $Id: scoreboard.c,v 1.51 2010-01-10 21:50:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -788,7 +788,7 @@ int pr_scoreboard_entry_kill(pr_scoreboard_entry_t *sce, int signo) {
     curr_pgrp = getpgrp();
 # else
     curr_pgrp = getpgid(0);
-#endif /* HAVE_GETPGRP */
+# endif /* HAVE_GETPGRP */
 
     if (getpgid(sce->sce_pid) != curr_pgrp) {
       pr_trace_msg(trace_channel, 1, "scoreboard entry PID %lu process group "
