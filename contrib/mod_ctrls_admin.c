@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.39 2010-01-06 23:24:36 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.40 2010-01-10 20:01:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -441,7 +441,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
           res = 0;
 
           PRIVS_ROOT
-          res = kill(score->sce_pid, SIGTERM);
+          res = pr_scoreboard_entry_kill(score, SIGTERM);
           PRIVS_RELINQUISH
 
           if (res == 0) {
@@ -506,7 +506,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
       while ((score = pr_scoreboard_entry_read()) != NULL) {
         if (strcmp(score->sce_client_addr, addr) == 0) {
           PRIVS_ROOT
-          if (kill(score->sce_pid, SIGTERM) == 0)
+          if (pr_scoreboard_entry_kill(score, SIGTERM) == 0)
             kicked_host = TRUE;
           PRIVS_RELINQUISH
         }
@@ -549,7 +549,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
           res = 0;
 
           PRIVS_ROOT
-          res = kill(score->sce_pid, SIGTERM);
+          res = pr_scoreboard_entry_kill(score, SIGTERM);
           PRIVS_RELINQUISH
 
           if (res == 0) {

@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.33 2010-01-08 18:53:06 castaglia Exp $
+ * $Id: mod_ban.c,v 1.34 2010-01-10 20:01:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -341,7 +341,7 @@ static int ban_disconnect_class(const char *class) {
       int res = 0;
 
       PRIVS_ROOT
-      res = kill(score->sce_pid, SIGTERM);
+      res = pr_scoreboard_entry_kill(score, SIGTERM);
       PRIVS_RELINQUISH
 
       if (res == 0) {
@@ -409,7 +409,7 @@ static int ban_disconnect_host(const char *host) {
       int res = 0;
 
       PRIVS_ROOT
-      res = kill(score->sce_pid, SIGTERM);
+      res = pr_scoreboard_entry_kill(score, SIGTERM);
       PRIVS_RELINQUISH
 
       if (res == 0) {
@@ -477,7 +477,7 @@ static int ban_disconnect_user(const char *user) {
       int res = 0;
 
       PRIVS_ROOT
-      res = kill(score->sce_pid, SIGTERM);
+      res = pr_scoreboard_entry_kill(score, SIGTERM);
       PRIVS_RELINQUISH
 
       if (res == 0) {

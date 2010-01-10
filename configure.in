@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2009 The ProFTPD Project team
+dnl Copyright (c) 2001-2010 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -1350,7 +1350,7 @@ AC_PROG_GCC_TRADITIONAL
 AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(bcopy crypt fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo futimes nl_langinfo)
+AC_CHECK_FUNCS(bcopy crypt fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo futimes getpgid getpgrp nl_langinfo)
 AC_CHECK_FUNC(gai_strerror,
   AC_DEFINE(HAVE_GAI_STRERROR, 1,
     [Define if you have the gai_strerror() function]),

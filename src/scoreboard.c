@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.48 2009-10-04 19:52:54 castaglia Exp $
+ * $Id: scoreboard.c,v 1.49 2010-01-10 20:01:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -772,6 +772,38 @@ const char *pr_scoreboard_entry_get(int field) {
   return NULL;
 }
 
+int pr_scoreboard_entry_kill(pr_scoreboard_entry_t *sce, int signo) {
+  int res;
+
+  if (sce == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (ServerType == SERVER_STANDALONE) {
+#ifdef HAVE_GETPGID
+    pid_t daemon_pgrp;
+
+# ifdef HAVE_GETPGRP
+    daemon_pgrp = getpgrp();
+# else
+    daemon_pgrp = getpgid(0);
+#endif /* HAVE_GETPGRP */
+
+    if (getpgid(sce->sce_pid) != daemon_pgrp) {
+      pr_trace_msg(trace_channel, 1, "scoreboard entry PID %lu process group "
+        "does not match daemon process group, refusing to send signal",
+        (unsigned long) sce->sce_pid);
+      errno = EPERM;
+      return -1;
+    }
+#endif /* HAVE_GETPGID */
+  }
+
+  res = kill(sce->sce_pid, signo);
+  return res;
+}
+
 /* Given a NUL-terminated string -- possibly UTF8-encoded -- and a maximum
  * buffer length, return the number of bytes in the string which can fit in
  * that buffer without truncating a character.  This is needed since UTF8
@@ -998,6 +1030,45 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
   return 0;
 }
 
+/* Validate the PID in a scoreboard entry.  A PID can be invalid in a couple
+ * of ways:
+ *
+ *  1.  The PID refers to a process no longer present on the system.
+ *  2.  The PID refers to a process not in the daemon process group
+ *      (for "ServerType standalone" servers only).
+ */
+static int scoreboard_valid_pid(pid_t pid) {
+  int res;
+
+  res = kill(pid, 0);
+  if (res < 0 &&
+      errno == ESRCH) {
+    return -1;
+  }
+
+  if (ServerType == SERVER_STANDALONE) {
+#ifdef HAVE_GETPGID
+    pid_t daemon_pgrp;
+ 
+# ifdef HAVE_GETPGRP
+    daemon_pgrp = getpgrp();
+# else
+    daemon_pgrp = getpgid(0);
+#endif /* HAVE_GETPGRP */
+ 
+    if (getpgid(pid) != daemon_pgrp) { 
+      pr_trace_msg(trace_channel, 1, "scoreboard entry PID %lu process group "
+        "does not match daemon process group, removing entry",
+        (unsigned long) pid);
+      errno = EPERM;
+      return -1;
+    }
+#endif /* HAVE_GETPGID */
+  }
+
+  return 0;
+}
+
 int pr_scoreboard_scrub(void) {
   int fd = -1;
   off_t curr_offset = 0;
@@ -1047,8 +1118,7 @@ int pr_scoreboard_scrub(void) {
      * the slot.
      */
     if (sce.sce_pid &&
-        kill(sce.sce_pid, 0) < 0 &&
-        errno == ESRCH) {
+        scoreboard_valid_pid(sce.sce_pid) < 0) {
 
       /* OK, the recorded PID is no longer valid. */
       pr_log_debug(DEBUG9, "scrubbing scoreboard slot for PID %u",

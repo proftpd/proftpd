@@ -318,6 +318,12 @@
 /* Define if you have the getpeerucred function.  */
 #undef HAVE_GETPEERUCRED
 
+/* Define if you have the getpgid function.  */
+#undef HAVE_GETPGID
+
+/* Define if you have the getpgrp function.  */
+#undef HAVE_GETPGRP
+
 /* Define if you have the getprpwent function.  */
 #undef HAVE_GETPRPWENT
 
