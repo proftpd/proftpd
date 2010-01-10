@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.49 2010-01-10 20:01:30 castaglia Exp $
+ * $Id: scoreboard.c,v 1.50 2010-01-10 20:08:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -782,17 +782,17 @@ int pr_scoreboard_entry_kill(pr_scoreboard_entry_t *sce, int signo) {
 
   if (ServerType == SERVER_STANDALONE) {
 #ifdef HAVE_GETPGID
-    pid_t daemon_pgrp;
+    pid_t curr_pgrp;
 
 # ifdef HAVE_GETPGRP
-    daemon_pgrp = getpgrp();
+    curr_pgrp = getpgrp();
 # else
-    daemon_pgrp = getpgid(0);
+    curr_pgrp = getpgid(0);
 #endif /* HAVE_GETPGRP */
 
-    if (getpgid(sce->sce_pid) != daemon_pgrp) {
+    if (getpgid(sce->sce_pid) != curr_pgrp) {
       pr_trace_msg(trace_channel, 1, "scoreboard entry PID %lu process group "
-        "does not match daemon process group, refusing to send signal",
+        "does not match current process group, refusing to send signal",
         (unsigned long) sce->sce_pid);
       errno = EPERM;
       return -1;
@@ -1048,17 +1048,17 @@ static int scoreboard_valid_pid(pid_t pid) {
 
   if (ServerType == SERVER_STANDALONE) {
 #ifdef HAVE_GETPGID
-    pid_t daemon_pgrp;
+    pid_t curr_pgrp;
  
 # ifdef HAVE_GETPGRP
-    daemon_pgrp = getpgrp();
+    curr_pgrp = getpgrp();
 # else
-    daemon_pgrp = getpgid(0);
+    curr_pgrp = getpgid(0);
 #endif /* HAVE_GETPGRP */
  
-    if (getpgid(pid) != daemon_pgrp) { 
+    if (getpgid(pid) != curr_pgrp) { 
       pr_trace_msg(trace_channel, 1, "scoreboard entry PID %lu process group "
-        "does not match daemon process group, removing entry",
+        "does not match current process group, removing entry",
         (unsigned long) pid);
       errno = EPERM;
       return -1;
