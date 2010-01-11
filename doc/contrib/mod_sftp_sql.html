@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp_sql.html,v 1.1 2009-02-13 21:45:12 castaglia Exp $ -->
+<!-- $Id: mod_sftp_sql.html,v 1.2 2010-01-11 15:57:22 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp_sql.html,v $ -->
 
 <html>
@@ -109,15 +109,15 @@ existing tables you might have, or be part of a new table.
 For example, using SQLite, you could do:
 <pre>
   # sqlite3 sftp.db
-  sqlite> CREATE TABLE sftpuserkeys (
-  sqlite>  name TEXT NOT NULL,
-  sqlite>  key BLOB NOT NULL
-  sqlite> );
+  sqlite&gt; CREATE TABLE sftpuserkeys (
+  sqlite&gt;  name TEXT NOT NULL,
+  sqlite&gt;  key BLOB NOT NULL
+  sqlite&gt; );
 
-  sqlite> CREATE TABLE sftphostkeys (
-  sqlite>  host TEXT NOT NULL,
-  sqlite>  key BLOB NOT NULL
-  sqlite> );
+  sqlite&gt; CREATE TABLE sftphostkeys (
+  sqlite&gt;  host TEXT NOT NULL,
+  sqlite&gt;  key BLOB NOT NULL
+  sqlite&gt; );
 </pre>
 and then configure <code>mod_sql</code> to use that <code>sftp.db</code>
 database file.
@@ -140,7 +140,7 @@ Since this is a user-specific key, and since we are using SQLite for this
 example, you would then do:
 <pre>
   # sqlite sftp.db
-  sqlite> INSERT INTO sftpuserkeys (name, key) VALUES ('tj', 'AAAAB3NzaC1yc2EAAAABIwAAAIEA6d+bt06KSlp4Q6wMS57hFAEaiNIQfdguCN9uMP3C5dC4kCt/S85jYt3cdB9XECr8AIxCsivay8WTw77z4qBgR6XrOrzb2J57mX27oQxi4kjHNY3vcVU0Y9lRa6M8whdokpWQsgGaPDmoa2ScU56r0FFiHy0cDX+dDU3ycniQSwc=');
+  sqlite&gt; INSERT INTO sftpuserkeys (name, key) VALUES ('tj', 'AAAAB3NzaC1yc2EAAAABIwAAAIEA6d+bt06KSlp4Q6wMS57hFAEaiNIQfdguCN9uMP3C5dC4kCt/S85jYt3cdB9XECr8AIxCsivay8WTw77z4qBgR6XrOrzb2J57mX27oQxi4kjHNY3vcVU0Y9lRa6M8whdokpWQsgGaPDmoa2ScU56r0FFiHy0cDX+dDU3ycniQSwc=');
 </pre>
 
 <p>
@@ -152,12 +152,12 @@ keys into your SQL tables, for use via <code>mod_sftp_sql</code>.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-02-13 21:45:12 $</i><br>
+Last Updated: <i>$Date: 2010-01-11 15:57:22 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2008 TJ Saunders<br>
+&copy; Copyright 2009-2010 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
