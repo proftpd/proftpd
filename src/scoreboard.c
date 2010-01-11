@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.51 2010-01-10 21:50:09 castaglia Exp $
+ * $Id: scoreboard.c,v 1.52 2010-01-11 01:16:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1037,7 +1037,7 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
  *  2.  The PID refers to a process not in the daemon process group
  *      (for "ServerType standalone" servers only).
  */
-static int scoreboard_valid_pid(pid_t pid) {
+static int scoreboard_valid_pid(pid_t pid, pid_t curr_pgrp) {
   int res;
 
   res = kill(pid, 0);
@@ -1046,16 +1046,9 @@ static int scoreboard_valid_pid(pid_t pid) {
     return -1;
   }
 
-  if (ServerType == SERVER_STANDALONE) {
+  if (ServerType == SERVER_STANDALONE &&
+      curr_pgrp > 0) {
 #ifdef HAVE_GETPGID
-    pid_t curr_pgrp;
- 
-# ifdef HAVE_GETPGRP
-    curr_pgrp = getpgrp();
-# else
-    curr_pgrp = getpgid(0);
-#endif /* HAVE_GETPGRP */
- 
     if (getpgid(pid) != curr_pgrp) { 
       pr_trace_msg(trace_channel, 1, "scoreboard entry PID %lu process group "
         "does not match current process group, removing entry",
@@ -1073,6 +1066,7 @@ int pr_scoreboard_scrub(void) {
   int fd = -1;
   off_t curr_offset = 0;
   struct flock lock;
+  pid_t curr_pgrp = 0;
   pr_scoreboard_entry_t sce;
 
   pr_log_debug(DEBUG9, "scrubbing scoreboard");
@@ -1109,7 +1103,13 @@ int pr_scoreboard_scrub(void) {
   curr_offset = lseek(fd, sizeof(pr_scoreboard_header_t), SEEK_SET);
 
   memset(&sce, 0, sizeof(sce));
-
+ 
+#ifdef HAVE_GETPGRP
+  curr_pgrp = getpgrp();
+#elif HAVE_GETPGID
+  curr_pgrp = getpgid(0);
+#endif /* !HAVE_GETPGRP and !HAVE_GETPGID */
+ 
   PRIVS_ROOT
   while (read(fd, &sce, sizeof(sce)) == sizeof(sce)) {
     pr_signals_handle();
@@ -1118,7 +1118,7 @@ int pr_scoreboard_scrub(void) {
      * the slot.
      */
     if (sce.sce_pid &&
-        scoreboard_valid_pid(sce.sce_pid) < 0) {
+        scoreboard_valid_pid(sce.sce_pid, curr_pgrp) < 0) {
 
       /* OK, the recorded PID is no longer valid. */
       pr_log_debug(DEBUG9, "scrubbing scoreboard slot for PID %u",
