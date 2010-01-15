@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.53 2009-08-13 21:12:55 castaglia Exp $
+ * $Id: mod_radius.c,v 1.54 2010-01-15 22:05:30 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9.1"
@@ -427,7 +427,7 @@ static unsigned char radius_parse_gids_str(pool *p, char *gids_str,
 static unsigned char radius_parse_groups_str(pool *p, char *groups_str,
     char ***groups, unsigned int *ngroups) {
   char *name = NULL;
-  array_header *group_names = make_array(p, 0, sizeof(char **));
+  array_header *group_names = make_array(p, 0, sizeof(char *));
 
   /* Add each name to the array. */
   while ((name = radius_argsep(&groups_str)) != NULL) {
@@ -2792,6 +2792,36 @@ MODRET radius_post_pass(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+MODRET radius_post_pass_err(cmd_rec *cmd) {
+  /* Clear/reset user info */
+  radius_have_user_info = FALSE;
+
+  /* Clear/reset group info */
+  radius_have_group_info = FALSE;
+  radius_prime_group_name = NULL;
+  radius_addl_group_count = 0;
+  radius_addl_group_names = NULL;
+  radius_addl_group_names_str = NULL;
+  radius_addl_group_ids = NULL;
+  radius_addl_group_ids_str = NULL;
+
+  /* Clear/reset quota info */
+  radius_have_quota_info = FALSE;
+  radius_quota_per_sess = NULL;
+  radius_quota_limit_type = NULL;
+  radius_quota_bytes_in = NULL;
+  radius_quota_bytes_out = NULL;
+  radius_quota_bytes_xfer = NULL;
+  radius_quota_files_in = NULL;
+  radius_quota_files_out = NULL;
+  radius_quota_files_xfer = NULL;
+
+  /* Clear/reset other info */
+  radius_have_other_info = FALSE;
+
+  return PR_DECLINED(cmd);
+}
+
 /* Configuration handlers
  */
 
@@ -3401,6 +3431,7 @@ static cmdtable radius_cmdtab[] = {
 
   { PRE_CMD,		C_PASS, G_NONE, radius_pre_pass,	FALSE, FALSE, CL_AUTH },
   { POST_CMD,		C_PASS, G_NONE, radius_post_pass, 	FALSE, FALSE, CL_AUTH },
+  { POST_CMD_ERR,	C_PASS, G_NONE, radius_post_pass_err, 	FALSE, FALSE, CL_AUTH },
   { 0, NULL }
 };
 
