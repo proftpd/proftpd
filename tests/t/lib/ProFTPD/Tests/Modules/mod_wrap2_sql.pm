@@ -177,6 +177,8 @@ EOS
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
+  my $timeout_idle = 30;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -184,19 +186,20 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    TimeoutIdle => $timeout_idle,
 
     IfModules => {
       'mod_delay.c' => {
         DelayEngine => 'off',
       },
 
-      'mod_sql_sqlite.c' => {
-        SQLAuthenticate => 'off',
-        SQLConnectInfo => $db_file,
-        SQLNamedQuery => 'get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
-        SQLNamedQuery => 'get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-        SQLLogFile => $log_file,
-      },
+      'mod_sql_sqlite.c' => [
+        'SQLAuthenticate off',
+        "SQLConnectInfo $db_file",
+        'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
+        'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
+        "SQLLogFile $log_file",
+      ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'on',
@@ -249,7 +252,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -344,6 +347,8 @@ EOS
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
+  my $timeout_idle = 30;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -351,19 +356,20 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    TimeoutIdle => $timeout_idle,
 
     IfModules => {
       'mod_delay.c' => {
         DelayEngine => 'off',
       },
 
-      'mod_sql_sqlite.c' => {
-        SQLAuthenticate => 'off',
-        SQLConnectInfo => $db_file,
-        SQLNamedQuery => 'get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
-        SQLNamedQuery => 'get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-        SQLLogFile => $log_file,
-      },
+      'mod_sql_sqlite.c' => [
+        'SQLAuthenticate off',
+        "SQLConnectInfo $db_file",
+        'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
+        'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
+        "SQLLogFile $log_file",
+      ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'on',
@@ -423,7 +429,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -518,6 +524,8 @@ EOS
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
+  my $timeout_idle = 30;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -525,18 +533,20 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    TimeoutIdle => $timeout_idle,
 
     IfModules => {
       'mod_delay.c' => {
         DelayEngine => 'off',
       },
 
-      'mod_sql_sqlite.c' => {
-        SQLAuthenticate => 'off',
-        SQLConnectInfo => $db_file,
-        SQLNamedQuery => 'get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
-        SQLNamedQuery => 'get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-      },
+      'mod_sql_sqlite.c' => [
+        'SQLAuthenticate off',
+        "SQLConnectInfo $db_file",
+        'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
+        'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
+        "SQLLogFile $log_file",
+      ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'off',
@@ -589,7 +599,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -683,6 +693,8 @@ EOS
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
+  my $timeout_idle = 30;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -690,18 +702,20 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    TimeoutIdle => $timeout_idle,
 
     IfModules => {
       'mod_delay.c' => {
         DelayEngine => 'off',
       },
 
-      'mod_sql_sqlite.c' => {
-        SQLAuthenticate => 'off',
-        SQLConnectInfo => $db_file,
-        SQLNamedQuery => 'get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
-        SQLNamedQuery => 'get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-      },
+      'mod_sql_sqlite.c' => [
+        'SQLAuthenticate off',
+        "SQLConnectInfo $db_file",
+        'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
+        'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
+        "SQLLogFile $log_file",
+      ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'on',
@@ -752,7 +766,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -824,7 +838,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1091,6 +1105,8 @@ EOS
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
+  my $timeout_idle = 30;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -1098,6 +1114,7 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    TimeoutIdle => $timeout_idle,
 
     IfModules => {
       'mod_delay.c' => {
@@ -1169,7 +1186,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1249,7 +1266,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1344,6 +1361,8 @@ EOS
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
+  my $timeout_idle = 30;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -1351,6 +1370,7 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    TimeoutIdle => $timeout_idle,
     UseReverseDNS => 'on',
 
     IfModules => {
@@ -1423,7 +1443,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1503,7 +1523,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1598,6 +1618,8 @@ EOS
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
+  my $timeout_idle = 30;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -1605,19 +1627,20 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    TimeoutIdle => $timeout_idle,
 
     IfModules => {
       'mod_delay.c' => {
         DelayEngine => 'off',
       },
 
-      'mod_sql_sqlite.c' => {
-        SQLAuthenticate => 'off',
-        SQLConnectInfo => $db_file,
-        SQLNamedQuery => 'get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
-        SQLNamedQuery => 'get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-        SQLLogFile => $log_file,
-      },
+      'mod_sql_sqlite.c' => [
+        'SQLAuthenticate off',
+        "SQLConnectInfo $db_file",
+        'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
+        'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
+        "SQLLogFile $log_file",
+      ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'on',
@@ -1669,7 +1692,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1729,7 +1752,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1825,6 +1848,8 @@ EOS
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
 
+  my $timeout_idle = 30;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -1832,19 +1857,20 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    TimeoutIdle => $timeout_idle,
 
     IfModules => {
       'mod_delay.c' => {
         DelayEngine => 'off',
       },
 
-      'mod_sql_sqlite.c' => {
-        SQLAuthenticate => 'off',
-        SQLConnectInfo => $db_file,
-        SQLNamedQuery => 'get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
-        SQLNamedQuery => 'get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-        SQLLogFile => $log_file,
-      },
+      'mod_sql_sqlite.c' => [
+        'SQLAuthenticate off',
+        "SQLConnectInfo $db_file",
+        'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
+        'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
+        "SQLLogFile $log_file",
+      ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'on',
@@ -1896,7 +1922,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1956,7 +1982,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2052,6 +2078,8 @@ EOS
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
 
+  my $timeout_idle = 30;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -2059,6 +2087,7 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    TimeoutIdle => $timeout_idle,
 
     IfModules => {
       'mod_delay.c' => {
@@ -2123,7 +2152,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2219,6 +2248,8 @@ EOS
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
 
+  my $timeout_idle = 30;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -2226,6 +2257,7 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    TimeoutIdle => $timeout_idle,
 
     IfModules => {
       'mod_delay.c' => {
@@ -2325,7 +2357,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
