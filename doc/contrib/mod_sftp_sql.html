@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp_sql.html,v 1.2 2010-01-11 15:57:22 castaglia Exp $ -->
+<!-- $Id: mod_sftp_sql.html,v 1.3 2010-01-19 16:43:02 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp_sql.html,v $ -->
 
 <html>
@@ -124,24 +124,13 @@ database file.
 
 <p>
 Which leads to the next question: how can I transfer existing authorized
-SSH keys from their current flate files into the SQL tables?  The
-<code>mod_sftp_sql</code> source code is distributed with a
-<code>extract-rfc4716-key.pl</code> Perl script which can be used to read
-an existing authorized keys file and print out the string which should
-be added to the database table.  Note that the
-<code>extract-rfc47167-key.pl</code> script will print out the key data for
-each key contained in the file, one key per line, to stdout.
-
+SSH keys from their current flat files into the SQL tables?  First, you need
+to make sure that the key is in the RFC4716 format, using:
 <pre>
-  # extract-rfc4716-key.pl ~/.sftp/authorized_keys 
-AAAAB3NzaC1yc2EAAAABIwAAAIEA6d+bt06KSlp4Q6wMS57hFAEaiNIQfdguCN9uMP3C5dC4kCt/S85jYt3cdB9XECr8AIxCsivay8WTw77z4qBgR6XrOrzb2J57mX27oQxi4kjHNY3vcVU0Y9lRa6M8whdokpWQsgGaPDmoa2ScU56r0FFiHy0cDX+dDU3ycniQSwc=
+  # ssh-keygen -e -f /path/to/key.pub
 </pre>
-Since this is a user-specific key, and since we are using SQLite for this
-example, you would then do:
-<pre>
-  # sqlite sftp.db
-  sqlite&gt; INSERT INTO sftpuserkeys (name, key) VALUES ('tj', 'AAAAB3NzaC1yc2EAAAABIwAAAIEA6d+bt06KSlp4Q6wMS57hFAEaiNIQfdguCN9uMP3C5dC4kCt/S85jYt3cdB9XECr8AIxCsivay8WTw77z4qBgR6XrOrzb2J57mX27oQxi4kjHNY3vcVU0Y9lRa6M8whdokpWQsgGaPDmoa2ScU56r0FFiHy0cDX+dDU3ycniQSwc=');
-</pre>
+Then simply add the output data to your SQL table (<i>e.g.</i> to the
+<code>sftpuserkeys.key</code> column in the above example schema).
 
 <p>
 Other databases (<i>e.g.</i> MySQL, Postgres, Oracle, <i>etc</i>) have
@@ -152,7 +141,7 @@ keys into your SQL tables, for use via <code>mod_sftp_sql</code>.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-01-11 15:57:22 $</i><br>
+Last Updated: <i>$Date: 2010-01-19 16:43:02 $</i><br>
 
 <br><hr>
 
