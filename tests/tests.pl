@@ -199,6 +199,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_sftp)],
     },
 
+    't/modules/mod_sftp_sql.t' => {
+      order => ++$order,
+      test_class => [qw(mod_sftp mod_sql_sqlite)],
+    },
+
     't/modules/mod_shaper.t' => {
       order => ++$order,
       test_class => [qw(mod_shaper)],
