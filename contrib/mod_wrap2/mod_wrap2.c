@@ -484,6 +484,10 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
     return FALSE;
 #endif
 
+  } else if (strcasecmp(tok, "ALL") == 0) {
+    /* Matches everything */
+    return TRUE;
+
   } else if (strcasecmp(tok, "KNOWN") == 0) {
 
     /* Check address and name. */
