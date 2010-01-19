@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sftp_sql -- SQL backend module for retrieving authorized keys
  *
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_sftp_sql, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_sql.c,v 1.3 2009-03-04 17:42:49 castaglia Exp $
+ * $Id: mod_sftp_sql.c,v 1.4 2010-01-19 16:37:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -33,7 +33,7 @@
 #include "mod_sftp.h"
 #include "mod_sql.h"
 
-#define MOD_SFTP_SQL_VERSION		"mod_sftp_sql/0.1"
+#define MOD_SFTP_SQL_VERSION		"mod_sftp_sql/0.2"
 
 module sftp_sql_module;
 
@@ -75,7 +75,7 @@ static cmd_rec *sqlstore_cmd_create(pool *parent_pool, int argc, ...) {
   return cmd;
 }
 
-static struct sqlstore_key *sqlstore_get_key(pool *p, char *blob) {
+static struct sqlstore_key *sqlstore_get_key_raw(pool *p, char *blob) {
   char chunk[1024], *data = NULL;
   BIO *bio = NULL, *b64 = NULL, *bmem = NULL;
   int chunklen;
@@ -84,8 +84,6 @@ static struct sqlstore_key *sqlstore_get_key(pool *p, char *blob) {
   struct sqlstore_key *key = NULL;
 
   bloblen = strlen(blob);
-
-  key = pcalloc(p, sizeof(struct sqlstore_key));
   bio = BIO_new(BIO_s_mem());
 
   if (BIO_write(bio, blob, bloblen) < 0) {
@@ -138,6 +136,99 @@ static struct sqlstore_key *sqlstore_get_key(pool *p, char *blob) {
 
   if (data != NULL &&
       datalen > 0) {
+    key = pcalloc(p, sizeof(struct sqlstore_key));
+    key->key_data = pcalloc(p, datalen + 1);
+    key->key_datalen = datalen;
+    memcpy(key->key_data, data, datalen);
+
+  } else {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+      "error base64-decoding key data from database");
+  }
+
+  BIO_free_all(bio);
+  bio = NULL;
+
+  BIO_free_all(bmem);
+  return key;
+}
+
+static struct sqlstore_key *sqlstore_get_key_rfc4716(pool *p, char *blob) {
+  char chunk[1024], *blob2 = NULL, *data = NULL, *tok;
+  BIO *bio = NULL, *b64 = NULL, *bmem = NULL;
+  int chunklen;
+  long datalen = 0;
+  size_t bloblen;
+  struct sqlstore_key *key = NULL;
+
+  bloblen = strlen(blob);
+
+  bio = BIO_new(BIO_s_mem());
+
+  blob2 = pstrdup(p, blob);
+  while ((tok = pr_str_get_token(&blob2, "\r\n")) != NULL) {
+    pr_signals_handle();
+
+    /* Skip begin/end markers and any headers. */
+    if (strchr(tok, '-') != NULL ||
+        strchr(tok, ':') != NULL) {
+      continue;      
+    }
+
+    if (BIO_write(bio, tok, strlen(tok)) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+        "error buffering base64 data");
+      BIO_free_all(bio);
+      return NULL;
+    }
+  }
+
+  /* Add a base64 filter BIO, and read the data out, thus base64-decoding
+   * the key.  Write the decoded data into another memory BIO.
+   */
+  b64 = BIO_new(BIO_f_base64());
+  BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+  bio = BIO_push(b64, bio);
+
+  bmem = BIO_new(BIO_s_mem());
+
+  memset(chunk, '\0', sizeof(chunk));
+  chunklen = BIO_read(bio, chunk, sizeof(chunk));
+
+  if (chunklen < 0 &&
+      !BIO_should_retry(bio)) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+      "unable to base64-decode data from database: %s",
+      sftp_crypto_get_errors());
+    BIO_free_all(bio);
+    BIO_free_all(bmem);
+
+    errno = EPERM;
+    return NULL;
+  }
+
+  while (chunklen > 0) {
+    pr_signals_handle();
+
+    if (BIO_write(bmem, chunk, chunklen) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+        "error writing to memory BIO: %s", sftp_crypto_get_errors());
+      BIO_free_all(bio);
+      BIO_free_all(bmem);
+
+      errno = EPERM;
+      return NULL;
+    }
+
+    memset(chunk, '\0', sizeof(chunk));
+    chunklen = BIO_read(bio, chunk, sizeof(chunk));
+  }
+
+  datalen = BIO_get_mem_data(bmem, &data);
+
+  if (data != NULL &&
+      datalen > 0) {
+    key = pcalloc(p, sizeof(struct sqlstore_key));
     key->key_data = pcalloc(p, datalen + 1);
     key->key_datalen = datalen;
     memcpy(key->key_data, data, datalen);
@@ -247,7 +338,11 @@ static int sqlstore_verify_host_key(sftp_keystore_t *store, pool *p,
   for (i = 0; i < sql_data->nelts; i++) {
     pr_signals_handle();
 
-    key = sqlstore_get_key(p, values[i]);
+    key = sqlstore_get_key_raw(p, values[i]);
+    if (key == NULL) {
+      key = sqlstore_get_key_rfc4716(p, values[i]);
+    }
+
     if (key == NULL) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
         "error obtaining SSH2 public key from SQL data (row %u)", i+1);
@@ -343,7 +438,11 @@ static int sqlstore_verify_user_key(sftp_keystore_t *store, pool *p,
   for (i = 0; i < sql_data->nelts; i++) {
     pr_signals_handle();
 
-    key = sqlstore_get_key(p, values[i]);
+    key = sqlstore_get_key_raw(p, values[i]);
+    if (key == NULL) {
+      key = sqlstore_get_key_rfc4716(p, values[i]);
+    }
+
     if (key == NULL) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
         "error obtaining SSH2 public key from SQL data (row %u)", i+1);
