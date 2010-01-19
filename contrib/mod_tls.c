@@ -1850,8 +1850,9 @@ static void tls_scrub_pkeys(void) {
       ": scrubbing %u %s from memory",
       tls_npkeys, tls_npkeys != 1 ? "passphrases" : "passphrase");
 
-  } else
+  } else {
     return;
+  }
 
   for (k = tls_pkey_list; k; k = k->next) {
     if (k->rsa_pkey) {
@@ -2041,11 +2042,9 @@ static void tls_blinding_on(SSL *ssl) {
 }
 #endif
 
-static int tls_init_ctxt(void) {
+static int tls_init_ctx(void) {
   config_rec *c;
   int ssl_opts = SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE;
-
-  SSL_load_error_strings();
 
   if (pr_define_exists("TLS_USE_FIPS") &&
       ServerType == SERVER_INETD) {
@@ -2064,8 +2063,8 @@ static int tls_init_ctxt(void) {
 
         errstr = tls_get_errors();
         tls_log("unable to use FIPS mode: %s", errstr);
-        pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use FIPS mode: %s",
-          errstr);
+        pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION
+          ": unable to use FIPS mode: %s", errstr);
 
         errno = EPERM;
         return -1;
@@ -2082,23 +2081,19 @@ static int tls_init_ctxt(void) {
 #endif /* OPENSSL_FIPS */
   }
 
-  /* It looks like calling OpenSSL_add_all_algorithms() is necessary for
-   * handling some algorithms (e.g. PKCS12 files) which are NOT added by
-   * just calling SSL_library_init().
-   */
-  OpenSSL_add_all_algorithms();
-
-  SSL_library_init();
-  OpenSSL_add_all_algorithms();
-
 #ifdef ZLIB
-   {
-     COMP_METHOD *cm = COMP_zlib();
-     if (cm != NULL && cm->type != NID_undef) {
-        SSL_COMP_add_compression_method(0xe0, cm); /* Eric Young's ZLIB ID */
-     }
-   }
+  {
+    COMP_METHOD *cm = COMP_zlib();
+    if (cm != NULL && cm->type != NID_undef) {
+       SSL_COMP_add_compression_method(0xe0, cm); /* Eric Young's ZLIB ID */
+    }
+  }
 #endif /* ZLIB */
+
+  if (ssl_ctx != NULL) {
+    SSL_CTX_free(ssl_ctx);
+    ssl_ctx = NULL;
+  }
 
   ssl_ctx = SSL_CTX_new(SSLv23_server_method());
   if (ssl_ctx == NULL) {
@@ -2190,13 +2185,9 @@ static int tls_init_ctxt(void) {
 
   SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
 
-  if (tls_seed_prng() < 0)
+  if (tls_seed_prng() < 0) {
     tls_log("%s", "unable to properly seed PRNG");
-
-  /* Add the commands handled by this module to the HELP list. */
-  pr_help_add(C_AUTH, "<sp> base64-data", TRUE);
-  pr_help_add(C_PBSZ, "<sp> protection buffer size", TRUE);
-  pr_help_add(C_PROT, "<sp> protection code", TRUE);
+  }
 
   return 0;
 }
@@ -7061,7 +7052,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
   }
 
   /* Initialize the OpenSSL context. */
-  if (tls_init_ctxt() < 0) {
+  if (tls_init_ctx() < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
       ": error initialising OpenSSL context");
     end_login(1);
@@ -7110,6 +7101,15 @@ static int tls_init(void) {
 #endif /* PR_SHARED_MODULE */
   pr_event_register(&tls_module, "core.postparse", tls_postparse_ev, NULL);
   pr_event_register(&tls_module, "core.restart", tls_restart_ev, NULL);
+
+  SSL_load_error_strings();
+  SSL_library_init();
+
+  /* It looks like calling OpenSSL_add_all_algorithms() is necessary for
+   * handling some algorithms (e.g. PKCS12 files) which are NOT added by
+   * just calling SSL_library_init().
+   */
+  OpenSSL_add_all_algorithms();
 
 #ifdef PR_USE_CTRLS
   if (pr_ctrls_register(&tls_module, "tls", "query/tune mod_tls settings",
@@ -7422,6 +7422,11 @@ static int tls_sess_init(void) {
   pr_feat_add("AUTH TLS");
   pr_feat_add("PBSZ");
   pr_feat_add("PROT");
+
+  /* Add the commands handled by this module to the HELP list. */
+  pr_help_add(C_AUTH, "<sp> base64-data", TRUE);
+  pr_help_add(C_PBSZ, "<sp> protection buffer size", TRUE);
+  pr_help_add(C_PROT, "<sp> protection code", TRUE);
 
   if (tls_opts & TLS_OPT_USE_IMPLICIT_SSL) {
     tls_log("%s", "TLSOption UseImplicitSSL in effect, starting SSL/TLS "
