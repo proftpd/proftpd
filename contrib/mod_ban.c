@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.34 2010-01-10 20:01:30 castaglia Exp $
+ * $Id: mod_ban.c,v 1.35 2010-01-20 18:11:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -367,10 +367,6 @@ static int ban_disconnect_class(const char *class) {
       "disconnected %u %s from class '%s'", nclients,
       nclients != 1 ? "clients" : "client", class);
     return 0;
-
-  } else {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "class '%s' not connected", class);
   }
 
   errno = ENOENT;
@@ -435,10 +431,6 @@ static int ban_disconnect_host(const char *host) {
       "disconnected %u %s from host '%s'", nclients,
       nclients != 1 ? "clients" : "client", host);
     return 0;
-
-  } else {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "host '%s' not connected", host);
   }
 
   errno = ENOENT;
@@ -503,10 +495,6 @@ static int ban_disconnect_user(const char *user) {
       "disconnected %u %s from user '%s'", nclients,
       nclients != 1 ? "clients" : "client", user);
     return 0;
-
-  } else {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "user '%s' not connected", user);
   }
 
   errno = ENOENT;
