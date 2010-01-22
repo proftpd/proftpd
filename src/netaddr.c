@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2009 The ProFTPD Project team
+ * Copyright (c) 2003-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.68 2009-02-13 23:09:35 castaglia Exp $
+ * $Id: netaddr.c,v 1.69 2010-01-22 22:16:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -448,6 +448,8 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 
     res = pr_inet_pton(AF_INET6, name, &v6.sin6_addr);
     if (res > 0) {
+      int xerrno = errno;
+
       pr_netaddr_set_family(na, AF_INET6);
       pr_netaddr_set_sockaddr(na, (struct sockaddr *) &v6);
       if (addrs)
@@ -458,6 +460,8 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 
       netaddr_cache_set(name, na);
       netaddr_cache_set(pr_netaddr_get_ipstr(na), na);
+
+      errno = xerrno;
       return na;
     }
   }
@@ -472,6 +476,8 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 
   res = pr_inet_pton(AF_INET, name, &v4.sin_addr);
   if (res > 0) {
+    int xerrno = errno;
+
     pr_netaddr_set_family(na, AF_INET);
     pr_netaddr_set_sockaddr(na, (struct sockaddr *) &v4);
     if (addrs)
@@ -482,6 +488,8 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 
     netaddr_cache_set(name, na);
     netaddr_cache_set(pr_netaddr_get_ipstr(na), na);
+
+    errno = xerrno;
     return na;
 
   } else if (res == 0) {
@@ -505,6 +513,8 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
       "attempting to resolve '%s' to IPv4 address via DNS", name);
     gai_res = pr_getaddrinfo(name, NULL, &hints, &info);
     if (gai_res != 0) {
+      int xerrno = errno;
+
       if (gai_res != EAI_SYSTEM) {
         pr_trace_msg(trace_channel, 1, "IPv4 getaddrinfo '%s' error: %s",
           name, pr_gai_strerror(gai_res));
@@ -512,9 +522,10 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
       } else {
         pr_trace_msg(trace_channel, 1,
           "IPv4 getaddrinfo '%s' system error: [%d] %s", name,
-          errno, strerror(errno));
+          xerrno, strerror(xerrno));
       }
 
+      errno = xerrno;
       return NULL;
     }
 
@@ -557,6 +568,8 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
         "attempting to resolve '%s' to IPv6 address via DNS", name);
       gai_res = pr_getaddrinfo(name, NULL, &hints, &info);
       if (gai_res != 0) {
+        int xerrno = errno;
+
         if (gai_res != EAI_SYSTEM) {
           pr_trace_msg(trace_channel, 1, "IPv6 getaddrinfo '%s' error: %s",
             name, pr_gai_strerror(gai_res));
@@ -564,9 +577,10 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
         } else {
           pr_trace_msg(trace_channel, 1, 
             "IPv6 getaddrinfo '%s' system error: [%d] %s", name,
-            errno, strerror(errno));
+            xerrno, strerror(xerrno));
         }
 
+        errno = xerrno;
         return na;
       }
 
@@ -594,6 +608,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 
   pr_trace_msg(trace_channel, 8, "failed to resolve '%s' to an IP address",
     name);
+  errno = ENOENT;
   return NULL;
 }
 
