@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.69 2010-01-22 22:16:22 castaglia Exp $
+ * $Id: netaddr.c,v 1.70 2010-01-23 18:31:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -508,6 +508,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
 
     pr_trace_msg(trace_channel, 7,
       "attempting to resolve '%s' to IPv4 address via DNS", name);
@@ -563,6 +564,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 
       hints.ai_family = AF_INET6;
       hints.ai_socktype = SOCK_STREAM;
+      hints.ai_protocol = IPPROTO_TCP;
 
       pr_trace_msg(trace_channel, 7,
         "attempting to resolve '%s' to IPv6 address via DNS", name);
