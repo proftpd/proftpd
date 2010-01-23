@@ -459,6 +459,7 @@ static unsigned char wrap2_match_netmask(const char *net_tok,
 
 static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
   char *mask = NULL;
+  size_t len;
 
   tok = wrap2_skip_whitespace(tok);
 
@@ -487,6 +488,14 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
   } else if (strcasecmp(tok, "ALL") == 0) {
     /* Matches everything */
     return TRUE;
+
+  } else if (tok[(len = strlen(tok)) - 1] == '.') {
+    const char *ip_str;
+ 
+    /* Prefix */
+
+    ip_str = wrap2_get_hostaddr(host);
+    return (strncasecmp(tok, ip_str, len) == 0);
 
   } else if (strcasecmp(tok, "KNOWN") == 0) {
 
