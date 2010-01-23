@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.389 2009-11-09 22:09:57 castaglia Exp $
+ * $Id: main.c,v 1.390 2010-01-23 21:39:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -255,7 +255,15 @@ void end_login(int exitcode) {
   }
 #endif /* PR_USE_DEVEL */
 
+#ifdef PR_DEVEL_PROFILE
+  /* Populating the gmon.out gprof file requires that the process exit
+   * via exit(2) or by returning from main().  Using _exit(2) doesn't allow
+   * the process the time to write its profile data out.
+   */
+  exit(exitcode);
+#else
   _exit(exitcode);
+#endif /* PR_DEVEL_PROFILE */
 }
 
 void session_exit(int pri, void *lv, int exitval, void *dummy) {
