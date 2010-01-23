@@ -313,6 +313,7 @@ static char *wrap2_get_hostaddr(wrap2_host_t *host) {
 }
 
 static char *wrap2_get_hostname(wrap2_host_t *host) {
+
   if (*host->name == '\0') {
     int reverse_dns;
 
@@ -337,7 +338,7 @@ static char *wrap2_get_hostinfo(wrap2_host_t *host) {
   char *hostname = wrap2_get_hostname(host);
 
   if (WRAP2_IS_KNOWN_HOSTNAME(hostname))
-    return host->name;
+    return hostname;
 
   return wrap2_get_hostaddr(host);
 }
@@ -489,14 +490,6 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
     /* Matches everything */
     return TRUE;
 
-  } else if (tok[(len = strlen(tok)) - 1] == '.') {
-    const char *ip_str;
- 
-    /* Prefix */
-
-    ip_str = wrap2_get_hostaddr(host);
-    return (strncasecmp(tok, ip_str, len) == 0);
-
   } else if (strcasecmp(tok, "KNOWN") == 0) {
 
     /* Check address and name. */
@@ -509,6 +502,23 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
     /* Local: no dots in name. */
     char *name = wrap2_get_hostname(host);
     return (strchr(name, '.') == NULL && WRAP2_IS_KNOWN_HOSTNAME(name));
+
+  } else if (tok[(len = strlen(tok)) - 1] == '.') {
+    const char *ip_str;
+ 
+    /* Prefix */
+
+    ip_str = wrap2_get_hostaddr(host);
+    return (strncasecmp(tok, ip_str, len) == 0);
+
+  } else if (tok[0] == '.') {
+    char *name;
+
+    /* Suffix */
+    name = wrap2_get_hostname(host);
+    len = strlen(name) - strlen(tok);
+
+    return (len > 0 && (strcasecmp(tok, name + len) == 0));
 
 #ifdef PR_USE_IPV6 
   } else if (pr_netaddr_use_ipv6() &&
