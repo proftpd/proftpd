@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.102 2009-12-10 16:26:36 castaglia Exp $
+ * $Id: support.c,v 1.103 2010-01-26 23:59:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -49,6 +49,11 @@
 #ifdef PR_USE_OPENSSL
 # include <openssl/crypto.h>
 #endif /* PR_USE_OPENSSL */
+
+/* Keep a counter of the number of times signals_block()/signals_unblock()
+ * have been called, to handle nesting of calls.
+ */
+static unsigned int sigs_nblocked = 0;
 
 typedef struct sched_obj {
   struct sched_obj *next, *prev;
@@ -85,16 +90,40 @@ static void mask_signals(unsigned char block) {
 
     sigprocmask(SIG_BLOCK, &mask_sigset, NULL);
 
-  } else
+  } else {
     sigprocmask(SIG_UNBLOCK, &mask_sigset, NULL);
+  }
 }
 
 void pr_signals_block(void) {
-  mask_signals(TRUE);
+  if (sigs_nblocked == 0) {
+    mask_signals(TRUE);
+    pr_trace_msg("signal", 5, "signals blocked");
+
+  } else {
+    pr_trace_msg("signal", 9, "signals already blocked (block count = %u)",
+      sigs_nblocked);
+  }
+
+  sigs_nblocked++;
 }
 
 void pr_signals_unblock(void) {
-  mask_signals(FALSE);
+  if (sigs_nblocked == 0) {
+    pr_trace_msg("signal", 5, "signals already unblocked");
+    return;
+  }
+
+  if (sigs_nblocked == 1) {
+    mask_signals(FALSE);
+    pr_trace_msg("signal", 5, "signals unblocked");
+
+  } else {
+    pr_trace_msg("signal", 9, "signals already unblocked (block count = %u)",
+      sigs_nblocked);
+  }
+
+  sigs_nblocked--;
 }
 
 void schedule(void (*f)(void*,void*,void*,void*),int nloops, void *a1,
