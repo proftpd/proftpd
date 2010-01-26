@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2009 TJ Saunders
+ * Copyright (c) 2004-2010 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.179 2010-01-06 23:05:59 castaglia Exp $
+ * $Id: mod_sql.c,v 1.180 2010-01-26 16:51:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2447,10 +2447,39 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name) {
   return mr;
 }
 
-MODRET log_master(cmd_rec *cmd) {
-  char *name = NULL;
+MODRET process_sqllog(cmd_rec *cmd, config_rec *c, const char *label) {
   char *qname = NULL;
   char *type = NULL;
+  modret_t *mr = NULL;
+
+  qname = c->argv[0];
+
+  sql_log(DEBUG_FUNC, ">>> %s (%s)", label, c->name);
+
+  type = named_query_type(cmd, qname);
+  if (type) {
+    if (strcasecmp(type, SQL_UPDATE_C) == 0 ||
+        strcasecmp(type, SQL_FREEFORM_C) == 0 ||
+        strcasecmp(type, SQL_INSERT_C) == 0) {
+      mr = process_named_query(cmd, qname);
+      if (check_response(mr) < 0)
+        return mr;
+
+    } else {
+      sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
+        "FREEFORM query", qname);
+    }
+
+  } else {
+    sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
+  }
+
+  sql_log(DEBUG_FUNC, "<<< %s (%s)", label, c->name);
+  return mr;
+}
+
+MODRET log_master(cmd_rec *cmd) {
+  char *name = NULL;
   config_rec *c = NULL;
   modret_t *mr = NULL;
 
@@ -2464,29 +2493,11 @@ MODRET log_master(cmd_rec *cmd) {
   while (c) {
     pr_signals_handle();
 
-    sql_log(DEBUG_FUNC, ">>> log_master (%s)", name);
-
-    qname = c->argv[0];
-    type = named_query_type(cmd, qname);
-
-    if (type) {
-      if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
-          strcasecmp(type, SQL_FREEFORM_C) == 0 ||
-          strcasecmp(type, SQL_INSERT_C) == 0) {
-        mr = process_named_query(cmd, qname);
-        if (check_response(mr) < 0)
-          return mr;
-
-      } else {
-        sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
-          "FREEFORM query", qname);
-      }
-
-    } else {
-      sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
+    mr = process_sqllog(cmd, c, "log_master");
+    if (mr != NULL &&
+        MODRET_ISERROR(mr)) {
+      return mr;
     }
-
-    sql_log(DEBUG_FUNC, "<<< log_master (%s)", name);
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
@@ -2498,29 +2509,11 @@ MODRET log_master(cmd_rec *cmd) {
   while (c) {
     pr_signals_handle();
 
-    sql_log(DEBUG_FUNC, ">>> log_master (%s)", name);
-
-    qname = c->argv[0];
-    type = named_query_type(cmd, qname);
-
-    if (type) {
-      if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
-          strcasecmp(type, SQL_FREEFORM_C) == 0 ||
-          strcasecmp(type, SQL_INSERT_C) == 0) {
-        mr = process_named_query(cmd, qname);
-        if (check_response(mr) < 0)
-          return mr;
-
-      } else {
-        sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
-          "FREEFORM query", qname);
-      }
-
-    } else {
-      sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
+    mr = process_sqllog(cmd, c, "log_master");
+    if (mr != NULL &&
+        MODRET_ISERROR(mr)) {
+      return mr;
     }
-
-    sql_log(DEBUG_FUNC, "<<< log_master (%s)", name);
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
@@ -2530,8 +2523,6 @@ MODRET log_master(cmd_rec *cmd) {
 
 MODRET err_master(cmd_rec *cmd) {
   char *name = NULL;
-  char *qname = NULL;
-  char *type = NULL;
   config_rec *c = NULL;
   modret_t *mr = NULL;
 
@@ -2545,29 +2536,11 @@ MODRET err_master(cmd_rec *cmd) {
   while (c) {
     pr_signals_handle();
 
-    sql_log(DEBUG_FUNC, ">>> err_master (%s)", name);
-
-    qname = c->argv[0];
-    type = named_query_type(cmd, qname);
-
-    if (type) {
-      if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
-          strcasecmp(type, SQL_FREEFORM_C) == 0 ||
-          strcasecmp(type, SQL_INSERT_C) == 0) {
-        mr = process_named_query(cmd, qname);
-        if (check_response(mr) < 0)
-          return mr;
-
-      } else {
-        sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
-         "FREEFORM query", qname);
-      }
-
-    } else {
-      sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
+    mr = process_sqllog(cmd, c, "err_master");
+    if (mr != NULL &&
+        MODRET_ISERROR(mr)) {
+      return mr;
     }
-
-    sql_log(DEBUG_FUNC, "<<< err_master (%s)", name);
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
@@ -2579,29 +2552,11 @@ MODRET err_master(cmd_rec *cmd) {
   while (c) {
     pr_signals_handle();
 
-    sql_log(DEBUG_FUNC, ">>> err_master (%s)", name);
-
-    qname = c->argv[0];
-    type = named_query_type(cmd, qname);
-
-    if (type) {
-      if (strcasecmp(type, SQL_UPDATE_C) == 0 || 
-          strcasecmp(type, SQL_FREEFORM_C) == 0 ||
-          strcasecmp(type, SQL_INSERT_C) == 0) {
-        mr = process_named_query(cmd, qname);
-        if (check_response(mr) < 0)
-          return mr;
-
-      } else {
-        sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
-          "FREEFORM query", qname);
-      }
-
-    } else {
-      sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
+    mr = process_sqllog(cmd, c, "err_master");
+    if (mr != NULL &&
+        MODRET_ISERROR(mr)) {
+      return mr;
     }
-
-    sql_log(DEBUG_FUNC, "<<< err_master (%s)", name);
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
@@ -4994,13 +4949,6 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
   cmd_rec *cmd;
   modret_t *mr;
 
-  /* Note: most of this code hacked out of log_master(), which
-   * brings to mind the idea of reorganizing the code a little, so
-   * that this function can call a function to do this, instead of
-   * handling it itself; that function to be used by/in log_master
-   * as well.
-   */
-
   if (cmap.engine == 0)
     return;
 
@@ -5008,33 +4956,15 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
   c = find_config(main_server->conf, CONF_PARAM, "SQLLog_EXIT", FALSE);
 
   while (c) {
-    char *qname = NULL, *type = NULL;
-
-    qname = c->argv[0];
-
     pr_signals_handle();
 
     /* Since we're exiting the process here (or soon, anyway), we can
      * get away with using the config_rec's pool.
      */
     cmd = _sql_make_cmd(c->pool, 1, "EXIT");
-    type = named_query_type(cmd, qname);
 
-    if (type) {
-      if (strcasecmp(type, SQL_UPDATE_C) == 0 ||
-          strcasecmp(type, SQL_FREEFORM_C) == 0 ||
-          strcasecmp(type, SQL_INSERT_C) == 0) {
-
-        sql_log(DEBUG_FUNC, "running named query '%s' at exit", qname);
-        process_named_query(cmd, qname);
-
-      } else {
-        sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
-          "FREEFORM query", qname);
-      }
-
-    } else
-      sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
+    /* Ignore errors; we're exiting anyway. */
+    (void) process_sqllog(cmd, c, "exit_listener");
 
     c = find_config_next(c, c->next, CONF_PARAM, "SQLLog_EXIT", FALSE);
   }
