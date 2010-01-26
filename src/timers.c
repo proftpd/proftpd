@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.30 2009-04-09 15:33:37 castaglia Exp $
+ * $Id: timers.c,v 1.31 2010-01-26 19:50:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -114,8 +114,9 @@ static int process_timers(int elapsed) {
         /* This timer's interval has elapsed, so trigger its callback. */
 
         pr_trace_msg("timer", 4,
-          "%ld seconds for timer ID %d ('%s', for module '%s') elapsed, "
-          "invoking callback (%p)", t->interval, t->timerno, t->desc,
+          "%ld %s for timer ID %d ('%s', for module '%s') elapsed, invoking "
+          "callback (%p)", t->interval,
+          t->interval != 1 ? "seconds" : "second", t->timerno, t->desc,
           t->mod ? t->mod->name : "[none]", t->callback);
 
         if (t->callback(t->interval, t->timerno, t->interval - t->count,
@@ -408,8 +409,9 @@ int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb,
   pr_alarms_unblock();
 
   pr_trace_msg("timer", 7, "added timer ID %d ('%s', for module '%s'), "
-    "triggering in %ld seconds", t->timerno, t->desc,
-    t->mod ? t->mod->name : "[none]", t->interval);
+    "triggering in %ld %s", t->timerno, t->desc,
+    t->mod ? t->mod->name : "[none]", t->interval,
+    t->interval != 1 ? "seconds" : "second");
   return timerno;
 }
 
