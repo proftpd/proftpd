@@ -21,6 +21,7 @@ our @CONFIG = qw(
 );
 
 our @FEATURES = qw(
+  feature_get_version
   feature_have_feature_enabled
   feature_have_module_compiled
   feature_have_module_loaded
@@ -496,6 +497,37 @@ sub config_write {
   }
 
   return 1;
+}
+
+sub feature_get_version {
+  my $proftpd_bin = get_proftpd_bin();
+
+  my ($version, $label);
+
+  if (open(my $cmdh, "$proftpd_bin -V |")) {
+
+    while (my $line = <$cmdh>) {
+      chomp($line);
+
+      next unless $line =~ /\s+Version:\s+(\S+)\s+\(\S+\)$/;
+
+      $version = $1;
+      $label = $2;
+      last;
+    }
+
+    close($cmdh);
+
+    if (wantarray()) {
+      return ($version, $label);
+
+    } else {
+      return $version;
+    }
+
+  } else {
+    croak("Error listing features");
+  }
 }
 
 sub feature_have_feature_enabled {
