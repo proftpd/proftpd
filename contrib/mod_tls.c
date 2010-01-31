@@ -6696,8 +6696,9 @@ static void tls_mod_unload_ev(const void *event_data, void *user_data) {
 extern pid_t mpid;
 
 static void tls_shutdown_ev(const void *event_data, void *user_data) {
-  if (mpid == getpid())
+  if (mpid == getpid()) {
     tls_scrub_pkeys();
+  }
 
   /* Write out a new RandomSeed file, for use later. */
   if (tls_rand_file) {
@@ -6714,6 +6715,8 @@ static void tls_shutdown_ev(const void *event_data, void *user_data) {
         ": wrote %d bytes of PRNG seed data to '%s'", res, tls_rand_file);
     }
   }
+
+  RAND_cleanup();
 }
 
 static void tls_restart_ev(const void *event_data, void *user_data) {

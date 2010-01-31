@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp OpenSSL interface
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.13 2009-09-28 17:07:12 castaglia Exp $
+ * $Id: crypto.c,v 1.14 2010-01-31 20:34:26 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -858,6 +858,7 @@ void sftp_crypto_free(int flags) {
   ERR_free_strings();
   ERR_remove_state(0);
   EVP_cleanup();
+  RAND_cleanup();
 }
 
 int sftp_crypto_set_driver(const char *driver) {
