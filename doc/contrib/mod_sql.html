@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.22 2009-12-10 22:49:10 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.23 2010-02-01 22:14:14 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -1116,7 +1116,10 @@ The second parameter, <em>numeric</em>, specifies the numeric value of the
 message returned to the FTP client.  <b><i>Do not</i></b> choose a number
 blindly: message numbers may be parsed by clients.  In most cases you will
 want to use <code>214</code>, the &quot;Help message&quot; numeric.  It
-specifies that the information is only meant to be human readable.
+specifies that the information is only meant to be human readable.  Note
+that FTP clients can be <i>very</i> picky about these response codes; choosing
+the wrong code can cause clients not to work.  Section 5.4 of <a href="http://www.faqs.org/rfcs/rfc959.html">RFC959</a> defines the acceptable response codes
+for each FTP command.
 
 <p>
 The third parameter, <em>query-string</em>, is exactly equivalent to the
@@ -1136,7 +1139,7 @@ NULL first value, will be replaced with the string &quot;{null}&quot;.
 For example:
 <pre>
   SQLNamedQuery count SELECT "count from users where userid='%u'"
-  SQLShowInfo PASS "230" "You've logged on %{count} times, %u"
+  SQLShowInfo PASS 230 "You've logged on %{count} times, %u"
 </pre>
 As long as the information is in the database, these two directives specify
 that the user will be greeted with their login count each time they
@@ -1343,12 +1346,12 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-12-10 22:49:10 $</i><br>
+Last Updated: <i>$Date: 2010-02-01 22:14:14 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2008 The ProFTPD Project<br>
+&copy; Copyright 2000-2010 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 
