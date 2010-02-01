@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.55 2010-01-15 22:05:59 castaglia Exp $
+ * $Id: mod_radius.c,v 1.56 2010-02-01 18:40:33 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9.1"
@@ -1355,18 +1355,18 @@ static unsigned char *radius_xor(unsigned char *p, unsigned char *q,
 typedef struct {
 
   /* state (ABCD) */
-  unsigned long state[4];
+  uint32_t state[4];
 
   /* number of bits, module 2^64 (LSB first) */
-  unsigned long count[2];
+  uint32_t count[2];
 
   /* input buffer */
   unsigned char buffer[64];
 } MD5_CTX;
 
 static void MD5_Init(MD5_CTX *);
-static void MD5_Update(MD5_CTX *, unsigned char *, unsigned int);
-static void MD5_Final(unsigned char[16], MD5_CTX *);
+static void MD5_Update(MD5_CTX *, unsigned char *, size_t);
+static void MD5_Final(unsigned char *, MD5_CTX *);
 
 /* Note: these MD5 routines are taken from RFC 1321 */
 
@@ -1395,9 +1395,9 @@ static void MD5_Final(unsigned char[16], MD5_CTX *);
 #define S43 15
 #define S44 21
 
-static void MD5Transform(unsigned long[4], unsigned char[64]);
-static void Encode(unsigned char *, unsigned long *, unsigned int);
-static void Decode(unsigned long *, unsigned char *, unsigned int);
+static void MD5Transform(uint32_t *, unsigned char[64]);
+static void Encode(unsigned char *, uint32_t *, unsigned int);
+static void Decode(uint32_t *, unsigned char *, unsigned int);
 
 #ifndef HAVE_MEMCPY
 static void MD5_memcpy(unsigned char *, unsigned char *, unsigned int);
@@ -1425,22 +1425,22 @@ static unsigned char PADDING[64] = {
  * Rotation is separate from addition to prevent recomputation.
  */
 #define FF(a, b, c, d, x, s, ac) { \
- (a) += F ((b), (c), (d)) + (x) + (unsigned long)(ac); \
+ (a) += F ((b), (c), (d)) + (x) + (uint32_t)(ac); \
  (a) = ROTATE_LEFT ((a), (s)); \
  (a) += (b); \
   }
 #define GG(a, b, c, d, x, s, ac) { \
- (a) += G ((b), (c), (d)) + (x) + (unsigned long)(ac); \
+ (a) += G ((b), (c), (d)) + (x) + (uint32_t)(ac); \
  (a) = ROTATE_LEFT ((a), (s)); \
  (a) += (b); \
   }
 #define HH(a, b, c, d, x, s, ac) { \
- (a) += H ((b), (c), (d)) + (x) + (unsigned long)(ac); \
+ (a) += H ((b), (c), (d)) + (x) + (uint32_t)(ac); \
  (a) = ROTATE_LEFT ((a), (s)); \
  (a) += (b); \
   }
 #define II(a, b, c, d, x, s, ac) { \
- (a) += I ((b), (c), (d)) + (x) + (unsigned long)(ac); \
+ (a) += I ((b), (c), (d)) + (x) + (uint32_t)(ac); \
  (a) = ROTATE_LEFT ((a), (s)); \
  (a) += (b); \
   }
@@ -1463,17 +1463,17 @@ static void MD5_Init(MD5_CTX *context) {
  * context.
  */
 static void MD5_Update(MD5_CTX *context, unsigned char *input,
-    unsigned int inputLen) {
+    size_t inputLen) {
   unsigned int i, index, partLen;
 
   /* Compute number of bytes mod 64 */
   index = (unsigned int)((context->count[0] >> 3) & 0x3F);
 
   /* Update number of bits */
-  if ((context->count[0] += ((unsigned long)inputLen << 3))
-       < ((unsigned long)inputLen << 3))
+  if ((context->count[0] += ((uint32_t)inputLen << 3))
+       < ((uint32_t)inputLen << 3))
     context->count[1]++;
-  context->count[1] += ((unsigned long)inputLen >> 29);
+  context->count[1] += ((uint32_t)inputLen >> 29);
 
   partLen = 64 - index;
 
@@ -1501,7 +1501,8 @@ static void MD5_Update(MD5_CTX *context, unsigned char *input,
  */
 static void MD5_Final(unsigned char digest[16], MD5_CTX *context) {
   unsigned char bits[8];
-  unsigned int index, padLen;
+  unsigned int index;
+  size_t padLen;
 
   /* Save number of bits */
   Encode (bits, context->count, 8);
@@ -1525,8 +1526,8 @@ static void MD5_Final(unsigned char digest[16], MD5_CTX *context) {
 
 /* MD5 basic transformation. Transforms state based on block.
  */
-static void MD5Transform(unsigned long state[4], unsigned char block[64]) {
-  unsigned long a = state[0], b = state[1], c = state[2], d = state[3], x[16];
+static void MD5Transform(uint32_t state[4], unsigned char block[64]) {
+  uint32_t a = state[0], b = state[1], c = state[2], d = state[3], x[16];
 
   Decode(x, block, 64);
 
@@ -1616,8 +1617,7 @@ static void MD5Transform(unsigned long state[4], unsigned char block[64]) {
 /* Encodes input (unsigned long) into output (unsigned char). Assumes len is
  * a multiple of 4.
  */
-static void Encode(unsigned char *output, unsigned long *input,
-    unsigned int len) {
+static void Encode(unsigned char *output, uint32_t *input, unsigned int len) {
   unsigned int i, j;
 
   for (i = 0, j = 0; j < len; i++, j += 4) {
@@ -1631,13 +1631,12 @@ static void Encode(unsigned char *output, unsigned long *input,
 /* Decodes input (unsigned char) into output (unsigned long). Assumes len is
  * a multiple of 4.
  */
-static void Decode(unsigned long *output, unsigned char *input,
-    unsigned int len) {
+static void Decode(uint32_t *output, unsigned char *input, unsigned int len) {
   unsigned int i, j;
 
   for (i = 0, j = 0; j < len; i++, j += 4)
-    output[i] = ((unsigned long)input[j]) | (((unsigned long)input[j+1]) << 8) |
-    (((unsigned long)input[j+2]) << 16) | (((unsigned long)input[j+3]) << 24);
+    output[i] = ((uint32_t)input[j]) | (((uint32_t)input[j+1]) << 8) |
+    (((uint32_t)input[j+2]) << 16) | (((uint32_t)input[j+3]) << 24);
 }
 
 #ifndef HAVE_MEMCPY
