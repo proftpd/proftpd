@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_passwd -- Various SQL password handlers
- * Copyright (c) 2009 TJ Saunders
+ * Copyright (c) 2009-2010 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,14 +21,14 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.9 2009-12-05 23:46:52 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.10 2010-02-01 19:20:05 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.1"
+#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.2"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030302 
@@ -53,6 +53,61 @@ static unsigned int sql_passwd_encoding = SQL_PASSWD_USE_HEX_LC;
 static char *sql_passwd_salt = NULL;
 static size_t sql_passwd_salt_len = 0;
 static unsigned int sql_passwd_salt_append = TRUE;
+
+static cmd_rec *sql_passwd_cmd_create(pool *parent_pool, int argc, ...) {
+  pool *cmd_pool = NULL;
+  cmd_rec *cmd = NULL;
+  register unsigned int i = 0;
+  va_list argp;
+ 
+  cmd_pool = make_sub_pool(parent_pool);
+  cmd = (cmd_rec *) pcalloc(cmd_pool, sizeof(cmd_rec));
+  cmd->pool = cmd_pool;
+ 
+  cmd->argc = argc;
+  cmd->argv = (char **) pcalloc(cmd->pool, argc * sizeof(char *));
+
+  /* Hmmm... */
+  cmd->tmp_pool = cmd->pool;
+
+  va_start(argp, argc);
+  for (i = 0; i < argc; i++)
+    cmd->argv[i] = va_arg(argp, char *);
+  va_end(argp);
+
+  return cmd;
+}
+
+static char *sql_passwd_get_str(pool *p, char *str) {
+  cmdtable *cmdtab;
+  cmd_rec *cmd;
+  modret_t *res;
+
+  if (strlen(str) == 0)
+    return str;
+
+  /* Find the cmdtable for the sql_escapestr command. */
+  cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_escapestr", NULL, NULL);
+  if (cmdtab == NULL) {
+    pr_log_debug(DEBUG2, MOD_SQL_PASSWD_VERSION
+      ": unable to find SQL hook symbol 'sql_escapestr'");
+    return str;
+  }
+
+  cmd = sql_passwd_cmd_create(p, 1, pr_str_strip(p, str));
+
+  /* Call the handler. */
+  res = pr_module_call(cmdtab->m, cmdtab->handler, cmd);
+
+  /* Check the results. */
+  if (MODRET_ISERROR(res)) {
+    pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+      ": error executing 'sql_escapestring'");
+    return str;
+  }
+
+  return res->data;
+}
 
 static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext, const char *digest) {
@@ -193,6 +248,97 @@ static void sql_passwd_mod_unload_ev(const void *event_data, void *user_data) {
 }
 #endif /* PR_SHARED_MODULE */
 
+/* Command handlers
+ */
+
+MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
+  config_rec *c;
+
+  if (!sql_passwd_engine) {
+    return PR_DECLINED(cmd);
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordUserSalt", FALSE);
+  if (c) {
+    char *key;
+    char *append;
+
+    key = c->argv[0];
+    append = c->argv[1];
+
+    if (strcasecmp(key, "name") == 0) {
+      char *user;
+
+      user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+      sql_passwd_salt = user;
+      sql_passwd_salt_len = strlen(user);
+
+    } else if (strncasecmp(key, "sql:/", 5) == 0) {
+      char *named_query, *ptr, *user, **values;
+      cmdtable *sql_cmdtab;
+      cmd_rec *sql_cmd;
+      modret_t *sql_res;
+      array_header *sql_data;
+
+      ptr = key + 5; 
+      named_query = pstrcat(cmd->tmp_pool, "SQLNamedQuery_", ptr, NULL);
+
+      c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+      if (c == NULL) {
+        pr_log_debug(DEBUG3, MOD_SQL_PASSWD_VERSION
+          ": unable to resolve SQLNamedQuery '%s'", ptr);
+        return PR_DECLINED(cmd);
+      }
+
+      sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_lookup", NULL, NULL);
+      if (sql_cmdtab == NULL) {
+        pr_log_debug(DEBUG3, MOD_SQL_PASSWD_VERSION
+          ": unable to find SQL hook symbol 'sql_lookup'");
+        return PR_DECLINED(cmd);
+      }
+
+      user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+
+      sql_cmd = sql_passwd_cmd_create(cmd->tmp_pool, 3, "sql_lookup", ptr,
+        sql_passwd_get_str(cmd->tmp_pool, user));
+
+      /* Call the handler. */
+      sql_res = pr_module_call(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
+      if (sql_res == NULL ||
+          MODRET_ISERROR(sql_res)) {
+        pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+          ": error processing SQLNamedQuery '%s'", ptr);
+        return PR_DECLINED(cmd);
+      }
+
+      sql_data = (array_header *) sql_res->data;
+
+      if (sql_data->nelts != 1) {
+        pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+          ": SQLNamedQuery '%s' returned wrong number of rows (%d)", ptr,
+          sql_data->nelts);
+        return PR_DECLINED(cmd);
+      }
+
+      values = sql_data->elts;
+      sql_passwd_salt = pstrdup(session.pool, values[0]);
+      sql_passwd_salt_len = strlen(values[0]);
+      
+    } else {
+      return PR_DECLINED(cmd);
+    }
+
+    if (strcasecmp(append, "prepend") == 0) {
+      sql_passwd_salt_append = FALSE;
+
+    } else {
+      sql_passwd_salt_append = TRUE;
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 /* Configuration handlers
  */
 
@@ -252,6 +398,26 @@ MODRET set_sqlpasswdsaltfile(cmd_rec *cmd) {
   }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  (void) add_config_param_str(cmd->argv[0], 2, cmd->argv[1],
+    cmd->argc == 3 ? cmd->argv[2] : "append");
+  return PR_HANDLED(cmd);
+}
+
+/* usage: SQLPasswordUserSalt "name"|"sql:/named-query" ["prepend"|"append"] */
+MODRET set_sqlpasswdusersalt(cmd_rec *cmd) {
+  if (cmd->argc < 2 ||
+      cmd->argc > 3) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strcasecmp(cmd->argv[1], "name") != 0 &&
+      strcasecmp(cmd->argv[1], "uid") != 0 &&
+      strncasecmp(cmd->argv[1], "sql:/", 5) != 0) {
+    CONF_ERROR(cmd, "badly formatted parameter");
+  }
 
   (void) add_config_param_str(cmd->argv[0], 2, cmd->argv[1],
     cmd->argc == 3 ? cmd->argv[2] : "append");
@@ -435,8 +601,15 @@ static conftable sql_passwd_conftab[] = {
   { "SQLPasswordEncoding",	set_sqlpasswdencoding,	NULL },
   { "SQLPasswordEngine",	set_sqlpasswdengine,	NULL },
   { "SQLPasswordSaltFile",	set_sqlpasswdsaltfile,	NULL },
+  { "SQLPasswordUserSalt",	set_sqlpasswdusersalt,	NULL },
 
   { NULL, NULL, NULL }
+};
+
+static cmdtable sql_passwd_cmdtab[] = {
+  { PRE_CMD,	C_PASS, G_NONE,	sql_passwd_pre_pass,	FALSE,	FALSE },
+
+  { 0, NULL }
 };
 
 module sql_passwd_module = {
@@ -454,7 +627,7 @@ module sql_passwd_module = {
   sql_passwd_conftab,
 
   /* Module command handler table */
-  NULL,
+  sql_passwd_cmdtab,
 
   /* Module auth handler table */
   NULL,
