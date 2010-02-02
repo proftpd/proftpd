@@ -1,6 +1,6 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
- * Copyright (c) 1999, 2000-9, John Morrissey <jwm@horde.net>
+ * Copyright (c) 1999-2010, John Morrissey <jwm@horde.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.79 2010-02-02 23:02:33 jwm Exp $
+ * $Id: mod_ldap.c,v 1.80 2010-02-02 23:06:25 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -157,8 +157,9 @@ static char *ldap_dn, *ldap_dnpass,
             *ldap_auth_filter, *ldap_uid_filter,
             *ldap_group_gid_filter, *ldap_group_name_filter,
             *ldap_group_member_filter, *ldap_quota_filter,
+            *ldap_ssh_pubkey_filter,
             *ldap_auth_basedn, *ldap_uid_basedn, *ldap_gid_basedn,
-            *ldap_quota_basedn,
+            *ldap_quota_basedn, *ldap_ssh_pubkey_basedn,
             *ldap_defaultauthscheme, *ldap_authbind_dn,
             *ldap_genhdir_prefix, *ldap_default_quota,
             *ldap_attr_uid = "uid",
@@ -170,7 +171,8 @@ static char *ldap_dn, *ldap_dnpass,
             *ldap_attr_cn = "cn",
             *ldap_attr_memberuid = "memberUid",
             *ldap_attr_ftpquota = "ftpQuota",
-            *ldap_attr_ftpquota_profiledn = "ftpQuotaProfileDN";
+            *ldap_attr_ftpquota_profiledn = "ftpQuotaProfileDN",
+            *ldap_attr_ssh_pubkey = "sshPublicKey";
 #ifdef HAS_LDAP_INITIALIZE
 static char *ldap_server_url;
 #endif /* HAS_LDAP_INITIALIZE */
@@ -192,6 +194,7 @@ static int ldap_use_tls = 0;
 
 static LDAP *ld = NULL;
 static array_header *cached_quota = NULL;
+static array_header *cached_ssh_pubkeys = NULL;
 
 
 static void
@@ -850,6 +853,61 @@ pr_ldap_quota_lookup(pool *p, char *filter_template, const char *replace,
   return FALSE; /* No quota attrs for this user. */
 }
 
+static unsigned char
+pr_ldap_ssh_pubkey_lookup(pool *p, char *filter_template, const char *replace,
+                          char *basedn)
+{
+  char *filter, *attrs[] = {ldap_attr_ssh_pubkey, NULL};
+  LDAPMessage *result, *e;
+  LDAP_VALUE_T **values;
+
+  if (!basedn) {
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": no LDAP base DN specified for auth/UID lookups, declining request.");
+    return FALSE;
+  }
+
+  if (filter_template) {
+    filter = pr_ldap_interpolate_filter(p, filter_template, replace);
+    if (!filter) {
+      return FALSE;
+    }
+  }
+
+  result = pr_ldap_search(basedn, filter, attrs, 2);
+  if (result == NULL) {
+    return FALSE;
+  }
+
+  if (ldap_count_entries(ld, result) > 1) {
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_ssh_pubkey_lookup(): LDAP search returned multiple entries, aborting query.");
+    ldap_msgfree(result);
+    return FALSE;
+  }
+
+  e = ldap_first_entry(ld, result);
+  if (!e) {
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_ssh_pubkey_lookup(): LDAP search returned no entries for filter %s", filter);
+    ldap_msgfree(result);
+    return FALSE;
+  }
+
+  values = LDAP_GET_VALUES(ld, e, attrs[0]);
+  if (!values) {
+    return FALSE;
+  }
+
+  if (cached_ssh_pubkeys == NULL) {
+    cached_ssh_pubkeys = make_array(p, 1, sizeof(char *));
+  }
+
+  *((char **) push_array(cached_ssh_pubkeys)) = pstrdup(p,
+    LDAP_VALUE(values, 0));
+  LDAP_VALUE_FREE(values);
+
+  ldap_msgfree(result);
+  return TRUE;
+}
+
 static struct group *
 pr_ldap_getgrnam(pool *p, const char *group_name)
 {
@@ -944,6 +1002,24 @@ handle_ldap_quota_lookup(cmd_rec *cmd)
   }
 
   return mod_create_data(cmd, cached_quota);
+}
+
+MODRET
+handle_ldap_ssh_pubkey_lookup(cmd_rec *cmd)
+{
+  if (cached_ssh_pubkeys == NULL ||
+      strcasecmp(((char **)cached_ssh_pubkeys->elts)[0], cmd->argv[0]) != 0)
+  {
+    if (pr_ldap_ssh_pubkey_lookup(cmd->tmp_pool, ldap_ssh_pubkey_filter,
+                                  cmd->argv[0], ldap_ssh_pubkey_basedn) == FALSE)
+    {
+      return PR_DECLINED(cmd);
+    }
+  } else {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": returning cached SSH public keys for %s", cmd->argv[0]);
+  }
+
+  return mod_create_data(cmd, cached_ssh_pubkeys);
 }
 
 MODRET
@@ -2167,6 +2243,7 @@ static conftable ldap_config[] = {
 
 static cmdtable ldap_cmdtab[] = {
   {HOOK, "ldap_quota_lookup", G_NONE, handle_ldap_quota_lookup, FALSE, FALSE},
+  {HOOK, "ldap_ssh_publickey_lookup", G_NONE, handle_ldap_ssh_pubkey_lookup, FALSE, FALSE},
   {0, NULL}
 };
 
