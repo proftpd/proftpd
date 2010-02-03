@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp traffic analysis protection
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: tap.c,v 1.5 2009-08-26 05:23:28 castaglia Exp $
+ * $Id: tap.c,v 1.6 2010-02-03 23:42:30 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -61,7 +61,7 @@ static struct sftp_tap_policy tap_policies[] = {
   { NULL,	0,	0,	0,	0,	0,	0,	0 }
 };
 
-static struct sftp_tap_policy curr_policy;
+static struct sftp_tap_policy curr_policy = { NULL, 0, 0, 0, 0, 0, 0, 0 };
 
 /* This only checks whether to TRY to send a TAP packet; it does not force
  * a TAP packet to be sent.  The request to send a TAP packet, if we try,
@@ -135,8 +135,13 @@ static void copy_policy(struct sftp_tap_policy *dst,
 }
 
 static void set_policy_chance(struct sftp_tap_policy *policy) {
+  if (policy->chance_max == 0) {
+    /* This is the 'none' policy; no need to do anything. */
+    return;
+  }
+
   if (policy->chance_max != 1) {
-    policy->chance = (int) (rand() / (RAND_MAX / curr_policy.chance_max + 1));
+    policy->chance = (int) (rand() / (RAND_MAX / policy->chance_max + 1));
 
   } else {
     policy->chance = 1;
@@ -255,6 +260,20 @@ int sftp_tap_set_policy(const char *policy) {
   register unsigned int i;
 
   if (tap_pool) {
+
+    /* Special case: IFF the existing policy is 'none' AND the given
+     * policy is 'rogaway', just return.  The 'none' policy must have been
+     * explicitly configured, and it should override the automatic use of
+     * the 'rogaway' policy.
+     */
+    if (strcmp(curr_policy.policy, "none") == 0 &&
+        strcasecmp(policy, "rogaway") == 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "'none' traffic policy explicitly configured, ignoring '%s' policy",
+        policy);
+      return 0;
+    }
+
     destroy_pool(tap_pool);
 
     if (tap_timerno > 0) {
