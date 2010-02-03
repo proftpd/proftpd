@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.82 2009-12-15 22:31:36 castaglia Exp $
+ * $Id: fxp.c,v 1.83 2010-02-03 17:15:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3223,12 +3223,12 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
       char digest[EVP_MAX_MD_SIZE];
       unsigned int digest_len;
 
-      BIO_flush(bio);
+      (void) BIO_flush(bio);
       digest_len = BIO_gets(md_bio, digest, sizeof(digest));
 
       sftp_msg_write_data(&buf, &buflen, digest, digest_len, FALSE);
 
-      BIO_reset(md_bio);
+      (void) BIO_reset(md_bio);
 
       total_len += res; 
       if (len > 0 &&
@@ -3242,7 +3242,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     char digest[EVP_MAX_MD_SIZE];
     unsigned int digest_len;
 
-    BIO_flush(bio);
+    (void) BIO_flush(bio);
     digest_len = BIO_gets(md_bio, digest, sizeof(digest));
 
     sftp_msg_write_data(&buf, &buflen, digest, digest_len, FALSE);
