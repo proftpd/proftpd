@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp channels
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.23 2009-11-30 17:26:03 castaglia Exp $
+ * $Id: channel.c,v 1.24 2010-02-03 21:31:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1313,8 +1313,13 @@ int sftp_channel_free(void) {
   chans = channel_list->elts;
   for (i = 0; i < channel_list->nelts; i++) {
     if (chans[i] != NULL) {
-      pr_trace_msg(trace_channel, 15, "destroying unclosed channel ID %lu",
-        (unsigned long) chans[i]->local_channel_id);
+      uint32_t pending_len;
+
+      pending_len = get_channel_pending_size(chans[i]);
+      pr_trace_msg(trace_channel, 15,
+        "destroying unclosed channel ID %lu (%lu bytes pending)",
+        (unsigned long) chans[i]->local_channel_id,
+        (unsigned long) pending_len);
 
       if (chans[i]->finish != NULL) {
         (chans[i]->finish)(chans[i]->local_channel_id);
