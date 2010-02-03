@@ -1791,7 +1791,7 @@ sub pathdenyfilter_stor_trailing_space {
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
-    PathDenyFilter => '"\\.* $"',
+    PathDenyFilter => '"\.* $"',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1917,7 +1917,7 @@ sub pathdenyfilter_stor_leading_space {
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
-    PathDenyFilter => '"(\\.*/)? [^/]*$"',
+    PathDenyFilter => '"(\.*/)? [^/]*$"',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2043,7 +2043,7 @@ sub pathdenyfilter_stor_leading_trailing_space {
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
-    PathDenyFilter => '"(\\.*/)?( [^/]*$|\\.* $)"',
+    PathDenyFilter => '"(\.*/)?( [^/]*$|\.* $)"',
 
     IfModules => {
       'mod_delay.c' => {
