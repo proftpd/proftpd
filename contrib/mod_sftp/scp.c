@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.33 2010-02-04 01:03:05 castaglia Exp $
+ * $Id: scp.c,v 1.34 2010-02-04 02:46:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1298,6 +1298,11 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
           (pr_off_t) sp->sentlen, sp->path, strerror(errno));
         return 1;
       }
+
+      pr_trace_msg(trace_channel, 15, "at %.2f%% (%" PR_LU "of %" PR_LU
+        " bytes) of '%s'",
+        (float) (((float) sp->sentlen / (float) st->st_size) * 100),
+        (pr_off_t) sp->sentlen, (pr_off_t) st->st_size, sp->path);
     }
 
     chunklen = pr_fsio_read(sp->fh, chunk, chunksz - 1);
@@ -1475,6 +1480,11 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
   int res;
   struct stat st;
   cmd_rec *cmd = NULL;
+
+  if (sp->sent_data) {
+    /* Already sent everything for this path. */
+    return 1;
+  }
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "scp download", NULL, NULL);
@@ -1666,7 +1676,6 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
       }
 
       res = send_path(pkt->pool, channel_id, paths[scp_session->path_idx]);
-
       if (res == 1) {
         /* If send_path() returns 1, it means we've finished that path,
          * and are ready for another.
@@ -1685,8 +1694,17 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
       break;
     }
 
-    if (res < 0)
+    if (res < 0) {
+      if (scp_session->path_idx == scp_session->paths->nelts) {
+        /* If we've sent all the paths, and we're here, assume that everything
+         * is OK.  We may just have received the final "OK" ACK byte from the
+         * scp client, and have nothing more to do.
+         */
+        return 1;
+      }
+
       return -1;
+    }
 
     if (scp_session->path_idx != scp_session->paths->nelts)
       return 0;
