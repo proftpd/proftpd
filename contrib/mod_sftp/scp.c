@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.35 2010-02-04 03:12:24 castaglia Exp $
+ * $Id: scp.c,v 1.36 2010-02-04 03:23:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1344,8 +1344,12 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
      * AND the window is closed before handling incoming packets?  That way
      * we can handle more WINDOW_ADJUSTS at a whack, at the cost of buffering
      * more data in memory.  Hmm.
+     *
+     * We also need to watch for when rekeying is occurring; handle packets
+     * until that state clears.
      */
-    while (sftp_channel_get_windowsz(channel_id) == 0) {
+    while ((sftp_sess_state & SFTP_SESS_STATE_REKEYING) ||
+           sftp_channel_get_windowsz(channel_id) == 0) {
       pr_signals_handle();
 
       if (sftp_ssh2_packet_handle() < 0) {
