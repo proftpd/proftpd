@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.32 2009-11-15 20:13:30 castaglia Exp $
+ * $Id: scp.c,v 1.33 2010-02-04 01:03:05 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1277,6 +1277,9 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
   size_t chunksz;
   long chunklen;
 
+  /* Include space for one more character, i.e. for the terminating NUL
+   * character that indicates the last chunk of the file.
+   */
   chunksz = (main_server->tcp_rcvbuf_len > 0 ? main_server->tcp_rcvbuf_len :
     pr_config_get_xfer_bufsz()) + 1;
   chunk = palloc(p, chunksz);
@@ -1286,23 +1289,6 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
    */
   while (1) {
     pr_signals_handle();
-
-    /* If our channel window has closed, try handling some packets; hopefully
-     * some of them are WINDOW_ADJUST messages.
-     *
-     * XXX I wonder if this can be more efficient by waiting until we
-     * have a certain amount of data buffered up (N * transfer data size?)
-     * AND the window is closed before handling incoming packets?  That way
-     * we can handle more WINDOW_ADJUSTS at a whack, at the cost of buffering
-     * more data in memory.  Hmm.
-     */
-    while (sftp_channel_get_windowsz(channel_id) == 0) {
-      pr_signals_handle();
-
-      if (sftp_ssh2_packet_handle() < 0) {
-        return 1;
-      }
-    }
 
     if (S_ISREG(st->st_mode)) {
       /* Seek to where we last left off with this file. */
@@ -1341,8 +1327,26 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
       (unsigned long) chunklen);
 
     res = sftp_channel_write_data(p, channel_id, chunk, chunklen);
-    if (res < 0)
+    if (res < 0) {
       return 1;
+    }
+
+    /* If our channel window has closed, try handling some packets; hopefully
+     * some of them are WINDOW_ADJUST messages.
+     *
+     * XXX I wonder if this can be more efficient by waiting until we
+     * have a certain amount of data buffered up (N * transfer data size?)
+     * AND the window is closed before handling incoming packets?  That way
+     * we can handle more WINDOW_ADJUSTS at a whack, at the cost of buffering
+     * more data in memory.  Hmm.
+     */
+    while (sftp_channel_get_windowsz(channel_id) == 0) {
+      pr_signals_handle();
+
+      if (sftp_ssh2_packet_handle() < 0) {
+        return 1;
+      }
+    }
 
     sp->sentlen += chunklen;
     if (sp->sentlen >= st->st_size) {
@@ -1600,9 +1604,8 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
     if (res == 1) {
       (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+      return res;
     }
-
-    return res;
   }
 
   pr_fsio_close(sp->fh);
