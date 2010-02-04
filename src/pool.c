@@ -25,7 +25,7 @@
  */
 
 /* Resource allocation code
- * $Id: pool.c,v 1.55 2010-02-04 17:14:48 castaglia Exp $
+ * $Id: pool.c,v 1.56 2010-02-04 17:24:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -68,7 +68,7 @@ static unsigned int stat_freehit = 0;	/* incr when freelist used */
 /* Debug flags */
 static int debug_flags = 0;
 
-static void mem_printf(const char *fmt, ...) {
+static void oom_printf(const char *fmt, ...) {
   char buf[PR_TUNABLE_BUFFER_SIZE];
   va_list msg;
 
@@ -96,7 +96,7 @@ static void *null_alloc(size_t size) {
     pr_log_pri(PR_LOG_ERR, "fatal: Memory exhausted");
 #ifdef PR_USE_DEVEL
     if (debug_flags & PR_POOL_DEBUG_FL_OOM_DUMP_POOLS) {
-      pr_pool_debug_memory(mem_printf);
+      pr_pool_debug_memory(oom_printf);
     }
 #endif
     exit(1);
