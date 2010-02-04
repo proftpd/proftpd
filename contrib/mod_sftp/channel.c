@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.26 2010-02-04 03:42:27 castaglia Exp $
+ * $Id: channel.c,v 1.27 2010-02-04 04:00:10 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -451,12 +451,17 @@ static int handle_channel_close(struct ssh2_packet *pkt) {
     return -1;
   }
 
-  if (!chan->sent_close) {
-    send_channel_done(pkt->pool, channel_id);
-  }
-
   chan->recvd_close = TRUE;
-  destroy_channel(channel_id);
+
+  if (!chan->sent_close) {
+    /* We don't need to call destroy_channel() here; send_channel_done()
+     * handles it for us.
+     */
+    send_channel_done(pkt->pool, channel_id);
+
+  } else {
+    destroy_channel(channel_id);
+  }
 
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   return 0;
