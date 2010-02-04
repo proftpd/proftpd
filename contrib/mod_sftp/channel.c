@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.25 2010-02-04 02:15:18 castaglia Exp $
+ * $Id: channel.c,v 1.26 2010-02-04 03:42:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -596,51 +596,55 @@ static int send_channel_done(pool *p, uint32_t channel_id) {
     return res;
   }
 
-  buf = ptr;
-  buflen = bufsz;
+  if (!chan->sent_eof) {
+    buf = ptr;
+    buflen = bufsz;
 
-  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_EOF);
-  sftp_msg_write_int(&buf, &buflen, chan->remote_channel_id);
+    sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_EOF);
+    sftp_msg_write_int(&buf, &buflen, chan->remote_channel_id);
 
-  pkt = sftp_ssh2_packet_create(p);
-  pkt->payload = ptr;
-  pkt->payload_len = (bufsz - buflen);
+    pkt = sftp_ssh2_packet_create(p);
+    pkt->payload = ptr;
+    pkt->payload_len = (bufsz - buflen);
 
-  pr_trace_msg(trace_channel, 9,
-    "sending CHANNEL_EOF (remote channel ID %lu)",
-    (unsigned long) chan->remote_channel_id);
+    pr_trace_msg(trace_channel, 9,
+      "sending CHANNEL_EOF (remote channel ID %lu)",
+      (unsigned long) chan->remote_channel_id);
 
-  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
-  if (res < 0) {
-    destroy_pool(pkt->pool);
-    return res;
+    res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+    if (res < 0) {
+      destroy_pool(pkt->pool);
+      return res;
+    }
+
+    chan->sent_eof = TRUE;
   }
 
-  chan->sent_eof = TRUE;
+  if (!chan->sent_close) {
+    buf = ptr;
+    buflen = bufsz;
 
-  buf = ptr;
-  buflen = bufsz;
+    sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_CLOSE);
+    sftp_msg_write_int(&buf, &buflen, chan->remote_channel_id);
 
-  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_CLOSE);
-  sftp_msg_write_int(&buf, &buflen, chan->remote_channel_id);
+    pkt->payload = ptr;
+    pkt->payload_len = (bufsz - buflen);
 
-  pkt->payload = ptr;
-  pkt->payload_len = (bufsz - buflen);
+    pr_trace_msg(trace_channel, 9,
+      "sending CHANNEL_CLOSE (remote channel ID %lu)",
+      (unsigned long) chan->remote_channel_id);
 
-  pr_trace_msg(trace_channel, 9,
-    "sending CHANNEL_CLOSE (remote channel ID %lu)",
-    (unsigned long) chan->remote_channel_id);
+    res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+    if (res < 0) {
+      destroy_pool(pkt->pool);
+      return res;
+    }
 
-  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
-  if (res < 0) {
     destroy_pool(pkt->pool);
-    return res;
+    chan->sent_close = TRUE;
   }
 
-  destroy_pool(pkt->pool);
-  chan->sent_close = TRUE;
   destroy_channel(channel_id);
-
   return res;
 }
 
