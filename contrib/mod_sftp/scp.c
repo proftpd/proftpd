@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.34 2010-02-04 02:46:47 castaglia Exp $
+ * $Id: scp.c,v 1.35 2010-02-04 03:12:24 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1299,7 +1299,7 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
         return 1;
       }
 
-      pr_trace_msg(trace_channel, 15, "at %.2f%% (%" PR_LU "of %" PR_LU
+      pr_trace_msg(trace_channel, 15, "at %.2f%% (%" PR_LU " of %" PR_LU
         " bytes) of '%s'",
         (float) (((float) sp->sentlen / (float) st->st_size) * 100),
         (pr_off_t) sp->sentlen, (pr_off_t) st->st_size, sp->path);
