@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.390 2010-01-23 21:39:48 castaglia Exp $
+ * $Id: main.c,v 1.391 2010-02-04 17:14:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2875,6 +2875,9 @@ int main(int argc, char *argv[], char **envp) {
 
     case 'n':
       nodaemon++;
+#ifdef PR_USE_DEVEL
+      pr_pool_debug_set_flags(PR_POOL_DEBUG_FL_OOM_DUMP_POOLS);
+#endif
       break;
 
     case 'q':
