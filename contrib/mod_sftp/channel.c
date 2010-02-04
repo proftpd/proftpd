@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.27 2010-02-04 04:00:10 castaglia Exp $
+ * $Id: channel.c,v 1.28 2010-02-04 04:08:09 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -451,17 +451,17 @@ static int handle_channel_close(struct ssh2_packet *pkt) {
     return -1;
   }
 
-  chan->recvd_close = TRUE;
+  /* The order of these calls, and the setting of recvd_close, is important.
+   * Do not set recvd_close to true before calling send_channel_done,
+   * otherwise the client will receive an EOF prematurely.
+   */
 
   if (!chan->sent_close) {
-    /* We don't need to call destroy_channel() here; send_channel_done()
-     * handles it for us.
-     */
     send_channel_done(pkt->pool, channel_id);
-
-  } else {
-    destroy_channel(channel_id);
   }
+
+  chan->recvd_close = TRUE;
+  destroy_channel(channel_id);
 
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   return 0;
