@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.36 2010-02-04 03:23:51 castaglia Exp $
+ * $Id: scp.c,v 1.37 2010-02-04 04:02:12 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2099,15 +2099,7 @@ int sftp_scp_close_session(uint32_t channel_id) {
             sess->paths->nelts > 0) {
           register unsigned int i;
           int count = 0;
-          config_rec *c;
           struct scp_path **elts;
-          unsigned char delete_aborted_stores = FALSE;
-
-          c = find_config(main_server->conf, CONF_PARAM, "DeleteAbortedStores",
-            FALSE);
-          if (c) {
-            delete_aborted_stores = *((unsigned char *) c->argv[0]);
-          }
 
           elts = sess->paths->elts;
           for (i = 0; i < sess->paths->nelts; i++) {
@@ -2118,47 +2110,58 @@ int sftp_scp_close_session(uint32_t channel_id) {
             }
           }
 
-          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "aborting %d unclosed file %s", count,
-            count != 1 ? "handles" : "handle");
+          if (count > 0) {
+            config_rec *c;
+            unsigned char delete_aborted_stores = FALSE;
 
-          for (i = 0; i < sess->paths->nelts; i++) {
-            struct scp_path *elt = elts[i];
+            c = find_config(main_server->conf, CONF_PARAM,
+              "DeleteAbortedStores", FALSE);
+            if (c) {
+              delete_aborted_stores = *((unsigned char *) c->argv[0]);
+            }
 
-            if (elt->fh != NULL) {
-              char *abs_path, *curr_path;
+            (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+              "aborting %d unclosed file %s", count,
+              count != 1 ? "handles" : "handle");
 
-              curr_path = pstrdup(scp_pool, elt->fh->fh_path);
+            for (i = 0; i < sess->paths->nelts; i++) {
+              struct scp_path *elt = elts[i];
 
-              /* Write out an 'incomplete' TransferLog entry for this. */
-              abs_path = dir_abs_path(scp_pool, elt->best_path, TRUE);
+              if (elt->fh != NULL) {
+                char *abs_path, *curr_path;
+
+                curr_path = pstrdup(scp_pool, elt->fh->fh_path);
+
+                /* Write out an 'incomplete' TransferLog entry for this. */
+                abs_path = dir_abs_path(scp_pool, elt->best_path, TRUE);
             
-              if (elt->recvlen > 0) {
-                xferlog_write(0, pr_netaddr_get_sess_remote_name(),
-                  elt->recvlen, abs_path, 'b', 'i', 'r', session.user, 'i');
+                if (elt->recvlen > 0) {
+                  xferlog_write(0, pr_netaddr_get_sess_remote_name(),
+                    elt->recvlen, abs_path, 'b', 'i', 'r', session.user, 'i');
             
-              } else {
-                xferlog_write(0, pr_netaddr_get_sess_remote_name(),
-                  elt->sentlen, abs_path, 'b', 'o', 'r', session.user, 'i');
-              }
+                } else {
+                  xferlog_write(0, pr_netaddr_get_sess_remote_name(),
+                    elt->sentlen, abs_path, 'b', 'o', 'r', session.user, 'i');
+                }
 
-              if (pr_fsio_close(elt->fh) < 0) {
-                (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-                  "error writing aborted file '%s': %s", elt->best_path,
-                  strerror(errno));
-              }
-
-              elt->fh = NULL;
-
-              if (delete_aborted_stores == TRUE &&
-                  elt->recvlen > 0) {
-                (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-                  "removing aborted uploaded file '%s'", curr_path);
-
-                if (pr_fsio_unlink(curr_path) < 0) {
+                if (pr_fsio_close(elt->fh) < 0) {
                   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-                    "error unlinking file '%s': %s", curr_path,
+                    "error writing aborted file '%s': %s", elt->best_path,
                     strerror(errno));
+                }
+
+                elt->fh = NULL;
+
+                if (delete_aborted_stores == TRUE &&
+                    elt->recvlen > 0) {
+                  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+                    "removing aborted uploaded file '%s'", curr_path);
+
+                  if (pr_fsio_unlink(curr_path) < 0) {
+                    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+                      "error unlinking file '%s': %s", curr_path,
+                      strerror(errno));
+                  }
                 }
               }
             }
