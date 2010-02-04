@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.24 2010-02-03 21:31:38 castaglia Exp $
+ * $Id: channel.c,v 1.25 2010-02-04 02:15:18 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -510,6 +510,7 @@ static int process_channel_data(struct ssh2_channel *chan,
         strerror(errno));
     }
 
+    destroy_pool(resp->pool); 
     chan->local_windowsz += window_adjlen;
   }
 
@@ -590,8 +591,10 @@ static int send_channel_done(pool *p, uint32_t channel_id) {
     (unsigned long) chan->remote_channel_id);
 
   res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
-  if (res < 0)
+  if (res < 0) {
+    destroy_pool(pkt->pool);
     return res;
+  }
 
   buf = ptr;
   buflen = bufsz;
@@ -608,8 +611,10 @@ static int send_channel_done(pool *p, uint32_t channel_id) {
     (unsigned long) chan->remote_channel_id);
 
   res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
-  if (res < 0)
+  if (res < 0) {
+    destroy_pool(pkt->pool);
     return res;
+  }
 
   chan->sent_eof = TRUE;
 
@@ -627,9 +632,12 @@ static int send_channel_done(pool *p, uint32_t channel_id) {
     (unsigned long) chan->remote_channel_id);
 
   res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
-  if (res < 0)
+  if (res < 0) {
+    destroy_pool(pkt->pool);
     return res;
+  }
 
+  destroy_pool(pkt->pool);
   chan->sent_close = TRUE;
   destroy_channel(channel_id);
 
@@ -1493,6 +1501,8 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
           (unsigned long) chan->remote_channel_id,
           (unsigned long) chan->remote_windowsz);
       }
+
+      destroy_pool(pkt->pool);
 
       /* If that was the entire payload, we can be done now. */
       if (payload_len == buflen) {
