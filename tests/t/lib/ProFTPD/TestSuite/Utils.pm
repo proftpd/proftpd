@@ -389,7 +389,13 @@ sub config_write {
 
           if (ref($section) eq 'HASH') {
             while (my ($anon_k, $anon_v) = each(%$section)) {
-              print $fh "  $anon_k $anon_v\n";
+              if (ref($anon_v) eq 'HASH' ||
+                  ref($anon_v) eq 'ARRAY') {
+                config_write_subsection($fh, $anon_k, $anon_v, "  ");
+
+              } else {
+                print $fh "  $anon_k $anon_v\n";
+              }
             }
 
           } elsif (ref($section) eq 'ARRAY') {
