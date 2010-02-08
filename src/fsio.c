@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (C) 2001-2009 The ProFTPD Project
+ * Copyright (C) 2001-2010 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.87 2009-12-20 01:19:41 castaglia Exp $
+ * $Id: fsio.c,v 1.88 2010-02-08 21:27:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2196,6 +2196,9 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
     return -1;
 
   fs = lookup_dir_fs(resbuf, FSIO_DIR_CHDIR);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom chdir handler.  If there are none,
    * use the system chdir.
@@ -2230,6 +2233,9 @@ int pr_fsio_chdir(const char *path, int hidesymlink) {
   pr_fs_clean_path(path, resbuf, sizeof(resbuf)-1);
 
   fs = lookup_dir_fs(path, FSIO_DIR_CHDIR);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom chdir handler.  If there are none,
    * use the system chdir.
@@ -2416,7 +2422,12 @@ struct dirent *pr_fsio_readdir(void *dir) {
 
 int pr_fsio_mkdir(const char *path, mode_t mode) {
   int res;
-  pr_fs_t *fs = lookup_dir_fs(path, FSIO_DIR_MKDIR);
+  pr_fs_t *fs;
+
+  fs = lookup_dir_fs(path, FSIO_DIR_MKDIR);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom mkdir handler.  If there are none,
    * use the system mkdir.
@@ -2433,7 +2444,12 @@ int pr_fsio_mkdir(const char *path, mode_t mode) {
 
 int pr_fsio_rmdir(const char *path) {
   int res;
-  pr_fs_t *fs = lookup_dir_fs(path, FSIO_DIR_RMDIR);
+  pr_fs_t *fs;
+
+  fs = lookup_dir_fs(path, FSIO_DIR_RMDIR);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom rmdir handler.  If there are none,
    * use the system rmdir.
@@ -3306,7 +3322,12 @@ int pr_fsio_futimes(pr_fh_t *fh, struct timeval *tvs) {
  */
 int pr_fsio_chroot(const char *path) {
   int res = 0;
-  pr_fs_t *fs = lookup_dir_fs(path, FSIO_DIR_CHROOT);
+  pr_fs_t *fs;
+
+  fs = lookup_dir_fs(path, FSIO_DIR_CHROOT);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom chroot handler.  If there are none,
    * use the system chroot.
