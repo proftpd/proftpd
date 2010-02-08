@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp packet IO
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.12 2009-11-22 21:46:02 castaglia Exp $
+ * $Id: packet.c,v 1.13 2010-02-08 17:28:04 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -481,13 +481,21 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
   }
 
   data_len = payload_len + padding_len;
-
   if (data_len == 0)
     return 0;
 
+  if (data_len > bufsz) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "remaining packet data (%lu bytes) exceeds packet buffer size (%lu "
+      "bytes)", (unsigned long) data_len, (unsigned long) bufsz);
+    errno = EPERM;
+    return -1;
+  }
+
   res = packet_read(sockfd, buf + *offset, data_len);
-  if (res < 0)
+  if (res < 0) {
     return res;
+  }
  
   len = res;
   if (sftp_cipher_read_data(pkt->pool, (unsigned char *) buf + *offset,
