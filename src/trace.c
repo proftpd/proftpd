@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2009 The ProFTPD Project team
+ * Copyright (c) 2006-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.24 2009-04-14 18:53:13 castaglia Exp $
+ * $Id: trace.c,v 1.25 2010-02-08 19:45:31 castaglia Exp $
  */
 
 
@@ -83,7 +83,8 @@ static void trace_restart_ev(const void *event_data, void *user_data) {
 }
 
 static int trace_write(const char *channel, int level, const char *msg) {
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE];
+  size_t buflen;
   time_t now;
   struct tm *t;
 
@@ -92,14 +93,25 @@ static int trace_write(const char *channel, int level, const char *msg) {
 
   now = time(NULL);
   t = pr_localtime(NULL, &now);
+
+  memset(buf, '\0', sizeof(buf));
   strftime(buf, sizeof(buf), "%b %d %H:%M:%S", t);
-  buf[sizeof(buf) - 1] = '\0';
+  buf[sizeof(buf)-1] = '\0';
 
   snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-    " [%u] <%s:%d>: %s\n",
+    " [%u] <%s:%d>: %s",
     (unsigned int) (session.pid ? session.pid : getpid()), channel, level, msg);
 
-  buf[sizeof(buf) - 1] = '\0';
+  buf[sizeof(buf)-1] = '\0';
+
+  buflen = strlen(buf);
+  if (buflen < (sizeof(buf) - 1)) {
+    buf[buflen] = '\n';
+
+  } else {
+    buf[sizeof(buf)-2] = '\n';
+  }
+
   return write(trace_logfd, buf, strlen(buf));
 }
 
