@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.85 2010-02-08 21:14:36 castaglia Exp $
+ * $Id: fxp.c,v 1.86 2010-02-08 23:01:44 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -7797,7 +7797,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_symlink(struct fxp_packet *fxp) {
-  char *buf, *args, *args2, *cmd_name, *ptr, *src_path, *dst_path;
+  char *buf, *args, *args2, *cmd_name, *ptr, *src_path, *dst_path, *vpath;
   const char *reason;
   int have_error = FALSE, res;
   uint32_t buflen, bufsz, status_code;
@@ -7844,8 +7844,59 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
   }
 
   /* Make sure we use the full paths. */
-  src_path = dir_canonical_vpath(fxp->pool, src_path);
-  dst_path = dir_canonical_vpath(fxp->pool, dst_path);
+  vpath = dir_canonical_vpath(fxp->pool, src_path);
+  if (vpath == NULL) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error resolving '%s': %s", src_path, strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason,
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+      NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+  src_path = vpath;
+
+  vpath = dir_canonical_vpath(fxp->pool, dst_path);
+  if (vpath == NULL) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error resolving '%s': %s", dst_path, strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason,
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+      NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+  dst_path = vpath;
 
   /* We use a slightly different cmd_rec here, for the benefit of PRE_CMD
    * handlers such as mod_rewrite.  It is impossible for a client to
