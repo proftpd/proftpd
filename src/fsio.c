@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.88 2010-02-08 21:27:36 castaglia Exp $
+ * $Id: fsio.c,v 1.89 2010-02-08 21:54:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2479,7 +2479,12 @@ int pr_fsio_stat_canon(const char *path, struct stat *sbuf) {
 }
 
 int pr_fsio_stat(const char *path, struct stat *sbuf) {
-  pr_fs_t *fs = lookup_file_fs(path, NULL, FSIO_FILE_STAT);
+  pr_fs_t *fs;
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_STAT);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom stat handler.  If there are none,
    * use the system stat.
@@ -2530,7 +2535,12 @@ int pr_fsio_lstat_canon(const char *path, struct stat *sbuf) {
 }
 
 int pr_fsio_lstat(const char *path, struct stat *sbuf) {
-  pr_fs_t *fs = lookup_file_fs(path, NULL, FSIO_FILE_LSTAT);
+  pr_fs_t *fs;
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_LSTAT);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom lstat handler.  If there are none,
    * use the system lstat.
@@ -2562,7 +2572,12 @@ int pr_fsio_readlink_canon(const char *path, char *buf, size_t buflen) {
 
 int pr_fsio_readlink(const char *path, char *buf, size_t buflen) {
   int res;
-  pr_fs_t *fs = lookup_file_fs(path, NULL, FSIO_FILE_READLINK);
+  pr_fs_t *fs;
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_READLINK);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom readlink handler.  If there are none,
    * use the system readlink.
@@ -2635,7 +2650,14 @@ int pr_fsio_rename(const char *rnfm, const char *rnto) {
   pr_fs_t *from_fs, *to_fs, *fs;
 
   from_fs = lookup_file_fs(rnfm, NULL, FSIO_FILE_RENAME);
+  if (from_fs == NULL) {
+    return -1;
+  }
+
   to_fs = lookup_file_fs(rnto, NULL, FSIO_FILE_RENAME);
+  if (to_fs == NULL) {
+    return -1;
+  }
 
   if (from_fs->allow_xdev_rename == FALSE ||
       to_fs->allow_xdev_rename == FALSE) {
@@ -2679,7 +2701,12 @@ int pr_fsio_unlink_canon(const char *name) {
 	
 int pr_fsio_unlink(const char *name) {
   int res;
-  pr_fs_t *fs = lookup_file_fs(name, NULL, FSIO_FILE_UNLINK);
+  pr_fs_t *fs;
+
+  fs = lookup_file_fs(name, NULL, FSIO_FILE_UNLINK);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom unlink handler.  If there are none,
    * use the system unlink.
@@ -2741,6 +2768,9 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
   }
 
   fs = lookup_file_fs(name, NULL, FSIO_FILE_OPEN);
+  if (fs == NULL) {
+    return NULL;
+  }
 
   /* Allocate a filehandle. */
   tmp_pool = make_sub_pool(fs->fs_pool);
@@ -2775,7 +2805,12 @@ pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
   char *deref = NULL;
   pool *tmp_pool = NULL;
   pr_fh_t *fh = NULL;
-  pr_fs_t *fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_CREAT);
+  pr_fs_t *fs;
+
+  fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_CREAT);
+  if (fs == NULL) {
+    return NULL;
+  }
 
   /* Allocate a filehandle. */
   tmp_pool = make_sub_pool(fs->fs_pool);
@@ -2809,7 +2844,12 @@ pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
 pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
   pool *tmp_pool = NULL;
   pr_fh_t *fh = NULL;
-  pr_fs_t *fs = lookup_file_fs(name, NULL, FSIO_FILE_CREAT);
+  pr_fs_t *fs;
+
+  fs = lookup_file_fs(name, NULL, FSIO_FILE_CREAT);
+  if (fs == NULL) {
+    return NULL;
+  }
 
   /* Allocate a filehandle. */
   tmp_pool = make_sub_pool(fs->fs_pool);
@@ -2938,7 +2978,14 @@ int pr_fsio_link_canon(const char *lfrom, const char *lto) {
   pr_fs_t *from_fs, *to_fs, *fs;
 
   from_fs = lookup_file_fs(lfrom, NULL, FSIO_FILE_LINK);
+  if (from_fs == NULL) {
+    return -1;
+  }
+
   to_fs = lookup_file_fs(lto, NULL, FSIO_FILE_LINK);
+  if (to_fs == NULL) {
+    return -1;
+  }
 
   if (from_fs->allow_xdev_link == FALSE ||
       to_fs->allow_xdev_link == FALSE) {
@@ -2965,11 +3012,17 @@ int pr_fsio_link_canon(const char *lfrom, const char *lto) {
 
 int pr_fsio_link(const char *lfrom, const char *lto) {
   int res;
-
   pr_fs_t *from_fs, *to_fs, *fs;
 
   from_fs = lookup_file_fs(lfrom, NULL, FSIO_FILE_LINK);
+  if (from_fs == NULL) {
+    return -1;
+  }
+
   to_fs = lookup_file_fs(lto, NULL, FSIO_FILE_LINK);
+  if (to_fs == NULL) {
+    return -1;
+  }
 
   if (from_fs->allow_xdev_link == FALSE ||
       to_fs->allow_xdev_link == FALSE) {
@@ -3013,7 +3066,12 @@ int pr_fsio_symlink_canon(const char *lfrom, const char *lto) {
 
 int pr_fsio_symlink(const char *lfrom, const char *lto) {
   int res;
-  pr_fs_t *fs = lookup_file_fs(lto, NULL, FSIO_FILE_SYMLINK);
+  pr_fs_t *fs;
+
+  fs = lookup_file_fs(lto, NULL, FSIO_FILE_SYMLINK);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom symlink handler.  If there are none,
    * use the system symlink.
@@ -3070,7 +3128,12 @@ int pr_fsio_truncate_canon(const char *path, off_t len) {
 
 int pr_fsio_truncate(const char *path, off_t len) {
   int res;
-  pr_fs_t *fs = lookup_file_fs(path, NULL, FSIO_FILE_TRUNC);
+  pr_fs_t *fs;
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_TRUNC);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom truncate handler.  If there are none,
    * use the system truncate.
@@ -3088,7 +3151,12 @@ int pr_fsio_truncate(const char *path, off_t len) {
 int pr_fsio_chmod_canon(const char *name, mode_t mode) {
   int res;
   char *deref = NULL;
-  pr_fs_t *fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_CHMOD);
+  pr_fs_t *fs;
+
+  fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_CHMOD);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom chmod handler.  If there are none,
    * use the system chmod.
@@ -3108,7 +3176,12 @@ int pr_fsio_chmod_canon(const char *name, mode_t mode) {
 
 int pr_fsio_chmod(const char *name, mode_t mode) {
   int res;
-  pr_fs_t *fs = lookup_file_fs(name, NULL, FSIO_FILE_CHMOD);
+  pr_fs_t *fs;
+
+  fs = lookup_file_fs(name, NULL, FSIO_FILE_CHMOD);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom chmod handler.  If there are none,
    * use the system chmod.
@@ -3154,7 +3227,12 @@ int pr_fsio_fchmod(pr_fh_t *fh, mode_t mode) {
 
 int pr_fsio_chown_canon(const char *name, uid_t uid, gid_t gid) {
   int res;
-  pr_fs_t *fs = lookup_file_canon_fs(name, NULL, FSIO_FILE_CHOWN);
+  pr_fs_t *fs;
+
+  fs = lookup_file_canon_fs(name, NULL, FSIO_FILE_CHOWN);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom chown handler.  If there are none,
    * use the system chown.
@@ -3174,7 +3252,12 @@ int pr_fsio_chown_canon(const char *name, uid_t uid, gid_t gid) {
 
 int pr_fsio_chown(const char *name, uid_t uid, gid_t gid) {
   int res;
-  pr_fs_t *fs = lookup_file_fs(name, NULL, FSIO_FILE_CHOWN);
+  pr_fs_t *fs;
+
+  fs = lookup_file_fs(name, NULL, FSIO_FILE_CHOWN);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom chown handler.  If there are none,
    * use the system chown.
@@ -3228,6 +3311,9 @@ int pr_fsio_access(const char *path, int mode, uid_t uid, gid_t gid,
   }
 
   fs = lookup_file_fs(path, NULL, FSIO_FILE_ACCESS);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom access handler.  If there are none,
    * use the system access.
@@ -3272,6 +3358,9 @@ int pr_fsio_utimes(const char *path, struct timeval *tvs) {
   }
 
   fs = lookup_file_fs(path, NULL, FSIO_FILE_UTIMES);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom utimes handler.  If there are none,
    * use the system utimes.
