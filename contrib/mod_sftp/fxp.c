@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.86 2010-02-08 23:01:44 castaglia Exp $
+ * $Id: fxp.c,v 1.87 2010-02-08 23:12:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -6771,7 +6771,37 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     path = (char *) pr_fs_getvwd();
 
   } else {
-    path = dir_canonical_vpath(fxp->pool, path);
+    char *vpath;
+
+    vpath = dir_canonical_vpath(fxp->pool, path);
+    if (vpath == NULL) {
+      uint32_t status_code;
+      const char *reason;
+      int xerrno = errno;
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error resolving '%s': %s", path, strerror(xerrno));
+
+      status_code = fxp_errno2status(xerrno, &reason);
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+        "('%s' [%d])", (unsigned long) status_code, reason,
+        xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+      fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+        NULL);
+
+      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+    }
+
+    path = vpath;
   }
 
   if (pr_fsio_lstat(path, &st) < 0) {
