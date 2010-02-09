@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.31 2010-01-26 19:50:08 castaglia Exp $
+ * $Id: timers.c,v 1.32 2010-02-09 20:08:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -116,8 +116,9 @@ static int process_timers(int elapsed) {
         pr_trace_msg("timer", 4,
           "%ld %s for timer ID %d ('%s', for module '%s') elapsed, invoking "
           "callback (%p)", t->interval,
-          t->interval != 1 ? "seconds" : "second", t->timerno, t->desc,
-          t->mod ? t->mod->name : "[none]", t->callback);
+          t->interval != 1 ? "seconds" : "second", t->timerno,
+          t->desc ? t->desc : "<unknown>",
+          t->mod ? t->mod->name : "<none>", t->callback);
 
         if (t->callback(t->interval, t->timerno, t->interval - t->count,
             t->mod) == 0) {
@@ -133,7 +134,7 @@ static int process_timers(int elapsed) {
            * the timer should be reused/restarted.
            */
           pr_trace_msg("timer", 6, "restarting timer ID %d ('%s'), as per "
-            "callback", t->timerno, t->desc);
+            "callback", t->timerno, t->desc ? t->desc : "<unknown>");
 
           xaset_remove(timers, (xasetmember_t *) t);
           t->count = t->interval;
