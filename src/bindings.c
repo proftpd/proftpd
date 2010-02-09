@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.38 2009-11-19 18:55:53 castaglia Exp $
+ * $Id: bindings.c,v 1.39 2010-02-09 15:53:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -56,6 +56,8 @@ static pr_ipbind_t *ipbind_table[PR_BINDINGS_TABLE_SIZE];
 static pool *binding_pool = NULL;
 static pr_ipbind_t *ipbind_default_server = NULL,
                    *ipbind_localhost_server = NULL;
+
+static const char *trace_channel = "binding";
 
 /* Server cleanup callback function */
 static void server_cleanup_cb(void *conn) {
@@ -227,12 +229,12 @@ int pr_ipbind_add_binds(server_rec *serv) {
         serv->ServerPort) {
       listen_conn = get_listening_conn(addr, serv->ServerPort);
 
-      PR_CREATE_IPBIND(serv, addr);
+      PR_CREATE_IPBIND(serv, addr, serv->ServerPort);
       PR_OPEN_IPBIND(addr, serv->ServerPort, listen_conn, FALSE, FALSE, TRUE);
 
     } else {
 
-      PR_CREATE_IPBIND(serv, addr);
+      PR_CREATE_IPBIND(serv, addr, serv->ServerPort);
       PR_OPEN_IPBIND(addr, serv->ServerPort, serv->listen, FALSE, FALSE, TRUE);
     }
 
@@ -381,7 +383,8 @@ int pr_ipbind_close_listeners(void) {
   return 0;
 }
 
-int pr_ipbind_create(server_rec *server, pr_netaddr_t *addr) {
+int pr_ipbind_create(server_rec *server, pr_netaddr_t *addr,
+    unsigned int port) {
   int res = 0;
   pr_ipbind_t *ipbind = NULL;
   config_rec *c = NULL;
@@ -399,11 +402,11 @@ int pr_ipbind_create(server_rec *server, pr_netaddr_t *addr) {
   /* Make sure the address is not already in use */
   for (ipbind = ipbind_table[i]; ipbind; ipbind = ipbind->ib_next) {
     if (pr_netaddr_cmp(ipbind->ib_addr, addr) == 0 &&
-        ipbind->ib_port == server->ServerPort) {
+        ipbind->ib_port == port) {
 
       /* An ipbind already exists for this IP address */
       pr_log_pri(PR_LOG_NOTICE, "notice: '%s' (%s:%u) already bound to '%s'",
-        server->ServerName, pr_netaddr_get_ipstr(addr), server->ServerPort,
+        server->ServerName, pr_netaddr_get_ipstr(addr), port,
         ipbind->ib_server->ServerName);
 
       errno = EADDRINUSE;
@@ -419,11 +422,14 @@ int pr_ipbind_create(server_rec *server, pr_netaddr_t *addr) {
   ipbind = pcalloc(server->pool, sizeof(pr_ipbind_t));
   ipbind->ib_server = server;
   ipbind->ib_addr = addr;
-  ipbind->ib_port = server->ServerPort;
+  ipbind->ib_port = port;
   ipbind->ib_namebinds = NULL;
   ipbind->ib_isdefault = FALSE;
   ipbind->ib_islocalhost = FALSE;
   ipbind->ib_isactive = FALSE;
+
+  pr_trace_msg(trace_channel, 8, "created binding for %s#%u, server %p",
+    pr_netaddr_get_ipstr(ipbind->ib_addr), ipbind->ib_port, ipbind->ib_server);
 
   /* Add the ipbind to the table. */
   if (ipbind_table[i])
@@ -932,7 +938,7 @@ static void init_inetd_bindings(void) {
       *default_server == TRUE)
     is_default = TRUE;
 
-  PR_CREATE_IPBIND(main_server, main_server->addr);
+  PR_CREATE_IPBIND(main_server, main_server->addr, main_server->ServerPort);
   PR_OPEN_IPBIND(main_server->addr, main_server->ServerPort,
     main_server->listen, is_default, TRUE, TRUE);
   PR_ADD_IPBINDS(main_server);
@@ -956,7 +962,7 @@ static void init_inetd_bindings(void) {
         *default_server == TRUE)
       is_default = TRUE;
 
-    PR_CREATE_IPBIND(serv, serv->addr);
+    PR_CREATE_IPBIND(serv, serv->addr, serv->ServerPort);
     PR_OPEN_IPBIND(serv->addr, serv->ServerPort, serv->listen, is_default,
       FALSE, TRUE);
     PR_ADD_IPBINDS(serv);
@@ -1007,7 +1013,7 @@ static void init_standalone_bindings(void) {
 
   if (main_server->ServerPort ||
       is_default) {
-    PR_CREATE_IPBIND(main_server, main_server->addr);
+    PR_CREATE_IPBIND(main_server, main_server->addr, main_server->ServerPort);
     PR_OPEN_IPBIND(main_server->addr, main_server->ServerPort,
       main_server->listen, is_default, TRUE, TRUE);
     PR_ADD_IPBINDS(main_server);
@@ -1040,7 +1046,7 @@ static void init_standalone_bindings(void) {
         serv->listen = get_listening_conn((SocketBindTight ? serv->addr : NULL),
           serv->ServerPort);
 
-        PR_CREATE_IPBIND(serv, serv->addr);
+        PR_CREATE_IPBIND(serv, serv->addr, serv->ServerPort);
         PR_OPEN_IPBIND(serv->addr, serv->ServerPort, serv->listen, is_default,
           FALSE, TRUE);
         PR_ADD_IPBINDS(serv);
@@ -1048,7 +1054,7 @@ static void init_standalone_bindings(void) {
       } else if (is_default) {
         serv->listen = NULL;
 
-        PR_CREATE_IPBIND(serv, serv->addr);
+        PR_CREATE_IPBIND(serv, serv->addr, serv->ServerPort);
         PR_OPEN_IPBIND(serv->addr, serv->ServerPort, serv->listen, is_default,
           FALSE, TRUE);
         PR_ADD_IPBINDS(serv);
@@ -1074,7 +1080,7 @@ static void init_standalone_bindings(void) {
       register_cleanup(serv->listen->pool, &serv->listen, server_cleanup_cb,
         server_cleanup_cb);
 
-      PR_CREATE_IPBIND(serv, serv->addr);
+      PR_CREATE_IPBIND(serv, serv->addr, serv->ServerPort);
       PR_OPEN_IPBIND(serv->addr, serv->ServerPort, NULL, is_default, FALSE,
         TRUE);
       PR_ADD_IPBINDS(serv);
