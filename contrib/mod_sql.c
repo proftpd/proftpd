@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.180 2010-01-26 16:51:06 castaglia Exp $
+ * $Id: mod_sql.c,v 1.181 2010-02-10 18:26:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -458,11 +458,10 @@ int sql_register_backend(const char *backend, cmdtable *cmdtab) {
   sb->backend = backend;
   sb->cmdtab = cmdtab;
 
-  if (sql_backends)
+  if (sql_backends) {
+    sql_backends->prev = sb;
     sb->next = sql_backends;
-
-  else
-    sb->next = NULL;
+  }
 
   sql_backends = sb;
   sql_nbackends++;
@@ -4986,6 +4985,15 @@ static void sql_mod_unload_ev(const void *event_data, void *user_data) {
     sql_auth_list = NULL;
 
     pr_event_unregister(&sql_module, NULL, NULL);
+
+    (void) sql_unregister_authtype("Backend");
+    (void) sql_unregister_authtype("Crypt");
+    (void) sql_unregister_authtype("Empty");
+    (void) sql_unregister_authtype("Plaintext");
+
+#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
+    (void) sql_unregister_authtype("OpenSSL");
+#endif /* HAVE_OPENSSL */
 
     close(sql_logfd);
     sql_logfd = -1;
