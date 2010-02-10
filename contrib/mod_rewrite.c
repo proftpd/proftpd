@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
  *
- * Copyright (c) 2001-2009 TJ Saunders
+ * Copyright (c) 2001-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.50 2009-10-05 22:47:58 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.51 2010-02-10 17:29:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2438,6 +2438,16 @@ static void rewrite_exit_ev(const void *event_data, void *user_data) {
 static void rewrite_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_rewrite.c", (const char *) event_data) == 0) {
     pr_event_unregister(&rewrite_module, NULL, NULL);
+
+    if (rewrite_regexes) {
+      register unsigned int i = 0;
+      regex_t **regexes = (regex_t **) rewrite_regexes->elts;
+
+      for (i = 0; i < rewrite_regexes->nelts && regexes[i]; i++) {
+        regfree(regexes[i]);
+        free(regexes[i]);
+      }
+    }
 
     if (rewrite_pool) {
       destroy_pool(rewrite_pool);
