@@ -25,7 +25,7 @@
 #include "mod_wrap2.h"
 
 typedef struct regtab_obj {
-  struct regtab_obj *next;
+  struct regtab_obj *prev, *next;
 
   /* Table source type name */
   const char *regtab_name;
@@ -1132,9 +1132,11 @@ int wrap2_register(const char *srcname,
 
   /* Note: I know that use of permanent_pool is discouraged as much as
    * possible, but in this particular instance, I need a pool that
-   * persists across rehashes.  The registration of a table type only
-   * happens once, on module init when the server first starts up, so
-   * this will not constitute a memory leak.
+   * persists across rehashes.
+   *
+   * Ideally, the wrap2_regtab_t struct would have a subpool member;
+   * the objects would have their own pools which could then be
+   * destroyed upon unregistration.
    */
   wrap2_regtab_t *regtab = pcalloc(permanent_pool, sizeof(wrap2_regtab_t));
 
@@ -1142,10 +1144,49 @@ int wrap2_register(const char *srcname,
   regtab->regtab_open = srcopen;
 
   /* Add this object to the list. */
-  regtab->next = wrap2_regtab_list;
+  if (wrap2_regtab_list) {
+    wrap2_regtab_list->prev = regtab;
+    regtab->next = wrap2_regtab_list;
+  }
+
   wrap2_regtab_list = regtab;
 
   return 0;
+}
+
+int wrap2_unregister(const char *srcname) {
+  if (wrap2_regtab_list) {
+    register wrap2_regtab_t *regtab = NULL;
+
+    for (regtab = wrap2_regtab_list; regtab; regtab = regtab->next) {
+      if (strcmp(regtab->regtab_name, srcname) == 0) {
+
+        if (regtab->prev) {
+          regtab->prev->next = regtab->next;
+
+        } else {
+          wrap2_regtab_list = regtab->next;
+        }
+
+        if (regtab->next) {
+          regtab->next->prev = regtab->prev;
+        }
+
+        regtab->prev = regtab->next = NULL;
+
+        /* NOTE: a counter should be kept of the number of unregistrations,
+         * as the memory for a registration is not freed on unregistration.
+         */
+        return 0;
+      }
+    }
+
+    errno = ENOENT;
+    return -1;
+  }
+
+  errno = EPERM;
+  return -1;
 }
 
 /* "builtin" source callbacks. */
@@ -1669,6 +1710,8 @@ static void wrap2_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_wrap2.c", (const char *) event_data) == 0) {
     /* Unregister ourselves from all events. */
     pr_event_unregister(&wrap2_module, NULL, NULL);
+
+    wrap2_unregister("builtin");
 
     if (wrap2_pool) {
       destroy_pool(wrap2_pool);

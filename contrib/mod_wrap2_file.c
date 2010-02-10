@@ -22,12 +22,14 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_file.c,v 1.9 2010-01-03 21:05:24 castaglia Exp $
+ * $Id: mod_wrap2_file.c,v 1.10 2010-02-10 18:31:33 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
 
 #define MOD_WRAP2_FILE_VERSION		"mod_wrap2_file/1.2"
+
+module wrap2_file_module;
 
 static const char *filetab_service_name = NULL;
 
@@ -280,10 +282,30 @@ static wrap2_table_t *filetab_open_cb(pool *parent_pool, char *srcinfo) {
   return tab;
 }
 
+/* Event handlers
+ */
+
+#if defined(PR_SHARED_MODULE)
+static void filetab_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_wrap2_file.c", (const char *) event_data) == 0) {
+    pr_event_unregister(&wrap2_file_module, NULL, NULL);
+    wrap2_unregister("file");
+  }
+}
+#endif /* PR_SHARED_MODULE */
+
+/* Initialization routines
+ */
+
 static int filetab_init(void) {
 
   /* Initialize the wrap source objects for type "file". */
   wrap2_register("file", filetab_open_cb);
+
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&wrap2_file_module, "core.module-unload",
+    filetab_mod_unload_ev, NULL);
+#endif /* PR_SHARED_MODULE */
 
   return 0;
 }
