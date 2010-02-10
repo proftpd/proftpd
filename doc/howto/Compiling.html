@@ -1,4 +1,4 @@
-<!-- $Id: Compiling.html,v 1.5 2010-02-10 19:12:06 castaglia Exp $ -->
+<!-- $Id: Compiling.html,v 1.6 2010-02-10 19:39:50 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Compiling.html,v $ -->
 
 <html>
@@ -657,11 +657,11 @@ there is "d_auth_pam.c", rather than "mod_auth_pam.c"?  If you see a mangled
 module name like this, it probably means that your <code>--with-modules</code>
 or <code>--with-shared</code> module lists contain a double colon, <i>e.g.</i>:
 <pre>
-  --with-modules=mod_sql<b>::</b>mod_sql_mysql:...
+  # ./configure --with-modules=mod_sql<b>::</b>mod_sql_mysql:...
 </pre>
 or:
 <pre>
-  --with-shared=mod_sql<b>::</b>mod_sql_mysql:...
+  # ./configure --with-shared=mod_sql<b>::</b>mod_sql_mysql:...
 </pre>
 <i>Use only a single colon between module names</i>; this should fix this error.
 
@@ -751,7 +751,7 @@ is the way to get a statically linked <code>proftpd</code> executable:
 
 <p>
 <hr>
-<i>$Date: 2010-02-10 19:12:06 $</i><br>
+<i>$Date: 2010-02-10 19:39:50 $</i><br>
 
 </body>
 </html>
