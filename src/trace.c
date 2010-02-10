@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.25 2010-02-08 19:45:31 castaglia Exp $
+ * $Id: trace.c,v 1.26 2010-02-10 20:54:29 castaglia Exp $
  */
 
 
@@ -216,7 +216,7 @@ int pr_trace_set_level(const char *channel, int level) {
     void *value = palloc(trace_pool, sizeof(int));
     memcpy(value, &level, sizeof(int));
 
-    if (strcmp(channel, "DEFAULT") != 0) {
+    if (strcmp(channel, PR_TRACE_DEFAULT_CHANNEL) != 0) {
       int count = pr_table_exists(trace_tab, channel);
 
       if (count <= 0) {
@@ -240,7 +240,7 @@ int pr_trace_set_level(const char *channel, int level) {
     }
 
   } else {
-    if (strcmp(channel, "DEFAULT") != 0) {
+    if (strcmp(channel, PR_TRACE_DEFAULT_CHANNEL) != 0) {
       (void) pr_table_remove(trace_tab, channel, NULL);
 
     } else {

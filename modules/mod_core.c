@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.364 2010-02-10 20:50:08 castaglia Exp $
+ * $Id: mod_core.c,v 1.365 2010-02-10 20:54:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4644,7 +4644,7 @@ static void core_restart_ev(const void *event_data, void *user_data) {
 
 #ifdef PR_USE_TRACE
   if (trace_log) {
-    pr_trace_set_level("DEFAULT", -1);
+    pr_trace_set_level(PR_TRACE_DEFAULT_CHANNEL, -1);
     pr_trace_set_file(NULL);
     trace_log = NULL;
   }
