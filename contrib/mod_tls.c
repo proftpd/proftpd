@@ -4911,14 +4911,11 @@ static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
     }
 
     return tls_handle_remove(ctrl, reqargc, reqargv);
-
-  } else {
-    pr_ctrls_add_response(ctrl, "tls sesscache: unknown sesscache action: '%s'",
-      reqargv[0]);
-    return -1;
   }
 
-  return 0;
+  pr_ctrls_add_response(ctrl, "tls sesscache: unknown sesscache action: '%s'",
+    reqargv[0]);
+  return -1;
 }
 
 /* Our main ftpdctl action handler */
@@ -4940,13 +4937,10 @@ static int tls_handle_tls(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
     }
 
     return tls_handle_sesscache(ctrl, --reqargc, ++reqargv);
-
-  } else {
-    pr_ctrls_add_response(ctrl, "tls: unknown tls action: '%s'", reqargv[0]);
-    return -1;
   }
 
-  return 0;
+  pr_ctrls_add_response(ctrl, "tls: unknown tls action: '%s'", reqargv[0]);
+  return -1;
 }
 #endif
 
