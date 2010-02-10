@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.35 2010-01-20 18:11:43 castaglia Exp $
+ * $Id: mod_ban.c,v 1.36 2010-02-10 01:01:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -141,6 +141,7 @@ static char *ban_mesg = NULL;
 static int ban_shmid = -1;
 static char *ban_table = NULL;
 static pr_fh_t *ban_tabfh = NULL;
+static int ban_timerno = -1;
 
 static int ban_lock_shm(int);
 
@@ -2005,6 +2006,11 @@ static void ban_mod_unload_ev(const void *event_data, void *user_data) {
       (void) pr_ctrls_unregister(&ban_module, ban_acttab[i].act_action);
     }
 
+    if (ban_timerno > 0) {
+      (void) pr_timer_remove(ban_timerno, &ban_module);
+      ban_timerno = -1;
+    }
+
     pr_event_unregister(&ban_module, NULL, NULL);
 
     if (ban_pool) {
@@ -2093,6 +2099,8 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
   if (lists)
     ban_lists = lists;
 
+  ban_timerno = pr_timer_add(BAN_TIMER_INTERVAL, -1, &ban_module, ban_timer_cb,
+    "ban list expiry");
   return;
 }
 
@@ -2162,12 +2170,12 @@ static void ban_restart_ev(const void *event_data, void *user_data) {
     }
   }
 
-  return;
-}
+  if (ban_timerno > 0) {
+    (void) pr_timer_remove(ban_timerno, &ban_module);
+    ban_timerno = -1;
+  }
 
-static void ban_startup_ev(const void *event_data, void *user_data) {
-  pr_timer_add(BAN_TIMER_INTERVAL, -1, &ban_module, ban_timer_cb,
-    "ban list expiry");
+  return;
 }
 
 static void ban_timeoutidle_ev(const void *event_data, void *user_data) {
@@ -2237,7 +2245,6 @@ static int ban_init(void) {
 #endif /* PR_SHARED_MODULE */
   pr_event_register(&ban_module, "core.postparse", ban_postparse_ev, NULL);
   pr_event_register(&ban_module, "core.restart", ban_restart_ev, NULL);
-  pr_event_register(&ban_module, "core.startup", ban_startup_ev, NULL);
 
   return 0;
 }
@@ -2304,7 +2311,6 @@ static int ban_sess_init(void) {
 
   pr_event_unregister(&ban_module, "core.exit", ban_exit_ev);
   pr_event_unregister(&ban_module, "core.restart", ban_restart_ev);
-  pr_event_unregister(&ban_module, "core.startup", ban_startup_ev);
 
   return 0;
 }
