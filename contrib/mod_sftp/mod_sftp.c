@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.25 2009-11-24 17:29:58 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.26 2010-02-10 18:34:35 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1265,6 +1265,8 @@ static void sftp_mod_unload_ev(const void *event_data, void *user_data) {
     /* Unregister ourselves from all events. */
     pr_event_unregister(&sftp_module, NULL, NULL);
 
+    sftp_interop_free();
+    sftp_keystore_free();
     sftp_keys_free();
     pr_response_block(FALSE);
     sftp_utf8_free();
