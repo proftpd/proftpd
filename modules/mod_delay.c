@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.38 2010-01-08 18:20:43 castaglia Exp $
+ * $Id: mod_delay.c,v 1.39 2010-02-10 19:20:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1017,13 +1017,10 @@ static int delay_handle_delay(pr_ctrls_t *ctrl, int reqargc,
     }
 
     return delay_handle_reset(ctrl, --reqargc, ++reqargv);
-
-  } else {
-    pr_ctrls_add_response(ctrl, "unknown delay action: '%s'", reqargv[0]);
-    return -1;
   }
 
-  return 0;
+  pr_ctrls_add_response(ctrl, "unknown delay action: '%s'", reqargv[0]);
+  return -1;
 }
 
 #endif /* PR_USE_CTRLS */
@@ -1273,6 +1270,20 @@ MODRET delay_pre_user(cmd_rec *cmd) {
 /* Event handlers
  */
 
+#if defined(PR_SHARED_MODULE)
+static void delay_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_delay.c", (const char *) event_data) == 0) {
+    /* Unregister ourselves from all events. */
+    pr_event_unregister(&delay_module, NULL, NULL);
+
+# ifdef PR_USE_CTRLS
+    pr_ctrls_unregister(&delay_module, "delay");
+# endif
+
+  }
+}
+#endif
+
 static void delay_postparse_ev(const void *event_data, void *user_data) {
   config_rec *c;
 
@@ -1379,6 +1390,10 @@ static int delay_init(void) {
   delay_tab.dt_data = NULL;
 
   pr_event_register(&delay_module, "core.exit", delay_shutdown_ev, NULL);
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&delay_module, "core.module-unload", delay_mod_unload_ev,
+    NULL);
+#endif
   pr_event_register(&delay_module, "core.postparse", delay_postparse_ev, NULL);
   pr_event_register(&delay_module, "core.restart", delay_restart_ev, NULL);
 
