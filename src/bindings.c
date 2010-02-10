@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.39 2010-02-09 15:53:26 castaglia Exp $
+ * $Id: bindings.c,v 1.40 2010-02-10 02:16:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -100,14 +100,37 @@ static conn_t *get_listening_conn(pr_netaddr_t *addr, unsigned int port) {
 
   if (listening_conn_list) {
 
-    for (lr = (struct listener_rec *) listening_conn_list->xas_list; lr; lr = lr->next) {
+    for (lr = (struct listener_rec *) listening_conn_list->xas_list; lr;
+        lr = lr->next) {
       int use_elt = FALSE;
 
+      pr_signals_handle();
+
       if (addr != NULL &&
-          lr->addr != NULL &&
-          strcmp(pr_netaddr_get_ipstr(addr), pr_netaddr_get_ipstr(lr->addr)) == 0 &&
-          port == lr->port) {
-        use_elt = TRUE;
+          lr->addr != NULL) {
+        const char *lr_ipstr = NULL;
+
+        lr_ipstr = pr_netaddr_get_ipstr(lr->addr);
+
+        /* Note: lr_ipstr should never be null.  If it is, it means that
+         * the lr->addr object never had its IP address resolved/stashed,
+         * and in attempting to do, getnameinfo(3) failed for some reason.
+         *
+         * The IP address on which it's listening, if not available via
+         * lr->addr, should thus be available via lr->conn->local_addr.
+         */
+
+        if (lr_ipstr == NULL &&
+            lr->conn != NULL) {
+          lr_ipstr = pr_netaddr_get_ipstr(lr->conn->local_addr);
+        }
+
+        if (lr_ipstr != NULL) {
+          if (strcmp(pr_netaddr_get_ipstr(addr), lr_ipstr) == 0 &&
+              port == lr->port) {
+            use_elt = TRUE;
+          }
+        }
 
       } else if (addr == NULL &&
                  port == lr->port) {
