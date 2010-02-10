@@ -1,4 +1,4 @@
-<!-- $Id: Compiling.html,v 1.4 2009-04-03 21:23:21 castaglia Exp $ -->
+<!-- $Id: Compiling.html,v 1.5 2010-02-10 19:12:06 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Compiling.html,v $ -->
 
 <html>
@@ -648,6 +648,24 @@ sure that no automatically included modules appear in your
 <code>--with-modules</code> configure option.
 
 <p>
+<font color=red>Question</font>: Why do I get a configure error like this:
+<pre>
+  configure: error: source file './modules/d_auth_pam.c' cannot be found -- aborting
+</pre>
+<font color=blue>Answer</font>: Notice how the name of the module reported
+there is "d_auth_pam.c", rather than "mod_auth_pam.c"?  If you see a mangled
+module name like this, it probably means that your <code>--with-modules</code>
+or <code>--with-shared</code> module lists contain a double colon, <i>e.g.</i>:
+<pre>
+  --with-modules=mod_sql<b>::</b>mod_sql_mysql:...
+</pre>
+or:
+<pre>
+  --with-shared=mod_sql<b>::</b>mod_sql_mysql:...
+</pre>
+<i>Use only a single colon between module names</i>; this should fix this error.
+
+<p>
 <font color=red>Question</font>: I can't seem to compile <code>mod_tls</code>
 <b>and</b> <code>mod_sql</code>.  Using one or the other works (<i>i.e.</i>
 shows up in the <code>`proftpd -l`</code> list), but not both.  I'm using the
@@ -733,7 +751,7 @@ is the way to get a statically linked <code>proftpd</code> executable:
 
 <p>
 <hr>
-<i>$Date: 2009-04-03 21:23:21 $</i><br>
+<i>$Date: 2010-02-10 19:12:06 $</i><br>
 
 </body>
 </html>
