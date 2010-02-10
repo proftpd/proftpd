@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.363 2009-11-18 06:38:02 castaglia Exp $
+ * $Id: mod_core.c,v 1.364 2010-02-10 20:50:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1097,17 +1097,19 @@ MODRET set_trace(cmd_rec *cmd) {
     int level;
 
     tmp = strchr(cmd->argv[i], ':');
-    if (!tmp)
+    if (tmp == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "badly formatted parameter: '",
         cmd->argv[i], "'", NULL));
+    }
 
     channel = cmd->argv[i];
     *tmp = '\0';
     level = atoi(++tmp);
 
-    if (pr_trace_set_level(channel, level) < 0)
+    if (pr_trace_set_level(channel, level) < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error setting level ", tmp,
         " for channel '", channel, "': ", strerror(errno), NULL));
+    }
   }
 
   return PR_HANDLED(cmd);
@@ -4642,7 +4644,7 @@ static void core_restart_ev(const void *event_data, void *user_data) {
 
 #ifdef PR_USE_TRACE
   if (trace_log) {
-    pr_trace_set_level("ALL", -1);
+    pr_trace_set_level("DEFAULT", -1);
     pr_trace_set_file(NULL);
     trace_log = NULL;
   }
