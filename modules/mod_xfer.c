@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.268 2009-12-15 06:22:44 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.269 2010-02-10 21:45:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -670,7 +670,11 @@ static int transmit_sendfile(off_t count, off_t *offset,
      !use_sendfile) {
 
     if (!xfer_logged_sendfile_decline_msg) {
-      if (pr_throttle_have_rate()) {
+      if (!use_sendfile) {
+        pr_log_debug(DEBUG10, "declining use of sendfile due to UseSendfile "
+          "configuration setting");
+
+      } else if (pr_throttle_have_rate()) {
         pr_log_debug(DEBUG10, "declining use of sendfile due to TransferRate "
           "restrictions");
     
@@ -684,10 +688,6 @@ static int transmit_sendfile(off_t count, off_t *offset,
       } else if (have_zmode) {
         pr_log_debug(DEBUG10, "declining use of sendfile due to MODE Z "
           "restrictions");
-
-      } else if (!use_sendfile) {
-        pr_log_debug(DEBUG10, "declining use of sendfile due to UseSendfile "
-          "configuration setting");
 
       } else {
         pr_log_debug(DEBUG10, "declining use of sendfile due to lack of data "
