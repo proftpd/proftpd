@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.229 2010-01-07 19:22:30 castaglia Exp $
+ * $Id: dirtree.c,v 1.230 2010-02-11 22:36:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1196,12 +1196,14 @@ static int check_ip_access(xaset_t *set, char *name) {
     /* If the negative check failed (default is success), short-circuit and
      * return FALSE
      */
-    if (check_ip_negative(c) != TRUE)
+    if (check_ip_negative(c) != TRUE) {
       return FALSE;
+    }
 
     /* Otherwise, continue on with boolean or check */
-    if (check_ip_positive(c) == TRUE)
+    if (check_ip_positive(c) == TRUE) {
       res = TRUE;
+    }
 
     /* Continue on, in case there are other acls that need to be checked
      * (multiple acls are logically OR'd)
@@ -1226,33 +1228,41 @@ static int check_limit_allow(config_rec *c, cmd_rec *cmd) {
    */
 
   if (!session.user) {
-    if (find_config(c->subset, CONF_PARAM, "AllowUser", FALSE))
+    if (find_config(c->subset, CONF_PARAM, "AllowUser", FALSE)) {
       return 1;
+    }
 
-  } else if (check_user_access(c->subset, "AllowUser"))
+  } else if (check_user_access(c->subset, "AllowUser")) {
     return 1;
+  }
 
   if (!session.groups) {
-    if (find_config(c->subset, CONF_PARAM, "AllowGroup", FALSE))
+    if (find_config(c->subset, CONF_PARAM, "AllowGroup", FALSE)) {
       return 1;
+    }
 
-  } else if (check_group_access(c->subset, "AllowGroup"))
+  } else if (check_group_access(c->subset, "AllowGroup")) {
     return 1;
+  }
 
   if (session.class &&
-      check_class_access(c->subset, "AllowClass"))
+      check_class_access(c->subset, "AllowClass")) {
     return 1;
+  }
 
-  if (check_ip_access(c->subset, "Allow"))
+  if (check_ip_access(c->subset, "Allow")) {
     return 1;
+  }
 
   if (check_filter_access(c->subset, "AllowFilter", cmd)) {
     return 1;
   }
 
   allow_all = get_param_ptr(c->subset, "AllowAll", FALSE);
-  if (allow_all && *allow_all == TRUE)
+  if (allow_all &&
+      *allow_all == TRUE) {
     return 1;
+  }
 
   return 0;
 }
@@ -1260,26 +1270,33 @@ static int check_limit_allow(config_rec *c, cmd_rec *cmd) {
 static int check_limit_deny(config_rec *c, cmd_rec *cmd) {
   unsigned char *deny_all = get_param_ptr(c->subset, "DenyAll", FALSE);
 
-  if (deny_all && *deny_all == TRUE)
+  if (deny_all &&
+      *deny_all == TRUE) {
     return 1;
+  }
 
   if (session.user &&
-      check_user_access(c->subset, "DenyUser"))
+      check_user_access(c->subset, "DenyUser")) {
     return 1;
+  }
 
   if (session.groups &&
-      check_group_access(c->subset, "DenyGroup"))
+      check_group_access(c->subset, "DenyGroup")) {
     return 1;
+  }
 
   if (session.class &&
-      check_class_access(c->subset, "DenyClass"))
+      check_class_access(c->subset, "DenyClass")) {
     return 1;
+  }
 
-  if (check_ip_access(c->subset, "Deny"))
+  if (check_ip_access(c->subset, "Deny")) {
     return 1;
+  }
 
-  if (check_filter_access(c->subset, "DenyFilter", cmd))
+  if (check_filter_access(c->subset, "DenyFilter", cmd)) {
     return 1;
+  }
 
   return 0;
 }
@@ -2963,14 +2980,18 @@ int fixup_servers(xaset_t *list) {
     /* Honor the DefaultServer directive only if SocketBindTight is not
      * in effect.
      */
-    default_server= get_param_ptr(s->conf, "DefaultServer", FALSE);
+    default_server = get_param_ptr(s->conf, "DefaultServer", FALSE);
 
-    if (default_server && *default_server == TRUE) {
-      if (!SocketBindTight)
+    if (default_server &&
+        *default_server == TRUE) {
+
+      if (!SocketBindTight) {
         pr_netaddr_set_sockaddr_any(s->addr);
-      else
+
+      } else {
         pr_log_pri(PR_LOG_NOTICE,
           "SocketBindTight in effect, ignoring DefaultServer");
+      }
     }
 
     fixup_dirs(s, 0);
