@@ -6,18 +6,23 @@ This file contains a description of the major changes to ProFTPD for the
 releases.  More information on these changes can be found in the NEWS and
 ChangeLog files.
 
-1.3.3
---------
+1.3.3rc4
+---------
 
   + Fixed mod_tls compilation using OpenSSL installations older than 0.9.7.
-
   + Fixed mod_sftp compilation on AIX.
-
   + Fixed RADIUS authentication on 64-bit platforms
+  + Fixed memory leak in SCP downloads.
 
   + New configuration directives
 
     SQLPasswordUserSalt
+
+      The SQLPasswordUserSalt directive can be used to configure per-user
+      salt data to be added to the encrypted password for a user.  The salt
+      can be the user name, or it can be the result of a SQL query.  More
+      information can be found in
+      doc/contrib/mod_sql_passwd.html#SQLPasswordUserSalt.
 
 
 1.3.3rc3
@@ -495,4 +500,4 @@ ChangeLog files.
         this will probably not apply to most modules.
 
  
-Last Updated: $Date: 2010-02-01 22:09:24 $
+Last Updated: $Date: 2010-02-13 00:37:46 $
