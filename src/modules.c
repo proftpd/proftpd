@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.57 2009-09-15 23:18:17 castaglia Exp $
+ * $Id: modules.c,v 1.58 2010-02-14 00:19:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -373,7 +373,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
       while (tab) {
         pr_signals_handle();
 
-        /* Note: this works because of a hack: the symbol look functions
+        /* Note: this works because of a hack: the symbol lookup functions
          * set a static pointer, curr_sym, to point to the struct stash
          * just looked up.  curr_sym will not be NULL if pr_stash_get_symbol()
          * returns non-NULL.
@@ -403,7 +403,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
       while (tab) {
         pr_signals_handle();
 
-        /* Note: this works because of a hack: the symbol look functions
+        /* Note: this works because of a hack: the symbol lookup functions
          * set a static pointer, curr_sym, to point to the struct stash
          * just looked up.  
          */
@@ -431,7 +431,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
       while (tab) {
         pr_signals_handle();
 
-        /* Note: this works because of a hack: the symbol look functions
+        /* Note: this works because of a hack: the symbol lookup functions
          * set a static pointer, curr_sym, to point to the struct stash
          * just looked up.  
          */
