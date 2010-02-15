@@ -1,4 +1,4 @@
-<!-- $Id: SQL.html,v 1.13 2009-06-25 20:35:24 castaglia Exp $ -->
+<!-- $Id: SQL.html,v 1.14 2010-02-15 23:28:59 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/SQL.html,v $ -->
 
 <html>
@@ -519,9 +519,25 @@ the process for every session.
 The above holds true for the <em>groupset</em> and <em>groupsetfast</em>
 <code>SQLAuthenticate</code> options as well.
 
+<p><a name="SQLEncryptedDBConn"></a>
+<font color=red>Question</font>: How do I configure <code>mod_sql</code> so
+that it will use encrypted connections (<i>e.g.</i> SSL/TLS) to the
+backend database server?<br>
+<font color=blue>Answer</font>: This sort of configuration depends on the
+backend database server you are using.
+
+<p>
+If you are using MySQL, then you can configure this in the "[client]" section
+of your <code>my.cnf</code> configuration file.
+
+<p>
+If you are using Postgres, then this will happen automatically, by default,
+as long as your <code>libpq</code> Postgres client library has been
+compiled with SSL support.
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2009-06-25 20:35:24 $</i><br>
+Last Updated: <i>$Date: 2010-02-15 23:28:59 $</i><br>
 <hr>
 
 </body>
