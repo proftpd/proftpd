@@ -2319,7 +2319,7 @@ fi
 
 my_cflags="\"$CFLAGS\""
 AC_DEFINE_UNQUOTED(PR_BUILD_CFLAGS, $my_cflags)
-my_ldflags="\"$LDFLAGS\""
+my_ldflags="\"$LDFLAGS $LIBDIRS\""
 AC_DEFINE_UNQUOTED(PR_BUILD_LDFLAGS, $my_ldflags)
 my_libs="\"$LIBRARIES $LIBS\""
 AC_DEFINE_UNQUOTED(PR_BUILD_LIBS, $my_libs)
