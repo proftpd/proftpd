@@ -31844,7 +31844,7 @@ cat >>confdefs.h <<_ACEOF
 #define PR_BUILD_CFLAGS $my_cflags
 _ACEOF
 
-my_ldflags="\"$LDFLAGS\""
+my_ldflags="\"$LDFLAGS $LIBDIRS\""
 cat >>confdefs.h <<_ACEOF
 #define PR_BUILD_LDFLAGS $my_ldflags
 _ACEOF
