@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp packet IO
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.h,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: packet.h,v 1.3 2010-02-15 22:03:52 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -78,6 +78,7 @@ int sftp_ssh2_packet_get_last_recvd(time_t *);
 int sftp_ssh2_packet_get_last_sent(time_t *);
 
 int sftp_ssh2_packet_read(int, struct ssh2_packet *);
+int sftp_ssh2_packet_sock_read(int, void *, size_t);
 int sftp_ssh2_packet_write(int, struct ssh2_packet *);
 
 int sftp_ssh2_packet_handle(void);

@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.26 2010-02-10 18:34:35 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.27 2010-02-15 22:03:52 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -62,7 +62,6 @@ static int sftp_have_authenticated(cmd_rec *cmd) {
 }
 
 static int sftp_get_client_version(conn_t *conn) {
-  register unsigned int i;
   int res;
 
   /* 255 is the RFC-defined maximum banner/ID string size */
@@ -75,42 +74,60 @@ static int sftp_get_client_version(conn_t *conn) {
    * we read too much of the banner, we'll read into the KEXINIT, for example,
    * and cause problems later.
    */
-  memset(buf, '\0', sizeof(buf));
 
-  for (i = 0; i < sizeof(buf) - 1; i++) {
-    res = read(conn->rfd, &buf[i], 1);
-    while (res <= 0) {
-      if (errno == EINTR) {
-        pr_signals_handle();
+  while (TRUE) {
+    register unsigned int i;
 
-        res = read(conn->rfd, buf, sizeof(buf)-1);
+    pr_signals_handle();
+
+    memset(buf, '\0', sizeof(buf));
+
+    for (i = 0; i < sizeof(buf) - 1; i++) {
+      res = sftp_ssh2_packet_sock_read(conn->rfd, &buf[i], 1);
+      while (res <= 0) {
+        if (errno == EINTR) {
+          pr_signals_handle();
+
+          res = sftp_ssh2_packet_sock_read(conn->rfd, &buf[i], 1);
+          continue;
+        }
+
+        if (res < 0) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "error reading from client rfd %d: %s", conn->rfd, strerror(errno));
+        }
+
+        return res;
+      }
+
+      /* We continue reading until the client has sent the terminating
+       * CRLF sequence.
+       */
+      if (buf[i] == '\r') {
+        buf[i] = '\0';
         continue;
       }
-
-      if (res < 0) {
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error reading from client rfd %d: %s", conn->rfd, strerror(errno));
+ 
+      if (buf[i] == '\n') {
+        buf[i] = '\0';
+        break;
       }
-
-      return res;
     }
 
-    /* XXX Should we be prepared to skip any lines which do not start with
-     * "SSH-2.0-"?
-     */
+    buf[sizeof(buf)-1] = '\0';
 
-    /* We continue reading until the client has sent the terminating
-     * CRLF sequence.
+    /* If the line does not begin with "SSH-2.0-", skip it.  RFC4253, Section
+     * 4.2 does not specify what should happen if the client sends data
+     * other than the proper version string initially.  We'll just log it and
+     * move on.
      */
-    if (buf[i] == '\r') {
-      buf[i] = '\0';
+    if (strncmp(buf, "SSH-2.0-", 8) != 0) {
+      pr_trace_msg("ssh2", 9,
+        "received bad client version '%s', ignoring", buf);
       continue;
     }
- 
-    if (buf[i] == '\n') {
-      buf[i] = '\0';
-      break;
-    }
+
+    break;
   }
 
   sftp_client_version = pstrdup(sftp_pool, buf);

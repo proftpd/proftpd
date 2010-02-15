@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.13 2010-02-08 17:28:04 castaglia Exp $
+ * $Id: packet.c,v 1.14 2010-02-15 22:03:52 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -130,7 +130,7 @@ static int packet_poll(int sockfd, int io) {
   return 0;
 }
 
-/* The purpose of packet_read() is to loop until either we have read in the
+/* The purpose of sock_read() is to loop until either we have read in the
  * requested reqlen from the socket, or the socket gives us an I/O error.
  * We want to prevent short reads from causing problems elsewhere (e.g.
  * in the decipher or MAC code).
@@ -138,7 +138,7 @@ static int packet_poll(int sockfd, int io) {
  * It is the caller's responsibility to ensure that buf is large enough to
  * hold reqlen bytes.
  */
-static int packet_read(int sockfd, void *buf, size_t reqlen) {
+int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen) {
   void *ptr;
   size_t remainlen;
 
@@ -352,7 +352,7 @@ static void read_packet_discard(int sockfd) {
     (unsigned long) buflen);
 
   if (buflen > 0) {
-    packet_read(sockfd, buf, buflen);
+    sftp_ssh2_packet_sock_read(sockfd, buf, buflen);
   }
 
   return;
@@ -372,7 +372,7 @@ static int read_packet_len(int sockfd, struct ssh2_packet *pkt,
    * how many more bytes there are in the packet.
    */
 
-  res = packet_read(sockfd, buf, blocksz);
+  res = sftp_ssh2_packet_sock_read(sockfd, buf, blocksz);
   if (res < 0)
     return res;
 
@@ -492,7 +492,7 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
     return -1;
   }
 
-  res = packet_read(sockfd, buf + *offset, data_len);
+  res = sftp_ssh2_packet_sock_read(sockfd, buf + *offset, data_len);
   if (res < 0) {
     return res;
   }
@@ -520,7 +520,7 @@ static int read_packet_mac(int sockfd, struct ssh2_packet *pkt, char *buf) {
   if (mac_len == 0)
     return 0;
 
-  res = packet_read(sockfd, buf, mac_len);
+  res = sftp_ssh2_packet_sock_read(sockfd, buf, mac_len);
   if (res < 0)
     return res;
 
