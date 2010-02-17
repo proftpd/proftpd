@@ -1,4 +1,4 @@
-<!-- $Id: Limit.html,v 1.17 2009-06-22 16:54:44 castaglia Exp $ -->
+<!-- $Id: Limit.html,v 1.18 2010-02-17 16:07:11 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Limit.html,v $ -->
 
 <html>
@@ -186,7 +186,7 @@ upload and download files from the directory, but they cannot see what is
 in the directory:
 <pre>
   &lt;Directory /path/to/dir&gt;
-    &lt;Limit LIST NLST MLSD MLST&gt;
+    &lt;Limit LIST NLST MLSD MLST STAT&gt;
       DenyAll
     &lt;/Limit&gt;
   &lt;/Directory&gt;
@@ -195,6 +195,8 @@ That's it.  By default, all commands are allowed in a directory.  By blocking
 the FTP commands used to list a directory's contents (<i>i.e.</i>
 <code>LIST</code>, <code>MLSD</code>, <code>MLST</code>, and <code>NLST</code>),
 we have effectively blocked the client from seeing anything in the directory.
+Not many clients use the <code>STAT</code> command, but it also needs to
+be limited, as it can return information about files in a directory as well.
 
 <p>
 Cautious system administrators may want only a few select system users to be
@@ -359,7 +361,7 @@ section).
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2009-06-22 16:54:44 $</i><br>
+Last Updated: <i>$Date: 2010-02-17 16:07:11 $</i><br>
 <hr>
 
 </body>
