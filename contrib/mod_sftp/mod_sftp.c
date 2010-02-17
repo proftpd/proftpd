@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.27 2010-02-15 22:03:52 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.28 2010-02-17 18:06:32 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -118,13 +118,23 @@ static int sftp_get_client_version(conn_t *conn) {
 
     /* If the line does not begin with "SSH-2.0-", skip it.  RFC4253, Section
      * 4.2 does not specify what should happen if the client sends data
-     * other than the proper version string initially.  We'll just log it and
-     * move on.
+     * other than the proper version string initially.
+     *
+     * OpenSSH simply disconnects the client after saying "Protocol mismatch"
+     * if the client's version string does not begin with "SSH-2.0-".  Works
+     * for me.
      */
     if (strncmp(buf, "SSH-2.0-", 8) != 0) {
-      pr_trace_msg("ssh2", 9,
-        "received bad client version '%s', ignoring", buf);
-      continue;
+      const char *errstr = "Protocol mismatch.\n";
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "Bad protocol version '%.100s' from %s", buf,
+        pr_netaddr_get_ipstr(session.c->remote_addr));
+
+      (void) write(conn->wfd, errstr, strlen(errstr));
+
+      errno = EINVAL;
+      return -1;
     }
 
     break;
