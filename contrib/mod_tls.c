@@ -2824,15 +2824,15 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
        */
 
       reused = SSL_session_reused(ssl);
-      tls_log("%s SSL session for data connection",
-        reused == 1 ? "reused" : "did NOT reuse");
-
       if (reused != 1) {
-        tls_log("Client did not reuse SSL session, rejecting data connection "
+        tls_log("client did not reuse SSL session, rejecting data connection "
           "(see TLSOption NoSessionReuseRequired)");
         tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
         tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = NULL;
         return -1;
+
+      } else {
+        tls_log("%s", "client reused SSL session for data connection");
       }
 
       ctrl_sess = SSL_get_session(ctrl_ssl);
