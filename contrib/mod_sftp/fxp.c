@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.87 2010-02-08 23:12:19 castaglia Exp $
+ * $Id: fxp.c,v 1.88 2010-02-19 17:47:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -7873,6 +7873,9 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
       "empty target path given in SYMLINK request, using '%s'", dst_path);
   }
 
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
   /* Make sure we use the full paths. */
   vpath = dir_canonical_vpath(fxp->pool, src_path);
   if (vpath == NULL) {
@@ -7941,9 +7944,6 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
   args2 = pstrcat(fxp->pool, src_path, "\t", dst_path, NULL);
   cmd2 = fxp_cmd_alloc(fxp->pool, "SYMLINK", args2);
   cmd2->class = CL_WRITE;
-
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
 
   if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
