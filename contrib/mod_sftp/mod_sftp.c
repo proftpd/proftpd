@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.28 2010-02-17 18:06:32 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.29 2010-02-19 17:57:42 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -131,7 +131,11 @@ static int sftp_get_client_version(conn_t *conn) {
         "Bad protocol version '%.100s' from %s", buf,
         pr_netaddr_get_ipstr(session.c->remote_addr));
 
-      (void) write(conn->wfd, errstr, strlen(errstr));
+      if (write(conn->wfd, errstr, strlen(errstr)) < 0) {
+        pr_trace_msg("ssh2", 9,
+          "error sending 'Protocol mismatch' message to client: %s",
+          strerror(errno));
+      }
 
       errno = EINVAL;
       return -1;
