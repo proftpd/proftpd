@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.120 2009-10-22 00:40:05 castaglia Exp $
+ * $Id: inet.c,v 1.121 2010-02-21 19:51:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -417,13 +417,17 @@ static conn_t *init_conn(pool *p, xaset_t *servers, int fd,
      */
 
     salen = pr_netaddr_get_sockaddr_len(&na);
-    if (getsockname(fd, pr_netaddr_get_sockaddr(&na), &salen) != -1) {
+    if (getsockname(fd, pr_netaddr_get_sockaddr(&na), &salen) == 0) {
       if (!c->local_addr)
         c->local_addr = pr_netaddr_alloc(c->pool);
 
       pr_netaddr_set_family(c->local_addr, pr_netaddr_get_family(&na));
       pr_netaddr_set_sockaddr(c->local_addr, pr_netaddr_get_sockaddr(&na));
       c->local_port = ntohs(pr_netaddr_get_port(&na));
+
+    } else {
+      pr_log_debug(DEBUG3, "getsockname error on socket %d: %s", fd,
+        strerror(errno));
     }
 
   } else {
