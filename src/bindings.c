@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.40 2010-02-10 02:16:53 castaglia Exp $
+ * $Id: bindings.c,v 1.41 2010-02-22 16:55:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -99,7 +99,6 @@ static conn_t *get_listening_conn(pr_netaddr_t *addr, unsigned int port) {
   struct listener_rec *lr;
 
   if (listening_conn_list) {
-
     for (lr = (struct listener_rec *) listening_conn_list->xas_list; lr;
         lr = lr->next) {
       int use_elt = FALSE;
@@ -159,7 +158,7 @@ static conn_t *get_listening_conn(pr_netaddr_t *addr, unsigned int port) {
   lr = pcalloc(p, sizeof(struct listener_rec));
   lr->pool = p;
   lr->conn = l;
-  lr->addr = addr;
+  lr->addr = pr_netaddr_dup(p, addr);
   lr->port = port;
   lr->claimed = TRUE;
 
