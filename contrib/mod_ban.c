@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.36 2010-02-10 01:01:14 castaglia Exp $
+ * $Id: mod_ban.c,v 1.37 2010-02-22 17:01:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1546,12 +1546,22 @@ MODRET set_banengine(cmd_rec *cmd) {
      cmd->config->config_type : cmd->server->config_type ?
      cmd->server->config_type : CONF_ROOT);
 
-  if (ban_engine == -1 &&
-      ctxt_type == CONF_ROOT) {
+  if (ctxt_type == CONF_ROOT) {
     /* If ban_engine has not been initialized yet, and this is the
-     * "server config" section, we can do it here.
+     * "server config" section, we can do it here.  And even if the
+     * previously initialized value is 0 ("BanEngine off"), if the
+     * current value is 1 ("BanEngine on"), use it.  This can haappen,
+     * for example, when there are multiple BanEngine directives in the
+     * config, in <IfClass> sections, for whitelisting.
      */
-    ban_engine = bool;
+
+    if (ban_engine == -1) {
+      ban_engine = bool;
+    }
+
+    if (bool == TRUE) {
+      ban_engine = bool;
+    }
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
