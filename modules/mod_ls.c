@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.171 2009-11-20 05:10:21 castaglia Exp $
+ * $Id: mod_ls.c,v 1.172 2010-02-23 17:06:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1597,8 +1597,8 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
           strpbrk(target, "[*?") != NULL) {
         a = pr_fs_glob(target, glob_flags, NULL, &g);
         if (a == 0) {
-          pr_log_debug(DEBUG8, "LIST: glob(3) returned %lu paths",
-            (unsigned long) g.gl_pathc);
+          pr_log_debug(DEBUG8, "LIST: glob(3) returned %lu %s",
+            (unsigned long) g.gl_pathc, g.gl_pathc != 1 ? "paths" : "path");
         }
 
         globbed = TRUE;
@@ -2422,8 +2422,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    pr_log_debug(DEBUG8, "NLST: glob(3) returned %lu paths",
-      (unsigned long) g.gl_pathc);
+    pr_log_debug(DEBUG8, "LIST: glob(3) returned %lu %s",
+      (unsigned long) g.gl_pathc, g.gl_pathc != 1 ? "paths" : "path");
 
     if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
       return PR_ERROR(cmd);
