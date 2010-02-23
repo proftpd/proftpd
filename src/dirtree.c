@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.231 2010-02-21 18:04:11 castaglia Exp $
+ * $Id: dirtree.c,v 1.232 2010-02-23 18:01:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -320,7 +320,7 @@ unsigned char dir_hide_file(const char *path) {
   char *file_name = NULL, *dir_name = NULL;
   config_rec *c = NULL;
   regex_t *regexp = NULL;
-  pool *tmp_pool = make_sub_pool(session.pool);
+  pool *tmp_pool;
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_regex, have_group_regex, have_class_regex,
     have_all_regex, negated = FALSE;
@@ -329,6 +329,7 @@ unsigned char dir_hide_file(const char *path) {
     return FALSE;
   }
 
+  tmp_pool = make_sub_pool(session.pool);
   pr_pool_tag(tmp_pool, "dir_hide_file() tmp pool");
 
   have_user_regex = have_group_regex = have_class_regex = have_all_regex =
@@ -437,6 +438,16 @@ unsigned char dir_hide_file(const char *path) {
       negated ? "negated " : "",
       have_user_regex ? "user" : have_group_regex ? "group" :
       have_class_regex ? "class" : "session");
+
+    if (regexp == NULL) {
+      destroy_pool(tmp_pool);
+
+      /* HideFiles none for this user/group/class */
+
+      pr_log_debug(DEBUG9, "file '%s' did not match HideFiles pattern 'none'",
+        file_name);
+      return FALSE;
+    }
 
     if (regexec(regexp, file_name, 0, NULL, 0) != 0) {
       destroy_pool(tmp_pool);

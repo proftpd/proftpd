@@ -86,6 +86,11 @@ my $TESTS = {
     test_class => [qw(bug forking rootprivs)],
   },
 
+  hidefiles_none_per_user_bug3397 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -1172,6 +1177,8 @@ sub hidefiles_per_not_user_ok {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'directory:10',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
@@ -1217,7 +1224,10 @@ sub hidefiles_per_not_user_ok {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      my $tmp;
+      while ($conn->read($tmp, 8192)) {
+        $buf .= $tmp;
+      }
       $conn->close();
 
       $client->quit();
@@ -1231,13 +1241,6 @@ sub hidefiles_per_not_user_ok {
       }
 
       my $expected = {
-        "foo/./$test_file" => 1,
-        'foo/../config.conf' => 1,
-        'foo/../config.group' => 1,
-        'foo/../config.passwd' => 1,
-        'foo/../config.pid' => 1,
-        'foo/../config.scoreboard' => 1,
-        'foo/../foo' => 1,
         "foo/$test_file" => 1,
       };
 
@@ -2675,6 +2678,167 @@ EOD
       }
 
       $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub hidefiles_none_per_user_bug3397 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/config.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/foo");
+  mkpath($sub_dir);
+
+  my $test_file = "X12foo";
+  if (open(my $fh, "> $sub_dir/$test_file")) {
+    close($fh);
+
+  } else {
+    die("Can't write test file $sub_dir/$test_file: $!");
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'directory:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+
+    Directory => {
+      '/' => {
+        HideFiles => ".* user $user",
+      },
+
+      $sub_dir => {
+        HideFiles => 'none user foo',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      $client->login($user, $passwd);
+
+      my $conn = $client->nlst_raw("foo/*");
+      unless ($conn) {
+        die("Failed to NLST: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192);
+      $conn->close();
+
+      $client->quit();
+
+      # We have to be careful of the fact that readdir returns directory
+      # entries in an unordered fashion.
+      my $res = {};
+      my $lines = [split(/\n/, $buf)];
+      foreach my $line (@$lines) {
+        $res->{$line} = 1;
+      }
+
+      my $expected = {
+      };
+
+      my $ok = 1;
+      my $mismatch;
+
+      my $seen = [];
+      foreach my $name (keys(%$res)) {
+        push(@$seen, $name);
+
+        unless (defined($expected->{$name})) {
+          $mismatch = $name;
+          $ok = 0;
+          last;
+        }
+      }
+
+      unless ($ok) {
+        die("Unexpected name '$mismatch' appeared in NLST data")
+      }
+
+      # Now remove from $expected all of the paths we saw; if there are
+      # any entries remaining in $expected, something went wrong.
+      foreach my $name (@$seen) {
+        delete($expected->{$name});
+      }
+
+      my $remaining = scalar(keys(%$expected));
+      $self->assert(0 == $remaining,
+        test_msg("Expected 0, got $remaining"));
     };
 
     if ($@) {

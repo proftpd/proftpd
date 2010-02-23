@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.365 2010-02-10 20:54:29 castaglia Exp $
+ * $Id: mod_core.c,v 1.366 2010-02-23 18:01:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1933,9 +1933,8 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *regexp = NULL;
   config_rec *c = NULL;
-  int res;
   unsigned int precedence = 0;
-  unsigned char negated = FALSE;
+  unsigned char negated = FALSE, none = FALSE;
 
   int ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
     cmd->config->config_type : cmd->server->config_type ?
@@ -1959,33 +1958,35 @@ MODRET set_hidefiles(cmd_rec *cmd) {
     precedence = 2;
   }
 
-  /* Check for a "none" argument, which is used to nullify inherited
-   * HideFiles configurations from parent directories.
-   */
-  if (strcasecmp(cmd->argv[1], "none") == 0) {
-    pr_log_debug(DEBUG4, "setting %s to NULL", cmd->argv[0]);
-    c = add_config_param(cmd->argv[0], 1, NULL);
-    c->flags |= CF_MERGEDOWN_MULTI;
-    return PR_HANDLED(cmd);
-  }
-
   /* Check for a leading '!' prefix, signifying regex negation */
   if (*cmd->argv[1] == '!') {
     negated = TRUE;
     cmd->argv[1] = cmd->argv[1] + 1;
+
+  } else {
+    /* Check for a "none" argument, which is used to nullify inherited
+     * HideFiles configurations from parent directories.
+     */
+    if (strcasecmp(cmd->argv[1], "none") == 0) {
+      none = TRUE;
+    }
   }
 
-  regexp = pr_regexp_alloc();
+  if (!none) {
+    int res;
 
-  res = regcomp(regexp, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
-  if (res != 0) {
-    char errstr[200] = {'\0'};
+    regexp = pr_regexp_alloc();
+  
+    res = regcomp(regexp, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+    if (res != 0) {
+      char errstr[200] = {'\0'};
 
-    regerror(res, regexp, errstr, sizeof(errstr));
-    pr_regexp_free(regexp);
+      regerror(res, regexp, errstr, sizeof(errstr));
+      pr_regexp_free(regexp);
 
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
-      "' failed regex compilation: ", errstr, NULL));
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+        "' failed regex compilation: ", errstr, NULL));
+    }
   }
 
   /* If the directive was used with 3 arguments, then the optional
@@ -1999,9 +2000,10 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 
       /* no-op */
 
-    } else
+    } else {
       return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool, cmd->argv[0],
         ": unknown classifier used: '", cmd->argv[2], "'", NULL));
+    }
   }
 
   if (cmd->argc-1 == 1) {
