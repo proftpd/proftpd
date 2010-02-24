@@ -1955,7 +1955,7 @@ sub rewrite_escape_rule_backref_bug3028 {
       $client->login($user, $passwd);
       $client->type('binary');
 
-      my ($resp_code, $resp_msg) = $client->size("tmp/test.txt");
+      ($resp_code, $resp_msg) = $client->size("tmp/test.txt");
 
       my $expected;
 
@@ -2090,7 +2090,7 @@ sub rewrite_escape_cond_backref_bug3028 {
       $client->login($user, $passwd);
       $client->type('binary');
 
-      my ($resp_code, $resp_msg) = $client->size("tmp/test.txt");
+      ($resp_code, $resp_msg) = $client->size("tmp/test.txt");
 
       my $expected;
 
