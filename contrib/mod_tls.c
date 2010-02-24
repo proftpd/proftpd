@@ -2196,7 +2196,8 @@ static int tls_init_server(void) {
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   config_rec *c = NULL;
 #endif
-  char *tls_ca_cert = NULL, *tls_ca_path = NULL;
+  char *tls_ca_cert = NULL, *tls_ca_path = NULL, *tls_ca_chain = NULL;
+  X509 *server_dsa_cert = NULL, *server_rsa_cert = NULL;
 
   if ((tls_protocol & TLS_PROTO_SSL_V3) &&
       (tls_protocol & TLS_PROTO_TLS_V1)) {
@@ -2237,14 +2238,14 @@ static int tls_init_server(void) {
     tls_log("%s", "using default OpenSSL verification locations "
       "(see $SSL_CERT_DIR environment variable)");
 
-    if (SSL_CTX_set_default_verify_paths(ssl_ctx) != 1)
+    if (SSL_CTX_set_default_verify_paths(ssl_ctx) != 1) {
       tls_log("error setting default verification locations: %s",
-          ERR_error_string(ERR_get_error(), NULL));
+          tls_get_errors());
+    }
   }
 
   if (!(tls_opts & TLS_OPT_NO_CERT_REQUEST)) {
     int verify_mode = SSL_VERIFY_PEER;
-    char *tls_ca_chain = NULL;
 
     /* If we are verifying client, make sure the client sends a cert;
      * the protocol allows for the client to disregard a request for
@@ -2264,43 +2265,28 @@ static int tls_init_server(void) {
      * in the verify callback, the exceeding of the actual depth.
      */
     SSL_CTX_set_verify_depth(ssl_ctx, tls_verify_depth + 1);
+  }
 
-    /* Do not forget to configure the certs that the server will send to
-     * the client when requesting a client cert.  Use the configured
-     * TLSCertificateChainFile, if present; otherwise, construct the list
-     * from all the certs in the TLSCACertificatePath.
+  if (tls_ca_cert) {
+    STACK_OF(X509_NAME) *sk;
+
+    /* Use SSL_load_client_CA_file() to load all of the CA certs (since
+     * there can be more than one) from the TLSCACertificateFile.  The
+     * entire list of CAs in that file will be present to the client as
+     * the "acceptable client CA" list, assuming that
+     * TLSOptions NoCertRequest" is not in use.
      */
- 
-    tls_ca_chain = get_param_ptr(main_server->conf, "TLSCertificateChainFile",
-      FALSE);
-    if (tls_ca_chain) {
-      if (SSL_CTX_use_certificate_chain_file(ssl_ctx, tls_ca_chain) != 1) {
-        tls_log("unable to use certificate chain '%s': %s", tls_ca_chain,
-          tls_get_errors());
-      }
-    } 
 
-    if (tls_ca_cert) {
-      STACK_OF(X509_NAME) *sk;
+    PRIVS_ROOT
+    sk = SSL_load_client_CA_file(tls_ca_cert);
+    PRIVS_RELINQUISH
 
-      /* Use SSL_load_client_CA_file() to load all of the CA certs (since
-       * there can be more than one) from the TLSCACertificateFile.  The
-       * entire list of CAs in that file will be present to the client as
-       * the "acceptable client CA" list, assuming that
-       * "TLSOptions NoCertRequest" is not in use.
-       */
+    if (sk) {
+      SSL_CTX_set_client_CA_list(ssl_ctx, sk);
 
-      PRIVS_ROOT
-      sk = SSL_load_client_CA_file(tls_ca_cert);
-      PRIVS_RELINQUISH
-
-      if (sk) {
-        SSL_CTX_set_client_CA_list(ssl_ctx, sk);
-
-      } else {
-        tls_log("unable to read certificates in '%s': %s", tls_ca_cert,
-          tls_get_errors());
-      }
+    } else {
+      tls_log("unable to read certificates in '%s': %s", tls_ca_cert,
+        tls_get_errors());
     }
 
     if (tls_ca_path) {
@@ -2350,6 +2336,7 @@ static int tls_init_server(void) {
             tls_log("unable to open '%s': %s", cacertname, strerror(errno));
           }
         }
+
         destroy_pool(tmp_pool);
         closedir(cacertdir);
  
@@ -2371,9 +2358,34 @@ static int tls_init_server(void) {
 
   PRIVS_ROOT
   if (tls_rsa_cert_file) {
-    int res = SSL_CTX_use_certificate_file(ssl_ctx, tls_rsa_cert_file,
-      X509_FILETYPE_PEM);
+    FILE *fh = NULL;
+    int res;
+    X509 *cert = NULL;
 
+    fh = fopen(tls_rsa_cert_file, "r");
+    if (fh == NULL) {
+      PRIVS_RELINQUISH
+      tls_log("error reading TLSRSACertificateFile '%s': %s", tls_rsa_cert_file,
+        strerror(errno));
+      return -1;
+    }
+
+    cert = PEM_read_X509(fh, NULL, ssl_ctx->default_passwd_callback,
+      ssl_ctx->default_passwd_callback_userdata);
+    if (cert == NULL) {
+      PRIVS_RELINQUISH
+      tls_log("error reading TLSRSACertificateFile '%s': %s", tls_rsa_cert_file,
+        tls_get_errors());
+      return -1;
+    }
+
+    fclose(fh);
+
+    /* SSL_CTX_use_certificate() will increment the refcount on cert, so we
+     * can safely call X509_free() on it.  However, we need to keep that
+     * pointer around until after the handling of a cert chain file.
+     */
+    res = SSL_CTX_use_certificate(ssl_ctx, cert);
     if (res <= 0) {
       PRIVS_RELINQUISH
 
@@ -2383,6 +2395,7 @@ static int tls_init_server(void) {
     }
 
     SSL_CTX_set_tmp_rsa_callback(ssl_ctx, tls_rsa_cb);
+    server_rsa_cert = cert;
   }
 
   if (tls_rsa_key_file) {
@@ -2406,16 +2419,43 @@ static int tls_init_server(void) {
   }
 
   if (tls_dsa_cert_file) {
-    int res = SSL_CTX_use_certificate_file(ssl_ctx, tls_dsa_cert_file,
-      X509_FILETYPE_PEM);
+    FILE *fh = NULL;
+    int res;
+    X509 *cert = NULL;
 
-    if (res <= 0) {
+    fh = fopen(tls_dsa_cert_file, "r");
+    if (fh == NULL) {
       PRIVS_RELINQUISH
+      tls_log("error reading TLSDSACertificateFile '%s': %s", tls_dsa_cert_file,
+        strerror(errno));
+      return -1;
+    }
 
-      tls_log("error loading TLSDSACertificateFile '%s' %s", tls_dsa_cert_file,
+    cert = PEM_read_X509(fh, NULL, ssl_ctx->default_passwd_callback,
+      ssl_ctx->default_passwd_callback_userdata);
+    if (cert == NULL) {
+      PRIVS_RELINQUISH
+      tls_log("error reading TLSDSACertificateFile '%s': %s", tls_dsa_cert_file,
         tls_get_errors());
       return -1;
     }
+
+    fclose(fh);
+
+    /* SSL_CTX_use_certificate() will increment the refcount on cert, so we
+     * can safely call X509_free() on it.  However, we need to keep that
+     * pointer around until after the handling of a cert chain file.
+     */
+    res = SSL_CTX_use_certificate(ssl_ctx, cert);
+    if (res <= 0) {
+      PRIVS_RELINQUISH
+
+      tls_log("error loading TLSDSACertificateFile '%s': %s", tls_dsa_cert_file,
+        tls_get_errors());
+      return -1;
+    }
+
+    server_dsa_cert = cert;
   }
 
   if (tls_dsa_key_file) {
@@ -2531,8 +2571,19 @@ static int tls_init_server(void) {
       return -1;
     }
 
-    if (cert)
-      X509_free(cert);
+    /* SSL_CTX_use_certificate() will increment the refcount on cert, so we
+     * can safely call X509_free() on it.  However, we need to keep that
+     * pointer around until after the handling of a cert chain file.
+     */
+    switch (EVP_PKEY_type(pkey->type)) {
+      case EVP_PKEY_RSA:
+        server_rsa_cert = cert;
+        break;
+
+      case EVP_PKEY_DSA:
+        server_dsa_cert = cert;
+        break;
+    }
 
     if (pkey)
       EVP_PKEY_free(pkey);
@@ -2540,8 +2591,6 @@ static int tls_init_server(void) {
     if (p12)
       PKCS12_free(p12);
   }
-
-  PRIVS_RELINQUISH
 
   /* Log a warning if the server was badly misconfigured, and has no server
    * certs at all.  The client will probably see this situation as something
@@ -2561,6 +2610,87 @@ static int tls_init_server(void) {
     pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
       ": no TLSRSACertificateFile, TLSDSACertificateFile, or TLSPKCS12File "
       "configured; unable to handle SSL/TLS connections");
+  }
+
+  /* Handle a CertificateChainFile.  We need to do this here, after the
+   * server cert has been loaded, so that we can decide whether the
+   * CertificateChainFile contains another copy of the server cert (or not).
+   */
+
+  tls_ca_chain = get_param_ptr(main_server->conf, "TLSCertificateChainFile",
+    FALSE);
+  if (tls_ca_chain) {
+    BIO *bio;
+    X509 *cert;
+
+    /* Ideally we would use OpenSSL's SSL_CTX_use_certificate_chain()
+     * function.  However, that function automatically assumes that the
+     * first cert contained in the chain file is to be used as the server
+     * cert.  This may or may not be the case.  So instead, we read through
+     * the chain and add the extra certs ourselves.
+     */
+
+    bio = BIO_new_file(tls_ca_chain, "r");
+    if (bio) {
+      unsigned int count = 0;
+      int res;
+
+      cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+      while (cert != NULL) {
+        pr_signals_handle();
+
+        if (server_rsa_cert != NULL) {
+          /* Skip this cert if it is the same as the configured RSA
+           * server cert.
+           */
+          if (X509_cmp(server_rsa_cert, cert) == 0) {
+            cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+            continue;
+          }
+        }
+
+        if (server_dsa_cert != NULL) {
+          /* Skip this cert if it is the same as the configured RSA
+           * server cert.
+           */
+          if (X509_cmp(server_dsa_cert, cert) == 0) {
+            cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+            continue;
+          }
+        }
+
+        res = SSL_CTX_add_extra_chain_cert(ssl_ctx, cert);
+        if (res != 1) {
+          tls_log("error adding cert to certificate chain: %s",
+            tls_get_errors());
+          X509_free(cert);
+          break;
+        }
+
+        count++;
+        cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+      }
+
+      BIO_free(bio);
+
+      tls_log("added %u certs from '%s' to certificate chain", count,
+        tls_ca_chain);
+
+    } else {
+      tls_log("unable to read certificate chain '%s': %s", tls_ca_chain,
+        tls_get_errors());
+    }
+  } 
+
+  /* Done with the server cert pointers now. */
+  if (server_rsa_cert != NULL) {
+    X509_free(server_rsa_cert);
+    server_rsa_cert = NULL;
+  }
+
+  if (server_dsa_cert != NULL) {
+    X509_free(server_dsa_cert);
+    server_dsa_cert = NULL;
   }
 
   /* Set up the CRL. */
@@ -2589,6 +2719,8 @@ static int tls_init_server(void) {
       }
     }
   }
+
+  PRIVS_RELINQUISH
 
   SSL_CTX_set_cipher_list(ssl_ctx, tls_cipher_suite);
 
