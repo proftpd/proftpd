@@ -13035,7 +13035,7 @@ sub sftp_config_defaultchdir {
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $hidden_file = File::Spec->rel2abs("$tmpdir/.in.test.txt.");
-  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -23844,7 +23844,8 @@ EOS
     die($ex);
   }
 
-  my ($logged_user, $cmd, $filename, $full_path, $filesize, $xfertime) = get_sftplog($db_file);
+  my ($logged_user, $filename, $full_path, $filesize, $xfertime);
+  ($logged_user, $cmd, $filename, $full_path, $filesize, $xfertime) = get_sftplog($db_file);
   my $expected;
 
   $expected = 'RETR';
@@ -24057,7 +24058,8 @@ EOS
     die($ex);
   }
 
-  my ($logged_user, $cmd, $filename, $full_path, $filesize, $xfertime) = get_sftplog($db_file);
+  my ($logged_user, $filename, $full_path, $filesize, $xfertime);
+  ($logged_user, $cmd, $filename, $full_path, $filesize, $xfertime) = get_sftplog($db_file);
   my $expected;
 
   $expected = 'STOR';
@@ -24281,7 +24283,8 @@ EOS
     die($ex);
   }
 
-  my ($logged_user, $cmd, $filename, $full_path, $filesize, $xfertime) = get_sftplog($db_file);
+  my ($logged_user, $filename, $full_path, $filesize, $xfertime);
+  ($logged_user, $cmd, $filename, $full_path, $filesize, $xfertime) = get_sftplog($db_file);
   my $expected;
 
   $expected = 'APPE';
@@ -24500,7 +24503,8 @@ EOS
     die($ex);
   }
 
-  my ($logged_user, $cmd, $filename, $full_path, $filesize, $xfertime) = get_sftplog($db_file);
+  my ($logged_user, $filename, $full_path, $filesize, $xfertime);
+  ($logged_user, $cmd, $filename, $full_path, $filesize, $xfertime) = get_sftplog($db_file);
   my $expected;
 
   $expected = $user;
@@ -24723,7 +24727,8 @@ EOS
     die($ex);
   }
 
-  my ($logged_user, $cmd, $filename, $full_path, $filesize, $xfertime) = get_sftplog($db_file);
+  my ($logged_user, $filename, $full_path, $filesize, $xfertime);
+  ($logged_user, $cmd, $filename, $full_path, $filesize, $xfertime) = get_sftplog($db_file);
   my $expected;
 
   $expected = $user;
@@ -24950,7 +24955,8 @@ EOS
     die($ex);
   }
 
-  my ($logged_user, $cmd, $filename, $full_path, $filesize, $xfertime) = get_sftplog($db_file);
+  my ($logged_user, $filename, $full_path, $filesize, $xfertime);
+  ($logged_user, $cmd, $filename, $full_path, $filesize, $xfertime) = get_sftplog($db_file);
   my $expected;
 
   # The user (%u) is blank here because the session.user field has been
