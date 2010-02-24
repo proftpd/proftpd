@@ -2664,7 +2664,7 @@ EOD
       };
 
       $ok = 1;
-      $mismatch;
+      $mismatch = '';
       foreach my $name (keys(%$res)) {
         unless (defined($expected->{$name})) {
           $mismatch = $name;
