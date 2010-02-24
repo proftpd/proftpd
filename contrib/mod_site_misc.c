@@ -22,7 +22,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.12 2009-11-10 05:02:38 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.13 2010-02-24 23:14:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -370,6 +370,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     }
 
     src = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[2]);
+    src = dir_canonical_path(cmd->tmp_pool, src);
 
     cmd_name = cmd->argv[0];
     cmd->argv[0] = "SITE_SYMLINK";
@@ -380,6 +381,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     }
 
     dst = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[3]);
+    dst = dir_canonical_path(cmd->tmp_pool, dst);
 
     if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, dst, NULL)) {
       cmd->argv[0] = cmd_name;

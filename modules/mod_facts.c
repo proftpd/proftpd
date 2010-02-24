@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.26 2009-10-14 23:45:28 castaglia Exp $
+ * $Id: mod_facts.c,v 1.27 2010-02-24 23:14:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -608,7 +608,7 @@ static int facts_modify_unix_mode(pool *p, const char *path, char *mode_str) {
  */
 
 MODRET facts_mff(cmd_rec *cmd) {
-  const char *path, *decoded_path;
+  const char *path, *canon_path, *decoded_path;
   char *facts, *ptr;
 
   if (cmd->argc < 3) {
@@ -627,7 +627,13 @@ MODRET facts_mff(cmd_rec *cmd) {
 
   decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
-  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, (char *) decoded_path, NULL)) {
+  canon_path = dir_canonical_path(cmd->tmp_pool, decoded_path);
+  if (canon_path == NULL) {
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EINVAL));
+    return PR_ERROR(cmd);
+  }
+
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, canon_path, NULL)) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       cmd->argv[0]);
     pr_response_add_err(R_550, _("Unable to handle command"));
@@ -749,7 +755,7 @@ MODRET facts_mff(cmd_rec *cmd) {
 }
 
 MODRET facts_mfmt(cmd_rec *cmd) {
-  const char *path, *decoded_path;
+  const char *path, *canon_path, *decoded_path;
   char *timestamp, *ptr;
   int res;
 
@@ -769,7 +775,13 @@ MODRET facts_mfmt(cmd_rec *cmd) {
 
   decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
 
-  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, (char *) decoded_path, NULL)) {
+  canon_path = dir_canonical_path(cmd->tmp_pool, decoded_path);
+  if (canon_path == NULL) {
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EINVAL));
+    return PR_ERROR(cmd);
+  }
+
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, canon_path, NULL)) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       cmd->argv[0]);
     pr_response_add_err(R_550, _("Unable to handle command"));
