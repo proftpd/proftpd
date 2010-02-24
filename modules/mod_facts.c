@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.28 2010-02-24 23:19:29 castaglia Exp $
+ * $Id: mod_facts.c,v 1.29 2010-02-24 23:21:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1005,8 +1005,12 @@ MODRET facts_mlst(cmd_rec *cmd) {
 
   /* No need to re-encode the path here as UTF8, since 'path' is the
    * original parameter as sent by the client.
+   *
+   * However, as per RFC3659 Section 7.3.1, since we advertise TVFS in our
+   * FEAT output, the path here should be the full path (as seen by the
+   * client).
    */
-  info.path = path;
+  info.path = dir_best_path(cmd->tmp_pool, path);
 
   pr_response_add(R_250, _("Start of list for %s"), path);
   facts_mlinfo_add(&info);
