@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_facts -- a module for handling "facts" [RFC3659]
  *
- * Copyright (c) 2007-2009 The ProFTPD Project
+ * Copyright (c) 2007-2010 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.27 2010-02-24 23:14:02 castaglia Exp $
+ * $Id: mod_facts.c,v 1.28 2010-02-24 23:19:29 castaglia Exp $
  */
 
 #include "conf.h"

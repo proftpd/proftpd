@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_site_misc -- a module implementing miscellaneous SITE commands
  *
- * Copyright (c) 2004-2009 The ProFTPD Project
+ * Copyright (c) 2004-2010 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.13 2010-02-24 23:14:01 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.14 2010-02-24 23:19:29 castaglia Exp $
  */
 
 #include "conf.h"
