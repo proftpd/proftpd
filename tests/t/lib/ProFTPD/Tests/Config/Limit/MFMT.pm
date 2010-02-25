@@ -55,7 +55,6 @@ sub tear_down {
 }
 
 sub mfmt_limit_bug3399 {
-$ENV{TEST_VERBOSE}=1;
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
