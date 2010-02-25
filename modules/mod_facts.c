@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.29 2010-02-24 23:21:51 castaglia Exp $
+ * $Id: mod_facts.c,v 1.30 2010-02-25 02:16:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1140,8 +1140,8 @@ MODRET set_factsadvertise(cmd_rec *cmd) {
  */
 
 static int facts_init(void) {
-  pr_help_add("MLSD", "[<sp> pathname]", TRUE);
-  pr_help_add("MLST", "[<sp> pathname]", TRUE);
+  pr_help_add(C_MLSD, _("[<sp> pathname]"), TRUE);
+  pr_help_add(C_MLST, _("[<sp> pathname]"), TRUE);
 
   return 0;
 }

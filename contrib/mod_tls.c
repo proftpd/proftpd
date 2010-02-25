@@ -7553,9 +7553,9 @@ static int tls_sess_init(void) {
   pr_feat_add("PROT");
 
   /* Add the commands handled by this module to the HELP list. */
-  pr_help_add(C_AUTH, "<sp> base64-data", TRUE);
-  pr_help_add(C_PBSZ, "<sp> protection buffer size", TRUE);
-  pr_help_add(C_PROT, "<sp> protection code", TRUE);
+  pr_help_add(C_AUTH, _("<sp> base64-data"), TRUE);
+  pr_help_add(C_PBSZ, _("<sp> protection buffer size"), TRUE);
+  pr_help_add(C_PROT, _("<sp> protection code"), TRUE);
 
   if (tls_opts & TLS_OPT_USE_IMPLICIT_SSL) {
     tls_log("%s", "TLSOption UseImplicitSSL in effect, starting SSL/TLS "

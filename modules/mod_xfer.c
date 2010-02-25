@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.269 2010-02-10 21:45:17 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.270 2010-02-25 02:16:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3023,15 +3023,15 @@ static void xfer_xfer_stalled_ev(const void *event_data, void *user_data) {
 static int xfer_init(void) {
 
   /* Add the commands handled by this module to the HELP list. */
-  pr_help_add(C_TYPE, "<sp> type-code (A, I, L 7, L 8)", TRUE);
-  pr_help_add(C_STRU, "is not implemented (always F)", TRUE);
-  pr_help_add(C_MODE, "is not implemented (always S)", TRUE);
-  pr_help_add(C_RETR, "<sp> pathname", TRUE);
-  pr_help_add(C_STOR, "<sp> pathname", TRUE);
-  pr_help_add(C_STOU, "(store unique filename)", TRUE);
-  pr_help_add(C_APPE, "<sp> pathname", TRUE);
-  pr_help_add(C_REST, "<sp> byte-count", TRUE);
-  pr_help_add(C_ABOR, "(abort current operation)", TRUE);
+  pr_help_add(C_TYPE, _("<sp> type-code (A, I, L 7, L 8)"), TRUE);
+  pr_help_add(C_STRU, _("is not implemented (always F)"), TRUE);
+  pr_help_add(C_MODE, _("is not implemented (always S)"), TRUE);
+  pr_help_add(C_RETR, _("<sp> pathname"), TRUE);
+  pr_help_add(C_STOR, _("<sp> pathname"), TRUE);
+  pr_help_add(C_STOU, _("(store unique filename)"), TRUE);
+  pr_help_add(C_APPE, _("<sp> pathname"), TRUE);
+  pr_help_add(C_REST, _("<sp> byte-count"), TRUE);
+  pr_help_add(C_ABOR, _("(abort current operation)"), TRUE);
 
   return 0;
 }

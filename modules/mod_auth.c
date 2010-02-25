@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.273 2010-01-05 23:17:20 castaglia Exp $
+ * $Id: mod_auth.c,v 1.274 2010-02-25 02:16:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -202,10 +202,10 @@ static int auth_sess_init(void) {
 static int auth_init(void) {
 
   /* Add the commands handled by this module to the HELP list. */ 
-  pr_help_add(C_USER, "<sp> username", TRUE);
-  pr_help_add(C_PASS, "<sp> password", TRUE);
-  pr_help_add(C_ACCT, "is not implemented", FALSE);
-  pr_help_add(C_REIN, "is not implemented", FALSE);
+  pr_help_add(C_USER, _("<sp> username"), TRUE);
+  pr_help_add(C_PASS, _("<sp> password"), TRUE);
+  pr_help_add(C_ACCT, _("is not implemented"), FALSE);
+  pr_help_add(C_REIN, _("is not implemented"), FALSE);
 
   /* By default, enable auth checking */
   set_auth_check(auth_cmd_chk_cb);

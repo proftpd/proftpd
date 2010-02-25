@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.172 2010-02-23 17:06:57 castaglia Exp $
+ * $Id: mod_ls.c,v 1.173 2010-02-25 02:16:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2738,9 +2738,9 @@ MODRET set_useglobbing(cmd_rec *cmd) {
 static int ls_init(void) {
 
   /* Add the commands handled by this module to the HELP list. */
-  pr_help_add(C_LIST, "[<sp> pathname]", TRUE);
-  pr_help_add(C_NLST, "[<sp> (pathname)]", TRUE);
-  pr_help_add(C_STAT, "[<sp> pathname]", TRUE);
+  pr_help_add(C_LIST, _("[<sp> pathname]"), TRUE);
+  pr_help_add(C_NLST, _("[<sp> (pathname)]"), TRUE);
+  pr_help_add(C_STAT, _("[<sp> pathname]"), TRUE);
 
   return 0;
 }

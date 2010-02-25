@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.51 2008-06-12 22:57:01 castaglia Exp $
+ * $Id: mod_site.c,v 1.52 2010-02-25 02:16:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -505,7 +505,7 @@ MODRET site_post_cmd(cmd_rec *cmd) {
 static int site_init(void) {
 
   /* Add the commands handled by this module to the HELP list. */ 
-  pr_help_add(C_SITE, "<sp> string", TRUE);
+  pr_help_add(C_SITE, _("<sp> string"), TRUE);
 
   return 0;
 }

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.366 2010-02-23 18:01:03 castaglia Exp $
+ * $Id: mod_core.c,v 1.367 2010-02-25 02:16:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3702,7 +3702,7 @@ MODRET core_help(cmd_rec *cmd) {
     for (cp = cmd->argv[1]; *cp; cp++)
       *cp = toupper(*cp);
 
-    if (strcasecmp(cmd->argv[1], "SITE") == 0)
+    if (strcasecmp(cmd->argv[1], C_SITE) == 0)
       return pr_module_call(&site_module, site_dispatch, cmd);
 
     if (pr_help_add_response(cmd, cmd->argv[1]) == 0)
@@ -3725,7 +3725,7 @@ int core_chgrp(cmd_rec *cmd, char *dir, uid_t uid, gid_t gid) {
 
   cmd_name = cmd->argv[0];
   cmd->argv[0] = "SITE_CHGRP";
-  if (!dir_check(cmd->tmp_pool, cmd, "WRITE", dir, NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, dir, NULL)) {
     pr_log_debug(DEBUG7, "SITE CHGRP command denied by <Limit> config");
     cmd->argv[0] = cmd_name;
 
@@ -3742,7 +3742,7 @@ int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
 
   cmd_name = cmd->argv[0];
   cmd->argv[0] = "SITE_CHMOD";
-  if (!dir_check(cmd->tmp_pool, cmd, "WRITE", dir, NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, dir, NULL)) {
     pr_log_debug(DEBUG7, "SITE CHMOD command denied by <Limit> config");
     cmd->argv[0] = cmd_name;
 
@@ -4697,41 +4697,40 @@ static int core_init(void) {
   pr_cmd_set_handler(NULL);
 
   /* Add the commands handled by this module to the HELP list. */
-  pr_help_add(C_CWD,  "<sp> pathname", TRUE);
-  pr_help_add(C_XCWD, "<sp> pathname", TRUE);
-  pr_help_add(C_CDUP, "(up one directory)", TRUE);
-  pr_help_add(C_XCUP, "(up one directory)", TRUE);
-  pr_help_add(C_SMNT, "is not implemented", FALSE);
-  pr_help_add(C_QUIT, "(close control connection)", TRUE);
-  pr_help_add(C_PORT, "<sp> h1,h2,h3,h4,p1,p2", TRUE);
-  pr_help_add(C_PASV, "(returns address/port)", TRUE);
-  pr_help_add(C_EPRT, "<sp> |proto|addr|port|", TRUE);
-  pr_help_add(C_EPSV, "(returns port |||port|)", TRUE);
-  pr_help_add(C_ALLO, "is not implemented (ignored)", FALSE);
-  pr_help_add(C_RNFR, "<sp> pathname", TRUE);
-  pr_help_add(C_RNTO, "<sp> pathname", TRUE);
-  pr_help_add(C_DELE, "<sp> pathname", TRUE);
-  pr_help_add(C_MDTM, "<sp> pathname", TRUE);
-  pr_help_add(C_RMD,  "<sp> pathname", TRUE);
-  pr_help_add(C_XRMD, "<sp> pathname", TRUE);
-  pr_help_add(C_MKD,  "<sp> pathname", TRUE);
-  pr_help_add(C_XMKD, "<sp> pathname", TRUE);
-  pr_help_add(C_PWD,  "(returns current working directory)", TRUE);
-  pr_help_add(C_XPWD, "(returns current working directory)", TRUE);
-  pr_help_add(C_SIZE, "<sp> pathname", TRUE);
-  pr_help_add(C_SYST, "(returns system type)", TRUE);
-  pr_help_add(C_HELP, "[<sp> command]", TRUE);
-  pr_help_add(C_NOOP, "(no operation)", TRUE);
-  pr_help_add(C_FEAT, "(returns feature list)", TRUE);
-  pr_help_add(C_OPTS, "<sp> command [<sp> options]", TRUE);
-  pr_help_add(C_AUTH, "<sp> base64-data", FALSE);
-  pr_help_add(C_CCC,  "(clears protection level)", FALSE);
-  pr_help_add(C_CONF, "<sp> base64-data", FALSE);
-  pr_help_add(C_ENC,  "<sp> base64-data", FALSE);
-  pr_help_add(C_MIC,  "<sp> base64-data", FALSE);
-  pr_help_add(C_PBSZ, "<sp> protection buffer size", FALSE);
-  pr_help_add(C_PROT, "<sp> protection code", FALSE);
-
+  pr_help_add(C_CWD,  _("<sp> pathname"), TRUE);
+  pr_help_add(C_XCWD, _("<sp> pathname"), TRUE);
+  pr_help_add(C_CDUP, _("(up one directory)"), TRUE);
+  pr_help_add(C_XCUP, _("(up one directory)"), TRUE);
+  pr_help_add(C_SMNT, _("is not implemented"), FALSE);
+  pr_help_add(C_QUIT, _("(close control connection)"), TRUE);
+  pr_help_add(C_PORT, _("<sp> h1,h2,h3,h4,p1,p2"), TRUE);
+  pr_help_add(C_PASV, _("(returns address/port)"), TRUE);
+  pr_help_add(C_EPRT, _("<sp> |proto|addr|port|"), TRUE);
+  pr_help_add(C_EPSV, _("(returns port |||port|)"), TRUE);
+  pr_help_add(C_ALLO, _("is not implemented (ignored)"), FALSE);
+  pr_help_add(C_RNFR, _("<sp> pathname"), TRUE);
+  pr_help_add(C_RNTO, _("<sp> pathname"), TRUE);
+  pr_help_add(C_DELE, _("<sp> pathname"), TRUE);
+  pr_help_add(C_MDTM, _("<sp> pathname"), TRUE);
+  pr_help_add(C_RMD, _("<sp> pathname"), TRUE);
+  pr_help_add(C_XRMD, _("<sp> pathname"), TRUE);
+  pr_help_add(C_MKD, _("<sp> pathname"), TRUE);
+  pr_help_add(C_XMKD, _("<sp> pathname"), TRUE);
+  pr_help_add(C_PWD, _("(returns current working directory)"), TRUE);
+  pr_help_add(C_XPWD, _("(returns current working directory)"), TRUE);
+  pr_help_add(C_SIZE, _("<sp> pathname"), TRUE);
+  pr_help_add(C_SYST, _("(returns system type)"), TRUE);
+  pr_help_add(C_HELP, _("[<sp> command]"), TRUE);
+  pr_help_add(C_NOOP, _("(no operation)"), TRUE);
+  pr_help_add(C_FEAT, _("(returns feature list)"), TRUE);
+  pr_help_add(C_OPTS, _("<sp> command [<sp> options]"), TRUE);
+  pr_help_add(C_AUTH, _("<sp> base64-data"), FALSE);
+  pr_help_add(C_CCC, _("(clears protection level)"), FALSE);
+  pr_help_add(C_CONF, _("<sp> base64-data"), FALSE);
+  pr_help_add(C_ENC, _("<sp> base64-data"), FALSE);
+  pr_help_add(C_MIC, _("<sp> base64-data"), FALSE);
+  pr_help_add(C_PBSZ, _("<sp> protection buffer size"), FALSE);
+  pr_help_add(C_PROT, _("<sp> protection code"), FALSE);
 
   /* Add the additional features implemented by this module into the
    * list, to be displayed in response to a FEAT command.
