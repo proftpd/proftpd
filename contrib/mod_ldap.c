@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.80 2010-02-02 23:06:25 jwm Exp $
+ * $Id: mod_ldap.c,v 1.81 2010-02-28 17:13:57 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -157,9 +157,8 @@ static char *ldap_dn, *ldap_dnpass,
             *ldap_auth_filter, *ldap_uid_filter,
             *ldap_group_gid_filter, *ldap_group_name_filter,
             *ldap_group_member_filter, *ldap_quota_filter,
-            *ldap_ssh_pubkey_filter,
             *ldap_auth_basedn, *ldap_uid_basedn, *ldap_gid_basedn,
-            *ldap_quota_basedn, *ldap_ssh_pubkey_basedn,
+            *ldap_quota_basedn,
             *ldap_defaultauthscheme, *ldap_authbind_dn,
             *ldap_genhdir_prefix, *ldap_default_quota,
             *ldap_attr_uid = "uid",
@@ -748,10 +747,10 @@ parse_quota(pool *p, const char *replace, char *str)
   elts[0] = pstrdup(session.pool, replace);
   cached_quota->nelts = 1;
 
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": parsing quota %s", str);
   while ((token = strsep(&str, ","))) {
     *((char **)push_array(cached_quota)) = pstrdup(session.pool, token);
   }
-  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": parsed quota %s", str);
 }
 
 static unsigned char
@@ -858,6 +857,7 @@ pr_ldap_ssh_pubkey_lookup(pool *p, char *filter_template, const char *replace,
                           char *basedn)
 {
   char *filter, *attrs[] = {ldap_attr_ssh_pubkey, NULL};
+  int num_keys, i;
   LDAPMessage *result, *e;
   LDAP_VALUE_T **values;
 
@@ -896,12 +896,12 @@ pr_ldap_ssh_pubkey_lookup(pool *p, char *filter_template, const char *replace,
     return FALSE;
   }
 
-  if (cached_ssh_pubkeys == NULL) {
-    cached_ssh_pubkeys = make_array(p, 1, sizeof(char *));
+  num_keys = LDAP_COUNT_VALUES(values);
+  cached_ssh_pubkeys = make_array(p, num_keys, sizeof(char *));
+  for (i = 0; i < num_keys; ++i) {
+    *((char **) push_array(cached_ssh_pubkeys)) = pstrdup(p,
+      LDAP_VALUE(values, i));
   }
-
-  *((char **) push_array(cached_ssh_pubkeys)) = pstrdup(p,
-    LDAP_VALUE(values, 0));
   LDAP_VALUE_FREE(values);
 
   ldap_msgfree(result);
@@ -1010,8 +1010,8 @@ handle_ldap_ssh_pubkey_lookup(cmd_rec *cmd)
   if (cached_ssh_pubkeys == NULL ||
       strcasecmp(((char **)cached_ssh_pubkeys->elts)[0], cmd->argv[0]) != 0)
   {
-    if (pr_ldap_ssh_pubkey_lookup(cmd->tmp_pool, ldap_ssh_pubkey_filter,
-                                  cmd->argv[0], ldap_ssh_pubkey_basedn) == FALSE)
+    if (pr_ldap_ssh_pubkey_lookup(cmd->tmp_pool, ldap_auth_filter,
+                                  cmd->argv[0], ldap_auth_basedn) == FALSE)
     {
       return PR_DECLINED(cmd);
     }
