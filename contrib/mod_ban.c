@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.37 2010-02-22 17:01:30 castaglia Exp $
+ * $Id: mod_ban.c,v 1.38 2010-03-02 18:36:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#define MOD_BAN_VERSION			"mod_ban/0.5.5"
+#define MOD_BAN_VERSION			"mod_ban/0.5.6"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030101
@@ -121,6 +121,7 @@ struct ban_event_entry {
 #define BAN_EV_TYPE_MAX_CONN_PER_HOST		9
 #define BAN_EV_TYPE_CLIENT_CONNECT_RATE		10
 #define BAN_EV_TYPE_TIMEOUT_LOGIN		11
+#define BAN_EV_TYPE_LOGIN_RATE			12
 
 struct ban_event_list {
   struct ban_event_entry bel_entries[BAN_EVENT_LIST_MAXSZ];
@@ -143,6 +144,11 @@ static char *ban_table = NULL;
 static pr_fh_t *ban_tabfh = NULL;
 static int ban_timerno = -1;
 
+/* Needed for implementing LoginRate rules; command handlers don't get an
+ * arbitrary data pointer like event listeners do.
+ */
+static struct ban_event_entry *login_rate_tmpl = NULL;
+
 static int ban_lock_shm(int);
 
 static void ban_anonrejectpasswords_ev(const void *, void *);
@@ -156,6 +162,9 @@ static void ban_maxloginattempts_ev(const void *, void *);
 static void ban_timeoutidle_ev(const void *, void *);
 static void ban_timeoutlogin_ev(const void *, void *);
 static void ban_timeoutnoxfer_ev(const void *, void *);
+
+static void ban_handle_event(unsigned int, int, const char *,
+  struct ban_event_entry *);
 
 static struct ban_data *ban_get_shm(pr_fh_t *tabfh) {
   int shmid;
@@ -795,6 +804,9 @@ static const char *ban_event_entry_typestr(unsigned int type) {
 
     case BAN_EV_TYPE_CLIENT_CONNECT_RATE:
       return "ClientConnectRate";
+
+    case BAN_EV_TYPE_LOGIN_RATE:
+      return "LoginRate";
   }
 
   return NULL;
@@ -1283,6 +1295,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
             case BAN_EV_TYPE_TIMEOUT_NO_TRANSFER:
             case BAN_EV_TYPE_MAX_CONN_PER_HOST:
             case BAN_EV_TYPE_CLIENT_CONNECT_RATE:
+            case BAN_EV_TYPE_LOGIN_RATE:
               if (!have_banner) {
                 pr_ctrls_add_response(ctrl, "Ban Events:");
                 have_banner = TRUE;
@@ -1495,6 +1508,21 @@ MODRET ban_pre_pass(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+MODRET ban_post_pass(cmd_rec *cmd) {
+  if (ban_engine != TRUE) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (login_rate_tmpl == NULL) {
+    return PR_DECLINED(cmd);
+  }
+
+  ban_handle_event(BAN_EV_TYPE_LOGIN_RATE, BAN_TYPE_USER, session.user,
+    login_rate_tmpl);
+
+  return PR_DECLINED(cmd);
+}
+
 /* Configuration handlers
  */
 
@@ -1651,6 +1679,14 @@ MODRET set_banonevent(cmd_rec *cmd) {
     bee->bee_type = BAN_EV_TYPE_CLIENT_CONNECT_RATE;
     pr_event_register(&ban_module, "mod_ban.client-connect-rate",
       ban_clientconnectrate_ev, bee);
+
+  } else if (strcasecmp(cmd->argv[1], "LoginRate") == 0) {
+    /* We don't register an event listener here.  Instead we rely on
+     * the POST_CMD handler for the PASS command; it's the "event"
+     * which we would handle for this rule.
+     */
+    bee->bee_type = BAN_EV_TYPE_LOGIN_RATE;
+    login_rate_tmpl = bee;
 
   } else if (strcasecmp(cmd->argv[1], "MaxClientsPerClass") == 0) {
     bee->bee_type = BAN_EV_TYPE_MAX_CLIENTS_PER_CLASS;
@@ -2351,6 +2387,7 @@ static conftable ban_conftab[] = {
 
 static cmdtable ban_cmdtab[] = {
   { PRE_CMD,	C_PASS,	G_NONE,	ban_pre_pass,	FALSE,	FALSE },
+  { POST_CMD,	C_PASS,	G_NONE,	ban_post_pass,	FALSE,	FALSE },
   { 0, NULL }
 };
 
