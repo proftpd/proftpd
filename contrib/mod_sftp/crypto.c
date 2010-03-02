@@ -21,11 +21,21 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.14 2010-01-31 20:34:26 castaglia Exp $
+ * $Id: crypto.c,v 1.15 2010-03-02 17:33:30 castaglia Exp $
  */
 
 #include "mod_sftp.h"
 #include "crypto.h"
+
+/* In OpenSSL 0.9.7, all des_ functions were renamed to DES_ to avoid 
+ * clashes with older versions of libdes. 
+ */ 
+#if OPENSSL_VERSION_NUMBER < 0x000907000L 
+# define DES_key_schedule des_key_schedule 
+# define DES_cblock des_cblock 
+# define DES_encrypt3 des_encrypt3 
+# define DES_set_key_unchecked des_set_key_unchecked 
+#endif
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 static const char *crypto_engine = NULL;
