@@ -2973,19 +2973,23 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
         data_sess = SSL_get_session(ssl);
         if (data_sess != NULL) {
+#if OPENSSL_VERSION_NUMBER < 0x000907000L
+          if (SSL_SESSION_cmp(ctrl_sess, data_sess) != 0) {
+#else
           unsigned char *sess_id;
           unsigned int sess_id_len;
 
-#if OPENSSL_VERSION_NUMBER > 0x000908000L
+# if OPENSSL_VERSION_NUMBER > 0x000908000L
           sess_id = (unsigned char *) SSL_SESSION_get_id(data_sess,
             &sess_id_len);
-#else
+# else
           /* XXX Directly accessing these fields cannot be a Good Thing. */
           sess_id = data_sess->session_id;
           sess_id_len = data_sess->session_id_length;
-#endif
+# endif
  
           if (!SSL_has_matching_session_id(ctrl_ssl, sess_id, sess_id_len)) {
+#endif
             tls_log("Client did not reuse SSL session from control channel, "
               "rejecting data connection (see TLSOption "
               "NoSessionReuseRequired)");
