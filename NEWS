@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1139 2010-03-02 18:07:48 castaglia Exp $
+$Id: NEWS,v 1.1140 2010-03-02 18:24:09 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -14,6 +14,7 @@ CVS
 - Bug 3399 - <Limit> statement does not restore access to MFMT commands.
 - Bug 3365 - First certificate in TLSCertificateChainFile is skipped.
 - Bug 3302 - MLST response should include full path name.
+- Bug 3400 - Add Japanese translation.
 - Bug 3401 - mod_sftp does not compile with pre-0.9.7 OpenSSL.
 - Bug 3402 - mod_tls does not compile with pre-0.9.7 OpenSSL due to Bug#3349.
 - Bug 3403 - File upload followed by MLSD leads to wrong file size entries in
