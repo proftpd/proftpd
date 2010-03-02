@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1138 2010-03-02 17:52:44 castaglia Exp $
+$Id: NEWS,v 1.1139 2010-03-02 18:07:48 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -16,6 +16,8 @@ CVS
 - Bug 3302 - MLST response should include full path name.
 - Bug 3401 - mod_sftp does not compile with pre-0.9.7 OpenSSL.
 - Bug 3402 - mod_tls does not compile with pre-0.9.7 OpenSSL due to Bug#3349.
+- Bug 3403 - File upload followed by MLSD leads to wrong file size entries in
+  TransferLog.
 
 1.3.3 - Released 24-Feb-2010
 --------------------------------
