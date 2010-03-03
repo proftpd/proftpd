@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.99 2009-11-05 17:46:55 castaglia Exp $
+ * $Id: log.c,v 1.100 2010-03-03 01:01:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -412,6 +412,12 @@ static void log_write(int priority, int f, char *s) {
   if (syslog_discard)
     return;
 
+  max_priority = get_param_ptr(main_server->conf, "SyslogLevel", FALSE);
+  if (max_priority != NULL &&
+      priority > *max_priority) {
+    return;
+  }
+
   if (systemlog_fd != -1) {
     char buf[LOGBUFFER_SIZE] = {'\0'};
     time_t tt = time(NULL);
@@ -444,6 +450,7 @@ static void log_write(int priority, int f, char *s) {
 
       return;
     }
+
     return;
   }
 
@@ -458,15 +465,12 @@ static void log_write(int priority, int f, char *s) {
     (void) pr_setlogfacility(f);
   }
 
-  max_priority = get_param_ptr(main_server->conf, "SyslogLevel", FALSE);
-  if (max_priority != NULL &&
-      priority > *max_priority)
-    return;
-
-  if (*serverinfo)
+  if (*serverinfo) {
     pr_syslog(syslog_sockfd, priority, "%s - %s\n", serverinfo, s);
-  else
+
+  } else {
     pr_syslog(syslog_sockfd, priority, "%s\n", s);
+  }
 }
 
 void pr_log_pri(int priority, const char *fmt, ...) {
