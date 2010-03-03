@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.89 2010-02-08 21:54:37 castaglia Exp $
+ * $Id: fsio.c,v 1.90 2010-03-03 16:23:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -726,12 +726,47 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 #endif
 
   while ((res = pr_fsio_read(src_fh, buf, bufsz)) > 0) {
+    size_t datalen;
+    off_t offset;
+
     pr_signals_handle();
 
-    if (pr_fsio_write(dst_fh, buf, res) != res) {
-      pr_log_pri(PR_LOG_WARNING, "error copying to '%s': %s", dst,
-        strerror(errno));
-      break;
+    /* Be sure to handle short writes. */
+    datalen = res;
+    offset = 0;
+
+    while (datalen > 0) {
+      res = pr_fsio_write(dst_fh, buf + offset, datalen);
+      if (res < 0) {
+        int xerrno = errno;
+
+        if (errno == EINTR ||
+            errno == EAGAIN) {
+          pr_signals_handle();
+          continue;
+        }
+
+        pr_fsio_close(src_fh);
+        pr_fsio_close(dst_fh);
+
+        if (!dst_existed) {
+          /* Don't unlink the destination file if it already existed. */
+          pr_fsio_unlink(dst);
+        }
+
+        pr_log_pri(PR_LOG_WARNING, "error copying to '%s': %s", dst,
+          strerror(xerrno));
+
+        errno = xerrno;
+        return -1;
+      }
+
+      if (res == datalen) {
+        break;
+      }
+
+      offset += res;
+      datalen -= res;
     }
   }
 
