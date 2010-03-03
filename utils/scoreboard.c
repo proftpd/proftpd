@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support (modified for use by external utilities).
  *
- * $Id: scoreboard.c,v 1.13 2009-12-03 21:45:24 castaglia Exp $
+ * $Id: scoreboard.c,v 1.14 2010-03-03 23:10:46 castaglia Exp $
  */
 
 #include "utils.h"
@@ -322,7 +322,12 @@ int util_scoreboard_scrub(int verbose) {
       }
 
       /* Rewind to the start of this slot. */
-      lseek(fd, curr_offset, SEEK_SET);
+      if (lseek(fd, curr_offset, SEEK_SET) < 0) {
+        if (verbose) {
+          fprintf(stdout, "error scrubbing scoreboard: %s",
+            strerror(errno));
+        }
+      }
 
       memset(&sce, 0, sizeof(sce));
       while (write(fd, &sce, sizeof(sce)) != sizeof(sce)) {

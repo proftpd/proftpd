@@ -26,7 +26,7 @@
  * This is mod_shaper, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_shaper.c,v 1.5 2010-02-10 01:01:14 castaglia Exp $
+ * $Id: mod_shaper.c,v 1.6 2010-03-03 23:10:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -677,10 +677,13 @@ static int shaper_table_init(pr_fh_t *fh) {
   tab_iov[5].iov_base = SHAPER_IOV_BASE &nsessions;
   tab_iov[5].iov_len = sizeof(nsessions);
 
-  lseek(fh->fh_fd, 0, SEEK_SET);
- 
-  if (writev(fh->fh_fd, tab_iov, 6) < 0)
+  if (lseek(fh->fh_fd, 0, SEEK_SET) < 0) {
     return -1;
+  }
+ 
+  if (writev(fh->fh_fd, tab_iov, 6) < 0) {
+    return -1;
+  }
 
   (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
     "initialized ShaperTable with rate %3.2Lf KB/s (down), %3.2Lf KB/s (up), "

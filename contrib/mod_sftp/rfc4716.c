@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: rfc4716.c,v 1.10 2010-03-03 00:53:03 castaglia Exp $
+ * $Id: rfc4716.c,v 1.11 2010-03-03 23:10:45 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -369,9 +369,13 @@ static int filestore_verify_host_key(sftp_keystore_t *store, pool *p,
       "in '%s'", host_fqdn, store_data->path);
   }
 
-  pr_fsio_lseek(store_data->fh, 0, SEEK_SET);
-  store_data->lineno = 0;
+  if (pr_fsio_lseek(store_data->fh, 0, SEEK_SET) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error seeking to start of '%s': %s", store_data->path, strerror(errno));
+    return -1;
+  }
 
+  store_data->lineno = 0;
   return res;
 }
 
@@ -436,9 +440,13 @@ static int filestore_verify_user_key(sftp_keystore_t *store, pool *p,
       "in '%s'", user, store_data->path);
   }
 
-  pr_fsio_lseek(store_data->fh, 0, SEEK_SET);
-  store_data->lineno = 0;
+  if (pr_fsio_lseek(store_data->fh, 0, SEEK_SET) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error seeking to start of '%s': %s", store_data->path, strerror(errno));
+    return -1;
+  }
 
+  store_data->lineno = 0;
   return res;
 }
 

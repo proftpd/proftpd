@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.52 2010-01-11 01:16:50 castaglia Exp $
+ * $Id: scoreboard.c,v 1.53 2010-03-03 23:10:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -313,7 +313,9 @@ static int write_entry(void) {
     return -1;
   }
 
-  lseek(scoreboard_fd, entry_lock.l_start, SEEK_SET);
+  if (lseek(scoreboard_fd, entry_lock.l_start, SEEK_SET) < 0) {
+    return -1;
+  }
 
   while (write(scoreboard_fd, &entry, sizeof(entry)) != sizeof(entry)) {
     if (errno == EINTR) {
@@ -325,7 +327,9 @@ static int write_entry(void) {
   }
 
   /* Rewind. */
-  lseek(scoreboard_fd, entry_lock.l_start, SEEK_SET);
+  if (lseek(scoreboard_fd, entry_lock.l_start, SEEK_SET) < 0) {
+    return -1;
+  }
 
   return 0;
 }
@@ -500,7 +504,10 @@ int pr_restore_scoreboard(void) {
   /* Position the file position pointer of the scoreboard back to
    * where it was, prior to the last pr_rewind_scoreboard() call.
    */
-  lseek(scoreboard_fd, current_pos, SEEK_SET);
+  if (lseek(scoreboard_fd, current_pos, SEEK_SET) < 0) {
+    return -1;
+  }
+
   return 0;
 }
 
@@ -516,7 +523,10 @@ int pr_rewind_scoreboard(void) {
   /* Position the file position pointer of the scoreboard at the
    * start of the scoreboard (past the header).
    */
-  lseek(scoreboard_fd, sizeof(pr_scoreboard_header_t), SEEK_SET);
+  if (lseek(scoreboard_fd, sizeof(pr_scoreboard_header_t), SEEK_SET) < 0) {
+    return -1;
+  }
+
   return 0;
 }
 
@@ -1125,7 +1135,10 @@ int pr_scoreboard_scrub(void) {
         (unsigned int) sce.sce_pid);
 
       /* Rewind to the start of this slot. */
-      lseek(fd, curr_offset, SEEK_SET);
+      if (lseek(fd, curr_offset, SEEK_SET) < 0) {
+        pr_log_debug(DEBUG0, "error scrubbing scoreboard: %s",
+          strerror(errno));
+      }
 
       memset(&sce, 0, sizeof(sce));
       while (write(fd, &sce, sizeof(sce)) != sizeof(sce)) {

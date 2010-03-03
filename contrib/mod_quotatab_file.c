@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab_file -- a mod_quotatab sub-module for managing quota
  *                               data via file-based tables
  *
- * Copyright (c) 2002-2009 TJ Saunders
+ * Copyright (c) 2002-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_quotatab_file.c,v 1.5 2009-03-23 21:27:43 castaglia Exp $
+ * $Id: mod_quotatab_file.c,v 1.6 2010-03-03 23:10:43 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -100,7 +100,11 @@ static int filetab_create(quota_table_t *filetab, void *ptr) {
   if (res > 0) {
 
     /* Rewind to the start of the entry. */
-    lseek(filetab->tab_handle, current_pos, SEEK_SET);
+    if (lseek(filetab->tab_handle, current_pos, SEEK_SET) < 0) {
+      quotatab_log("error rewinding to start of tally entry: %s",
+        strerror(errno));
+      return -1;
+    }
 
   } else if (res == 0) {
     /* If no bytes were written, it's an error. */
@@ -120,7 +124,10 @@ static unsigned char filetab_lookup(quota_table_t *filetab, void *ptr,
   /* Make sure the table pointer is positioned at the start of the table,
    * skipping the magic header value of the table.
    */
-  lseek(filetab->tab_handle, sizeof(unsigned int), SEEK_SET);
+  if (lseek(filetab->tab_handle, sizeof(unsigned int), SEEK_SET) < 0) {
+    quotatab_log("error seeking past table header: %s", strerror(errno));
+    return FALSE;
+  }
 
   /* Handle tally and limit tables differently... */
 
@@ -128,6 +135,7 @@ static unsigned char filetab_lookup(quota_table_t *filetab, void *ptr,
     quota_tally_t *tally = ptr;
 
     while (filetab->tab_read(filetab, ptr) >= 0) {
+      pr_signals_handle();
 
       /* Compare quota types.  If the quota type is ALL_QUOTA, don't
        * worry about the name.
@@ -136,34 +144,44 @@ static unsigned char filetab_lookup(quota_table_t *filetab, void *ptr,
 
         /* Match names if need be */
         if (name &&
-            strcmp(name, tally->name) == 0)
+            strcmp(name, tally->name) == 0) {
           return TRUE;
+        }
 
-        if (quota_type == ALL_QUOTA)
+        if (quota_type == ALL_QUOTA) {
           return TRUE;
+        }
       }
 
       /* Undo the auto-rewind of a single record's length done by
        * filetab_read(), so that the while loop actually does iterate through
        * all the available records.
        */
-      lseek(filetab->tab_handle, filetab->tab_quotalen, SEEK_CUR);
+      if (lseek(filetab->tab_handle, filetab->tab_quotalen, SEEK_CUR) < 0) {
+        quotatab_log("error seeking past tally record: %s", strerror(errno));
+      }
     }
 
   } else if (filetab->tab_type == TYPE_LIMIT) {
     quota_limit_t *limit = ptr;
 
     while (filetab->tab_read(filetab, ptr) >= 0) {
+      pr_signals_handle();
+
       if (quota_type == limit->quota_type) {
         if (name &&
-            strcmp(name, limit->name) == 0)
+            strcmp(name, limit->name) == 0) {
           return TRUE;
+        }
 
-        if (quota_type == ALL_QUOTA)
+        if (quota_type == ALL_QUOTA) {
           return TRUE;
+        }
       }
 
-      lseek(filetab->tab_handle, filetab->tab_quotalen, SEEK_CUR);
+      if (lseek(filetab->tab_handle, filetab->tab_quotalen, SEEK_CUR) < 0) {
+        quotatab_log("error seeking past limit record: %s", strerror(errno));
+      }
     }
   }
 
@@ -224,7 +242,11 @@ static int filetab_read(quota_table_t *filetab, void *ptr) {
     if (res > 0) {
 
       /* Always rewind after reading a record. */
-      lseek(filetab->tab_handle, current_pos, SEEK_SET);
+      if (lseek(filetab->tab_handle, current_pos, SEEK_SET) < 0) {
+        quotatab_log("error rewinding to start of tally entry: %s",
+          strerror(errno));
+        return -1;
+      }
 
     } else if (res == 0) {
       /* Assume end-of-file. */
@@ -279,7 +301,11 @@ static int filetab_read(quota_table_t *filetab, void *ptr) {
     if (res > 0) {
 
       /* Always rewind after reading a record. */
-      lseek(filetab->tab_handle, current_pos, SEEK_SET);
+      if (lseek(filetab->tab_handle, current_pos, SEEK_SET) < 0) {
+        quotatab_log("error rewinding to start of limit entry: %s",
+          strerror(errno));
+        return -1;
+      }
 
     } else if (res == 0) {
       /* Assume end-of-file. */
@@ -299,14 +325,19 @@ static unsigned char filetab_verify(quota_table_t *filetab) {
   unsigned int magic = 0L;
 
   /* Make sure we are positioned at the start of the table. */
-  lseek(filetab->tab_handle, 0, SEEK_SET);
+  if (lseek(filetab->tab_handle, 0, SEEK_SET) < 0) {
+    quotatab_log("error seeking to start of table: %s", strerror(errno));
+    return FALSE;
+  }
 
   /* Check the header of this table, to make sure it's valid. */
-  if (read(filetab->tab_handle, &magic, sizeof(magic)) != sizeof(magic))
+  if (read(filetab->tab_handle, &magic, sizeof(magic)) != sizeof(magic)) {
     return FALSE;
+  }
 
-  if (magic == filetab->tab_magic)
+  if (magic == filetab->tab_magic) {
     return TRUE;
+  }
 
   return FALSE;
 }
@@ -360,7 +391,11 @@ static int filetab_write(quota_table_t *filetab, void *ptr) {
   if (res > 0) {
 
     /* Rewind to the start of the entry. */
-    lseek(filetab->tab_handle, current_pos, SEEK_SET);
+    if (lseek(filetab->tab_handle, current_pos, SEEK_SET) < 0) {
+      quotatab_log("error rewinding to start of tally entry: %s",
+        strerror(errno));
+      return -1;
+    }
 
   } else if (res == 0) {
     /* If no bytes were written, it's an error. */

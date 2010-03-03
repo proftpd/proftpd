@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.39 2010-02-10 19:20:15 castaglia Exp $
+ * $Id: mod_delay.c,v 1.40 2010-03-03 23:10:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -417,16 +417,31 @@ static int delay_table_init(void) {
      * allocated backing store on the filesystem to support the ensuing
      * mmap() call.
      */
-    lseek(fh->fh_fd, tab_size-1, SEEK_SET);
+    if (lseek(fh->fh_fd, tab_size-1, SEEK_SET) < 0) {
+      xerrno = errno;
+
+      pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+        ": error seeking to %lu in DelayTable '%s': %s",
+        (unsigned long) tab_size-1, fh->fh_path, strerror(xerrno));
+      pr_trace_msg("delay", 1,
+        "error seeking to %lu in DelayTable '%s': %s",
+        (unsigned long) tab_size-1, fh->fh_path, strerror(xerrno));
+
+      pr_fsio_close(fh);
+
+      errno = xerrno;
+      return -1;
+    }
+
     if (write(fh->fh_fd, "", 1) != 1) {
       xerrno = errno;
 
       pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
         ": error writing single byte to DelayTable '%s': %s", fh->fh_path,
-        strerror(errno));
+        strerror(xerrno));
       pr_trace_msg("delay", 1,
         "error writing single byte to DelayTable '%s': %s", fh->fh_path,
-        strerror(errno));
+        strerror(xerrno));
 
       pr_fsio_close(fh);
 
@@ -533,7 +548,22 @@ static int delay_table_init(void) {
      * allocated backing store on the filesystem to support the ensuing
      * mmap() call.
      */
-    lseek(fh->fh_fd, tab_size-1, SEEK_SET);
+    if (lseek(fh->fh_fd, tab_size-1, SEEK_SET) < 0) {
+      xerrno = errno;
+
+      pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+        ": error seeking to %lu in DelayTable '%s': %s",
+        (unsigned long) tab_size-1, fh->fh_path, strerror(xerrno));
+      pr_trace_msg("delay", 1,
+        "error seeking to %lu in DelayTable '%s': %s",
+        (unsigned long) tab_size-1, fh->fh_path, strerror(xerrno));
+
+      pr_fsio_close(fh);
+
+      errno = xerrno;
+      return -1;
+    }
+
     if (write(fh->fh_fd, "", 1) != 1) {
       xerrno = errno;
 
