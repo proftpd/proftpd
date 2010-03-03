@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2007 The ProFTPD Project team
+ * Copyright (c) 2007-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * Environment management
- * $Id: env.c,v 1.5 2007-10-04 17:01:41 castaglia Exp $
+ * $Id: env.c,v 1.6 2010-03-03 16:56:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,6 +44,8 @@ char *pr_env_get(pool *p, const char *key) {
 }
 
 int pr_env_set(pool *p, const char *key, const char *value) {
+  size_t valuelen;
+
 #if defined(HAVE_SETENV)
   const char *k, *v;
 #elif defined(HAVE_PUTENV)
@@ -52,6 +54,12 @@ int pr_env_set(pool *p, const char *key, const char *value) {
 
   if (!p || !key || !value) {
     errno = EINVAL;
+    return -1;
+  }
+
+  valuelen = strlen(value);
+  if (valuelen > PR_TUNABLE_ENV_MAX) {
+    errno = EPERM;
     return -1;
   }
 

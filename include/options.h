@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.29 2009-03-22 01:30:10 castaglia Exp $
+ * $Id: options.h,v 1.30 2010-03-03 16:56:31 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -192,6 +192,11 @@
 #ifndef PR_TUNABLE_CALLER_DEPTH
 /* Max depth of call stack if stacktrace support is enabled. */
 # define PR_TUNABLE_CALLER_DEPTH	32
+#endif
+
+#ifndef PR_TUNABLE_ENV_MAX
+/* Max length of environment variable values allowed by proftpd. */
+# define PR_TUNABLE_ENV_MAX			4096
 #endif
 
 #ifndef PR_TUNABLE_GLOBBING_MAX_RECURSION

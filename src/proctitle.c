@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2007-2008 The ProFTPD Project team
+ * Copyright (c) 2007-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * Proctitle management
- * $Id: proctitle.c,v 1.8 2009-01-04 01:14:38 castaglia Exp $
+ * $Id: proctitle.c,v 1.9 2010-03-03 16:56:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -76,6 +76,11 @@ void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
 
     for (i = 0; envp[i] != NULL; i++) {
       size_t envp_len = strlen(envp[i]);
+
+      if (envp_len > PR_TUNABLE_ENV_MAX) {
+        /* Skip any environ variables that are too long. */
+        continue;
+      }
 
       environ[i] = malloc(envp_len + 1);
       if (environ[i] != NULL) {
