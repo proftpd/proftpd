@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.30 2010-03-03 16:56:31 castaglia Exp $
+ * $Id: options.h,v 1.31 2010-03-03 17:40:52 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -196,7 +196,7 @@
 
 #ifndef PR_TUNABLE_ENV_MAX
 /* Max length of environment variable values allowed by proftpd. */
-# define PR_TUNABLE_ENV_MAX			4096
+# define PR_TUNABLE_ENV_MAX			2048
 #endif
 
 #ifndef PR_TUNABLE_GLOBBING_MAX_RECURSION
