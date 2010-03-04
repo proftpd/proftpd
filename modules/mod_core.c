@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.367 2010-02-25 02:16:35 castaglia Exp $
+ * $Id: mod_core.c,v 1.368 2010-03-04 01:15:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3890,7 +3890,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
 
   if (c) {
     struct stat st;
-    time_t prev;
+    time_t prev = 0;
 
     char *display = c->argv[0];
     int bool = *((int *) c->argv[1]);
