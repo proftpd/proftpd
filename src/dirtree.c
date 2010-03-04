@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.232 2010-02-23 18:01:03 castaglia Exp $
+ * $Id: dirtree.c,v 1.233 2010-03-04 01:25:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1363,7 +1363,7 @@ static int check_limit(config_rec *c, cmd_rec *cmd) {
 
 int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
   int res = and;
-  int rfound;
+  int rfound = 0;
   config_rec *c;
   int argc;
   char **argv;
