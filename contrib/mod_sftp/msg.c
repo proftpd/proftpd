@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: msg.c,v 1.3 2010-03-04 23:05:24 castaglia Exp $
+ * $Id: msg.c,v 1.4 2010-03-04 23:14:33 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -45,7 +45,7 @@ char *sftp_msg_getbuf(pool *p, size_t sz) {
 }
 
 char sftp_msg_read_byte(pool *p, char **buf, uint32_t *buflen) {
-  char byte;
+  char byte = 0;
 
   (void) p;
 
@@ -64,7 +64,7 @@ char sftp_msg_read_byte(pool *p, char **buf, uint32_t *buflen) {
 }
 
 int sftp_msg_read_bool(pool *p, char **buf, uint32_t *buflen) {
-  char bool;
+  char bool = 0;
 
   (void) p;
 
@@ -77,7 +77,7 @@ int sftp_msg_read_bool(pool *p, char **buf, uint32_t *buflen) {
 
 char *sftp_msg_read_data(pool *p, char **buf, uint32_t *buflen,
     size_t datalen) {
-  char *data;
+  char *data = NULL;
 
   if (*buflen < datalen) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -96,7 +96,7 @@ char *sftp_msg_read_data(pool *p, char **buf, uint32_t *buflen,
 }
 
 uint32_t sftp_msg_read_int(pool *p, char **buf, uint32_t *buflen) {
-  uint32_t val;
+  uint32_t val = 0;
 
   (void) p;
 
@@ -118,7 +118,7 @@ uint32_t sftp_msg_read_int(pool *p, char **buf, uint32_t *buflen) {
 BIGNUM *sftp_msg_read_mpint(pool *p, char **buf, uint32_t *buflen) {
   BIGNUM *mpint = NULL;
   const unsigned char *data = NULL;
-  uint32_t datalen;
+  uint32_t datalen = 0;
 
   datalen = sftp_msg_read_int(p, buf, buflen);
 
@@ -162,8 +162,8 @@ BIGNUM *sftp_msg_read_mpint(pool *p, char **buf, uint32_t *buflen) {
 }
 
 char *sftp_msg_read_string(pool *p, char **buf, uint32_t *buflen) {
-  uint32_t len;
-  char *str;
+  uint32_t len = 0;
+  char *str = NULL;
 
   len = sftp_msg_read_int(p, buf, buflen);
 
@@ -242,9 +242,9 @@ void sftp_msg_write_int(char **buf, uint32_t *buflen, uint32_t val) {
 
 void sftp_msg_write_mpint(char **buf, uint32_t *buflen,
     const BIGNUM *mpint) {
-  unsigned char *data;
-  size_t datalen;
-  int res;
+  unsigned char *data = NULL;
+  size_t datalen = 0;
+  int res = 0;
 
   if (BN_is_zero(mpint)) {
     sftp_msg_write_int(buf, buflen, 0);
@@ -299,7 +299,7 @@ void sftp_msg_write_mpint(char **buf, uint32_t *buflen,
 }
 
 void sftp_msg_write_string(char **buf, uint32_t *buflen, const char *str) {
-  uint32_t len;
+  uint32_t len = 0;
 
   len = strlen(str);
   sftp_msg_write_data(buf, buflen, str, len, TRUE);
