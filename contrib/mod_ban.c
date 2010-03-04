@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.38 2010-03-02 18:36:12 castaglia Exp $
+ * $Id: mod_ban.c,v 1.39 2010-03-04 23:26:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -72,6 +72,7 @@
 
 /* From src/main.c */
 extern pid_t mpid;
+extern xaset_t *server_list;
 
 module ban_module;
 static ctrls_acttab_t ban_acttab[];
@@ -968,6 +969,22 @@ static void ban_event_list_expire(void) {
 /* Controls handlers
  */
 
+static server_rec *ban_get_server_by_id(int sid) {
+  server_rec *s = NULL;
+
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    if (s->sid == sid) {
+      break;
+    }
+  }
+
+  if (s == NULL) {
+    errno = ENOENT;
+  }
+
+  return s;
+}
+
 static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
   register unsigned int i = 0;
@@ -1187,6 +1204,8 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
             ban_lists->bans.bl_entries[i].be_name);
 
           if (verbose) {
+            server_rec *s;
+
             pr_ctrls_add_response(ctrl, "    Reason: %s",
               ban_lists->bans.bl_entries[i].be_reason);
 
@@ -1197,8 +1216,16 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
               pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
                 pr_strtime(then), (unsigned long) (then - now));
 
-            } else
+            } else {
               pr_ctrls_add_response(ctrl, "    Expires: never");
+            }
+
+            s = ban_get_server_by_id(ban_lists->bans.bl_entries[i].be_sid);
+            if (s) {
+              pr_ctrls_add_response(ctrl, "    <VirtualHost>: %s (%s#%u)",
+                s->ServerName, pr_netaddr_get_ipstr(s->addr),
+                s->ServerPort);
+            }
           }
         }
       }
@@ -1219,6 +1246,8 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
             ban_lists->bans.bl_entries[i].be_name);
 
           if (verbose) {
+            server_rec *s;
+
             pr_ctrls_add_response(ctrl, "    Reason: %s",
               ban_lists->bans.bl_entries[i].be_reason);
 
@@ -1229,8 +1258,16 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
               pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
                 pr_strtime(then), (unsigned long) (then - now));
 
-            } else
+            } else {
               pr_ctrls_add_response(ctrl, "    Expires: never");
+            }
+
+            s = ban_get_server_by_id(ban_lists->bans.bl_entries[i].be_sid);
+            if (s) {
+              pr_ctrls_add_response(ctrl, "    <VirtualHost>: %s (%s#%u)",
+                s->ServerName, pr_netaddr_get_ipstr(s->addr),
+                s->ServerPort);
+            }
           }
         }
       }
@@ -1251,6 +1288,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
             ban_lists->bans.bl_entries[i].be_name);
 
           if (verbose) {
+            server_rec *s;
 
             pr_ctrls_add_response(ctrl, "    Reason: %s",
               ban_lists->bans.bl_entries[i].be_reason);
@@ -1262,14 +1300,23 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
               pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
                 pr_strtime(then), (unsigned long) (then - now));
 
-            } else
+            } else {
               pr_ctrls_add_response(ctrl, "    Expires: never");
+            }
+
+            s = ban_get_server_by_id(ban_lists->bans.bl_entries[i].be_sid);
+            if (s) {
+              pr_ctrls_add_response(ctrl, "    <VirtualHost>: %s (%s#%u)",
+                s->ServerName, pr_netaddr_get_ipstr(s->addr),
+                s->ServerPort);
+            }
           }
         }
       }
 
-    } else
+    } else {
       pr_ctrls_add_response(ctrl, "No bans");
+    }
 
 /* XXX need a way to clear the event list, too, I think...? */
 
@@ -1281,6 +1328,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
         time_t now = time(NULL);
 
         for (i = 0; i < BAN_EVENT_LIST_MAXSZ; i++) {
+          server_rec *s;
           int type = ban_lists->events.bel_entries[i].bee_type;
 
           switch (type) {
@@ -1312,12 +1360,20 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
                 (unsigned long) ban_lists->events.bel_entries[i].bee_start +
                   ban_lists->events.bel_entries[i].bee_window - now);
 
+              s = ban_get_server_by_id(ban_lists->events.bel_entries[i].bee_sid);
+              if (s) {
+                pr_ctrls_add_response(ctrl, "    <VirtualHost>: %s (%s#%u)",
+                  s->ServerName, pr_netaddr_get_ipstr(s->addr),
+                  s->ServerPort);
+              }
+
               break;
           }
         }
 
-      } else
+      } else {
         pr_ctrls_add_response(ctrl, "No ban events");
+      }
     }
 
     ban_lock_shm(LOCK_UN);
