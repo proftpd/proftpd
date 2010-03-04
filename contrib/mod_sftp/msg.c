@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp message format
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: msg.c,v 1.2 2009-02-13 23:41:19 castaglia Exp $
+ * $Id: msg.c,v 1.3 2010-03-04 23:05:24 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -81,8 +81,8 @@ char *sftp_msg_read_data(pool *p, char **buf, uint32_t *buflen,
 
   if (*buflen < datalen) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "message format error: unable to read %u bytes of raw data "
-      "(buflen = %lu)", (unsigned int) datalen, (unsigned long) *buflen);
+      "message format error: unable to read %lu bytes of raw data "
+      "(buflen = %lu)", (unsigned long) datalen, (unsigned long) *buflen);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 
@@ -214,8 +214,8 @@ void sftp_msg_write_data(char **buf, uint32_t *buflen, const char *data,
 
   if (*buflen < datalen) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "message format error: unable to write %u bytes of raw data "
-      "(buflen = %lu)", (unsigned int) datalen, (unsigned long) *buflen);
+      "message format error: unable to write %lu bytes of raw data "
+      "(buflen = %lu)", (unsigned long) datalen, (unsigned long) *buflen);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 
@@ -262,8 +262,8 @@ void sftp_msg_write_mpint(char **buf, uint32_t *buflen,
 
   if (*buflen < datalen) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "message format error: unable to write %u bytes of mpint (buflen = %lu)",
-      (unsigned int) datalen, (unsigned long) *buflen);
+      "message format error: unable to write %lu bytes of mpint (buflen = %lu)",
+      (unsigned long) datalen, (unsigned long) *buflen);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 
