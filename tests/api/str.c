@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008 The ProFTPD Project team
+ * Copyright (c) 2008-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * String API tests
- * $Id: str.c,v 1.1 2008-10-06 18:16:50 castaglia Exp $
+ * $Id: str.c,v 1.2 2010-03-04 17:29:08 castaglia Exp $
  */
 
 #include "tests.h"
@@ -59,8 +59,7 @@ START_TEST (sstrncpy_test) {
   memset(dst, 'A', sz);
 
   res = sstrncpy(dst, NULL, 1);
-  fail_unless(res == dst, "Expected %p, got %p", dst, res);
-  fail_unless(*res == '\0', "Expected NUL, got '%c'", *res);
+  fail_unless(res == NULL, "Failed to handle null arguments");
 
   ok = "Therefore, all progress depends on the unreasonable man";
 
@@ -196,8 +195,9 @@ START_TEST (sreplace_test) {
   fail_unless(strcmp(res, fmt) == 0, "Expected '%s', got '%s'", fmt, res);
 
   fmt = "foo %a";
+  ok = "foo bar";
   res = sreplace(p, fmt, "%a", "bar", NULL);
-  fail_unless(strcmp(res, "foo bar") == 0, "Expected '%s', got '%s'", fmt, res);
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
   fmt = "foo %a %a";
   ok = "foo bar bar";
@@ -206,7 +206,6 @@ START_TEST (sreplace_test) {
 
   fmt = "foo %a %a %a %a %a %a %a %a";
   ok = "foo bar bar bar bar bar bar bar bar";
-  
   res = sreplace(p, fmt, "%a", "bar", NULL);
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
@@ -215,9 +214,23 @@ START_TEST (sreplace_test) {
    */
   fmt = "foo %a %a %a %a %a %a %a %a %a";
   ok = "foo bar bar bar bar bar bar bar bar bar";
-
   res = sreplace(p, fmt, "%a", "bar", NULL);
   fail_unless(strcmp(res, fmt) == 0, "Expected '%s', got '%s'", fmt, res);
+}
+END_TEST
+
+START_TEST (sreplace_enospc_test) {
+  char *fmt = NULL, *res;
+  size_t bufsz = 8192;
+
+  fmt = palloc(p, bufsz);
+  memset(fmt, ' ', bufsz);
+  fmt[bufsz-2] = '%';
+  fmt[bufsz-1] = 'a';
+
+  res = sreplace(p, fmt, "%a", "foo", NULL);
+  fail_unless(res == NULL, "Failed to reject too-long buffer");
+  fail_unless(errno == ENOSPC, "Failed to set errno to ENOSPC");
 }
 END_TEST
 
@@ -612,6 +625,7 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, sstrncpy_test);
   tcase_add_test(testcase, sstrcat_test);
   tcase_add_test(testcase, sreplace_test);
+  tcase_add_test(testcase, sreplace_enospc_test);
   tcase_add_test(testcase, pdircat_test);
   tcase_add_test(testcase, pstrcat_test);
   tcase_add_test(testcase, pstrdup_test);

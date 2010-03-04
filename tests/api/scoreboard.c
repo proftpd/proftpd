@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008 The ProFTPD Project team
+ * Copyright (c) 2008-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Scoreboard API tests
- * $Id: scoreboard.c,v 1.2 2009-05-11 18:07:36 castaglia Exp $
+ * $Id: scoreboard.c,v 1.3 2010-03-04 17:29:08 castaglia Exp $
  */
 
 #include "tests.h"
@@ -811,13 +811,13 @@ START_TEST (scoreboard_entry_del_test) {
     fail("Unexpectedly deleted entry from scoreboard");
   }
 
-  if (errno != EPERM) {
+  if (errno != ENOENT) {
     int xerrno = errno;
 
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail("Failed to set errno to EPERM (got %d)", xerrno);
+    fail("Failed to set errno to ENOENT (got %d)", xerrno);
   }
 
   res = pr_scoreboard_entry_add();
@@ -848,13 +848,13 @@ START_TEST (scoreboard_entry_del_test) {
     fail("Unexpectedly deleted entry from scoreboard");
   }
 
-  if (errno != EPERM) {
+  if (errno != ENOENT) {
     int xerrno = errno;
 
     (void) unlink(path);
     (void) rmdir(dir);
 
-    fail("Failed to set errno to EPERM (got %d)", xerrno);
+    fail("Failed to set errno to ENOENT (got %d)", xerrno);
   }
 
   (void) unlink(path);
