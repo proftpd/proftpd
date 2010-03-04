@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* BSD socket manipulation tools.
- * $Id: inet.h,v 1.32 2009-02-15 00:27:34 castaglia Exp $
+ * $Id: inet.h,v 1.33 2010-03-04 21:52:40 castaglia Exp $
  */
 
 #ifndef PR_INET_H
@@ -144,7 +144,7 @@ int pr_inet_set_default_family(pool *, int);
 int pr_inet_set_async(pool *, conn_t *);
 int pr_inet_set_block(pool *, conn_t *);
 int pr_inet_set_nonblock(pool *, conn_t *);
-int pr_inet_set_proto_opts(pool *, conn_t *, int, int, int, int, int);
+int pr_inet_set_proto_opts(pool *, conn_t *, int, int, int, int);
 int pr_inet_set_socket_opts(pool *, conn_t *, int, int);
 int pr_inet_listen(pool *, conn_t *, int);
 int pr_inet_resetlisten(pool *, conn_t *);

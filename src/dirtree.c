@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.233 2010-03-04 01:25:03 castaglia Exp $
+ * $Id: dirtree.c,v 1.234 2010-03-04 21:52:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3188,6 +3188,14 @@ void init_config(void) {
   main_server->pool = conf_pool;
   main_server->set = server_list;
   main_server->sid = 1;
+
+#ifdef IPTOS_LOWDELAY
+  main_server->tcp_ctrlqos = IPTOS_LOWDELAY;
+#endif
+
+#ifdef IPTOS_THROUGHPUT
+  main_server->tcp_dataqos = IPTOS_THROUGHPUT;
+#endif
 
   /* Default server port */
   main_server->ServerPort = pr_inet_getservport(main_server->pool,

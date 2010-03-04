@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.120 2009-09-02 17:58:54 castaglia Exp $
+ * $Id: data.c,v 1.121 2010-03-04 21:52:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -261,13 +261,13 @@ static int data_pasv_open(char *reason, off_t size) {
     pr_inet_set_socket_opts(session.d->pool, session.d,
       (main_server->tcp_rcvbuf_override ?  main_server->tcp_rcvbuf_len : 0), 0);
     pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-      0, 1, 1);
+      main_server->tcp_dataqos, 1);
     
   } else {
     pr_inet_set_socket_opts(session.d->pool, session.d,
       0, (main_server->tcp_sndbuf_override ?  main_server->tcp_sndbuf_len : 0));
     pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-      0, 1, 1);
+      main_server->tcp_dataqos, 1);
   }
 
   c = pr_inet_accept(session.pool, session.d, session.c, -1, -1, TRUE);
@@ -355,13 +355,13 @@ static int data_active_open(char *reason, off_t size) {
     pr_inet_set_socket_opts(session.d->pool, session.d,
       (main_server->tcp_rcvbuf_override ?  main_server->tcp_rcvbuf_len : 0), 0);
     pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-      0, 1, 1);
+      main_server->tcp_dataqos, 1);
     
   } else {
     pr_inet_set_socket_opts(session.d->pool, session.d,
       0, (main_server->tcp_sndbuf_override ?  main_server->tcp_sndbuf_len : 0));
     pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-      0, 1, 1);
+      main_server->tcp_dataqos, 1);
   }
 
   if (pr_inet_connect(session.d->pool, session.d, &session.data_addr,

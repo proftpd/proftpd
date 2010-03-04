@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.121 2010-02-21 19:51:42 castaglia Exp $
+ * $Id: inet.c,v 1.122 2010-03-04 21:52:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -578,8 +578,7 @@ void pr_inet_lingering_abort(pool *p, conn_t *c, long linger) {
 }
 
 int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
-    int lowdelay, int throughput, int nopush) {
-  int tos = 0;
+    int tos, int nopush) {
 
   /* More portability fun.  Traditional BSD-style sockets want the value from
    * getprotobyname() in the setsockopt(2) call; Linux wants SOL_TCP for
@@ -647,18 +646,7 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
   }
 #endif /* TCP_MAXSEG */
 
-#ifdef IPTOS_LOWDELAY
-  if (lowdelay)
-    tos = IPTOS_LOWDELAY;
-#endif /* IPTOS_LOWDELAY */
-
-#ifdef IPTOS_THROUGHPUT
-  if (throughput)
-    tos = IPTOS_THROUGHPUT;
-#endif /* IPTOS_THROUGHPUT */
-
 #ifdef IP_TOS
-
   /* Only set TOS flags on IPv4 sockets; IPv6 sockets don't seem to support
    * them.
    */
