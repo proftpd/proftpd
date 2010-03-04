@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.28 2010-02-04 04:08:09 castaglia Exp $
+ * $Id: channel.c,v 1.29 2010-03-04 23:18:06 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -208,7 +208,7 @@ static void drain_pending_channel_data(uint32_t channel_id) {
 
     tmp_pool = make_sub_pool(channel_pool);
 
-    pr_trace_msg(trace_channel, 15, "draining pending data for channel %lu "
+    pr_trace_msg(trace_channel, 15, "draining pending data for channel ID %lu "
       "(%lu bytes)", (unsigned long) channel_id,
       (unsigned long) get_channel_pending_size(chan));
 
@@ -271,7 +271,7 @@ static void drain_pending_channel_data(uint32_t channel_id) {
       res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
       if (res < 0) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error draining pending CHANNEL_DATA for channel %lu: %s",
+          "error draining pending CHANNEL_DATA for channel ID %lu: %s",
           (unsigned long) channel_id, strerror(errno));
         destroy_pool(tmp_pool);
         return;
@@ -309,7 +309,7 @@ static void drain_pending_channel_data(uint32_t channel_id) {
      */
     if (chan->outgoing) {
       pr_trace_msg(trace_channel, 15, "still have pending channel data "
-        "(%lu bytes) for channel %lu (window at %lu bytes)",
+        "(%lu bytes) for channel ID %lu (window at %lu bytes)",
         (unsigned long) get_channel_pending_size(chan),
         (unsigned long) channel_id, (unsigned long) chan->remote_windowsz);
     }
@@ -473,7 +473,8 @@ static int process_channel_data(struct ssh2_channel *chan,
 
   if (chan->handle_packet == NULL) {
     pr_trace_msg(trace_channel, 3, "no handler registered for data on "
-      "channel %lu, rejecting packet", (unsigned long) chan->local_channel_id);
+      "channel ID %lu, rejecting packet",
+      (unsigned long) chan->local_channel_id);
     errno = EACCES;
     return -1;
   }
@@ -501,7 +502,7 @@ static int process_channel_data(struct ssh2_channel *chan,
     sftp_msg_write_int(&buf, &buflen, window_adjlen);
 
     pr_trace_msg(trace_channel, 15, "sending CHANNEL_WINDOW_ADJUST message "
-      "for channel %lu, adding %lu bytes to the window size (currently %lu "
+      "for channel ID %lu, adding %lu bytes to the window size (currently %lu "
       "bytes)", (unsigned long) chan->local_channel_id,
       (unsigned long) window_adjlen, (unsigned long) chan->local_windowsz);
 
@@ -552,12 +553,15 @@ static int handle_channel_data(struct ssh2_packet *pkt, uint32_t *channel_id) {
   if (datalen > chan->local_windowsz) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "received too much data (%lu bytes) for local window size (%lu bytes) "
-      "for channel %lu, ignoring CHANNEL_DATA message",
+      "for channel ID %lu, ignoring CHANNEL_DATA message",
       (unsigned long) datalen, (unsigned long) chan->local_windowsz,
       (unsigned long) *channel_id);
     return 0;
   }
 
+  pr_trace_msg(trace_channel, 17,
+    "processing %lu bytes of data for channel ID %lu", (unsigned long) datalen,
+    (unsigned long) *channel_id);
   data = sftp_msg_read_data(pkt->pool, &buf, &buflen, datalen);
 
   return process_channel_data(chan, pkt, data, datalen);
