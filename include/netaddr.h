@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2009 The ProFTPD Project team
+ * Copyright (c) 2003-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.23 2009-02-12 22:32:01 castaglia Exp $
+ * $Id: netaddr.h,v 1.24 2010-03-04 01:27:44 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -348,7 +348,7 @@ const char *pr_netaddr_get_localaddr_str(pool *);
  */
 int pr_netaddr_set_localaddr_str(const char *);
 
-unsigned int pr_netaddr_get_addrno(const pr_netaddr_t *);
+uint32_t pr_netaddr_get_addrno(const pr_netaddr_t *);
 
 /* Returns TRUE if the given pr_netaddr_t contains a loopback address,
  * FALSE otherwise.

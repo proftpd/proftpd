@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.70 2010-01-23 18:31:47 castaglia Exp $
+ * $Id: netaddr.c,v 1.71 2010-03-04 01:27:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1493,15 +1493,15 @@ int pr_netaddr_is_loopback(const pr_netaddr_t *na) {
 /* A slightly naughty function that should go away. It relies too much on
  * knowledge of the internal structures of struct in_addr, struct in6_addr.
  */
-unsigned int pr_netaddr_get_addrno(const pr_netaddr_t *na) {
-  if (!na) {
+uint32_t pr_netaddr_get_addrno(const pr_netaddr_t *na) {
+  if (na == NULL) {
     errno = EINVAL;
-    return -1;
+    return 0;
   }
 
   switch (pr_netaddr_get_family(na)) {
     case AF_INET:
-      return na->na_addr.v4.sin_addr.s_addr;
+      return (uint32_t) na->na_addr.v4.sin_addr.s_addr;
 
 #ifdef PR_USE_IPV6
     case AF_INET6: {
@@ -1515,6 +1515,7 @@ unsigned int pr_netaddr_get_addrno(const pr_netaddr_t *na) {
       int *addrs = ((struct sockaddr_in6 *) pr_netaddr_get_inaddr(na))->s6_addr32;
       return addrs[0];
 #else
+      errno = ENOENT;
       return 0;
 #endif
     }
@@ -1522,7 +1523,7 @@ unsigned int pr_netaddr_get_addrno(const pr_netaddr_t *na) {
   }
 
   errno = EPERM;
-  return -1;
+  return 0;
 }
 
 int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *na) {
