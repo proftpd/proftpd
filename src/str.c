@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008 The ProFTPD Project team
+ * Copyright (c) 2008-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,26 +23,26 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.6 2008-06-14 02:40:04 castaglia Exp $
+ * $Id: str.c,v 1.7 2010-03-04 17:27:59 castaglia Exp $
  */
 
 #include "conf.h"
 
 char *sreplace(pool *p, char *s, ...) {
   va_list args;
-  char *m,*r,*src = s,*cp;
-  char **mptr,**rptr;
-  char *marr[33],*rarr[33];
+  char *m, *r, *src, *cp;
+  char *marr[33], *rarr[33];
   char buf[PR_TUNABLE_PATH_MAX] = {'\0'}, *pbuf = NULL;
   size_t mlen = 0, rlen = 0;
-  int blen;
-  int dyn = TRUE;
+  int blen = 0;
 
-  if (!p || !s) {
+  if (p == NULL ||
+      s == NULL) {
     errno = EINVAL;
     return NULL;
   }
 
+  src = s;
   cp = buf;
   *cp = '\0';
 
@@ -56,8 +56,10 @@ char *sreplace(pool *p, char *s, ...) {
     char *tmp = NULL;
     int count = 0;
 
-    if ((r = va_arg(args, char *)) == NULL)
+    r = va_arg(args, char *);
+    if (r == NULL) {
       break;
+    }
 
     /* Increase the length of the needed buffer by the difference between
      * the given match and replacement strings, multiplied by the number
@@ -104,6 +106,11 @@ char *sreplace(pool *p, char *s, ...) {
 
   va_end(args);
 
+  /* If there are no matches, then there is nothing to replace. */
+  if (mlen == 0) {
+    return s;
+  }
+
   /* Try to handle large buffer situations (i.e. escaping of PR_TUNABLE_PATH_MAX
    * (>2048) correctly, but do not allow very big buffer sizes, that may
    * be dangerous (BUFSIZ may be defined in stdio.h) in some library
@@ -113,16 +120,16 @@ char *sreplace(pool *p, char *s, ...) {
 # define BUFSIZ 8192
 #endif
 
-  if (blen < BUFSIZ)
-    cp = pbuf = (char *) pcalloc(p, ++blen);
-
-  if (!pbuf) {
-    cp = pbuf = buf;
-    dyn = FALSE;
-    blen = sizeof(buf);
+  if (blen >= BUFSIZ) {
+    errno = ENOSPC;
+    return NULL;
   }
 
+  cp = pbuf = (char *) pcalloc(p, ++blen);
+
   while (*src) {
+    char **mptr, **rptr;
+
     for (mptr = marr, rptr = rarr; *mptr; mptr++, rptr++) {
       mlen = strlen(*mptr);
       rlen = strlen(*rptr);
@@ -134,9 +141,6 @@ char *sreplace(pool *p, char *s, ...) {
           pr_log_pri(PR_LOG_ERR,
             "WARNING: attempt to overflow internal ProFTPD buffers");
           cp = pbuf;
-
-          if (blen >= BUFSIZ)
-            blen = BUFSIZ;
 
           cp += (blen - 1);
           goto done;
@@ -156,9 +160,6 @@ char *sreplace(pool *p, char *s, ...) {
           "WARNING: attempt to overflow internal ProFTPD buffers");
         cp = pbuf;
 
-        if (blen >= BUFSIZ)
-          blen = BUFSIZ;
-
         cp += (blen - 1);
         goto done;
       }
@@ -170,10 +171,7 @@ char *sreplace(pool *p, char *s, ...) {
  done:
   *cp = '\0';
 
-  if (dyn)
-    return pbuf;
-
-  return pstrdup(p, buf);
+  return pbuf;
 }
 
 /* "safe" strcat, saves room for NUL at end of dst, and refuses to copy more
