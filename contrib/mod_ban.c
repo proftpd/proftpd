@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.39 2010-03-04 23:26:57 castaglia Exp $
+ * $Id: mod_ban.c,v 1.40 2010-03-05 23:08:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -690,7 +690,8 @@ static int ban_list_exists(unsigned int type, unsigned int sid,
   return -1;
 }
 
-static int ban_list_remove(unsigned int type, const char *name) {
+static int ban_list_remove(unsigned int type, unsigned int sid,
+    const char *name) {
 
   if (!ban_lists) {
     errno = EPERM;
@@ -704,6 +705,7 @@ static int ban_list_remove(unsigned int type, const char *name) {
       pr_signals_handle();
 
       if (ban_lists->bans.bl_entries[i].be_type == type &&
+          (sid == 0 || ban_lists->bans.bl_entries[i].be_sid == sid) &&
           (name ? strcmp(ban_lists->bans.bl_entries[i].be_name, name) == 0 :
            TRUE)) {
 
@@ -729,14 +731,27 @@ static int ban_list_remove(unsigned int type, const char *name) {
 
         ban_lists->bans.bl_listlen--;
 
-        if (name)
+        /* If name is null, it means the caller wants to remove all
+         * names for the given type/SID combination.
+         *
+         * If name is not null, but sid is zero, then it means the caller
+         * wants to remove the given name/type combination for all SIDs.
+         *
+         * Thus we only want to return here if sid is non-zero and name
+         * is not null.
+         */
+        if (sid != 0 &&
+            name != NULL) {
           return 0;
+        }
       }
     }
   }
 
-  if (!name)
+  if (sid == 0 ||
+      name == NULL) {
     return 0;
+  }
 
   errno = ENOENT;
   return -1;
@@ -765,7 +780,7 @@ static void ban_list_expire(void) {
         ban_lists->bans.bl_entries[i].be_name,
         (unsigned long) now - ban_lists->bans.bl_entries[i].be_expires);
 
-      ban_list_remove(ban_lists->bans.bl_entries[i].be_type,
+      ban_list_remove(ban_lists->bans.bl_entries[i].be_type, 0,
         ban_lists->bans.bl_entries[i].be_name);
     }
   }
@@ -985,9 +1000,276 @@ static server_rec *ban_get_server_by_id(int sid) {
   return s;
 }
 
+static int ban_get_sid_by_addr(pr_netaddr_t *server_addr,
+    unsigned int server_port) {
+  server_rec *s = NULL;
+
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    if (s->ServerPort == 0) {
+      continue;
+    }
+
+    if (pr_netaddr_cmp(s->addr, server_addr) == 0 &&
+        s->ServerPort == server_port) {
+      return s->sid;
+    }
+  }
+
+  errno = ENOENT;
+  return -1;
+}
+
+static void ban_reset_getopt(void) {
+#if defined(FREEBSD4) || defined(FREEBSD5) || \
+    defined(FREEBSD6) || defined(FREEBSD7) || \
+    defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9)
+  optreset = 1;
+  opterr = 1;
+  optind = 1;
+
+#elif defined(SOLARIS2)
+  opterr = 0;
+  optind = 1;
+
+#else
+  opterr = 0;
+  optind = 0;
+#endif /* !FreeBSD, !Mac OSX and !Solaris2 */
+
+  if (pr_env_get(permanent_pool, "POSIXLY_CORRECT") == NULL) {
+    pr_env_set(permanent_pool, "POSIXLY_CORRECT", "1");
+  }
+}
+
+static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
+  register unsigned int i;
+  int optc, verbose = FALSE, show_events = FALSE, have_bans = FALSE;
+  const char *reqopts = "ev";
+
+  /* Check for options. */
+  ban_reset_getopt();
+
+  while ((optc = getopt(reqargc, reqargv, reqopts)) != -1) {
+    switch (optc) {
+      case 'e':
+        show_events = TRUE;
+        break;
+
+      case 'v':
+        verbose = TRUE;
+        break;
+
+      case '?':
+        pr_ctrls_add_response(ctrl, "unsupported parameter: '%s'",
+          reqargv[0]);
+        return -1;
+    }
+  }
+
+  if (ban_lock_shm(LOCK_SH) < 0) {
+    pr_ctrls_add_response(ctrl, "error locking shm: %s", strerror(errno));
+    return -1;
+  }
+
+  (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION, "showing ban lists");
+
+  if (ban_lists->bans.bl_listlen) {
+    int have_user = FALSE, have_host = FALSE, have_class = FALSE;
+
+    for (i = 0; i < BAN_LIST_MAXSZ; i++) {
+      if (ban_lists->bans.bl_entries[i].be_type == BAN_TYPE_USER) {
+        have_bans = TRUE;
+
+        if (!have_user) {
+          pr_ctrls_add_response(ctrl, "Banned Users:");
+          have_user = TRUE;
+        }
+
+        pr_ctrls_add_response(ctrl, "  %s",
+          ban_lists->bans.bl_entries[i].be_name);
+
+        if (verbose) {
+          server_rec *s;
+
+          pr_ctrls_add_response(ctrl, "    Reason: %s",
+            ban_lists->bans.bl_entries[i].be_reason);
+
+          if (ban_lists->bans.bl_entries[i].be_expires) {
+            time_t now = time(NULL);
+            time_t then = ban_lists->bans.bl_entries[i].be_expires;
+
+            pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
+              pr_strtime(then), (unsigned long) (then - now));
+
+          } else {
+            pr_ctrls_add_response(ctrl, "    Expires: never");
+          }
+
+          s = ban_get_server_by_id(ban_lists->bans.bl_entries[i].be_sid);
+          if (s) {
+            pr_ctrls_add_response(ctrl, "    <VirtualHost>: %s (%s#%u)",
+              s->ServerName, pr_netaddr_get_ipstr(s->addr),
+              s->ServerPort);
+          }
+        }
+      }
+    }
+
+    for (i = 0; i < BAN_LIST_MAXSZ; i++) {
+      if (ban_lists->bans.bl_entries[i].be_type == BAN_TYPE_HOST) {
+        have_bans = TRUE;
+
+        if (!have_host) {
+          if (have_user)
+            pr_ctrls_add_response(ctrl, "%s", "");
+
+          pr_ctrls_add_response(ctrl, "Banned Hosts:");
+          have_host = TRUE;
+        }
+
+        pr_ctrls_add_response(ctrl, "  %s",
+          ban_lists->bans.bl_entries[i].be_name);
+
+        if (verbose) {
+          server_rec *s;
+
+          pr_ctrls_add_response(ctrl, "    Reason: %s",
+            ban_lists->bans.bl_entries[i].be_reason);
+
+          if (ban_lists->bans.bl_entries[i].be_expires) {
+            time_t now = time(NULL);
+            time_t then = ban_lists->bans.bl_entries[i].be_expires;
+
+            pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
+              pr_strtime(then), (unsigned long) (then - now));
+
+          } else {
+            pr_ctrls_add_response(ctrl, "    Expires: never");
+          }
+
+          s = ban_get_server_by_id(ban_lists->bans.bl_entries[i].be_sid);
+          if (s) {
+            pr_ctrls_add_response(ctrl, "    <VirtualHost>: %s (%s#%u)",
+              s->ServerName, pr_netaddr_get_ipstr(s->addr),
+              s->ServerPort);
+          }
+        }
+      }
+    }
+
+    for (i = 0; i < BAN_LIST_MAXSZ; i++) {
+      if (ban_lists->bans.bl_entries[i].be_type == BAN_TYPE_CLASS) {
+        have_bans = TRUE;
+
+        if (!have_class) {
+          if (have_host)
+            pr_ctrls_add_response(ctrl, "%s", "");
+
+          pr_ctrls_add_response(ctrl, "Banned Classes:");
+          have_class = TRUE;
+        }
+
+        pr_ctrls_add_response(ctrl, "  %s",
+          ban_lists->bans.bl_entries[i].be_name);
+
+        if (verbose) {
+          server_rec *s;
+
+          pr_ctrls_add_response(ctrl, "    Reason: %s",
+            ban_lists->bans.bl_entries[i].be_reason);
+
+          if (ban_lists->bans.bl_entries[i].be_expires) {
+            time_t now = time(NULL);
+            time_t then = ban_lists->bans.bl_entries[i].be_expires;
+
+            pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
+              pr_strtime(then), (unsigned long) (then - now));
+
+          } else {
+            pr_ctrls_add_response(ctrl, "    Expires: never");
+          }
+
+          s = ban_get_server_by_id(ban_lists->bans.bl_entries[i].be_sid);
+          if (s) {
+            pr_ctrls_add_response(ctrl, "    <VirtualHost>: %s (%s#%u)",
+              s->ServerName, pr_netaddr_get_ipstr(s->addr),
+              s->ServerPort);
+          }
+        }
+      }
+    }
+
+  } else {
+    pr_ctrls_add_response(ctrl, "No bans");
+  }
+
+/* XXX need a way to clear the event list, too, I think...? */
+
+  if (show_events) {
+    pr_ctrls_add_response(ctrl, "%s", "");
+
+    if (ban_lists->events.bel_listlen) {
+      int have_banner = FALSE;
+      time_t now = time(NULL);
+
+      for (i = 0; i < BAN_EVENT_LIST_MAXSZ; i++) {
+        server_rec *s;
+        int type = ban_lists->events.bel_entries[i].bee_type;
+
+        switch (type) {
+          case BAN_EV_TYPE_ANON_REJECT_PASSWORDS:
+          case BAN_EV_TYPE_MAX_CLIENTS_PER_CLASS:
+          case BAN_EV_TYPE_MAX_CLIENTS_PER_HOST:
+          case BAN_EV_TYPE_MAX_CLIENTS_PER_USER:
+          case BAN_EV_TYPE_MAX_HOSTS_PER_USER:
+          case BAN_EV_TYPE_MAX_LOGIN_ATTEMPTS:
+          case BAN_EV_TYPE_TIMEOUT_IDLE:
+          case BAN_EV_TYPE_TIMEOUT_LOGIN:
+          case BAN_EV_TYPE_TIMEOUT_NO_TRANSFER:
+          case BAN_EV_TYPE_MAX_CONN_PER_HOST:
+          case BAN_EV_TYPE_CLIENT_CONNECT_RATE:
+          case BAN_EV_TYPE_LOGIN_RATE:
+            if (!have_banner) {
+              pr_ctrls_add_response(ctrl, "Ban Events:");
+              have_banner = TRUE;
+            }
+
+            pr_ctrls_add_response(ctrl, "  Event: %s",
+              ban_event_entry_typestr(type));
+            pr_ctrls_add_response(ctrl, "  Source: %s",
+              ban_lists->events.bel_entries[i].bee_src);
+            pr_ctrls_add_response(ctrl, "    Occurrences: %u/%u",
+              ban_lists->events.bel_entries[i].bee_count_curr,
+              ban_lists->events.bel_entries[i].bee_count_max);
+            pr_ctrls_add_response(ctrl, "    Entry Expires: %lu seconds",
+              (unsigned long) ban_lists->events.bel_entries[i].bee_start +
+                ban_lists->events.bel_entries[i].bee_window - now);
+
+            s = ban_get_server_by_id(ban_lists->events.bel_entries[i].bee_sid);
+            if (s) {
+              pr_ctrls_add_response(ctrl, "    <VirtualHost>: %s (%s#%u)",
+                s->ServerName, pr_netaddr_get_ipstr(s->addr),
+                s->ServerPort);
+            }
+
+            break;
+        }
+      }
+
+    } else {
+      pr_ctrls_add_response(ctrl, "No ban events");
+    }
+  }
+
+  ban_lock_shm(LOCK_UN);
+
+  return 0;
+}
+
 static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
   register unsigned int i = 0;
+  unsigned int sid = 0;
 
   /* Check the ban ACL */
   if (!pr_ctrls_check_acl(ctrl, ban_acttab, "ban")) {
@@ -1008,6 +1290,63 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     return -1;
   }
 
+  ban_reset_getopt();
+
+  /* Only check for/process command-line options if this is not the 'info'
+   * request; that request has its own command-line options.
+   */
+  if (strcmp(reqargv[0], "info") != 0) {
+    int optc;
+    char *server_str = NULL;
+    const char *reqopts = "s:";
+
+    while ((optc = getopt(reqargc, reqargv, reqopts)) != -1) {
+      switch (optc) {
+        case 's':
+          if (!optarg) {
+            pr_ctrls_add_response(ctrl, "-s requires server address");
+            return -1;
+          }
+          server_str = pstrdup(ctrl->ctrls_tmp_pool, optarg);
+          break;
+
+        case '?':
+          pr_ctrls_add_response(ctrl, "unsupported option: '%c'",
+            (char) optopt);
+          return -1;
+      }
+    }
+
+    if (server_str != NULL) {
+      char *ptr;
+      pr_netaddr_t *server_addr = NULL;
+      unsigned int server_port = 21;
+      int res;
+
+      ptr = strchr(server_str, '#');
+      if (ptr != NULL) {
+        server_port = atoi(ptr + 1);
+        *ptr = '\0';
+      }
+
+      server_addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, server_str, NULL);
+      if (server_addr == NULL) {
+        pr_ctrls_add_response(ctrl, "no such server '%s#%u'", server_str,
+          server_port);
+        return -1;
+      }
+
+      res = ban_get_sid_by_addr(server_addr, server_port);
+      if (res < 0) {
+        pr_ctrls_add_response(ctrl, "no such server '%s#%u'", server_str,
+          server_port);
+        return -1;
+      }
+
+      sid = res;
+    }
+  }
+
   /* Make sure the lists are up-to-date. */
   ban_list_expire();
   ban_event_list_expire();
@@ -1026,26 +1365,28 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     }
 
     /* Add each given user name to the list */
-    for (i = 1; i < reqargc; i++) {
+    for (i = optind; i < reqargc; i++) {
      
       /* Check for duplicates. */
-      if (ban_list_exists(BAN_TYPE_USER, 0, reqargv[i], NULL) < 0) {
+      if (ban_list_exists(BAN_TYPE_USER, sid, reqargv[i], NULL) < 0) {
 
         if (ban_lists->bans.bl_listlen < BAN_LIST_MAXSZ) {
           const char *reason = pstrcat(ctrl->ctrls_tmp_pool, "requested by '",
             ctrl->ctrls_cl->cl_user, "' on ", pr_strtime(time(NULL)), NULL);
 
-          ban_list_add(BAN_TYPE_USER, 0, reqargv[i], reason, 0, NULL);
+          ban_list_add(BAN_TYPE_USER, sid, reqargv[i], reason, 0, NULL);
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
             "added '%s' to banned users list", reqargv[i]);
           pr_ctrls_add_response(ctrl, "user %s banned", reqargv[i]);
 
-        } else
+        } else {
           pr_ctrls_add_response(ctrl, "maximum list size reached, unable to "
             "ban user '%s'", reqargv[i]);
+        }
 
-      } else
+      } else {
         pr_ctrls_add_response(ctrl, "user %s already banned", reqargv[i]);
+      }
     }
 
     ban_lock_shm(LOCK_UN);
@@ -1064,7 +1405,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     }
 
     /* Add each site to the list */
-    for (i = 1; i < reqargc; i++) {
+    for (i = optind; i < reqargc; i++) {
 
       /* XXX handle multiple addresses */
       pr_netaddr_t *site = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool,
@@ -1076,11 +1417,11 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
       }
  
       /* Check for duplicates. */
-      if (ban_list_exists(BAN_TYPE_HOST, 0, pr_netaddr_get_ipstr(site),
+      if (ban_list_exists(BAN_TYPE_HOST, sid, pr_netaddr_get_ipstr(site),
           NULL) < 0) {
 
         if (ban_lists->bans.bl_listlen < BAN_LIST_MAXSZ) {
-          ban_list_add(BAN_TYPE_HOST, 0, pr_netaddr_get_ipstr(site),
+          ban_list_add(BAN_TYPE_HOST, sid, pr_netaddr_get_ipstr(site),
             pstrcat(ctrl->ctrls_tmp_pool, "requested by '",
               ctrl->ctrls_cl->cl_user, "' on ",
               pr_strtime(time(NULL)), NULL), 0, NULL);
@@ -1088,12 +1429,14 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
             "added '%s' to banned hosts list", reqargv[i]);
           pr_ctrls_add_response(ctrl, "host %s banned", reqargv[i]);
 
-        } else
+        } else {
           pr_ctrls_add_response(ctrl, "maximum list size reached, unable to "
             "ban host '%s'", reqargv[i]);
+        }
 
-      } else
+      } else {
         pr_ctrls_add_response(ctrl, "host %s already banned", reqargv[i]);
+      }
     }
 
     ban_lock_shm(LOCK_UN);
@@ -1112,275 +1455,39 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     }
 
     /* Add each given class name to the list */
-    for (i = 1; i < reqargc; i++) {
+    for (i = optind; i < reqargc; i++) {
 
       /* Check for duplicates. */
-      if (ban_list_exists(BAN_TYPE_CLASS, 0, reqargv[i], NULL) < 0) {
+      if (ban_list_exists(BAN_TYPE_CLASS, sid, reqargv[i], NULL) < 0) {
 
         if (ban_lists->bans.bl_listlen < BAN_LIST_MAXSZ) {
           const char *reason = pstrcat(ctrl->ctrls_tmp_pool, "requested by '",
             ctrl->ctrls_cl->cl_user, "' on ", pr_strtime(time(NULL)), NULL);
 
-          ban_list_add(BAN_TYPE_CLASS, 0, reqargv[i], reason, 0, NULL);
+          ban_list_add(BAN_TYPE_CLASS, sid, reqargv[i], reason, 0, NULL);
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
             "added '%s' to banned classes list", reqargv[i]);
           pr_ctrls_add_response(ctrl, "class %s banned", reqargv[i]);
 
-        } else
+        } else {
           pr_ctrls_add_response(ctrl, "maximum list size reached, unable to "
             "ban class '%s'", reqargv[i]);
+        }
 
-      } else
+      } else {
         pr_ctrls_add_response(ctrl, "class %s already banned", reqargv[i]);
+      }
     }
 
     ban_lock_shm(LOCK_UN);
 
   /* Handle 'ban info' requests */
   } else if (strcmp(reqargv[0], "info") == 0) {
-    int optc;
-    int verbose = FALSE, show_events = FALSE, have_bans = FALSE;
-    const char *opts = "ev";
-
-    /* Check for options. */
-
-#if defined(FREEBSD4) || defined(FREEBSD5) || \
-    defined(FREEBSD6) || defined(FREEBSD7) || \
-    defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9)
-    optreset = 1;
-    opterr = 1;
-    optind = 1;
-
-#elif defined(SOLARIS2)
-    opterr = 0;
-    optind = 1;
-
-#else
-    opterr = 0;
-    optind = 0;
-#endif /* !FreeBSD, !Mac OSX and !Solaris2 */
-
-    if (pr_env_get(permanent_pool, "POSIXLY_CORRECT") == NULL) {
-      pr_env_set(permanent_pool, "POSIXLY_CORRECT", "1");
-    }
-
-    while ((optc = getopt(reqargc, reqargv, opts)) != -1) {
-      switch (optc) {
-        case 'e':
-          show_events = TRUE;
-          break;
-
-        case 'v':
-          verbose = TRUE;
-          break;
-
-        case '?':
-          pr_ctrls_add_response(ctrl, "unsupported parameter: '%s'",
-            reqargv[1]);
-          return -1;
-      }
-    }
-
-    if (ban_lock_shm(LOCK_SH) < 0) {
-      pr_ctrls_add_response(ctrl, "error locking shm: %s", strerror(errno));
-      return -1;
-    }
-
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION, "showing ban lists");
-
-    if (ban_lists->bans.bl_listlen) {
-      int have_user = FALSE, have_host = FALSE, have_class = FALSE;
-
-      for (i = 0; i < BAN_LIST_MAXSZ; i++) {
-        if (ban_lists->bans.bl_entries[i].be_type == BAN_TYPE_USER) {
-          have_bans = TRUE;
-
-          if (!have_user) {
-            pr_ctrls_add_response(ctrl, "Banned Users:");
-            have_user = TRUE;
-          }
-
-          pr_ctrls_add_response(ctrl, "  %s",
-            ban_lists->bans.bl_entries[i].be_name);
-
-          if (verbose) {
-            server_rec *s;
-
-            pr_ctrls_add_response(ctrl, "    Reason: %s",
-              ban_lists->bans.bl_entries[i].be_reason);
-
-            if (ban_lists->bans.bl_entries[i].be_expires) {
-              time_t now = time(NULL);
-              time_t then = ban_lists->bans.bl_entries[i].be_expires;
-
-              pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
-                pr_strtime(then), (unsigned long) (then - now));
-
-            } else {
-              pr_ctrls_add_response(ctrl, "    Expires: never");
-            }
-
-            s = ban_get_server_by_id(ban_lists->bans.bl_entries[i].be_sid);
-            if (s) {
-              pr_ctrls_add_response(ctrl, "    <VirtualHost>: %s (%s#%u)",
-                s->ServerName, pr_netaddr_get_ipstr(s->addr),
-                s->ServerPort);
-            }
-          }
-        }
-      }
-
-      for (i = 0; i < BAN_LIST_MAXSZ; i++) {
-        if (ban_lists->bans.bl_entries[i].be_type == BAN_TYPE_HOST) {
-          have_bans = TRUE;
-
-          if (!have_host) {
-            if (have_user)
-              pr_ctrls_add_response(ctrl, "%s", "");
-   
-            pr_ctrls_add_response(ctrl, "Banned Hosts:");
-            have_host = TRUE;
-          }
-
-          pr_ctrls_add_response(ctrl, "  %s",
-            ban_lists->bans.bl_entries[i].be_name);
-
-          if (verbose) {
-            server_rec *s;
-
-            pr_ctrls_add_response(ctrl, "    Reason: %s",
-              ban_lists->bans.bl_entries[i].be_reason);
-
-            if (ban_lists->bans.bl_entries[i].be_expires) {
-              time_t now = time(NULL);
-              time_t then = ban_lists->bans.bl_entries[i].be_expires;
-
-              pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
-                pr_strtime(then), (unsigned long) (then - now));
-
-            } else {
-              pr_ctrls_add_response(ctrl, "    Expires: never");
-            }
-
-            s = ban_get_server_by_id(ban_lists->bans.bl_entries[i].be_sid);
-            if (s) {
-              pr_ctrls_add_response(ctrl, "    <VirtualHost>: %s (%s#%u)",
-                s->ServerName, pr_netaddr_get_ipstr(s->addr),
-                s->ServerPort);
-            }
-          }
-        }
-      }
-
-      for (i = 0; i < BAN_LIST_MAXSZ; i++) {
-        if (ban_lists->bans.bl_entries[i].be_type == BAN_TYPE_CLASS) {
-          have_bans = TRUE;
-
-          if (!have_class) {
-            if (have_host)
-              pr_ctrls_add_response(ctrl, "%s", "");
-
-            pr_ctrls_add_response(ctrl, "Banned Classes:");
-            have_class = TRUE;
-          }
-
-          pr_ctrls_add_response(ctrl, "  %s",
-            ban_lists->bans.bl_entries[i].be_name);
-
-          if (verbose) {
-            server_rec *s;
-
-            pr_ctrls_add_response(ctrl, "    Reason: %s",
-              ban_lists->bans.bl_entries[i].be_reason);
-
-            if (ban_lists->bans.bl_entries[i].be_expires) {
-              time_t now = time(NULL);
-              time_t then = ban_lists->bans.bl_entries[i].be_expires;
-
-              pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
-                pr_strtime(then), (unsigned long) (then - now));
-
-            } else {
-              pr_ctrls_add_response(ctrl, "    Expires: never");
-            }
-
-            s = ban_get_server_by_id(ban_lists->bans.bl_entries[i].be_sid);
-            if (s) {
-              pr_ctrls_add_response(ctrl, "    <VirtualHost>: %s (%s#%u)",
-                s->ServerName, pr_netaddr_get_ipstr(s->addr),
-                s->ServerPort);
-            }
-          }
-        }
-      }
-
-    } else {
-      pr_ctrls_add_response(ctrl, "No bans");
-    }
-
-/* XXX need a way to clear the event list, too, I think...? */
-
-    if (show_events) {
-      pr_ctrls_add_response(ctrl, "%s", "");
-
-      if (ban_lists->events.bel_listlen) {
-        int have_banner = FALSE;
-        time_t now = time(NULL);
-
-        for (i = 0; i < BAN_EVENT_LIST_MAXSZ; i++) {
-          server_rec *s;
-          int type = ban_lists->events.bel_entries[i].bee_type;
-
-          switch (type) {
-            case BAN_EV_TYPE_ANON_REJECT_PASSWORDS:
-            case BAN_EV_TYPE_MAX_CLIENTS_PER_CLASS:
-            case BAN_EV_TYPE_MAX_CLIENTS_PER_HOST:
-            case BAN_EV_TYPE_MAX_CLIENTS_PER_USER:
-            case BAN_EV_TYPE_MAX_HOSTS_PER_USER:
-            case BAN_EV_TYPE_MAX_LOGIN_ATTEMPTS:
-            case BAN_EV_TYPE_TIMEOUT_IDLE:
-            case BAN_EV_TYPE_TIMEOUT_LOGIN:
-            case BAN_EV_TYPE_TIMEOUT_NO_TRANSFER:
-            case BAN_EV_TYPE_MAX_CONN_PER_HOST:
-            case BAN_EV_TYPE_CLIENT_CONNECT_RATE:
-            case BAN_EV_TYPE_LOGIN_RATE:
-              if (!have_banner) {
-                pr_ctrls_add_response(ctrl, "Ban Events:");
-                have_banner = TRUE;
-              }
-
-              pr_ctrls_add_response(ctrl, "  Event: %s",
-                ban_event_entry_typestr(type));
-              pr_ctrls_add_response(ctrl, "  Source: %s",
-                ban_lists->events.bel_entries[i].bee_src);
-              pr_ctrls_add_response(ctrl, "    Occurrences: %u/%u",
-                ban_lists->events.bel_entries[i].bee_count_curr,
-                ban_lists->events.bel_entries[i].bee_count_max);
-              pr_ctrls_add_response(ctrl, "    Entry Expires: %lu seconds",
-                (unsigned long) ban_lists->events.bel_entries[i].bee_start +
-                  ban_lists->events.bel_entries[i].bee_window - now);
-
-              s = ban_get_server_by_id(ban_lists->events.bel_entries[i].bee_sid);
-              if (s) {
-                pr_ctrls_add_response(ctrl, "    <VirtualHost>: %s (%s#%u)",
-                  s->ServerName, pr_netaddr_get_ipstr(s->addr),
-                  s->ServerPort);
-              }
-
-              break;
-          }
-        }
-
-      } else {
-        pr_ctrls_add_response(ctrl, "No ban events");
-      }
-    }
-
-    ban_lock_shm(LOCK_UN);
+    return ban_handle_info(ctrl, reqargc, reqargv);
 
   } else {
     pr_ctrls_add_response(ctrl, "unknown ban type requested: '%s'",
-      reqargv[0]);
+      reqargv[optind]);
     return -1;
   }
 
@@ -1390,6 +1497,10 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
 static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
   register unsigned int i = 0;
+  int optc;
+  unsigned int sid = 0;
+  const char *reqopts = "s:";
+  char *server_str = NULL;
 
   /* Check the permit ACL */
   if (!pr_ctrls_check_acl(ctrl, ban_acttab, "permit")) {
@@ -1410,6 +1521,58 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     return -1;
   }
 
+  /* Check for options. */
+  ban_reset_getopt();
+
+  while ((optc = getopt(reqargc, reqargv, reqopts)) != -1) {
+    switch (optc) {
+      case 's':
+        if (!optarg) {
+          pr_ctrls_add_response(ctrl, "-s requires server address");
+          return -1;
+        }
+        server_str = pstrdup(ctrl->ctrls_tmp_pool, optarg);
+        break;
+
+      case '?':
+        pr_ctrls_add_response(ctrl, "unsupported parameter: '%c'",
+          (char) optopt);
+        return -1;
+    }
+  }
+
+  if (server_str != NULL) {
+    char *ptr;
+    pr_netaddr_t *server_addr = NULL;
+    unsigned int server_port = 21;
+    int res;
+
+    ptr = strchr(server_str, '#');
+    if (ptr != NULL) {
+      server_port = atoi(ptr + 1);
+      *ptr = '\0';
+    }
+
+    server_addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, server_str, NULL);
+    if (server_addr == NULL) {
+      pr_ctrls_add_response(ctrl, "no such server '%s#%u'", server_str,
+        server_port);
+      return -1;
+    }
+
+    res = ban_get_sid_by_addr(server_addr, server_port);
+    if (res < 0) {
+      pr_ctrls_add_response(ctrl, "no such server '%s#%u'", server_str,
+        server_port);
+      return -1;
+    }
+
+    sid = res;
+  }
+
+  /* Make sure the lists are up-to-date. */
+  ban_list_expire();
+
   /* Handle 'permit user' requests */
   if (strcmp(reqargv[0], "user") == 0) {
 
@@ -1424,23 +1587,35 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
       return -1;
     }
 
-    if (strcmp(reqargv[1], "*") == 0) {
+    if (strcmp(reqargv[optind], "*") == 0) {
 
       /* Clear the list by permitting all users. */
-      ban_list_remove(BAN_TYPE_USER, NULL);
+      ban_list_remove(BAN_TYPE_USER, sid, NULL);
       pr_ctrls_add_response(ctrl, "all users permitted");
 
     } else {
+      server_rec *s = NULL;
+
+      if (sid != 0) {
+        s = ban_get_server_by_id(sid);
+      }
 
       /* Permit each given user name. */
-      for (i = 1; i < reqargc; i++) {
-        if (ban_list_remove(BAN_TYPE_USER, reqargv[i]) == 0) {
+      for (i = optind; i < reqargc; i++) {
+        if (ban_list_remove(BAN_TYPE_USER, sid, reqargv[i]) == 0) {
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
             "removed '%s' from ban list", reqargv[i]);
           pr_ctrls_add_response(ctrl, "user '%s' permitted", reqargv[i]);
 
-        } else
-          pr_ctrls_add_response(ctrl, "user '%s' not banned", reqargv[i]);
+        } else {
+          if (s == NULL) {
+            pr_ctrls_add_response(ctrl, "user '%s' not banned", reqargv[i]);
+
+          } else {
+            pr_ctrls_add_response(ctrl, "user '%s' not banned on %s#%u",
+              reqargv[i], pr_netaddr_get_ipstr(s->addr), s->ServerPort);
+          }
+        }
       }
     }
 
@@ -1460,32 +1635,46 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
       return -1;
     }
 
-    if (strcmp(reqargv[1], "*") == 0) {
+    if (strcmp(reqargv[optind], "*") == 0) {
 
       /* Clear the list by permitting all hosts. */
-      ban_list_remove(BAN_TYPE_HOST, NULL);
+      ban_list_remove(BAN_TYPE_HOST, sid, NULL);
       pr_ctrls_add_response(ctrl, "all hosts permitted");
 
     } else {
+      server_rec *s = NULL;
 
-      for (i = 1; i < reqargc; i++) {
+      if (sid != 0) {
+        s = ban_get_server_by_id(sid);
+      }
+
+      for (i = optind; i < reqargc; i++) {
 
         /* XXX handle multiple addresses */
         pr_netaddr_t *site = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool,
           reqargv[i], NULL);
 
         if (site) {
-          if (ban_list_remove(BAN_TYPE_HOST, pr_netaddr_get_ipstr(site)) == 0) {
+          if (ban_list_remove(BAN_TYPE_HOST, sid,
+                pr_netaddr_get_ipstr(site)) == 0) {
             (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
               "removed '%s' from banned hosts list", reqargv[i]);
             pr_ctrls_add_response(ctrl, "host '%s' permitted", reqargv[i]);
 
-          } else
-            pr_ctrls_add_response(ctrl, "host '%s' not banned", reqargv[i]);
+          } else {
+            if (s == NULL) {
+              pr_ctrls_add_response(ctrl, "host '%s' not banned", reqargv[i]);
 
-        } else
+            } else {
+              pr_ctrls_add_response(ctrl, "host '%s' not banned on %s#%u",
+                reqargv[i], pr_netaddr_get_ipstr(s->addr), s->ServerPort);
+            }
+          }
+
+        } else {
           pr_ctrls_add_response(ctrl, "unable to resolve '%s' to an IP address",
             reqargv[i]);
+        }
       }
     }
 
@@ -1505,23 +1694,35 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
       return -1;
     }
 
-    if (strcmp(reqargv[1], "*") == 0) {
+    if (strcmp(reqargv[optind], "*") == 0) {
 
       /* Clear the list by permitting all classes. */
-      ban_list_remove(BAN_TYPE_CLASS, NULL);
+      ban_list_remove(BAN_TYPE_CLASS, 0, NULL);
       pr_ctrls_add_response(ctrl, "all classes permitted");
 
     } else {
+      server_rec *s = NULL;
+
+      if (sid != 0) {
+        s = ban_get_server_by_id(sid);
+      }
 
       /* Permit each given class name. */
-      for (i = 1; i < reqargc; i++) {
-        if (ban_list_remove(BAN_TYPE_CLASS, reqargv[i]) == 0) {
+      for (i = optind; i < reqargc; i++) {
+        if (ban_list_remove(BAN_TYPE_CLASS, sid, reqargv[i]) == 0) {
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
             "removed '%s' from banned classes list", reqargv[i]);
           pr_ctrls_add_response(ctrl, "class '%s' permitted", reqargv[i]);
 
-        } else
-          pr_ctrls_add_response(ctrl, "class '%s' not banned", reqargv[i]);
+        } else {
+          if (s == NULL) {
+            pr_ctrls_add_response(ctrl, "class '%s' not banned", reqargv[i]);
+
+          } else {
+            pr_ctrls_add_response(ctrl, "class '%s' not banned on %s#%u",
+              reqargv[i], pr_netaddr_get_ipstr(s->addr), s->ServerPort);
+          }
+        }
       }
     }
 
