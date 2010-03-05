@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2009 The ProFTPD Project team
+ * Copyright (c) 2004-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.19 2009-03-05 06:01:51 castaglia Exp $
+ * $Id: parser.c,v 1.20 2010-03-05 22:40:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,7 +38,7 @@ static config_rec **parser_curr_config = NULL;
 
 static array_header *parser_servstack = NULL;
 static server_rec **parser_curr_server = NULL;
-static unsigned int parser_sid = 0;
+static unsigned int parser_sid = 1;
 
 static xaset_t **parser_server_list = NULL;
 
@@ -151,7 +151,7 @@ int pr_parser_cleanup(void) {
   parser_curr_config = NULL;
 
   /* Reset the SID counter. */
-  parser_sid = 0;
+  parser_sid = 1;
 
   return 0;
 }
