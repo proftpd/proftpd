@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008 The ProFTPD Project team
+ * Copyright (c) 2008-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,6 +47,7 @@ static struct testsuite_info suites[] = {
   { "regexp",	tests_get_regexp_suite },
   { "expr",	tests_get_expr_suite },
   { "scoreboard",	tests_get_scoreboard_suite },
+  { "stash",	tests_get_stash_suite },
   { "modules",	tests_get_modules_suite },
 
   { NULL, NULL }
@@ -103,6 +104,9 @@ static Suite *tests_get_suite(const char *suite) {
 
   } else if (strcmp(suite, "scoreboard") == 0) {
     return tests_get_scoreboard_suite();
+
+  } else if (strcmp(suite, "stash") == 0) {
+    return tests_get_stash_suite();
 
   } else if (strcmp(suite, "modules") == 0) {
     return tests_get_modules_suite();
