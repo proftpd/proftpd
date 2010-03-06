@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.90 2010-03-03 16:23:32 castaglia Exp $
+ * $Id: fsio.c,v 1.91 2010-03-06 19:32:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2306,6 +2306,7 @@ void *pr_fsio_opendir(const char *path) {
   DIR *res = NULL;
 
   if (strchr(path, '/') == NULL) {
+    pr_fs_setcwd(pr_fs_getcwd());
     fs = fs_cwd;
 
   } else {
