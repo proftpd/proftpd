@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.53 2009-02-15 00:27:34 castaglia Exp $
+ * $Id: modules.h,v 1.54 2010-03-06 17:42:20 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -168,19 +168,6 @@ int pr_module_load(module *m);
 int pr_module_unload(module *m);
 
 modret_t *pr_module_call(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
-
-/* Symbol table hash ("stash") support. */
-typedef enum {
-  PR_SYM_CONF = 1,
-  PR_SYM_CMD,
-  PR_SYM_AUTH,
-  PR_SYM_HOOK
-} pr_stash_type_t;
-
-int init_stash(void);
-int pr_stash_add_symbol(pr_stash_type_t, void *);
-void *pr_stash_get_symbol(pr_stash_type_t, const char *, void *, int *);
-int pr_stash_remove_symbol(pr_stash_type_t, const char *, module *);
 
 /* This function is in main.c, but is prototyped here */
 void set_auth_check(int (*ck)(cmd_rec *));
