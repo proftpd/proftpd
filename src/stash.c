@@ -23,7 +23,7 @@
  */
 
 /* Symbol table hashes
- * $Id: stash.c,v 1.1 2010-03-06 17:42:20 castaglia Exp $
+ * $Id: stash.c,v 1.2 2010-03-06 18:28:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -52,8 +52,6 @@ static struct stash *curr_sym = NULL;
 
 /* Symbol stash lookup code and management */
 
-static unsigned int sym_nstrcmps = 0;
-
 static struct stash *sym_alloc(void) {
   pool *sub_pool;
   struct stash *sym;
@@ -75,7 +73,6 @@ static int sym_cmp(struct stash *s1, struct stash *s2) {
   int res;
 
   res = strcmp(s1->sym_name, s2->sym_name);
-  sym_nstrcmps++;
 
   /* Higher priority modules must go BEFORE lower priority in the
    * hash tables.
@@ -215,7 +212,6 @@ static struct stash *stash_lookup(pr_stash_type_t sym_type,
         sym = sym->next) {
       if (sym->sym_type == sym_type &&
           (!name || strcasecmp(sym->sym_name, name) == 0)) {
-        sym_nstrcmps++;
         break;
       }
     }
@@ -234,7 +230,6 @@ static struct stash *stash_lookup_next(pr_stash_type_t sym_type,
         sym = sym->next) {
       if (last_hit && sym->sym_type == sym_type &&
           (!name || strcasecmp(sym->sym_name, name) == 0)) {
-        sym_nstrcmps++;
         break;
       }
 
