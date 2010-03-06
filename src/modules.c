@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.58 2010-02-14 00:19:06 castaglia Exp $
+ * $Id: modules.c,v 1.59 2010-03-06 17:26:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -60,12 +60,6 @@ module *curr_module = NULL;
 
 /* Used to track the priority for loaded modules. */
 static unsigned int curr_module_pri = 0;
-
-typedef struct mod_cb {
-  struct mod_cb *next, *prev;
-
-  int (*module_cb)(void);
-} module_cb_t;
 
 /* Symbol stash lookup code and management */
 
