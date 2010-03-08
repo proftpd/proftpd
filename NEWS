@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1148 2010-03-08 17:30:21 castaglia Exp $
+$Id: NEWS,v 1.1149 2010-03-08 18:28:16 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -33,6 +33,8 @@ CVS
 - Bug 3393 - Specify the <VirtualHost> when using 'ban' or 'permit' ftpdctl
   actions.
 - Bug 2196 - Handle IPv4-mapped IPv6 addresses as IPv4 addresses.
+- Bug 3407 - Use glob characters as literal characters if no glob match found
+  for LIST/NLST.
 
 1.3.3 - Released 24-Feb-2010
 --------------------------------

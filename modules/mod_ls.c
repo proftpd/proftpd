@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.173 2010-02-25 02:16:35 castaglia Exp $
+ * $Id: mod_ls.c,v 1.174 2010-03-08 18:28:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1599,9 +1599,22 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
         if (a == 0) {
           pr_log_debug(DEBUG8, "LIST: glob(3) returned %lu %s",
             (unsigned long) g.gl_pathc, g.gl_pathc != 1 ? "paths" : "path");
-        }
+          globbed = TRUE;
 
-        globbed = TRUE;
+        } else {
+          if (a == GLOB_NOMATCH) {
+            pr_log_debug(DEBUG10, "LIST: glob(3) returned GLOB_NOMATCH "
+              "for '%s', handling as literal path", target);
+
+            /* Trick the following code into using the non-glob() processed
+             * path.
+             */
+            a = 0;
+            g.gl_pathv = (char **) pcalloc(cmd->tmp_pool, 2 * sizeof(char *));
+            g.gl_pathv[0] = (char *) pstrdup(cmd->tmp_pool, target);
+            g.gl_pathv[1] = NULL;
+          }
+        }
 
       } else {
 
@@ -2413,17 +2426,42 @@ MODRET ls_nlst(cmd_rec *cmd) {
       strpbrk(target, "[*?") != NULL) {
     glob_t g;
     char **path, *p;
+    int globbed = FALSE;
 
     /* Make sure the glob_t is initialized */
     memset(&g, '\0', sizeof(glob_t));
 
-    if (pr_fs_glob(target, glob_flags, NULL, &g) != 0) {
-      pr_response_add_err(R_450, _("No files found"));
-      return PR_ERROR(cmd);
-    }
+    res = pr_fs_glob(target, glob_flags, NULL, &g);
+    if (res == 0) {
+      pr_log_debug(DEBUG8, "NLST: glob(3) returned %lu %s",
+        (unsigned long) g.gl_pathc, g.gl_pathc != 1 ? "paths" : "path");
+      globbed = TRUE;
 
-    pr_log_debug(DEBUG8, "LIST: glob(3) returned %lu %s",
-      (unsigned long) g.gl_pathc, g.gl_pathc != 1 ? "paths" : "path");
+    } else {
+      if (res == GLOB_NOMATCH) {
+        struct stat st;
+
+        if (pr_fsio_stat(target, &st) == 0) {
+          pr_log_debug(DEBUG10, "NLST: glob(3) returned GLOB_NOMATCH for '%s', "
+            "handling as literal path", target);
+
+          /* Trick the following code into using the non-glob() processed path.
+           */
+          res = 0;
+          g.gl_pathv = (char **) pcalloc(cmd->tmp_pool, 2 * sizeof(char *));
+          g.gl_pathv[0] = (char *) pstrdup(cmd->tmp_pool, target);
+          g.gl_pathv[1] = NULL;
+
+        } else {
+          pr_response_add_err(R_450, _("No files found"));
+          return PR_ERROR(cmd);
+        }
+
+      } else {
+        pr_response_add_err(R_450, _("No files found"));
+        return PR_ERROR(cmd);
+      }
+    }
 
     if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
       return PR_ERROR(cmd);
@@ -2460,7 +2498,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
     }
 
     sendline(LS_SENDLINE_FL_FLUSH, " ");
-    pr_fs_globfree(&g);
+    if (globbed) {
+      pr_fs_globfree(&g);
+    }
 
   } else {
 
