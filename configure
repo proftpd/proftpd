@@ -1616,6 +1616,14 @@ Optional Packages:
                           colon-separated list of modules to build as DSOs
                           e.g. --with-shared=mod_rewrite:mod_ifsession
 
+  --with-mysql-config=PATH
+                          configure location of the MySQL mysql_config script
+                          (default=mysql_config)
+
+  --with-postgres-config=PATH
+                          configure location of the Postgres pg_config script
+                          (default=pg_config)
+
   --with-pkgconfig=PATH   configure directory that will contain the proftpd.pc
                           pkgconfig file (default=lib/pkgconfig)
 
@@ -3844,13 +3852,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:3847: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:3855: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:3850: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:3858: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:3853: output\"" >&5)
+  (eval echo "\"\$as_me:3861: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -5072,7 +5080,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 5075 "configure"' > conftest.$ac_ext
+  echo '#line 5083 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -6922,11 +6930,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:6925: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:6933: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:6929: \$? = $ac_status" >&5
+   echo "$as_me:6937: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7261,11 +7269,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7264: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7272: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7268: \$? = $ac_status" >&5
+   echo "$as_me:7276: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7366,11 +7374,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7369: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7377: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7373: \$? = $ac_status" >&5
+   echo "$as_me:7381: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -7421,11 +7429,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7424: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7432: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7428: \$? = $ac_status" >&5
+   echo "$as_me:7436: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -10190,7 +10198,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10193 "configure"
+#line 10201 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -10286,7 +10294,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10289 "configure"
+#line 10297 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12909,6 +12917,78 @@ echo "$as_me: error: cannot build $amodule as a shared module" >&2;}
 fi
 
 
+my_config="mysql_config"
+
+# Check whether --with-mysql-config was given.
+if test "${with_mysql_config+set}" = set; then
+  withval=$with_mysql_config;
+    if test x"$withval" != x; then
+      my_config=`echo "$withval"`
+
+      if test -z "$my_config"; then
+        my_config="no"
+
+      elif test x"$my_config" = xno; then
+        # do nothing
+        foo=bar
+
+      elif test x"$my_config" = xyes; then
+        # Use the default
+        my_config="mysql_config"
+
+      elif test -x "$my_config"; then
+        # do nothing
+        foo=bar
+
+      else
+        { { echo "$as_me:$LINENO: error: mysql_config path $my_config is not executable" >&5
+echo "$as_me: error: mysql_config path $my_config is not executable" >&2;}
+   { (exit 1); exit 1; }; }
+      fi
+
+    else
+      my_config="no"
+    fi
+
+fi
+
+
+pg_config="pg_config"
+
+# Check whether --with-postgres-config was given.
+if test "${with_postgres_config+set}" = set; then
+  withval=$with_postgres_config;
+    if test x"$withval" != x; then
+      pg_config=`echo "$withval"`
+
+      if test -z "$pg_config"; then
+        pg_config="no"
+
+      elif test x"$pg_config" = xno; then
+        # do nothing
+        foo=bar
+
+      elif test x"$pg_config" = xyes; then
+        # Use the default
+        pg_config="pg_config"
+
+      elif test -x "$pg_config"; then
+        # do nothing
+        foo=bar
+
+      else
+        { { echo "$as_me:$LINENO: error: pg_config path $pg_config is not executable" >&5
+echo "$as_me: error: pg_config path $pg_config is not executable" >&2;}
+   { (exit 1); exit 1; }; }
+      fi
+
+    else
+      pg_config="no"
+    fi
+
+fi
+
+
 pkgconfigdir=NONE
 
 # Check whether --with-pkgconfig was given.
@@ -13935,7 +14015,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 13938 "configure"
+#line 14018 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -31254,6 +31334,46 @@ echo "$as_me: error: duplicate build request for $j -- aborting" >&2;}
       fi
     fi
   done
+
+      if test x"$i" = x"mod_sql_mysql"; then
+    if test x"$my_config" != xno; then
+      if `$my_config --version 2>/dev/null 1>&2`; then
+        # mysql_config --include gives path WITH -I prefix
+        mysql_includes=`$my_config --include 2>/dev/null`
+        if test ! -z "$mysql_includes"; then
+          ac_build_addl_includes="$ac_build_addl_includes $mysql_includes"
+        fi
+
+        # mysql_config --libs gives ALL options; use just the -L ones
+        mysql_libdirs=`$my_config --libs 2>/dev/null`
+        if test ! -z "$mysql_libdirs"; then
+          for libdir in $mysql_libdirs; do
+            l=`echo -n "$libdir" | sed -n '/^-L/{p;}'`
+            if test ! -z "$l"; then
+              ac_build_addl_libdirs="$ac_build_addl_libdirs $libdir"
+            fi
+          done
+        fi
+      fi
+    fi
+
+  elif test x"$i" = x"mod_sql_postgres"; then
+    if test x"$pg_config" != xno; then
+      if `$pg_config 2>/dev/null 1>&2`; then
+        # pg_config --includedir gives path, no -I prefix
+        pg_includes=`$pg_config --includedir 2>/dev/null`
+        if test ! -z "$pg_includes"; then
+          ac_build_addl_includes="$ac_build_addl_includes -I$pg_includes"
+        fi
+
+        # pg_config --libdir gives path, no -L prefix
+        pg_libdirs=`$pg_config --libdir 2>/dev/null`
+        if test ! -z "pg_libdirs"; then
+          ac_build_addl_libdirs="$ac_build_addl_libdirs -L$pg_libdirs"
+        fi
+      fi
+    fi
+  fi
 done
 { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
