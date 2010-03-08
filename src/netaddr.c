@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.71 2010-03-04 01:27:44 castaglia Exp $
+ * $Id: netaddr.c,v 1.72 2010-03-08 17:30:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -881,12 +881,7 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
       /* This case means that na1 is an IPv4-mapped IPv6 address, and
        * na2 is an IPv4 address.
        */
-      a = pr_netaddr_alloc(tmp_pool);
-      pr_netaddr_set_family(a, AF_INET);
-      pr_netaddr_set_port(a, pr_netaddr_get_port(na1));
-      memcpy(&a->na_addr.v4.sin_addr, get_v4inaddr(na1),
-        sizeof(struct in_addr));
-
+      a = pr_netaddr_v4tov6(tmp_pool, na1);
       b = (pr_netaddr_t *) na2;
 
       pr_trace_msg(trace_channel, 6, "comparing IPv4 address '%s' against "
@@ -903,12 +898,7 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
        * IPv4-mapped IPv6 address.
        */
       a = (pr_netaddr_t *) na1;
-
-      b = pr_netaddr_alloc(tmp_pool);
-      pr_netaddr_set_family(b, AF_INET);
-      pr_netaddr_set_port(b, pr_netaddr_get_port(na2));
-      memcpy(&b->na_addr.v4.sin_addr, get_v4inaddr(na2),
-        sizeof(struct in_addr));
+      b = pr_netaddr_v4tov6(tmp_pool, na2);
 
       pr_trace_msg(trace_channel, 6, "comparing IPv4 address '%s' against "
         "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(a),
@@ -1004,12 +994,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
       /* This case means that na1 is an IPv4-mapped IPv6 address, and
        * na2 is an IPv4 address.
        */
-      a = pr_netaddr_alloc(tmp_pool);
-      pr_netaddr_set_family(a, AF_INET);
-      pr_netaddr_set_port(a, pr_netaddr_get_port(na1));
-      memcpy(&a->na_addr.v4.sin_addr, get_v4inaddr(na1),
-        sizeof(struct in_addr));
-
+      a = pr_netaddr_v4tov6(tmp_pool, na1);
       b = (pr_netaddr_t *) na2;
 
       pr_trace_msg(trace_channel, 6, "comparing IPv4 address '%s' against "
@@ -1023,12 +1008,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
        * IPv4-mapped IPv6 address.
        */
       a = (pr_netaddr_t *) na1;
-
-      b = pr_netaddr_alloc(tmp_pool);
-      pr_netaddr_set_family(b, AF_INET);
-      pr_netaddr_set_port(b, pr_netaddr_get_port(na2));
-      memcpy(&b->na_addr.v4.sin_addr, get_v4inaddr(na2),
-        sizeof(struct in_addr));
+      b = pr_netaddr_v4tov6(tmp_pool, na2);
 
       pr_trace_msg(trace_channel, 6, "comparing IPv4 address '%s' against "
         "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(a),
@@ -1182,11 +1162,7 @@ int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern, int flags) {
         ipstr);
 
       tmp_pool = make_sub_pool(permanent_pool);
-      a = pr_netaddr_alloc(tmp_pool);
-      pr_netaddr_set_family(a, AF_INET);
-      pr_netaddr_set_port(a, pr_netaddr_get_port(na));
-      memcpy(&a->na_addr.v4.sin_addr, get_v4inaddr(na),
-        sizeof(struct in_addr));
+      a = pr_netaddr_v4tov6(tmp_pool, na);
 
       ipstr = pr_netaddr_get_ipstr(a);
 
@@ -1562,6 +1538,28 @@ int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *na) {
 
   errno = EPERM;
   return -1;
+}
+
+pr_netaddr_t *pr_netaddr_v4tov6(pool *p, const pr_netaddr_t *na) {
+  pr_netaddr_t *res;
+
+  if (p == NULL ||
+      na == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (pr_netaddr_is_v4mappedv6(na) != TRUE) {
+    errno = EPERM;
+    return NULL;
+  }
+
+  res = pr_netaddr_alloc(p);
+  pr_netaddr_set_family(res, AF_INET);
+  pr_netaddr_set_port(res, pr_netaddr_get_port(na));
+  memcpy(&res->na_addr.v4.sin_addr, get_v4inaddr(na), sizeof(struct in_addr));
+
+  return res;
 }
 
 pr_netaddr_t *pr_netaddr_get_sess_local_addr(void) {

@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.24 2010-03-04 01:27:44 castaglia Exp $
+ * $Id: netaddr.h,v 1.25 2010-03-08 17:30:21 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -360,6 +360,12 @@ int pr_netaddr_is_loopback(const pr_netaddr_t *);
  * return value of -1 is used to indicate an error.
  */
 int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *);
+
+/* Given an IPv4-mapped IPv6 netaddr, returns an IPv4 netaddr allocated from
+ * the given pool.  Returns -1 if the given netaddr is not an IPv4-mapped
+ * IPv6 address.
+ */
+pr_netaddr_t *pr_netaddr_v4tov6(pool *p, const pr_netaddr_t *);
 
 /* Returns TRUE if IPv6 support is enabled, FALSE otherwise. */
 unsigned char pr_netaddr_use_ipv6(void);

@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.122 2010-03-04 21:52:40 castaglia Exp $
+ * $Id: inet.c,v 1.123 2010-03-08 17:30:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1060,17 +1060,18 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
   pr_netaddr_clear(&na);
 
 #ifdef PR_USE_IPV6
-  if (pr_netaddr_use_ipv6())
+  if (pr_netaddr_use_ipv6()) {
     pr_netaddr_set_family(&na, AF_INET6);
 
-  else
+  } else {
     pr_netaddr_set_family(&na, AF_INET);
+  }
 #else
   pr_netaddr_set_family(&na, AF_INET);
 #endif /* PR_USE_IPV6 */
   nalen = pr_netaddr_get_sockaddr_len(&na);
 
-  if (getsockname(fd, pr_netaddr_get_sockaddr(&na), &nalen) != -1) {
+  if (getsockname(fd, pr_netaddr_get_sockaddr(&na), &nalen) == 0) {
     if (!c->local_addr)
       c->local_addr = pr_netaddr_alloc(c->pool);
 
@@ -1084,31 +1085,41 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
     pr_netaddr_set_sockaddr(c->local_addr, pr_netaddr_get_sockaddr(&na));
     c->local_port = ntohs(pr_netaddr_get_port(&na));
 
-  } else
+  } else {
     return -1;
+  }
 
   /* "Reset" the pr_netaddr_t struct for the getpeername(2) call. */
 #ifdef PR_USE_IPV6
-  if (pr_netaddr_use_ipv6())
+  if (pr_netaddr_use_ipv6()) {
     pr_netaddr_set_family(&na, AF_INET6);
 
-  else
+  } else {
     pr_netaddr_set_family(&na, AF_INET);
+  }
 #else
   pr_netaddr_set_family(&na, AF_INET);
 #endif /* PR_USE_IPV6 */
   nalen = pr_netaddr_get_sockaddr_len(&na);
 
-  if (getpeername(fd, pr_netaddr_get_sockaddr(&na), &nalen) != -1) {
-    c->remote_addr = pr_netaddr_alloc(c->pool);
+  if (getpeername(fd, pr_netaddr_get_sockaddr(&na), &nalen) == 0) {
+    /* Handle IPv4-mapped IPv6 peers as IPv4 peers (Bug#2196). */
+    if (pr_netaddr_is_v4mappedv6(&na) == TRUE) {
+      c->remote_addr = pr_netaddr_v4tov6(c->pool, &na);
 
-    pr_netaddr_set_family(c->remote_addr,
-      pr_netaddr_get_sockaddr(&na)->sa_family);
-    pr_netaddr_set_sockaddr(c->remote_addr, pr_netaddr_get_sockaddr(&na));
+    } else {
+      c->remote_addr = pr_netaddr_alloc(c->pool);
+
+      pr_netaddr_set_family(c->remote_addr,
+        pr_netaddr_get_sockaddr(&na)->sa_family);
+      pr_netaddr_set_sockaddr(c->remote_addr, pr_netaddr_get_sockaddr(&na));
+    }
+
     c->remote_port = ntohs(pr_netaddr_get_port(&na));
 
-  } else
+  } else {
     return -1;
+  }
 
   return 0;
 }
