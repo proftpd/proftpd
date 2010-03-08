@@ -373,6 +373,76 @@ AC_ARG_WITH(shared,
     fi
   ])
 
+dnl Configuration location of mysql_config
+my_config="mysql_config"
+AC_ARG_WITH(mysql-config,
+  [AC_HELP_STRING(
+    [--with-mysql-config=PATH],
+    [configure location of the MySQL mysql_config script (default=mysql_config)])
+  ],
+  [
+    if test x"$withval" != x; then
+      my_config=`echo "$withval"`
+
+      if test -z "$my_config"; then
+        my_config="no"
+
+      elif test x"$my_config" = xno; then
+        # do nothing
+        foo=bar
+
+      elif test x"$my_config" = xyes; then
+        # Use the default
+        my_config="mysql_config"
+
+      elif test -x "$my_config"; then
+        # do nothing
+        foo=bar
+
+      else
+        AC_MSG_ERROR([mysql_config path $my_config is not executable])
+      fi
+
+    else
+      my_config="no"
+    fi
+  ])
+
+dnl Configuration location of pg_config
+pg_config="pg_config"
+AC_ARG_WITH(postgres-config,
+  [AC_HELP_STRING(
+    [--with-postgres-config=PATH],
+    [configure location of the Postgres pg_config script (default=pg_config)])
+  ],
+  [
+    if test x"$withval" != x; then
+      pg_config=`echo "$withval"`
+
+      if test -z "$pg_config"; then
+        pg_config="no"
+
+      elif test x"$pg_config" = xno; then
+        # do nothing
+        foo=bar
+
+      elif test x"$pg_config" = xyes; then
+        # Use the default
+        pg_config="pg_config"
+
+      elif test -x "$pg_config"; then
+        # do nothing
+        foo=bar
+
+      else
+        AC_MSG_ERROR([pg_config path $pg_config is not executable])
+      fi
+
+    else
+      pg_config="no"
+    fi
+  ])
+
 dnl Configurable location of the pkgconfig file
 pkgconfigdir=NONE
 AC_ARG_WITH(pkgconfig,
@@ -1940,6 +2010,48 @@ for i in $all_modules; do
       fi
     fi
   done
+
+  dnl Use database-specific config scripts, if we can.  Note that
+  dnl these will cause problems for cross-compiles!
+  if test x"$i" = x"mod_sql_mysql"; then
+    if test x"$my_config" != xno; then
+      if `$my_config --version 2>/dev/null 1>&2`; then
+        # mysql_config --include gives path WITH -I prefix
+        mysql_includes=`$my_config --include 2>/dev/null`
+        if test ! -z "$mysql_includes"; then
+          ac_build_addl_includes="$ac_build_addl_includes $mysql_includes"
+        fi
+ 
+        # mysql_config --libs gives ALL options; use just the -L ones
+        mysql_libdirs=`$my_config --libs 2>/dev/null`
+        if test ! -z "$mysql_libdirs"; then
+          for libdir in $mysql_libdirs; do
+            l=`echo -n "$libdir" | sed -n '/^-L/{p;}'`
+            if test ! -z "$l"; then
+              ac_build_addl_libdirs="$ac_build_addl_libdirs $libdir"
+            fi
+          done
+        fi
+      fi
+    fi
+
+  elif test x"$i" = x"mod_sql_postgres"; then
+    if test x"$pg_config" != xno; then
+      if `$pg_config 2>/dev/null 1>&2`; then
+        # pg_config --includedir gives path, no -I prefix
+        pg_includes=`$pg_config --includedir 2>/dev/null`
+        if test ! -z "$pg_includes"; then
+          ac_build_addl_includes="$ac_build_addl_includes -I$pg_includes"
+        fi
+
+        # pg_config --libdir gives path, no -L prefix
+        pg_libdirs=`$pg_config --libdir 2>/dev/null`
+        if test ! -z "pg_libdirs"; then
+          ac_build_addl_libdirs="$ac_build_addl_libdirs -L$pg_libdirs"
+        fi
+      fi
+    fi
+  fi
 done
 AC_MSG_RESULT([no])
 
