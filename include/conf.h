@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.81 2010-03-06 17:42:20 castaglia Exp $
+ * $Id: conf.h,v 1.82 2010-03-08 22:13:53 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -237,13 +237,17 @@ char *strchr(),*strrchr();
  * then try termio.h
  */
 
-#ifdef HAVE_SYS_TERMIOS_H
-# include <sys/termios.h>
+#ifdef HAVE_TERMIOS_H
+# include <termios.h>
 #else
-# ifdef HAVE_SYS_TERMIO_H
-#  include <sys/termio.h>
-# endif /* HAVE_SYS_TERMIO_H */
-#endif /* HAVE_SYS_TERMIOS_H */
+# ifdef HAVE_SYS_TERMIOS_H
+#  include <sys/termios.h>
+# else
+#  ifdef HAVE_SYS_TERMIO_H
+#   include <sys/termio.h>
+#  endif /* HAVE_SYS_TERMIO_H */
+# endif /* HAVE_SYS_TERMIOS_H */
+#endif /* HAVE_TERMIOS_H */
 
 #ifdef PR_USE_NLS
 # ifdef HAVE_LIBINTL_H
