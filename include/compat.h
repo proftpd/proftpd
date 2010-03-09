@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2005-2009 The ProFTPD Project team
+ * Copyright (c) 2005-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Compatibility
- * $Id: compat.h,v 1.13 2009-03-10 16:59:23 castaglia Exp $
+ * $Id: compat.h,v 1.14 2010-03-09 02:38:54 castaglia Exp $
  */
 
 #ifndef PR_COMPAT_H
@@ -78,10 +78,6 @@
 #define call_module			pr_module_call
 
 /* The following macros first appeared in 1.3.3rc1. */
-#define pr_inet_copy_connection		pr_inet_copy_conn
-#define pr_inet_create_connection	pr_inet_create_conn
-#define pr_inet_create_conn_portrange	pr_inet_create_conn_portrange
-
 #define ctrls_check_acl			pr_ctrls_check_acl
 #define ctrls_check_group_acl		pr_ctrls_check_group_acl
 #define ctrls_check_user_acl		pr_ctrls_check_user_acl

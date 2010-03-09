@@ -25,7 +25,7 @@
  */
 
 /* BSD socket manipulation tools.
- * $Id: inet.h,v 1.33 2010-03-04 21:52:40 castaglia Exp $
+ * $Id: inet.h,v 1.34 2010-03-09 02:38:54 castaglia Exp $
  */
 
 #ifndef PR_INET_H
@@ -128,15 +128,21 @@ typedef struct conn_struc {
 
 } conn_t;
 
+/* Used for event data for events related to opening of sockets */
+struct socket_ctx {
+  server_rec *server;
+  pr_netaddr_t *addr;
+  int sockfd;
+};
+
 /* Prototypes */
 void pr_inet_clear(void);
 int pr_inet_reverse_dns(pool *, int);
 int pr_inet_getservport(pool *, const char *, const char *);
 pr_netaddr_t *pr_inet_getaddr(pool *, const char *, array_header **);
 conn_t *pr_inet_copy_conn(pool *, conn_t*);
-conn_t *pr_inet_create_conn(pool *, xaset_t *, int, pr_netaddr_t *, int, int);
-conn_t *pr_inet_create_conn_portrange(pool *, xaset_t *, pr_netaddr_t *,
-  int, int);
+conn_t *pr_inet_create_conn(pool *, int, pr_netaddr_t *, int, int);
+conn_t *pr_inet_create_conn_portrange(pool *, pr_netaddr_t *, int, int);
 void pr_inet_close(pool *, conn_t *);
 void pr_inet_lingering_abort(pool *, conn_t *, long);
 void pr_inet_lingering_close(pool *, conn_t *, long);
@@ -155,6 +161,8 @@ int pr_inet_get_conn_info(conn_t *, int);
 conn_t *pr_inet_accept(pool *, conn_t *, conn_t *, int, int, unsigned char);
 conn_t *pr_inet_openrw(pool *, conn_t *, pr_netaddr_t *, int, int, int,
   int, int);
+int pr_inet_generate_socket_event(const char *, server_rec *, pr_netaddr_t *,
+  int);
 
 void init_inet(void);
 

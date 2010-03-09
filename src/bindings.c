@@ -23,8 +23,7 @@
  */
 
 /* Routines to work with ProFTPD bindings
- *
- * $Id: bindings.c,v 1.41 2010-02-22 16:55:11 castaglia Exp $
+ * $Id: bindings.c,v 1.42 2010-03-09 02:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -93,7 +92,8 @@ struct listener_rec {
   int claimed;
 };
 
-static conn_t *get_listening_conn(pr_netaddr_t *addr, unsigned int port) {
+conn_t *pr_ipbind_get_listening_conn(server_rec *server, pr_netaddr_t *addr,
+    unsigned int port) {
   conn_t *l;
   pool *p;
   struct listener_rec *lr;
@@ -153,7 +153,11 @@ static conn_t *get_listening_conn(pr_netaddr_t *addr, unsigned int port) {
   p = make_sub_pool(listening_conn_pool); 
   pr_pool_tag(p, "Listening conn subpool");
 
-  l = pr_inet_create_conn(p, server_list, -1, addr, port, FALSE);
+  l = pr_inet_create_conn(p, -1, addr, port, FALSE);
+
+  /* Inform any interested listeners that this socket was opened. */
+  pr_inet_generate_socket_event("core.ctrl-listen", server, l->local_addr,
+    l->listen_fd);
 
   lr = pcalloc(p, sizeof(struct listener_rec));
   lr->pool = p;
@@ -249,7 +253,7 @@ int pr_ipbind_add_binds(server_rec *serv) {
      */
     if (SocketBindTight &&
         serv->ServerPort) {
-      listen_conn = get_listening_conn(addr, serv->ServerPort);
+      listen_conn = pr_ipbind_get_listening_conn(serv, addr, serv->ServerPort);
 
       PR_CREATE_IPBIND(serv, addr, serv->ServerPort);
       PR_OPEN_IPBIND(addr, serv->ServerPort, listen_conn, FALSE, FALSE, TRUE);
@@ -942,8 +946,14 @@ static void init_inetd_bindings(void) {
    * already-open connections to choose from.
    */
 
-  main_server->listen = pr_inet_create_conn(main_server->pool,
-    server_list, STDIN_FILENO, NULL, INPORT_ANY, FALSE);
+  main_server->listen = pr_inet_create_conn(main_server->pool, STDIN_FILENO,
+    NULL, INPORT_ANY, FALSE);
+
+  /* Note: Since we are being called via inetd/xinetd, any socket options
+   * which may be attempted by listeners for this event may not work.
+   */
+  pr_inet_generate_socket_event("core.ctrl-listen", main_server,
+    main_server->addr, main_server->listen->listen_fd);
 
   /* Fill in all the important connection information. */
   if (pr_inet_get_conn_info(main_server->listen, STDIN_FILENO) == -1) {
@@ -1022,7 +1032,7 @@ static void init_standalone_bindings(void) {
 #endif /* PR_USE_IPV6 */
     }
 
-    main_server->listen = get_listening_conn(
+    main_server->listen = pr_ipbind_get_listening_conn(main_server,
       (SocketBindTight ? main_server->addr : NULL), main_server->ServerPort);
 
   } else
@@ -1065,8 +1075,8 @@ static void init_standalone_bindings(void) {
 #endif /* PR_USE_IPV6 */
         }
 
-        serv->listen = get_listening_conn((SocketBindTight ? serv->addr : NULL),
-          serv->ServerPort);
+        serv->listen = pr_ipbind_get_listening_conn(serv,
+          (SocketBindTight ? serv->addr : NULL), serv->ServerPort);
 
         PR_CREATE_IPBIND(serv, serv->addr, serv->ServerPort);
         PR_OPEN_IPBIND(serv->addr, serv->ServerPort, serv->listen, is_default,

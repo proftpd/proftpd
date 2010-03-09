@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.121 2010-03-04 21:52:40 castaglia Exp $
+ * $Id: data.c,v 1.122 2010-03-09 02:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -245,9 +245,10 @@ static int data_pasv_open(char *reason, off_t size) {
   /* Set the "stalled" timer, if any, to prevent the connection
    * open from taking too long
    */
-  if (timeout_stalled)
+  if (timeout_stalled) {
     pr_timer_add(timeout_stalled, PR_TIMER_STALLED, NULL, stalled_timeout_cb,
       "TimeoutStalled");
+  }
 
   /* We save the state of our current disposition for doing reverse
    * lookups, and then set it to what the configuration wants it to
@@ -261,14 +262,17 @@ static int data_pasv_open(char *reason, off_t size) {
     pr_inet_set_socket_opts(session.d->pool, session.d,
       (main_server->tcp_rcvbuf_override ?  main_server->tcp_rcvbuf_len : 0), 0);
     pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-      main_server->tcp_dataqos, 1);
+      IPTOS_THROUGHPUT, 1);
     
   } else {
     pr_inet_set_socket_opts(session.d->pool, session.d,
       0, (main_server->tcp_sndbuf_override ?  main_server->tcp_sndbuf_len : 0));
     pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-      main_server->tcp_dataqos, 1);
+      IPTOS_THROUGHPUT, 1);
   }
+
+  pr_inet_generate_socket_event("core.data-listen", main_server,
+    session.d->local_addr, session.d->listen_fd);
 
   c = pr_inet_accept(session.pool, session.d, session.c, -1, -1, TRUE);
   pr_netaddr_set_reverse_dns(rev);
@@ -337,15 +341,16 @@ static int data_active_open(char *reason, off_t size) {
   if (!reason && session.xfer.filename)
     reason = session.xfer.filename;
 
-  session.d = pr_inet_create_conn(session.pool, NULL, -1,
-    session.c->local_addr, session.c->local_port-1, TRUE);
+  session.d = pr_inet_create_conn(session.pool, -1, session.c->local_addr,
+    session.c->local_port-1, TRUE);
 
   /* Set the "stalled" timer, if any, to prevent the connection
    * open from taking too long
    */
-  if (timeout_stalled)
+  if (timeout_stalled) {
     pr_timer_add(timeout_stalled, PR_TIMER_STALLED, NULL, stalled_timeout_cb,
       "TimeoutStalled");
+  }
 
   rev = pr_netaddr_set_reverse_dns(ServerUseReverseDNS);
 
@@ -355,14 +360,17 @@ static int data_active_open(char *reason, off_t size) {
     pr_inet_set_socket_opts(session.d->pool, session.d,
       (main_server->tcp_rcvbuf_override ?  main_server->tcp_rcvbuf_len : 0), 0);
     pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-      main_server->tcp_dataqos, 1);
+      IPTOS_THROUGHPUT, 1);
     
   } else {
     pr_inet_set_socket_opts(session.d->pool, session.d,
       0, (main_server->tcp_sndbuf_override ?  main_server->tcp_sndbuf_len : 0));
     pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-      main_server->tcp_dataqos, 1);
+      IPTOS_THROUGHPUT, 1);
   }
+
+  pr_inet_generate_socket_event("core.data-connect", main_server,
+    session.d->local_addr, session.d->listen_fd);
 
   if (pr_inet_connect(session.d->pool, session.d, &session.data_addr,
       session.data_port) == -1) {
@@ -624,11 +632,13 @@ void pr_data_close(int quiet) {
   /* Aborts no longer necessary */
   signal(SIGURG, SIG_IGN);
 
-  if (timeout_noxfer)
+  if (timeout_noxfer) {
     pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
+  }
 
-  if (timeout_stalled)
+  if (timeout_stalled) {
     pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
+  }
 
   session.sf_flags &= (SF_ALL^SF_PASSIVE);
   session.sf_flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
@@ -675,11 +685,13 @@ void pr_data_abort(int err, int quiet) {
     session.d = NULL;
   }
 
-  if (timeout_noxfer)
+  if (timeout_noxfer) {
     pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
+  }
 
-  if (timeout_stalled)
+  if (timeout_stalled) {
     pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
+  }
 
   session.sf_flags &= (SF_ALL^SF_PASSIVE);
   session.sf_flags &= (SF_ALL^(SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
@@ -1026,8 +1038,9 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
         if (len > 0) {
           buflen += len;
 
-          if (timeout_stalled)
+          if (timeout_stalled) {
             pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+          }
         }
 
         /* If buflen > 0, data remains in the buffer to be copied. */
@@ -1089,8 +1102,9 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
         cl_size, 1)) > 0) {
 
       /* Non-ASCII mode doesn't need to use session.xfer.buf */
-      if (timeout_stalled)
+      if (timeout_stalled) {
         pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+      }
 
       total += len;
     }
@@ -1128,8 +1142,9 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
         return -1;
 
       if (bwrote > 0) {
-        if (timeout_stalled)
+        if (timeout_stalled) {
           pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+        }
 
         cl_size -= buflen;
         cl_buf += buflen;
@@ -1239,11 +1254,13 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
 
       /* Only reset the timers if data have actually been written out. */
       if (len > 0) {
-        if (timeout_stalled)
+        if (timeout_stalled) {
           pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+        }
 
-        if (timeout_idle)
+        if (timeout_idle) {
           pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
+        }
       }
 
       session.xfer.total_bytes += len;
@@ -1355,20 +1372,22 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
           count -= len;
         }
 
-	*offset += len;
-	
-	if (timeout_stalled)
-	  pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
-	
-	if (timeout_idle)
-	  pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
-	
-	session.xfer.total_bytes += len;
-	session.total_bytes += len;
-	session.total_bytes_out += len;
-	total += len;
-	
-	continue;
+        *offset += len;
+
+        if (timeout_stalled) {
+          pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+        }
+
+        if (timeout_idle) {
+          pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
+        }
+
+        session.xfer.total_bytes += len;
+        session.total_bytes += len;
+        session.total_bytes_out += len;
+        total += len;
+
+        continue;
       }
 
       error = errno;
@@ -1384,11 +1403,13 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
   if (flags & O_NONBLOCK)
     fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags);
 
-  if (timeout_stalled)
+  if (timeout_stalled) {
     pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+  }
 
-  if (timeout_idle)
+  if (timeout_idle) {
     pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
+  }
 
   session.xfer.total_bytes += len;
   session.total_bytes += len;

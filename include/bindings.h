@@ -24,7 +24,7 @@
 
 /* ProFTPD bindings support routines.
  *
- * $Id: bindings.h,v 1.11 2010-02-09 15:53:26 castaglia Exp $
+ * $Id: bindings.h,v 1.12 2010-03-09 02:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -145,6 +145,9 @@ int pr_ipbind_listen(fd_set *readfds);
 int pr_ipbind_open(pr_netaddr_t *addr, unsigned int port, conn_t *listen_conn,
   unsigned char isdefault, unsigned char islocalhost,
   unsigned char open_namebinds);
+
+conn_t *pr_ipbind_get_listening_conn(server_rec *server, pr_netaddr_t *addr,
+  unsigned int port);
 
 /* Close the pr_namebind_t with the given name.
  */

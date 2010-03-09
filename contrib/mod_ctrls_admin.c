@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.40 2010-01-10 20:01:30 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.41 2010-03-09 02:38:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -968,10 +968,9 @@ static int admin_addr_up(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
    * share the same listen connection.
    */
   if (ipbind->ib_server->ServerPort && !ipbind->ib_server->listen) {
-    ipbind->ib_server->listen =
-      pr_inet_create_conn(ipbind->ib_server->pool, server_list, -1,
+    ipbind->ib_server->listen = pr_ipbind_get_listening_conn(ipbind->ib_server,
       (SocketBindTight ? ipbind->ib_server->addr : NULL),
-      ipbind->ib_server->ServerPort, FALSE);
+      ipbind->ib_server->ServerPort);
   }
 
   pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "up: attempting to enable %s#%u",
@@ -980,15 +979,16 @@ static int admin_addr_up(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
   PR_OPEN_IPBIND(ipbind->ib_server->addr, ipbind->ib_server->ServerPort,
     ipbind->ib_server->listen, FALSE, FALSE, TRUE);
 
-  if (res < 0)
+  if (res < 0) {
     pr_ctrls_add_response(ctrl, "up: no server listening on %s#%u",
       pr_netaddr_get_ipstr(addr), port);
-  else
+
+  } else {
     pr_ctrls_add_response(ctrl, "up: %s#%u enabled",
       pr_netaddr_get_ipstr(addr), port);
+  }
 
   PR_ADD_IPBINDS(ipbind->ib_server);
-
   return 0;
 }
 

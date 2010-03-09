@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ident -- a module for performing identd lookups [RFC1413]
  *
- * Copyright (c) 2008-2009 The ProFTPD Project
+ * Copyright (c) 2008-2010 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,15 +22,15 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_ident.c,v 1.4 2009-02-12 20:13:41 castaglia Exp $
+ * $Id: mod_ident.c,v 1.5 2010-03-09 02:38:54 castaglia Exp $
  */
 
 #include "conf.h"
 
 #define MOD_IDENT_VERSION		"mod_ident/1.0"
 
-#if PROFTPD_VERSION_NUMBER < 0x0001030101
-# error "ProFTPD 1.3.1rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030401
+# error "ProFTPD 1.3.4rc1 or later required"
 #endif
 
 module ident_module;
@@ -78,13 +78,16 @@ static char *ident_lookup(pool *p, conn_t *conn) {
     return NULL;
   }
 
-  ident_conn = pr_inet_create_conn(p, NULL, -1, conn->local_addr, INPORT_ANY,
-    FALSE);
+  ident_conn = pr_inet_create_conn(p, -1, conn->local_addr, INPORT_ANY, FALSE);
   if (ident_conn == NULL) {
     pr_trace_msg(trace_channel, 3, "error creating connection: %s",
       strerror(errno));
     return NULL;
   }
+
+  /* We explicit do NOT generate a socket event for this socket; there's
+   * really no need for it.
+   */
 
   pr_inet_set_nonblock(p, ident_conn);
 

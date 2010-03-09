@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.75 2010-03-04 21:52:40 castaglia Exp $
+ * $Id: dirtree.h,v 1.76 2010-03-09 02:38:54 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -69,10 +69,6 @@ typedef struct server_struc {
 
   int tcp_sndbuf_len;
   unsigned char tcp_sndbuf_override;
-
-  /* QoS bits */
-  int tcp_ctrlqos;
-  int tcp_dataqos;
 
   /* Administrator name */
   char *ServerAdmin;

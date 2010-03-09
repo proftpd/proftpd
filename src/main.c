@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.392 2010-03-04 21:52:40 castaglia Exp $
+ * $Id: main.c,v 1.393 2010-03-09 02:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1253,8 +1253,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* Find the server for this connection. */
   main_server = pr_ipbind_get_server(conn->local_addr, conn->local_port);
 
-  pr_inet_set_proto_opts(permanent_pool, conn, 0, 1,
-    main_server->tcp_ctrlqos, 0);
+  pr_inet_set_proto_opts(permanent_pool, conn, 0, 1, IPTOS_LOWDELAY, 0);
 
   /* The follow code was ostensibly used to conserve memory, to free all other
    * servers and associated configurations.  However, when large numbers of

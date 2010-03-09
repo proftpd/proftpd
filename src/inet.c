@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.124 2010-03-09 01:48:41 castaglia Exp $
+ * $Id: inet.c,v 1.125 2010-03-09 02:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -156,18 +156,13 @@ conn_t *pr_inet_copy_conn(pool *p, conn_t *c) {
 /* Initialize a new connection record, also creates a new subpool just for the
  * new connection.
  */
-static conn_t *init_conn(pool *p, xaset_t *servers, int fd,
-    pr_netaddr_t *bind_addr, int port, int retry_bind, int reporting) {
+static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
+    int port, int retry_bind, int reporting) {
   pool *sub_pool = NULL;
   conn_t *c;
   pr_netaddr_t na;
   int addr_family;
   int res = 0, one = 1, hold_errno;
-
-  if ((!servers || !servers->xas_list) && !main_server) {
-    errno = EINVAL;
-    return NULL;
-  }
 
   if (!inet_pool) {
     inet_pool = make_sub_pool(permanent_pool);
@@ -445,11 +440,11 @@ static conn_t *init_conn(pool *p, xaset_t *servers, int fd,
   return c;
 }
 
-conn_t *pr_inet_create_conn(pool *p, xaset_t *servers, int fd,
-    pr_netaddr_t *bind_addr, int port, int retry_bind) {
+conn_t *pr_inet_create_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
+    int port, int retry_bind) {
   conn_t *c = NULL;
 
-  c = init_conn(p, servers, fd, bind_addr, port, retry_bind, TRUE);
+  c = init_conn(p, fd, bind_addr, port, retry_bind, TRUE);
 
   /* This code is somewhat of a kludge, because error handling should
    * NOT occur in inet.c, it should be handled by the caller.
@@ -464,8 +459,8 @@ conn_t *pr_inet_create_conn(pool *p, xaset_t *servers, int fd,
 /* Attempt to create a connection bound to a given port range, returns NULL
  * if unable to bind to any port in the range.
  */
-conn_t *pr_inet_create_conn_portrange(pool *p, xaset_t *servers,
-    pr_netaddr_t *bind_addr, int low_port, int high_port) {
+conn_t *pr_inet_create_conn_portrange(pool *p, pr_netaddr_t *bind_addr,
+    int low_port, int high_port) {
   int range_len, i;
   int *range, *ports;
   int attempt, random_index;
@@ -505,11 +500,12 @@ conn_t *pr_inet_create_conn_portrange(pool *p, xaset_t *servers,
 	 * port will be from the range of as-yet untried ports.
 	 */
 
-	while (++random_index <= i)
+	while (++random_index <= i) {
 	  range[random_index-1] = range[random_index];
+        }
       }
 
-      c = init_conn(p, servers, -1, bind_addr, ports[i], FALSE, FALSE);
+      c = init_conn(p, -1, bind_addr, ports[i], FALSE, FALSE);
 
       if (!c &&
           inet_errno != EADDRINUSE) {
@@ -1228,6 +1224,32 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
 
   return res;
 }
+
+int pr_inet_generate_socket_event(const char *event, server_rec *s,
+    pr_netaddr_t *addr, int fd) {
+  pool *p;
+  struct socket_ctx *sc;
+
+pr_log_debug(DEBUG0, "inet_generate_socket_event: event = %p, server = %p, addr = %p", event, s, addr);
+
+  if (event == NULL ||
+      s == NULL ||
+      addr == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  p = make_sub_pool(permanent_pool);
+  sc = pcalloc(p, sizeof(struct socket_ctx));
+  sc->server = s;
+  sc->addr = addr;
+  sc->sockfd = fd;
+  pr_event_generate(event, sc);
+  destroy_pool(p);
+
+  return 0;
+}
+
 
 void init_inet(void) {
   struct protoent *pr = NULL;

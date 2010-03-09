@@ -24,7 +24,7 @@
  *
  * This is mod_qos, contrib software for proftpd 1.3.x and above.
  *
- * $Id: mod_qos.c,v 1.1 2010-03-04 21:52:40 castaglia Exp $
+ * $Id: mod_qos.c,v 1.2 2010-03-09 02:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -246,6 +246,8 @@ static int qos_get_int(const char *str) {
 /* usage: QoSOptions */
 MODRET set_qosoptions(cmd_rec *cmd) {
   register unsigned int i;
+  config_rec *c;
+  int ctrlqos = 0, dataqos = 0;
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
@@ -255,27 +257,19 @@ MODRET set_qosoptions(cmd_rec *cmd) {
   }
 
   for (i = 1; i < cmd->argc; i++) {
-    int value = 0;
-
     if (strcasecmp(cmd->argv[i], "dataqos") == 0) {
-      value = qos_get_int(cmd->argv[++i]);
-
-      if (value == -1) {
+      dataqos = qos_get_int(cmd->argv[++i]);
+      if (dataqos == -1) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown dataqos parameter '",
           cmd->argv[i-1], "'", NULL));
       }
 
-      cmd->server->tcp_dataqos = value;
-
     } else if (strcasecmp(cmd->argv[i], "ctrlqos") == 0) {
-      value = qos_get_int(cmd->argv[++i]);
-
-      if (value == -1) {
+      ctrlqos = qos_get_int(cmd->argv[++i]);
+      if (ctrlqos == -1) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown ctrlqos parameter '",
           cmd->argv[i-1], "'", NULL));
       }
-
-      cmd->server->tcp_ctrlqos = value;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown QoS option: '",
@@ -283,7 +277,145 @@ MODRET set_qosoptions(cmd_rec *cmd) {
     }
   }
 
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = ctrlqos;
+  c->argv[1] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = dataqos;
+
   return PR_HANDLED(cmd);
+}
+
+/* Event handlers
+ */
+
+#ifdef IP_TOS
+static void qos_ctrl_listen_ev(const void *event_data, void *user_data) {
+  const struct socket_ctx *sc;
+
+  sc = event_data;
+
+  /* Only set TOS flags on IPv4 sockets; IPv6 sockets don't seem to support
+   * them.
+   */
+
+  if (pr_netaddr_get_family(sc->addr) == AF_INET) {
+    config_rec *c;
+    c = find_config(sc->server->conf, CONF_PARAM, "QoSOptions", FALSE);
+
+    if (c) {
+      int ctrlqos;
+
+      ctrlqos = *((int *) c->argv[0]);
+      if (ctrlqos != 0) {
+        int res;
+
+        res = setsockopt(sc->sockfd, SOL_IP, IP_TOS, (void *) &ctrlqos,
+          sizeof(ctrlqos));
+        if (res < 0) {
+          pr_log_pri(PR_LOG_NOTICE, MOD_QOS_VERSION
+            ": error setting control socket IP_TOS: %s", strerror(errno));
+        }
+      }
+    }
+  }
+}
+
+static void qos_data_listen_ev(const void *event_data, void *user_data) {
+  const struct socket_ctx *sc;
+
+  sc = event_data;
+
+  /* Only set TOS flags on IPv4 sockets; IPv6 sockets don't seem to support
+   * them.
+   */
+  if (pr_netaddr_get_family(sc->addr) == AF_INET) {
+    config_rec *c;
+
+    c = find_config(sc->server->conf, CONF_PARAM, "QoSOptions", FALSE);
+    if (c) {
+      int dataqos, res;
+
+      dataqos = *((int *) c->argv[1]);
+
+      res = setsockopt(sc->sockfd, SOL_IP, IP_TOS, (void *) &dataqos,
+        sizeof(dataqos));
+      if (res < 0) {
+        pr_log_pri(PR_LOG_NOTICE, MOD_QOS_VERSION
+          ": error setting data socket IP_TOS: %s", strerror(errno));
+      }
+    }
+  }
+}
+
+static void qos_data_connect_ev(const void *event_data, void *user_data) {
+  const struct socket_ctx *sc;
+
+  sc = event_data;
+
+  /* Only set TOS flags on IPv4 sockets; IPv6 sockets don't seem to support
+   * them.
+   */
+  if (pr_netaddr_get_family(sc->addr) == AF_INET) {
+    config_rec *c;
+    c = find_config(sc->server->conf, CONF_PARAM, "QoSOptions", FALSE);
+    if (c) {
+      int dataqos, res;
+
+      dataqos = *((int *) c->argv[1]);
+
+      res = setsockopt(sc->sockfd, SOL_IP, IP_TOS, (void *) &dataqos,
+        sizeof(dataqos));
+      if (res < 0) {
+        pr_log_pri(PR_LOG_NOTICE, MOD_QOS_VERSION
+          ": error setting data socket IP_TOS: %s", strerror(errno));
+      }
+    }
+  }
+}
+#endif /* IP_TOS */
+
+#ifdef PR_SHARED_MODULE
+static void qos_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_qos.c", (const char *) event_data) == 0) {
+    pr_event_unregister(&qos_module, NULL, NULL);
+  }
+}
+#endif /* PR_SHARED_MODULE */
+
+/* Initialization routines
+ */
+
+static int qos_init(void) {
+#ifdef IP_TOS
+  pr_event_register(&qos_module, "core.ctrl-listen", qos_ctrl_listen_ev, NULL);
+#endif
+
+#ifdef PR_SHARED_MODULE
+  pr_event_register(&qos_module, "core.module-unload", qos_mod_unload_ev, NULL);
+#endif
+  return 0;
+}
+
+static int qos_sess_init(void) {
+#ifdef IP_TOS
+  config_rec *c;
+
+  c = find_config(main_server->conf, CONF_PARAM, "QoSOptions", FALSE);
+  if (c) {
+    int dataqos;
+
+    dataqos = *((int *) c->argv[1]);
+    if (dataqos != 0) {
+      pr_event_register(&qos_module, "core.data-connect", qos_data_connect_ev,
+        NULL);
+      pr_event_register(&qos_module, "core.data-listen", qos_data_listen_ev,
+        NULL);
+    }
+  }
+#endif
+
+  return 0;
 }
 
 /* Module API tables
@@ -313,10 +445,10 @@ module qos_module = {
   NULL,
 
   /* Module initialization function */
-  NULL,
+  qos_init,
 
   /* Session initialization function */
-  NULL,
+  qos_sess_init,
 
   /* Module version */
   MOD_QOS_VERSION

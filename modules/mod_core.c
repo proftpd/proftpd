@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.368 2010-03-04 01:15:31 castaglia Exp $
+ * $Id: mod_core.c,v 1.369 2010-03-09 02:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3107,9 +3107,9 @@ MODRET core_pasv(cmd_rec *cmd) {
     int pasv_min_port = *((int *) c->argv[0]);
     int pasv_max_port = *((int *) c->argv[1]);
 
-    if (!(session.d = pr_inet_create_conn_portrange(session.pool,
-        NULL, session.c->local_addr, pasv_min_port, pasv_max_port))) {
-
+    session.d = pr_inet_create_conn_portrange(session.pool,
+      session.c->local_addr, pasv_min_port, pasv_max_port);
+    if (session.d == NULL) {
       /* If not able to open a passive port in the given range, default to
        * normal behavior (using INPORT_ANY), and log the failure.  This
        * indicates a too-small range configuration.
@@ -3122,9 +3122,9 @@ MODRET core_pasv(cmd_rec *cmd) {
   }
 
   /* Open up the connection and pass it back. */
-  if (!session.d) {
-    session.d = pr_inet_create_conn(session.pool, NULL, -1,
-      session.c->local_addr, INPORT_ANY, FALSE);
+  if (session.d == NULL) {
+    session.d = pr_inet_create_conn(session.pool, -1, session.c->local_addr,
+      INPORT_ANY, FALSE);
   }
 
   if (!session.d) {
@@ -3634,9 +3634,8 @@ MODRET core_epsv(cmd_rec *cmd) {
    * have more predictable behavior for choosing random IPv4 socket ports.
    */
 
-  session.d = pr_inet_create_conn_portrange(session.pool, NULL,
+  session.d = pr_inet_create_conn_portrange(session.pool,
     session.c->local_addr, epsv_min_port, epsv_max_port);
-
   if (session.d == NULL) {
     /* If not able to open a passive port in the given range, default to
      * normal behavior (using INPORT_ANY), and log the failure.  This
@@ -3646,8 +3645,8 @@ MODRET core_epsv(cmd_rec *cmd) {
       "range %d-%d: defaulting to INPORT_ANY (consider defining a larger "
       "PassivePorts range)", epsv_min_port, epsv_max_port);
 
-    session.d = pr_inet_create_conn(session.pool, NULL, -1,
-      session.c->local_addr, INPORT_ANY, FALSE);
+    session.d = pr_inet_create_conn(session.pool, -1, session.c->local_addr,
+      INPORT_ANY, FALSE);
   }
 
   if (session.d == NULL) {
