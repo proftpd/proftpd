@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.123 2010-03-08 17:30:21 castaglia Exp $
+ * $Id: inet.c,v 1.124 2010-03-09 01:48:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -610,7 +610,7 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
       *no_delay == TRUE) {
 
     if (c->rfd != -1) {
-      if (setsockopt(c->rfd, IPPROTO_TCP, TCP_NODELAY, (void *) &nodelay,
+      if (setsockopt(c->rfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
           sizeof(nodelay)) < 0) {
         pr_log_pri(PR_LOG_NOTICE, "error setting read fd %d TCP_NODELAY: %s",
           c->rfd, strerror(errno));
