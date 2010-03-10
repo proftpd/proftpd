@@ -26,7 +26,7 @@
  * This is mod_copy, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_copy.c,v 1.1 2010-03-10 19:20:43 castaglia Exp $
+ * $Id: mod_copy.c,v 1.2 2010-03-10 19:24:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,8 +34,8 @@
 #define MOD_COPY_VERSION	"mod_copy/0.2"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030301
-# error "ProFTPD 1.3.3rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030401
+# error "ProFTPD 1.3.4rc1 or later required"
 #endif
 
 /* These are copied largely from src/mkhome.c */
@@ -259,12 +259,12 @@ static int copy_paths(pool *p, const char *from, const char *to) {
     if (session.sf_flags & SF_ANON) {
       xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
         (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'a',
-        session.anon_user, 'c');
+        session.anon_user, 'c', "_");
 
     } else {
       xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
         (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'r',
-        session.user, 'c');
+        session.user, 'c', "_");
     }
 
   } else if (S_ISDIR(st.st_mode)) {
