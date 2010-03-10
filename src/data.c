@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.123 2010-03-10 14:52:37 castaglia Exp $
+ * $Id: data.c,v 1.124 2010-03-10 19:14:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -330,11 +330,22 @@ static int data_pasv_open(char *reason, off_t size) {
 static int data_active_open(char *reason, off_t size) {
   conn_t *c;
   int rev;
+  pr_netaddr_t *bind_addr;
 
   if (!reason && session.xfer.filename)
     reason = session.xfer.filename;
 
-  session.d = pr_inet_create_conn(session.pool, -1, session.c->local_addr,
+  if (pr_netaddr_get_family(session.c->local_addr) == pr_netaddr_get_family(session.c->remote_addr)) {
+    bind_addr = session.c->local_addr;
+
+  } else {
+    /* In this scenario, the server has an IPv6 socket, but the remote client
+     * is an IPv4 (or IPv4-mapped IPv6) peer.
+     */
+    bind_addr = pr_netaddr_v6tov4(session.xfer.p, session.c->local_addr);
+  }
+
+  session.d = pr_inet_create_conn(session.pool, -1, bind_addr,
     session.c->local_port-1, TRUE);
 
   /* Set the "stalled" timer, if any, to prevent the connection

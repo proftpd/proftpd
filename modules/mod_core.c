@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.371 2010-03-10 16:14:28 castaglia Exp $
+ * $Id: mod_core.c,v 1.372 2010-03-10 19:14:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3079,6 +3079,7 @@ MODRET core_pasv(cmd_rec *cmd) {
   unsigned int port = 0;
   char *addrstr = NULL, *tmp = NULL;
   config_rec *c = NULL;
+  pr_netaddr_t *bind_addr;
 
   if (session.sf_flags & SF_EPSV_ALL) {
     pr_response_add_err(R_500, _("Illegal PASV command, EPSV ALL in effect"));
@@ -3102,13 +3103,23 @@ MODRET core_pasv(cmd_rec *cmd) {
     session.d = NULL;
   }
 
+  if (pr_netaddr_get_family(session.c->local_addr) == pr_netaddr_get_family(session.c->remote_addr)) {
+    bind_addr = session.c->local_addr;
+
+  } else {
+    /* In this scenario, the server has an IPv6 socket, but the remote client
+     * is an IPv4 (or IPv4-mapped IPv6) peer.
+     */
+    bind_addr = pr_netaddr_v6tov4(cmd->pool, session.c->local_addr);
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "PassivePorts", FALSE);
   if (c != NULL) {
     int pasv_min_port = *((int *) c->argv[0]);
     int pasv_max_port = *((int *) c->argv[1]);
 
-    session.d = pr_inet_create_conn_portrange(session.pool,
-      session.c->local_addr, pasv_min_port, pasv_max_port);
+    session.d = pr_inet_create_conn_portrange(session.pool, bind_addr,
+      pasv_min_port, pasv_max_port);
     if (session.d == NULL) {
       /* If not able to open a passive port in the given range, default to
        * normal behavior (using INPORT_ANY), and log the failure.  This
@@ -3123,8 +3134,8 @@ MODRET core_pasv(cmd_rec *cmd) {
 
   /* Open up the connection and pass it back. */
   if (session.d == NULL) {
-    session.d = pr_inet_create_conn(session.pool, -1, session.c->local_addr,
-      INPORT_ANY, FALSE);
+    session.d = pr_inet_create_conn(session.pool, -1, bind_addr, INPORT_ANY,
+      FALSE);
   }
 
   if (session.d == NULL) {
@@ -3543,6 +3554,7 @@ MODRET core_epsv(cmd_rec *cmd) {
   int family = 0;
   int epsv_min_port = 1024, epsv_max_port = 65535;
   config_rec *c = NULL;
+  pr_netaddr_t *bind_addr;
 
   CHECK_CMD_MIN_ARGS(cmd, 1);
 
@@ -3626,6 +3638,16 @@ MODRET core_epsv(cmd_rec *cmd) {
     session.d = NULL;
   }
 
+  if (pr_netaddr_get_family(session.c->local_addr) == pr_netaddr_get_family(session.c->remote_addr)) {
+    bind_addr = session.c->local_addr;
+
+  } else {
+    /* In this scenario, the server has an IPv6 socket, but the remote client
+     * is an IPv4 (or IPv4-mapped IPv6) peer.
+     */
+    bind_addr = pr_netaddr_v6tov4(cmd->pool, session.c->local_addr);
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "PassivePorts", FALSE);
   if (c != NULL) {
     epsv_min_port = *((int *) c->argv[0]);
@@ -3642,8 +3664,8 @@ MODRET core_epsv(cmd_rec *cmd) {
    * have more predictable behavior for choosing random IPv4 socket ports.
    */
 
-  session.d = pr_inet_create_conn_portrange(session.pool,
-    session.c->local_addr, epsv_min_port, epsv_max_port);
+  session.d = pr_inet_create_conn_portrange(session.pool, bind_addr,
+    epsv_min_port, epsv_max_port);
   if (session.d == NULL) {
     /* If not able to open a passive port in the given range, default to
      * normal behavior (using INPORT_ANY), and log the failure.  This
@@ -3653,8 +3675,8 @@ MODRET core_epsv(cmd_rec *cmd) {
       "range %d-%d: defaulting to INPORT_ANY (consider defining a larger "
       "PassivePorts range)", epsv_min_port, epsv_max_port);
 
-    session.d = pr_inet_create_conn(session.pool, -1, session.c->local_addr,
-      INPORT_ANY, FALSE);
+    session.d = pr_inet_create_conn(session.pool, -1, bind_addr, INPORT_ANY,
+      FALSE);
   }
 
   if (session.d == NULL) {
