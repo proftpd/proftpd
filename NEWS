@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1155 2010-03-10 17:04:09 castaglia Exp $
+$Id: NEWS,v 1.1156 2010-03-10 19:20:43 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -38,7 +38,7 @@ CVS
 - Bug 2768 - Provide --with-mysql-config/--with-postgres-config build options.
 - Bug 3408 - Use <termios.h> instead of <sys/termios.h> where possible.
 - Bug 3374 - TLSVerifyClient and TLSOptions NoCertRequest are incompatible.
-- Added mod_deflate to the contrib/ modules directory.
+- Added mod_copy, mod_deflate to the contrib/ modules directory.
 - Bug 3373 - RadiusGroupInfo should not require that both names and IDs be VSAs.
 - Bug 3371 - Group limits in <LIMIT LOGIN> blocks won't work with
   RADIUS-supplied groups.

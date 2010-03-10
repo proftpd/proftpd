@@ -14,6 +14,7 @@ ChangeLog files.
 
   + New modules:
 
+    mod_copy
     mod_deflate
     mod_qos
 
@@ -25,4 +26,4 @@ ChangeLog files.
       LoginRate events.
 
 
-Last Updated: $Date: 2010-03-10 15:56:57 $
+Last Updated: $Date: 2010-03-10 19:20:43 $
