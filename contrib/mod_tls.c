@@ -2198,6 +2198,7 @@ static int tls_init_server(void) {
 #endif
   char *tls_ca_cert = NULL, *tls_ca_path = NULL, *tls_ca_chain = NULL;
   X509 *server_dsa_cert = NULL, *server_rsa_cert = NULL;
+  int verify_mode = SSL_VERIFY_PEER;
 
   if ((tls_protocol & TLS_PROTO_SSL_V3) &&
       (tls_protocol & TLS_PROTO_TLS_V1)) {
@@ -2244,16 +2245,25 @@ static int tls_init_server(void) {
     }
   }
 
-  if (!(tls_opts & TLS_OPT_NO_CERT_REQUEST)) {
-    int verify_mode = SSL_VERIFY_PEER;
-
-    /* If we are verifying client, make sure the client sends a cert;
+  if (tls_flags & TLS_SESS_VERIFY_CLIENT) {
+    /* If we are verifying clients, make sure the client sends a cert;
      * the protocol allows for the client to disregard a request for
      * its cert by the server.
      */
-    if (tls_flags & TLS_SESS_VERIFY_CLIENT)
-      verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+    verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 
+    if (tls_opts & TLS_OPT_NO_CERT_REQUEST) {
+      /* Warn about the incompatibility of using "TLSVerifyClient on" and
+       * "TLSOption NoCertRequest" at the same time.
+       */
+      tls_log("TLSVerifyClient in effect, ignoring NoCertRequest TLSOption");
+    }
+
+  } else if (tls_opts & TLS_OPT_NO_CERT_REQUEST) {
+    verify_mode = 0;
+  }
+
+  if (verify_mode != 0) {
     SSL_CTX_set_verify(ssl_ctx, verify_mode, tls_verify_cb);
 
     /* Note: we add one to the configured depth purposefully.  As noted
