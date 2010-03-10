@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.181 2010-02-10 18:26:25 castaglia Exp $
+ * $Id: mod_sql.c,v 1.182 2010-03-10 15:54:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -265,10 +265,10 @@ typedef struct {
   unsigned int nelts;
 } cache_t;
 
-cache_t *group_name_cache;
-cache_t *group_gid_cache;
-cache_t *passwd_name_cache;
-cache_t *passwd_uid_cache;
+static cache_t *group_name_cache = NULL;
+static cache_t *group_gid_cache = NULL;
+static cache_t *passwd_name_cache = NULL;
+static cache_t *passwd_uid_cache = NULL;
 
 static cache_t *make_cache(pool *p, val_func hash_val, cmp_func cmp) {
   cache_t *res;
