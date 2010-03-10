@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.56 2010-02-01 18:40:33 castaglia Exp $
+ * $Id: mod_radius.c,v 1.57 2010-03-10 16:53:02 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9.1"
@@ -249,7 +249,7 @@ static void radius_add_passwd(radius_packet_t *, unsigned char,
   const unsigned char *, unsigned char *);
 static void radius_build_packet(radius_packet_t *, const unsigned char *,
   const unsigned char *, unsigned char *);
-static unsigned char radius_chk_var(char *);
+static unsigned char radius_have_var(char *);
 static int radius_closelog(void);
 static int radius_close_socket(int);
 static void radius_get_acct_digest(radius_packet_t *, unsigned char *);
@@ -329,7 +329,7 @@ static char *radius_argsep(char **arg) {
 }
 
 /* Check a "$(attribute-id:default)" string for validity. */
-static unsigned char radius_chk_var(char *var) {
+static unsigned char radius_have_var(char *var) {
   int id = 0;
   char *tmp = NULL;
 
@@ -382,7 +382,7 @@ static void radius_parse_var(char *var, int *attr_id, char **attr_default) {
     tmp = strchr(var, ':');
 
     /* Note: this works because the calling of this function by
-     * radius_chk_var(), which occurs during the parsing process, uses
+     * radius_have_var(), which occurs during the parsing process, uses
      * a NULL for this portion, so that the string stored in the config_rec
      * is not actually manipulated, as is done here.
      */
@@ -935,6 +935,9 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
 static void radius_process_group_info(config_rec *c) {
   char *param = NULL;
   unsigned char have_illegal_value = FALSE;
+  unsigned int ngroups = 0, ngids = 0;
+  char **groups = NULL;
+  gid_t *gids = NULL;
 
   /* Parse out any configured attribute/defaults here. The stored strings will
    * already have been sanitized by the configuration handler, so I don't
@@ -942,7 +945,6 @@ static void radius_process_group_info(config_rec *c) {
    */
 
   param = (char *) c->argv[0];
-
   if (RADIUS_IS_VAR(param)) {
     radius_parse_var(param, &radius_prime_group_name_attr_id,
       &radius_prime_group_name);
@@ -950,18 +952,15 @@ static void radius_process_group_info(config_rec *c) {
   } else 
     radius_prime_group_name = param;
 
-  /* If the group count (c->argv[1]) is zero, then I know that the data
-   * are VSA variable strings.  Otherwise, the group information has
-   * already been parsed.
+  /* If the group name count is zero, then I know that the data will be
+   * contained in a VSA.  Otherwise, the group names have already been parsed.
    */
   if (*((unsigned int *) c->argv[1]) == 0) {
-    unsigned int ngroups = 0, ngids = 0;
-    char **groups = NULL;
-    gid_t *gids = NULL;
+    param = (char *) c->argv[2];
 
-    radius_parse_var((char *) c->argv[2], &radius_addl_group_names_attr_id,
+    radius_parse_var(param, &radius_addl_group_names_attr_id,
       &radius_addl_group_names_str);
-
+  
     /* Now, parse the default value provided. */
     if (!radius_parse_groups_str(c->pool, radius_addl_group_names_str,
         &groups, &ngroups)) {
@@ -970,7 +969,15 @@ static void radius_process_group_info(config_rec *c) {
       have_illegal_value = TRUE;
     }
 
-    radius_parse_var((char *) c->argv[3], &radius_addl_group_ids_attr_id,
+  } else {
+    ngroups = *((unsigned int *) c->argv[1]);
+    radius_addl_group_names = (char **) c->argv[2];
+  }
+
+  if (*((unsigned int *) c->argv[3]) == 0) {
+    param = (char *) c->argv[4];
+
+    radius_parse_var(param, &radius_addl_group_ids_attr_id,
       &radius_addl_group_ids_str);
 
     /* Similarly, parse the default value provided. */
@@ -981,27 +988,25 @@ static void radius_process_group_info(config_rec *c) {
       have_illegal_value = TRUE;
     }
 
-    if (!have_illegal_value && ngroups != ngids) {
-      radius_log("mismatched number of RadiusGroupInfo default additional "
-        "group names (%u) and IDs (%u)", ngroups, ngids);
-      have_illegal_value = TRUE;
-    }
-
-    if (!have_illegal_value) {
-      radius_have_group_info = TRUE;
-      radius_addl_group_count = ngroups;
-      radius_addl_group_names = groups;
-      radius_addl_group_ids = gids;
-    }
-
   } else {
-    radius_have_group_info = TRUE;
-    radius_addl_group_count = *((unsigned int *) c->argv[1]);
-    radius_addl_group_names = (char **) c->argv[2];
+    ngids = *((unsigned int *) c->argv[1]);
     radius_addl_group_ids = (gid_t *) c->argv[3];
   }
 
-  if (have_illegal_value) {
+  if (!have_illegal_value &&
+      ngroups != ngids) {
+    radius_log("mismatched number of RadiusGroupInfo default additional "
+      "group names (%u) and IDs (%u)", ngroups, ngids);
+    have_illegal_value = TRUE;
+  }
+
+  if (!have_illegal_value) {
+    radius_have_group_info = TRUE;
+    radius_addl_group_count = ngroups;
+    radius_addl_group_names = groups;
+    radius_addl_group_ids = gids;
+
+  } else {
     radius_have_group_info = FALSE;
     radius_log("error with RadiusGroupInfo parameters, ignoring them");
   }
@@ -2955,47 +2960,55 @@ MODRET set_radiusgroupinfo(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 3);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  group_names_vsa = radius_chk_var(cmd->argv[2]);
-  group_ids_vsa = radius_chk_var(cmd->argv[3]);
+  group_names_vsa = radius_have_var(cmd->argv[2]);
+  group_ids_vsa = radius_have_var(cmd->argv[3]);
 
-  if ((group_names_vsa && !group_ids_vsa) ||
-      (!group_names_vsa && group_ids_vsa))
-    CONF_ERROR(cmd, "supplemental group names/IDs parameters must both either be VSA variables, or both not be variables");
-
-  /* There will be four parameters to this config_rec:
+  /* There will be five parameters to this config_rec:
    *
-   *  primary-group-name, addl-group-count, addl-group-names, addl-group-ids
+   *  primary-group-name
+   *  addl-group-name-count
+   *  addl-group-names
+   *  addl-group-id-count
+   *  addl-group-ids
    */
-  c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
+
+  c = add_config_param(cmd->argv[0], 5, NULL, NULL, NULL, NULL, NULL);
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
   c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
+  c->argv[3] = pcalloc(c->pool, sizeof(unsigned int));
 
-  if (group_names_vsa && group_ids_vsa) {
-    
-    /* As VSA variables, the group names and IDs won't be resolved until
-     * session time, so just store the variable strings as is.
+  if (group_names_vsa) {
+    /* As VSA variables, the group names won't be resolved until session time,
+     * so just store the variable strings as is.
      */
-    *((unsigned int *) c->argv[1]) = 0;
     c->argv[2] = pstrdup(c->pool, cmd->argv[2]);
-    c->argv[3] = pstrdup(c->pool, cmd->argv[3]);
 
   } else {
-    unsigned int ngroups = 0, ngids = 0;
+    unsigned int ngroups = 0;
     char **groups = NULL;
-    gid_t *gids = NULL;
 
     if (!radius_parse_groups_str(c->pool, cmd->argv[2], &groups, &ngroups))
       CONF_ERROR(cmd, "badly formatted group names");
 
+    *((unsigned int *) c->argv[1]) = ngroups;
+    c->argv[2] = (void *) groups;
+  }
+
+  if (group_ids_vsa) {
+    /* As VSA variables, the group IDs won't be resolved until session time,
+     * so just store the variable strings as is.
+     */
+    c->argv[4] = pstrdup(c->pool, cmd->argv[3]);
+
+  } else {
+    unsigned int ngids = 0;
+    gid_t *gids = NULL;
+
     if (!radius_parse_gids_str(c->pool, cmd->argv[3], &gids, &ngids))
       CONF_ERROR(cmd, "badly formatted group IDs");
 
-    if (ngroups != ngids)
-      CONF_ERROR(cmd, "mismatched number of group names and IDs");
-
-    *((unsigned int *) c->argv[1]) = ngroups;
-    c->argv[2] = (void *) groups;
-    c->argv[3] = (void *) gids;
+    *((unsigned int *) c->argv[3]) = ngids;
+    c->argv[4] = (void *) gids;
   }
 
   return PR_HANDLED(cmd);
@@ -3027,19 +3040,19 @@ MODRET set_radiusquotainfo(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 8);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!radius_chk_var(cmd->argv[1])) {
+  if (!radius_have_var(cmd->argv[1])) {
     if (strcasecmp(cmd->argv[1], "false") != 0 &&
         strcasecmp(cmd->argv[1], "true") != 0)
       CONF_ERROR(cmd, "invalid per-session value");
   }
 
-  if (!radius_chk_var(cmd->argv[2])) {
+  if (!radius_have_var(cmd->argv[2])) {
     if (strcasecmp(cmd->argv[2], "hard") != 0 &&
         strcasecmp(cmd->argv[2], "soft") != 0)
       CONF_ERROR(cmd, "invalid limit type value");
   }
 
-  if (!radius_chk_var(cmd->argv[3])) {
+  if (!radius_have_var(cmd->argv[3])) {
     char *endp = NULL;
 
     /* Make sure it's a number, at least. */
@@ -3050,7 +3063,7 @@ MODRET set_radiusquotainfo(cmd_rec *cmd) {
       CONF_ERROR(cmd, "invalid bytes parameter: not a number");
   }
 
-  if (!radius_chk_var(cmd->argv[4])) {
+  if (!radius_have_var(cmd->argv[4])) {
     char *endp = NULL;
 
     /* Make sure it's a number, at least. */
@@ -3061,7 +3074,7 @@ MODRET set_radiusquotainfo(cmd_rec *cmd) {
       CONF_ERROR(cmd, "invalid bytes parameter: not a number");
   }
 
-  if (!radius_chk_var(cmd->argv[5])) {
+  if (!radius_have_var(cmd->argv[5])) {
     char *endp = NULL;
 
     /* Make sure it's a number, at least. */
@@ -3072,7 +3085,7 @@ MODRET set_radiusquotainfo(cmd_rec *cmd) {
       CONF_ERROR(cmd, "invalid bytes parameter: not a number");
   }
 
-  if (!radius_chk_var(cmd->argv[6])) {
+  if (!radius_have_var(cmd->argv[6])) {
     char *endp = NULL;
 
     /* Make sure it's a number, at least. */
@@ -3083,7 +3096,7 @@ MODRET set_radiusquotainfo(cmd_rec *cmd) {
       CONF_ERROR(cmd, "invalid files parameter: not a number");
   }
 
-  if (!radius_chk_var(cmd->argv[7])) {
+  if (!radius_have_var(cmd->argv[7])) {
     char *endp = NULL;
 
     /* Make sure it's a number, at least. */
@@ -3094,7 +3107,7 @@ MODRET set_radiusquotainfo(cmd_rec *cmd) {
       CONF_ERROR(cmd, "invalid files parameter: not a number");
   }
 
-  if (!radius_chk_var(cmd->argv[8])) {
+  if (!radius_have_var(cmd->argv[8])) {
     char *endp = NULL;
 
     /* Make sure it's a number, at least. */
@@ -3126,7 +3139,7 @@ MODRET set_radiususerinfo(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 4);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!radius_chk_var(cmd->argv[1])) {
+  if (!radius_have_var(cmd->argv[1])) {
     char *endp = NULL;
 
     /* Make sure it's a number, at least. */
@@ -3137,7 +3150,7 @@ MODRET set_radiususerinfo(cmd_rec *cmd) {
       CONF_ERROR(cmd, "invalid UID parameter: not a number");
   }
 
-  if (!radius_chk_var(cmd->argv[2])) {
+  if (!radius_have_var(cmd->argv[2])) {
     char *endp = NULL;
 
     /* Make sure it's a number, at least. */
@@ -3148,14 +3161,14 @@ MODRET set_radiususerinfo(cmd_rec *cmd) {
       CONF_ERROR(cmd, "invalid GID parameter: not a number");
   } 
 
-  if (!radius_chk_var(cmd->argv[3])) {
+  if (!radius_have_var(cmd->argv[3])) {
 
     /* Make sure the path is absolute, at least. */
     if (*(cmd->argv[3]) != '/')
       CONF_ERROR(cmd, "home relative path not allowed");
   }
 
-  if (!radius_chk_var(cmd->argv[4])) {
+  if (!radius_have_var(cmd->argv[4])) {
 
     /* Make sure the path is absolute, at least. */
     if (*(cmd->argv[4]) != '/')
