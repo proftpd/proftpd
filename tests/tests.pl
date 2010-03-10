@@ -170,6 +170,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_ctrls)],
     },
 
+    't/modules/mod_deflate.t' => {
+      order => ++$order,
+      test_class => [qw(mod_deflate)],
+    },
+
     't/modules/mod_exec.t' => {
       order => ++$order,
       test_class => [qw(mod_exec)],
