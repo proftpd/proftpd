@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.125 2010-03-09 02:38:54 castaglia Exp $
+ * $Id: inet.c,v 1.126 2010-03-10 06:03:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1229,8 +1229,6 @@ int pr_inet_generate_socket_event(const char *event, server_rec *s,
     pr_netaddr_t *addr, int fd) {
   pool *p;
   struct socket_ctx *sc;
-
-pr_log_debug(DEBUG0, "inet_generate_socket_event: event = %p, server = %p, addr = %p", event, s, addr);
 
   if (event == NULL ||
       s == NULL ||
