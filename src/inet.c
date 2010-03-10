@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.126 2010-03-10 06:03:48 castaglia Exp $
+ * $Id: inet.c,v 1.127 2010-03-10 17:23:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1101,7 +1101,7 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
   if (getpeername(fd, pr_netaddr_get_sockaddr(&na), &nalen) == 0) {
     /* Handle IPv4-mapped IPv6 peers as IPv4 peers (Bug#2196). */
     if (pr_netaddr_is_v4mappedv6(&na) == TRUE) {
-      c->remote_addr = pr_netaddr_v4tov6(c->pool, &na);
+      c->remote_addr = pr_netaddr_v6tov4(c->pool, &na);
 
     } else {
       c->remote_addr = pr_netaddr_alloc(c->pool);

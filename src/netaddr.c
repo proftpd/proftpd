@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.72 2010-03-08 17:30:21 castaglia Exp $
+ * $Id: netaddr.c,v 1.73 2010-03-10 17:23:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -881,7 +881,7 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
       /* This case means that na1 is an IPv4-mapped IPv6 address, and
        * na2 is an IPv4 address.
        */
-      a = pr_netaddr_v4tov6(tmp_pool, na1);
+      a = pr_netaddr_v6tov4(tmp_pool, na1);
       b = (pr_netaddr_t *) na2;
 
       pr_trace_msg(trace_channel, 6, "comparing IPv4 address '%s' against "
@@ -898,7 +898,7 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
        * IPv4-mapped IPv6 address.
        */
       a = (pr_netaddr_t *) na1;
-      b = pr_netaddr_v4tov6(tmp_pool, na2);
+      b = pr_netaddr_v6tov4(tmp_pool, na2);
 
       pr_trace_msg(trace_channel, 6, "comparing IPv4 address '%s' against "
         "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(a),
@@ -994,7 +994,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
       /* This case means that na1 is an IPv4-mapped IPv6 address, and
        * na2 is an IPv4 address.
        */
-      a = pr_netaddr_v4tov6(tmp_pool, na1);
+      a = pr_netaddr_v6tov4(tmp_pool, na1);
       b = (pr_netaddr_t *) na2;
 
       pr_trace_msg(trace_channel, 6, "comparing IPv4 address '%s' against "
@@ -1008,7 +1008,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
        * IPv4-mapped IPv6 address.
        */
       a = (pr_netaddr_t *) na1;
-      b = pr_netaddr_v4tov6(tmp_pool, na2);
+      b = pr_netaddr_v6tov4(tmp_pool, na2);
 
       pr_trace_msg(trace_channel, 6, "comparing IPv4 address '%s' against "
         "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(a),
@@ -1162,7 +1162,7 @@ int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern, int flags) {
         ipstr);
 
       tmp_pool = make_sub_pool(permanent_pool);
-      a = pr_netaddr_v4tov6(tmp_pool, na);
+      a = pr_netaddr_v6tov4(tmp_pool, na);
 
       ipstr = pr_netaddr_get_ipstr(a);
 
@@ -1540,7 +1540,7 @@ int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *na) {
   return -1;
 }
 
-pr_netaddr_t *pr_netaddr_v4tov6(pool *p, const pr_netaddr_t *na) {
+pr_netaddr_t *pr_netaddr_v6tov4(pool *p, const pr_netaddr_t *na) {
   pr_netaddr_t *res;
 
   if (p == NULL ||
