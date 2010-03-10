@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.369 2010-03-09 02:38:54 castaglia Exp $
+ * $Id: mod_core.c,v 1.370 2010-03-10 14:52:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3127,11 +3127,19 @@ MODRET core_pasv(cmd_rec *cmd) {
       INPORT_ANY, FALSE);
   }
 
-  if (!session.d) {
+  if (session.d == NULL) {
     pr_response_add_err(R_425, _("Unable to build data connection: "
       "Internal error"));
     return PR_ERROR(cmd);
   }
+
+  /* Make sure that necessary socket options are set on the socket prior
+   * to the call to listen(2).
+   */
+  pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
+    IPTOS_THROUGHPUT, 1);
+  pr_inet_generate_socket_event("core.data-listen", main_server,
+    session.d->local_addr, session.d->listen_fd);
 
   pr_inet_set_block(session.pool, session.d);
   pr_inet_listen(session.pool, session.d, 1);
@@ -3654,6 +3662,14 @@ MODRET core_epsv(cmd_rec *cmd) {
       _("Unable to build data connection: Internal error"));
     return PR_ERROR(cmd);
   }
+
+  /* Make sure that necessary socket options are set on the socket prior
+   * to the call to listen(2).
+   */
+  pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
+    IPTOS_THROUGHPUT, 1);
+  pr_inet_generate_socket_event("core.data-listen", main_server,
+    session.d->local_addr, session.d->listen_fd);
 
   pr_inet_set_block(session.pool, session.d);
   pr_inet_listen(session.pool, session.d, 1);

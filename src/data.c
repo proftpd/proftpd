@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.122 2010-03-09 02:38:54 castaglia Exp $
+ * $Id: data.c,v 1.123 2010-03-10 14:52:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -261,18 +261,11 @@ static int data_pasv_open(char *reason, off_t size) {
   if (session.xfer.direction == PR_NETIO_IO_RD) {
     pr_inet_set_socket_opts(session.d->pool, session.d,
       (main_server->tcp_rcvbuf_override ?  main_server->tcp_rcvbuf_len : 0), 0);
-    pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-      IPTOS_THROUGHPUT, 1);
-    
+
   } else {
     pr_inet_set_socket_opts(session.d->pool, session.d,
       0, (main_server->tcp_sndbuf_override ?  main_server->tcp_sndbuf_len : 0));
-    pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-      IPTOS_THROUGHPUT, 1);
   }
-
-  pr_inet_generate_socket_event("core.data-listen", main_server,
-    session.d->local_addr, session.d->listen_fd);
 
   c = pr_inet_accept(session.pool, session.d, session.c, -1, -1, TRUE);
   pr_netaddr_set_reverse_dns(rev);
@@ -359,16 +352,17 @@ static int data_active_open(char *reason, off_t size) {
   if (session.xfer.direction == PR_NETIO_IO_RD) {
     pr_inet_set_socket_opts(session.d->pool, session.d,
       (main_server->tcp_rcvbuf_override ?  main_server->tcp_rcvbuf_len : 0), 0);
-    pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-      IPTOS_THROUGHPUT, 1);
     
   } else {
     pr_inet_set_socket_opts(session.d->pool, session.d,
       0, (main_server->tcp_sndbuf_override ?  main_server->tcp_sndbuf_len : 0));
-    pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-      IPTOS_THROUGHPUT, 1);
   }
 
+  /* Make sure that the necessary socket options are set on the socket prior
+   * to the call to connect(2).
+   */
+  pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
+    IPTOS_THROUGHPUT, 1);
   pr_inet_generate_socket_event("core.data-connect", main_server,
     session.d->local_addr, session.d->listen_fd);
 
