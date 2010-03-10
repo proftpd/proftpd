@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.88 2010-02-19 17:47:20 castaglia Exp $
+ * $Id: fxp.c,v 1.89 2010-03-10 16:14:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2127,7 +2127,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
   }
 
   xferlog_write(0, pr_netaddr_get_sess_remote_name(), fxh->fh_bytes_xferred,
-    abs_path, 'b', direction, 'r', session.user, 'i');
+    abs_path, 'b', direction, 'r', session.user, 'i', "_");
 
   if (cmd) {
     /* Ideally we could provide a real response code/message for any
@@ -3457,7 +3457,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
   /* Write a TransferLog entry as well. */
   abs_path = dir_abs_path(fxp->pool, dst, TRUE);
   xferlog_write(0, session.c->remote_name, st.st_size, abs_path, 'b', 'i',
-    'r', session.user, 'c');
+    'r', session.user, 'c', "_");
 
   status_code = fxp_errno2status(xerrno, &reason);
 
@@ -7051,7 +7051,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     abs_path = dir_abs_path(fxp->pool, path, TRUE);
 
     xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
-      'b', 'd', 'r', session.user, 'c');
+      'b', 'd', 'r', session.user, 'c', "_");
 
     pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);

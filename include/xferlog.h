@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003 The ProFTPD Project team
+ * Copyright (c) 2003-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /* TransferLog routines
  *
- * $Id: xferlog.h,v 1.1 2003-11-09 22:19:45 castaglia Exp $
+ * $Id: xferlog.h,v 1.2 2010-03-10 16:14:28 castaglia Exp $
  */
 
 #ifndef PR_XFERLOG_H
@@ -33,6 +33,6 @@
 int xferlog_open(const char *);
 void xferlog_close(void);
 int xferlog_write(long, const char *, off_t, char *, char, char, char, char *,
-  char);
+  char, const char *);
 
 #endif /* PR_XFERLOG_H */

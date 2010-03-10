@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.370 2010-03-10 14:52:36 castaglia Exp $
+ * $Id: mod_core.c,v 1.371 2010-03-10 16:14:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4312,11 +4312,12 @@ MODRET core_dele(cmd_rec *cmd) {
   if (session.sf_flags & SF_ANON) {
     xferlog_write(0, session.c->remote_name, st.st_size, fullpath,
       (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'a', session.anon_user,
-      'c');
+      'c', "_");
 
   } else {
     xferlog_write(0, session.c->remote_name, st.st_size, fullpath,
-      (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'r', session.user, 'c');
+      (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'r', session.user, 'c',
+      "_");
   }
 
   pr_response_add(R_250, _("%s command successful"), cmd->argv[0]);

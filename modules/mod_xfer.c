@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.270 2010-02-25 02:16:35 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.271 2010-03-10 16:14:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -272,13 +272,13 @@ static void _log_transfer(char direction, char abort_flag) {
     xferlog_write(end_time.tv_sec, pr_netaddr_get_sess_remote_name(),
       session.xfer.total_bytes, fullpath,
       (session.sf_flags & SF_ASCII ? 'a' : 'b'), direction,
-      'a', session.anon_user, abort_flag);
+      'a', session.anon_user, abort_flag, "_");
 
   } else {
     xferlog_write(end_time.tv_sec, pr_netaddr_get_sess_remote_name(),
       session.xfer.total_bytes, fullpath,
       (session.sf_flags & SF_ASCII ? 'a' : 'b'), direction,
-      'r', session.user, abort_flag);
+      'r', session.user, abort_flag, "_");
   }
 
   pr_log_debug(DEBUG1, "Transfer %s %" PR_LU " bytes in %ld.%02lu seconds",

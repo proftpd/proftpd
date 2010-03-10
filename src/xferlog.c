@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2009 The ProFTPD Project team
+ * Copyright (c) 2003-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD xferlog(5) logging support.
- * $Id: xferlog.c,v 1.6 2009-11-05 17:46:55 castaglia Exp $
+ * $Id: xferlog.c,v 1.7 2010-03-10 16:14:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -63,7 +63,7 @@ int xferlog_open(const char *path) {
 
 int xferlog_write(long xfertime, const char *remhost, off_t fsize, char *fname,
     char xfertype, char direction, char access_mode, char *user,
-    char abort_flag) {
+    char abort_flag, const char *action_flags) {
   const char *xfer_proto;
   char buf[LOGBUFFER_SIZE] = {'\0'}, fbuf[LOGBUFFER_SIZE] = {'\0'};
   int have_ident = FALSE;
@@ -100,13 +100,14 @@ int xferlog_write(long xfertime, const char *remhost, off_t fsize, char *fname,
   xfer_proto = pr_session_get_protocol(0);
 
   snprintf(buf, sizeof(buf),
-    "%s %ld %s %" PR_LU " %s %c _ %c %c %s %s %c %s %c\n",
+    "%s %ld %s %" PR_LU " %s %c %s %c %c %s %s %c %s %c\n",
       pr_strtime(time(NULL)),
       xfertime,
       remhost,
       (pr_off_t) fsize,
       fbuf,
       xfertype,
+      action_flags,
       direction,
       access_mode,
       user,

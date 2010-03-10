@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.37 2010-02-04 04:02:12 castaglia Exp $
+ * $Id: scp.c,v 1.38 2010-03-10 16:14:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2137,11 +2137,13 @@ int sftp_scp_close_session(uint32_t channel_id) {
             
                 if (elt->recvlen > 0) {
                   xferlog_write(0, pr_netaddr_get_sess_remote_name(),
-                    elt->recvlen, abs_path, 'b', 'i', 'r', session.user, 'i');
+                    elt->recvlen, abs_path, 'b', 'i', 'r', session.user, 'i',
+                    "_");
             
                 } else {
                   xferlog_write(0, pr_netaddr_get_sess_remote_name(),
-                    elt->sentlen, abs_path, 'b', 'o', 'r', session.user, 'i');
+                    elt->sentlen, abs_path, 'b', 'o', 'r', session.user, 'i',
+                    "_");
                 }
 
                 if (pr_fsio_close(elt->fh) < 0) {
