@@ -25,7 +25,7 @@
  * This is mod_deflate, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_deflate.c,v 1.1 2010-03-10 15:56:57 castaglia Exp $
+ * $Id: mod_deflate.c,v 1.2 2010-03-11 18:12:02 castaglia Exp $
  * $Libraries: -lz $
  */
 
@@ -798,16 +798,19 @@ static int deflate_sess_init(void) {
         pr_log_pri(PR_LOG_NOTICE, MOD_DEFLATE_VERSION
           ": notice: unable to open DeflateLog '%s': %s",
           (char *) c->argv[0], strerror(errno));
+        break;
 
       case PR_LOG_WRITABLE_DIR:
         pr_log_pri(PR_LOG_NOTICE, MOD_DEFLATE_VERSION
           ": notice: unable to use DeflateLog '%s': parent directory is "
             "world-writeable", (char *) c->argv[0]);
+        break;
 
       case PR_LOG_SYMLINK:
         pr_log_pri(PR_LOG_NOTICE, MOD_DEFLATE_VERSION
           ": notice: unable to use DeflateLog '%s': cannot log to a symlink",
           (char *) c->argv[0]);
+        break;
     }
   }
 
