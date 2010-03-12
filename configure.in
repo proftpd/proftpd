@@ -611,6 +611,17 @@ AC_ARG_ENABLE(ident,
     [disable use of ident (RFC1413) lookups (default=no)])
   ])
 
+dnl Memcache support
+AC_ARG_ENABLE(memcache,
+  [AC_HELP_STRING(
+    [--enable-memcache],
+    [enable support for memcache (default=no)])
+  ],
+  [ if test x"$enableval" = xyes ; then
+      AC_DEFINE(PR_USE_MEMCACHE, 1, [Define if using Memcache support.])
+    fi
+  ])
+
 dnl NLS support
 ENABLE_NLS="\"\""
 AC_ARG_ENABLE(nls,
@@ -1533,6 +1544,12 @@ if test x"$enable_ctrls" = xyes; then
   AC_CHECK_FUNCS(getpeereid getpeerucred)
   ac_static_modules="$ac_static_modules mod_ctrls.o"
   ac_build_static_modules="$ac_build_static_modules modules/mod_ctrls.o"
+fi
+
+dnl Memcache
+if test x"$enable_memcache" = xyes; then
+  ac_static_modules="$ac_static_modules mod_memcache.o"
+  ac_build_static_modules="$ac_build_static_modules modules/mod_memcache.o"
 fi
 
 dnl NLS/LANG support

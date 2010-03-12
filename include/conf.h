@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.82 2010-03-08 22:13:53 castaglia Exp $
+ * $Id: conf.h,v 1.83 2010-03-12 00:13:19 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -454,6 +454,7 @@ typedef struct {
 #include "pidfile.h"
 #include "env.h"
 #include "pr-syslog.h"
+#include "memcache.h"
 
 # ifdef HAVE_SETPASSENT
 #  define setpwent()	setpassent(1)

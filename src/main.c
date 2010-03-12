@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.393 2010-03-09 02:38:54 castaglia Exp $
+ * $Id: main.c,v 1.394 2010-03-12 00:13:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2643,6 +2643,12 @@ static void show_settings(void) {
 #else
   printf("    - Lastlog support\n");
 #endif /* PR_USE_LASTLOG */
+
+#ifdef PR_USE_MEMCACHE
+  printf("    + Memcache support\n");
+#else
+  printf("    - Memcache support\n");
+#endif /* PR_USE_MEMCACHE */
 
 #if defined(PR_USE_NCURSESW) && defined(HAVE_LIBNCURSESW)
   printf("    + ncursesw support\n");
