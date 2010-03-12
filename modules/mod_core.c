@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.372 2010-03-10 19:14:31 castaglia Exp $
+ * $Id: mod_core.c,v 1.373 2010-03-12 00:34:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -294,25 +294,36 @@ MODRET set_define(cmd_rec *cmd) {
 }
 
 MODRET add_include(cmd_rec *cmd) {
+  int res;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|CONF_DIR);
 
   /* Make sure the given path is a valid path. */
-  if (pr_fs_valid_path(cmd->argv[1]) < 0) {
+
+  PRIVS_ROOT
+  res = pr_fs_valid_path(cmd->argv[1]);
+
+  if (res < 0) {
+    PRIVS_RELINQUISH
+
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "unable to use path for configuration file '", cmd->argv[1], "'", NULL));
   }
 
   if (parse_config_path(cmd->tmp_pool, cmd->argv[1]) == -1) {
-    if (errno != EINVAL)
+    if (errno != EINVAL) {
       pr_log_pri(PR_LOG_WARNING, "warning: unable to include '%s': %s",
         cmd->argv[1], strerror(errno));
 
-    else {
+    } else {
+      PRIVS_RELINQUISH
+
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error including '", cmd->argv[1],
         "': ", strerror(errno), NULL));
     }
   }
+  PRIVS_RELINQUISH
 
   return PR_HANDLED(cmd);
 }
