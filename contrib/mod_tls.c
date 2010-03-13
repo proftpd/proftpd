@@ -3163,8 +3163,15 @@ static void tls_end_sess(SSL *ssl, int strms, int flags) {
 
     err_code = SSL_get_error(ssl, res);
     switch (err_code) {
+      case SSL_ERROR_WANT_READ:
+      case SSL_ERROR_WANT_WRITE:
       case SSL_ERROR_ZERO_RETURN:
-        /* Clean shutdown, nothing we need to do. */
+        /* Clean shutdown, nothing we need to do.  The WANT_READ/WANT_WRITE
+         * error codes crept into OpenSSL 0.9.8m, with changes to make
+         * SSL_shutdown() work properly for non-blocking sockets.  And
+         * handling these error codes for older OpenSSL versions won't break
+         * things.
+         */
         break;
 
       default:
