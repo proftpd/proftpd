@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached$
- * $Id: mod_memcache.c,v 1.2 2010-03-14 00:47:31 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.3 2010-03-14 00:52:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -94,7 +94,7 @@ MODRET set_memcacheservers(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   for (i = 1; i < cmd->argc; i++) {
-    str = pstrcat(cmd->tmp_pool, str, *str ? ", " : "", cmd->argv[i], NULL);
+    str = pstrcat(cmd->pool, str, *str ? ", " : "", cmd->argv[i], NULL);
   }
 
   memcache_servers = memcached_servers_parse(str);
