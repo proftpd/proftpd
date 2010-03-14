@@ -23,7 +23,7 @@
  */
 
 /* Memcache support
- * $Id: memcache.h,v 1.1 2010-03-12 00:13:19 castaglia Exp $
+ * $Id: memcache.h,v 1.2 2010-03-14 00:46:10 castaglia Exp $
  */
 
 #ifndef PR_MEMCACHE_H
@@ -34,8 +34,8 @@
 typedef struct mcache_rec pr_memcache_t;
 
 /* Core API for use by modules et al */
-pr_memcache_t *pr_memcache_conn_get(pool *pool, time_t expires);
-pr_memcache_t *pr_memcache_conn_new(pool *pool, time_t expires);
+pr_memcache_t *pr_memcache_conn_get(pool *p, time_t expires);
+pr_memcache_t *pr_memcache_conn_new(pool *p, time_t expires);
 int pr_memcache_conn_close(pr_memcache_t *mcache);
 
 int pr_memcache_add(pr_memcache_t *mcache, const char *key, void *value,
