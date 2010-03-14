@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached$
- * $Id: mod_memcache.c,v 1.1 2010-03-12 00:13:19 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.2 2010-03-14 00:47:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,6 +35,8 @@
 #if PROFTPD_VERSION_NUMBER < 0x0001030401
 # error "ProFTPD 1.3.4rc1 or later required"
 #endif
+
+extern xaset_t *server_list;
 
 module memcache_module;
 
@@ -82,6 +84,7 @@ MODRET set_memcacheservers(cmd_rec *cmd) {
   register unsigned int i;
   config_rec *c;
   char *str = "";
+  memcached_server_st *memcache_servers;
 
   if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -91,15 +94,45 @@ MODRET set_memcacheservers(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   for (i = 1; i < cmd->argc; i++) {
-    str = pstrcat(c->pool, str, *str ? ", " : "", cmd->argv[i], NULL);
+    str = pstrcat(cmd->tmp_pool, str, *str ? ", " : "", cmd->argv[i], NULL);
   }
-  c->argv[0] = str;
 
+  memcache_servers = memcached_servers_parse(str);
+  if (memcache_servers == NULL) {
+    CONF_ERROR(cmd, "unable to parse server parameters");
+  }
+
+  c->argv[0] = memcache_servers;
   return PR_HANDLED(cmd);
+}
+
+/* Event handlers
+ */
+
+static void memcache_restart_ev(const void *event_data, void *user_data) {
+  server_rec *s;
+
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    config_rec *c;
+
+    c = find_config(s->conf, CONF_PARAM, "MemcacheServers", FALSE);
+    if (c) {
+      memcached_server_st *memcache_servers;
+
+      memcache_servers = c->argv[0];
+      memcached_server_list_free(memcache_servers);
+    }
+  }
 }
 
 /* Initialization functions
  */
+
+static int memcache_init(void) {
+  pr_event_register(&memcache_module, "core.restart", memcache_restart_ev,
+    NULL);
+  return 0;
+}
 
 static int memcache_sess_init(void) {
   config_rec *c;
@@ -156,19 +189,10 @@ static int memcache_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "MemcacheServers", FALSE);
   if (c) {
-    const char *str;
-    memcached_server_st *server_list;
+    memcached_server_st *memcache_servers;
 
-    str = c->argv[0]; 
-
-    server_list = memcached_servers_parse(str);
-    if (server_list) {
-      memcache_set_servers(server_list);
-
-    } else {
-      (void) pr_log_writefile(memcache_logfd, MOD_MEMCACHE_VERSION,
-        "unable to parse servers string '%s'", str);
-    }
+    memcache_servers = c->argv[0]; 
+    memcache_set_servers(memcache_servers);
   }
 
   return 0;
@@ -204,7 +228,7 @@ module memcache_module = {
   NULL,
 
   /* Module initialization function */
-  NULL,
+  memcache_init,
 
   /* Session initialization function */
   memcache_sess_init,
