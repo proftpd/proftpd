@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.31 2010-03-02 18:07:48 castaglia Exp $
+ * $Id: mod_facts.c,v 1.32 2010-03-17 20:52:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,6 +44,8 @@ static unsigned long facts_opts = 0;
 #define FACTS_OPT_SHOW_UNIX_GROUP	0x00020
 #define FACTS_OPT_SHOW_UNIX_MODE	0x00040
 #define FACTS_OPT_SHOW_UNIX_OWNER	0x00080
+
+#define FACTS_MLINFO_FL_SHOW_SYMLINKS	0x00001
 
 struct mlinfo {
   pool *pool;
@@ -293,11 +295,13 @@ static void facts_mlinfobuf_flush(void) {
 }
 
 static int facts_mlinfo_get(struct mlinfo *info, const char *path,
-    const char *dent_name) {
+    const char *dent_name, int flags) {
   char *perm = "";
+  int res;
 
-  if (pr_fsio_stat(path, &(info->st)) < 0) {
-    pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": error stat'ing '%s': %s",
+  res = pr_fsio_lstat(path, &(info->st));
+  if (res < 0) {
+    pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": error lstat'ing '%s': %s",
       path, strerror(errno));
     return -1;
   }
@@ -305,7 +309,39 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
   info->tm = pr_gmtime(info->pool, &(info->st.st_mtime));
 
   if (!S_ISDIR(info->st.st_mode)) {
+#ifdef S_ISLNK
+    if (S_ISLNK(info->st.st_mode)) {
+      struct stat target_st;
+
+      /* Now we need to use stat(2) on the path (versus lstat(2)) to get the
+       * info for the target, and copy its st_dev and st_ino values to our
+       * stat in order to ensure that the unique fact values are the same.
+       */
+
+      pr_fs_clear_cache();
+      res = pr_fsio_stat(path, &target_st);
+      if (res < 0) {
+        pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": error stat'ing '%s': %s",
+          path, strerror(errno));
+        return -1;
+      }
+
+      info->st.st_dev = target_st.st_dev;
+      info->st.st_ino = target_st.st_ino;
+
+      if (flags & FACTS_MLINFO_FL_SHOW_SYMLINKS) {
+        info->type = "OS.unix=symlink";
+
+      } else {
+        info->type = "file";
+      }
+
+    } else {
+      info->type = "file";
+    }
+#else
     info->type = "file";
+#endif
 
     if (pr_fsio_access(path, R_OK, session.uid, session.gid,
         session.gids) == 0) {
@@ -836,6 +872,8 @@ MODRET facts_mfmt(cmd_rec *cmd) {
 MODRET facts_mlsd(cmd_rec *cmd) {
   const char *path, *decoded_path, *best_path;
   struct mlinfo info;
+  unsigned char *ptr;
+  int flags = 0;
   DIR *dirh;
   struct dirent *dent;
 
@@ -877,6 +915,13 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   if (!S_ISDIR(info.st.st_mode)) {
     pr_response_add_err(R_550, _("'%s' is not a directory"), path);
     return PR_ERROR(cmd);
+  }
+
+  /* Determine whether to display symlinks as such. */
+  ptr = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
+  if (ptr &&
+      *ptr == TRUE) {
+    flags |= FACTS_MLINFO_FL_SHOW_SYMLINKS;
   }
 
   best_path = dir_best_path(cmd->tmp_pool, decoded_path);
@@ -932,7 +977,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     memset(&info, 0, sizeof(struct mlinfo));
 
     info.pool = cmd->tmp_pool;
-    if (facts_mlinfo_get(&info, rel_path, dent->d_name) < 0) {
+    if (facts_mlinfo_get(&info, rel_path, dent->d_name, flags) < 0) {
       pr_log_debug(DEBUG3, MOD_FACTS_VERSION
         ": MLSD: unable to get info for '%s': %s", abs_path, strerror(errno));
       continue;
@@ -974,7 +1019,8 @@ MODRET facts_mlsd_cleanup(cmd_rec *cmd) {
 }
 
 MODRET facts_mlst(cmd_rec *cmd) {
-  int hidden = FALSE;
+  int flags = 0, hidden = FALSE;
+  unsigned char *ptr;
   const char *path, *decoded_path;
   struct mlinfo info;
 
@@ -1004,10 +1050,17 @@ MODRET facts_mlst(cmd_rec *cmd) {
     return PR_HANDLED(cmd);
   }
 
+  /* Determine whether to display symlinks as such. */
+  ptr = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
+  if (ptr &&
+      *ptr == TRUE) {
+    flags |= FACTS_MLINFO_FL_SHOW_SYMLINKS;
+  }
+
   info.pool = cmd->tmp_pool;
 
   pr_fs_clear_cache();
-  if (facts_mlinfo_get(&info, decoded_path, decoded_path) < 0) {
+  if (facts_mlinfo_get(&info, decoded_path, decoded_path, flags) < 0) {
     pr_response_add_err(R_550, _("'%s' cannot be listed"), path);
     return PR_ERROR(cmd);
   }
