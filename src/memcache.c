@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.1 2010-03-12 00:13:19 castaglia Exp $
+ * $Id: memcache.c,v 1.2 2010-03-19 16:36:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -56,7 +56,7 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, time_t expires) {
   pr_memcache_t *mcache;
   pool *sub_pool;
   memcached_st *mc;
-  memcached_return_t res;
+  memcached_return res;
 
   if (p == NULL) {
     errno = EINVAL;
@@ -139,7 +139,7 @@ int pr_memcache_conn_close(pr_memcache_t *mcache) {
 
 int pr_memcache_add(pr_memcache_t *mcache, const char *key, void *value,
     size_t valuesz, uint32_t flags) {
-  memcached_return_t res;
+  memcached_return res;
 
   /* XXX Should we allow null values to be added, thus allowing use of keys
    * as sentinels?
@@ -168,7 +168,7 @@ void *pr_memcache_get(pr_memcache_t *mcache, const char *key, size_t *valuesz,
     uint32_t *flags) {
   char *data = NULL;
   void *ptr = NULL;
-  memcached_return_t res;
+  memcached_return res;
 
   if (mcache == NULL ||
       key == NULL ||
@@ -202,7 +202,7 @@ char *pr_memcache_get_str(pr_memcache_t *mcache, const char *key,
     uint32_t *flags) {
   char *data = NULL, *ptr = NULL;
   size_t valuesz = 0;
-  memcached_return_t res;
+  memcached_return res;
 
   if (mcache == NULL ||
       key == NULL ||
@@ -232,7 +232,7 @@ char *pr_memcache_get_str(pr_memcache_t *mcache, const char *key,
 }
 
 int pr_memcache_remove(pr_memcache_t *mcache, const char *key) {
-  memcached_return_t res;
+  memcached_return res;
 
   if (mcache == NULL ||
       key == NULL) {
@@ -253,7 +253,7 @@ int pr_memcache_remove(pr_memcache_t *mcache, const char *key) {
 
 int pr_memcache_set(pr_memcache_t *mcache, const char *key, void *value,
     size_t valuesz, uint32_t flags) {
-  memcached_return_t res;
+  memcached_return res;
 
   /* XXX Should we allow null values to be added, thus allowing use of keys
    * as sentinels?
