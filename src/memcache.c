@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.2 2010-03-19 16:36:08 castaglia Exp $
+ * $Id: memcache.c,v 1.3 2010-03-19 21:21:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -42,6 +42,9 @@ static memcached_server_st *servers = NULL;
 static int memcache_logfd = -1;
 static pr_memcache_t *sess_mcache = NULL;
 
+static unsigned long memcache_flags = 0;
+static uint64_t memcache_nreplicas = 0;
+
 static const char *trace_channel = "memcache";
 
 pr_memcache_t *pr_memcache_conn_get(pool *p, time_t expires) {
@@ -57,6 +60,7 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, time_t expires) {
   pool *sub_pool;
   memcached_st *mc;
   memcached_return res;
+  uint64_t nreplicas = 0;
 
   if (p == NULL) {
     errno = EINVAL;
@@ -94,7 +98,7 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, time_t expires) {
   mcache->expires = expires;
 
   /* Set some of the desired behavior flags on the connection */
-  if (memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_TCP_NODELAY) != 0) {
+  if (memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_TCP_NODELAY) != 1) {
     res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_TCP_NODELAY, 1);
     if (res != MEMCACHED_SUCCESS) {
       (void) pr_log_writefile(memcache_logfd, trace_channel,
@@ -103,10 +107,21 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, time_t expires) {
     }
   }
 
+  /* Enable caching of DNS lookups. */
+  if (memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_CACHE_LOOKUPS) != 1) {
+    res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_CACHE_LOOKUPS, 1);
+    if (res != MEMCACHED_SUCCESS) {
+      (void) pr_log_writefile(memcache_logfd, trace_channel,
+        "error setting CACHE_LOOKUPS behavior on connection: %s",
+        memcached_strerror(mc, res));
+    }
+  }
+
   /* We always want consistent hashing, to minimize cache churn when
    * servers are added/removed from the list.  */
   if (memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_DISTRIBUTION) != MEMCACHED_DISTRIBUTION_CONSISTENT) {
-    res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_DISTRIBUTION, MEMCACHED_DISTRIBUTION_CONSISTENT);
+    res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_DISTRIBUTION,
+      MEMCACHED_DISTRIBUTION_CONSISTENT);
     if (res != MEMCACHED_SUCCESS) {
       (void) pr_log_writefile(memcache_logfd, trace_channel,
         "error setting DISTRIBUTION_CONSISTENT behavior on connection: %s",
@@ -114,9 +129,48 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, time_t expires) {
     }
   }
 
+  /* Use the binary protocol by default, unless explicitly requested not to. */
+  if (memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_BINARY_PROTOCOL) != 1) {
+    if (!(memcache_flags & PR_MEMCACHE_FL_NO_BINARY_PROTOCOL)) {
+      res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_BINARY_PROTOCOL, 1);
+      if (res != MEMCACHED_SUCCESS) {
+        (void) pr_log_writefile(memcache_logfd, trace_channel,
+          "error setting BINARY_PROTOCOL behavior on connection: %s",
+          memcached_strerror(mc, res));
+      }
+    }
+  }
+
+  /* Make sure that the requested number of replicas does not exceed the
+   * server count.
+   */
+  nreplicas = memcache_nreplicas;
+  if (nreplicas > memcached_server_count(mc)) {
+    nreplicas = memcached_server_count(mc);
+  }
+
+  /* XXX Some caveats about libmemcached replication:
+   *
+   *  1.  Replication is enabled only if the binary protocol is used.
+   *  2.  Replication occurs only for 'delete' or 'set' operations, NOT
+   *      'add', 'cas', 'incr', 'decr', etc.
+   */
+
+  if (nreplicas > 0) {
+    res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_NUMBER_OF_REPLICAS,
+      nreplicas);
+    if (res != MEMCACHED_SUCCESS) {
+      (void) pr_log_writefile(memcache_logfd, trace_channel,
+        "error setting NUMBER_OF_REPLICAS behavior on connection: %s",
+        memcached_strerror(mc, res));
+
+    } else {
+      (void) pr_log_writefile(memcache_logfd, trace_channel,
+        "storing %lu replicas", (unsigned long) nreplicas);
+    }
+  }
+
   /* XXX Other behavior to play with:
-   *  MEMCACHED_BEHAVIOR_BINARY_PROTOCOL
-   *  MEMCACHED_BEHAVIOR_NUMBER_OF_REPLICAS
    *  MEMCACHED_BEHAVIOR_RANDOMIZE_REPLICA_READ
    */
 
@@ -278,6 +332,15 @@ int pr_memcache_set(pr_memcache_t *mcache, const char *key, void *value,
   return 0;
 }
 
+unsigned long memcache_get_flags(void) {
+  return memcache_flags;
+}
+
+int memcache_set_flags(unsigned long flags) {
+  memcache_flags = flags;
+  return 0;
+}
+
 int memcache_set_logfd(int fd) {
   if (fd < 0) {
     errno = EINVAL;
@@ -285,6 +348,16 @@ int memcache_set_logfd(int fd) {
   }
 
   memcache_logfd = fd;
+  return 0;
+}
+
+int memcache_set_replicas(uint64_t count) {
+  if (count < 1) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  memcache_nreplicas = count;
   return 0;
 }
 
@@ -344,7 +417,21 @@ int pr_memcache_set(pr_memcache_t *mcache, const char *key, void *value,
   return -1;
 }
 
+unsigned long memcache_get_flags(void) {
+  return 0;
+}
+
+int memcache_set_flags(unsigned long flags) {
+  errno = ENOSYS;
+  return -1;
+}
+
 int memcache_set_logfd(int fd) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int memcache_set_replicas(uint64_t count) {
   errno = ENOSYS;
   return -1;
 }

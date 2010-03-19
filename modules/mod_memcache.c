@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached$
- * $Id: mod_memcache.c,v 1.3 2010-03-14 00:52:33 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.4 2010-03-19 21:21:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -76,6 +76,68 @@ MODRET set_memcachelog(cmd_rec *cmd) {
   }
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return PR_HANDLED(cmd);
+}
+
+/* usage: MemcacheOptions opt1 opt2 ... */
+MODRET set_memcacheoptions(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  register unsigned int i = 0;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "NoBinaryProtocol") == 0) {
+      opts |= PR_MEMCACHE_FL_NO_BINARY_PROTOCOL;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown MemcacheOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: MemcacheReplicas count */
+MODRET set_memcachereplicas(cmd_rec *cmd) {
+  char *ptr = NULL;
+  config_rec *c;
+  uint64_t count = 0;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  /* XXX Should we double-check, at some point, that the configured replica
+   * count is <= the server count?
+   */
+
+#ifdef HAVE_STRTOULL
+  count = strtoull(cmd->argv[1], &ptr, 10);
+#else
+  count = strtoul(cmd->argv[1], &ptr, 10);
+#endif /* HAVE_STRTOULL */
+
+  if (ptr &&
+      *ptr) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad replica parameter: ",
+      cmd->argv[1], NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(uint64_t));
+  *((uint64_t *) c->argv[0]) = count;
+
   return PR_HANDLED(cmd);
 }
 
@@ -195,6 +257,30 @@ static int memcache_sess_init(void) {
     memcache_set_servers(memcache_servers);
   }
 
+  c = find_config(main_server->conf, CONF_PARAM, "MemcacheOptions", FALSE);
+  if (c) {
+    unsigned long flags;
+
+    flags = *((unsigned long *) c->argv[0]);
+
+    if (memcache_set_flags(flags) < 0) {
+      (void) pr_log_writefile(memcache_logfd, MOD_MEMCACHE_VERSION,
+        "error setting memcache flags: %s", strerror(errno));
+    }
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "MemcacheReplicas", FALSE);
+  if (c) {
+    uint64_t count;
+
+    count = *((uint64_t *) c->argv[0]);
+
+    if (memcache_set_replicas(count) < 0) {
+      (void) pr_log_writefile(memcache_logfd, MOD_MEMCACHE_VERSION,
+        "error setting memcache replicas: %s", strerror(errno));
+    }
+  }
+
   return 0;
 }
 
@@ -204,6 +290,8 @@ static int memcache_sess_init(void) {
 static conftable memcache_conftab[] = {
   { "MemcacheEngine",	set_memcacheengine,	NULL },
   { "MemcacheLog",	set_memcachelog,	NULL },
+  { "MemcacheOptions",	set_memcacheoptions,	NULL },
+  { "MemcacheReplicas",	set_memcachereplicas,	NULL },
   { "MemcacheServers",	set_memcacheservers,	NULL },
 
   { NULL }

@@ -23,7 +23,7 @@
  */
 
 /* Memcache support
- * $Id: memcache.h,v 1.2 2010-03-14 00:46:10 castaglia Exp $
+ * $Id: memcache.h,v 1.3 2010-03-19 21:21:26 castaglia Exp $
  */
 
 #ifndef PR_MEMCACHE_H
@@ -49,7 +49,12 @@ int pr_memcache_set(pr_memcache_t *mcache, const char *key, void *value,
   size_t valuesz, uint32_t flags);
 
 /* For internal use only */
+unsigned long memcache_get_flags(void);
+#define PR_MEMCACHE_FL_NO_BINARY_PROTOCOL	0x001
+
+int memcache_set_flags(unsigned long flags);
 int memcache_set_logfd(int logfd);
+int memcache_set_replicas(uint64_t count);
 int memcache_set_servers(void *server_list);
 
 #endif /* PR_MEMCACHE_H */
