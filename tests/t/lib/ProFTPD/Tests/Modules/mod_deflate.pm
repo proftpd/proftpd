@@ -2276,10 +2276,8 @@ sub deflate_mode_z_tls {
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
-#  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
-  my $cert_file = File::Spec->rel2abs('/home/tj/proftpd/cvs/proftpd/tests/t/etc/modules/mod_tls/server-cert.pem');
-#  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
-  my $ca_file = File::Spec->rel2abs('/home/tj/proftpd/cvs/proftpd/tests/t/etc/modules/mod_tls/ca-cert.pem');
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
 
   my $config = {
     PidFile => $pid_file,
