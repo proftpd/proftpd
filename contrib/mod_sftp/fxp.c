@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.89 2010-03-10 16:14:28 castaglia Exp $
+ * $Id: fxp.c,v 1.90 2010-03-31 22:40:39 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1782,7 +1782,7 @@ static char fxp_get_file_type(mode_t mode) {
 }
 
 static void fxp_attrs_write(pool *p, char **buf, uint32_t *buflen,
-    struct stat *st) {
+    struct stat *st, const char *user_owner, const char *group_owner) {
   uint32_t flags;
   mode_t perms;
 
@@ -1817,8 +1817,21 @@ static void fxp_attrs_write(pool *p, char **buf, uint32_t *buflen,
     sftp_msg_write_int(buf, buflen, flags);
     sftp_msg_write_byte(buf, buflen, file_type);
     fxp_msg_write_long(buf, buflen, st->st_size);
-    sftp_msg_write_string(buf, buflen, pr_auth_uid2name(p, st->st_uid));
-    sftp_msg_write_string(buf, buflen, pr_auth_gid2name(p, st->st_gid));
+
+    if (user_owner == NULL) {
+      sftp_msg_write_string(buf, buflen, pr_auth_uid2name(p, st->st_uid));
+
+    } else {
+      sftp_msg_write_string(buf, buflen, user_owner);
+    }
+
+    if (group_owner == NULL) {
+      sftp_msg_write_string(buf, buflen, pr_auth_gid2name(p, st->st_gid));
+
+    } else {
+      sftp_msg_write_string(buf, buflen, group_owner);
+    }
+
     sftp_msg_write_int(buf, buflen, perms);
     fxp_msg_write_long(buf, buflen, st->st_atime);
     fxp_msg_write_long(buf, buflen, st->st_mtime);
@@ -1887,7 +1900,8 @@ static char *fxp_strmode(pool *p, mode_t mode) {
   return pstrdup(p, mode_str);
 }
 
-static char *fxp_get_path_listing(pool *p, const char *path, struct stat *st) {
+static char *fxp_get_path_listing(pool *p, const char *path, struct stat *st,
+    const char *user_owner, const char *group_owner) {
   const char *user, *group;
   char listing[256], *mode_str, time_str[64];
   struct tm *t;
@@ -1920,10 +1934,22 @@ static char *fxp_get_path_listing(pool *p, const char *path, struct stat *st) {
     time_strlen = strftime(time_str, sizeof(time_str), "%b %e %H:%M", t);
   }
 
-  user = pr_auth_uid2name(p, st->st_uid);
+  if (user_owner == NULL) {
+    user = pr_auth_uid2name(p, st->st_uid);
+
+  } else {
+    user = user_owner;
+  }
+
   user_len = MAX(strlen(user), 8);
 
-  group = pr_auth_gid2name(p, st->st_gid);
+  if (group_owner == NULL) {
+    group = pr_auth_gid2name(p, st->st_gid);
+
+  } else {
+    group = group_owner;
+  }
+
   group_len = MAX(strlen(group), 8);
 
   snprintf(listing, sizeof(listing)-1,
@@ -1982,7 +2008,8 @@ static struct fxp_dirent *fxp_get_dirent(pool *p, cmd_rec *cmd,
 }
 
 static void fxp_name_write(pool *p, char **buf, uint32_t *buflen,
-    const char *path, struct stat *st) {
+    const char *path, struct stat *st, const char *user_owner,
+    const char *group_owner) {
 
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     sftp_msg_write_string(buf, buflen, sftp_utf8_encode_str(p, path));
@@ -1994,7 +2021,7 @@ static void fxp_name_write(pool *p, char **buf, uint32_t *buflen,
   if (fxp_session->client_version <= 3) {
     char *path_desc;
 
-    path_desc = fxp_get_path_listing(p, path, st);
+    path_desc = fxp_get_path_listing(p, path, st, user_owner, group_owner);
 
     if (fxp_session->client_version >= fxp_utf8_protocol_version) {
       sftp_msg_write_string(buf, buflen, sftp_utf8_encode_str(p, path_desc));
@@ -2004,7 +2031,7 @@ static void fxp_name_write(pool *p, char **buf, uint32_t *buflen,
     }
   }
 
-  fxp_attrs_write(p, buf, buflen, st);
+  fxp_attrs_write(p, buf, buflen, st, user_owner, group_owner);
 }
 
 /* FX Handle Mgmt */
@@ -4498,6 +4525,7 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd;
+  const char *fake_user = NULL, *fake_group = NULL;
 
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
@@ -4621,7 +4649,22 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_ATTRS);
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
-  fxp_attrs_write(fxp->pool, &buf, &buflen, &st);
+
+  fake_user = get_param_ptr(get_dir_ctxt(fxp->pool, fxh->fh->fh_path),
+    "DirFakeUser", FALSE);
+  if (fake_user != NULL &&
+      strcmp(fake_user, "~") == 0) {
+    fake_user = session.user;
+  }
+
+  fake_group = get_param_ptr(get_dir_ctxt(fxp->pool, fxh->fh->fh_path),
+    "DirFakeGroup", FALSE);
+  if (fake_group != NULL &&
+      strcmp(fake_group, "~") == 0) {
+    fake_group = session.group;
+  }
+
+  fxp_attrs_write(fxp->pool, &buf, &buflen, &st, fake_user, fake_group);
 
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
@@ -5110,6 +5153,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   struct stat st;
   struct fxp_packet *resp;
   cmd_rec *cmd;
+  const char *fake_user = NULL, *fake_group = NULL;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
@@ -5233,7 +5277,22 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_ATTRS);
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
-  fxp_attrs_write(fxp->pool, &buf, &buflen, &st);
+
+  fake_user = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeUser",
+    FALSE);
+  if (fake_user != NULL &&
+      strcmp(fake_user, "~") == 0) {
+    fake_user = session.user;
+  }
+
+  fake_group = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeGroup",
+    FALSE);
+  if (fake_group != NULL &&
+      strcmp(fake_group, "~") == 0) {
+    fake_group = session.group;
+  }
+
+  fxp_attrs_write(fxp->pool, &buf, &buflen, &st, fake_user, fake_group);
 
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
@@ -6385,6 +6444,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   cmd_rec *cmd;
   int have_error = FALSE;
   mode_t *fake_mode = NULL;
+  const char *fake_user = NULL, *fake_group = NULL;
 
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
@@ -6492,6 +6552,20 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   fake_mode = get_param_ptr(get_dir_ctxt(fxp->pool, (char *) fxh->dir),
     "DirFakeMode", FALSE);
 
+  fake_user = get_param_ptr(get_dir_ctxt(fxp->pool, (char *) fxh->dir),
+    "DirFakeUser", FALSE);
+  if (fake_user != NULL &&
+      strcmp(fake_user, "~") == 0) {
+    fake_user = session.user;
+  }
+
+  fake_group = get_param_ptr(get_dir_ctxt(fxp->pool, (char *) fxh->dir),
+    "DirFakeGroup", FALSE);
+  if (fake_group != NULL &&
+      strcmp(fake_group, "~") == 0) {
+    fake_group = session.group;
+  }
+
   while ((dent = pr_fsio_readdir(fxh->dirh)) != NULL) {
     char *real_path;
     struct fxp_dirent *fxd;
@@ -6556,7 +6630,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   paths = path_list->elts;
   for (i = 0; i < path_list->nelts; i++) {
     fxp_name_write(fxp->pool, &buf, &buflen, paths[i]->client_path,
-      paths[i]->st);
+      paths[i]->st, fake_user, fake_group);
   }
 
   if (fxp_session->client_version > 5) {
@@ -6662,6 +6736,8 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
 
   } else {
     struct stat st;
+    const char *fake_user = NULL, *fake_group = NULL;
+
     memset(&st, 0, sizeof(struct stat));
 
     data[res] = '\0';
@@ -6672,7 +6748,22 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
     sftp_msg_write_int(&buf, &buflen, fxp->request_id);
     sftp_msg_write_int(&buf, &buflen, 1);
-    fxp_name_write(fxp->pool, &buf, &buflen, data, &st);
+
+    fake_user = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeUser",
+      FALSE);
+    if (fake_user != NULL &&
+        strcmp(fake_user, "~") == 0) {
+      fake_user = session.user;
+    }
+
+    fake_group = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeGroup",
+      FALSE);
+    if (fake_group != NULL &&
+        strcmp(fake_group, "~") == 0) {
+      fake_group = session.group;
+    }
+
+    fxp_name_write(fxp->pool, &buf, &buflen, data, &st, fake_user, fake_group);
 
     pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   }
@@ -6827,13 +6918,30 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
   } else {
+    const char *fake_user = NULL, *fake_group = NULL;
+
     pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
       path, fxp_strattrs(fxp->pool, &st, NULL));
 
     sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
     sftp_msg_write_int(&buf, &buflen, fxp->request_id);
     sftp_msg_write_int(&buf, &buflen, 1);
-    fxp_name_write(fxp->pool, &buf, &buflen, path, &st);
+
+    fake_user = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeUser",
+      FALSE);
+    if (fake_user != NULL &&
+        strcmp(fake_user, "~") == 0) {
+      fake_user = session.user;
+    }
+
+    fake_group = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeGroup",
+      FALSE);
+    if (fake_group != NULL &&
+        strcmp(fake_group, "~") == 0) {
+      fake_group = session.group;
+    }
+
+    fxp_name_write(fxp->pool, &buf, &buflen, path, &st, fake_user, fake_group);
 
     pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   }
@@ -7690,6 +7798,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   struct stat st;
   struct fxp_packet *resp;
   cmd_rec *cmd;
+  const char *fake_user = NULL, *fake_group = NULL;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   if (fxp_session->client_version > fxp_utf8_protocol_version) {
@@ -7815,7 +7924,22 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_ATTRS);
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
-  fxp_attrs_write(fxp->pool, &buf, &buflen, &st);
+
+  fake_user = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeUser",
+    FALSE);
+  if (fake_user != NULL &&
+      strcmp(fake_user, "~") == 0) {
+    fake_user = session.user;
+  }
+
+  fake_group = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeGroup",
+    FALSE);
+  if (fake_group != NULL &&
+      strcmp(fake_group, "~") == 0) {
+    fake_group = session.group;
+  }
+
+  fxp_attrs_write(fxp->pool, &buf, &buflen, &st, fake_user, fake_group);
 
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
