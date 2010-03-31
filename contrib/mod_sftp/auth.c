@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.23 2009-12-12 00:47:39 castaglia Exp $
+ * $Id: auth.c,v 1.24 2010-03-31 17:38:48 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -316,7 +316,13 @@ static int setup_env(pool *p, char *user) {
   session.login_uid = pw->pw_uid;
   session.login_gid = pw->pw_gid;
 
-  pw->pw_dir = pr_auth_get_home(p, pw->pw_dir);
+  /* Note that we do NOT need to explicitly call pr_auth_get_home() here;
+   * that call already happens in the pr_auth_getpwnam() call above.  To
+   * call it again here would cause the home directory to be rewritten twice;
+   * depending on the configured rewrite rules, that would lead to an
+   * incorrect value (Bug#3421).
+   */
+
   pw->pw_dir = path_subst_uservar(p, &pw->pw_dir);
 
   if (session.gids == NULL &&
