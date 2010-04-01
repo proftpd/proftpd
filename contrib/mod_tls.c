@@ -3101,6 +3101,8 @@ static void tls_end_sess(SSL *ssl, int strms, int flags) {
 
   shutdown_state = SSL_get_shutdown(ssl);
   if (!(shutdown_state & SSL_SENT_SHUTDOWN)) {
+    errno = 0;
+
     /* 'close_notify' not already sent; send it now. */
     res = SSL_shutdown(ssl);
   }
@@ -3112,6 +3114,7 @@ static void tls_end_sess(SSL *ssl, int strms, int flags) {
 
       res = 1;
       if (!(shutdown_state & SSL_RECEIVED_SHUTDOWN)) {
+        errno = 0;
         res = SSL_shutdown(ssl);
       }
     }
@@ -3145,8 +3148,6 @@ static void tls_end_sess(SSL *ssl, int strms, int flags) {
               errno != EPERM &&
               errno != ENOSYS) {
             tls_log("SSL_shutdown syscall error: %s", strerror(errno));
-            pr_log_debug(DEBUG0, MOD_TLS_VERSION
-              ": SSL_shutdown syscall error: %s", strerror(errno));
           }
           break;
 
@@ -3172,6 +3173,17 @@ static void tls_end_sess(SSL *ssl, int strms, int flags) {
          * handling these error codes for older OpenSSL versions won't break
          * things.
          */
+        break;
+
+      case SSL_ERROR_SYSCALL:
+        if (errno != 0 &&
+            errno != EOF &&
+            errno != EBADF &&
+            errno != EPIPE &&
+            errno != EPERM &&
+            errno != ENOSYS) {
+          tls_log("SSL_shutdown syscall error: %s", strerror(errno));
+        }
         break;
 
       default:
