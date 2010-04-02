@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_lang -- a module for handling the LANG command [RFC2640]
  *
- * Copyright (c) 2006-2009 The ProFTPD Project
+ * Copyright (c) 2006-2010 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.31 2009-10-12 23:11:54 castaglia Exp $
+ * $Id: mod_lang.c,v 1.32 2010-04-02 01:31:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -384,6 +384,8 @@ MODRET lang_lang(cmd_rec *cmd) {
   authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
   if (authenticated &&
       *authenticated == TRUE) {
+    pr_log_debug(DEBUG7, MOD_LANG_VERSION ": assuming language files are "
+      "unavailable after login, denying LANG command");
     pr_response_add_err(R_500, _("Unable to handle command"));
     return PR_ERROR(cmd);
   }
