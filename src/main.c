@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.394 2010-03-12 00:13:19 castaglia Exp $
+ * $Id: main.c,v 1.395 2010-04-03 00:52:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2114,6 +2114,13 @@ static void install_signal_handlers(void) {
 #else
   signal(SIGSEGV, sig_terminate);
 #endif /* PR_DEVEL_STACK_TRACE */
+
+  /* Ignore SIGALRM; this will be changed when a timer is registered. But
+   * this will prevent SIGALRMs from killing us if we don't currently have
+   * any timers registered.
+    */
+  signal(SIGALRM, SIG_IGN);
+
   signal(SIGTERM, sig_terminate);
   signal(SIGXCPU, sig_terminate);
   signal(SIGURG, SIG_IGN);
