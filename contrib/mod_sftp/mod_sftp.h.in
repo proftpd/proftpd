@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_sftp.h.in,v 1.10 2009-11-08 03:28:53 castaglia Exp $
+ * $Id: mod_sftp.h.in,v 1.11 2010-04-04 23:57:42 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_H
@@ -213,6 +213,10 @@ int sftp_keys_compare_keys(pool *, char *, uint32_t, char *, uint32_t);
 const char *sftp_crypto_get_errors(void);
 
 /* For use by other modules to register 'exec' channel request handlers.
+ *
+ * Note that the implementation currently assumes that the registering module
+ * is registering its callbacks from a session process, i.e. post-fork(2).
+ * That is why there is no corresponding unregister function at present.
  */
 int sftp_channel_register_exec_handler(module *, const char *,
   int (*set_params)(pool *, uint32_t, array_header *),
