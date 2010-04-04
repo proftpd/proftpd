@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.29 2010-03-04 23:18:06 castaglia Exp $
+ * $Id: channel.c,v 1.30 2010-04-04 23:56:57 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -793,11 +793,25 @@ static int handle_exec_channel(struct ssh2_channel *chan,
 
     handler = handlers[i];
 
+    pr_trace_msg(trace_channel, 18,
+      "checking exec command '%s' against handler registered by 'mod_%s.c'",
+      command, handler->m->name);
+
     if (strcmp(command, handler->command) == 0) {
       int res;
 
+      pr_trace_msg(trace_channel, 18,
+        "found '%s' exec handler registered by 'mod_%s.c'",
+        command, handler->m->name);
+
       res = (handler->set_params)(pkt->pool, chan->local_channel_id, req);
       if (res < 0) {
+        int xerrno = errno;
+
+        pr_trace_msg(trace_channel, 18, "'set_params' callback error: %s",
+          strerror(xerrno));
+
+        errno = xerrno;
         return -1;
       }
 
