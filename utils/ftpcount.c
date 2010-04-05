@@ -26,7 +26,7 @@
 
 /* Shows a count of "who" is online via proftpd.  Uses the scoreboard file.
  *
- * $Id: ftpcount.c,v 1.18 2010-03-25 17:37:08 castaglia Exp $
+ * $Id: ftpcount.c,v 1.19 2010-04-05 23:51:30 castaglia Exp $
  */
 
 #include "utils.h"
@@ -130,8 +130,8 @@ int main(int argc, char **argv) {
         break;
 
       case '?':
-        fprintf(stderr, "unknown option: %c\n", (char)optopt);
-        show_usage(progname,1);
+        fprintf(stderr, "unknown option: %c\n", (char) optopt);
+        show_usage(progname, 1);
     }
   }
 
@@ -204,8 +204,10 @@ int main(int argc, char **argv) {
     }
 
     /* If a ServerName was given, skip unless the scoreboard entry matches. */
-    if (server_name && strcmp(server_name, score->sce_server_label) != 0)
+    if (server_name &&
+        strcmp(server_name, score->sce_server_label) != 0) {
       continue;
+    }
 
     for (i = 0; i != MAX_CLASSES; i++) {
       if (classes[i].score_class == 0) {
@@ -241,6 +243,10 @@ int main(int argc, char **argv) {
       printf("Master proftpd process %u:\n", (unsigned int) mpid);
 
     printf("0 users\n");
+  }
+
+  if (server_name) {
+    free(server_name);
   }
 
   return 0;
