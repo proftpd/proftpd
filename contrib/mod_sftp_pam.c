@@ -2,7 +2,7 @@
  * ProFTPD: mod_sftp_pam -- a module which provides an SSH2
  *                          "keyboard-interactive" driver using PAM
  *
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  * This is mod_sftp_pam, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_pam.c,v 1.6 2009-11-05 17:40:45 castaglia Exp $
+ * $Id: mod_sftp_pam.c,v 1.7 2010-04-05 18:18:39 castaglia Exp $
  * $Libraries: -lpam $
  */
 
@@ -247,6 +247,13 @@ static int sftppam_driver_open(sftp_kbdint_driver_t *driver, const char *user) {
   unsigned long opts = 0;
   config_rec *c;
 
+  /* XXX Should we pay attention to AuthOrder here?  I.e. if AuthOrder
+   * does not include mod_sftp_pam or mod_auth_pam, should we fail to
+   * open this driver, since the AuthOrder indicates that no PAM check is
+   * desired?  For this to work, AuthOrder needs to have been processed
+   * prior to this callback being invoked...
+   */
+
   /* Figure out our default return style: whether or not PAM should allow
    * other auth modules a shot at this user or not is controlled by adding
    * '*' to a module name in the AuthOrder directive.  By default, auth
@@ -348,6 +355,7 @@ static int sftppam_driver_open(sftp_kbdint_driver_t *driver, const char *user) {
   /* We need to disable mod_auth_pam, since both mod_auth_pam and us want
    * to talk to the PAM API, just in different fashions.
    */
+
   c = add_config_param_set(&(main_server->conf), "AuthPAM", 1, NULL);
   c->argv[0] = palloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = FALSE;
