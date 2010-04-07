@@ -234,7 +234,7 @@ EOF
 
       my $buf;
       my $tmp;
-      while ($conn->read($tmp, 8192)) {
+      while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
       $conn->close();
@@ -411,7 +411,7 @@ EOF
 
       my $buf;
       my $tmp;
-      while ($conn->read($tmp, 8192)) {
+      while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
       $conn->close();
@@ -586,7 +586,7 @@ EOF
 
       my $buf;
       my $tmp;
-      while ($conn->read($tmp, 8192)) {
+      while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
       $conn->close();
@@ -761,7 +761,7 @@ EOF
 
       my $buf;
       my $tmp;
-      while ($conn->read($tmp, 8192)) {
+      while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
       $conn->close();
@@ -918,7 +918,7 @@ sub hidefiles_bug3130 {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       # We have to be careful of the fact that readdir returns directory
@@ -1067,7 +1067,7 @@ sub hidefiles_per_user_ok {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       $client->quit();
@@ -1225,7 +1225,7 @@ sub hidefiles_per_not_user_ok {
 
       my $buf;
       my $tmp;
-      while ($conn->read($tmp, 8192)) {
+      while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
       $conn->close();
@@ -1421,7 +1421,7 @@ sub hidefiles_anon_list_rel_path_bug3226 {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       $client->quit();
@@ -1617,7 +1617,7 @@ sub hidefiles_anon_nlst_rel_path_bug3226 {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       $client->quit();
@@ -1812,7 +1812,7 @@ sub hidefiles_anon_list_abs_path_bug3226 {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       $client->quit();
@@ -2008,7 +2008,7 @@ sub hidefiles_anon_nlst_abs_path_bug3226 {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       $client->quit();
@@ -2201,7 +2201,7 @@ EOD
 
       my $buf;
       my $tmp;
-      while ($conn->read($tmp, 8192)) {
+      while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
       $conn->close();
@@ -2388,7 +2388,7 @@ EOD
 
       my $buf;
       my $tmp;
-      while ($conn->read($tmp, 8192)) {
+      while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
       $conn->close();
@@ -2592,7 +2592,7 @@ EOD
 
       my $buf;
       my $tmp;
-      while ($conn->read($tmp, 8192)) {
+      while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
       $conn->close();
@@ -2640,7 +2640,7 @@ EOD
 
       $tmp = $buf = '';
 
-      while ($conn->read($tmp, 8192)) {
+      while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
       $conn->close();
@@ -2796,7 +2796,7 @@ sub hidefiles_none_per_user_bug3397 {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       $client->quit();

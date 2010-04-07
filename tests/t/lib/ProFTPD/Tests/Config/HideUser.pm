@@ -161,7 +161,7 @@ sub hideuser_explicit_user {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);
@@ -341,7 +341,7 @@ sub hideuser_session_user {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);
@@ -525,7 +525,7 @@ sub hideuser_not_session_user {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);

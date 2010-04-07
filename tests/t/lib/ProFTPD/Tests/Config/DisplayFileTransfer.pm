@@ -148,7 +148,7 @@ sub displayfilexfer_abs_path {
       }
 
       my $buf;
-      $conn->read($buf, 32768);
+      $conn->read($buf, 32768, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);
@@ -275,7 +275,7 @@ sub displayfilexfer_rel_path {
       }
 
       my $buf;
-      $conn->read($buf, 32768);
+      $conn->read($buf, 32768, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);
@@ -425,7 +425,7 @@ sub displayfilexfer_chrooted {
       }
 
       my $buf;
-      $conn->read($buf, 32768);
+      $conn->read($buf, 32768, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);
@@ -551,7 +551,7 @@ sub displayfilexfer_multiline {
       }
 
       my $buf;
-      $conn->read($buf, 32768);
+      $conn->read($buf, 32768, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);

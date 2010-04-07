@@ -153,7 +153,7 @@ sub hidegroup_explicit_group {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);
@@ -330,7 +330,7 @@ sub hidegroup_session_group {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);
@@ -506,7 +506,7 @@ sub hidegroup_not_session_group {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);

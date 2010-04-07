@@ -133,7 +133,7 @@ sub useglobbing_off {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my $res = {};

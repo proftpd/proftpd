@@ -135,7 +135,7 @@ sub dirfakemode_ok {
       }
 
       my $buf;
-      $conn->read($buf, 16384);
+      $conn->read($buf, 16384, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);

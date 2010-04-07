@@ -151,7 +151,7 @@ sub maxretrievefilesize_ok {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my $expected;
@@ -285,7 +285,7 @@ sub maxretrievefilesize_exceeded {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       $resp_code = $client->response_code();
