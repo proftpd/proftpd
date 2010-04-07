@@ -174,7 +174,7 @@ sub extlog_retr_bug3137 {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
     };
 
@@ -1212,7 +1212,7 @@ sub extlog_bug1908 {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       $client->quit();

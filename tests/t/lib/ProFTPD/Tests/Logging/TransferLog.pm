@@ -168,7 +168,7 @@ sub xferlog_retr_ascii_ok {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
     };
 
@@ -327,7 +327,7 @@ sub xferlog_retr_binary_ok {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
     };
 
@@ -504,7 +504,7 @@ sub xferlog_retr_aborted {
       }
 
       my $buf;
-      $conn->read($buf, 1);
+      $conn->read($buf, 1, 30);
       $conn->abort();
     };
 

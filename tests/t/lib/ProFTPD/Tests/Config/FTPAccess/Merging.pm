@@ -179,7 +179,7 @@ EOD
 
       my $buf;
       my $tmp;
-      while ($conn->read($tmp, 8192)) {
+      while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
       $conn->close();
