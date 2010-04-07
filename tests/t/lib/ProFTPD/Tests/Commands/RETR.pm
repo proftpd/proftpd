@@ -184,7 +184,7 @@ sub retr_ok_raw_active {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);
@@ -315,7 +315,7 @@ sub retr_ok_raw_passive {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);
@@ -452,7 +452,7 @@ sub retr_ok_file {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       my $size = $conn->bytes_read();
       $conn->close();
 
@@ -1301,7 +1301,7 @@ sub retr_ok_dir_with_spaces {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);
@@ -1439,7 +1439,7 @@ sub retr_leading_whitespace {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my ($resp_code, $resp_msg);

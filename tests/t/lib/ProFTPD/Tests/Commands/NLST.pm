@@ -208,7 +208,7 @@ sub nlst_ok_raw_active {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       # We have to be careful of the fact that readdir returns directory
@@ -351,7 +351,7 @@ sub nlst_ok_raw_passive {
       my $buf = '';
 
       my $info;
-      while ($conn->read($info, 8192)) {
+      while ($conn->read($info, 8192, 30)) {
         $buf .= $info;
       }
       $conn->close();
@@ -496,7 +496,7 @@ sub nlst_ok_file {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my $res = {};
@@ -622,7 +622,7 @@ sub nlst_ok_dir {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my $res = {};
@@ -744,7 +744,7 @@ sub nlst_ok_no_path {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my $res = {};
@@ -865,7 +865,7 @@ sub nlst_ok_glob {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my $res = {};
@@ -1506,7 +1506,7 @@ sub nlst_bug2821 {
 
       my $buf;
       my $tmp;
-      while ($conn->read($tmp, 32768)) {
+      while ($conn->read($tmp, 32768, 30)) {
         $buf .= $tmp;
       }
       $conn->close();
@@ -1652,7 +1652,7 @@ sub nlst_nonascii_chars_bug3032 {
 
       my $buf;
       my $tmp;
-      while ($conn->read($tmp, 32768)) {
+      while ($conn->read($tmp, 32768, 30)) {
         $buf .= $tmp;
       }
       $conn->close();
@@ -1796,7 +1796,7 @@ sub nlst_leading_whitespace_bug3268 {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my $resp_code = $client->response_code();
@@ -1953,7 +1953,7 @@ sub nlst_leading_whitespace_with_opts_bug3268 {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my $resp_code = $client->response_code();
@@ -2112,7 +2112,7 @@ sub nlst_leading_whitespace_with_strict_opts_bug3268 {
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my $resp_code = $client->response_code();
@@ -2353,7 +2353,7 @@ EOL
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my $resp_code = $client->response_code();

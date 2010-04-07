@@ -779,7 +779,7 @@ sub rest_2gb_last_byte {
       }
 
       my $buf;
-      $conn->read($buf, 1024);
+      $conn->read($buf, 1024, 30);
       $conn->close();
 
       $resp_code = $client->response_code();
@@ -954,7 +954,7 @@ sub rest_2gb_last_byte {
       }
 
       my $buf;
-      $conn->read($buf, 1024);
+      $conn->read($buf, 1024, 30);
       $conn->close();
 
       $resp_code = $client->response_code();
@@ -1129,7 +1129,7 @@ sub rest_4gb_last_byte {
       }
 
       my $buf;
-      $conn->read($buf, 1024);
+      $conn->read($buf, 1024, 30);
       $conn->close();
 
       $resp_code = $client->response_code();
