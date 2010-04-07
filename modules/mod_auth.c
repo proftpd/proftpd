@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.274 2010-02-25 02:16:35 castaglia Exp $
+ * $Id: mod_auth.c,v 1.275 2010-04-07 23:29:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -387,9 +387,12 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   /* Handle a DisplayLogin file. */
   if (displaylogin_fh) {
     if (!(session.sf_flags & SF_ANON)) {
-      if (pr_display_fh(displaylogin_fh, NULL, auth_pass_resp_code) < 0)
+      if (pr_display_fh(displaylogin_fh, NULL, auth_pass_resp_code,
+          PR_DISPLAY_FL_NO_EOM) < 0) {
         pr_log_debug(DEBUG6, "unable to display DisplayLogin file '%s': %s",
           displaylogin_fh->fh_path, strerror(errno));
+      }
+
       pr_fsio_close(displaylogin_fh);
       displaylogin_fh = NULL;
 
@@ -405,34 +408,45 @@ MODRET auth_post_pass(cmd_rec *cmd) {
 
       displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
       if (displaylogin) {
-        if (pr_display_file(displaylogin, NULL, auth_pass_resp_code) < 0)
+        if (pr_display_file(displaylogin, NULL, auth_pass_resp_code,
+            PR_DISPLAY_FL_NO_EOM) < 0) {
           pr_log_debug(DEBUG6, "unable to display DisplayLogin file '%s': %s",
             displaylogin, strerror(errno));
+        }
       }
     }
 
   } else {
     char *displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
     if (displaylogin) {
-      if (pr_display_file(displaylogin, NULL, auth_pass_resp_code) < 0)
+      if (pr_display_file(displaylogin, NULL, auth_pass_resp_code,
+          PR_DISPLAY_FL_NO_EOM) < 0) {
         pr_log_debug(DEBUG6, "unable to display DisplayLogin file '%s': %s",
           displaylogin, strerror(errno));
+      }
     }
   }
 
+  /* The sending of DisplayLogin lines uses pr_response_send(), rather than
+   * pr_response_add().  This means that to play along with them, we need
+   * to use pr_response_send() here as well.
+   */
+
   grantmsg = get_param_ptr(TOPLEVEL_CONF, "AccessGrantMsg", FALSE);
-  if (!grantmsg) {
+  if (grantmsg == NULL) {
     /* Append the final greeting lines. */
-    if (session.sf_flags & SF_ANON)
-      pr_response_add(auth_pass_resp_code,
+    if (session.sf_flags & SF_ANON) {
+      pr_response_send(auth_pass_resp_code,
         _("Anonymous access granted, restrictions apply"));
-    else
-      pr_response_add(auth_pass_resp_code, _("User %s logged in"), user);
+
+    } else {
+      pr_response_send(auth_pass_resp_code, _("User %s logged in"), user);
+    }
 
   } else {
      /* Handle any AccessGrantMsg directive. */
      grantmsg = sreplace(cmd->tmp_pool, grantmsg, "%u", user, NULL);
-     pr_response_add(auth_pass_resp_code, "%s", grantmsg);
+     pr_response_send(auth_pass_resp_code, "%s", grantmsg);
   }
 
   privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke", FALSE);

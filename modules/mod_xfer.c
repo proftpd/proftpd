@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.271 2010-03-10 16:14:28 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.272 2010-04-07 23:29:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -493,7 +493,7 @@ static int xfer_displayfile(void) {
   int res = -1;
 
   if (displayfilexfer_fh) {
-    if (pr_display_fh(displayfilexfer_fh, session.vwd, R_226) < 0) {
+    if (pr_display_fh(displayfilexfer_fh, session.vwd, R_226, 0) < 0) {
       pr_log_debug(DEBUG6, "unable to display DisplayFileTransfer "
         "file '%s': %s", displayfilexfer_fh->fh_path, strerror(errno));
     }
@@ -510,7 +510,7 @@ static int xfer_displayfile(void) {
     char *displayfilexfer = get_param_ptr(main_server->conf,
       "DisplayFileTransfer", FALSE);
     if (displayfilexfer) {
-      if (pr_display_file(displayfilexfer, session.vwd, R_226) < 0) {
+      if (pr_display_file(displayfilexfer, session.vwd, R_226, 0) < 0) {
         pr_log_debug(DEBUG6, "unable to display DisplayFileTransfer "
           "file '%s': %s", displayfilexfer, strerror(errno));
       }

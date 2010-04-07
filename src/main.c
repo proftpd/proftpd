@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.396 2010-04-07 22:35:34 castaglia Exp $
+ * $Id: main.c,v 1.397 2010-04-07 23:29:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -851,7 +851,7 @@ static void send_session_banner(server_rec *server) {
 
   display = get_param_ptr(server->conf, "DisplayConnect", FALSE);
   if (display != NULL) {
-    if (pr_display_file(display, NULL, R_220) < 0) {
+    if (pr_display_file(display, NULL, R_220, PR_DISPLAY_FL_NO_EOM) < 0) {
       pr_log_debug(DEBUG6, "unable to display DisplayConnect file '%s': %s",
         display, strerror(errno));
     }
