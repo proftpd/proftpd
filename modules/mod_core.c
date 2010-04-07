@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.374 2010-04-07 23:29:33 castaglia Exp $
+ * $Id: mod_core.c,v 1.375 2010-04-07 23:47:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3026,10 +3026,6 @@ MODRET core_quit(cmd_rec *cmd) {
     pr_fsio_close(displayquit_fh);
     displayquit_fh = NULL;
 
-    /* Hack or feature, pr_display_file() always puts a hyphen on the last line.
-     */
-    pr_response_send(R_221, "%s", "");
-
   } else {
     char *display = get_param_ptr(TOPLEVEL_CONF, "DisplayQuit", FALSE); 
     if (display) {
@@ -3037,11 +3033,6 @@ MODRET core_quit(cmd_rec *cmd) {
         pr_log_debug(DEBUG6, "unable to display DisplayQuit file '%s': %s",
           display, strerror(errno));
       }
-
-      /* Hack or feature, pr_display_file() always puts a hyphen on the
-       * last line
-       */
-      pr_response_send(R_221, "%s", "");
 
     } else {
       pr_response_send(R_221, _("Goodbye."));
