@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.395 2010-04-03 00:52:43 castaglia Exp $
+ * $Id: main.c,v 1.396 2010-04-07 22:35:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -664,6 +664,8 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
   cmd->server = main_server;
 
   if (flags & PR_CMD_DISPATCH_FL_CLEAR_RESPONSE) {
+    pr_trace_msg("response", 9,
+      "clearing response lists before dispatching command '%s'", cmd->argv[0]);
     resp_list = resp_err_list = NULL;
   }
 
@@ -705,6 +707,8 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
       _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
       _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
 
+      pr_trace_msg("response", 9, "flushing error response list for '%s'",
+        cmd->argv[0]);
       pr_response_flush(&resp_err_list);
       return success;
     }
@@ -722,6 +726,8 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
       _dispatch(cmd, LOG_CMD, FALSE, C_ANY);
       _dispatch(cmd, LOG_CMD, FALSE, NULL);
 
+      pr_trace_msg("response", 9, "flushing response list for '%s'",
+        cmd->argv[0]);
       pr_response_flush(&resp_list);
 
     } else if (success < 0) {
@@ -735,6 +741,8 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
       _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
       _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
 
+      pr_trace_msg("response", 9, "flushing error response list for '%s'",
+        cmd->argv[0]);
       pr_response_flush(&resp_err_list);
     }
 
@@ -767,9 +775,13 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
 
     if (flags & PR_CMD_DISPATCH_FL_SEND_RESPONSE) {
       if (success == 1) {
+        pr_trace_msg("response", 9, "flushing response list for '%s'",
+          cmd->argv[0]);
         pr_response_flush(&resp_list);
 
       } else if (success < 0) {
+        pr_trace_msg("response", 9, "flushing error response list for '%s'",
+          cmd->argv[0]);
         pr_response_flush(&resp_err_list);
       }
     }
