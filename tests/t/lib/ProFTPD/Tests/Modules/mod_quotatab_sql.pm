@@ -1078,7 +1078,7 @@ EOS
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my $resp_code = $client->response_code();
@@ -1305,7 +1305,7 @@ EOS
       }
 
       my $buf;
-      $conn->read($buf, 8192);
+      $conn->read($buf, 8192, 30);
       $conn->close();
 
       my $resp_code = $client->response_code();

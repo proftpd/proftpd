@@ -3760,7 +3760,7 @@ EOS
       }
 
       my $buf;
-      while ($conn->read($buf, 8192)) {
+      while ($conn->read($buf, 8192, 30)) {
       }
       $conn->close();
 

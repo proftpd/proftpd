@@ -457,7 +457,7 @@ sub deflate_list {
 
       my $buf;
       my $data;
-      while ($conn->read($data, 32768)) {
+      while ($conn->read($data, 32768, 30)) {
         $buf .= $data;
       }
       $conn->close();
@@ -630,7 +630,7 @@ sub deflate_list_alternating_modes {
 
         my $buf;
         my $data;
-        while ($conn->read($data, 32768)) {
+        while ($conn->read($data, 32768, 30)) {
           $buf .= $data;
         }
 
@@ -950,7 +950,7 @@ sub deflate_retr {
 
       my $buf;
       my $data;
-      while ($conn->read($data, 32768)) {
+      while ($conn->read($data, 32768, 30)) {
         $buf .= $data;
       }
 
@@ -1128,7 +1128,7 @@ sub deflate_rest_retr {
 
       my $buf;
       my $data;
-      while ($conn->read($data, 32768)) {
+      while ($conn->read($data, 32768, 30)) {
         $buf .= $data;
       }
 
@@ -1313,7 +1313,7 @@ sub deflate_retr_50mb_binary {
       binmode($fh);
 
       my $data;
-      while ($conn->read($data, 32768)) {
+      while ($conn->read($data, 32768, 30)) {
         print $fh $data;
       }
 
