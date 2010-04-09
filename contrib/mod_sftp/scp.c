@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.38 2010-03-10 16:14:28 castaglia Exp $
+ * $Id: scp.c,v 1.39 2010-04-09 16:12:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -682,11 +682,15 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
       pr_trace_msg(trace_channel, 5, "creating directory '%s'", sp->filename);
 
       if (pr_fsio_mkdir(sp->filename, 0777) < 0) {
+        int xerrno = errno;
+
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "scp: error creating directory '%s': %s", sp->filename,
-          strerror(errno));
+          strerror(xerrno));
         write_confirm(p, channel_id, 1,
-          pstrcat(p, sp->filename, ": ", strerror(errno), NULL));
+          pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
+
+        errno = xerrno;
         return 1;
       }
 
@@ -825,19 +829,24 @@ static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   if (writelen > 0) {
     while (TRUE) {
+      /* XXX Do we need to properly handle short writes here? */
       if (pr_fsio_write(sp->fh, data, writelen) != writelen) {
-        if (errno == EAGAIN) {
+        int xerrno = errno;
+
+        if (xerrno == EAGAIN) {
           pr_signals_handle();
           continue;
         }
 
         pr_trace_msg(trace_channel, 2, "error writing to '%s': %s",
-          sp->best_path, strerror(errno));
+          sp->best_path, strerror(xerrno));
         write_confirm(p, channel_id, 1,
-          pstrcat(p, sp->filename, ": write error: ", strerror(errno), NULL));
+          pstrcat(p, sp->filename, ": write error: ", strerror(xerrno), NULL));
 
         pr_fsio_close(sp->fh);
         sp->fh = NULL;
+
+        errno = xerrno;
         return 1;
       }
 
@@ -900,10 +909,12 @@ static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
   pr_trace_msg(trace_channel, 9, "setting perms %04o on directory '%s'",
     (unsigned int) dir_sp->perms, dir_sp->path);
   if (pr_fsio_chmod(dir_sp->path, dir_sp->perms) < 0) {
+    int xerrno = errno;
+
     pr_trace_msg(trace_channel, 2, "error setting mode %04o on '%s': %s",
-      (unsigned int) dir_sp->perms, dir_sp->path, strerror(errno));
+      (unsigned int) dir_sp->perms, dir_sp->path, strerror(xerrno));
     write_confirm(p, channel_id, 1,
-      pstrcat(p, dir_sp->path, ": error setting mode: ", strerror(errno),
+      pstrcat(p, dir_sp->path, ": error setting mode: ", strerror(xerrno),
       NULL));
     ok = FALSE;
   }
@@ -913,13 +924,17 @@ static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
       dir_sp->filename);
 
     if (pr_fsio_utimes(dir_sp->filename, dir_sp->times) < 0) {
+      int xerrno = errno;
+
       pr_trace_msg(trace_channel, 2,
         "error setting atime %lu, mtime %lu on '%s': %s",
         (unsigned long) sp->times[0].tv_sec,
-        (unsigned long) sp->times[1].tv_sec, dir_sp->filename, strerror(errno));
+        (unsigned long) sp->times[1].tv_sec, dir_sp->filename,
+        strerror(xerrno));
+
       write_confirm(p, channel_id, 1,
         pstrcat(p, dir_sp->filename, ": error setting times: ",
-        strerror(errno), NULL));
+        strerror(xerrno), NULL));
       ok = FALSE;
     }
   }
