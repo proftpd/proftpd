@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.397 2010-04-07 23:29:33 castaglia Exp $
+ * $Id: main.c,v 1.398 2010-04-09 00:48:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1893,7 +1893,7 @@ static void handle_segv(int signo, siginfo_t *info, void *ptr) {
   char **strings;
   size_t tracesz;
 
-  /* Call the "normal" SIGSEGV handler. */
+  /* Call the "normal" SIGSEGV/SIGBUS handler. */
   table_handling_signal(TRUE);
   sig_terminate(signo);
   table_handling_signal(FALSE);
@@ -1933,14 +1933,20 @@ static RETSIGTYPE sig_terminate(int signo) {
   /* Capture the signal number for later display purposes. */
   term_signo = signo;
 
-  if (signo == SIGSEGV) {
+  if (signo == SIGSEGV
+#ifdef SIGBUS
+      || signo == SIGBUS) {
+#else
+     ) {
+#endif /* SIGBUS */
     recvd_signal_flags |= RECEIVED_SIG_SEGV;
 
     /* This is probably not the safest thing to be doing, but since the
      * process is terminating anyway, why not?  It helps when knowing/logging
      * that a segfault happened...
      */
-    pr_trace_msg("signal", 9, "handling SIGSEGV (signal %d)", signo);
+    pr_trace_msg("signal", 9, "handling %s (signal %d)",
+      signo == SIGSEGV ? "SIGSEGV" : "SIGBUS", signo);
     pr_log_pri(PR_LOG_NOTICE, "ProFTPD terminating (signal %d)", signo);
 
     pr_log_pri(PR_LOG_INFO, "%s session closed.",
@@ -1950,7 +1956,7 @@ static RETSIGTYPE sig_terminate(int signo) {
 #ifdef PR_DEVEL_STACK_TRACE
     install_segv_handler();
 #else
-    signal(SIGSEGV, SIG_DFL);
+    signal(signo, SIG_DFL);
 #endif /* PR_DEVEL_STACK_TRACE */
 
   } else if (signo == SIGTERM) {
@@ -2072,6 +2078,9 @@ static void install_segv_handler(void) {
 
   /* Ideally we would check the return value here. */
   sigaction(SIGSEGV, &action, NULL);
+# ifdef SIGBUS
+  sigaction(SIGBUS, &action, NULL);
+# endif /* SIGBUS */
 }
 #endif /* PR_DEVEL_STACK_TRACE */
 
@@ -2122,9 +2131,13 @@ static void install_signal_handlers(void) {
   signal(SIGABRT, sig_abort);
   signal(SIGFPE, sig_terminate);
 #ifdef PR_DEVEL_STACK_TRACE
+  /* Installs stacktrace handlers for both SIGSEGV and SIGBUS. */
   install_segv_handler();
 #else
   signal(SIGSEGV, sig_terminate);
+# ifdef SIGBUS
+  signal(SIGBUS, sig_terminate);
+# endif /* SIGBUS */
 #endif /* PR_DEVEL_STACK_TRACE */
 
   /* Ignore SIGALRM; this will be changed when a timer is registered. But
@@ -2142,9 +2155,6 @@ static void install_signal_handlers(void) {
 #ifdef SIGIO
   signal(SIGIO, SIG_IGN);
 #endif /* SIGIO */
-#ifdef SIGBUS
-  signal(SIGBUS, sig_terminate);
-#endif /* SIGBUS */
   signal(SIGUSR2, sig_evnt);
 
   /* In case our parent left signals blocked (as happens under some
