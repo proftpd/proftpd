@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.39 2010-04-09 16:12:59 castaglia Exp $
+ * $Id: scp.c,v 1.40 2010-04-09 21:49:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -530,11 +530,73 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
     return -1;
   }
 
+  /* name_str contains the name of the source file, on the client machine.
+   * Our task is to determine whether we want use that same filename
+   * for the destination file here or not, and if not, what filename to use
+   * instead.
+   *
+   * sp->path contains the path that the client gaves to us when starting the
+   * SCP session.  This path might be a relative or absolute path to a
+   * directory (which may or may not exist), or might be a relative or absolute
+   * path to an actual file.  And whether we are chrooted or not might also
+   * factor into things.
+   *
+   * Examples:
+   *
+   * 1. scp src.txt 1.2.3.4:dst.txt
+   *
+   *   name_str = "src.txt"
+   *   sp->path = "dst.txt"
+   *
+   * 2. scp src.txt 1.2.3.4:dir
+   *
+   *   name_str = "src.txt"
+   *   sp->path = "dir"
+   *
+   * 3. scp src.txt 1.2.3.4:dir/
+   *
+   *   name_str = "src.txt"
+   *   sp->path = "dir/"
+   *
+   * 4. scp src.txt 1.2.3.4:dir/dst.txt
+   *
+   *   name_str = "src.txt"
+   *   sp->path = "dir/dst.txt"
+   *
+   * 5. scp src.txt 1.2.3.4:/dir
+   *
+   *   name_str = "src.txt"
+   *   sp->path = "/dir"
+   *
+   * 6. scp src.txt 1.2.3.4:/dir/
+   *
+   *   name_str = "src.txt"
+   *   sp->path = "/dir/"
+   *
+   * 7. scp src.txt 1.2.3.4:/dir/dst.txt
+   *
+   *   name_str = "src.txt"
+   *   sp->path = "/dir/dst.txt"
+   *
+   * All of the above examples are effectively the same.  We need to determine
+   * whether sp->path is a directory or not.  The sp->st_mode struct stat can
+   * be used for this.  We should not rely on the presence (or not) of a
+   * trailing slash in the sp->path string.
+   *
+   * If we determine that sp->path is a directory, then we need to append
+   * name_str to get the path to the destination file.  Otherwise,
+   * we should use sp->path as is, as the path to the destination file.
+   */
+
   if (sp->recv_dir == NULL) {
     if (!S_ISDIR(sp->st_mode)) {
-      sp->filename = pstrdup(scp_pool, name_str); 
+      /* sp->path is not a directory; use it as the destination filename. */
+      sp->filename = pstrdup(scp_pool, sp->path); 
 
     } else {
+      /* sp->path is a directory; append the source filename to it to get the
+       * destination filename.
+       */
       sp->filename = pdircat(scp_pool, sp->path, name_str, NULL);
     }
 
@@ -543,40 +605,7 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
   }
 
   if (sp->filename) {
-    char *ptr;
-
-    ptr = strrchr(sp->path, '/');
-    if (ptr == NULL) {
-      sp->best_path = dir_canonical_vpath(scp_pool, sp->filename);
-
-    } else {
-
-      /* What if the client initially sent an scp command like:
-       *
-       *  scp -t dir/subdir/
-       *
-       * for an incoming 'test.txt' file?  To handle this, we append
-       * the given name to the path sent in the initial scp command.
-       *
-       * However, we only want to do this if the given name_str differs
-       * from the last path component in sp->path.  Otherwise the client
-       * could send:
-       *
-       *  scp -t dir/subdir/file
-       *
-       * and the file info control message might include a filename of
-       * "file".  If we simply append, then we get "dir/subdir/file/file"
-       * which is obviously not correct.
-       */
-
-      if (strcmp(name_str, ptr + 1) != 0) {
-        sp->best_path = dir_canonical_vpath(scp_pool,
-          pdircat(p, sp->path, name_str, NULL));
-
-      } else {
-        sp->best_path = dir_canonical_vpath(scp_pool, sp->path);
-      }
-    }
+    sp->best_path = dir_canonical_vpath(scp_pool, sp->filename);
 
     /* Update the session.xfer.path value with this better, fuller path. */
     session.xfer.path = pstrdup(session.xfer.p, sp->best_path);
