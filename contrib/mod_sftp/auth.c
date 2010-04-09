@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.24 2010-03-31 17:38:48 castaglia Exp $
+ * $Id: auth.c,v 1.25 2010-04-09 18:25:44 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -265,7 +265,7 @@ static int setup_env(pool *p, char *user) {
   int login_acl, i, res, show_symlinks = FALSE;
   struct stat st;
   char *default_chdir, *default_root, *home_dir;
-  const char *sess_ttyname = NULL;
+  const char *sess_ttyname = NULL, *xferlog = NULL;
   cmd_rec *cmd;
 
   pw = pr_auth_getpwnam(p, user);
@@ -409,16 +409,18 @@ static int setup_env(pool *p, char *user) {
 #endif /* PR_USE_LASTLOG */
 
   c = find_config(main_server->conf, CONF_PARAM, "TransferLog", FALSE);
-  if (c) {
-    const char *xferlog;
+  if (c == NULL) {
+    xferlog = PR_XFERLOG_PATH;
 
+  } else {
     xferlog = c->argv[0];
-    if (strcasecmp(xferlog, "none") == 0) {
-      xferlog_open(NULL);
+  }
 
-    } else {
-      xferlog_open(xferlog);
-    }
+  if (strcasecmp(xferlog, "none") == 0) {
+    xferlog_open(NULL);
+
+  } else {
+    xferlog_open(xferlog);
   }
 
   res = set_groups(p, pw->pw_gid, session.gids);
