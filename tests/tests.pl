@@ -123,6 +123,7 @@ if (scalar(@ARGV) > 0) {
     t/config/timeoutnotransfer.t
     t/config/timeoutsession.t
     t/config/timeoutstalled.t
+    t/config/trace.t
     t/config/useftpusers.t
     t/config/useglobbing.t
     t/config/useralias.t

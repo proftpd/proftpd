@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.375 2010-04-07 23:47:17 castaglia Exp $
+ * $Id: mod_core.c,v 1.376 2010-04-11 21:44:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1094,32 +1094,74 @@ MODRET set_group(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: Trace channel1:level1 ... */
+/* usage: Trace ["session"] channel1:level1 ... */
 MODRET set_trace(cmd_rec *cmd) {
 #ifdef PR_USE_TRACE
   register unsigned int i;
+  int per_session = FALSE;
+  unsigned int idx = 1;
 
   if (cmd->argc-1 < 1)
     CONF_ERROR(cmd, "wrong number of parameters");
   CHECK_CONF(cmd, CONF_ROOT);
 
-  for (i = 1; i < cmd->argc; i++) {
-    char *channel, *tmp;
-    int level;
+  /* Look for the optional "session" keyword, which will indicate that these
+   * Trace settings are to be applied to a session process only.
+   */
+  if (strcmp(cmd->argv[1], "session") == 0) {
 
-    tmp = strchr(cmd->argv[i], ':');
-    if (tmp == NULL) {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "badly formatted parameter: '",
-        cmd->argv[i], "'", NULL));
+    /* If this is the only parameter, it's a config error. */
+    if (cmd->argc == 2) {
+      CONF_ERROR(cmd, "wrong number of parameters");
     }
 
-    channel = cmd->argv[i];
-    *tmp = '\0';
-    level = atoi(++tmp);
+    per_session = TRUE;
+    idx = 2;
+  }
 
-    if (pr_trace_set_level(channel, level) < 0) {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error setting level ", tmp,
-        " for channel '", channel, "': ", strerror(errno), NULL));
+  if (!per_session) {
+    for (i = idx; i < cmd->argc; i++) {
+      char *channel, *ptr;
+      int level;
+
+      ptr = strchr(cmd->argv[i], ':');
+      if (ptr == NULL) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "badly formatted parameter: '",
+          cmd->argv[i], "'", NULL));
+      }
+
+      channel = cmd->argv[i];
+      *ptr = '\0';
+      level = atoi(++ptr);
+
+      if (pr_trace_set_level(channel, level) < 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error setting level ", ptr,
+          " for channel '", channel, "': ", strerror(errno), NULL));
+      }
+    }
+
+  } else {
+    register unsigned int j = 0;
+    config_rec *c;
+
+    /* Do a syntax check of the configured trace channels/levels, and store
+     * them in a config rec for later handling.
+     */
+
+    c = add_config_param(cmd->argv[0], 0);
+    c->argc = cmd->argc - 2;
+    c->argv = pcalloc(c->pool, ((c->argc + 1) * sizeof(char *))); 
+
+    for (i = idx; i < cmd->argc; i++) {
+      char *ptr;
+
+      ptr = strchr(cmd->argv[i], ':');
+      if (ptr == NULL) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "badly formatted parameter: '",
+          cmd->argv[i], "'", NULL));
+      }
+
+      c->argv[j++] = pstrdup(c->pool, cmd->argv[i]);
     }
   }
 
@@ -4608,6 +4650,32 @@ MODRET core_post_pass(cmd_rec *cmd) {
     }
   }
 
+#ifdef PR_USE_TRACE
+  /* Handle any user/group-specific Trace settings. */
+  c = find_config(main_server->conf, CONF_PARAM, "Trace", FALSE);
+  if (c != NULL) {
+    register unsigned int i;
+
+    for (i = 0; i < c->argc; i++) {
+      char *channel, *ptr;
+      int level, res;
+
+      ptr = strchr(c->argv[i], ':');
+      channel = c->argv[i];
+      *ptr = '\0';
+      level = atoi(ptr + 1);
+
+      res = pr_trace_set_level(channel, level);
+      *ptr = ':';
+
+      if (res < 0) {
+        pr_log_debug(DEBUG6, "%s: error setting level %d for channel '%s': %s",
+          c->name, level, channel, strerror(errno));
+      }
+    }
+  }
+#endif /* PR_USE_TRACE */
+
   /* Note: we MUST return HANDLED here, not DECLINED, to indicate that at
    * least one POST_CMD handler of the PASS command succeeded.  Since
    * mod_core is always the last module to which commands are dispatched,
@@ -4917,6 +4985,32 @@ static int core_sess_init(void) {
      * point.
      */
   }
+
+#ifdef PR_USE_TRACE
+  /* Handle any session-specific Trace settings. */
+  c = find_config(main_server->conf, CONF_PARAM, "Trace", FALSE);
+  if (c != NULL) {
+    register unsigned int i;
+
+    for (i = 0; i < c->argc; i++) {
+      char *channel, *ptr;
+      int level, res;
+
+      ptr = strchr(c->argv[i], ':');
+      channel = c->argv[i];
+      *ptr = '\0';
+      level = atoi(ptr + 1);
+
+      res = pr_trace_set_level(channel, level);
+      *ptr = ':';
+
+      if (res < 0) {
+        pr_log_debug(DEBUG6, "%s: error setting level %d for channel '%s': %s",
+          c->name, level, channel, strerror(errno));
+      }
+    }
+  }
+#endif /* PR_USE_TRACE */
 
   if (ServerType == SERVER_STANDALONE) {
     pr_timer_remove(core_scrub_timer_id, &core_module);
