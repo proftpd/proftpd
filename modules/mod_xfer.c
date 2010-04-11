@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.272 2010-04-07 23:29:33 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.273 2010-04-11 22:47:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -833,10 +833,12 @@ static void stor_chown(void) {
   struct stat st;
   char *xfer_path = NULL;
 
-  if (session.xfer.xfer_type == STOR_HIDDEN)
+  if (session.xfer.xfer_type == STOR_HIDDEN) {
     xfer_path = session.xfer.path_hidden;
-  else
+
+  } else {
     xfer_path = session.xfer.path;
+  }
 
   /* session.fsgid defaults to -1, so chown(2) won't chgrp unless specifically
    * requested via GroupOwner.
@@ -851,20 +853,20 @@ static void stor_chown(void) {
     }
     PRIVS_RELINQUISH
 
-    if (iserr)
+    if (iserr) {
       pr_log_pri(PR_LOG_WARNING, "chown(%s) as root failed: %s", xfer_path,
         strerror(err));
 
-    else {
-
-      if (session.fsgid != (gid_t) -1)
+    } else {
+      if (session.fsgid != (gid_t) -1) {
         pr_log_debug(DEBUG2, "root chown(%s) to uid %lu, gid %lu successful",
           xfer_path, (unsigned long) session.fsuid,
           (unsigned long) session.fsgid);
 
-      else
+      } else {
         pr_log_debug(DEBUG2, "root chown(%s) to uid %lu successful", xfer_path,
           (unsigned long) session.fsuid);
+      }
 
       pr_fs_clear_cache();
       pr_fsio_stat(xfer_path, &st);
@@ -880,16 +882,19 @@ static void stor_chown(void) {
        */
       iserr = 0;
       PRIVS_ROOT
-      if (pr_fsio_chmod(xfer_path, st.st_mode) < 0)
+      if (pr_fsio_chmod(xfer_path, st.st_mode) < 0) {
         iserr++;
+      }
       PRIVS_RELINQUISH
 
-      if (iserr)
+      if (iserr) {
         pr_log_debug(DEBUG0, "root chmod(%s) to %04o failed: %s", xfer_path,
           (unsigned int) st.st_mode, strerror(errno));
-      else
+
+      } else {
         pr_log_debug(DEBUG2, "root chmod(%s) to %04o successful", xfer_path,
           (unsigned int) st.st_mode);
+      }
     }
 
   } else if ((session.fsgid != (gid_t) -1) && xfer_path) {
@@ -916,11 +921,11 @@ static void stor_chown(void) {
       PRIVS_RELINQUISH
     }
 
-    if (res == -1)
+    if (res == -1) {
       pr_log_pri(PR_LOG_WARNING, "%schown(%s) failed: %s",
         use_root_privs ? "root " : "", xfer_path, strerror(errno));
 
-    else {
+    } else {
       pr_log_debug(DEBUG2, "%schown(%s) to gid %lu successful",
         use_root_privs ? "root " : "", xfer_path,
         (unsigned long) session.fsgid);
@@ -938,10 +943,11 @@ static void stor_chown(void) {
         PRIVS_RELINQUISH
       }
 
-      if (res < 0)
+      if (res < 0) {
         pr_log_debug(DEBUG0, "%schmod(%s) to %04o failed: %s",
           use_root_privs ? "root " : "", xfer_path, (unsigned int) st.st_mode,
           strerror(errno));
+      }
     }
   }
 }
