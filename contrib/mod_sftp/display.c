@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.1 2010-04-12 20:57:55 castaglia Exp $
+ * $Id: display.c,v 1.2 2010-04-12 22:42:52 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -56,13 +56,10 @@ static const char *get_display_msg(pool *p, pr_fh_t *fh) {
   const char *serverfqdn = main_server->ServerFQDN;
   char *outs, mg_size[12] = {'\0'}, mg_size_units[12] = {'\0'},
     mg_max[12] = "unlimited";
-  char total_files_in[12] = {'\0'}, total_files_out[12] = {'\0'},
-    total_files_xfer[12] = {'\0'};
   char mg_class_limit[12] = {'\0'}, mg_cur[12] = {'\0'},
-    mg_xfer_bytes[12] = {'\0'}, mg_cur_class[12] = {'\0'};
-  char mg_xfer_units[12] = {'\0'}, *user;
+    mg_cur_class[12] = {'\0'};
   const char *mg_time;
-  char *rfc1413_ident = NULL;
+  char *rfc1413_ident = NULL, *user = NULL;
 
   /* Stat the opened file to determine the optimal buffer size for IO. */
   memset(&st, 0, sizeof(st));
@@ -140,42 +137,11 @@ static const char *get_display_msg(pool *p, pr_fh_t *fh) {
     snprintf(mg_cur_class, sizeof(mg_cur_class), "%u", 0);
   }
 
-  snprintf(mg_xfer_bytes, sizeof(mg_xfer_bytes), "%" PR_LU,
-    (pr_off_t) session.total_bytes >> 10);
-  snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "B",
-    (pr_off_t) session.total_bytes);
-
-  if (session.total_bytes >= 10240) {
-    snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "kB",
-      (pr_off_t) session.total_bytes >> 10);
-
-  } else if ((session.total_bytes >> 10) >= 10240) {
-    snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "MB",
-      (pr_off_t) session.total_bytes >> 20);
-
-  } else if ((session.total_bytes >> 20) >= 10240) {
-    snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "GB",
-      (pr_off_t) session.total_bytes >> 30);
-  }
-
   snprintf(mg_max, sizeof(mg_max), "%u", max_clients ? *max_clients : 0);
 
   user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
   if (user == NULL)
     user = "";
-
-  /* "Stringify" the file number for this session. */
-  snprintf(total_files_in, sizeof(total_files_in), "%u",
-    session.total_files_in);
-  total_files_in[sizeof(total_files_in)-1] = '\0';
-
-  snprintf(total_files_out, sizeof(total_files_out), "%u",
-    session.total_files_out);
-  total_files_out[sizeof(total_files_out)-1] = '\0';
-
-  snprintf(total_files_xfer, sizeof(total_files_xfer), "%u",
-    session.total_files_xfer);
-  total_files_xfer[sizeof(total_files_xfer)-1] = '\0';
 
   rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident", NULL);
   if (rfc1413_ident == NULL) {
@@ -273,17 +239,17 @@ static const char *get_display_msg(pool *p, pr_fh_t *fh) {
       "%E", main_server->ServerAdmin,
       "%F", mg_size,
       "%f", mg_size_units,
-      "%i", total_files_in,
-      "%K", mg_xfer_bytes,
-      "%k", mg_xfer_units,
+      "%i", "0",
+      "%K", "0",
+      "%k", "0B",
       "%L", serverfqdn,
       "%M", mg_max,
       "%N", mg_cur,
-      "%o", total_files_out,
+      "%o", "0",
       "%R", (session.c && session.c->remote_name ?
         session.c->remote_name : "(unknown)"),
       "%T", mg_time,
-      "%t", total_files_xfer,
+      "%t", "0",
       "%U", user,
       "%u", rfc1413_ident,
       "%V", main_server->ServerName,
