@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp UTF8 encoding
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: utf8.c,v 1.7 2009-09-08 17:38:04 castaglia Exp $
+ * $Id: utf8.c,v 1.8 2010-04-12 23:04:35 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -45,6 +45,9 @@ static int utf8_convert(iconv_t conv, char *inbuf, size_t *inbuflen,
     char *outbuf, size_t *outbuflen) {
 # ifdef HAVE_ICONV
   char *start = inbuf;
+
+  /* Reset the state machine before each conversion. */
+  (void) iconv(conv, NULL, NULL, NULL, NULL);
 
   while (inbuflen > 0) {
     size_t nconv;

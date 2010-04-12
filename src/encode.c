@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2009 The ProFTPD Project team
+ * Copyright (c) 2006-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.20 2009-09-07 01:37:18 castaglia Exp $
+ * $Id: encode.c,v 1.21 2010-04-12 23:04:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -52,6 +52,9 @@ static int str_convert(iconv_t conv, const char *inbuf, size_t *inbuflen,
     char *outbuf, size_t *outbuflen) {
 # ifdef HAVE_ICONV
   char *start = (char *) inbuf;
+
+  /* Reset the state machine before each conversion. */
+  (void) iconv(conv, NULL, NULL, NULL, NULL);
 
   while (inbuflen > 0) {
     size_t nconv;
