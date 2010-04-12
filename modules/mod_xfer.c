@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.273 2010-04-11 22:47:00 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.274 2010-04-12 18:59:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -562,7 +562,7 @@ static int xfer_prio_adjust(void) {
   }
 
   if (res < 0) {
-    pr_trace_msg(trace_channel, 0, "error adjusting process priority: %s",
+    pr_trace_msg(trace_channel, 1, "error adjusting process priority: %s",
       strerror(errno));
     return -1;
   }
@@ -586,7 +586,7 @@ static int xfer_prio_restore(void) {
   PRIVS_RELINQUISH
 
   if (res < 0) {
-    pr_trace_msg(trace_channel, 0, "error restoring process priority: %s",
+    pr_trace_msg(trace_channel, 1, "error restoring process priority: %s",
       strerror(errno));
   }
 

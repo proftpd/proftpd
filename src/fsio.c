@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.91 2010-03-06 19:32:50 castaglia Exp $
+ * $Id: fsio.c,v 1.92 2010-04-12 18:59:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2060,7 +2060,7 @@ char *pr_fs_decode_path(pool *p, const char *path) {
 
   res = pr_decode_str(p, path, strlen(path) + 1, &outlen);
   if (!res) {
-    pr_trace_msg("encode", 0, "error decoding path '%s': %s", path,
+    pr_trace_msg("encode", 1, "error decoding path '%s': %s", path,
       strerror(errno));
     return (char *) path;
   }
@@ -2083,7 +2083,7 @@ char *pr_fs_encode_path(pool *p, const char *path) {
 
   res = pr_encode_str(p, path, strlen(path) + 1, &outlen);
   if (!res) {
-    pr_trace_msg("encode", 0, "error encoding path '%s': %s", path,
+    pr_trace_msg("encode", 1, "error encoding path '%s': %s", path,
       strerror(errno));
     return (char *) path;
   }
