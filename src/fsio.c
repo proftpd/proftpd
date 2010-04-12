@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.92 2010-04-12 18:59:46 castaglia Exp $
+ * $Id: fsio.c,v 1.93 2010-04-12 21:10:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2956,8 +2956,8 @@ int pr_fsio_read(pr_fh_t *fh, char *buf, size_t size) {
   while (fs && fs->fs_next && !fs->read)
     fs = fs->fs_next;
 
-  pr_trace_msg(trace_channel, 8, "using %s read() for path '%s'", fs->fs_name,
-    fh->fh_path);
+  pr_trace_msg(trace_channel, 8, "using %s read() for path '%s' (%lu bytes)",
+    fs->fs_name, fh->fh_path, (unsigned long) size);
   res = (fs->read)(fh, fh->fh_fd, buf, size);
 
   return res;
@@ -2979,8 +2979,8 @@ int pr_fsio_write(pr_fh_t *fh, const char *buf, size_t size) {
   while (fs && fs->fs_next && !fs->write)
     fs = fs->fs_next;
 
-  pr_trace_msg(trace_channel, 8, "using %s write() for path '%s'", fs->fs_name,
-    fh->fh_path);
+  pr_trace_msg(trace_channel, 8, "using %s write() for path '%s' (%lu bytes)",
+    fs->fs_name, fh->fh_path, (unsigned long) size);
   res = (fs->write)(fh, fh->fh_fd, buf, size);
 
   return res;
