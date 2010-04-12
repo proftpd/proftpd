@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.26 2010-04-12 00:14:46 castaglia Exp $
+ * $Id: auth.c,v 1.27 2010-04-12 20:57:55 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -40,6 +40,7 @@
 #include "keystore.h"
 #include "kbdint.h"
 #include "utf8.h"
+#include "display.h"
 
 /* This value of 6 is the same default as OpenSSH's MaxAuthTries. */
 static unsigned int auth_attempts_max = 6;
@@ -570,11 +571,8 @@ static int setup_env(pool *p, char *user) {
 }
 
 static int send_userauth_banner_file(void) {
-  struct ssh2_packet *pkt;
-  char *buf, *ptr, *mesg = "", *path;
-  char data[PR_TUNABLE_BUFFER_SIZE];
-  uint32_t buflen, bufsz;
-  int res;
+  char *path;
+  int res, xerrno;
   config_rec *c;
   pr_fh_t *fh;
   pool *sub_pool;
@@ -606,59 +604,22 @@ static int send_userauth_banner_file(void) {
   sub_pool = make_sub_pool(auth_pool);
   pr_pool_tag(sub_pool, "SSH2 auth banner pool");
 
-  while (pr_fsio_gets(data, sizeof(data), fh) != NULL) {
-    size_t datalen;
-
-    pr_signals_handle();
-
-    data[sizeof(data)-1] = '\0';
-    datalen = strlen(data);
-
-    while (datalen &&
-           (data[datalen-1] == '\r' ||
-            data[datalen-1] == '\n')) {
-      data[datalen-1] = '\0';
-      datalen--;
-    }
-
-    /* XXX Add handling of Variables, etc here. */
-
-    /* We have to separate lines using CRLF, as per RFC 4252 Section 5.4. */
-    mesg = pstrcat(sub_pool, mesg, *mesg ? "\r\n" : "", data, NULL);
-  }
+  pr_trace_msg(trace_channel, 3,
+    "sending userauth banner from SFTPDisplayBanner file '%s'", path);
+  res = sftp_display_fh(sub_pool, fh, SFTP_SSH2_MSG_USER_AUTH_BANNER);
+  xerrno = errno;
 
   pr_fsio_close(fh);
 
-  pkt = sftp_ssh2_packet_create(auth_pool);
+  errno = xerrno;
 
-  buflen = bufsz = strlen(mesg) + 32;
-  ptr = buf = palloc(pkt->pool, bufsz);
-
-  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_USER_AUTH_BANNER);
-  sftp_msg_write_string(&buf, &buflen, mesg);
-
-  /* XXX locale of banner */
-  sftp_msg_write_string(&buf, &buflen, "");
-
-  pkt->payload = ptr;
-  pkt->payload_len = (bufsz - buflen);
-
-  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-    "sending userauth banner");
-
-  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
   if (res < 0) {
-    destroy_pool(pkt->pool);
     destroy_pool(sub_pool);
-
     return -1;
   }
 
   auth_sent_userauth_banner_file = TRUE;
-
-  destroy_pool(pkt->pool);
   destroy_pool(sub_pool);
-
   return 0;
 }
 
