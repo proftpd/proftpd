@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.26 2010-02-10 20:54:29 castaglia Exp $
+ * $Id: trace.c,v 1.27 2010-04-12 22:35:32 castaglia Exp $
  */
 
 
@@ -261,9 +261,15 @@ int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
   va_list msg;
   int res;
 
-  if (!channel ||
-      !fmt ||
-      level < 0) {
+  /* Writing a trace message at level zero is NOT helpful; this makes it
+   * impossible to quell messages to that trace channel by setting the level
+   * filter to zero.  That being the case, treat level of zero as an invalid
+   * level.
+   */
+
+  if (channel == NULL ||
+      fmt == NULL ||
+      level <= 0) {
     errno = EINVAL;
     return -1;
   }
