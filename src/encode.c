@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.21 2010-04-12 23:04:35 castaglia Exp $
+ * $Id: encode.c,v 1.22 2010-04-12 23:24:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -73,13 +73,7 @@ static int str_convert(iconv_t conv, const char *inbuf, size_t *inbuflen,
 #endif
 
     if (nconv == (size_t) -1) {
-      if (errno == EINVAL) {
-        memmove(start, inbuf, *inbuflen);
-        continue;
-
-      } else {
-        return -1;
-      }
+      return -1;
     }
 
     break;

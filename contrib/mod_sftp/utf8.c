@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: utf8.c,v 1.8 2010-04-12 23:04:35 castaglia Exp $
+ * $Id: utf8.c,v 1.9 2010-04-12 23:24:56 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -56,12 +56,7 @@ static int utf8_convert(iconv_t conv, char *inbuf, size_t *inbuflen,
 
     nconv = iconv(conv, &inbuf, inbuflen, &outbuf, outbuflen);
     if (nconv == (size_t) -1) {
-      if (errno == EINVAL) {
-        memmove(start, inbuf, *inbuflen);
-        continue;
-
-      } else
-        return -1;
+      return -1;
     }
 
     break;
