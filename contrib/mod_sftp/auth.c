@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.25 2010-04-09 18:25:44 castaglia Exp $
+ * $Id: auth.c,v 1.26 2010-04-12 00:14:46 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -460,8 +460,16 @@ static int setup_env(pool *p, char *user) {
   pr_signals_unblock();
 
   /* Should we give up root privs completely here? */
-  PRIVS_REVOKE
-  session.disable_id_switching = TRUE;
+  c = find_config(main_server->conf, CONF_PARAM, "RootRevoke", FALSE);
+  if (c != NULL &&
+      *((int *) c->argv[0]) == FALSE) {
+    pr_log_debug(DEBUG8, MOD_SFTP_VERSION
+      ": retaining root privileges per RootRevoke setting");
+
+  } else {
+    PRIVS_REVOKE
+    session.disable_id_switching = TRUE;
+  }
 
 #ifdef HAVE_GETEUID
   if (getegid() != pw->pw_gid ||

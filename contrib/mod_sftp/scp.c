@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.40 2010-04-09 21:49:59 castaglia Exp $
+ * $Id: scp.c,v 1.41 2010-04-12 00:14:46 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -30,6 +30,7 @@
 #include "msg.h"
 #include "channel.h"
 #include "scp.h"
+#include "misc.h"
 
 #define SFTP_SCP_ST_MODE_MASK	(S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO)
 
@@ -842,6 +843,8 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   }
 
   pr_fsio_set_block(sp->fh);
+
+  sftp_misc_handle_chown(sp->fh);
 
   write_confirm(p, channel_id, 0, NULL);
   return 0;

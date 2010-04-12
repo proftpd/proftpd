@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.90 2010-03-31 22:40:39 castaglia Exp $
+ * $Id: fxp.c,v 1.91 2010-04-12 00:14:46 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -34,6 +34,7 @@
 #include "auth.h"
 #include "fxp.h"
 #include "utf8.h"
+#include "misc.h"
 
 /* FXP_NAME file attribute flags */
 #define SSH2_FX_ATTR_SIZE		0x00000001
@@ -5860,6 +5861,14 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     resp->payload_sz = (bufsz - buflen);
 
     return fxp_packet_write(resp);
+  }
+
+  if ((open_flags & O_WRONLY) ||
+      (open_flags & O_RDWR)) {
+    /* Handle any possible UserOwner/GroupOwner directives for uploaded
+     * files.
+     */
+    sftp_misc_handle_chown(fh);
   }
 
   fxh = fxp_handle_create(fxp_pool);
