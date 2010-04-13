@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: utf8.c,v 1.10 2010-04-13 00:14:59 castaglia Exp $
+ * $Id: utf8.c,v 1.11 2010-04-13 15:35:55 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -59,6 +59,9 @@ static int utf8_convert(iconv_t conv, char *inbuf, size_t *inbuflen,
       return -1;
     }
 
+    /* XXX We should let the loop condition work, rather than breaking out
+     * of the loop here.
+     */
     break;
   }
 

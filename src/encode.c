@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.23 2010-04-13 00:14:59 castaglia Exp $
+ * $Id: encode.c,v 1.24 2010-04-13 15:35:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -76,8 +76,12 @@ static int str_convert(iconv_t conv, const char *inbuf, size_t *inbuflen,
       return -1;
     }
 
+    /* XXX We should let the loop condition work, rather than breaking out
+     * of the loop here.
+     */
     break;
   }
+
   return 0;
 # else
   errno = ENOSYS;
