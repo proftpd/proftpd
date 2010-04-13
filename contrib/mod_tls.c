@@ -7602,6 +7602,9 @@ static int tls_sess_init(void) {
     }
 
     tls_flags |= TLS_SESS_ON_CTRL;
+
+    pr_session_set_protocol("ftps");
+    session.rfc2228_mech = "TLS";
   }
 
   return 0;
