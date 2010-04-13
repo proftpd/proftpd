@@ -882,6 +882,9 @@
 /* Define if ncursesw support, if available, should be used.  */
 #undef PR_USE_NCURSESW
 
+/* Define if using nonblocking open of log files.  */
+#undef PR_USE_NONBLOCKING_LOG_OPEN
+
 /* Define if OpenSSL support, if available, should be used.  */
 #undef PR_USE_OPENSSL
 
