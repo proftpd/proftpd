@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.24 2010-04-13 15:35:55 castaglia Exp $
+ * $Id: encode.c,v 1.25 2010-04-13 16:39:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -51,7 +51,6 @@ static const char *trace_channel = "encode";
 static int str_convert(iconv_t conv, const char *inbuf, size_t *inbuflen,
     char *outbuf, size_t *outbuflen) {
 # ifdef HAVE_ICONV
-  char *start = (char *) inbuf;
 
   /* Reset the state machine before each conversion. */
   (void) iconv(conv, NULL, NULL, NULL, NULL);
