@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.22 2010-04-12 23:24:56 castaglia Exp $
+ * $Id: encode.c,v 1.23 2010-04-13 00:14:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -56,7 +56,7 @@ static int str_convert(iconv_t conv, const char *inbuf, size_t *inbuflen,
   /* Reset the state machine before each conversion. */
   (void) iconv(conv, NULL, NULL, NULL, NULL);
 
-  while (inbuflen > 0) {
+  while (*inbuflen > 0) {
     size_t nconv;
 
     pr_signals_handle();
