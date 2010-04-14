@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.376 2010-04-11 21:44:28 castaglia Exp $
+ * $Id: mod_core.c,v 1.377 2010-04-14 21:27:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4609,6 +4609,15 @@ MODRET core_opts(cmd_rec *cmd) {
 
   subcmd = pr_cmd_alloc(cmd->tmp_pool, cmd->argc-1, NULL);
   subcmd->argv[0] = pstrcat(cmd->tmp_pool, "OPTS_", cmd->argv[1], NULL);
+  subcmd->group = cmd->group;
+
+  if (!dir_check(cmd->tmp_pool, subcmd, subcmd->group, session.vwd, NULL)) {
+    pr_log_debug(DEBUG7, "OPTS %s denied by <Limit> configuration",
+      cmd->argv[1]);
+    pr_response_add_err(R_550, "%s %s: %s", cmd->argv[0], cmd->argv[1],
+      strerror(EACCES));
+    return PR_ERROR(cmd);
+  }
 
   for (i = 2; i < cmd->argc; i++) {
     subcmd->argv[i-1] = cmd->argv[i];

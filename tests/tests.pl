@@ -137,6 +137,7 @@ if (scalar(@ARGV) > 0) {
     t/config/ftpaccess/retr.t
     t/config/limit/anonymous.t
     t/config/limit/mfmt.t
+    t/config/limit/opts.t
     t/config/limit/rmd.t
     t/config/limit/xmkd.t
     t/config/limit/filters.t

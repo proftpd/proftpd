@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.235 2010-03-09 02:38:54 castaglia Exp $
+ * $Id: dirtree.c,v 1.236 2010-04-14 21:27:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1864,14 +1864,16 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
 
     /* If still == 1, no explicit allow so check lowest priority "ALL" group.
      * Note that certain commands are deliberately excluded from the
-     * ALL group (i.e. EPRT, EPSV, PASV, and PORT).
+     * ALL group (i.e. EPRT, EPSV, PASV, PORT, and OPTS).
      */
     if (res == 1 &&
         strcmp(cmd->argv[0], C_EPRT) != 0 &&
         strcmp(cmd->argv[0], C_EPSV) != 0 &&
         strcmp(cmd->argv[0], C_PASV) != 0 &&
-        strcmp(cmd->argv[0], C_PORT) != 0)
+        strcmp(cmd->argv[0], C_PORT) != 0 &&
+        strncmp(cmd->argv[0], C_OPTS, 4) != 0) {
       res = dir_check_limits(cmd, c, "ALL", op_hidden || regex_hidden);
+    }
   }
 
   if (res &&
@@ -2008,14 +2010,16 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
 
     /* If still == 1, no explicit allow so check lowest priority "ALL" group.
      * Note that certain commands are deliberately excluded from the
-     * ALL group (i.e. EPRT, EPSV, PASV, and PORT).
+     * ALL group (i.e. EPRT, EPSV, PASV, PORT, and OPTS).
      */
     if (res == 1 &&
         strcmp(cmd->argv[0], C_EPRT) != 0 &&
         strcmp(cmd->argv[0], C_EPSV) != 0 &&
         strcmp(cmd->argv[0], C_PASV) != 0 &&
-        strcmp(cmd->argv[0], C_PORT) != 0)
+        strcmp(cmd->argv[0], C_PORT) != 0 &&
+        strncmp(cmd->argv[0], C_OPTS, 4) != 0) {
       res = dir_check_limits(cmd, c, "ALL", op_hidden || regex_hidden);
+    }
   }
 
   if (res &&
