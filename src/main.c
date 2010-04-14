@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.398 2010-04-09 00:48:02 castaglia Exp $
+ * $Id: main.c,v 1.399 2010-04-14 15:53:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3061,7 +3061,7 @@ int main(int argc, char *argv[], char **envp) {
   }
 # endif /* !HAVE_LOCALE_H */
 
- encode_init();
+  encode_init();
 #endif /* PR_USE_NLS */
 
   /* Now, once the modules have had a chance to initialize themselves
