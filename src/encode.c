@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.25 2010-04-13 16:39:01 castaglia Exp $
+ * $Id: encode.c,v 1.26 2010-04-14 21:04:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -255,6 +255,17 @@ char *pr_encode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
   if (!p || !in || !outlen) {
     errno = EINVAL;
     return NULL;
+  }
+
+  /* If the local charset matches the remote charset, then there's no point
+   * in converting; the charsets are the same.  Indeed, on some libiconv
+   * implementations, attempting to convert between the same charsets results
+   * in a tightly spinning CPU (see Bug#3272).
+   */
+  if (local_charset != NULL &&
+      encoding != NULL &&
+      strcasecmp(local_charset, encoding) == 0) {
+    return pstrdup(p, in);
   }
 
   if (encode_conv == (iconv_t) -1) {
