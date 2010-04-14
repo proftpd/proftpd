@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.42 2010-04-12 16:12:49 castaglia Exp $
+ * $Id: scp.c,v 1.43 2010-04-14 01:20:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1032,11 +1032,10 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
 
     sp->parent_dir = parent_dir;
 
-    /* We return 1 here, the caller will call reset_path() on the same
+    /* We return 1 here, and the caller will call reset_path() on the same
      * sp pointer.  That's OK, since reset_path() does NOT change sp->path or
-     * sp->parent_dir, which is what we are must concerned with here.
+     * sp->parent_dir, which is what we are most concerned with here.
      */
-
     return 1;
   }
 
