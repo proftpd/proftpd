@@ -1935,8 +1935,8 @@ static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
       SSL_renegotiate(ctrl_ssl);
       /* SSL_do_handshake(ctrl_ssl); */
   
-      pr_timer_add(tls_renegotiate_timeout, 0, &tls_module,
-        tls_renegotiate_timeout_cb, "SSL/TLS renegotation");
+      pr_timer_add(tls_renegotiate_timeout, -1, &tls_module,
+        tls_renegotiate_timeout_cb, "SSL/TLS renegotiation");
 
       /* Restart the timer. */
       return 1;
@@ -2763,7 +2763,7 @@ static int tls_init_server(void) {
   
       /* Set any control channel renegotiation timers, if need be. */
       pr_timer_add(ctrl_timeout ? ctrl_timeout : tls_ctrl_renegotiate_timeout,
-        0, &tls_module, tls_ctrl_renegotiate_cb, "SSL/TLS renegotiation");
+        -1, &tls_module, tls_ctrl_renegotiate_cb, "SSL/TLS renegotiation");
     }
   }
 
@@ -5471,7 +5471,7 @@ static int tls_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
       SSL_renegotiate((SSL *) nstrm->strm_data);
       /* SSL_do_handshake((SSL *) nstrm->strm_data); */
 
-      pr_timer_add(tls_renegotiate_timeout, 0, &tls_module,
+      pr_timer_add(tls_renegotiate_timeout, -1, &tls_module,
         tls_renegotiate_timeout_cb, "SSL/TLS renegotiation");
     }
 #endif
