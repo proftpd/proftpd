@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.175 2010-04-16 17:52:50 castaglia Exp $
+ * $Id: mod_ls.c,v 1.176 2010-04-16 22:22:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1935,6 +1935,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   while (list[j] && count >= 0) {
     p = list[j++];
 
+    pr_signals_handle();
+
     if (*p == '.') {
       if (!opt_a && (!opt_A || is_dotdir(p))) {
         continue;
@@ -2477,6 +2479,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
     path = g.gl_pathv;
     while (path && *path && res >= 0) {
       struct stat st;
+
+      pr_signals_handle();
 
       p = *path;
       path++;

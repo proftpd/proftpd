@@ -23,7 +23,7 @@
  */
 
 /* TransferRate throttling
- * $Id: throttle.c,v 1.6 2010-03-04 00:30:35 castaglia Exp $
+ * $Id: throttle.c,v 1.7 2010-04-16 22:22:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -116,6 +116,8 @@ void pr_throttle_init(cmd_rec *cmd) {
   while (c) {
     char **cmdlist = (char **) c->argv[0];
     int matched_cmd = FALSE;
+
+    pr_signals_handle();
 
     /* Does this TransferRate apply to the current command?  Note: this
      * could be made more efficient by using bitmasks rather than string

@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.18 2010-02-05 00:32:37 castaglia Exp $
+ * $Id: event.c,v 1.19 2010-04-16 22:22:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -156,6 +156,8 @@ int pr_event_unregister(module *m, const char *event,
    */
 
   for (evl = events; evl; evl = evl->next) {
+    pr_signals_handle();
+
     if (!event || strcmp(evl->event, event) == 0) {
       struct event_handler *evh;
 

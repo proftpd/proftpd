@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.51 2010-02-10 17:29:33 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.52 2010-04-16 22:22:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1020,6 +1020,7 @@ static char *rewrite_subst_maps(cmd_rec *cmd, char *pattern) {
     c = find_config(main_server->conf, CONF_PARAM, "RewriteMap", FALSE);
 
     while (c) {
+      pr_signals_handle();
 
       if (strcmp(c->argv[0], map.map_name) == 0) { 
         char *lookup_value = NULL;
@@ -1343,6 +1344,7 @@ static int rewrite_utf8_to_ucs4(unsigned long *ucs4_buf,
   int ucs_len = 0;
 
   while (utf8_buf != utf8_endbuf) {
+    pr_signals_handle();
 
     /* ASCII chars - no conversion needed */
     if ((*utf8_buf & 0x80) == 0x00) {
@@ -2261,6 +2263,8 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
   while (c) {
     unsigned char exec_rule = FALSE;
     rewrite_log("rewrite_fixup(): found RewriteRule");
+
+    pr_signals_handle();
 
     /* If we've already seen this Rule, skip on to the next Rule. */
     if (seen_rules->nelts > 0) {

@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.17 2010-04-07 23:29:33 castaglia Exp $
+ * $Id: display.c,v 1.18 2010-04-16 22:22:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -120,6 +120,8 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
       FALSE);
 
     while (maxc) {
+      pr_signals_handle();
+
       if (strcmp(maxc->argv[0], session.class->cls_name) != 0) {
         maxc = find_config_next(maxc, maxc->next, CONF_PARAM,
           "MaxClientsPerClass", FALSE);

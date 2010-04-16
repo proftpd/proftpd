@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.236 2010-04-14 21:27:46 castaglia Exp $
+ * $Id: dirtree.c,v 1.237 2010-04-16 22:22:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -360,6 +360,8 @@ unsigned char dir_hide_file(const char *path) {
     FALSE);
 
   while (c) {
+    pr_signals_handle();
+
     if (c->argc >= 4) {
 
       /* check for a specified "user" classifier first... */
@@ -973,6 +975,8 @@ static int check_user_access(xaset_t *set, const char *name) {
   config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
 
   while (c) {
+    pr_signals_handle();
+
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
       regex_t *preg = (regex_t *) c->argv[1];
@@ -1055,6 +1059,8 @@ static int check_class_access(xaset_t *set, const char *name) {
   config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
 
   while (c) {
+    pr_signals_handle();
+
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
       regex_t *preg = (regex_t *) c->argv[1];
@@ -1098,6 +1104,8 @@ static int check_filter_access(xaset_t *set, const char *name, cmd_rec *cmd) {
   c = find_config(set, CONF_PARAM, name, FALSE);
   while (c) {
     regex_t *preg = (regex_t *) c->argv[0];
+
+    pr_signals_handle();
 
     if (regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
       res = TRUE;
@@ -1204,6 +1212,8 @@ static int check_ip_access(xaset_t *set, char *name) {
   config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
 
   while (c) {
+    pr_signals_handle();
+
     /* If the negative check failed (default is success), short-circuit and
      * return FALSE
      */
@@ -2095,8 +2105,9 @@ static config_rec *_find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
 
       len = strlen(c->name);
       while (len > 0 &&
-             (*(c->name+len-1) == '*' || *(c->name+len-1) == '/'))
+             (*(c->name+len-1) == '*' || *(c->name+len-1) == '/')) {
         len--;
+      }
 
       /*
        * Just a partial match on the pathname does not mean that the longer

@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.104 2010-03-30 21:20:44 castaglia Exp $
+ * $Id: mod_log.c,v 1.105 2010-04-16 22:22:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -198,7 +198,8 @@ static void logformat(char *nickname, char *fmts) {
       arg = NULL;
       tmp++;
       for (;;) {
-
+        pr_signals_handle();
+ 
         if (strncmp(tmp, "{protocol}", 10) == 0) {
           add_meta(&outs, META_PROTOCOL, 0);
           tmp += 10;

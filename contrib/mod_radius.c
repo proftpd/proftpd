@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.58 2010-03-10 17:04:09 castaglia Exp $
+ * $Id: mod_radius.c,v 1.59 2010-04-16 22:22:37 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9.1"
@@ -1971,6 +1971,8 @@ static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
   while (attrib) {
     unsigned int vendor_id = 0;
     radius_attrib_t *vsa = NULL;
+
+    pr_signals_handle();
 
     if (attrib->length == 0) {
       radius_log("packet includes invalid length (%u) for attribute type %u, "

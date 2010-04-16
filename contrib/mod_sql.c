@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.182 2010-03-10 15:54:26 castaglia Exp $
+ * $Id: mod_sql.c,v 1.183 2010-04-16 22:22:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1599,7 +1599,9 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
   for (cnt = 0; cnt < numrows; cnt++) {
     members = rows[(cnt * 3) + 2];
     iterator = members;
-    
+   
+    pr_signals_handle();
+ 
     /* If the row is null, continue.. */
     if (members == NULL)
       continue;
@@ -1609,8 +1611,10 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
      */
     for (member = strsep(&iterator, ","); member;
         member = strsep(&iterator, ",")) {
-      if (*member == '\0')
+      if (*member == '\0') {
         continue;
+      }
+
       *((char **) push_array(ah)) = member;
     }      
   }
@@ -1774,8 +1778,10 @@ static int sql_getgroups(cmd_rec *cmd) {
      */
     for (member = strsep(&memberstr, ","); member;
         member = strsep(&memberstr, ",")) {
-      if (*member == '\0')
+      if (*member == '\0') {
         continue;
+      }
+
       *((char **) push_array(members)) = member;
     }
 
@@ -2920,6 +2926,8 @@ MODRET errinfo_master(cmd_rec *cmd) {
     outsp = outs;
 
     for (tmp = c->argv[1]; *tmp; ) {
+      pr_signals_handle();
+
       if (*tmp == '%') {
         /* is the tag a named_query reference?  If so, process the 
          * named query, otherwise process it as a normal tag.. 
@@ -2977,7 +2985,6 @@ MODRET errinfo_master(cmd_rec *cmd) {
              */
             memset(outs, '\0', sizeof(outs));
             break;
-            continue;
           }
 
         } else {
@@ -3518,8 +3525,10 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
       iterator = grp_mem;
 
       for (member = strsep(&iterator, " ,"); member; member = strsep(&iterator, " ,")) {
-	if (*member == '\0')
+	if (*member == '\0') {
           continue;
+        }
+
 	*((char **) push_array(ah)) = member;
       }
 
