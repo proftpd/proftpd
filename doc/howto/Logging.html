@@ -1,4 +1,4 @@
-<!-- $Id: Logging.html,v 1.2 2008-01-15 18:27:41 castaglia Exp $ -->
+<!-- $Id: Logging.html,v 1.3 2010-04-16 17:45:14 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Logging.html,v $ -->
 
 <html>
@@ -144,12 +144,12 @@ Renner:
   my $syslog_facility = 'daemon';
   my $syslog_level = 'info';
 
-  open(FIFO, "< $fifo") or die "$program: unable to open $fifo: $!\n";
+  open(FIFO, "&lt; $fifo") or die "$program: unable to open $fifo: $!\n";
 
   setlogsock 'unix';
 
   openlog($program, 'pid', $syslog_facility);
-  syslog($syslog_level, $_) while (<FIFO>);
+  syslog($syslog_level, $_) while (&lt;FIFO&gt;);
   closelog();
 
   close(FIFO);
@@ -170,6 +170,17 @@ script, and save the overhead of starting that process, in addition to the
 <p>
 FIFO-based log readers are a very powerful tool, but they should not be
 used where a simpler solution like off-line post-processing is available.
+
+<p>
+<b>Note</b>: In ProFTPD 1.3.3, the code was changed to use nonblocking
+<code>open(2)</code> system calls when opening log files.  This was done to
+prevent a <code>proftpd</code> process from blocking indefinitely
+(<i>i.e.</i> "hanging") if the log file was a FIFO, and there was no FIFO
+reader process running when the log file was opened.  However, some sites
+<i>do</i> want this blocking open behavior, as their FIFO reader processes
+may be temporarily busy.  To get the pre-1.3.3 blocking behavior, you will
+need to compile proftpd using the <code>--disable-nonblocking-log-open</code>
+configure option.
 
 <p><a name="SQLLogging"></a>
 <b>SQL Logging</b><br>
@@ -196,7 +207,7 @@ scoreboard file is determined by the
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2008-01-15 18:27:41 $</i><br>
+Last Updated: <i>$Date: 2010-04-16 17:45:14 $</i><br>
 <hr>
 
 </body>
