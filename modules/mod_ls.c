@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.174 2010-03-08 18:28:17 castaglia Exp $
+ * $Id: mod_ls.c,v 1.175 2010-04-16 17:52:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2138,9 +2138,10 @@ MODRET ls_stat(cmd_rec *cmd) {
     pr_response_add(R_DUP, _("TYPE: %s, STRUcture: File, Mode: Stream"),
       (session.sf_flags & SF_ASCII) ? "ASCII" : "BINARY");
 
-    if (session.total_bytes)
+    if (session.total_bytes) {
       pr_response_add(R_DUP, _("Total bytes transferred for session: %" PR_LU),
         (pr_off_t) session.total_bytes);
+    }
 
     if (session.sf_flags & SF_XFER) {
       /* Report on the data transfer attributes.
@@ -2151,22 +2152,23 @@ MODRET ls_stat(cmd_rec *cmd) {
           _("Passive data transfer from") : _("Active data transfer to"),
         pr_netaddr_get_ipstr(session.d->remote_addr), session.d->remote_port);
 
-      if (session.xfer.file_size)
+      if (session.xfer.file_size) {
         pr_response_add(R_DUP, "%s %s (%" PR_LU "/%" PR_LU ")",
           session.xfer.direction == PR_NETIO_IO_RD ? C_STOR : C_RETR,
           session.xfer.path, (pr_off_t) session.xfer.file_size,
           (pr_off_t) session.xfer.total_bytes);
 
-      else
+      } else {
         pr_response_add(R_DUP, "%s %s (%" PR_LU ")",
           session.xfer.direction == PR_NETIO_IO_RD ? C_STOR : C_RETR,
           session.xfer.path, (pr_off_t) session.xfer.total_bytes);
+      }
 
-    } else
+    } else {
       pr_response_add(R_DUP, _("No data connection"));
+    }
 
     pr_response_add(R_DUP, _("End of status"));
-
     return PR_HANDLED(cmd);
   }
 
@@ -2176,12 +2178,15 @@ MODRET ls_stat(cmd_rec *cmd) {
   arg = pr_fs_decode_path(cmd->tmp_pool, arg);
 
   /* Get to the actual argument. */
-  if (*arg == '-')
-    while (arg && *arg && !isspace((int) *arg))
+  if (*arg == '-') {
+    while (arg && *arg && !isspace((int) *arg)) {
       arg++;
+    }
+  }
 
-  while (arg && *arg && isspace((int) *arg))
+  while (arg && *arg && isspace((int) *arg)) {
     arg++;
+  }
 
   tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
   if (tmp != NULL)
@@ -2227,8 +2232,9 @@ MODRET ls_stat(cmd_rec *cmd) {
     fakemode = *fake_mode;
     have_fake_mode = TRUE;
 
-  } else
+  } else {
     have_fake_mode = FALSE;
+  }
 
   tmp = get_param_ptr(TOPLEVEL_CONF, "TimesGMT", FALSE);
   if (tmp != NULL)
