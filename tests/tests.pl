@@ -117,6 +117,7 @@ if (scalar(@ARGV) > 0) {
     t/config/pathdenyfilter.t
     t/config/requirevalidshell.t
     t/config/rewritehome.t
+    t/config/serveradmin.t
     t/config/serverident.t
     t/config/storeuniqueprefix.t
     t/config/timeoutidle.t
