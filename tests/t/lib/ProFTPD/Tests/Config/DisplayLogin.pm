@@ -155,6 +155,20 @@ sub displaylogin_abs_path {
       $expected = "Hello user!";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
+
+      $client->quit();
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg(0);
+
+      $expected = 221;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = "Goodbye.";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+
     };
 
     if ($@) {
@@ -272,6 +286,20 @@ sub displaylogin_rel_path {
       $expected = "Hello user!";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
+
+      $client->quit();
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg(0);
+
+      $expected = 221;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = "Goodbye.";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+
     };
 
     if ($@) {
