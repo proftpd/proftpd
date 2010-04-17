@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.58 2010-02-10 18:24:52 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.59 2010-04-17 00:21:26 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -473,6 +473,35 @@ static int quotatab_create(quota_tally_t *tally) {
     return FALSE;
 
   return TRUE;
+}
+
+static int quotatab_create_tally(void) {
+  int res = TRUE;
+
+  memset(sess_tally.name, '\0', sizeof(sess_tally.name));
+  snprintf(sess_tally.name, sizeof(sess_tally.name), "%s",
+    sess_limit.name);
+  sess_tally.name[sizeof(sess_tally.name)-1] = '\0';
+
+  sess_tally.quota_type = sess_limit.quota_type;
+
+  /* Initial tally values. */
+  sess_tally.bytes_in_used = 0.0F;
+  sess_tally.bytes_out_used = 0.0F;
+  sess_tally.bytes_xfer_used = 0.0F;
+  sess_tally.files_in_used = 0U;
+  sess_tally.files_out_used = 0U;
+  sess_tally.files_xfer_used = 0U;
+
+  quotatab_log("creating new tally entry to match limit entry");
+
+  res = quotatab_create(&sess_tally);
+  if (res == FALSE) {
+    quotatab_log("error: unable to create tally entry: %s",
+      strerror(errno));
+  }
+
+  return res;
 }
 
 static quota_regtab_t *quotatab_get_backend(const char *backend,
@@ -2246,9 +2275,18 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
     if (quotatab_lookup(TYPE_TALLY, &sess_tally, session.user, USER_QUOTA)) {
       quotatab_log("found tally entry for user '%s'", session.user);
-      quotatab_mutex_lock(F_UNLCK);
       have_quota_entry = TRUE;
 
+    } else {
+      if (quotatab_create_tally()) {
+        quotatab_log("created tally entry for user '%s'", session.user);
+        have_quota_entry = TRUE;
+      }
+    }
+
+    quotatab_mutex_lock(F_UNLCK);
+
+    if (have_quota_entry) {
       if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
           (sess_limit.bytes_in_avail > 0 ||
            sess_limit.files_in_avail > 0)) {
@@ -2270,12 +2308,13 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
             (byte_count - sess_tally.bytes_in_used);
           int files_diff = file_count - sess_tally.files_in_used;
 
-          quotatab_log("found %0.2lf bytes in %u files for user '%s' "
-            "in %lu secs", byte_count, file_count, session.user,
+          quotatab_log("found %0.2lf bytes in %u %s for user '%s' "
+            "in %lu secs", byte_count, file_count,
+            file_count != 1 ? "files" : "file", session.user,
             (unsigned long) time(NULL) - then);
 
-          quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
-            bytes_diff, files_diff);
+          quotatab_log("updating tally (%0.2lf bytes, %d %s difference)",
+            bytes_diff, files_diff, files_diff != 1 ? "files" : "file");
 
           /* Write out an updated quota entry */
           QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
@@ -2318,9 +2357,18 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
     if (have_limit_entry) {
       if (quotatab_lookup(TYPE_TALLY, &sess_tally, group_name, GROUP_QUOTA)) {
         quotatab_log("found tally entry for group '%s'", group_name);
-        quotatab_mutex_lock(F_UNLCK);
         have_quota_entry = TRUE;
 
+      } else {
+        if (quotatab_create_tally()) {
+          quotatab_log("created tally entry for group '%s'", group_name);
+          have_quota_entry = TRUE;
+        }
+      }
+
+      quotatab_mutex_lock(F_UNLCK);
+
+      if (have_quota_entry) {
         if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
             (sess_limit.bytes_in_avail > 0 ||
              sess_limit.files_in_avail > 0)) {
@@ -2341,12 +2389,13 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
             double bytes_diff = byte_count - sess_tally.bytes_in_used;
             int files_diff = file_count - sess_tally.files_in_used;
 
-            quotatab_log("found %0.2lf bytes in %u files for group '%s' "
-              "in %lu secs", byte_count, file_count, group_name,
+            quotatab_log("found %0.2lf bytes in %u %s for group '%s' "
+              "in %lu secs", byte_count, file_count,
+              file_count != 1 ? "files" : "file", group_name,
               (unsigned long) time(NULL) - then);
 
-            quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
-              bytes_diff, files_diff);
+            quotatab_log("updating tally (%0.2lf bytes, %d %s difference)",
+              bytes_diff, files_diff, files_diff != 1 ? "files" : "file");
 
             /* Write out an updated quota entry */
             QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
@@ -2368,9 +2417,19 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
           CLASS_QUOTA)) {
         quotatab_log("found tally entry for class '%s'",
           session.class->cls_name);
-        quotatab_mutex_lock(F_UNLCK);
         have_quota_entry = TRUE;
 
+      } else {
+        if (quotatab_create_tally()) {
+          quotatab_log("created tally entry for class '%s'",
+            session.class->cls_name);
+          have_quota_entry = TRUE;
+        }
+      }
+
+      quotatab_mutex_lock(F_UNLCK);
+
+      if (have_quota_entry) {
         if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
             (sess_limit.bytes_in_avail > 0 ||
              sess_limit.files_in_avail > 0)) {
@@ -2393,12 +2452,13 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
               (byte_count - sess_tally.bytes_in_used);
             int files_diff = file_count - sess_tally.files_in_used;
 
-            quotatab_log("found %0.2lf bytes in %u files for class '%s' "
-              "in %lu secs", byte_count, file_count, session.class->cls_name,
+            quotatab_log("found %0.2lf bytes in %u %s for class '%s' "
+              "in %lu secs", byte_count, file_count,
+              file_count != 1 ? "files" : "file", session.class->cls_name,
               (unsigned long) time(NULL) - then);
 
-            quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
-              bytes_diff, files_diff);
+            quotatab_log("updating tally (%0.2lf bytes, %d %s difference)",
+              bytes_diff, files_diff, files_diff != 1 ? "files" : "file");
 
             /* Write out an updated quota entry */
             QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
@@ -2416,9 +2476,18 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
       if (quotatab_lookup(TYPE_TALLY, &sess_tally, NULL, ALL_QUOTA)) {
         quotatab_log("found tally entry for all");
-        quotatab_mutex_lock(F_UNLCK);
         have_quota_entry = TRUE;
 
+      } else {
+        if (quotatab_create_tally()) {
+          quotatab_log("created tally entry for all");
+          have_quota_entry = TRUE;
+        }
+      }
+
+      quotatab_mutex_lock(F_UNLCK);
+
+      if (have_quota_entry) {
         if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
             (sess_limit.bytes_in_avail > 0 ||
              sess_limit.files_in_avail > 0)) {
@@ -2440,12 +2509,13 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
               (byte_count - sess_tally.bytes_in_used);
             int files_diff = file_count - sess_tally.files_in_used;
 
-            quotatab_log("found %0.2lf bytes in %u files for all "
+            quotatab_log("found %0.2lf bytes in %u %s for all "
               "in %lu secs", byte_count, file_count,
+              file_count != 1 ? "files" : "file",
               (unsigned long) time(NULL) - then);
 
-            quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
-              bytes_diff, files_diff);
+            quotatab_log("updating tally (%0.2lf bytes, %d %s difference)",
+              bytes_diff, files_diff, files_diff != 1 ? "files" : "file");
 
             /* Write out an updated quota entry */
             QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
@@ -2459,41 +2529,6 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
    * open anyway, in order to look up limits for _other_ users (e.g. when
    * handling deleted files).
    */
-
-  /* Only create a new tally entry if there is a corresponding limit
-   * entry.
-   */
-
-  if (have_limit_entry &&
-      !have_quota_entry) {
-    memset(sess_tally.name, '\0', sizeof(sess_tally.name));
-    snprintf(sess_tally.name, sizeof(sess_tally.name), "%s",
-      sess_limit.name);
-    sess_tally.name[sizeof(sess_tally.name)-1] = '\0';
-
-    sess_tally.quota_type = sess_limit.quota_type;
-
-    /* Initial tally values. */
-    sess_tally.bytes_in_used = 0.0F;
-    sess_tally.bytes_out_used = 0.0F;
-    sess_tally.bytes_xfer_used = 0.0F;
-    sess_tally.files_in_used = 0U;
-    sess_tally.files_out_used = 0U;
-    sess_tally.files_xfer_used = 0U;
-
-    quotatab_log("creating new tally entry to match limit entry");
-
-    if (quotatab_create(&sess_tally)) {
-      quotatab_log("new tally entry successfully created");
-      have_quota_entry = TRUE;
-
-    } else {
-      quotatab_log("error: unable to create tally entry: %s",
-        strerror(errno));
-    }
-
-    quotatab_mutex_lock(F_UNLCK);
-  }
 
   if (have_quota_entry) {
 
