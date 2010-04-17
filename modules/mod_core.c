@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.378 2010-04-17 17:10:34 castaglia Exp $
+ * $Id: mod_core.c,v 1.379 2010-04-17 17:27:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3982,22 +3982,24 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
     if (bool) {
    
       /* XXX Get rid of this CONF_USERDATA instance; it's the only
-       * occurrence of it in the source.
+       * occurrence of it in the source.  Use the session.notes table instead.
        */ 
       c = find_config(cmd->server->conf, CONF_USERDATA, session.cwd, FALSE);
-
       if (!c) {
         time(&prev);
         c = add_config_set(&cmd->server->conf, session.cwd);
         c->config_type = CONF_USERDATA;
         c->argc = 1;
         c->argv = pcalloc(c->pool, sizeof(void **) * 2);
-        c->argv[0] = (void *) prev;
+        c->argv[0] = palloc(c->pool, sizeof(time_t));
+        *((time_t *) c->argv[0]) = prev;
         prev = (time_t) 0L;
 
       } else {
-        prev = (time_t) c->argv[0];
-        c->argv[0] = (void *) time(NULL);
+        prev = *((time_t *) c->argv[0]);
+
+        /* Update the timestamp stored for this directory. */
+        *((time_t *) c->argv[0]) = time(NULL);
       }
     }
 
