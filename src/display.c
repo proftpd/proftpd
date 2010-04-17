@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.18 2010-04-16 22:22:37 castaglia Exp $
+ * $Id: display.c,v 1.19 2010-04-17 17:10:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -341,7 +341,12 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
 
   if (first != NULL) {
     if (session.auth_mech != NULL) {
-      pr_response_send_raw("%s %s", code, first);
+      if (flags & PR_DISPLAY_FL_NO_EOM) {
+        pr_response_send_raw("%s-%s", code, first);
+
+      } else {
+        pr_response_send_raw("%s %s", code, first);
+      }
 
     } else {
       /* There is a special case if the client has not yet authenticated; it
