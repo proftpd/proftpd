@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_sftp.h.in,v 1.12 2010-04-19 22:16:00 castaglia Exp $
+ * $Id: mod_sftp.h.in,v 1.13 2010-04-19 22:16:36 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_H
