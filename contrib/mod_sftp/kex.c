@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.14 2009-11-22 21:46:02 castaglia Exp $
+ * $Id: kex.c,v 1.15 2010-04-19 23:30:48 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2801,7 +2801,7 @@ static int handle_kex_rsa(struct sftp_kex *kex) {
 }
 
 int sftp_kex_handle(struct ssh2_packet *pkt) {
-  int correct_guess = TRUE, res;
+  int correct_guess = TRUE, res, sent_newkeys = FALSE;
   char mesg_type;
   struct sftp_kex *kex;
   cmd_rec *cmd;
@@ -2995,6 +2995,29 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
     }
   }
 
+  if (sftp_interop_supports_feature(SFTP_SSH2_FEAT_OPTIMISTIC_NEWKEYS)) {
+    pr_trace_msg(trace_channel, 9, "sending NEWKEYS message to client");
+
+    /* Send our NEWKEYS reply. */
+    pkt = sftp_ssh2_packet_create(kex_pool);
+    res = write_newkeys_reply(pkt);
+    if (res < 0) {
+      destroy_kex(kex);
+      destroy_pool(pkt->pool);
+      return -1;
+    }
+
+    res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+    if (res < 0) {
+      destroy_kex(kex);
+      destroy_pool(pkt->pool);
+      return -1;
+    }
+
+    destroy_pool(pkt->pool);
+    sent_newkeys = TRUE;
+  }
+
   pr_trace_msg(trace_channel, 9, "reading NEWKEYS message from client");
 
   /* Read the client NEWKEYS mesg. */
@@ -3023,25 +3046,29 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
-  pr_trace_msg(trace_channel, 9, "sending NEWKEYS message to client");
+  /* If we didn't send our NEWKEYS message earlier, do it now. */
+  if (!sent_newkeys) {
+    pr_trace_msg(trace_channel, 9, "sending NEWKEYS message to client");
 
-  /* Send our NEWKEYS reply. */
-  pkt = sftp_ssh2_packet_create(kex_pool);
-  res = write_newkeys_reply(pkt);
-  if (res < 0) {
-    destroy_kex(kex);
+    /* Send our NEWKEYS reply. */
+    pkt = sftp_ssh2_packet_create(kex_pool);
+    res = write_newkeys_reply(pkt);
+    if (res < 0) {
+      destroy_kex(kex);
+      destroy_pool(pkt->pool);
+      return -1;
+    }
+
+    res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+    if (res < 0) {
+      destroy_kex(kex);
+      destroy_pool(pkt->pool);
+      return -1;
+    }
+
     destroy_pool(pkt->pool);
-    return -1;
+    sent_newkeys = TRUE;
   }
-
-  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
-  if (res < 0) {
-    destroy_kex(kex);
-    destroy_pool(pkt->pool);
-    return -1;
-  }
-
-  destroy_pool(pkt->pool);
 
   /* Last but certainly not least, set up the keys for encryption and
    * authentication, based on H and K.

@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.35 2010-04-19 22:16:00 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.36 2010-04-19 23:30:48 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -364,6 +364,30 @@ The currently supported SSH2/SFTP keys which can be tuned via
     The default <code>mod_sftp</code> channel window size is 4GB.  Using
     smaller window sizes may be necessary for some clients; larger window
     sizes can help reduce latency for bulk data transfers.
+  </li>
+
+  <p>
+  <li>optimisticNewkeys</br>
+    During the key exchange phase of an SSH connection, clients/servers send
+    each other <code>KEXINIT</code> messages, negotiate the algorithm data,
+    then finish the key exchange phase by sending each other
+    <code>NEWKEYS</code> messages.  Currently, the <code>mod_sftp</code>
+    module waits to receive the <code>NEWKEYS</code> message from clients
+    before sending its <code>NEWKEYS</code> message in response.
+
+    <p>
+    However, some clients react badly to this; some clients will also wait for
+    the <code>NEWKEYS</code> message from the server before sending their
+    <code>NEWKEYS</code> message.  This results in a deadlock.
+
+    <p>
+    If your SSH clients encounter this deadlock, use this option to tell
+    <code>mod_sftp</code> to optimistically send its <code>NEWKEYS</code>
+    message first, <i>e.g.</i>:
+    <p>
+<pre>
+    SFTPClientMatch ^1\.34 optimisticNewkeys true
+</pre>
   </li>
 
   <p>
@@ -1545,7 +1569,7 @@ of the session.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-04-19 22:16:00 $</i><br>
+Last Updated: <i>$Date: 2010-04-19 23:30:48 $</i><br>
 
 <br><hr>
 

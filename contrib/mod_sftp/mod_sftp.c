@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.31 2010-04-19 22:16:00 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.32 2010-04-19 23:30:48 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -625,6 +625,27 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
           sizeof(uint32_t)) < 0) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
           "error storing 'channelPacketSize' value: ", strerror(errno), NULL));
+      }
+
+      /* Don't forget to advance i past the value. */
+      i++;
+
+    } else if (strcmp(cmd->argv[i], "optimisticNewkeys") == 0) {
+      int server_newkeys_first;
+      void *value;
+
+      server_newkeys_first = get_boolean(cmd, i+1);
+      if (server_newkeys_first == -1) {
+        CONF_ERROR(cmd, "expected Boolean parameter");
+      }
+
+      value = palloc(c->pool, sizeof(int));
+      *((int *) value) = server_newkeys_first;
+
+      if (pr_table_add(tab, pstrdup(c->pool, "optimisticNewkeys"), value,
+          sizeof(int)) < 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "error storing 'optimisticNewkeys' value: ", strerror(errno), NULL));
       }
 
       /* Don't forget to advance i past the value. */
