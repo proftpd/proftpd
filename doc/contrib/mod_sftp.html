@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.34 2010-04-12 00:26:50 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.35 2010-04-19 22:16:00 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -748,6 +748,15 @@ The currently implemented options are:
     If you need more FTP-like functionality for any reason and wish to
     have <code>mod_sftp</code> silently ignore any permissions sent by the
     SCP client, use this option.
+
+  <p>
+  <li><code>PessimisticKexinit</code><br>
+    <p>
+    As described <a href="#SFTPTelnetBanner">here</a>, the <code>mod_sftp</code>
+    module tries to reduce the connection latency by optimistically sending
+    the <code>KEXINIT</code> key exchange message.  However, some SSH clients
+    cannot handle this behavior.  Use this option to disable the optimistic
+    sending of the <code>KEXINIT</code> message.
 </ul>
 
 <p>
@@ -1536,7 +1545,7 @@ of the session.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-04-12 00:26:50 $</i><br>
+Last Updated: <i>$Date: 2010-04-19 22:16:00 $</i><br>
 
 <br><hr>
 

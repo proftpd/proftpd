@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.30 2010-03-03 00:54:58 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.31 2010-04-19 22:16:00 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -165,7 +165,20 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
   pr_session_set_protocol("ssh2");
   sftp_conn = conn;
 
-  res = sftp_kex_send_first_kexinit();
+  if (sftp_opts & SFTP_OPT_PESSIMISTIC_KEXINIT) {
+    /* If we are being pessimistic, we will send our version string to the
+     * client now, and send our KEXINIT message later.
+     */
+    res = sftp_ssh2_packet_send_version();
+
+  } else {
+    /* If we are being optimistic, we can reduce the connection latency
+     * by sending our KEXINIT message now; this will have the server version
+     * string automatically appended.
+     */  
+    res = sftp_kex_send_first_kexinit();
+  }
+
   if (res < 0) {
     end_login(1);
   }
@@ -1125,6 +1138,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "IgnoreSCPUploadPerms") == 0) {
       opts |= SFTP_OPT_IGNORE_SCP_UPLOAD_PERMS;
+
+    } else if (strcmp(cmd->argv[i], "PessimisticKexinit") == 0) {
+      opts |= SFTP_OPT_PESSIMISTIC_KEXINIT;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",
