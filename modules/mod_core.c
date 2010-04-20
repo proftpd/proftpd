@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.379 2010-04-17 17:27:57 castaglia Exp $
+ * $Id: mod_core.c,v 1.380 2010-04-20 03:44:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2870,13 +2870,11 @@ MODRET set_displayquit(cmd_rec *cmd) {
 }
 
 MODRET set_displaygoaway(cmd_rec *cmd) {
-  config_rec *c = NULL;
-
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  c->flags |= CF_MERGEDOWN;
+  pr_log_debug(DEBUG0, "The %s directive has been deprecated; use the "
+    "MaxClientsPerClass optional message parameter instead", cmd->argv[0]);
 
   return PR_HANDLED(cmd);
 }
