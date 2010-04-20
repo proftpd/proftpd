@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.91 2010-04-12 00:14:46 castaglia Exp $
+ * $Id: fxp.c,v 1.92 2010-04-20 01:09:03 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4620,6 +4620,7 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
   }
   cmd->argv[0] = cmd_name;
 
+  pr_fs_clear_cache();
   if (pr_fsio_fstat(fxh->fh, &st) < 0) {
     uint32_t status_code;
     const char *reason;
@@ -5247,6 +5248,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   }
   cmd->argv[0] = cmd_name;
 
+  pr_fs_clear_cache();
   if (pr_fsio_lstat(path, &st) < 0) {
     uint32_t status_code;
     const char *reason;
@@ -7900,6 +7902,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   }
   cmd->argv[0] = cmd_name;
 
+  pr_fs_clear_cache();
   if (pr_fsio_stat(path, &st) < 0) {
     uint32_t status_code;
     const char *reason;
