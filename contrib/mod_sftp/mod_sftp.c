@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.33 2010-04-20 03:20:49 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.34 2010-04-20 16:49:05 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -213,6 +213,14 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
     pr_netaddr_get_ipstr(conn->local_addr), conn->local_port);
   v = pstrdup(session.pool, buf);
   pr_env_set(session.pool, k, v);
+
+  /* If we didn't send our KEXINIT earlier, send it now. */
+  if (sftp_opts & SFTP_OPT_PESSIMISTIC_KEXINIT) {
+    res = sftp_kex_send_first_kexinit();
+    if (res < 0) {
+      end_login(1);
+    }
+  }
 
   while (1) {
     pr_signals_handle();
