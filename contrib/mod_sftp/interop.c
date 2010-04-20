@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: interop.c,v 1.6 2010-04-19 23:30:48 castaglia Exp $
+ * $Id: interop.c,v 1.7 2010-04-20 03:20:49 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -249,7 +249,7 @@ int sftp_interop_handle_version(const char *client_version) {
        *
        *  channelWindowSize
        *  channelPacketSize
-       *  optimisticNewkeys
+       *  pessimisticNewkeys
        *  sftpMinProtocolVersion
        *  sftpMaxProtocolVersion
        *  sftpUTF8ProtocolVersion (only if NLS support is enabled)
@@ -281,18 +281,18 @@ int sftp_interop_handle_version(const char *client_version) {
         sftp_channel_set_max_packetsz(packet_size);
       }
 
-      v = pr_table_get(tab, "optimisticNewkeys", NULL);
+      v = pr_table_get(tab, "pessimisticNewkeys", NULL);
       if (v) {
-        int server_newkeys_first;
+        int pessimistic_newkeys;
 
-        server_newkeys_first = *((int *) v);
+        pessimistic_newkeys = *((int *) v);
 
         pr_trace_msg(trace_channel, 16,
-          "setting optimistic NEWKEYS behavior to %s, as per SFTPClientMatch",
-          server_newkeys_first ? "true" : "false");
+          "setting pessimistic NEWKEYS behavior to %s, as per SFTPClientMatch",
+          pessimistic_newkeys ? "true" : "false");
 
-        if (server_newkeys_first) {
-          interop_flags |= SFTP_SSH2_FEAT_OPTIMISTIC_NEWKEYS;
+        if (pessimistic_newkeys) {
+          interop_flags |= SFTP_SSH2_FEAT_PESSIMISTIC_NEWKEYS;
         } 
       }
 

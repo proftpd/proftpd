@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.15 2010-04-19 23:30:48 castaglia Exp $
+ * $Id: kex.c,v 1.16 2010-04-20 03:20:49 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2995,7 +2995,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
     }
   }
 
-  if (sftp_interop_supports_feature(SFTP_SSH2_FEAT_OPTIMISTIC_NEWKEYS)) {
+  if (!sftp_interop_supports_feature(SFTP_SSH2_FEAT_PESSIMISTIC_NEWKEYS)) {
     pr_trace_msg(trace_channel, 9, "sending NEWKEYS message to client");
 
     /* Send our NEWKEYS reply. */

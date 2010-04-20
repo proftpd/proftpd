@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.32 2010-04-19 23:30:48 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.33 2010-04-20 03:20:49 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -630,22 +630,22 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       /* Don't forget to advance i past the value. */
       i++;
 
-    } else if (strcmp(cmd->argv[i], "optimisticNewkeys") == 0) {
-      int server_newkeys_first;
+    } else if (strcmp(cmd->argv[i], "pessimisticNewkeys") == 0) {
+      int pessimistic_newkeys;
       void *value;
 
-      server_newkeys_first = get_boolean(cmd, i+1);
-      if (server_newkeys_first == -1) {
+      pessimistic_newkeys = get_boolean(cmd, i+1);
+      if (pessimistic_newkeys == -1) {
         CONF_ERROR(cmd, "expected Boolean parameter");
       }
 
       value = palloc(c->pool, sizeof(int));
-      *((int *) value) = server_newkeys_first;
+      *((int *) value) = pessimistic_newkeys;
 
-      if (pr_table_add(tab, pstrdup(c->pool, "optimisticNewkeys"), value,
+      if (pr_table_add(tab, pstrdup(c->pool, "pessimisticNewkeys"), value,
           sizeof(int)) < 0) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-          "error storing 'optimisticNewkeys' value: ", strerror(errno), NULL));
+          "error storing 'pessimisticNewkeys' value: ", strerror(errno), NULL));
       }
 
       /* Don't forget to advance i past the value. */

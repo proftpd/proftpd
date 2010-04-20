@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: interop.h,v 1.4 2010-04-19 23:30:48 castaglia Exp $
+ * $Id: interop.h,v 1.5 2010-04-20 03:20:49 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -71,10 +71,10 @@
  */
 #define SFTP_SSH2_FEAT_SERVICE_IN_HOST_SIG		0x0100
 
-/* For clients that want the server to optimistically send its NEWKEYS message
- * before they send their NEWKEYS message.
+/* For clients that want the server to pessimistically send its NEWKEYS message
+ * after they send their NEWKEYS message.
  */
-#define SFTP_SSH2_FEAT_OPTIMISTIC_NEWKEYS		0x0200
+#define SFTP_SSH2_FEAT_PESSIMISTIC_NEWKEYS		0x0200
 
 /* For scanners. */
 #define SFTP_SSH2_FEAT_SCANNER				0xfffe
