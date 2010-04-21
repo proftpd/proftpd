@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.37 2010-04-20 03:23:43 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.38 2010-04-21 18:13:57 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -1151,6 +1151,55 @@ The output from this command can be added to the
 ".pub" public equivalents, host keys are different from the per-user keys
 that are used for authentication.
 
+<p><a name="ClientIssues"></a>
+<b>Known Client Issues</b><br>
+The following lists some of the various client interoperability issues that
+have been encountered, and how to address them.
+
+<p>
+<i>SSH Channel Window Sizes</i><br>
+Some SFTP client implementations do not support the large SSH channel window
+size that the <code>mod_sftp</code> module uses by default.  These clients
+include:
+<ul>
+  <li><a href="http://www.ipswitch.com/WS_FTP">WS_FTP Pro</a>
+  <li>OpenSSH 3.0 and older
+</ul>
+This <a href="#SFTPBadWindowSize">FAQ</a> describes the configuration to use
+for such clients.
+
+<p> 
+<i>SFTP Protocol Versions</i><br>
+Some SFTP clients do not properly handle some of the newer SFTP protocol
+versions.  These clients include:
+<ul>
+  <li><a href="http://winscp.net/">WinSCP</a>
+  <li><a href="http://www.cuteftp.com/products/ftp_clients.aspx">CuteFTP</a>
+</ul>
+For these clients, use a
+<a href="#SFTPClientMatch"><code>SFTPClientMatch</code></a> rule to restrict
+the SFTP protocol versions offered by the <code>mod_sftp</code> module,
+<i>e.g.</i>:
+<pre>
+  <font color=green># Only support SFTP protocol version 1 through 3 for WinSCP and CuteFTP</font>
+  SFTPClientMatch WinSCP|ClientSftp sftpProtocolVersion 1-3
+</pre>
+
+<p>
+<i><code>KEXINIT</code> Optimization</i><br>
+Some SFTP clients do not like this
+<a href="#SFTPTelnetBanner">KEXINIT optimization</a> that the
+<code>mod_sftp</code> module uses.  These clients include:
+<ul>
+  <li><code>Net::SSH::Perl</code>, <code>Net::SFTP</code> Perl modules
+  <li><a href="http://www.enterprisedt.com/products/edtftpj/">edtFTPj</a>
+</ul>
+For these clients, use this configuration to disable the optimization:
+<pre>
+  <font color=green># Disable the KEXINIT optimization at the cost of latency</font>
+  SFTPOptions PessimisticKexinit
+</pre>
+
 <p>
 <b>FIPS Compliance</b><br>
 FIPS stands for "Federal Information Processing Standard", and refers to
@@ -1363,7 +1412,8 @@ or
   debug1: channel 0: open confirm rwindow -1 rmax 32768 (<i>from OpenSSH_3.0.2p1</i>)
 </pre>
 <font color=blue>Answer</font>: The issue, in short, involves that "-1" value
-you see, and the particular client implementation in question.
+you see, and the particular client implementation in question.  (The example
+error above is from an old OpenSSH client.)
 
 <p>
 The SSH2 protocol specifications say that implementations must encode
@@ -1374,6 +1424,17 @@ However, some client implementations use a <i>signed</i> data type for
 holding this value.  This means that the value that <code>mod_sftp</code>
 sends to the client becomes a negative signed number to the client (the
 large value "wraps around" to the negative value), and the client chokes.
+
+<p>
+As another example, the <a href="http://www.ipswitch.com/WS_FTP">WS_FTP Pro</a>
+client has this same problem; in the client, you will see something like
+the following error:
+<pre>
+  Started subsystem "sftp" on channel 0760a2ce
+  error 84350000 initializing sftp protocol
+  Sending channel close message for channel 0760a2ce
+  SSH Transport closed.
+</pre>
 
 <p>
 There are two approaches for handling such cases.  You can use the
@@ -1545,7 +1606,7 @@ of the session.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-04-20 03:23:43 $</i><br>
+Last Updated: <i>$Date: 2010-04-21 18:13:57 $</i><br>
 
 <br><hr>
 
