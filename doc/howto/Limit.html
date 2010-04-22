@@ -1,4 +1,4 @@
-<!-- $Id: Limit.html,v 1.18 2010-02-17 16:07:11 castaglia Exp $ -->
+<!-- $Id: Limit.html,v 1.19 2010-04-22 16:15:22 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Limit.html,v $ -->
 
 <html>
@@ -360,8 +360,20 @@ directory itself (which is covered by the first <code>&lt;Directory&gt;</code>
 section).
 
 <p>
+What if you want to make sure the directory cannot be renamed, in addition to
+ensuring that it cannot be deleted?  Simply include the <code>RNFR</code> and
+<code>RNTO</code> FTP commands in the list of denied commands, <i>e.g.</i>:
+<pre>
+  &lt;Directory /path/to/dir&gt;
+    &lt;Limit RMD RNFR RNTO XRMD&gt;
+      DenyAll
+    &lt;/Limit&gt;
+  &lt;/Directory&gt;
+</pre>
+
+<p>
 <hr>
-Last Updated: <i>$Date: 2010-02-17 16:07:11 $</i><br>
+Last Updated: <i>$Date: 2010-04-22 16:15:22 $</i><br>
 <hr>
 
 </body>
