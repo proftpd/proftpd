@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.238 2010-04-23 16:05:13 castaglia Exp $
+ * $Id: dirtree.c,v 1.239 2010-04-23 16:10:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1576,12 +1576,16 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
 
     /* If the given st is not for a directory (i.e. path is for a file),
      * then construct the path for the .ftpaccess file to check.
+     *
+     * strrchr(3) should always return non-NULL here, right?
      */
     ptr = strrchr(path, '/');
-    *ptr = '\0';
+    if (ptr) {
+      *ptr = '\0';
 
-    dynpath = pdircat(p, path, "/.ftpaccess", NULL);
-    *ptr = '/';
+      dynpath = pdircat(p, path, "/.ftpaccess", NULL);
+      *ptr = '/';
+    }
   }
 
   while (path) {
