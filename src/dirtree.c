@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.237 2010-04-16 22:22:37 castaglia Exp $
+ * $Id: dirtree.c,v 1.238 2010-04-23 16:05:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1572,7 +1572,16 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
     dynpath = pdircat(p, path, "/.ftpaccess", NULL);
 
   } else {
-    dynpath = NULL;
+    char *ptr;
+
+    /* If the given st is not for a directory (i.e. path is for a file),
+     * then construct the path for the .ftpaccess file to check.
+     */
+    ptr = strrchr(path, '/');
+    *ptr = '\0';
+
+    dynpath = pdircat(p, path, "/.ftpaccess", NULL);
+    *ptr = '/';
   }
 
   while (path) {
