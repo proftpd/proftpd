@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.45 2010-04-25 03:21:50 castaglia Exp $
+ * $Id: scp.c,v 1.46 2010-04-25 20:34:07 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -712,6 +712,10 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
       /* We only want to create the directory if it doesn't already exist. */
       if (xerrno == ENOENT) {
         pr_trace_msg(trace_channel, 5, "creating directory '%s'", sp->filename);
+
+        /* XXX Dispatch a C_MKD command here?  Should <Limit MKD> apply to
+         * recursive directory uploads via SCP?
+         */
 
         if (pr_fsio_mkdir(sp->filename, 0777) < 0) {
           xerrno = errno;
