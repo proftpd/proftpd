@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.44 2010-04-16 22:22:37 castaglia Exp $
+ * $Id: scp.c,v 1.45 2010-04-25 03:21:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -498,9 +498,6 @@ static int recv_perms(pool *p, uint32_t channel_id, char *mode_str,
 static int recv_filesz(pool *p, uint32_t channel_id, char *size_str,
     off_t *filesz) {
   register unsigned int i;
-  size_t size_strlen;
-
-  size_strlen = strlen(size_str);
 
   /* The file size field could be of arbitrary length. */
   for (i = 0, *filesz = 0; isdigit((int) size_str[i]); i++) {
