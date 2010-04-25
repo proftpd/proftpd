@@ -26,7 +26,7 @@
  * This is mod_shaper, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_shaper.c,v 1.6 2010-03-03 23:10:45 castaglia Exp $
+ * $Id: mod_shaper.c,v 1.7 2010-04-25 23:55:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -556,6 +556,31 @@ static int shaper_table_flush(void) {
   return 0;
 }
 
+#ifndef HAVE_FLOCK
+static const char *get_lock_type(struct flock *lock) {
+  const char *lock_type;
+
+  switch (lock->l_type) {
+    case F_RDLCK:
+      lock_type = "read";
+      break;
+
+    case F_WRLCK:
+      lock_type = "write";
+      break;
+
+    case F_UNLCK:
+      lock_type = "unlock";
+      break;
+
+    default:
+      lock_type = "[unknown]";
+  }
+
+  return lock_type;
+}
+#endif /* !HAVE_FLOCK */
+
 static int shaper_table_lock(int op) {
   static int have_lock = FALSE;
 
@@ -565,29 +590,43 @@ static int shaper_table_lock(int op) {
 #endif /* !HAVE_FLOCK */
 
   if (have_lock &&
-      ((op & LOCK_SH) || (op & LOCK_EX)))
+      ((op & LOCK_SH) || (op & LOCK_EX))) {
     return 0;
+  }
 
   if (!have_lock &&
-      (op & LOCK_UN))
+      (op & LOCK_UN)) {
     return 0;
+  }
 
 #ifdef HAVE_FLOCK
+  pr_trace_msg("lock", 9, "attempting to %s ShaperTable fd %d via flock(2)",
+    op == LOCK_UN ? "unlock" : "lock", shaper_tabfd);
   while (flock(shaper_tabfd, op) < 0) {
-    if (errno == EINTR) {
+    int xerrno = errno;
+
+    if (xerrno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
+    pr_trace_msg("lock", 9, "%s of ShaperTable fd %d failed: %s",
+      op == LOCK_UN ? "unlock" : "lock", shaper_tabfd, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
+  pr_trace_msg("lock", 9, "%s of ShaperTable fd %d successful",
+    op == LOCK_UN ? "unlock" : "lock", shaper_tabfd);
+
   if ((op & LOCK_SH) ||
-      (op & LOCK_EX))
+      (op & LOCK_EX)) {
     have_lock = TRUE;
 
-  else if (op & LOCK_UN)
+  } else if (op & LOCK_UN) {
     have_lock = FALSE;
+  }
 
   return 0;
 #else
@@ -603,7 +642,7 @@ static int shaper_table_lock(int op) {
     lock.l_type = F_WRLCK;
 
   } else if (op & LOCK_UN) {
-    lock.l_type= F_UNLCK;
+    lock.l_type = F_UNLCK;
 
   } else {
     errno = EINVAL;
@@ -613,21 +652,42 @@ static int shaper_table_lock(int op) {
   if (op & LOCK_NB)
     flag = F_SETLK;
 
+  pr_trace_msg("lock", 9, "attempting to %s ShaperTable fd %d via fcntl(2)",
+    op == LOCK_UN ? "unlock" : "lock", shaper_tabfd);
   while (fcntl(shaper_tabfd, flag, &lock) < 0) {
-    if (errno == EINTR) {
+    int xerrno = errno;
+
+    if (xerrno == EINTR) {
       pr_signals_handle();
       continue;
     }
 
+    pr_trace_msg("lock", 9, "%s of ShaperTable fd %d failed: %s",
+      op == LOCK_UN ? "unlock" : "lock", shaper_tabfd, strerror(xerrno));
+
+    if (xerrno == EACCES) {
+      /* Get the PID of the process blocking this lock. */
+      if (fcntl(shaper_tabfd, F_GETLK, &lock) == 0) {
+        pr_trace_msg("lock", 3, "process ID %lu has blocking %s lock on "
+          "ShaperTable fd %d", (unsigned long) lock.l_pid, get_lock_type(&lock),
+          shaper_tabfd);
+      }
+    }
+
+    errno = xerrno;
     return -1;
   }
 
+  pr_trace_msg("lock", 9, "%s of ShaperTable fd %d successful",
+    op == LOCK_UN ? "unlock" : "lock", shaper_tabfd);
+
   if ((op & LOCK_SH) ||
-      (op & LOCK_EX))
+      (op & LOCK_EX)) {
     have_lock = TRUE;
 
-  else if (op & LOCK_UN)
+  } else if (op & LOCK_UN) {
     have_lock = FALSE;
+  }
 
   return 0;
 #endif /* HAVE_FLOCK */
