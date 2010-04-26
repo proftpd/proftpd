@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.46 2010-04-25 20:34:07 castaglia Exp $
+ * $Id: scp.c,v 1.47 2010-04-26 17:44:31 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -696,10 +696,6 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   if (recv_filename(p, channel_id, ptr, sp) < 0)
     return 1;
 
-  if (i != datalen) {
-    pr_trace_msg(trace_channel, 1, "more data in this message!");
-  }
-
   sp->recvd_finfo = TRUE;
 
   if (have_dir) {
@@ -958,11 +954,6 @@ static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   pr_trace_msg(trace_channel, 5, "'%s' control message: E", sp->path);
 
-  if (sp->parent_dir == NULL) {
-    pr_trace_msg(trace_channel, 1, "received E message for path, but it has no receiving directory context!");
-    return 0;
-  }
-
   parent_sp = sp->parent_dir;
 
   pr_trace_msg(trace_channel, 9, "setting perms %04o on directory '%s'",
@@ -1019,28 +1010,6 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
       return 1;
   }
 
-  /* Check for end-of-directory control messages. */
-  res = recv_eod(p, channel_id, sp, data, datalen);
-  if (res == 1) {
-    struct scp_path *parent_dir = NULL;
-
-    if (sp->parent_dir != NULL) {
-      parent_dir = sp->parent_dir->parent_dir;
-    }
-
-    if (parent_dir) {
-      sp->path = parent_dir->path;
-    }
-
-    sp->parent_dir = parent_dir;
-
-    /* We return 1 here, and the caller will call reset_path() on the same
-     * sp pointer.  That's OK, since reset_path() does NOT change sp->path or
-     * sp->parent_dir, which is what we are most concerned with here.
-     */
-    return 1;
-  }
-
   if (!sp->have_mode) {
     struct stat st;
 
@@ -1086,6 +1055,39 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
           return 1;
         }
       }
+    }
+  }
+
+  /* Check for end-of-directory control messages under the following
+   * conditions:
+   *
+   * 1. We can handle an end-of-directory marker, i.e. sp->parent_dir is
+   *    not null.
+   * 2. We have not already received any file info messages for this path.
+   * 3. We have not already received any data for this path.
+   */
+  if (sp->parent_dir != NULL &&
+      sp->recvd_finfo == FALSE &&
+      sp->recvlen == 0) {
+    res = recv_eod(p, channel_id, sp, data, datalen);
+    if (res == 1) {
+      struct scp_path *parent_dir = NULL;
+
+      if (sp->parent_dir != NULL) {
+        parent_dir = sp->parent_dir->parent_dir;
+      }
+
+      if (parent_dir) {
+        sp->path = parent_dir->path;
+      }
+
+      sp->parent_dir = parent_dir;
+
+      /* We return 1 here, and the caller will call reset_path() on the same
+       * sp pointer.  That's OK, since reset_path() does NOT change sp->path or
+       * sp->parent_dir, which is what we are most concerned with here.
+       */
+      return 1;
     }
   }
 
