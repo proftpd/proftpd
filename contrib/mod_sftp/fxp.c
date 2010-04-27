@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.94 2010-04-27 18:46:34 castaglia Exp $
+ * $Id: fxp.c,v 1.95 2010-04-27 23:27:11 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -604,6 +604,51 @@ static uint32_t fxp_errno2status(int xerrno, const char **reason) {
   return status_code;
 }
 
+static void fxp_trace_v3_open_flags(pool *p, uint32_t flags) {
+  char *flags_str = "";
+  int trace_level = 15;
+
+  if (pr_trace_get_level(trace_channel) < trace_level) {
+    return;
+  }
+
+  if (flags & SSH2_FXF_READ) {
+    flags_str = pstrcat(p, flags_str, "FXF_READ", NULL);
+  }
+
+  if (flags & SSH2_FXF_WRITE) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FXF_WRITE", NULL);
+  }
+
+  if (flags & SSH2_FXF_APPEND) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FXF_APPEND", NULL);
+  }
+
+  if (flags & SSH2_FXF_CREAT) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FXF_CREAT", NULL);
+  }
+
+  if (flags & SSH2_FXF_TRUNC) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FXF_TRUNC", NULL);
+  }
+
+  if (flags & SSH2_FXF_EXCL) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FXF_EXCL", NULL);
+  }
+
+  if (flags & SSH2_FXF_TEXT) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FXF_TEXT", NULL);
+  }
+
+  pr_trace_msg(trace_channel, trace_level, "OPEN flags = %s", flags_str);
+}
+
 /* Map the FXP_OPEN flags to POSIX flags. */
 static int fxp_get_v3_open_flags(uint32_t flags) {
   int res = 0;
@@ -649,6 +694,110 @@ static int fxp_get_v3_open_flags(uint32_t flags) {
   }
 
   return res;
+}
+
+static void fxp_trace_v5_open_flags(pool *p, uint32_t desired_access,
+    uint32_t flags) {
+  uint32_t base_flag;
+  char *access_str = "", *flags_str = "";
+  int trace_level = 15;
+
+  if (pr_trace_get_level(trace_channel) < trace_level) {
+    return;
+  }
+
+  /* The flags value, in the case of v5 (and later) OPEN requests, has
+   * a "base" value, along with some modifying bits masked in.
+   */
+
+  base_flag = (flags &~ (SSH2_FXF_ACCESS_APPEND_DATA|SSH2_FXF_ACCESS_APPEND_DATA_ATOMIC|SSH2_FXF_ACCESS_TEXT_MODE));
+
+  switch (base_flag) {
+    case SSH2_FXF_CREATE_NEW:
+      flags_str = pstrcat(p, flags_str, "FXF_CREATE_NEW", NULL);
+      break;
+
+    case SSH2_FXF_CREATE_TRUNCATE:
+      flags_str = pstrcat(p, flags_str, "FXF_CREATE_TRUNCATE", NULL);
+      break;
+
+    case SSH2_FXF_OPEN_EXISTING:
+      flags_str = pstrcat(p, flags_str, "FXF_OPEN_EXISTING", NULL);
+      break;
+
+    case SSH2_FXF_OPEN_OR_CREATE:
+      flags_str = pstrcat(p, flags_str, "FXF_OPEN_OR_CREATE", NULL);
+      break;
+
+    case SSH2_FXF_TRUNCATE_EXISTING:
+      flags_str = pstrcat(p, flags_str, "FXF_TRUNCATE_EXISTING", NULL);
+      break;
+
+    default:
+      flags_str = pstrcat(p, flags_str, "<unknown>", NULL);
+  }
+
+  if (flags & SSH2_FXF_ACCESS_APPEND_DATA) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FXF_ACCESS_APPEND_DATA", NULL);
+  }
+
+  if (flags & SSH2_FXF_ACCESS_APPEND_DATA_ATOMIC) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FXF_ACCESS_APPEND_DATA_ATOMIC", NULL);
+  }
+
+  if (flags & SSH2_FXF_ACCESS_TEXT_MODE) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FXF_ACCESS_TEXT_MODE", NULL);
+  }
+
+  if (desired_access & SSH2_FXF_WANT_READ_DATA) {
+    access_str = pstrcat(p, access_str, "FXF_WANT_READ_DATA", NULL);
+  }
+
+  if (desired_access & SSH2_FXF_WANT_WRITE_DATA) {
+    access_str = pstrcat(p, access_str, *access_str ? "|" : "",
+      "FXF_WANT_WRITE_DATA", NULL);
+  }
+
+  if (desired_access & SSH2_FXF_WANT_APPEND_DATA) {
+    access_str = pstrcat(p, access_str, *access_str ? "|" : "",
+      "FXF_WANT_APPEND_DATA", NULL);
+  }
+
+  if (desired_access & SSH2_FXF_WANT_READ_NAMED_ATTRS) {
+    access_str = pstrcat(p, access_str, *access_str ? "|" : "",
+      "FXF_WANT_READ_NAMED_ATTRS", NULL);
+  }
+
+  if (desired_access & SSH2_FXF_WANT_WRITE_NAMED_ATTRS) {
+    access_str = pstrcat(p, access_str, *access_str ? "|" : "",
+      "FXF_WANT_WRITE_NAMED_ATTRS", NULL);
+  }
+
+  if (desired_access & SSH2_FXF_WANT_WRITE_ATTRIBUTES) {
+    access_str = pstrcat(p, access_str, *access_str ? "|" : "",
+      "FXF_WANT_WRITE_ATTRS", NULL);
+  }
+
+  if (desired_access & SSH2_FXF_WANT_READ_ACL) {
+    access_str = pstrcat(p, access_str, *access_str ? "|" : "",
+      "FXF_WANT_READ_ACL", NULL);
+  }
+
+  if (desired_access & SSH2_FXF_WANT_WRITE_ACL) {
+    access_str = pstrcat(p, access_str, *access_str ? "|" : "",
+      "FXF_WANT_WRITE_ACL", NULL);
+  }
+
+  if (desired_access & SSH2_FXF_WANT_WRITE_OWNER) {
+    access_str = pstrcat(p, access_str, *access_str ? "|" : "",
+      "FXF_WANT_WRITE_OWNER", NULL);
+  }
+
+  pr_trace_msg(trace_channel, trace_level,
+    "OPEN flags = %s, desired access = %s", flags_str, access_str);
 }
 
 static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
@@ -5691,9 +5840,11 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   }
 
   if (fxp_session->client_version < 5) {
+    fxp_trace_v3_open_flags(fxp->pool, flags);
     open_flags = fxp_get_v3_open_flags(flags);
 
   } else {
+    fxp_trace_v5_open_flags(fxp->pool, desired_access, flags);
     open_flags = fxp_get_v5_open_flags(desired_access, flags);
   }
 
