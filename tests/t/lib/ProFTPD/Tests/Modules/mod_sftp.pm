@@ -20543,7 +20543,7 @@ sub scp_upload_recursive_dir_bug3447 {
     die($ex);
   }
 
-#  unlink($log_file);
+  unlink($log_file);
 }
 
 sub scp_download {
