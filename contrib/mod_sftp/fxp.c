@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.93 2010-04-27 18:42:47 castaglia Exp $
+ * $Id: fxp.c,v 1.94 2010-04-27 18:46:34 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -635,9 +635,9 @@ static int fxp_get_v3_open_flags(uint32_t flags) {
   if (flags & SSH2_FXF_CREAT) {
     res |= O_CREAT;
 
-    /* Since the behavior of open(2) if O_EXCL is set and O_CREAT is not
-     * set, we avoid that situation, and only check for the FXF_EXCL SSH flag
-     * if the FXF_CREAT flag is set.
+    /* Since the behavior of open(2) when O_EXCL is set and O_CREAT is not
+     * set is undefined, we avoid that situation, and only check for the
+     * FXF_EXCL SSH flag if the FXF_CREAT flag is set.
      */
     if (flags & SSH2_FXF_EXCL) {
       res |= O_EXCL;
