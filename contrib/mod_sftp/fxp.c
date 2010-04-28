@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.96 2010-04-28 00:11:59 castaglia Exp $
+ * $Id: fxp.c,v 1.97 2010-04-28 21:00:05 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -807,6 +807,7 @@ static void fxp_trace_v5_open_flags(pool *p, uint32_t desired_access,
 }
 
 static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
+  uint32_t base_flag;
 
   /* Assume that the desired flag is read-only by default. */
   int res = O_RDONLY;
@@ -847,31 +848,44 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
 #endif
   }
 
-  if (flags & SSH2_FXF_OPEN_OR_CREATE) {
-    res |= O_CREAT;
+  /* The flags value, in the case of v5 (and later) OPEN requests, has
+   * a "base" value, along with some modifying bits masked in.
+   */
+  base_flag = (flags &~ (SSH2_FXF_ACCESS_APPEND_DATA|SSH2_FXF_ACCESS_APPEND_DATA_ATOMIC|SSH2_FXF_ACCESS_TEXT_MODE));
 
-    /* If we're creating, then it's a write. */
-    if (!(res & O_RDWR)) {
-      res |= O_WRONLY;
-    }
-  }
+  switch (base_flag) {
+    case SSH2_FXF_CREATE_NEW:
+      res |= O_CREAT|O_EXCL;
+      break;
 
-  if (flags & SSH2_FXF_CREATE_TRUNCATE) {
-    res |= O_CREAT|O_TRUNC;
+    case SSH2_FXF_CREATE_TRUNCATE:
+      if (res == O_RDONLY) {
+        /* A truncate is a write. */
+        res = O_WRONLY;
+      }
+      res |= O_CREAT|O_TRUNC;
+      break;
 
-    /* If we're creating and truncating, then it's definitely a write. */
-    if (!(res & O_RDWR)) {
-      res |= O_WRONLY;
-    }
-  }
+    case SSH2_FXF_OPEN_EXISTING:
+      break;
 
-  if (flags & SSH2_FXF_TRUNCATE_EXISTING) {
-    res |= O_TRUNC;
+    case SSH2_FXF_OPEN_OR_CREATE:
+      res |= O_CREAT;
+      break;
 
-    /* If we're truncating, then it's a write. */
-    if (!(res & O_RDWR)) {
-      res |= O_WRONLY;
-    }
+    case SSH2_FXF_TRUNCATE_EXISTING:
+      if (res == O_RDONLY) {
+        /* A truncate is a write. */
+        res = O_WRONLY;
+      }
+      res |= O_TRUNC;
+      break;
+
+    default:
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unknown OPEN base flag value (%lu), defaulting to O_RDONLY",
+        (unsigned long) base_flag);
+      break;
   }
 
   return res;
