@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.95 2010-04-27 23:27:11 castaglia Exp $
+ * $Id: fxp.c,v 1.96 2010-04-28 00:11:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -675,6 +675,12 @@ static int fxp_get_v3_open_flags(uint32_t flags) {
       res |= O_APPEND;
     }
 #endif
+
+  } else if (flags & SSH2_FXF_APPEND) {
+    /* Assume FXF_WRITE, since the client didn't explicitly provide either
+     * FXF_READ or FXF_WRITE.
+     */
+    res = O_WRONLY|O_APPEND;
   }
 
   if (flags & SSH2_FXF_CREAT) {
