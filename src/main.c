@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.399 2010-04-14 15:53:22 castaglia Exp $
+ * $Id: main.c,v 1.400 2010-04-28 15:58:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3141,19 +3141,23 @@ int main(int argc, char *argv[], char **envp) {
     daemon_gids = make_array(permanent_pool, 2, sizeof(gid_t));
 
     if (pr_auth_getgroups(permanent_pool, (const char *) get_param_ptr(
-        main_server->conf, "UserName", FALSE), &daemon_gids, NULL) < 0)
+        main_server->conf, "UserName", FALSE), &daemon_gids, NULL) < 0) {
       pr_log_debug(DEBUG2, "unable to retrieve daemon supplemental groups");
+    }
 
-    if (set_groups(permanent_pool, daemon_gid, daemon_gids) < 0)
+    if (set_groups(permanent_pool, daemon_gid, daemon_gids) < 0) {
       pr_log_pri(PR_LOG_ERR, "unable to set daemon groups: %s",
         strerror(errno));
+    }
   }
 
-   if ((main_umask = (mode_t *) get_param_ptr(main_server->conf, "Umask",
-       FALSE)) == NULL)
-     umask((mode_t) 0022);
-   else
-     umask(*main_umask);
+  main_umask = get_param_ptr(main_server->conf, "Umask", FALSE);
+  if (main_umask == NULL) {
+    umask((mode_t) 0022);
+
+  } else {
+    umask(*main_umask);
+  }
 
   /* Give up root and save our uid/gid for later use (if supported)
    * If we aren't currently root, PRIVS_SETUP will get rid of setuid
@@ -3169,13 +3173,13 @@ int main(int argc, char *argv[], char **envp) {
 
   if (geteuid() != daemon_uid) {
     pr_log_pri(PR_LOG_ERR, "unable to set uid to %lu, current uid: %lu",
-		    (unsigned long)daemon_uid,(unsigned long)geteuid());
+      (unsigned long) daemon_uid, (unsigned long) geteuid());
     exit(1);
   }
 
   if (getegid() != daemon_gid) {
     pr_log_pri(PR_LOG_ERR, "unable to set gid to %lu, current gid: %lu",
-		    (unsigned long)daemon_gid,(unsigned long)getegid());
+      (unsigned long) daemon_gid, (unsigned long) getegid());
     exit(1);
   }
 #endif /* PR_DEVEL_COREDUMP */
