@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.98 2010-04-29 00:05:59 castaglia Exp $
+ * $Id: fxp.c,v 1.99 2010-04-29 00:41:53 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2988,7 +2988,9 @@ static void fxp_version_add_supported_ext(pool *p, char **buf,
     }
 
     if (fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID) {
-      pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: vendor-id");
+      /* Don't need to have a trace message here; it's already handled in
+       * fxp_version_add_vendor_id_ext().
+       */
       sftp_msg_write_string(&exts_buf, &exts_len, "vendor-id");
     }
 
@@ -3098,7 +3100,9 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
     }
 
     if (fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID) {
-      pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: vendor-id");
+      /* Don't need to have a trace message here; it's already handled in
+       * fxp_version_add_vendor_id_ext().
+       */
       sftp_msg_write_string(&attrs_buf, &attrs_len, "vendor-id");
     }
   }
@@ -4415,7 +4419,8 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
-  if (strcmp(ext_request_name, "vendor-id") == 0) {
+  if ((fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID) &&
+      strcmp(ext_request_name, "vendor-id") == 0) {
     res = fxp_handle_ext_vendor_id(fxp);
     pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
