@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.97 2010-04-28 21:00:05 castaglia Exp $
+ * $Id: fxp.c,v 1.98 2010-04-29 00:05:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2920,6 +2920,7 @@ static void fxp_version_add_supported_ext(pool *p, char **buf,
   uint32_t attrs_len, attrs_sz;
   char *attrs_buf, *attrs_ptr;
   uint32_t file_mask, bits_mask, open_mask, access_mask, max_read_size;
+  unsigned int ext_count;
 
   ext.ext_name = "supported";
 
@@ -2948,6 +2949,53 @@ static void fxp_version_add_supported_ext(pool *p, char **buf,
   sftp_msg_write_int(&attrs_buf, &attrs_len, access_mask);
   sftp_msg_write_int(&attrs_buf, &attrs_len, max_read_size);
 
+  /* The possible extensions to advertise here are:
+   *
+   *  check-file
+   *  copy-file
+   *  vendor-id
+   */
+
+  ext_count = 3;
+
+  if (!(fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE)) {
+    ext_count--;
+  }
+
+  if (!(fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE)) {
+    ext_count--;
+  }
+
+  if (!(fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID)) {
+    ext_count--;
+  }
+
+  if (ext_count > 0) {
+    uint32_t exts_len, exts_sz;
+    char *exts_buf, *exts_ptr;
+
+    exts_len = exts_sz = 256;
+    exts_buf = exts_ptr = palloc(p, exts_sz);
+
+    if (fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) {
+      pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: check-file");
+      sftp_msg_write_string(&exts_buf, &exts_len, "check-file");
+    }
+
+    if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
+      pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
+      sftp_msg_write_string(&exts_buf, &exts_len, "copy-file");
+    }
+
+    if (fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID) {
+      pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: vendor-id");
+      sftp_msg_write_string(&exts_buf, &exts_len, "vendor-id");
+    }
+
+    sftp_msg_write_data(&attrs_buf, &attrs_len, exts_ptr,
+      (exts_sz - exts_len), FALSE);
+  }
+
   ext.ext_data = attrs_ptr;
   ext.ext_datalen = (attrs_sz - attrs_len);
 
@@ -2962,7 +3010,7 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
   char *attrs_buf, *attrs_ptr;
   uint32_t file_mask, bits_mask, open_mask, access_mask, max_read_size;
   uint16_t open_lock_mask, lock_mask;
-  int ext_count;
+  unsigned int ext_count;
 
   ext.ext_name = "supported2";
 
@@ -3029,23 +3077,31 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
     ext_count--;
   }
 
+  if (!(fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID)) {
+    ext_count--;
+  }
+
   /* Additional protocol extensions (why these appear in 'supported2' is
    * confusing to me, too).
    */
   sftp_msg_write_int(&attrs_buf, &attrs_len, ext_count);
 
-  if (fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) {
-    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: check-file");
-    sftp_msg_write_string(&attrs_buf, &attrs_len, "check-file");
-  }
+  if (ext_count > 0) {
+    if (fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) {
+      pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: check-file");
+      sftp_msg_write_string(&attrs_buf, &attrs_len, "check-file");
+    }
 
-  if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
-    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
-    sftp_msg_write_string(&attrs_buf, &attrs_len, "copy-file");
-  }
+    if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
+      pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
+      sftp_msg_write_string(&attrs_buf, &attrs_len, "copy-file");
+    }
 
-  pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: vendor-id");
-  sftp_msg_write_string(&attrs_buf, &attrs_len, "vendor-id");
+    if (fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID) {
+      pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: vendor-id");
+      sftp_msg_write_string(&attrs_buf, &attrs_len, "vendor-id");
+    }
+  }
  
   ext.ext_data = attrs_ptr;
   ext.ext_datalen = (attrs_sz - attrs_len);
