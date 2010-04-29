@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.99 2010-04-29 00:41:53 castaglia Exp $
+ * $Id: fxp.c,v 1.100 2010-04-29 04:03:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2760,10 +2760,6 @@ static void fxp_version_add_vendor_id_ext(pool *p, char **buf,
   uint64_t build_number;
   struct fxp_extpair ext;
 
-  if (!(fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID)) {
-    return;
-  }
-
   bufsz2 = buflen2 = 512;
   ptr2 = buf2 = sftp_msg_getbuf(p, bufsz2);
 
@@ -2966,9 +2962,10 @@ static void fxp_version_add_supported_ext(pool *p, char **buf,
     ext_count--;
   }
 
-  if (!(fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID)) {
-    ext_count--;
-  }
+  /* We don't decrement the extension count if the 'vendor-id' extension
+   * is disabled.  By advertisting the 'vendor-id' extension here, we are
+   * telling the client that it can send us its vendor information.
+   */
 
   if (ext_count > 0) {
     uint32_t exts_len, exts_sz;
@@ -2987,12 +2984,11 @@ static void fxp_version_add_supported_ext(pool *p, char **buf,
       sftp_msg_write_string(&exts_buf, &exts_len, "copy-file");
     }
 
-    if (fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID) {
-      /* Don't need to have a trace message here; it's already handled in
-       * fxp_version_add_vendor_id_ext().
-       */
-      sftp_msg_write_string(&exts_buf, &exts_len, "vendor-id");
-    }
+    /* We always send the 'vendor-id' extension; it lets the client know
+     * that it can send its vendor information to us.
+     */
+    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: vendor-id");
+    sftp_msg_write_string(&exts_buf, &exts_len, "vendor-id");
 
     sftp_msg_write_data(&attrs_buf, &attrs_len, exts_ptr,
       (exts_sz - exts_len), FALSE);
@@ -3079,9 +3075,10 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
     ext_count--;
   }
 
-  if (!(fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID)) {
-    ext_count--;
-  }
+  /* We don't decrement the extension count if the 'vendor-id' extension
+   * is disabled.  By advertisting the 'vendor-id' extension here, we are
+   * telling the client that it can send us its vendor information.
+   */
 
   /* Additional protocol extensions (why these appear in 'supported2' is
    * confusing to me, too).
@@ -3099,12 +3096,11 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
       sftp_msg_write_string(&attrs_buf, &attrs_len, "copy-file");
     }
 
-    if (fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID) {
-      /* Don't need to have a trace message here; it's already handled in
-       * fxp_version_add_vendor_id_ext().
-       */
-      sftp_msg_write_string(&attrs_buf, &attrs_len, "vendor-id");
-    }
+    /* We always send the 'vendor-id' extension; it lets the client know
+     * that it can send its vendor information to us.
+     */
+    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: vendor-id");
+    sftp_msg_write_string(&attrs_buf, &attrs_len, "vendor-id");
   }
  
   ext.ext_data = attrs_ptr;
@@ -4419,8 +4415,11 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
-  if ((fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID) &&
-      strcmp(ext_request_name, "vendor-id") == 0) {
+  /* We always handle an EXTENDED vendor-id request from the client; the
+   * client is telling us its vendor information; it is not requesting that
+   * we send our vendor information.
+   */
+  if (strcmp(ext_request_name, "vendor-id") == 0) {
     res = fxp_handle_ext_vendor_id(fxp);
     pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
@@ -4983,7 +4982,10 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
 
   sftp_msg_write_int(&buf, &buflen, fxp_session->client_version);
 
-  fxp_version_add_vendor_id_ext(fxp->pool, &buf, &buflen);
+  if (fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID) {
+    fxp_version_add_vendor_id_ext(fxp->pool, &buf, &buflen);
+  }
+
   fxp_version_add_version_ext(fxp->pool, &buf, &buflen);
   fxp_version_add_openssh_exts(fxp->pool, &buf, &buflen);
 
