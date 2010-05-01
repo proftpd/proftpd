@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.100 2010-04-29 04:03:20 castaglia Exp $
+ * $Id: fxp.c,v 1.101 2010-05-01 19:19:33 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -6081,6 +6081,13 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
    * The truncation isn't really needed anyway, since the ensuing READ/WRITE
    * requests will contain the offsets into the file at which to begin
    * reading/write the file contents.
+   *
+   * However, if the size is provided, we should at least record it in the
+   * handle structure.  In the case of an upload, we can compare the size of
+   * file, at CLOSE time, with the size that was provided here.  If the size
+   * of the file at CLOSE is less than the size sent here, we could log it
+   * as an incomplete upload.  Not all clients will provide the size attribute,
+   * for those that do, it can be useful.
    */
 
   attr_flags &= ~SSH2_FX_ATTR_SIZE;
