@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.274 2010-04-12 18:59:46 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.275 2010-05-02 18:15:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1197,6 +1197,8 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL)) {
     int xerrno = errno;
 
+    pr_log_debug(DEBUG8, "%s %s denied by <Limit> configuration", cmd->argv[0],
+      cmd->arg);
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
     errno = xerrno;
