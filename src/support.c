@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.105 2010-05-05 23:46:23 castaglia Exp $
+ * $Id: support.c,v 1.106 2010-05-05 23:51:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -397,7 +397,7 @@ char *dir_abs_path(pool *p, const char *path, int interpolate) {
  * PATH, or 0 if it doesn't exist. Catch symlink loops using LAST_INODE and
  * RCOUNT.
  */
-static mode_t _symlink(char *path, ino_t last_inode, int rcount) {
+static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
   char buf[PR_TUNABLE_PATH_MAX + 1];
   struct stat sbuf;
   int i;
@@ -420,15 +420,17 @@ static mode_t _symlink(char *path, ino_t last_inode, int rcount) {
       return 0;
     }
 
-    if (S_ISLNK(sbuf.st_mode))
+    if (S_ISLNK(sbuf.st_mode)) {
       return _symlink(buf, (ino_t) sbuf.st_ino, rcount);
+    }
+
     return sbuf.st_mode;
   }
 
   return 0;
 }
 
-mode_t file_mode(char *path) {
+mode_t file_mode(const char *path) {
   struct stat sbuf;
   mode_t res = 0;
 
@@ -437,12 +439,14 @@ mode_t file_mode(char *path) {
     if (S_ISLNK(sbuf.st_mode)) {
       res = _symlink(path, (ino_t) 0, 0);
 
-      if (res == 0)
+      if (res == 0) {
 	/* a dangling symlink, but it exists to rename or delete. */
 	res = sbuf.st_mode;
+      }
 
-    } else
+    } else {
       res = sbuf.st_mode;
+    }
   }
 
   return res;

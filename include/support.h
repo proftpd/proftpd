@@ -25,7 +25,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.35 2010-05-05 23:46:22 castaglia Exp $
+ * $Id: support.h,v 1.36 2010-05-05 23:51:40 castaglia Exp $
  */
 
 #ifndef PR_SUPPORT_H
@@ -76,7 +76,7 @@ void run_schedule(void);
 
 int get_name_max(char *, int);
 
-mode_t file_mode(char *);
+mode_t file_mode(const char *);
 int file_exists(const char *);
 int dir_exists(const char *);
 int exists(const char *);
