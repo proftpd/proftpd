@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.101 2010-05-01 19:19:33 castaglia Exp $
+ * $Id: fxp.c,v 1.102 2010-05-05 23:59:30 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -171,6 +171,9 @@ struct fxp_handle {
 
   pr_fh_t *fh;
   int fh_flags;
+
+  /* For indicating whether the file existed prior to being opened/created. */
+  int fh_existed;
 
   /* For supporting the HiddenStores directive */
   char *fh_real_path;
@@ -4333,6 +4336,24 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
     if (cmd2) {
       int post_phase = POST_CMD, log_phase = LOG_CMD;
 
+      if (fxh->fh_existed &&
+          (strcmp(cmd2->argv[0], C_STOR) == 0 ||
+           strcmp(cmd2->argv[0], C_APPE) == 0)) {
+        if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
+            pstrdup(cmd->pool, "true"), 0) < 0) {
+          pr_log_pri(PR_LOG_NOTICE,
+            "notice: error adding 'mod_xfer.file-modified' note: %s",
+            strerror(errno));
+        }
+
+        if (pr_table_add(cmd2->notes, "mod_xfer.file-modified",
+            pstrdup(cmd->pool, "true"), 0) < 0) {
+          pr_log_pri(PR_LOG_NOTICE,
+            "notice: error adding 'mod_xfer.file-modified' note: %s",
+            strerror(errno));
+        }
+      }
+
       if (res < 0 &&
           xerrno != EOF) {
         post_phase = POST_CMD_ERR;
@@ -5755,7 +5776,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
 static int fxp_handle_open(struct fxp_packet *fxp) {
   char *buf, *ptr, *path, *hiddenstore_path = NULL;
   uint32_t attr_flags, buflen, bufsz, desired_access = 0, flags;
-  int open_flags, res, timeout_stalled;
+  int file_existed = FALSE, open_flags, res, timeout_stalled;
   pr_fh_t *fh;
   struct stat *attrs;
   struct fxp_handle *fxh;
@@ -6012,6 +6033,26 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     } else {
       path = dir_best_path(fxp->pool, path);
     }
+
+    file_existed = exists(hiddenstore_path ? hiddenstore_path : path);
+
+    if (file_existed &&
+        (strcmp(cmd2->argv[0], C_STOR) == 0 ||
+         strcmp(cmd2->argv[0], C_APPE) == 0)) {
+      if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
+          pstrdup(cmd->pool, "true"), 0) < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "notice: error adding 'mod_xfer.file-modified' note: %s",
+          strerror(errno));
+      }
+
+      if (pr_table_add(cmd2->notes, "mod_xfer.file-modified",
+          pstrdup(cmd->pool, "true"), 0) < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "notice: error adding 'mod_xfer.file-modified' note: %s",
+          strerror(errno));
+      }
+    }
   }
 
   /* We automatically add the O_NONBLOCK flag to the set of open() flags
@@ -6059,7 +6100,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   }
 
   pr_fsio_set_block(fh);
-
+ 
   /* If the SFTPOption for ignoring perms for SFTP uploads is set, handle
    * it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.
    */
@@ -6121,6 +6162,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   fxh = fxp_handle_create(fxp_pool);
   fxh->fh = fh;
   fxh->fh_flags = open_flags;
+  fxh->fh_existed = file_existed;
 
   if (hiddenstore_path) {
     fxh->fh_real_path = pstrdup(fxh->pool, path);

@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.275 2010-05-02 18:15:48 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.276 2010-05-05 23:59:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1260,6 +1260,16 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     session.xfer.xfer_type = STOR_DEFAULT;
     errno = EPERM;
     return PR_ERROR(cmd);
+  }
+
+  /* If the file exists, add a note indicating that it is being modified. */
+  if (fmode) {
+    if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
+        pstrdup(cmd->pool, "true"), 0) < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "notice: error adding 'mod_xfer.file-modified' note: %s",
+        strerror(errno));
+    }
   }
 
   /* Otherwise everthing is good */

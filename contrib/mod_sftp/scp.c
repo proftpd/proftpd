@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.47 2010-04-26 17:44:31 castaglia Exp $
+ * $Id: scp.c,v 1.48 2010-05-05 23:59:30 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -85,6 +85,9 @@ struct scp_path {
 
   /* For supporting the HiddenStores directive. */
   int hiddenstore;
+
+  /* For indicating whether the file existed prior to being opened/created. */
+  int file_existed;
 };
 
 static pool *scp_pool = NULL;
@@ -266,6 +269,7 @@ static void reset_path(struct scp_path *sp) {
 
   sp->recvlen = 0;
   sp->hiddenstore = FALSE;
+  sp->file_existed = FALSE;
 
   sp->wrote_errors = FALSE;
 }
@@ -793,6 +797,17 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
 
+  if (exists(sp->best_path)) {
+    if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
+        pstrdup(cmd->pool, "true"), 0) < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "notice: error adding 'mod_xfer.file-modified' note: %s",
+        strerror(errno));
+    }
+
+    sp->file_existed = TRUE;
+  }
+
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "scp upload to '%s' blocked by '%s' handler", sp->path,
@@ -1232,12 +1247,30 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
     if (cmd == NULL)
       cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
 
+    if (sp->file_existed) {
+      if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
+          pstrdup(cmd->pool, "true"), 0) < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "notice: error adding 'mod_xfer.file-modified' note: %s",
+          strerror(errno));
+      }
+    }
+
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
   } else {
     if (cmd == NULL)
       cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
+
+    if (sp->file_existed) {
+      if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
+          pstrdup(cmd->pool, "true"), 0) < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "notice: error adding 'mod_xfer.file-modified' note: %s",
+          strerror(errno));
+      }
+    }
 
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);

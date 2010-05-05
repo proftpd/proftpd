@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.105 2010-04-16 22:22:37 castaglia Exp $
+ * $Id: mod_log.c,v 1.106 2010-05-05 23:59:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -101,6 +101,7 @@ struct logfile_struc {
 #define META_PROTOCOL		27
 #define META_VERSION		28
 #define META_RENAME_FROM	29
+#define META_FILE_MODIFIED	30
 
 /* For tracking the size of deleted files. */
 static off_t log_dele_filesz = 0;
@@ -139,6 +140,8 @@ static xaset_t			*log_set = NULL;
    %V                   - DNS name of server serving request
    %v			- ServerName of server serving request
    %w                   - RNFR path ("whence" a rename comes, i.e. the source)
+   %{file-modified}     - Indicates whether a file is being modified
+                          (i.e. already exists) or not.
    %{protocol}          - Current protocol (e.g. "ftp", "sftp", etc)
    %{version}           - ProFTPD version
 */
@@ -200,6 +203,12 @@ static void logformat(char *nickname, char *fmts) {
       for (;;) {
         pr_signals_handle();
  
+        if (strncmp(tmp, "{file-modified}", 15) == 0) {
+          add_meta(&outs, META_FILE_MODIFIED, 0);
+          tmp += 15;
+          continue;
+        }
+
         if (strncmp(tmp, "{protocol}", 10) == 0) {
           add_meta(&outs, META_PROTOCOL, 0);
           tmp += 10;
@@ -1077,6 +1086,23 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       sstrncpy(argp, PROFTPD_VERSION_TEXT, sizeof(arg));
       m++;
       break;
+
+    case META_FILE_MODIFIED: {
+      char *modified;
+
+      argp = arg;
+
+      modified = pr_table_get(cmd->notes, "mod_xfer.file-modified", NULL);
+      if (modified) {
+        sstrncpy(argp, modified, sizeof(arg));
+
+      } else {
+        sstrncpy(argp, "false", sizeof(arg));
+      }
+
+      m++;
+      break;
+    }
 
   }
  
