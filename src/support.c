@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.104 2010-02-07 18:36:53 castaglia Exp $
+ * $Id: support.c,v 1.105 2010-05-05 23:46:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -453,15 +453,19 @@ mode_t file_mode(char *path) {
  * If DIRP == -1, fail unless PATH exists; the caller doesn't care whether
  * PATH is a file or a directory.
  */
-static int _exists(char *path, int dirp) {
+static int _exists(const char *path, int dirp) {
   mode_t fmode;
 
-  if ((fmode = file_mode(path)) != 0) {
-    if (dirp == 1 && !S_ISDIR(fmode))
+  fmode = file_mode(path);
+  if (fmode != 0) {
+    if (dirp == 1 &&
+        !S_ISDIR(fmode)) {
       return FALSE;
 
-    else if (dirp == 0 && S_ISDIR(fmode))
+    } else if (dirp == 0 &&
+               S_ISDIR(fmode)) {
       return FALSE;
+    }
 
     return TRUE;
   }
@@ -469,15 +473,15 @@ static int _exists(char *path, int dirp) {
   return FALSE;
 }
 
-int file_exists(char *path) {
+int file_exists(const char *path) {
   return _exists(path, 0);
 }
 
-int dir_exists(char *path) {
+int dir_exists(const char *path) {
   return _exists(path, 1);
 }
 
-int exists(char *path) {
+int exists(const char *path) {
   return _exists(path, -1);
 }
 
