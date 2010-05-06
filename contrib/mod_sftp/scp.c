@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.48 2010-05-05 23:59:30 castaglia Exp $
+ * $Id: scp.c,v 1.49 2010-05-06 01:37:40 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1517,14 +1517,6 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
    */
 
   if (sp->dir_spi) { 
-    if (session.xfer.p == NULL) {
-      session.xfer.p = pr_pool_create_sz(scp_pool, 64);
-      session.xfer.path = pstrdup(session.xfer.p, sp->dir_spi->path);
-      memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
-      gettimeofday(&session.xfer.start_time, NULL);
-      session.xfer.direction = PR_NETIO_IO_WR;
-    }
-
     res = send_path(p, channel_id, sp->dir_spi);
     if (res <= 0)
       return res;
@@ -1536,6 +1528,7 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
     memset(&session.xfer, 0, sizeof(session.xfer));
 
     sp->dir_spi = NULL;
+    return 0;
   }
 
   while ((dent = pr_fsio_readdir(sp->dirh)) != NULL) {
@@ -1552,33 +1545,29 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
 
     /* Add these to the list of paths that need to be sent. */
     spi = pcalloc(scp_pool, sizeof(struct scp_path));
-    spi->path = pdircat(p, sp->path, dent->d_name, NULL);
+    spi->path = pdircat(scp_pool, sp->path, dent->d_name, NULL);
     pathlen = strlen(spi->path);
 
     /* Trim any trailing path separators.  It's important. */
     while (pathlen > 1 &&
            spi->path[pathlen-1] == '/') {
       pr_signals_handle();
-      spi->path[--pathlen] = '\0';
+      spi->path[pathlen-1] = '\0';
+      pathlen--;
     }
+
+    spi->best_path = dir_canonical_vpath(scp_pool, spi->path);
 
     if (pathlen > 0) {
       sp->dir_spi = spi;
 
-      if (session.xfer.p == NULL) {
-        session.xfer.p = pr_pool_create_sz(scp_pool, 64);
-        session.xfer.path = pstrdup(session.xfer.p, sp->dir_spi->path);
-        memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
-        gettimeofday(&session.xfer.start_time, NULL);
-        session.xfer.direction = PR_NETIO_IO_WR;
-      }
-
-      res = send_path(p, channel_id, sp->dir_spi);
+      res = send_path(p, channel_id, spi);
       if (res == 1) {
         /* Clear out any transfer-specific data. */
         if (session.xfer.p) {
           destroy_pool(session.xfer.p);
         }
+
         memset(&session.xfer, 0, sizeof(session.xfer));
       }
 
@@ -1619,21 +1608,6 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
     PR_SCORE_CMD, "%s", "scp download", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", sp->path, NULL, NULL);
-
-  cmd = scp_cmd_alloc(p, C_RETR, sp->path);
-
-  if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "scp download of '%s' blocked by '%s' handler", sp->path,
-      cmd->argv[0]);
-
-    (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
-    return 1;
-  }
-
-  sp->path = cmd->arg;
 
   if (pr_fsio_stat(sp->path, &st) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1681,7 +1655,26 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
     }
   }
 
-  if (!sp->fh) {
+  if (sp->fh == NULL) {
+    cmd = scp_cmd_alloc(p, C_RETR, sp->path);
+
+    if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "scp download of '%s' blocked by '%s' handler", sp->path,
+        cmd->argv[0]);
+
+      (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+      (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+      return 1;
+    }
+
+    if (strcmp(sp->path, cmd->arg) != 0) {
+      sp->path = cmd->arg;
+    }
+
+    sp->best_path = dir_canonical_vpath(scp_pool, sp->path);
+
     if (!dir_check(p, cmd, G_READ, sp->best_path, NULL)) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "scp download of '%s' blocked by <Limit> configuration", sp->best_path);
@@ -1692,17 +1685,17 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
       return 1;
     }
 
-    sp->fh = pr_fsio_open(sp->path, O_RDONLY|O_NONBLOCK);
+    sp->fh = pr_fsio_open(sp->best_path, O_RDONLY|O_NONBLOCK);
     if (sp->fh == NULL) {
       int xerrno = errno;
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
         "error opening '%s': %s", "scp download", session.user,
         (unsigned long) session.uid, (unsigned long) session.gid,
-        sp->path, strerror(xerrno));
+        sp->best_path, strerror(xerrno));
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error reading '%s': %s", sp->path, strerror(xerrno));
+        "error reading '%s': %s", sp->best_path, strerror(xerrno));
 
       (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -1710,6 +1703,16 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
       errno = xerrno;
       return 1;
     }
+  }
+
+  pr_fsio_set_block(sp->fh);
+
+  if (session.xfer.p == NULL) {
+    session.xfer.p = pr_pool_create_sz(scp_pool, 64);
+    session.xfer.path = pstrdup(session.xfer.p, sp->best_path);
+    memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
+    gettimeofday(&session.xfer.start_time, NULL);
+    session.xfer.direction = PR_NETIO_IO_WR;
   }
 
   /* If the PRESERVE flag is set, then we need to send a T control message
@@ -1741,6 +1744,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
     res = send_data(p, channel_id, sp, &st);
     if (res == 1) {
+      cmd = scp_cmd_alloc(p, C_RETR, sp->path);
       (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
       return res;
@@ -1750,6 +1754,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
   pr_fsio_close(sp->fh);
   sp->fh = NULL;
 
+  cmd = scp_cmd_alloc(p, C_RETR, sp->path);
   (void) pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   (void) pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
@@ -1794,15 +1799,6 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
       pr_signals_handle();
 
       paths = scp_session->paths->elts;
-
-      if (session.xfer.p == NULL) {
-        session.xfer.p = pr_pool_create_sz(scp_pool, 64);
-        session.xfer.path = pstrdup(session.xfer.p,
-          paths[scp_session->path_idx]->path);
-        memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
-        gettimeofday(&session.xfer.start_time, NULL);
-        session.xfer.direction = PR_NETIO_IO_WR;
-      }
 
       res = send_path(pkt->pool, channel_id, paths[scp_session->path_idx]);
       if (res == 1) {

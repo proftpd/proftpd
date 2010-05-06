@@ -727,6 +727,11 @@ my $TESTS = {
     test_class => [qw(forking inprogress scp ssh2)],
   },
 
+  scp_ext_download_recursive_dir_bug3456 => {
+    order => ++$order,
+    test_class => [qw(bug forking scp ssh2)],
+  },
+
   scp_config_ignore_upload_perms => {
     order => ++$order,
     test_class => [qw(forking scp ssh2)],
@@ -23116,6 +23121,300 @@ sub scp_download_fifo_bug3314 {
 
   } else {
     eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub scp_ext_download_recursive_dir_bug3456 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sftp.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
+
+  my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
+  unless (copy($rsa_rfc4716_key, $authorized_keys)) {
+    die("Can't copy $rsa_rfc4716_key to $authorized_keys: $!");
+  }
+
+  # For this test, we need the following directory structure:
+  #
+  #  src/
+  #    files
+  #    subdir1/
+  #      files
+  #    subdir2
+  #      files
+
+  my $src_dir = File::Spec->rel2abs("$tmpdir/src.d");
+  mkpath($src_dir);
+
+  my $count = 25;
+  for (my $i = 0; $i < $count; $i++) {
+    my $filename = (chr(97 + $i)) . sprintf("%03s", $i);
+    my $src_file = File::Spec->rel2abs("$src_dir/$filename");
+
+    if (open(my $fh, "> $src_file")) {
+      print $fh "ABCDefgh" x 7891;
+
+      unless (close($fh)) {
+        die("Can't write $src_file: $!");
+    }
+
+    } else {
+      die("Can't open $src_file: $!");
+    }
+  }
+
+  for (my $i = 0; $i < $count; $i++) {
+    my $filename = (chr(65 + $i)) . sprintf("%03s", $i);
+    my $src_file = File::Spec->rel2abs("$src_dir/$filename");
+
+    if (open(my $fh, "> $src_file")) {
+      print $fh "ABCDefgh" x 6458;
+
+      unless (close($fh)) {
+        die("Can't write $src_file: $!");
+    }
+
+    } else {
+      die("Can't open $src_file: $!");
+    }
+  }
+
+  my $src_subdir = File::Spec->rel2abs("$src_dir/cd.d");
+  mkpath($src_subdir);
+
+  for (my $i = 0; $i < $count; $i++) {
+    my $filename = 'aa' . sprintf("%03s", $i);
+    my $src_file = File::Spec->rel2abs("$src_subdir/$filename");
+
+    if (open(my $fh, "> $src_file")) {
+      print $fh "ABCDefgh" x 9802;
+
+      unless (close($fh)) {
+        die("Can't write $src_file: $!");
+    }
+
+    } else {
+      die("Can't open $src_file: $!");
+    }
+  }
+
+  $src_subdir = File::Spec->rel2abs("$src_dir/wx.d");
+  mkpath($src_subdir);
+
+  for (my $i = 0; $i < $count; $i++) {
+    my $filename = 'aa' . sprintf("%03s", $i);
+    my $src_file = File::Spec->rel2abs("$src_subdir/$filename");
+    
+    if (open(my $fh, "> $src_file")) {
+      print $fh "ABCDefgh" x 8192;
+
+      unless (close($fh)) {
+        die("Can't write $src_file: $!");
+    }
+
+    } else {
+      die("Can't open $src_file: $!");
+    }
+  }
+
+  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d"); 
+  mkpath($dst_dir);
+
+  my $timeout_idle = 60;
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $log_file",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+        "SFTPAuthorizedUserKeys file:~/.authorized_keys",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my @cmd = (
+        'scp',
+        '-r',
+        '-vvv',
+        '-oBatchMode=yes',
+        '-oCheckHostIP=no',
+        "-oPort=$port",
+        "-oIdentityFile=$rsa_priv_key",
+        '-oPubkeyAuthentication=yes',
+        '-oStrictHostKeyChecking=no',
+        "$user\@127.0.0.1:src.d/",
+        "$dst_dir",
+      );
+
+      my $scp_rh = IO::Handle->new();
+      my $scp_wh = IO::Handle->new();
+      my $scp_eh = IO::Handle->new();
+
+      $scp_wh->autoflush(1);
+
+      sleep(1);
+
+      local $SIG{CHLD} = 'DEFAULT';
+
+      # Make sure that the perms on the priv key are what OpenSSH wants
+      unless (chmod(0400, $rsa_priv_key)) {
+        die("Can't set perms on $rsa_priv_key to 0400: $!");
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Executing: ", join(' ', @cmd), "\n";
+      }
+
+      my $scp_pid = open3($scp_wh, $scp_rh, $scp_eh, @cmd);
+      waitpid($scp_pid, 0);
+
+      # Restore the perms on the priv key
+      unless (chmod(0644, $rsa_priv_key)) {
+        die("Can't set perms on $rsa_priv_key to 0644: $!");
+      }
+
+      my ($res, $errstr);
+      if ($? >> 8) {
+        $errstr = join('', <$scp_eh>);
+        $res = 0;
+
+      } else {
+        $res = 1;
+      }
+
+      unless ($res) {
+        die("Can't download $src_dir from server: $errstr");
+      }
+
+      unless (-d "$dst_dir/src.d") {
+        die("Directory '$dst_dir/src.d' does not exist as expected");
+      }
+
+      unless (-f "$dst_dir/src.d/y024") {
+        die("File '$dst_dir/src.d/y024' does not exist as expected");
+      }
+
+      unless (-f "$dst_dir/src.d/Y024") {
+        die("File '$dst_dir/src.d/Y024' does not exist as expected");
+      }
+
+      unless (-d "$dst_dir/src.d/cd.d") {
+        die("Directory '$dst_dir/src.d/cd.d' does not exist as expected");
+      }
+
+      unless (-f "$dst_dir/src.d/cd.d/aa024") {
+        die("File '$dst_dir/src.d/cd.d/aa024' does not exist as expected");
+      }
+
+      unless (-d "$dst_dir/src.d/wx.d") {
+        die("Directory '$dst_dir/src.d/wx.d' does not exist as expected");
+      }
+
+      unless (-f "$dst_dir/src.d/wx.d/aa024") {
+        die("File '$dst_dir/src.d/wx.d/aa024' does not exist as expected");
+      }
+
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
