@@ -108,6 +108,7 @@ if (scalar(@ARGV) > 0) {
     t/config/hidegroup.t
     t/config/hidenoaccess.t
     t/config/hideuser.t
+    t/config/maxclients.t
     t/config/maxinstances.t
     t/config/maxloginattempts.t
     t/config/maxretrievefilesize.t
