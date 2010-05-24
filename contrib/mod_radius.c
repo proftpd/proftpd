@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.59 2010-04-16 22:22:37 castaglia Exp $
+ * $Id: mod_radius.c,v 1.60 2010-05-24 18:12:40 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9.1"
@@ -1191,8 +1191,10 @@ static void radius_process_quota_info(config_rec *c) {
 
   } else {
     char *endp = NULL;
+    unsigned long res;
 
-    if (strtoul(param, &endp, 10) < 0) {
+    res = strtoul(param, &endp, 10);
+    if (res < 0) {
       radius_log("illegal RadiusQuotaInfo files in value: negative number");
       have_illegal_value = TRUE;
     }
@@ -1213,8 +1215,10 @@ static void radius_process_quota_info(config_rec *c) {
 
   } else {
     char *endp = NULL;
+    unsigned long res;
 
-    if (strtoul(param, &endp, 10) < 0) {
+    res = strtoul(param, &endp, 10);
+    if (res < 0) {
       radius_log("illegal RadiusQuotaInfo files out value: negative number");
       have_illegal_value = TRUE;
     }
@@ -1235,8 +1239,10 @@ static void radius_process_quota_info(config_rec *c) {
 
   } else {
     char *endp = NULL;
+    unsigned long res;
 
-    if (strtoul(param, &endp, 10) < 0) {
+    res = strtoul(param, &endp, 10);
+    if (res < 0) {
       radius_log("illegal RadiusQuotaInfo files xfer value: negative number");
       have_illegal_value = TRUE;
     }
@@ -1250,10 +1256,12 @@ static void radius_process_quota_info(config_rec *c) {
     radius_quota_files_xfer = param;
   }
 
-  if (!have_illegal_value)
+  if (!have_illegal_value) {
     radius_have_quota_info = TRUE;
-  else
+
+  } else {
    radius_log("error with RadiusQuotaInfo parameters, ignoring them");
+  }
 }
 
 static void radius_process_user_info(config_rec *c) {
@@ -3152,9 +3160,11 @@ MODRET set_radiusquotainfo(cmd_rec *cmd) {
 
   if (!radius_have_var(cmd->argv[6])) {
     char *endp = NULL;
+    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    if (strtoul(cmd->argv[6], &endp, 10) < 0)
+    res = strtoul(cmd->argv[6], &endp, 10);
+    if (res < 0)
       CONF_ERROR(cmd, "negative files value not allowed");
 
     if (endp && *endp)
@@ -3163,9 +3173,11 @@ MODRET set_radiusquotainfo(cmd_rec *cmd) {
 
   if (!radius_have_var(cmd->argv[7])) {
     char *endp = NULL;
+    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    if (strtoul(cmd->argv[7], &endp, 10) < 0)
+    res = strtoul(cmd->argv[7], &endp, 10);
+    if (res < 0)
       CONF_ERROR(cmd, "negative files value not allowed");
 
     if (endp && *endp)
@@ -3174,9 +3186,11 @@ MODRET set_radiusquotainfo(cmd_rec *cmd) {
 
   if (!radius_have_var(cmd->argv[8])) {
     char *endp = NULL;
+    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    if (strtoul(cmd->argv[8], &endp, 10) < 0)
+    res = strtoul(cmd->argv[8], &endp, 10);
+    if (res < 0)
       CONF_ERROR(cmd, "negative files value not allowed");
 
     if (endp && *endp)
@@ -3206,9 +3220,11 @@ MODRET set_radiususerinfo(cmd_rec *cmd) {
 
   if (!radius_have_var(cmd->argv[1])) {
     char *endp = NULL;
+    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    if (strtoul(cmd->argv[1], &endp, 10) < 0)
+    res = strtoul(cmd->argv[1], &endp, 10);
+    if (res < 0)
       CONF_ERROR(cmd, "negative UID not allowed");
 
     if (endp && *endp)
@@ -3217,9 +3233,11 @@ MODRET set_radiususerinfo(cmd_rec *cmd) {
 
   if (!radius_have_var(cmd->argv[2])) {
     char *endp = NULL;
+    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    if (strtoul(cmd->argv[2], &endp, 10) < 0)
+    res = strtoul(cmd->argv[2], &endp, 10);
+    if (res < 0)
       CONF_ERROR(cmd, "negative GID not allowed");
 
     if (endp && *endp)
