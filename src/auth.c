@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.80 2009-12-06 17:19:17 castaglia Exp $
+ * $Id: auth.c,v 1.81 2010-05-25 14:38:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1329,6 +1329,7 @@ int pr_auth_is_valid_shell(xaset_t *ctx, const char *shell) {
 
 int pr_auth_chroot(const char *path) {
   int res;
+  time_t now;
 
 #if defined(HAVE_SETENV) && defined(__GLIBC__) && defined(__GLIBC_MINOR__) && \
   __GLIBC__ == 2 && __GLIBC_MINOR__ >= 3
@@ -1348,6 +1349,13 @@ int pr_auth_chroot(const char *path) {
 #endif
 
   pr_log_pri(PR_LOG_INFO, "Preparing to chroot to directory '%s'", path);
+
+  /* Prepare for chroots and the ensuing timezone chicanery by calling
+   * our pr_localtime() routine now, which will cause libc (via localtime(2))
+   * to load the tzinfo data into memory, and hopefully retain it (Bug#3431).
+   */
+  now = time(NULL);
+  (void) pr_localtime(NULL, &now);
 
   PRIVS_ROOT
   res = pr_fsio_chroot(path);
