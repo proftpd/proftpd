@@ -2097,7 +2097,8 @@ static int tls_init_ctx(void) {
 
   ssl_ctx = SSL_CTX_new(SSLv23_server_method());
   if (ssl_ctx == NULL) {
-    tls_log("error: SSL_CTX_new(): %s", tls_get_errors());
+    pr_log_debug(DEBUG0, MOD_TLS_VERSION ": error: SSL_CTX_new(): %s",
+      tls_get_errors());
     return -1;
   }
 
@@ -2186,7 +2187,7 @@ static int tls_init_ctx(void) {
   SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
 
   if (tls_seed_prng() < 0) {
-    tls_log("%s", "unable to properly seed PRNG");
+    pr_log_debug(DEBUG1, MOD_TLS_VERSION ": unable to properly seed PRNG");
   }
 
   return 0;
