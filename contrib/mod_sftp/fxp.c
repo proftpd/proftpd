@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.103 2010-05-25 16:59:04 castaglia Exp $
+ * $Id: fxp.c,v 1.104 2010-05-25 17:54:55 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -7188,13 +7188,16 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     path = vpath;
   }
 
-  if (pr_fsio_lstat(path, &st) < 0) {
+  /* Force a full lookup. */
+  if (!dir_check_full(fxp->pool, cmd, G_NONE, path, NULL)) {
     uint32_t status_code;
     const char *reason;
     int xerrno = errno;
 
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error checking '%s' for REALPATH: %s", path, strerror(xerrno));
+      "REALPATH of '%s' blocked by <Limit> configuration", path);
 
     buf = ptr;
     buflen = bufsz;
@@ -7211,32 +7214,57 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
   } else {
-    const char *fake_user = NULL, *fake_group = NULL;
+    if (pr_fsio_lstat(path, &st) < 0) {
+      uint32_t status_code;
+      const char *reason;
+      int xerrno = errno;
 
-    pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
-      path, fxp_strattrs(fxp->pool, &st, NULL));
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error checking '%s' for REALPATH: %s", path, strerror(xerrno));
 
-    sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
-    sftp_msg_write_int(&buf, &buflen, fxp->request_id);
-    sftp_msg_write_int(&buf, &buflen, 1);
+      buf = ptr;
+      buflen = bufsz;
 
-    fake_user = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeUser",
-      FALSE);
-    if (fake_user != NULL &&
-        strcmp(fake_user, "~") == 0) {
-      fake_user = session.user;
+      status_code = fxp_errno2status(xerrno, &reason);
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+        "('%s' [%d])", (unsigned long) status_code, reason,
+        xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+      fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+        NULL);
+
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    } else {
+      const char *fake_user = NULL, *fake_group = NULL;
+
+      pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
+        path, fxp_strattrs(fxp->pool, &st, NULL));
+
+      sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
+      sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+      sftp_msg_write_int(&buf, &buflen, 1);
+
+      fake_user = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeUser",
+        FALSE);
+      if (fake_user != NULL &&
+          strcmp(fake_user, "~") == 0) {
+        fake_user = session.user;
+      }
+
+      fake_group = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeGroup",
+        FALSE);
+      if (fake_group != NULL &&
+          strcmp(fake_group, "~") == 0) {
+        fake_group = session.group;
+      }
+
+      fxp_name_write(fxp->pool, &buf, &buflen, path, &st, fake_user,
+        fake_group);
+
+      pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
     }
-
-    fake_group = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeGroup",
-      FALSE);
-    if (fake_group != NULL &&
-        strcmp(fake_group, "~") == 0) {
-      fake_group = session.group;
-    }
-
-    fxp_name_write(fxp->pool, &buf, &buflen, path, &st, fake_user, fake_group);
-
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   }
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
