@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.102 2010-05-05 23:59:30 castaglia Exp $
+ * $Id: fxp.c,v 1.103 2010-05-25 16:59:04 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -6362,12 +6362,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
 
   fxh = fxp_handle_create(fxp_pool);
   fxh->dirh = dirh;
-
-  if (strcmp(path, pr_fs_getvwd()) != 0) {
-    fxh->dir = pstrdup(fxh->pool, path);
-  } else {
-    fxh->dir = "";
-  }
+  fxh->dir = pstrdup(fxh->pool, path);
 
   if (fxp_handle_add(fxp->channel_id, fxh) < 0) {
     uint32_t status_code;
