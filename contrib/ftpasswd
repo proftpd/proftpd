@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # ---------------------------------------------------------------------------
-# Copyright (C) 2000-2003 TJ Saunders <tj@castaglia.org>
+# Copyright (C) 2000-2010 TJ Saunders <tj@castaglia.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 # format, or AuthGroupFile, in group(5) format.  The idea is somewhat similar
 # to Apache's htpasswd program.
 #
-#  $Id: ftpasswd,v 1.10 2004-10-07 21:17:58 castaglia Exp $
+#  $Id: ftpasswd,v 1.11 2010-05-27 16:22:02 castaglia Exp $
 #
 # ---------------------------------------------------------------------------
 
@@ -116,11 +116,33 @@ if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
   die "$program: --passwd: missing required argument: --name\n"
     unless (defined($opts{'name'}));
 
+  # check for and handle the --delete-user option.
+  if (defined($opts{'delete-user'})) {
+
+    # make sure we can write/update the file first
+    unless (chmod 0644, $output_file) {
+      die "$program: unable to set permissions on $output_file to 0644: $!\n";
+    }
+
+    open_output_file();
+
+    my ($pass, $uid, $gid, $gecos, $home, $shell) = find_passwd_entry(name =>
+      $opts{'name'});
+
+    handle_passwd_entry(name => $opts{'name'}, uid => $uid, gid => $gid,
+      gecos => $gecos, home => $home, shell => $shell,
+      delete_user => $opts{'delete-user'});
+
+    close_output_file();
+
+    # done
+    exit 0;
+  }
+
   # now check for the --change-password option.  If present, lookup
   # the given name in the password file, and reuse all the information
   # except for the password
   if (defined($opts{'change-password'})) {
-
     open_output_file();
 
     my ($pass, $uid, $gid, $gecos, $home, $shell) = find_passwd_entry(name =>
