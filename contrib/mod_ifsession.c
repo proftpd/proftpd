@@ -2,7 +2,7 @@
  * ProFTPD: mod_ifsession -- a module supporting conditional
  *                            per-user/group/class configuration contexts.
  *
- * Copyright (c) 2002-2008 TJ Saunders
+ * Copyright (c) 2002-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,16 +26,16 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.24 2008-10-14 22:28:02 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.25 2010-06-11 22:42:10 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_IFSESSION_VERSION	"mod_ifsession/1.0"
+#define MOD_IFSESSION_VERSION	"mod_ifsession/1.1"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001021001
-# error "ProFTPD 1.2.10rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030001
+# error "ProFTPD 1.3.0rc1 or later required"
 #endif
 
 #define IFSESS_CLASS_NUMBER	100
@@ -45,6 +45,9 @@
 #define IFSESS_USER_NUMBER	102
 #define	IFSESS_USER_TEXT	"<IfUser>"
 
+module ifsession_module;
+
+static int ifsess_ctx = -1;
 static int ifsess_merged = FALSE;
 
 /* Support routines
@@ -161,17 +164,17 @@ MODRET start_ifctxt(cmd_rec *cmd) {
 
   if (strcmp(cmd->argv[0], IFSESS_CLASS_TEXT) == 0) {
     name = "_IfClassList";
-    config_type = IFSESS_CLASS_NUMBER;
+    ifsess_ctx = config_type = IFSESS_CLASS_NUMBER;
     eval_type = PR_EXPR_EVAL_OR;
 
   } else if (strcmp(cmd->argv[0], IFSESS_GROUP_TEXT) == 0) {
     name = "_IfGroupList";
-    config_type = IFSESS_GROUP_NUMBER;
+    ifsess_ctx = config_type = IFSESS_GROUP_NUMBER;
     eval_type = PR_EXPR_EVAL_AND;
 
   } else if (strcmp(cmd->argv[0], IFSESS_USER_TEXT) == 0) {
     name = "_IfUserList";
-    config_type = IFSESS_USER_NUMBER;
+    ifsess_ctx = config_type = IFSESS_USER_NUMBER;
     eval_type = PR_EXPR_EVAL_OR;
   }
 
@@ -260,6 +263,27 @@ MODRET start_ifctxt(cmd_rec *cmd) {
 
 MODRET end_ifctxt(cmd_rec *cmd) {
   pr_parser_config_ctxt_close(NULL);
+
+  switch (ifsess_ctx) {
+    case IFSESS_CLASS_NUMBER:
+      if (strcasecmp("</IfClass>", cmd->argv[0]) == 0) {
+        ifsess_ctx = -1;
+      }
+      break;
+
+    case IFSESS_GROUP_NUMBER:
+      if (strcasecmp("</IfGroup>", cmd->argv[0]) == 0) {
+        ifsess_ctx = -1;
+      }
+      break;
+
+    case IFSESS_USER_NUMBER:
+      if (strcasecmp("</IfUser>", cmd->argv[0]) == 0) {
+        ifsess_ctx = -1;
+      }
+      break;
+  }
+
   return PR_HANDLED(cmd);
 }
 
@@ -438,8 +462,60 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+/* Event handlers
+ */
+
+#ifdef PR_SHARED_MODULE
+static void ifsess_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_ifsession.c", (const char *) event_data) == 0) {
+    pr_event_unregister(&ifsession_module, NULL, NULL);
+  }
+}
+#endif /* PR_SHARED_MODULE */
+
+static void ifsess_postparse_ev(const void *event_data, void *user_data) {
+  /* Make sure that all mod_ifsession sections have been properly closed. */
+
+  if (ifsess_ctx == -1) {
+    /* All sections properly closed; nothing to do. */
+    return;
+  }
+
+  switch (ifsess_ctx) {
+    case IFSESS_CLASS_NUMBER:
+      pr_log_pri(PR_LOG_ERR,
+        "error: unclosed <IfClass> context in config file");
+      break;
+
+    case IFSESS_GROUP_NUMBER:
+      pr_log_pri(PR_LOG_ERR,
+        "error: unclosed <IfGroup> context in config file");
+      break;
+
+    case IFSESS_USER_NUMBER:
+      pr_log_pri(PR_LOG_ERR,
+        "error: unclosed <IfUser> context in config file");
+      break;
+  }
+
+  end_login(1);
+  return;
+}
+
 /* Initialization routines
  */
+
+static int ifsess_init(void) {
+#ifdef PR_SHARED_MODULE
+  pr_event_register(&ifsession_module, "core.module-unload",
+    ifsess_mod_unload_ev, NULL);
+#endif /* PR_SHARED_MODULE */
+
+  pr_event_register(&ifsession_module, "core.postparse",
+    ifsess_postparse_ev, NULL);
+
+  return 0;
+}
 
 static int ifsess_sess_init(void) {
   register unsigned int i = 0;
@@ -547,7 +623,7 @@ module ifsession_module = {
   NULL,
 
   /* Module initialization function */
-  NULL,
+  ifsess_init,
 
   /* Session initialization function */
   ifsess_sess_init,
