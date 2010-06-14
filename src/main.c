@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.400 2010-04-28 15:58:36 castaglia Exp $
+ * $Id: main.c,v 1.401 2010-06-14 18:15:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1896,7 +1896,6 @@ static void handle_segv(int signo, siginfo_t *info, void *ptr) {
   /* Call the "normal" SIGSEGV/SIGBUS handler. */
   table_handling_signal(TRUE);
   sig_terminate(signo);
-  table_handling_signal(FALSE);
 
   pr_log_pri(PR_LOG_ERR, "-----BEGIN STACK TRACE-----");
 
