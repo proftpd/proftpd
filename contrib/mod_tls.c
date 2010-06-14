@@ -2949,7 +2949,12 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   /* TLS handshake on the data channel... */
   } else {
 
-    if (!(tls_opts & TLS_OPT_NO_SESSION_REUSE_REQUIRED)) {
+    /* We won't check for session reuse for data connections when either
+     * a) the NoSessionReuseRequired TLSOption has been configured, or
+     * b) the CCC command has been used (Bug#3465).
+     */
+    if (!(tls_opts & TLS_OPT_NO_SESSION_REUSE_REQUIRED) &&
+        !(tls_flags & TLS_SESS_HAVE_CCC)) {
       int reused;
       SSL_SESSION *ctrl_sess;
 
