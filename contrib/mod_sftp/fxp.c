@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.104 2010-05-25 17:54:55 castaglia Exp $
+ * $Id: fxp.c,v 1.105 2010-06-15 16:01:22 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -6735,9 +6735,9 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   struct fxp_packet *resp;
   array_header *path_list;
   cmd_rec *cmd;
-  int have_error = FALSE;
+  int have_error = FALSE, res;
   mode_t *fake_mode = NULL;
-  const char *fake_user = NULL, *fake_group = NULL;
+  const char *fake_user = NULL, *fake_group = NULL, *vwd = NULL;
 
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
@@ -6842,6 +6842,37 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
+  /* Change into the directory being read, so that ".", "..", and relative
+   * paths (e.g. for symlinks) get resolved properly.
+   */
+  vwd = pr_fs_getvwd();
+
+  res = pr_fsio_chdir(fxh->dir, FALSE);
+  if (res < 0) {
+    uint32_t status_code;
+    const char *reason;
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to chdir to '%s': %s", (char *) fxh->dir, strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, reason);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
   fake_mode = get_param_ptr(get_dir_ctxt(fxp->pool, (char *) fxh->dir),
     "DirFakeMode", FALSE);
 
@@ -6865,8 +6896,16 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
     pr_signals_handle();
 
-    real_path = dir_canonical_vpath(fxp->pool, pdircat(fxp->pool, fxh->dir,
-      dent->d_name, NULL));
+    /* Do not expand/resolve dot directories; it will be handled automatically
+     * lower down in the ACL-checking code.  Plus, this allows regex filters
+     * that rely on the dot directory name to work properly.
+     */
+    if (!is_dotdir(dent->d_name)) {
+      real_path = pdircat(fxp->pool, fxh->dir, dent->d_name, NULL);
+
+    } else {
+      real_path = pstrdup(fxp->pool, dent->d_name);
+    }
 
     fxd = fxp_get_dirent(fxp->pool, cmd, real_path, fake_mode);
     if (fxd == NULL) {
@@ -6891,6 +6930,33 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
   if (pr_data_get_timeout(PR_DATA_TIMEOUT_STALLED) > 0) {
     pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+  }
+
+  /* Now make sure we switch back to the directory where we were. */
+  res = pr_fsio_chdir(vwd, FALSE);
+  if (res < 0) {
+    uint32_t status_code;
+    const char *reason;
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to chdir to '%s': %s", vwd, strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, reason);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
   }
 
   if (path_list->nelts == 0) {
