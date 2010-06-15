@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: rfc4716.c,v 1.11 2010-03-03 23:10:45 castaglia Exp $
+ * $Id: rfc4716.c,v 1.12 2010-06-15 16:52:01 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -464,7 +464,7 @@ static sftp_keystore_t *filestore_open(pool *parent_pool,
   pool *filestore_pool;
   struct filestore_data *store_data;
   pr_fh_t *fh;
-  char *path;
+  char buf[PR_TUNABLE_PATH_MAX+1], *path;
   struct stat st;
 
   filestore_pool = make_sub_pool(parent_pool);
@@ -477,7 +477,20 @@ static sftp_keystore_t *filestore_open(pool *parent_pool,
    * interpolated.
    */
   session.user = (char *) user;
-  path = dir_interpolate(filestore_pool, store_info);
+
+  memset(buf, '\0', sizeof(buf));
+  switch (pr_fs_interpolate(store_info, buf, sizeof(buf)-1)) {
+    case 1:
+      /* Interpolate occurred; make a copy of the interpolated path. */
+      path = pstrdup(filestore_pool, buf);
+      break;
+
+    default:
+      /* Otherwise, use the path as is. */
+      path = pstrdup(filestore_pool, store_info);
+      break;
+  }
+
   session.user = NULL;
 
   PRIVS_ROOT
