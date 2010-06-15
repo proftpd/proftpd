@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.25 2010-06-11 22:42:10 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.26 2010-06-15 20:45:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -363,6 +363,12 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
         *((config_rec **) push_array(group_remove_list)) = c;
 
         resolve_deferred_dirs(main_server);
+
+        /* We need to call fixup_dirs() twice: once for any added <Directory>
+         * sections that use absolute paths, and again for any added <Directory>
+         * sections that use deferred-resolution paths (e.g. "~").
+         */
+        fixup_dirs(main_server, 0);
         fixup_dirs(main_server, CF_DEFER);
 
         ifsess_merged = TRUE;
@@ -430,6 +436,12 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
         *((config_rec **) push_array(user_remove_list)) = c;
 
         resolve_deferred_dirs(main_server);
+
+        /* We need to call fixup_dirs() twice: once for any added <Directory>
+         * sections that use absolute paths, and again for any added <Directory>
+         * sections that use deferred-resolution paths (e.g. "~").
+         */
+        fixup_dirs(main_server, 0);
         fixup_dirs(main_server, CF_DEFER);
 
         ifsess_merged = TRUE;
@@ -564,6 +576,11 @@ static int ifsess_sess_init(void) {
          */
         *((config_rec **) push_array(class_remove_list)) = c;
 
+        /* We need to call fixup_dirs() twice: once for any added <Directory>
+         * sections that use absolute paths, and again for any added <Directory>
+         * sections that use deferred-resolution paths (e.g. "~").
+         */
+        fixup_dirs(main_server, 0);
         fixup_dirs(main_server, CF_DEFER);
 
         ifsess_merged = TRUE;
