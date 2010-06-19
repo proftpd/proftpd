@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.82 2010-06-19 18:47:17 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.83 2010-06-19 18:58:08 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1134,15 +1134,19 @@ handle_ldap_getgroups(cmd_rec *cmd)
   }
 
   pw = pr_ldap_getpwnam(cmd->tmp_pool, cmd->argv[0]);
-  if (pw) {
-    gr = pr_ldap_getgrgid(cmd->tmp_pool, pw->pw_gid);
-    if (gr) {
-      pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": adding user %s primary group %s/%lu", pw->pw_name, gr->gr_name, (unsigned long)pw->pw_gid);
-      *((gid_t *) push_array(gids))   = pw->pw_gid;
-      *((char **) push_array(groups)) = pstrdup(session.pool, gr->gr_name);
-    } else {
-      pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": couldn't determine group name for user %s primary group %lu, skipping.", pw->pw_name, (unsigned long)pw->pw_gid);
-    }
+  if (pw == NULL) {
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": ldap_handle_getgroups(): Invalid user %s or authentication filter", cmd->argv[0]);
+    goto return_groups;
+  }
+
+  gr = pr_ldap_getgrgid(cmd->tmp_pool, pw->pw_gid);
+  if (gr) {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": adding user %s primary group %s/%lu", pw->pw_name, gr->gr_name, (unsigned long)pw->pw_gid);
+    *((gid_t *) push_array(gids))   = pw->pw_gid;
+    *((char **) push_array(groups)) = pstrdup(session.pool, gr->gr_name);
+
+  } else {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": couldn't determine group name for user %s primary group %lu, skipping.", pw->pw_name, (unsigned long)pw->pw_gid);
   }
 
   if (!ldap_gid_basedn) {
@@ -1178,7 +1182,7 @@ handle_ldap_getgroups(cmd_rec *cmd)
       continue;
     }
 
-    if (!pw || strtoul(LDAP_VALUE(gidNumber, 0), (char **)NULL, 10) != pw->pw_gid) {
+    if (strtoul(LDAP_VALUE(gidNumber, 0), (char **)NULL, 10) != pw->pw_gid) {
       *((gid_t *) push_array(gids)) =
         strtoul(LDAP_VALUE(gidNumber, 0), (char **)NULL, 10);
       *((char **) push_array(groups)) = pstrdup(session.pool, LDAP_VALUE(cn, 0));
