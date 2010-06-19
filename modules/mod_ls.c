@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.176 2010-04-16 22:22:37 castaglia Exp $
+ * $Id: mod_ls.c,v 1.177 2010-06-19 20:42:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -82,6 +82,7 @@ static int
     opt_A = 0,
     opt_B = 0,
     opt_C = 0,
+    opt_c = 0,
     opt_d = 0,
     opt_F = 0,
     opt_h = 0,
@@ -92,7 +93,14 @@ static int
     opt_r = 0,
     opt_S = 0,
     opt_t = 0,
+    opt_u = 0,
     opt_STAT = 0;
+
+/* Determines which struct st timestamp is used for sorting, if any. */
+static int ls_sort_by = 0;
+#define LS_SORT_BY_MTIME	100
+#define LS_SORT_BY_CTIME	101
+#define LS_SORT_BY_ATIME	102
 
 static char cwd[PR_TUNABLE_PATH_MAX+1] = "";
 
@@ -354,7 +362,7 @@ static char months[12][4] =
 
 static int listfile(cmd_rec *cmd, pool *p, const char *name) {
   int rval = 0, len;
-  time_t mtime;
+  time_t sort_time;
   char m[PR_TUNABLE_PATH_MAX+1] = {'\0'}, l[PR_TUNABLE_PATH_MAX+1] = {'\0'}, s[16] = {'\0'};
   struct stat st;
   struct tm *t = NULL;
@@ -424,11 +432,13 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
 
         m[len] = '\0';
 
-        if (!ls_perms_full(p, cmd, m, NULL))
+        if (!ls_perms_full(p, cmd, m, NULL)) {
           return 0;
+        }
 
-      } else
+      } else {
         return 0;
+      }
 
     } else if (S_ISLNK(st.st_mode)) {
       len = pr_fsio_readlink(name, l, sizeof(l) - 1);
@@ -440,11 +450,13 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
 
       l[len] = '\0';
 
-      if (!ls_perms_full(p, cmd, l, &hidden))
+      if (!ls_perms_full(p, cmd, l, &hidden)) {
         return 0;
+      }
 
-    } else if (!ls_perms(p, cmd, name, &hidden))
+    } else if (!ls_perms(p, cmd, name, &hidden)) {
       return 0;
+    }
 
     /* Skip dotfiles, unless requested not to via -a or -A. */
     if (*name == '.' &&
@@ -454,12 +466,28 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
     if (hidden)
       return 0;
 
-    mtime = st.st_mtime;
+    switch (ls_sort_by) {
+      case LS_SORT_BY_MTIME:
+        sort_time = st.st_mtime;
+        break;
+
+      case LS_SORT_BY_CTIME:
+        sort_time = st.st_ctime;
+        break;
+
+      case LS_SORT_BY_ATIME:
+        sort_time = st.st_atime;
+        break;
+
+      default:
+        sort_time = st.st_mtime;
+        break;
+    }
 
     if (list_times_gmt)
-      t = pr_gmtime(p, (time_t *) &mtime);
+      t = pr_gmtime(p, (time_t *) &sort_time);
     else
-      t = pr_localtime(p, (time_t *) &mtime);
+      t = pr_localtime(p, (time_t *) &sort_time);
 
     if (opt_F) {
       if (S_ISLNK(st.st_mode))
@@ -539,7 +567,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         m[2] = (mode & S_IWUSR) ? 'w' : '-';
         m[1] = (mode & S_IRUSR) ? 'r' : '-';
 
-        if (ls_curtime - mtime > 180 * 24 * 60 * 60)
+        if (ls_curtime - sort_time > 180 * 24 * 60 * 60)
           snprintf(timeline, sizeof(timeline), "%5d", t->tm_year+1900);
 
         else
@@ -599,7 +627,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         if (opt_STAT)
           pr_response_add(R_211, "%s%s", nameline, suffix);
         else
-          addfile(cmd, nameline, suffix, mtime, st.st_size);
+          addfile(cmd, nameline, suffix, sort_time, st.st_size);
       }
 
     } else {
@@ -607,7 +635,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
           S_ISDIR(st.st_mode) ||
           S_ISLNK(st.st_mode))
            addfile(cmd, pr_fs_encode_path(cmd->tmp_pool, name), suffix,
-             mtime, st.st_size);
+             sort_time, st.st_size);
     }
   }
 
@@ -625,7 +653,7 @@ struct filename {
 };
 
 struct sort_filename {
-  time_t mtime;
+  time_t sort_time;
   off_t size;
   char *name;
   char *suffix;
@@ -637,7 +665,7 @@ static array_header *sort_arr = NULL;
 static pool *fpool = NULL;
 
 static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
-    time_t mtime, off_t size) {
+    time_t sort_time, off_t size) {
   struct filename *p;
   size_t l;
 
@@ -656,7 +684,7 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
       sort_arr = make_array(fpool, 50, sizeof(struct sort_filename));
 
     s = (struct sort_filename *) push_array(sort_arr);
-    s->mtime = mtime;
+    s->sort_time = sort_time;
     s->size = size;
     s->name = pstrdup(fpool, name);
     s->suffix = pstrdup(fpool, suffix);
@@ -682,21 +710,21 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
   filenames++;
 }
 
-static int file_mtime_cmp(const struct sort_filename *f1,
+static int file_time_cmp(const struct sort_filename *f1,
     const struct sort_filename *f2) {
 
-  if (f1->mtime > f2->mtime)
+  if (f1->sort_time > f2->sort_time)
     return -1;
 
-  else if (f1->mtime < f2->mtime)
+  else if (f1->sort_time < f2->sort_time)
     return 1;
 
   return 0;
 }
 
-static int file_mtime_reverse_cmp(const struct sort_filename *f1,
+static int file_time_reverse_cmp(const struct sort_filename *f1,
     const struct sort_filename *f2) {
-  return -file_mtime_cmp(f1, f2);
+  return -file_time_cmp(f1, f2);
 }
 
 static int file_size_cmp(const struct sort_filename *f1,
@@ -720,7 +748,7 @@ static void sortfiles(cmd_rec *cmd) {
 
   if (sort_arr) {
 
-    /* Sort by modification time? */
+    /* Sort by time? */
     if (opt_t) {
       register unsigned int i = 0;
       int setting = opt_S;
@@ -728,12 +756,14 @@ static void sortfiles(cmd_rec *cmd) {
 
       qsort(sort_arr->elts, sort_arr->nelts, sizeof(struct sort_filename),
         (int (*)(const void *, const void *))
-          (opt_r ? file_mtime_reverse_cmp : file_mtime_cmp));
+          (opt_r ? file_time_reverse_cmp : file_time_cmp));
 
       opt_S = opt_t = 0;
 
-      for (i = 0; i < sort_arr->nelts; i++)
-        addfile(cmd, elts[i].name, elts[i].suffix, elts[i].mtime, elts[i].size);
+      for (i = 0; i < sort_arr->nelts; i++) {
+        addfile(cmd, elts[i].name, elts[i].suffix, elts[i].sort_time,
+          elts[i].size);
+      }
 
       opt_S = setting;
       opt_t = 1;
@@ -750,8 +780,10 @@ static void sortfiles(cmd_rec *cmd) {
 
       opt_S = opt_t = 0;
 
-      for (i = 0; i < sort_arr->nelts; i++)
-        addfile(cmd, elts[i].name, elts[i].suffix, elts[i].mtime, elts[i].size);
+      for (i = 0; i < sort_arr->nelts; i++) {
+        addfile(cmd, elts[i].name, elts[i].suffix, elts[i].sort_time,
+          elts[i].size);
+      }
 
       opt_S = 1;
       opt_t = setting;
@@ -1282,6 +1314,11 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           }
           break;
 
+        case 'c':
+          opt_c = 1;
+          ls_sort_by = LS_SORT_BY_CTIME;
+          break;
+
         case 'd':
           opt_d = 1;
           break;
@@ -1332,6 +1369,12 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           if (glob_flags)
             *glob_flags |= GLOB_NOSORT;
           break;
+
+        case 'u':
+          opt_u = 1;
+          ls_sort_by = LS_SORT_BY_ATIME;
+          break;
+
       }
     }
 
@@ -1387,6 +1430,13 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           opt_l = opt_C = 0;
           break;
 
+        case 'c':
+          opt_c = 0;
+
+          /* -u is still in effect, sort by that, otherwise use the default. */
+          ls_sort_by = opt_u ? LS_SORT_BY_ATIME : LS_SORT_BY_MTIME;
+          break;
+
         case 'd':
           opt_d = 0;
           break;
@@ -1427,6 +1477,13 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           opt_t = 0;
           if (glob_flags)
             *glob_flags &= GLOB_NOSORT;
+          break;
+
+        case 'u':
+          opt_u = 0;
+
+          /* -c is still in effect, sort by that, otherwise use the default. */
+          ls_sort_by = opt_c ? LS_SORT_BY_CTIME : LS_SORT_BY_MTIME;
           break;
       }
     }
