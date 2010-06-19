@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.83 2010-06-19 18:58:08 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.84 2010-06-19 19:09:59 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -415,7 +415,7 @@ pr_ldap_interpolate_filter(pool *p, char *template, const char *value)
   return filter;
 }
 
-LDAPMessage *
+static LDAPMessage *
 pr_ldap_search(char *basedn, char *filter, char *ldap_attrs[], int sizelimit)
 {
   int ret;
