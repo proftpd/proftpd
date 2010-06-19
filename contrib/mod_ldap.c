@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.81 2010-02-28 17:13:57 jwm Exp $
+ * $Id: mod_ldap.c,v 1.82 2010-06-19 18:47:17 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -856,7 +856,7 @@ static unsigned char
 pr_ldap_ssh_pubkey_lookup(pool *p, char *filter_template, const char *replace,
                           char *basedn)
 {
-  char *filter, *attrs[] = {ldap_attr_ssh_pubkey, NULL};
+  char *filter = NULL, *attrs[] = {ldap_attr_ssh_pubkey, NULL};
   int num_keys, i;
   LDAPMessage *result, *e;
   LDAP_VALUE_T **values;
