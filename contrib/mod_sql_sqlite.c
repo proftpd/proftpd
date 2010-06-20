@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.17 2010-06-20 16:26:28 castaglia Exp $
+ * $Id: mod_sql_sqlite.c,v 1.18 2010-06-20 16:42:12 castaglia Exp $
  * $Libraries: -lsqlite3 $
  */
 
@@ -517,7 +517,7 @@ MODRET sql_sqlite_select(cmd_rec *cmd) {
       struct timeval tv;
 
       sql_log(DEBUG_FUNC, "encountered '%s' while executing '%s', trying again",
-        errstr, tmp);
+        tmp, query);
       sqlite3_free(tmp);
 
       /* Sleep for short bit, then try again. */
@@ -621,7 +621,7 @@ MODRET sql_sqlite_insert(cmd_rec *cmd) {
       struct timeval tv;
 
       sql_log(DEBUG_FUNC, "encountered '%s' while executing '%s', trying again",
-        errstr, query);
+        tmp, query);
       sqlite3_free(tmp);
 
       /* Sleep for short bit, then try again. */
@@ -736,7 +736,7 @@ MODRET sql_sqlite_update(cmd_rec *cmd) {
       struct timeval tv;
 
       sql_log(DEBUG_FUNC, "encountered '%s' while executing '%s', trying again",
-        errstr, query);
+        tmp, query);
       sqlite3_free(tmp);
 
       /* Sleep for short bit, then try again. */
@@ -865,7 +865,7 @@ MODRET sql_sqlite_query(cmd_rec *cmd) {
       struct timeval tv;
 
       sql_log(DEBUG_FUNC, "encountered '%s' while executing '%s', trying again",
-        errstr, query);
+        tmp, query);
       sqlite3_free(tmp);
 
       /* Sleep for short bit, then try again. */
