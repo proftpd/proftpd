@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.106 2010-05-05 23:59:30 castaglia Exp $
+ * $Id: mod_log.c,v 1.107 2010-06-20 01:40:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -664,7 +664,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
         sstrncpy(argp, tmp ? tmp : path, sizeof(arg));
 
       } else {
-        sstrncpy(argp, "", sizeof(arg));
+        sstrncpy(argp, pr_fs_getvwd(), sizeof(arg));
       }
 
       m++;
