@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.401 2010-06-14 18:15:44 castaglia Exp $
+ * $Id: main.c,v 1.402 2010-06-21 20:31:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -121,7 +121,7 @@ static RETSIGTYPE sig_disconnect(int);
 static RETSIGTYPE sig_evnt(int);
 static RETSIGTYPE sig_terminate(int);
 #ifdef PR_DEVEL_STACK_TRACE
-static void install_segv_handler(void);
+static void install_stacktrace_handler(void);
 #endif /* PR_DEVEL_STACK_TRACE */
 
 volatile unsigned int recvd_signal_flags = 0;
@@ -134,7 +134,7 @@ static void handle_abort(void);
 static void handle_chld(void);
 static void handle_evnt(void);
 #ifdef PR_DEVEL_STACK_TRACE
-static void handle_segv(int, siginfo_t *, void *);
+static void handle_stacktrace_signal(int, siginfo_t *, void *);
 #endif /* PR_DEVEL_STACK_TRACE */
 static void handle_xcpu(void);
 static void handle_terminate(void);
@@ -1886,14 +1886,14 @@ static void handle_abort(void) {
 }
 
 #ifdef PR_DEVEL_STACK_TRACE
-static void handle_segv(int signo, siginfo_t *info, void *ptr) {
+static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
   register unsigned i;
   ucontext_t *uc = (ucontext_t *) ptr;
   void *trace[PR_TUNABLE_CALLER_DEPTH];
   char **strings;
   size_t tracesz;
 
-  /* Call the "normal" SIGSEGV/SIGBUS handler. */
+  /* Call the "normal" signal handler. */
   table_handling_signal(TRUE);
   sig_terminate(signo);
 
@@ -1932,37 +1932,42 @@ static RETSIGTYPE sig_terminate(int signo) {
   /* Capture the signal number for later display purposes. */
   term_signo = signo;
 
-  if (signo == SIGSEGV
+  if (signo == SIGSEGV ||
+      signo == SIGXCPU
 #ifdef SIGBUS
       || signo == SIGBUS) {
 #else
      ) {
 #endif /* SIGBUS */
-    recvd_signal_flags |= RECEIVED_SIG_SEGV;
+
+    if (signo == SIGXCPU) {
+      recvd_signal_flags |= RECEIVED_SIG_XCPU;
+
+    } else {
+      recvd_signal_flags |= RECEIVED_SIG_SEGV;
+    }
 
     /* This is probably not the safest thing to be doing, but since the
      * process is terminating anyway, why not?  It helps when knowing/logging
      * that a segfault happened...
      */
     pr_trace_msg("signal", 9, "handling %s (signal %d)",
-      signo == SIGSEGV ? "SIGSEGV" : "SIGBUS", signo);
+      signo == SIGSEGV ? "SIGSEGV" : 
+        signo == SIGXCPU ? "SIGXCPU" : "SIGBUS", signo);
     pr_log_pri(PR_LOG_NOTICE, "ProFTPD terminating (signal %d)", signo);
 
     pr_log_pri(PR_LOG_INFO, "%s session closed.",
       pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT));
 
-    /* Restore the default signal handler. */
+    /* Restore the default signal handlers. */
 #ifdef PR_DEVEL_STACK_TRACE
-    install_segv_handler();
+    install_stacktrace_handler();
 #else
     signal(signo, SIG_DFL);
 #endif /* PR_DEVEL_STACK_TRACE */
 
   } else if (signo == SIGTERM) {
     recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
-
-  } else if (signo == SIGXCPU) {
-    recvd_signal_flags |= RECEIVED_SIG_XCPU;
 
   } else {
     recvd_signal_flags |= RECEIVED_SIG_TERM_OTHER;
@@ -2068,11 +2073,11 @@ static void finish_terminate(void) {
 }
 
 #ifdef PR_DEVEL_STACK_TRACE
-static void install_segv_handler(void) {
+static void install_stacktrace_handler(void) {
   struct sigaction action;
 
   memset(&action, 0, sizeof(action));
-  action.sa_sigaction = handle_segv;
+  action.sa_sigaction = handle_stacktrace_signal;
   action.sa_flags = SA_SIGINFO;
 
   /* Ideally we would check the return value here. */
@@ -2080,6 +2085,7 @@ static void install_segv_handler(void) {
 # ifdef SIGBUS
   sigaction(SIGBUS, &action, NULL);
 # endif /* SIGBUS */
+  sigaction(SIGXCPU, &action, NULL);
 }
 #endif /* PR_DEVEL_STACK_TRACE */
 
@@ -2127,13 +2133,14 @@ static void install_signal_handlers(void) {
   signal(SIGINT, sig_terminate);
   signal(SIGQUIT, sig_terminate);
   signal(SIGILL, sig_terminate);
-  signal(SIGABRT, sig_abort);
   signal(SIGFPE, sig_terminate);
+  signal(SIGABRT, sig_abort);
 #ifdef PR_DEVEL_STACK_TRACE
-  /* Installs stacktrace handlers for both SIGSEGV and SIGBUS. */
-  install_segv_handler();
+  /* Installs stacktrace handlers for SIGSEGV, SIGXCPU, and SIGBUS. */
+  install_stacktrace_handler();
 #else
   signal(SIGSEGV, sig_terminate);
+  signal(SIGXCPU, sig_terminate);
 # ifdef SIGBUS
   signal(SIGBUS, sig_terminate);
 # endif /* SIGBUS */
@@ -2146,7 +2153,6 @@ static void install_signal_handlers(void) {
   signal(SIGALRM, SIG_IGN);
 
   signal(SIGTERM, sig_terminate);
-  signal(SIGXCPU, sig_terminate);
   signal(SIGURG, SIG_IGN);
 #ifdef SIGSTKFLT
   signal(SIGSTKFLT, sig_terminate);
