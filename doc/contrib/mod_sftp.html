@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.39 2010-04-21 18:15:11 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.40 2010-06-21 15:00:36 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -87,6 +87,8 @@ subsystem, for secure file transfer over an SSH2 connection.  The
   <li>Passphrase-protected host keys
   <li>SFTP extensions: check-file, copy-file, vendor-id, version-select, posix-rename@openssh.com, statvfs@openssh.com, fstatvfs@openssh.com
 </ul>
+This module supports the SFTP and SCP file transfer protocols; it does
+<b>not</b> support shell access.
 
 <p>
 The <code>mod_sftp</code> module does <b>not</b> currently support:
@@ -1602,11 +1604,26 @@ This explicitly tells the <code>mod_sftp</code> to <b>not</b> drop root
 privileges after authentication, and instead to keep them for the duration
 of the session.
 
+<p><a name="SFTPShell">
+<font color=red>Question</font>: Why can't I use <code>ssh</code> to connect
+to my proftpd+mod_sftp server?  When I try, I see:
+<pre>
+  # ssh <i>user</i>@<i>host</i>
+  Enter passphrase for key '/home/<i>user</i>/.ssh/id_rsa': 
+  PTY allocation request failed on channel 0
+  shell request failed on channel 0
+</pre>
+<font color=blue>Answer</font>: The <code>mod_sftp</code> module supports
+file transfers via SFTP and SCP.  It does <b>not</b> support shell access,
+which is what the <code>ssh</code> command-line client tries to use.  The
+above error messages from <code>ssh</code> show that <code>mod_sftp</code>
+refused the shell access requests.
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-04-21 18:15:11 $</i><br>
+Last Updated: <i>$Date: 2010-06-21 15:00:36 $</i><br>
 
 <br><hr>
 
