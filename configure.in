@@ -604,13 +604,6 @@ AC_ARG_ENABLE(dso,
     fi
   ])
 
-dnl getgrouplist(3) support
-AC_ARG_ENABLE(getgrouplist,
-  [AC_HELP_STRING(
-    [--disable-getgrouplist],
-    [disable use of getgrouplist(3) when available (default=no)])
-  ])
-
 dnl ident (RFC1413) support
 AC_ARG_ENABLE(ident,
   [AC_HELP_STRING(
@@ -1525,7 +1518,7 @@ AC_TRY_LINK(
   ]
 )
 
-AC_CHECK_FUNCS(getcwd getenv getgrset gethostbyname2 gethostname getnameinfo)
+AC_CHECK_FUNCS(getcwd getenv getgrouplist getgrset gethostbyname2 gethostname getnameinfo)
 AC_CHECK_FUNCS(gettimeofday hstrerror inet_aton inet_ntop inet_pton)
 AC_CHECK_FUNCS(loginrestrictions)
 AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp mlock mlockall munlock munlockall)
@@ -1557,11 +1550,6 @@ if test x"$enable_ctrls" = xyes; then
   AC_CHECK_FUNCS(getpeereid getpeerucred)
   ac_static_modules="$ac_static_modules mod_ctrls.o"
   ac_build_static_modules="$ac_build_static_modules modules/mod_ctrls.o"
-fi
-
-dnl getgrouplist(3) check
-if test x"$enable_getgrouplist" != xno; then
-  AC_CHECK_FUNCS(getgrouplist)
 fi
 
 dnl Memcache
