@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.41 2010-06-21 17:33:12 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.42 2010-06-22 16:09:14 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -1526,6 +1526,24 @@ The idea is to use the <code>&lt;Limit LOGIN&gt;</code> to deny all logins to
 any/all virtual host sections <i>except</i> for the <code>mod_sftp</code>
 section.
 
+<p><a name="SFTPAuthorizedKeyTooLong">
+<font color=red>Question</font>: I followed the instructions to convert
+my authorized keys from OpenSSH to RFC4716 format, yet I see the following
+error in my <code>SFTPLog</code>:
+<pre>
+  mod_sftp/0.9.7[31050]: line too long (74) on line 1 of '<i>authorized_keys</i>'
+</pre>
+What can I do to fix this?<br><br>
+<font color=blue>Answer</font>: OpenSSH's <code>ssh-keygen</code> tool had a
+bug where the RFC4716 keys it would generate might not comply to the RFC; see
+the <a href="https://bugzilla.mindrot.org/show_bug.cgi?id=1630">OpenSSH bug</a>
+filed for this issue.
+
+<p>
+Chances are that the offending line in the RFC4716 key is a "Comment: " header
+that is too long.  Simply delete that "Comment: " line; the
+<code>mod_sftp</code> ignores this header.
+
 <p><a name="SFTPPCBCModeAttacks">
 <font color=red>Question</font>: Is it true that using CBC mode ciphers in
 SSH is insecure?<br>
@@ -1666,7 +1684,7 @@ new file.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-06-21 17:33:12 $</i><br>
+Last Updated: <i>$Date: 2010-06-22 16:09:14 $</i><br>
 
 <br><hr>
 
