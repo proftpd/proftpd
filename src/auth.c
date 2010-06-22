@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.81 2010-05-25 14:38:50 castaglia Exp $
+ * $Id: auth.c,v 1.82 2010-06-22 21:39:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -115,6 +115,10 @@ static void uidcache_create(void) {
 }
 
 static void uidcache_add(uid_t uid, const char *name) {
+  if (!(auth_caching & PR_AUTH_CACHE_FL_UID2NAME)) {
+    return;
+  }
+
   uidcache_create();
 
   if (uid_tab) {
@@ -179,6 +183,10 @@ static void gidcache_create(void) {
 }
 
 static void gidcache_add(gid_t gid, const char *name) {
+  if (!(auth_caching & PR_AUTH_CACHE_FL_GID2NAME)) {
+    return;
+  }
+
   gidcache_create();
 
   if (gid_tab) {
@@ -865,7 +873,8 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
 
   uidcache_create();
 
-  if (uid_tab) {
+  if ((auth_caching & PR_AUTH_CACHE_FL_UID2NAME) &&
+      uid_tab) {
     void *v = NULL;
 
     v = pr_table_kget(uid_tab, (const void *) &uid, sizeof(uid_t), NULL);
@@ -923,7 +932,8 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
 
   gidcache_create();
 
-  if (gid_tab) {
+  if ((auth_caching & PR_AUTH_CACHE_FL_GID2NAME) &&
+       gid_tab) {
     void *v = NULL;
  
     v = pr_table_kget(gid_tab, (const void *) &gid, sizeof(gid_t), NULL);
