@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.42 2009-10-14 18:49:31 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.43 2010-06-22 22:01:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -125,6 +125,7 @@ extern unsigned char persistent_passwd;
 
 /* mod_auth_unix option flags */
 #define AUTH_UNIX_OPT_AIX_NO_RLOGIN		0x0001
+#define AUTH_UNIX_OPT_NO_GETGROUPLIST		0x0002
 
 static unsigned long auth_unix_opts = 0UL;
 
@@ -919,6 +920,13 @@ MODRET pw_getgroups(cmd_rec *cmd) {
 # endif
 #endif /* !HAVE_GETGROUPLIST */
 
+  /* Use of getgrouplist(3) might have been disabled via the "noGetgrouplist"
+   * AuthUnixOption as well.
+   */
+  if (auth_unix_opts & AUTH_UNIX_OPT_NO_GETGROUPLIST) {
+    use_getgrouplist = FALSE;
+  }
+
   name = (char *) cmd->argv[0];
 
   /* Check for NULL values. */
@@ -1090,6 +1098,9 @@ MODRET set_authunixoptions(cmd_rec *cmd) {
   for (i = 1; i < cmd->argc; i++) {
     if (strcmp(cmd->argv[i], "aixNoRLogin") == 0) {
       opts |= AUTH_UNIX_OPT_AIX_NO_RLOGIN;
+
+    } else if (strcmp(cmd->argv[i], "noGetgrouplist") == 0) {
+      opts |= AUTH_UNIX_OPT_NO_GETGROUPLIST;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown AuthUnixOption '",

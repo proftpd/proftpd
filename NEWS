@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1211 2010-06-22 16:36:42 castaglia Exp $
+$Id: NEWS,v 1.1212 2010-06-22 22:01:42 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -111,6 +111,8 @@ CVS
 - Bug 3396 - Support -c and -u LIST options.
 - Bug 3395 - Provide LogFormat variable %d for non-directory commands.
 - Bug 3476 - LIST/NLST of path starting with "-" fails.
+- Bug 3475 - Add new 'noGetgrouplist' AuthUnixOption to work around buggy
+  libc code.
 
 1.3.3 - Released 24-Feb-2010
 --------------------------------
