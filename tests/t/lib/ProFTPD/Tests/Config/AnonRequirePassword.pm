@@ -34,10 +34,7 @@ sub new {
 }
 
 sub list_tests {
-#  return testsuite_get_runnable_tests($TESTS);
-  return qw(
-    anon_require_password_on
-  );
+  return testsuite_get_runnable_tests($TESTS);
 }
 
 sub set_up {
