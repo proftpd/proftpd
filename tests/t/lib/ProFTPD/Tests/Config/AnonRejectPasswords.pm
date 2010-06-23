@@ -55,7 +55,6 @@ sub tear_down {
 }
 
 sub anon_reject_passwords_ok {
-$ENV{TEST_VERBOSE}=1;
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
