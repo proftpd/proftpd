@@ -828,7 +828,7 @@ sub rest_2gb_last_byte {
   unlink($log_file);
 }
 
-sub rest_2gb_last_byte {
+sub rest_4gb_last_byte {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
