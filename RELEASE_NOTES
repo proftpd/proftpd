@@ -10,13 +10,38 @@ ChangeLog files.
 1.3.4rc1
 ---------
 
-  + Added Japanese translation.
+  + Added Japanese translation
+
+  + Many mod_sftp bugfixes
+
+  + Automatic detection of MySQL, Postgres library and header file locations
 
   + New modules:
 
     mod_copy
+
+      This module provides the SITE CPFR and SITE CPTO commands, for
+      allowing a client to copy files from one location to another on the
+      server, without requiring downloads/uploads.  See
+      doc/contrib/mod_copy.html for details.
+
     mod_deflate
+
+      This module provides support for MODE Z, which uses compression to
+      reduce the number of bytes required for data transfers and directory
+      lists.  See doc/contrib/mod_deflate.html for more information.
+
     mod_qos
+
+      This module allows administrators to set networking-specific
+      "Quality of Service" (QoS) bits on the packets used by the server.
+      More information can be found in doc/contrib/mod_qos.html
+
+  + New ListOptions:
+
+      The mod_ls module now supports the -c and -u options for the LIST
+      command.  The ListOptions directive handles these options as well.
+      See the ls(1) man page for more details on these options.
 
   + Changed configuration directives:
 
@@ -25,5 +50,10 @@ ChangeLog files.
       The BanOnEvent directive of the mod_ban module now supports
       LoginRate events.
 
+  + Deprecated configuration directives:
 
-Last Updated: $Date: 2010-03-10 19:20:43 $
+    DisplayGoAway
+
+      Support for this directive has been removed.
+
+Last Updated: $Date: 2010-06-28 17:46:43 $
