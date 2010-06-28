@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.84 2010-06-19 19:09:59 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.85 2010-06-28 01:36:48 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -856,7 +856,7 @@ static unsigned char
 pr_ldap_ssh_pubkey_lookup(pool *p, char *filter_template, const char *replace,
                           char *basedn)
 {
-  char *filter = NULL, *attrs[] = {ldap_attr_ssh_pubkey, NULL};
+  char *filter, *attrs[] = {ldap_attr_ssh_pubkey, NULL};
   int num_keys, i;
   LDAPMessage *result, *e;
   LDAP_VALUE_T **values;
@@ -866,11 +866,9 @@ pr_ldap_ssh_pubkey_lookup(pool *p, char *filter_template, const char *replace,
     return FALSE;
   }
 
-  if (filter_template) {
-    filter = pr_ldap_interpolate_filter(p, filter_template, replace);
-    if (!filter) {
-      return FALSE;
-    }
+  filter = pr_ldap_interpolate_filter(p, filter_template, replace);
+  if (!filter) {
+    return FALSE;
   }
 
   result = pr_ldap_search(basedn, filter, attrs, 2);
@@ -1007,6 +1005,10 @@ handle_ldap_quota_lookup(cmd_rec *cmd)
 MODRET
 handle_ldap_ssh_pubkey_lookup(cmd_rec *cmd)
 {
+  if (!ldap_doauth) {
+    return PR_DECLINED(cmd);
+  }
+
   if (cached_ssh_pubkeys == NULL ||
       strcasecmp(((char **)cached_ssh_pubkeys->elts)[0], cmd->argv[0]) != 0)
   {
