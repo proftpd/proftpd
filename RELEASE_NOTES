@@ -29,6 +29,13 @@ ChangeLog files.
       reduce the number of bytes required for data transfers and directory
       lists.  See doc/contrib/mod_deflate.html for more information.
 
+    mod_ifversion
+
+      This module allows for version-specific configuration sections of
+      the proftpd config file.  It is useful for using the same proftpd
+      config across multiple servers where different proftpd versions may
+      be in use.  See doc/contrib/mod_ifversion.html for examples.
+
     mod_qos
 
       This module allows administrators to set networking-specific
@@ -54,4 +61,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2010-06-28 17:53:14 $
+Last Updated: $Date: 2010-06-29 14:55:37 $
