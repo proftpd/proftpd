@@ -193,6 +193,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_exec)],
     },
 
+    't/modules/mod_ifversion.t' => {
+      order => ++$order,
+      test_class => [qw(mod_ifversion)],
+    },
+
     't/modules/mod_lang.t' => {
       order => ++$order,
       test_class => [qw(mod_lang)],
