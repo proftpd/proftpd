@@ -1141,7 +1141,8 @@ sub tls_list_fails_tls_required_by_dir_bug2178 {
         die("Can't login: " . $client->last_message());
       }
 
-      my $res = $client->list();
+      my $res;
+      eval { $res = $client->list() };
       if (!$@ &&
           defined($res)) {
         die("LIST succeeded unexpectedly");
@@ -1395,6 +1396,8 @@ sub tls_list_fails_tls_required_by_ftpaccess_bug2178 {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 directory:20 ftpaccess:20',
 
     AllowOverride => 'on',
     AuthUserFile => $auth_user_file,
@@ -1462,11 +1465,12 @@ sub tls_list_fails_tls_required_by_ftpaccess_bug2178 {
 
       $client->cwd('subdir');
 
-      my $res = $client->list();
-      if (!$@ &&
-          defined($res)) {
+      my $res;
+      eval { $res = $client->list() };
+      unless ($@) {
         die("LIST succeeded unexpectedly");
       }
+
       my $resp_msg = $client->last_message();
 
       my $expected = '550 SSL/TLS required on the data channel';
