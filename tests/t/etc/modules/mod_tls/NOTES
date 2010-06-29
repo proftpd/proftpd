@@ -1,0 +1,18 @@
+To create the ca-crl.pem file in this directory, I used the following
+OpenSSL command:
+
+  # openssl ca -config ./etc/cert-tool.conf -revoke server-cert.pem \
+    -cert ca-cert.pem -keyfile ca-cert.pem -crl_reason keyCompromise \
+    -crldays 3650
+  # openssl ca -gencrl -cert ca-cert.pem -keyfile ca-cert.pem \
+    -out ca-crl.pem 
+
+To create the .p12 (PKCS#12) file in this directory, I used the following
+OpenSSL command:
+
+  # openssl pkcs12 -export -in server-cert.cert.pem \
+    -inkey server-cert.key.pem \
+    -out server-cert.p12 \
+    -name "ProFTPD PKCS12"
+
+When prompted for a password, leave it blank (i.e. just hit enter).
