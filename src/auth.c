@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.82 2010-06-22 21:39:34 castaglia Exp $
+ * $Id: auth.c,v 1.83 2010-06-30 15:57:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -280,18 +280,29 @@ static modret_t *dispatch_auth(cmd_rec *cmd, char *match, module **m) {
 
     mr = pr_module_call(iter_tab->m, iter_tab->handler, cmd);
 
-    if (iter_tab->auth_flags & PR_AUTH_FL_REQUIRED)
+    /* Return a pointer, if requested, to the module which answered the
+     * auth request.  This is used, for example, by auth_getpwnam() for
+     * associating the answering auth module with the data looked up.
+     */
+
+    if (iter_tab->auth_flags & PR_AUTH_FL_REQUIRED) {
+      pr_trace_msg(trace_channel, 6,
+        "\"%s\" response from module mod_%s is authoritative", match,
+        iter_tab->m->name);
+
+      if (m) {
+        *m = iter_tab->m;
+      }
+
       break;
+    }
 
     if (MODRET_ISHANDLED(mr) ||
         MODRET_ISERROR(mr)) {
 
-      /* Return a pointer, if requested, to the module which answered the
-       * auth request.  This is used, for example, by auth_getpwnam() for
-       * associating the answering auth module with the data looked up.
-       */
-      if (m)
+      if (m) {
         *m = iter_tab->m;
+      }
 
       break;
     }
