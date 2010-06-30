@@ -94,6 +94,7 @@ if (scalar(@ARGV) > 0) {
     t/config/anonrequirepassword.t
     t/config/authaliasonly.t
     t/config/authgroupfile.t
+    t/config/authorder.t
     t/config/authusingalias.t
     t/config/classes.t
     t/config/createhome.t
