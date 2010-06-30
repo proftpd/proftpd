@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.380 2010-04-20 03:44:04 castaglia Exp $
+ * $Id: mod_core.c,v 1.381 2010-06-30 15:55:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4960,7 +4960,6 @@ static int core_sess_init(void) {
       m = pr_module_get(modulev[i]);
 
       if (m) {
-
         if (m->authtable) {
           authtable *authtab;
 
@@ -4974,20 +4973,23 @@ static int core_sess_init(void) {
           for (authtab = m->authtable; authtab->name; authtab++) {
             authtab->m = m;
 
-            if (required)
+            if (required) {
               authtab->auth_flags |= PR_AUTH_FL_REQUIRED;
+            }
 
             pr_stash_add_symbol(PR_SYM_AUTH, authtab);
           }
 
-        } else
+        } else {
           pr_log_debug(DEBUG0, "AuthOrder: warning: module '%s' is not a valid "
             "auth module (no auth handlers), authentication may fail",
             modulev[i]);
+        }
 
-      } else
+      } else {
         pr_log_debug(DEBUG0, "AuthOrder: warning: module '%s' not loaded",
           modulev[i]);
+      }
     }
 
     /* NOTE: the master conf/cmd/auth tables/arrays should ideally be
