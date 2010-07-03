@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.61 2010-07-03 16:36:04 castaglia Exp $
+ * $Id: proftpd.h,v 1.62 2010-07-03 17:00:30 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -255,7 +255,7 @@ extern char MultilineRFC2228;
     (code); \
     local_errno = errno; \
     (void) gettimeofday(&after, NULL); \
-    (void) pr_trace_msg("timing", 9, "code at %s:%d took %lu usec", __FILE__, __LINE__ -1, ((unsigned long) ((after.tv_sec * 10000) + after.tv_usec) - ((before.tv_sec * 10000) + before.tv_usec))); \
+    (void) pr_trace_msg("timing", 9, "code at %s:%d took %lu usec", __FILE__, __LINE__, ((unsigned long) ((after.tv_sec * 10000) + after.tv_usec) - ((before.tv_sec * 10000) + before.tv_usec))); \
     errno = local_errno; \
   }
 #else

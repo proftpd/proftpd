@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.54 2010-03-22 23:21:24 castaglia Exp $
+ * $Id: scoreboard.c,v 1.55 2010-07-03 17:00:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -466,7 +466,8 @@ int pr_open_scoreboard(int flags) {
     }
 
     /* Write-lock the scoreboard file. */
-    if (wlock_scoreboard() < 0)
+    PR_DEVEL_CLOCK(res = wlock_scoreboard());
+    if (res < 0)
       return -1;
 
     pr_trace_msg(trace_channel, 7, "writing scoreboard header");

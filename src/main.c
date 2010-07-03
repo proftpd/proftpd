@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.403 2010-07-03 06:19:57 castaglia Exp $
+ * $Id: main.c,v 1.404 2010-07-03 17:00:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1562,7 +1562,7 @@ static void daemon_loop(void) {
 
     running = 1;
 
-    i = select(maxfd + 1, &listenfds, NULL, NULL, &tv);
+    PR_DEVEL_CLOCK(i = select(maxfd + 1, &listenfds, NULL, NULL, &tv));
     if (i < 0) {
       xerrno = errno;
     }
@@ -1671,7 +1671,7 @@ static void daemon_loop(void) {
 
       /* Fork off a child to handle the connection. */
       } else {
-        fork_server(fd, listen_conn, FALSE);
+        PR_DEVEL_CLOCK(fork_server(fd, listen_conn, FALSE));
       }
     }
 #ifdef PR_DEVEL_NO_DAEMON
