@@ -821,6 +821,10 @@ AC_ARG_ENABLE(devel,
         pr_devel_cflags="-DPR_DEVEL_STACK_TRACE $pr_devel_cflags"
       fi
 
+      if test `echo $enableval | grep -c timing` = "1"; then
+        pr_devel_cflags="-DPR_DEVEL_TIMING $pr_devel_cflags"
+      fi
+
     else
       devel="no"
     fi

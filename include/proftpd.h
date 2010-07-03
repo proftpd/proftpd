@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.60 2009-09-02 17:58:53 castaglia Exp $
+ * $Id: proftpd.h,v 1.61 2010-07-03 16:36:04 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -244,8 +244,25 @@ extern char MultilineRFC2228;
 #define PR_TIMER_STALLED	4
 #define PR_TIMER_SESSION	5
 
-/* Misc Prototypes */
+/* Developer code */
 
+#ifdef PR_DEVEL_TIMING
+# define PR_DEVEL_CLOCK(code) \
+  { \
+    int local_errno; \
+    struct timeval before, after; \
+    (void) gettimeofday(&before, NULL); \
+    (code); \
+    local_errno = errno; \
+    (void) gettimeofday(&after, NULL); \
+    (void) pr_trace_msg("timing", 9, "code at %s:%d took %lu usec", __FILE__, __LINE__ -1, ((unsigned long) ((after.tv_sec * 10000) + after.tv_usec) - ((before.tv_sec * 10000) + before.tv_usec))); \
+    errno = local_errno; \
+  }
+#else
+# define PR_DEVEL_CLOCK(code)   (code)
+#endif /* PR_DEVEL_TIMING */
+
+/* Misc Prototypes */
 void end_login(int);
 void pr_signals_handle(void);
 void session_exit(int, void *, int, void *);
