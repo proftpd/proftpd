@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.62 2010-07-03 17:00:30 castaglia Exp $
+ * $Id: proftpd.h,v 1.63 2010-07-03 18:57:41 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -250,12 +250,16 @@ extern char MultilineRFC2228;
 # define PR_DEVEL_CLOCK(code) \
   { \
     int local_errno; \
-    struct timeval before, after; \
+    struct timeval before, after, since; \
+    timerclear(&before); \
+    timerclear(&after); \
+    timerclear(&since); \
     (void) gettimeofday(&before, NULL); \
     (code); \
     local_errno = errno; \
     (void) gettimeofday(&after, NULL); \
-    (void) pr_trace_msg("timing", 9, "code at %s:%d took %lu usec", __FILE__, __LINE__, ((unsigned long) ((after.tv_sec * 10000) + after.tv_usec) - ((before.tv_sec * 10000) + before.tv_usec))); \
+    timersub(&after, &before, &since); \
+    (void) pr_trace_msg("timing", 9, "code at %s:%d took %lu sec, %lu usec", __FILE__, __LINE__, (unsigned long) since.tv_sec, (unsigned long) since.tv_usec); \
     errno = local_errno; \
   }
 #else
