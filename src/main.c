@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.402 2010-06-21 20:31:49 castaglia Exp $
+ * $Id: main.c,v 1.403 2010-07-03 06:19:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2185,9 +2185,11 @@ void set_daemon_rlimits(void) {
 
     PRIVS_ROOT
     if (setrlimit(RLIMIT_CORE, &rlim) < 0) {
+      int xerrno = errno;
+
       PRIVS_RELINQUISH
       pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_CORE): %s",
-        strerror(errno));
+        strerror(xerrno));
       return;
     }
     PRIVS_RELINQUISH
@@ -2204,9 +2206,11 @@ void set_daemon_rlimits(void) {
 
       PRIVS_ROOT
       if (setrlimit(RLIMIT_CPU, cpu_rlimit) < 0) {
+        int xerrno = errno;
+
         PRIVS_RELINQUISH
         pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_CPU): %s",
-          strerror(errno));
+          strerror(xerrno));
         return;
       }
       PRIVS_RELINQUISH
@@ -2229,23 +2233,29 @@ void set_daemon_rlimits(void) {
       PRIVS_ROOT
 #  if defined(RLIMIT_DATA)
       if (setrlimit(RLIMIT_DATA, memory_rlimit) < 0) {
+        int xerrno = errno;
+
         PRIVS_RELINQUISH
         pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_DATA): %s",
-          strerror(errno));
+          strerror(xerrno));
         return;
       }
 #  elif defined(RLIMIT_AS)
       if (setrlimit(RLIMIT_AS, memory_rlimit) < 0) {
+        int xerrno = errno;
+
         PRIVS_RELINQUISH
         pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_AS): %s",
-          strerror(errno));
+          strerror(xerrno));
         return;
       }
 #  elif defined(RLIMIT_VMEM)
       if (setrlimit(RLIMIT_VMEM, memory_rlimit) < 0) {
+        int xerrno = errno;
+
         PRIVS_RELINQUISH
         pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_VMEM): %s",
-          strerror(errno));
+          strerror(xerrno));
         return;
       }
 #  endif
@@ -2269,16 +2279,20 @@ void set_daemon_rlimits(void) {
       PRIVS_ROOT
 #  if defined(RLIMIT_NOFILE)
       if (setrlimit(RLIMIT_NOFILE, nofile_rlimit) < 0) {
+        int xerrno = errno;
+
         PRIVS_RELINQUISH
         pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_NOFILE): %s",
-          strerror(errno));
+          strerror(xerrno));
         return;
       }
 #  elif defined(RLIMIT_OFILE)
       if (setrlimit(RLIMIT_OFILE, nofile_rlimit) < 0) {
+        int xerrno = errno;
+
         PRIVS_RELINQUISH
         pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_OFILE): %s",
-          strerror(errno));
+          strerror(xerrno));
         return;
       }
 #  endif
@@ -2306,9 +2320,11 @@ void set_session_rlimits(void) {
 
       PRIVS_ROOT
       if (setrlimit(RLIMIT_CPU, cpu_rlimit) < 0) {
+        int xerrno = errno;
+
         PRIVS_RELINQUISH
         pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_CPU): %s",
-          strerror(errno));
+          strerror(xerrno));
         return;
       }
       PRIVS_RELINQUISH
@@ -2331,23 +2347,29 @@ void set_session_rlimits(void) {
       PRIVS_ROOT
 #  if defined(RLIMIT_DATA)
       if (setrlimit(RLIMIT_DATA, memory_rlimit) < 0) {
+        int xerrno = errno;
+
         PRIVS_RELINQUISH
         pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_DATA): %s",
-          strerror(errno));
+          strerror(xerrno));
         return;
       }
 #  elif defined(RLIMIT_AS)
       if (setrlimit(RLIMIT_AS, memory_rlimit) < 0) {
+        int xerrno = errno;
+
         PRIVS_RELINQUISH
         pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_AS): %s",
-          strerror(errno));
+          strerror(xerrno));
         return;
       }
 #  elif defined(RLIMIT_VMEM)
       if (setrlimit(RLIMIT_VMEM, memory_rlimit) < 0) {
+        int xerrno = errno;
+
         PRIVS_RELINQUISH
         pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_VMEM): %s",
-          strerror(errno));
+          strerror(xerrno));
         return;
       }
 #  endif
@@ -2371,16 +2393,20 @@ void set_session_rlimits(void) {
       PRIVS_ROOT
 #  if defined(RLIMIT_NOFILE)
       if (setrlimit(RLIMIT_NOFILE, nofile_rlimit) < 0) {
+        int xerrno = errno;
+
         PRIVS_RELINQUISH
         pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_NOFILE): %s",
-          strerror(errno));
+          strerror(xerrno));
         return;
       }
 #  elif defined(RLIMIT_OFILE)
       if (setrlimit(RLIMIT_OFILE, nofile_rlimit) < 0) {
+        int xerrno = errno;
+
         PRIVS_RELINQUISH
         pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_OFILE): %s",
-          strerror(errno));
+          strerror(xerrno));
         return;
       }
 #  endif /* defined RLIMIT_OFILE */

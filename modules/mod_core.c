@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.381 2010-06-30 15:55:58 castaglia Exp $
+ * $Id: mod_core.c,v 1.382 2010-07-03 06:19:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1539,27 +1539,28 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
 
     /* Retrieve the current values */
 #if defined(RLIMIT_NOFILE)
-    if (getrlimit(RLIMIT_NOFILE, rlim) < 0)
+    if (getrlimit(RLIMIT_NOFILE, rlim) < 0) {
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_NOFILE): %s",
         strerror(errno));
+    }
 #elif defined(RLIMIT_OFILE)
-    if (getrlimit(RLIMIT_OFILE, rlim) < 0)
+    if (getrlimit(RLIMIT_OFILE, rlim) < 0) {
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_OFILE): %s",
         strerror(errno));
+    }
 #endif
 
     if (strcasecmp("max", cmd->argv[2]) == 0) {
       rlim->rlim_cur = sysconf(_SC_OPEN_MAX);
 
     } else {
+      /* Check that the non-max argument is a number, and error out if not. */
+      char *ptr = NULL;
+      long num = strtol(cmd->argv[2], &ptr, 10);
 
-      /* Check that the non-max argument is a number, and error out if not.
-       */
-      char *tmp = NULL;
-      long num = strtol(cmd->argv[2], &tmp, 10);
-
-      if (tmp && *tmp)
+      if (ptr && *ptr) {
         CONF_ERROR(cmd, "badly formatted argument");
+      }
 
       rlim->rlim_cur = num;
     }
@@ -1570,17 +1571,20 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
         rlim->rlim_max = sysconf(_SC_OPEN_MAX);
 
       } else {
+        /* Check that the non-max argument is a number, and error out if not. */
+        char *ptr = NULL;
+        long num = strtol(cmd->argv[3], &ptr, 10);
 
-        /* Check that the non-max argument is a number, and error out if not.
-         */
-        char *tmp = NULL;
-        long num = strtol(cmd->argv[3], &tmp, 10);
-
-        if (tmp && *tmp)
+        if (ptr && *ptr) {
           CONF_ERROR(cmd, "badly formatted argument");
+        }
 
         rlim->rlim_max = num;
       }
+
+    } else {
+      /* Assume that the hard limit should be the same as the soft limit. */
+      rlim->rlim_max = rlim->rlim_cur;
     }
 
     c = add_config_param(cmd->argv[0], 2, (void *) rlim, NULL);
@@ -1594,27 +1598,28 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
 
     /* Retrieve the current values */
 #if defined(RLIMIT_NOFILE)
-    if (getrlimit(RLIMIT_NOFILE, rlim) < 0)
+    if (getrlimit(RLIMIT_NOFILE, rlim) < 0) {
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_NOFILE): %s",
         strerror(errno));
+    }
 #elif defined(RLIMIT_OFILE)
-    if (getrlimit(RLIMIT_OFILE, rlim) < 0)
+    if (getrlimit(RLIMIT_OFILE, rlim) < 0) {
       pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_OFILE): %s",
         strerror(errno));
+    }
 #endif
 
     if (strcasecmp("max", cmd->argv[1]) == 0) {
       rlim->rlim_cur = sysconf(_SC_OPEN_MAX);
 
     } else {
+      /* Check that the non-max argument is a number, and error out if not. */
+      char *ptr = NULL;
+      long num = strtol(cmd->argv[1], &ptr, 10);
 
-      /* Check that the non-max argument is a number, and error out if not.
-       */
-      char *tmp = NULL;
-      long num = strtol(cmd->argv[1], &tmp, 10);
-
-      if (tmp && *tmp)
+      if (ptr && *ptr) {
         CONF_ERROR(cmd, "badly formatted argument");
+      }
 
       rlim->rlim_cur = num;
     }
@@ -1625,17 +1630,20 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
         rlim->rlim_max = sysconf(_SC_OPEN_MAX);
 
       } else {
+        /* Check that the non-max argument is a number, and error out if not. */
+        char *ptr = NULL;
+        long num = strtol(cmd->argv[2], &ptr, 10);
 
-        /* Check that the non-max argument is a number, and error out if not.
-         */
-        char *tmp = NULL;
-        long num = strtol(cmd->argv[2], &tmp, 10);
-
-        if (tmp && *tmp)
+        if (ptr && *ptr) {
           CONF_ERROR(cmd, "badly formatted argument");
+        }
 
         rlim->rlim_max = num;
       }
+
+    } else {
+      /* Assume that the hard limit should be the same as the soft limit. */
+      rlim->rlim_max = rlim->rlim_cur;
     }
 
     add_config_param(cmd->argv[0], 2, (void *) rlim, NULL);
