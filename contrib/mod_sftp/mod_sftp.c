@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.34 2010-04-20 16:49:05 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.35 2010-07-05 17:25:03 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -77,6 +77,7 @@ static int sftp_get_client_version(conn_t *conn) {
 
   while (TRUE) {
     register unsigned int i;
+    int bad_proto = FALSE;
 
     pr_signals_handle();
 
@@ -120,11 +121,24 @@ static int sftp_get_client_version(conn_t *conn) {
      * 4.2 does not specify what should happen if the client sends data
      * other than the proper version string initially.
      *
+     * If we have been configured for compatibility with old protocol
+     * implementations, check for "SSH-1.99-" as well.
+     *
      * OpenSSH simply disconnects the client after saying "Protocol mismatch"
-     * if the client's version string does not begin with "SSH-2.0-".  Works
-     * for me.
+     * if the client's version string does not begin with "SSH-2.0-"
+     * (or "SSH-1.99-").  Works for me.
      */
     if (strncmp(buf, "SSH-2.0-", 8) != 0) {
+      bad_proto = TRUE;
+
+      if (sftp_opts & SFTP_OPT_OLD_PROTO_COMPAT) {
+        if (strncmp(buf, "SSH-1.99-", 9) == 0) {
+          bad_proto = FALSE;
+        }
+      } 
+    }
+
+    if (bad_proto) {
       const char *errstr = "Protocol mismatch.\n";
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1168,6 +1182,14 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "IgnoreSCPUploadPerms") == 0) {
       opts |= SFTP_OPT_IGNORE_SCP_UPLOAD_PERMS;
 
+    } else if (strcmp(cmd->argv[i], "OldProtocolCompat") == 0) {
+      opts |= SFTP_OPT_OLD_PROTO_COMPAT;
+
+      /* This option also automatically enables PessimisticKexint,
+       * as per the comments in RFC4253, Section 5.1.
+       */
+      opts |= SFTP_OPT_PESSIMISTIC_KEXINIT;
+ 
     } else if (strcmp(cmd->argv[i], "PessimisticKexinit") == 0) {
       opts |= SFTP_OPT_PESSIMISTIC_KEXINIT;
 

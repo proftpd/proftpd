@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: interop.c,v 1.7 2010-04-20 03:20:49 castaglia Exp $
+ * $Id: interop.c,v 1.8 2010-07-05 17:25:03 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -111,7 +111,8 @@ static struct sftp_version_pattern known_versions[] = {
     "^1\\.2\\.20.*|"
     "^1\\.2\\.21.*|"
     "^1\\.2\\.22.*|"
-    "^1\\.3\\.2.*",		SFTP_SSH2_FEAT_IGNORE_MSG,		NULL },
+    "^1\\.3\\.2.*|"		
+    "^3\\.2\\.9.*",		SFTP_SSH2_FEAT_IGNORE_MSG,		NULL },
 
   { ".*SSH_Version_Mapper.*",	SFTP_SSH2_FEAT_SCANNER,			NULL },
 
@@ -158,8 +159,15 @@ int sftp_interop_handle_version(const char *client_version) {
     }
   }
 
-  /* Skip past the leading "SSH-2.0-" to get the actual client info. */
-  version = client_version + strlen("SSH-2.0-");
+  /* Skip past the leading "SSH-2.0-" (or "SSH-1.99-") to get the actual
+   * client info.
+   */
+  if (strncmp(client_version, "SSH-2.0-", 8) == 0) {
+    version = client_version + 8;
+
+  } else if (strncmp(client_version, "SSH-1.99-", 9) == 0) {
+    version = client_version + 9;
+  }
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "handling connection from SSH2 client '%s'", version);
@@ -178,14 +186,18 @@ int sftp_interop_handle_version(const char *client_version) {
 
     res = regexec(known_versions[i].preg, version, 0, NULL, 0);
     if (res == 0) {
+      pr_trace_msg(trace_channel, 18,
+        "client version '%s' matched against regex '%s'", version,
+        known_versions[i].pattern);
+
       /* We have a match. */
       interop_flags &= ~(known_versions[i].interop_flags);
 
-      if (known_versions[i].interop_flags & SFTP_SSH2_FEAT_PROBE) {
+      if (known_versions[i].interop_flags == SFTP_SSH2_FEAT_PROBE) {
         is_probe = TRUE;
       }
 
-      if (known_versions[i].interop_flags & SFTP_SSH2_FEAT_SCANNER) {
+      if (known_versions[i].interop_flags == SFTP_SSH2_FEAT_SCANNER) {
         is_scan = TRUE;
       }
 
