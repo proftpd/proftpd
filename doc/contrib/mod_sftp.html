@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.42 2010-06-22 16:09:14 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.43 2010-07-05 17:26:05 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -752,6 +752,18 @@ The currently implemented options are:
     SCP client, use this option.
 
   <p>
+  <li><code>OldProtocolCompat</code><br>
+    <p>
+    Older clients identity their protocol versions as "1.99", rather than as
+    "2.0".  By default, <code>mod_sftp</code> will refuse to handle connections
+    from such clients.  To enable compatibility with these clients (which
+    tend to be derived from ssh.com/Tectia code), use this option.
+
+    <p>
+    Note that this option automatically enables the
+    <code>PessimisticKexinit</code> SFTPOption as well.
+
+  <p>
   <li><code>PessimisticKexinit</code><br>
     <p>
     As described <a href="#SFTPTelnetBanner">here</a>, the <code>mod_sftp</code>
@@ -1169,6 +1181,22 @@ include:
 </ul>
 This <a href="#SFTPBadWindowSize">FAQ</a> describes the configuration to use
 for such clients.
+
+<p>
+<i>SSH Protocol Version</i><br>
+If you are using an old ssh.com client, or perhaps a client which derives
+from the ssh.com (or Tectia) code, you may see the following error in the
+<code>SFTPLog</code> when trying to connect to <code>mod_sftp</code>:
+<pre>
+  Bad protocol version 'SSH-1.99-3.2.9.1 SSH Secure Shell (non-commercial)' from <i>x.x.x.x</i>
+</pre>
+To support such clients in <code>mod_sftp</code>, use
+<a href="#SFTPOptions"><code>SFTPOptions</code></a> to enable compatibility with
+older protocol versions, <i>e.g.</i>:
+<pre>
+  <font color=green># Support old ssh.com/Tectia clients</font>
+  SFTPOptions OldProtocolCompat
+</pre>
 
 <p> 
 <i>SFTP Protocol Versions</i><br>
@@ -1684,7 +1712,7 @@ new file.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-06-22 16:09:14 $</i><br>
+Last Updated: <i>$Date: 2010-07-05 17:26:05 $</i><br>
 
 <br><hr>
 
