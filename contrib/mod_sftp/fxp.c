@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.105 2010-06-15 16:01:22 castaglia Exp $
+ * $Id: fxp.c,v 1.106 2010-07-08 16:24:58 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -6844,8 +6844,12 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
   /* Change into the directory being read, so that ".", "..", and relative
    * paths (e.g. for symlinks) get resolved properly.
+   *
+   * We need to dup the string returned by pr_fs_getvwd(), since it returns
+   * a pointer to a static string which is changed by the call we make
+   * to pr_fsio_chdir().
    */
-  vwd = pr_fs_getvwd();
+  vwd = pstrdup(fxp->pool, pr_fs_getvwd());
 
   res = pr_fsio_chdir(fxh->dir, FALSE);
   if (res < 0) {

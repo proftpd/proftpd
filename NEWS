@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1216 2010-07-05 17:25:03 castaglia Exp $
+$Id: NEWS,v 1.1217 2010-07-08 16:24:57 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -117,6 +117,7 @@ CVS
   under load.
 - Bug 3479 - Support anonymous username variable in mod_exec.
 - Bug 3480 - mod_sftp does not interoperate with old ssh.com/Tectia clients.
+- Bug 3481 - Problem with SFTP directory listings.
 
 1.3.3 - Released 24-Feb-2010
 --------------------------------
