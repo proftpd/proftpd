@@ -25,14 +25,14 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.41 2010-03-09 02:38:53 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.42 2010-07-13 21:21:51 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_ctrls.h"
 
-#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.6"
+#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.7"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030001
@@ -133,19 +133,31 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
   if (strcmp(reqargv[0], "level") == 0) {
     int level = 0;
 
-    if (reqargc != 2) {
-      pr_ctrls_add_response(ctrl, "debug: missing required parameters");
+    if (reqargc != 1 &&
+        reqargc != 2) {
+      pr_ctrls_add_response(ctrl, "debug: wrong number of parameters");
       return -1;
     }
 
-    if ((level = atoi(reqargv[1])) < 0) {
-      pr_ctrls_add_response(ctrl, "debug level must not be negative");
-      return -1; 
-    }
+    if (reqargc == 1) {
+      /* The user is requesting the current debug level.  Easy enough. */
+      level = pr_log_setdebuglevel(0);
+      (void) pr_log_setdebuglevel(level);
+
+      pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "debug: level set to %d", level);
+      pr_ctrls_add_response(ctrl, "debug level set to %d", level);
+
+    } else if (reqargc == 2) {
+      level = atoi(reqargv[1]);
+      if (level < 0) {
+        pr_ctrls_add_response(ctrl, "debug level must not be negative");
+        return -1; 
+      }
   
-    pr_log_setdebuglevel(level);
-    pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "debug: level set to %d", level);
-    pr_ctrls_add_response(ctrl, "debug level set to %d", level);
+      pr_log_setdebuglevel(level);
+      pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "debug: level set to %d", level);
+      pr_ctrls_add_response(ctrl, "debug level set to %d", level);
+    }
 
 #ifdef PR_USE_DEVEL
   /* Handle 'debug memory' requests */
