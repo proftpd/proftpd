@@ -1,4 +1,4 @@
-<!-- $Id: mod_ctrls_admin.html,v 1.8 2010-01-06 23:30:24 castaglia Exp $ -->
+<!-- $Id: mod_ctrls_admin.html,v 1.9 2010-07-13 21:28:14 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_ctrls_admin.html,v $ -->
 
 <html>
@@ -109,7 +109,7 @@ the module's control actions are registered.
 <p>
 <hr>
 <h2><a name="debug"><code>debug</code></a></h2>
-<strong>Syntax:</strong> ftpdctl debug <em>[level number]|memory|config</em><br>
+<strong>Syntax:</strong> ftpdctl debug <em>[level [number]]|memory|config</em><br>
 <strong>Purpose:</strong> Obtain debug information from the running daemon
 
 <p>
@@ -118,9 +118,9 @@ The trick is in getting this debug output from the server.  The
 <code>debug</code> control action can be used to gather such information.
 
 <p>
-First, this control action can increase the debug logging verbosity of the
-daemon on-the-fly, to obtain the needed output, and then to return the daemon
-to a more silent state of logging.
+First, this control action can increase or query the debug logging verbosity
+of the daemon on-the-fly, to obtain the needed output, and then to return the
+daemon to a more silent state of logging.
 
 <p>
 Example:
@@ -133,6 +133,12 @@ has been collected, use:
   ftpdctl debug level 0
 </pre>
 to return the daemon to its default debug output level.
+
+<p>
+Instead, to simply check the current debug logging verbosity, use:
+<pre>
+  ftpdctl debug level
+</pre>
 
 <p>
 Alternatively, for developers, this control action can be used to display
@@ -435,7 +441,7 @@ steps for using third-party modules in ProFTPD:
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2010-01-06 23:30:24 $</i><br>
+Last Updated: <i>$Date: 2010-07-13 21:28:14 $</i><br>
 
 <br><hr>
 
