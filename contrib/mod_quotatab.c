@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.59 2010-04-17 00:21:26 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.60 2010-07-15 16:59:30 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -3313,6 +3313,11 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
 }
 
 MODRET quotatab_pre_site(cmd_rec *cmd) {
+
+  /* Make sure it's a valid SITE command */
+  if (cmd->argc < 2)
+    return PR_DECLINED(cmd);
+
   if (strcasecmp(cmd->argv[1], "COPY") == 0) {
     cmd_rec *copy_cmd;
 
@@ -3425,6 +3430,11 @@ MODRET quotatab_site(cmd_rec *cmd) {
 }
 
 MODRET quotatab_post_site(cmd_rec *cmd) {
+
+  /* Make sure it's a valid SITE command */
+  if (cmd->argc < 2)
+    return PR_DECLINED(cmd);
+
   if (strcasecmp(cmd->argv[1], "COPY") == 0) {
     cmd_rec *copy_cmd;
 
@@ -3437,6 +3447,11 @@ MODRET quotatab_post_site(cmd_rec *cmd) {
 }
 
 MODRET quotatab_post_site_err(cmd_rec *cmd) {
+
+  /* Make sure it's a valid SITE command */
+  if (cmd->argc < 2)
+    return PR_DECLINED(cmd);
+
   if (strcasecmp(cmd->argv[1], "COPY") == 0) {
     cmd_rec *copy_cmd;
 
