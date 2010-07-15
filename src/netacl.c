@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.21 2010-02-11 22:35:32 castaglia Exp $
+ * $Id: netacl.c,v 1.22 2010-07-15 00:09:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -174,7 +174,7 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
       if (ServerUseReverseDNS) {
         pr_trace_msg(trace_channel, 10,
           "checking addr '%s' against DNS glob rule '%s'",
-          pr_netaddr_get_ipstr(addr), acl->pattern);
+          pr_netaddr_get_dnsstr(addr), acl->pattern);
 
         if (pr_netaddr_fnmatch(addr, acl->pattern,
             PR_NETADDR_MATCH_DNS) == TRUE) {
