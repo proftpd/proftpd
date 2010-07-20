@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1219 2010-07-16 15:53:38 castaglia Exp $
+$Id: NEWS,v 1.1220 2010-07-20 16:12:53 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -321,7 +321,7 @@ CVS
   for modules to provide external SSL session caching mechanisms.
 - Bug 3210 - Data transfers protected by SSL/TLS should reuse the control
   connection SSL session.  If the TLSRequired policy allows/requires SSL/TLS
-  protections on data tranfers, then reuse of the SSL session from the
+  protections on data transfers, then reuse of the SSL session from the
   control connection is now enforced.  Use "TLSOptions NoSessionReuseRequired"
   to relax this requirement.
 - Bug 3215 - mod_wrap2_sql should support comma-delimited lists of clients.
