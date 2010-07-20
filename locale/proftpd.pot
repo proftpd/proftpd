@@ -939,7 +939,7 @@ msgstr ""
 
 #: ../src/data.c:916 ../src/data.c:942
 #, c-format
-msgid "%s: data tranfer in progress"
+msgid "%s: data transfer in progress"
 msgstr ""
 
 #: ../src/data.c:985 ../src/main.c:911
