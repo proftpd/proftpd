@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.178 2010-06-22 16:36:42 castaglia Exp $
+ * $Id: mod_ls.c,v 1.179 2010-07-20 16:23:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -311,7 +311,8 @@ static int sendline(int flags, char *fmt, ...) {
         errno != 0) {
       int xerrno = errno;
 
-      if (session.d) {
+      if (session.d &&
+          session.d->outstrm) {
         xerrno = PR_NETIO_ERRNO(session.d->outstrm);
       }
 

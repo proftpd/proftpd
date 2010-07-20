@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.125 2010-07-20 16:12:21 castaglia Exp $
+ * $Id: data.c,v 1.126 2010-07-20 16:23:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -911,6 +911,11 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
        * already have a data transfer in progress.  For any data transfer
        * command, send a 450 ("busy") reply.  Looks like almost all of the
        * data transfer commands accept that response, as per RFC959.
+       *
+       * We also prevent the EPRT, EPSV, PASV, and PORT commands, since
+       * they will also interfere with the current data transfer.  In doing
+       * so, we break RFC compliance a little; RFC959 does not allow a
+       * response code of 450 for those commands (although it should).
        */
       if (strcmp(cmd->argv[0], C_APPE) == 0 ||
           strcmp(cmd->argv[0], C_LIST) == 0 ||
@@ -918,7 +923,11 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
           strcmp(cmd->argv[0], C_NLST) == 0 ||
           strcmp(cmd->argv[0], C_RETR) == 0 ||
           strcmp(cmd->argv[0], C_STOR) == 0 ||
-          strcmp(cmd->argv[0], C_STOU) == 0) {
+          strcmp(cmd->argv[0], C_STOU) == 0 ||
+          strcmp(cmd->argv[0], C_PORT) == 0 ||
+          strcmp(cmd->argv[0], C_EPRT) == 0 ||
+          strcmp(cmd->argv[0], C_PASV) == 0 ||
+          strcmp(cmd->argv[0], C_EPSV) == 0) {
         pool *resp_pool;
 
         pr_trace_msg(trace_channel, 5,
