@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.124 2010-03-10 19:14:32 castaglia Exp $
+ * $Id: data.c,v 1.125 2010-07-20 16:12:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -930,7 +930,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 
         pr_response_set_pool(cmd->pool);
 
-        pr_response_add_err(R_450, _("%s: data tranfer in progress"),
+        pr_response_add_err(R_450, _("%s: data transfer in progress"),
           cmd->argv[0]);
 
         pr_response_flush(&resp_err_list);
@@ -956,7 +956,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 
         pr_response_set_pool(cmd->pool);
 
-        pr_response_add(R_200, _("%s: data tranfer in progress"),
+        pr_response_add(R_200, _("%s: data transfer in progress"),
           cmd->argv[0]);
 
         pr_response_flush(&resp_list);
