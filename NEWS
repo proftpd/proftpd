@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1221 2010-07-20 16:23:28 castaglia Exp $
+$Id: NEWS,v 1.1222 2010-07-23 02:22:19 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -118,7 +118,7 @@ CVS
 - Bug 3479 - Support anonymous username variable in mod_exec.
 - Bug 3480 - mod_sftp does not interoperate with old ssh.com/Tectia clients.
 - Bug 3481 - Problem with SFTP directory listings.
-- Bug 3483 - NULL pointer dereference handlig SITE command in mod_quotatab.
+- Bug 3483 - NULL pointer dereference handling SITE command in mod_quotatab.
 - Bug 3485 - Disabling IPv6 via -4 or --ipv4 command-line options does not work.
 - Bug 3487 - Null pointer dereference with EPRT/EPSV/PASV/PORT command during
   data transfer.
