@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.275 2010-04-07 23:29:33 castaglia Exp $
+ * $Id: mod_auth.c,v 1.276 2010-07-27 00:38:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1140,9 +1140,36 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   if (wtmp_log == NULL)
     wtmp_log = get_param_ptr(main_server->conf, "WtmpLog", FALSE);
 
+  /* As per Bug#3482, we need to disable WtmpLog for FreeBSD 9.0, as
+   * an interim measure.
+   *
+   * The issue is that some platforms update multiple files for a single
+   * pututxline(3) call; proftpd tries to update those files manually,
+   * do to chroots (after which a pututxline(3) call will fail).  A proper
+   * solution requires a separate process, running with the correct
+   * privileges, which would handle wtmp logging. The proftpd session
+   * processes would send messages to this logging daemon (via Unix domain
+   * socket, or FIFO, or TCP socket).
+   *
+   * Also note that this hack to disable WtmpLog may need to be extended
+   * to other platforms in the future.
+   */
+#if defined(HAVE_UTMPX_H) && \
+    defined(__FreeBSD_version) && __FreeBSD_version >= 900007
+  if (wtmp_log == NULL ||
+      *wtmp_log == TRUE) {
+    wtmp_log = pcalloc(p, sizeof(int));
+    *wtmp_log = FALSE;
+
+    pr_log_debug(DEBUG5,
+      "WtpmLog automatically disabled; see Bug#3482 for details");
+  }
+#endif
+
   PRIVS_ROOT
 
-  if (!wtmp_log || *wtmp_log == TRUE) {
+  if (wtmp_log == NULL ||
+      *wtmp_log == TRUE) {
     log_wtmp(sess_ttyname, session.user, session.c->remote_name,
       session.c->remote_addr);
     session.wtmp_log = TRUE;
