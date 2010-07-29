@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.239 2010-04-23 16:10:55 castaglia Exp $
+ * $Id: dirtree.c,v 1.240 2010-07-29 21:19:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -687,7 +687,7 @@ static size_t _strmatch(register char *s1, register char *s2) {
 }
 
 static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
-  char *tmp_path = NULL;
+  char *suffixed_path = NULL, *tmp_path = NULL;
   config_rec *c = NULL, *res = NULL;
 
   if (!s) {
@@ -731,7 +731,9 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
           !(tmp_path[path_len-2] == '/' && tmp_path[path_len-1] == '*')) {
 
         /* Trim a trailing path separator, if present. */
-        if (*tmp_path && *(tmp_path + path_len - 1) == '/' && path_len > 1) {
+        if (path_len > 1 &&
+            *tmp_path && 
+            *(tmp_path + path_len - 1) == '/') {
           *(tmp_path + path_len - 1) = '\0';
           path_len--;
 
@@ -742,11 +744,11 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
           }
         }
 
-        tmp_path = pdircat(p, tmp_path, "*", NULL);
+        suffixed_path = pdircat(p, tmp_path, "*", NULL);
 
       } else if (path_len == 1) {
         /* We still need to append the "*" if the path is just '/'. */
-        tmp_path = pstrcat(p, tmp_path, "*", NULL);
+        suffixed_path = pstrcat(p, tmp_path, "*", NULL);
       }
 
       pr_trace_msg("directory", 9,
@@ -754,8 +756,15 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
 
       /* The flags argument here needs to include PR_FNM_PATHNAME in order
        * to prevent globs from matching the '/' character.
+       *
+       * As per Bug#3491, we need to check if either a) the automatically
+       * suffixed path (i.e. with the slash-star pattern) is a pattern match,
+       * OR if b) the given path, as is, is a pattern match.
        */
-      if (pr_fnmatch(tmp_path, path, 0) == 0) {
+
+      if (pr_fnmatch(suffixed_path, path, 0) == 0 ||
+          (is_fnmatch(tmp_path) &&
+           pr_fnmatch(tmp_path, path, 0) == 0)) {
         pr_trace_msg("directory", 8,
           "<Directory %s> is a glob match for '%s'", tmp_path, path);
 
