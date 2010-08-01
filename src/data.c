@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.126 2010-07-20 16:23:28 castaglia Exp $
+ * $Id: data.c,v 1.127 2010-08-01 17:37:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -924,6 +924,8 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
           strcmp(cmd->argv[0], C_RETR) == 0 ||
           strcmp(cmd->argv[0], C_STOR) == 0 ||
           strcmp(cmd->argv[0], C_STOU) == 0 ||
+          strcmp(cmd->argv[0], C_RNFR) == 0 ||
+          strcmp(cmd->argv[0], C_RNTO) == 0 ||
           strcmp(cmd->argv[0], C_PORT) == 0 ||
           strcmp(cmd->argv[0], C_EPRT) == 0 ||
           strcmp(cmd->argv[0], C_PASV) == 0 ||
