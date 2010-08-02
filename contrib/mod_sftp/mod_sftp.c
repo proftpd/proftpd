@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.35 2010-07-05 17:25:03 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.36 2010-08-02 23:57:25 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1192,6 +1192,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
  
     } else if (strcmp(cmd->argv[i], "PessimisticKexinit") == 0) {
       opts |= SFTP_OPT_PESSIMISTIC_KEXINIT;
+
+    } else if (strcmp(cmd->argv[i], "MatchKeySubject") == 0) {
+      opts |= SFTP_OPT_MATCH_KEY_SUBJECT;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",

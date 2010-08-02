@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: rfc4716.c,v 1.12 2010-06-15 16:52:01 castaglia Exp $
+ * $Id: rfc4716.c,v 1.13 2010-08-02 23:57:25 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -411,10 +411,12 @@ static int filestore_verify_user_key(sftp_keystore_t *store, pool *p,
       }
 
     } else {
-      /* If the file key has a Subject header, and that header value does
-       * not match the logging in user, then continue looking.
+      /* If we are configured to check for Subject headers, and If the file key
+       * has a Subject header, and that header value does not match the
+       * logging in user, then continue looking.
        */
-      if (key->subject != NULL) {
+      if ((sftp_opts & SFTP_OPT_MATCH_KEY_SUBJECT) &&
+          key->subject != NULL) {
         if (strcmp(key->subject, user) != 0) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "found matching key for user '%s' in '%s', but Subject "
