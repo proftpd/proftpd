@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.43 2010-07-05 17:26:05 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.44 2010-08-03 00:00:40 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -750,6 +750,14 @@ The currently implemented options are:
     If you need more FTP-like functionality for any reason and wish to
     have <code>mod_sftp</code> silently ignore any permissions sent by the
     SCP client, use this option.
+
+  <p>
+  <li><code>MatchKeySubject</code><br>
+    <p>
+    When this option is used, if public key authentication is used, the
+    <code>mod_sftp</code> module will check if the public key has a "Subject"
+    header.  If so, that the value of that header <b>must</b> match the
+    name of the authenticating user/host.
 
   <p>
   <li><code>OldProtocolCompat</code><br>
@@ -1712,7 +1720,7 @@ new file.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-07-05 17:26:05 $</i><br>
+Last Updated: <i>$Date: 2010-08-03 00:00:40 $</i><br>
 
 <br><hr>
 
