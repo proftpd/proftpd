@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.240 2010-07-29 21:19:43 castaglia Exp $
+ * $Id: dirtree.c,v 1.241 2010-08-04 22:32:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -749,6 +749,11 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
       } else if (path_len == 1) {
         /* We still need to append the "*" if the path is just '/'. */
         suffixed_path = pstrcat(p, tmp_path, "*", NULL);
+      }
+
+      if (suffixed_path == NULL) {
+        /* Default to treating the given path as the suffixed path */
+        suffixed_path = tmp_path;
       }
 
       pr_trace_msg("directory", 9,
