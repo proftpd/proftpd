@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.73 2010-03-10 17:23:55 castaglia Exp $
+ * $Id: netaddr.c,v 1.74 2010-08-05 23:43:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1432,7 +1432,7 @@ int pr_netaddr_set_localaddr_str(const char *addr_str) {
 }
 
 int pr_netaddr_is_loopback(const pr_netaddr_t *na) {
-  if (!na) {
+  if (na == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1444,6 +1444,20 @@ int pr_netaddr_is_loopback(const pr_netaddr_t *na) {
 
 #ifdef PR_USE_IPV6
     case AF_INET6:
+      if (pr_netaddr_is_v4mappedv6(na) == TRUE) {
+        pool *tmp_pool;
+        pr_netaddr_t *v4na;
+        int res;
+
+        tmp_pool = make_sub_pool(permanent_pool);
+        v4na = pr_netaddr_v6tov4(tmp_pool, na);
+
+        res = pr_netaddr_is_loopback(v4na);
+        destroy_pool(tmp_pool);
+
+        return res;
+      }
+
       /* XXX *sigh* Different platforms implement the IN6_IS_ADDR macros
        * differently.  For example, on Linux, those macros expect to operate
        * on s6_addr32, while on Solaris, the macros operate on struct in6_addr.
