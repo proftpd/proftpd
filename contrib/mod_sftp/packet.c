@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.14 2010-02-15 22:03:52 castaglia Exp $
+ * $Id: packet.c,v 1.15 2010-08-06 18:34:00 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -48,12 +48,16 @@ static uint32_t packet_server_seqno = 0;
 
 /* RFC4344 recommends 2^31 for the client packet sequence number at which
  * we should request a rekey, and 2^32 for the server packet sequence number.
- * Since we're using uin32_t, though, it isn't a big enough data type for those
- * numbers.  We'll settle for the max value for the uint32_t type.
+ *
+ * However, the uint32_t data type may not be unsigned for some
+ * platforms/compilers.  To avoid issues on these platforms, use 2^31-1
+ * for rekeying for both client and server packet sequence numbers.
  */
-#define SFTP_PACKET_REKEY_SEQNO_LIMIT		(uint32_t) -1
-static uint32_t rekey_client_seqno = SFTP_PACKET_REKEY_SEQNO_LIMIT;
-static uint32_t rekey_server_seqno = SFTP_PACKET_REKEY_SEQNO_LIMIT;
+#define SFTP_PACKET_CLIENT_REKEY_SEQNO_LIMIT		2147483647
+#define SFTP_PACKET_SERVER_REKEY_SEQNO_LIMIT		2147483647
+
+static uint32_t rekey_client_seqno = SFTP_PACKET_CLIENT_REKEY_SEQNO_LIMIT;
+static uint32_t rekey_server_seqno = SFTP_PACKET_SERVER_REKEY_SEQNO_LIMIT;
 
 static off_t rekey_client_len = 0;
 static off_t rekey_server_len = 0;
@@ -1301,14 +1305,14 @@ int sftp_ssh2_packet_rekey_reset(void) {
   /* Add the rekey seqno limit to the current sequence numbers. */
 
   if (rekey_client_seqno > 0) {
-    rekey_client_seqno = packet_client_seqno + SFTP_PACKET_REKEY_SEQNO_LIMIT;
+    rekey_client_seqno = packet_client_seqno + SFTP_PACKET_CLIENT_REKEY_SEQNO_LIMIT;
 
     if (rekey_client_seqno == 0)
       rekey_client_seqno++;
   }
 
   if (rekey_server_seqno > 0) {
-    rekey_server_seqno = packet_client_seqno + SFTP_PACKET_REKEY_SEQNO_LIMIT;
+    rekey_server_seqno = packet_client_seqno + SFTP_PACKET_SERVER_REKEY_SEQNO_LIMIT;
 
     if (rekey_server_seqno == 0)
       rekey_server_seqno++;
