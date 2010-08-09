@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.127 2010-08-01 17:37:21 castaglia Exp $
+ * $Id: data.c,v 1.128 2010-08-09 21:10:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -900,8 +900,29 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
       "data available for reading on control channel during data transfer, "
       "reading control data");
     res = pr_cmd_read(&cmd);
-    if (res >= 0 &&
-        cmd) {
+    if (res < 0) {
+      int xerrno;
+#if defined(ECONNABORTED)
+      xerrno = ECONNABORTED;
+#elif defined(ENOTCONN)
+      xerrno = ENOTCONN;
+#else
+      xerrno = EIO;
+#endif
+
+      pr_trace_msg(trace_channel, 1,
+        "unable to read control command during data transfer: %s",
+        strerror(xerrno));
+      errno = xerrno;
+
+#ifndef PR_DEVEL_NO_DAEMON
+      /* Otherwise, EOF */
+      end_login(0);
+#else
+      return -1;
+#endif /* PR_DEVEL_NO_DAEMON */
+
+    } else if (cmd != NULL) {
       char *ch;
 
       for (ch = cmd->argv[0]; *ch; ch++)
