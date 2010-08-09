@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.52 2010-04-16 22:22:37 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.53 2010-08-09 16:31:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1566,7 +1566,7 @@ static unsigned char rewrite_open_fifo(config_rec *c) {
 
   fd = open(fifo, O_RDWR|O_NONBLOCK);
   if (fd < 0) {
-    rewrite_log("rewrite_rdopen_fifo(): unable to open FIFO '%s': %s", fifo,
+    rewrite_log("rewrite_open_fifo(): unable to open FIFO '%s': %s", fifo,
       strerror(errno));
     pr_signals_unblock();
     return FALSE;
