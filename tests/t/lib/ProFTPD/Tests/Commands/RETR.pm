@@ -1596,14 +1596,10 @@ sub retr_bug3496 {
       }
 
       # Close the _control_ connection immediately
-#      $conn->_close();
-#      $client->close();
       $client->{ftp}->close();
 
       my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client2->login($user, $passwd);
-
-      $client = undef;
     };
 
     if ($@) {
