@@ -11,8 +11,10 @@ ChangeLog files.
 
   + Added Japanese translation
   + Many mod_sftp bugfixes
+  + Fixed SSL_shutdown() errors caused by OpenSSL 0.9.8m and later
   + Fixed handling of utmp/utmpx format changes on FreeBSD
   + Automatic detection of MySQL, Postgres library and header file locations
+  + Added support for SMTP authentication in ftpmail script
 
   + New modules:
 
@@ -61,4 +63,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2010-06-29 14:55:37 $
+Last Updated: $Date: 2010-08-10 21:23:09 $
