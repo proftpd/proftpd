@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008 The ProFTPD Project team
+ * Copyright (c) 2008-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * Timers API tests
- * $Id: timers.c,v 1.1 2008-10-06 18:16:50 castaglia Exp $
+ * $Id: timers.c,v 1.2 2010-08-11 14:56:36 castaglia Exp $
  */
 
 #include "tests.h"
@@ -142,17 +142,44 @@ START_TEST (timer_remove_test) {
   fail_unless(res == 0);
 
   res = pr_timer_add(1, 0, NULL, timers_test_cb, "test");
-  fail_unless(res == 0, "Failed to add timer: %s", strerror(errno));
+  fail_unless(res == 0, "Failed to add timer (%d): %s", res, strerror(errno));
 
   res = pr_timer_remove(1, NULL);
   fail_unless(res == -1, "Failed to return -1 for non-matching timer ID");
   fail_unless(errno == ENOENT, "Failed to set errno to ENOENT");
 
   res = pr_timer_remove(0, NULL);
-  fail_unless(res == 0, "Failed to remove timer: %s", strerror(errno));
+  fail_unless(res == 0, "Failed to remove timer (%d): %s", res,
+    strerror(errno));
 
   fail_unless(timer_triggered_count == 0,
     "Expected trigger count of 0, got %u", timer_triggered_count);
+}
+END_TEST
+
+START_TEST (timer_remove_multi_test) {
+  int res;
+  module m;
+
+  /* By providing a negative timerno, the return value should be the
+   * dynamically generated timerno, which is greater than or equal to
+   * 1024.
+   */
+  res = pr_timer_add(3, -1, &m, timers_test_cb, "test1");
+  fail_unless(res >= 1024, "Failed to add timer (%d): %s", res,
+    strerror(errno));
+
+  res = pr_timer_add(3, -1, &m, timers_test_cb, "test2");
+  fail_unless(res >= 1024, "Failed to add timer (%d): %s", res,
+    strerror(errno));
+
+  res = pr_timer_add(3, -1, &m, timers_test_cb, "test3");
+  fail_unless(res >= 1024, "Failed to add timer (%d): %s", res,
+    strerror(errno));
+
+  res = pr_timer_remove(-1, &m);
+  fail_unless(res == 3, "Failed to remove timers (%d): %s", res,
+    strerror(errno));
 }
 END_TEST
 
@@ -233,6 +260,7 @@ Suite *tests_get_timers_suite(void) {
 
   tcase_add_test(testcase, timer_add_test);
   tcase_add_test(testcase, timer_remove_test);
+  tcase_add_test(testcase, timer_remove_multi_test);
   tcase_add_test(testcase, timer_reset_test);
   tcase_add_test(testcase, timer_sleep_test);
 

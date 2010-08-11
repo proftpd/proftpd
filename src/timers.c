@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.32 2010-02-09 20:08:09 castaglia Exp $
+ * $Id: timers.c,v 1.33 2010-08-11 14:56:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -49,6 +49,8 @@ struct timer {
   const char *desc;		/* Description of timer, provided by caller */
 };
 
+#define PR_TIMER_DYNAMIC_TIMERNO	1024
+
 static int _current_timeout = 0;
 static int _total_time = 0;
 static int _sleep_sem = 0;
@@ -57,7 +59,7 @@ static xaset_t *timers = NULL;
 static xaset_t *recycled = NULL;
 static xaset_t *free_timers = NULL;
 static int _indispatch = 0;
-static int dynamic_timerno = 1024;
+static int dynamic_timerno = PR_TIMER_DYNAMIC_TIMERNO;
 static unsigned int nalarms = 0;
 static time_t _alarmed_time = 0;
 
@@ -287,7 +289,8 @@ int pr_timer_reset(int timerno, module *mod) {
 }
 
 int pr_timer_remove(int timerno, module *mod) {
-  struct timer *t = NULL;
+  struct timer *t = NULL, *tnext = NULL;
+  int nremoved = 0;
 
   /* If there are no timers currently registered, do nothing. */
   if (!timers)
@@ -295,9 +298,13 @@ int pr_timer_remove(int timerno, module *mod) {
 
   pr_alarms_block();
 
-  for (t = (struct timer *) timers->xas_list; t; t = t->next) {
-    if (t->timerno == timerno &&
-        (t->mod == mod || mod == ANY_MODULE)) {
+  for (t = (struct timer *) timers->xas_list; t; t = tnext) {
+    tnext = t->next;
+
+    if ((timerno < 0 || t->timerno == timerno) &&
+        (mod == ANY_MODULE || t->mod == mod)) {
+      nremoved++;
+
       if (_indispatch) {
         t->remove++;
 
@@ -312,20 +319,35 @@ int pr_timer_remove(int timerno, module *mod) {
          */
         handle_alarm();
       }
+
+      pr_trace_msg("timer", 7, "removed timer ID %d ('%s', for module '%s')",
+        t->timerno, t->desc, t->mod ? t->mod->name : "[none]");
+    }
+
+    /* If we are removing a specific timer, break out of the loop now.
+     * Otherwise, keep removing any matching timers.
+     */
+    if (nremoved > 0 &&
+        timerno >= 0) {
       break;
     }
   }
 
   pr_alarms_unblock();
 
-  if (t) {
-    pr_trace_msg("timer", 7, "removed timer ID %d ('%s', for module '%s')",
-      t->timerno, t->desc, t->mod ? t->mod->name : "[none]");
-    return t->timerno;
+  if (nremoved == 0) {
+    errno = ENOENT;
+    return -1;
   }
 
-  errno = ENOENT;
-  return -1;
+  /* If we removed a specific timer because of the given timerno, return
+   * that timerno value.
+   */
+  if (timerno >= 0) {
+    return timerno;
+  }
+
+  return nremoved;
 }
 
 int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb,
@@ -343,7 +365,7 @@ int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb,
     timers = xaset_create(timer_pool, (XASET_COMPARE) timer_cmp);
 
   /* Check to see that, if specified, the timerno is not already in use. */
-  if (timerno != -1) {
+  if (timerno >= 0) {
     for (t = (struct timer *) timers->xas_list; t; t = t->next) {
       if (t->timerno == timerno) {
         errno = EPERM;
@@ -372,10 +394,12 @@ int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb,
     t = palloc(timer_pool, sizeof(struct timer));
   }
 
-  if (timerno == -1) {
+  if (timerno < 0) {
     /* Dynamic timer */
-    if (dynamic_timerno < 1024)
-      dynamic_timerno = 1024;
+    if (dynamic_timerno < PR_TIMER_DYNAMIC_TIMERNO) {
+      dynamic_timerno = PR_TIMER_DYNAMIC_TIMERNO;
+    }
+
     timerno = dynamic_timerno++;
   }
 

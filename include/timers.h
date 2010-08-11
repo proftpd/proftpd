@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2007 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: timers.h,v 1.15 2007-10-22 18:09:17 castaglia Exp $
+ * $Id: timers.h,v 1.16 2010-08-11 14:56:36 castaglia Exp $
  */
 
 #ifndef PR_TIMERS_H
@@ -45,9 +45,13 @@ int pr_timer_add(int secs, int timerno, module *m, callback_t cb,
 
 /* Remove the timer indicated by the timerno parameter, and owned by the
  * given module.  Note that if the caller does not know the module,
- * the value ANY_MODULE can be given.
+ * the value ANY_MODULE can be given.  Return 0 on success, -1 on failure.
  *
- * Return 0 on success, -1 on failure.
+ * If the timerno parameter is less than zero, then ALL timers associated
+ * with the given module will be removed.  The return value for this
+ * situation will be the number of timers removed.  These semantics can be
+ * used when removing all timers for a module, e.g. when the module is
+ * being unloaded.
  */
 int pr_timer_remove(int timerno, module *m);
 
