@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.106 2010-07-08 16:24:58 castaglia Exp $
+ * $Id: fxp.c,v 1.107 2010-08-13 21:10:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4339,12 +4339,19 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
       if (fxh->fh_existed &&
           (strcmp(cmd2->argv[0], C_STOR) == 0 ||
            strcmp(cmd2->argv[0], C_APPE) == 0)) {
+
+        /* Clear any existing key in the notes. */
+        (void) pr_table_remove(cmd->notes, "mod_xfer.file-modified", NULL);
+
         if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
             pstrdup(cmd->pool, "true"), 0) < 0) {
           pr_log_pri(PR_LOG_NOTICE,
             "notice: error adding 'mod_xfer.file-modified' note: %s",
             strerror(errno));
         }
+
+        /* Clear any existing key in the notes. */
+        (void) pr_table_remove(cmd2->notes, "mod_xfer.file-modified", NULL);
 
         if (pr_table_add(cmd2->notes, "mod_xfer.file-modified",
             pstrdup(cmd->pool, "true"), 0) < 0) {
@@ -6039,12 +6046,19 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     if (file_existed &&
         (strcmp(cmd2->argv[0], C_STOR) == 0 ||
          strcmp(cmd2->argv[0], C_APPE) == 0)) {
+
+      /* Clear any existing key in the notes. */
+      (void) pr_table_remove(cmd->notes, "mod_xfer.file-modified", NULL);
+
       if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
           pstrdup(cmd->pool, "true"), 0) < 0) {
         pr_log_pri(PR_LOG_NOTICE,
           "notice: error adding 'mod_xfer.file-modified' note: %s",
           strerror(errno));
       }
+
+      /* Clear any existing key in the notes. */
+      (void) pr_table_remove(cmd2->notes, "mod_xfer.file-modified", NULL);
 
       if (pr_table_add(cmd2->notes, "mod_xfer.file-modified",
           pstrdup(cmd->pool, "true"), 0) < 0) {
