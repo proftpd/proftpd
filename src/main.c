@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.405 2010-07-16 15:53:38 castaglia Exp $
+ * $Id: main.c,v 1.406 2010-08-14 16:49:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2044,17 +2044,20 @@ static void finish_terminate(void) {
     /* Run any exit handlers registered in the master process here, so that
      * they may have the benefit of root privs.  More than likely these
      * exit handlers were registered by modules' module initialization
-     * functions, which also occur under root priv conditions. (If an
-     * exit handler is registered after the fork(), it won't be run here --
+     * functions, which also occur under root priv conditions.
+     *
+     * If an exit handler is registered after the fork(), it won't be run here;
      * that registration occurs in a different process space.
      */
     pr_event_generate("core.exit", NULL);
+    pr_event_generate("core.shutdown", NULL);
 
     /* Remove the registered exit handlers now, so that the ensuing
      * end_login() call (outside the root privs condition) does not call
      * the exit handlers for the master process again.
      */
     pr_event_unregister(NULL, "core.exit", NULL);
+    pr_event_unregister(NULL, "core.shutdown", NULL);
 
     PRIVS_RELINQUISH
 
