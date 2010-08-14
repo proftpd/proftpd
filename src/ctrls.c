@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.23 2009-03-10 16:59:23 castaglia Exp $
+ * $Id: ctrls.c,v 1.24 2010-08-14 16:25:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -296,33 +296,29 @@ int pr_ctrls_unregister(module *mod, const char *action) {
   ctrls_action_t *act = NULL;
   unsigned char have_action = FALSE;
 
-  /* sanity checks */
-  if (!action) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  pr_trace_msg("ctrls", 3,
-    "module '%s' unregistering handler for ctrl action '%s'",
-    mod ? mod->name : "(none)", action);
-
   /* Make sure that ctrls are blocked while we're doing this */
   pr_block_ctrls();
 
   for (act = ctrls_action_list; act; act = act->next) {
-    if (strcmp(act->action, action) == 0 &&
+    if ((action == NULL || strcmp(act->action, action) == 0) &&
         (act->module == mod || mod == ANY_MODULE || mod == NULL)) {
       have_action = TRUE;
 
       /* Remove this object from the list of registered actions */
-      if (act->prev)
+      if (act->prev) {
         act->prev->next = act->next;
 
-      else
+      } else {
         ctrls_action_list = act->next;
+      }
 
-      if (act->next)
+      if (act->next) {
         act->next->prev = act->prev;
+      }
+
+      pr_trace_msg("ctrls", 3,
+        "module '%s' unregistering handler for ctrl action '%s'",
+        mod ? mod->name : "(none)", act->action);
 
       /* Destroy this action. */
       destroy_pool(act->pool); 
