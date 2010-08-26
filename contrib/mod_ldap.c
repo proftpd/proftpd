@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.9.0-20100804
+ * mod_ldap v2.9.0-20100826
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,14 +48,14 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.89 2010-08-18 00:10:50 jwm Exp $
+ * $Id: mod_ldap.c,v 1.90 2010-08-26 21:50:37 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.9.0-20100804"
+#define MOD_LDAP_VERSION	"mod_ldap/2.9.0-20100826"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030103
 # error MOD_LDAP_VERSION " requires ProFTPD 1.3.1rc3 or later"
@@ -152,7 +152,6 @@ static char *ldap_dn, *ldap_dnpass,
             *ldap_user_uid_filter,
             *ldap_gid_basedn, *ldap_group_gid_filter,
             *ldap_group_name_filter, *ldap_group_member_filter,
-            *ldap_quota_basedn, *ldap_quota_filter,
             *ldap_defaultauthscheme = "crypt", *ldap_authbind_dn,
             *ldap_genhdir_prefix, *ldap_default_quota,
             *ldap_attr_uid = "uid",
@@ -169,7 +168,7 @@ static char *ldap_dn, *ldap_dnpass,
 #ifdef HAS_LDAP_INITIALIZE
 static char *ldap_server_url;
 #endif /* HAS_LDAP_INITIALIZE */
-static int ldap_do_users = 0, ldap_do_groups = 0, ldap_do_quotas = 0,
+static int ldap_do_users = 0, ldap_do_groups = 0,
            ldap_authbinds = 1, ldap_querytimeout = 0,
            ldap_genhdir = 0, ldap_genhdir_prefix_nouname = 0,
            ldap_forcedefaultuid = 0, ldap_forcedefaultgid = 0,
@@ -987,8 +986,8 @@ handle_ldap_quota_lookup(cmd_rec *cmd)
   if (cached_quota == NULL ||
       strcasecmp(((char **)cached_quota->elts)[0], cmd->argv[0]) != 0)
   {
-    if (pr_ldap_quota_lookup(cmd->tmp_pool, ldap_quota_filter,
-                             cmd->argv[0], ldap_quota_basedn) == FALSE)
+    if (pr_ldap_quota_lookup(cmd->tmp_pool, ldap_user_name_filter,
+                             cmd->argv[0], ldap_user_basedn) == FALSE)
     {
       return PR_DECLINED(cmd);
     }
@@ -1024,7 +1023,7 @@ handle_ldap_ssh_pubkey_lookup(cmd_rec *cmd)
 MODRET
 handle_ldap_setpwent(cmd_rec *cmd)
 {
-  if (!ldap_do_users && !ldap_do_groups && !ldap_do_quotas) {
+  if (!ldap_do_users && !ldap_do_groups) {
     return PR_DECLINED(cmd);
   }
 
@@ -1037,7 +1036,7 @@ handle_ldap_setpwent(cmd_rec *cmd)
 MODRET
 handle_ldap_endpwent(cmd_rec *cmd)
 {
-  if (!ldap_do_users && !ldap_do_groups && !ldap_do_quotas) {
+  if (!ldap_do_users && !ldap_do_groups) {
     return PR_DECLINED(cmd);
   }
 
@@ -1498,10 +1497,10 @@ set_ldap_server(cmd_rec *cmd)
 #endif /* HAS_LDAP_INITIALIZE */
 
       if (url->lud_dn && strcmp(url->lud_dn, "") != 0) {
-        CONF_ERROR(cmd, "A base DN may not be specified by an LDAPServer URL, only by LDAPUsers, LDAPGroups, or LDAPQuotas.");
+        CONF_ERROR(cmd, "A base DN may not be specified by an LDAPServer URL, only by LDAPUsers or LDAPGroups.");
       }
       if (url->lud_filter && strcmp(url->lud_filter, "") != 0) {
-        CONF_ERROR(cmd, "A search filter may not be specified by an LDAPServer URL, only by LDAPUsers, LDAPGroups, or LDAPQuotas.");
+        CONF_ERROR(cmd, "A search filter may not be specified by an LDAPServer URL, only by LDAPUsers or LDAPGroups.");
       }
 
       ldap_free_urldesc(url);
@@ -1861,21 +1860,12 @@ set_ldap_grouplookups(cmd_rec *cmd)
 }
 
 MODRET
-set_ldap_quotalookups(cmd_rec *cmd)
+set_ldap_defaultquota(cmd_rec *cmd)
 {
-  config_rec *c;
-
+  CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_GLOBAL);
 
-  c = add_config_param(cmd->argv[0], cmd->argc - 1, NULL);
-  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
-  if (cmd->argc > 2) {
-    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
-  }
-  if (cmd->argc > 3) {
-    c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
-  }
-
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
 }
 
@@ -2026,6 +2016,9 @@ ldap_getconf(void)
 
   ldap_genhdir_prefix = (char *)get_param_ptr(main_server->conf, "LDAPGenerateHomedirPrefix", FALSE);
 
+  ldap_default_quota = (char *)get_param_ptr(main_server->conf,
+    "LDAPDefaultQuota", FALSE);
+
   ptr = get_param_ptr(main_server->conf, "LDAPGenerateHomedirPrefixNoUsername", FALSE);
   if (ptr) {
     ldap_genhdir_prefix_nouname = *((int *) ptr);
@@ -2055,23 +2048,6 @@ ldap_getconf(void)
     } else {
       ldap_group_member_filter = pstrcat(session.pool,
         "(&(", ldap_attr_memberuid, "=%v)(objectclass=posixGroup))", NULL);
-    }
-  }
-
-  c = find_config(main_server->conf, CONF_PARAM, "LDAPQuotas", FALSE);
-  if (c != NULL) {
-    ldap_do_quotas = 1;
-    ldap_quota_basedn = pstrdup(session.pool, c->argv[0]);
-
-    if (c->argc > 1) {
-      ldap_quota_filter = pstrdup(session.pool, c->argv[1]);
-    } else {
-      ldap_quota_filter = pstrcat(session.pool,
-        "(&(", ldap_attr_uid, "=%v)(objectclass=posixAccount))", NULL);
-    }
-
-    if (c->argc > 2) {
-      ldap_default_quota = pstrdup(session.pool, c->argv[2]);
     }
   }
 
@@ -2106,9 +2082,9 @@ static conftable ldap_config[] = {
   { "LDAPGenerateHomedirPrefix", set_ldap_genhdirprefix, NULL },
   { "LDAPGenerateHomedirPrefixNoUsername", set_ldap_genhdirprefixnouname, NULL },
   { "LDAPForceGeneratedHomedir", set_ldap_forcegenhdir, NULL },
+  { "LDAPDefaultQuota", set_ldap_defaultquota, NULL },
   { "LDAPGroups", set_ldap_grouplookups, NULL },
-  { "LDAPQuotas", set_ldap_quotalookups, NULL },
-  { NULL, NULL, NULL }
+  { NULL, NULL, NULL },
 };
 
 static cmdtable ldap_cmdtab[] = {
