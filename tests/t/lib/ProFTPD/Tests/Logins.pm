@@ -43,7 +43,7 @@ my $TESTS = {
 
   login_regular_with_anon_defined_bug3307 => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(bug forking)],
   },
 
 };
