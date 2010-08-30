@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.83 2010-06-30 15:57:25 castaglia Exp $
+ * $Id: auth.c,v 1.84 2010-08-30 17:37:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1225,14 +1225,18 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
   }
 
   if (!is_alias) {
-    auth_alias_only = get_param_ptr(anon_c ? anon_c->subset : main_server->conf,
+    /* Yes, we do want to be using c, not anon_c, here.  Otherwise, we
+     * risk a regression of Bug#3501.
+     */
+
+    auth_alias_only = get_param_ptr(c ? c->subset : main_server->conf,
       "AuthAliasOnly", FALSE);
 
     if (auth_alias_only &&
         *auth_alias_only == TRUE) {
-      if (anon_c &&
-          anon_c->config_type == CONF_ANON) {
-        anon_c = NULL;
+      if (c &&
+          c->config_type == CONF_ANON) {
+        c = NULL;
 
       } else {
         *login_name = NULL;
@@ -1245,7 +1249,7 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
           *auth_alias_only == TRUE)
         *login_name = NULL;
 
-      if ((!login_name || !anon_c) &&
+      if ((!login_name || !c) &&
           anon_name) {
         *anon_name = NULL;
       }
