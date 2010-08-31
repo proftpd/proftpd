@@ -5,7 +5,7 @@ use strict;
 use Cwd qw(abs_path);
 use File::Spec;
 use Getopt::Long;
-use Test::Harness;
+use Test::Harness qw(&runtests $verbose);
 
 my $opts = {};
 GetOptions($opts, 'h|help', 'C|class=s@', 'V|verbose');
@@ -16,6 +16,7 @@ if ($opts->{h}) {
 
 if ($opts->{V}) {
   $ENV{TEST_VERBOSE} = 1;
+  $verbose = 1;
 }
 
 # We use this, rather than use(), since use() is equivalent to a BEGIN
