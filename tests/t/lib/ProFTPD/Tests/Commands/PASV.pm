@@ -390,6 +390,17 @@ sub pasv_during_xfer_bug3487 {
       }
       $conn->close();
 
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $expected = 226;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = 'Transfer complete';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+
     };
 
     if ($@) {
