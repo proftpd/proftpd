@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.83 2010-03-12 00:13:19 castaglia Exp $
+ * $Id: conf.h,v 1.84 2010-08-31 18:07:32 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -280,9 +280,17 @@ char *strchr(),*strrchr();
 /* AIX, when compiled using -D_NO_PROTO, lacks some prototypes without
  * which ProFTPD may do some funny (and not good) things.  Provide the
  * prototypes as necessary here.
+ *
+ * As examples of what these "not good" things might be:
+ *
+ *  1.  The ScoreboardFile will grow endlessly; session slots will not
+ *      be cleared and reused properly.
+ *
+ *  2.  The mod_delay module will complain of being unable to load the
+ *      table into memory due to "Invalid argument".
  */
 
-#if defined(AIX4) && defined(_NO_PROTO)
+#if defined(_NO_PROTO) && (defined(AIX4) || defined(AIX5))
 off_t lseek(int, off_t, int);
 #endif
 
