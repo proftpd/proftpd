@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.128 2010-08-09 21:10:33 castaglia Exp $
+ * $Id: data.c,v 1.129 2010-09-01 20:45:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1048,9 +1048,14 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 #else
     xerrno = EIO;
 #endif
+
     pr_trace_msg(trace_channel, 1,
       "data connection is null prior to data transfer (possibly from "
       "aborted transfer), returning '%s' error", strerror(xerrno));
+    pr_log_debug(DEBUG5, 
+      "data connection is null prior to data transfer (possibly from "
+       "aborted transfer), returning '%s' error", strerror(xerrno));
+
     errno = xerrno;
     return -1;
   }
