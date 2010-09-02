@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.20 2010-03-05 22:40:25 castaglia Exp $
+ * $Id: parser.c,v 1.21 2010-09-02 17:42:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -102,17 +102,66 @@ static char *get_config_word(pool *p, char *word) {
    * contain a string duped from the given pool.
    */
 
-  /* Does the given word use the environment syntax? */
-  if (strlen(word) > 7 &&
-      strncmp(word, "%{env:", 6) == 0 &&
-      word[strlen(word)-1] == '}') {
-    char *env;
+  if (strlen(word) > 7) {
+    char *ptr = NULL;
 
-    word[strlen(word)-1] = '\0';
+    /* Does the given word use the environment syntax?
+     *
+     * In the simple (and most common) case, the entire word is the variable
+     * syntax.  But we also need to check for cases where the environment
+     * variable syntax is embedded within the word string.
+     */
 
-    env = pr_env_get(p, word + 6);
+    if (strncmp(word, "%{env:", 6) == 0 &&
+        word[strlen(word)-1] == '}') {
+      char *env;
 
-    return env ? pstrdup(p, env) : "";
+      word[strlen(word)-1] = '\0';
+
+      env = pr_env_get(p, word + 6);
+
+      return env ? pstrdup(p, env) : "";
+    }
+
+    /* This is in a while loop in order to handle a) multiple different
+     * variables, and b) cases where the substituted value is itself a
+     * variable.   (Hopefully no one is so clever as to want to actually
+     * _use_ the latter approach.)
+     */
+    ptr = strstr(word, "%{env:");
+    while (ptr != NULL) {
+      char *env, *key, *ptr2, *var;
+      unsigned int keylen;
+
+      pr_signals_handle();
+
+      ptr2 = strchr(ptr + 6, '}');
+      if (ptr2 == NULL) {
+        /* No terminating marker; continue on to the next potential
+         * variable in the word.
+         */
+        ptr2 = ptr + 6;
+        ptr = strstr(ptr2, "%{env:");
+        continue;
+      }
+
+      keylen = (ptr2 - ptr - 6);
+      var = pstrndup(p, ptr, (ptr2 - ptr) + 1);
+
+      key = pstrndup(p, ptr + 6, keylen);
+
+      env = pr_env_get(p, key);
+      if (env == NULL) {
+        /* No value in the environment; continue on to the next potential
+         * variable in the word.
+         */
+        ptr = strstr(ptr2, "%{env:");
+        continue;
+      }
+
+      word = sreplace(p, word, var, env, NULL);
+      ptr = strstr(word, "%{env:");
+    }
   }
 
   return pstrdup(p, word);
