@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.276 2010-07-27 00:38:02 castaglia Exp $
+ * $Id: mod_auth.c,v 1.277 2010-09-03 16:48:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2210,7 +2210,7 @@ MODRET set_createhome(cmd_rec *cmd) {
   char *skel_path = NULL;
   config_rec *c = NULL;
   uid_t cuid = 0;
-  gid_t cgid = 0;
+  gid_t cgid = 0, hgid = -1;
 
   if (cmd->argc-1 < 1)
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -2339,6 +2339,22 @@ MODRET set_createhome(cmd_rec *cmd) {
         /* Move the index past the gid parameter */
         i++;
 
+      } else if (strcasecmp(cmd->argv[i], "homegid") == 0) {
+        char *tmp = NULL;
+        gid_t gid;
+
+        gid = strtol(cmd->argv[++i], &tmp, 10);
+
+        if (tmp && *tmp) {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad GID parameter: '",
+            cmd->argv[i], "'", NULL));
+        }
+
+        hgid = gid;
+
+        /* Move the index past the homegid parameter */
+        i++;
+
       } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown parameter: '",
           cmd->argv[i], "'", NULL));
@@ -2363,6 +2379,8 @@ MODRET set_createhome(cmd_rec *cmd) {
   *((uid_t *) c->argv[4]) = cuid;
   c->argv[5] = pcalloc(c->pool, sizeof(gid_t));
   *((gid_t *) c->argv[5]) = cgid;
+  c->argv[6] = pcalloc(c->pool, sizeof(gid_t));
+  *((gid_t *) c->argv[6]) = hgid;
  
   return PR_HANDLED(cmd);
 }

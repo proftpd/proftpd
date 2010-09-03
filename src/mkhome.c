@@ -23,7 +23,7 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.13 2010-04-08 23:05:00 castaglia Exp $
+ * $Id: mkhome.c,v 1.14 2010-09-03 16:48:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -262,7 +262,7 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
   config_rec *c;
   mode_t dir_mode, dst_mode;
   uid_t dir_uid, dst_uid;
-  gid_t dir_gid, dst_gid;
+  gid_t dir_gid, dst_gid, home_gid;
 
   c = find_config(main_server->conf, CONF_PARAM, "CreateHome", FALSE);
   if (c == NULL ||
@@ -270,16 +270,19 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
     return 0;
   }
 
-  PRIVS_ROOT
-
   /* Create the configured path. */
 
   dir_uid = *((uid_t *) c->argv[4]);
   dir_gid = *((gid_t *) c->argv[5]);
   dir_mode = *((mode_t *) c->argv[2]);
+  home_gid = *((gid_t *) c->argv[6]);
+
   dst_uid = uid;
-  dst_gid = gid;
+  dst_gid = (home_gid == -1) ? gid : home_gid;
+
   dst_mode = *((mode_t *) c->argv[1]);
+
+  PRIVS_ROOT
 
   res = create_path(p, home, user, dir_uid, dir_gid, dir_mode,
     dst_uid, dst_gid, dst_mode);
