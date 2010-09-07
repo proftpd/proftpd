@@ -819,6 +819,10 @@ AC_ARG_ENABLE(devel,
 
       if test `echo $enableval | grep -c stacktrace` = "1"; then
         pr_devel_cflags="-DPR_DEVEL_STACK_TRACE $pr_devel_cflags"
+
+        # On FreeBSD, the libexecinfo port is needed for the backtrace(3)
+        # function; we thus also need to check for the libexecinfo library
+        AC_CHECK_LIB(execinfo, backtrace)
       fi
 
       if test `echo $enableval | grep -c timing` = "1"; then
