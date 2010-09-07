@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: msg.c,v 1.5 2010-05-24 20:38:42 castaglia Exp $
+ * $Id: msg.c,v 1.6 2010-09-07 18:54:25 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -41,7 +41,9 @@
 static char msg_buf[8 * 1024];
 
 static void log_stacktrace(void) {
-#ifdef HAVE_EXECINFO_H
+#if defined(HAVE_EXECINFO_H) && \
+    defined(HAVE_BACKTRACE) && \
+    defined(HAVE_BACKTRACE_SYMBOLS)
   void *trace[PR_TUNABLE_CALLER_DEPTH];
   char **strings;
   size_t tracesz;
