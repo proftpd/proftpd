@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.277 2010-09-03 16:48:41 castaglia Exp $
+ * $Id: mod_auth.c,v 1.278 2010-09-07 19:02:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2362,8 +2362,8 @@ MODRET set_createhome(cmd_rec *cmd) {
     }
   }
 
-  c = add_config_param(cmd->argv[0], 6, NULL, NULL, NULL, NULL,
-    NULL, NULL);
+  c = add_config_param(cmd->argv[0], 7, NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL);
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
