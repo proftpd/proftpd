@@ -4988,7 +4988,7 @@ static int tls_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   opterr = 1;
   optind = 1;
 
-#elif defined(SOLARIS2)
+#elif defined(SOLARIS2) || defined(HPUX11)
   opterr = 0;
   optind = 1;
 
