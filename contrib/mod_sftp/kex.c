@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.17 2010-04-20 03:21:30 castaglia Exp $
+ * $Id: kex.c,v 1.18 2010-09-08 19:01:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2493,6 +2493,7 @@ static int handle_kex_dh_gex(struct ssh2_packet *pkt, struct sftp_kex *kex,
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "DH_GEX_INIT"));
   cmd->arg = "(data)";
+  cmd->class = CL_AUTH;
 
   pr_trace_msg(trace_channel, 9, "reading DH_GEX_INIT message from client");
 
