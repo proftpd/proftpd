@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.107 2010-06-20 01:40:36 castaglia Exp $
+ * $Id: mod_log.c,v 1.108 2010-09-10 21:07:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -102,6 +102,8 @@ struct logfile_struc {
 #define META_VERSION		28
 #define META_RENAME_FROM	29
 #define META_FILE_MODIFIED	30
+#define META_UID		31
+#define META_GID		32
 
 /* For tracking the size of deleted files. */
 static off_t log_dele_filesz = 0;
@@ -143,6 +145,8 @@ static xaset_t			*log_set = NULL;
    %{file-modified}     - Indicates whether a file is being modified
                           (i.e. already exists) or not.
    %{protocol}          - Current protocol (e.g. "ftp", "sftp", etc)
+   %{uid}               - UID of logged-in user
+   %{gid}               - Primary GID of logged-in user
    %{version}           - ProFTPD version
 */
 
@@ -209,9 +213,21 @@ static void logformat(char *nickname, char *fmts) {
           continue;
         }
 
+        if (strncmp(tmp, "{gid}", 5) == 0) {
+          add_meta(&outs, META_GID, 0);
+          tmp += 5;
+          continue;
+        }
+
         if (strncmp(tmp, "{protocol}", 10) == 0) {
           add_meta(&outs, META_PROTOCOL, 0);
           tmp += 10;
+          continue;
+        }
+
+        if (strncmp(tmp, "{uid}", 5) == 0) {
+          add_meta(&outs, META_UID, 0);
+          tmp += 5;
           continue;
         }
 
@@ -942,7 +958,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
             session.xfer.start_time.tv_usec != 0) {
           struct timeval end_time;
 
-          gettimeofday(&end_time,NULL);
+          gettimeofday(&end_time, NULL);
           end_time.tv_sec -= session.xfer.start_time.tv_sec;
 
           if (end_time.tv_usec >= session.xfer.start_time.tv_usec)
@@ -1078,6 +1094,18 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     case META_PROTOCOL:
       argp = arg;
       sstrncpy(argp, pr_session_get_protocol(0), sizeof(arg));
+      m++;
+      break;
+
+    case META_UID:
+      argp = arg;
+      snprintf(argp, sizeof(arg), "%lu", (unsigned long) session.uid);
+      m++;
+      break;
+
+    case META_GID:
+      argp = arg;
+      snprintf(argp, sizeof(arg), "%lu", (unsigned long) session.gid);
       m++;
       break;
 

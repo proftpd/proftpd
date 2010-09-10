@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.184 2010-06-20 01:40:36 castaglia Exp $
+ * $Id: mod_sql.c,v 1.185 2010-09-10 21:07:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1896,6 +1896,24 @@ MODRET sql_post_retr(cmd_rec *cmd) {
 }
 
 static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
+
+  if (strcmp(tag, "uid") == 0) {
+    char buf[64];
+
+    memset(buf, '\0', sizeof(buf));
+    snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) session.uid);
+    
+    return pstrdup(cmd->tmp_pool, buf);
+  }
+
+  if (strcmp(tag, "gid") == 0) {
+    char buf[64];
+
+    memset(buf, '\0', sizeof(buf));
+    snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) session.gid);
+    
+    return pstrdup(cmd->tmp_pool, buf);
+  }
 
   if (strcmp(tag, "protocol") == 0) {
     return pr_session_get_protocol(0);
