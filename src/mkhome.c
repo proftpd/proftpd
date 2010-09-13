@@ -23,11 +23,13 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.14 2010-09-03 16:48:41 castaglia Exp $
+ * $Id: mkhome.c,v 1.15 2010-09-13 23:13:27 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
+
+static const char *trace_channel = "mkhome";
 
 static int create_dir(const char *dir, uid_t uid, gid_t gid,
     mode_t mode) {
@@ -47,6 +49,7 @@ static int create_dir(const char *dir, uid_t uid, gid_t gid,
 
   /* The directory already exists. */
   if (res == 0) {
+    pr_trace_msg(trace_channel, 8, "'%s' already exists", dir);
     pr_log_debug(DEBUG3, "CreateHome: '%s' already exists", dir);
     return 0;
   }
@@ -69,6 +72,7 @@ static int create_dir(const char *dir, uid_t uid, gid_t gid,
     return -1;
   }
 
+  pr_trace_msg(trace_channel, 8, "directory '%s' created", dir);
   pr_log_debug(DEBUG6, "CreateHome: directory '%s' created", dir);
   return 0;
 }
@@ -103,6 +107,8 @@ static int create_path(pool *p, const char *path, const char *user,
     dir_gid = dst_gid;
   }
 
+  pr_trace_msg(trace_channel, 5, "creating home directory '%s' for user '%s'",
+    path, user);
   pr_log_debug(DEBUG3, "creating home directory '%s' for user '%s'", path,
     user);
   tmppath = pstrdup(p, path);
@@ -126,6 +132,7 @@ static int create_path(pool *p, const char *path, const char *user,
     pr_signals_handle();
   }
 
+  pr_trace_msg(trace_channel, 5, "home directory '%s' created", path);
   pr_log_debug(DEBUG3, "home directory '%s' created", path);
   return 0;
 }
@@ -301,6 +308,8 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
      * skeleton (a la /etc/skel) directory.
      */
 
+    pr_trace_msg(trace_channel, 9, "copying skel files from '%s' into '%s'",
+      skel_dir, home);
     pr_log_debug(DEBUG4, "CreateHome: copying skel files from '%s' into '%s'",
       skel_dir, home);
     if (copy_dir(p, skel_dir, home, uid, gid) < 0) {
