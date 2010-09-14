@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.41 2010-09-14 17:55:32 castaglia Exp $
+ * $Id: mod_delay.c,v 1.42 2010-09-14 18:08:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1234,8 +1234,12 @@ MODRET delay_post_pass(cmd_rec *cmd) {
   /* If the current interval is less than the median interval, we
    * need to delay ourselves a little.
    */
-  if (interval < median)
+  if (interval < median) {
+    pr_trace_msg(trace_channel, 9,
+      "interval (%ld usecs) less than selected median (%ld usecs), delaying",
+      interval, median);
     delay_delay(median - interval);
+  }
 
   return PR_DECLINED(cmd);
 }
@@ -1282,6 +1286,8 @@ MODRET delay_post_user(cmd_rec *cmd) {
 
   interval = (tv.tv_sec - delay_tv.tv_sec) * 1000000 +
     (tv.tv_usec - delay_tv.tv_usec);
+  pr_trace_msg(trace_channel, 9,
+    "interval between connect and USER command: %ld usecs", interval);
 
   proto = pr_session_get_protocol(0);
 
@@ -1315,8 +1321,12 @@ MODRET delay_post_user(cmd_rec *cmd) {
   /* If the current interval is less than the median interval, we
    * need to delay ourselves a little.
    */
-  if (interval < median)
+  if (interval < median) {
+    pr_trace_msg(trace_channel, 9,
+      "interval (%ld usecs) less than selected median (%ld usecs), delaying",
+      interval, median);
     delay_delay(median - interval);
+  }
 
   return PR_DECLINED(cmd);
 }
