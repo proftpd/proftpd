@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.42 2010-09-14 18:08:12 castaglia Exp $
+ * $Id: mod_delay.c,v 1.43 2010-09-14 18:16:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -206,7 +206,7 @@ static long delay_get_median(pool *p, unsigned int rownum, const char *protocol,
   register unsigned int i;
   struct delay_rec *row;
   struct delay_vals_rec *dv = NULL;
-  long *tab_vals = NULL;
+  long *tab_vals = NULL, median;
   array_header *list = make_array(p, 1, sizeof(long));
   
   /* Calculate the median value of the current command's recorded values,
@@ -244,7 +244,12 @@ static long delay_get_median(pool *p, unsigned int rownum, const char *protocol,
 
   pr_trace_msg(trace_channel, 6, "selecting median interval from %d %s",
     list->nelts, list->nelts != 1 ? "values" : "value");
-  return delay_select_k(((list->nelts + 1) / 2), list);
+
+  median = delay_select_k(((list->nelts + 1) / 2), list);
+  pr_trace_msg(trace_channel, 7, "selected median interval of %ld usecs",
+    median);
+
+  return median;
 }
 
 static void delay_mask_signals(unsigned char block) {
