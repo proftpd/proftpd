@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.44 2010-08-03 00:00:40 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.45 2010-09-15 17:37:50 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -124,6 +124,7 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#SFTPAuthorizedHostKeys">SFTPAuthorizedHostKeys</a>
   <li><a href="#SFTPAuthorizedUserKeys">SFTPAuthorizedUserKeys</a>
   <li><a href="#SFTPCiphers">SFTPCiphers</a>
+  <li><a href="#SFTPClientAlive">SFTPClientAlive</a>
   <li><a href="#SFTPClientMatch">SFTPClientMatch</a>
   <li><a href="#SFTPCompression">SFTPCompression</a>
   <li><a href="#SFTPCryptoDevice">SFTPCryptoDevice</a>
@@ -327,6 +328,32 @@ which conforms to the RFCs will have this weakness.
 <p>
 In general, there is no need to use this directive unless only one specific
 cipher must be used.
+
+<p>
+<hr>
+<h2><a name="SFTPClientAlive">SFTPClientAlive</a></h2>
+<strong>Syntax:</strong> SFTPClientAlive <em>count</em> <em>interval</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Module:</strong> mod_sftp<br>
+<strong>Compatibility:</strong> 1.3.4rc1 and later
+
+<p>
+The <code>SFTPClientAlive</code> directive configured <code>mod_sftp</code>
+to send messages to a client, through the encrypted channel, to request a
+response from the client.  If <em>count</em> client alive messages are sent
+without receiving any response messages from the client, the client will
+be disconnected.  The <em>interval</em> indicates how much time, in seconds,
+that <code>mod_sftp</code> waits for data from the client before sending a
+client alive message.
+
+<p>
+For example, using:
+<pre>
+  SFTPClientAlive 3 15
+</pre>
+will cause an unresponsive client to be disconnected after approximately 45
+seconds.
 
 <p>
 <hr>
@@ -1720,7 +1747,7 @@ new file.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-08-03 00:00:40 $</i><br>
+Last Updated: <i>$Date: 2010-09-15 17:37:50 $</i><br>
 
 <br><hr>
 

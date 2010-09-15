@@ -50,6 +50,8 @@ ChangeLog files.
       command.  The ListOptions directive handles these options as well.
       See the ls(1) man page for more details on these options.
 
+  + SFTPClientAlive
+
   + Changed configuration directives:
 
     BanOnEvent
@@ -63,4 +65,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2010-08-10 21:23:09 $
+Last Updated: $Date: 2010-09-15 17:37:50 $
