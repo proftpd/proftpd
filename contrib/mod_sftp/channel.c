@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.31 2010-05-06 00:17:40 castaglia Exp $
+ * $Id: channel.c,v 1.32 2010-09-15 17:29:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1570,6 +1570,34 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
   }
 
   return 0;
+}
+
+/* Return the number of open channels, if any. */
+unsigned int sftp_channel_opened(uint32_t *remote_channel_id) {
+  register unsigned int i;
+  unsigned int count = 0;
+  struct ssh2_channel **chans;
+
+  if (channel_count == 0 ||
+      channel_list == NULL) {
+    return count;
+  }
+
+  if (channel_list == NULL) {
+    errno = EACCES;
+    return NULL;
+  }
+
+  chans = channel_list->elts;
+  for (i = 0; i < channel_list->nelts; i++) {
+    if (chans[i] != NULL) {
+      if (remote_channel_id != NULL) {
+        *remote_channel_id = chans[i]->remote_channel_id;
+      }
+    }
+  }
+
+  return channel_count;
 }
 
 int sftp_channel_register_exec_handler(module *m, const char *command,

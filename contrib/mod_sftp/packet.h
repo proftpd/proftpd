@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.h,v 1.3 2010-02-15 22:03:52 castaglia Exp $
+ * $Id: packet.h,v 1.4 2010-09-15 17:29:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -89,5 +89,7 @@ int sftp_ssh2_packet_rekey_set_size(off_t);
 
 int sftp_ssh2_packet_send_version(void);
 int sftp_ssh2_packet_set_poll_timeout(int);
+
+int sftp_ssh2_packet_set_client_alive(unsigned int, unsigned int);
 
 #endif

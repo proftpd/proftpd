@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp channels
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.h,v 1.6 2009-08-26 17:23:06 castaglia Exp $
+ * $Id: channel.h,v 1.7 2010-09-15 17:29:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -77,5 +77,12 @@ int sftp_channel_free(void);
 int sftp_channel_handle(struct ssh2_packet *, char);
 int sftp_channel_init(void);
 int sftp_channel_write_data(pool *, uint32_t, char *, uint32_t);
+
+/* Return the number of open channels, if any.  If a pointer to a uint32_t
+ * is provided, AND the returned count is greater than zero, then the
+ * pointer will point to a randomly selected remote channel ID for an open
+ * channel.
+ */
+unsigned int sftp_channel_opened(uint32_t *);
 
 #endif

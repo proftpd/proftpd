@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.36 2010-08-02 23:57:25 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.37 2010-09-15 17:29:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -452,6 +452,35 @@ static uint32_t get_size(const char *bytes, const char *units) {
 
   nbytes = (uint32_t) (res * units_factor);
   return nbytes;
+}
+
+/* usage: SFTPClientAlive count interval */
+MODRET set_sftpclientalive(cmd_rec *cmd) {
+  int count, interval;
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  count = atoi(cmd->argv[1]);
+  if (count < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "max count '", cmd->argv[1],
+      "' must be equal to or greater than zero", NULL));
+  }
+
+  interval = atoi(cmd->argv[2]);
+  if (interval < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "interval '", cmd->argv[2],
+      "' must be equal to or greater than zero", NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = count;
+  c->argv[1] = palloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[1]) = interval;
+ 
+  return PR_HANDLED(cmd);
 }
 
 /* usage: SFTPClientMatch pattern key1 val1 ... */
@@ -1620,6 +1649,20 @@ static int sftp_sess_init(void) {
 
   sftp_fxp_use_gmt(times_gmt);
 
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPClientAlive", FALSE);
+  if (c) {
+    unsigned int count, interval;
+
+    count = *((unsigned int *) c->argv[0]);
+    interval = *((unsigned int *) c->argv[1]);
+
+    (void) sftp_ssh2_packet_set_client_alive(count, interval);
+
+    pr_trace_msg("ssh2", 7,
+      "client alive checks requested after %u secs, up to %u times",
+      interval, count);
+  }
+
   /* Check for any rekey policy. */
   c = find_config(main_server->conf, CONF_PARAM, "SFTPRekey", FALSE);
   if (c) {
@@ -1737,6 +1780,7 @@ static conftable sftp_conftab[] = {
   { "SFTPAuthorizedHostKeys",	set_sftpauthorizedkeys,		NULL },
   { "SFTPAuthorizedUserKeys",	set_sftpauthorizedkeys,		NULL },
   { "SFTPCiphers",		set_sftpciphers,		NULL },
+  { "SFTPClientAlive",		set_sftpclientalive,		NULL },
   { "SFTPClientMatch",		set_sftpclientmatch,		NULL },
   { "SFTPCompression",		set_sftpcompression,		NULL },
   { "SFTPCryptoDevice",		set_sftpcryptodevice,		NULL },

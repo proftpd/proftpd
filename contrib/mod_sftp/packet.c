@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.15 2010-08-06 18:34:00 castaglia Exp $
+ * $Id: packet.c,v 1.16 2010-09-15 17:29:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -69,17 +69,39 @@ static time_t last_recvd, last_sent;
 static const char *version_id = SFTP_ID_STRING "\r\n";
 static int sent_version_id = FALSE;
 
+static void is_client_alive(void);
+
+/* Count of the number of "client alive" messages sent without a response. */
+static unsigned int client_alive_max = 0, client_alive_count = 0;
+static unsigned int client_alive_interval = 0;
+
 static const char *trace_channel = "ssh2";
 
 static int packet_poll(int sockfd, int io) {
   fd_set rfds, wfds;
   struct timeval tv;
-  int res, timeout;
+  int res, timeout, using_client_alive = FALSE;
 
-  timeout = poll_timeout;
-  if (timeout <= 0) {
-    /* Default of 60 seconds */
-    timeout = 60;
+  if (poll_timeout == -1) {
+    /* If we have "client alive" timeout interval configured, use that --
+     * but only if we have already done the key exchange, and are not
+     * rekeying.
+     *
+     * Otherwise, we use the default (i.e. TimeoutIdle).
+     */
+
+    if (client_alive_interval > 0 &&
+        (!(sftp_sess_state & SFTP_SESS_STATE_REKEYING) && 
+         (sftp_sess_state & SFTP_SESS_STATE_HAVE_AUTH))) {
+      timeout = client_alive_interval;
+      using_client_alive = TRUE;
+
+    } else {
+      timeout = pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE);
+    }
+
+  } else {
+    timeout = poll_timeout;
   }
 
   tv.tv_sec = timeout;
@@ -121,9 +143,14 @@ static int packet_poll(int sockfd, int io) {
       tv.tv_sec = timeout;
       tv.tv_usec = 0;
 
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "polling on socket %d timed out after %lu sec, trying again", sockfd,
-        (unsigned long) tv.tv_sec);
+      if (using_client_alive) {
+        is_client_alive();
+
+      } else {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "polling on socket %d timed out after %lu sec, trying again", sockfd,
+          (unsigned long) tv.tv_sec);
+      }
 
       continue;
     }
@@ -226,6 +253,13 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen) {
   return reqlen;
 }
 
+static char peek_mesg_type(struct ssh2_packet *pkt) {
+  char mesg_type;
+
+  memcpy(&mesg_type, pkt->payload, sizeof(char));
+  return mesg_type;
+}
+
 static void handle_debug_mesg(struct ssh2_packet *pkt) {
   register unsigned int i;
   char always_display;
@@ -317,6 +351,17 @@ static void handle_global_request_mesg(struct ssh2_packet *pkt) {
   }
 }
 
+static void handle_client_alive_mesg(struct ssh2_packet *pkt, char mesg_type) {
+  const char *mesg_desc;
+
+  mesg_desc = sftp_ssh2_packet_get_mesg_type_desc(mesg_type);
+
+  pr_trace_msg(trace_channel, 12,
+    "client sent %s message, considering client alive", mesg_desc);
+
+  client_alive_count = 0;
+}
+
 static void handle_ignore_mesg(struct ssh2_packet *pkt) {
   char *str;
   size_t len;
@@ -335,6 +380,60 @@ static void handle_unimplemented_mesg(struct ssh2_packet *pkt) {
 
   pr_trace_msg(trace_channel, 7, "received SSH_MSG_UNIMPLEMENTED for "
     "packet #%lu", (unsigned long) seqno);
+}
+
+static void is_client_alive(void) {
+  unsigned int count;
+  char *buf, *ptr;
+  uint32_t bufsz, buflen, channel_id;
+  struct ssh2_packet *pkt;
+  pool *tmp_pool;
+
+  if (++client_alive_count > client_alive_max) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "SFTPClientAlive threshold (max %u checks, %u sec interval) reached, "
+      "disconnecting client", client_alive_max, client_alive_interval);    
+
+    /* XXX Generate an event for this? */
+
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION,
+      "client alive threshold reached");
+  }
+
+  /* If we have any opened channels, send a CHANNEL_REQUEST to one of
+   * them.  Otherwise, send a GLOBAL_REQUEST.
+   */
+
+  tmp_pool = make_sub_pool(session.pool);
+
+  bufsz = buflen = 64;
+  ptr = buf = palloc(tmp_pool, bufsz);
+
+  count = sftp_channel_opened(&channel_id);  
+  if (count > 0) {
+    sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_REQUEST);
+    sftp_msg_write_int(&buf, &buflen, channel_id);
+
+    pr_trace_msg(trace_channel, 9,
+      "sending CHANNEL_REQUEST (remote channel ID %lu, keepalive@proftpd.org)",
+      (unsigned long) channel_id);
+
+  } else {
+    sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_GLOBAL_REQUEST);
+
+    pr_trace_msg(trace_channel, 9,
+      "sending GLOBAL_REQUEST (keepalive@proftpd.org)");
+  }
+
+  sftp_msg_write_string(&buf, &buflen, "keepalive@proftpd.org");
+  sftp_msg_write_bool(&buf, &buflen, TRUE);
+
+  pkt = sftp_ssh2_packet_create(tmp_pool);
+  pkt->payload = ptr;
+  pkt->payload_len = (bufsz - buflen);
+
+  (void) sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+  destroy_pool(tmp_pool);
 }
 
 /* Attempt to read in a random amount of data (up to the maximum amount of
@@ -534,13 +633,6 @@ static int read_packet_mac(int sockfd, struct ssh2_packet *pkt, char *buf) {
   return 0;
 }
 
-static char peek_mesg_type(struct ssh2_packet *pkt) {
-  char mesg_type;
-
-  memcpy(&mesg_type, pkt->payload, sizeof(char));
-  return mesg_type;
-}
-
 struct ssh2_packet *sftp_ssh2_packet_create(pool *p) {
   pool *tmp_pool;
   struct ssh2_packet *pkt;
@@ -695,10 +787,18 @@ const char *sftp_ssh2_packet_get_mesg_type_desc(char mesg_type) {
 
 int sftp_ssh2_packet_set_poll_timeout(int timeout) {
   if (timeout <= 0) {
-    timeout = pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE);
+    poll_timeout = -1;
+
+  } else {
+    poll_timeout = timeout;
   }
 
-  poll_timeout = timeout;
+  return 0;
+}
+
+int sftp_ssh2_packet_set_client_alive(unsigned int max, unsigned int interval) {
+  client_alive_max = max;
+  client_alive_interval = interval;
   return 0;
 }
 
@@ -751,7 +851,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       read_packet_discard(sockfd);
       return -1;
     }
-
 
     pr_trace_msg(trace_channel, 20, "SSH2 packet padding len = %u bytes",
       (unsigned int) pkt->padding_len);
@@ -918,6 +1017,14 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       pkt->payload_len -= sizeof(char);
 
       handle_global_request_mesg(pkt);
+      continue;
+    }
+
+    if (mesg_type == SFTP_SSH2_MSG_REQUEST_SUCCESS ||
+        mesg_type == SFTP_SSH2_MSG_REQUEST_FAILURE ||
+        mesg_type == SFTP_SSH2_MSG_CHANNEL_SUCCESS ||
+        mesg_type == SFTP_SSH2_MSG_CHANNEL_FAILURE) {
+      handle_client_alive_mesg(pkt, mesg_type);
       continue;
     }
 
