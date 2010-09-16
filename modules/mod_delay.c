@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.43 2010-09-14 18:16:33 castaglia Exp $
+ * $Id: mod_delay.c,v 1.44 2010-09-16 21:36:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -84,6 +84,9 @@
  * also need updating, to include the new protocol, as well.
  */
 #define DELAY_NPROTO			3
+
+/* Define an absolute upper limit on the delay values selected, in usecs. */
+#define DELAY_MAX_DELAY_USECS		(15 * 60 * 1000 * 1000)
 
 #if defined(PR_USE_CTRLS)
 static ctrls_acttab_t delay_acttab[];
@@ -237,8 +240,14 @@ static long delay_get_median(pool *p, unsigned int rownum, const char *protocol,
    * always added at the end of the row, shifting everything to the left.
    */
   if (tab_vals != NULL) {
-    for (i = 1; i < dv->dv_nvals; i++)
-      *((long *) push_array(list)) = tab_vals[DELAY_NVALUES - i];
+    for (i = 1; i < dv->dv_nvals; i++) {
+      /* Ignore any possible garbage (i.e. negative) values in the
+       * DelayTable.
+       */
+      if (tab_vals[DELAY_NVALUES - i] >= 0) {
+        *((long *) push_array(list)) = tab_vals[DELAY_NVALUES - i];
+      }
+    }
   }
   *((long *) push_array(list)) = interval;
 
@@ -246,8 +255,23 @@ static long delay_get_median(pool *p, unsigned int rownum, const char *protocol,
     list->nelts, list->nelts != 1 ? "values" : "value");
 
   median = delay_select_k(((list->nelts + 1) / 2), list);
-  pr_trace_msg(trace_channel, 7, "selected median interval of %ld usecs",
-    median);
+  if (median >= 0) {
+
+    /* Enforce an additional restriction: no delays over a hard limit. */
+    if (median >= DELAY_MAX_DELAY_USECS) {
+      pr_trace_msg(trace_channel, 1,
+        "selected median (%ld usecs) exceeds max delay (%ld usecs), ignoring",
+        median, (long) DELAY_MAX_DELAY_USECS);
+      pr_log_debug(DEBUG5, MOD_DELAY_VERSION
+        ": selected median (%ld usecs) exceeds max delay (%ld usecs), ignoring",
+        median, (long) DELAY_MAX_DELAY_USECS);
+      median = -1;
+
+    } else {
+      pr_trace_msg(trace_channel, 7, "selected median interval of %ld usecs",
+        median);
+    }
+  }
 
   return median;
 }
@@ -700,19 +724,19 @@ static void delay_table_reset(void) {
     memset(dv->dv_proto, 0, sizeof(dv->dv_proto));
     sstrcat(dv->dv_proto, "ftp", sizeof(dv->dv_proto));
     dv->dv_nvals = 0;
-    memset(dv->dv_vals, 0, sizeof(dv->dv_vals));
+    memset(dv->dv_vals, -1, sizeof(dv->dv_vals));
 
     dv = &(row->d_vals[1]);
     memset(dv->dv_proto, 0, sizeof(dv->dv_proto));
     sstrcat(dv->dv_proto, "ftps", sizeof(dv->dv_proto));
     dv->dv_nvals = 0;
-    memset(dv->dv_vals, 0, sizeof(dv->dv_vals));
+    memset(dv->dv_vals, -1, sizeof(dv->dv_vals));
 
     dv = &(row->d_vals[2]);
     memset(dv->dv_proto, 0, sizeof(dv->dv_proto));
     sstrcat(dv->dv_proto, "ssh2", sizeof(dv->dv_proto));
     dv->dv_nvals = 0;
-    memset(dv->dv_vals, 0, sizeof(dv->dv_vals));
+    memset(dv->dv_vals, -1, sizeof(dv->dv_vals));
 
     /* Row for PASS values */
     row = &((struct delay_rec *) delay_tab.dt_data)[i + 1];
@@ -725,19 +749,19 @@ static void delay_table_reset(void) {
     memset(dv->dv_proto, 0, sizeof(dv->dv_proto));
     sstrcat(dv->dv_proto, "ftp", sizeof(dv->dv_proto));
     dv->dv_nvals = 0;
-    memset(dv->dv_vals, 0, sizeof(dv->dv_vals));
+    memset(dv->dv_vals, -1, sizeof(dv->dv_vals));
 
     dv = &(row->d_vals[1]);
     memset(dv->dv_proto, 0, sizeof(dv->dv_proto));
     sstrcat(dv->dv_proto, "ftps", sizeof(dv->dv_proto));
     dv->dv_nvals = 0;
-    memset(dv->dv_vals, 0, sizeof(dv->dv_vals));
+    memset(dv->dv_vals, -1, sizeof(dv->dv_vals));
 
     dv = &(row->d_vals[2]);
     memset(dv->dv_proto, 0, sizeof(dv->dv_proto));
     sstrcat(dv->dv_proto, "ssh2", sizeof(dv->dv_proto));
     dv->dv_nvals = 0;
-    memset(dv->dv_vals, 0, sizeof(dv->dv_vals));
+    memset(dv->dv_vals, -1, sizeof(dv->dv_vals));
   }
 
   return;
@@ -1236,14 +1260,20 @@ MODRET delay_post_pass(cmd_rec *cmd) {
     delay_tab.dt_fd = -1;
   }
 
-  /* If the current interval is less than the median interval, we
-   * need to delay ourselves a little.
+  /* If the current interval is less than the median interval (and a valid
+   * median interval was selected), we need to delay ourselves a little.
    */
-  if (interval < median) {
+  if (median >= 0) {
+    if (interval < median) {
+      pr_trace_msg(trace_channel, 9,
+        "interval (%ld usecs) less than selected median (%ld usecs), delaying",
+        interval, median);
+      delay_delay(median - interval);
+    }
+
+  } else {
     pr_trace_msg(trace_channel, 9,
-      "interval (%ld usecs) less than selected median (%ld usecs), delaying",
-      interval, median);
-    delay_delay(median - interval);
+      "invalid median value (%ld usecs) selected, ignoring", median);
   }
 
   return PR_DECLINED(cmd);
@@ -1323,14 +1353,20 @@ MODRET delay_post_user(cmd_rec *cmd) {
       delay_tab.dt_path, strerror(errno));
   }
 
-  /* If the current interval is less than the median interval, we
-   * need to delay ourselves a little.
+  /* If the current interval is less than the median interval (and a valid
+   * median interval was selected), we need to delay ourselves a little.
    */
-  if (interval < median) {
+  if (median >= 0) {
+    if (interval < median) {
+      pr_trace_msg(trace_channel, 9,
+        "interval (%ld usecs) less than selected median (%ld usecs), delaying",
+        interval, median);
+      delay_delay(median - interval);
+    }
+
+  } else {
     pr_trace_msg(trace_channel, 9,
-      "interval (%ld usecs) less than selected median (%ld usecs), delaying",
-      interval, median);
-    delay_delay(median - interval);
+      "invalid median value (%ld usecs) selected, ignoring", median);
   }
 
   return PR_DECLINED(cmd);
