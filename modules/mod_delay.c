@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.44 2010-09-16 21:36:03 castaglia Exp $
+ * $Id: mod_delay.c,v 1.45 2010-09-16 21:40:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -86,7 +86,7 @@
 #define DELAY_NPROTO			3
 
 /* Define an absolute upper limit on the delay values selected, in usecs. */
-#define DELAY_MAX_DELAY_USECS		(15 * 60 * 1000 * 1000)
+#define DELAY_MAX_DELAY_USECS		(60 * 60 * 1000 * 1000)
 
 #if defined(PR_USE_CTRLS)
 static ctrls_acttab_t delay_acttab[];
