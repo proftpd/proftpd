@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.26 2009-12-28 20:32:03 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.27 2010-09-17 18:00:15 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -556,12 +556,15 @@ unless <code>AllowLogSymlinks</code> is explicitly set to <em>on</em>
 
 <p>
 The <code>TLSOptions</code> directive is used to configure various optional
-behavior of <code>mod_tls</code>.
+behavior of <code>mod_tls</code>.  <b>Note</b>: all of the configured
+<code>TLSOptions</code> parameters <b>must</b> appear on the same line in
+the configuration; only the first <code>TLSOptions</code> directive that
+appears in the configuration is used.
 
 <p>
 Example:
 <pre>
-  TLSOptions iPAddressRequired StdEnvVars
+  TLSOptions iPAddressRequired StdEnvVars NoSessionReuseRequired
 </pre>
 
 <p>
@@ -1535,11 +1538,11 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2009-12-28 20:32:03 $</i><br>
+Last Updated: <i>$Date: 2010-09-17 18:00:15 $</i><br>
 
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2009 TJ Saunders<br>
+&copy; Copyright 2002-2010 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
