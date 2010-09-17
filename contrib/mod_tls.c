@@ -2974,7 +2974,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       reused = SSL_session_reused(ssl);
       if (reused != 1) {
         tls_log("client did not reuse SSL session, rejecting data connection "
-          "(see TLSOption NoSessionReuseRequired)");
+          "(see the NoSessionReuseRequired TLSOptions parameter)");
         tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
         tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = NULL;
         return -1;
@@ -3007,8 +3007,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
           if (!SSL_has_matching_session_id(ctrl_ssl, sess_id, sess_id_len)) {
 #endif
             tls_log("Client did not reuse SSL session from control channel, "
-              "rejecting data connection (see TLSOption "
-              "NoSessionReuseRequired)");
+              "rejecting data connection (see the NoSessionReuseRequired "
+              "TLSOptions parameter)");
             tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
             return -1;
           }
