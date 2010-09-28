@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.179 2010-07-20 16:23:28 castaglia Exp $
+ * $Id: mod_ls.c,v 1.180 2010-09-28 16:49:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -53,6 +53,9 @@ static int sendline(int flags, char *fmt, ...)
        ;
 #endif
 #define LS_SENDLINE_FL_FLUSH	0x0001
+
+static unsigned long list_flags = 0;
+#define LS_FL_NO_ERROR_IF_ABSENT	0x0001
 
 static unsigned char list_strict_opts = FALSE;
 static char *list_options = NULL;
@@ -1674,8 +1677,17 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
       pr_fs_clear_cache();
       if (pr_fsio_stat(target, &st) < 0) {
+        int xerrno = errno;
+
+        if (xerrno == ENOENT &&
+            (list_flags & LS_FL_NO_ERROR_IF_ABSENT)) {
+          return 0;
+        }
+
         pr_response_add_err(R_450, "%s: %s",
-          pr_fs_encode_path(cmd->tmp_pool, target), strerror(errno));
+          pr_fs_encode_path(cmd->tmp_pool, target), strerror(xerrno));
+
+        errno = xerrno;
         return -1;
       }
     }
@@ -2161,6 +2173,8 @@ MODRET genericlist(cmd_rec *cmd) {
 
     list_nfiles.max = *((unsigned int *) c->argv[3]);
     list_ndirs.max = *((unsigned int *) c->argv[4]);
+
+    list_flags = *((unsigned long *) c->argv[5]);
   }
 
   fakeuser = get_param_ptr(CURRENT_CONF, "DirFakeUser", FALSE);
@@ -2311,6 +2325,8 @@ MODRET ls_stat(cmd_rec *cmd) {
 
     list_nfiles.max = *((unsigned int *) c->argv[3]);
     list_ndirs.max = *((unsigned int *) c->argv[4]);
+
+    list_flags = *((unsigned long *) c->argv[5]);
   }
 
   fakeuser = get_param_ptr(CURRENT_CONF, "DirFakeUser", FALSE);
@@ -2399,6 +2415,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
     list_nfiles.max = *((unsigned int *) c->argv[3]);
     list_ndirs.max = *((unsigned int *) c->argv[4]);
+
+    list_flags = *((unsigned long *) c->argv[5]);
   }
 
   /* Clear the listing option flags. */
@@ -2559,11 +2577,31 @@ MODRET ls_nlst(cmd_rec *cmd) {
           g.gl_pathv[1] = NULL;
 
         } else {
+          if (list_flags & LS_FL_NO_ERROR_IF_ABSENT) {
+            if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+              return PR_ERROR(cmd);
+            session.sf_flags |= SF_ASCII_OVERRIDE;
+            pr_response_add(R_226, _("Transfer complete"));
+            ls_done(cmd);
+
+            return PR_HANDLED(cmd);
+          }
+
           pr_response_add_err(R_450, _("No files found"));
           return PR_ERROR(cmd);
         }
 
       } else {
+        if (list_flags & LS_FL_NO_ERROR_IF_ABSENT) {
+          if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+            return PR_ERROR(cmd);
+          session.sf_flags |= SF_ASCII_OVERRIDE;
+          pr_response_add(R_226, _("Transfer complete"));
+          ls_done(cmd);
+
+          return PR_HANDLED(cmd);
+        }
+
         pr_response_add_err(R_450, _("No files found"));
         return PR_ERROR(cmd);
       }
@@ -2618,8 +2656,23 @@ MODRET ls_nlst(cmd_rec *cmd) {
     struct stat st;
 
     if (!ls_perms_full(cmd->tmp_pool, cmd, target, &hidden)) {
+      int xerrno = errno;
+
+      if (xerrno == ENOENT &&
+          (list_flags & LS_FL_NO_ERROR_IF_ABSENT)) {
+        if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+          return PR_ERROR(cmd);
+        session.sf_flags |= SF_ASCII_OVERRIDE;
+        pr_response_add(R_226, _("Transfer complete"));
+        ls_done(cmd);
+
+        return PR_HANDLED(cmd);
+      }
+
       pr_response_add_err(R_450, "%s: %s", *cmd->arg ? cmd->arg :
-        pr_fs_encode_path(cmd->tmp_pool, session.vwd), strerror(errno));
+        pr_fs_encode_path(cmd->tmp_pool, session.vwd), strerror(xerrno));
+
+      errno = xerrno;
       return PR_ERROR(cmd);
     }
 
@@ -2631,7 +2684,19 @@ MODRET ls_nlst(cmd_rec *cmd) {
         unsigned char *ignore_hidden = get_param_ptr(c->subset,
           "IgnoreHidden", FALSE);
 
-        if (ignore_hidden && *ignore_hidden == TRUE) {
+        if (ignore_hidden &&
+            *ignore_hidden == TRUE) {
+
+          if (list_flags & LS_FL_NO_ERROR_IF_ABSENT) {
+            if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+              return PR_ERROR(cmd);
+            session.sf_flags |= SF_ASCII_OVERRIDE;
+            pr_response_add(R_226, _("Transfer complete"));
+            ls_done(cmd);
+
+            return PR_HANDLED(cmd);
+          }
+
           pr_response_add_err(R_450, "%s: %s",
             pr_fs_encode_path(cmd->tmp_pool, target), strerror(ENOENT));
 
@@ -2649,7 +2714,22 @@ MODRET ls_nlst(cmd_rec *cmd) {
      */
     pr_fs_clear_cache();
     if (pr_fsio_stat(target, &st) < 0) {
-      pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(errno));
+      int xerrno = errno;
+
+      if (xerrno == ENOENT &&
+          (list_flags & LS_FL_NO_ERROR_IF_ABSENT)) {
+        if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+          return PR_ERROR(cmd);
+        session.sf_flags |= SF_ASCII_OVERRIDE;
+        pr_response_add(R_226, _("Transfer complete"));
+        ls_done(cmd);
+
+        return PR_HANDLED(cmd);
+      }
+
+      pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(xerrno));
+
+      errno = xerrno;
       return PR_ERROR(cmd);
     }
 
@@ -2767,6 +2847,7 @@ MODRET set_dirfakemode(cmd_rec *cmd) {
 
 MODRET set_listoptions(cmd_rec *cmd) {
   config_rec *c = NULL;
+  unsigned long flags = 0;
 
   if (cmd->argc-1 < 1)
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -2774,7 +2855,7 @@ MODRET set_listoptions(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR|CONF_DYNDIR);
 
-  c = add_config_param(cmd->argv[0], 5, NULL, NULL, NULL, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 6, NULL, NULL, NULL, NULL, NULL, NULL);
   c->flags |= CF_MERGEDOWN;
   
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
@@ -2795,6 +2876,10 @@ MODRET set_listoptions(cmd_rec *cmd) {
   c->argv[4] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[4]) = 0;
 
+  /* The default flags */
+  c->argv[5] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned int *) c->argv[5]) = 0;
+ 
   /* Check for, and handle, optional arguments. */
   if (cmd->argc-1 >= 2) {
     register unsigned int i = 0;
@@ -2834,12 +2919,17 @@ MODRET set_listoptions(cmd_rec *cmd) {
 
           *((unsigned int *) c->argv[4]) = maxdirs;
 
+      } else if (strcasecmp(cmd->argv[i], "NoErrorIfAbsent") == 0) {
+          flags |= LS_FL_NO_ERROR_IF_ABSENT;
+
       } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown keyword: '",
           cmd->argv[i], "'", NULL));
       }
     }
   }
+
+  *((unsigned long *) c->argv[5]) = flags;
 
   return PR_HANDLED(cmd);
 }
