@@ -188,7 +188,7 @@ sub ldap_auth {
       if ($allow_auth) {
         $client->login($user, $passwd);
       } else {
-        eval { $client->login($user, $passwd) };
+        eval { $client->login($user, $passwd . '-') };
         unless ($@) {
           die("Login succeeded unexpectedly");
         }
