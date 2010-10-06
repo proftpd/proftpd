@@ -407,6 +407,7 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_OPT_NO_SESSION_REUSE_REQUIRED		0x0100
 #define TLS_OPT_USE_IMPLICIT_SSL			0x0200
 #define TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS		0x0400
+#define TLS_OPT_VERIFY_CERT_CN				0x0800
 
 /* mod_tls cleanup flags */
 #define TLS_CLEANUP_FL_SESS_INIT	0x0001
@@ -981,8 +982,8 @@ static const char *get_printable_subjaltname(pool *p, const char *data,
 
 static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
   X509 *cert = NULL;
-  STACK_OF(GENERAL_NAME) *sk_alt_names;
-  unsigned char ok = FALSE, have_dns_ext = FALSE, have_ipaddr_ext = FALSE;
+  unsigned char ok = FALSE, have_cn = FALSE, have_dns_ext = FALSE,
+    have_ipaddr_ext = FALSE;
 
   /* Only perform these more stringent checks if asked to verify clients. */
   if (!(tls_flags & TLS_SESS_VERIFY_CLIENT))
@@ -990,114 +991,198 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
 
   /* Only perform these checks is configured to do so. */
   if (!(tls_opts & TLS_OPT_VERIFY_CERT_FQDN) &&
-      !(tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR))
+      !(tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) &&
+      !(tls_opts & TLS_OPT_VERIFY_CERT_CN)) {
     return TRUE;
-
-  /* First, check the subjectAltName X509v3 extensions, as is proper, for
-   * the IP address and FQDN.  If enough people clamor for backward
-   * compatibility, I'll amend this to check commonName later.  Otherwise,
-   * for now, only look in the extensions.
-   */
+  }
 
   /* Note: this should _never_ return NULL in this case. */
   cert = SSL_get_peer_certificate(ssl);
 
-  sk_alt_names = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
-  if (sk_alt_names) {
-    register unsigned int i;
-    int nnames = sk_GENERAL_NAME_num(sk_alt_names);
+  /* Check the CN (Common Name) if configured. */
+  if (tls_opts & TLS_OPT_VERIFY_CERT_CN) {
+    X509_NAME *sn;
 
-    for (i = 0; i < nnames; i++) {
-      GENERAL_NAME *name = sk_GENERAL_NAME_value(sk_alt_names, i);
+    /* This does NOT increment a reference counter, thus we do NOT want
+     * call X509_NAME_free() on the returned pointer.
+     */
+    sn = X509_get_subject_name(cert);
+    if (sn) {
+      STACK_OF(X509_NAME_ENTRY) *sk_name_ents;
+      register unsigned int i;
+      int nents;
 
-      /* Only interested in the DNS and IP address types right now. */
-      switch (name->type) {
-        case GEN_DNS:
-          if (tls_opts & TLS_OPT_VERIFY_CERT_FQDN) {
-            const char *cert_dns_name = (const char *) name->d.ia5->data;
-            have_dns_ext = TRUE;
+      /* XXX I don't like this direct access to the entries member */
+      sk_name_ents = sn->entries;
+      nents = sk_X509_NAME_ENTRY_num(sk_name_ents);
 
-            /* Check for subjectAltName values which contain embedded
-             * NULs.  This can cause verification problems (spoofing),
-             * e.g. if the string is "www.goodguy.com\0www.badguy.com"; the
-             * use of strcmp() only checks "www.goodguy.com".
-             */
+      for (i = 0; i < nents; i++) {
+        X509_NAME_ENTRY *ent;
+        int nid;
 
-            if ((size_t) name->d.ia5->length != strlen(cert_dns_name)) {
-              tls_log("%s", "client cert dNSName contains embedded NULs, "
-                "rejecting as possible spoof attempt");
-              tls_log("suspicious dNSName value: '%s'",
-                get_printable_subjaltname(conn->pool,
-                  (const char *) name->d.ia5->data,
-                  (size_t) name->d.ia5->length));
+        ent = sk_X509_NAME_ENTRY_value(sk_name_ents, i);
 
-              GENERAL_NAME_free(name);
-              sk_GENERAL_NAME_free(sk_alt_names);
-              X509_free(cert);
+        nid = OBJ_obj2nid((ASN1_OBJECT *) X509_NAME_ENTRY_get_object(ent));
+        if (nid == NID_commonName) {
+          const char *ptr;
+          int len;
+
+          have_cn = TRUE;
+
+          /* XXX I don't like these direct accesses to the data and length
+           * members.
+           */
+          ptr = (const char *) ent->value->data;
+          len = ent->value->length;
+
+          /* Check for CommonName values which contain embedded NULs.  This
+           * can cause verification problems (spoofing), e.g. if the string is
+           * "www.goodguy.com\0www.badguy.com"; the use of strcmp() only checks
+           * "www.goodguy.com".
+           */
+
+          if (len != strlen(ptr)) {
+            tls_log("%s", "client cert CommonName contains embedded NULs, "
+              "rejecting as possible spoof attempt");
+            tls_log("suspicious CommonName value: '%s'",
+              get_printable_subjaltname(conn->pool, (const char *) ptr, len));
+
+            X509_NAME_ENTRY_free(ent);
+            return FALSE;
+
+          } else {
+            if (strcmp(ptr, conn->remote_name) != 0) {
+              tls_log("client cert CommonName value '%s' != client FQDN '%s'",
+                ptr, conn->remote_name);
+
+              X509_NAME_ENTRY_free(ent);
               return FALSE;
+            }
+          }
 
-            } else {
-              if (strcmp(cert_dns_name, conn->remote_name) != 0) {
-                tls_log("client cert dNSName value '%s' != client FQDN '%s'",
-                  cert_dns_name, conn->remote_name);
+          tls_log("%s", "client cert CommonName matches client FQDN");
+          ok = TRUE;
+        }
+
+        if (ok)
+          break;
+      }
+    }
+  }
+
+  /* Next, heck the subjectAltName X509v3 extensions, as is proper, for
+   * the IP address and FQDN.
+   */
+  if ((tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) ||
+      (tls_opts & TLS_OPT_VERIFY_CERT_FQDN)) {
+    STACK_OF(GENERAL_NAME) *sk_alt_names;
+
+    sk_alt_names = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
+    if (sk_alt_names) {
+      register unsigned int i;
+      int nnames = sk_GENERAL_NAME_num(sk_alt_names);
+
+      for (i = 0; i < nnames; i++) {
+        GENERAL_NAME *name = sk_GENERAL_NAME_value(sk_alt_names, i);
+
+        /* Only interested in the DNS and IP address types right now. */
+        switch (name->type) {
+          case GEN_DNS:
+            if (tls_opts & TLS_OPT_VERIFY_CERT_FQDN) {
+              const char *cert_dns_name = (const char *) name->d.ia5->data;
+              have_dns_ext = TRUE;
+
+              /* Check for subjectAltName values which contain embedded
+               * NULs.  This can cause verification problems (spoofing),
+               * e.g. if the string is "www.goodguy.com\0www.badguy.com"; the
+               * use of strcmp() only checks "www.goodguy.com".
+               */
+
+              if ((size_t) name->d.ia5->length != strlen(cert_dns_name)) {
+                tls_log("%s", "client cert dNSName contains embedded NULs, "
+                  "rejecting as possible spoof attempt");
+                tls_log("suspicious dNSName value: '%s'",
+                  get_printable_subjaltname(conn->pool,
+                    (const char *) name->d.ia5->data,
+                    (size_t) name->d.ia5->length));
+
+                GENERAL_NAME_free(name);
+                sk_GENERAL_NAME_free(sk_alt_names);
+                X509_free(cert);
+                return FALSE;
+
+              } else {
+                if (strcmp(cert_dns_name, conn->remote_name) != 0) {
+                  tls_log("client cert dNSName value '%s' != client FQDN '%s'",
+                    cert_dns_name, conn->remote_name);
+
+                  GENERAL_NAME_free(name);
+                  sk_GENERAL_NAME_free(sk_alt_names);
+                  X509_free(cert);
+                  return FALSE;
+                }
+              }
+
+              tls_log("%s", "client cert dNSName matches client FQDN");
+              ok = TRUE;
+              continue;
+            }
+            break;
+
+          case GEN_IPADD:
+            if (tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) {
+              char cert_ipstr[INET_ADDRSTRLEN + 1] = {'\0'};
+              const char *cert_ipaddr = (const char *) name->d.ia5->data;
+
+              /* Note: OpenSSL doesn't support IPv6 addresses in the
+               * ipAddress name yet.
+               */
+              memset(cert_ipstr, '\0', sizeof(cert_ipstr));
+              snprintf(cert_ipstr, sizeof(cert_ipstr) - 1, "%u.%u.%u.%u",
+                cert_ipaddr[0], cert_ipaddr[1], cert_ipaddr[2], cert_ipaddr[3]);
+              have_ipaddr_ext = TRUE;
+
+              if (strcmp(cert_ipstr, pr_netaddr_get_ipstr(conn->remote_addr))) {
+                tls_log("client cert iPAddress value '%s' != client IP '%s'",
+                  cert_ipstr, pr_netaddr_get_ipstr(conn->remote_addr));
 
                 GENERAL_NAME_free(name);
                 sk_GENERAL_NAME_free(sk_alt_names);
                 X509_free(cert);
                 return FALSE;
               }
+
+              tls_log("%s", "client cert iPAddress matches client IP");
+              ok = TRUE;
+              continue;
             }
+            break;
 
-            tls_log("%s", "client cert dNSName matches client FQDN");
-            ok = TRUE;
-            continue;
-          }
-          break;
+          default:
+            break;
+        }
 
-        case GEN_IPADD:
-          if (tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) {
-            char cert_ipstr[INET_ADDRSTRLEN + 1] = {'\0'};
-            const char *cert_ipaddr = (const char *) name->d.ia5->data;
+        GENERAL_NAME_free(name);
+      } 
 
-            /* Note: OpenSSL doesn't support IPv6 addresses in the
-             * ipAddress name yet.
-             */
-            memset(cert_ipstr, '\0', sizeof(cert_ipstr));
-            snprintf(cert_ipstr, sizeof(cert_ipstr) - 1, "%u.%u.%u.%u",
-              cert_ipaddr[0], cert_ipaddr[1], cert_ipaddr[2], cert_ipaddr[3]);
-            have_ipaddr_ext = TRUE;
-
-            if (strcmp(cert_ipstr, pr_netaddr_get_ipstr(conn->remote_addr))) {
-              tls_log("client cert iPAddress value '%s' != client IP '%s'",
-                cert_ipstr, pr_netaddr_get_ipstr(conn->remote_addr));
-
-              GENERAL_NAME_free(name);
-              sk_GENERAL_NAME_free(sk_alt_names);
-              X509_free(cert);
-              return FALSE;
-            }
-
-            tls_log("%s", "client cert iPAddress matches client IP");
-            ok = TRUE;
-            continue;
-          }
-          break;
-
-        default:
-          break;
-      }
-
-      GENERAL_NAME_free(name);
-    } 
-
-    sk_GENERAL_NAME_free(sk_alt_names);
+      sk_GENERAL_NAME_free(sk_alt_names);
+    }
   }
 
-  if ((tls_opts & TLS_OPT_VERIFY_CERT_FQDN) && !have_dns_ext)
-    tls_log("%s", "client cert missing required X509v3 subjectAltName dNSName");
+  if ((tls_opts & TLS_OPT_VERIFY_CERT_CN) &&
+      !have_cn) {
+    tls_log("%s", "client cert missing required X509v3 CommonName");
+  }
 
-  if ((tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) && !have_ipaddr_ext)
+  if ((tls_opts & TLS_OPT_VERIFY_CERT_FQDN) &&
+      !have_dns_ext) {
+    tls_log("%s", "client cert missing required X509v3 subjectAltName dNSName");
+  }
+
+  if ((tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) &&
+      !have_ipaddr_ext) {
     tls_log("%s", "client cert missing required X509v3 subjectAltName iPAddress");
+  }
 
   X509_free(cert);
 
@@ -2921,10 +3006,6 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   /* TLS handshake on the control channel... */
   if (!on_data) {
-    tls_log("%s connection accepted, using cipher %s (%d bits)",
-      SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
-      SSL_get_cipher_bits(ssl, NULL));
-
     subj = tls_get_subj_name();
     if (subj)
       tls_log("Client: %s", subj);
@@ -2942,6 +3023,10 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         return -1;
       }
     }
+
+    tls_log("%s connection accepted, using cipher %s (%d bits)",
+      SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+      SSL_get_cipher_bits(ssl, NULL));
 
     /* Setup the TLS environment variables, if requested. */
     tls_setup_environ(ssl);
@@ -5832,8 +5917,8 @@ MODRET tls_auth(cmd_rec *cmd) {
        * commands from the client.  In reality, this gibberish is probably
        * more encrypted data from the client.
        */
-      pr_response_add_err(R_550, _("TLS handshake failed"));
-      return PR_ERROR(cmd);
+      pr_response_send(R_550, _("TLS handshake failed"));
+      end_login(1);
     }
 
 #if OPENSSL_VERSION_NUMBER < 0x0090702fL
@@ -5862,8 +5947,8 @@ MODRET tls_auth(cmd_rec *cmd) {
        * commands from the client.  In reality, this gibberish is probably
        * more encrypted data from the client.
        */
-      pr_response_add_err(R_550, _("TLS handshake failed"));
-      return PR_ERROR(cmd);
+      pr_response_send(R_550, _("TLS handshake failed"));
+      end_login(1);
     }
 
 #if OPENSSL_VERSION_NUMBER < 0x0090702fL
@@ -6369,6 +6454,9 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "UseImplicitSSL") == 0) {
       opts |= TLS_OPT_USE_IMPLICIT_SSL;
+
+    } else if (strcmp(cmd->argv[i], "CommonNameRequired") == 0) {
+      opts |= TLS_OPT_VERIFY_CERT_CN;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TLSOption '",
@@ -7415,10 +7503,19 @@ static int tls_sess_init(void) {
   }
 
   /* If UseReverseDNS is set to off, disable TLS_OPT_VERIFY_CERT_FQDN. */
-  if ((tls_opts & TLS_OPT_VERIFY_CERT_FQDN) &&
-      !ServerUseReverseDNS) {
-    tls_opts &= ~TLS_OPT_VERIFY_CERT_FQDN;
-    tls_log("%s", "reverse DNS off, disabling TLSOption dNSNameRequired");
+  if (!ServerUseReverseDNS &&
+      ((tls_opts & TLS_OPT_VERIFY_CERT_FQDN) ||
+       (tls_opts & TLS_OPT_VERIFY_CERT_CN))) {
+
+    if (tls_opts & TLS_OPT_VERIFY_CERT_FQDN) {
+      tls_opts &= ~TLS_OPT_VERIFY_CERT_FQDN;
+      tls_log("%s", "reverse DNS off, disabling TLSOption dNSNameRequired");
+    }
+
+    if (tls_opts & TLS_OPT_VERIFY_CERT_CN) {
+      tls_opts &= ~TLS_OPT_VERIFY_CERT_CN;
+      tls_log("%s", "reverse DNS off, disabling TLSOption CommonNameRequired");
+    }
   }
 
   /* We need to check for FIPS mode in the child process as well, in order

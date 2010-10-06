@@ -54,6 +54,10 @@ ChangeLog files.
 
   + SFTPClientAlive
 
+  + New TLSOptions
+
+      CommonNameRequired (Bug#3512)
+
   + Changed configuration directives:
 
     BanOnEvent
@@ -67,4 +71,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2010-09-28 16:56:37 $
+Last Updated: $Date: 2010-10-06 18:43:12 $
