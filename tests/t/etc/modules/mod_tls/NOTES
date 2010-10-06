@@ -16,3 +16,9 @@ OpenSSL command:
     -name "ProFTPD PKCS12"
 
 When prompted for a password, leave it blank (i.e. just hit enter).
+
+To create the client-cert-localhost.pem file in this diretory, I used:
+
+  # cert-tool --days-valid=3650 --common-name=localhost --combined \
+      --create-cert=client-cert-localhost \
+      --signing-ca=ca-cert.pem --signing-key=ca-cert.pem
