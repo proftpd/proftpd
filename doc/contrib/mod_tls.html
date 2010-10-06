@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.27 2010-09-17 18:00:15 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.28 2010-10-06 18:45:42 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -628,6 +628,19 @@ The currently implemented options are:
     However, <code>TLSRequired auth</code> and
     <code>TLSRequired auth+data</code> configurations will override the
     <code>AllowPerUser</code> option.
+
+  <p>
+  <li><code>CommonNameRequired</code><br>
+    <p>
+    This option will cause <code>mod_tls</code> to perform checks on a client's
+    certificate once the SSL handshake has been completed: the client's
+    certificate will be searched for the <code>CommonName</code> (CN) X509v3
+    value.  Unless a <code>CommonName</code> value is present, and the
+    value matches the DNS name to which the client's IP address resolves,
+    the SSL session is closed.  This check is only performed during
+    SSL handshakes on the control channel.  Note that if
+    <code>UseReverseDNS</code> is <em>off</em>, this option is automatically
+    disabled.
 
   <p>
   <li><code>EnableDiags</code><br>
@@ -1538,7 +1551,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-09-17 18:00:15 $</i><br>
+Last Updated: <i>$Date: 2010-10-06 18:45:42 $</i><br>
 
 <hr>
 <font size=2><b><i>
