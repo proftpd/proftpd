@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.32 2010-09-15 17:29:51 castaglia Exp $
+ * $Id: channel.c,v 1.33 2010-10-15 22:08:23 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1580,12 +1580,12 @@ unsigned int sftp_channel_opened(uint32_t *remote_channel_id) {
 
   if (channel_count == 0 ||
       channel_list == NULL) {
-    return count;
+    return 0;
   }
 
   if (channel_list == NULL) {
     errno = EACCES;
-    return NULL;
+    return 0;
   }
 
   chans = channel_list->elts;
