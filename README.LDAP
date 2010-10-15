@@ -1,11 +1,11 @@
-mod_ldap v2.8.15
-================
+mod_ldap v2.9.0
+===============
 
 mod_ldap is a module that allows proftpd to do user authentication and
 name/UID lookups against an LDAP database.
 
-**Please note:** Read the CHANGES section below for mod_ldap v2.8 changes;
-some significant changes have been made. Do *NOT* upgrade to mod_ldap v2.8
+**Please note:** Read the CHANGES section below for mod_ldap v2.9 changes;
+some significant changes have been made. Do *NOT* upgrade to mod_ldap v2.9
 or later before reading the CHANGES section.
 
 Sections:
@@ -24,6 +24,7 @@ John Morrissey, <jwm@horde.net>, http://horde.net/~jwm/software/mod_ldap/.
 Feedback is much appreciated. If you're using mod_ldap successfully, are
 having problems getting mod_ldap up and running at your site, or have some
 code improvements or ideas for development, please let me know!
+
 
 ============================
 2. How do I set up mod_ldap?
@@ -69,6 +70,7 @@ you can simply:
 
 Please see the CHANGES file.
 
+
 ========
 4. To Do
 ========
@@ -79,6 +81,7 @@ Please see the CHANGES file.
 * shadowAccount objectclass stuff - inactive, expiration, etc - Is there
   any demand for this? It's been months since I've heard anyone express
   interest.
+
 
 =========
 5. Thanks
