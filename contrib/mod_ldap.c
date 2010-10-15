@@ -21,10 +21,7 @@
  * source code for OpenSSL in the source distribution.
  */
 
-/*
- * mod_ldap v2.9.0-20100826
- *
- * Thanks for patches go to (in alphabetical order):
+/* Thanks for patches go to (in alphabetical order):
  *
  * Peter Fabian (fabian at staff dot matavnet dot hu) - LDAPAuthBinds
  * Alexandre Francois (alexandre-francois at voila dot fr) - LDAPAliasDereference
@@ -48,14 +45,14 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.90 2010-08-26 21:50:37 jwm Exp $
+ * $Id: mod_ldap.c,v 1.91 2010-10-15 18:26:36 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.9.0-20100826"
+#define MOD_LDAP_VERSION	"mod_ldap/2.9.0"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030103
 # error MOD_LDAP_VERSION " requires ProFTPD 1.3.1rc3 or later"
@@ -1572,6 +1569,12 @@ set_ldap_searchscope(cmd_rec *cmd)
     CONF_ERROR(cmd, "LDAPSearchScope cannot be used when LDAPServer specifies a URL; specify a search scope in the LDAPServer URL instead.");
   }
 
+    if (strcasecmp(cmd->argv[1], "base") != 0 &&
+        strcasecmp(cmd->argv[1], "onelevel") != 0 &&
+        strcasecmp(cmd->argv[1], "subtree") != 0) {
+      CONF_ERROR(cmd, "LDAPSearchScope: invalid search scope.")
+    }
+
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
 }
@@ -1908,7 +1911,9 @@ ldap_getconf(void)
 
   scope = get_param_ptr(main_server->conf, "LDAPSearchScope", FALSE);
   if (scope) {
-    if (strcasecmp(scope, "onelevel") == 0) {
+    if (strcasecmp(scope, "base") == 0) {
+      ldap_search_scope = LDAP_SCOPE_BASE;
+    } else if (strcasecmp(scope, "onelevel") == 0) {
       ldap_search_scope = LDAP_SCOPE_ONELEVEL;
     } else if (strcasecmp(scope, "subtree") == 0) {
       ldap_search_scope = LDAP_SCOPE_SUBTREE;
