@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.33 2010-10-15 22:08:23 castaglia Exp $
+ * $Id: channel.c,v 1.34 2010-10-16 18:29:00 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1575,7 +1575,6 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
 /* Return the number of open channels, if any. */
 unsigned int sftp_channel_opened(uint32_t *remote_channel_id) {
   register unsigned int i;
-  unsigned int count = 0;
   struct ssh2_channel **chans;
 
   if (channel_count == 0 ||
