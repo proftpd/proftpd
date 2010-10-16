@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.45 2010-09-16 21:40:03 castaglia Exp $
+ * $Id: mod_delay.c,v 1.46 2010-10-16 18:48:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -85,8 +85,14 @@
  */
 #define DELAY_NPROTO			3
 
-/* Define an absolute upper limit on the delay values selected, in usecs. */
-#define DELAY_MAX_DELAY_USECS		(60 * 60 * 1000 * 1000)
+/* Define an absolute upper limit on the delay values selected, in usecs.
+ *
+ * I originally wanted a ceiling of 1 hour, but when converted to usecs, the
+ * value exceeded LONG_MAX.  So instead, just use LONG_MAX (which turns out to
+ * 35 minutes or so); it's a good enough ceiling, and avoids the compiler
+ * warnings about integer overflows.
+ */
+#define DELAY_MAX_DELAY_USECS		LONG_MAX
 
 #if defined(PR_USE_CTRLS)
 static ctrls_acttab_t delay_acttab[];
