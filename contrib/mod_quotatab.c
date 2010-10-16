@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.61 2010-10-14 21:31:08 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.62 2010-10-16 17:55:15 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -3352,25 +3352,34 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  /* Check on the size of the stored file again, and use the difference
-   * in file size as the increment.  Make sure that no caching effects 
-   * mess with the stat.
-   */
-  pr_fs_clear_cache();
-  if (pr_fsio_lstat(cmd->arg, &st) >= 0) {
-    store_bytes = st.st_size - quotatab_disk_nbytes;
+  if (store_bytes > 0) {
+    /* Check on the size of the stored file again, and use the difference
+     * in file size as the increment.  Make sure that no caching effects 
+     * mess with the stat.
+     */
+    pr_fs_clear_cache();
+    if (pr_fsio_lstat(cmd->arg, &st) >= 0) {
+      store_bytes = st.st_size - quotatab_disk_nbytes;
 
-  } else {
-    if (errno == ENOENT)
-      store_bytes = 0;
+    } else {
+      if (errno == ENOENT) {
+        store_bytes = 0;
 
-    else
-      quotatab_log("%s: error checking '%s': %s", cmd->argv[0], cmd->arg,
-        strerror(errno));
+      } else {
+        quotatab_log("%s: error checking '%s': %s", cmd->argv[0], cmd->arg,
+          strerror(errno));
+      }
+    }
   }
 
-  /* Write out an updated quota entry */
-  QUOTATAB_TALLY_WRITE(store_bytes, 0, session.xfer.total_bytes, 0, 0, 0)
+  if (store_bytes != 0 ||
+      session.xfer.total_bytes != 0) {
+
+    /* Write out an updated quota entry, but only if we have differences
+     * to write out.
+     */
+    QUOTATAB_TALLY_WRITE(store_bytes, 0, session.xfer.total_bytes, 0, 0, 0)
+  }
 
   /* Check quotas to see if bytes upload or total quota has been reached.
    * Report this to user if so (if not already reported).  If it is a hard
