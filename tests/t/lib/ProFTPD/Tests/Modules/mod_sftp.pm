@@ -1,7 +1,7 @@
 package ProFTPD::Tests::Modules::mod_sftp;
 
 use lib qw(t/lib);
-use base qw(Test::Unit::TestCase ProFTPD::TestSuite::Child);
+use base qw(ProFTPD::TestSuite::Child);
 use strict;
 
 use Digest::MD5;
@@ -1066,14 +1066,7 @@ sub list_tests {
 
 sub set_up {
   my $self = shift;
-  $self->{tmpdir} = testsuite_get_tmp_dir();
-  
-  # Create temporary scratch dir
-  eval { mkpath($self->{tmpdir}) };
-  if ($@) {
-    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
-    die("Can't create dir $abs_path: $@");
-  }
+  $self->SUPER::set_up(@_);
 
   # Make sure that mod_sftp does not complain about permissions on the hostkey
   # files.
@@ -1084,17 +1077,6 @@ sub set_up {
   unless (chmod(0400, $rsa_host_key, $dsa_host_key)) {
     die("Can't set perms on $rsa_host_key, $dsa_host_key: $!");
   }
-}
-
-sub tear_down {
-  my $self = shift;
-
-  # Remove temporary scratch dir
-  if ($self->{tmpdir}) {
-    eval { rmtree($self->{tmpdir}) };
-  }
-
-  undef $self;
 }
 
 sub ssh2_connect_bad_version {
