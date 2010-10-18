@@ -8,10 +8,14 @@ use Getopt::Long;
 use Test::Harness qw(&runtests $verbose);
 
 my $opts = {};
-GetOptions($opts, 'h|help', 'C|class=s@', 'V|verbose');
+GetOptions($opts, 'h|help', 'C|class=s@', 'K|keep-tmpfiles', 'V|verbose');
 
 if ($opts->{h}) {
   usage();
+}
+
+if ($opts->{K}) {
+  $ENV{KEEP_TMPFILES} = 1;
 }
 
 if ($opts->{V}) {
