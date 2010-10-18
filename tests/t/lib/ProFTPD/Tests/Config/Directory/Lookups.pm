@@ -1,11 +1,11 @@
 package ProFTPD::Tests::Config::Directory::Lookups;
 
 use lib qw(t/lib);
-use base qw(Test::Unit::TestCase ProFTPD::TestSuite::Child);
+use base qw(ProFTPD::TestSuite::Child);
 use strict;
 
 use Data::Dumper;
-use File::Path qw(mkpath rmtree);
+use File::Path qw(mkpath);
 use File::Spec;
 use IO::Handle;
 use Time::HiRes qw(gettimeofday tv_interval);
@@ -65,30 +65,9 @@ sub list_tests {
 
 sub set_up {
   my $self = shift;
-  $self->{tmpdir} = testsuite_get_tmp_dir();
-
-  # Create temporary scratch dir
-  eval { mkpath($self->{tmpdir}) };
-  if ($@) {
-    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
-    die("Can't create dir $abs_path: $@");
-  }
+  $self->SUPER::set_up(@_);
 
   make_name(0, 0);
-}
-
-sub tear_down {
-  my $self = shift;
-
-  # Remove temporary scratch dir
-  if ($self->{tmpdir}) {
-    eval {
-      local $SIG{__WARN__} = sub {};
-      rmtree($self->{tmpdir});
-    };
-  }
-
-  undef $self;
 }
 
 my ($prev_name, $prev_namelen);
