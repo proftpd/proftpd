@@ -109,26 +109,19 @@ sub login_limit_ip_glob_range_bug3484 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, $passwd) };
+      my $client;
+
+      eval { $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port,
+        undef, 0) };
       unless ($@) {
-        die("Login succeeded unexpectedly");
+        die("Connect succeeded unexpectedly");
       }
 
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
+      my $conn_ex = ProFTPD::TestSuite::FTP::get_connect_exception();
 
-      my $expected;
-
-      $expected = 550;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "OPTS UTF8: Permission denied";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
-      $client->quit();
+      my $expected = 'Connection refused';
+      $self->assert(qr/$expected/, $conn_ex,
+        test_msg("Expected '$expected', got '$conn_ex'"));
     };
 
     if ($@) {
