@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.22 2010-07-15 00:09:09 castaglia Exp $
+ * $Id: netacl.c,v 1.23 2010-10-19 22:18:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -330,7 +330,42 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
      * first character is a '.', then treat the rule as a glob.
      */
     if (strpbrk(aclstr, "{[*?")) {
-      acl->type = PR_NETACL_TYPE_DNSGLOB;
+      register unsigned int i;
+      size_t aclstr_len = strlen(aclstr);
+      pr_netacl_type_t acl_type = PR_NETACL_TYPE_IPGLOB;
+
+      /* Is this a DNS glob, or an IP address glob?  To find out, see if there
+       * are any non-IP characters (i.e. alphabetical characters, taking IPv6
+       * into account).
+       */
+      for (i = 0; i < aclstr_len; i++) {
+        if (isalpha((int) aclstr[i])) {
+#ifdef PR_USE_IPV6
+          if (pr_netaddr_use_ipv6()) {
+            if (aclstr[i] == 'A' || aclstr[i] == 'a' ||
+                aclstr[i] == 'B' || aclstr[i] == 'b' ||
+                aclstr[i] == 'C' || aclstr[i] == 'c' ||
+                aclstr[i] == 'D' || aclstr[i] == 'd' ||
+                aclstr[i] == 'E' || aclstr[i] == 'e' ||
+                aclstr[i] == 'F' || aclstr[i] == 'f') {
+              continue;
+            }
+
+            acl_type = PR_NETACL_TYPE_DNSGLOB;
+            break;
+
+          } else {
+            acl_type = PR_NETACL_TYPE_DNSGLOB;
+            break;
+          }
+#else
+          acl_type = PR_NETACL_TYPE_DNSGLOB;
+          break;
+#endif /* PR_USE_IPV6 */
+        }
+      }
+
+      acl->type = acl_type;
       acl->pattern = pstrdup(p, aclstr);
 
     } else if (*aclstr == '.') {
@@ -381,36 +416,58 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
 
     } else {
       register unsigned int i;
-      int use_dns = FALSE;
+      int use_glob = FALSE, use_dns = FALSE;
+      size_t aclstr_len;
 
-      /* If there are only digits and periods, it's an IP match.  Otherwise,
-       * it is a DNS glob (if there are glob characters) or a DNS match.
+      /* Is this a DNS glob, DNS match, IP glob, or IP match?
+       *
+       * First, check for any glob characters.  After that, determine whether
+       * it's a DNS or IP type ACL.
        */
-      for (i = 0; i < strlen(aclstr); i++) {
-        if (aclstr[i] == '.') {
-          continue;
-        }
 
-        if (isdigit((int) aclstr[i]) == 0) {
-          /* Not a digit. */
+      /* If there are any glob characters (e.g. '{', '[', '*', or '?'), or
+       * if the first character is a '.', then treat the rule as a glob.
+       */
+      use_glob = (strpbrk(aclstr, "{[*?") != NULL);
+
+      aclstr_len = strlen(aclstr);
+      for (i = 0; i < aclstr_len; i++) {
+        if (isalpha((int) aclstr[i])) {
+#ifdef PR_USE_IPV6
+          if (pr_netaddr_use_ipv6()) {
+            if (aclstr[i] == 'A' || aclstr[i] == 'a' ||
+                aclstr[i] == 'B' || aclstr[i] == 'b' ||
+                aclstr[i] == 'C' || aclstr[i] == 'c' ||
+                aclstr[i] == 'D' || aclstr[i] == 'd' ||
+                aclstr[i] == 'E' || aclstr[i] == 'e' ||
+                aclstr[i] == 'F' || aclstr[i] == 'f') {
+              continue;
+            }
+
+            use_dns = TRUE;
+            break;
+
+          } else {
+            use_dns = TRUE;
+            break;
+          }
+#else
           use_dns = TRUE;
           break;
+#endif /* PR_USE_IPV6 */
         }
       }
 
       if (!use_dns) {
-        acl->type = PR_NETACL_TYPE_IPMATCH;
+        acl->type = use_glob ? PR_NETACL_TYPE_IPGLOB : PR_NETACL_TYPE_IPMATCH;
         acl->addr = pr_netaddr_get_addr(p, aclstr, NULL);
 
-        if (!acl->addr) 
+        if (acl->addr == NULL) {
            return NULL;
+        }
 
       } else {
-
-        /* If there are any glob characters (e.g. '{', '[', '*', or '?'), or
-         * if the first character is a '.', then treat the rule as a glob.
-         */
-        if (strpbrk(aclstr, "{[*?")) {
+        if (use_glob) {
           acl->type = PR_NETACL_TYPE_DNSGLOB;
           acl->pattern = pstrdup(p, aclstr);
 

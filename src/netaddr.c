@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.74 2010-08-05 23:43:31 castaglia Exp $
+ * $Id: netaddr.c,v 1.75 2010-10-19 22:18:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1146,7 +1146,7 @@ int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern, int flags) {
     const char *ipstr = pr_netaddr_get_ipstr(na);
 
     if (pr_fnmatch(pattern, ipstr, match_flags) == 0) {
-      pr_trace_msg(trace_channel, 6, "DNS name '%s' matches pattern '%s'",
+      pr_trace_msg(trace_channel, 6, "IP address '%s' matches pattern '%s'",
         ipstr, pattern);
       return TRUE;
     }
@@ -1167,7 +1167,7 @@ int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern, int flags) {
       ipstr = pr_netaddr_get_ipstr(a);
 
       if (pr_fnmatch(pattern, ipstr, match_flags) == 0) {
-        pr_trace_msg(trace_channel, 6, "DNS name '%s' matches pattern '%s'",
+        pr_trace_msg(trace_channel, 6, "IP address '%s' matches pattern '%s'",
           ipstr, pattern);
 
         destroy_pool(tmp_pool);
