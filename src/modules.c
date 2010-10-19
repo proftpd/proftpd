@@ -24,7 +24,7 @@
  */
 
 /* Module handling routines
- * $Id: modules.c,v 1.60 2010-03-06 17:42:20 castaglia Exp $
+ * $Id: modules.c,v 1.61 2010-10-19 23:14:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -372,6 +372,24 @@ int pr_module_unload(module *m) {
       pr_stash_remove_symbol(PR_SYM_AUTH, authtab->name, authtab->m);
     }
   }
+
+  /* Remove any callbacks that the module may have registered, i.e.:
+   *
+   * ctrls
+   * events
+   * timers
+   *
+   * Ideally we would also automatically unregister other callbacks that
+   * the module may have registered, such as FSIO, NetIO, variables, and
+   * response handlers.  However, these APIs do not yet allow for
+   * removal of all callbacks for a given module.
+   */
+
+#ifdef PR_USE_CTRLS
+  pr_ctrls_unregister(m, NULL);
+#endif /* PR_USE_CTRLS */
+  pr_event_unregister(m, NULL, NULL);
+  pr_timer_remove(-1, m);
 
   return 0;
 }
