@@ -15,6 +15,7 @@ ChangeLog files.
   + Fixed handling of utmp/utmpx format changes on FreeBSD
   + Automatic detection of MySQL, Postgres library and header file locations
   + Added support for SMTP authentication in ftpmail script
+  + Updated fnmatch implementation, using glibc-2.9 version.
 
   + New modules:
 
@@ -71,4 +72,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2010-10-06 18:43:12 $
+Last Updated: $Date: 2010-10-19 22:14:33 $
