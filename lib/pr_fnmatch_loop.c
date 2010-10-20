@@ -43,6 +43,16 @@ static int EXT (INT opt, const CHAR *pattern, const CHAR *string,
      internal_function;
 static const CHAR *END (const CHAR *patternp) internal_function;
 
+#ifndef HAVE_MEMPCPY
+/* Copy N bytes of SRC to DEST, return pointer to bytes after the
+   last written byte.  */
+static void *
+mempcpy (void *dest, const void *src, size_t n)
+{
+  return (char *) memcpy (dest, src, n) + n;
+}
+#endif
+
 static int
 internal_function
 FCT (pattern, string, string_end, no_leading_period, flags, ends)
