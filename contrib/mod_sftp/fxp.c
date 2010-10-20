@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.108 2010-10-14 21:39:36 castaglia Exp $
+ * $Id: fxp.c,v 1.109 2010-10-20 20:38:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2952,16 +2952,21 @@ static void fxp_version_add_supported_ext(pool *p, char **buf,
    *
    *  check-file
    *  copy-file
+   *  space-available
    *  vendor-id
    */
 
-  ext_count = 3;
+  ext_count = 4;
 
   if (!(fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE)) {
     ext_count--;
   }
 
   if (!(fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE)) {
+    ext_count--;
+  }
+
+  if (!(fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL)) {
     ext_count--;
   }
 
@@ -2985,6 +2990,12 @@ static void fxp_version_add_supported_ext(pool *p, char **buf,
     if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
       pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
       sftp_msg_write_string(&exts_buf, &exts_len, "copy-file");
+    }
+
+    if (fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL) {
+      pr_trace_msg(trace_channel, 11, "%s",
+        "+ SFTP extension: space-available");
+      sftp_msg_write_string(&exts_buf, &exts_len, "space-available");
     }
 
     /* We always send the 'vendor-id' extension; it lets the client know
@@ -3060,6 +3071,7 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
    *
    *  check-file
    *  copy-file
+   *  space-available
    *  vendor-id
    *
    * Note that we don't have to advertise the @openssh.com extensions, since
@@ -3068,13 +3080,17 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
    * 'versions' extension in our VERSION automatically enables use of this
    * extension by the client.
    */
-  ext_count = 3;
+  ext_count = 4;
 
   if (!(fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE)) {
     ext_count--;
   }
 
   if (!(fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE)) {
+    ext_count--;
+  }
+
+  if (!(fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL)) {
     ext_count--;
   }
 
@@ -3097,6 +3113,12 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
     if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
       pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
       sftp_msg_write_string(&attrs_buf, &attrs_len, "copy-file");
+    }
+
+    if (fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL) {
+      pr_trace_msg(trace_channel, 11, "%s",
+        "+ SFTP extension: space-available");
+      sftp_msg_write_string(&attrs_buf, &attrs_len, "space-available");
     }
 
     /* We always send the 'vendor-id' extension; it lets the client know
@@ -3944,6 +3966,171 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
 }
 
 #ifdef HAVE_SYS_STATVFS_H
+
+static off_t get_fs_bytes_total(void *ptr) {
+# if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && \
+   defined(SOLARIS2) && !defined(SOLARIS2_5_1) && !defined(SOLARIS2_6) && \
+   !defined(SOLARIS2_7)
+  /* Note: somewhere along the way, Sun decided that the prototype for
+   * its statvfs64(2) function would include a statvfs64_t rather than
+   * struct statvfs64.  In 2.6 and 2.7, it's struct statvfs64, and
+   * in 8, 9 it's statvfs64_t.  This should silence compiler warnings.
+   * (The statvfs_t will be redefined to a statvfs64_t as appropriate on
+   * LFS systems).
+   */
+  statvfs_t *fs = ptr;
+#  else
+  struct statvfs *fs = ptr;
+# endif /* LFS && !Solaris 2.5.1 && !Solaris 2.6 && !Solaris 2.7 */
+
+  return ((off_t) fs->f_blocks * (off_t) fs->f_frsize);
+}
+
+static off_t get_fs_bytes_unused(void *ptr) {
+# if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && \
+   defined(SOLARIS2) && !defined(SOLARIS2_5_1) && !defined(SOLARIS2_6) && \
+   !defined(SOLARIS2_7)
+  /* Note: somewhere along the way, Sun decided that the prototype for
+   * its statvfs64(2) function would include a statvfs64_t rather than
+   * struct statvfs64.  In 2.6 and 2.7, it's struct statvfs64, and
+   * in 8, 9 it's statvfs64_t.  This should silence compiler warnings.
+   * (The statvfs_t will be redefined to a statvfs64_t as appropriate on
+   * LFS systems).
+   */
+  statvfs_t *fs = ptr;
+#  else
+  struct statvfs *fs = ptr;
+# endif /* LFS && !Solaris 2.5.1 && !Solaris 2.6 && !Solaris 2.7 */
+
+  return ((off_t) fs->f_bavail * (off_t) fs->f_frsize);
+}
+
+static off_t get_user_bytes_avail(void *ptr) {
+# if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && \
+   defined(SOLARIS2) && !defined(SOLARIS2_5_1) && !defined(SOLARIS2_6) && \
+   !defined(SOLARIS2_7)
+  /* Note: somewhere along the way, Sun decided that the prototype for
+   * its statvfs64(2) function would include a statvfs64_t rather than
+   * struct statvfs64.  In 2.6 and 2.7, it's struct statvfs64, and
+   * in 8, 9 it's statvfs64_t.  This should silence compiler warnings.
+   * (The statvfs_t will be redefined to a statvfs64_t as appropriate on
+   * LFS systems).
+   */
+  statvfs_t *fs = ptr;
+#  else
+  struct statvfs *fs = ptr;
+# endif /* LFS && !Solaris 2.5.1 && !Solaris 2.6 && !Solaris 2.7 */
+
+  /* XXX This should use mod_quotatab as well, for user-specific limits/
+   * tallies.
+   */
+
+  /* Take the total number of blocks, and subtract the difference between
+   * the total free blocks and the non-root free blocks.  That difference
+   * provides the number of blocks reserved for root.  So subtracting those
+   * reserved blocks from the total blocks yields the user-available blocks.
+   */
+  return (((off_t) fs->f_blocks - ((off_t) fs->f_bfree) - (off_t) fs->f_bavail) * (off_t) fs->f_frsize);
+}
+
+static off_t get_user_bytes_unused(void *ptr) {
+# if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && \
+   defined(SOLARIS2) && !defined(SOLARIS2_5_1) && !defined(SOLARIS2_6) && \
+   !defined(SOLARIS2_7)
+  /* Note: somewhere along the way, Sun decided that the prototype for
+   * its statvfs64(2) function would include a statvfs64_t rather than
+   * struct statvfs64.  In 2.6 and 2.7, it's struct statvfs64, and
+   * in 8, 9 it's statvfs64_t.  This should silence compiler warnings.
+   * (The statvfs_t will be redefined to a statvfs64_t as appropriate on
+   * LFS systems).
+   */
+  statvfs_t *fs = ptr;
+#  else
+  struct statvfs *fs = ptr;
+# endif /* LFS && !Solaris 2.5.1 && !Solaris 2.6 && !Solaris 2.7 */
+
+  /* XXX This should use mod_quotatab as well, for user-specific limits/
+   * tallies.
+   */
+
+  return ((off_t) fs->f_bavail * (off_t) fs->f_frsize);
+}
+
+static int fxp_handle_ext_space_avail(struct fxp_packet *fxp, char *path) {
+  char *buf, *ptr;
+  const char *reason;
+  uint32_t buflen, bufsz, status_code;
+  struct fxp_packet *resp;
+
+# if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && \
+   defined(SOLARIS2) && !defined(SOLARIS2_5_1) && !defined(SOLARIS2_6) && \
+   !defined(SOLARIS2_7)
+  /* Note: somewhere along the way, Sun decided that the prototype for
+   * its statvfs64(2) function would include a statvfs64_t rather than
+   * struct statvfs64.  In 2.6 and 2.7, it's struct statvfs64, and
+   * in 8, 9 it's statvfs64_t.  This should silence compiler warnings.
+   * (The statvfs_t will be redefined to a statvfs64_t as appropriate on
+   * LFS systems).
+   */
+  statvfs_t fs;
+#  else
+  struct statvfs fs;
+# endif /* LFS && !Solaris 2.5.1 && !Solaris 2.6 && !Solaris 2.7 */
+
+  pr_trace_msg(trace_channel, 8, "client sent space-available request: "
+    "path = '%s'", path);
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  if (statvfs(path, &fs) < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3, "statvfs() error using '%s': %s",
+      path, strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason,
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  pr_trace_msg(trace_channel, 8,
+    "sending response: EXTENDED_REPLY <space-avail data of '%s'>", path);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
+  sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+
+  /* Total bytes on device */
+  fxp_msg_write_long(&buf, &buflen, (uint64_t) get_fs_bytes_total(&fs));
+
+  /* Unused bytes on device. */
+  fxp_msg_write_long(&buf, &buflen, (uint64_t) get_fs_bytes_unused(&fs));
+
+  /* Total bytes available to user. */
+  fxp_msg_write_long(&buf, &buflen, (uint64_t) get_user_bytes_avail(&fs));
+
+  /* Unused bytes available to user. */
+  fxp_msg_write_long(&buf, &buflen, (uint64_t) get_user_bytes_unused(&fs));
+
+  fxp_msg_write_short(&buf, &buflen, (uint32_t) fs.f_frsize);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
 static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
   char *buf, *ptr;
   const char *reason;
@@ -4590,6 +4777,18 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
   }
 
 #ifdef HAVE_SYS_STATVFS_H
+  if ((fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL) &&
+      strcmp(ext_request_name, "space-available") == 0) {
+    char *path;
+
+    path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+    res = fxp_handle_ext_space_avail(fxp, path);
+    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+    return res;
+  }
+
   if ((fxp_ext_flags & SFTP_FXP_EXT_STATVFS) &&
       strcmp(ext_request_name, "statvfs@openssh.com") == 0) {
     const char *path;

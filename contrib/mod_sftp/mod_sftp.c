@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.37 2010-09-15 17:29:51 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.38 2010-10-20 20:38:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1039,6 +1039,23 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           ext_flags |= SFTP_FXP_EXT_POSIX_RENAME;
           break;
       }
+
+    } else if (strcasecmp(ext, "spaceAvailable") == 0) {
+#ifdef HAVE_SYS_STATVFS_H
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_SPACE_AVAIL;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_SPACE_AVAIL;
+          break;
+      }
+#else
+      pr_log_debug(DEBUG0, "%s: spaceAvailable extension not supported "
+        "on this system; requires statvfs(3) support", cmd->argv[0]);
+#endif /* !HAVE_SYS_STATVFS_H */
+
 
     } else if (strcasecmp(ext, "statvfs") == 0) {
 #ifdef HAVE_SYS_STATVFS_H

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp (fxp)
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.h,v 1.7 2009-11-13 02:29:16 castaglia Exp $
+ * $Id: fxp.h,v 1.8 2010-10-20 20:38:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -72,9 +72,10 @@
 #define SFTP_FXP_EXT_POSIX_RENAME	0x0008
 #define SFTP_FXP_EXT_STATVFS		0x0010
 #define SFTP_FXP_EXT_VENDOR_ID		0x0020
+#define SFTP_FXP_EXT_SPACE_AVAIL	0x0040
 
 #define SFTP_FXP_EXT_DEFAULT \
-  (SFTP_FXP_EXT_CHECK_FILE|SFTP_FXP_EXT_COPY_FILE|SFTP_FXP_EXT_VERSION_SELECT|SFTP_FXP_EXT_POSIX_RENAME|SFTP_FXP_EXT_STATVFS)
+  (SFTP_FXP_EXT_CHECK_FILE|SFTP_FXP_EXT_COPY_FILE|SFTP_FXP_EXT_VERSION_SELECT|SFTP_FXP_EXT_POSIX_RENAME|SFTP_FXP_EXT_SPACE_AVAIL|SFTP_FXP_EXT_STATVFS)
 
 int sftp_fxp_handle_packet(pool *, void *, uint32_t, char *, uint32_t);
 
