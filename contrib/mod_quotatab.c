@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.63 2010-10-20 22:43:41 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.64 2010-10-20 22:49:52 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -2147,12 +2147,15 @@ MODRET quotatab_pre_dele(cmd_rec *cmd) {
 MODRET quotatab_post_dele(cmd_rec *cmd) {
 
   /* sanity check */
-  if (!use_quotas)
+  if (!use_quotas) {
+    have_quota_update = 0;
     return PR_DECLINED(cmd); 
+  }
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
+    have_quota_update = 0;
     return PR_DECLINED(cmd);
   }
 
@@ -2276,6 +2279,7 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
   /* Clear the cached bytes. */
   quotatab_disk_nbytes = 0;
 
+  have_quota_update = 0;
   return PR_DECLINED(cmd);
 }
 
