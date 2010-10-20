@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.64 2010-10-20 22:49:52 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.65 2010-10-20 23:02:38 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -1611,12 +1611,15 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
   off_t append_bytes = session.xfer.total_bytes;
 
   /* sanity check */
-  if (!use_quotas)
+  if (!use_quotas) {
+    have_quota_update = 0;
     return PR_DECLINED(cmd);
+  }
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
+    have_quota_update = 0;
     return PR_DECLINED(cmd);
   }
 
@@ -1629,12 +1632,13 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
     append_bytes = st.st_size - quotatab_disk_nbytes;
 
   } else {
-    if (errno == ENOENT)
+    if (errno == ENOENT) {
       append_bytes = 0;
 
-    else
+    } else {
       quotatab_log("%s: error checking '%s': %s", cmd->argv[0], cmd->arg,
         strerror(errno));
+    }
   }
 
   /* Write out an updated quota entry. */
@@ -1696,9 +1700,9 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
           cmd->argv[0], cmd->arg);
       }
     }
-
   }
 
+  have_quota_update = 0;
   return PR_DECLINED(cmd);
 }
 
@@ -1707,12 +1711,15 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
   off_t append_bytes = session.xfer.total_bytes;
 
   /* sanity check */
-  if (!use_quotas)
+  if (!use_quotas) {
+    have_quota_update = 0;
     return PR_DECLINED(cmd);
+  }
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
+    have_quota_update = 0;
     return PR_DECLINED(cmd);
   }
 
@@ -1725,12 +1732,13 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
     append_bytes = st.st_size - quotatab_disk_nbytes;
 
   } else {
-    if (errno == ENOENT)
+    if (errno == ENOENT) {
       append_bytes = 0;
 
-    else
+    } else {
       quotatab_log("%s: error checking '%s': %s", cmd->argv[0], cmd->arg,
         strerror(errno));
+    }
   }
 
   /* Write out an updated quota entry */
@@ -1794,6 +1802,7 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
     }
   }
 
+  have_quota_update = 0;
   return PR_DECLINED(cmd);
 }
 
@@ -2147,15 +2156,12 @@ MODRET quotatab_pre_dele(cmd_rec *cmd) {
 MODRET quotatab_post_dele(cmd_rec *cmd) {
 
   /* sanity check */
-  if (!use_quotas) {
-    have_quota_update = 0;
+  if (!use_quotas)
     return PR_DECLINED(cmd); 
-  }
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
-    have_quota_update = 0;
     return PR_DECLINED(cmd);
   }
 
@@ -2279,7 +2285,6 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
   /* Clear the cached bytes. */
   quotatab_disk_nbytes = 0;
 
-  have_quota_update = 0;
   return PR_DECLINED(cmd);
 }
 
@@ -3217,12 +3222,15 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
   off_t store_bytes = session.xfer.total_bytes;
 
   /* Sanity check */
-  if (!use_quotas)
+  if (!use_quotas) {
+    have_quota_update = 0;
     return PR_DECLINED(cmd);
+  }
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
+    have_quota_update = 0;
     return PR_DECLINED(cmd);
   }
 
@@ -3235,12 +3243,13 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
     store_bytes = st.st_size - quotatab_disk_nbytes;
 
   } else {
-    if (errno == ENOENT)
+    if (errno == ENOENT) {
       store_bytes = 0;
 
-    else
+    } else {
       quotatab_log("%s: error checking '%s': %s", cmd->argv[0], cmd->arg,
         strerror(errno));
+    }
   }
 
   /* NOTE: if use_dirs is TRUE, also take into consideration the increased
@@ -3338,6 +3347,7 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
     }
   }
 
+  have_quota_update = 0;
   return PR_DECLINED(cmd);
 }
 
@@ -3346,12 +3356,15 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
   off_t store_bytes = session.xfer.total_bytes;
 
   /* Sanity check */
-  if (!use_quotas)
+  if (!use_quotas) {
+    have_quota_update = 0;
     return PR_DECLINED(cmd);
+  }
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
+    have_quota_update = 0;
     return PR_DECLINED(cmd);
   }
 
@@ -3475,6 +3488,7 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
       cmd->argv[0], DISPLAY_FILES_XFER(cmd));
   }
 
+  have_quota_update = 0;
   return PR_DECLINED(cmd);
 }
 
