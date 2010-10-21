@@ -22,12 +22,14 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.14 2010-02-24 23:19:29 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.15 2010-10-21 18:08:47 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_SITE_MISC_VERSION		"mod_site_misc/1.3"
+#define MOD_SITE_MISC_VERSION		"mod_site_misc/1.4"
+
+static unsigned int site_misc_engine = TRUE;
 
 static int site_misc_check_filters(cmd_rec *cmd, const char *path) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
@@ -245,12 +247,41 @@ static time_t site_misc_mktime(unsigned int year, unsigned int month,
   return res;
 }
 
+/* Configuration handlers
+ */
+
+/* usage: SiteMiscEngine on|off */
+MODRET set_sitemiscengine(cmd_rec *cmd) {
+  config_rec *c;
+  int bool;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = bool;
+
+  return PR_HANDLED(cmd);
+}
+
 /* Command handlers
  */
 
 MODRET site_misc_mkdir(cmd_rec *cmd) {
-  if (cmd->argc < 2)
+  if (!site_misc_engine) {
     return PR_DECLINED(cmd);
+  }
+
+  if (cmd->argc < 2) {
+    pr_log_debug(DEBUG5, MOD_SITE_MISC_VERSION
+      "%s : wrong number of arguments (%d)", cmd->argv[0], cmd->argc);
+    return PR_DECLINED(cmd);
+  }
 
   if (strcasecmp(cmd->argv[1], "MKDIR") == 0) {
     register unsigned int i;
@@ -302,8 +333,15 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
 }
 
 MODRET site_misc_rmdir(cmd_rec *cmd) {
-  if (cmd->argc < 2)
+  if (!site_misc_engine) {
     return PR_DECLINED(cmd);
+  }
+
+  if (cmd->argc < 2) {
+    pr_log_debug(DEBUG5, MOD_SITE_MISC_VERSION
+      "%s : wrong number of arguments (%d)", cmd->argv[0], cmd->argc);
+    return PR_DECLINED(cmd);
+  }
 
   if (strcasecmp(cmd->argv[1], "RMDIR") == 0) {
     register unsigned int i;
@@ -350,8 +388,15 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
 }
 
 MODRET site_misc_symlink(cmd_rec *cmd) {
-  if (cmd->argc < 2)
+  if (!site_misc_engine) {
     return PR_DECLINED(cmd);
+  }
+
+  if (cmd->argc < 2) {
+    pr_log_debug(DEBUG5, MOD_SITE_MISC_VERSION
+      "%s : wrong number of arguments (%d)", cmd->argv[0], cmd->argc);
+    return PR_DECLINED(cmd);
+  }
 
   if (strcasecmp(cmd->argv[1], "SYMLINK") == 0) {
     struct stat st;
@@ -424,8 +469,15 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
 }
 
 MODRET site_misc_utime(cmd_rec *cmd) {
-  if (cmd->argc < 2)
+  if (!site_misc_engine) {
     return PR_DECLINED(cmd);
+  }
+
+  if (cmd->argc < 2) {
+    pr_log_debug(DEBUG5, MOD_SITE_MISC_VERSION
+      "%s : wrong number of arguments (%d)", cmd->argv[0], cmd->argc);
+    return PR_DECLINED(cmd);
+  }
 
   if (strcasecmp(cmd->argv[1], "UTIME") == 0) {
     register unsigned int i;
@@ -577,6 +629,17 @@ MODRET site_misc_utime(cmd_rec *cmd) {
  */
 
 static int site_misc_sess_init(void) {
+  config_rec *c;
+
+  c = find_config(main_server->conf, CONF_PARAM, "SiteMiscEngine", FALSE);
+  if (c) {
+    site_misc_engine = *((unsigned int *) c->argv[0]);
+  }
+
+  if (!site_misc_engine) {
+    return 0;
+  }
+
   /* Advertise support for these SITE commands */
   pr_feat_add("SITE MKDIR");
   pr_feat_add("SITE RMDIR");
@@ -588,6 +651,11 @@ static int site_misc_sess_init(void) {
 
 /* Module API tables
  */
+
+static conftable site_misc_conftab[] = {
+  { "SiteMiscEngine",	set_sitemiscengine,	NULL },
+  { NULL }
+};
 
 static cmdtable site_misc_cmdtab[] = {
   { CMD, C_SITE, G_WRITE, site_misc_mkdir,	FALSE,	FALSE, CL_MISC },
@@ -607,7 +675,7 @@ module site_misc_module = {
   "site_misc",
 
   /* Module configuration handler table */
-  NULL,
+  site_misc_conftab,
 
   /* Module command handler table */
   site_misc_cmdtab,
