@@ -22,7 +22,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.15 2010-10-21 18:08:47 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.16 2010-10-22 00:01:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -83,27 +83,32 @@ static int site_misc_create_dir(const char *dir) {
 
 static int site_misc_create_path(pool *p, const char *path) {
   struct stat st;
-  char *curr_path, *dup_path;
+  char *curr_path, *tmp_path;
 
   pr_fs_clear_cache();
 
   if (pr_fsio_stat(path, &st) == 0)
     return 0;
 
-  dup_path = pstrdup(p, path);
-  curr_path = session.cwd;
- 
-  while (dup_path &&
-         *dup_path) {
+  /* The given path should already be canonicalized; we do not need to worry
+   * if it is relative to the current working directory or not.
+   */
+
+  tmp_path = pstrdup(p, path);
+
+  curr_path = "/";
+  while (tmp_path &&
+         *tmp_path) {
     char *curr_dir;
 
     pr_signals_handle();
 
-    curr_dir = strsep(&dup_path, "/");
+    curr_dir = strsep(&tmp_path, "/");
     curr_path = pdircat(p, curr_path, curr_dir, NULL);
-   
-    if (site_misc_create_dir(curr_path) < 0)
+
+    if (site_misc_create_dir(curr_path) < 0) {
       return -1;
+    }
   }
  
   return 0;
@@ -308,10 +313,19 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
+    path = dir_canonical_path(cmd->tmp_pool, path);
+    if (path == NULL) {
+      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EINVAL));
+      return PR_ERROR(cmd);
+    }
+
     cmd_name = cmd->argv[0];
     cmd->argv[0] = "SITE_MKDIR";
-    if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, path, NULL)) {
+    if (!dir_check_canon(cmd->tmp_pool, cmd, G_WRITE, path, NULL)) {
       cmd->argv[0] = cmd_name;
+
+      pr_log_debug(DEBUG4, MOD_SITE_MISC_VERSION
+        ": %s command denied by <Limit>", cmd->argv[0]);
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
       return PR_ERROR(cmd);
     }
@@ -363,10 +377,19 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
 
     path = pr_fs_decode_path(cmd->tmp_pool, path);
 
+    path = dir_canonical_path(cmd->tmp_pool, path);
+    if (path == NULL) {
+      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EINVAL));
+      return PR_ERROR(cmd);
+    }
+
     cmd_name = cmd->argv[0];
     cmd->argv[0] = "SITE_RMDIR";
-    if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, path, NULL)) {
+    if (!dir_check_canon(cmd->tmp_pool, cmd, G_WRITE, path, NULL)) {
       cmd->argv[0] = cmd_name;
+
+      pr_log_debug(DEBUG4, MOD_SITE_MISC_VERSION
+        ": %s command denied by <Limit>", cmd->argv[0]);
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
       return PR_ERROR(cmd);
     }
@@ -416,20 +439,34 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
 
     src = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[2]);
     src = dir_canonical_path(cmd->tmp_pool, src);
+    if (src == NULL) {
+      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EINVAL));
+      return PR_ERROR(cmd);
+    }
 
     cmd_name = cmd->argv[0];
     cmd->argv[0] = "SITE_SYMLINK";
-    if (!dir_check(cmd->tmp_pool, cmd, G_READ, src, NULL)) {
+    if (!dir_check_canon(cmd->tmp_pool, cmd, G_READ, src, NULL)) {
       cmd->argv[0] = cmd_name;
+
+      pr_log_debug(DEBUG4, MOD_SITE_MISC_VERSION
+        ": %s command denied by <Limit>", cmd->argv[0]);
       pr_response_add_err(R_550, "%s: %s", cmd->argv[2], strerror(EPERM));
       return PR_ERROR(cmd);
     }
 
     dst = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[3]);
     dst = dir_canonical_path(cmd->tmp_pool, dst);
+    if (dst == NULL) {
+      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EINVAL));
+      return PR_ERROR(cmd);
+    }
 
-    if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, dst, NULL)) {
+    if (!dir_check_canon(cmd->tmp_pool, cmd, G_WRITE, dst, NULL)) {
       cmd->argv[0] = cmd_name;
+
+      pr_log_debug(DEBUG4, MOD_SITE_MISC_VERSION
+        ": %s command denied by <Limit>", cmd->argv[0]);
       pr_response_add_err(R_550, "%s: %s", cmd->argv[3], strerror(EPERM));
       return PR_ERROR(cmd);
     }
@@ -517,10 +554,19 @@ MODRET site_misc_utime(cmd_rec *cmd) {
 
     path = pr_fs_decode_path(cmd->tmp_pool, path);
 
+    path = dir_canonical_path(cmd->tmp_pool, path);
+    if (path == NULL) {
+      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EINVAL));
+      return PR_ERROR(cmd);
+    }
+
     cmd_name = cmd->argv[0];
     cmd->argv[0] = "SITE_UTIME";
-    if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, path, NULL)) {
+    if (!dir_check_canon(cmd->tmp_pool, cmd, G_WRITE, path, NULL)) {
       cmd->argv[0] = cmd_name;
+
+      pr_log_debug(DEBUG4, MOD_SITE_MISC_VERSION
+        ": %s command denied by <Limit>", cmd->argv[0]);
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
       return PR_ERROR(cmd);
     }
