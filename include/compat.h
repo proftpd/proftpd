@@ -23,7 +23,7 @@
  */
 
 /* Compatibility
- * $Id: compat.h,v 1.14 2010-03-09 02:38:54 castaglia Exp $
+ * $Id: compat.h,v 1.15 2010-10-23 19:40:27 castaglia Exp $
  */
 
 #ifndef PR_COMPAT_H
@@ -88,5 +88,8 @@
 #define ctrls_set_user_acl		pr_ctrls_set_user_acl
 #define ctrls_unregister_module_actions	pr_ctrls_unregister_module_actions
 #define ctrls_log			pr_ctrls_log
+
+/* The following macros first appeared in 1.3.4rc1. */
+#define is_fnmatch			pr_str_is_fnmatch
 
 #endif /* PR_COMPAT_H */
