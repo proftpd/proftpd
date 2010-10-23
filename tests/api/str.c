@@ -24,7 +24,7 @@
 
 /*
  * String API tests
- * $Id: str.c,v 1.2 2010-03-04 17:29:08 castaglia Exp $
+ * $Id: str.c,v 1.3 2010-10-23 19:37:40 castaglia Exp $
  */
 
 #include "tests.h"
@@ -612,6 +612,54 @@ START_TEST (is_boolean_test) {
 }
 END_TEST
 
+START_TEST (is_fnmatch_test) {
+  int res;
+  char *str;
+
+  str = "foo";
+  res = pr_str_is_fnmatch(str);
+  fail_if(res != FALSE, "Expected false for string '%s'", str);
+
+  str = "foo?";
+  res = pr_str_is_fnmatch(str);
+  fail_if(res != TRUE, "Expected true for string '%s'", str);
+
+  str = "foo*";
+  res = pr_str_is_fnmatch(str);
+  fail_if(res != TRUE, "Expected true for string '%s'", str);
+
+  str = "foo[";
+  res = pr_str_is_fnmatch(str);
+  fail_if(res != FALSE, "Expected false for string '%s'", str);
+
+  str = "foo]";
+  res = pr_str_is_fnmatch(str);
+  fail_if(res != FALSE, "Expected false for string '%s'", str);
+
+  str = "foo[]";
+  res = pr_str_is_fnmatch(str);
+  fail_if(res != TRUE, "Expected true for string '%s'", str);
+
+  /* Now the fun cases using the escape character. */
+
+  str = "f\\oo";
+  res = pr_str_is_fnmatch(str);
+  fail_if(res != FALSE, "Expected false for string '%s'", str);
+
+  str = "foo\\";
+  res = pr_str_is_fnmatch(str);
+  fail_if(res != FALSE, "Expected false for string '%s'", str);
+
+  str = "foo\\?";
+  res = pr_str_is_fnmatch(str);
+  fail_if(res != FALSE, "Expected false for string '%s'", str);
+
+  str = "foo\\??";
+  res = pr_str_is_fnmatch(str);
+  fail_if(res != TRUE, "Expected true for string '%s'", str);
+}
+END_TEST
+
 Suite *tests_get_str_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -635,6 +683,7 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, get_token_test);
   tcase_add_test(testcase, get_word_test);
   tcase_add_test(testcase, is_boolean_test);
+  tcase_add_test(testcase, is_fnmatch_test);
 
   suite_add_tcase(suite, testcase);
 

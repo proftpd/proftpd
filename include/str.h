@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.h,v 1.4 2008-06-14 02:40:04 castaglia Exp $
+ * $Id: str.h,v 1.5 2010-10-23 19:37:40 castaglia Exp $
  */
 
 #ifndef PR_STR_H
@@ -51,6 +51,8 @@ char *pr_str_get_token(char **, char *);
  * is returned, with errno set to EINVAL.
  */
 int pr_str_is_boolean(const char *);
+
+int pr_str_is_fnmatch(const char *);
 
 #define CHOP(s)		pr_str_strip_end((s), "\r\n")
 

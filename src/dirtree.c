@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.241 2010-08-04 22:32:46 castaglia Exp $
+ * $Id: dirtree.c,v 1.242 2010-10-23 19:37:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -118,40 +118,6 @@ int is_dotdir(const char *dir) {
   if (strcmp(dir, ".") == 0 || strcmp(dir, "./") == 0 ||
       strcmp(dir, "..") == 0 || strcmp(dir, "../") == 0)
     return TRUE;
-
-  return FALSE;
-}
-
-/* Return true if str contains any of the glob(7) characters. */
-int is_fnmatch(const char *str) {
-  int have_bracket = 0;
-
-  while (*str) {
-    switch (*str) {
-      case '?':
-      case '*':
-        return TRUE;
-
-      case '\\':
-        if (*str++ == '\0')
-          return FALSE;
-        break;
-
-      case '[':
-        have_bracket++;
-        break;
-
-      case ']':
-        if (have_bracket)
-          return TRUE;
-        break;
-
-      default:
-        break;
-    }
-
-    str++;
-  }
 
   return FALSE;
 }
@@ -768,7 +734,7 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
        */
 
       if (pr_fnmatch(suffixed_path, path, 0) == 0 ||
-          (is_fnmatch(tmp_path) &&
+          (pr_str_is_fnmatch(tmp_path) &&
            pr_fnmatch(tmp_path, path, 0) == 0)) {
         pr_trace_msg("directory", 8,
           "<Directory %s> is a glob match for '%s'", tmp_path, path);
@@ -2852,7 +2818,7 @@ int parse_config_path(pool *p, const char *path) {
     return -1;
   }
 
-  have_glob = is_fnmatch(path); 
+  have_glob = pr_str_is_fnmatch(path); 
 
   if (!have_glob && pr_fsio_lstat(path, &st) < 0)
     return -1;
@@ -2868,7 +2834,7 @@ int parse_config_path(pool *p, const char *path) {
     if (have_glob && tmp) {
       *tmp++ = '\0';
 
-      if (is_fnmatch(dup_path)) {
+      if (pr_str_is_fnmatch(dup_path)) {
         pr_log_pri(PR_LOG_ERR, "error: wildcard patterns not allowed in "
           "configuration directory name '%s'", dup_path);
         errno = EINVAL;
@@ -2885,7 +2851,7 @@ int parse_config_path(pool *p, const char *path) {
         return -1;
       }
 
-      if (!is_fnmatch(tmp)) {
+      if (!pr_str_is_fnmatch(tmp)) {
         pr_log_pri(PR_LOG_ERR, "error: wildcard pattern required for file '%s'",
           tmp);
         errno = EINVAL;

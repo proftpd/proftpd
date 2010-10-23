@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.76 2010-03-09 02:38:54 castaglia Exp $
+ * $Id: dirtree.h,v 1.77 2010-10-23 19:37:40 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -263,7 +263,6 @@ int dir_check_limits(cmd_rec *, config_rec *, const char *, int);
 int dir_check(pool *, cmd_rec *, const char *, const char *, int *);
 int dir_check_canon(pool *, cmd_rec *, const char *, const char *, int *);
 int is_dotdir(const char *);
-int is_fnmatch(const char *);
 int login_check_limits(xaset_t *, int, int, int *);
 char *path_subst_uservar(pool *, char **);
 void resolve_anonymous_dirs(xaset_t *);

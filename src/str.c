@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.7 2010-03-04 17:27:59 castaglia Exp $
+ * $Id: str.c,v 1.8 2010-10-23 19:37:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -470,5 +470,43 @@ int pr_str_is_boolean(const char *str) {
 
   errno = EINVAL;
   return -1;
+}
+
+/* Return true if str contains any of the glob(7) characters. */
+int pr_str_is_fnmatch(const char *str) {
+  int have_bracket = 0;
+
+  while (*str) {
+    switch (*str) {
+      case '?':
+      case '*':
+        return TRUE;
+
+      case '\\':
+        /* If the next character is NUL, we've reached the end of the string. */
+        if (*(str+1) == '\0')
+          return FALSE;
+
+        /* Skip past the escaped character, i.e. the next character. */
+        str++;
+        break;
+
+      case '[':
+        have_bracket++;
+        break;
+
+      case ']':
+        if (have_bracket)
+          return TRUE;
+        break;
+
+      default:
+        break;
+    }
+
+    str++;
+  }
+
+  return FALSE;
 }
 
