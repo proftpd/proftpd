@@ -24,7 +24,7 @@
 
 /*
  * NetACL API tests
- * $Id: netacl.c,v 1.1 2008-10-06 18:16:50 castaglia Exp $
+ * $Id: netacl.c,v 1.2 2010-10-23 19:39:46 castaglia Exp $
  */
 
 #include "tests.h"
@@ -205,8 +205,8 @@ START_TEST (netacl_create_test) {
     strerror(errno));
 
   acl_type = pr_netacl_get_type(res);
-  fail_unless(acl_type == PR_NETACL_TYPE_DNSGLOB,
-    "Failed to have DNSGLOB type for ACL string '%s'", acl_str);
+  fail_unless(acl_type == PR_NETACL_TYPE_IPGLOB,
+    "Failed to have IPGLOB type for ACL string '%s'", acl_str);
 
   acl_str = pstrdup(p, ".edu");
   res = pr_netacl_create(p, acl_str);
