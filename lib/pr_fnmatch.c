@@ -103,6 +103,13 @@ extern int fnmatch (const char *pattern, const char *string, int flags);
 #undef _LIBC
 #undef __GNU_LIBRARY__
 
+/* Provide an implementation of the gcc-specific __builtin_expect macro,
+ * for the non-gcc compilers out there.
+ */
+#ifndef __builtin_expect
+# define __builtin_expect(e, n)	(e)
+#endif /* __builtin_expect */
+
 #if defined _LIBC || !defined __GNU_LIBRARY__
 
 
