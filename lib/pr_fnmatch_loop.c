@@ -1078,7 +1078,7 @@ EXT (INT opt, const CHAR *pattern, const CHAR *string, const CHAR *string_end,
   struct patternlist
   {
     struct patternlist *next;
-    CHAR str[0];
+    CHAR str[];
   } *list = NULL;
   struct patternlist **lastp = &list;
   size_t pattern_len = STRLEN (pattern);
