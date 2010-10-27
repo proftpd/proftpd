@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.19 2010-04-17 17:10:35 castaglia Exp $
+ * $Id: display.c,v 1.20 2010-10-27 03:07:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -328,7 +328,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
     }
 
     if (prev) {
-      if (MultilineRFC2228) {
+      if (session.multiline_rfc2228) {
         pr_response_send_raw("%s-%s", code, prev);
 
       } else {
@@ -359,7 +359,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
 
   } else {
     if (prev) {
-      if (MultilineRFC2228) {
+      if (session.multiline_rfc2228) {
         pr_response_send_raw("%s-%s", code, prev);
 
       } else {

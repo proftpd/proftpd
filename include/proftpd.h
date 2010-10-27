@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.64 2010-07-03 19:51:40 castaglia Exp $
+ * $Id: proftpd.h,v 1.65 2010-10-27 03:07:19 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -123,6 +123,8 @@ typedef struct {
   char *proc_prefix;			/* The "prefix" of our process name */
 
   int wtmp_log;				/* Are we logging to wtmp? */
+  int multiline_rfc2228;		/* Are we using RFC2228-style multiline responses ? */
+
   struct conn_struc *c;			/* Control connection */
   struct conn_struc *d;			/* Data connection */
 
@@ -192,7 +194,6 @@ extern array_header *daemon_gids;
 extern session_t	session;
 extern char AddressCollisionCheck;
 extern char ServerType;
-extern char MultilineRFC2228;
 
 /* Session/State flags */
 

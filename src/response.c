@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.12 2008-09-26 20:57:29 castaglia Exp $
+ * $Id: response.c,v 1.13 2010-10-27 03:07:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -112,7 +112,7 @@ void pr_response_flush(pr_response_t **head) {
       } else {
 
         /* RFC2228's multiline responses are required for protected sessions. */
-	if (MultilineRFC2228 || session.sp_flags) {
+	if (session.multiline_rfc2228 || session.sp_flags) {
           RESPONSE_WRITE_NUM_STR(session.c->outstrm, "%s-%s\r\n", last_numeric,
             resp->msg)
 

@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.242 2010-10-23 19:37:40 castaglia Exp $
+ * $Id: dirtree.c,v 1.243 2010-10-27 03:07:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -45,7 +45,6 @@ int SocketBindTight = FALSE;
 char ServerType = SERVER_STANDALONE;
 int ServerMaxInstances = 0;
 int ServerUseReverseDNS = TRUE;
-char MultilineRFC2228 = 0;
 
 /* Default TCP send/receive buffer sizes. */
 static int tcp_rcvbufsz = 0;
