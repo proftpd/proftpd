@@ -6,7 +6,6 @@ use strict;
 
 use File::Spec;
 use IO::Handle;
-use Net::Telnet qw(TELNET_IAC);
 
 use ProFTPD::TestSuite::FTP;
 use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
@@ -113,7 +112,6 @@ sub telnet_iac_bug3511 {
   }
 
   require Net::Telnet;
-  Net::Telnet->import(qw(TELNET_IAC));
 
   my $ex;
 
@@ -136,7 +134,7 @@ sub telnet_iac_bug3511 {
 
       my $buf = "USER ";
       $buf .= ("A" x 4096);
-      $buf .= chr(TELNET_IAC);
+      $buf .= chr($Net::Telnet::TELNET_IAC);
       $buf .= "Z" x 64;
 
       my $res = $client->cmd(
