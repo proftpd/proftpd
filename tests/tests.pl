@@ -162,6 +162,7 @@ if (scalar(@ARGV) > 0) {
     t/signals/hup.t
     t/signals/segv.t
     t/signals/abrt.t
+    t/telnet.t
     t/utils/ftpcount.t
     t/utils/ftpwho.t
   )];
