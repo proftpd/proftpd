@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.18 2010-10-29 22:45:55 castaglia Exp $
+ * $Id: packet.c,v 1.19 2010-10-29 22:50:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -300,6 +300,9 @@ static void handle_disconnect_mesg(struct ssh2_packet *pkt) {
   reason_code = sftp_msg_read_int(pkt->pool, &pkt->payload, &pkt->payload_len);
   reason_str = sftp_disconnect_get_str(reason_code);
   if (reason_str == NULL) {
+    pr_trace_msg(trace_channel, 9,
+      "client sent unknown disconnect reason code %lu",
+      (unsigned long) reason_code);
     reason_str = "Unknown reason code";
   }
 
