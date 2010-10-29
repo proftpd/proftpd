@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.16 2010-09-15 17:29:51 castaglia Exp $
+ * $Id: packet.c,v 1.17 2010-10-29 22:28:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -293,12 +293,18 @@ static void handle_debug_mesg(struct ssh2_packet *pkt) {
 
 static void handle_disconnect_mesg(struct ssh2_packet *pkt) {
   register unsigned int i;
-  char *explain;
-  uint32_t reason;
+  char *explain = NULL, *lang = NULL;
+  const char *reason_str = NULL;
+  uint32_t reason_code;
 
-  reason = sftp_msg_read_int(pkt->pool, &pkt->payload, &pkt->payload_len);
+  reason_code = sftp_msg_read_int(pkt->pool, &pkt->payload, &pkt->payload_len);
+  reason_str = sftp_disconnect_get_str(reason_code);
   explain = sftp_msg_read_string(pkt->pool, &pkt->payload, &pkt->payload_len);
-  (void) sftp_msg_read_string(pkt->pool, &pkt->payload, &pkt->payload_len);
+
+  /* Not all clients send a language tag. */
+  if (pkt->payload_len > 0) {
+    lang = sftp_msg_read_string(pkt->pool, &pkt->payload, &pkt->payload_len);
+  }
 
   /* Sanity-check the message for control characters. */
   for (i = 0; i < strlen(explain); i++) {
@@ -307,9 +313,10 @@ static void handle_disconnect_mesg(struct ssh2_packet *pkt) {
     }
   }
 
+  /* XXX Use the language tag somehow, if provided. */
+
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-    "client sent SSH_DISCONNECT message '%s' (%lu)", explain,
-    (unsigned long) reason);
+    "client sent SSH_DISCONNECT message: %s (%s)", explain, reason_str);
   end_login(1);
 }
 
