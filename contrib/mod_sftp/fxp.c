@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.109 2010-10-20 20:38:20 castaglia Exp $
+ * $Id: fxp.c,v 1.110 2010-10-30 16:03:30 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2321,13 +2321,16 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
 
   if (fxh->fh_flags & O_APPEND) {
     cmd = fxp_cmd_alloc(fxh->pool, C_APPE, pstrdup(fxh->pool, curr_path));
+    session.curr_cmd = C_APPE;
 
   } else if ((fxh->fh_flags & O_WRONLY) ||
              (fxh->fh_flags & O_RDWR)) {
     cmd = fxp_cmd_alloc(fxh->pool, C_STOR, pstrdup(fxh->pool, curr_path));
+    session.curr_cmd = C_STOR;
 
   } else if (fxh->fh_flags == O_RDONLY) {
     cmd = fxp_cmd_alloc(fxh->pool, C_RETR, pstrdup(fxh->pool, curr_path));
+    session.curr_cmd = C_RETR;
   }
 
   xferlog_write(0, pr_netaddr_get_sess_remote_name(), fxh->fh_bytes_xferred,
@@ -4472,13 +4475,28 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
     curr_path = pstrdup(fxp->pool, fxh->fh->fh_path);
     real_path = curr_path;
+
     if (fxh->fh_real_path) {
       real_path = fxh->fh_real_path;
     }
- 
+
+    /* Set session.curr_cmd appropriately here, for any FSIO callbacks. */ 
+    if (fxh->fh_flags & O_APPEND) {
+      session.curr_cmd = C_APPE;
+
+    } else if ((fxh->fh_flags & O_WRONLY) ||
+               (fxh->fh_flags & O_RDWR)) {
+      session.curr_cmd = C_STOR;
+
+    } else if (fxh->fh_flags == O_RDONLY) {
+      session.curr_cmd = C_RETR;
+    }
+
     res = pr_fsio_close(fxh->fh);
     if (res < 0) 
       xerrno = errno;
+
+    session.curr_cmd = "CLOSE";
 
     pr_scoreboard_entry_update(session.pid,
       PR_SCORE_CMD_ARG, "%s", real_path, NULL, NULL);
@@ -6171,6 +6189,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   if (open_flags & O_APPEND) {
     cmd->class = CL_WRITE;
     cmd2 = fxp_cmd_alloc(fxp->pool, C_APPE, path);
+    session.curr_cmd = C_APPE;
 
   } else if ((open_flags & O_WRONLY) ||
              (open_flags & O_RDWR)) {
@@ -6183,9 +6202,12 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       cmd->class = CL_READ|CL_WRITE;
     }
 
+    session.curr_cmd = C_STOR;
+
   } else if (open_flags == O_RDONLY) {
     cmd->class = CL_READ;
     cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, path);
+    session.curr_cmd = C_RETR;
   }
 
   if (cmd2) {

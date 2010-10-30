@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.50 2010-09-08 17:48:04 castaglia Exp $
+ * $Id: scp.c,v 1.51 2010-10-30 16:03:30 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1180,6 +1180,9 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
 
     curr_path = pstrdup(scp_pool, sp->fh->fh_path);
 
+    /* Set session.curr_cmd, for any FSIO callbacks that might be interested. */
+    session.curr_cmd = C_STOR;
+
     res = pr_fsio_close(sp->fh);
     if (res < 0) {
       int xerrno = errno;
@@ -1614,6 +1617,11 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
       "error stat'ing '%s': %s", sp->path, strerror(errno));
 
     if (sp->fh) {
+      /* Set session.curr_cmd, for any FSIO callbacks that might be
+       * interested.
+       */
+      session.curr_cmd = C_RETR;
+
       pr_fsio_close(sp->fh);
       sp->fh = NULL;
 
