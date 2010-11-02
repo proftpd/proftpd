@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.101 2010-04-13 21:57:15 castaglia Exp $
+ * $Id: log.c,v 1.102 2010-11-02 16:51:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -472,7 +472,12 @@ static void log_write(int priority, int f, char *s) {
     syslog_open = TRUE;
 
   } else if (f != facility) {
-    (void) pr_setlogfacility(f);
+    /* If this message is to be sent to a different log facility than a
+     * default one (or the facility configured via SyslogFacility), then
+     * OR in the facility with the priority value, as per the syslog(3)
+     * docs.
+     */
+    priority |= f;
   }
 
   if (*serverinfo) {
