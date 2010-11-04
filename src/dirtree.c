@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.243 2010-10-27 03:07:19 castaglia Exp $
+ * $Id: dirtree.c,v 1.244 2010-11-04 22:03:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2049,8 +2049,8 @@ int dir_check_canon(pool *pp, cmd_rec *cmd, const char *group,
 /* Move all the members (i.e. a "branch") of one config set to a different
  * parent.
  */
-static void _reparent_all(config_rec *newparent, xaset_t *set) {
-  config_rec *c,*cnext;
+static void reparent_all(config_rec *newparent, xaset_t *set) {
+  config_rec *c, *cnext;
 
   if (!newparent->subset)
     newparent->subset = xaset_create(newparent->pool, NULL);
@@ -2140,7 +2140,7 @@ static config_rec *_find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
  * in directory tree order
  */
 
-static void _reorder_dirs(xaset_t *set, int flags) {
+static void reorder_dirs(xaset_t *set, int flags) {
   config_rec *c = NULL, *cnext = NULL, *newparent = NULL;
   int defer = 0;
   size_t tmp;
@@ -2153,6 +2153,8 @@ static void _reorder_dirs(xaset_t *set, int flags) {
 
   for (c = (config_rec *) set->xas_list; c; c = cnext) {
     cnext = c->next;
+
+    pr_signals_handle();
 
     if (c->config_type == CONF_DIR) {
       if (flags && !(c->flags & flags))
@@ -2169,7 +2171,7 @@ static void _reorder_dirs(xaset_t *set, int flags) {
           strcmp(c->name, "*") == 0) {
 
         if (c->subset)
-          _reparent_all(c->parent, c->subset);
+          reparent_all(c->parent, c->subset);
 
         xaset_remove(c->parent->subset, (xasetmember_t*) c);
 
@@ -2189,9 +2191,11 @@ static void _reorder_dirs(xaset_t *set, int flags) {
   }
 
   /* Top level is now sorted, now we recursively sort all the sublevels. */
-  for (c = (config_rec *) set->xas_list; c; c = c->next)
-    if (c->config_type == CONF_DIR || c->config_type == CONF_ANON)
-      _reorder_dirs(c->subset, flags);
+  for (c = (config_rec *) set->xas_list; c; c = c->next) {
+    if (c->config_type == CONF_DIR || c->config_type == CONF_ANON) {
+      reorder_dirs(c->subset, flags);
+    }
+  }
 }
 
 static void config_dumpf(const char *fmt, ...) {
@@ -2478,7 +2482,7 @@ void fixup_dirs(server_rec *s, int flags) {
     return;
   }
  
-  _reorder_dirs(s->conf, flags);
+  reorder_dirs(s->conf, flags);
 
   /* Merge mergeable configuration items down. */
   merge_down(s->conf, FALSE);
