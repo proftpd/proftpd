@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2010 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.13 2010-10-27 03:07:19 castaglia Exp $
+ * $Id: response.c,v 1.14 2010-11-04 18:51:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -36,6 +36,9 @@ static pool *resp_pool = NULL;
 
 static char resp_buf[PR_RESPONSE_BUFFER_SIZE] = {'\0'};
 static char resp_ml_numeric[4] = {'\0'};
+
+static char *resp_last_response_code = NULL;
+static char *resp_last_response_msg = NULL;
 
 static char *(*resp_handler_cb)(pool *, const char *, ...) = NULL;
 
@@ -69,8 +72,36 @@ pool *pr_response_get_pool(void) {
   return resp_pool;
 }
 
+static void reset_last_response(void) {
+  resp_last_response_code = NULL;
+  resp_last_response_msg = NULL;
+}
+
 void pr_response_set_pool(pool *p) {
   resp_pool = p;
+  reset_last_response();
+}
+
+int pr_response_get_last(pool *p, char **response_code, char **response_msg) {
+  if (p == NULL) {
+    errno = EINVAL;
+  }
+
+  if (response_code == NULL &&
+      response_msg == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (response_code != NULL) {
+    *response_code = pstrdup(p, resp_last_response_code);
+  }
+
+  if (response_msg != NULL) {
+    *response_msg = pstrdup(p, resp_last_response_msg);
+  }
+
+  return 0;
 }
 
 void pr_response_register_handler(char *(*handler_cb)(pool *, const char *,
@@ -90,6 +121,7 @@ int pr_response_block(int bool) {
 }
 
 void pr_response_clear(pr_response_t **head) {
+  reset_last_response();
   *head = NULL;
 }
 
@@ -154,6 +186,9 @@ void pr_response_add_err(const char *numeric, const char *fmt, ...) {
   resp->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
   resp->msg = pstrdup(resp_pool, resp_buf);
 
+  resp_last_response_code = pstrdup(resp_pool, resp->num);
+  resp_last_response_msg = pstrdup(resp_pool, resp->msg);
+
   pr_trace_msg(trace_channel, 7, "error response added to pending list: %s %s",
     resp->num ? resp->num : "(null)", resp->msg);
 
@@ -180,7 +215,10 @@ void pr_response_add(const char *numeric, const char *fmt, ...) {
   resp = (pr_response_t *) pcalloc(resp_pool, sizeof(pr_response_t));
   resp->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
   resp->msg = pstrdup(resp_pool, resp_buf);
-  
+
+  resp_last_response_code = pstrdup(resp_pool, resp->num);
+  resp_last_response_msg = pstrdup(resp_pool, resp->msg);
+
   pr_trace_msg(trace_channel, 7, "response added to pending list: %s %s",
     resp->num ? resp->num : "(null)", resp->msg);
 
@@ -212,8 +250,11 @@ void pr_response_send_async(const char *resp_numeric, const char *fmt, ...) {
   va_end(msg);
   
   buf[sizeof(buf) - 1] = '\0';
-  sstrcat(buf, "\r\n", sizeof(buf));
 
+  resp_last_response_code = pstrdup(resp_pool, resp_numeric);
+  resp_last_response_msg = pstrdup(resp_pool, buf + strlen(resp_numeric) + 1);
+
+  sstrcat(buf, "\r\n", sizeof(buf));
   RESPONSE_WRITE_STR_ASYNC(session.c->outstrm, "%s", buf)
 }
 
@@ -228,6 +269,9 @@ void pr_response_send(const char *resp_numeric, const char *fmt, ...) {
   va_end(msg);
   
   resp_buf[sizeof(resp_buf) - 1] = '\0';
+
+  resp_last_response_code = pstrdup(resp_pool, resp_numeric);
+  resp_last_response_msg = pstrdup(resp_pool, resp_buf);
 
   RESPONSE_WRITE_NUM_STR(session.c->outstrm, "%s %s\r\n", resp_numeric,
     resp_buf)
