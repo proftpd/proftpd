@@ -606,7 +606,7 @@ sub displayconnect_multiline {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Hello client!";
+      $expected = " Hello client!";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
