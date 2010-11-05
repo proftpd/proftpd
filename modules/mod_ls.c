@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.180 2010-09-28 16:49:24 castaglia Exp $
+ * $Id: mod_ls.c,v 1.181 2010-11-05 03:20:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1672,7 +1672,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     /* If there are no globbing characters in the given target,
      * we can check to see if it even exists.
      */
-    if (strpbrk(target, "[*?") == NULL) {
+    if (pr_str_is_fnmatch(target) == FALSE) {
       struct stat st;
 
       pr_fs_clear_cache();
@@ -1702,7 +1702,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       skiparg = FALSE;
 
       if (use_globbing &&
-          strpbrk(target, "[*?") != NULL) {
+          pr_str_is_fnmatch(target)) {
         a = pr_fs_glob(target, glob_flags, NULL, &g);
         if (a == 0) {
           pr_log_debug(DEBUG8, "LIST: glob(3) returned %lu %s",
@@ -1760,8 +1760,14 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
             target_mode = lmode;
           }
 
+          /* If the -d option is used or the file is not a directory, OR
+           * if the -R option is NOT used AND the file IS a directory AND,
+           * the file is NOT the target/given parameter, then list the file
+           * as is.
+           */
           if (opt_d ||
-              !(S_ISDIR(target_mode))) {
+              !(S_ISDIR(target_mode)) ||
+              (!opt_R && S_ISDIR(target_mode) && strcmp(*path, target) != 0)) {
 
             if (listfile(cmd, cmd->tmp_pool, *path) < 0) {
               ls_terminate();
@@ -1816,6 +1822,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
             }
           }
 
+          /* Recurse into the directory. */
           push_cwd(cwd_buf, &symhold);
 
           if (!pr_fsio_chdir_canon(*path, !opt_L && list_show_symlinks)) {
@@ -1847,6 +1854,14 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
         }
 
         path++;
+      }
+
+      if (outputfiles(cmd) < 0) {
+        ls_terminate();
+        if (use_globbing && globbed) {
+          pr_fs_globfree(&g);
+        }
+        return -1;
       }
 
     } else if (!skiparg) {
@@ -2547,7 +2562,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
   /* If the target is a glob, get the listing of files/dirs to send. */
   if (use_globbing &&
-      strpbrk(target, "[*?") != NULL) {
+      pr_str_is_fnmatch(target)) {
     glob_t g;
     char **path, *p;
     int globbed = FALSE;
