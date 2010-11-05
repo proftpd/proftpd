@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.245 2010-11-05 02:38:24 castaglia Exp $
+ * $Id: dirtree.c,v 1.246 2010-11-05 02:41:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2330,18 +2330,122 @@ void pr_dirs_dump(void (*dumpf)(const char *, ...), xaset_t *s, char *indent) {
 }
 #endif /* PR_USE_DEVEL */
 
-static void merge_down(xaset_t *s, int dynamic) {
-  config_rec *c, *dst, *newconf;
-  int argc;
-  void **argv, **sargv;
+/* Compare two different config_recs to see if they are the same.  Note
+ * that "same" here has to be very specific.
+ *
+ * Returns 0 if the two config_recs are the same, and 1 if they differ, and
+ * -1 if there was an error.
+ */
+static int config_cmp(const config_rec *a, const char *a_name,
+    const config_rec *b, const char *b_name) {
+  const char *trace_channel = "config";
 
-  if (!s ||
-      !s->xas_list)
+  if (a == NULL ||
+      b == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (a->config_type != b->config_type) {
+    pr_trace_msg(trace_channel, 18,
+      "configs '%s' and '%s' have mismatched config_type (%d != %d)",
+      a_name, b_name, a->config_type, b->config_type);
+    return 1;
+  }
+
+  if (a->flags != b->flags) {
+    pr_trace_msg(trace_channel, 18,
+      "configs '%s' and '%s' have mismatched flags (%ld != %ld)",
+      a_name, b_name, a->flags, b->flags);
+    return 1;
+  }
+
+  if (a->argc != b->argc) {
+    pr_trace_msg(trace_channel, 18,
+      "configs '%s' and '%s' have mismatched argc (%d != %d)",
+      a_name, b_name, a->argc, b->argc);
+    return 1;
+  }
+
+  if (a->argc > 0) {
+    register unsigned int i;
+
+    for (i = 0; i < a->argc; i++) {
+      if (a->argv[i] != b->argv[i]) {
+        pr_trace_msg(trace_channel, 18,
+          "configs '%s' and '%s' have mismatched argv[%u] (%p != %p)",
+          a_name, b_name, i, a->argv[i], b->argv[i]);
+        return 1;
+      }
+    }
+  }
+
+  if (a->config_id != b->config_id) {
+    pr_trace_msg(trace_channel, 18,
+      "configs '%s' and '%s' have mismatched config_id (%d != %d)",
+      a_name, b_name, a->config_id, b->config_id);
+    return 1;
+  }
+
+  /* Save the string comparison for last, to try to save some CPU. */
+  if (strcmp(a->name, b->name) != 0) {
+    pr_trace_msg(trace_channel, 18,
+      "configs '%s' and '%s' have mismatched name ('%s' != '%s')",
+      a_name, b_name, a->name, b->name);
+    return 1;
+  }
+
+  return 0;
+}
+
+static config_rec *copy_config_from(const config_rec *src, config_rec *dst) {
+  config_rec *c;
+  int cargc;
+  void **cargv, **sargv;
+
+  if (src == NULL ||
+      dst == NULL) {
+    return NULL;
+  }
+
+  /* If the destination parent config_rec doesn't already have a subset
+   * container, allocate one.
+   */
+  if (dst->subset == NULL)
+    dst->subset = xaset_create(dst->pool, NULL);
+
+  c = add_config_set(&dst->subset, src->name);
+  c->config_type = src->config_type;
+  c->flags = src->flags;
+  c->config_id = src->config_id;
+
+  c->argc = src->argc;
+  c->argv = pcalloc(c->pool, (src->argc + 1) * sizeof(void *));
+
+  cargc = c->argc;
+  cargv = c->argv;
+  sargv = src->argv;
+
+  while (cargc--) {
+    pr_signals_handle();
+    *cargv++ = *sargv++;
+  }
+
+  *cargv = NULL; 
+  return c;
+}
+
+static void merge_down(xaset_t *s, int dynamic) {
+  config_rec *c, *dst;
+
+  if (s == NULL ||
+      s->xas_list == NULL)
     return;
 
   for (c = (config_rec *) s->xas_list; c; c = c->next) {
     if ((c->flags & CF_MERGEDOWN) ||
-        (c->flags & CF_MERGEDOWN_MULTI))
+        (c->flags & CF_MERGEDOWN_MULTI)) {
+
       for (dst = (config_rec *) s->xas_list; dst; dst = dst->next) {
         if (dst->config_type == CONF_ANON ||
            dst->config_type == CONF_DIR) {
@@ -2369,25 +2473,38 @@ static void merge_down(xaset_t *s, int dynamic) {
             }
           }
 
-          if (!dst->subset)
-            dst->subset = xaset_create(dst->pool, NULL);
+          /* We want to scan the config_recs contained in dst's subset to see
+           * if we can find another config_rec that duplicates the one we want
+           * to merge into dst.
+           */
+          if (dst->subset != NULL) {
+              config_rec *r = NULL;
+            int merge = TRUE;
 
-          newconf = add_config_set(&dst->subset, c->name);
-          newconf->config_type = c->config_type;
-          newconf->flags = c->flags | (dynamic ? CF_DYNAMIC : 0);
-          newconf->argc = c->argc;
-          newconf->argv = pcalloc(newconf->pool, (c->argc+1) * sizeof(void *));
-          argv = newconf->argv;
-          sargv = c->argv;
-          argc = newconf->argc;
+            for (r = (config_rec *) dst->subset->xas_list; r; r = r->next) {
+              pr_signals_handle();
 
-          while (argc--) {
-            *argv++ = *sargv++;
+              if (config_cmp(r, r->name, c, c->name) == 0) {
+                merge = FALSE;
+
+                pr_trace_msg("config", 15,
+                  "found duplicate '%s' record in '%s', skipping merge",
+                  r->name, dst->name);
+                break;
+              }
+            }
+
+            if (merge) {
+              (void) copy_config_from(c, dst);
+            }
+ 
+          } else {
+            /* No existing subset in dst; we can merge this one in. */
+            (void) copy_config_from(c, dst);
           }
-
-          *argv++ = NULL;
         }
       }
+    }
   }
 
   /* Top level merged, recursively merge lower levels */
@@ -2879,7 +2996,7 @@ config_rec *add_config_param(const char *name, int num, ...) {
   return c;
 }
 
-static int config_cmp(const void *a, const void *b) {
+static int config_filename_cmp(const void *a, const void *b) {
   return strcmp(*((char **) a), *((char **) b));
 }
 
@@ -2962,7 +3079,7 @@ int parse_config_path(pool *p, const char *path) {
       register unsigned int i;
 
       qsort((void *) file_list->elts, file_list->nelts, sizeof(char *),
-        config_cmp);
+        config_filename_cmp);
 
       for (i = 0; i < file_list->nelts; i++) {
         char *file = ((char **) file_list->elts)[i];
