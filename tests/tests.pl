@@ -142,6 +142,7 @@ if (scalar(@ARGV) > 0) {
     t/config/useralias.t
     t/config/userowner.t
     t/config/userpassword.t
+    t/config/usesendfile.t
     t/config/directory/limits.t
     t/config/directory/umask.t
     t/config/ftpaccess/dele.t
