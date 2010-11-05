@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.244 2010-11-04 22:03:28 castaglia Exp $
+ * $Id: dirtree.c,v 1.245 2010-11-05 02:38:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1524,13 +1524,55 @@ int dir_check_limits(cmd_rec *cmd, config_rec *c, const char *cmd_name,
   return res;
 }
 
+/* Manage .ftpaccess dynamic directory sections
+ *
+ * build_dyn_config() is called to check for and then handle .ftpaccess 
+ * files.  It determines:
+ *
+ *   - whether an .ftpaccess file exists in a directory
+ *   - whether an existing .ftpaccess section for that file exists
+ *   - whether a new .ftpaccess section needs to be constructed
+ *   - whether an existing .ftpaccess section needs rebuilding 
+ *         as its corresponding .ftpaccess file has been modified   
+ *   - whether an existing .ftpaccess section must now be removed
+ *         as its corresponding .ftpaccess file has disappeared
+ *
+ * The routine must check for .ftpaccess files in each directory that is
+ * a component of the path argument.  The input path may be for either a 
+ * directory or file, and that may or may not already exist.  
+ *
+ * build_dyn_config() may be called with a path to:
+ *
+ *   - an existing directory        - start check in that dir
+ *   - an existing file             - start check in containing dir
+ *   - a proposed directory         - start check in containing dir
+ *   - a proposed file              - start check in containing dir
+ *
+ * As in 1.3.3b code, the key is that for path "/a/b/c", one of either 
+ * "/a/b/c" or "/a/b" is an existing directory, or we MUST give up as we
+ * cannot even start scanning for .ftpaccess files without a valid starting
+ * directory.
+ */
 void build_dyn_config(pool *p, const char *_path, struct stat *stp,
     unsigned char recurse) {
-  char *fullpath = NULL, *path = NULL, *dynpath = NULL, *cp = NULL;
   struct stat st;
   config_rec *d = NULL;
   xaset_t **set = NULL;
   int isfile, removed = 0;
+  char *ptr = NULL;
+
+  /* Need three path strings: 
+   *
+   *  curr_dir_path: current relative directory path, for tracking our
+   *                 progress as we scan upwards 
+   *
+   *  ftpaccess_path: current relative file path to the .ftpaccess file for
+   *                  which to check.
+   *
+   *  ftpaccess_name: absolute directory path of the .ftpaccess file,
+   *                  to be used as the name for the new config_rec.
+   */
+  char *curr_dir_path = NULL, *ftpaccess_path = NULL, *ftpaccess_name = NULL;
 
   /* Switch through each directory, from "deepest" up looking for
    * new or updated .ftpaccess files
@@ -1543,53 +1585,88 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
   if (!allow_dyn_config(_path))
     return;
 
-  path = pstrdup(p, _path);
-
+  /* Determine the starting directory path for the .ftpaccess file scan. */
   memcpy(&st, stp, sizeof(st));
+  curr_dir_path = pstrdup(p, _path);
 
-  if (S_ISDIR(st.st_mode)) {
-    dynpath = pdircat(p, path, "/.ftpaccess", NULL);
-
-  } else {
-    char *ptr;
+  if (!S_ISDIR(st.st_mode)) {
 
     /* If the given st is not for a directory (i.e. path is for a file),
      * then construct the path for the .ftpaccess file to check.
      *
      * strrchr(3) should always return non-NULL here, right?
      */
-    ptr = strrchr(path, '/');
-    if (ptr) {
+    ptr = strrchr(curr_dir_path, '/');
+    if (ptr != NULL) {
       *ptr = '\0';
-
-      dynpath = pdircat(p, path, "/.ftpaccess", NULL);
-      *ptr = '/';
     }
   }
 
-  while (path) {
+  while (curr_dir_path) {
+    size_t curr_dir_pathlen;
+
     pr_signals_handle();
 
-    if (session.chroot_path) {
-      fullpath = pdircat(p, session.chroot_path, path, NULL);
+    curr_dir_pathlen = strlen(curr_dir_path);
 
-      if (strcmp(fullpath, "/") &&
-          *(fullpath + strlen(fullpath) - 1) == '/') {
-        *(fullpath + strlen(fullpath) - 1) = '\0';
+    /* Remove any trailing "*" character. */
+    if (curr_dir_pathlen > 1 &&
+        *(curr_dir_path + curr_dir_pathlen - 1) == '*') {
+      *(curr_dir_path + curr_dir_pathlen - 1) = '\0';
+      curr_dir_pathlen--;
+    }
+
+    /* Trim any trailing path separator (unless it is the first AND last
+     * character, e.g. "/").  For example:
+     *
+     *  "/a/b/" -->  "/a/b"
+     *  "/a/"   -->  "/a"
+     *  "/"     -->  "/"
+     *
+     * The check for a string length greater than 1 character skips the
+     * "/" case effectively.
+     */ 
+
+    if (curr_dir_pathlen > 1 &&
+      *(curr_dir_path + curr_dir_pathlen - 1) == '/') {
+      *(curr_dir_path + curr_dir_pathlen - 1) = '\0';
+      curr_dir_pathlen--;  
+    }
+
+    ftpaccess_path = pdircat(p, curr_dir_path, ".ftpaccess", NULL);
+
+    /* Construct the name for the config_rec name for the .ftpaccess file
+     * from curr_dir_path.
+     */
+
+    if (session.chroot_path) {
+      size_t ftpaccess_namelen;
+
+      ftpaccess_name = pdircat(p, session.chroot_path, curr_dir_path,
+        NULL);
+
+      ftpaccess_namelen = strlen(ftpaccess_name);
+
+      if (ftpaccess_namelen > 1 &&
+          *(ftpaccess_name + ftpaccess_namelen - 1) == '/') {
+        *(ftpaccess_name + ftpaccess_namelen - 1) = '\0';
+        ftpaccess_namelen--;
       }
 
     } else {
-      fullpath = path;
+      ftpaccess_name = curr_dir_path;
     }
 
-    if (dynpath) {
-      isfile = pr_fsio_stat(dynpath, &st);
+    if (ftpaccess_path != NULL) {
+      pr_trace_msg("ftpaccess", 6, "checking for .ftpaccess file '%s'",
+        ftpaccess_path);
+      isfile = pr_fsio_stat(ftpaccess_path, &st);
 
     } else {
       isfile = -1;
     }
 
-    d = dir_match_path(p, fullpath);
+    d = dir_match_path(p, ftpaccess_name);
 
     if (!d &&
         isfile != -1 &&
@@ -1597,9 +1674,9 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
       set = (session.anon_config ? &session.anon_config->subset :
         &main_server->conf);
 
-      pr_trace_msg("ftpaccess", 6, "adding config for '%s'", fullpath);
+      pr_trace_msg("ftpaccess", 6, "adding config for '%s'", ftpaccess_name);
 
-      d = add_config_set(set, fullpath);
+      d = add_config_set(set, ftpaccess_name);
       d->config_type = CONF_DIR;
       d->argc = 1;
       d->argv = pcalloc(d->pool, 2 * sizeof (void *));
@@ -1609,12 +1686,12 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
 
       if (isfile != -1 &&
           st.st_size > 0 &&
-          strcmp(d->name, fullpath) != 0) {
+          strcmp(d->name, ftpaccess_name) != 0) {
         set = &d->subset;
 
-        pr_trace_msg("ftpaccess", 6, "adding config for '%s'", fullpath);
+        pr_trace_msg("ftpaccess", 6, "adding config for '%s'", ftpaccess_name);
 
-        newd = add_config_set(set, fullpath);
+        newd = add_config_set(set, ftpaccess_name);
         newd->config_type = CONF_DIR;
         newd->argc = 1;
         newd->argv = pcalloc(newd->pool, 2 * sizeof(void *));
@@ -1622,7 +1699,7 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
 
         d = newd;
 
-      } else if (strcmp(d->name, fullpath) == 0 &&
+      } else if (strcmp(d->name, ftpaccess_name) == 0 &&
           (isfile == -1 ||
            st.st_mtime > (d->argv[0] ? *((time_t *) d->argv[0]) : 0))) {
 
@@ -1670,10 +1747,11 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
 
       d->config_type = CONF_DYNDIR;
 
-      pr_trace_msg("ftpaccess", 3, "parsing '%s'", dynpath);
+      pr_trace_msg("ftpaccess", 3, "parsing '%s'", ftpaccess_path);
 
       pr_parser_prepare(p, NULL);
-      res = pr_parser_parse_file(p, dynpath, d, PR_PARSER_FL_DYNAMIC_CONFIG);
+      res = pr_parser_parse_file(p, ftpaccess_path, d,
+        PR_PARSER_FL_DYNAMIC_CONFIG);
       pr_parser_cleanup();
 
       if (res == 0) {
@@ -1684,8 +1762,12 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
         fixup_dirs(main_server, CF_SILENT);
 
       } else {
-        pr_log_debug(DEBUG0, "error parsing '%s': %s", dynpath,
-          strerror(errno));
+        int xerrno = errno;
+
+        pr_trace_msg("ftpaccess", 2, "error parsing '%s': %s", ftpaccess_path,
+          strerror(xerrno));
+        pr_log_debug(DEBUG0, "error parsing '%s': %s", ftpaccess_path,
+          strerror(xerrno));
       }
     }
 
@@ -1693,52 +1775,41 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
         removed &&
         d &&
         set) {
-      pr_log_debug(DEBUG5, "dynamic configuration removed for %s", fullpath);
+      pr_trace_msg("ftpaccess", 6, "adding config for '%s'", ftpaccess_name);
       merge_down(*set, FALSE);
     }
 
     if (!recurse)
       break;
 
-    cp = strrchr(path, '/');
-    if (cp) {
-      if (strcmp(path, "/") != 0) {
-
-        /* We need to handle the case where path might be "/path".  We
-         * can't just set *cp to '\0', as that would result in the empty
-         * string.  Thus check if cp is the same value as path, i.e.
-         * that cp points to the start of the string.  If so, by definition
-         * we know that we are dealing with the "/path" case.
-         */
-        if (cp != path) {
-          *cp = '\0';
+    /* Remove the last path component of current directory path. */
+    ptr = strrchr(curr_dir_path, '/');
+    if (ptr != NULL) {
+      /* We need to handle the case where path might be "/path".  We
+       * can't just set *ptr to '\0', as that would result in the empty
+       * string.  Thus check if ptr is the same value as curr_dir_path, i.e.
+       * that ptr points to the start of the string.  If so, by definition
+       * we know that we are dealing with the "/path" case.
+       */
+      if (ptr == curr_dir_path) {
+        if (strcmp(curr_dir_path, "/") == 0) {
+          /* We've reached the top; stop scanning. */
+          curr_dir_path = NULL;
 
         } else {
-          /* Set the recurse flag to 'false', so that we go one more pass
-           * through the loop, but stop after that.
-           */
-          *(cp+1) = '\0';
-          recurse = FALSE;        
+          *(ptr+1) = '\0';
         }
 
       } else {
-        /* Set the recurse flag to 'false', so that we go one more pass
-         * through the loop, but stop after that.
-         */
-        recurse = FALSE;        
+        *ptr = '\0';
       }
 
     } else {
-      path = NULL;
-    }
-
-    if (path) {
-      if (*path && *(path + strlen(path) - 1) == '*')
-        *(path +strlen(path) - 1) = '\0';
-
-      dynpath = pdircat(p, path, "/.ftpaccess", NULL);
+      curr_dir_path = NULL;
     }
   }
+
+  return;
 }
 
 /* dir_check_full() fully recurses the path passed
