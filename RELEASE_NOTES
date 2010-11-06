@@ -64,10 +64,6 @@ ChangeLog files.
 
   + SFTPClientAlive
 
-  + New TLSOptions
-
-      CommonNameRequired (Bug#3512)
-
   + Changed configuration directives:
 
     BanOnEvent
@@ -75,10 +71,18 @@ ChangeLog files.
       The BanOnEvent directive of the mod_ban module now supports
       LoginRate events.
 
+    TLSOptions
+      CommonNameRequired (Bug#3512)
+
+    UseSendfile
+      Can now be used in <Directory> sections and .ftpaccess files.
+      Can be used to specify lengths (in bytes) or percentages.
+      See doc/howto/Sendfile.html for details.
+
   + Deprecated configuration directives:
 
     DisplayGoAway
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2010-11-01 22:16:29 $
+Last Updated: $Date: 2010-11-06 18:55:58 $
