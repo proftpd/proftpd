@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.187 2010-11-08 00:50:34 castaglia Exp $
+ * $Id: mod_sql.c,v 1.188 2010-11-08 02:33:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3195,10 +3195,10 @@ MODRET sql_lookup(cmd_rec *cmd) {
 
       ah = make_array(session.pool, (sd->rnum * sd->fnum) , sizeof(char *));
 
-      /* the right way to do this is to preserve the abstraction of the array
-       * header so things don't blow up when it gets freed
+      /* The right way to do this is to preserve the abstraction of the array
+       * header so things don't blow up when it gets freed.
        */
-      for (i = 0; i< (sd->rnum * sd->fnum); i++) {
+      for (i = 0; i < (sd->rnum * sd->fnum); i++) {
 	*((char **) push_array(ah)) = sd->data[i];
       }
 
