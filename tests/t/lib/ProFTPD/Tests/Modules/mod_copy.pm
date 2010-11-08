@@ -314,6 +314,8 @@ sub copy_dir {
   }
 
   my $dst_dir = File::Spec->rel2abs("$home_dir/bar/baz");
+  mkpath($dst_dir);
+
   my $dst_file = File::Spec->rel2abs("$dst_dir/test.txt");
 
   my $config = {
