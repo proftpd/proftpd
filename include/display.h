@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.h,v 1.4 2010-11-05 16:17:36 castaglia Exp $
+ * $Id: display.h,v 1.5 2010-11-08 00:50:34 castaglia Exp $
  */
 
 #ifndef PR_DISPLAY_H
@@ -53,5 +53,8 @@ int pr_display_fh(struct fh_rec *fh, const char *fs, const char *code,
  */
 int pr_display_file(const char *path, const char *fs, const char *code,
   int flags);
+
+int pr_display_add_line(pool *p, const char *code, const char *msg);
+int pr_display_flush_lines(pool *p, const char *code, int flags);
 
 #endif /* PR_DISPLAY_H */

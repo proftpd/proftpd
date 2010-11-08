@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.186 2010-11-04 18:51:29 castaglia Exp $
+ * $Id: mod_sql.c,v 1.187 2010-11-08 00:50:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2592,7 +2592,8 @@ MODRET info_master(cmd_rec *cmd) {
   config_rec *c = NULL;
   char outs[SQL_MAX_STMT_LEN] = {'\0'}, *outsp;
   char *argp = NULL; 
-  char *tmp = NULL;
+  char *tmp = NULL, *resp_code = NULL;
+  int display_flags = 0;
   modret_t *mr = NULL;
   sql_data_t *sd = NULL;
 
@@ -2694,7 +2695,12 @@ MODRET info_master(cmd_rec *cmd) {
 
     /* Add the response, if we have one. */
     if (strlen(outs) > 0) {
-      pr_response_add(c->argv[0], "%s", outs);
+      /* We keep track of the response code used, as we will need it when
+       * flushing the added lines out to the client.
+       */
+      resp_code = c->argv[0];
+
+      pr_display_add_line(cmd->tmp_pool, resp_code, outs);
     }
 
     sql_log(DEBUG_FUNC, "<<< info_master (%s)", name);
@@ -2797,13 +2803,30 @@ MODRET info_master(cmd_rec *cmd) {
 
     /* Add the response, if we have one. */
     if (strlen(outs) > 0) {
-      pr_response_add(c->argv[0], "%s", outs);
+      /* We keep track of the response code used, as we will need it when
+       * flushing the added lines out to the client.
+       */
+      resp_code = c->argv[0];
+
+      pr_display_add_line(cmd->tmp_pool, resp_code, outs);
     }
 
     sql_log(DEBUG_FUNC, "<<< info_master (%s)", name);
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
+
+  /* If this is the PASS command, then we're handling a login; we need to
+   * tell the Display API to NOT send the end-of-message marker.  Same
+   * goes for directory-switching commands (CWD, XCWD).
+   */
+  if (strcmp(cmd->argv[0], C_PASS) == 0 ||
+      strcmp(cmd->argv[0], C_CWD) == 0 ||
+      strcmp(cmd->argv[0], C_XCWD) == 0) {
+    display_flags = PR_DISPLAY_FL_NO_EOM;
+  }
+
+  pr_display_flush_lines(cmd->tmp_pool, resp_code, display_flags);
 
   return PR_DECLINED(cmd);
 }
@@ -2814,7 +2837,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
   config_rec *c = NULL;
   char outs[SQL_MAX_STMT_LEN] = {'\0'}, *outsp = NULL;
   char *argp = NULL; 
-  char *tmp = NULL;
+  char *tmp = NULL, *resp_code = NULL;
   modret_t *mr = NULL;
   sql_data_t *sd = NULL;
 
@@ -2917,7 +2940,12 @@ MODRET errinfo_master(cmd_rec *cmd) {
 
     /* Add the response, if we have one. */
     if (strlen(outs) > 0) {
-      pr_response_add_err(c->argv[0], "%s", outs);
+      /* We keep track of the response code used, as we will need it when
+       * flushing the added lines out to the client.
+       */
+      resp_code = c->argv[0];
+
+      pr_display_add_line(cmd->tmp_pool, resp_code, outs);
     }
 
     sql_log(DEBUG_FUNC, "<<< errinfo_master (%s)", name);
@@ -3023,13 +3051,20 @@ MODRET errinfo_master(cmd_rec *cmd) {
 
     /* Add the response, if we have one. */
     if (strlen(outs) > 0) {
-      pr_response_add(c->argv[0], "%s", outs);
+      /* We keep track of the response code used, as we will need it when
+       * flushing the added lines out to the client.
+       */
+      resp_code = c->argv[0];
+
+      pr_display_add_line(cmd->tmp_pool, resp_code, outs);
     }
 
     sql_log(DEBUG_FUNC, "<<< errinfo_master (%s)", name);
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
+
+  pr_display_flush_lines(cmd->tmp_pool, resp_code, 0);
 
   return PR_DECLINED(cmd);
 }
