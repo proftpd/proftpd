@@ -15,7 +15,7 @@ $| = 1;
 my $order = 0;
 
 my $TESTS = {
-  telnet_iac_bug3511 => {
+  telnet_iac_bug3521 => {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
@@ -51,7 +51,7 @@ sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
 }
 
-sub telnet_iac_bug3511 {
+sub telnet_iac_bug3521 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -122,7 +122,7 @@ sub telnet_iac_bug3511 {
     eval {
       sleep(1);
 
-      # To reproduce Bug#3511, we only need to connect to the server,
+      # To reproduce Bug#3521, we only need to connect to the server,
       # then issue a Telnet IAC at the right time.
 
       my $client = Net::Telnet->new(
