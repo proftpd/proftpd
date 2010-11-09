@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.66 2010-11-01 18:51:05 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.67 2010-11-09 18:43:38 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -170,6 +170,32 @@ static int quotatab_wunlock(quota_table_t *);
 
 /* Support routines
  */
+
+/* Returns the most appropriate errno value for indicating a "quota exceeded"
+ * state, or -1 if there is no such appropriate errno.
+ */
+static int get_quota_exceeded_errno(int default_errno, char **errstr) {
+  int res;
+
+#if defined(EDQUOT)
+  res = EDQUOT;
+
+#elif defined(EFBIG)
+  res = EFBIG;
+
+#elif defined(ENOSPC)
+  res = ENOSPC;
+
+#else
+  res = default_errno;
+#endif
+
+  if (errstr != NULL) {
+    *errstr = strerror(res);
+  }
+
+  return res;
+}
 
 /* Quota units routines */
 
@@ -1170,32 +1196,21 @@ static int quotatab_fsio_write(pr_fh_t *fh, int fd, const char *buf,
 
   if (sess_limit.bytes_in_avail > 0.0 &&
       sess_tally.bytes_in_used + session.xfer.total_bytes > sess_limit.bytes_in_avail) {
-#if defined(EDQUOT)
-    quotatab_log("quotatab write(): limit exceeded, returning EDQUOT");
-    errno = EDQUOT;
-#elif defined(EFBIG)
-    quotatab_log("quotatab write(): limit exceeded, returning EFBIG");
-    errno = EFBIG;
-#else
-    quotatab_log("quotatab write(): limit exceeded, returning EIO");
-    errno = EIO;
-#endif
+    char *errstr = NULL;
+
+    errno = get_quota_exceeded_errno(EIO, &errstr);
+    quotatab_log("quotatab write(): limit exceeded, returning %s", errstr);
 
     return -1;
   }
 
   if (sess_limit.bytes_xfer_avail > 0.0 &&
       sess_tally.bytes_xfer_used + session.xfer.total_bytes > sess_limit.bytes_xfer_avail) {
-#if defined(EDQUOT)
-    quotatab_log("quotatab write(): transfer limit exceeded, returning EDQUOT");
-    errno = EDQUOT;
-#elif defined(EFBIG)
-    quotatab_log("quotatab write(): transfer limit exceeded, returning EFBIG");
-    errno = EFBIG;
-#else
-    quotatab_log("quotatab write(): transfer limit exceeded, returning EIO");
-    errno = EIO;
-#endif
+    char *errstr = NULL;
+
+    errno = get_quota_exceeded_errno(EIO, &errstr);
+    quotatab_log("quotatab write(): transfer limit exceeded, returning %s",
+      errstr);
 
     return -1;
   }
@@ -1555,15 +1570,7 @@ MODRET quotatab_pre_appe(cmd_rec *cmd) {
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
-#if defined(EDQUOT)
-    errno = EDQUOT;
-#elif defined(EFBIG)
-    errno = EFBIG;
-#elif defined(ENOSPC)
-    errno = ENOSPC;
-#else
-    errno = EPERM;
-#endif
+    errno = get_quota_exceeded_errno(EPERM, NULL);
 
     return PR_ERROR(cmd);
 
@@ -1578,15 +1585,7 @@ MODRET quotatab_pre_appe(cmd_rec *cmd) {
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
-#if defined(EDQUOT)
-    errno = EDQUOT;
-#elif defined(EFBIG)
-    errno = EFBIG;
-#elif defined(ENOSPC)
-    errno = ENOSPC;
-#else
-    errno = EPERM;
-#endif
+    errno = get_quota_exceeded_errno(EPERM, NULL);
 
     return PR_ERROR(cmd);
   }
@@ -1838,15 +1837,7 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
-#if defined(EDQUOT)
-    errno = EDQUOT;
-#elif defined(EFBIG)
-    errno = EFBIG;
-#elif defined(ENOSPC)
-    errno = ENOSPC;
-#else
-    errno = EPERM;
-#endif
+    errno = get_quota_exceeded_errno(EPERM, NULL);
 
     return PR_ERROR(cmd);
 
@@ -1861,15 +1852,7 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
-#if defined(EDQUOT)
-    errno = EDQUOT;
-#elif defined(EFBIG)
-    errno = EFBIG;
-#elif defined(ENOSPC)
-    errno = ENOSPC;
-#else
-    errno = EPERM;
-#endif
+    errno = get_quota_exceeded_errno(EPERM, NULL);
 
     return PR_ERROR(cmd);
   }
@@ -1908,16 +1891,8 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
         cmd->argv[0], DISPLAY_FILES_IN(cmd));
       have_err_response = TRUE;
 
-    /* Set an appropriate errno value. */
-#if defined(EDQUOT)
-    errno = EDQUOT;
-#elif defined(EFBIG)
-    errno = EFBIG;
-#elif defined(ENOSPC)
-    errno = ENOSPC;
-#else
-    errno = EPERM;
-#endif
+      /* Set an appropriate errno value. */
+      errno = get_quota_exceeded_errno(EPERM, NULL);
 
       return PR_ERROR(cmd);
 
@@ -1931,16 +1906,8 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
         cmd->argv[0], DISPLAY_FILES_XFER(cmd));
       have_err_response = TRUE;
 
-    /* Set an appropriate errno value. */
-#if defined(EDQUOT)
-    errno = EDQUOT;
-#elif defined(EFBIG)
-    errno = EFBIG;
-#elif defined(ENOSPC)
-    errno = ENOSPC;
-#else
-    errno = EPERM;
-#endif
+      /* Set an appropriate errno value. */
+      errno = get_quota_exceeded_errno(EPERM, NULL);
 
       return PR_ERROR(cmd);
     }
@@ -2775,11 +2742,7 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
-#if defined(EDQUOT)
-    errno = EDQUOT;
-#else
-    errno = EPERM;
-#endif
+    errno = get_quota_exceeded_errno(EPERM, NULL);
 
     return PR_ERROR(cmd);
 
@@ -2794,11 +2757,7 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
-#if defined(EDQUOT)
-    errno = EDQUOT;
-#else
-    errno = EPERM;
-#endif
+    errno = get_quota_exceeded_errno(EPERM, NULL);
 
     return PR_ERROR(cmd);
   }
@@ -2817,11 +2776,7 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
-#if defined(EDQUOT)
-    errno = EDQUOT;
-#else
-    errno = EPERM;
-#endif
+    errno = get_quota_exceeded_errno(EPERM, NULL);
 
     return PR_ERROR(cmd);
 
@@ -2836,11 +2791,7 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
-#if defined(EDQUOT)
-    errno = EDQUOT;
-#else
-    errno = EPERM;
-#endif
+    errno = get_quota_exceeded_errno(EPERM, NULL);
 
     return PR_ERROR(cmd);
   }
@@ -3114,15 +3065,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
-#if defined(EDQUOT)
-    errno = EDQUOT;
-#elif defined(EFBIG)
-    errno = EFBIG;
-#elif defined(ENOSPC)
-    errno = ENOSPC;
-#else
-    errno = EPERM;
-#endif
+    errno = get_quota_exceeded_errno(EPERM, NULL);
 
     return PR_ERROR(cmd);
 
@@ -3137,15 +3080,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
-#if defined(EDQUOT)
-    errno = EDQUOT;
-#elif defined(EFBIG)
-    errno = EFBIG;
-#elif defined(ENOSPC)
-    errno = ENOSPC;
-#else
-    errno = EPERM;
-#endif
+    errno = get_quota_exceeded_errno(EPERM, NULL);
 
     return PR_ERROR(cmd);
   }
@@ -3164,15 +3099,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
-#if defined(EDQUOT)
-    errno = EDQUOT;
-#elif defined(EFBIG)
-    errno = EFBIG;
-#elif defined(ENOSPC)
-    errno = ENOSPC;
-#else
-    errno = EPERM;
-#endif
+    errno = get_quota_exceeded_errno(EPERM, NULL);
 
     return PR_ERROR(cmd);
 
@@ -3187,15 +3114,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
-#if defined(EDQUOT)
-    errno = EDQUOT;
-#elif defined(EFBIG)
-    errno = EFBIG;
-#elif defined(ENOSPC)
-    errno = ENOSPC;
-#else
-    errno = EPERM;
-#endif
+    errno = get_quota_exceeded_errno(EPERM, NULL);
 
     return PR_ERROR(cmd);
   }
