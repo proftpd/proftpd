@@ -133,8 +133,15 @@ sub telnet_iac_bug3521 {
       );
 
       my $buf = "USER ";
+
+      # In proftpd-1.3.2, the size would be 1016:
+      #   PR_TUNABLE_BUFFER_SIZE (1024) - 3 - 5 ("USER ")
+      #
+      # I.e.: $buf .= ("A" x 1016);
+
       $buf .= ("A" x 4096);
-      $buf .= chr($Net::Telnet::TELNET_IAC);
+
+      $buf .= chr(Net::Telnet::TELNET_IAC());
       $buf .= "Z" x 64;
 
       my $res = $client->cmd(
