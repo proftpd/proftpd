@@ -21,14 +21,14 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.10 2010-02-01 19:20:05 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.11 2010-11-09 02:31:00 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.2"
+#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.3"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030302 
@@ -109,20 +109,61 @@ static char *sql_passwd_get_str(pool *p, char *str) {
   return res->data;
 }
 
+static const unsigned char *sql_passwd_encode(pool *p, unsigned char *data,
+    size_t data_len) {
+  EVP_ENCODE_CTX base64_ctxt;
+  unsigned char *buf;
+
+  /* According to RATS, the output buffer for EVP_EncodeBlock() needs to be
+   * 4/3 the size of the input buffer (which is usually EVP_MAX_MD_SIZE).
+   * Let's make it easy, and use an output buffer that's twice the size of the
+   * input buffer.
+   */
+  buf = pcalloc(p, (2 * data_len) + 1);
+
+  switch (sql_passwd_encoding) {
+    case SQL_PASSWD_USE_BASE64:
+      EVP_EncodeInit(&base64_ctxt);
+      EVP_EncodeBlock(buf, data, (int) data_len);
+      break;
+
+    case SQL_PASSWD_USE_HEX_LC: {
+      register unsigned int i;
+
+      for (i = 0; i < data_len; i++) {
+        sprintf((char *) &(buf[i*2]), "%02x", data[i]);
+      }
+
+      break;
+    }
+
+    case SQL_PASSWD_USE_HEX_UC: {
+      register unsigned int i;
+
+      for (i = 0; i < data_len; i++) {
+        sprintf((char *) &(buf[i*2]), "%02X", data[i]);
+      }
+
+      break;
+    }
+
+    default:
+      errno = EINVAL;
+      return NULL;
+  }
+
+  return buf;
+}
+
 static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext, const char *digest) {
   EVP_MD_CTX md_ctxt;
-  EVP_ENCODE_CTX base64_ctxt;
   const EVP_MD *md;
-
-  /* According to RATS, the output buffer (buf) for EVP_EncodeBlock() needs to
-   * be 4/3 the size of the input buffer (mdval).  Let's make it easy, and
-   * use an output buffer that's twice the size of the input buffer.
-   */
-  unsigned char buf[EVP_MAX_MD_SIZE*2+1], mdval[EVP_MAX_MD_SIZE];
+  unsigned char mdval[EVP_MAX_MD_SIZE];
   unsigned int mdlen;
 
   char *copytext;               /* temporary copy of the ciphertext string */
+  const unsigned char *encodedtext;
 
   if (!sql_passwd_engine) {
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
@@ -150,7 +191,8 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       sql_passwd_salt_append == FALSE) {
     /* If we have salt data, add it to the mix. */
     pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION
-      ": adding %lu bytes of salt data", (unsigned long) sql_passwd_salt_len);
+      ": prepending %lu bytes of salt data",
+      (unsigned long) sql_passwd_salt_len);
     EVP_DigestUpdate(&md_ctxt, (unsigned char *) sql_passwd_salt,
       sql_passwd_salt_len);
   }
@@ -161,52 +203,26 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       sql_passwd_salt_append == TRUE) {
     /* If we have salt data, add it to the mix. */
     pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION
-      ": adding %lu bytes of salt data", (unsigned long) sql_passwd_salt_len);
+      ": appending %lu bytes of salt data",
+      (unsigned long) sql_passwd_salt_len);
     EVP_DigestUpdate(&md_ctxt, (unsigned char *) sql_passwd_salt,
       sql_passwd_salt_len);
   }
 
   EVP_DigestFinal(&md_ctxt, mdval, &mdlen);
 
-  memset(buf, '\0', sizeof(buf));
-
-  switch (sql_passwd_encoding) {
-    case SQL_PASSWD_USE_BASE64:
-      EVP_EncodeInit(&base64_ctxt);
-      EVP_EncodeBlock(buf, mdval, (int) mdlen);
-      break;
-
-    case SQL_PASSWD_USE_HEX_LC: {
-      register unsigned int i;
-
-      for (i = 0; i < mdlen; i++) {
-        sprintf((char *) &(buf[i*2]), "%02x", mdval[i]);
-      }
-
-      break;
-    }
-
-    case SQL_PASSWD_USE_HEX_UC: {
-      register unsigned int i;
-
-      for (i = 0; i < mdlen; i++) {
-        sprintf((char *) &(buf[i*2]), "%02X", mdval[i]);
-      }
-
-      break;
-    }
-
-    default:
-      sql_log(DEBUG_WARN, "unsupported SQLPasswordEncoding configured");
-      return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  encodedtext = sql_passwd_encode(cmd->tmp_pool, mdval, mdlen);
+  if (encodedtext == NULL) {
+    sql_log(DEBUG_WARN, "unsupported SQLPasswordEncoding configured");
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
-  if (strcmp((char *) buf, copytext) == 0) {
+  if (strcmp((char *) encodedtext, copytext) == 0) {
     return PR_HANDLED(cmd);
 
   } else {
     pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION ": expected '%s', got '%s'",
-      buf, copytext);
+      encodedtext, copytext);
   }
 
   return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
