@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.246 2010-11-05 02:41:40 castaglia Exp $
+ * $Id: dirtree.c,v 1.247 2010-11-10 19:23:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -813,7 +813,6 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
     uid_t file_uid, gid_t file_gid, mode_t mode) {
   int res = TRUE;
   config_rec *c;
-  unsigned char *hide_no_access = NULL;
 
   /* Default is to allow. */
   if (!set)
@@ -851,78 +850,93 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
         c = find_config_next(c, c->next, CONF_PARAM, "HideUser", FALSE);
       }
 
-      c = find_config(set, CONF_PARAM, "HideGroup", FALSE);
-      while (c) {
-        unsigned char inverted;
-        gid_t hide_gid;
+      /* We only need to check for HideGroup restrictions if we are not
+       * already hiding the file.  I.e. if res = FALSE, then the path is to
+       * be hidden, and we don't need to check for other reasons to hide it
+       * (Bug#3530).
+       */
+      if (res == TRUE) {
+        c = find_config(set, CONF_PARAM, "HideGroup", FALSE);
+        while (c) {
+          unsigned char inverted;
+          gid_t hide_gid;
 
-        pr_signals_handle();
+          pr_signals_handle();
 
-        hide_gid = *((gid_t *) c->argv[0]);
-        inverted = *((unsigned char *) c->argv[1]);
+          hide_gid = *((gid_t *) c->argv[0]);
+          inverted = *((unsigned char *) c->argv[1]);
 
-        if (hide_gid != (gid_t) -1) {
-          if (file_gid == hide_gid) {
-            if (!inverted)
-              res = FALSE;
+          if (hide_gid != (gid_t) -1) {
+            if (file_gid == hide_gid) {
+              if (!inverted)
+                res = FALSE;
 
-            break;
+              break;
+
+            } else {
+              if (inverted) {
+                res = FALSE;
+                break;
+              }
+            }
 
           } else {
+            register unsigned int i;
+            gid_t *group_ids = session.gids->elts;
+
+            /* First check to see if the file GID matches the session GID. */
+            if (file_gid == session.gid) {
+              if (!inverted)
+                res = FALSE;
+
+              break;
+            }
+
+            /* Next, scan the list of supplemental groups for this user. */
+            for (i = 0; i < session.gids->nelts; i++) {
+              if (file_gid == group_ids[i]) {
+                if (!inverted)
+                  res = FALSE;
+
+                break;
+              }
+            }
+
             if (inverted) {
               res = FALSE;
               break;
             }
           }
 
-        } else {
-          register unsigned int i;
-          gid_t *group_ids = session.gids->elts;
-
-          /* First check to see if the file GID matches the session GID. */
-          if (file_gid == session.gid) {
-            if (!inverted)
-              res = FALSE;
-
-            break;
-          }
-
-          /* Next, scan the list of supplemental groups for this user. */
-          for (i = 0; i < session.gids->nelts; i++) {
-            if (file_gid == group_ids[i]) {
-              if (!inverted)
-                res = FALSE;
-
-              break;
-            }
-          }
-
-          if (inverted) {
-            res = FALSE;
-            break;
-          }
+          c = find_config_next(c, c->next, CONF_PARAM, "HideGroup", FALSE);
         }
-
-        c = find_config_next(c, c->next, CONF_PARAM, "HideGroup", FALSE);
       }
 
-      hide_no_access = get_param_ptr(set, "HideNoAccess", FALSE);
-      if (hide_no_access &&
-          *hide_no_access == TRUE) {
+      /* If we have already decided to hide this path (i.e. res = FALSE),
+       * then we do not need to check for HideNoAccess.  Hence why we
+       * only look for HideNoAccess here if res = TRUE (Bug#3530).
+       */
+      if (res == TRUE) {
+        unsigned char *hide_no_access = NULL;
 
-        if (S_ISDIR(mode)) {
-          /* Check to see if the mode of this directory allows the
-           * current user to list its contents.
-           */
-          res = pr_fsio_access(path, X_OK, session.uid, session.gid,
-            session.gids) == 0 ? TRUE : FALSE;
+        hide_no_access = get_param_ptr(set, "HideNoAccess", FALSE);
+        if (hide_no_access &&
+            *hide_no_access == TRUE) {
 
-        } else {
-          /* Check to see if the mode of this file allows the current
-           * user to read it.
-           */
-          res = pr_fsio_access(path, R_OK, session.uid, session.gid,
-            session.gids) == 0 ? TRUE : FALSE;
+          if (S_ISDIR(mode)) {
+            /* Check to see if the mode of this directory allows the
+             * current user to list its contents.
+             */
+            res = pr_fsio_access(path, X_OK, session.uid, session.gid,
+              session.gids) == 0 ? TRUE : FALSE;
+
+          } else {
+            /* Check to see if the mode of this file allows the current
+             * user to read it.
+             */
+            res = pr_fsio_access(path, R_OK, session.uid, session.gid,
+              session.gids) == 0 ? TRUE : FALSE;
+          }
         }
       }
       break;
