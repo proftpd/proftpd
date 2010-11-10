@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1253 2010-11-09 18:43:38 castaglia Exp $
+$Id: NEWS,v 1.1254 2010-11-10 19:20:33 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -117,6 +117,7 @@ CVS
   under load.
 - Bug 3479 - Support anonymous username variable in mod_exec.
 - Bug 3480 - mod_sftp does not interoperate with old ssh.com/Tectia clients.
+  A new "OldProtocolCompat" SFTPOption has been added.
 - Bug 3481 - Problem with SFTP directory listings.
 - Bug 3483 - NULL pointer dereference handling SITE command in mod_quotatab.
 - Bug 3485 - Disabling IPv6 via -4 or --ipv4 command-line options does not work.
