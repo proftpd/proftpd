@@ -54,15 +54,12 @@ ChangeLog files.
       "Quality of Service" (QoS) bits on the packets used by the server.
       More information can be found in doc/contrib/mod_qos.html
 
-  + New ListOptions:
+  + New configuration directives:
 
-      The mod_ls module now supports the -c and -u options for the LIST
-      command.  The ListOptions directive handles these options as well.
-      See the ls(1) man page for more details on these options.
+    ScoreboardMutex
+      Bug#3208
 
-      Another new ListOption, NoErrorIfAbsent (Bug#3506)
-
-  + SFTPClientAlive
+    SFTPClientAlive
 
   + Changed configuration directives:
 
@@ -70,6 +67,17 @@ ChangeLog files.
 
       The BanOnEvent directive of the mod_ban module now supports
       LoginRate events.
+
+    ListOptions
+
+      The mod_ls module now supports the -c and -u options for the LIST
+      command.  The ListOptions directive handles these options as well.
+      See the ls(1) man page for more details on these options.
+
+      Another new ListOption, NoErrorIfAbsent (Bug#3506)
+
+    SFTPOptions
+      OldProtocolCompat (Bug#3480)
 
     TLSOptions
       CommonNameRequired (Bug#3512)
@@ -85,4 +93,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2010-11-06 18:55:58 $
+Last Updated: $Date: 2010-11-11 00:48:48 $
