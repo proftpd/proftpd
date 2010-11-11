@@ -24,7 +24,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: scoreboard.h,v 1.17 2010-01-10 20:01:30 castaglia Exp $
+ * $Id: scoreboard.h,v 1.18 2010-11-11 00:48:35 castaglia Exp $
  */
 
 #ifndef PR_SCOREBOARD_H
@@ -115,7 +115,9 @@ typedef struct {
 #define PR_SCORE_ERR_NEWER_VERSION	-4
 
 const char *pr_get_scoreboard(void);
+const char *pr_get_scoreboard_mutex(void);
 int pr_set_scoreboard(const char *);
+int pr_set_scoreboard_mutex(const char *);
 
 int pr_close_scoreboard(void);
 void pr_delete_scoreboard(void);

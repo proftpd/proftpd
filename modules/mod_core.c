@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.383 2010-10-27 03:07:19 castaglia Exp $
+ * $Id: mod_core.c,v 1.384 2010-11-11 00:48:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -604,13 +604,28 @@ MODRET set_satisfy(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: ScoreboardFile path */
 MODRET set_scoreboardfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if (pr_set_scoreboard(cmd->argv[1]) < 0)
+  if (pr_set_scoreboard(cmd->argv[1]) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unable to use '",
       cmd->argv[1], "': ", strerror(errno), NULL));
+  }
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: ScoreboardMutex path */
+MODRET set_scoreboardmutex(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  if (pr_set_scoreboard_mutex(cmd->argv[1]) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unable to use '",
+      cmd->argv[1], "': ", strerror(errno), NULL));
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -5208,6 +5223,7 @@ static conftable core_conftab[] = {
   { "RLimitOpenFiles",		set_rlimitopenfiles,		NULL },
   { "Satisfy",			set_satisfy,			NULL },
   { "ScoreboardFile",		set_scoreboardfile,		NULL },
+  { "ScoreboardMutex",		set_scoreboardmutex,		NULL },
   { "ScoreboardScrub",		set_scoreboardscrub,		NULL },
   { "ServerAdmin",		set_serveradmin,		NULL },
   { "ServerIdent",		set_serverident,		NULL },

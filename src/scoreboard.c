@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.55 2010-07-03 17:00:30 castaglia Exp $
+ * $Id: scoreboard.c,v 1.56 2010-11-11 00:48:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -37,8 +37,12 @@
 extern char ServerType;
 
 static pid_t scoreboard_opener = 0;
+
 static int scoreboard_fd = -1;
 static char scoreboard_file[PR_TUNABLE_PATH_MAX] = PR_RUN_DIR "/proftpd.scoreboard";
+
+static int scoreboard_mutex_fd = -1;
+static char scoreboard_mutex[PR_TUNABLE_PATH_MAX] = PR_RUN_DIR "/proftpd.scoreboard.lck";
 
 static off_t current_pos = 0;
 static pr_scoreboard_header_t header;
@@ -138,10 +142,13 @@ static int rlock_scoreboard(void) {
   lock.l_start = 0;
   lock.l_len = 0;
 
-  pr_trace_msg("lock", 9, "attempting to read-lock scoreboard fd %d",
-    scoreboard_fd);
+  pr_trace_msg("lock", 9, "attempting to read-lock scoreboard mutex fd %d",
+    scoreboard_mutex_fd);
 
-  while (fcntl(scoreboard_fd, F_SETLKW, &lock) < 0) {
+  /* XXX At some point, we might want to think about using F_SETLK instead,
+   * and polling for the lock rather than using a blocking wait.
+   */
+  while (fcntl(scoreboard_mutex_fd, F_SETLKW, &lock) < 0) {
     int xerrno = errno;
 
     if (xerrno == EINTR) {
@@ -149,14 +156,14 @@ static int rlock_scoreboard(void) {
       continue;
     }
 
-    pr_trace_msg("lock", 3, "read-lock of scoreboard fd %d failed: %s",
-      scoreboard_fd, strerror(xerrno));
+    pr_trace_msg("lock", 3, "read-lock of scoreboard mutex fd %d failed: %s",
+      scoreboard_mutex_fd, strerror(xerrno));
     if (xerrno == EACCES) {
       /* Get the PID of the process blocking this lock. */
-      if (fcntl(scoreboard_fd, F_GETLK, &lock) == 0) {
+      if (fcntl(scoreboard_mutex_fd, F_GETLK, &lock) == 0) {
         pr_trace_msg("lock", 3, "process ID %lu has blocking %s lock on "
-          "scoreboard fd %d", (unsigned long) lock.l_pid, get_lock_type(&lock),
-          scoreboard_fd);
+          "scoreboard mutex fd %d", (unsigned long) lock.l_pid,
+          get_lock_type(&lock), scoreboard_mutex_fd);
       }
     }
 
@@ -164,8 +171,8 @@ static int rlock_scoreboard(void) {
     return -1;
   }
 
-  pr_trace_msg("lock", 9, "read-lock of scoreboard fd %d successful",
-    scoreboard_fd);
+  pr_trace_msg("lock", 9, "read-lock of scoreboard mutex fd %d successful",
+    scoreboard_mutex_fd);
 
   scoreboard_read_locked = TRUE;
   return 0;
@@ -210,12 +217,10 @@ static int unlock_scoreboard(void) {
   lock.l_start = 0;
   lock.l_len = 0;
 
-  scoreboard_read_locked = scoreboard_write_locked = FALSE;
+  pr_trace_msg("lock", 9, "attempting to unlock scoreboard mutex fd %d",
+    scoreboard_mutex_fd);
 
-  pr_trace_msg("lock", 9, "attempting to unlock scoreboard fd %d",
-    scoreboard_fd);
-
-  while (fcntl(scoreboard_fd, F_SETLK, &lock) < 0) {
+  while (fcntl(scoreboard_mutex_fd, F_SETLK, &lock) < 0) {
     int xerrno = errno;
 
     if (errno == EINTR) {
@@ -223,20 +228,22 @@ static int unlock_scoreboard(void) {
       continue;
     }
 
-    pr_trace_msg("lock", 3, "unlock of scoreboard fd %d failed: %s",
-      scoreboard_fd, strerror(xerrno));
+    pr_trace_msg("lock", 3, "unlock of scoreboard mutex fd %d failed: %s",
+      scoreboard_mutex_fd, strerror(xerrno));
 
     errno = xerrno;
     return -1;
   }
 
-  pr_trace_msg("lock", 9, "unlock of scoreboard fd %d successful",
-    scoreboard_fd);
+  pr_trace_msg("lock", 9, "unlock of scoreboard mutex fd %d successful",
+    scoreboard_mutex_fd);
 
+  scoreboard_read_locked = scoreboard_write_locked = FALSE;
   return 0;
 }
 
 static int wlock_entry(void) {
+
   entry_lock.l_type = F_WRLCK;
   entry_lock.l_whence = SEEK_CUR;
   entry_lock.l_len = sizeof(pr_scoreboard_entry_t);
@@ -274,10 +281,13 @@ static int wlock_scoreboard(void) {
   lock.l_start = 0;
   lock.l_len = 0;
 
-  pr_trace_msg("lock", 9, "attempting to write-lock scoreboard fd %d",
-    scoreboard_fd);
+  pr_trace_msg("lock", 9, "attempting to write-lock scoreboard mutex fd %d",
+    scoreboard_mutex_fd);
 
-  while (fcntl(scoreboard_fd, F_SETLKW, &lock) < 0) {
+  /* XXX At some point, we might want to think about using F_SETLK instead,
+   * and polling for the lock rather than using a blocking wait.
+   */
+  while (fcntl(scoreboard_mutex_fd, F_SETLKW, &lock) < 0) {
     int xerrno = errno;
 
     if (xerrno == EINTR) {
@@ -285,14 +295,14 @@ static int wlock_scoreboard(void) {
       continue;
     }
 
-    pr_trace_msg("lock", 3, "write-lock of scoreboard fd %d failed: %s",
-      scoreboard_fd, strerror(xerrno));
+    pr_trace_msg("lock", 3, "write-lock of scoreboard mutex fd %d failed: %s",
+      scoreboard_mutex_fd, strerror(xerrno));
     if (xerrno == EACCES) {
       /* Get the PID of the process blocking this lock. */
-      if (fcntl(scoreboard_fd, F_GETLK, &lock) == 0) {
+      if (fcntl(scoreboard_mutex_fd, F_GETLK, &lock) == 0) {
         pr_trace_msg("lock", 3, "process ID %lu has blocking %s lock on "
-          "scoreboard fd %d", (unsigned long) lock.l_pid, get_lock_type(&lock),
-          scoreboard_fd);
+          "scoreboard mutex fd %d", (unsigned long) lock.l_pid,
+          get_lock_type(&lock), scoreboard_mutex_fd);
       }
     }
 
@@ -300,8 +310,8 @@ static int wlock_scoreboard(void) {
     return -1;
   }
 
-  pr_trace_msg("lock", 9, "write-lock of scoreboard fd %d successful",
-    scoreboard_fd);
+  pr_trace_msg("lock", 9, "write-lock of scoreboard mutex fd %d successful",
+    scoreboard_mutex_fd);
 
   scoreboard_write_locked = TRUE;
   return 0;
@@ -354,7 +364,17 @@ int pr_close_scoreboard(void) {
     break;
   }
 
+  while (close(scoreboard_mutex_fd) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+    }
+
+    break;
+  }
+
   scoreboard_fd = -1;
+  scoreboard_mutex_fd = -1;
   scoreboard_opener = 0;
 
   return 0;
@@ -391,6 +411,10 @@ const char *pr_get_scoreboard(void) {
   return scoreboard_file;
 }
 
+const char *pr_get_scoreboard_mutex(void) {
+  return scoreboard_mutex;
+}
+
 int pr_open_scoreboard(int flags) {
   int res;
   struct stat st;
@@ -419,12 +443,20 @@ int pr_open_scoreboard(int flags) {
     }
   }
 
+  if (lstat(scoreboard_mutex, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      errno = EPERM;
+      return -1;
+    }
+  }
+
   pr_log_debug(DEBUG7, "opening scoreboard '%s'", scoreboard_file);
 
-  while ((scoreboard_fd = open(scoreboard_file, flags|O_CREAT,
-      PR_SCOREBOARD_MODE)) < 0) {
+  scoreboard_fd = open(scoreboard_file, flags|O_CREAT, PR_SCOREBOARD_MODE);
+  while (scoreboard_fd < 0) {
     if (errno == EINTR) {
       pr_signals_handle();
+      scoreboard_fd = open(scoreboard_file, flags|O_CREAT, PR_SCOREBOARD_MODE);
       continue;
     }
 
@@ -442,6 +474,33 @@ int pr_open_scoreboard(int flags) {
     }
 
     break;
+  }
+
+  /* Make sure the ScoreboardMutex file exists.  We keep a descriptor to the
+   * ScoreboardMutex open just as we do for the ScoreboardFile, for the same
+   * reasons: we need to able to use the descriptor throughout the lifetime of
+   * the session despite any possible chroot, and we get a minor system call
+   * saving by not calling open(2)/close(2) repeatedly to get the descriptor
+   * (at the cost of having another open fd for the lifetime of the session
+   * process).
+   */
+  scoreboard_mutex_fd = open(scoreboard_mutex, flags|O_CREAT,
+    PR_SCOREBOARD_MODE);
+  while (scoreboard_mutex_fd < 0) {
+    int xerrno = errno;
+
+    if (errno == EINTR) {
+      pr_signals_handle();
+      scoreboard_mutex_fd = open(scoreboard_mutex, flags|O_CREAT,
+        PR_SCOREBOARD_MODE);
+      continue;
+    }
+
+    close(scoreboard_fd);
+    scoreboard_fd = -1;
+
+    errno = xerrno;
+    return -1;
   }
 
   scoreboard_opener = getpid();
@@ -467,13 +526,23 @@ int pr_open_scoreboard(int flags) {
 
     /* Write-lock the scoreboard file. */
     PR_DEVEL_CLOCK(res = wlock_scoreboard());
-    if (res < 0)
+    if (res < 0) {
+      int xerrno = errno;
+
+      close(scoreboard_mutex_fd);
+      scoreboard_mutex_fd = -1;
+
+      close(scoreboard_fd);
+      scoreboard_fd = -1;
+
+      errno = xerrno;
       return -1;
+    }
 
     pr_trace_msg(trace_channel, 7, "writing scoreboard header");
 
     while (write(scoreboard_fd, &header, sizeof(header)) != sizeof(header)) {
-      int wr_errno = errno;
+      int xerrno = errno;
 
       if (errno == EINTR) {
         pr_signals_handle();
@@ -482,17 +551,21 @@ int pr_open_scoreboard(int flags) {
 
       unlock_scoreboard();
 
-      errno = wr_errno;
+      close(scoreboard_mutex_fd);
+      scoreboard_mutex_fd = -1;
+
+      close(scoreboard_fd);
+      scoreboard_fd = -1;
+
+      errno = xerrno;
       return -1;
     }
 
     unlock_scoreboard();
     return 0;
+  }
 
-  } else
-    return res;
-
-  return 0;
+  return res;
 }
 
 int pr_restore_scoreboard(void) {
@@ -531,10 +604,10 @@ int pr_rewind_scoreboard(void) {
   return 0;
 }
 
-int pr_set_scoreboard(const char *path) {
+static int set_scoreboard_path(const char *path) {
   char dir[PR_TUNABLE_PATH_MAX] = {'\0'};
   struct stat st;
-  char *tmp = NULL;
+  char *ptr = NULL;
 
   if (path == NULL) {
     errno = EINVAL;
@@ -548,27 +621,28 @@ int pr_set_scoreboard(const char *path) {
 
   sstrncpy(dir, path, sizeof(dir));
 
-  tmp = strrchr(dir + 1, '/');
-  if (tmp == NULL) {
+  ptr = strrchr(dir + 1, '/');
+  if (ptr == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  *tmp = '\0';
+  *ptr = '\0';
 
   /* Check for the possibility that the '/' just found is at the end
    * of the given string.
    */
-  if (*(tmp + 1) == '\0') {
-    *tmp = '/';
+  if (*(ptr + 1) == '\0') {
+    *ptr = '/';
     errno = EINVAL;
     return -1;
   }
 
   /* Parent directory must not be world-writable */
 
-  if (stat(dir, &st) < 0)
+  if (stat(dir, &st) < 0) {
     return -1;
+  }
 
   if (!S_ISDIR(st.st_mode)) {
     errno = ENOTDIR;
@@ -580,11 +654,29 @@ int pr_set_scoreboard(const char *path) {
     return -1;
   }
 
+  return 0;
+}
+
+int pr_set_scoreboard(const char *path) {
+  if (set_scoreboard_path(path) < 0) {
+    return -1;
+  }
+
   sstrncpy(scoreboard_file, path, sizeof(scoreboard_file));
   return 0;
 }
 
+int pr_set_scoreboard_mutex(const char *path) {
+  if (set_scoreboard_path(path) < 0) {
+    return -1;
+  }
+
+  sstrncpy(scoreboard_mutex, path, sizeof(scoreboard_mutex));
+  return 0;
+}
+
 int pr_scoreboard_entry_add(void) {
+  int res;
   unsigned char found_slot = FALSE;
 
   if (scoreboard_fd < 0) {
@@ -593,6 +685,8 @@ int pr_scoreboard_entry_add(void) {
   }
 
   if (have_entry) {
+    pr_trace_msg(trace_channel, 9,
+      "unable to add scoreboard entry: already have entry");
     errno = EPERM;
     return -1;
   }
@@ -600,7 +694,8 @@ int pr_scoreboard_entry_add(void) {
   pr_trace_msg(trace_channel, 3, "adding new scoreboard entry");
 
   /* Write-lock the scoreboard file. */
-  if (wlock_scoreboard() < 0)
+  PR_DEVEL_CLOCK(res = wlock_scoreboard());
+  if (res < 0)
     return -1;
 
   /* No interruptions, please. */
@@ -610,7 +705,6 @@ int pr_scoreboard_entry_add(void) {
    * header.
    */
   while (TRUE) {
-    int res = 0;
     while ((res = read(scoreboard_fd, &entry, sizeof(entry))) ==
         sizeof(entry)) {
 
@@ -639,22 +733,24 @@ int pr_scoreboard_entry_add(void) {
   entry.sce_uid = geteuid();
   entry.sce_gid = getegid();
 
-  have_entry = TRUE;
-
-  if (write_entry() < 0)
+  res = write_entry();
+  if (res < 0) {
     pr_log_pri(PR_LOG_NOTICE, "error writing scoreboard entry: %s",
       strerror(errno));
+
+  } else {
+    have_entry = TRUE;
+  }
 
   pr_signals_unblock();
 
   /* We can unlock the scoreboard now. */
   unlock_scoreboard();
 
-  return 0;
+  return res;
 }
 
 int pr_scoreboard_entry_del(unsigned char verbose) {
-
   if (scoreboard_fd < 0) {
     errno = EINVAL;
     return -1;
@@ -671,6 +767,12 @@ int pr_scoreboard_entry_del(unsigned char verbose) {
 
   /* Write-lock this entry */
   wlock_entry();
+
+  /* Write-lock the scoreboard (using the ScoreboardMutex), since new
+   * connections might try to use the slot being opened up here.
+   */
+  wlock_scoreboard();
+
   if (write_entry() < 0 &&
       verbose) {
     pr_log_pri(PR_LOG_NOTICE, "error deleting scoreboard entry: %s",
@@ -678,6 +780,7 @@ int pr_scoreboard_entry_del(unsigned char verbose) {
   }
 
   have_entry = FALSE;
+  unlock_scoreboard();
   unlock_entry();
 
   return 0;
@@ -704,7 +807,8 @@ pr_scoreboard_entry_t *pr_scoreboard_entry_read(void) {
   if (!scoreboard_read_locked) {
 
     /* Do not proceed if we cannot lock the scoreboard. */
-    if (rlock_scoreboard() < 0)
+    res = rlock_scoreboard();
+    if (res < 0)
       return NULL; 
   }
 
