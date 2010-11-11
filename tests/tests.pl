@@ -243,6 +243,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_shaper)],
     },
 
+    't/modules/mod_site.t' => {
+      order => ++$order,
+      test_class => [qw(mod_site)],
+    },
+
     't/modules/mod_site_misc.t' => {
       order => ++$order,
       test_class => [qw(mod_site_misc)],
