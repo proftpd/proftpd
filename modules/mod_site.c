@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.52 2010-02-25 02:16:35 castaglia Exp $
+ * $Id: mod_site.c,v 1.53 2010-11-11 17:40:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -69,6 +69,7 @@ static char *_get_full_cmd(cmd_rec *cmd) {
 }
 
 MODRET site_chgrp(cmd_rec *cmd) {
+  int res;
   gid_t gid;
   char *path = NULL, *tmp = NULL, *arg = "";
   register unsigned int i = 0;
@@ -125,25 +126,39 @@ MODRET site_chgrp(cmd_rec *cmd) {
 
   if (tmp && *tmp) {
 
-    /* Try the parameter as a user name. */
+    /* Try the parameter as a group name. */
     gid = pr_auth_name2gid(cmd->tmp_pool, cmd->argv[1]);
     if (gid == (gid_t) -1) {
+      pr_log_debug(DEBUG9,
+        "SITE CHGRP: Unable to resolve group name '%s' to GID", cmd->argv[1]);
       pr_response_add_err(R_550, "%s: %s", arg, strerror(EINVAL));
       return PR_ERROR(cmd);
     }
   }
 
-  if (core_chgrp(cmd, path, (uid_t) -1, gid) == -1) {
-    pr_response_add_err(R_550, "%s: %s", arg, strerror(errno));
+  res = core_chgrp(cmd, path, (uid_t) -1, gid);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      "error chown'ing '%s' to GID %lu: %s", cmd->argv[0], session.user,
+      (unsigned long) session.uid, (unsigned long) session.gid,
+      path, (unsigned long) gid, strerror(xerrno));
+
+    pr_response_add_err(R_550, "%s: %s", arg, strerror(xerrno));
+
+    errno = xerrno;
     return PR_ERROR(cmd);
 
-  } else
+  } else {
     pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[0]);
+  }
 
   return PR_HANDLED(cmd);
 }
 
 MODRET site_chmod(cmd_rec *cmd) {
+  int res;
   mode_t mode = 0;
   char *dir, *endp, *tmp, *arg = "";
   register unsigned int i = 0;
@@ -198,10 +213,12 @@ MODRET site_chmod(cmd_rec *cmd) {
    * case where an octal number is sent without the leading '0'.
    */
 
-  if (cmd->argv[1][0] != '0')
+  if (cmd->argv[1][0] != '0') {
     tmp = pstrcat(cmd->tmp_pool, "0", cmd->argv[1], NULL);
-  else
+
+  } else {
     tmp = cmd->argv[1];
+  }
 
   mode = strtol(tmp,&endp,0);
   if (endp && *endp) {
@@ -372,12 +389,23 @@ MODRET site_chmod(cmd_rec *cmd) {
     }
   }
 
-  if (core_chmod(cmd, dir, mode) == -1) {
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+  res = core_chmod(cmd, dir, mode);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      "error chmod'ing '%s' to %04o: %s", cmd->argv[0], session.user,
+      (unsigned long) session.uid, (unsigned long) session.gid,
+      dir, mode, strerror(xerrno));
+
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
+
+    errno = xerrno;
     return PR_ERROR(cmd);
 
-  } else
+  } else {
     pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[0]);
+  }
 
   return PR_HANDLED(cmd);
 }
