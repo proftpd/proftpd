@@ -1,4 +1,4 @@
-<!-- $Id: Scoreboard.html,v 1.4 2009-10-21 16:42:34 castaglia Exp $ -->
+<!-- $Id: Scoreboard.html,v 1.5 2010-11-11 01:24:54 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Scoreboard.html,v $ -->
 
 <html>
@@ -13,7 +13,7 @@
 <hr>
 
 <p>
-<b>What is the Scoreboard</b><br>
+<b>What is the Scoreboard?</b><br>
 The <code>ScoreboardFile</code> is used by <code>proftpd</code> for tracking
 information for each current FTP session.  It is necessary for things like
 <code>MaxClients</code>, <code>MaxClientsPerUser</code>, <i>etc</i>.
@@ -45,6 +45,17 @@ explicitly configuring the path to the file to use in your
 <code>proftpd.conf</code>, using the <code>ScoreboardFile</code> configuration
 directive, and then obtaining debugging output from your <code>proftpd</code>,
 to see if the daemon ran into problems using that defined location.
+
+<p>
+In proftpd-1.3.4rc1, a new <code>ScoreboardMutex</code> directive was added.
+This file is used as a mutex for starting/ending sessions, for improving
+performance under load; see <a href="http://bugs.proftpd.org/show_bug.cgi?id=3208">Bug#3208</a> for the technical details.  The default path (usually
+<code>var/proftpd/proftpd.scoreboard.lck</code>) for
+<code>ScoreboardMutex</code> should suffice.  If you need to explicitly
+configure a different <code>ScoreboardMutex</code> file, make absolutely
+sure that you <b>do not place the file on a networked filesystem</b>.  Your
+performance will suffer greatly if you do.
+
 
 <p>
 <b>Scrubbing the Scoreboard</b><br>
@@ -167,7 +178,7 @@ daemon will automatically create a new scoreboard in the correct format.
 
 <p>
 <hr>
-<i>$Date: 2009-10-21 16:42:34 $</i><br>
+<i>$Date: 2010-11-11 01:24:54 $</i><br>
 
 </body>
 </html>
