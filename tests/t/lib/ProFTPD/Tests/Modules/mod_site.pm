@@ -546,7 +546,7 @@ sub site_chmod_ok {
 
       my $perms = ((stat($test_file))[2] &07777);
 
-      my $expected = 0777;
+      $expected = 0777;
       $self->assert($expected == $perms,
         test_msg("Expected '$expected', got '$perms'"));
     };
