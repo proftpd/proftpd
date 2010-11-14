@@ -24,7 +24,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: scoreboard.h,v 1.18 2010-11-11 00:48:35 castaglia Exp $
+ * $Id: scoreboard.h,v 1.19 2010-11-14 22:27:51 castaglia Exp $
  */
 
 #ifndef PR_SCOREBOARD_H
@@ -82,7 +82,18 @@ typedef struct {
 
   time_t sce_begin_idle, sce_begin_session;
 
-  off_t sce_xfer_size, sce_xfer_done, sce_xfer_len;
+  /* Records the number of bytes to be transferred, and the number of bytes
+   * transferred so far.  These two numbers are used to calculate the
+   * percentage of data transferred in the ftptop/ftpwho utilities.
+   */
+  off_t sce_xfer_size;
+  off_t sce_xfer_done;
+
+  /* Records the number of bytes transferred, and the elapsed time.  These
+   * two fields are used to calculate the transfer rate as displayed by
+   * the ftptop/ftpwho utilities.
+   */
+  off_t sce_xfer_len;
   unsigned long sce_xfer_elapsed;
 
 } pr_scoreboard_entry_t;

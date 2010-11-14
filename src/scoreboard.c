@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.56 2010-11-11 00:48:35 castaglia Exp $
+ * $Id: scoreboard.c,v 1.57 2010-11-14 22:27:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -993,9 +993,6 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
 
   pr_trace_msg(trace_channel, 3, "updating scoreboard entry");
 
-  /* If updating some fields, clear the begin_idle field.
-   */
-
   va_start(ap, pid);
 
   while ((entry_tag = va_arg(ap, int)) != 0) {
@@ -1007,6 +1004,9 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
         memset(entry.sce_user, '\0', sizeof(entry.sce_user));
         sstrncpy(entry.sce_user, tmp,
           str_getlen(tmp, sizeof(entry.sce_user)-1) + 1);
+
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry user to '%s'",
+          entry.sce_user);
         break;
 
       case PR_SCORE_CLIENT_ADDR: {
@@ -1016,6 +1016,9 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
             "%s", remote_addr ? pr_netaddr_get_ipstr(remote_addr) :
             "(unknown)");
           entry.sce_client_addr[sizeof(entry.sce_client_addr) - 1] = '\0';
+
+          pr_trace_msg(trace_channel, 15, "updated scoreboard entry client "
+            "address to '%s'", entry.sce_client_addr);
         }
         break;
 
@@ -1032,6 +1035,9 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
             str_getlen(remote_name, sizeof(entry.sce_client_name)-1),
             "%s", remote_name);
           entry.sce_client_name[sizeof(entry.sce_client_name)-1] = '\0';
+
+          pr_trace_msg(trace_channel, 15, "updated scoreboard entry client "
+            "name to '%s'", entry.sce_client_name);
         }
         break;
 
@@ -1039,6 +1045,9 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
         tmp = va_arg(ap, char *);
         memset(entry.sce_class, '\0', sizeof(entry.sce_class));
         sstrncpy(entry.sce_class, tmp, sizeof(entry.sce_class));
+
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry class to "
+          "'%s'", entry.sce_class);
         break;
 
       case PR_SCORE_CWD:
@@ -1046,6 +1055,9 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
         memset(entry.sce_cwd, '\0', sizeof(entry.sce_cwd));
         sstrncpy(entry.sce_cwd, tmp,
           str_getlen(tmp, sizeof(entry.sce_cwd)-1) + 1);
+
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry cwd to '%s'",
+          entry.sce_cwd);
         break;
 
       case PR_SCORE_CMD: {
@@ -1056,6 +1068,9 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
           memset(entry.sce_cmd, '\0', sizeof(entry.sce_cmd));
           sstrncpy(entry.sce_cmd, cmdstr, sizeof(entry.sce_cmd));
           tmp = va_arg(ap, void *);
+
+          pr_trace_msg(trace_channel, 15, "updated scoreboard entry "
+            "command to '%s'", entry.sce_cmd);
         }
         break;
 
@@ -1068,11 +1083,16 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
           sstrncpy(entry.sce_cmd_arg, argstr,
             str_getlen(argstr, sizeof(entry.sce_cmd_arg)-1) + 1);
           tmp = va_arg(ap, void *);
+
+          pr_trace_msg(trace_channel, 15, "updated scoreboard entry "
+            "command args to '%s'", entry.sce_cmd_arg);
         }
         break;
 
       case PR_SCORE_SERVER_PORT:
         entry.sce_server_port = va_arg(ap, int);
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry "
+          "server port to %d", entry.sce_server_port);
         break;
 
       case PR_SCORE_SERVER_ADDR: {
@@ -1083,6 +1103,9 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
             "%s:%d", server_addr ? pr_netaddr_get_ipstr(server_addr) :
             "(unknown)", server_port);
           entry.sce_server_addr[sizeof(entry.sce_server_addr)-1] = '\0';
+
+          pr_trace_msg(trace_channel, 15, "updated scoreboard entry server "
+            "address to '%s'", entry.sce_server_addr);
         }
         break;
 
@@ -1090,6 +1113,9 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
         tmp = va_arg(ap, char *);
         memset(entry.sce_server_label, '\0', sizeof(entry.sce_server_label));
         sstrncpy(entry.sce_server_label, tmp, sizeof(entry.sce_server_label));
+
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry server "
+          "label to '%s'", entry.sce_server_label);
         break;
 
       case PR_SCORE_BEGIN_IDLE:
@@ -1097,6 +1123,8 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
         (void) va_arg(ap, time_t);
 
         time(&entry.sce_begin_idle);
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry idle "
+          "start time to %lu", (unsigned long) entry.sce_begin_idle);
         break;
 
       case PR_SCORE_BEGIN_SESSION:
@@ -1104,28 +1132,40 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
         (void) va_arg(ap, time_t);
 
         time(&entry.sce_begin_session);
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry session "
+          "start time to %lu", (unsigned long) entry.sce_begin_session);
         break;
 
       case PR_SCORE_XFER_DONE:
         entry.sce_xfer_done = va_arg(ap, off_t);
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry transfer "
+          "bytes done to %" PR_LU " bytes", (pr_off_t) entry.sce_xfer_done);
         break;
 
       case PR_SCORE_XFER_SIZE:
         entry.sce_xfer_size = va_arg(ap, off_t);
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry transfer "
+          "size to %" PR_LU " bytes", (pr_off_t) entry.sce_xfer_size);
         break;
 
       case PR_SCORE_XFER_LEN:
         entry.sce_xfer_len = va_arg(ap, off_t);
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry transfer "
+          "length to %" PR_LU " bytes", (pr_off_t) entry.sce_xfer_len);
         break;
 
       case PR_SCORE_XFER_ELAPSED:
         entry.sce_xfer_elapsed = va_arg(ap, unsigned long);
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry transfer "
+          "elapsed to %lu ms", (unsigned long) entry.sce_xfer_elapsed);
         break;
 
       case PR_SCORE_PROTOCOL:
         tmp = va_arg(ap, char *);
         memset(entry.sce_protocol, '\0', sizeof(entry.sce_protocol));
         sstrncpy(entry.sce_protocol, tmp, sizeof(entry.sce_protocol));
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry protocol to "
+          "'%s'", entry.sce_protocol);
         break;
 
       default:
@@ -1142,6 +1182,7 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
   }
   unlock_entry();
 
+  pr_trace_msg(trace_channel, 3, "finished updating scoreboard entry");
   return 0;
 }
 
