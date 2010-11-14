@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.57 2010-11-14 22:27:51 castaglia Exp $
+ * $Id: scoreboard.c,v 1.58 2010-11-14 23:42:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -499,6 +499,9 @@ int pr_open_scoreboard(int flags) {
     close(scoreboard_fd);
     scoreboard_fd = -1;
 
+    pr_trace_msg(trace_channel, 9, "error opening ScoreboardMutex '%s': %s",
+      scoreboard_mutex, strerror(xerrno));
+
     errno = xerrno;
     return -1;
   }
@@ -663,6 +666,13 @@ int pr_set_scoreboard(const char *path) {
   }
 
   sstrncpy(scoreboard_file, path, sizeof(scoreboard_file));
+
+  /* For best operability, automatically set the ScoreboardMutex file to
+   * be the same as the ScoreboardFile with a ".lck" suffix.
+   */
+  sstrncpy(scoreboard_mutex, path, sizeof(scoreboard_file));
+  strncat(scoreboard_mutex, ".lck", sizeof(scoreboard_mutex)-strlen(path)-1);
+
   return 0;
 }
 
