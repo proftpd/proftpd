@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.38 2010-10-20 20:38:20 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.39 2010-11-16 19:20:25 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1709,8 +1709,8 @@ static int sftp_sess_init(void) {
 
         rekey_timeout = *((int *) c->argv[3]);
 
-        pr_trace_msg("ssh2", 6, "SSH2 rekeying has %d secs to complete",
-          rekey_timeout);
+        pr_trace_msg("ssh2", 6, "SSH2 rekeying has %d %s to complete",
+          rekey_timeout, rekey_timeout != 1 ? "secs" : "sec");
         sftp_kex_rekey_set_timeout(rekey_timeout);
       }
 

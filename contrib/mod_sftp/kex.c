@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.18 2010-09-08 19:01:20 castaglia Exp $
+ * $Id: kex.c,v 1.19 2010-11-16 19:20:25 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1813,9 +1813,14 @@ static int set_session_keys(struct sftp_kex *kex) {
       &sftp_module, kex_rekey_timer_cb, "SFTP KEX Rekey timer");
   }
 
-  if (kex_rekey_timeout > 0) {
+  if (kex_rekey_timeout > 0 &&
+      kex_rekey_timeout_timerno > 0) {
     pr_timer_remove(kex_rekey_timeout_timerno, &sftp_module);
     kex_rekey_timeout_timerno = -1;
+  }
+
+  if (kex_rekey_kex != NULL) {
+    pr_trace_msg("ssh2", 3, "rekey KEX completed");
   }
 
   sftp_ssh2_packet_rekey_reset();
@@ -3145,7 +3150,7 @@ int sftp_kex_rekey(void) {
   /* We cannot perform a rekey if we have not even finished the first kex. */ 
   if (!(sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX)) {
     pr_trace_msg(trace_channel, 3,
-      "unable to request rekey: Initial KEX not completed");
+      "unable to request rekey: KEX not completed");
 
     /* If this was triggered by a rekey timer, register a new timer and
      * try the rekey request in another 5 seconds.
@@ -3153,8 +3158,8 @@ int sftp_kex_rekey(void) {
     if (kex_rekey_interval > 0 &&
         kex_rekey_timerno == -1) {
       pr_trace_msg(trace_channel, 3,
-        "trying rekey request in another 15 seconds");
-      kex_rekey_timerno = pr_timer_add(15, -1, &sftp_module, kex_rekey_timer_cb,
+        "trying rekey request in another 5 seconds");
+      kex_rekey_timerno = pr_timer_add(5, -1, &sftp_module, kex_rekey_timer_cb,
         "SFTP KEX Rekey timer");
     }
 
@@ -3211,8 +3216,8 @@ int sftp_kex_rekey(void) {
   kex_sent_kexinit = TRUE;
 
   if (kex_rekey_timeout > 0) {
-    pr_trace_msg(trace_channel, 17, "client has %d secs to rekey",
-      kex_rekey_timeout);
+    pr_trace_msg(trace_channel, 17, "client has %d %s to rekey",
+      kex_rekey_timeout, kex_rekey_timeout != 1 ? "secs" : "sec");
     kex_rekey_timeout_timerno = pr_timer_add(kex_rekey_timeout, -1,
       &sftp_module, kex_rekey_timeout_cb, "SFTP KEX Rekey Timeout timer");
   }
