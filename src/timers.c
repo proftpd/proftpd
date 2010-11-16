@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.33 2010-08-11 14:56:36 castaglia Exp $
+ * $Id: timers.c,v 1.34 2010-11-16 19:22:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -495,6 +495,7 @@ void timers_init(void) {
   _total_time = 0;
   nalarms = 0;
   _alarmed_time = 0;
+  dynamic_timerno = PR_TIMER_DYNAMIC_TIMERNO;
 
   /* Don't inherit the parent's timer lists. */
   timers = NULL;
