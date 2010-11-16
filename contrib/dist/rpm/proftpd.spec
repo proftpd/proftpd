@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.73 2010-02-24 17:54:53 castaglia Exp $
+# $Id: proftpd.spec,v 1.74 2010-11-16 18:06:27 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -81,7 +81,7 @@
 # we don't actually pass this list into configure... we just use it to
 # generate the manifest of modules for the %description section of the
 # resulting package.
-%define builtin_modules	mod_core:mod_xfer:mod_auth_unix:mod_auth_file:mod_auth:mod_ls:mod_log:mod_site:mod_delay%{?_with_dso::mod_dso}:mod_cap:mod_auth_pam%{?_with_ctrls::mod_ctrls}
+%define builtin_modules	mod_core:mod_xfer:mod_auth_unix:mod_auth_file:mod_auth:mod_ls:mod_log:mod_site:mod_delay:mod_facts%{?_with_dso::mod_dso}:mod_cap:mod_auth_pam%{?_with_ctrls::mod_ctrls}
 
 Summary:		ProFTPD -- Professional FTP Server.
 Name:			proftpd
