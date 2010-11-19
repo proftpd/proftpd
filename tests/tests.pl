@@ -102,6 +102,7 @@ if (scalar(@ARGV) > 0) {
     t/config/authorder.t
     t/config/authusingalias.t
     t/config/classes.t
+    t/config/commandbuffersize.t
     t/config/createhome.t
     t/config/defaultchdir.t
     t/config/deleteabortedstores.t
