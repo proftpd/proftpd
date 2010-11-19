@@ -10,9 +10,9 @@ my $conn_ex;
 
 sub new {
   my $class = shift;
-  my ($addr, $port, $use_port, $timeout) = @_;
+  my ($addr, $port, $use_port, $conn_timeout, $cmd_timeout) = @_;
   $use_port = 0 unless defined($use_port);
-  $timeout = 10 unless defined($timeout);
+  $conn_timeout = 10 unless defined($conn_timeout);
  
   my $ftp;
 
@@ -38,9 +38,13 @@ sub new {
     $opts{Debug} = 10;
   }
 
+  if (defined($cmd_timeout)) {
+    $opts{Timeout} = $cmd_timeout;
+  }
+
   while (1) {
-    if (time() - $now > $timeout) {
-      croak("Unable to connect to $addr:$port: Timed out after $timeout secs");
+    if (time() - $now > $conn_timeout) {
+      croak("Unable to connect to $addr:$port: Timed out after $conn_timeout secs");
     }
 
     $ftp = Net::FTP->new($addr, %opts);
