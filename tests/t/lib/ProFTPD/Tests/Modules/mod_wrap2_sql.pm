@@ -75,6 +75,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  wrap2_sql_opt_check_on_connect_bug3508 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -2499,6 +2504,269 @@ EOS
       $expected = "User $user logged in";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub wrap2_sql_opt_check_on_connect_bug3508 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  # XXX NOTE: In order for the CheckOnConnect WrapOption to work properly
+  # with mod_wrap2_sql, the module load order must be very specific, e.g.:
+  #
+  #  --with-modules=mod_wrap2:mod_wrap2_sql:mod_sql:mod_sqlite
+  #
+  # Specifically, mod_sql and its backend(s) MUST appear AFTER mod_wrap2 and
+  # its submodules in the module load order list.  This is necessary because
+  # mod_sql's session init callback is where the database connection is
+  # defined.  If mod_wrap2 appears after mod_sql in the module load order
+  # list, then mod_wrap2's session init callback is called first, and it
+  # will try to use mod_wrap2_sql to get the table data, which will try to
+  # use mod_sql -- and the database connection won't be defined.  And only
+  # mod_sql has the knowledge of how to handle the SQLConnectInfo directive,
+  # which is needed in order to define/create that database connection.
+
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
+
+  # Build up sqlite3 command to create allow, deny tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/wrap2.sql");
+
+  my $fh;
+  if (open($fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE ftpallow (
+  name TEXT,
+  allowed TEXT
+);
+
+CREATE TABLE ftpdeny (
+  name TEXT,
+  denied TEXT
+);
+
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join("", @output), "\n";
+  }
+
+  unlink($db_script);
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $timeout_idle = 30;
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+    TimeoutIdle => $timeout_idle,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql_sqlite.c' => [
+        'SQLAuthenticate off',
+        "SQLConnectInfo $db_file",
+        'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
+        'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
+        "SQLLogFile $log_file",
+      ],
+
+      'mod_wrap2_sql.c' => {
+        WrapEngine => 'on',
+        WrapTables => "sql:/get-allowed-clients sql:/get-denied-clients",
+        WrapLog => $log_file,
+        WrapOptions => 'CheckOnConnect',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      my ($resp_code, $resp_msg);
+
+      ($resp_code, $resp_msg) = $client->login($user, $passwd);
+
+      my $expected;
+
+      $expected = 230;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = "User $user logged in";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  if (open($fh, "> $db_script")) {
+    print $fh <<EOS;
+INSERT INTO ftpdeny (name, denied) VALUES ('', '127.0.0.1');
+EOS
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  unlink($db_script);
+
+  ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Fork child
+  $self->handle_sigchld();
+  defined($pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client;
+
+      eval {
+        $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, undef, 2);
+      };
+      unless ($@) {
+        die("Connect succeeded unexpectedly");
+      }
+
+      my $ex = ProFTPD::TestSuite::FTP::get_connect_exception();
+
+      my $expected = "Access denied";
+      $self->assert($expected eq $ex,
+        test_msg("Expected '$expected', got '$ex'"));
     };
 
     if ($@) {
