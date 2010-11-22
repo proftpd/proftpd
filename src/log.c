@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.102 2010-11-02 16:51:05 castaglia Exp $
+ * $Id: log.c,v 1.103 2010-11-22 18:20:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -296,7 +296,7 @@ int pr_log_vwritefile(int logfd, const char *ident, const char *fmt,
   buf[sizeof(buf)-1] = '\0';
 
   /* Affix the message */
-  vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, msg);
+  vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf) - 1, fmt, msg);
 
   buf[sizeof(buf)-1] = '\0';
 
