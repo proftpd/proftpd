@@ -23,14 +23,14 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.188 2010-11-08 02:33:01 castaglia Exp $
+ * $Id: mod_sql.c,v 1.189 2010-11-30 19:21:50 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_VERSION			"mod_sql/4.2.4"
+#define MOD_SQL_VERSION			"mod_sql/4.2.5"
 
 #if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
@@ -104,6 +104,12 @@ unsigned int pr_sql_conn_policy = 0;
 /* For tracking the size of deleted files. */
 static off_t sql_dele_filesz = 0;
 
+/* It is best if this value is larger than the PR_TUNABLE_BUFFER_SIZE value.
+ * PR_TUNABLE_BUFFER_SIZE controls how much network data from a client at
+ * a time we might read; by keeping the statement buffer size larger, we reduce
+ * the chance of handling data from the network which exceeds the statement
+ * buffer length.
+ */
 #define SQL_MAX_STMT_LEN	4096
 
 static char *sql_prepare_where(int, cmd_rec *, int, ...);
@@ -121,6 +127,8 @@ MODRET sql_lookup(cmd_rec *);
 static pool *sql_pool = NULL;
 
 static modret_t *process_named_query(cmd_rec *cmd, char *name);
+
+static const char *trace_channel = "sql";
 
 /*
  * cache typedefs
@@ -839,7 +847,8 @@ static char *sql_prepare_where(int flags, cmd_rec *cmd, int cnt, ...) {
   char *buf = "", *res;
   va_list dummy;
 
-  res = pcalloc(cmd->tmp_pool, SQL_MAX_STMT_LEN);
+  /* Allocate one byte more for the terminating NUL. */
+  res = pcalloc(cmd->tmp_pool, SQL_MAX_STMT_LEN + 1);
 
   flag = 0;
   va_start(dummy, cnt);
@@ -862,13 +871,20 @@ static char *sql_prepare_where(int flags, cmd_rec *cmd, int cnt, ...) {
   if (!(flags & SQL_PREPARE_WHERE_FL_NO_TAGS)) {
     char *curr, *tmp;
 
-    /* Process variables in WHERE clauses, except any "%{num}" references. */
+    /* Process variables in WHERE clauses, except any "%{num}" references.
+     *
+     * curr_avail is deliberately set to be one byte less than the allocated
+     * length, to make sure that there is a terminating NUL.
+     */
     curr = res;
     curr_avail = SQL_MAX_STMT_LEN;
 
     for (tmp = buf; *tmp; ) {
       char *str;
       modret_t *mr;
+      size_t taglen;
+
+      pr_signals_handle();
 
       if (*tmp == '%') {
         char *tag = NULL;
@@ -885,18 +901,33 @@ static char *sql_prepare_where(int flags, cmd_rec *cmd, int cnt, ...) {
           tag = pstrndup(cmd->tmp_pool, query, (tmp - query));
           if (tag) {
             str = (char *) resolve_long_tag(cmd, tag);
-            if (!str)
+            if (str == NULL) {
               str = pstrdup(cmd->tmp_pool, "");
+            }
 
             mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default",
               str), "sql_escapestring");
             if (check_response(mr) < 0)
               return NULL;
 
-            sstrcat(curr, mr->data, curr_avail);
-            curr += strlen(mr->data);
-            curr_avail -= strlen(mr->data);
+            /* Make sure we don't write too much data. */
+            taglen = strlen(mr->data);
+            if (curr_avail > taglen) {
+              sstrcat(curr, mr->data, curr_avail);
+              curr += taglen;
+              curr_avail -= taglen;
 
+            } else {
+              /* Log when this happens; it means we have more input than buffer
+               * space.
+               */
+              sql_log(DEBUG_FUNC, "insufficient statement buffer size "
+                "(%d of %lu bytes) for tag (%lu bytes) when preparing "
+                "statement, ignoring tag '%s'", curr_avail,
+                (unsigned long) SQL_MAX_STMT_LEN, (unsigned long) taglen, tag);
+            }
+
+            /* Advance past the tag. */
             if (*tmp != '\0')
               tmp++;
 
@@ -911,20 +942,51 @@ static char *sql_prepare_where(int flags, cmd_rec *cmd, int cnt, ...) {
           if (check_response(mr) < 0)
             return NULL;
 
-          sstrcat(curr, mr->data, curr_avail);
-          curr += strlen(mr->data);
-          curr_avail -= strlen(mr->data);
+          /* Make sure we don't write too much data. */
+          taglen = strlen(mr->data);
+          if (curr_avail > taglen) {
+            sstrcat(curr, mr->data, curr_avail);
+            curr += taglen;
+            curr_avail -= taglen;
 
+          } else {
+            /* Log when this happens; it means we have more input than buffer
+             * space.
+             */
+            sql_log(DEBUG_FUNC, "insufficient statement buffer size "
+              "(%d of %lu bytes) for tag (%lu bytes) when preparing "
+              "statement, ignoring tag '%%%c'", curr_avail,
+              (unsigned long) SQL_MAX_STMT_LEN, (unsigned long) taglen, *tmp);
+          }
+
+          /* Advance past the tag. */
           if (*tmp != '\0')
             tmp++;
         }
 
       } else {
-        *curr++ = *tmp++;
-        curr_avail--;
+
+        /* Make sure we don't try to write too much data. */
+        if (curr_avail > 0) {
+          *curr++ = *tmp;
+          curr_avail--;
+
+        } else {
+          /* Log when this happens; it means we have more input than buffer
+           * space.  And break out of the processing loop.
+           */
+          sql_log(DEBUG_FUNC, "insufficient statement buffer size "
+            "(%d of %lu bytes) for input when preparing statement, skipping",
+            curr_avail, (unsigned long) SQL_MAX_STMT_LEN);
+          break;
+        }
+
+        if (*tmp != '\0')
+          tmp++;
       }
     }
-    *curr++ = '\0';
+
+    *curr = '\0';
 
   } else {
     res = buf;
@@ -1656,7 +1718,7 @@ static int sql_getgroups(cmd_rec *cmd) {
   modret_t *mr = NULL;
   array_header *gids = NULL, *groups = NULL;
   char *name = cmd->argv[0], *username = NULL;
-  int numrows = 0;
+  int argc, numrows = 0, res = -1;
   register unsigned int i = 0;
 
   /* Check for NULL values */
@@ -1668,11 +1730,21 @@ static int sql_getgroups(cmd_rec *cmd) {
 
   lpw.pw_uid = -1;
   lpw.pw_name = name;
-  
+
+  /* Now that we have the pointers for the lists, tweak the argc field
+   * before passing this cmd_rec on, lest we try to resolve some variable
+   * like %r which will assume that all of the cmd_rec args are strings, as
+   * from the client.
+   */
+  argc = cmd->argc;
+  cmd->argc = 1;
+
   /* Retrieve the necessary info */
   if (!name ||
-      !(pw = sql_getpasswd(cmd, &lpw)))
+      !(pw = sql_getpasswd(cmd, &lpw))) {
+    cmd->argc = argc;
     return -1;
+  }
 
   /* Populate the first group ID and name */
   if (gids)
@@ -1687,8 +1759,10 @@ static int sql_getgroups(cmd_rec *cmd) {
 
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", name),
     "sql_escapestring");
-  if (check_response(mr) < 0)
+  if (check_response(mr) < 0) {
+    cmd->argc = argc;
     return -1;
+  }
 
   username = (char *) mr->data;
 
@@ -1721,9 +1795,11 @@ static int sql_getgroups(cmd_rec *cmd) {
   
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default",
       cmap.grptable, cmap.grpfields, where), "sql_select");
-    if (check_response(mr) < 0)
+    if (check_response(mr) < 0) {
+      cmd->argc = argc;
       return -1;
-  
+    }
+ 
     sd = (sql_data_t *) mr->data;
 
   } else {
@@ -1734,8 +1810,10 @@ static int sql_getgroups(cmd_rec *cmd) {
      */
     mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, "default",
       cmap.groupcustommembers, username));
-    if (check_response(mr) < 0)
+    if (check_response(mr) < 0) {
+      cmd->argc = argc;
       return -1;
+    }
 
     ah = mr->data;
     sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
@@ -1757,8 +1835,10 @@ static int sql_getgroups(cmd_rec *cmd) {
   }
 
   /* If we have no data... */
-  if (sd->rnum == 0)
+  if (sd->rnum == 0) {
+    cmd->argc = argc;
     return -1;
+  }
 
   rows = sd->data;
   numrows = sd->rnum;
@@ -1790,15 +1870,15 @@ static int sql_getgroups(cmd_rec *cmd) {
 
   if (gids &&
       gids->nelts > 0) {
-    return gids->nelts;
+    res = gids->nelts;
 
   } else if (groups &&
            groups->nelts) {
-    return groups->nelts;
+    res = groups->nelts;
   }
 
-  /* Default */
-  return -1;
+  cmd->argc = argc;
+  return res;
 }
 
 /* Command handlers
@@ -1895,6 +1975,7 @@ MODRET sql_post_retr(cmd_rec *cmd) {
 }
 
 static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
+  const char *long_tag = NULL;
 
   if (strcmp(tag, "uid") == 0) {
     char buf[64];
@@ -1902,31 +1983,35 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
     memset(buf, '\0', sizeof(buf));
     snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) session.uid);
     
-    return pstrdup(cmd->tmp_pool, buf);
+    long_tag = pstrdup(cmd->tmp_pool, buf);
   }
 
-  if (strcmp(tag, "gid") == 0) {
+  if (long_tag == NULL &&
+      strcmp(tag, "gid") == 0) {
     char buf[64];
 
     memset(buf, '\0', sizeof(buf));
     snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) session.gid);
     
-    return pstrdup(cmd->tmp_pool, buf);
+    long_tag = pstrdup(cmd->tmp_pool, buf);
   }
 
-  if (strcmp(tag, "protocol") == 0) {
-    return pr_session_get_protocol(0);
+  if (long_tag == NULL &&
+      strcmp(tag, "protocol") == 0) {
+    long_tag = pr_session_get_protocol(0);
   }
 
-  if (strlen(tag) > 5 &&
+  if (long_tag == NULL &&
+      strlen(tag) > 5 &&
       strncmp(tag, "env:", 4) == 0) {
     char *env;
 
     env = pr_env_get(cmd->tmp_pool, tag + 4);
-    return pstrdup(cmd->tmp_pool, env ? env : "");
+    long_tag = pstrdup(cmd->tmp_pool, env ? env : "");
   }
 
-  if (strlen(tag) > 6 &&
+  if (long_tag == NULL &&
+      strlen(tag) > 6 &&
       strncmp(tag, "time:", 5) == 0) {
     char time_str[128], *fmt;
     time_t now;
@@ -1939,10 +2024,12 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
     memset(time_str, 0, sizeof(time_str));
     strftime(time_str, sizeof(time_str), fmt, time_info);
 
-    return pstrdup(cmd->tmp_pool, time_str);
+    long_tag = pstrdup(cmd->tmp_pool, time_str);
   }
 
-  return NULL;
+  pr_trace_msg(trace_channel, 15, "returning long tag '%s' for tag '%s'",
+    long_tag, tag);
+  return long_tag;
 }
 
 static int resolve_numeric_tag(cmd_rec *cmd, char *tag) {
@@ -1960,7 +2047,7 @@ static int resolve_numeric_tag(cmd_rec *cmd, char *tag) {
 }
 
 static char *resolve_short_tag(cmd_rec *cmd, char tag) {
-  char arg[PR_TUNABLE_PATH_MAX+1], *argp = NULL;
+  char arg[PR_TUNABLE_PATH_MAX+1], *argp = NULL, *short_tag = NULL;
 
   memset(arg, '\0', sizeof(arg));
 
@@ -2318,7 +2405,11 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       break;
   }
 
-  return pstrdup(cmd->tmp_pool, argp);
+  short_tag = pstrdup(cmd->tmp_pool, argp);
+  pr_trace_msg(trace_channel, 15, "returning short tag '%s' for tag '%%%c'",
+    short_tag, tag);
+
+  return short_tag;
 }
 
 static char *named_query_type(cmd_rec *cmd, char *name) {
@@ -2339,7 +2430,7 @@ static char *named_query_type(cmd_rec *cmd, char *name) {
 static modret_t *process_named_query(cmd_rec *cmd, char *name) {
   config_rec *c;
   char *query = NULL, *tmp = NULL, *argp = NULL;
-  char outs[SQL_MAX_STMT_LEN] = {'\0'}, *outsp = NULL;
+  char outs[SQL_MAX_STMT_LEN+1], *outsp = NULL;
   char *esc_arg = NULL;
   modret_t *mr = NULL;
   int num = 0;
@@ -2352,6 +2443,8 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name) {
 
   c = find_config(main_server->conf, CONF_PARAM, query, FALSE);
   if (c) {
+    size_t arglen, outs_remain = sizeof(outs)-1;
+
     /* Select string fixup */
     memset(outs, '\0', sizeof(outs));
     outsp = outs;
@@ -2423,18 +2516,47 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name) {
           esc_arg = (char *) mr->data;
         }
 
-        sstrcat(outs, esc_arg, sizeof(outs));
-        outsp += strlen(esc_arg);
+        arglen = strlen(esc_arg);
+        if (outs_remain > arglen) {
+          sstrcat(outsp, esc_arg, outs_remain);
+          outsp += arglen;
+          outs_remain -= arglen;
+
+        } else {
+          /* Log when this happens; it means we have more input than buffer
+           * space.
+           */
+          sql_log(DEBUG_FUNC, "insufficient statement buffer size "
+            "(%lu of %lu bytes) for tag (%Lu bytes) when processing named "
+            "query '%s', ignoring tag", (unsigned long) outs_remain,
+            (unsigned long) SQL_MAX_STMT_LEN, (unsigned long) arglen, name);
+        }
 
         if (*tmp != '\0')
           tmp++;
 
       } else {
-        *outsp++ = *tmp++;
+        if (outs_remain > 0) {
+          *outsp++ = *tmp;
+          outs_remain--;
+
+        } else {
+          /* Log when this happens; it means we have more input than buffer
+           * space.  And break out the processing loop.
+           */
+          sql_log(DEBUG_FUNC, "insufficient statement buffer size "
+            "(%lu of %lu bytes) for input when processing named query '%s', "
+            "skipping", (unsigned long) outs_remain,
+            (unsigned long) SQL_MAX_STMT_LEN, name);
+          break;
+        }
+
+        if (*tmp != '\0')
+          tmp++;
       }
     }
       
-    *outsp++ = 0;
+    *outsp = '\0';
 
     /* Construct our return data based on the type of query */
     if (strcasecmp(c->argv[0], SQL_UPDATE_C) == 0) {
@@ -2590,7 +2712,7 @@ MODRET info_master(cmd_rec *cmd) {
   char *type = NULL;
   char *name = NULL;
   config_rec *c = NULL;
-  char outs[SQL_MAX_STMT_LEN] = {'\0'}, *outsp;
+  char outs[SQL_MAX_STMT_LEN+1], *outsp;
   char *argp = NULL; 
   char *tmp = NULL, *resp_code = NULL;
   int display_flags = 0;
@@ -2605,6 +2727,8 @@ MODRET info_master(cmd_rec *cmd) {
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   while (c) {
+    size_t arglen, outs_remain = sizeof(outs)-1;
+
     sql_log(DEBUG_FUNC, ">>> info_master (%s)", name);
 
     /* we now have at least one config_rec.  Take the output string from 
@@ -2618,6 +2742,8 @@ MODRET info_master(cmd_rec *cmd) {
     outsp = outs;
 
     for (tmp = c->argv[1]; *tmp; ) {
+      pr_signals_handle();
+
       if (*tmp == '%') {
         /* is the tag a named_query reference?  If so, process the 
          * named query, otherwise process it as a normal tag.. 
@@ -2680,18 +2806,48 @@ MODRET info_master(cmd_rec *cmd) {
           argp = resolve_short_tag(cmd, *tmp);
         }
 
-        sstrcat(outs, argp, sizeof(outs));
-        outsp += strlen(argp);
+        arglen = strlen(argp);
+        if (outs_remain > arglen) {
+          sstrcat(outsp, argp, outs_remain);
+          outsp += arglen;
+          outs_remain -= arglen;
+
+        } else {
+          /* Log when this happens; it means we have more input than buffer
+           * space.
+           */
+          sql_log(DEBUG_FUNC, "insufficient statement buffer size "
+            "(%lu of %lu bytes) for tag (%Lu bytes) when processing "
+            "SQLShowInfo query '%s', ignoring tag",
+            (unsigned long) outs_remain, (unsigned long) SQL_MAX_STMT_LEN,
+            (unsigned long) arglen, name);
+        }
 
         if (*tmp != '\0')
           tmp++;
 
       } else {
-        *outsp++ = *tmp++;
+        if (outs_remain > 0) {
+          *outsp++ = *tmp++;
+          outs_remain--;
+
+        } else {
+          /* Log when this happens; it means we have more input than
+           * buffer space.  And break out of the processing loop.
+           */
+          sql_log(DEBUG_FUNC, "insufficient statement buffer size "
+            "(%lu of %lu bytes) when processing SQLShowInfo query '%s', "
+            "ignoring input", (unsigned long) outs_remain,
+            (unsigned long) SQL_MAX_STMT_LEN, (unsigned long) arglen);
+          break;
+        }
+
+        if (*tmp != '\0')
+          tmp++;
       }
     }
       
-    *outsp++ = 0;
+    *outsp = '\0';
 
     /* Add the response, if we have one. */
     if (strlen(outs) > 0) {
@@ -2713,6 +2869,8 @@ MODRET info_master(cmd_rec *cmd) {
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   while (c) {
+    size_t arglen, outs_remain = sizeof(outs)-1;
+
     sql_log(DEBUG_FUNC, ">>> info_master (%s)", name);
 
     /* we now have at least one config_rec.  Take the output string from 
@@ -2726,6 +2884,8 @@ MODRET info_master(cmd_rec *cmd) {
     outsp = outs;
 
     for (tmp = c->argv[1]; *tmp; ) {
+      pr_signals_handle();
+
       if (*tmp == '%') {
         /* is the tag a named_query reference?  If so, process the 
          * named query, otherwise process it as a normal tag.. 
@@ -2788,18 +2948,48 @@ MODRET info_master(cmd_rec *cmd) {
           argp = resolve_short_tag(cmd, *tmp);
         }
 
-        sstrcat(outs, argp, sizeof(outs));
-        outsp += strlen(argp);
+        arglen = strlen(argp);
+        if (outs_remain > arglen) {
+          sstrcat(outsp, argp, outs_remain);
+          outsp += arglen;
+          outs_remain -= arglen;
+
+        } else {
+          /* Log when this happens; it means we have more input than buffer
+           * space.
+           */
+          sql_log(DEBUG_FUNC, "insufficient statement buffer size "
+            "(%lu of %lu bytes) for tag (%Lu bytes) when processing "
+            "SQLShowInfo query '%s', ignoring tag",
+            (unsigned long) outs_remain, (unsigned long) SQL_MAX_STMT_LEN,
+            (unsigned long) arglen, name);
+        }
 
         if (*tmp != '\0')
           tmp++;
 
       } else {
-        *outsp++ = *tmp++;
+        if (outs_remain > 0) {
+          *outsp++ = *tmp;
+          outs_remain--;
+
+        } else {
+          /* Log when this happens; it means we have more input than
+           * buffer space.  And break out of the processing loop.
+           */
+          sql_log(DEBUG_FUNC, "insufficient statement buffer size "
+            "(%lu of %lu bytes) when processing SQLShowInfo query '%s', "
+            "ignoring input", (unsigned long) outs_remain,
+            (unsigned long) SQL_MAX_STMT_LEN, (unsigned long) arglen);
+          break;
+        }
+
+        if (*tmp != '\0')
+          tmp++;
       }
     }
       
-    *outsp++ = 0;
+    *outsp = '\0';
 
     /* Add the response, if we have one. */
     if (strlen(outs) > 0) {
@@ -2835,7 +3025,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
   char *type = NULL;
   char *name = NULL;
   config_rec *c = NULL;
-  char outs[SQL_MAX_STMT_LEN] = {'\0'}, *outsp = NULL;
+  char outs[SQL_MAX_STMT_LEN+1], *outsp = NULL;
   char *argp = NULL; 
   char *tmp = NULL, *resp_code = NULL;
   modret_t *mr = NULL;
@@ -2849,6 +3039,8 @@ MODRET errinfo_master(cmd_rec *cmd) {
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   while (c) {
+    size_t arglen, outs_remain = sizeof(outs)-1;
+
     sql_log(DEBUG_FUNC, ">>> errinfo_master (%s)", name);
 
     /* we now have at least one config_rec.  Take the output string from 
@@ -2862,6 +3054,8 @@ MODRET errinfo_master(cmd_rec *cmd) {
     outsp = outs;
 
     for (tmp = c->argv[1]; *tmp; ) {
+      pr_signals_handle();
+
       if (*tmp == '%') {
         /* is the tag a named_query reference?  If so, process the 
          * named query, otherwise process it as a normal tag.. 
@@ -2925,18 +3119,48 @@ MODRET errinfo_master(cmd_rec *cmd) {
           argp = resolve_short_tag(cmd, *tmp);
         }
 
-        sstrcat(outs, argp, sizeof(outs));
-        outsp += strlen(argp);
+        arglen = strlen(argp);
+        if (outs_remain > arglen) {
+          sstrcat(outsp, argp, outs_remain);
+          outsp += arglen;
+          outs_remain -= arglen;
+
+        } else {
+          /* Log when this happens; it means we have more input than buffer
+           * space.
+           */
+          sql_log(DEBUG_FUNC, "insufficient statement buffer size "
+            "(%lu of %lu bytes) for tag (%Lu bytes) when processing "
+            "SQLShowInfo query '%s', ignoring tag",
+            (unsigned long) outs_remain, (unsigned long) SQL_MAX_STMT_LEN,
+            (unsigned long) arglen, name);
+        }
 
         if (*tmp != '\0')
           tmp++;
 
       } else {
-        *outsp++ = *tmp++;
+        if (outs_remain > 0) {
+          *outsp++ = *tmp;
+          outs_remain--;
+
+        } else {
+          /* Log when this happens; it means we have more input than
+           * buffer space.  And break out of the processing loop.
+           */
+          sql_log(DEBUG_FUNC, "insufficient statement buffer size "
+            "(%lu of %lu bytes) when processing SQLShowInfo query '%s', "
+            "ignoring input", (unsigned long) outs_remain,
+            (unsigned long) SQL_MAX_STMT_LEN, (unsigned long) arglen);
+          break;
+        }
+
+        if (*tmp != '\0')
+          tmp++;
       }
     }
       
-    *outsp++ = 0;
+    *outsp = '\0';
 
     /* Add the response, if we have one. */
     if (strlen(outs) > 0) {
@@ -2958,6 +3182,8 @@ MODRET errinfo_master(cmd_rec *cmd) {
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   while (c) {
+    size_t arglen, outs_remain = sizeof(outs)-1;
+
     sql_log(DEBUG_FUNC, ">>> errinfo_master (%s)", name);
 
     /* we now have at least one config_rec.  Take the output string from 
@@ -3036,18 +3262,48 @@ MODRET errinfo_master(cmd_rec *cmd) {
           argp = resolve_short_tag(cmd, *tmp);
         }
 
-        sstrcat(outs, argp, sizeof(outs));
-        outsp += strlen(argp);
+        arglen = strlen(argp);
+        if (outs_remain > arglen) {
+          sstrcat(outsp, argp, outs_remain);
+          outsp += arglen;
+          outs_remain -= arglen;
+
+        } else {
+          /* Log when this happens; it means we have more input than buffer
+           * space.
+           */
+          sql_log(DEBUG_FUNC, "insufficient statement buffer size "
+            "(%lu of %lu bytes) for tag (%Lu bytes) when processing "
+            "SQLShowInfo query '%s', ignoring tag",
+            (unsigned long) outs_remain, (unsigned long) SQL_MAX_STMT_LEN,
+            (unsigned long) arglen, name);
+        }
 
         if (*tmp != '\0')
           tmp++;
 
       } else {
-        *outsp++ = *tmp++;
+        if (outs_remain > 0) {
+          *outsp++ = *tmp;
+          outs_remain--;
+
+        } else {
+          /* Log when this happens; it means we have more input than
+           * buffer space.  And break out of the processing loop.
+           */
+          sql_log(DEBUG_FUNC, "insufficient statement buffer size "
+            "(%lu of %lu bytes) when processing SQLShowInfo query '%s', "
+            "ignoring input", (unsigned long) outs_remain,
+            (unsigned long) SQL_MAX_STMT_LEN, (unsigned long) arglen);
+          break;
+        }
+
+        if (*tmp != '\0')
+          tmp++;
       }
     }
       
-    *outsp++ = 0;
+    *outsp = '\0';
 
     /* Add the response, if we have one. */
     if (strlen(outs) > 0) {

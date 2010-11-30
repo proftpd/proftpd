@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1257 2010-11-14 23:49:01 castaglia Exp $
+$Id: NEWS,v 1.1258 2010-11-30 19:21:50 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -182,6 +182,8 @@ CVS
   the file mutex used for starting/ending sessions.  By default, the
   ScoreboardMutex path will be automatically set to the same ScoreboardFile
   path, with a ".lck" suffix appended.
+- Bug 3536 - mod_sql has insufficient bounds checking in sql_prepare_where()
+  function.
 
 1.3.3 - Released 24-Feb-2010
 --------------------------------
