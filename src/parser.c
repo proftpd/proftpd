@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.21 2010-09-02 17:42:54 castaglia Exp $
+ * $Id: parser.c,v 1.22 2010-11-30 22:57:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -436,18 +436,19 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
 }
 
 cmd_rec *pr_parser_parse_line(pool *p) {
-  char buf[PR_TUNABLE_BUFFER_SIZE], *word = NULL;
+  register unsigned int i;
+  char buf[PR_TUNABLE_BUFFER_SIZE], *arg = "", *word = NULL;
   cmd_rec *cmd = NULL;
   pool *sub_pool = NULL;
   array_header *arr = NULL;
 
-  if (!p) {
+  if (p == NULL) {
     errno = EINVAL;
     return NULL;
   }
 
   memset(buf, '\0', sizeof(buf));
-
+  
   while (pr_parser_read_line(buf, sizeof(buf)-1) != NULL) {
     char *bufp = buf;
 
@@ -464,7 +465,9 @@ cmd_rec *pr_parser_parse_line(pool *p) {
     /* Add each word to the array */
     arr = make_array(cmd->pool, 4, sizeof(char **));
     while ((word = pr_str_get_word(&bufp, 0)) != NULL) {
-      char *tmp = get_config_word(cmd->pool, word);
+      char *tmp;
+
+      tmp = get_config_word(cmd->pool, word);
 
       *((char **) push_array(arr)) = tmp;
       cmd->argc++;
@@ -501,15 +504,26 @@ cmd_rec *pr_parser_parse_line(pool *p) {
           cmd->argv[cmd->argc-1] = NULL;
           cmd->argc--;
 
-        } else
+        } else {
           *(cp + strlen(cp)-1) = '\0';
+        }
 
         cp = cmd->argv[0];
-        if (*(cp + strlen(cp)-1) != '>')
+        if (*(cp + strlen(cp)-1) != '>') {
           cmd->argv[0] = pstrcat(cmd->pool, cp, ">", NULL);
+        }
       }
     }
 
+    if (cmd->argc < 2) {
+      arg = pstrdup(cmd->pool, arg);
+    }
+
+    for (i = 1; i < cmd->argc; i++) {
+      arg = pstrcat(cmd->pool, arg, *arg ? " " : "", cmd->argv[i], NULL);
+    }
+
+    cmd->arg = arg;
     return cmd;
   }
 
