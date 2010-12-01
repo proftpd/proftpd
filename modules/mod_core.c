@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.384 2010-11-11 00:48:35 castaglia Exp $
+ * $Id: mod_core.c,v 1.385 2010-12-01 18:42:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2591,12 +2591,13 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
   if (strcmp(cmd->argv[0], "AllowClass") == 0 ||
       strcmp(cmd->argv[0], "AllowUser") == 0 ||
       strcmp(cmd->argv[0], "DenyClass") == 0 ||
-      strcmp(cmd->argv[0], "DenyUser") == 0)
+      strcmp(cmd->argv[0], "DenyUser") == 0) {
     eval_type = PR_EXPR_EVAL_OR;
 
   /* For AllowGroup and DenyGroup, the default expression type is "and". */
-  else
+  } else {
     eval_type = PR_EXPR_EVAL_AND;
+  }
 
   if (cmd->argc > 2) {
     /* Check the first parameter to see if it is an evaluation modifier:
@@ -2637,6 +2638,7 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
       c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
       *((unsigned char *) c->argv[0]) = PR_EXPR_EVAL_REGEX;
       c->argv[1] = (void *) preg;
+      c->flags |= CF_MERGEDOWN_MULTI;
 
       return PR_HANDLED(cmd);
 
@@ -2676,6 +2678,7 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
 
   *argv = NULL;
 
+  c->flags |= CF_MERGEDOWN_MULTI;
   return PR_HANDLED(cmd);
 }
 
