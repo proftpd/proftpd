@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.h,v 1.7 2010-09-15 17:29:51 castaglia Exp $
+ * $Id: channel.h,v 1.8 2010-12-03 20:42:57 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -77,6 +77,9 @@ int sftp_channel_free(void);
 int sftp_channel_handle(struct ssh2_packet *, char);
 int sftp_channel_init(void);
 int sftp_channel_write_data(pool *, uint32_t, char *, uint32_t);
+
+/* Like sftp_channel_write_data(), but sends EXTENDED_DATA messages. */
+int sftp_channel_write_ext_data_stderr(pool *, uint32_t, char *, uint32_t);
 
 /* Return the number of open channels, if any.  If a pointer to a uint32_t
  * is provided, AND the returned count is greater than zero, then the

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.34 2010-10-16 18:29:00 castaglia Exp $
+ * $Id: channel.c,v 1.35 2010-12-03 20:42:57 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1448,8 +1448,8 @@ int sftp_channel_drain_data(void) {
   return 0;
 }
 
-int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
-    uint32_t buflen) {
+static int channel_write_data(pool *p, uint32_t channel_id, char *buf,
+    uint32_t buflen, char msg_type, uint32_t data_type) {
   struct ssh2_channel *chan;
   int res;
 
@@ -1499,15 +1499,23 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
 
       /* In addition to the data itself, we need to allocate room in the
        * outgoing packet for the type (1 byte), the channel ID (4 bytes),
-       * and for the data length (4 bytes).
+       * a possible data type ID (4 bytes),  and for the data length (4 bytes).
        */
-      bufsz2 = buflen2 = payload_len + 9;
+      bufsz2 = buflen2 = payload_len + 13;
  
       pkt = sftp_ssh2_packet_create(p);
       ptr2 = buf2 = palloc(pkt->pool, bufsz2);
 
-      sftp_msg_write_byte(&buf2, &buflen2, SFTP_SSH2_MSG_CHANNEL_DATA);
+      sftp_msg_write_byte(&buf2, &buflen2, msg_type);
       sftp_msg_write_int(&buf2, &buflen2, chan->remote_channel_id);
+
+      if (data_type != 0) {
+        /* Right now, this is only used for EXTENDED_DATA messages of type
+         * STDERR.
+         */
+        sftp_msg_write_int(&buf2, &buflen2, data_type);
+      }
+
       sftp_msg_write_int(&buf2, &buflen2, payload_len);
       memcpy(buf2, buf, payload_len);
       buflen2 -= payload_len;
@@ -1515,8 +1523,10 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
       pkt->payload = ptr2;
       pkt->payload_len = (bufsz2 - buflen2);
 
-      pr_trace_msg(trace_channel, 9, "sending CHANNEL_DATA (remote channel "
-        "ID %lu, %lu data bytes)", (unsigned long) chan->remote_channel_id,
+      pr_trace_msg(trace_channel, 9, "sending %s (remote channel ID %lu, "
+        "%lu data bytes)",
+        msg_type == SFTP_SSH2_MSG_CHANNEL_DATA ? "CHANNEL_DATA" :
+          "CHANNEL_EXTENDED_DATA", (unsigned long) chan->remote_channel_id,
         (unsigned long) payload_len);
 
       res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
@@ -1539,8 +1549,8 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
       buf += payload_len;
       buflen -= payload_len;
 
-      /* Otherwise try sending another CHANNEL_DATA packet.  If the window
-       * closes, the loop will end.
+      /* Otherwise try sending another packet.  If the window closes, the loop
+       * will end.
        */
 
     } else {
@@ -1570,6 +1580,19 @@ int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
   }
 
   return 0;
+}
+
+int sftp_channel_write_data(pool *p, uint32_t channel_id, char *buf,
+    uint32_t buflen) {
+  return channel_write_data(p, channel_id, buf, buflen,
+    SFTP_SSH2_MSG_CHANNEL_DATA, 0);
+}
+
+int sftp_channel_write_ext_data_stderr(pool *p, uint32_t channel_id, char *buf,
+    uint32_t buflen) {
+  return channel_write_data(p, channel_id, buf, buflen,
+    SFTP_SSH2_MSG_CHANNEL_EXTENDED_DATA,
+    SFTP_SSH2_MSG_CHANNEL_EXTENDED_DATA_TYPE_STDERR);
 }
 
 /* Return the number of open channels, if any. */

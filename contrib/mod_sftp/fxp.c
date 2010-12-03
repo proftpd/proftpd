@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.110 2010-10-30 16:03:30 castaglia Exp $
+ * $Id: fxp.c,v 1.111 2010-12-03 20:42:57 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -32,6 +32,7 @@
 #include "disconnect.h"
 #include "channel.h"
 #include "auth.h"
+#include "display.h"
 #include "fxp.h"
 #include "utf8.h"
 #include "misc.h"
@@ -229,6 +230,9 @@ static unsigned int fxp_min_client_version = 1;
 static unsigned int fxp_max_client_version = 6;
 static unsigned int fxp_utf8_protocol_version = 4;
 static unsigned long fxp_ext_flags = SFTP_FXP_EXT_DEFAULT;
+
+static pr_fh_t *fxp_displaylogin_fh = NULL;
+static int fxp_sent_display_login_file = FALSE;
 
 /* For handling "version-select" requests properly (or rejecting them as
  * necessary.
@@ -9283,6 +9287,55 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
   return fxp_packet_write(resp);
 }
 
+static int fxp_send_display_login_file(uint32_t channel_id) {
+  const char *msg;
+  int res, xerrno;
+  pool *sub_pool;
+
+  if (fxp_sent_display_login_file) {
+    /* Already sent the file; no need to do it again. */
+    return 0;
+  }
+
+  if (fxp_displaylogin_fh == NULL) {
+    /* No DisplayLogin file found. */
+    return 0;
+  }
+
+  if (fxp_pool == NULL) {
+    fxp_pool = make_sub_pool(sftp_pool);
+    pr_pool_tag(fxp_pool, "SFTP Pool");
+  }
+
+  sub_pool = make_sub_pool(fxp_pool);
+  pr_pool_tag(sub_pool, "SFTP DisplayLogin pool");
+
+  msg = sftp_display_fh_get_msg(sub_pool, fxp_displaylogin_fh);
+  pr_fsio_close(fxp_displaylogin_fh);
+
+  if (msg == NULL) {
+    destroy_pool(sub_pool);
+    fxp_displaylogin_fh = NULL;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 3,
+    "sending data from DisplayLogin file '%s'", fxp_displaylogin_fh->fh_path);
+  fxp_displaylogin_fh = NULL;
+
+  res = sftp_channel_write_ext_data_stderr(sub_pool, channel_id,
+    (char *) msg, strlen(msg));
+  xerrno = errno;
+
+  if (res == 0) {
+    fxp_sent_display_login_file = TRUE;
+  }
+
+  destroy_pool(sub_pool);
+  errno = xerrno;
+  return res;
+}
+
 /* Main entry point */
 int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
     char *data, uint32_t datalen) {
@@ -9488,6 +9541,29 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
   return 0;
 }
 
+int sftp_fxp_set_displaylogin(const char *path) {
+  pr_fh_t *fh;
+
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Support "DisplayLogin none", in case we need to disable support for
+   * DisplayLogin files inherited from <Global> configurations.
+   */
+  if (strcasecmp(path, "none") == 0) {
+    return 0;
+  }
+
+  fh = pr_fsio_open(path, O_RDONLY);
+  if (fh == NULL)
+    return -1;
+
+  fxp_displaylogin_fh = fh;
+  return 0;
+}
+
 int sftp_fxp_set_extensions(unsigned long ext_flags) {
   fxp_ext_flags = ext_flags;
   return 0;
@@ -9564,6 +9640,9 @@ int sftp_fxp_open_session(uint32_t channel_id) {
   } else {
     fxp_sessions = sess;
   }
+
+  /* XXX Ignore any return value, for now. */
+  (void) fxp_send_display_login_file(channel_id);
 
   pr_session_set_protocol("sftp");
   return 0;

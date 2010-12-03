@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1259 2010-12-01 18:42:02 castaglia Exp $
+$Id: NEWS,v 1.1260 2010-12-03 20:42:57 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -185,6 +185,7 @@ CVS
 - Bug 3536 - mod_sql has insufficient bounds checking in sql_prepare_where()
   function.
 - Bug 3547 - Multiple AllowClass directives not handled properly.
+- Bug 3515 - Support DisplayLogin functionality for SFTP connections.
 
 1.3.3 - Released 24-Feb-2010
 --------------------------------

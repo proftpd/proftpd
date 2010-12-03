@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SSH2 constants
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2010 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: ssh2.h,v 1.3 2009-09-01 17:04:32 castaglia Exp $
+ * $Id: ssh2.h,v 1.4 2010-12-03 20:42:57 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_SSH2_H
@@ -85,6 +85,9 @@
 #define SFTP_SSH2_MSG_CHANNEL_REQUEST		98
 #define SFTP_SSH2_MSG_CHANNEL_SUCCESS		99
 #define SFTP_SSH2_MSG_CHANNEL_FAILURE		100
+
+/* Channel extended data types */
+#define SFTP_SSH2_MSG_CHANNEL_EXTENDED_DATA_TYPE_STDERR		1
 
 /* SSH Disconnect reason codes */
 #define SFTP_SSH2_DISCONNECT_HOST_NOT_ALLOWED_TO_CONNECT	1

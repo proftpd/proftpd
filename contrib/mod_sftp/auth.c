@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.27 2010-04-12 20:57:55 castaglia Exp $
+ * $Id: auth.c,v 1.28 2010-12-03 20:42:57 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -571,8 +571,11 @@ static int setup_env(pool *p, char *user) {
 }
 
 static int send_userauth_banner_file(void) {
-  char *path;
-  int res, xerrno;
+  struct ssh2_packet *pkt;
+  char *path, *buf, *ptr;
+  const char *msg;
+  int res;
+  uint32_t buflen, bufsz;
   config_rec *c;
   pr_fh_t *fh;
   pool *sub_pool;
@@ -604,14 +607,33 @@ static int send_userauth_banner_file(void) {
   sub_pool = make_sub_pool(auth_pool);
   pr_pool_tag(sub_pool, "SSH2 auth banner pool");
 
-  pr_trace_msg(trace_channel, 3,
-    "sending userauth banner from SFTPDisplayBanner file '%s'", path);
-  res = sftp_display_fh(sub_pool, fh, SFTP_SSH2_MSG_USER_AUTH_BANNER);
-  xerrno = errno;
-
+  msg = sftp_display_fh_get_msg(sub_pool, fh);
   pr_fsio_close(fh);
 
-  errno = xerrno;
+  if (msg == NULL) {
+    destroy_pool(sub_pool);
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 3,
+    "sending userauth banner from SFTPDisplayBanner file '%s'", path);
+
+  pkt = sftp_ssh2_packet_create(sub_pool);
+
+  buflen = bufsz = strlen(msg) + 32;
+  ptr = buf = palloc(pkt->pool, bufsz);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_USER_AUTH_BANNER);
+  sftp_msg_write_string(&buf, &buflen, msg);
+
+  /* XXX locale of banner */
+  sftp_msg_write_string(&buf, &buflen, "");
+
+  pkt->payload = ptr;
+  pkt->payload_len = (bufsz - buflen);
+
+  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+  destroy_pool(pkt->pool);
 
   if (res < 0) {
     destroy_pool(sub_pool);

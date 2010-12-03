@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.39 2010-11-16 19:20:25 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.40 2010-12-03 20:42:57 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1650,6 +1650,17 @@ static int sftp_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "SFTPOptions", FALSE);
   if (c) {
     sftp_opts = *((unsigned long *) c->argv[0]);
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "DisplayLogin", FALSE);
+  if (c) {
+    const char *path;
+
+    path = c->argv[0];
+    if (sftp_fxp_set_displaylogin(path) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error using DisplayLogin '%s': %s", path, strerror(errno));
+    }
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "TimesGMT", FALSE);

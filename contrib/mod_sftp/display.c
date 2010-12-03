@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.2 2010-04-12 22:42:52 castaglia Exp $
+ * $Id: display.c,v 1.3 2010-12-03 20:42:57 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -45,9 +45,9 @@ static void format_size_str(char *buf, size_t buflen, off_t size) {
   snprintf(buf, buflen, "%.3" PR_LU "%cB", (pr_off_t) size, units[i]);
 }
 
-static const char *get_display_msg(pool *p, pr_fh_t *fh) {
+const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
   struct stat st;
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'}, *msg = "";
+  char buf[PR_TUNABLE_BUFFER_SIZE], *msg = "";
   int len;
   unsigned int *current_clients = NULL;
   unsigned int *max_clients = NULL;
@@ -148,6 +148,7 @@ static const char *get_display_msg(pool *p, pr_fh_t *fh) {
     rfc1413_ident = "UNKNOWN";
   }
 
+  memset(buf, '\0', sizeof(buf));
   while (pr_fsio_gets(buf, sizeof(buf), fh) != NULL) {
     char *tmp;
 
@@ -156,9 +157,10 @@ static const char *get_display_msg(pool *p, pr_fh_t *fh) {
     buf[sizeof(buf)-1] = '\0';
     len = strlen(buf);
 
-    while (len &&
+    while (len > 0 &&
            (buf[len-1] == '\r' || buf[len-1] == '\n')) {
       pr_signals_handle();
+
       buf[len-1] = '\0';
       len--;
     }
@@ -258,47 +260,12 @@ static const char *get_display_msg(pool *p, pr_fh_t *fh) {
       "%z", mg_class_limit,
       NULL);
 
-    sstrncpy(buf, outs, sizeof(buf));
+    /* Always make sure that the lines we send are CRLF-terminated. */
+    msg = pstrcat(p, msg, outs, "\r\n", NULL);
 
-    msg = pstrcat(p, msg, *msg ? "\r\n" : "", buf, NULL);
+    /* Clear the buffer for the next read. */
+    memset(buf, '\0', sizeof(buf));
   }
 
   return msg;
-}
-
-int sftp_display_fh(pool *p, pr_fh_t *fh, const char msg_type) {
-  struct ssh2_packet *pkt;
-  int res;
-  char *buf, *ptr;
-  const char *msg;
-  uint32_t buflen, bufsz;
-
-  if (fh == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  msg = get_display_msg(p, fh);
-  if (msg == NULL) {
-    return -1;
-  }
-
-  pkt = sftp_ssh2_packet_create(p);
-
-  buflen = bufsz = strlen(msg) + 32;
-  ptr = buf = palloc(pkt->pool, bufsz);
-
-  sftp_msg_write_byte(&buf, &buflen, msg_type);
-  sftp_msg_write_string(&buf, &buflen, msg);
-
-  /* XXX locale of banner */
-  sftp_msg_write_string(&buf, &buflen, "");
-
-  pkt->payload = ptr;
-  pkt->payload_len = (bufsz - buflen);
-
-  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
-  destroy_pool(pkt->pool);
-
-  return res; 
 }

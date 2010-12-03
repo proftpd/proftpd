@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: display.h,v 1.1 2010-04-12 20:57:55 castaglia Exp $
+ * $Id: display.h,v 1.2 2010-12-03 20:42:57 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -29,6 +29,6 @@
 #ifndef MOD_SFTP_DISPLAY_H
 #define MOD_SFTP_DISPLAY_H
 
-int sftp_display_fh(pool *, pr_fh_t *, const char);
+const char *sftp_display_fh_get_msg(pool *, pr_fh_t *);
 
 #endif /* MOD_SFTP_DISPLAY_H */

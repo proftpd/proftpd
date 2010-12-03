@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.h,v 1.8 2010-10-20 20:38:20 castaglia Exp $
+ * $Id: fxp.h,v 1.9 2010-12-03 20:42:57 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -82,6 +82,7 @@ int sftp_fxp_handle_packet(pool *, void *, uint32_t, char *, uint32_t);
 int sftp_fxp_open_session(uint32_t);
 int sftp_fxp_close_session(uint32_t);
 
+int sftp_fxp_set_displaylogin(const char *);
 int sftp_fxp_set_extensions(unsigned long);
 
 int sftp_fxp_set_protocol_version(unsigned int, unsigned int);
