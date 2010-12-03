@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.20 2010-09-29 18:13:12 castaglia Exp $
+ * $Id: mod_sql_sqlite.c,v 1.21 2010-12-03 23:00:05 castaglia Exp $
  * $Libraries: -lsqlite3 $
  */
 
@@ -195,7 +195,7 @@ static int exec_stmt(cmd_rec *cmd, db_conn_t *conn, char *stmt, char **errstr) {
     *errstr = pstrdup(cmd->pool, ptr);
     sqlite3_free(ptr);
 
-    sql_log(DEBUG_FUNC, "error executing '%s': (%d) %s", stmt, res, errstr);
+    sql_log(DEBUG_FUNC, "error executing '%s': (%d) %s", stmt, res, *errstr);
     return -1;
   }
 
