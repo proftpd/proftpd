@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.111 2010-12-03 20:42:57 castaglia Exp $
+ * $Id: fxp.c,v 1.112 2010-12-04 00:10:06 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2304,6 +2304,13 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
     }
 
     fxh->dirh = NULL;
+    return 0;
+  }
+
+  /* This filehandle may already have been closed.  If so, just move on to
+   * the next one.
+   */
+  if (fxh->fh == NULL) {
     return 0;
   }
 
