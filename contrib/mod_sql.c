@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.190 2010-12-07 18:18:24 castaglia Exp $
+ * $Id: mod_sql.c,v 1.191 2010-12-07 18:22:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -610,7 +610,7 @@ static modret_t *sql_auth_crypt(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
-  res = crypt(plaintext, ciphertext);
+  res = (char *) crypt(plaintext, ciphertext);
   if (res == NULL) {
     sql_log(DEBUG_WARN, "error using crypt(3): %s", strerror(errno));
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
