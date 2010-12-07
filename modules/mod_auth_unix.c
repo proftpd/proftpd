@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.44 2010-06-22 22:02:28 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.45 2010-12-07 18:18:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -671,6 +671,7 @@ MODRET pw_check(cmd_rec *cmd) {
   const char *pw = cmd->argv[2];
   modret_t *mr = NULL;
   cmd_rec *cmd2 = NULL;
+  char *crypted_text = NULL;
 
 #ifdef PR_USE_SIA
   SIAENTITY *ent = NULL;
@@ -793,7 +794,13 @@ MODRET pw_check(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  if (strcmp(crypt(pw, cpw), cpw) != 0) {
+  crypted_text = crypt(pw, cpw);
+  if (crypted_text == NULL) {
+    pr_log_pri(PR_LOG_NOTICE, "error error crypt(3): %s", strerror(errno));
+    return PR_DECLINED(cmd);
+  }
+
+  if (strcmp(crypted_text, cpw) != 0) {
     return PR_DECLINED(cmd);
   }
 #endif /* PR_USE_SIA */

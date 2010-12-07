@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.189 2010-11-30 19:21:50 castaglia Exp $
+ * $Id: mod_sql.c,v 1.190 2010-12-07 18:18:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -604,12 +604,19 @@ static int sql_set_backend(char *backend) {
 
 static modret_t *sql_auth_crypt(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext) {
+  char *res = NULL;
 
   if (*ciphertext == '\0') {
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
-  if (strcmp((char *) crypt(plaintext, ciphertext), ciphertext) == 0) {
+  res = crypt(plaintext, ciphertext);
+  if (res == NULL) {
+    sql_log(DEBUG_WARN, "error using crypt(3): %s", strerror(errno));
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
+
+  if (strcmp(res, ciphertext) == 0) {
     return PR_HANDLED(cmd);
   }
 
