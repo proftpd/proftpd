@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.112 2010-12-04 00:10:06 castaglia Exp $
+ * $Id: fxp.c,v 1.113 2010-12-08 19:59:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -214,7 +214,7 @@ struct fxp_packet {
 #define FXP_PACKET_DATA_ALLOC_MAX_SZ		(1024 * 32)
 static size_t fxp_packet_data_allocsz = 0;
 
-#define FXP_PACKET_DATA_DEFAULT_SZ		(1024 * 4)
+#define FXP_PACKET_DATA_DEFAULT_SZ		(1024 * 16)
 #define FXP_RESPONSE_DATA_DEFAULT_SZ		512
 
 struct fxp_extpair {
@@ -2628,6 +2628,7 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
 
   if (!(fxp->state & FXP_PACKET_HAVE_PAYLOAD)) {
     if (fxp->payload_sz == buflen) {
+
       fxp->payload = buf;
       fxp->payload_len = buflen;
       fxp->state |= FXP_PACKET_HAVE_PAYLOAD;
@@ -2639,6 +2640,7 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
       return fxp;
 
     } else if (fxp->payload_sz > buflen) {
+
       if (fxp->payload == NULL) {
         /* We don't have any existing payload data; copy the entire buffer
          * into the payload buffer.
@@ -2657,6 +2659,7 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
          * packet buffer plus the existing payload buffer will provide
          * the complete payload data.
          */
+
         if ((fxp->payload_len + buflen) <= fxp->payload_sz) {
           /* The packet buffer data is less than needed, or is just
            * enough to complete the payload.
@@ -2669,6 +2672,7 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
           buf = NULL;
 
         } else {
+
           /* The packet buffer contains more than enough data.  Copy into
            * the payload buffer the rest of what's needed.
            */
@@ -2718,6 +2722,7 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
       return NULL;
 
     } else if (fxp->payload_sz < buflen) {
+
       if (fxp->payload) {
         /* Append the data to complete this SFTP packet's payload, and stash
          * the remaining data, to be used for the next packet requested.
