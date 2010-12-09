@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.42 2010-12-09 01:54:41 castaglia Exp $
+ * $Id: netio.c,v 1.43 2010-12-09 02:54:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1033,15 +1033,14 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
       pbuf->remaining = pbuf->buflen - toread;
       pbuf->current = pbuf->buf;
 
-    } else {
-      toread = pbuf->buflen - pbuf->remaining;
+      /* Before we begin iterating through the data read in from the
+       * network, handing any Telnet characters and such, generate an event
+       * for any listeners which may want to examine this data as well.
+       */
+      pr_event_generate("core.ctrl-read", pbuf);
     }
 
-    /* Before we begin iterating through the data read in from the
-     * network, handing any Telnet characters and such, generate an event
-     * for any listeners which may want to examine this data as well.
-     */
-    pr_event_generate("core.ctrl-read", pbuf);
+    toread = pbuf->buflen - pbuf->remaining;
 
     while (buflen && toread > 0 && *pbuf->current != '\n' && toread--) {
       cp = *pbuf->current++;
