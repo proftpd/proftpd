@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.278 2010-11-06 18:55:58 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.279 2010-12-09 00:38:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1713,6 +1713,11 @@ MODRET xfer_stor(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
+    /* XXX Need to handle short writes better here.  It is possible that
+     * the underlying filesystem (e.g. a network-mounted filesystem) could
+     * be doing short writes, and we ideally should be more resilient/graceful
+     * in the face of such things.
+     */
     res = pr_fsio_write(stor_fh, lbuf, len);
     if (res != len) {
       int xerrno = EIO;
