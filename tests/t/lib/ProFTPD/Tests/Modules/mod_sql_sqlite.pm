@@ -178,7 +178,7 @@ my $TESTS = {
 
   sql_resolve_tag_bug3536 => {
     order => ++$order,
-    test_class => [qw(bug forking)],
+    test_class => [qw(bug forking inprogress)],
   },
 
 };
