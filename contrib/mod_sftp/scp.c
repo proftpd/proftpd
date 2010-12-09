@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.51 2010-10-30 16:03:30 castaglia Exp $
+ * $Id: scp.c,v 1.52 2010-12-09 05:58:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1903,7 +1903,7 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
    */
 
 #if defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
-    defined(FREEBSD7) || \
+    defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
     defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9)
   optreset = 1;
   opterr = 1;

@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.41 2010-09-08 17:48:04 castaglia Exp $
+ * $Id: mod_ban.c,v 1.42 2010-12-09 05:58:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1020,8 +1020,8 @@ static int ban_get_sid_by_addr(pr_netaddr_t *server_addr,
 }
 
 static void ban_reset_getopt(void) {
-#if defined(FREEBSD4) || defined(FREEBSD5) || \
-    defined(FREEBSD6) || defined(FREEBSD7) || \
+#if defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
+    defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
     defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9)
   optreset = 1;
   opterr = 1;

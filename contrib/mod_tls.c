@@ -5066,8 +5066,8 @@ static int tls_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   const char *opts = "v";
 
   /* All the fun portability of resetting getopt(3). */
-#if defined(FREEBSD4) || defined(FREEBSD5) || \
-    defined(FREEBSD6) || defined(FREEBSD7) || \
+#if defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
+    defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
     defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9)
   optreset = 1;
   opterr = 1;
