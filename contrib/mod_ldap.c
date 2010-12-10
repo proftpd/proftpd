@@ -45,7 +45,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.91 2010-10-15 18:26:36 jwm Exp $
+ * $Id: mod_ldap.c,v 1.92 2010-12-10 22:38:13 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1267,7 +1267,7 @@ handle_ldap_is_auth(cmd_rec *cmd)
 MODRET
 handle_ldap_check(cmd_rec *cmd)
 {
-  char *pass, *cryptpass, *hash_method;
+  char *pass, *cryptpass, *hash_method, *crypted;
   int encname_len, ret;
   LDAP *ld_auth;
 #ifdef HAS_LDAP_SASL_BIND_S
@@ -1343,7 +1343,11 @@ handle_ldap_check(cmd_rec *cmd)
   }
 
   if (strncasecmp(hash_method, "crypt", strlen(hash_method)) == 0) { /* {crypt} */
-    if (strcmp(crypt(pass, cryptpass + encname_len), cryptpass + encname_len) != 0) {
+    crypted = crypt(pass, cryptpass + encname_len);
+    if (crypted == NULL) {
+      return PR_ERROR(cmd);
+    }
+    if (strcmp(crypted, cryptpass + encname_len) != 0) {
       return PR_ERROR(cmd);
     }
   } else if (strncasecmp(hash_method, "clear", strlen(hash_method)) == 0) { /* {clear} */
