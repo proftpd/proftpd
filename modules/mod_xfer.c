@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.279 2010-12-09 00:38:28 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.280 2010-12-10 17:11:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2338,9 +2338,12 @@ MODRET xfer_log_retr(cmd_rec *cmd) {
 }
 
 static int noxfer_timeout_cb(CALLBACK_FRAME) {
-  if (session.sf_flags & SF_XFER)
+  const char *proto;
+
+  if (session.sf_flags & SF_XFER) {
     /* Transfer in progress, ignore this timeout */
     return 1;
+  }
 
   pr_event_generate("core.timeout-no-transfer", NULL);
   pr_response_send_async(R_421,
@@ -2363,7 +2366,11 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
        "and any router, NAT, and firewall rules in the network path.");
   }
 
-  session_exit(PR_LOG_NOTICE, "FTP no transfer timeout, disconnected", 0, NULL);
+  proto = pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT);
+  session_exit(PR_LOG_NOTICE,
+    pstrcat(session.pool, proto, " no transfer timeout, disconnected", NULL),
+    0, NULL);
+
   return 0;
 }
 
