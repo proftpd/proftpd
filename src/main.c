@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.407 2010-12-10 05:29:31 castaglia Exp $
+ * $Id: main.c,v 1.408 2010-12-10 05:52:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -496,6 +496,10 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
     }
   }
 
+  /* Note: validate is only TRUE for the CMD phase, for specific handlers
+   * (as opposed to any C_ANY handlers).
+   */
+
   if (!c &&
       !success &&
       validate) {
@@ -514,6 +518,8 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
           method[i] = ' ';
       }
     }
+
+    pr_event_generate("core.unhandled-command", cmd);
 
     pr_response_add_err(R_500, _("%s not understood"), method);
     success = -1;
