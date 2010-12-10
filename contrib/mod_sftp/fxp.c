@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.113 2010-12-08 19:59:19 castaglia Exp $
+ * $Id: fxp.c,v 1.114 2010-12-10 05:34:58 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -9526,6 +9526,8 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
         break;
 
       default:
+        pr_event_generate("sftp.invalid-request", fxp);
+
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unhandled SFTP request type %d", fxp->request_type);
         destroy_pool(fxp->pool);

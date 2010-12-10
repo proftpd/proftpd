@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.19 2010-10-29 22:50:08 castaglia Exp $
+ * $Id: packet.c,v 1.20 2010-12-10 05:34:58 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1409,6 +1409,8 @@ int sftp_ssh2_packet_handle(void) {
       }
 
     default:
+      pr_event_generate("ssh2.invalid-packet", pkt);
+
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unhandled %s (%d) message, disconnecting",
         sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
