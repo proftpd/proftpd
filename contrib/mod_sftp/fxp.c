@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.114 2010-12-10 05:34:58 castaglia Exp $
+ * $Id: fxp.c,v 1.115 2010-12-10 18:05:57 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -7190,6 +7190,10 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     if (path_list->nelts == max_entries) {
       break;
     }
+  }
+
+  if (pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER) > 0) {
+    pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
   }
 
   if (pr_data_get_timeout(PR_DATA_TIMEOUT_STALLED) > 0) {
