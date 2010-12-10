@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.406 2010-08-14 16:49:20 castaglia Exp $
+ * $Id: main.c,v 1.407 2010-12-10 05:29:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -939,6 +939,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
       destroy_pool(cmd->pool);
 
     } else {
+      pr_event_generate("core.invalid-command", NULL);
       pr_response_send(R_500, _("Invalid command: try being more creative"));
     }
 
