@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.115 2010-12-10 18:05:57 castaglia Exp $
+ * $Id: fxp.c,v 1.116 2010-12-10 19:05:11 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -346,7 +346,7 @@ static int fxp_timeout_stalled_cb(CALLBACK_FRAME) {
   pr_event_generate("core.timeout-stalled", NULL);
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-    "Data transfer stalled timeout (%d secs) reached",
+    "SFTP data transfer stalled timeout (%d secs) reached",
     pr_data_get_timeout(PR_DATA_TIMEOUT_STALLED));
   SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION,
     "data stalled timeout reached");

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.52 2010-12-09 05:58:20 castaglia Exp $
+ * $Id: scp.c,v 1.53 2010-12-10 19:05:11 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -31,6 +31,7 @@
 #include "channel.h"
 #include "scp.h"
 #include "misc.h"
+#include "disconnect.h"
 
 #define SFTP_SCP_ST_MODE_MASK	(S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO)
 
@@ -137,6 +138,18 @@ static int need_confirm;
 static const char *trace_channel = "scp";
 
 static int send_path(pool *, uint32_t, struct scp_path *);
+
+static int scp_timeout_stalled_cb(CALLBACK_FRAME) {
+  pr_event_generate("core.timeout-stalled", NULL);
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+    "SCP data transfer stalled timeout (%d secs) reached",
+    pr_data_get_timeout(PR_DATA_TIMEOUT_STALLED));
+  SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION,
+    "data stalled timeout reached");
+
+  return 0;
+}
 
 static cmd_rec *scp_cmd_alloc(pool *p, const char *name, const char *arg) {
   cmd_rec *cmd;
@@ -1793,6 +1806,14 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
    */
   session.curr_phase = PRE_CMD;
 
+  if (pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER) > 0) {
+    pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
+  }
+
+  if (pr_data_get_timeout(PR_DATA_TIMEOUT_STALLED) > 0) {
+    pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+  }
+
   if (need_confirm) {
     /* Handle the confirmation/response from the client. */
     if (read_confirm(pkt, &data, &datalen) < 0) {
@@ -2129,6 +2150,7 @@ int sftp_scp_open_session(uint32_t channel_id) {
   pool *sub_pool;
   struct scp_paths *paths;
   struct scp_session *sess, *last;
+  int timeout_stalled;
 
   /* Check to see if we already have an SCP session opened for the given
    * channel ID.
@@ -2196,6 +2218,14 @@ int sftp_scp_open_session(uint32_t channel_id) {
     scp_sessions = sess;
   }
 
+  pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
+
+  timeout_stalled = pr_data_get_timeout(PR_DATA_TIMEOUT_STALLED);
+  if (timeout_stalled > 0) {
+    pr_timer_add(timeout_stalled, PR_TIMER_STALLED, NULL,
+      scp_timeout_stalled_cb, "TimeoutStalled");
+  }
+
   pr_session_set_protocol("scp");
   return 0;
 }
@@ -2209,6 +2239,7 @@ int sftp_scp_close_session(uint32_t channel_id) {
     pr_signals_handle();
 
     if (sess->channel_id == channel_id) {
+      pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
 
       if (sess->next)
         sess->next->prev = sess->prev;
