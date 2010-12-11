@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.35 2010-12-03 20:42:57 castaglia Exp $
+ * $Id: channel.c,v 1.36 2010-12-11 20:58:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1386,6 +1386,10 @@ int sftp_channel_init(void) {
   handler = pcalloc(channel_pool, sizeof(struct ssh2_channel_exec_handler));
 
   handler->m = &sftp_module;
+
+  /* XXX In the future, we should be able to handle clients which request
+   * something like "/usr/bin/scp", in addition to just "scp".
+   */
   handler->command = pstrdup(channel_pool, "scp");
   handler->set_params = sftp_scp_set_params;
   handler->prepare = sftp_scp_open_session;
