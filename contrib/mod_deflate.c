@@ -25,7 +25,7 @@
  * This is mod_deflate, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_deflate.c,v 1.3 2010-12-11 20:12:06 castaglia Exp $
+ * $Id: mod_deflate.c,v 1.4 2010-12-11 20:37:09 castaglia Exp $
  * $Libraries: -lz $
  */
 
@@ -849,8 +849,8 @@ static conftable deflate_conftab[] = {
 };
 
 static cmdtable deflate_cmdtab[] = {
-  { CMD, C_OPTS "_MODE",	G_NONE, deflate_opts,	FALSE,	FALSE },
-  { CMD, C_MODE,		G_NONE, deflate_mode,	FALSE,	FALSE },
+  { CMD, C_OPTS "_MODE",	G_NONE, deflate_opts,	FALSE, FALSE, CL_MISC },
+  { CMD, C_MODE,		G_NONE, deflate_mode,	FALSE, FALSE, CL_MISC },
   { 0, NULL }
 };
 
