@@ -2874,6 +2874,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   char *subj = NULL;
   static unsigned char logged_data = FALSE;
   SSL *ssl = NULL;
+  BIO *rbio = NULL, *wbio = NULL;
 
   if (!ssl_ctx) {
     tls_log("%s", "unable to start session: null SSL_CTX");
@@ -2896,8 +2897,10 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     pr_inet_set_nonblock(conn->pool, conn);
   }
 
-  /* This works with either rfd or wfd (I hope) */
-  SSL_set_fd(ssl, conn->rfd);
+  /* This works with either rfd or wfd (I hope)  */
+  rbio = BIO_new_socket(conn->rfd, FALSE);
+  wbio = BIO_new_socket(conn->rfd, FALSE);
+  SSL_set_bio(ssl, rbio, wbio);
 
   /* If configured, set a timer for the handshake. */
   if (tls_handshake_timeout) {
@@ -2983,6 +2986,14 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   /* Disable the handshake timer. */
   pr_timer_remove(tls_handshake_timer_id, &tls_module);
+
+  /* Manually update the raw bytes counters with the network IO from the
+   * SSL handshake.
+   */
+  session.total_raw_in += (BIO_number_read(rbio) +
+    BIO_number_read(wbio));
+  session.total_raw_out += (BIO_number_written(rbio) +
+    BIO_number_written(wbio));
 
   /* Stash the SSL object in the pointers of the correct NetIO streams. */
   if (conn == session.c) {
@@ -3182,9 +3193,20 @@ static void tls_cleanup(int flags) {
 static void tls_end_sess(SSL *ssl, int strms, int flags) {
   int res = 0;
   int shutdown_state;
+  BIO *rbio, *wbio;
+  int bread, bwritten;
+  unsigned long rbio_rbytes, rbio_wbytes, wbio_rbytes, wbio_wbytes; 
 
   if (!ssl)
     return;
+
+  rbio = SSL_get_rbio(ssl);
+  rbio_rbytes = BIO_number_read(rbio);
+  rbio_wbytes = BIO_number_written(rbio);
+
+  wbio = SSL_get_wbio(ssl);
+  wbio_rbytes = BIO_number_read(wbio);
+  wbio_wbytes = BIO_number_written(wbio);
 
   /* A 'close_notify' alert (SSL shutdown message) may have been previously
    * sent to the client via tls_netio_shutdown_cb().
@@ -3281,6 +3303,22 @@ static void tls_end_sess(SSL *ssl, int strms, int flags) {
         tls_fatal_error(err_code, __LINE__);
         break;
     }
+  }
+
+  bread = (BIO_number_read(rbio) - rbio_rbytes) +
+    (BIO_number_read(wbio) - wbio_rbytes);
+  bwritten = (BIO_number_written(rbio) - rbio_wbytes) +
+    (BIO_number_written(wbio) - wbio_wbytes);
+
+  /* Manually update session.total_raw_in/out, in order to have %I/%O be
+   * accurately represented for the raw traffic.
+   */
+  if (bread > 0) {
+    session.total_raw_in += bread;
+  }
+
+  if (bwritten > 0) {
+    session.total_raw_out += bwritten;
   }
 
   SSL_free(ssl);
@@ -5405,11 +5443,12 @@ static int tls_netio_poll_cb(pr_netio_stream_t *nstrm) {
   FD_ZERO(&rfds);
   FD_ZERO(&wfds);
 
-  if (nstrm->strm_mode == PR_NETIO_IO_RD)
+  if (nstrm->strm_mode == PR_NETIO_IO_RD) {
     FD_SET(nstrm->strm_fd, &rfds);
 
-  else
+  } else {
     FD_SET(nstrm->strm_fd, &wfds);
+  }
 
   tval.tv_sec = (nstrm->strm_flags & PR_NETIO_SESS_INTR) ?
     nstrm->strm_interval : 10;
@@ -5488,8 +5527,45 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
 static int tls_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
     size_t buflen) {
 
-  if (nstrm->strm_data)
-    return tls_read((SSL *) nstrm->strm_data, buf, buflen);
+  if (nstrm->strm_data) {
+    SSL *ssl;
+    BIO *rbio, *wbio;
+    int bread = 0, bwritten = 0;
+    ssize_t res = 0;
+    unsigned long rbio_rbytes, rbio_wbytes, wbio_rbytes, wbio_wbytes;
+
+    ssl = nstrm->strm_data;
+
+    rbio = SSL_get_rbio(ssl);
+    rbio_rbytes = BIO_number_read(rbio);
+    rbio_wbytes = BIO_number_written(rbio);
+
+    wbio = SSL_get_wbio(ssl);
+    wbio_rbytes = BIO_number_read(wbio);
+    wbio_wbytes = BIO_number_written(wbio);
+
+    res = tls_read(ssl, buf, buflen);
+
+    bread = (BIO_number_read(rbio) - rbio_rbytes) +
+      (BIO_number_read(wbio) - wbio_rbytes);
+    bwritten = (BIO_number_written(rbio) - rbio_wbytes) +
+      (BIO_number_written(wbio) - wbio_wbytes);
+
+    /* Manually update session.total_raw_in with the difference between
+     * the raw bytes read in versus the non-SSL bytes read in, in order to
+     * have %I be accurately represented for the raw traffic.
+     */
+    session.total_raw_in += (bread - res);
+
+    /* Manually update session.total_raw_out, in order to have %O be
+     * accurately represented for the raw traffic.
+     */
+    if (bwritten > 0) {
+      session.total_raw_out += bwritten;
+    }
+
+    return res;
+  }
 
   return read(nstrm->strm_fd, buf, buflen);
 }
@@ -5521,11 +5597,39 @@ static int tls_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
          nstrm->strm_type == PR_NETIO_STRM_DATA)) {
       SSL *ssl;
 
-      ssl = (SSL *) nstrm->strm_data;
+      ssl = nstrm->strm_data;
       if (ssl) {
+        BIO *rbio, *wbio;
+        int bread = 0, bwritten = 0;
+        unsigned long rbio_rbytes, rbio_wbytes, wbio_rbytes, wbio_wbytes;
+
+        rbio = SSL_get_rbio(ssl);
+        rbio_rbytes = BIO_number_read(rbio);
+        rbio_wbytes = BIO_number_written(rbio);
+
+        wbio = SSL_get_wbio(ssl);
+        wbio_rbytes = BIO_number_read(wbio);
+        wbio_wbytes = BIO_number_written(wbio);
+
         if (!(SSL_get_shutdown(ssl) & SSL_SENT_SHUTDOWN)) {
           /* We haven't sent a 'close_notify' alert yet; do so now. */
           SSL_shutdown(ssl);
+        }
+
+        bread = (BIO_number_read(rbio) - rbio_rbytes) +
+          (BIO_number_read(wbio) - wbio_rbytes);
+        bwritten = (BIO_number_written(rbio) - rbio_wbytes) +
+          (BIO_number_written(wbio) - wbio_wbytes);
+
+        /* Manually update session.total_raw_in/out, in order to have %I/%O be
+         * accurately represented for the raw traffic.
+         */
+        if (bread > 0) {
+          session.total_raw_in += bread;
+        }
+
+        if (bwritten > 0) {
+          session.total_raw_out += bwritten;
         }
       }
     }
@@ -5538,6 +5642,21 @@ static int tls_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
     size_t buflen) {
 
   if (nstrm->strm_data) {
+    SSL *ssl;
+    BIO *rbio, *wbio;
+    int bread = 0, bwritten = 0;
+    ssize_t res = 0;
+    unsigned long rbio_rbytes, rbio_wbytes, wbio_rbytes, wbio_wbytes;
+
+    ssl = nstrm->strm_data;
+
+    rbio = SSL_get_rbio(ssl);
+    rbio_rbytes = BIO_number_read(rbio);
+    rbio_wbytes = BIO_number_written(rbio);
+
+    wbio = SSL_get_wbio(ssl);
+    wbio_rbytes = BIO_number_read(wbio);
+    wbio_wbytes = BIO_number_written(wbio);
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
     if (tls_data_renegotiate_limit &&
@@ -5559,15 +5678,35 @@ static int tls_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
       tls_log("requesting TLS renegotiation on data channel "
         "(%" PR_LU " KB data limit)",
         (pr_off_t) (tls_data_renegotiate_limit / 1024));
-      SSL_renegotiate((SSL *) nstrm->strm_data);
-      /* SSL_do_handshake((SSL *) nstrm->strm_data); */
+      SSL_renegotiate(ssl);
+      /* SSL_do_handshake(ssl); */
 
       pr_timer_add(tls_renegotiate_timeout, -1, &tls_module,
         tls_renegotiate_timeout_cb, "SSL/TLS renegotiation");
     }
 #endif
 
-    return tls_write((SSL *) nstrm->strm_data, buf, buflen);
+    res = tls_write(ssl, buf, buflen);
+
+    bread = (BIO_number_read(rbio) - rbio_rbytes) +
+      (BIO_number_read(wbio) - wbio_rbytes);
+    bwritten = (BIO_number_written(rbio) - rbio_wbytes) +
+      (BIO_number_written(wbio) - wbio_wbytes);
+
+    /* Manually update session.total_raw_in, in order to have %I be
+     * accurately represented for the raw traffic.
+     */
+    if (bread > 0) {
+      session.total_raw_in += bread;
+    }
+
+    /* Manually update session.total_raw_out with the difference between
+     * the raw bytes written out versus the non-SSL bytes written out,
+     * in order to have %) be accurately represented for the raw traffic.
+     */
+    session.total_raw_out += (bwritten - res);
+
+    return res;
   }
 
   return write(nstrm->strm_fd, buf, buflen);

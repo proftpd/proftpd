@@ -4,9 +4,12 @@ use lib qw(t/lib);
 use base qw(ProFTPD::TestSuite::Child);
 use strict;
 
+use Compress::Raw::Zlib;
+use Compress::Zlib;
 use File::Path qw(mkpath);
 use File::Spec;
 use IO::Handle;
+use POSIX qw(:fcntl_h);
 
 use ProFTPD::TestSuite::FTP;
 use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite :features);
@@ -101,6 +104,31 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  extlog_ftp_raw_bytes_bug3554 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  extlog_ftp_deflate_raw_bytes_bug3554 => {
+    order => ++$order,
+    test_class => [qw(bug forking mod_deflate)],
+  },
+
+  extlog_ftps_raw_bytes_bug3554 => {
+    order => ++$order,
+    test_class => [qw(bug forking mod_tls)],
+  },
+
+  extlog_sftp_raw_bytes_bug3554 => {
+    order => ++$order,
+    test_class => [qw(bug forking mod_sftp)],
+  },
+
+  extlog_scp_raw_bytes_bug3554 => {
+    order => ++$order,
+    test_class => [qw(bug forking mod_sftp)],
+  },
+
 };
 
 sub new {
@@ -109,6 +137,21 @@ sub new {
 
 sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
+}
+
+sub set_up {
+  my $self = shift;
+  $self->SUPER::set_up(@_);
+
+  # Make sure that mod_sftp does not complain about permissions on the hostkey
+  # files.
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  unless (chmod(0400, $rsa_host_key, $dsa_host_key)) {
+    die("Can't set perms on $rsa_host_key, $dsa_host_key: $!");
+  }
 }
 
 sub extlog_retr_bug3137 {
@@ -2521,6 +2564,950 @@ sub extlog_pass_failed_var_s_bug3528 {
 
   if ($ex) {
     die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub extlog_ftp_raw_bytes_bug3554 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/extlog.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
+
+  my $test_file = File::Spec->rel2abs($config_file);
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'response:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    LogFormat => 'custom "%{protocol} %m \"%S\" %I %O"',
+    ExtendedLog => "$ext_log ALL custom",
+    ServerIdent => 'on "FTP Server"',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+      $client->type('ascii');
+
+      my $conn = $client->stor_raw('test.txt');
+      unless ($conn) {
+        die("STOR test.txt failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf = "ABCD\n" x 8;
+      $conn->write($buf, length($buf), 30);
+      $conn->close();
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      $client->quit();
+
+      my $expected = 226;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = 'Transfer complete';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the %I/%O variables
+  # are properly populated
+  if (open(my $fh, "< $ext_log")) {
+    while (my $line = <$fh>) {
+      chomp($line);
+
+      if ($line =~ /^\S+ (\S+) (.*?) (\d+) (\d+)$/) {
+        my $cmd = $1;
+        my $resp = $2;
+        my $bytes_in = $3;
+        my $bytes_out = $4;
+
+        # Only watch for the QUIT command, to get the session total.
+        next unless $cmd eq 'QUIT';
+
+        my $expected = 108;
+        $self->assert($expected == $bytes_in,
+          test_msg("Expected $expected, got $bytes_in"));
+
+        # Why would this number vary so widely?  It's because of the notation
+        # used to express the port number in a PASV response.  That port
+        # number is ephemeral, chosen by the kernel.
+
+        my $expected_min = 232;
+        my $expected_max = 236;
+        $self->assert($expected_min <= $bytes_out ||
+                      $expected_max >= $bytes_out,
+          test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
+      }
+    }
+
+    close($fh);
+
+  } else {
+    die("Can't read $ext_log: $!");
+  }
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub extlog_ftp_deflate_raw_bytes_bug3554 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/extlog.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
+
+  my $test_file = File::Spec->rel2abs($config_file);
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 deflate:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+    TimeoutLinger => 1,
+
+    LogFormat => 'custom "%{protocol} %m \"%S\" %I %O"',
+    ExtendedLog => "$ext_log ALL custom",
+    ServerIdent => 'on "FTP Server"',
+
+    IfModules => {
+      'mod_deflate.c' => {
+        DeflateEngine => 'on',
+        DeflateLog => $log_file,
+      },
+
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+      $client->mode('Z');
+
+      my $conn = $client->stor_raw('test.txt');
+      unless ($conn) {
+        die("STOR test.txt failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf = "ABCD\n" x 8;
+      my $deflated = compress($buf);
+      $conn->write($deflated, length($deflated), 30);
+      $conn->close();
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      $client->quit();
+
+      my $expected = 226;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = 'Transfer complete';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the %I/%O variables
+  # are properly populated
+  if (open(my $fh, "< $ext_log")) {
+    while (my $line = <$fh>) {
+      chomp($line);
+
+      if ($line =~ /^\S+ (\S+) (.*?) (\d+) (\d+)$/) {
+        my $cmd = $1;
+        my $resp = $2;
+        my $bytes_in = $3;
+        my $bytes_out = $4;
+
+        # Only watch for the QUIT command, to get the session total.
+        next unless $cmd eq 'QUIT';
+
+        my $expected = 76;
+        $self->assert($expected == $bytes_in,
+          test_msg("Expected $expected, got $bytes_in"));
+
+        # Why would this number vary so widely?  It's because of the notation
+        # used to express the port number in a PASV response.  That port
+        # number is ephemeral, chosen by the kernel.
+
+        my $expected_min = 232;
+        my $expected_max = 236;
+        $self->assert($expected_min <= $bytes_out ||
+                      $expected_max >= $bytes_out,
+          test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
+      }
+    }
+
+    close($fh);
+
+  } else {
+    die("Can't read $ext_log: $!");
+  }
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub extlog_ftps_raw_bytes_bug3554 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/extlog.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
+
+  my $test_file = File::Spec->rel2abs($config_file);
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $src_file = File::Spec->rel2abs("$tmpdir/src.txt");
+  if (open(my $fh, "> $src_file")) {
+    print $fh "ABCD\n" x 8192;
+    unless (close($fh)) {
+      die("Can't write $src_file: $!");
+    }
+
+  } else {
+    die("Can't open $src_file: $!");
+  }
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'response:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    LogFormat => 'custom "%{protocol} %m \"%S\" %I %O"',
+    ExtendedLog => "$ext_log ALL custom",
+    ServerIdent => 'on "FTP Server"',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $log_file,
+        TLSProtocol => 'SSLv3 TLSv1',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+        TLSOptions => 'NoSessionReuseRequired',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client = Net::FTPSSL->new('127.0.0.1',
+        Encryption => 'E',
+        Port => $port,
+      );
+
+      unless ($client) {
+        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      }
+
+      unless ($client->login($user, $passwd)) {
+        die("Can't login: " . $client->last_message());
+      }
+
+      unless ($client->binary()) {
+        die("Can't set transfer mode to binary: " . $client->last_message());
+      }
+
+      unless ($client->put($src_file, 'test.txt')) {
+        die("Can't upload '$src_file' to 'test.txt': " .
+          $client->last_message());
+      }
+
+      $client->quit();
+
+      unless (-f $test_file) {
+        die("File $test_file does not exist as expected");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh, 30) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  # Now, read in the ExtendedLog, and see whether the %I/%O variables
+  # are properly populated
+  if (open(my $fh, "< $ext_log")) {
+    while (my $line = <$fh>) {
+      chomp($line);
+
+      if ($line =~ /^\S+ (\S+) (.*?) (\d+) (\d+)$/) {
+        my $cmd = $1;
+        my $resp = $2;
+        my $bytes_in = $3;
+        my $bytes_out = $4;
+
+        # Only watch for the QUIT command, to get the session total.
+        next unless $cmd eq 'QUIT';
+
+        # The expected bytes in/out will vary on the ciphers used, etc.
+        my $expected_min = 42268;
+        my $expected_max = 42272;
+        $self->assert($expected_min <= $bytes_in ||
+                      $expected_max >= $bytes_in,
+          test_msg("Expected $expected_min - $expected_max, got $bytes_in"));
+
+        $expected_min = 6848;
+        $expected_max = 6848;
+        $self->assert($expected_min <= $bytes_out ||
+                      $expected_max >= $bytes_out,
+          test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
+      }
+    }
+
+    close($fh);
+
+  } else {
+    die("Can't read $ext_log: $!");
+  }
+
+  unlink($log_file);
+}
+
+sub extlog_sftp_raw_bytes_bug3554 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/extlog.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    LogFormat => 'custom "%{protocol} %m \"%S\" %I %O"',
+    ExtendedLog => "$ext_log ALL custom",
+    ServerIdent => 'on "FTP Server"',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $log_file",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $ssh2 = Net::SSH2->new();
+
+      sleep(1);
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($user, $passwd)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $fh = $sftp->open('test.txt', O_WRONLY|O_CREAT|O_TRUNC, 0644);
+      unless ($fh) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't open test.txt: [$err_name] ($err_code)");
+      }
+
+      print $fh "ABCD\n" x 8192;
+
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
+      $fh = undef;
+
+      # To issue the CHANNEL_CLOSE, we have to explicitly destroy the sftp
+      # object.  Sigh.
+      $sftp = undef;
+
+      $ssh2->disconnect();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  # Now, read in the ExtendedLog, and see whether the %I/%O variables
+  # are properly populated
+  if (open(my $fh, "< $ext_log")) {
+    while (my $line = <$fh>) {
+      chomp($line);
+
+      if ($line =~ /^\S+ (\S+) (.*?) (\d+) (\d+)$/) {
+        my $cmd = $1;
+        my $resp = $2;
+        my $bytes_in = $3;
+        my $bytes_out = $4;
+
+        # Only watch for the CHANNEL_CLOSE command, to get the session total.
+        next unless $cmd eq 'CHANNEL_CLOSE';
+
+        # The expected bytes in/out will vary on the ciphers used, etc.
+        my $expected_min = 34147;
+        my $expected_max = 34147;
+        $self->assert($expected_min <= $bytes_in ||
+                      $expected_max >= $bytes_in,
+          test_msg("Expected $expected_min - $expected_max, got $bytes_in"));
+
+        $expected_min = 2156;
+        $expected_max = 2156;
+        $self->assert($expected_min <= $bytes_out ||
+                      $expected_max >= $bytes_out,
+          test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
+      }
+    }
+
+    close($fh);
+
+  } else {
+    die("Can't read $ext_log: $!");
+  }
+
+  unlink($log_file);
+}
+
+sub extlog_scp_raw_bytes_bug3554 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/extlog.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $src_file = File::Spec->rel2abs("$tmpdir/src.txt");
+  if (open(my $fh, "> $src_file")) {
+    print $fh "ABCD\n" x 8192;
+    unless (close($fh)) {
+      die("Can't write $src_file: $!");
+    }
+
+  } else {
+    die("Can't open $src_file: $!");
+  }
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    LogFormat => 'custom "%{protocol} %m \"%S\" %I %O"',
+    ExtendedLog => "$ext_log ALL custom",
+    ServerIdent => 'on "FTP Server"',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $log_file",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $ssh2 = Net::SSH2->new();
+
+      sleep(1);
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($user, $passwd)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $res = $ssh2->scp_put($src_file, 'test.txt');
+      unless ($res) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't upload $src_file to server: [$err_name] ($err_code) $err_str");
+      }
+
+      $ssh2->disconnect();
+
+      unless (-f $test_file) {
+        die("File $test_file does not exist as expected");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  # Now, read in the ExtendedLog, and see whether the %I/%O variables
+  # are properly populated
+  if (open(my $fh, "< $ext_log")) {
+    while (my $line = <$fh>) {
+      chomp($line);
+
+      if ($line =~ /^\S+ (\S+) (.*?) (\d+) (\d+)$/) {
+        my $cmd = $1;
+        my $resp = $2;
+        my $bytes_in = $3;
+        my $bytes_out = $4;
+
+        # Only watch for the CHANNEL_CLOSE command, to get the session total.
+        next unless $cmd eq 'CHANNEL_CLOSE';
+
+        # The expected bytes in/out will vary on the ciphers used, etc.
+        my $expected_min = 42787;
+        my $expected_max = 42787;
+        $self->assert($expected_min <= $bytes_in ||
+                      $expected_max >= $bytes_in,
+          test_msg("Expected $expected_min - $expected_max, got $bytes_in"));
+
+        $expected_min = 1996;
+        $expected_max = 1996;
+        $self->assert($expected_min <= $bytes_out ||
+                      $expected_max >= $bytes_out,
+          test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
+      }
+    }
+
+    close($fh);
+
+  } else {
+    die("Can't read $ext_log: $!");
   }
 
   unlink($log_file);

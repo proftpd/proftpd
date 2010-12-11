@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.65 2010-10-27 03:07:19 castaglia Exp $
+ * $Id: proftpd.h,v 1.66 2010-12-11 21:06:32 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -177,6 +177,16 @@ typedef struct {
    * this session.
    */
   unsigned int total_files_xfer;
+
+  /* Total number of "raw" protocol bytes read in from the network for
+   * the session.
+   */
+  off_t total_raw_in;
+
+  /* Total number of "raw" protocol bytes written out to the network for
+   * the session.
+   */
+  off_t total_raw_out;
 
 } session_t;
 

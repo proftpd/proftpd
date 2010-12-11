@@ -76,6 +76,10 @@ ChangeLog files.
 
       Another new ListOption, NoErrorIfAbsent (Bug#3506)
 
+    LogFormat
+
+      %I, %O variables
+
     SFTPOptions
       OldProtocolCompat (Bug#3480)
 
@@ -93,4 +97,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2010-11-11 00:48:48 $
+Last Updated: $Date: 2010-12-11 21:06:32 $

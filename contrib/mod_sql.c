@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.191 2010-12-07 18:22:14 castaglia Exp $
+ * $Id: mod_sql.c,v 1.192 2010-12-11 21:06:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2222,6 +2222,16 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       }
       break;
 
+    case 'h':
+      argp = arg;
+      sstrncpy(argp, pr_netaddr_get_sess_remote_name(), sizeof(arg));
+      break;
+
+    case 'I':
+      argp = arg;
+      snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) session.total_raw_in);
+      break;
+
     case 'J':
       argp = arg;
       if (strcasecmp(cmd->argv[0], C_PASS) == 0 &&
@@ -2231,11 +2241,6 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       } else {
         sstrncpy(argp, cmd->arg, sizeof(arg));
       }
-      break;
-
-    case 'h':
-      argp = arg;
-      sstrncpy(argp, pr_netaddr_get_sess_remote_name(), sizeof(arg));
       break;
 
     case 'L':
@@ -2260,6 +2265,11 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
     case 'm':
       argp = arg;
       sstrncpy(argp, cmd->argv[0], sizeof(arg));
+      break;
+
+    case 'O':
+      argp = arg;
+      snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) session.total_raw_out);
       break;
 
     case 'P':

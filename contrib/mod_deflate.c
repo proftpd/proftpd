@@ -25,7 +25,7 @@
  * This is mod_deflate, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_deflate.c,v 1.4 2010-12-11 20:37:09 castaglia Exp $
+ * $Id: mod_deflate.c,v 1.5 2010-12-11 21:06:32 castaglia Exp $
  * $Libraries: -lz $
  */
 
@@ -307,6 +307,17 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
         deflate_zbuf = deflate_zbuf_ptr;
         deflate_zbuflen = 0;
 
+        /* Manually adjust the "raw" bytes in counter, so that it will
+         * be accurate for %I logging.
+         *
+         * We subtract the number we are returning here, since our return
+         * value will simply be added back to the counter in pr_netio_read().
+         * And if our subtraction causes an underflow, it's still OK since
+         * the subsequent addition will overflow, and get the value back to
+         * what it should be.
+         */
+        session.total_raw_in -= res;
+
         return res;
       }
 
@@ -323,6 +334,17 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
 
       deflate_zbuf += bufsz;
       deflate_zbuflen -= bufsz;
+
+      /* Manually adjust the "raw" bytes in counter, so that it will
+       * be accurate for %I logging.
+       *
+       * We subtract the number we are returning here, since our return
+       * value will simply be added back to the counter in pr_netio_read().
+       * And if our subtraction causes an underflow, it's still OK since
+       * the subsequent addition will overflow, and get the value back to
+       * what it should be.
+       */
+      session.total_raw_in -= res;
 
       return res;
     }
@@ -361,6 +383,11 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
 
       pr_trace_msg(trace_channel, 9,
         "read: read %d bytes of compressed data from client", nread);
+
+      /* Manually adjust the "raw" bytes in counter, so that it will
+       * be accurate for %I logging.
+       */
+      session.total_raw_in += nread;
 
       datalen = nread;
       zstrm->next_in = deflate_rbuf;
@@ -485,6 +512,11 @@ static int deflate_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
             return -1;
           }
 
+          /* Manually update the "raw" bytes counter, so that it will be
+           * accurate for %O logging.
+           */
+          session.total_raw_out += res;
+
           /* Watch out for short writes. */
           if (res == datalen) {
             break;
@@ -553,6 +585,11 @@ static int deflate_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
         return -1;
       }
 
+      /* Manually adjust the "raw" bytes counter, so that it will be
+       * accurate for %O logging.
+       */
+      session.total_raw_out += res;
+
       (void) pr_log_writefile(deflate_logfd, MOD_DEFLATE_VERSION,
         "wrote %d (of %lu) bytes of compressed of data to socket %d", res,
         (unsigned long) datalen, nstrm->strm_fd);
@@ -569,9 +606,22 @@ static int deflate_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
       }
     }
 
+    /* Manually adjust the "raw" bytes in counter, so that it will
+     * be accurate for %O logging.
+     *
+     * We subtract the number we are returning here, since our return
+     * value will simply be added back to the counter in pr_netio_write().
+     * And if our subtraction causes an underflow, it's still OK since
+     * the subsequent addition will overflow, and get the value back to
+     * what it should be.
+     */
+
+    res = (buflen - zstrm->avail_in);
+    session.total_raw_out -= res;
+
     pr_trace_msg(trace_channel, 9, "write: returning %d for %lu bytes",
-      (int) (buflen - zstrm->avail_in), (unsigned long) buflen);
-    return (buflen - zstrm->avail_in);
+      res, (unsigned long) buflen);
+    return res;
   }
 
   return write(nstrm->strm_fd, buf, buflen);

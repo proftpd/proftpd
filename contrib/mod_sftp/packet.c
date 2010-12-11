@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.20 2010-12-10 05:34:58 castaglia Exp $
+ * $Id: packet.c,v 1.21 2010-12-11 21:06:32 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -239,6 +239,7 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen) {
       }
     }
 
+    session.total_raw_in += reqlen;
     time(&last_recvd);
 
     if (res == remainlen)
@@ -1278,6 +1279,8 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
     return -1;
   }
 
+  session.total_raw_out += res;
+
   /* Always clear the iovec array after sending the data. */
   memset(packet_iov, 0, sizeof(packet_iov));
   packet_niov = 0;
@@ -1478,6 +1481,7 @@ int sftp_ssh2_packet_send_version(void) {
     }
 
     sent_version_id = TRUE;
+    session.total_raw_out += res;
   }
 
   return 0;

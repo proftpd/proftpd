@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.110 2010-12-11 20:38:58 castaglia Exp $
+ * $Id: mod_log.c,v 1.111 2010-12-11 21:06:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -102,6 +102,8 @@ struct logfile_struc {
 #define META_FILE_MODIFIED	30
 #define META_UID		31
 #define META_GID		32
+#define META_RAW_BYTES_IN	33
+#define META_RAW_BYTES_OUT	34
 
 /* For tracking the size of deleted files. */
 static off_t log_dele_filesz = 0;
@@ -123,10 +125,12 @@ static xaset_t			*log_set = NULL;
    %F			- Transfer path (filename for client)
    %f			- Filename
    %h			- Remote client DNS name
+   %I                   - Total number of "raw" bytes read in from network
    %J                   - Request (command) arguments (file.txt, etc)
    %L                   - Local server IP address
    %l			- Remote logname (from identd)
    %m			- Request (command) method (RETR, etc)
+   %O                   - Total number of "raw" bytes written out to network
    %P			- Process ID of child serving request
    %p			- Port of server serving request
    %r			- Full request (command)
@@ -283,6 +287,10 @@ static void logformat(char *nickname, char *fmts) {
             add_meta(&outs, META_REMOTE_HOST, 0);
             break;
 
+          case 'I':
+            add_meta(&outs, META_RAW_BYTES_IN, 0);
+            break;
+
           case 'J':
             add_meta(&outs, META_CMD_PARAMS, 0);
             break;
@@ -297,6 +305,10 @@ static void logformat(char *nickname, char *fmts) {
 
           case 'm':
             add_meta(&outs, META_METHOD, 0);
+            break;
+
+          case 'O':
+            add_meta(&outs, META_RAW_BYTES_OUT, 0);
             break;
 
           case 'p':
@@ -1130,6 +1142,17 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       break;
     }
 
+    case META_RAW_BYTES_IN:
+      argp = arg;
+      snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) session.total_raw_in);
+      m++;
+      break;
+
+    case META_RAW_BYTES_OUT:
+      argp = arg;
+      snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) session.total_raw_out);
+      m++;
+      break;
   }
  
   *f = m;

@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.43 2010-12-09 02:54:31 castaglia Exp $
+ * $Id: netio.c,v 1.44 2010-12-11 21:06:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -720,6 +720,7 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
     buflen -= bwritten;
   }
 
+  session.total_raw_out += total;
   return total;
 }
 
@@ -885,6 +886,7 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
     buflen -= bread;
   }
 
+  session.total_raw_in += total;
   return total;
 }
 
