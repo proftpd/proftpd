@@ -25,7 +25,7 @@
  * This is mod_deflate, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_deflate.c,v 1.2 2010-03-11 18:12:02 castaglia Exp $
+ * $Id: mod_deflate.c,v 1.3 2010-12-11 20:12:06 castaglia Exp $
  * $Libraries: -lz $
  */
 
@@ -391,7 +391,12 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
           size_t new_bufsz;
           Byte *tmp;
 
-          new_bufsz = deflate_zbufsz * 2;
+          new_bufsz = deflate_zbufsz;
+          while ((deflate_zbuflen + copylen) > new_bufsz) {
+            pr_signals_handle();
+            new_bufsz *= 2;
+          }
+
           pr_trace_msg(trace_channel, 9,
             "read: allocated new deflate buffer (size %lu)",
             (unsigned long) new_bufsz);
