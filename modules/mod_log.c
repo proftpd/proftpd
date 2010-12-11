@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.109 2010-11-04 18:51:29 castaglia Exp $
+ * $Id: mod_log.c,v 1.110 2010-12-11 20:38:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1197,7 +1197,17 @@ MODRET log_any(cmd_rec *cmd) {
   /* If not in anon mode, only handle logs for main servers */
   for (lf = logs; lf; lf = lf->next) {
     if (lf->lf_fd != -1 &&
-        (cmd->class & lf->lf_classes)) {
+
+        /* If the logging class of this command is one of the classes
+         * configured for this ExtendedLog...
+         */ 
+        ((cmd->class & lf->lf_classes) ||
+
+         /* ...or if the logging class of this command is unknown (defaults to
+          * zero), and this ExtendedLog is configured to log ALL commands, then
+          * log it.
+          */
+         (cmd->class == 0 && lf->lf_classes == CL_ALL))) {
 
       if (!session.anon_config &&
           lf->lf_conf &&
