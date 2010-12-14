@@ -61,6 +61,8 @@ ChangeLog files.
 
     SFTPClientAlive
 
+    SFTPServices
+
   + Changed configuration directives:
 
     BanOnEvent
@@ -97,4 +99,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2010-12-11 21:06:32 $
+Last Updated: $Date: 2010-12-14 06:35:23 $
