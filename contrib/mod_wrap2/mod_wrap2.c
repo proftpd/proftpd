@@ -36,6 +36,7 @@ typedef struct regtab_obj {
 } wrap2_regtab_t;
 
 module wrap2_module;
+unsigned long wrap2_opts = 0UL;
 
 /* Wrap tables for the current session */
 static char *wrap2_allow_table = NULL;
@@ -51,7 +52,7 @@ static wrap2_regtab_t *wrap2_regtab_list = NULL;
 static int wrap2_logfd = -1;
 static char *wrap2_logname = NULL;
 
-static unsigned char wrap2_engine = FALSE;
+static int wrap2_engine = FALSE;
 static char *wrap2_service_name = WRAP2_DEFAULT_SERVICE_NAME;
 static char *wrap2_client_name = NULL;
 static config_rec *wrap2_ctxt = NULL;
@@ -1293,12 +1294,13 @@ MODRET set_wrapengine(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expecting Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = bool;
 
   return PR_HANDLED(cmd);
 }
@@ -1378,6 +1380,35 @@ MODRET set_wraplog(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: WrapOptions opt1 ... optN */
+MODRET set_wrapoptions(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  register unsigned int i = 0;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "CheckOnConnect") == 0) {
+      opts |= WRAP_OPT_CHECK_ON_CONNECT;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown WrapOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
 
   return PR_HANDLED(cmd);
 }
@@ -1549,11 +1580,12 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
       session.login_gid = pw->pw_gid;
 
       gr = pr_auth_getgrgid(cmd->pool, session.login_gid);
-      if (gr != NULL)
+      if (gr != NULL) {
         session.group = pstrdup(cmd->pool, gr->gr_name);
 
-      else
+      } else {
         wrap2_log("unable to resolve GID for '%s'", user);
+      }
 
     } else {
       wrap2_log("unable to resolve UID for '%s'", user);
@@ -1567,9 +1599,12 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
   
   c = find_config(wrap2_ctxt ? wrap2_ctxt->subset : main_server->conf,
     CONF_PARAM, "WrapUserTables", FALSE);
-
   while (c) {
-    array_header *user_array = make_array(cmd->tmp_pool, 0, sizeof(char *));
+    array_header *user_array;
+
+    pr_signals_handle();
+
+    user_array = make_array(cmd->tmp_pool, 0, sizeof(char *));
     *((char **) push_array(user_array)) = pstrdup(cmd->tmp_pool, user);
 
     /* Check the user OR expression. Do not forget the offset, to skip
@@ -1594,13 +1629,18 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
   /* Next, search for group-specific access tables.  Multiple WrapGroupTables
    * directives are allowed.
    */ 
-  if (!have_tables)
+  if (!have_tables) {
     c = find_config(wrap2_ctxt ? wrap2_ctxt->subset : main_server->conf,
       CONF_PARAM, "WrapGroupTables", FALSE);
+  }
 
   while (c) {
-    array_header *gid_array = make_array(cmd->pool, 0, sizeof(gid_t));
-    array_header *group_array = make_array(cmd->pool, 0, sizeof(char *));
+    array_header *gid_array, *group_array;
+
+    pr_signals_handle();
+
+    gid_array = make_array(cmd->pool, 0, sizeof(gid_t));
+    group_array = make_array(cmd->pool, 0, sizeof(char *));
 
     if (pr_auth_getgroups(cmd->pool, user, &gid_array, &group_array) < 1) {
       wrap2_log("no supplemental groups found for user '%s'", user);
@@ -1630,9 +1670,10 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
   /* Finally for globally-applicable access files.  Only one such directive
    * is allowed.
    */
-  if (!have_tables)
+  if (!have_tables) {
     c = find_config(wrap2_ctxt ? wrap2_ctxt->subset : main_server->conf,
       CONF_PARAM, "WrapTables", FALSE);
+  }
 
   if (c) {
     wrap2_allow_table = c->argv[0];
@@ -1648,7 +1689,6 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
     wrap2_log("using '%s' for deny table", wrap2_deny_table);
 
   } else {
-
     wrap2_log("no tables configured, allowing connection");
     return PR_DECLINED(cmd);
   }
@@ -1679,8 +1719,9 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
      */
     msg = get_param_ptr(wrap2_ctxt ? wrap2_ctxt->subset : main_server->conf,
       "WrapDenyMsg", FALSE);
-    if (msg != NULL)
+    if (msg != NULL) {
       msg = sreplace(cmd->tmp_pool, msg, "%u", user, NULL);
+    }
 
     pr_response_send(R_530, "%s", msg ? msg : _("Access denied"));
     end_login(0);
@@ -1788,17 +1829,18 @@ static int wrap2_init(void) {
 }
 
 static int wrap2_sess_init(void) {
-  unsigned char *engine = NULL;
+  config_rec *c;
 
-  engine = get_param_ptr(main_server->conf, "WrapEngine", FALSE);
-  if (engine != NULL &&
-      *engine == TRUE)
-    wrap2_engine = TRUE;
+  c = find_config(main_server->conf, CONF_PARAM, "WrapEngine", FALSE);
+  if (c) {
+    wrap2_engine = *((int *) c->argv[0]);
+  }
 
-  else {
-    wrap2_engine = FALSE;
+  if (!wrap2_engine) {
     return 0;
   }
+
+  wrap2_openlog();
 
   /* Look up any configured WrapServiceName */
   wrap2_service_name = get_param_ptr(main_server->conf, "WrapServiceName",
@@ -1806,10 +1848,58 @@ static int wrap2_sess_init(void) {
   if (wrap2_service_name == NULL)
     wrap2_service_name = WRAP2_DEFAULT_SERVICE_NAME;
 
-  wrap2_openlog();
-
   /* Make sure that tables will be closed when the child exits. */
   pr_event_register(&wrap2_module, "core.exit", wrap2_exit_ev, NULL);
+
+  c = find_config(main_server->conf, CONF_PARAM, "WrapOptions", FALSE);
+  if (c) {
+    wrap2_opts = *((unsigned long *) c->argv[0]);
+  }
+
+  if (wrap2_opts & WRAP_OPT_CHECK_ON_CONNECT) {
+    c = find_config(main_server->conf, CONF_PARAM, "WrapTables", FALSE);
+    if (c) {
+      wrap2_conn_t conn;
+
+      wrap2_allow_table = c->argv[0];
+      wrap2_deny_table = c->argv[1];
+      wrap2_client_name = "";
+
+      wrap2_log("using '%s' for allow table", wrap2_allow_table);
+      wrap2_log("using '%s' for deny table", wrap2_deny_table);
+      wrap2_log("looking under service name '%s'", wrap2_service_name);
+
+      memset(&conn, '\0', sizeof(conn));
+      wrap2_conn_set(&conn, WRAP2_CONN_DAEMON, wrap2_service_name,
+        WRAP2_CONN_SOCK_FD, session.c->rfd, 0);
+
+      wrap2_log("%s", "checking access rules for connection");
+
+      if (strcasecmp(wrap2_get_hostname(conn.client), WRAP2_PARANOID) == 0 ||
+          !wrap2_allow_access(&conn)) {
+        char *msg = NULL;
+
+        /* Log the denied connection */
+        wrap2_log("refused connection from %s", wrap2_get_client(&conn));
+
+        /* Broadcast this event to any interested listeners.  We use the same
+         * event name as mod_wrap for consistency.
+         */
+        pr_event_generate("mod_wrap.connection-denied", NULL);
+
+        /* Check for a configured WrapDenyMsg.  If not present, then use the
+         * default denied message.
+         */
+        msg = get_param_ptr(main_server->conf, "WrapDenyMsg", FALSE);
+        if (msg != NULL) {
+          msg = sreplace(session.pool, msg, "%u", "unknown", NULL);
+        }
+
+        pr_response_send(R_530, "%s", msg ? msg : _("Access denied"));
+        end_login(0);
+      }
+    }
+  }
 
   return 0;
 }
@@ -1823,6 +1913,7 @@ static conftable wrap2_conftab[] = {
   { "WrapEngine",		set_wrapengine,		NULL },
   { "WrapGroupTables",		set_wrapgrouptables,	NULL },
   { "WrapLog",			set_wraplog,		NULL },
+  { "WrapOptions",		set_wrapoptions,	NULL },
   { "WrapServiceName",		set_wrapservicename,	NULL },
   { "WrapTables",		set_wraptables,		NULL },
   { "WrapUserTables",		set_wrapusertables,	NULL },
