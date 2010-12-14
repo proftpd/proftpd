@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.28 2010-12-03 20:42:57 castaglia Exp $
+ * $Id: auth.c,v 1.29 2010-12-14 06:30:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -816,6 +816,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   uint32_t buflen;
   cmd_rec *cmd, *user_cmd, *pass_cmd;
   int res, send_userauth_fail = FALSE;
+  config_rec *c;
 
   buf = pkt->payload;
   buflen = pkt->payload_len;
@@ -1128,6 +1129,14 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   pr_cmd_dispatch_phase(pass_cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(pass_cmd, LOG_CMD, PR_CMD_DISPATCH_FL_CLEAR_RESPONSE);
+
+  /* At this point, we can look up the SFTPServices config, which may have
+   * been tweaked via mod_ifsession's user/group/class-specific sections.
+   */
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPServices", FALSE);
+  if (c) {
+    sftp_services = *((unsigned int *) c->argv[0]);
+  }
 
   return 1;
 }

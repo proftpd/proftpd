@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_sftp.h.in,v 1.15 2010-08-02 23:57:25 castaglia Exp $
+ * $Id: mod_sftp.h.in,v 1.16 2010-12-14 06:30:28 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_H
@@ -96,6 +96,10 @@
 #define SFTP_OPT_OLD_PROTO_COMPAT		0x0008
 #define SFTP_OPT_MATCH_KEY_SUBJECT		0x0010
 
+/* mod_sftp service flags */
+#define SFTP_SERVICE_FL_SFTP		0x0001
+#define SFTP_SERVICE_FL_SCP		0x0002
+
 /* Miscellaneous */
 extern int sftp_logfd;
 extern const char *sftp_logname;
@@ -103,6 +107,7 @@ extern pool *sftp_pool;
 extern conn_t *sftp_conn;
 extern unsigned int sftp_sess_state;
 extern unsigned long sftp_opts;
+extern unsigned int sftp_services;
 
 /* Used by other SFTP modules (e.g. mod_sftp_pam) for sending USERAUTH_BANNER
  * messages to the client.

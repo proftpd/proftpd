@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.36 2010-12-11 20:58:59 castaglia Exp $
+ * $Id: channel.c,v 1.37 2010-12-14 06:30:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -944,9 +944,17 @@ static int handle_subsystem_channel(struct ssh2_channel *chan,
     "'subsystem' channel request for '%s' subsystem", subsystem);
 
   if (strcmp(subsystem, "sftp") == 0) {
-    chan->prepare = sftp_fxp_open_session;
-    chan->handle_packet = sftp_fxp_handle_packet;
-    chan->finish = sftp_fxp_close_session;
+
+    if (sftp_services & SFTP_SERVICE_FL_SFTP) {
+      chan->prepare = sftp_fxp_open_session;
+      chan->handle_packet = sftp_fxp_handle_packet;
+      chan->finish = sftp_fxp_close_session;
+
+    } else {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "'%s' subsystem denied by SFTPServices config", subsystem);
+      return -1;
+    }
 
   } else {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
