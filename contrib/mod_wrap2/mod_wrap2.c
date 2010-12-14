@@ -316,6 +316,7 @@ static char *wrap2_get_hostname(wrap2_host_t *host) {
 
   if (*host->name == '\0') {
     int reverse_dns;
+    size_t namelen;
 
     /* Manually tweak the UseReverseDNS setting, and any caches, so that
      * we really do use the DNS name here if possible.
@@ -327,8 +328,15 @@ static char *wrap2_get_hostname(wrap2_host_t *host) {
     sstrncpy(host->name, pr_netaddr_get_dnsstr(session.c->remote_addr),
       sizeof(host->name));
 
+    /* If the retrieved hostname ends in a trailing period, trim it off. */
+    namelen = strlen(host->name); 
+    if (host->name[namelen-1] == '.') {
+      host->name[namelen-1] = '\0';
+      namelen--;
+    }
+
     pr_netaddr_set_reverse_dns(reverse_dns);
-    session.c->remote_addr->na_have_dnsstr = FALSE;
+    session.c->remote_addr->na_have_dnsstr = TRUE;
   }
 
   return host->name;
@@ -518,6 +526,9 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
     name = wrap2_get_hostname(host);
     len = strlen(name) - strlen(tok);
 
+    wrap2_log("comparing client hostname '%s' (part %s) against DNS "
+      "pattern '%s'", name, name+len, tok);
+
     return (len > 0 && (strcasecmp(tok, name + len) == 0));
 
 #ifdef PR_USE_IPV6 
@@ -585,9 +596,16 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
       }
     }
 
-    if (WRAP2_IS_NOT_INADDR(tok) &&
-        wrap2_match_string(tok, wrap2_get_hostname(host))) {
-      return TRUE;
+    if (WRAP2_IS_NOT_INADDR(tok)) {
+      char *name;
+
+      name = wrap2_get_hostname(host);
+      wrap2_log("comparing client hostname '%s' against DNS pattern '%s'",
+        name, tok);
+
+      if (wrap2_match_string(tok, name)) {
+        return TRUE;
+      }
     }
   }
 
