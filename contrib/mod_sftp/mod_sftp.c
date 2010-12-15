@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.41 2010-12-14 06:30:28 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.42 2010-12-15 00:58:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1367,38 +1367,6 @@ MODRET set_sftprekey(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: SFTPServices service1 ... serviceN */
-MODRET set_sftpservices(cmd_rec *cmd) {
-  register unsigned int i;
-  config_rec *c;
-  unsigned int services = 0;
-
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  if (cmd->argc < 2) {
-    CONF_ERROR(cmd, "wrong number of parameters");
-  }
-
-  for (i = 1; i < cmd->argc; i++) {
-    if (strcasecmp(cmd->argv[i], "sftp") == 0) {
-      services |= SFTP_SERVICE_FL_SFTP;
-
-    } else if (strcasecmp(cmd->argv[i], "scp") == 0) {
-      services |= SFTP_SERVICE_FL_SCP;
-
-    } else {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown SFTPService '",
-        cmd->argv[i], "'", NULL));
-    } 
-  }
-
-  c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = palloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[0]) = services; 
-
-  return PR_HANDLED(cmd);
-}
-
 /* usage: SFTPTrafficPolicy policy */
 MODRET set_sftptrafficpolicy(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
@@ -1858,7 +1826,6 @@ static conftable sftp_conftab[] = {
   { "SFTPOptions",		set_sftpoptions,		NULL },
   { "SFTPPassPhraseProvider",	set_sftppassphraseprovider,	NULL },
   { "SFTPRekey",		set_sftprekey,			NULL },
-  { "SFTPServices",		set_sftpservices,		NULL },
   { "SFTPTrafficPolicy",	set_sftptrafficpolicy,		NULL },
   { NULL }
 };

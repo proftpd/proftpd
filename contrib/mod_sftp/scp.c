@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.54 2010-12-14 06:30:28 castaglia Exp $
+ * $Id: scp.c,v 1.55 2010-12-15 00:58:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1915,7 +1915,7 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
 
   if (!(sftp_services & SFTP_SERVICE_FL_SCP)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "%s", "'scp' exec request denied by SFTPServices config");
+      "%s", "'scp' exec request denied by Protocols config");
     errno = EPERM;
     return -1;
   }

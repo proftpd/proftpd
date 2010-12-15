@@ -654,7 +654,7 @@ my $TESTS = {
     test_class => [qw(forking rootprivs sftp ssh2)],
   },
 
-  sftp_config_services => {
+  sftp_config_protocols => {
     order => ++$order,
     test_class => [qw(forking sftp ssh2)],
   },
@@ -804,7 +804,7 @@ my $TESTS = {
     test_class => [qw(bug forking mod_ban sftp ssh2)],
   },
 
-  sftp_ifsess_services => {
+  sftp_ifsess_protocols => {
     order => ++$order,
     test_class => [qw(forking mod_ifsession sftp ssh2)],
   },
@@ -929,7 +929,7 @@ my $TESTS = {
     test_class => [qw(forking scp ssh2)],
   },
 
-  scp_config_services => {
+  scp_config_protocols => {
     order => ++$order,
     test_class => [qw(forking scp ssh2)],
   },
@@ -1079,7 +1079,7 @@ my $TESTS = {
     test_class => [qw(forking mod_sql mod_sql_sqlite sftp ssh2)],
   },
 
-  scp_ifsess_services => {
+  scp_ifsess_protocols => {
     order => ++$order,
     test_class => [qw(forking mod_ifsession scp ssh2)],
   },
@@ -19913,7 +19913,7 @@ sub sftp_config_rootlogin {
   unlink($log_file);
 }
 
-sub sftp_config_services {
+sub sftp_config_protocols {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -19972,7 +19972,7 @@ sub sftp_config_services {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
-        "SFTPServices scp",
+        "Protocols scp",
       ],
     },
   };
@@ -25883,7 +25883,7 @@ sub sftp_ban_max_login_attempts {
   unlink($log_file);
 }
 
-sub sftp_ifsess_services {
+sub sftp_ifsess_protocols {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -25952,11 +25952,11 @@ sub sftp_ifsess_services {
     print $fh <<EOC;
 <IfModule mod_ifsession.c>
   <IfUser foo>
-    SFTPServices sftp scp
+    Protocols sftp scp
   </IfUser>
 
   <IfUser $user>
-    SFTPServices scp
+    Protocols scp
   </IfUser>
 </IfModule>
 EOC
@@ -30269,7 +30269,7 @@ sub scp_config_subdir_upload_allowed {
   unlink($log_file);
 }
 
-sub scp_config_services {
+sub scp_config_protocols {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -30330,7 +30330,7 @@ sub scp_config_services {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
-        "SFTPServices sftp",
+        "Protocols sftp",
       ],
     },
   };
@@ -35925,7 +35925,7 @@ EOS
   unlink($log_file);
 }
 
-sub scp_ifsess_services {
+sub scp_ifsess_protocols {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -35996,11 +35996,11 @@ sub scp_ifsess_services {
     print $fh <<EOC;
 <IfModule mod_ifsession.c>
   <IfUser foo>
-    SFTPServices sftp scp
+    Protocols sftp scp
   </IfUser>
 
   <IfUser $user>
-    SFTPServices sftp
+    Protocols sftp
   </IfUser>
 </IfModule>
 EOC

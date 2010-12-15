@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.29 2010-12-14 06:30:28 castaglia Exp $
+ * $Id: auth.c,v 1.30 2010-12-15 00:58:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1130,12 +1130,34 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   pr_cmd_dispatch_phase(pass_cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(pass_cmd, LOG_CMD, PR_CMD_DISPATCH_FL_CLEAR_RESPONSE);
 
-  /* At this point, we can look up the SFTPServices config, which may have
+  /* At this point, we can look up the Protocols config, which may have
    * been tweaked via mod_ifsession's user/group/class-specific sections.
    */
-  c = find_config(main_server->conf, CONF_PARAM, "SFTPServices", FALSE);
+  c = find_config(main_server->conf, CONF_PARAM, "Protocols", FALSE);
   if (c) {
-    sftp_services = *((unsigned int *) c->argv[0]);
+    register unsigned int i;
+    unsigned int services = 0UL;
+    array_header *protocols;
+    char **elts; 
+
+    protocols = c->argv[0];
+    elts = protocols->elts;
+
+    for (i = 0; i < protocols->nelts; i++) {
+      char *protocol;
+
+      protocol = elts[i];
+      if (protocol != NULL) {
+        if (strcasecmp(protocol, "sftp") == 0) {
+          services |= SFTP_SERVICE_FL_SFTP;
+
+        } else if (strcasecmp(protocol, "scp") == 0) {
+          services |= SFTP_SERVICE_FL_SCP;
+        }
+      }
+    }
+
+    sftp_services = services;
   }
 
   return 1;
