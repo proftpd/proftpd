@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.44 2010-12-11 21:06:32 castaglia Exp $
+ * $Id: netio.c,v 1.45 2010-12-15 23:59:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -659,6 +659,7 @@ int pr_netio_printf_async(pr_netio_stream_t *nstrm, char *fmt, ...) {
 
 int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   int bwritten = 0, total = 0;
+  pr_buffer_t *pbuf;
 
   /* Sanity check */
   if (!nstrm) {
@@ -670,6 +671,34 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
     errno = (nstrm->strm_errno ? nstrm->strm_errno : EBADF);
     return -1;
   }
+
+  /* Before we send out the data to the client, generate an event
+   * for any listeners which may want to examine this data.
+   */
+
+  pbuf = pcalloc(nstrm->strm_pool, sizeof(pr_buffer_t));
+  pbuf->buf = buf;
+  pbuf->buflen = buflen;
+  pbuf->current = pbuf->buf;
+  pbuf->remaining = 0;
+
+  switch (nstrm->strm_type) {
+    case PR_NETIO_STRM_CTRL:
+      pr_event_generate("core.ctrl-write", pbuf);
+      break;
+
+    case PR_NETIO_STRM_DATA:
+      pr_event_generate("core.data-write", pbuf);
+      break;
+
+    case PR_NETIO_STRM_OTHR:
+      pr_event_generate("core.other-write", pbuf);
+      break;
+  }
+
+  /* The event listeners may have changed the data to write out. */
+  buf = pbuf->buf;
+  buflen = pbuf->buflen - pbuf->remaining;
 
   while (buflen) {
 
@@ -727,6 +756,7 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   int flags = 0;
   int bwritten = 0, total = 0;
+  pr_buffer_t *pbuf;
 
   /* Sanity check */
   if (!nstrm) {
@@ -745,6 +775,34 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 
   if (fcntl(nstrm->strm_fd, F_SETFL, flags|O_NONBLOCK) == -1)
     return -1;
+
+  /* Before we send out the data to the client, generate an event
+   * for any listeners which may want to examine this data.
+   */
+
+  pbuf = pcalloc(nstrm->strm_pool, sizeof(pr_buffer_t));
+  pbuf->buf = buf;
+  pbuf->buflen = buflen;
+  pbuf->current = pbuf->buf;
+  pbuf->remaining = 0;
+
+  switch (nstrm->strm_type) {
+    case PR_NETIO_STRM_CTRL:
+      pr_event_generate("core.ctrl-write", pbuf);
+      break;
+
+    case PR_NETIO_STRM_DATA:
+      pr_event_generate("core.data-write", pbuf);
+      break;
+
+    case PR_NETIO_STRM_OTHR:
+      pr_event_generate("core.other-write", pbuf);
+      break;
+  }
+
+  /* The event listeners may have changed the data to write out. */
+  buf = pbuf->buf;
+  buflen = pbuf->buflen - pbuf->remaining;
 
   while (buflen) {
     do {

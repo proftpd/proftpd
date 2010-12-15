@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.130 2010-12-15 23:37:47 castaglia Exp $
+ * $Id: data.c,v 1.131 2010-12-15 23:59:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1062,6 +1062,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
     char *buf = session.xfer.buf;
+    pr_buffer_t *pbuf;
 
     if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
       int adjlen, buflen;
@@ -1076,6 +1077,22 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
           session.xfer.bufsize - buflen, 1);
         if (len < 0)
           return -1;
+
+        /* Before we process the data read from the client, generate an event
+         * for any listeners which may want to examine this data.
+         */
+
+        pbuf = pcalloc(session.xfer.p, sizeof(pr_buffer_t));
+        pbuf->buf = buf;
+        pbuf->buflen = len;
+        pbuf->current = pbuf->buf;
+        pbuf->remaining = 0;
+
+        pr_event_generate("core.data-read", pbuf);
+
+        /* The event listeners may have changed the data to write out. */
+        buf = pbuf->buf;
+        len = pbuf->buflen - pbuf->remaining;
 
         if (len > 0) {
           buflen += len;
@@ -1142,6 +1159,22 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 
     } else if ((len = pr_netio_read(session.d->instrm, cl_buf,
         cl_size, 1)) > 0) {
+
+      /* Before we process the data read from the client, generate an event
+       * for any listeners which may want to examine this data.
+       */
+
+      pbuf = pcalloc(session.xfer.p, sizeof(pr_buffer_t));
+      pbuf->buf = buf;
+      pbuf->buflen = len;
+      pbuf->current = pbuf->buf;
+      pbuf->remaining = 0;
+
+      pr_event_generate("core.data-read", pbuf);
+
+      /* The event listeners may have changed the data to write out. */
+      buf = pbuf->buf;
+      len = pbuf->buflen - pbuf->remaining;
 
       /* Non-ASCII mode doesn't need to use session.xfer.buf */
       if (timeout_stalled) {
