@@ -6190,12 +6190,22 @@ MODRET tls_pbsz(cmd_rec *cmd) {
 }
 
 MODRET tls_post_pass(cmd_rec *cmd) {
+  config_rec *protocols_config;
 
   if (!tls_engine)
     return PR_DECLINED(cmd);
 
-  if (!(tls_opts & TLS_OPT_ALLOW_PER_USER))
+  /* At this point, we can look up the Protocols config if the client has been
+   * authenticated, which may have been tweaked via mod_ifsession's 
+   * user/group/class-specific sections.
+   */
+  protocols_config = find_config(main_server->conf, CONF_PARAM, "Protocols",
+    FALSE);
+  
+  if (!(tls_opts & TLS_OPT_ALLOW_PER_USER) &&
+      protocols_config == NULL) {
     return PR_DECLINED(cmd);
+  }
 
   tls_authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
 
@@ -6226,6 +6236,40 @@ MODRET tls_post_pass(cmd_rec *cmd) {
           "disconnecting");
         pr_response_send(R_530, "%s", _("Login incorrect."));
         end_login(0);
+      }
+    }
+
+    if (protocols_config) {
+      register unsigned int i;
+      int allow_ftps = FALSE;
+      array_header *protocols;
+      char **elts;
+
+      protocols = protocols_config->argv[0];
+      elts = protocols->elts;
+
+      /* We only want to check for 'ftps' in the configured Protocols list
+       * if the RFC2228 mechanism is "TLS".
+       */
+      if (session.rfc2228_mech != NULL &&
+          strcmp(session.rfc2228_mech, "TLS") == 0) {
+        for (i = 0; i < protocols->nelts; i++) {
+          char *proto;
+
+          proto = elts[i];
+          if (proto != NULL) {
+            if (strcasecmp(proto, "ftps") == 0) {
+              allow_ftps = TRUE;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!allow_ftps) {
+        tls_log("ftps protocol denied by Protocols config");
+        pr_response_send(R_530, "%s", _("Login incorrect."));
+        end_login(1);
       }
     }
   }

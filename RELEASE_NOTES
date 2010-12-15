@@ -56,12 +56,12 @@ ChangeLog files.
 
   + New configuration directives:
 
+    Protocols
+
     ScoreboardMutex
       Bug#3208
 
     SFTPClientAlive
-
-    SFTPServices
 
     WrapOptions
 
@@ -101,4 +101,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2010-12-14 19:06:42 $
+Last Updated: $Date: 2010-12-15 02:01:13 $

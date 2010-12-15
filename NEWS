@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1266 2010-12-14 19:06:42 castaglia Exp $
+$Id: NEWS,v 1.1267 2010-12-15 02:01:13 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -191,7 +191,7 @@ CVS
   from crypt(3).
 - Bug 3550 - SFTP compressed uploads can cause corrupted uploaded files.
 - Bug 3554 - Support Apache-style %I, %O LogFormat variables.
-- Bug 3556 - Disable SFTP/SCP support on per-user/group/class basis.
+- Bug 3556 - Disable protocol support on per-user/group/class basis.
 - Bug 3508 - mod_wrap2 should support checking of WrapTables allow/deny rules
   at connect time.
 
