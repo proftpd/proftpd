@@ -1,4 +1,4 @@
-<!-- $Id: mod_wrap2.html,v 1.2 2010-12-14 19:17:52 castaglia Exp $ -->
+<!-- $Id: mod_wrap2.html,v 1.3 2010-12-15 03:10:07 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_wrap2.html,v $ -->
 
 <html>
@@ -216,6 +216,14 @@ Example:
 <p>
 The currently implemented options are:
 <ul>
+  <li><code>CheckAllNames</code><br>
+  <p>
+  This causes <code>mod_wrap2</code> to check <b>all</b> of the known
+  DNS names for the client IP address against the DNS names/patterns
+  in the access rules, rather than just checking the first DNS name
+  returned for the client IP address.
+  </li>
+
   <li><code>CheckOnConnect</code><br>
   <p>
   This causes <code>mod_wrap2</code> to check the allow/deny tables when
@@ -241,6 +249,7 @@ The currently implemented options are:
   Without this, the database connection will not be created at connect
   time, and the <code>mod_wrap2</code> module will be unable to check
   any allow/deny rules stored in SQL tables when the client connects.
+  </li>
 </ul>
 
 <p>
@@ -614,7 +623,7 @@ documentation for installation instructions for that module.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-12-14 19:17:52 $</i><br>
+Last Updated: <i>$Date: 2010-12-15 03:10:07 $</i><br>
 
 <br><hr>
 
