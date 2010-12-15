@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.129 2010-09-01 20:45:48 castaglia Exp $
+ * $Id: data.c,v 1.130 2010-12-15 23:37:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1288,6 +1288,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
         session.xfer.total_bytes += len;
         session.total_bytes += len;
         session.total_bytes_out += len;
+        session.total_raw_out += len;
 
         return -1;
       }
@@ -1308,6 +1309,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
       session.xfer.total_bytes += len;
       session.total_bytes += len;
       session.total_bytes_out += len;
+      session.total_raw_out += len;
       total += len;
 
       pr_signals_handle();
@@ -1400,6 +1402,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
           session.xfer.total_bytes += len;
           session.total_bytes += len;
           session.total_bytes_out += len;
+          session.total_raw_out += len;
 
           return -1;
         }
@@ -1427,6 +1430,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
         session.xfer.total_bytes += len;
         session.total_bytes += len;
         session.total_bytes_out += len;
+        session.total_raw_out += len;
         total += len;
 
         continue;
@@ -1456,6 +1460,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
   session.xfer.total_bytes += len;
   session.total_bytes += len;
   session.total_bytes_out += len;
+  session.total_raw_out += len;
   total += len;
 
   return total;
