@@ -1,0 +1,79 @@
+<!-- $Id: mod_core.html,v 1.1 2010-12-15 02:21:57 castaglia Exp $ -->
+<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
+
+<html>
+<head>
+<title>ProFTPD module mod_core</title>
+</head>
+
+<body bgcolor=white>
+
+<hr>
+<center>
+<h2><b>ProFTPD module <code>mod_core</code></b></h2>
+</center>
+<hr><br>
+
+<p>
+The <code>mod_core</code> module handles most of the core FTP commands.
+
+<h2>Directives</h2>
+<ul>
+  <li><a href="#Protocols">Protocols</a>
+</ul>
+
+<hr>
+<h2><a name="Protocols">Protocols</a></h2>
+<strong>Syntax:</strong> Protocols <em>protocol1 ...</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.3.4rc1 and later
+
+<p>
+The <code>Protocols</code> directive is used to enable/disable specific
+protocols support by the <code>proftpd</code> and its collection of modules.
+This directive can be used, in conjunction with the
+<a href="../contrib/mod_ifsession.html"><code>mod_ifsession</code></a> module,
+to enable certain features for specific users/groups/classes.
+
+<p>
+The allowed protocols must be configured as a space-delimited list.  For
+example:
+<pre>
+  # Only enable FTPS and SFTP support, but not FTP or SCP
+  Protocols ftps sftp
+</pre>
+
+<p>
+The currently known/supported protocols include:
+<ul>
+  <li><code>ftp</code><br>
+  <li><code>ftps</code> (from <a href="../contrib/mod_tls.html"><code>mod_tls</code></a><br>
+  <li><code>scp</code> (from <a href="../contrib/mod_sftp.html"><code>mod_sftp</code></a><br>
+  <li><code>sftp</code> (from <a href="../contrib/mod_sftp.html"><code>mod_sftp</code></a><br>
+</ul>
+
+<p>
+<hr>
+<h2><a name="Installation">Installation</a></h2>
+The <code>mod_core</code>module is <b>always</b> installed.
+
+<p>
+<hr><br>
+
+Author: <i>$Author: castaglia $</i><br>
+Last Updated: <i>$Date: 2010-12-15 02:21:57 $</i><br>
+
+<br><hr>
+
+<font size=2><b><i>
+&copy; Copyright 2000-2010 The ProFTPD Project<br>
+ All Rights Reserved<br>
+</i></b></font>
+
+<hr><br>
+
+</body>
+</html>
+
