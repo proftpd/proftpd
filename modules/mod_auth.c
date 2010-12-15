@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.279 2010-12-15 00:57:04 castaglia Exp $
+ * $Id: mod_auth.c,v 1.280 2010-12-15 01:14:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -275,50 +275,59 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   char *grantmsg = NULL, *user;
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_timeout, have_group_timeout, have_class_timeout,
-    have_all_timeout, *privsdrop = NULL;
+    have_all_timeout, *privsdrop = NULL, *authenticated;
   struct stat st;
+
+  /* Was there a precending USER command? Was the client successfully
+   * authenticated?
+   */
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
 
   /* Clear the list of auth-only modules. */
   pr_auth_clear_auth_only_modules();
 
-  /* At this point, we can look up the Protocols config, which may have
-   * been tweaked via mod_ifsession's user/group/class-specific sections.
+  /* At this point, we can look up the Protocols config if the client
+   * has been authenticated, which may have been tweaked via mod_ifsession's
+   * user/group/class-specific sections.
    */
-  c = find_config(main_server->conf, CONF_PARAM, "Protocols", FALSE);
-  if (c) {
-    register unsigned int i;
-    int allow_ftp = FALSE;
-    array_header *protocols;
-    char **elts;
-    const char *protocol;
+  if (authenticated != NULL &&
+      *authenticated == TRUE) {
+    c = find_config(main_server->conf, CONF_PARAM, "Protocols", FALSE);
+    if (c) {
+      register unsigned int i;
+      int allow_ftp = FALSE;
+      array_header *protocols;
+      char **elts;
+      const char *protocol;
 
-    protocols = c->argv[0];
-    elts = protocols->elts;
+      protocols = c->argv[0];
+      elts = protocols->elts;
 
-    protocol = pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT);
+      protocol = pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT);
 
-    /* We only want to check for 'ftp' in the configured Protocols list
-     * if a) a RFC2228 mechanism (e.g. SSL or GSS) is not in use, and
-     *    b) an SSH protocol is not in use.
-     */
-    if (session.rfc2228_mech == NULL &&
-        strcmp(protocol, "SSH2") != 0) {
-      for (i = 0; i < protocols->nelts; i++) {
-        char *proto;
+      /* We only want to check for 'ftp' in the configured Protocols list
+       * if a) a RFC2228 mechanism (e.g. SSL or GSS) is not in use, and
+       *    b) an SSH protocol is not in use.
+       */
+      if (session.rfc2228_mech == NULL &&
+          strcmp(protocol, "SSH2") != 0) {
+        for (i = 0; i < protocols->nelts; i++) {
+          char *proto;
 
-        proto = elts[i];
-        if (proto != NULL) {
-          if (strcasecmp(proto, "ftp") == 0) {
-            allow_ftp = TRUE;
-            break;
+          proto = elts[i];
+          if (proto != NULL) {
+            if (strcasecmp(proto, "ftp") == 0) {
+              allow_ftp = TRUE;
+              break;
+            }
           }
         }
       }
-    }
 
-    if (!allow_ftp) {
-      pr_log_debug(DEBUG0, "%s", "ftp protocol denied by Protocols config");
-      end_login(1);
+      if (!allow_ftp) {
+        pr_log_debug(DEBUG0, "%s", "ftp protocol denied by Protocols config");
+        end_login(1);
+      }
     }
   }
 
