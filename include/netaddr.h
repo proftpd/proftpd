@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.26 2010-03-10 17:23:54 castaglia Exp $
+ * $Id: netaddr.h,v 1.27 2010-12-15 03:07:36 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -328,6 +328,12 @@ int pr_netaddr_set_reverse_dns(int);
  * Returns NULL if there was an error.
  */
 const char *pr_netaddr_get_dnsstr(pr_netaddr_t *);
+
+/* Returns the list of DNS names associated with the given pr_netaddr_t.
+ * If DNS lookups have been disabled, an empty list will be returned.
+ * NULL is returned if there is an error.
+ */
+array_header *pr_netaddr_get_dnsstr_list(pool *, pr_netaddr_t *);
 
 /* Returns the IP address associated with the given pr_netaddr_t.  Returns
  * NULL if there was an error.

@@ -521,16 +521,52 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
     return (strncasecmp(tok, ip_str, len) == 0);
 
   } else if (tok[0] == '.') {
-    char *name;
+    register unsigned int i;
+    char *primary_name;
+    array_header *dns_names;
 
     /* Suffix */
-    name = wrap2_get_hostname(host);
-    len = strlen(name) - strlen(tok);
+    primary_name = wrap2_get_hostname(host);
+    len = strlen(primary_name) - strlen(tok);
 
     wrap2_log("comparing client hostname '%s' (part %s) against DNS "
-      "pattern '%s'", name, name+len, tok);
+      "pattern '%s'", primary_name, primary_name+len, tok);
 
-    return (len > 0 && (strcasecmp(tok, name + len) == 0));
+    if (len > 0 &&
+        strcasecmp(tok, primary_name + len) == 0) {
+      return TRUE;
+    }
+
+    if (!(wrap2_opts & WRAP_OPT_CHECK_ALL_NAMES)) {
+      return FALSE;
+    }
+
+    dns_names = pr_netaddr_get_dnsstr_list(session.pool,
+      session.c->remote_addr);
+    if (dns_names != NULL &&
+        dns_names->nelts > 0) {
+      char **names;
+
+      names = dns_names->elts;
+      for (i = 0; i < dns_names->nelts; i++) {
+        char *name;
+
+        name = names[i];
+        if (name != NULL) {
+          len = strlen(name) - strlen(tok);
+
+          wrap2_log("comparing client hostname '%s' (part %s) against DNS "
+            "pattern '%s'", name, name+len, tok);
+
+          if (len > 0 &&
+              strcasecmp(tok, name + len) == 0) {
+            return TRUE;
+          }
+        }
+      }
+    }
+
+    return FALSE;
 
 #ifdef PR_USE_IPV6 
   } else if (pr_netaddr_use_ipv6() &&
@@ -598,14 +634,42 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
     }
 
     if (WRAP2_IS_NOT_INADDR(tok)) {
-      char *name;
+      register unsigned int i;
+      char *primary_name;
+      array_header *dns_names;
 
-      name = wrap2_get_hostname(host);
-      wrap2_log("comparing client hostname '%s' against DNS pattern '%s'",
-        name, tok);
+      primary_name = wrap2_get_hostname(host);
+      wrap2_log("comparing client hostname '%s' against DNS name '%s'",
+        primary_name, tok);
 
-      if (wrap2_match_string(tok, name)) {
+      if (wrap2_match_string(tok, primary_name)) {
         return TRUE;
+      }
+
+      if (!(wrap2_opts & WRAP_OPT_CHECK_ALL_NAMES)) {
+        return FALSE;
+      }
+
+      dns_names = pr_netaddr_get_dnsstr_list(session.pool,
+        session.c->remote_addr);
+      if (dns_names != NULL &&
+          dns_names->nelts > 0) {
+        char **names;
+
+        names = dns_names->elts;
+        for (i = 0; i < dns_names->nelts; i++) {
+          char *name;
+
+          name = names[i];
+          if (name != NULL) {
+            wrap2_log("comparing client hostname '%s' against DNS name '%s'",
+              name, tok);
+
+            if (wrap2_match_string(tok, name)) {
+              return TRUE;
+            }
+          }
+        }
       }
     }
   }
@@ -1400,6 +1464,9 @@ MODRET set_wrapoptions(cmd_rec *cmd) {
   for (i = 1; i < cmd->argc; i++) {
     if (strcmp(cmd->argv[i], "CheckOnConnect") == 0) {
       opts |= WRAP_OPT_CHECK_ON_CONNECT;
+
+    } else if (strcmp(cmd->argv[i], "CheckAllNames") == 0) {
+      opts |= WRAP_OPT_CHECK_ALL_NAMES;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown WrapOption '",

@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.75 2010-10-19 22:18:24 castaglia Exp $
+ * $Id: netaddr.c,v 1.76 2010-12-15 03:07:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -54,20 +54,104 @@ static char localaddr_str[PR_TUNABLE_BUFFER_SIZE];
 static int have_localaddr_str = FALSE;
 
 static pool *netaddr_pool = NULL;
-static pr_table_t *netaddr_tab = NULL;
+static pr_table_t *netaddr_iptab = NULL;
+static pr_table_t *netaddr_dnstab = NULL;
 
 static const char *trace_channel = "dns";
 
 /* Netaddr cache management */
-static pr_netaddr_t *netaddr_cache_get(pool *p, const char *name) {
+static array_header *netaddr_dnscache_get(pool *p, const char *ip_str) {
+  array_header *res = NULL;
+
+  if (netaddr_dnstab) {
+    void *v = pr_table_get(netaddr_dnstab, ip_str, NULL);
+    if (v) {
+      res = v;
+
+      pr_trace_msg(trace_channel, 4,
+        "using %d DNS %s from netaddr DNS cache for IP address '%s'",
+        res->nelts, res->nelts != 1 ? "names" : "name", ip_str);
+
+      if (p) {
+        /* If the caller provided a pool, return a copy of the array. */
+        return copy_array_str(p, res);
+      }
+
+      return res;
+    }
+  }
+
+  pr_trace_msg(trace_channel, 12,
+    "no DNS names found in netaddr DNS cache for IP address '%s'", ip_str);
+  errno = ENOENT;
+  return NULL;
+}
+
+static void netaddr_dnscache_set(const char *ip_str, const char *dns_name) {
+  if (netaddr_dnstab) {
+    void *v = NULL;
+    array_header *res = NULL;
+    int add_list = FALSE;
+
+    res = netaddr_dnscache_get(NULL, ip_str);
+    if (res == NULL) {
+      /* No existing entries for this IP address yet. */
+      res = make_array(netaddr_pool, 1, sizeof(char *));
+      add_list = TRUE;
+
+    } else {
+      register unsigned int i;
+      char **names;
+
+      /* Check for duplicates. */
+      names = res->elts;
+      for (i = 0; i < res->nelts; i++) {
+        if (names[i] != NULL) {
+          if (strcmp(names[i], dns_name) == 0) {
+            pr_trace_msg(trace_channel, 5,
+              "DNS name '%s' for IP address '%s' already stashed in the "
+              "netaddr DNS cache", dns_name, ip_str);
+            return;
+          }
+        }
+      }
+    }
+
+    *((char **) push_array(res)) = pstrdup(netaddr_pool, dns_name);
+    v = res;
+
+    if (add_list) { 
+      if (pr_table_add(netaddr_dnstab, pstrdup(netaddr_pool, ip_str), v,
+          sizeof(array_header *)) < 0) {
+        pr_trace_msg(trace_channel, 3,
+          "error adding DNS name '%s' for IP address '%s' to the netaddr "
+          "DNS cache: %s", dns_name, ip_str, strerror(errno));
+
+      } else {
+        pr_trace_msg(trace_channel, 5,
+          "stashed DNS name '%s' for IP address '%s' in the netaddr DNS cache",
+          dns_name, ip_str);
+      }
+
+    } else {
+      pr_trace_msg(trace_channel, 5,
+        "stashed DNS name '%s' for IP address '%s' in the netaddr DNS cache",
+        dns_name, ip_str);
+    }
+  }
+
+  return;
+}
+
+static pr_netaddr_t *netaddr_ipcache_get(pool *p, const char *name) {
   pr_netaddr_t *res = NULL;
 
-  if (netaddr_tab) {
-    void *v = pr_table_get(netaddr_tab, name, NULL);
+  if (netaddr_iptab) {
+    void *v = pr_table_get(netaddr_iptab, name, NULL);
     if (v) {
       res = v;
       pr_trace_msg(trace_channel, 4,
-        "using IP address '%s' from netaddr cache for name '%s'",
+        "using IP address '%s' from netaddr IP cache for name '%s'",
         pr_netaddr_get_ipstr(res), name);
 
       /* We return a copy of the cache's netaddr_t, if the caller provided
@@ -78,44 +162,44 @@ static pr_netaddr_t *netaddr_cache_get(pool *p, const char *name) {
       }
 
       return res;
-
-    } else {
-      pr_trace_msg(trace_channel, 2,
-        "no IP address found in netaddr cache for name '%s'", name);
     }
   }
 
+  pr_trace_msg(trace_channel, 2,
+    "no IP address found in netaddr IP cache for name '%s'", name);
+  errno = ENOENT;
   return NULL;
 }
 
-static void netaddr_cache_set(const char *name, pr_netaddr_t *na) {
-  if (netaddr_tab) {
+static void netaddr_ipcache_set(const char *name, pr_netaddr_t *na) {
+  if (netaddr_iptab) {
     int count = 0;
     void *v = NULL;
 
     /* We store an internal copy of the netaddr_t in the cache. */
     v = pr_netaddr_dup(netaddr_pool, na);
 
-    count = pr_table_exists(netaddr_tab, name);
+    count = pr_table_exists(netaddr_iptab, name);
     if (count <= 0) {
-      if (pr_table_add(netaddr_tab, pstrdup(netaddr_pool, name), v,
+      if (pr_table_add(netaddr_iptab, pstrdup(netaddr_pool, name), v,
           sizeof(pr_netaddr_t *)) < 0) {
         pr_trace_msg(trace_channel, 3,
-          "error adding IP address '%s' for name '%s' to the netaddr cache: %s",
-          pr_netaddr_get_ipstr(na), name, strerror(errno));
+          "error adding IP address '%s' for name '%s' to the netaddr "
+          "IP cache: %s", pr_netaddr_get_ipstr(na), name,
+          strerror(errno));
 
       } else {
         pr_trace_msg(trace_channel, 5,
-          "stashed IP address '%s' for name '%s' in the netaddr cache",
+          "stashed IP address '%s' for name '%s' in the netaddr IP cache",
           pr_netaddr_get_ipstr(v), name);
       }
 
     } else {
-      if (pr_table_set(netaddr_tab, pstrdup(netaddr_pool, name), v,
+      if (pr_table_set(netaddr_iptab, pstrdup(netaddr_pool, name), v,
           sizeof(pr_netaddr_t *)) < 0) {
         pr_trace_msg(trace_channel, 3,
-          "error setting IP address '%s' for name '%s' to the netaddr "
-          "cache: %s", pr_netaddr_get_ipstr(na), name, strerror(errno));
+          "error setting IP address '%s' for name '%s' in the netaddr "
+          "IP cache: %s", pr_netaddr_get_ipstr(na), name, strerror(errno));
       }
     }
   }
@@ -419,9 +503,10 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
    * that `addrs' pointer if the name is in the cache.
    */
   if (addrs == NULL) {
-    na = netaddr_cache_get(p, name);
-    if (na)
+    na = netaddr_ipcache_get(p, name);
+    if (na) {
       return na;
+    }
   }
 
   /* Attempt to translate the given name into a pr_netaddr_t using
@@ -458,8 +543,8 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
       pr_trace_msg(trace_channel, 7, "'%s' resolved to IPv6 address %s", name,
         pr_netaddr_get_ipstr(na));
 
-      netaddr_cache_set(name, na);
-      netaddr_cache_set(pr_netaddr_get_ipstr(na), na);
+      netaddr_ipcache_set(name, na);
+      netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na);
 
       errno = xerrno;
       return na;
@@ -486,8 +571,8 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     pr_trace_msg(trace_channel, 7, "'%s' resolved to IPv4 address %s", name,
       pr_netaddr_get_ipstr(na));
 
-    netaddr_cache_set(name, na);
-    netaddr_cache_set(pr_netaddr_get_ipstr(na), na);
+    netaddr_ipcache_set(name, na);
+    netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na);
 
     errno = xerrno;
     return na;
@@ -539,8 +624,8 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
         info->ai_family == AF_INET ? "IPv4" : "IPv6",
         pr_netaddr_get_ipstr(na));
 
-      netaddr_cache_set(name, na);
-      netaddr_cache_set(pr_netaddr_get_ipstr(na), na);
+      netaddr_ipcache_set(name, na);
+      netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na);
 
       pr_freeaddrinfo(info);
     }
@@ -1242,7 +1327,7 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
     return NULL;
   }
 
-  cache = netaddr_cache_get(NULL, pr_netaddr_get_ipstr(na));
+  cache = netaddr_ipcache_get(NULL, pr_netaddr_get_ipstr(na));
   if (cache &&
       cache->na_have_dnsstr) {
     memset(na->na_dnsstr, '\0', sizeof(na->na_dnsstr));
@@ -1289,11 +1374,14 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
 #endif /* HAVE_GETHOSTBYNAME2 */
 
       if (hent != NULL) {
+        if (hent->h_name != NULL) {
+          netaddr_dnscache_set(pr_netaddr_get_ipstr(na), hent->h_name);
+        }
 
         pr_trace_msg(trace_channel, 10,
           "checking addresses associated with host '%s'",
           hent->h_name ? hent->h_name : "(null)");
-        
+
         switch (hent->h_addrtype) {
           case AF_INET:
             if (family == AF_INET) {
@@ -1306,7 +1394,8 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
                     if (hent->h_name) {
                       pr_trace_msg(trace_channel, 10,
                         "host '%s' has alias '%s'", hent->h_name, *alias);
-                      netaddr_cache_set(*alias, na);
+                      netaddr_ipcache_set(*alias, na);
+                      netaddr_dnscache_set(pr_netaddr_get_ipstr(na), *alias);
                     }
                   }
 
@@ -1329,7 +1418,8 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
                     if (hent->h_name) {
                       pr_trace_msg(trace_channel, 10,
                         "host '%s' has alias '%s'", hent->h_name, *alias);
-                      netaddr_cache_set(*alias, na);
+                      netaddr_ipcache_set(*alias, na);
+                      netaddr_dnscache_set(pr_netaddr_get_ipstr(na), *alias);
                     }
                   }
 
@@ -1355,14 +1445,16 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
             pr_netaddr_get_ipstr(na));
         }
 
-      } else
+      } else {
         pr_log_debug(DEBUG1, "notice: unable to resolve '%s': %s", buf,
           hstrerror(errno));
+      }
     }
 
-  } else
+  } else {
     pr_log_debug(DEBUG10,
       "UseReverseDNS off, returning IP address instead of DNS name");
+  }
 
   if (name) {
     name = pr_netaddr_validate_dns_str(name);
@@ -1379,10 +1471,34 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
   na->na_have_dnsstr = TRUE;
 
   /* Update the netaddr object in the cache with the resolved DNS names. */
-  netaddr_cache_set(name, na);
-  netaddr_cache_set(pr_netaddr_get_ipstr(na), na);
+  netaddr_ipcache_set(name, na);
+  netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na);
 
   return na->na_dnsstr;
+}
+
+array_header *pr_netaddr_get_dnsstr_list(pool *p, pr_netaddr_t *na) {
+  array_header *res;
+
+  if (p == NULL ||
+      na == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (!reverse_dns) {
+    /* If UseReverseDNS is off, then we won't have any names that we trust.
+     * So return an empty list.
+     */
+    return make_array(p, 0, sizeof(char *));
+  }
+
+  res = netaddr_dnscache_get(p, pr_netaddr_get_ipstr(na));
+  if (res == NULL) {
+    res = make_array(p, 0, sizeof(char *));
+  }
+
+  return res;
 }
 
 /* Return the hostname (wrapper for gethostname(2), except returns FQDN). */
@@ -1640,13 +1756,22 @@ void pr_netaddr_enable_ipv6(void) {
 }
 
 void pr_netaddr_clear_cache(void) {
-  if (netaddr_tab) {
-    pr_trace_msg(trace_channel, 5, "emptying netaddr cache");
-    (void) pr_table_empty(netaddr_tab);
-    (void) pr_table_free(netaddr_tab);
+  if (netaddr_iptab) {
+    pr_trace_msg(trace_channel, 5, "emptying netaddr IP cache");
+    (void) pr_table_empty(netaddr_iptab);
+    (void) pr_table_free(netaddr_iptab);
 
     /* Allocate a fresh table. */
-    netaddr_tab = pr_table_alloc(netaddr_pool, 0);
+    netaddr_iptab = pr_table_alloc(netaddr_pool, 0);
+  }
+
+  if (netaddr_dnstab) {
+    pr_trace_msg(trace_channel, 5, "emptying netaddr DNS cache");
+    (void) pr_table_empty(netaddr_dnstab);
+    (void) pr_table_free(netaddr_dnstab);
+
+    /* Allocate a fresh table. */
+    netaddr_dnstab = pr_table_alloc(netaddr_pool, 0);
   }
 }
 
@@ -1660,5 +1785,6 @@ void init_netaddr(void) {
   netaddr_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(netaddr_pool, "Netaddr API");
 
-  netaddr_tab = pr_table_alloc(netaddr_pool, 0);
+  netaddr_iptab = pr_table_alloc(netaddr_pool, 0);
+  netaddr_dnstab = pr_table_alloc(netaddr_pool, 0);
 }
