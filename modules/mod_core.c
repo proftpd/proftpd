@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.386 2010-12-15 00:57:04 castaglia Exp $
+ * $Id: mod_core.c,v 1.387 2010-12-15 02:02:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1285,6 +1285,7 @@ MODRET set_protocols(cmd_rec *cmd) {
   }
 
   c->argv[0] = list;
+  c->flags |= CF_MERGEDOWN_MULTI;
 
   return PR_HANDLED(cmd);
 }
