@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.281 2010-12-15 01:19:56 castaglia Exp $
+ * $Id: mod_auth.c,v 1.282 2010-12-15 01:39:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -286,16 +286,16 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   /* Clear the list of auth-only modules. */
   pr_auth_clear_auth_only_modules();
 
-  /* At this point, we can look up the Protocols config if the client
-   * has been authenticated, which may have been tweaked via mod_ifsession's
-   * user/group/class-specific sections.
-   */
   if (authenticated != NULL &&
       *authenticated == TRUE) {
+
+    /* At this point, we can look up the Protocols config if the client
+     * has been authenticated, which may have been tweaked via mod_ifsession's
+     * user/group/class-specific sections.
+     */
     c = find_config(main_server->conf, CONF_PARAM, "Protocols", FALSE);
     if (c) {
       register unsigned int i;
-      int allow_ftp = FALSE;
       array_header *protocols;
       char **elts;
       const char *protocol;
@@ -311,6 +311,8 @@ MODRET auth_post_pass(cmd_rec *cmd) {
        */
       if (session.rfc2228_mech == NULL &&
           strcmp(protocol, "SSH2") != 0) {
+        int allow_ftp = FALSE;
+
         for (i = 0; i < protocols->nelts; i++) {
           char *proto;
 
@@ -322,12 +324,12 @@ MODRET auth_post_pass(cmd_rec *cmd) {
             }
           }
         }
-      }
 
-      if (!allow_ftp) {
-        pr_log_debug(DEBUG0, "%s", "ftp protocol denied by Protocols config");
-        pr_response_send(R_530, "%s", _("Login incorrect."));
-        end_login(1);
+        if (!allow_ftp) {
+          pr_log_debug(DEBUG0, "%s", "ftp protocol denied by Protocols config");
+          pr_response_send(R_530, "%s", _("Login incorrect."));
+          end_login(1);
+        }
       }
     }
   }
