@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.280 2010-12-15 01:14:31 castaglia Exp $
+ * $Id: mod_auth.c,v 1.281 2010-12-15 01:19:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -326,6 +326,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
 
       if (!allow_ftp) {
         pr_log_debug(DEBUG0, "%s", "ftp protocol denied by Protocols config");
+        pr_response_send(R_530, "%s", _("Login incorrect."));
         end_login(1);
       }
     }

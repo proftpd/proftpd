@@ -360,12 +360,17 @@ sub protocols_without_ftp {
       }
 
       my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
       my $expected;
 
-      $expected = 000;
+      $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
+
+      $expected = "Login incorrect.";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -628,12 +633,18 @@ EOC
       }
 
       my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
       my $expected;
 
-      $expected = 000;
+      $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
+
+      $expected = "Login incorrect.";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+
     };
 
     if ($@) {
