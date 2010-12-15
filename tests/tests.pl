@@ -129,6 +129,7 @@ if (scalar(@ARGV) > 0) {
     t/config/order.t
     t/config/pathallowfilter.t
     t/config/pathdenyfilter.t
+    t/config/protocols.t
     t/config/requirevalidshell.t
     t/config/rewritehome.t
     t/config/serveradmin.t

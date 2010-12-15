@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.385 2010-12-01 18:42:03 castaglia Exp $
+ * $Id: mod_core.c,v 1.386 2010-12-15 00:57:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1262,6 +1262,30 @@ MODRET set_unsetenv(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]); 
+  return PR_HANDLED(cmd);
+}
+
+/* usage: Protocols protocol1 ... protocolN */
+MODRET set_protocols(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+  array_header *list;
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  list = make_array(c->pool, 0, sizeof(char *));
+  for (i = 1; i < cmd->argc; i++) {
+    *((char **) push_array(list)) = pstrdup(c->pool, cmd->argv[i]);
+  }
+
+  c->argv[0] = list;
+
   return PR_HANDLED(cmd);
 }
 
@@ -5221,6 +5245,7 @@ static conftable core_conftab[] = {
   { "PathDenyFilter",		set_pathdenyfilter,		NULL },
   { "PidFile",			set_pidfile,	 		NULL },
   { "Port",			set_serverport, 		NULL },
+  { "Protocols",		set_protocols,			NULL },
   { "RLimitCPU",		set_rlimitcpu,			NULL },
   { "RLimitMemory",		set_rlimitmemory,		NULL },
   { "RLimitOpenFiles",		set_rlimitopenfiles,		NULL },
