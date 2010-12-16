@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.21 2010-12-11 21:06:32 castaglia Exp $
+ * $Id: packet.c,v 1.22 2010-12-16 21:31:16 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -238,6 +238,13 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen) {
         end_login(1);
       }
     }
+
+    /* Generate an event for any interested listeners.  Since the data are
+     * probably encrypted and such, and since listeners won't/shouldn't
+     * have the facilities for handling such data, we only pass the
+     * amount of data read in.
+     */
+    pr_event_generate("ssh2.netio-read", &res);
 
     session.total_raw_in += reqlen;
     time(&last_recvd);
@@ -1146,7 +1153,7 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
   char buf[SFTP_MAX_PACKET_LEN * 2], mesg_type;
   size_t buflen = 0, bufsz = SFTP_MAX_PACKET_LEN;
   uint32_t packet_len = 0;
-  int res;
+  int res, write_len = 0;
 
   /* Clear the iovec array before sending the data, if possible. */
   if (packet_niov == 0) {
@@ -1197,16 +1204,19 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
     if (!sent_version_id) {
       packet_iov[packet_niov].iov_base = (void *) version_id;
       packet_iov[packet_niov].iov_len = strlen(version_id);
+      write_len += packet_iov[packet_niov].iov_len;
       packet_niov++;
     }
 
     packet_iov[packet_niov].iov_base = (void *) buf;
     packet_iov[packet_niov].iov_len = buflen;
+    write_len += packet_iov[packet_niov].iov_len;
     packet_niov++;
 
     if (pkt->mac_len > 0) {
       packet_iov[packet_niov].iov_base = (void *) pkt->mac;
       packet_iov[packet_niov].iov_len = pkt->mac_len;
+      write_len += packet_iov[packet_niov].iov_len;
       packet_niov++;
     }
 
@@ -1219,31 +1229,44 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
     if (!sent_version_id) {
       packet_iov[packet_niov].iov_base = (void *) version_id;
       packet_iov[packet_niov].iov_len = strlen(version_id);
+      write_len += packet_iov[packet_niov].iov_len;
       packet_niov++;
     }
 
     packet_iov[packet_niov].iov_base = (void *) &packet_len;
     packet_iov[packet_niov].iov_len = sizeof(uint32_t);
+    write_len += packet_iov[packet_niov].iov_len;
     packet_niov++;
 
     packet_iov[packet_niov].iov_base = (void *) &(pkt->padding_len);
     packet_iov[packet_niov].iov_len = sizeof(char);
+    write_len += packet_iov[packet_niov].iov_len;
     packet_niov++;
 
     packet_iov[packet_niov].iov_base = (void *) pkt->payload;
     packet_iov[packet_niov].iov_len = pkt->payload_len;
+    write_len += packet_iov[packet_niov].iov_len;
     packet_niov++;
 
     packet_iov[packet_niov].iov_base = (void *) pkt->padding;
     packet_iov[packet_niov].iov_len = pkt->padding_len;
+    write_len += packet_iov[packet_niov].iov_len;
     packet_niov++;
 
     if (pkt->mac_len > 0) {
       packet_iov[packet_niov].iov_base = (void *) pkt->mac;
       packet_iov[packet_niov].iov_len = pkt->mac_len;
+      write_len += packet_iov[packet_niov].iov_len;
       packet_niov++;
     }
   }
+
+  /* Generate an event for any interested listeners.  Since the data are
+   * probably encrypted and such, and since listeners won't/shouldn't
+   * have the facilities for handling such data, we only pass the
+   * amount of data to be written out.
+   */
+  pr_event_generate("ssh2.netio-write", &write_len);
 
   if (packet_poll(sockfd, SFTP_PACKET_IO_WR) < 0) {
     return -1;
