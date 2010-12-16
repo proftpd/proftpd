@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.45 2010-12-15 23:59:32 castaglia Exp $
+ * $Id: netio.c,v 1.46 2010-12-16 19:35:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -990,10 +990,12 @@ char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
 
   buflen--;
 
-  if (nstrm->strm_buf)
+  if (nstrm->strm_buf) {
     pbuf = nstrm->strm_buf;
-  else
+
+  } else {
     pbuf = netio_buffer_alloc(nstrm);
+  }
 
   while (buflen) {
 
@@ -1016,8 +1018,17 @@ char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
       pbuf->remaining = pbuf->buflen - toread;
       pbuf->current = pbuf->buf;
 
-    } else
-      toread = pbuf->buflen - pbuf->remaining;
+      pbuf->remaining = pbuf->buflen - toread;
+      pbuf->current = pbuf->buf;
+
+      /* Before we begin iterating through the data read in from the
+       * network, generate an event for any listeners which may want to
+       * examine this data as well.
+       */
+      pr_event_generate("core.othr-read", pbuf);
+    }
+
+    toread = pbuf->buflen - pbuf->remaining;
 
     while (buflen && *pbuf->current != '\n' && toread--) {
       if (*pbuf->current & 0x80)
