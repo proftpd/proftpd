@@ -11,6 +11,7 @@ ChangeLog files.
 
   + Fixed Telnet IAC stack overflow vulnerability (ZDI-CAN-925)
   + Fixed directory traversal bug in mod_site_misc (CVE-2010-3867)
+  + Fixed sql_prepare_where() buffer overflow (Bug#3536)
   + Added Japanese translation
   + Many mod_sftp bugfixes
   + Fixed SSL_shutdown() errors caused by OpenSSL 0.9.8m and later
@@ -58,19 +59,42 @@ ChangeLog files.
 
     Protocols
 
+      This directive can be used to specify which protocols can be used
+      by a connecting client.  It is designed to work with mod_ifsession,
+      so that it can be set on a per-user/group/class basis.  See
+      doc/modules/mod_core.html#Protocols for details.
+
     ScoreboardMutex
-      Bug#3208
+
+      This directive is used to explicitly configure the patch to a
+      "mutex" file used for scoreboard locking; this file is used to
+      increase proftpd's performance under load.  See:
+
+        http://bugs.proftpd.org/show_bug.cgi?id=3208
+
+      for more information.
 
     SFTPClientAlive
 
+      This directive is used to enable a protocol-level "keep alive"
+      check for mod_sftp SSH connections.  More details can be found
+      in doc/contrib/mod_sftp.html#SFTPClientAlive.
+
     WrapOptions
+
+      The mod_wrap2 module has additional behaviors such as checking the
+      allow/deny rules at client connect time (versus after login),
+      and checking the allow/deny rules using all of a client's DNS names.
+      The WrapOptions directive is used to configure these behaviors;
+      see doc/contrib/mod_wrap2.html#WrapOptions for more information.
 
   + Changed configuration directives:
 
     BanOnEvent
 
       The BanOnEvent directive of the mod_ban module now supports
-      LoginRate events.
+      LoginRate events; see doc/contrib/mod_ban.html#BanOnEvent.  This
+      lets mod_ban reject clients which are logging in too quickly.
 
     ListOptions
 
@@ -78,22 +102,55 @@ ChangeLog files.
       command.  The ListOptions directive handles these options as well.
       See the ls(1) man page for more details on these options.
 
-      Another new ListOption, NoErrorIfAbsent (Bug#3506)
+      In addition, the NoErrorIfAbsent ListOption can be used to configure
+      whether mod_ls returns a 226 response code, rather than the default
+      450 response code, for a LIST/NLST command for a path which does not
+      exist.  Some clients are sensitive to this use case.
 
     LogFormat
 
-      %I, %O variables
+      The LogFormat directive now supports two additional variables:
+      %I for logging the total number of bytes read from the network,
+      and %O for logging the total number of bytes written to the network.
+      Note that these values do NOT include any bytes for the TCP packet
+      overhead.  The mod_sql module's SQLLog directive also supports these
+      variables.
 
+      These variables can be used to get a better idea of network traffic
+      per session/client, as well as for comparing the relative network
+      traffic of e.g. FTPS versus SFTP.
+ 
     SFTPOptions
-      OldProtocolCompat (Bug#3480)
+
+      The mod_sftp module did not interoperate well with old ssh.com or
+      with Tectia SSH clients.  Support for these clients was added to
+      mod_sftp via the OldProtocolCompat SFTPOption (Bug#3480).  See
+      doc/contrib/mod_sftp.html#SFTPOptions for more information.
 
     TLSOptions
-      CommonNameRequired (Bug#3512)
+
+      When verifying a client's certificate, the mod_tls module could
+      be configured to check the iPAddress and/or dNSName portions of the
+      SubjectAltName section of the client certificate, via the TLSOptions
+      directive.  A new CommonNamedRequired TLSOptions is now supported,
+      which tells mod_tls to check the CommonName (CN) section of the
+      client certificate.  See doc/contrib/mod_tls.html#TLSOptions for
+      details.
 
     UseSendfile
-      Can now be used in <Directory> sections and .ftpaccess files.
-      Can be used to specify lengths (in bytes) or percentages.
-      See doc/howto/Sendfile.html for details.
+
+      The UseSendfile directive can now be used in <Directory> sections and
+      .ftpaccess files.  This means that sendfile(2) support can be disabled
+      on filesystems which do not support it, while still be used on other
+      parts of the filesystem which can support it.
+
+      The UseSendfile directive can now also configure how many bytes of
+      a file to send via sendfile(2) at a time; this can be either in number
+      of bytes, or in percentage of the file size.  The advantage of this
+      is that now the ScoreboardFile (and ftptop/ftpwho) can show download
+      progress rates when UseSendfile is enabled.
+
+      See doc/howto/Sendfile.html for the full details.
 
   + Deprecated configuration directives:
 
@@ -101,4 +158,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2010-12-15 02:01:13 $
+Last Updated: $Date: 2010-12-17 22:39:38 $
