@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.46 2010-12-16 19:35:33 castaglia Exp $
+ * $Id: netio.c,v 1.47 2010-12-17 18:40:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -660,6 +660,7 @@ int pr_netio_printf_async(pr_netio_stream_t *nstrm, char *fmt, ...) {
 int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   int bwritten = 0, total = 0;
   pr_buffer_t *pbuf;
+  pool *sub_pool;
 
   /* Sanity check */
   if (!nstrm) {
@@ -673,10 +674,18 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   }
 
   /* Before we send out the data to the client, generate an event
-   * for any listeners which may want to examine this data.
+   * for any listeners which may want to examine this data.  To do this, we
+   * need to allocate a pr_buffer_t for sending the buffer data to the
+   * listeners.
+   *
+   * We could just use nstrm->strm_pool, but for a long-lived control
+   * connection, this would amount to a slow memory increase.  So instead,
+   * we create a subpool from the stream's pool, and allocate the
+   * pr_buffer_t out of that.  Then simply destroy the subpool when done.
    */
 
-  pbuf = pcalloc(nstrm->strm_pool, sizeof(pr_buffer_t));
+  sub_pool = pr_pool_create_sz(nstrm->strm_pool, 64);
+  pbuf = pcalloc(sub_pool, sizeof(pr_buffer_t));
   pbuf->buf = buf;
   pbuf->buflen = buflen;
   pbuf->current = pbuf->buf;
@@ -699,6 +708,7 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   /* The event listeners may have changed the data to write out. */
   buf = pbuf->buf;
   buflen = pbuf->buflen - pbuf->remaining;
+  destroy_pool(sub_pool);
 
   while (buflen) {
 
