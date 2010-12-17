@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_wrap2.h.in,v 1.6 2010-12-14 19:06:42 castaglia Exp $
+ * $Id: mod_wrap2.h.in,v 1.7 2010-12-17 23:08:57 castaglia Exp $
  *
  * -- DO NOT MODIFY THE LINE BELOW --
  * $Libraries: @WRAP2_LIBS@$
@@ -52,7 +52,8 @@
 #define WRAP2_DEFAULT_SERVICE_NAME	"proftpd"
 
 /* mod_wrap2 option flags */
-#define WRAP_OPT_CHECK_ON_CONNECT               0x0001
+#define WRAP_OPT_CHECK_ON_CONNECT		0x0001
+#define WRAP_OPT_CHECK_ALL_NAMES		0x0002
 
 /* Source abstraction object */
 typedef struct table_obj {
