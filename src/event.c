@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.19 2010-04-16 22:22:37 castaglia Exp $
+ * $Id: event.c,v 1.20 2010-12-17 03:40:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -207,6 +207,42 @@ int pr_event_unregister(module *m, const char *event,
   }
 
   return 0;
+}
+
+int pr_event_listening(const char *event) {
+  struct event_list *evl;
+  int count = 0;
+
+  if (event == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (events == NULL) {
+    /* No registered listeners at all. */
+    return 0;
+  }
+
+  /* Lookup callbacks for this event. */
+  for (evl = events; evl; evl = evl->next) {
+
+    if (strcmp(evl->event, event) == 0) {
+      struct event_handler *evh;
+
+      /* If there are no registered callbacks for this event, be done. */
+      if (evl->handlers == NULL) {
+        return 0;
+      }
+ 
+      for (evh = evl->handlers; evh; evh = evh->next) {
+        count++;
+      }
+
+      break;
+    }
+  }
+
+  return count; 
 }
 
 void pr_event_generate(const char *event, const void *event_data) {
