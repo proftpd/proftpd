@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.192 2010-12-11 21:06:32 castaglia Exp $
+ * $Id: mod_sql.c,v 1.193 2010-12-17 04:23:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2845,7 +2845,7 @@ MODRET info_master(cmd_rec *cmd) {
 
       } else {
         if (outs_remain > 0) {
-          *outsp++ = *tmp++;
+          *outsp++ = *tmp;
           outs_remain--;
 
         } else {
