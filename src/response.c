@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.16 2010-12-17 04:00:11 castaglia Exp $
+ * $Id: response.c,v 1.17 2010-12-17 04:01:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -146,7 +146,6 @@ void pr_response_flush(pr_response_t **head) {
   pr_response_t *resp = NULL;
 
   if (resp_blocked) {
-    reset_last_response();
     return;
   }
 
