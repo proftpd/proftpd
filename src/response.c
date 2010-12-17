@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.14 2010-11-04 18:51:29 castaglia Exp $
+ * $Id: response.c,v 1.15 2010-12-17 03:17:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -79,12 +79,27 @@ static void reset_last_response(void) {
 
 void pr_response_set_pool(pool *p) {
   resp_pool = p;
-  reset_last_response();
+
+  /* Copy any old "last" values out of the new pool. */
+  if (resp_last_response_code != NULL) {
+    char *tmp;
+
+    tmp = resp_last_response_code;
+    resp_last_response_code = pstrdup(p, tmp);
+  }
+
+  if (resp_last_response_msg != NULL) {
+    char *tmp;
+  
+    tmp = resp_last_response_msg;
+    resp_last_response_msg = pstrdup(p, tmp);
+  }
 }
 
 int pr_response_get_last(pool *p, char **response_code, char **response_msg) {
   if (p == NULL) {
     errno = EINVAL;
+    return -1;
   }
 
   if (response_code == NULL &&
@@ -130,6 +145,8 @@ void pr_response_flush(pr_response_t **head) {
   char *last_numeric = NULL;
   pr_response_t *resp = NULL;
 
+  pr_response_clear(head);
+
   if (resp_blocked)
     return;
 
@@ -168,8 +185,6 @@ void pr_response_flush(pr_response_t **head) {
       }
     }
   }
-
-  pr_response_clear(head);
 }
 
 void pr_response_add_err(const char *numeric, const char *fmt, ...) {
