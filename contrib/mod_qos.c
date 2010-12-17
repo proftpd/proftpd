@@ -2,6 +2,7 @@
  * ProFTPD: mod_qos -- a module for managing QoS socket options
  *
  * Copyright (c) 2010 Philip Prindeville
+ * Copyright (c) 2010 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +25,7 @@
  *
  * This is mod_qos, contrib software for proftpd 1.3.x and above.
  *
- * $Id: mod_qos.c,v 1.2 2010-03-09 02:38:54 castaglia Exp $
+ * $Id: mod_qos.c,v 1.3 2010-12-17 23:31:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -37,6 +38,15 @@
 #endif
 
 module qos_module;
+
+/* The level argument in a setsockopt(2) call for the TCP level is platform
+ * dependent.  Linux wants SOL_IP, *BSD wants IPPROTO_IP.
+ */
+#ifdef SOL_IP
+static int ip_level = SOL_IP;
+#else
+static int ip_level = IPPROTO_IP;
+#endif /* !SOL_IP */
 
 /* These particular bits have yet to be widely deployed, thus the autodetection
  * fun here.
@@ -310,7 +320,7 @@ static void qos_ctrl_listen_ev(const void *event_data, void *user_data) {
       if (ctrlqos != 0) {
         int res;
 
-        res = setsockopt(sc->sockfd, SOL_IP, IP_TOS, (void *) &ctrlqos,
+        res = setsockopt(sc->sockfd, ip_level, IP_TOS, (void *) &ctrlqos,
           sizeof(ctrlqos));
         if (res < 0) {
           pr_log_pri(PR_LOG_NOTICE, MOD_QOS_VERSION
@@ -338,7 +348,7 @@ static void qos_data_listen_ev(const void *event_data, void *user_data) {
 
       dataqos = *((int *) c->argv[1]);
 
-      res = setsockopt(sc->sockfd, SOL_IP, IP_TOS, (void *) &dataqos,
+      res = setsockopt(sc->sockfd, ip_level, IP_TOS, (void *) &dataqos,
         sizeof(dataqos));
       if (res < 0) {
         pr_log_pri(PR_LOG_NOTICE, MOD_QOS_VERSION
@@ -364,7 +374,7 @@ static void qos_data_connect_ev(const void *event_data, void *user_data) {
 
       dataqos = *((int *) c->argv[1]);
 
-      res = setsockopt(sc->sockfd, SOL_IP, IP_TOS, (void *) &dataqos,
+      res = setsockopt(sc->sockfd, ip_level, IP_TOS, (void *) &dataqos,
         sizeof(dataqos));
       if (res < 0) {
         pr_log_pri(PR_LOG_NOTICE, MOD_QOS_VERSION
