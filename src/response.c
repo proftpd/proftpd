@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.15 2010-12-17 03:17:27 castaglia Exp $
+ * $Id: response.c,v 1.16 2010-12-17 04:00:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -145,10 +145,10 @@ void pr_response_flush(pr_response_t **head) {
   char *last_numeric = NULL;
   pr_response_t *resp = NULL;
 
-  pr_response_clear(head);
-
-  if (resp_blocked)
+  if (resp_blocked) {
+    reset_last_response();
     return;
+  }
 
   for (resp = *head; resp; resp = resp->next) {
     if (ml) {
@@ -185,6 +185,8 @@ void pr_response_flush(pr_response_t **head) {
       }
     }
   }
+
+  pr_response_clear(head);
 }
 
 void pr_response_add_err(const char *numeric, const char *fmt, ...) {
