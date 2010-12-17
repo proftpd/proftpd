@@ -789,6 +789,11 @@ my $TESTS = {
     test_class => [qw(bug forking sftp ssh2)],
   },
 
+  sftp_log_extlog_putty_mget_retr_file_size_bug3560 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
   sftp_log_extlog_file_modified_bug3457 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
@@ -25577,6 +25582,287 @@ sub sftp_log_extlog_retr_file_size {
 
   unlink($log_file);
 }
+
+sub sftp_log_extlog_putty_mget_retr_file_size_bug3560 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sftp.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
+  my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $test_file1 = File::Spec->rel2abs("$tmpdir/test.txt");
+  my $test_sz1 = 32;
+
+  if (open(my $fh, "> $test_file1")) {
+    print $fh "A" x $test_sz1;
+    unless (close($fh)) {
+      die("Can't write $test_file1: $!");
+    }
+
+  } else {
+    die("Can't open $test_file1: $!");
+  }
+
+  my $test_file2 = File::Spec->rel2abs("$tmpdir/test2.txt");
+  my $test_sz2 = 64;
+
+  if (open(my $fh, "> $test_file2")) {
+    print $fh "A" x $test_sz2;
+    unless (close($fh)) {
+      die("Can't write $test_file2: $!");
+    }
+
+  } else {
+    die("Can't open $test_file2: $!");
+  }
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    LogFormat => 'transfer "%m %b',
+    ExtendedLog => "$extlog_file READ transfer",
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $log_file",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $ssh2 = Net::SSH2->new();
+
+      sleep(1);
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($user, $passwd)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      # PuTTy's 'mget' does:
+      #
+      # OPENDIR
+      # READDIR
+      # <check for matching names>
+      # OPEN matching name
+      # READ
+      # CLOSE
+      # READDIR
+      # OPEN matching name
+      # READ
+      # CLOSE
+      # CLOSE <dirhandle>
+
+      # OPENDIR
+      my $dir = $sftp->opendir('.');
+      unless ($dir) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't open directory '.': [$err_name] ($err_code)");
+      }
+
+      my $res = {};
+
+      # READDIR
+      my $file = $dir->read();
+      while ($file) {
+        $res->{$file->{name}} = $file;
+        $file = $dir->read();
+      }
+
+      # OPEN file1
+      my $fh = $sftp->open('test.txt', O_RDONLY);
+      unless ($fh) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't open test.txt: [$err_name] ($err_code)");
+      }
+
+      my $buf;
+      my $size = 0;
+
+      # READ file1
+      my $res = $fh->read($buf, 8192);
+      while ($res) {
+        $size += $res;
+
+        $res = $fh->read($buf, 8192);
+      }
+
+      # CLOSE file1
+      $fh = undef;
+
+      # OPEN file2
+      my $fh = $sftp->open('test2.txt', O_RDONLY);
+      unless ($fh) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't open test2.txt: [$err_name] ($err_code)");
+      }
+
+      $buf = '';
+      $size = 0;
+
+      # READ file2
+      $res = $fh->read($buf, 8192);
+      while ($res) {
+        $size += $res;
+
+        $res = $fh->read($buf, 8192);
+      }
+
+      # CLOSE file2
+      $fh = undef;
+
+      # CLOSEDIR
+      $dir = undef;
+
+      # CHANNEL_CLOSE
+      $sftp = undef;
+
+      $ssh2->disconnect();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  if (open(my $fh, "< $extlog_file")) {
+    my $test_ok = 0;
+    my $test2_ok = 0;
+
+    while (my $line = <$fh>) {
+      chomp($line);
+
+      if ($line =~ /^RETR (\d+)/) {
+        my $xfer_sz = $1;
+
+        if ($xfer_sz == $test_sz1) {
+          $test_ok = 1;
+          next;
+        }
+
+        if ($xfer_sz == $test_sz2) {
+          $test2_ok = 1;
+          last;
+        }
+      }
+    }
+
+    close($fh);
+
+    unless ($test_ok) {
+      die("Missing expected RETR file size ($test_sz1) in $extlog_file");
+    }
+
+    unless ($test2_ok) {
+      die("Missing expected RETR file size ($test_sz2) in $extlog_file");
+    }
+
+  } else {
+    die("Can't read $extlog_file: $!");
+  }
+
+  unlink($log_file);
+}
+
 
 sub sftp_sighup {
   my $self = shift;

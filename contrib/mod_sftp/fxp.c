@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.116 2010-12-10 19:05:11 castaglia Exp $
+ * $Id: fxp.c,v 1.117 2010-12-17 03:24:33 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -6467,6 +6467,12 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
   sftp_msg_write_string(&buf, &buflen, fxh->name);
 
+  /* Clear out any transfer-specific data. */
+  if (session.xfer.p) {
+    destroy_pool(session.xfer.p);
+  }
+  memset(&session.xfer, 0, sizeof(session.xfer));
+
   session.xfer.p = pr_pool_create_sz(fxp_pool, 64);
   session.xfer.path = pstrdup(session.xfer.p, path);
   memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
@@ -6659,10 +6665,21 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
   sftp_msg_write_string(&buf, &buflen, fxh->name);
 
-  session.xfer.p = pr_pool_create_sz(fxp_pool, 64);
-  memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
-  gettimeofday(&session.xfer.start_time, NULL);
-  session.xfer.direction = PR_NETIO_IO_WR;
+  /* If there is any existing transfer-specific data, leave it alone.
+   *
+   * Unlike FTP, SFTP allows for file downloads whilst in the middle of
+   * a directory listing.  Thus this OPENDIR could arrive while a file
+   * is being read/written.  Assume that the per-file stats are more
+   * important.
+   */
+  if (session.xfer.p == NULL) {
+    memset(&session.xfer, 0, sizeof(session.xfer));
+
+    session.xfer.p = pr_pool_create_sz(fxp_pool, 64);
+    memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
+    gettimeofday(&session.xfer.start_time, NULL);
+    session.xfer.direction = PR_NETIO_IO_WR;
+  }
 
   pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
 
