@@ -456,6 +456,12 @@
 /* Define if you have the strsep function.  */
 #undef HAVE_STRSEP
 
+/* Define if you have the strtod function.  */
+#undef HAVE_STRTOD
+
+/* Define if you have the strtof function.  */
+#undef HAVE_STRTOF
+
 /* Define if you have the strtol function.  */
 #undef HAVE_STRTOL
 
