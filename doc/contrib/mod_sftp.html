@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.48 2010-12-14 06:35:23 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.49 2010-12-18 18:30:00 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -141,7 +141,6 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#SFTPOptions">SFTPOptions</a>
   <li><a href="#SFTPPassPhraseProvider">SFTPPassPhraseProvider</a>
   <li><a href="#SFTPRekey">SFTPRekey</a>
-  <li><a href="#SFTPServices">SFTPServices</a>
   <li><a href="#SFTPTrafficPolicy">SFTPTrafficPolicy</a>
 </ul>
 
@@ -921,36 +920,6 @@ client will be disconnected.  This would look like:
   SFTPRekey required 1800 4096 300
 </pre>
 Note that normally such rekey timeouts are not necessary.
-
-<p>
-<hr>
-<h2><a name="SFTPServices">SFTPServices</a></h2>
-<strong>Syntax:</strong> SFTPServices <em>service1 ...</em><br>
-<strong>Default:</strong> SFTPServices sftp scp<br>
-<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
-<strong>Module:</strong> mod_sftp<br>
-<strong>Compatibility:</strong> 1.3.4rc1 and later
-
-<p>
-The <code>SFTPServices</code> directive is used to enable/disable parts of
-the <code>mod_sftp</code> module functionality.  This directive can be used,
-in conjunction with the
-<a href="mod_ifsession.html"><code>mod_ifsession</code></a> module, to enable
-certain features for specific users/groups/classes.
-
-<p>
-For example:
-<pre>
-  # Only enable SFTP support and not SCP
-  SFTPServices sftp
-</pre>
-
-<p>
-The currently implemented services are:
-<ul>
-  <li><code>sftp</code><br>
-  <li><code>scp</code><br>
-</ul>
 
 <p>
 <hr>
@@ -1788,7 +1757,7 @@ new file.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-12-14 06:35:23 $</i><br>
+Last Updated: <i>$Date: 2010-12-18 18:30:00 $</i><br>
 
 <br><hr>
 
