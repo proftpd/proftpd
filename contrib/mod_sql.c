@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.193 2010-12-17 04:23:15 castaglia Exp $
+ * $Id: mod_sql.c,v 1.194 2010-12-18 18:33:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2744,7 +2744,7 @@ MODRET info_master(cmd_rec *cmd) {
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   while (c) {
-    size_t arglen, outs_remain = sizeof(outs)-1;
+    size_t arglen = 0, outs_remain = sizeof(outs)-1;
 
     sql_log(DEBUG_FUNC, ">>> info_master (%s)", name);
 
@@ -2886,7 +2886,7 @@ MODRET info_master(cmd_rec *cmd) {
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   while (c) {
-    size_t arglen, outs_remain = sizeof(outs)-1;
+    size_t arglen = 0, outs_remain = sizeof(outs)-1;
 
     sql_log(DEBUG_FUNC, ">>> info_master (%s)", name);
 
@@ -3056,7 +3056,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   while (c) {
-    size_t arglen, outs_remain = sizeof(outs)-1;
+    size_t arglen = 0, outs_remain = sizeof(outs)-1;
 
     sql_log(DEBUG_FUNC, ">>> errinfo_master (%s)", name);
 
@@ -3199,7 +3199,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   while (c) {
-    size_t arglen, outs_remain = sizeof(outs)-1;
+    size_t arglen = 0, outs_remain = sizeof(outs)-1;
 
     sql_log(DEBUG_FUNC, ">>> errinfo_master (%s)", name);
 
