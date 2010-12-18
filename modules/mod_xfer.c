@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.280 2010-12-10 17:11:41 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.281 2010-12-18 00:16:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3030,7 +3030,14 @@ MODRET set_usesendfile(cmd_rec *cmd) {
   
           cmd->argv[1][arglen-1] = '\0';
 
+#ifdef HAVE_STRTOF
           sendfile_pct = strtof(cmd->argv[1], &ptr);
+#elif HAVE_STRTOD
+          sendfile_pct = strtod(cmd->argv[1], &ptr);
+#else
+          sendfile_pct = atof(cmd->argv[1]);
+#endif /* !HAVE_STRTOF and !HAVE_STRTOD */
+
           if (ptr && *ptr) {
             CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad percentage value '",
               cmd->argv[1], "%'", NULL));
