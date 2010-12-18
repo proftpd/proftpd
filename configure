@@ -27639,7 +27639,9 @@ done
 
 
 
-for ac_func in strsep strtol strtoull setprotoent setspent endprotoent
+
+
+for ac_func in strsep strtod strtof strtol strtoull setprotoent setspent endprotoent
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 { echo "$as_me:$LINENO: checking for $ac_func" >&5
