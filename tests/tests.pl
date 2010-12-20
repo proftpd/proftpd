@@ -120,6 +120,7 @@ if (scalar(@ARGV) > 0) {
     t/config/hideuser.t
     t/config/maxclients.t
     t/config/maxclientsperhost.t
+    t/config/maxcommandrate.t
     t/config/maxconnectionsperhost.t
     t/config/maxinstances.t
     t/config/maxloginattempts.t
