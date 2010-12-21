@@ -22,9 +22,8 @@
  * OpenSSL in the source distribution.
  */
 
-/*
- * Proctitle management
- * $Id: proctitle.c,v 1.9 2010-03-03 16:56:34 castaglia Exp $
+/* Proctitle management
+ * $Id: proctitle.c,v 1.10 2010-12-21 00:05:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -60,6 +59,9 @@ static char *prog_last_argv = NULL;
 
 static int prog_argc = -1;
 static char proc_title_buf[BUFSIZ];
+
+static unsigned int proc_flags = 0;
+#define PR_PROCTITLE_FL_USE_STATIC		0x001
 
 void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
 #ifndef PR_DEVEL_STACK_TRACE
@@ -145,6 +147,10 @@ void pr_proctitle_free(void) {
 void pr_proctitle_set_str(const char *str) {
 #ifndef PR_DEVEL_STACK_TRACE
 
+  if (proc_flags & PR_PROCTITLE_FL_USE_STATIC) {
+    return;
+  }
+
 # ifndef HAVE_SETPROCTITLE
   char *p;
   int i, procbuflen, maxlen = (prog_last_argv - prog_argv[0]) - 2;
@@ -192,6 +198,10 @@ void pr_proctitle_set_str(const char *str) {
 void pr_proctitle_set(const char *fmt, ...) {
 #ifndef PR_DEVEL_STACK_TRACE
   va_list msg;
+
+  if (proc_flags & PR_PROCTITLE_FL_USE_STATIC) {
+    return;
+  }
 
 # ifndef HAVE_SETPROCTITLE
 #  if PF_ARGV_TYPE == PF_ARGV_PSTAT
@@ -272,6 +282,11 @@ void pr_proctitle_set(const char *fmt, ...) {
 
 # endif /* HAVE_SETPROCTITLE */
 #endif /* !PR_DEVEL_STACK_TRACE */
+}
+
+void pr_proctitle_set_static_str(const char *buf) {
+  pr_proctitle_set_str(buf);
+  proc_flags |= PR_PROCTITLE_FL_USE_STATIC;
 }
 
 int pr_proctitle_get(char *buf, size_t bufsz) {

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.387 2010-12-15 02:02:55 castaglia Exp $
+ * $Id: mod_core.c,v 1.388 2010-12-21 00:05:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1262,6 +1262,20 @@ MODRET set_unsetenv(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]); 
+  return PR_HANDLED(cmd);
+}
+
+/* usage: ProcessTitles "terse"|"verbose" */
+MODRET set_processtitles(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  if (strcasecmp(cmd->argv[1], "terse") != 0 &&
+      strcasecmp(cmd->argv[1], "verbose") != 0) {
+    CONF_ERROR(cmd, "unknown parameter");
+  }
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
 }
 
@@ -5177,6 +5191,17 @@ static int core_sess_init(void) {
         displayquit, strerror(errno));
   }
 
+  /* Check for any ProcessTitles setting. */
+  c = find_config(main_server->conf, CONF_PARAM, "ProcessTitles", FALSE);
+  if (c) {
+    char *verbosity;
+ 
+    verbosity = c->argv[0];
+    if (strcasecmp(verbosity, "terse") == 0) {
+      pr_proctitle_set_static_str("proftpd: processing connection");
+    }
+  }
+
   return 0;
 }
 
@@ -5246,6 +5271,7 @@ static conftable core_conftab[] = {
   { "PathDenyFilter",		set_pathdenyfilter,		NULL },
   { "PidFile",			set_pidfile,	 		NULL },
   { "Port",			set_serverport, 		NULL },
+  { "ProcessTitles",		set_processtitles,		NULL },
   { "Protocols",		set_protocols,			NULL },
   { "RLimitCPU",		set_rlimitcpu,			NULL },
   { "RLimitMemory",		set_rlimitmemory,		NULL },
