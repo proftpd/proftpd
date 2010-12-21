@@ -34,6 +34,10 @@ server_rec *main_server = NULL;
 module *static_modules[] = { NULL };
 module *loaded_modules = NULL;
 
+int pr_ctrls_unregister(module *m, const char *action) {
+  return 0;
+}
+
 void pr_log_debug(int level, const char *fmt, ...) {
 }
 

@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.59 2010-11-16 15:46:23 castaglia Exp $
+ * $Id: scoreboard.c,v 1.60 2010-12-21 19:07:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -392,7 +392,19 @@ void pr_delete_scoreboard(void) {
     }
   }
 
+  if (scoreboard_mutex_fd > -1) {
+    while (close(scoreboard_mutex_fd) < 0) {
+      if (errno == EINTR) {
+        pr_signals_handle();
+        continue;
+      }
+
+      break;
+    }
+  }
+
   scoreboard_fd = -1;
+  scoreboard_mutex_fd = -1;
   scoreboard_opener = 0;
 
   if (*scoreboard_file) {
@@ -404,6 +416,17 @@ void pr_delete_scoreboard(void) {
     }
 
     (void) unlink(scoreboard_file);
+    (void) unlink(scoreboard_mutex);
+  }
+
+  if (*scoreboard_mutex) {
+    struct stat st;
+
+    if (stat(scoreboard_mutex, &st) == 0) {
+      pr_log_debug(DEBUG3, "deleting existing scoreboard mutex '%s'",
+        scoreboard_mutex);
+    }
+
     (void) unlink(scoreboard_mutex);
   }
 }
