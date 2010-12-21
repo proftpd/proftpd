@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_ident.c,v 1.6 2010-12-21 03:31:25 castaglia Exp $
+ * $Id: mod_ident.c,v 1.7 2010-12-21 04:16:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -96,7 +96,7 @@ static char *ident_lookup(pool *p, conn_t *conn) {
     return NULL;
   }
 
-  /* We explicit do NOT generate a socket event for this socket; there's
+  /* We explicitly do NOT generate a socket event for this socket; there's
    * really no need for it.
    */
 
