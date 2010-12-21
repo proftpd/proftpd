@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_ident.c,v 1.7 2010-12-21 04:16:53 castaglia Exp $
+ * $Id: mod_ident.c,v 1.8 2010-12-21 04:20:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -119,8 +119,15 @@ static char *ident_lookup(pool *p, conn_t *conn) {
     ident_nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR,
       ident_conn->listen_fd, PR_NETIO_IO_RD);
     if (ident_nstrm == NULL) {
+      int xerrno = errno;
+
+      pr_timer_remove(timerno, &ident_module);
+      pr_inet_close(p, ident_conn);
+
       pr_trace_msg(trace_channel, 5, "error opening NetIO stream: %s",
-        strerror(errno));
+        strerror(xerrno));
+
+      errno = xerrno;
       return NULL;
     }
 
