@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_ident.c,v 1.5 2010-03-09 02:38:54 castaglia Exp $
+ * $Id: mod_ident.c,v 1.6 2010-12-21 03:31:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -63,6 +63,7 @@ static char *ident_lookup(pool *p, conn_t *conn) {
   char buf[256], *ident = NULL;
   int timerno, res = 0;
   int ident_port = pr_inet_getservport(p, "ident", "tcp");
+  pr_netaddr_t *bind_addr;
 
   ident_nstrm = NULL;
   ident_timeout_triggered = FALSE;
@@ -78,7 +79,17 @@ static char *ident_lookup(pool *p, conn_t *conn) {
     return NULL;
   }
 
-  ident_conn = pr_inet_create_conn(p, -1, conn->local_addr, INPORT_ANY, FALSE);
+  if (pr_netaddr_get_family(conn->local_addr) == pr_netaddr_get_family(conn->remote_addr)) {
+    bind_addr = conn->local_addr;
+
+  } else {
+    /* In this scenario, the server has an IPv6 socket, but the remote client
+     * is an IPv4 (or IPv4-mapped IPv6) peer.
+     */
+    bind_addr = pr_netaddr_v6tov4(p, session.c->local_addr);
+  }
+
+  ident_conn = pr_inet_create_conn(p, -1, bind_addr, INPORT_ANY, FALSE);
   if (ident_conn == NULL) {
     pr_trace_msg(trace_channel, 3, "error creating connection: %s",
       strerror(errno));
@@ -89,10 +100,7 @@ static char *ident_lookup(pool *p, conn_t *conn) {
    * really no need for it.
    */
 
-  pr_inet_set_nonblock(p, ident_conn);
-
-  res = pr_inet_connect_nowait(p, ident_conn, conn->remote_addr,
-    ident_port);
+  res = pr_inet_connect_nowait(p, ident_conn, conn->remote_addr, ident_port);
   if (res < 0) {
     int xerrno = errno;
 
@@ -202,8 +210,12 @@ static char *ident_lookup(pool *p, conn_t *conn) {
   pr_netio_set_poll_interval(ident_io->instrm, 1);
   pr_netio_set_poll_interval(ident_io->outstrm, 1);
 
-  pr_netio_printf(ident_io->outstrm, "%d, %d\r\n", conn->remote_port,
+  res = pr_netio_printf(ident_io->outstrm, "%d, %d\r\n", conn->remote_port,
     conn->local_port);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 1, "error writing command to ident server: %s",
+      strerror(errno));
+  }
 
   pr_trace_msg(trace_channel, 4, "reading response from ident server at %s",
     pr_netaddr_get_ipstr(conn->remote_addr));
