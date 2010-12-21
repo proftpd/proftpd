@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.1 2010-12-15 02:21:57 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.2 2010-12-21 00:15:13 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -19,9 +19,53 @@ The <code>mod_core</code> module handles most of the core FTP commands.
 
 <h2>Directives</h2>
 <ul>
+  <li><a href="#Protocols">ProcessTitles</a>
   <li><a href="#Protocols">Protocols</a>
 </ul>
 
+<hr>
+<h2><a name="ProcessTitles">ProcessTitles</a></h2>
+<strong>Syntax:</strong> ProcessTitles <em>terse|verbose</em><br>
+<strong>Default:</strong> ProcessTitles verbose<br>
+<strong>Context:</strong> server config
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.3.4rc2 and later
+
+<p>
+The <code>ProcessTitles</code> directive is used to tweak how
+<code>proftpd</code> modifies the process title for session processes.
+
+<p>
+By default, <code>proftpd</code> updates the process title to show the current
+FTP command and its arguments for every session, <i>e.g.</i>:
+<pre>
+  # ps aux | grep proftpd
+  proftpd  30667  0.0  0.1   7304  1584 ?        Ss   02:12   0:00 proftpd: (accepting connections)
+  user1    31892  0.2  0.3   8004  3505 ?        SL   20:13   0:12 proftpd: user1 - remote.client1.com: RETR file1.doc
+  user2    31934  0.0  0.3   8004  3500 ?        SL   21:27   0:00 proftpd: user2 - 4.3.2.1: STOR file2.zip
+  user3    31891  0.2  0.3   8004  3504 ?        SL   20:11   0:09 proftpd: user3 - remote.client2.com: RETR whatever.iso
+</pre>
+This is the same as having:
+<pre>
+  ProcessTitles verbose
+</pre>
+in your proftpd.conf.
+
+<p>
+To obscure the process titles, you can use:
+<pre>
+  ProcessTitles terse
+</pre>
+which results in process titles which look like:
+<pre>
+  # ps aux | grep proftpd
+  proftpd  30667  0.0  0.1   7304  1584 ?        Ss   02:12   0:00 proftpd: (accepting connections)
+  user1    31892  0.2  0.3   8004  3505 ?        SL   20:13   0:12 proftpd: processing connection
+  user2    31934  0.0  0.3   8004  3500 ?        SL   21:27   0:00 proftpd: processing connection
+  user3    31891  0.2  0.3   8004  3504 ?        SL   20:11   0:09 proftpd: processing connection
+</pre>
+
+<p>
 <hr>
 <h2><a name="Protocols">Protocols</a></h2>
 <strong>Syntax:</strong> Protocols <em>protocol1 ...</em><br>
@@ -49,9 +93,9 @@ example:
 The currently known/supported protocols include:
 <ul>
   <li><code>ftp</code><br>
-  <li><code>ftps</code> (from <a href="../contrib/mod_tls.html"><code>mod_tls</code></a><br>
-  <li><code>scp</code> (from <a href="../contrib/mod_sftp.html"><code>mod_sftp</code></a><br>
-  <li><code>sftp</code> (from <a href="../contrib/mod_sftp.html"><code>mod_sftp</code></a><br>
+  <li><code>ftps</code> (from <a href="../contrib/mod_tls.html"><code>mod_tls</code></a>)<br>
+  <li><code>scp</code> (from <a href="../contrib/mod_sftp.html"><code>mod_sftp</code></a>)<br>
+  <li><code>sftp</code> (from <a href="../contrib/mod_sftp.html"><code>mod_sftp</code></a>)<br>
 </ul>
 
 <p>
@@ -63,7 +107,7 @@ The <code>mod_core</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-12-15 02:21:57 $</i><br>
+Last Updated: <i>$Date: 2010-12-21 00:15:13 $</i><br>
 
 <br><hr>
 
