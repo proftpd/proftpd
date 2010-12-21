@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.47 2010-12-17 18:40:28 castaglia Exp $
+ * $Id: netio.c,v 1.48 2010-12-21 03:32:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -701,7 +701,7 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
       break;
 
     case PR_NETIO_STRM_OTHR:
-      pr_event_generate("core.other-write", pbuf);
+      pr_event_generate("core.othr-write", pbuf);
       break;
   }
 
@@ -806,7 +806,7 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
       break;
 
     case PR_NETIO_STRM_OTHR:
-      pr_event_generate("core.other-write", pbuf);
+      pr_event_generate("core.othr-write", pbuf);
       break;
   }
 
