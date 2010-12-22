@@ -1,4 +1,4 @@
-<!-- $Id: Scoreboard.html,v 1.5 2010-11-11 01:24:54 castaglia Exp $ -->
+<!-- $Id: Scoreboard.html,v 1.6 2010-12-22 00:13:42 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Scoreboard.html,v $ -->
 
 <html>
@@ -56,6 +56,34 @@ configure a different <code>ScoreboardMutex</code> file, make absolutely
 sure that you <b>do not place the file on a networked filesystem</b>.  Your
 performance will suffer greatly if you do.
 
+<p>
+<b>What's in the Scoreboard?</b><br>
+What types of information about each session is tracked in the scoreboard?
+What else is recorded in the scoreboard?
+
+<p>
+The <code>ScoreboardFile</code> records the following information about
+the parent/daemon <code>proftpd</code> process:
+<ul>
+  <li>scoreboard file format identifier
+  <li>daemon PID
+  <li>daemon uptime
+  <li>daemon version
+</ul>
+and for each session, the <code>ScoreboardFile</code> records:
+<ul>
+  <li>session PID
+  <li>session protocol (<i>e.g.</i> "ftp", "ftps", "sftp")
+  <li>session UID
+  <li>session GID
+  <li>session user name
+  <li>session server IP address/port
+  <li>session virtual host name
+  <li>session client IP address, DNS name
+  <li>session <a href="Classes.html">class</a>
+  <li>time since session started
+</ul>
+and some other data related to data transfers.
 
 <p>
 <b>Scrubbing the Scoreboard</b><br>
@@ -178,7 +206,7 @@ daemon will automatically create a new scoreboard in the correct format.
 
 <p>
 <hr>
-<i>$Date: 2010-11-11 01:24:54 $</i><br>
+<i>$Date: 2010-12-22 00:13:42 $</i><br>
 
 </body>
 </html>
