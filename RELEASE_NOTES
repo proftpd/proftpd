@@ -19,6 +19,9 @@ ChangeLog files.
   + Automatic detection of MySQL, Postgres library and header file locations
   + Added support for SMTP authentication in ftpmail script
   + Updated fnmatch implementation, using glibc-2.9 version.
+  + Overhauled mod_ldap configuration directives, making mod_ldap easier
+    to configure. Previous configurations must be updated. See README.LDAP
+    for details.
 
   + New modules:
 
@@ -158,4 +161,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2010-12-17 22:39:38 $
+Last Updated: $Date: 2010-12-23 22:37:32 $
