@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008 The ProFTPD Project team
+ * Copyright (c) 2008-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * Pool API tests
- * $Id: pool.c,v 1.2 2009-01-30 00:14:16 castaglia Exp $
+ * $Id: pool.c,v 1.3 2010-12-23 19:17:35 castaglia Exp $
  */
 
 #include "tests.h"
@@ -116,7 +116,7 @@ START_TEST (pcalloc_test) {
   fail_unless(v == NULL, "Allocated %u-len memory", sz);
 
   sz = 1;
-  v = palloc(p, sz);
+  v = pcalloc(p, sz);
   fail_if(v == NULL, "Failed to allocate %u-len memory", sz);
   for (i = 0; i < sz; i++) {
     fail_unless(v[i] == 0, "Allocated non-zero memory at position %u", i);
