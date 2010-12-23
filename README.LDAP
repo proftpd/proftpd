@@ -4,9 +4,9 @@ mod_ldap v2.9.0
 mod_ldap is a module that allows proftpd to do user authentication and
 name/UID lookups against an LDAP database.
 
-**Please note:** Read the CHANGES section below for mod_ldap v2.9 changes;
+**Please note:** Read the Changes section below for mod_ldap v2.9 changes;
 some significant changes have been made. Do *NOT* upgrade to mod_ldap v2.9
-or later before reading the CHANGES section.
+or later before reading the Changes section.
 
 Sections:
 1. Author
