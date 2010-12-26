@@ -24,7 +24,7 @@
 
 /*
  * Timers API tests
- * $Id: timers.c,v 1.2 2010-08-11 14:56:36 castaglia Exp $
+ * $Id: timers.c,v 1.3 2010-12-26 22:36:37 castaglia Exp $
  */
 
 #include "tests.h"
@@ -120,8 +120,12 @@ START_TEST (timer_add_test) {
   sleep(1);
   timers_handle_signals();
 
+  /* Allow for races between timers and testsuite. Aren't timing-based
+   * unit tests fun?
+   */
+
   ok = 2;
-  fail_unless(timer_triggered_count == ok,
+  fail_unless(timer_triggered_count == ok || timer_triggered_count == (ok + 1),
     "Timer failed to fire (expected count %u, got %u)", ok,
     timer_triggered_count);
 
@@ -129,7 +133,7 @@ START_TEST (timer_add_test) {
   timers_handle_signals();
 
   ok = 3;
-  fail_unless(timer_triggered_count == ok,
+  fail_unless(timer_triggered_count == ok || timer_triggered_count = (ok + 1),
     "Timer failed to fire (expected count %u, got %u)", ok,
     timer_triggered_count);
 }
