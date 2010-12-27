@@ -24,7 +24,7 @@
 
 /*
  * Timers API tests
- * $Id: timers.c,v 1.3 2010-12-26 22:36:37 castaglia Exp $
+ * $Id: timers.c,v 1.4 2010-12-27 05:27:26 castaglia Exp $
  */
 
 #include "tests.h"
@@ -133,7 +133,7 @@ START_TEST (timer_add_test) {
   timers_handle_signals();
 
   ok = 3;
-  fail_unless(timer_triggered_count == ok || timer_triggered_count = (ok + 1),
+  fail_unless(timer_triggered_count == ok || timer_triggered_count == (ok + 1),
     "Timer failed to fire (expected count %u, got %u)", ok,
     timer_triggered_count);
 }
