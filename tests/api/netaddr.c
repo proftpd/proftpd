@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008 The ProFTPD Project team
+ * Copyright (c) 2008-2010 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * NetAddr API tests
- * $Id: netaddr.c,v 1.1 2008-10-06 18:16:50 castaglia Exp $
+ * $Id: netaddr.c,v 1.2 2010-12-27 05:17:59 castaglia Exp $
  */
 
 #include "tests.h"
@@ -334,8 +334,14 @@ START_TEST (netaddr_get_dnsstr_test) {
   res = pr_netaddr_get_dnsstr(addr);
   fail_unless(res != NULL, "Failed to get DNS str for addr: %s",
     strerror(errno));
-  fail_unless(strcmp(res, "localhost") == 0, "Expected '%s', got '%s'",
-    "localhost", res);
+
+  /* Depending on the contents of /etc/hosts, resolving 127.0.0.1 could
+   * return either "localhost" or "localhost.localdomain".  Perhaps even
+   * other variations, although these should be the most common.
+   */
+  fail_unless(strcmp(res, "localhost") == 0 ||
+              strcmp(res, "localhost.localdomain") == 0,
+    "Expected '%s', got '%s'", "localhost or localhost.localdomain", res);
 }
 END_TEST
 
