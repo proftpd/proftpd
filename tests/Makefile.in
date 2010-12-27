@@ -79,4 +79,4 @@ running-tests:
 check: dummy api-tests$(EXEEXT) running-tests
 
 clean:
-	$(LIBTOOL) --mode=clean $(RM) *.o api/*.o test$(EXEEXT)
+	$(LIBTOOL) --mode=clean $(RM) *.o api/*.o api-tests$(EXEEXT) api-tests.log
