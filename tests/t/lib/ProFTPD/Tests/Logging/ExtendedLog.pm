@@ -1505,8 +1505,6 @@ sub extlog_dele_bug3469 {
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
 
-  my $test_file = File::Spec->rel2abs($config_file);
-
   my $user = 'proftpd';
   my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs($tmpdir);
@@ -2759,8 +2757,6 @@ sub extlog_ftp_sendfile_raw_bytes_bug3554 {
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
 
-  my $test_file = File::Spec->rel2abs($config_file);
-
   my $user = 'proftpd';
   my $passwd = 'test';
   my $group = 'ftpd';
@@ -3122,8 +3118,6 @@ sub extlog_ftps_raw_bytes_bug3554 {
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
 
   my $user = 'proftpd';
   my $passwd = 'test';
