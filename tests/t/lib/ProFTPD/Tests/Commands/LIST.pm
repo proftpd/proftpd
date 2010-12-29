@@ -3883,7 +3883,7 @@ sub list_slashstar_bug3529 {
         }
       }
 
-      my $expected = {
+      $expected = {
         '/AAA' => 1,
         '/cmds.conf' => 1,
         '/cmds.group' => 1,
@@ -4069,7 +4069,7 @@ sub list_star_bug3529 {
         }
       }
 
-      my $expected = {
+      $expected = {
         'AAA' => 1,
         'cmds.conf' => 1,
         'cmds.group' => 1,
