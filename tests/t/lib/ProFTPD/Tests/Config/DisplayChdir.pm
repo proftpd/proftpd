@@ -444,8 +444,6 @@ sub displaychdir_first_chdir {
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg(0);
 
-      my $expected;
-
       $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
