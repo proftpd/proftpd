@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.388 2010-12-21 00:05:51 castaglia Exp $
+ * $Id: mod_core.c,v 1.389 2011-01-03 21:40:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1478,14 +1478,16 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
 
     } else {
       rlim->rlim_cur = get_num_bytes(cmd->argv[2]);
+
+      /* Check for bad return values. */
+      if (rlim->rlim_cur == PR_BYTES_BAD_UNITS) {
+        CONF_ERROR(cmd, "unknown units used");
+      }
+
+      if (rlim->rlim_cur == PR_BYTES_BAD_FORMAT) {
+        CONF_ERROR(cmd, "badly formatted parameter");
+      }
     }
-
-    /* Check for bad return values. */
-    if (rlim->rlim_cur == PR_BYTES_BAD_UNITS)
-      CONF_ERROR(cmd, "unknown units used");
-
-    if (rlim->rlim_cur == PR_BYTES_BAD_FORMAT)
-      CONF_ERROR(cmd, "badly formatted parameter");
 
     /* Handle the optional "hard limit" parameter, if present. */
     if (cmd->argc-1 == 3) {
@@ -1494,14 +1496,16 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
 
       } else {
         rlim->rlim_max = get_num_bytes(cmd->argv[3]);
+
+        /* Check for bad return values. */
+        if (rlim->rlim_max == PR_BYTES_BAD_UNITS) {
+          CONF_ERROR(cmd, "unknown units used");
+        }
+
+        if (rlim->rlim_max == PR_BYTES_BAD_FORMAT) {
+          CONF_ERROR(cmd, "badly formatted parameter");
+        }
       }
-
-      /* Check for bad return values. */
-      if (rlim->rlim_max == PR_BYTES_BAD_UNITS)
-        CONF_ERROR(cmd, "unknown units used");
-
-      if (rlim->rlim_max == PR_BYTES_BAD_FORMAT)
-        CONF_ERROR(cmd, "badly formatted parameter");
     }
 
     c = add_config_param(cmd->argv[0], 2, (void *) rlim, NULL);
@@ -1533,14 +1537,16 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
 
     } else {
       rlim->rlim_cur = get_num_bytes(cmd->argv[1]);
+
+      /* Check for bad return values. */
+      if (rlim->rlim_cur == PR_BYTES_BAD_UNITS) {
+        CONF_ERROR(cmd, "unknown units used");
+      }
+
+      if (rlim->rlim_cur == PR_BYTES_BAD_FORMAT) {
+        CONF_ERROR(cmd, "badly formatted parameter");
+      }
     }
-
-    /* Check for bad return values. */
-    if (rlim->rlim_cur == PR_BYTES_BAD_UNITS)
-      CONF_ERROR(cmd, "unknown units used");
-
-    if (rlim->rlim_cur == PR_BYTES_BAD_FORMAT)
-      CONF_ERROR(cmd, "badly formatted parameter");
 
     /* Handle the optional "hard limit" parameter, if present. */
     if (cmd->argc-1 == 2) {
@@ -1549,14 +1555,16 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
 
       } else {
         rlim->rlim_max = get_num_bytes(cmd->argv[2]);
+
+        /* Check for bad return values. */
+        if (rlim->rlim_max == PR_BYTES_BAD_UNITS) {
+          CONF_ERROR(cmd, "unknown units used");
+        }
+
+        if (rlim->rlim_max == PR_BYTES_BAD_FORMAT) {
+          CONF_ERROR(cmd, "badly formatted parameter");
+        }
       }
-
-      /* Check for bad return values. */
-      if (rlim->rlim_max == PR_BYTES_BAD_UNITS)
-        CONF_ERROR(cmd, "unknown units used");
-
-      if (rlim->rlim_max == PR_BYTES_BAD_FORMAT)
-        CONF_ERROR(cmd, "badly formatted parameter");
     }
 
     add_config_param(cmd->argv[0], 2, (void *) rlim, NULL);
