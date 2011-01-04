@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2010 TJ Saunders
+ * Copyright (c) 2004-2011 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.194 2010-12-18 18:33:13 castaglia Exp $
+ * $Id: mod_sql.c,v 1.195 2011-01-04 19:48:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1983,6 +1983,7 @@ MODRET sql_post_retr(cmd_rec *cmd) {
 
 static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   const char *long_tag = NULL;
+  size_t taglen;
 
   if (strcmp(tag, "uid") == 0) {
     char buf[64];
@@ -2008,8 +2009,10 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
     long_tag = pr_session_get_protocol(0);
   }
 
+  taglen = strlen(tag);
+
   if (long_tag == NULL &&
-      strlen(tag) > 5 &&
+      taglen > 5 &&
       strncmp(tag, "env:", 4) == 0) {
     char *env;
 
@@ -2018,7 +2021,23 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
-      strlen(tag) > 6 &&
+      taglen > 5 &&
+      strncmp(tag, "note:", 5) == 0) {
+    char *key = NULL, *note = NULL;
+
+    key = tag + 5;
+
+    /* Check first in the command.notes table, then in the session.notes. */
+    note = pr_table_get(cmd->notes, key, NULL);
+    if (note == NULL) {
+      note = pr_table_get(session.notes, key, NULL);
+    }
+
+    long_tag = pstrdup(cmd->tmp_pool, note ? note : "");
+  }
+
+  if (long_tag == NULL &&
+      taglen > 6 &&
       strncmp(tag, "time:", 5) == 0) {
     char time_str[128], *fmt;
     time_t now;

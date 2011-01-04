@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1273 2011-01-03 21:40:09 castaglia Exp $
+$Id: NEWS,v 1.1274 2011-01-04 19:48:08 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -14,6 +14,7 @@ CVS
 - Bug 3566 - Ability to turn verbose process titles off.
 - Bug 3567 - IdentLookups do not work for IPv6 servers.
 - Bug 3571 - RLimitMemory "max" soft/hard limits don't work.
+- Bug 3572 - Support use of "notes" variables in SQLNamedQuery.
 
 1.3.4rc1 - Released 17-Dec-2010
 --------------------------------

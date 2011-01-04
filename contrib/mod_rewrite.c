@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
  *
- * Copyright (c) 2001-2010 TJ Saunders
+ * Copyright (c) 2001-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,17 +24,17 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.53 2010-08-09 16:31:44 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.54 2011-01-04 19:48:08 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_REWRITE_VERSION "mod_rewrite/0.8"
+#define MOD_REWRITE_VERSION "mod_rewrite/0.9"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001021001
-# error "ProFTPD 1.2.10rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030101
+# error "ProFTPD 1.3.1rc1 or later required"
 #endif
 
 #ifdef HAVE_REGEX_H
@@ -101,6 +101,8 @@ static unsigned int rewrite_nrules = 0;
 static array_header *rewrite_conds = NULL, *rewrite_regexes = NULL;
 static rewrite_match_t rewrite_cond_matches;
 static rewrite_match_t rewrite_rule_matches;
+
+static const char *trace_channel = "rewrite";
 
 #define REWRITE_MAX_VARS		15
 
@@ -857,6 +859,15 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
     rewrite_match_t *matches) {
   register unsigned int i = 0;
   char *replacement_pattern = NULL;
+  int use_notes = TRUE;
+
+  /* We do NOT stash the backrefs in the cmd->notes table for sensitive
+   * data, e.g. PASS or ADAT commands.
+   */
+  if (strcmp(cmd->argv[0], C_PASS) == 0 ||
+      strcmp(cmd->argv[0], C_ADAT) == 0) {
+    use_notes = FALSE;
+  }
 
   for (i = 0; i < REWRITE_MAX_MATCHES; i++) {
     char buf[3] = {'\0'}, *ptr;
@@ -876,11 +887,42 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
       replacement_pattern = pstrdup(cmd->pool, pattern);
 
     /* Make sure there's a backreference for this in the substitution
-     * pattern.  Otherwise, just continue on.
+     * pattern.
      */
     ptr = strstr(replacement_pattern, buf);
-    if (ptr == NULL)
+    if (ptr == NULL) {
+
+      /* Even if there is no backref in the substitution pattern, we
+       * want to stash the backrefs in the cmd->notes table.
+       */
+      if (use_notes == TRUE &&
+          matches->match_groups[i].rm_so != -1) {
+        char *key, *value, tmp;
+
+        tmp = (matches->match_string)[matches->match_groups[i].rm_eo];
+        (matches->match_string)[matches->match_groups[i].rm_eo] = '\0';
+
+        value = &(matches->match_string)[matches->match_groups[i].rm_so];
+        key = pstrcat(cmd->pool, "mod_rewrite.", buf, NULL);
+
+        if (pr_table_add_dup(cmd->notes, key, value, 0) < 0) {
+          /* Ignore dups. */
+          if (errno != EEXIST) {
+            pr_trace_msg(trace_channel, 3,
+              "error stashing '%s' in cmd->notes: %s", key, strerror(errno));
+          }
+
+        } else {
+          pr_trace_msg(trace_channel, 9,
+            "stashing value '%s' under key '%s' in cmd->notes", value, key);
+        }
+
+        /* Undo the twiddling of the NUL character. */
+        (matches->match_string)[matches->match_groups[i].rm_eo] = tmp;
+      }
+
       continue;
+    }
 
     /* Check for escaped backrefs. */ 
     if (ptr > replacement_pattern) {
@@ -925,7 +967,7 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
     }
 
     if (matches->match_groups[i].rm_so != -1) {
-      char tmp;
+      char *value, tmp;
 
       /* There's a match for the backref in the string, substitute in
        * the backreferenced value.
@@ -934,15 +976,41 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
       tmp = (matches->match_string)[matches->match_groups[i].rm_eo];
       (matches->match_string)[matches->match_groups[i].rm_eo] = '\0';
 
+      value = &(matches->match_string)[matches->match_groups[i].rm_so];
+
       rewrite_log("rewrite_subst_backrefs(): replacing backref '%s' with '%s'",
-        buf, &(matches->match_string)[matches->match_groups[i].rm_so]);
+        buf, value);
+
+      if (use_notes) {
+        char *key;
+
+        /* Stash the backref in the cmd->notes table, for use by other
+         * modules, e.g. mod_sql.
+         */
+
+        key = pstrcat(cmd->pool, "mod_rewrite.", buf, NULL);
+
+        if (pr_table_add_dup(cmd->notes, key, value, 0) < 0) {
+          /* Ignore dups. */
+          if (errno != EEXIST) {
+            pr_trace_msg(trace_channel, 3,
+              "error stashing '%s' in cmd->notes: %s", key, strerror(errno));
+          }
+
+        } else {
+          pr_trace_msg(trace_channel, 9,
+            "stashing value '%s' under key '%s' in cmd->notes", value, key);
+        }
+      }
+
       replacement_pattern = sreplace(cmd->pool, replacement_pattern, buf,
-        &(matches->match_string)[matches->match_groups[i].rm_so], NULL);
+        value, NULL);
    
       /* Undo the twiddling of the NUL character. */ 
       (matches->match_string)[matches->match_groups[i].rm_eo] = tmp;
 
     } else {
+
       /* There's backreference in the string, but there no matching
        * group (i.e. backreferenced value).  Substitute in an empty string
        * for the backref.
@@ -950,6 +1018,29 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
 
       rewrite_log("rewrite_subst_backrefs(): replacing backref '%s' with "
         "empty string", buf);
+
+      if (use_notes) {
+        char *key;
+
+        /* Stash the backref in the cmd->notes table, for use by other
+         * modules, e.g. mod_sql.
+         */
+
+        key = pstrcat(cmd->pool, "mod_rewrite.", buf, NULL);
+
+        if (pr_table_add_dup(cmd->notes, key, "", 0) < 0) {
+          /* Ignore dups. */
+          if (errno != EEXIST) {
+            pr_trace_msg(trace_channel, 3,
+              "error stashing '%s' in cmd->notes: %s", key, strerror(errno));
+          }
+
+        } else {
+          pr_trace_msg(trace_channel, 9,
+            "stashing empty string under key '%s' in cmd->notes", key);
+        }
+      }
+
       replacement_pattern = sreplace(cmd->pool, replacement_pattern, buf,
         "", NULL);
     }
