@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2010 The ProFTPD Project team
+ * Copyright (c) 2004-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.17 2010-03-30 21:17:35 castaglia Exp $
+ * $Id: table.c,v 1.18 2011-01-04 19:41:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -64,6 +64,8 @@ struct table_rec {
 };
 
 static int handling_signal = FALSE;
+
+static const char *trace_channel = "table";
 
 /* Default table callbacks
  */
@@ -1024,17 +1026,34 @@ void *pr_table_pcalloc(pr_table_t *tab, size_t sz) {
   return pcalloc(tab->pool, sz);
 }
 
+static void table_printf(const char *fmt, ...) {
+  char buf[PR_TUNABLE_BUFFER_SIZE+1];
+  va_list msg;
+
+  memset(buf, '\0', sizeof(buf));
+  va_start(msg, fmt);
+  vsnprintf(buf, sizeof(buf)-1, fmt, msg);
+  va_end(msg);
+
+  buf[sizeof(buf)-1] = '\0';
+  pr_trace_msg(trace_channel, 19, "dump: %s", buf);
+}
+
 void pr_table_dump(void (*dumpf)(const char *fmt, ...), pr_table_t *tab) {
   register unsigned int i;
 
-  if (tab == NULL ||
-      dumpf == NULL)
+  if (tab == NULL) {
     return;
+  }
 
-  if (tab->flags == 0)
+  if (dumpf == NULL) {
+    dumpf = table_printf;
+  }
+
+  if (tab->flags == 0) {
     dumpf("%s", "[table flags]: None");
 
-  else {
+  } else {
     if ((tab->flags & PR_TABLE_FL_MULTI_VALUE) &&
         (tab->flags & PR_TABLE_FL_USE_CACHE)) {
       dumpf("%s", "[table flags]: MultiValue, UseCache");
