@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2010 The ProFTPD Project team
+ * Copyright (c) 2004-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.22 2010-11-30 22:57:34 castaglia Exp $
+ * $Id: parser.c,v 1.23 2011-01-05 16:36:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -437,7 +437,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
 
 cmd_rec *pr_parser_parse_line(pool *p) {
   register unsigned int i;
-  char buf[PR_TUNABLE_BUFFER_SIZE], *arg = "", *word = NULL;
+  char buf[PR_TUNABLE_BUFFER_SIZE+1], *arg = "", *word = NULL;
   cmd_rec *cmd = NULL;
   pool *sub_pool = NULL;
   array_header *arr = NULL;
