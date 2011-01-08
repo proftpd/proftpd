@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_file - file-based authentication module that supports
  *                          restrictions on the file contents
  *
- * Copyright (c) 2002-2007 The ProFTPD Project team
+ * Copyright (c) 2002-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.34 2009-12-10 17:40:01 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.35 2011-01-08 19:18:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@
 # include <crypt.h>
 #endif
 
-#define MOD_AUTH_FILE_VERSION	"mod_auth_file/0.8.3"
+#define MOD_AUTH_FILE_VERSION	"mod_auth_file/0.9"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001020702
@@ -340,8 +340,11 @@ static struct group *af_getgrent(void) {
     while (af_getgrentline(&buf, &buflen, af_group_file->af_file) != NULL) {
 
       /* Ignore comment and empty lines */
-      if (buf[0] == '\0' || buf[0] == '#')
+      if (buf[0] == '\0' ||
+          buf[0] == '#') {
+        grp = NULL;
         continue;
+      }
 
       cp = strchr(buf, '\n');
       if (cp != NULL)
@@ -355,11 +358,14 @@ static struct group *af_getgrent(void) {
 #endif /* !HAVE_FGETGRENT */
 
     /* If grp is NULL now, the file is empty - nothing more to be read. */
-    if (!grp)
+    if (grp == NULL) {
       break;
+    }
 
-    if (af_allow_grent(grp) < 0)
+    if (af_allow_grent(grp) < 0) {
+      grp = NULL;
       continue;
+    }
 
     break;
   }
@@ -500,8 +506,8 @@ static void af_endpwent(void) {
 static struct passwd *af_getpwent(void) {
   struct passwd *pwd = NULL;
 
-  if (!af_user_file ||
-      !af_user_file->af_file) {
+  if (af_user_file == NULL ||
+      af_user_file->af_file == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -511,15 +517,20 @@ static struct passwd *af_getpwent(void) {
     pr_signals_handle();
     pwd = fgetpwent(af_user_file->af_file);
 #else
-    char buf[BUFSIZ] = {'\0'};
+    char buf[BUFSIZ+1] = {'\0'};
 
     pr_signals_handle();
-    while (fgets(buf, sizeof(buf), af_user_file->af_file) != (char*) 0) {
+    memset(buf, '\0', sizeof(buf));
+    while (fgets(buf, sizeof(buf)-1, af_user_file->af_file) != NULL) {
       pr_signals_handle();
 
       /* Ignore empty and comment lines */
-      if (buf[0] == '\0' || buf[0] == '#')
+      if (buf[0] == '\0' ||
+          buf[0] == '#') {
+        memset(buf, '\0', sizeof(buf));
+        pwd = NULL;
         continue;
+      }
 
       buf[strlen(buf)-1] = '\0';
       pwd = af_getpasswd(buf);
@@ -528,11 +539,15 @@ static struct passwd *af_getpwent(void) {
 #endif /* !HAVE_FGETPWENT */
 
     /* If pwd is NULL now, the file is empty - nothing more to be read. */
-    if (!pwd)
+    if (pwd == NULL) {
       break;
+    }
 
-    if (af_allow_pwent(pwd) < 0)
+    if (af_allow_pwent(pwd) < 0) {
+      memset(buf, '\0', sizeof(buf));
+      pwd = NULL;
       continue;
+    }
 
     break;
   }
@@ -547,6 +562,8 @@ static struct passwd *af_getpwnam(const char *name) {
     return NULL;
 
   while ((pwd = af_getpwent()) != NULL) {
+    pr_signals_handle();
+
     if (strcmp(name, pwd->pw_name) == 0) {
 
       /* Found the requested user */
