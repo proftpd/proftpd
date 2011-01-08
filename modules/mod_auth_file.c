@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.35 2011-01-08 19:18:53 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.36 2011-01-08 19:43:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -268,18 +268,18 @@ static int af_allow_grent(struct group *grp) {
 
     if (grp->gr_gid < af_group_file->af_min_id.gid) {
       pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping group '%s': "
-        "GID (%u) below the minimum allowed (%u)", grp->gr_name,
-        (unsigned int) grp->gr_gid,
-        (unsigned int) af_group_file->af_min_id.gid);
+        "GID %lu below the minimum allowed (%lu)", grp->gr_name,
+        (unsigned long) grp->gr_gid,
+        (unsigned long) af_group_file->af_min_id.gid);
       errno = EINVAL;
       return -1;
     }
 
     if (grp->gr_gid > af_group_file->af_max_id.gid) {
       pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping group '%s': "
-        "GID (%u) above the maximum allowed (%u)", grp->gr_name,
-        (unsigned int) grp->gr_gid,
-        (unsigned int) af_group_file->af_max_id.gid);
+        "GID %lu above the maximum allowed (%lu)", grp->gr_name,
+        (unsigned long) grp->gr_gid,
+        (unsigned long) af_group_file->af_max_id.gid);
       errno = EINVAL;
       return -1;
     }
@@ -315,7 +315,7 @@ static void af_endgrent(void) {
 }
 
 static struct group *af_getgrent(void) {
-  struct group *grp = NULL;
+  struct group *grp = NULL, *res = NULL;
 
   if (!af_group_file ||
       !af_group_file->af_file) {
@@ -334,15 +334,17 @@ static struct group *af_getgrent(void) {
     pr_signals_handle();
 
     buf = malloc(BUFSIZ);
-    if (!buf)
-      return NULL;
+    if (buf == NULL) {
+      pr_log_pri(PR_LOG_CRIT, "%s", "Out of memory!");
+      _exit(1);
+    }
+    grp = NULL;
 
     while (af_getgrentline(&buf, &buflen, af_group_file->af_file) != NULL) {
 
       /* Ignore comment and empty lines */
       if (buf[0] == '\0' ||
           buf[0] == '#') {
-        grp = NULL;
         continue;
       }
 
@@ -363,14 +365,14 @@ static struct group *af_getgrent(void) {
     }
 
     if (af_allow_grent(grp) < 0) {
-      grp = NULL;
       continue;
     }
 
+    res = grp;
     break;
   }
 
-  return grp;
+  return res;
 }
 
 static struct group *af_getgrnam(const char *name) {
@@ -444,16 +446,18 @@ static int af_allow_pwent(struct passwd *pwd) {
 
     if (pwd->pw_uid < af_user_file->af_min_id.uid) {
       pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
-        "UID (%u) below the minimum allowed (%u)", pwd->pw_name,
-        (unsigned int) pwd->pw_uid, (unsigned int) af_user_file->af_min_id.uid);
+        "UID %lu below the minimum allowed (%lu)", pwd->pw_name,
+        (unsigned long) pwd->pw_uid,
+        (unsigned long) af_user_file->af_min_id.uid);
       errno = EINVAL;
       return -1;
     }
 
     if (pwd->pw_uid > af_user_file->af_max_id.gid) {
       pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
-        "UID (%u) above the maximum allowed (%u)", pwd->pw_name,
-        (unsigned int) pwd->pw_uid, (unsigned int) af_user_file->af_max_id.uid);
+        "UID %lu above the maximum allowed (%lu)", pwd->pw_name,
+        (unsigned long) pwd->pw_uid,
+        (unsigned long) af_user_file->af_max_id.uid);
       errno = EINVAL;
       return -1;
     }
@@ -504,7 +508,7 @@ static void af_endpwent(void) {
 }
 
 static struct passwd *af_getpwent(void) {
-  struct passwd *pwd = NULL;
+  struct passwd *pwd = NULL, *res = NULL;
 
   if (af_user_file == NULL ||
       af_user_file->af_file == NULL) {
@@ -520,7 +524,10 @@ static struct passwd *af_getpwent(void) {
     char buf[BUFSIZ+1] = {'\0'};
 
     pr_signals_handle();
+
     memset(buf, '\0', sizeof(buf));
+    pwd = NULL;
+
     while (fgets(buf, sizeof(buf)-1, af_user_file->af_file) != NULL) {
       pr_signals_handle();
 
@@ -528,7 +535,6 @@ static struct passwd *af_getpwent(void) {
       if (buf[0] == '\0' ||
           buf[0] == '#') {
         memset(buf, '\0', sizeof(buf));
-        pwd = NULL;
         continue;
       }
 
@@ -545,14 +551,14 @@ static struct passwd *af_getpwent(void) {
 
     if (af_allow_pwent(pwd) < 0) {
       memset(buf, '\0', sizeof(buf));
-      pwd = NULL;
       continue;
     }
 
+    res = pwd;
     break;
   }
 
-  return pwd;
+  return res;
 }
 
 static struct passwd *af_getpwnam(const char *name) {
