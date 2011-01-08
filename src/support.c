@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,24 +27,12 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.107 2010-06-15 16:58:22 castaglia Exp $
+ * $Id: support.c,v 1.108 2011-01-08 22:46:33 castaglia Exp $
  */
 
 #include "conf.h"
 
 #include <signal.h>
-
-#ifdef HAVE_SYS_STATVFS_H
-# include <sys/statvfs.h>
-#elif defined(HAVE_SYS_VFS_H)
-# include <sys/vfs.h>
-#elif defined(HAVE_SYS_MOUNT_H)
-# include <sys/mount.h>
-#endif
-
-#ifdef AIX3
-# include <sys/statfs.h>
-#endif
 
 #ifdef PR_USE_OPENSSL
 # include <openssl/crypto.h>
