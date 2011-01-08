@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.12 2011-01-06 18:33:30 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.13 2011-01-08 00:21:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -241,7 +241,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       prefix_len = sql_passwd_salt_len;
 
       pr_trace_msg(trace_channel, 9,
-        ": prepending %lu bytes of salt data", (unsigned long) prefix_len);
+        "prepending %lu bytes of salt data", (unsigned long) prefix_len);
 
     } else {
       unsigned int salt_hashlen = 0;
@@ -258,7 +258,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       }
 
       pr_trace_msg(trace_channel, 9,
-        ": prepending %lu bytes of %s-hashed salt data (%s)",
+        "prepending %lu bytes of %s-hashed salt data (%s)",
         (unsigned long) prefix_len, digest, prefix);
     }
   }
@@ -268,17 +268,31 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     data_len = strlen(plaintext);
 
   } else {
-    unsigned int salt_hashlen = 0;
+    /* Note: We will only honor a HashEncodePassword option IFF there is
+     * also salt data present.  Otherwise, it is equivalent to another
+     * round of processing, which defeats the principle of least surprise.
+     */
+    if (sql_passwd_salt_len == 0 &&
+        (sql_passwd_opts & SQL_PASSWD_OPT_HASH_PASSWORD) &&
+        (sql_passwd_opts & SQL_PASSWD_OPT_ENCODE_PASSWORD)) {
+      pr_trace_msg(trace_channel, 4, "%s",
+        "no salt present, ignoring HashEncodePassword SQLPasswordOption");
+      data = (unsigned char *) plaintext;
+      data_len = strlen(plaintext);
 
-    data = sql_passwd_hash(cmd->tmp_pool, md,
-      (unsigned char *) plaintext, strlen(plaintext),
-      NULL, 0, NULL, 0, &salt_hashlen);
-    data_len = salt_hashlen;
+    } else {
+      unsigned int salt_hashlen = 0;
 
-    if (sql_passwd_opts & SQL_PASSWD_OPT_ENCODE_PASSWORD) {
-      data = (unsigned char *) sql_passwd_encode(cmd->tmp_pool,
-        (unsigned char *) data, data_len);
-      data_len = strlen((char *) data);
+      data = sql_passwd_hash(cmd->tmp_pool, md,
+        (unsigned char *) plaintext, strlen(plaintext),
+        NULL, 0, NULL, 0, &salt_hashlen);
+      data_len = salt_hashlen;
+
+      if (sql_passwd_opts & SQL_PASSWD_OPT_ENCODE_PASSWORD) {
+        data = (unsigned char *) sql_passwd_encode(cmd->tmp_pool,
+          (unsigned char *) data, data_len);
+        data_len = strlen((char *) data);
+      }
     }
   }
 
@@ -291,7 +305,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       suffix_len = sql_passwd_salt_len;
 
       pr_trace_msg(trace_channel, 9,
-        ": appending %lu bytes of salt data", (unsigned long) suffix_len);
+        "appending %lu bytes of salt data", (unsigned long) suffix_len);
 
     } else {
       unsigned int salt_hashlen = 0;
@@ -308,7 +322,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       }
 
       pr_trace_msg(trace_channel, 9, 
-        ": appending %lu bytes of %s-hashed salt data",
+        "appending %lu bytes of %s-hashed salt data",
         (unsigned long) suffix_len, digest);
     }
   }
@@ -331,7 +345,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     unsigned int nrounds = sql_passwd_nrounds - 1;
 
     pr_trace_msg(trace_channel, 9, 
-      ": transforming the data for another %u %s", nrounds,
+      "transforming the data for another %u %s", nrounds,
       nrounds != 1 ? "rounds" : "round");
 
     for (i = 0; i < nrounds; i++) {
@@ -341,7 +355,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
         strlen(encodedtext), NULL, 0, NULL, 0, &hash_len);
       encodedtext = sql_passwd_encode(cmd->tmp_pool, hash, hash_len);
 
-      pr_trace_msg(trace_channel, 15, ": data after round %u: '%s'", i + 1,
+      pr_trace_msg(trace_channel, 15, "data after round %u: '%s'", i + 1,
         encodedtext);
     }
   }
