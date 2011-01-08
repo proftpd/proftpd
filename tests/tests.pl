@@ -180,6 +180,11 @@ if (scalar(@ARGV) > 0) {
   my $order = 0;
 
   my $FEATURE_TESTS = {
+    't/modules/mod_auth_file.t' => {
+      order => ++$order,
+      test_class => [qw(mod_auth_file)],
+    },
+
     't/modules/mod_ban.t' => {
       order => ++$order,
       test_class => [qw(mod_ban)],
