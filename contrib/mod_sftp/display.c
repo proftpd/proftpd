@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp Display files
- * Copyright (c) 2010 TJ Saunders
+ * Copyright (c) 2010-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.3 2010-12-03 20:42:57 castaglia Exp $
+ * $Id: display.c,v 1.4 2011-01-10 21:57:24 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -48,7 +48,7 @@ static void format_size_str(char *buf, size_t buflen, off_t size) {
 const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
   struct stat st;
   char buf[PR_TUNABLE_BUFFER_SIZE], *msg = "";
-  int len;
+  int len, res;
   unsigned int *current_clients = NULL;
   unsigned int *max_clients = NULL;
   off_t fs_size = 0;
@@ -66,15 +66,14 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
   pr_fsio_fstat(fh, &st);
   fh->fh_iosz = st.st_blksize;
 
-#if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || \
-   defined(HAVE_SYS_VFS_H)
-  fs_size = pr_fs_getsize(fh->fh_path);
-  snprintf(mg_size, sizeof(mg_size), "%" PR_LU, (pr_off_t) fs_size);
-  format_size_str(mg_size_units, sizeof(mg_size_units), fs_size);
-#else
-  snprintf(mg_size, sizeof(mg_size), "%" PR_LU, (pr_off_t) fs_size);
-  format_size_str(mg_size_units, sizeof(mg_size_units), fs_size);
-#endif
+  res = pr_fs_getsize2(fh->fh_path, &fs_size);
+  if (res < 0 &&
+      errno != ENOSYS) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error getting filesystem size for '%s': %s", fh->fh_path,
+      strerror(errno));
+    fs_size = 0;
+  }
 
   mg_time = pr_strtime(time(NULL));
 

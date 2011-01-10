@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2010 The ProFTPD Project team
+ * Copyright (c) 2004-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.21 2010-11-08 00:50:34 castaglia Exp $
+ * $Id: display.c,v 1.22 2011-01-10 21:57:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -134,7 +134,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
     int flags) {
   struct stat st;
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  int len;
+  int len, res;
   unsigned int *current_clients = NULL;
   unsigned int *max_clients = NULL;
   off_t fs_size = 0;
@@ -158,15 +158,13 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
   pr_fsio_fstat(fh, &st);
   fh->fh_iosz = st.st_blksize;
 
-#if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || \
-   defined(HAVE_SYS_VFS_H)
-  fs_size = pr_fs_getsize((fs ? (char *) fs : (char *) fh->fh_path));
-  snprintf(mg_size, sizeof(mg_size), "%" PR_LU, (pr_off_t) fs_size);
-  format_size_str(mg_size_units, sizeof(mg_size_units), fs_size);
-#else
-  snprintf(mg_size, sizeof(mg_size), "%" PR_LU, (pr_off_t) fs_size);
-  format_size_str(mg_size_units, sizeof(mg_size_units), fs_size);
-#endif
+  res = pr_fs_getsize2(fh->fh_path, &fs_size);
+  if (res < 0 &&
+      errno != ENOSYS) {
+    (void) pr_log_debug(DEBUG7, "error getting filesystem size for '%s': %s",
+      fh->fh_path, strerror(errno));
+    fs_size = 0;
+  }
 
   p = make_sub_pool(session.pool);
   pr_pool_tag(p, "Display Pool");

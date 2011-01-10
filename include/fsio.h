@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2009 The ProFTPD Project
+ * Copyright (c) 2001-2011 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.24 2009-11-05 17:46:54 castaglia Exp $
+ * $Id: fsio.h,v 1.25 2011-01-10 21:57:24 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -334,6 +334,12 @@ int pr_fs_get_usable_fd(int);
   defined(HAVE_SYS_VFS_H)
 off_t pr_fs_getsize(char *);
 #endif
+
+/* Unlike pr_fs_getsize(), this function is always present, and is also
+ * capable of returning an error when there is a problem checking the
+ * filesystem stats.
+ */
+int pr_fs_getsize2(char *, off_t *);
 
 /* For internal use only. */
 int init_fs(void);
