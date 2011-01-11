@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.36 2011-01-08 19:43:26 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.37 2011-01-11 18:07:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -550,7 +550,9 @@ static struct passwd *af_getpwent(void) {
     }
 
     if (af_allow_pwent(pwd) < 0) {
+#ifndef HAVE_FGETPWENT
       memset(buf, '\0', sizeof(buf));
+#endif
       continue;
     }
 
