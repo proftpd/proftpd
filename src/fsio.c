@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.94 2011-01-10 21:57:24 castaglia Exp $
+ * $Id: fsio.c,v 1.95 2011-01-11 00:52:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2328,8 +2328,9 @@ void *pr_fsio_opendir(const char *path) {
     fs->fs_name, path);
   res = (fs->opendir)(fs, path);
 
-  if (!res)
+  if (res == NULL) {
     return NULL;
+  }
 
   /* Cache it here */
   fs_cache_dir = res;
@@ -2340,8 +2341,7 @@ void *pr_fsio_opendir(const char *path) {
 
   fsod = pcalloc(fsod_pool, sizeof(fsopendir_t));
 
-  if (!fsod) {
-
+  if (fsod == NULL) {
     if (fs->closedir) {
       (fs->closedir)(fs, res);
       errno = ENOMEM;
@@ -2364,17 +2364,19 @@ void *pr_fsio_opendir(const char *path) {
 
     /* find the end of the fsopendir list */
     fsodi = fsopendir_list;
-    while (fsodi->next)
+    while (fsodi->next) {
+      pr_signals_handle();
       fsodi = fsodi->next;
+    }
 
     fsod->next = NULL;
     fsod->prev = fsodi;
     fsodi->next = fsod;
 
-  } else
-
+  } else {
     /* This fsopendir _becomes_ the start of the fsopendir list */
     fsopendir_list = fsod;
+  }
 
   return res;
 }
