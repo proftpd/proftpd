@@ -81,7 +81,6 @@ sub noop_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "NOOP command successful";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

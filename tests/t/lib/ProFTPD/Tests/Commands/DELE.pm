@@ -140,7 +140,6 @@ sub dele_file_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "DELE command successful";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -263,7 +262,6 @@ sub dele_fails_enoent {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "$test_file: No such file or directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -522,7 +520,6 @@ sub dele_fails_eisdir {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "$test_dir: Is a directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -660,7 +657,6 @@ sub dele_symlink_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "DELE command successful";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 

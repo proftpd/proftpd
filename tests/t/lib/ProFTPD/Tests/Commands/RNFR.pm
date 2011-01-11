@@ -134,7 +134,6 @@ sub rnfr_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "File or directory exists, ready for destination name";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -262,7 +261,6 @@ sub rnfr_fails_login_required {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Please login with USER and PASS";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -386,7 +384,6 @@ sub rnfr_fails_enoent {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "$test_file: No such file or directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

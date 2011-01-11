@@ -111,7 +111,6 @@ sub allo_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "No storage allocation necessary";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

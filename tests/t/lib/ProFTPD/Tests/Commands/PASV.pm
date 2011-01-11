@@ -120,7 +120,6 @@ sub pasv_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = '^Entering Passive Mode \(\d+,\d+,\d+,\d+,\d+,\d+\)';
-      chomp($resp_msg);
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -212,7 +211,6 @@ sub pasv_fails_login_required {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Please login with USER and PASS";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

@@ -129,7 +129,6 @@ sub rmd_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "RMD command successful";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -252,7 +251,6 @@ sub rmd_fails_enoent {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "$sub_dir: No such file or directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -385,7 +383,6 @@ sub rmd_fails_eperm {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "$sub_dir: (Operation not permitted|Permission denied)";
-      chomp($resp_msg);
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -502,7 +499,6 @@ sub xrmd_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "XRMD command successful";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

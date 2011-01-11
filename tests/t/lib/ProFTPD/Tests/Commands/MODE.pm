@@ -127,7 +127,6 @@ sub mode_stream_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Mode set to S";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -248,7 +247,6 @@ sub mode_block_fails {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "'MODE B' unsupported transfer mode";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -369,7 +367,6 @@ sub mode_compressed_fails {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "'MODE C' unsupported transfer mode";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -490,7 +487,6 @@ sub mode_other_fails {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "'MODE other' unrecognized transfer mode";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
