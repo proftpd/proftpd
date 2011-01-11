@@ -91,7 +91,6 @@ sub type_ascii_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Type set to A";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -176,7 +175,6 @@ sub type_binary_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Type set to I";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -268,7 +266,6 @@ sub type_other_fails {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "'TYPE other' not understood";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

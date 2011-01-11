@@ -152,7 +152,6 @@ sub appe_ok_raw_active {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Transfer complete";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -278,7 +277,6 @@ sub appe_ok_raw_passive {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Transfer complete";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -406,7 +404,6 @@ sub appe_ok_file {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Transfer complete";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
@@ -535,7 +532,6 @@ sub appe_fails_not_reg {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "$home_dir: Not a regular file";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -627,7 +623,6 @@ sub appe_fails_login_required {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Please login with USER and PASS";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -750,7 +745,6 @@ sub appe_fails_no_path {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "'APPE' not understood";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -888,7 +882,6 @@ sub appe_fails_eperm {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "$dst_file: Permission denied";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

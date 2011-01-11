@@ -137,7 +137,6 @@ sub cap_dac_override {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Transfer complete";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 

@@ -141,7 +141,6 @@ sub cwd_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "CWD command successful";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -265,7 +264,6 @@ sub cwd_fails_enoent {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "$sub_dir: No such file or directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -395,7 +393,6 @@ sub cwd_fails_eperm {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "$sub_dir: No such file or directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -513,7 +510,6 @@ sub xcwd_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "XCWD command successful";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

@@ -1682,7 +1682,6 @@ sub deflate_stor_64kb_binary {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Transfer complete";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 

@@ -136,7 +136,6 @@ sub size_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = 14;
-      chomp($resp_msg);
       $self->assert($expected == $resp_msg,
         test_msg("Expected $expected, got $resp_msg"));
     };
@@ -261,7 +260,6 @@ sub size_fails_ascii {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "SIZE not allowed in ASCII mode";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -385,7 +383,6 @@ sub size_fails_enoent {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "$test_file: No such file or directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -523,7 +520,6 @@ sub size_fails_eperm {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "$test_file: Permission denied";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

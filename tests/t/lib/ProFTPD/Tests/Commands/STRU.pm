@@ -125,7 +125,6 @@ sub stru_file_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Structure set to F";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -246,7 +245,6 @@ sub stru_record_fails {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "'STRU R' unsupported structure type";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -367,7 +365,6 @@ sub stru_page_fails {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "'STRU P' unsupported structure type";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -488,7 +485,6 @@ sub stru_other_fails {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "'STRU other' unrecognized structure type";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

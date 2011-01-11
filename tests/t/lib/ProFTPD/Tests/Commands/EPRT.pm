@@ -150,7 +150,6 @@ sub eprt_ipv4_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "EPRT command successful";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -266,7 +265,6 @@ sub eprt_ipv6_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "EPRT command successful";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -358,7 +356,6 @@ sub eprt_fails_login_required {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Please login with USER and PASS";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -480,7 +477,6 @@ sub eprt_fails_bad_format {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Illegal EPRT command";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -601,7 +597,6 @@ sub eprt_fails_bad_values {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Illegal EPRT command";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -734,7 +729,6 @@ sub eprt_fails_bad_proto {
         $expected = "Network protocol not supported, use (1)";
       }
 
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -857,7 +851,6 @@ sub eprt_fails_bad_addr {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Illegal EPRT command";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -980,7 +973,6 @@ sub eprt_fails_bad_port {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Illegal EPRT command";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
