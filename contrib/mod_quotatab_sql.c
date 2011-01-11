@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab_sql -- a mod_quotatab sub-module for managing quota
  *                              data via SQL-based tables
  *
- * Copyright (c) 2002-2009 TJ Saunders
+ * Copyright (c) 2002-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_quotatab_sql.c,v 1.11 2009-04-04 04:38:33 castaglia Exp $
+ * $Id: mod_quotatab_sql.c,v 1.12 2011-01-11 23:13:38 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -428,12 +428,10 @@ static unsigned char sqltab_lookup(quota_table_t *sqltab, void *ptr,
   return FALSE;
 }
 
-/* Note: no need for this option, as the UPDATE query will do the read+update
- * more atomically than this module can.  The SELECT query is then for
- * the lookup handler only.
- */
 static int sqltab_read(quota_table_t *sqltab, void *ptr) {
-  return 0;
+  quota_tally_t *tally = ptr;
+
+  return sqltab_lookup(sqltab, ptr, tally->name, tally->quota_type);
 }
 
 static unsigned char sqltab_verify(quota_table_t *sqltab) {
@@ -506,16 +504,35 @@ static int sqltab_write(quota_table_t *sqltab, void *ptr) {
     quotatab_deltas.bytes_xfer_delta);
   tally_bytes_xfer[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
 
-  snprintf(tally_files_in, QUOTATAB_SQL_VALUE_BUFSZ, "%d",
-    quotatab_deltas.files_in_delta);
+  /* Try to prevent underflows here. */
+  if (tally->files_in_used == 0 &&
+      quotatab_deltas.files_in_delta < 0) {
+    tally_files_in[0] = '0';
+
+  } else {
+    snprintf(tally_files_in, QUOTATAB_SQL_VALUE_BUFSZ, "%d",
+      quotatab_deltas.files_in_delta);
+  }
   tally_files_in[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
 
-  snprintf(tally_files_out, QUOTATAB_SQL_VALUE_BUFSZ, "%d",
-    quotatab_deltas.files_out_delta);
+  if (tally->files_out_used == 0 &&
+      quotatab_deltas.files_out_delta < 0) {
+    tally_files_out[0] = '0';
+
+  } else {
+    snprintf(tally_files_out, QUOTATAB_SQL_VALUE_BUFSZ, "%d",
+      quotatab_deltas.files_out_delta);
+  }
   tally_files_out[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
 
-  snprintf(tally_files_xfer, QUOTATAB_SQL_VALUE_BUFSZ, "%d",
-    quotatab_deltas.files_xfer_delta);
+  if (tally->files_xfer_used == 0 &&
+      quotatab_deltas.files_xfer_delta < 0) {
+    tally_files_xfer[0] = '0';
+
+  } else {
+    snprintf(tally_files_xfer, QUOTATAB_SQL_VALUE_BUFSZ, "%d",
+      quotatab_deltas.files_xfer_delta);
+  }
   tally_files_xfer[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
 
   sql_cmd = sqltab_cmd_create(tmp_pool, 10, "sql_change", update_query,
