@@ -149,7 +149,6 @@ sub defaultchdir_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "\"$sub_dir\" is the current directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -271,7 +270,6 @@ sub defaultchdir_var_u {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "\"$sub_dir\" is the current directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -394,7 +392,6 @@ sub defaultchdir_with_defaultroot {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "\"/subdir\" is the current directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -517,7 +514,6 @@ sub defaultchdir_with_defaultroot2 {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "\"/subdir\" is the current directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -641,7 +637,6 @@ sub defaultchdir_one_env_var_bug3502 {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "\"$sub_dir\" is the current directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -766,7 +761,6 @@ sub defaultchdir_multi_env_var_bug3502 {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "\"$sub_dir\" is the current directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -888,7 +882,6 @@ sub defaultchdir_empty_env_var_bug3502 {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "\"$sub_dir\" is the current directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

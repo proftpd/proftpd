@@ -133,7 +133,6 @@ sub allowoverwrite_default {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "test.txt: Overwrite permission denied";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
@@ -266,7 +265,6 @@ sub allowoverwrite_on {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Transfer complete";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
@@ -400,7 +398,6 @@ sub allowoverwrite_as_root {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Transfer complete";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 

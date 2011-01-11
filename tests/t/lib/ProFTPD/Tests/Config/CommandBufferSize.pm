@@ -162,7 +162,6 @@ sub cmdbuffersz_small {
       my $truncated_name = ("A" x ($cmdbufsz - 6));
 
       $expected = "$truncated_name: No such file or directory";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
@@ -310,7 +309,6 @@ sub cmdbuffersz_large {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Transfer complete";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
@@ -458,7 +456,6 @@ sub cmdbuffersz_default {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "Transfer complete";
-      chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
