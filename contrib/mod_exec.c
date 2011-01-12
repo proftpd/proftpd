@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_exec -- a module for executing external scripts
  *
- * Copyright (c) 2002-2010 TJ Saunders
+ * Copyright (c) 2002-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,14 +24,15 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.11 2010-07-03 03:09:49 castaglia Exp $
+ * $Id: mod_exec.c,v 1.12 2011-01-12 06:54:49 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
-#include <signal.h>
-#include <sys/resource.h>
+#ifdef HAVE_SYS_RESOURCE_H
+# include <sys/resource.h>
+#endif
 
 #define MOD_EXEC_VERSION	"mod_exec/0.9.10"
 

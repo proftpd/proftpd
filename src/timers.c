@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,14 +23,11 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/*
- * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.34 2010-11-16 19:22:34 castaglia Exp $
+/* Timer system, based on alarm() and SIGALRM
+ * $Id: timers.c,v 1.35 2011-01-12 06:54:49 castaglia Exp $
  */
 
 #include "conf.h"
-
-#include <signal.h>
 
 /* From src/main.c */
 volatile extern unsigned int recvd_signal_flags;

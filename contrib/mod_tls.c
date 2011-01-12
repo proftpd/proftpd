@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2010 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2011 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -54,8 +54,6 @@
 # include <openssl/engine.h>
 # include <openssl/ocsp.h>
 #endif
-
-#include <signal.h>
 
 #ifdef HAVE_MLOCK
 # include <sys/mman.h>

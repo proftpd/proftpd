@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2009 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,13 +23,11 @@
  */
 
 /* ProFTPD Controls command-line client
- * $Id: ftpdctl.c,v 1.15 2009-04-07 15:42:47 castaglia Exp $
+ * $Id: ftpdctl.c,v 1.16 2011-01-12 06:54:49 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
-
-#include <signal.h>
 
 #ifdef HAVE_GETOPT_H
 # include <getopt.h>

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,12 +25,10 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.103 2010-11-22 18:20:27 castaglia Exp $
+ * $Id: log.c,v 1.104 2011-01-12 06:54:49 castaglia Exp $
  */
 
 #include "conf.h"
-
-#include <signal.h>
 
 /* Max path length plus 64 bytes for additional info. */
 #define LOGBUFFER_SIZE		(PR_TUNABLE_PATH_MAX + 64)

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,11 +23,10 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.48 2010-12-21 03:32:00 castaglia Exp $
+ * $Id: netio.c,v 1.49 2011-01-12 06:54:49 castaglia Exp $
  */
 
 #include "conf.h"
-#include <signal.h>
 
 /* See RFC 854 for the definition of these Telnet values */
 

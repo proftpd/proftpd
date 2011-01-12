@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,15 +22,11 @@
  * OpenSSL in the source distribution.
  */
 
-/*
- * ProFTPD scoreboard support (modified for use by external utilities).
- *
- * $Id: scoreboard.c,v 1.14 2010-03-03 23:10:46 castaglia Exp $
+/* ProFTPD scoreboard support (modified for use by external utilities).
+ * $Id: scoreboard.c,v 1.15 2011-01-12 06:54:49 castaglia Exp $
  */
 
 #include "utils.h"
-
-#include <signal.h>
 
 static int util_scoreboard_fd = -1;
 static char util_scoreboard_file[PR_TUNABLE_PATH_MAX] = PR_RUN_DIR "/proftpd.scoreboard";

@@ -27,12 +27,10 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.108 2011-01-08 22:46:33 castaglia Exp $
+ * $Id: support.c,v 1.109 2011-01-12 06:54:49 castaglia Exp $
  */
 
 #include "conf.h"
-
-#include <signal.h>
 
 #ifdef PR_USE_OPENSSL
 # include <openssl/crypto.h>

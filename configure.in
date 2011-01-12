@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2010 The ProFTPD Project team
+dnl Copyright (c) 2001-2011 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -1113,7 +1113,7 @@ dnl Checks for header files.
 AC_HEADER_DIRENT
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS(fcntl.h sys/ioctl.h sys/resource.h sys/time.h junistd.h memory.h)
+AC_CHECK_HEADERS(fcntl.h signal.h sys/ioctl.h sys/resource.h sys/time.h junistd.h memory.h)
 if test x"$force_shadow" != xno ; then
   AC_CHECK_HEADERS(shadow.h,
     [ if test "$use_shadow" = "" && test -f /etc/shadow ; then
@@ -1267,7 +1267,7 @@ AC_CHECK_HEADERS(sys/statvfs.h sys/un.h sys/vfs.h sys/select.h termios.h)
 AC_CHECK_HEADERS(dirent.h ndir.h sys/ndir.h sys/dir.h vmsdir.h)
 AC_CHECK_HEADERS(ucred.h ucontext.h utime.h utmpx.h)
 AC_CHECK_HEADERS(regex.h)
-AC_CHECK_HEADER(syslog.h,have_syslog_h="yes",)
+AC_CHECK_HEADER(syslog.h, have_syslog_h="yes",)
 AC_CHECK_HEADERS(curses.h ncurses.h)
 
 dnl Check for the presence of the tzname, timezone, and daylight global

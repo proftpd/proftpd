@@ -24,14 +24,11 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/*
- * House initialization and main program loop
- * $Id: main.c,v 1.409 2011-01-12 02:32:36 castaglia Exp $
+/* House initialization and main program loop
+ * $Id: main.c,v 1.410 2011-01-12 06:54:49 castaglia Exp $
  */
 
 #include "conf.h"
-
-#include <signal.h>
 
 #ifdef HAVE_GETOPT_H
 # include <getopt.h>

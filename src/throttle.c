@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2010 The ProFTPD Project team
+ * Copyright (c) 2008-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,11 +23,10 @@
  */
 
 /* TransferRate throttling
- * $Id: throttle.c,v 1.7 2010-04-16 22:22:37 castaglia Exp $
+ * $Id: throttle.c,v 1.8 2011-01-12 06:54:49 castaglia Exp $
  */
 
 #include "conf.h"
-#include <signal.h>
 
 /* Transfer rate variables */
 static long double xfer_rate_kbps = 0.0, xfer_rate_bps = 0.0;

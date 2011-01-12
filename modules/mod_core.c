@@ -25,14 +25,13 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.389 2011-01-03 21:40:09 castaglia Exp $
+ * $Id: mod_core.c,v 1.390 2011-01-12 06:54:49 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
 #include <ctype.h>
-#include <signal.h>
 
 #ifdef HAVE_REGEX_H
 # include <regex.h>

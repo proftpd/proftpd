@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2010 The ProFTPD Project team
+ * Copyright (c) 2004-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,12 +23,10 @@
  */
 
 /* Children management code
- * $Id: child.c,v 1.5 2010-02-03 21:45:00 castaglia Exp $
+ * $Id: child.c,v 1.6 2011-01-12 06:54:49 castaglia Exp $
  */
 
 #include "conf.h"
-
-#include <signal.h>
 
 static pool *child_pool = NULL;
 static xaset_t *child_list = NULL;

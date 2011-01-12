@@ -606,6 +606,9 @@
 /* Define if you have the <siad.h> header file.  */
 #undef HAVE_SIAD_H
 
+/* Define if you have the <signal.h> header file.  */
+#undef HAVE_SIGNAL_H
+
 /* Define if you have the <string.h> header file.  */
 #undef HAVE_STRING_H
 
