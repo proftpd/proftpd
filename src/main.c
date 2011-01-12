@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.408 2010-12-10 05:52:18 castaglia Exp $
+ * $Id: main.c,v 1.409 2011-01-12 02:32:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1861,16 +1861,19 @@ static RETSIGTYPE sig_child(int signo) {
 
 #ifdef PR_DEVEL_COREDUMP
 static char *prepare_core(void) {
-  static char dir[256] = {'\0'};
+  static char dir[256];
 
-  snprintf(dir, sizeof(dir), "%s/proftpd-core-%lu", PR_CORE_DIR,
+  memset(dir, '\0', sizeof(dir));
+  snprintf(dir, sizeof(dir)-1, "%s/proftpd-core-%lu", PR_CORE_DIR,
     (unsigned long) getpid());
 
-  if (mkdir(dir, 0700) != -1)
-    chdir(dir);
-
-  else
+  if (mkdir(dir, 0700) < 0) {
     pr_log_pri(PR_LOG_ERR, "unable to create '%s': %s", dir, strerror(errno));
+
+  } else {
+    chdir(dir);
+  }
+
   return dir;
 }
 #endif /* PR_DEVEL_COREDUMP */
@@ -2624,8 +2627,8 @@ static void show_settings(void) {
   struct utsname uts;
 #endif /* !HAVE_UNAME */
 
-  printf("Compile-time Settings:\n");
-  printf("  Version: " PROFTPD_VERSION_TEXT " " PR_STATUS "\n");
+  printf("%s", "Compile-time Settings:\n");
+  printf("%s", "  Version: " PROFTPD_VERSION_TEXT " " PR_STATUS "\n");
 
 #ifdef HAVE_UNAME
   /* We use uname(2) to get the 'machine', which will tell us whether
@@ -2637,135 +2640,135 @@ static void show_settings(void) {
       uts.release, uts.machine);
 
   } else {
-    printf("  Platform: " PR_PLATFORM " [unavailable]\n");
+    printf("%s", "  Platform: " PR_PLATFORM " [unavailable]\n");
   }
 #else
-  printf("  Platform: " PR_PLATFORM " [unknown]\n");
+  printf("%s", "  Platform: " PR_PLATFORM " [unknown]\n");
 #endif /* !HAVE_UNAME */
 
-  printf("  Built: " BUILD_STAMP "\n");
-  printf("  Built With:\n    configure " PR_BUILD_OPTS "\n\n");
+  printf("%s", "  Built: " BUILD_STAMP "\n");
+  printf("%s", "  Built With:\n    configure " PR_BUILD_OPTS "\n\n");
 
-  printf("  CFLAGS: " PR_BUILD_CFLAGS "\n");
-  printf("  LDFLAGS: " PR_BUILD_LDFLAGS "\n");
-  printf("  LIBS: " PR_BUILD_LIBS "\n");
+  printf("%s", "  CFLAGS: " PR_BUILD_CFLAGS "\n");
+  printf("%s", "  LDFLAGS: " PR_BUILD_LDFLAGS "\n");
+  printf("%s", "  LIBS: " PR_BUILD_LIBS "\n");
 
-  printf("\n  Files:\n");
-  printf("    Configuration File:\n");
-  printf("      " PR_CONFIG_FILE_PATH "\n");
-  printf("    Pid File:\n");
-  printf("      " PR_PID_FILE_PATH "\n");
-  printf("    Scoreboard File:\n");
-  printf("      " PR_RUN_DIR "/proftpd.scoreboard\n");
+  printf("%s", "\n  Files:\n");
+  printf("%s", "    Configuration File:\n");
+  printf("%s", "      " PR_CONFIG_FILE_PATH "\n");
+  printf("%s", "    Pid File:\n");
+  printf("%s", "      " PR_PID_FILE_PATH "\n");
+  printf("%s", "    Scoreboard File:\n");
+  printf("%s", "      " PR_RUN_DIR "/proftpd.scoreboard\n");
 #ifdef PR_USE_DSO
-  printf("    Header Directory:\n");
-  printf("      " PR_INCLUDE_DIR "/proftpd\n");
-  printf("    Shared Module Directory:\n");
-  printf("      " PR_LIBEXEC_DIR "\n");
+  printf("%s", "    Header Directory:\n");
+  printf("%s", "      " PR_INCLUDE_DIR "/proftpd\n");
+  printf("%s", "    Shared Module Directory:\n");
+  printf("%s", "      " PR_LIBEXEC_DIR "\n");
 #endif /* PR_USE_DSO */
 
   /* Feature settings */
-  printf("\n  Features:\n");
+  printf("%s", "\n  Features:\n");
 #ifdef PR_USE_AUTO_SHADOW
-  printf("    + Autoshadow support\n");
+  printf("%s", "    + Autoshadow support\n");
 #else
-  printf("    - Autoshadow support\n");
+  printf("%s", "    - Autoshadow support\n");
 #endif /* PR_USE_AUTO_SHADOW */
 
 #ifdef PR_USE_CTRLS
-  printf("    + Controls support\n");
+  printf("%s", "    + Controls support\n");
 #else
-  printf("    - Controls support\n");
+  printf("%s", "    - Controls support\n");
 #endif /* PR_USE_CTRLS */
 
 #if defined(PR_USE_CURSES) && defined(HAVE_LIBCURSES)
-  printf("    + curses support\n");
+  printf("%s", "    + curses support\n");
 #else
-  printf("    - curses support\n");
+  printf("%s", "    - curses support\n");
 #endif /* PR_USE_CURSES && HAVE_LIBCURSES */
 
 #ifdef PR_USE_DEVEL
-  printf("    + Developer support\n");
+  printf("%s", "    + Developer support\n");
 #else
-  printf("    - Developer support\n");
+  printf("%s", "    - Developer support\n");
 #endif /* PR_USE_DEVEL */
 
 #ifdef PR_USE_DSO
-  printf("    + DSO support\n");
+  printf("%s", "    + DSO support\n");
 #else
-  printf("    - DSO support\n");
+  printf("%s", "    - DSO support\n");
 #endif /* PR_USE_DSO */
 
 #ifdef PR_USE_IPV6
-  printf("    + IPv6 support\n");
+  printf("%s", "    + IPv6 support\n");
 #else
-  printf("    - IPv6 support\n");
+  printf("%s", "    - IPv6 support\n");
 #endif /* PR_USE_IPV6 */
 
 #ifdef PR_USE_LARGEFILES
-  printf("    + Largefile support\n");
+  printf("%s", "    + Largefile support\n");
 #else
-  printf("    - Largefile support\n");
+  printf("%s", "    - Largefile support\n");
 #endif /* PR_USE_LARGEFILES */
 
 #ifdef PR_USE_LASTLOG
-  printf("    + Lastlog support\n");
+  printf("%s", "    + Lastlog support\n");
 #else
-  printf("    - Lastlog support\n");
+  printf("%s", "    - Lastlog support\n");
 #endif /* PR_USE_LASTLOG */
 
 #ifdef PR_USE_MEMCACHE
-  printf("    + Memcache support\n");
+  printf("%s", "    + Memcache support\n");
 #else
-  printf("    - Memcache support\n");
+  printf("%s", "    - Memcache support\n");
 #endif /* PR_USE_MEMCACHE */
 
 #if defined(PR_USE_NCURSESW) && defined(HAVE_LIBNCURSESW)
-  printf("    + ncursesw support\n");
+  printf("%s", "    + ncursesw support\n");
 #elif defined(PR_USE_NCURSES) && defined(HAVE_LIBNCURSES)
-  printf("    + ncurses support\n");
+  printf("%s", "    + ncurses support\n");
 #else
-  printf("    - ncurses support\n");
+  printf("%s", "    - ncurses support\n");
 #endif
 
 #ifdef PR_USE_NLS
-  printf("    + NLS support\n");
+  printf("%s", "    + NLS support\n");
 #else
-  printf("    - NLS support\n");
+  printf("%s", "    - NLS support\n");
 #endif /* PR_USE_NLS */
 
 #ifdef PR_USE_OPENSSL
-  printf("    + OpenSSL support\n");
+  printf("%s", "    + OpenSSL support\n");
 #else
-  printf("    - OpenSSL support\n");
+  printf("%s", "    - OpenSSL support\n");
 #endif /* PR_USE_OPENSSL */
 
 #ifdef PR_USE_FACL
-  printf("    + POSIX ACL support\n");
+  printf("%s", "    + POSIX ACL support\n");
 #else
-  printf("    - POSIX ACL support\n");
+  printf("%s", "    - POSIX ACL support\n");
 #endif /* PR_USE_FACL */
 
 #ifdef PR_USE_SHADOW
-  printf("    + Shadow file support\n");
+  printf("%s", "    + Shadow file support\n");
 #else
-  printf("    - Shadow file suppport\n");
+  printf("%s", "    - Shadow file suppport\n");
 #endif /* PR_USE_SHADOW */
 
 #ifdef PR_USE_SENDFILE
-  printf("    + Sendfile support\n");
+  printf("%s", "    + Sendfile support\n");
 #else
-  printf("    - Sendfile support\n");
+  printf("%s", "    - Sendfile support\n");
 #endif /* PR_USE_SENDFILE */
 
 #ifdef PR_USE_TRACE
-  printf("    + Trace support\n");
+  printf("%s", "    + Trace support\n");
 #else
-  printf("    - Trace support\n");
+  printf("%s", "    - Trace support\n");
 #endif /* PR_USE_TRACE */
 
   /* Tunable settings */
-  printf("\n  Tunable Options:\n");
+  printf("%s", "\n  Tunable Options:\n");
   printf("    PR_TUNABLE_BUFFER_SIZE = %u\n", PR_TUNABLE_BUFFER_SIZE);
   printf("    PR_TUNABLE_GLOBBING_MAX_MATCHES = %lu\n", PR_TUNABLE_GLOBBING_MAX_MATCHES);
   printf("    PR_TUNABLE_GLOBBING_MAX_RECURSION = %u\n", PR_TUNABLE_GLOBBING_MAX_RECURSION);
@@ -2844,7 +2847,7 @@ static struct option_help {
 static void show_usage(int exit_code) {
   struct option_help *h;
 
-  printf("usage: proftpd [options]\n");
+  printf("%s", "usage: proftpd [options]\n");
   for (h = opts_help; h->long_opt; h++) {
 #ifdef HAVE_GETOPT_LONG
     printf(" %s, %s\n ", h->short_opt, h->long_opt);
@@ -3003,7 +3006,7 @@ int main(int argc, char *argv[], char **envp) {
 
     case 't':
       syntax_check = 1;
-      printf("Checking syntax of configuration file\n");
+      printf("%s", "Checking syntax of configuration file\n");
       fflush(stdout);
       break;
 
@@ -3052,7 +3055,7 @@ int main(int argc, char *argv[], char **envp) {
 
   if (show_version &&
       show_version == 1) {
-    printf("ProFTPD Version " PROFTPD_VERSION_TEXT "\n");
+    printf("%s", "ProFTPD Version " PROFTPD_VERSION_TEXT "\n");
     exit(0);
   }
 
@@ -3151,7 +3154,7 @@ int main(int argc, char *argv[], char **envp) {
 
   /* We're only doing a syntax check of the configuration file. */
   if (syntax_check) {
-    printf("Syntax check complete.\n");
+    printf("%s", "Syntax check complete.\n");
     end_login(0);
   }
 
