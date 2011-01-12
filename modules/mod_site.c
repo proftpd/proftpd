@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.53 2010-11-11 17:40:05 castaglia Exp $
+ * $Id: mod_site.c,v 1.54 2011-01-12 19:45:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -396,7 +396,7 @@ MODRET site_chmod(cmd_rec *cmd) {
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
       "error chmod'ing '%s' to %04o: %s", cmd->argv[0], session.user,
       (unsigned long) session.uid, (unsigned long) session.gid,
-      dir, mode, strerror(xerrno));
+      dir, (unsigned int) mode, strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
