@@ -18570,7 +18570,8 @@ fi
 
 
 
-for ac_header in fcntl.h sys/ioctl.h sys/resource.h sys/time.h junistd.h memory.h
+
+for ac_header in fcntl.h signal.h sys/ioctl.h sys/resource.h sys/time.h junistd.h memory.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
