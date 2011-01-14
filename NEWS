@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1277 2011-01-13 18:12:49 castaglia Exp $
+$Id: NEWS,v 1.1278 2011-01-14 17:27:35 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -18,8 +18,9 @@ CVS
 - Bug 3500 - Support for other combinations of hashed values in mod_sql_passwd.
 - Bug 3524 - mod_quotatab_sql does not properly update the file upload count
   for a DELE.
-- Bug 3575 - Process privileges may not handled properly when
-  --enable-autoshadow is used.
+- Bug 3575 - Process privileges may not handled properly when the
+  --enable-autoshadow configure option is used.
+- Bug 3577 - MFMT can fail due to utimes(2) peculiarities.
 
 1.3.4rc1 - Released 17-Dec-2010
 --------------------------------
@@ -209,7 +210,7 @@ CVS
 - Bug 3558 - Check all DNS names for a client against DNS names/patterns in
   access rules.
 - Bug 3560 - ExtendedLog shows incorrect byte size for first file downloaded
-  via SFTP in some cases
+  via SFTP in some cases.
 
 1.3.3 - Released 24-Feb-2010
 --------------------------------

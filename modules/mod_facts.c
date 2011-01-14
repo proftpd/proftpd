@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_facts -- a module for handling "facts" [RFC3659]
  *
- * Copyright (c) 2007-2010 The ProFTPD Project
+ * Copyright (c) 2007-2011 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,12 +22,13 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.32 2010-03-17 20:52:27 castaglia Exp $
+ * $Id: mod_facts.c,v 1.33 2011-01-14 17:27:36 castaglia Exp $
  */
 
 #include "conf.h"
+#include "privs.h"
 
-#define MOD_FACTS_VERSION		"mod_facts/0.1"
+#define MOD_FACTS_VERSION		"mod_facts/0.2"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030101
 # error "ProFTPD 1.3.1rc1 or later required"
@@ -504,6 +505,7 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
   char c, *ptr;
   unsigned int year, month, day, hour, min, sec;
   struct timeval tvs[2];
+  int res;
 
   (void) p;
 
@@ -584,10 +586,59 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
   tvs[0].tv_sec = tvs[1].tv_sec = facts_mktime(year, month, day, hour, min,
     sec);
 
-  if (pr_fsio_utimes(path, tvs) < 0) {
-    pr_log_debug(DEBUG2, MOD_FACTS_VERSION
-      ": error modifying modify fact for '%s': %s", path, strerror(errno));
-    return -1;
+  res = pr_fsio_utimes(path, tvs);
+  if (res < 0) {
+    int xerrno = errno;
+
+    if (xerrno == EPERM) {
+      struct stat st;
+
+      /* If the utimes(2) call failed because the process UID doesn't
+       * match the file UID, then check to see if the GIDs match (and that
+       * the file has group write permissions).
+       *
+       * This can be alleviated in two ways: a) if mod_cap is present,
+       * enable the CAP_FOWNER capability for the session, or b) use root
+       * privs.
+       */
+      pr_fs_clear_cache();
+      if (pr_fsio_stat(path, &st) < 0) {
+        errno = xerrno;
+        return -1;
+      }
+
+      if (st.st_gid == session.gid &&
+          (st.st_mode & S_IWGRP)) {
+        int merrno = xerrno;
+
+        /* Try the utimes(2) call again, this time with root privs. */
+
+        pr_signals_block();
+        PRIVS_ROOT
+        res = pr_fsio_utimes(path, tvs);
+        merrno = errno;
+        PRIVS_RELINQUISH
+        pr_signals_unblock();
+
+        if (res == 0)
+          return 0;
+
+        pr_log_debug(DEBUG2, MOD_FACTS_VERSION
+          ": error modifying modify fact for '%s': %s", path,
+          strerror(merrno));
+        errno = xerrno;
+        return -1;
+      }
+
+      errno = xerrno;
+      return -1;
+
+    } else {
+      pr_log_debug(DEBUG2, MOD_FACTS_VERSION
+        ": error modifying modify fact for '%s': %s", path, strerror(xerrno));
+      errno = xerrno;
+      return -1;
+    }
   }
 
   return 0;
@@ -719,8 +770,12 @@ MODRET facts_mff(cmd_rec *cmd) {
       }
 
       if (facts_modify_mtime(cmd->tmp_pool, decoded_path, timestamp) < 0) {
-        pr_response_add_err(errno == ENOENT ? R_550 : R_501, "%s: %s", path,
-          strerror(errno));
+        int xerrno = xerrno;
+
+        pr_response_add_err(xerrno == ENOENT ? R_550 : R_501, "%s: %s", path,
+          strerror(xerrno));
+
+        errno = xerrno;
         return PR_ERROR(cmd);
       }
 
@@ -844,12 +899,16 @@ MODRET facts_mfmt(cmd_rec *cmd) {
 
   res = facts_modify_mtime(cmd->tmp_pool, decoded_path, timestamp);
   if (res < 0) {
+    int xerrno = errno;
+
     if (ptr) {
       *ptr = '.';
     }
 
-    pr_response_add_err(errno == ENOENT ? R_550 : R_501, "%s: %s", path,
-      strerror(errno));
+    pr_response_add_err(xerrno == ENOENT ? R_550 : R_501, "%s: %s", path,
+      strerror(xerrno));
+
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
