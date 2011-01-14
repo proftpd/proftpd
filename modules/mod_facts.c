@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.33 2011-01-14 17:27:36 castaglia Exp $
+ * $Id: mod_facts.c,v 1.34 2011-01-14 19:11:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -592,6 +592,7 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
 
     if (xerrno == EPERM) {
       struct stat st;
+      int matching_gid = FALSE;
 
       /* If the utimes(2) call failed because the process UID doesn't
        * match the file UID, then check to see if the GIDs match (and that
@@ -607,7 +608,26 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
         return -1;
       }
 
-      if (st.st_gid == session.gid &&
+      /* Be sure to check the primary and all the supplemental groups to
+       * which this session belongs.
+       */
+      if (st.st_gid == session.gid) {
+        matching_gid = TRUE;
+
+      } else {
+        register unsigned int i;
+        gid_t *gids;
+
+        gids = session.gids->elts;
+        for (i = 0; i < session.gids->nelts; i++) {
+          if (st.st_gid == gids[i]) {
+            matching_gid = TRUE;
+            break;
+          }
+        }
+      }
+
+      if (matching_gid == TRUE &&
           (st.st_mode & S_IWGRP)) {
         int merrno = xerrno;
 
