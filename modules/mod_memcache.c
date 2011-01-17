@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_memcache -- a module for managing memcache data
  *
- * Copyright (c) 2010 The ProFTPD Project
+ * Copyright (c) 2011 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached$
- * $Id: mod_memcache.c,v 1.5 2011-01-17 21:12:47 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.6 2011-01-17 21:17:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -96,6 +96,9 @@ MODRET set_memcacheoptions(cmd_rec *cmd) {
   for (i = 1; i < cmd->argc; i++) {
     if (strcmp(cmd->argv[i], "NoBinaryProtocol") == 0) {
       opts |= PR_MEMCACHE_FL_NO_BINARY_PROTOCOL;
+
+    } else if (strcmp(cmd->argv[i], "Blocking") == 0) {
+      opts |= PR_MEMCACHE_FL_BLOCKING;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown MemcacheOption '",

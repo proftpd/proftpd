@@ -23,7 +23,7 @@
  */
 
 /* Memcache support
- * $Id: memcache.h,v 1.4 2011-01-17 21:12:47 castaglia Exp $
+ * $Id: memcache.h,v 1.5 2011-01-17 21:17:39 castaglia Exp $
  */
 
 #ifndef PR_MEMCACHE_H
@@ -64,7 +64,7 @@ int pr_memcache_kset(pr_memcache_t *mcache, const char *key, size_t keysz,
 /* For internal use only */
 unsigned long memcache_get_flags(void);
 #define PR_MEMCACHE_FL_NO_BINARY_PROTOCOL	0x001
-#define PR_MEMCACHE_FL_NO_BLOCKING		0x002
+#define PR_MEMCACHE_FL_BLOCKING			0x002
 
 int memcache_set_flags(unsigned long flags);
 int memcache_set_logfd(int logfd);

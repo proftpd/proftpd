@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.4 2011-01-17 21:12:47 castaglia Exp $
+ * $Id: memcache.c,v 1.5 2011-01-17 21:17:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -131,7 +131,7 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, time_t expires) {
 
   /* Use nonblocking IO, unless explicitly requested not to. */
   if (memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_NO_BLOCK) != 1) {
-    if (!(memcache_flags & PR_MEMCACHE_FL_NO_BLOCKING)) {
+    if (!(memcache_flags & PR_MEMCACHE_FL_BLOCKING)) {
       res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_NO_BLOCK, 1);
       if (res != MEMCACHED_SUCCESS) {
         (void) pr_log_writefile(memcache_logfd, trace_channel,
