@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2010 The ProFTPD Project team
+ * Copyright (c) 2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Memcache support
- * $Id: memcache.h,v 1.3 2010-03-19 21:21:26 castaglia Exp $
+ * $Id: memcache.h,v 1.4 2011-01-17 21:12:47 castaglia Exp $
  */
 
 #ifndef PR_MEMCACHE_H
@@ -48,9 +48,23 @@ int pr_memcache_remove(pr_memcache_t *mcache, const char *key);
 int pr_memcache_set(pr_memcache_t *mcache, const char *key, void *value,
   size_t valuesz, uint32_t flags);
 
+/* Variants of the above, where the key values are arbitrary bits rather
+ * than being assumed to be strings.
+ */
+int pr_memcache_kadd(pr_memcache_t *mcache, const char *key, size_t keysz,
+  void *value, size_t valuesz, uint32_t flags);
+void *pr_memcache_kget(pr_memcache_t *mcache, const char *key, size_t keysz,
+  size_t *valuesz, uint32_t *flags);
+char *pr_memcache_kget_str(pr_memcache_t *mcache, const char *key,
+  size_t keysz, uint32_t *flags);
+int pr_memcache_kremove(pr_memcache_t *mcache, const char *key, size_t keysz);
+int pr_memcache_kset(pr_memcache_t *mcache, const char *key, size_t keysz,
+  void *value, size_t valuesz, uint32_t flags);
+
 /* For internal use only */
 unsigned long memcache_get_flags(void);
 #define PR_MEMCACHE_FL_NO_BINARY_PROTOCOL	0x001
+#define PR_MEMCACHE_FL_NO_BLOCKING		0x002
 
 int memcache_set_flags(unsigned long flags);
 int memcache_set_logfd(int logfd);

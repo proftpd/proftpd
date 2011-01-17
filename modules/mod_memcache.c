@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached$
- * $Id: mod_memcache.c,v 1.4 2010-03-19 21:21:26 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.5 2011-01-17 21:12:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -193,11 +193,28 @@ static void memcache_restart_ev(const void *event_data, void *user_data) {
 static int memcache_init(void) {
   pr_event_register(&memcache_module, "core.restart", memcache_restart_ev,
     NULL);
+
+  pr_log_debug(DEBUG2, MOD_MEMCACHE_VERSION ": using libmemcached-%s",
+    LIBMEMCACHED_VERSION_STRING);
+
   return 0;
 }
 
 static int memcache_sess_init(void) {
   config_rec *c;
+
+  c = find_config(main_server->conf, CONF_PARAM, "MemcacheEngine", FALSE);
+  if (c) {
+    int engine;
+
+    engine = *((int *) c->argv[0]);
+    if (engine == FALSE) {
+      /* Explicitly disable memcache support for this session */
+      memcache_set_servers(NULL);
+    }
+
+    return 0;
+  }
 
   c = find_config(main_server->conf, CONF_PARAM, "MemcacheLog", FALSE);
   if (c) {
@@ -234,19 +251,6 @@ static int memcache_sess_init(void) {
             path);
       }
     }
-  }
-
-  c = find_config(main_server->conf, CONF_PARAM, "MemcacheEngine", FALSE);
-  if (c) {
-    int engine;
-
-    engine = *((int *) c->argv[0]);
-    if (engine == FALSE) {
-      /* Explicitly disable memcache support for this session */
-      memcache_set_servers(NULL);
-    }
-
-    return 0;
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "MemcacheServers", FALSE);

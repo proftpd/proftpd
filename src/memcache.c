@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2010 The ProFTPD Project team
+ * Copyright (c) 2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.3 2010-03-19 21:21:26 castaglia Exp $
+ * $Id: memcache.c,v 1.4 2011-01-17 21:12:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -129,6 +129,18 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, time_t expires) {
     }
   }
 
+  /* Use nonblocking IO, unless explicitly requested not to. */
+  if (memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_NO_BLOCK) != 1) {
+    if (!(memcache_flags & PR_MEMCACHE_FL_NO_BLOCKING)) {
+      res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_NO_BLOCK, 1);
+      if (res != MEMCACHED_SUCCESS) {
+        (void) pr_log_writefile(memcache_logfd, trace_channel,
+          "error setting NO_BLOCK behavior on connection: %s",
+          memcached_strerror(mc, res));
+      }
+    }
+  }
+
   /* Use the binary protocol by default, unless explicitly requested not to. */
   if (memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_BINARY_PROTOCOL) != 1) {
     if (!(memcache_flags & PR_MEMCACHE_FL_NO_BINARY_PROTOCOL)) {
@@ -193,6 +205,123 @@ int pr_memcache_conn_close(pr_memcache_t *mcache) {
 
 int pr_memcache_add(pr_memcache_t *mcache, const char *key, void *value,
     size_t valuesz, uint32_t flags) {
+  int res;
+
+  /* XXX Should we allow null values to be added, thus allowing use of keys
+   * as sentinels?
+   */
+  if (mcache == NULL ||
+      key == NULL ||
+      value == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_memcache_kadd(mcache, key, strlen(key), value, valuesz, flags); 
+  if (res < 0) {
+    (void) pr_log_writefile(memcache_logfd, trace_channel,
+      "error adding key '%s', value (%lu bytes): %s", key,
+      (unsigned long) valuesz, strerror(errno));
+    errno = EPERM;
+    return -1;
+  }
+
+  return 0;
+}
+
+void *pr_memcache_get(pr_memcache_t *mcache, const char *key, size_t *valuesz,
+    uint32_t *flags) {
+  void *ptr = NULL;
+
+  if (mcache == NULL ||
+      key == NULL ||
+      valuesz == NULL ||
+      flags == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  ptr = pr_memcache_kget(mcache, key, strlen(key), valuesz, flags);
+  if (ptr == NULL) {
+    (void) pr_log_writefile(memcache_logfd, trace_channel,
+      "error getting data for key '%s': %s", key, strerror(errno));
+    errno = EPERM;
+    return NULL;
+  }
+
+  return ptr;
+}
+
+char *pr_memcache_get_str(pr_memcache_t *mcache, const char *key,
+    uint32_t *flags) {
+  char *ptr = NULL;
+
+  if (mcache == NULL ||
+      key == NULL ||
+      flags == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  ptr = pr_memcache_kget_str(mcache, key, strlen(key), flags);
+  if (ptr == NULL) {
+    (void) pr_log_writefile(memcache_logfd, trace_channel,
+      "error getting data for key '%s': %s", key, strerror(errno));
+    errno = EPERM;
+    return NULL;
+  }
+
+  return ptr;
+}
+
+int pr_memcache_remove(pr_memcache_t *mcache, const char *key) {
+  int res;
+
+  if (mcache == NULL ||
+      key == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_memcache_kremove(mcache, key, strlen(key));
+  if (res < 0) {
+    (void) pr_log_writefile(memcache_logfd, trace_channel,
+      "error removing key '%s': %s", key, strerror(errno));
+    errno = EPERM;
+    return -1;
+  }
+
+  return 0;
+}
+
+int pr_memcache_set(pr_memcache_t *mcache, const char *key, void *value,
+    size_t valuesz, uint32_t flags) {
+  int res;
+
+  /* XXX Should we allow null values to be added, thus allowing use of keys
+   * as sentinels?
+   */
+  if (mcache == NULL ||
+      key == NULL ||
+      value == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_memcache_kset(mcache, key, strlen(key), value, valuesz, flags);
+  if (res < 0) {
+    (void) pr_log_writefile(memcache_logfd, trace_channel,
+      "error setting key '%s', value (%lu bytes): %s", key,
+      (unsigned long) valuesz, strerror(errno));
+    errno = EPERM;
+    return -1;
+  }
+
+  return 0;
+}
+
+int pr_memcache_kadd(pr_memcache_t *mcache, const char *key, size_t keysz,
+    void *value, size_t valuesz, uint32_t flags) {
   memcached_return res;
 
   /* XXX Should we allow null values to be added, thus allowing use of keys
@@ -205,12 +334,13 @@ int pr_memcache_add(pr_memcache_t *mcache, const char *key, void *value,
     return -1;
   }
 
-  res = memcached_add(mcache->mc, key, strlen(key), value, valuesz,
+  res = memcached_add(mcache->mc, key, keysz, value, valuesz,
     mcache->expires, flags); 
   if (res != MEMCACHED_SUCCESS) {
     (void) pr_log_writefile(memcache_logfd, trace_channel,
-      "error adding key '%s', value (%lu bytes): %s", key,
-      (unsigned long) valuesz, memcached_strerror(mcache->mc, res));
+      "error adding key (%lu bytes), value (%lu bytes): %s",
+      (unsigned long) keysz, (unsigned long) valuesz,
+      memcached_strerror(mcache->mc, res));
     errno = EPERM;
     return -1;
   }
@@ -218,8 +348,8 @@ int pr_memcache_add(pr_memcache_t *mcache, const char *key, void *value,
   return 0;
 }
 
-void *pr_memcache_get(pr_memcache_t *mcache, const char *key, size_t *valuesz,
-    uint32_t *flags) {
+void *pr_memcache_kget(pr_memcache_t *mcache, const char *key, size_t keysz,
+    size_t *valuesz, uint32_t *flags) {
   char *data = NULL;
   void *ptr = NULL;
   memcached_return res;
@@ -232,10 +362,10 @@ void *pr_memcache_get(pr_memcache_t *mcache, const char *key, size_t *valuesz,
     return NULL;
   }
 
-  data = memcached_get(mcache->mc, key, strlen(key), valuesz, flags, &res);
+  data = memcached_get(mcache->mc, key, keysz, valuesz, flags, &res);
   if (data == NULL) {
     (void) pr_log_writefile(memcache_logfd, trace_channel,
-      "error getting data for key '%s': %s", key,
+      "error getting data for key (%lu bytes): %s", (unsigned long) keysz,
       memcached_strerror(mcache->mc, res));
     errno = EPERM;
     return NULL;
@@ -252,8 +382,8 @@ void *pr_memcache_get(pr_memcache_t *mcache, const char *key, size_t *valuesz,
   return ptr;
 }
 
-char *pr_memcache_get_str(pr_memcache_t *mcache, const char *key,
-    uint32_t *flags) {
+char *pr_memcache_kget_str(pr_memcache_t *mcache, const char *key,
+    size_t keysz, uint32_t *flags) {
   char *data = NULL, *ptr = NULL;
   size_t valuesz = 0;
   memcached_return res;
@@ -265,10 +395,10 @@ char *pr_memcache_get_str(pr_memcache_t *mcache, const char *key,
     return NULL;
   }
 
-  data = memcached_get(mcache->mc, key, strlen(key), &valuesz, flags, &res);
+  data = memcached_get(mcache->mc, key, keysz, &valuesz, flags, &res);
   if (data == NULL) {
     (void) pr_log_writefile(memcache_logfd, trace_channel,
-      "error getting data for key '%s': %s", key,
+      "error getting data for key (%lu bytes): %s", (unsigned long) keysz,
       memcached_strerror(mcache->mc, res));
     errno = EPERM;
     return NULL;
@@ -285,7 +415,7 @@ char *pr_memcache_get_str(pr_memcache_t *mcache, const char *key,
   return ptr;
 }
 
-int pr_memcache_remove(pr_memcache_t *mcache, const char *key) {
+int pr_memcache_kremove(pr_memcache_t *mcache, const char *key, size_t keysz) {
   memcached_return res;
 
   if (mcache == NULL ||
@@ -294,10 +424,11 @@ int pr_memcache_remove(pr_memcache_t *mcache, const char *key) {
     return -1;
   }
 
-  res = memcached_delete(mcache->mc, key, strlen(key), mcache->expires);
+  res = memcached_delete(mcache->mc, key, keysz, mcache->expires);
   if (res != MEMCACHED_SUCCESS) {
     (void) pr_log_writefile(memcache_logfd, trace_channel,
-      "error removing key '%s': %s", key, memcached_strerror(mcache->mc, res));
+      "error removing key (%lu bytes): %s", (unsigned long) keysz,
+      memcached_strerror(mcache->mc, res));
     errno = EPERM;
     return -1;
   }
@@ -305,8 +436,8 @@ int pr_memcache_remove(pr_memcache_t *mcache, const char *key) {
   return 0;
 }
 
-int pr_memcache_set(pr_memcache_t *mcache, const char *key, void *value,
-    size_t valuesz, uint32_t flags) {
+int pr_memcache_kset(pr_memcache_t *mcache, const char *key, size_t keysz,
+    void *value, size_t valuesz, uint32_t flags) {
   memcached_return res;
 
   /* XXX Should we allow null values to be added, thus allowing use of keys
@@ -319,12 +450,13 @@ int pr_memcache_set(pr_memcache_t *mcache, const char *key, void *value,
     return -1;
   }
 
-  res = memcached_set(mcache->mc, key, strlen(key), value, valuesz,
+  res = memcached_set(mcache->mc, key, keysz, value, valuesz,
     mcache->expires, flags); 
   if (res != MEMCACHED_SUCCESS) {
     (void) pr_log_writefile(memcache_logfd, trace_channel,
-      "error setting key '%s', value (%lu bytes): %s", key,
-      (unsigned long) valuesz, memcached_strerror(mcache->mc, res));
+      "error setting key (%lu bytes), value (%lu bytes): %s",
+      (unsigned long) keysz, (unsigned long) valuesz,
+      memcached_strerror(mcache->mc, res));
     errno = EPERM;
     return -1;
   }
@@ -413,6 +545,35 @@ int pr_memcache_remove(pr_memcache_t *mcache, const char *key) {
 
 int pr_memcache_set(pr_memcache_t *mcache, const char *key, void *value,
     size_t valuesz, uint32_t flags) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_memcache_kadd(pr_memcache_t *mcache, const char *key, size_t keysz,
+    void *value, size_t valuesz, uint32_t flags) {
+  errno = ENOSYS;
+  return -1;
+}
+
+void *pr_memcache_kget(pr_memcache_t *mcache, const char *key, size_t keysz,
+    size_t *valuesz, uint32_t *flags) {
+  errno = ENOSYS;
+  return NULL;
+}
+
+char *pr_memcache_kget_str(pr_memcache_t *mcache, const char *key, size_t keysz,
+    uint32_t *flags) {
+  errno = ENOSYS;
+  return NULL;
+}
+
+int pr_memcache_kremove(pr_memcache_t *mcache, const char *key, size_t keysz) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_memcache_kset(pr_memcache_t *mcache, const char *key, size_t keysz,
+    void *value, size_t valuesz, uint32_t flags) {
   errno = ENOSYS;
   return -1;
 }
