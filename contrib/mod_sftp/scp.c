@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.55 2010-12-15 00:58:59 castaglia Exp $
+ * $Id: scp.c,v 1.56 2011-01-17 18:24:16 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1864,7 +1864,14 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
     if (scp_session->path_idx != scp_session->paths->nelts)
       return 0;
 
-    return 1;
+    /* We would normally return 1 here, to indicate that we are done with
+     * the transfer.  However, doing so indicates to the channel-handling
+     * code that the channel is done, and should be closed.
+     *
+     * In the case of scp, though, we want the client to close the connection,
+     * in order ensure that it has received all of the data (see Bug#3544).
+     */
+    return 0;
 
   } else if (scp_opts & SFTP_SCP_OPT_ISDST) {
     struct scp_path **paths;
