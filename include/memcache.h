@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2011 The ProFTPD Project team
+ * Copyright (c) 2010-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,52 +23,64 @@
  */
 
 /* Memcache support
- * $Id: memcache.h,v 1.5 2011-01-17 21:17:39 castaglia Exp $
+ * $Id: memcache.h,v 1.6 2011-01-18 06:23:34 castaglia Exp $
  */
 
 #ifndef PR_MEMCACHE_H
 #define PR_MEMCACHE_H
 
 #include "conf.h"
+#include "tpl.h"
 
 typedef struct mcache_rec pr_memcache_t;
 
 /* Core API for use by modules et al */
-pr_memcache_t *pr_memcache_conn_get(pool *p, time_t expires);
-pr_memcache_t *pr_memcache_conn_new(pool *p, time_t expires);
+
+/* This function returns the pr_memcache_t for the current session; if one
+ * does not exist, it will be allocated.
+ */
+pr_memcache_t *pr_memcache_conn_get(void);
+pr_memcache_t *pr_memcache_conn_new(pool *p, module *owner,
+  unsigned long flags, uint64_t nreplicas);
 int pr_memcache_conn_close(pr_memcache_t *mcache);
 
 int pr_memcache_add(pr_memcache_t *mcache, const char *key, void *value,
-  size_t valuesz, uint32_t flags);
+  size_t valuesz, time_t expires, uint32_t flags);
 void *pr_memcache_get(pr_memcache_t *mcache, const char *key, size_t *valuesz,
   uint32_t *flags);
 char *pr_memcache_get_str(pr_memcache_t *mcache, const char *key,
   uint32_t *flags);
-int pr_memcache_remove(pr_memcache_t *mcache, const char *key);
+int pr_memcache_remove(pr_memcache_t *mcache, const char *key, time_t expires);
 int pr_memcache_set(pr_memcache_t *mcache, const char *key, void *value,
-  size_t valuesz, uint32_t flags);
+  size_t valuesz, time_t expires, uint32_t flags);
 
 /* Variants of the above, where the key values are arbitrary bits rather
  * than being assumed to be strings.
  */
 int pr_memcache_kadd(pr_memcache_t *mcache, const char *key, size_t keysz,
-  void *value, size_t valuesz, uint32_t flags);
+  void *value, size_t valuesz, time_t expires, uint32_t flags);
 void *pr_memcache_kget(pr_memcache_t *mcache, const char *key, size_t keysz,
   size_t *valuesz, uint32_t *flags);
 char *pr_memcache_kget_str(pr_memcache_t *mcache, const char *key,
   size_t keysz, uint32_t *flags);
-int pr_memcache_kremove(pr_memcache_t *mcache, const char *key, size_t keysz);
+int pr_memcache_kremove(pr_memcache_t *mcache, const char *key, size_t keysz,
+  time_t expires);
 int pr_memcache_kset(pr_memcache_t *mcache, const char *key, size_t keysz,
-  void *value, size_t valuesz, uint32_t flags);
+  void *value, size_t valuesz, time_t expires, uint32_t flags);
 
 /* For internal use only */
-unsigned long memcache_get_flags(void);
-#define PR_MEMCACHE_FL_NO_BINARY_PROTOCOL	0x001
-#define PR_MEMCACHE_FL_BLOCKING			0x002
 
-int memcache_set_flags(unsigned long flags);
-int memcache_set_logfd(int logfd);
-int memcache_set_replicas(uint64_t count);
+unsigned long memcache_get_sess_flags(void);
+#define PR_MEMCACHE_FL_NO_BINARY_PROTOCOL	0x001
+
+int memcache_set_sess_flags(unsigned long flags);
+int memcache_set_sess_replicas(uint64_t count);
 int memcache_set_servers(void *server_list);
+
+/* Configure the timeouts in millisecs. */
+int memcache_set_timeouts(unsigned long conn_ms, unsigned long read_ms,
+  unsigned long write_ms);
+
+int memcache_init(void);
 
 #endif /* PR_MEMCACHE_H */

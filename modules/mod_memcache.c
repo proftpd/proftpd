@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_memcache -- a module for managing memcache data
  *
- * Copyright (c) 2011 The ProFTPD Project
+ * Copyright (c) 2010-2011 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached$
- * $Id: mod_memcache.c,v 1.6 2011-01-17 21:17:39 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.7 2011-01-18 06:23:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -167,14 +167,69 @@ MODRET set_memcacheservers(cmd_rec *cmd) {
     CONF_ERROR(cmd, "unable to parse server parameters");
   }
 
+#if 0
+  /* XXX If we're the "server config" context, set the server list now.
+   * This would let mod_memcache talk to those servers for e.g. ftpdctl
+   * actions.
+   */
+  memcache_set_servers(memcache_servers);
+#endif
+
   c->argv[0] = memcache_servers;
+  return PR_HANDLED(cmd);
+}
+
+/* usage: MemcacheTimeouts conn-timeout read-timeout write-timeout */
+MODRET set_memcachetimeouts(cmd_rec *cmd) {
+  config_rec *c;
+  unsigned long conn_timeout, read_timeout, write_timeout;
+  char *ptr = NULL;
+
+  CHECK_ARGS(cmd, 3);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  conn_timeout = strtoul(cmd->argv[1], &ptr, 10);
+  if (ptr && *ptr) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "badly formatted connect timeout value: ", cmd->argv[1], NULL));
+  }
+
+  ptr = NULL;
+  read_timeout = strtoul(cmd->argv[2], &ptr, 10);
+  if (ptr && *ptr) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "badly formatted read timeout value: ", cmd->argv[2], NULL));
+  }
+
+  ptr = NULL;
+  write_timeout = strtoul(cmd->argv[3], &ptr, 10);
+  if (ptr && *ptr) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "badly formatted write timeout value: ", cmd->argv[3], NULL));
+  }
+
+#if 0
+  /* XXX If we're the "server config" context, set the timeouts now.
+   * This would let mod_memcache talk to those servers for e.g. ftpdctl
+   * actions.
+   */
+  memcache_set_timeouts(conn_timeout, read_timeout, write_timeout);
+#endif
+
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = conn_timeout;
+  c->argv[1] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[1]) = read_timeout;
+  c->argv[2] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[2]) = write_timeout;
   return PR_HANDLED(cmd);
 }
 
 /* Event handlers
  */
 
-static void memcache_restart_ev(const void *event_data, void *user_data) {
+static void mcache_restart_ev(const void *event_data, void *user_data) {
   server_rec *s;
 
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
@@ -193,7 +248,9 @@ static void memcache_restart_ev(const void *event_data, void *user_data) {
 /* Initialization functions
  */
 
-static int memcache_init(void) {
+static int mcache_init(void) {
+  memcache_init();
+
   pr_event_register(&memcache_module, "core.restart", memcache_restart_ev,
     NULL);
 
@@ -203,7 +260,7 @@ static int memcache_init(void) {
   return 0;
 }
 
-static int memcache_sess_init(void) {
+static int mcache_sess_init(void) {
   config_rec *c;
 
   c = find_config(main_server->conf, CONF_PARAM, "MemcacheEngine", FALSE);
@@ -214,9 +271,8 @@ static int memcache_sess_init(void) {
     if (engine == FALSE) {
       /* Explicitly disable memcache support for this session */
       memcache_set_servers(NULL);
+      return 0;
     }
-
-    return 0;
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "MemcacheLog", FALSE);
@@ -235,7 +291,6 @@ static int memcache_sess_init(void) {
 
       switch (res) {
         case 0:
-          memcache_set_logfd(memcache_logfd);
           break;
 
         case -1:
@@ -270,7 +325,7 @@ static int memcache_sess_init(void) {
 
     flags = *((unsigned long *) c->argv[0]);
 
-    if (memcache_set_flags(flags) < 0) {
+    if (memcache_set_sess_flags(flags) < 0) {
       (void) pr_log_writefile(memcache_logfd, MOD_MEMCACHE_VERSION,
         "error setting memcache flags: %s", strerror(errno));
     }
@@ -282,9 +337,23 @@ static int memcache_sess_init(void) {
 
     count = *((uint64_t *) c->argv[0]);
 
-    if (memcache_set_replicas(count) < 0) {
+    if (memcache_set_sess_replicas(count) < 0) {
       (void) pr_log_writefile(memcache_logfd, MOD_MEMCACHE_VERSION,
         "error setting memcache replicas: %s", strerror(errno));
+    }
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "MemcacheTimeouts", FALSE);
+  if (c) {
+    unsigned long conn_ms, read_ms, write_ms;
+
+    conn_ms = *((unsigned long *) c->argv[0]);
+    read_ms = *((unsigned long *) c->argv[1]);
+    write_ms = *((unsigned long *) c->argv[2]);
+
+    if (memcache_set_timeouts(conn_ms, read_ms, write_ms) < 0) {
+      (void) pr_log_writefile(memcache_logfd, MOD_MEMCACHE_VERSION,
+        "error setting memcache timeouts: %s", strerror(errno));
     }
   }
 
@@ -300,7 +369,8 @@ static conftable memcache_conftab[] = {
   { "MemcacheOptions",	set_memcacheoptions,	NULL },
   { "MemcacheReplicas",	set_memcachereplicas,	NULL },
   { "MemcacheServers",	set_memcacheservers,	NULL },
-
+  { "MemcacheTimeouts",	set_memcachetimeouts,	NULL },
+ 
   { NULL }
 };
 
@@ -323,10 +393,10 @@ module memcache_module = {
   NULL,
 
   /* Module initialization function */
-  memcache_init,
+  mcache_init,
 
   /* Session initialization function */
-  memcache_sess_init,
+  mcache_sess_init,
 
   /* Module version */
   MOD_MEMCACHE_VERSION

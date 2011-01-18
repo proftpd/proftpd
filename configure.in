@@ -163,7 +163,7 @@ dnl problems for certain builds of proftpd, e.g. ProFTPD and MySQL (which
 dnl itself similarly bundles a getopt implementation).  Thus, we need to
 dnl support/handle --without-getopt, to disable use of ProFTPD's getopt.
 dnl I don't know if MySQL supports any similar option.
-LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o"
+LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o tpl.o"
 
 AC_ARG_WITH(getopt,
   [AC_HELP_STRING(
@@ -343,6 +343,15 @@ AC_ARG_WITH(modules,
       done
     fi
   ])
+
+dnl Memcache
+if test x"$enable_memcache" = xyes; then
+  # Yes, we DO want mod_memcache AFTER the other modules in the static
+  # module list. Otherwise, the module load ordering will be such that
+  # memcache support will not work as expected
+  ac_static_modules="$ac_static_modules mod_memcache.o"
+  ac_build_static_modules="$ac_build_static_modules modules/mod_memcache.o"
+fi
 
 dnl List of modules which are not allowed to be built as DSOs
 ac_unshareable_modules="mod_auth mod_auth_unix mod_core mod_dso mod_ls mod_xfer mod_log mod_site mod_cap mod_ctrls"
@@ -1562,12 +1571,6 @@ if test x"$enable_ctrls" = xyes; then
   AC_CHECK_FUNCS(getpeereid getpeerucred)
   ac_static_modules="$ac_static_modules mod_ctrls.o"
   ac_build_static_modules="$ac_build_static_modules modules/mod_ctrls.o"
-fi
-
-dnl Memcache
-if test x"$enable_memcache" = xyes; then
-  ac_static_modules="$ac_static_modules mod_memcache.o"
-  ac_build_static_modules="$ac_build_static_modules modules/mod_memcache.o"
 fi
 
 dnl NLS/LANG support
