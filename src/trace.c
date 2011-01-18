@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2010 The ProFTPD Project team
+ * Copyright (c) 2006-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.27 2010-04-12 22:35:32 castaglia Exp $
+ * $Id: trace.c,v 1.28 2011-01-18 05:29:15 castaglia Exp $
  */
 
 
@@ -256,9 +256,20 @@ int pr_trace_set_level(const char *channel, int level) {
 }
 
 int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
+  int res;
+  va_list msg;
+
+  va_start(msg, fmt);
+  res = pr_trace_vmsg(channel, level, fmt, msg);
+  va_end(msg);
+
+  return res;
+}
+
+int pr_trace_vmsg(const char *channel, int level, const char *fmt,
+    va_list msg) {
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   size_t buflen;
-  va_list msg;
   int res;
 
   /* Writing a trace message at level zero is NOT helpful; this makes it
@@ -286,9 +297,7 @@ int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
   if (res < level)
     return 0;
 
-  va_start(msg, fmt);
   vsnprintf(buf, sizeof(buf), fmt, msg);
-  va_end(msg);
 
   /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf)-1] = '\0';
