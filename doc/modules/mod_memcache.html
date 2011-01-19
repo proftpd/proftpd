@@ -1,0 +1,73 @@
+<!-- $Id: mod_memcache.html,v 1.1 2011-01-19 02:12:31 castaglia Exp $ -->
+<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_memcache.html,v $ -->
+
+<html>
+<head>
+<title>ProFTPD module mod_memcache</title>
+</head>
+
+<body bgcolor=white>
+
+<hr>
+<center>
+<h2><b>ProFTPD module <code>mod_memcache</code></b></h2>
+</center>
+<hr><br>
+
+<p>
+The <code>mod_memcache</code> module handles
+
+<h2>Directives</h2>
+<ul>
+  <li><a href="#MemcacheEngine">MemcacheEngine</a>
+  <li><a href="#MemcacheLog">MemcacheLog</a>
+  <li><a href="#MemcacheOptions">MemcacheOptions</a>
+  <li><a href="#MemcacheReplicas">MemcacheReplicas</a>
+  <li><a href="#MemcacheServers">MemcacheServers</a>
+  <li><a href="#MemcacheTimeouts">MemcacheTimeouts</a>
+</ul>
+
+<hr>
+<h2><a name="MemcacheEngine">MemcacheEngine</a></h2>
+<strong>Syntax:</strong> MemcacheEngine <em>on|off</em><br>
+<strong>Default:</strong> MemcacheEngine off<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_memcache<br>
+<strong>Compatibility:</strong> 1.3.4rc2 and later
+
+<p>
+The <code>MemcacheEngine</code> directive enables or disables the
+<code>mod_memcache</code> module, and thus the configuration of memcache
+support for the <code>proftpd</code> daemon.
+
+<p>
+<hr>
+<h2><a name="Installation">Installation</a></h2>
+The <code>mod_memcache</code> module is distributed with ProFTPD.  To enable
+support and use of the memcache protocol in your <code>proftpd</code> daemon,
+use the <code>--enable-memcache</code> configure option:
+<pre>
+  # ./configure --enable-memcache ...
+  # make
+  # make install
+</pre>
+This option causes the <code>mod_memcache</code> module to be compiled into
+<code>proftpd</code>.
+
+<p>
+<hr><br>
+
+Author: <i>$Author: castaglia $</i><br>
+Last Updated: <i>$Date: 2011-01-19 02:12:31 $</i><br>
+
+<br><hr>
+
+<font size=2><b><i>
+&copy; Copyright 2000-2011 The ProFTPD Project<br>
+ All Rights Reserved<br>
+</i></b></font>
+
+<hr><br>
+</body>
+</html>
+
