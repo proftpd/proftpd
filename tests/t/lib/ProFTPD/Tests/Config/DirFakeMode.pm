@@ -146,6 +146,7 @@ sub dirfakemode_ok {
         'config.passwd' => '--wx--x--x',
         'config.pid' => '--wx--x--x',
         'config.scoreboard' => '--wx--x--x',
+        'config.scoreboard.lck' => '--wx--x--x',
       };
 
       my $file_ok = 1;
