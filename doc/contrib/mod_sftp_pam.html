@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp_pam.html,v 1.2 2010-04-02 22:29:23 castaglia Exp $ -->
+<!-- $Id: mod_sftp_pam.html,v 1.3 2011-01-19 01:59:08 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp_pam.html,v $ -->
 
 <html>
@@ -30,10 +30,8 @@ instructions are discussed <a href="#Installation">here</a>; a discussion
 on <a href="#Usage">usage</a> is also available.
 
 <p>
-The most current version of <code>mod_sftp_pam</code> can be found at:
-<pre>
-  <a href="http://www.castaglia.org/proftpd/">http://www.castaglia.org/proftpd/</a>
-</pre>
+The most current version of <code>mod_sftp</code> is distributed with the
+ProFTPD source code.
 
 <h2>Author</h2>
 <p>
@@ -72,9 +70,22 @@ By default <code>mod_sftp_pam</code> is enabled.
 <p>
 The <code>SFTPPAMOptions</code> directive is used to configure various
 optional behaviors of <code>mod_sftp_pam</code>; it is directly analogous
-to <code>mod_auth_pam</code>'s <code>AuthPAMOptions</code> directive, and
-supports the exact same range of options.  See the <code>mod_auth_pam</code>
-documentation for more information.
+to <code>mod_auth_pam</code>'s <code>AuthPAMOptions</code> directive.
+
+<p>
+The currently supported options are:
+<ul>
+  <li><code>NoTTY</code>
+  </li>
+
+  <p>
+  <li><code>NoInfoMsgs</code>
+    <p>
+    Disables the sending of information messages from PAM to the connecting
+    SSH client.  This option is usually used for compatibility with
+    OpenSSH's behavior.
+  </li>
+</ul>
 
 <p>
 <hr>
@@ -139,12 +150,12 @@ different PAM configurations for FTP versus SSH2 logins.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-04-02 22:29:23 $</i><br>
+Last Updated: <i>$Date: 2011-01-19 01:59:08 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2008-2010 TJ Saunders<br>
+&copy; Copyright 2008-2011 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
