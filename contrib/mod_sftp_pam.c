@@ -26,7 +26,7 @@
  * This is mod_sftp_pam, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_pam.c,v 1.7 2010-04-05 18:18:39 castaglia Exp $
+ * $Id: mod_sftp_pam.c,v 1.8 2011-01-19 00:36:06 castaglia Exp $
  * $Libraries: -lpam $
  */
 
@@ -155,13 +155,7 @@ static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
     challenge = push_array(list);
     challenge->challenge = pstrdup(sftppam_driver.driver_pool,
       SFTP_PAM_MSG_MEMBER(msgs, i, msg));
-
-    if (SFTP_PAM_MSG_MEMBER(msgs, i, msg_style) != PAM_PROMPT_ECHO_OFF) {
-      challenge->display_response = TRUE;
-
-    } else {
-      challenge->display_response = FALSE;
-    }
+    challenge->display_response = FALSE;
   }
 
   if (list->nelts == 0) {
