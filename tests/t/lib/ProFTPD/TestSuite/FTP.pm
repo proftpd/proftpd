@@ -92,7 +92,10 @@ sub response_msg {
     return $msgs[$index];
   }
 
-  chomp($msgs[0]);
+  if (defined($msgs[0])) {
+    chomp($msgs[0]);
+  }
+
   return $msgs[0];
 }
 
