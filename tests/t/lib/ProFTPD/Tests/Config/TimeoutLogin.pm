@@ -70,7 +70,7 @@ sub timeoutlogin_ok {
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
-  my $timeout_login = 2;
+  my $timeout_login = 4;
 
   my $config = {
     PidFile => $pid_file,
@@ -108,10 +108,11 @@ sub timeoutlogin_ok {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      # Wait for one second less than the login timeout
-      sleep($timeout_login - 1);
+      # Wait for one second
+      sleep(1);
 
       $client->login($user, $passwd);
+      $client->quit();
     };
 
     if ($@) {
@@ -178,7 +179,7 @@ sub timeoutlogin_exceeded {
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
-  my $timeout_login = 3;
+  my $timeout_login = 5;
 
   my $config = {
     PidFile => $pid_file,
@@ -219,16 +220,13 @@ sub timeoutlogin_exceeded {
       # Wait for two seconds more than the login timeout
       sleep($timeout_login + 2);
 
-      my ($resp_code, $resp_msg);
-
-      eval { $client->login($user, $passwd) };
+      eval { $client->user($user) };
       unless ($@) {
-        die("Login succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
+        die("USER succeeded unexpectedly");
       }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
       my $expected;
 
@@ -236,8 +234,8 @@ sub timeoutlogin_exceeded {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Login Timeout ($timeout_login seconds): closing control connection";
-      $self->assert($expected eq $resp_msg,
+      $expected = "Login timeout ($timeout_login seconds): closing control connection";
+      $self->assert(lc($expected) eq lc($resp_msg),
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
 
