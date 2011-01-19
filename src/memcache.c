@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.6 2011-01-18 06:23:34 castaglia Exp $
+ * $Id: memcache.c,v 1.7 2011-01-19 07:10:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -681,7 +681,8 @@ pr_memcache_t *pr_memcache_conn_get(void) {
   return NULL;
 }
 
-pr_memcache_t *pr_memcache_conn_new(pool *p, module *m) {
+pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
+    uint64_t nreplicas) {
   errno = ENOSYS;
   return NULL;
 }
