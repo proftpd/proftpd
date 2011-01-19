@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached$
- * $Id: mod_memcache.c,v 1.7 2011-01-18 06:23:34 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.8 2011-01-19 19:28:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -96,9 +96,6 @@ MODRET set_memcacheoptions(cmd_rec *cmd) {
   for (i = 1; i < cmd->argc; i++) {
     if (strcmp(cmd->argv[i], "NoBinaryProtocol") == 0) {
       opts |= PR_MEMCACHE_FL_NO_BINARY_PROTOCOL;
-
-    } else if (strcmp(cmd->argv[i], "Blocking") == 0) {
-      opts |= PR_MEMCACHE_FL_BLOCKING;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown MemcacheOption '",
@@ -251,8 +248,7 @@ static void mcache_restart_ev(const void *event_data, void *user_data) {
 static int mcache_init(void) {
   memcache_init();
 
-  pr_event_register(&memcache_module, "core.restart", memcache_restart_ev,
-    NULL);
+  pr_event_register(&memcache_module, "core.restart", mcache_restart_ev, NULL);
 
   pr_log_debug(DEBUG2, MOD_MEMCACHE_VERSION ": using libmemcached-%s",
     LIBMEMCACHED_VERSION_STRING);
