@@ -155,7 +155,7 @@ sub stou_ok_raw_active {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 2) };
+    eval { server_wait($config_file, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -281,7 +281,7 @@ sub stou_ok_raw_passive {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 2) };
+    eval { server_wait($config_file, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -417,7 +417,7 @@ sub stou_ok_file {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 2) };
+    eval { server_wait($config_file, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -639,7 +639,7 @@ sub stou_fails_eperm {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 2) };
+    eval { server_wait($config_file, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
