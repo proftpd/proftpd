@@ -158,6 +158,7 @@ sub hidenoaccess_ok {
         'config.passwd' => 1,
         'config.pid' => 1,
         'config.scoreboard' => 1,
+        'config.scoreboard.lck' => 1,
       };
 
       my $ok = 1;
