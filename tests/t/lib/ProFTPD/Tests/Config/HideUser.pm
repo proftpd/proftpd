@@ -27,7 +27,7 @@ my $TESTS = {
 
   hideuser_not_session_user => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(forking rootprivs)],
   },
 
 };
