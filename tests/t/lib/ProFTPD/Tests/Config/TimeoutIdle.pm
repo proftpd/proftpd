@@ -70,7 +70,7 @@ sub timeoutidle_ok {
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
-  my $timeout_idle = 2;
+  my $timeout_idle = 4;
 
   my $config = {
     PidFile => $pid_file,
@@ -202,7 +202,7 @@ sub timeoutidle_exceeded {
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
-  my $timeout_idle = 2;
+  my $timeout_idle = 4;
   my $timeout_delay = $timeout_idle + 2;
 
   my $config = {
