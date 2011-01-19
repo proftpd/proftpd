@@ -663,6 +663,7 @@ sub abor_retr_ascii_largefile_followed_by_list_ok {
         'cmds.passwd' => 1,
         'cmds.pid' => 1,
         'cmds.scoreboard' => 1,
+        'cmds.scoreboard.lck' => 1,
         'largefile.txt' => 1,
       };
 
