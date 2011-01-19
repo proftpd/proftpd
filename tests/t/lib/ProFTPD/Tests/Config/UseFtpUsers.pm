@@ -41,6 +41,15 @@ sub new {
 }
 
 sub list_tests {
+  # These tests require that the test system have an /etc/ftpusers file.
+  unless (-e '/etc/ftpusers') {
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "No /etc/ftpusers file present, skipping UseFtpUsers tests\n";
+    }
+
+    return qw(testsuite_empty_test);
+  }
+
   return testsuite_get_runnable_tests($TESTS);
 }
 
