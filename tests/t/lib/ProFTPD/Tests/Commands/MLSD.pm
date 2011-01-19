@@ -207,6 +207,7 @@ sub mlsd_ok_raw_active {
         'cmds.passwd' => 1,
         'cmds.pid' => 1,
         'cmds.scoreboard' => 1,
+        'cmds.scoreboard.lck' => 1,
       };
 
       my $ok = 1;
@@ -352,6 +353,7 @@ sub mlsd_ok_raw_passive {
         'cmds.passwd' => 1,
         'cmds.pid' => 1,
         'cmds.scoreboard' => 1,
+        'cmds.scoreboard.lck' => 1,
       };
 
       my $ok = 1;
@@ -609,8 +611,9 @@ sub mlsd_ok_dir {
       }
 
       my $count = scalar(keys(%$res));
-      unless ($count == 7) {
-        die("MLSD returned wrong number of entries (expected 7, got $count)");
+      my $expected = 8;
+      unless ($count == $expected) {
+        die("MLSD returned wrong number of entries (expected $expected, got $count)");
       }
     };
 
@@ -999,8 +1002,9 @@ sub mlsd_ok_no_path {
       }
 
       my $count = scalar(keys(%$res));
-      unless ($count == 7) {
-        die("MLSD returned wrong number of entries (expected 7, got $count)");
+      my $expected = 8;
+      unless ($count == $expected) {
+        die("MLSD returned wrong number of entries (expected $expected, got $count)");
       }
     };
 
@@ -1613,8 +1617,9 @@ sub mlsd_ok_hidden_file {
       # to see if a listed file has been hidden (e.g. via HideFiles).
 
       my $count = scalar(keys(%$res));
-      unless ($count == 7) {
-        die("MLSD returned wrong number of entries (expected 7, got $count)");
+      my $expected = 8;
+      unless ($count == $expected) {
+        die("MLSD returned wrong number of entries (expected $expected, got $count)");
       }
     };
 

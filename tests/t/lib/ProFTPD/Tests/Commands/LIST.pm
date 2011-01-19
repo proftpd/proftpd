@@ -260,6 +260,7 @@ sub list_ok_raw_active {
         'cmds.passwd' => 1,
         'cmds.pid' => 1,
         'cmds.scoreboard' => 1,
+        'cmds.scoreboard.lck' => 1,
       };
 
       my $ok = 1;
@@ -403,6 +404,7 @@ sub list_ok_raw_passive {
         'cmds.passwd' => 1,
         'cmds.pid' => 1,
         'cmds.scoreboard' => 1,
+        'cmds.scoreboard.lck' => 1,
       };
 
       my $ok = 1;
@@ -669,12 +671,13 @@ sub list_ok_dir {
       }
 
       my $count = scalar(keys(%$res));
-      unless ($count == 5) {
+      my $expected = 6;
+      unless ($count == $expected) {
         if ($ENV{TEST_VERBOSE}) {
           print STDERR "Received:\n$buf\n";
         }
 
-        die("LIST returned wrong number of entries (expected 5, got $count)");
+        die("LIST returned wrong number of entries (expected $expected, got $count)");
       }
     };
 
@@ -797,8 +800,9 @@ sub list_ok_no_path {
       }
 
       my $count = scalar(keys(%$res));
-      unless ($count == 5) {
-        die("LIST returned wrong number of entries (expected 5, got $count)");
+      my $expected = 6;
+      unless ($count == $expected) {
+        die("LIST returned wrong number of entries (expected $expected, got $count)");
       }
     };
 
@@ -4076,6 +4080,7 @@ sub list_star_bug3529 {
         'cmds.passwd' => 1,
         'cmds.pid' => 1,
         'cmds.scoreboard' => 1,
+        'cmds.scoreboard.lck' => 1,
         'foo.txt' => 1,
       };
 

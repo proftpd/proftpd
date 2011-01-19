@@ -212,6 +212,7 @@ sub nlst_ok_raw_active {
         'cmds.passwd' => 1,
         'cmds.pid' => 1,
         'cmds.scoreboard' => 1,
+        'cmds.scoreboard.lck' => 1,
       };
 
       my $ok = 1;
@@ -357,6 +358,7 @@ sub nlst_ok_raw_passive {
         'cmds.passwd' => 1,
         'cmds.pid' => 1,
         'cmds.scoreboard' => 1,
+        'cmds.scoreboard.lck' => 1,
       };
 
       my $ok = 1;
@@ -619,8 +621,9 @@ sub nlst_ok_dir {
       }
 
       my $count = scalar(keys(%$res));
-      unless ($count == 5) {
-        die("NLST returned wrong number of entries (expected 5, got $count)");
+      my $expected = 6;
+      unless ($count == $expected) {
+        die("NLST returned wrong number of entries (expected $expected, got $count)");
       }
     };
 
@@ -741,8 +744,9 @@ sub nlst_ok_no_path {
       }
 
       my $count = scalar(keys(%$res));
-      unless ($count == 5) {
-        die("NLST returned wrong number of entries (expected 5, got $count)");
+      my $expected = 6;
+      unless ($count == $expected) {
+        die("NLST returned wrong number of entries (expected $expected, got $count)");
       }
     };
 
