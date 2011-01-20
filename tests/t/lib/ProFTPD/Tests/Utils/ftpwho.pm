@@ -372,7 +372,7 @@ sub ftpwho_verbose_ok {
   }
 
   $self->assert($expected == $count,
-  test_msg("Expected $expected, got $count"));
+    test_msg("Expected $expected, got $count"));
 
   my $ok = 0;
   foreach my $line (@$lines) {
