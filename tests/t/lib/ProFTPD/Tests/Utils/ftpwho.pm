@@ -359,11 +359,20 @@ sub ftpwho_verbose_ok {
     die("Can't read $ftpwho_file: $!");
   }
 
-  my $expected = 7;
+  my $expected = 8;
 
   my $count = scalar(@$lines);
+  if ($ENV{TEST_VERBOSE}) {
+    if ($count != $expected) {
+      print STDERR "Lines:\n";
+      for (my $i = 0; $i < $count; $i++) {
+        print STDERR "  $i: $lines->[$i]\n";
+      }
+    }
+  }
+
   $self->assert($expected == $count,
-    test_msg("Expected $expected, got $count"));
+  test_msg("Expected $expected, got $count"));
 
   my $ok = 0;
   foreach my $line (@$lines) {
