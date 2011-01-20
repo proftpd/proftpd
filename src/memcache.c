@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.7 2011-01-19 07:10:24 castaglia Exp $
+ * $Id: memcache.c,v 1.8 2011-01-20 02:04:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -31,6 +31,14 @@
 #ifdef PR_USE_MEMCACHE
 
 #include <libmemcached/memcached.h>
+
+#if defined(LIBMEMCACHED_VERSION_HEX)
+# if LIBMEMCACHED_VERSION_HEX < 0x00037000
+#  error "libmemcached-0.37 or later required"
+# endif /* LIBMEMCACHED_VERSION_HEX too old */
+#else
+# error "Unable to determine libmemcached version"
+#endif /* LIBMEMCACHED_VERSION_HEX */
 
 extern tpl_hook_t tpl_hook;
 
@@ -66,6 +74,7 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
   pr_memcache_t *mcache;
   pool *sub_pool;
   memcached_st *mc;
+  memcached_stat_st *mst;
   memcached_return res;
 
   if (p == NULL) {
@@ -215,6 +224,72 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
   /* XXX Other behavior to play with:
    *  MEMCACHED_BEHAVIOR_RANDOMIZE_REPLICA_READ
    */
+
+  /* Make sure we are connected to the configured servers by querying
+   * some stats/info from them.
+   */
+  mst = memcached_stat(mc, NULL, &res);
+  if (mst != NULL) {
+    if (res == MEMCACHED_SUCCESS) {
+      register unsigned int i;
+      const char *stat_keys[] = {
+        "version",
+        "uptime",
+        "curr_connections",
+        "curr_items",
+        "bytes",
+        "limit_maxbytes",
+        NULL
+      };
+
+      /* Log some of the stats about the memcached servers to which we just
+       * connected.
+       */  
+
+      for (i = 0; stat_keys[i] != NULL; i++) {
+        char *val;
+
+        val = memcached_stat_get_value(mc, mst, "uptime", &res);
+        if (val != NULL) {
+          pr_trace_msg(trace_channel, 9,
+            "memcached servers stats: %s = %s", stat_keys[i], val);
+          free(val);
+
+        } else {
+          pr_trace_msg(trace_channel, 6,
+            "unable to obtain '%s' stat: %s", stat_keys[i],
+            memcached_strerror(mc, res));
+        }
+      }
+
+    } else {
+      switch (res) {
+        case MEMCACHED_ERRNO:
+          if (errno != EINPROGRESS) {
+            pr_trace_msg(trace_channel, 3,
+              "error requesting memcached stats: system error: %s",
+              strerror(errno));
+            break;
+
+          } else {
+            /* We know that we're not using nonblocking IO; this value usually
+             * means that libmemcached could not connect to the configured
+             * memcached servers.  So set the value to something more
+             * indicative, and fall through.
+             */
+            res = MEMCACHED_CONNECTION_FAILURE;
+          }
+
+        default:
+          pr_trace_msg(trace_channel, 6,
+            "error requesting memcached stats: %s",
+            memcached_strerror(mc, res));
+          break;
+      }
+    }
+
+    memcached_stat_free(mc, mst);
+  }
 
   if (sess_mcache == NULL) {
     sess_mcache = mcache;
