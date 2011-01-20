@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
  *
- * Copyright (c) 2004-2010 TJ Saunders
+ * Copyright (c) 2004-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.42 2010-12-09 05:58:20 castaglia Exp $
+ * $Id: mod_ban.c,v 1.43 2011-01-20 05:28:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,11 +35,11 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#define MOD_BAN_VERSION			"mod_ban/0.5.6"
+#define MOD_BAN_VERSION			"mod_ban/0.6"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030101
-# error "ProFTPD 1.3.1rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030402
+# error "ProFTPD 1.3.4rc2 or later required"
 #endif
 
 #ifndef PR_USE_CTRLS
@@ -150,6 +150,46 @@ static int ban_timerno = -1;
  */
 static struct ban_event_entry *login_rate_tmpl = NULL;
 
+/* For communicating with memcached servers for shared/cached ban data. */
+static pr_memcache_t *mcache = NULL;
+
+struct ban_mcache_entry {
+  int version;
+
+  /* Timestamp indicating when this entry last changed.  Ideally it will
+   * be a uint64_t value, but I don't know how portable that data type is yet.
+   */
+  uint32_t update_ts;
+
+  /* IP address/port of origin of this cache entry. */
+  char *ip_addr;
+  int port;
+
+  /* We could use a struct ban_entry here, except that it uses fixed-size
+   * buffers for the strings, and for cache storage, dynamically allocated
+   * strings are easier.
+   *
+   * So instead, we duplicate the fields from struct ban_entry here.
+   */
+
+  int be_type;
+  char *be_name;
+  char *be_reason;
+  char *be_mesg;
+  uint32_t be_expires;
+  int be_sid;
+};
+
+/* These are tpl format strings */
+#define BAN_MCACHE_KEY_FMT		"svs"
+#define BAN_MCACHE_VALUE_FMT		"S(ivsiisssvi)"
+
+#define BAN_MCACHE_VALUE_VERSION	1
+
+/* BanCacheOptions flags */
+static unsigned long ban_cache_opts = 0UL;
+#define BAN_CACHE_OPT_MATCH_SERVER	0x001
+
 static int ban_lock_shm(int);
 
 static void ban_anonrejectpasswords_ev(const void *, void *);
@@ -167,6 +207,159 @@ static void ban_timeoutnoxfer_ev(const void *, void *);
 static void ban_handle_event(unsigned int, int, const char *,
   struct ban_event_entry *);
 
+/* Functions for marshalling key/value data to/from shared cache,
+ * e.g. memcached.
+ */
+
+static int ban_mcache_key_get(pool *p, unsigned int type, const char *name,
+    void **key, size_t *keysz) {
+  char *module_name = "mod_ban";
+  void *data = NULL;
+  size_t datasz = 0;
+  int res;
+
+  res = tpl_jot(TPL_MEM, &data, &datasz, BAN_MCACHE_KEY_FMT, &module_name,
+    &type, &name);
+  if (res < 0) {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "error constructing cache lookup key for type %u, name %s", type,
+      name);
+    return -1;
+  }
+
+  *keysz = datasz;
+  *key = palloc(p, datasz);
+  memcpy(*key, data, datasz);
+  free(data);
+
+  return 0;
+}
+
+static int ban_mcache_entry_get(pool *p, unsigned int type, const char *name,
+    struct ban_mcache_entry *bme) {
+  tpl_node *tn;
+  int res;
+  void *key = NULL, *value = NULL;
+  char *ptr = NULL;
+  size_t keysz = 0, valuesz = 0;
+  uint32_t flags = 0;
+
+  res = ban_mcache_key_get(p, type, name, &key, &keysz);
+  if (res < 0)
+    return -1;
+
+  value = pr_memcache_kget(mcache, (const char *) key, keysz, &valuesz, &flags);
+  if (value == NULL) {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "no matching memcache entry found for name %s, type %u", name, type);
+    return -1;
+  }
+
+  /* Unmarshal the ban entry. */
+
+  tn = tpl_map(BAN_MCACHE_VALUE_FMT, bme);
+
+  res = tpl_load(tn, TPL_MEM, value, valuesz);
+  if (res < 0) {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "%s", "error loading marshalled ban memcache data");
+  }
+
+  res = tpl_unpack(tn, 0);
+  if (res < 0) {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "%s", "error unpacking marshalled ban memcache data");
+  }
+
+  tpl_free(tn);
+
+  /* Now that we've called tpl_free(), we need to free up the memory
+   * associated with the strings in the struct ban_mcache_entry, so we
+   * allocate them out of the given pool.
+   */
+
+  ptr = bme->ip_addr;
+  if (ptr != NULL) {
+    bme->ip_addr = pstrdup(p, ptr);
+    free(ptr);
+  }
+
+  ptr = bme->be_name;
+  if (ptr != NULL) {
+    bme->be_name = pstrdup(p, ptr);
+    free(ptr);
+  }
+
+  ptr = bme->be_reason;
+  if (ptr != NULL) {
+    bme->be_reason = pstrdup(p, ptr);
+    free(ptr);
+  }
+
+  ptr = bme->be_mesg;
+  if (ptr != NULL) {
+    bme->be_mesg = pstrdup(p, ptr);
+    free(ptr);
+  }
+
+  return 0;
+}
+
+static int ban_mcache_entry_set(pool *p, struct ban_mcache_entry *bme) {
+  tpl_node *tn;
+  int res;
+  void *key = NULL, *value = NULL;
+  size_t keysz = 0, valuesz = 0;
+  uint32_t flags = 0;
+
+  /* Marshal the ban entry. */
+
+  tn = tpl_map(BAN_MCACHE_VALUE_FMT, bme);
+  if (tn == NULL) {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "error allocating tpl_map for format '%s'", BAN_MCACHE_VALUE_FMT);
+    return -1;
+  }
+
+  res = tpl_pack(tn, 0);
+  if (res < 0) {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "%s", "error marshalling ban memcache data");
+    return -1;
+  }
+
+  res = tpl_dump(tn, TPL_MEM, &value, &valuesz);
+  if (res < 0) {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "%s", "error dumping marshalled ban memcache data");
+    return -1;
+  }
+
+  tpl_free(tn);
+
+  res = ban_mcache_key_get(p, bme->be_type, bme->be_name, &key, &keysz);
+  if (res < 0) {
+    free(value);
+    return -1;
+  }
+
+  res = pr_memcache_kset(mcache, (const char *) key, keysz, value, valuesz,
+    bme->be_expires, flags);
+  free(value);
+
+  if (res < 0) {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "unable to add memcache entry for name %s, type %u: %s", bme->be_name,
+      bme->be_type, strerror(errno));
+    return -1;
+  }
+
+  return 0;
+}
+
+/* Functions for marshalling key/value data to/from local cache,
+ * i.e. SysV shm.
+ */
 static struct ban_data *ban_get_shm(pr_fh_t *tabfh) {
   int shmid;
   int shm_existed = FALSE;
@@ -567,10 +760,10 @@ static void ban_send_mesg(pool *p, const char *user, const char *rule_mesg) {
  */
 
 /* Add an entry to the ban list. */
-static int ban_list_add(unsigned int type, unsigned int sid,
+static int ban_list_add(pool *p, unsigned int type, unsigned int sid,
     const char *name, const char *reason, time_t lasts, const char *rule_mesg) {
   unsigned int old_slot;
-  int seen = FALSE;
+  int res = 0, seen = FALSE;
 
   if (!ban_lists) {
     errno = EPERM;
@@ -640,7 +833,8 @@ static int ban_list_add(unsigned int type, unsigned int sid,
           "maximum number of ban slots (%u) already in use", BAN_LIST_MAXSZ);
 
         errno = ENOSPC;
-        return -1;
+        res = -1;
+        break;
       }
 
       ban_lists->bans.bl_next_slot++;
@@ -648,7 +842,37 @@ static int ban_list_add(unsigned int type, unsigned int sid,
     }
   }
 
-  return 0;
+  /* Add the entry to memcached, if configured AND if the caller provided a pool
+   * for such uses.
+   */
+  if (mcache != NULL &&
+      p != NULL) {
+    struct ban_mcache_entry bme;
+    pr_netaddr_t *na;
+
+    memset(&bme, 0, sizeof(bme));
+
+    bme.version = BAN_MCACHE_VALUE_VERSION;
+    bme.update_ts = (uint32_t) time(NULL);
+
+    na = pr_netaddr_get_sess_local_addr();
+    bme.ip_addr = (char *) pr_netaddr_get_ipstr(na);
+    bme.port = pr_netaddr_get_port(na);
+
+    bme.be_type = type;
+    bme.be_name = (char *) name;
+    bme.be_reason = (char *) reason;
+    bme.be_mesg = (char *) (rule_mesg ? rule_mesg : "");
+    bme.be_expires = (uint32_t) (lasts ? time(NULL) + lasts : 0);
+    bme.be_sid = main_server->sid;
+
+    if (ban_mcache_entry_set(p, &bme) == 0) {
+      (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+        "memcache entry added for name %s, type %u", name, type);
+    }
+  }
+
+  return res;
 }
 
 /* Check if a ban of the specified type, for the given server ID and name,
@@ -657,7 +881,7 @@ static int ban_list_add(unsigned int type, unsigned int sid,
  * If the caller provides a `mesg' pointer, then if a ban exists, that
  * pointer will point to any custom client-displayable message.
  */
-static int ban_list_exists(unsigned int type, unsigned int sid,
+static int ban_list_exists(pool *p, unsigned int type, unsigned int sid,
     const char *name, char **mesg) {
 
   if (!ban_lists) {
@@ -679,6 +903,79 @@ static int ban_list_exists(unsigned int type, unsigned int sid,
         if (mesg != NULL &&
             strlen(ban_lists->bans.bl_entries[i].be_mesg) > 0) {
           *mesg = ban_lists->bans.bl_entries[i].be_mesg;
+        }
+
+        return 0;
+      }
+    }
+  }
+
+  /* Check with memcached, if configured AND if the caller provided a pool
+   * for such uses.
+   */
+  if (mcache != NULL &&
+      p != NULL) {
+    int res;
+    struct ban_mcache_entry bme;
+
+    memset(&bme, 0, sizeof(bme));
+
+    res = ban_mcache_entry_get(p, type, name, &bme);
+    if (res == 0) {
+      int use_entry = TRUE;
+
+      /* XXX Check the expiration timestamp; if too old, delete it from the
+       * cache.
+       */
+
+      /* XXX Check the entry version; if it doesn't match ours, then we
+       * need to Do Something Intelligent(tm).
+       */
+
+      (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+        "found memcache entry for name %s, type %u: version %u, update_ts %s, "
+        "ip_addr %s, port %u, be_type %u, be_name %s, be_reason %s, "
+        "be_mesg %s, be_expires %s, be_sid %u", name, type, bme.version,
+        pr_strtime(bme.update_ts), bme.ip_addr, bme.port, bme.be_type,
+        bme.be_name, bme.be_reason, bme.be_mesg ? bme.be_mesg : "<nil>",
+        pr_strtime(bme.be_expires), bme.be_sid);
+
+      /* Use BanCacheOptions to check the various struct fields for usability.
+       */
+
+      if (ban_cache_opts & BAN_CACHE_OPT_MATCH_SERVER) {
+        pr_netaddr_t *na;
+
+        /* Make sure that the IP address/port in the mcache entry matches
+         * our address/port.
+         */
+
+        na = pr_netaddr_get_sess_local_addr();
+        if (use_entry == TRUE &&
+            strcmp(bme.ip_addr, pr_netaddr_get_ipstr(na)) != 0) {
+          use_entry = FALSE;
+
+          (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+            "BanCacheOption MatchServer: memcache entry IP address '%s' "
+            "does not match vhost IP address '%s', ignoring entry",
+            bme.ip_addr, pr_netaddr_get_ipstr(na));
+        }
+
+        if (use_entry == TRUE &&
+            bme.port != pr_netaddr_get_port(na)) {
+          use_entry = FALSE;
+
+          (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+            "BanCacheOption MatchServer: memcache entry port %u "
+            "does not match vhost port %d, ignoring entry",
+            bme.port, pr_netaddr_get_port(na));
+        }
+      }
+
+      if (use_entry == TRUE) {
+        if (mesg != NULL &&
+            strlen(bme.be_mesg) > 0) {
+          *mesg = bme.be_mesg;
         }
 
         return 0;
@@ -1368,13 +1665,14 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     for (i = optind; i < reqargc; i++) {
      
       /* Check for duplicates. */
-      if (ban_list_exists(BAN_TYPE_USER, sid, reqargv[i], NULL) < 0) {
+      if (ban_list_exists(NULL, BAN_TYPE_USER, sid, reqargv[i], NULL) < 0) {
 
         if (ban_lists->bans.bl_listlen < BAN_LIST_MAXSZ) {
           const char *reason = pstrcat(ctrl->ctrls_tmp_pool, "requested by '",
             ctrl->ctrls_cl->cl_user, "' on ", pr_strtime(time(NULL)), NULL);
 
-          ban_list_add(BAN_TYPE_USER, sid, reqargv[i], reason, 0, NULL);
+          ban_list_add(NULL, BAN_TYPE_USER, sid, reqargv[i],
+            reason, 0, NULL);
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
             "added '%s' to banned users list", reqargv[i]);
           pr_ctrls_add_response(ctrl, "user %s banned", reqargv[i]);
@@ -1417,11 +1715,11 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
       }
  
       /* Check for duplicates. */
-      if (ban_list_exists(BAN_TYPE_HOST, sid, pr_netaddr_get_ipstr(site),
+      if (ban_list_exists(NULL, BAN_TYPE_HOST, sid, pr_netaddr_get_ipstr(site),
           NULL) < 0) {
 
         if (ban_lists->bans.bl_listlen < BAN_LIST_MAXSZ) {
-          ban_list_add(BAN_TYPE_HOST, sid, pr_netaddr_get_ipstr(site),
+          ban_list_add(NULL, BAN_TYPE_HOST, sid, pr_netaddr_get_ipstr(site),
             pstrcat(ctrl->ctrls_tmp_pool, "requested by '",
               ctrl->ctrls_cl->cl_user, "' on ",
               pr_strtime(time(NULL)), NULL), 0, NULL);
@@ -1458,13 +1756,13 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     for (i = optind; i < reqargc; i++) {
 
       /* Check for duplicates. */
-      if (ban_list_exists(BAN_TYPE_CLASS, sid, reqargv[i], NULL) < 0) {
+      if (ban_list_exists(NULL, BAN_TYPE_CLASS, sid, reqargv[i], NULL) < 0) {
 
         if (ban_lists->bans.bl_listlen < BAN_LIST_MAXSZ) {
           const char *reason = pstrcat(ctrl->ctrls_tmp_pool, "requested by '",
             ctrl->ctrls_cl->cl_user, "' on ", pr_strtime(time(NULL)), NULL);
 
-          ban_list_add(BAN_TYPE_CLASS, sid, reqargv[i], reason, 0, NULL);
+          ban_list_add(NULL, BAN_TYPE_CLASS, sid, reqargv[i], reason, 0, NULL);
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
             "added '%s' to banned classes list", reqargv[i]);
           pr_ctrls_add_response(ctrl, "class %s banned", reqargv[i]);
@@ -1755,7 +2053,8 @@ MODRET ban_pre_pass(cmd_rec *cmd) {
   ban_list_expire();
 
   /* Check banned user list */
-  if (ban_list_exists(BAN_TYPE_USER, main_server->sid, user, &rule_mesg) == 0) {
+  if (ban_list_exists(cmd->tmp_pool, BAN_TYPE_USER, main_server->sid, user,
+      &rule_mesg) == 0) {
     pr_log_pri(PR_LOG_INFO, MOD_BAN_VERSION
       ": Login denied: user '%s' banned", user);
     ban_send_mesg(cmd->tmp_pool, user, rule_mesg);
@@ -1782,6 +2081,61 @@ MODRET ban_post_pass(cmd_rec *cmd) {
 
 /* Configuration handlers
  */
+
+/* usage: BanCache driver */
+MODRET set_bancache(cmd_rec *cmd) {
+  config_rec *c;
+
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 3) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+#ifdef PR_USE_MEMCACHE
+  if (strcmp(cmd->argv[1], "memcache") != 0) {
+#else
+  if (TRUE) {
+#endif /* !PR_USE_MEMCACHE */
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported BanCache driver '",
+      cmd->argv[1], "'", NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: BanCacheOptions MatchServer */
+MODRET set_bancacheoptions(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 < 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "MatchServer") == 0) {
+      opts |= BAN_CACHE_OPT_MATCH_SERVER;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown BanCacheOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  return PR_HANDLED(cmd);
+}
 
 /* usage: BanControlsACLs actions|all allow|deny user|group list */
 MODRET set_banctrlsacls(cmd_rec *cmd) {
@@ -2044,6 +2398,10 @@ static void ban_exit_ev(const void *event_data, void *user_data) {
     if (res < 0) {
       pr_log_debug(DEBUG1, MOD_BAN_VERSION ": error detaching shm: %s",
         strerror(errno));
+
+    } else {
+      (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+        "detached shmid %d for BanTable '%s'", ban_shmid, ban_table);
     }
 
     memset(&ds, 0, sizeof(ds));
@@ -2055,6 +2413,10 @@ static void ban_exit_ev(const void *event_data, void *user_data) {
     if (res < 0) {
       pr_log_debug(DEBUG1, MOD_BAN_VERSION ": error removing shmid %d: %s",
         ban_shmid, strerror(errno));
+
+    } else {
+      (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+        "removed shmid %d for BanTable '%s'", ban_shmid, ban_table);
     }
   }
 }
@@ -2123,14 +2485,14 @@ static void ban_handle_event(unsigned int ev_type, int ban_type,
        * Check for an existing entry first, though.
        */
 
-      res = ban_list_exists(ban_type, main_server->sid, src, NULL);
+      res = ban_list_exists(NULL, ban_type, main_server->sid, src, NULL);
       if (res < 0) {
         const char *reason = pstrcat(tmp_pool, event, " autoban at ",
           pr_strtime(time(NULL)), NULL);
 
         ban_list_expire();
 
-        if (ban_list_add(ban_type, main_server->sid, src, reason,
+        if (ban_list_add(tmp_pool, ban_type, main_server->sid, src, reason,
             tmpl->bee_expires, tmpl->bee_mesg) < 0) {
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
             "error adding %s-triggered autoban for %s '%s': %s", event,
@@ -2555,7 +2917,7 @@ static int ban_init(void) {
 static int ban_sess_init(void) {
   config_rec *c;
   pool *tmp_pool;
-  const char *class, *remote_ip;
+  const char *remote_ip;
   char *rule_mesg = NULL;
 
   if (ban_engine != TRUE)
@@ -2572,16 +2934,40 @@ static int ban_sess_init(void) {
     }
   }
 
-  tmp_pool = make_sub_pool(ban_pool);
+  c = find_config(main_server->conf, CONF_PARAM, "BanCache", FALSE);
+  if (c) {
+    char *driver;
 
-  class = session.class ? session.class->cls_name : "";
-  remote_ip = pr_netaddr_get_ipstr(session.c->remote_addr);
+    driver = c->argv[0];
+    if (strcmp(driver, "memcache") == 0) {
+      mcache = pr_memcache_conn_get();
+      if (mcache == NULL) {
+        (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+          "error connecting to memcached: %s", strerror(errno));
+      }
+
+      /* We really only need to look up BanCacheOptions if the BanCache
+       * driver is acceptable.
+       */
+      c = find_config(main_server->conf, CONF_PARAM, "BanCacheOptions", FALSE);
+      if (c) {
+        ban_cache_opts = *((unsigned long *) c->argv[0]);
+      }
+
+    } else {
+      (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+        "unsupported BanCache driver '%s' configured, ignoring", driver);
+    }
+  }
+
+  tmp_pool = make_sub_pool(ban_pool);
 
   /* Make sure the list is up-to-date. */
   ban_list_expire();
 
   /* Check banned host list */
-  if (ban_list_exists(BAN_TYPE_HOST, main_server->sid, remote_ip,
+  remote_ip = pr_netaddr_get_ipstr(session.c->remote_addr);
+  if (ban_list_exists(tmp_pool, BAN_TYPE_HOST, main_server->sid, remote_ip,
       &rule_mesg) == 0) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "login from host '%s' denied due to host ban", remote_ip);
@@ -2596,18 +2982,21 @@ static int ban_sess_init(void) {
   }
 
   /* Check banned class list */
-  if (ban_list_exists(BAN_TYPE_CLASS, main_server->sid, class,
-      &rule_mesg) == 0) {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "login from class '%s' denied due to class ban", class);
-    pr_log_pri(PR_LOG_INFO, MOD_BAN_VERSION
-      ": Login denied: class '%s' banned", class);
+  if (session.class != NULL) {
+    if (ban_list_exists(tmp_pool, BAN_TYPE_CLASS, main_server->sid,
+        session.class->cls_name, &rule_mesg) == 0) {
+      (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+        "login from class '%s' denied due to class ban",
+        session.class->cls_name);
+      pr_log_pri(PR_LOG_INFO, MOD_BAN_VERSION
+        ": Login denied: class '%s' banned", session.class->cls_name);
 
-    ban_send_mesg(tmp_pool, "(none)", rule_mesg); 
-    destroy_pool(tmp_pool);
+      ban_send_mesg(tmp_pool, "(none)", rule_mesg); 
+      destroy_pool(tmp_pool);
 
-    errno = EACCES;
-    return -1;
+      errno = EACCES;
+      return -1;
+    }
   }
 
   pr_event_generate("mod_ban.client-connect-rate", session.c);
@@ -2633,6 +3022,8 @@ static ctrls_acttab_t ban_acttab[] = {
  */
 
 static conftable ban_conftab[] = {
+  { "BanCache",			set_bancache,		NULL },
+  { "BanCacheOptions",		set_bancacheoptions,	NULL },
   { "BanControlsACLs",		set_banctrlsacls,	NULL },
   { "BanEngine",		set_banengine,		NULL },
   { "BanLog",			set_banlog,		NULL },
