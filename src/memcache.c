@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.8 2011-01-20 02:04:45 castaglia Exp $
+ * $Id: memcache.c,v 1.9 2011-01-20 04:59:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -249,7 +249,7 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
       for (i = 0; stat_keys[i] != NULL; i++) {
         char *val;
 
-        val = memcached_stat_get_value(mc, mst, "uptime", &res);
+        val = memcached_stat_get_value(mc, mst, stat_keys[i], &res);
         if (val != NULL) {
           pr_trace_msg(trace_channel, 9,
             "memcached servers stats: %s = %s", stat_keys[i], val);
