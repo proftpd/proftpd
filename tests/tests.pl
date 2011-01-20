@@ -191,6 +191,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_ban)],
     },
 
+    't/modules/mod_ban/memcache.t' => {
+      order => ++$order,
+      test_class => [qw(mod_ban mod_memcache)],
+    },
+
     't/modules/mod_cap.t' => {
       order => ++$order,
       test_class => [qw(mod_cap)],
