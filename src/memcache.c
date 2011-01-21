@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.11 2011-01-21 07:19:57 castaglia Exp $
+ * $Id: memcache.c,v 1.12 2011-01-21 08:21:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -493,6 +493,17 @@ int pr_memcache_kadd(pr_memcache_t *mcache, const char *key, size_t keysz,
         res = MEMCACHED_CONNECTION_FAILURE;
       }
 
+    case MEMCACHED_CONNECTION_FAILURE: {
+      memcached_server_instance_st server;
+
+      server = memcached_server_get_last_disconnect(mcache->mc);
+      if (server != NULL) {
+        pr_trace_msg(trace_channel, 3,
+          "unable to connect to %s:%d", memcached_server_name(server),
+          memcached_server_port(server));
+      }
+    }
+
     default:
       pr_trace_msg(trace_channel, 2,
         "error adding key (%lu bytes), value (%lu bytes): %s",
@@ -542,6 +553,17 @@ void *pr_memcache_kget(pr_memcache_t *mcache, const char *key, size_t keysz,
            */
           res = MEMCACHED_CONNECTION_FAILURE;
         }
+
+      case MEMCACHED_CONNECTION_FAILURE: {
+        memcached_server_instance_st server;
+
+        server = memcached_server_get_last_disconnect(mcache->mc);
+        if (server != NULL) {
+          pr_trace_msg(trace_channel, 3,
+            "unable to connect to %s:%d", memcached_server_name(server),
+            memcached_server_port(server));
+        }
+      } 
 
       default:
         pr_trace_msg(trace_channel, 6,
@@ -603,6 +625,17 @@ char *pr_memcache_kget_str(pr_memcache_t *mcache, const char *key,
           res = MEMCACHED_CONNECTION_FAILURE;
         }
 
+      case MEMCACHED_CONNECTION_FAILURE: {
+        memcached_server_instance_st server;
+
+        server = memcached_server_get_last_disconnect(mcache->mc);
+        if (server != NULL) {
+          pr_trace_msg(trace_channel, 3,
+            "unable to connect to %s:%d", memcached_server_name(server),
+            memcached_server_port(server));
+        }
+      }
+
       default:
         pr_trace_msg(trace_channel, 6,
           "error getting data for key (%lu bytes): [%d] %s",
@@ -656,6 +689,17 @@ int pr_memcache_kremove(pr_memcache_t *mcache, const char *key, size_t keysz,
         res = MEMCACHED_CONNECTION_FAILURE;
       }
 
+    case MEMCACHED_CONNECTION_FAILURE: {
+      memcached_server_instance_st server;
+
+      server = memcached_server_get_last_disconnect(mcache->mc);
+      if (server != NULL) {
+        pr_trace_msg(trace_channel, 3,
+          "unable to connect to %s:%d", memcached_server_name(server),
+          memcached_server_port(server));
+      }
+    }
+
     default:
       pr_trace_msg(trace_channel, 2,
         "error removing key (%lu bytes): %s", (unsigned long) keysz,
@@ -700,6 +744,17 @@ int pr_memcache_kset(pr_memcache_t *mcache, const char *key, size_t keysz,
          */
         res = MEMCACHED_CONNECTION_FAILURE;
       }
+
+    case MEMCACHED_CONNECTION_FAILURE: {
+      memcached_server_instance_st server;
+
+      server = memcached_server_get_last_disconnect(mcache->mc);
+      if (server != NULL) {
+        pr_trace_msg(trace_channel, 3,
+          "unable to connect to %s:%d", memcached_server_name(server),
+          memcached_server_port(server));
+      }
+    }
 
     default:
       pr_trace_msg(trace_channel, 2,
