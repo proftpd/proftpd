@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.10 2011-01-21 07:15:16 castaglia Exp $
+ * $Id: memcache.c,v 1.11 2011-01-21 07:19:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -278,13 +278,13 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
        */  
 
       for (i = 0; stat_keys[i] != NULL; i++) {
-        char *val;
+        char *info;
 
-        val = memcached_stat_get_value(mc, mst, stat_keys[i], &res);
-        if (val != NULL) {
+        info = memcached_stat_get_value(mc, mst, stat_keys[i], &res);
+        if (info != NULL) {
           pr_trace_msg(trace_channel, 9,
-            "memcached servers stats: %s = %s", stat_keys[i], val);
-          free(val);
+            "memcached servers stats: %s = %s", stat_keys[i], info);
+          free(info);
 
         } else {
           pr_trace_msg(trace_channel, 6,
