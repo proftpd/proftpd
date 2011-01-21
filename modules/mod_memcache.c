@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached$
- * $Id: mod_memcache.c,v 1.10 2011-01-21 07:19:57 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.11 2011-01-21 08:09:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -280,12 +280,14 @@ static int mcache_init(void) {
   pr_event_register(&memcache_module, "core.restart", mcache_restart_ev, NULL);
 
   version = memcached_lib_version();
-  pr_log_debug(DEBUG2, MOD_MEMCACHE_VERSION ": using libmemcached-%s", version);
-
   if (strcmp(version, LIBMEMCACHED_VERSION_STRING) != 0) {
     pr_log_pri(PR_LOG_ERR, MOD_MEMCACHE_VERSION
       ": compiled using libmemcached-%s headers, but linked to "
       "libmemcached-%s library", LIBMEMCACHED_VERSION_STRING, version);
+
+  } else {
+    pr_log_debug(DEBUG2, MOD_MEMCACHE_VERSION ": using libmemcached-%s",
+      version);
   }
 
   return 0;
