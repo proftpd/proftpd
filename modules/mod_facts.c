@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.34 2011-01-14 19:11:26 castaglia Exp $
+ * $Id: mod_facts.c,v 1.35 2011-01-21 03:45:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1151,7 +1151,18 @@ MODRET facts_mlst(cmd_rec *cmd) {
    * FEAT output, the path here should be the full path (as seen by the
    * client).
    */
-  info.path = dir_best_path(cmd->tmp_pool, path);
+
+  /* XXX What about chroots? */
+
+  if (flags & FACTS_MLINFO_FL_SHOW_SYMLINKS) {
+    /* If we are supposed to symlinks, then use dir_best_path() to get the
+     * full path, including dereferencing the symlink.
+     */
+    info.path = dir_best_path(cmd->tmp_pool, path);
+
+  } else {
+    info.path = dir_canonical_path(cmd->tmp_pool, path);
+  }
 
   pr_response_add(R_250, _("Start of list for %s"), path);
   facts_mlinfo_add(&info);
