@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.12 2011-01-21 08:21:03 castaglia Exp $
+ * $Id: memcache.c,v 1.13 2011-01-21 08:44:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -168,10 +168,36 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
   if (memcache_sess_conn_failures > 0) {
     res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_SERVER_FAILURE_LIMIT,
       memcache_sess_conn_failures);
+
     if (res != MEMCACHED_SUCCESS) {
       pr_trace_msg(trace_channel, 4,
         "error setting SERVER_FAILURE_LIMIT behavior on connection: %s",
         memcached_strerror(mc, res));
+
+    } else {
+      /* Automatically eject hosts which have reached this failure limit;
+       * keeping them around in the memcached_st struct only causes
+       * confusion.
+       *
+       * XXX In the future, looking into using RETRY_TIMEOUT to configure
+       * the interval at which we will check a failing server for
+       * usability (i.e. is a failing server ready to be put back into
+       * the normal pool?)
+       *
+       * Even better would be a memcached callback, triggered whenever a
+       * host is auto-ejected, such that we can put the ejected host into
+       * a "penalty box" list which is monitored separately; we can push
+       * that ejected host back into the memcached_st when it's healthy
+       * again.
+       */
+
+      res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_AUTO_EJECT_HOSTS, 1);
+
+      if (res != MEMCACHED_SUCCESS) {
+        pr_trace_msg(trace_channel, 4,
+          "error setting AUTO_EJECT_HOSTS behavior on connection: %s",
+          memcached_strerror(mc, res));
+      }
     }
   }
 
@@ -247,7 +273,9 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
   val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_RANDOMIZE_REPLICA_READ);
   if (val != 1) {
     if (!(flags & PR_MEMCACHE_FL_NO_RANDOM_REPLICA_READ)) {
-      res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_RANDOMIZE_REPLICA_READ, 1);
+      res = memcached_behavior_set(mc,
+        MEMCACHED_BEHAVIOR_RANDOMIZE_REPLICA_READ, 1);
+
       if (res != MEMCACHED_SUCCESS) {
         pr_trace_msg(trace_channel, 4,
           "error setting RANDOMIZE_REPLICA_READ behavior on connection: %s",
@@ -309,6 +337,17 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
              * indicative, and fall through.
              */
             res = MEMCACHED_CONNECTION_FAILURE;
+          }
+
+          case MEMCACHED_CONNECTION_FAILURE: {
+            memcached_server_instance_st server;
+
+            server = memcached_server_get_last_disconnect(mcache->mc);
+            if (server != NULL) {
+              pr_trace_msg(trace_channel, 3,
+                "unable to connect to %s:%d", memcached_server_name(server),
+                memcached_server_port(server));
+            }
           }
 
         default:
