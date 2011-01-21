@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached$
- * $Id: mod_memcache.c,v 1.8 2011-01-19 19:28:55 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.9 2011-01-21 07:15:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,6 +44,34 @@ static int memcache_logfd = -1;
 
 /* Configuration handlers
  */
+
+/* usage: MemcacheConnectFailures count */
+MODRET set_memcacheconnectfailures(cmd_rec *cmd) {
+  char *ptr = NULL;
+  config_rec *c;
+  uint64_t count = 0;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+#ifdef HAVE_STRTOULL
+  count = strtoull(cmd->argv[1], &ptr, 10);
+#else
+  count = strtoul(cmd->argv[1], &ptr, 10);
+#endif /* HAVE_STRTOULL */
+
+  if (ptr &&
+      *ptr) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad connect failures parameter: ",
+      cmd->argv[1], NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(uint64_t));
+  *((uint64_t *) c->argv[0]) = count;
+
+  return PR_HANDLED(cmd);
+}
 
 /* usage: MemcacheEngine on|off */
 MODRET set_memcacheengine(cmd_rec *cmd) {
@@ -97,6 +125,9 @@ MODRET set_memcacheoptions(cmd_rec *cmd) {
     if (strcmp(cmd->argv[i], "NoBinaryProtocol") == 0) {
       opts |= PR_MEMCACHE_FL_NO_BINARY_PROTOCOL;
 
+    } else if (strcmp(cmd->argv[i], "NoRandomReplicaReads") == 0) {
+      opts |= PR_MEMCACHE_FL_NO_RANDOM_REPLICA_READ;
+
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown MemcacheOption '",
         cmd->argv[i], "'", NULL));
@@ -117,10 +148,6 @@ MODRET set_memcachereplicas(cmd_rec *cmd) {
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  /* XXX Should we double-check, at some point, that the configured replica
-   * count is <= the server count?
-   */
 
 #ifdef HAVE_STRTOULL
   count = strtoull(cmd->argv[1], &ptr, 10);
@@ -360,12 +387,13 @@ static int mcache_sess_init(void) {
  */
 
 static conftable memcache_conftab[] = {
-  { "MemcacheEngine",	set_memcacheengine,	NULL },
-  { "MemcacheLog",	set_memcachelog,	NULL },
-  { "MemcacheOptions",	set_memcacheoptions,	NULL },
-  { "MemcacheReplicas",	set_memcachereplicas,	NULL },
-  { "MemcacheServers",	set_memcacheservers,	NULL },
-  { "MemcacheTimeouts",	set_memcachetimeouts,	NULL },
+  { "MemcacheConnectFailures",	set_memcacheconnectfailures,	NULL },
+  { "MemcacheEngine",		set_memcacheengine,		NULL },
+  { "MemcacheLog",		set_memcachelog,		NULL },
+  { "MemcacheOptions",		set_memcacheoptions,		NULL },
+  { "MemcacheReplicas",		set_memcachereplicas,		NULL },
+  { "MemcacheServers",		set_memcacheservers,		NULL },
+  { "MemcacheTimeouts",		set_memcachetimeouts,		NULL },
  
   { NULL }
 };

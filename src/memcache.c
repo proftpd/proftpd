@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.9 2011-01-20 04:59:35 castaglia Exp $
+ * $Id: memcache.c,v 1.10 2011-01-21 07:15:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -51,6 +51,7 @@ struct mcache_rec {
 static memcached_server_st *servers = NULL;
 static pr_memcache_t *sess_mcache = NULL;
 
+static uint64_t memcache_sess_conn_failures = 0;
 static unsigned long memcache_sess_flags = 0;
 static uint64_t memcache_sess_nreplicas = 0;
 
@@ -76,6 +77,7 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
   memcached_st *mc;
   memcached_stat_st *mst;
   memcached_return res;
+  uint64_t val;
 
   if (p == NULL) {
     errno = EINVAL;
@@ -115,7 +117,9 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
   mcache->mc = mc;
 
   /* Set some of the desired behavior flags on the connection */
-  if (memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_TCP_NODELAY) != 1) {
+
+  val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_TCP_NODELAY);
+  if (val != 1) {
     res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_TCP_NODELAY, 1);
     if (res != MEMCACHED_SUCCESS) {
       pr_trace_msg(trace_channel, 4,
@@ -125,7 +129,8 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
   }
 
   /* Enable caching of DNS lookups. */
-  if (memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_CACHE_LOOKUPS) != 1) {
+  val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_CACHE_LOOKUPS);
+  if (val != 1) {
     res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_CACHE_LOOKUPS, 1);
     if (res != MEMCACHED_SUCCESS) {
       pr_trace_msg(trace_channel, 4,
@@ -135,8 +140,10 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
   }
 
   /* We always want consistent hashing, to minimize cache churn when
-   * servers are added/removed from the list.  */
-  if (memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_DISTRIBUTION) != MEMCACHED_DISTRIBUTION_CONSISTENT) {
+   * servers are added/removed from the list.
+   */
+  val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_DISTRIBUTION);
+  if (val != MEMCACHED_DISTRIBUTION_CONSISTENT) {
     res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_DISTRIBUTION,
       MEMCACHED_DISTRIBUTION_CONSISTENT);
     if (res != MEMCACHED_SUCCESS) {
@@ -147,7 +154,8 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
   }
 
   /* Use blocking IO */
-  if (memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_NO_BLOCK) != 0) {
+  val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_NO_BLOCK);
+  if (val != 0) {
     res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_NO_BLOCK, 0);
     if (res != MEMCACHED_SUCCESS) {
       pr_trace_msg(trace_channel, 4,
@@ -156,8 +164,20 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
     }
   }
 
+  val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_SERVER_FAILURE_LIMIT);
+  if (memcache_sess_conn_failures > 0) {
+    res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_SERVER_FAILURE_LIMIT,
+      memcache_sess_conn_failures);
+    if (res != MEMCACHED_SUCCESS) {
+      pr_trace_msg(trace_channel, 4,
+        "error setting SERVER_FAILURE_LIMIT behavior on connection: %s",
+        memcached_strerror(mc, res));
+    }
+  }
+
   /* Use the binary protocol by default, unless explicitly requested not to. */
-  if (memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_BINARY_PROTOCOL) != 1) {
+  val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_BINARY_PROTOCOL);
+  if (val != 1) {
     if (!(flags & PR_MEMCACHE_FL_NO_BINARY_PROTOCOL)) {
       res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_BINARY_PROTOCOL, 1);
       if (res != MEMCACHED_SUCCESS) {
@@ -221,9 +241,20 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
     }
   }
 
-  /* XXX Other behavior to play with:
-   *  MEMCACHED_BEHAVIOR_RANDOMIZE_REPLICA_READ
+  /* Use randomized reads from replicas by default, unless explicitly
+   * requested not to.
    */
+  val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_RANDOMIZE_REPLICA_READ);
+  if (val != 1) {
+    if (!(flags & PR_MEMCACHE_FL_NO_RANDOM_REPLICA_READ)) {
+      res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_RANDOMIZE_REPLICA_READ, 1);
+      if (res != MEMCACHED_SUCCESS) {
+        pr_trace_msg(trace_channel, 4,
+          "error setting RANDOMIZE_REPLICA_READ behavior on connection: %s",
+          memcached_strerror(mc, res));
+      }
+    }
+  }
 
   /* Make sure we are connected to the configured servers by querying
    * some stats/info from them.
@@ -685,6 +716,11 @@ unsigned long memcache_get_sess_flags(void) {
   return memcache_sess_flags;
 }
 
+int memcache_set_sess_connect_failures(uint64_t count) {
+  memcache_sess_conn_failures = count;
+  return 0;
+}
+
 int memcache_set_sess_flags(unsigned long flags) {
   memcache_sess_flags = flags;
   return 0;
@@ -828,6 +864,11 @@ int pr_memcache_kset(pr_memcache_t *mcache, const char *key, size_t keysz,
 
 unsigned long memcache_get_sess_flags(void) {
   return 0;
+}
+
+int memcache_set_sess_connect_failures(uint64_t count) {
+  errno = ENOSYS;
+  return -1;
 }
 
 int memcache_set_sess_flags(unsigned long flags) {

@@ -23,7 +23,7 @@
  */
 
 /* Memcache support
- * $Id: memcache.h,v 1.6 2011-01-18 06:23:34 castaglia Exp $
+ * $Id: memcache.h,v 1.7 2011-01-21 07:15:16 castaglia Exp $
  */
 
 #ifndef PR_MEMCACHE_H
@@ -72,7 +72,9 @@ int pr_memcache_kset(pr_memcache_t *mcache, const char *key, size_t keysz,
 
 unsigned long memcache_get_sess_flags(void);
 #define PR_MEMCACHE_FL_NO_BINARY_PROTOCOL	0x001
+#define PR_MEMCACHE_FL_NO_RANDOM_REPLICA_READ	0x002
 
+int memcache_set_sess_connect_failures(uint64_t count);
 int memcache_set_sess_flags(unsigned long flags);
 int memcache_set_sess_replicas(uint64_t count);
 int memcache_set_servers(void *server_list);
