@@ -1,4 +1,4 @@
-<!-- $Id: mod_ban.html,v 1.9 2010-03-10 16:43:13 castaglia Exp $ -->
+<!-- $Id: mod_ban.html,v 1.10 2011-01-21 00:44:35 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_ban.html,v $ -->
 
 <html>
@@ -40,6 +40,8 @@ questions, concerns, or suggestions regarding this module.
 
 <h2>Directives</h2>
 <ul>
+  <li><a href="#BanCache">BanCache</a>
+  <li><a href="#BanCacheOptions">BanCacheOptions</a>
   <li><a href="#BanControlsACLs">BanControlsACLs</a>
   <li><a href="#BanEngine">BanEngine</a>
   <li><a href="#BanLog">BanLog</a>
@@ -53,6 +55,24 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#ban"><code>ban</code></a>
   <li><a href="#permit"><code>permit</code></a>
 </ul>
+
+<p>
+<hr>
+<h3><a name="BanCache">BanCache</a></h3>
+<strong>Syntax:</strong> BanCache <em>driver</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_ban<br>
+<strong>Compatibility:</strong> 1.3.4rc2 and later
+
+<p>
+<hr>
+<h3><a name="BanCacheOptions">BanCacheOptions</a></h3>
+<strong>Syntax:</strong> BanCacheOptions <em>opt1 ... optN</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_ban<br>
+<strong>Compatibility:</strong> 1.3.4rc2 and later
 
 <p>
 <hr>
@@ -469,12 +489,12 @@ Note that it is <b>important</b> to have <i>both</i>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-03-10 16:43:13 $</i><br>
+Last Updated: <i>$Date: 2011-01-21 00:44:35 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2004-2010 TJ Saunders<br>
+&copy; Copyright 2004-2011 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
