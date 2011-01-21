@@ -1,4 +1,4 @@
-<!-- $Id: mod_memcache.html,v 1.2 2011-01-19 02:20:11 castaglia Exp $ -->
+<!-- $Id: mod_memcache.html,v 1.3 2011-01-21 00:13:37 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_memcache.html,v $ -->
 
 <html>
@@ -17,7 +17,8 @@
 <p>
 The <code>mod_memcache</code> module enables ProFTPD support for caching
 data in <a href="http://memcached.org">memcached</a> servers, using the
-<a href="http://libmemcached.org">libmemcached</a> client library.
+<a href="http://libmemcached.org">libmemcached</a> client library.  Note
+that <code>libmemcached</code> version 0.37 or later is <b>required</b>.
 
 <h2>Directives</h2>
 <ul>
@@ -44,6 +45,63 @@ support for the <code>proftpd</code> daemon.
 
 <p>
 <hr>
+<h2><a name="MemcacheLog">MemcacheLog</a></h2>
+<strong>Syntax:</strong> MemcacheLog <em>path|"none"</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_memcache<br>
+<strong>Compatibility:</strong> 1.3.4rc2 and later
+
+<p>
+<hr>
+<h2><a name="MemcacheOptions">MemcacheOptions</a></h2>
+<strong>Syntax:</strong> MemcacheOptions <em>opt1 ... optN</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_memcache<br>
+<strong>Compatibility:</strong> 1.3.4rc2 and later
+
+<p>
+The currently supported <code>MemcacheOptions</code> are:
+<ul>
+  <li><code>NoBinaryProtocol</code>
+</ul>
+
+<p>
+<hr>
+<h2><a name="MemcacheReplicas">MemcacheReplicas</a></h2>
+<strong>Syntax:</strong> MemcacheReplicas <em>count</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_memcache<br>
+<strong>Compatibility:</strong> 1.3.4rc2 and later
+
+<p>
+<hr>
+<h2><a name="MemcacheServers">MemcacheServers</a></h2>
+<strong>Syntax:</strong> MemcacheServers <em>servers</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_memcache<br>
+<strong>Compatibility:</strong> 1.3.4rc2 and later
+
+<p>
+Example:
+<pre>
+  MemcacheServers 1.2.3.4:11211 1.2.3.5:22422
+</pre>
+
+<p>
+<hr>
+<h2><a name="MemcacheTimeouts">MemcacheTimeouts</a></h2>
+<strong>Syntax:</strong> MemcacheTimeouts <em>connect read write</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_memcache<br>
+<strong>Compatibility:</strong> 1.3.4rc2 and later
+
+<p>
+<hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_memcache</code> module is distributed with ProFTPD.  To enable
 support and use of the memcache protocol in your <code>proftpd</code> daemon,
@@ -60,12 +118,12 @@ This option causes the <code>mod_memcache</code> module to be compiled into
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-01-19 02:20:11 $</i><br>
+Last Updated: <i>$Date: 2011-01-21 00:13:37 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2011 The ProFTPD Project<br>
+&copy; Copyright 2011 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 
