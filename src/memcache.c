@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.14 2011-01-23 00:38:06 castaglia Exp $
+ * $Id: memcache.c,v 1.15 2011-01-23 01:38:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -47,6 +47,9 @@ struct mcache_rec {
   pool *pool;
   module *owner;
   memcached_st *mc;
+
+  /* Table mapping modules to their namespaces */
+  pr_table_t *namespace_tab;
 };
 
 static memcached_server_st *configured_server_list = NULL;
@@ -65,18 +68,6 @@ static unsigned long memcache_ping_interval = 0;
 
 static const char *trace_channel = "memcache";
 
-/* XXX Support MEMCACHED_CALLBACK_PREFIX_KEY, so that e.g. mod_ban can have
- * its own separate namespace for its keys.  Each module will need to set
- * this callback whenever it use the pr_memcache_t.  Maybe support an
- * array_header/table in the pr_memcache_t struct, and have each module
- * pass in a module pointer for each usage, to automatically handle this?
- *
- *  int pr_memcache_set_namespace(module *m, char *data, size_t datalen);
- *
- * Use pr_memcache_set_namespace(m, NULL, 0) to clear your namespace.  NULL
- * module pointer results in EINVAL.
- */
- 
 static int mcache_set_options(pr_memcache_t *mcache, unsigned long flags,
     uint64_t nreplicas) {
   memcached_return res;
@@ -282,6 +273,7 @@ static int mcache_ping_servers(pr_memcache_t *mcache) {
     return -1;
   }
 
+  memcached_servers_reset(clone);
   memcached_server_push(clone, configured_server_list);
 
   server_count = memcached_server_count(clone);
@@ -296,8 +288,7 @@ static int mcache_ping_servers(pr_memcache_t *mcache) {
 
     server = memcached_server_instance_by_position(clone, i);
 
-    pr_trace_msg(trace_channel, 17,
-      "pinging server %s:%d to make sure it is alive",
+    pr_trace_msg(trace_channel, 17, "pinging server %s:%d",
       memcached_server_name(server), memcached_server_port(server));
 
     if (libmemcached_util_ping(memcached_server_name(server),
@@ -346,7 +337,7 @@ static int mcache_ping_servers(pr_memcache_t *mcache) {
 
       count = memcached_server_list_count(alive_server_list);
       pr_trace_msg(trace_channel, 9,
-        "now using %d alive ememcached %s", count,
+        "now using %d alive memcached %s", count,
         count != 1 ? "servers" : "server");
 
       memcached_server_list_free(alive_server_list);
@@ -496,6 +487,11 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
   mcache->owner = m;
   mcache->mc = mc;
 
+  /* The namespace table is null; it will be created if/when callers
+   * configure namespace prefixes.
+   */
+  mcache->namespace_tab = NULL;
+
   /* Set some of the desired behavior flags on the connection */
   if (mcache_set_options(mcache, flags, nreplicas) < 0) {
     int xerrno = errno;
@@ -545,24 +541,104 @@ int pr_memcache_conn_close(pr_memcache_t *mcache) {
   }
 
   memcached_free(mcache->mc);
+
+  if (mcache->namespace_tab != NULL) {
+    (void) pr_table_empty(mcache->namespace_tab);
+    (void) pr_table_free(mcache->namespace_tab);
+    mcache->namespace_tab = NULL;
+  }
+
   return 0;
 }
 
-int pr_memcache_add(pr_memcache_t *mcache, const char *key, void *value,
-    size_t valuesz, time_t expires, uint32_t flags) {
+static int modptr_cmp_cb(const void *k1, size_t ksz1, const void *k2,
+    size_t ksz2) {
+
+  /* Return zero to indicate a match, non-zero otherwise. */
+  return (((module *) k1) == ((module *) k2) ? 0 : 1);
+}
+
+static unsigned int modptr_hash_cb(const void *k, size_t ksz) {
+  unsigned int key = 0;
+
+  /* XXX Yes, this is a bit hacky for "hashing" a pointer value. */
+
+  memcpy(&key, k, ksz);
+  key ^= (key >> 16);
+
+  return key;
+}
+
+int pr_memcache_conn_set_namespace(pr_memcache_t *mcache, module *m,
+    const char *prefix) {
+  int count;
+  size_t prefix_len;
+
+  if (mcache == NULL ||
+      m == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (mcache->namespace_tab == NULL) {
+    pr_table_t *tab;
+
+    tab = pr_table_alloc(mcache->pool, 0);
+
+    if (pr_table_ctl(tab, PR_TABLE_CTL_SET_KEY_CMP, modptr_cmp_cb) < 0) {
+      pr_trace_msg(trace_channel, 4,
+        "error setting key comparison callback for namespace table: %s",
+        strerror(errno));
+    }
+
+    if (pr_table_ctl(tab, PR_TABLE_CTL_SET_KEY_HASH, modptr_hash_cb) < 0) {
+      pr_trace_msg(trace_channel, 4,
+        "error setting key hash callback for namespace table: %s",
+        strerror(errno));
+    }
+
+    mcache->namespace_tab = tab;
+  }
+
+  prefix_len = strlen(prefix);
+
+  count = pr_table_kexists(mcache->namespace_tab, m, sizeof(module *));
+  if (count <= 0) {
+    if (pr_table_kadd(mcache->namespace_tab, m, sizeof(module *),
+        pstrndup(mcache->pool, prefix, prefix_len), prefix_len) < 0) {
+      pr_trace_msg(trace_channel, 7,
+        "error adding namespace prefix '%s' for module 'mod_%s.c': %s",
+        prefix, m->name, strerror(errno));
+    }
+
+  } else {
+    if (pr_table_kset(mcache->namespace_tab, m, sizeof(module *),
+        pstrndup(mcache->pool, prefix, prefix_len), prefix_len) < 0) {
+      pr_trace_msg(trace_channel, 7,
+        "error setting namespace prefix '%s' for module 'mod_%s.c': %s",
+        prefix, m->name, strerror(errno));
+    }
+  }
+
+  return 0;
+}
+
+int pr_memcache_add(pr_memcache_t *mcache, module *m, const char *key,
+    void *value, size_t valuesz, time_t expires, uint32_t flags) {
   int res;
 
   /* XXX Should we allow null values to be added, thus allowing use of keys
    * as sentinels?
    */
   if (mcache == NULL ||
+      m == NULL ||
       key == NULL ||
       value == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  res = pr_memcache_kadd(mcache, key, strlen(key), value, valuesz, expires,
+  res = pr_memcache_kadd(mcache, m, key, strlen(key), value, valuesz, expires,
     flags); 
   if (res < 0) {
     pr_trace_msg(trace_channel, 2,
@@ -575,11 +651,12 @@ int pr_memcache_add(pr_memcache_t *mcache, const char *key, void *value,
   return 0;
 }
 
-void *pr_memcache_get(pr_memcache_t *mcache, const char *key, size_t *valuesz,
-    uint32_t *flags) {
+void *pr_memcache_get(pr_memcache_t *mcache, module *m, const char *key,
+    size_t *valuesz, uint32_t *flags) {
   void *ptr = NULL;
 
   if (mcache == NULL ||
+      m == NULL ||
       key == NULL ||
       valuesz == NULL ||
       flags == NULL) {
@@ -587,7 +664,7 @@ void *pr_memcache_get(pr_memcache_t *mcache, const char *key, size_t *valuesz,
     return NULL;
   }
 
-  ptr = pr_memcache_kget(mcache, key, strlen(key), valuesz, flags);
+  ptr = pr_memcache_kget(mcache, m, key, strlen(key), valuesz, flags);
   if (ptr == NULL) {
     pr_trace_msg(trace_channel, 2,
       "error getting data for key '%s': %s", key, strerror(errno));
@@ -598,18 +675,19 @@ void *pr_memcache_get(pr_memcache_t *mcache, const char *key, size_t *valuesz,
   return ptr;
 }
 
-char *pr_memcache_get_str(pr_memcache_t *mcache, const char *key,
+char *pr_memcache_get_str(pr_memcache_t *mcache, module *m, const char *key,
     uint32_t *flags) {
   char *ptr = NULL;
 
   if (mcache == NULL ||
+      m == NULL ||
       key == NULL ||
       flags == NULL) {
     errno = EINVAL;
     return NULL;
   }
 
-  ptr = pr_memcache_kget_str(mcache, key, strlen(key), flags);
+  ptr = pr_memcache_kget_str(mcache, m, key, strlen(key), flags);
   if (ptr == NULL) {
     pr_trace_msg(trace_channel, 2,
       "error getting data for key '%s': %s", key, strerror(errno));
@@ -620,16 +698,18 @@ char *pr_memcache_get_str(pr_memcache_t *mcache, const char *key,
   return ptr;
 }
 
-int pr_memcache_remove(pr_memcache_t *mcache, const char *key, time_t expires) {
+int pr_memcache_remove(pr_memcache_t *mcache, module *m, const char *key,
+    time_t expires) {
   int res;
 
   if (mcache == NULL ||
+      m == NULL ||
       key == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  res = pr_memcache_kremove(mcache, key, strlen(key), expires);
+  res = pr_memcache_kremove(mcache, m, key, strlen(key), expires);
   if (res < 0) {
     pr_trace_msg(trace_channel, 2,
       "error removing key '%s': %s", key, strerror(errno));
@@ -640,21 +720,22 @@ int pr_memcache_remove(pr_memcache_t *mcache, const char *key, time_t expires) {
   return 0;
 }
 
-int pr_memcache_set(pr_memcache_t *mcache, const char *key, void *value,
-    size_t valuesz, time_t expires, uint32_t flags) {
+int pr_memcache_set(pr_memcache_t *mcache, module *m, const char *key,
+    void *value, size_t valuesz, time_t expires, uint32_t flags) {
   int res;
 
   /* XXX Should we allow null values to be added, thus allowing use of keys
    * as sentinels?
    */
   if (mcache == NULL ||
+      m == NULL ||
       key == NULL ||
       value == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  res = pr_memcache_kset(mcache, key, strlen(key), value, valuesz, expires,
+  res = pr_memcache_kset(mcache, m, key, strlen(key), value, valuesz, expires,
     flags);
   if (res < 0) {
     pr_trace_msg(trace_channel, 2,
@@ -667,21 +748,58 @@ int pr_memcache_set(pr_memcache_t *mcache, const char *key, void *value,
   return 0;
 }
 
-int pr_memcache_kadd(pr_memcache_t *mcache, const char *key, size_t keysz,
-    void *value, size_t valuesz, time_t expires, uint32_t flags) {
+static void mcache_set_module_namespace(pr_memcache_t *mcache, module *m) {
+  memcached_return res;
+
+  if (m == NULL) {
+    res = memcached_callback_set(mcache->mc, MEMCACHED_CALLBACK_PREFIX_KEY,
+      NULL);
+
+  } else {
+    if (mcache->namespace_tab != NULL) {
+      void *v;
+
+      v = pr_table_kget(mcache->namespace_tab, m, sizeof(module *), NULL);
+      if (v) {
+        pr_trace_msg(trace_channel, 25,
+          "using namespace prefix '%s' for module 'mod_%s.c'", (const char *) v,
+          m->name);
+
+        res = memcached_callback_set(mcache->mc, MEMCACHED_CALLBACK_PREFIX_KEY,
+          v);
+      }
+
+    } else {
+      res = MEMCACHED_SUCCESS;
+    }
+  }
+
+  if (res != MEMCACHED_SUCCESS) {
+    pr_trace_msg(trace_channel, 9,
+      "unable to set MEMCACHED_CALLBACK_PREFIX_KEY for module 'mod_%s.c': %s",
+      m->name, memcached_strerror(mcache->mc, res));
+  }
+}
+
+int pr_memcache_kadd(pr_memcache_t *mcache, module *m, const char *key,
+    size_t keysz, void *value, size_t valuesz, time_t expires, uint32_t flags) {
   memcached_return res;
 
   /* XXX Should we allow null values to be added, thus allowing use of keys
    * as sentinels?
    */
   if (mcache == NULL ||
+      m == NULL ||
       key == NULL ||
       value == NULL) {
     errno = EINVAL;
     return -1;
   }
 
+  mcache_set_module_namespace(mcache, m);
   res = memcached_add(mcache->mc, key, keysz, value, valuesz, expires, flags); 
+  mcache_set_module_namespace(mcache, NULL);
+
   switch (res) {
     case MEMCACHED_SUCCESS:
       return 0;
@@ -725,13 +843,14 @@ int pr_memcache_kadd(pr_memcache_t *mcache, const char *key, size_t keysz,
   return -1;
 }
 
-void *pr_memcache_kget(pr_memcache_t *mcache, const char *key, size_t keysz,
-    size_t *valuesz, uint32_t *flags) {
+void *pr_memcache_kget(pr_memcache_t *mcache, module *m, const char *key,
+    size_t keysz, size_t *valuesz, uint32_t *flags) {
   char *data = NULL;
   void *ptr = NULL;
   memcached_return res;
 
   if (mcache == NULL ||
+      m == NULL ||
       key == NULL ||
       valuesz == NULL ||
       flags == NULL) {
@@ -739,7 +858,10 @@ void *pr_memcache_kget(pr_memcache_t *mcache, const char *key, size_t keysz,
     return NULL;
   }
 
+  mcache_set_module_namespace(mcache, m);
   data = memcached_get(mcache->mc, key, keysz, valuesz, flags, &res);
+  mcache_set_module_namespace(mcache, NULL);
+
   if (data == NULL) {
     switch (res) {
       case MEMCACHED_NOTFOUND:
@@ -798,20 +920,24 @@ void *pr_memcache_kget(pr_memcache_t *mcache, const char *key, size_t keysz,
   return ptr;
 }
 
-char *pr_memcache_kget_str(pr_memcache_t *mcache, const char *key,
+char *pr_memcache_kget_str(pr_memcache_t *mcache, module *m, const char *key,
     size_t keysz, uint32_t *flags) {
   char *data = NULL, *ptr = NULL;
   size_t valuesz = 0;
   memcached_return res;
 
   if (mcache == NULL ||
+      m == NULL ||
       key == NULL ||
       flags == NULL) {
     errno = EINVAL;
     return NULL;
   }
 
+  mcache_set_module_namespace(mcache, m);
   data = memcached_get(mcache->mc, key, keysz, &valuesz, flags, &res);
+  mcache_set_module_namespace(mcache, NULL);
+
   if (data == NULL) {
     switch (res) {
       case MEMCACHED_NOTFOUND:
@@ -870,17 +996,21 @@ char *pr_memcache_kget_str(pr_memcache_t *mcache, const char *key,
   return ptr;
 }
 
-int pr_memcache_kremove(pr_memcache_t *mcache, const char *key, size_t keysz,
-    time_t expires) {
+int pr_memcache_kremove(pr_memcache_t *mcache, module *m, const char *key,
+    size_t keysz, time_t expires) {
   memcached_return res;
 
   if (mcache == NULL ||
+      m == NULL ||
       key == NULL) {
     errno = EINVAL;
     return -1;
   }
 
+  mcache_set_module_namespace(mcache, m);
   res = memcached_delete(mcache->mc, key, keysz, expires);
+  mcache_set_module_namespace(mcache, NULL);
+
   switch (res) {
     case MEMCACHED_SUCCESS:
       return 0;
@@ -923,21 +1053,25 @@ int pr_memcache_kremove(pr_memcache_t *mcache, const char *key, size_t keysz,
   return -1;
 }
 
-int pr_memcache_kset(pr_memcache_t *mcache, const char *key, size_t keysz,
-    void *value, size_t valuesz, time_t expires, uint32_t flags) {
+int pr_memcache_kset(pr_memcache_t *mcache, module *m, const char *key,
+    size_t keysz, void *value, size_t valuesz, time_t expires, uint32_t flags) {
   memcached_return res;
 
   /* XXX Should we allow null values to be added, thus allowing use of keys
    * as sentinels?
    */
   if (mcache == NULL ||
+      m == NULL ||
       key == NULL ||
       value == NULL) {
     errno = EINVAL;
     return -1;
   }
 
+  mcache_set_module_namespace(mcache, m);
   res = memcached_set(mcache->mc, key, keysz, value, valuesz, expires, flags); 
+  mcache_set_module_namespace(mcache, NULL);
+
   switch (res) {
     case MEMCACHED_SUCCESS:
       return 0;
@@ -1073,61 +1207,68 @@ int pr_memcache_conn_close(pr_memcache_t *mcache) {
   return -1;
 }
 
-int pr_memcache_add(pr_memcache_t *mcache, const char *key, void *value,
-    size_t valuesz, time_t expires, uint32_t flags) {
+int pr_memcache_conn_set_namespace(pr_memcache_t *mcache, module *m,
+    const char *prefix) {
   errno = ENOSYS;
   return -1;
 }
 
-void *pr_memcache_get(pr_memcache_t *mcache, const char *key, size_t *valuesz,
-    uint32_t *flags) {
-  errno = ENOSYS;
-  return NULL;
-}
-
-char *pr_memcache_get_str(pr_memcache_t *mcache, const char *key,
-    uint32_t *flags) {
-  errno = ENOSYS;
-  return NULL;
-}
-
-int pr_memcache_remove(pr_memcache_t *mcache, const char *key, time_t expires) {
-  errno = ENOSYS;
-  return -1;
-}
-
-int pr_memcache_set(pr_memcache_t *mcache, const char *key, void *value,
-    size_t valuesz, time_t expires, uint32_t flags) {
-  errno = ENOSYS;
-  return -1;
-}
-
-int pr_memcache_kadd(pr_memcache_t *mcache, const char *key, size_t keysz,
+int pr_memcache_add(pr_memcache_t *mcache, module *m, const char *key,
     void *value, size_t valuesz, time_t expires, uint32_t flags) {
   errno = ENOSYS;
   return -1;
 }
 
-void *pr_memcache_kget(pr_memcache_t *mcache, const char *key, size_t keysz,
+void *pr_memcache_get(pr_memcache_t *mcache, module *m, const char *key,
     size_t *valuesz, uint32_t *flags) {
   errno = ENOSYS;
   return NULL;
 }
 
-char *pr_memcache_kget_str(pr_memcache_t *mcache, const char *key, size_t keysz,
+char *pr_memcache_get_str(pr_memcache_t *mcache, module *m, const char *key,
     uint32_t *flags) {
   errno = ENOSYS;
   return NULL;
 }
 
-int pr_memcache_kremove(pr_memcache_t *mcache, const char *key, size_t keysz,
+int pr_memcache_remove(pr_memcache_t *mcache, module *m, const char *key,
     time_t expires) {
   errno = ENOSYS;
   return -1;
 }
 
-int pr_memcache_kset(pr_memcache_t *mcache, const char *key, size_t keysz,
+int pr_memcache_set(pr_memcache_t *mcache, module *m, const char *key,
     void *value, size_t valuesz, time_t expires, uint32_t flags) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_memcache_kadd(pr_memcache_t *mcache, module *m, const char *key,
+    size_t keysz, void *value, size_t valuesz, time_t expires, uint32_t flags) {
+  errno = ENOSYS;
+  return -1;
+}
+
+void *pr_memcache_kget(pr_memcache_t *mcache, module *m, const char *key,
+    size_t keysz, size_t *valuesz, uint32_t *flags) {
+  errno = ENOSYS;
+  return NULL;
+}
+
+char *pr_memcache_kget_str(pr_memcache_t *mcache, module *m, const char *key,
+    size_t keysz, uint32_t *flags) {
+  errno = ENOSYS;
+  return NULL;
+}
+
+int pr_memcache_kremove(pr_memcache_t *mcache, module *m, const char *key,
+    size_t keysz, time_t expires) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_memcache_kset(pr_memcache_t *mcache, module *m, const char *key,
+    size_t keysz, void *value, size_t valuesz, time_t expires, uint32_t flags) {
   errno = ENOSYS;
   return -1;
 }

@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.43 2011-01-20 05:28:19 castaglia Exp $
+ * $Id: mod_ban.c,v 1.44 2011-01-23 01:38:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -181,7 +181,7 @@ struct ban_mcache_entry {
 };
 
 /* These are tpl format strings */
-#define BAN_MCACHE_KEY_FMT		"svs"
+#define BAN_MCACHE_KEY_FMT		"vs"
 #define BAN_MCACHE_VALUE_FMT		"S(ivsiisssvi)"
 
 #define BAN_MCACHE_VALUE_VERSION	1
@@ -213,13 +213,11 @@ static void ban_handle_event(unsigned int, int, const char *,
 
 static int ban_mcache_key_get(pool *p, unsigned int type, const char *name,
     void **key, size_t *keysz) {
-  char *module_name = "mod_ban";
   void *data = NULL;
   size_t datasz = 0;
   int res;
 
-  res = tpl_jot(TPL_MEM, &data, &datasz, BAN_MCACHE_KEY_FMT, &module_name,
-    &type, &name);
+  res = tpl_jot(TPL_MEM, &data, &datasz, BAN_MCACHE_KEY_FMT, &type, &name);
   if (res < 0) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "error constructing cache lookup key for type %u, name %s", type,
@@ -248,7 +246,8 @@ static int ban_mcache_entry_get(pool *p, unsigned int type, const char *name,
   if (res < 0)
     return -1;
 
-  value = pr_memcache_kget(mcache, (const char *) key, keysz, &valuesz, &flags);
+  value = pr_memcache_kget(mcache, &ban_module, (const char *) key, keysz,
+    &valuesz, &flags);
   if (value == NULL) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "no matching memcache entry found for name %s, type %u", name, type);
@@ -343,8 +342,8 @@ static int ban_mcache_entry_set(pool *p, struct ban_mcache_entry *bme) {
     return -1;
   }
 
-  res = pr_memcache_kset(mcache, (const char *) key, keysz, value, valuesz,
-    bme->be_expires, flags);
+  res = pr_memcache_kset(mcache, &ban_module, (const char *) key, keysz,
+    value, valuesz, bme->be_expires, flags);
   free(value);
 
   if (res < 0) {
@@ -2952,6 +2951,12 @@ static int ban_sess_init(void) {
       c = find_config(main_server->conf, CONF_PARAM, "BanCacheOptions", FALSE);
       if (c) {
         ban_cache_opts = *((unsigned long *) c->argv[0]);
+      }
+
+      /* Configure a namespace prefix for our memcached keys. */
+      if (pr_memcache_conn_set_namespace(mcache, &ban_module, "mod_ban") < 0) {
+        (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+          "error setting memcache namespace prefix: %s", strerror(errno));
       }
 
     } else {

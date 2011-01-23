@@ -23,7 +23,7 @@
  */
 
 /* Memcache support
- * $Id: memcache.h,v 1.8 2011-01-23 00:38:06 castaglia Exp $
+ * $Id: memcache.h,v 1.9 2011-01-23 01:38:23 castaglia Exp $
  */
 
 #ifndef PR_MEMCACHE_H
@@ -44,29 +44,40 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *owner,
   unsigned long flags, uint64_t nreplicas);
 int pr_memcache_conn_close(pr_memcache_t *mcache);
 
-int pr_memcache_add(pr_memcache_t *mcache, const char *key, void *value,
-  size_t valuesz, time_t expires, uint32_t flags);
-void *pr_memcache_get(pr_memcache_t *mcache, const char *key, size_t *valuesz,
+/* Set a namespace key prefix, to be used by this connection for all of the
+ * operations involving items.  In practice, the key prefix should always
+ * be a string which does contain any space characters.
+ *
+ * Different modules can use different namespace prefixes for their keys.
+ * Setting NULL for the namespace prefix clears it.
+ */
+int pr_memcache_conn_set_namespace(pr_memcache_t *mcache, module *m,
+  const char *prefix);
+
+int pr_memcache_add(pr_memcache_t *mcache, module *m, const char *key,
+  void *value, size_t valuesz, time_t expires, uint32_t flags);
+void *pr_memcache_get(pr_memcache_t *mcache, module *m, const char *key,
+  size_t *valuesz, uint32_t *flags);
+char *pr_memcache_get_str(pr_memcache_t *mcache, module *m, const char *key,
   uint32_t *flags);
-char *pr_memcache_get_str(pr_memcache_t *mcache, const char *key,
-  uint32_t *flags);
-int pr_memcache_remove(pr_memcache_t *mcache, const char *key, time_t expires);
-int pr_memcache_set(pr_memcache_t *mcache, const char *key, void *value,
-  size_t valuesz, time_t expires, uint32_t flags);
+int pr_memcache_remove(pr_memcache_t *mcache, module *m, const char *key,
+  time_t expires);
+int pr_memcache_set(pr_memcache_t *mcache, module *m, const char *key,
+  void *value, size_t valuesz, time_t expires, uint32_t flags);
 
 /* Variants of the above, where the key values are arbitrary bits rather
  * than being assumed to be strings.
  */
-int pr_memcache_kadd(pr_memcache_t *mcache, const char *key, size_t keysz,
-  void *value, size_t valuesz, time_t expires, uint32_t flags);
-void *pr_memcache_kget(pr_memcache_t *mcache, const char *key, size_t keysz,
-  size_t *valuesz, uint32_t *flags);
-char *pr_memcache_kget_str(pr_memcache_t *mcache, const char *key,
+int pr_memcache_kadd(pr_memcache_t *mcache, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz, time_t expires, uint32_t flags);
+void *pr_memcache_kget(pr_memcache_t *mcache, module *m, const char *key,
+  size_t keysz, size_t *valuesz, uint32_t *flags);
+char *pr_memcache_kget_str(pr_memcache_t *mcache, module *m, const char *key,
   size_t keysz, uint32_t *flags);
-int pr_memcache_kremove(pr_memcache_t *mcache, const char *key, size_t keysz,
-  time_t expires);
-int pr_memcache_kset(pr_memcache_t *mcache, const char *key, size_t keysz,
-  void *value, size_t valuesz, time_t expires, uint32_t flags);
+int pr_memcache_kremove(pr_memcache_t *mcache, module *m, const char *key,
+  size_t keysz, time_t expires);
+int pr_memcache_kset(pr_memcache_t *mcache, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz, time_t expires, uint32_t flags);
 
 /* For internal use only */
 
