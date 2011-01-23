@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.13 2011-01-21 08:44:20 castaglia Exp $
+ * $Id: memcache.c,v 1.14 2011-01-23 00:38:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -31,6 +31,7 @@
 #ifdef PR_USE_MEMCACHE
 
 #include <libmemcached/memcached.h>
+#include <libmemcached/util.h>
 
 #if defined(LIBMEMCACHED_VERSION_HEX)
 # if LIBMEMCACHED_VERSION_HEX < 0x00037000
@@ -48,246 +49,319 @@ struct mcache_rec {
   memcached_st *mc;
 };
 
-static memcached_server_st *servers = NULL;
+static memcached_server_st *configured_server_list = NULL;
 static pr_memcache_t *sess_mcache = NULL;
 
 static uint64_t memcache_sess_conn_failures = 0;
 static unsigned long memcache_sess_flags = 0;
 static uint64_t memcache_sess_nreplicas = 0;
 
-static unsigned long memcache_conn_ms = 500;
-static unsigned long memcache_rcv_ms = 500;
-static unsigned long memcache_snd_ms = 500;
+static unsigned long memcache_conn_millis = 500;
+static unsigned long memcache_rcv_millis = 500;
+static unsigned long memcache_snd_millis = 500;
+static unsigned long memcache_ejected_sec = 0;
+
+static unsigned long memcache_ping_interval = 0;
 
 static const char *trace_channel = "memcache";
 
-pr_memcache_t *pr_memcache_conn_get(void) {
-  if (sess_mcache != NULL) {
-    return sess_mcache;
-  }
-
-  return pr_memcache_conn_new(session.pool, NULL, memcache_sess_flags,
-    memcache_sess_nreplicas);
-}
-
-pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
+/* XXX Support MEMCACHED_CALLBACK_PREFIX_KEY, so that e.g. mod_ban can have
+ * its own separate namespace for its keys.  Each module will need to set
+ * this callback whenever it use the pr_memcache_t.  Maybe support an
+ * array_header/table in the pr_memcache_t struct, and have each module
+ * pass in a module pointer for each usage, to automatically handle this?
+ *
+ *  int pr_memcache_set_namespace(module *m, char *data, size_t datalen);
+ *
+ * Use pr_memcache_set_namespace(m, NULL, 0) to clear your namespace.  NULL
+ * module pointer results in EINVAL.
+ */
+ 
+static int mcache_set_options(pr_memcache_t *mcache, unsigned long flags,
     uint64_t nreplicas) {
-  pr_memcache_t *mcache;
-  pool *sub_pool;
-  memcached_st *mc;
-  memcached_stat_st *mst;
   memcached_return res;
   uint64_t val;
 
-  if (p == NULL) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  if (servers == NULL) {
-    pr_trace_msg(trace_channel, 9, "%s",
-      "unable to create new memcache connection: No servers configured");
-    errno = EPERM;
-    return NULL;
-  }
-
-  mc = memcached_create(NULL);
-  if (mc == NULL) {
-    errno = ENOMEM;
-    return NULL;
-  }
-
-  res = memcached_server_push(mc, servers); 
-  if (res != MEMCACHED_SUCCESS) {
-    pr_trace_msg(trace_channel, 2,
-      "error adding memcache servers to connection: %s",
-      memcached_strerror(mc, res));
-    memcached_free(mc);
-
-    errno = EPERM;
-    return NULL;
-  }
-
-  sub_pool = pr_pool_create_sz(p, 128);
-  pr_pool_tag(sub_pool, "Memcache connection pool");
-
-  mcache = palloc(sub_pool, sizeof(pr_memcache_t));
-  mcache->pool = sub_pool;
-  mcache->owner = m;
-  mcache->mc = mc;
-
-  /* Set some of the desired behavior flags on the connection */
-
-  val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_TCP_NODELAY);
+  val = memcached_behavior_get(mcache->mc, MEMCACHED_BEHAVIOR_TCP_NODELAY);
   if (val != 1) {
-    res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_TCP_NODELAY, 1);
+    res = memcached_behavior_set(mcache->mc, MEMCACHED_BEHAVIOR_TCP_NODELAY, 1);
     if (res != MEMCACHED_SUCCESS) {
       pr_trace_msg(trace_channel, 4,
         "error setting TCP_NODELAY behavior on connection: %s",
-        memcached_strerror(mc, res));
+        memcached_strerror(mcache->mc, res));
     }
   }
 
   /* Enable caching of DNS lookups. */
-  val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_CACHE_LOOKUPS);
+  val = memcached_behavior_get(mcache->mc, MEMCACHED_BEHAVIOR_CACHE_LOOKUPS);
   if (val != 1) {
-    res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_CACHE_LOOKUPS, 1);
+    res = memcached_behavior_set(mcache->mc, MEMCACHED_BEHAVIOR_CACHE_LOOKUPS,
+      1);
     if (res != MEMCACHED_SUCCESS) {
       pr_trace_msg(trace_channel, 4,
         "error setting CACHE_LOOKUPS behavior on connection: %s",
-        memcached_strerror(mc, res));
+        memcached_strerror(mcache->mc, res));
+    }
+  }
+
+  /* Verify that all keys are correct. */
+  val = memcached_behavior_get(mcache->mc, MEMCACHED_BEHAVIOR_VERIFY_KEY);
+  if (val != 1) {
+    res = memcached_behavior_set(mcache->mc, MEMCACHED_BEHAVIOR_VERIFY_KEY, 1);
+    if (res != MEMCACHED_SUCCESS) {
+      pr_trace_msg(trace_channel, 4,
+        "error setting VERIFY_KEY behavior on connection: %s",
+        memcached_strerror(mcache->mc, res));
     }
   }
 
   /* We always want consistent hashing, to minimize cache churn when
    * servers are added/removed from the list.
    */
-  val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_DISTRIBUTION);
+  val = memcached_behavior_get(mcache->mc, MEMCACHED_BEHAVIOR_DISTRIBUTION);
   if (val != MEMCACHED_DISTRIBUTION_CONSISTENT) {
-    res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_DISTRIBUTION,
+    res = memcached_behavior_set(mcache->mc, MEMCACHED_BEHAVIOR_DISTRIBUTION,
       MEMCACHED_DISTRIBUTION_CONSISTENT);
     if (res != MEMCACHED_SUCCESS) {
       pr_trace_msg(trace_channel, 4,
         "error setting DISTRIBUTION_CONSISTENT behavior on connection: %s",
-        memcached_strerror(mc, res));
+        memcached_strerror(mcache->mc, res));
     }
   }
 
   /* Use blocking IO */
-  val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_NO_BLOCK);
+  val = memcached_behavior_get(mcache->mc, MEMCACHED_BEHAVIOR_NO_BLOCK);
   if (val != 0) {
-    res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_NO_BLOCK, 0);
+    res = memcached_behavior_set(mcache->mc, MEMCACHED_BEHAVIOR_NO_BLOCK, 0);
     if (res != MEMCACHED_SUCCESS) {
       pr_trace_msg(trace_channel, 4,
         "error setting NO_BLOCK behavior on connection: %s",
-        memcached_strerror(mc, res));
+        memcached_strerror(mcache->mc, res));
     }
   }
 
-  val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_SERVER_FAILURE_LIMIT);
+  val = memcached_behavior_get(mcache->mc,
+    MEMCACHED_BEHAVIOR_SERVER_FAILURE_LIMIT);
   if (memcache_sess_conn_failures > 0) {
-    res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_SERVER_FAILURE_LIMIT,
-      memcache_sess_conn_failures);
+    res = memcached_behavior_set(mcache->mc,
+      MEMCACHED_BEHAVIOR_SERVER_FAILURE_LIMIT, memcache_sess_conn_failures);
 
     if (res != MEMCACHED_SUCCESS) {
       pr_trace_msg(trace_channel, 4,
         "error setting SERVER_FAILURE_LIMIT behavior on connection: %s",
-        memcached_strerror(mc, res));
+        memcached_strerror(mcache->mc, res));
 
     } else {
       /* Automatically eject hosts which have reached this failure limit;
        * keeping them around in the memcached_st struct only causes
-       * confusion.
-       *
-       * XXX In the future, looking into using RETRY_TIMEOUT to configure
-       * the interval at which we will check a failing server for
-       * usability (i.e. is a failing server ready to be put back into
-       * the normal pool?)
-       *
-       * Even better would be a memcached callback, triggered whenever a
-       * host is auto-ejected, such that we can put the ejected host into
-       * a "penalty box" list which is monitored separately; we can push
-       * that ejected host back into the memcached_st when it's healthy
-       * again.
+       * confusion.  Note that this requires that an ejected timeout value
+       * be configured.
        */
 
-      res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_AUTO_EJECT_HOSTS, 1);
+      if (memcache_ejected_sec > 0) {
+        res = memcached_behavior_set(mcache->mc,
+          MEMCACHED_BEHAVIOR_RETRY_TIMEOUT, memcache_ejected_sec);
+        if (res != MEMCACHED_SUCCESS) {
+          pr_trace_msg(trace_channel, 4,
+            "error setting RETRY_TIMEOUT behavior on connection to %lu ms: %s",
+            memcache_ejected_sec, memcached_strerror(mcache->mc, res));
+        }
 
-      if (res != MEMCACHED_SUCCESS) {
-        pr_trace_msg(trace_channel, 4,
-          "error setting AUTO_EJECT_HOSTS behavior on connection: %s",
-          memcached_strerror(mc, res));
+        res = memcached_behavior_set(mcache->mc,
+          MEMCACHED_BEHAVIOR_AUTO_EJECT_HOSTS, 1);
+        if (res != MEMCACHED_SUCCESS) {
+          pr_trace_msg(trace_channel, 4,
+            "error setting AUTO_EJECT_HOSTS behavior on connection: %s",
+            memcached_strerror(mcache->mc, res));
+        }
       }
     }
   }
 
   /* Use the binary protocol by default, unless explicitly requested not to. */
-  val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_BINARY_PROTOCOL);
+  val = memcached_behavior_get(mcache->mc, MEMCACHED_BEHAVIOR_BINARY_PROTOCOL);
   if (val != 1) {
     if (!(flags & PR_MEMCACHE_FL_NO_BINARY_PROTOCOL)) {
-      res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_BINARY_PROTOCOL, 1);
+      res = memcached_behavior_set(mcache->mc,
+        MEMCACHED_BEHAVIOR_BINARY_PROTOCOL, 1);
       if (res != MEMCACHED_SUCCESS) {
         pr_trace_msg(trace_channel, 4,
           "error setting BINARY_PROTOCOL behavior on connection: %s",
-          memcached_strerror(mc, res));
+          memcached_strerror(mcache->mc, res));
       }
     }
   }
 
   /* Configure the timeouts. */
-  res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_CONNECT_TIMEOUT,
-    memcache_conn_ms * 1000);
+  res = memcached_behavior_set(mcache->mc, MEMCACHED_BEHAVIOR_CONNECT_TIMEOUT,
+    memcache_conn_millis);
   if (res != MEMCACHED_SUCCESS) {
     pr_trace_msg(trace_channel, 4,
       "error setting CONNECT_TIMEOUT behavior on connection to %lu ms: %s",
-      memcache_conn_ms, memcached_strerror(mc, res));
+      memcache_conn_millis, memcached_strerror(mcache->mc, res));
   }
 
-  res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_RCV_TIMEOUT,
-    memcache_rcv_ms * 1000);
+  res = memcached_behavior_set(mcache->mc, MEMCACHED_BEHAVIOR_RCV_TIMEOUT,
+    memcache_rcv_millis);
   if (res != MEMCACHED_SUCCESS) {
     pr_trace_msg(trace_channel, 4,
       "error setting RCV_TIMEOUT behavior on connection to %lu ms: %s",
-      memcache_rcv_ms, memcached_strerror(mc, res));
+      memcache_rcv_millis, memcached_strerror(mcache->mc, res));
   }
 
-  res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_SND_TIMEOUT,
-    memcache_snd_ms * 1000);
+  res = memcached_behavior_set(mcache->mc, MEMCACHED_BEHAVIOR_SND_TIMEOUT,
+    memcache_snd_millis);
   if (res != MEMCACHED_SUCCESS) {
     pr_trace_msg(trace_channel, 4,
       "error setting SND_TIMEOUT behavior on connection to %lu ms: %s",
-      memcache_snd_ms, memcached_strerror(mc, res));
+      memcache_snd_millis, memcached_strerror(mcache->mc, res));
   }
 
   /* Make sure that the requested number of replicas does not exceed the
    * server count.
    */
-  if (nreplicas > memcached_server_count(mc)) {
-    nreplicas = memcached_server_count(mc);
+  if (nreplicas > memcached_server_count(mcache->mc)) {
+    nreplicas = memcached_server_count(mcache->mc);
   }
 
   /* XXX Some caveats about libmemcached replication:
    *
    *  1.  Replication is enabled only if the binary protocol is used.
-   *  2.  Replication occurs only for 'delete' or 'set' operations, NOT
+   *  2.  Replication occurs only for 'delete', 'get, 'set' operations, NOT
    *      'add', 'cas', 'incr', 'decr', etc.
    */
 
-  if (nreplicas > 0) {
-    res = memcached_behavior_set(mc, MEMCACHED_BEHAVIOR_NUMBER_OF_REPLICAS,
-      nreplicas);
+  if (nreplicas > 0 &&
+      !(flags & PR_MEMCACHE_FL_NO_BINARY_PROTOCOL)) {
+
+    res = memcached_behavior_set(mcache->mc,
+      MEMCACHED_BEHAVIOR_NUMBER_OF_REPLICAS, nreplicas);
     if (res != MEMCACHED_SUCCESS) {
       pr_trace_msg(trace_channel, 4,
         "error setting NUMBER_OF_REPLICAS behavior on connection: %s",
-        memcached_strerror(mc, res));
+        memcached_strerror(mcache->mc, res));
 
     } else {
-      pr_trace_msg(trace_channel, 9, "storing %lu replicas",
-        (unsigned long) nreplicas);
+      pr_trace_msg(trace_channel, 9, "storing %lu %s",
+        (unsigned long) nreplicas, nreplicas != 1 ? "replicas" : "replica");
     }
   }
 
   /* Use randomized reads from replicas by default, unless explicitly
    * requested not to.
    */
-  val = memcached_behavior_get(mc, MEMCACHED_BEHAVIOR_RANDOMIZE_REPLICA_READ);
+  val = memcached_behavior_get(mcache->mc,
+    MEMCACHED_BEHAVIOR_RANDOMIZE_REPLICA_READ);
   if (val != 1) {
     if (!(flags & PR_MEMCACHE_FL_NO_RANDOM_REPLICA_READ)) {
-      res = memcached_behavior_set(mc,
+      res = memcached_behavior_set(mcache->mc,
         MEMCACHED_BEHAVIOR_RANDOMIZE_REPLICA_READ, 1);
 
       if (res != MEMCACHED_SUCCESS) {
         pr_trace_msg(trace_channel, 4,
           "error setting RANDOMIZE_REPLICA_READ behavior on connection: %s",
-          memcached_strerror(mc, res));
+          memcached_strerror(mcache->mc, res));
       }
     }
   }
 
-  /* Make sure we are connected to the configured servers by querying
-   * some stats/info from them.
-   */
-  mst = memcached_stat(mc, NULL, &res);
+  return 0;
+}
+
+static int mcache_ping_servers(pr_memcache_t *mcache) {
+  memcached_server_st *alive_server_list;
+  memcached_return res;
+  memcached_st *clone;
+  uint32_t server_count;
+  register unsigned int i;
+
+  /* We always start with the configured list of servers. */
+  clone = memcached_clone(NULL, mcache->mc);
+  if (clone == NULL) {
+    errno = ENOMEM;
+    return -1;
+  }
+
+  memcached_server_push(clone, configured_server_list);
+
+  server_count = memcached_server_count(clone);
+
+  pr_trace_msg(trace_channel, 16,
+    "pinging %lu memcached %s", (unsigned long) server_count,
+    server_count != 1 ? "servers" : "server");
+
+  alive_server_list = NULL;
+  for (i = 0; i < server_count; i++) {
+    memcached_server_instance_st server;
+
+    server = memcached_server_instance_by_position(clone, i);
+
+    pr_trace_msg(trace_channel, 17,
+      "pinging server %s:%d to make sure it is alive",
+      memcached_server_name(server), memcached_server_port(server));
+
+    if (libmemcached_util_ping(memcached_server_name(server),
+        memcached_server_port(server), &res) == FALSE) {
+      pr_trace_msg(trace_channel, 4,
+        "error pinging %s:%d: %s", memcached_server_name(server),
+        memcached_server_port(server), memcached_strerror(clone, res));
+
+    } else {
+      pr_trace_msg(trace_channel, 17, "server %s:%d is alive",
+        memcached_server_name(server), memcached_server_port(server));
+
+       alive_server_list = memcached_server_list_append(alive_server_list,    
+         memcached_server_name(server), memcached_server_port(server), &res);
+       if (alive_server_list == NULL) {
+         pr_trace_msg(trace_channel, 1,
+           "error appending server %s:%d to list: %s",
+           memcached_server_name(server), memcached_server_port(server),
+           memcached_strerror(clone, res));
+
+         memcached_free(clone);
+         errno = EPERM;
+         return -1;
+       }
+    }
+  }
+
+  if (alive_server_list != NULL) {
+    memcached_servers_reset(mcache->mc);
+    res = memcached_server_push(mcache->mc, alive_server_list);
+    if (res != MEMCACHED_SUCCESS) {
+      unsigned int count;
+
+      count = memcached_server_list_count(alive_server_list);
+      pr_trace_msg(trace_channel, 2,
+        "error adding %u alive memcached %s to connection: %s",
+        count, count != 1 ? "servers" : "server",
+        memcached_strerror(mcache->mc, res));
+      memcached_free(clone);
+ 
+      errno = EPERM;
+      return -1;
+
+    } else {
+      unsigned int count;
+
+      count = memcached_server_list_count(alive_server_list);
+      pr_trace_msg(trace_channel, 9,
+        "now using %d alive ememcached %s", count,
+        count != 1 ? "servers" : "server");
+
+      memcached_server_list_free(alive_server_list);
+    }
+  }
+
+  memcached_free(clone);
+  return 0;
+}
+
+static int mcache_stat_servers(pr_memcache_t *mcache) {
+  memcached_stat_st *mst;
+  memcached_return res;
+
+  mst = memcached_stat(mcache->mc, NULL, &res);
   if (mst != NULL) {
     if (res == MEMCACHED_SUCCESS) {
       register unsigned int i;
@@ -308,16 +382,16 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
       for (i = 0; stat_keys[i] != NULL; i++) {
         char *info;
 
-        info = memcached_stat_get_value(mc, mst, stat_keys[i], &res);
+        info = memcached_stat_get_value(mcache->mc, mst, stat_keys[i], &res);
         if (info != NULL) {
           pr_trace_msg(trace_channel, 9,
-            "memcached servers stats: %s = %s", stat_keys[i], info);
+            "memcached server stats: %s = %s", stat_keys[i], info);
           free(info);
 
         } else {
           pr_trace_msg(trace_channel, 6,
             "unable to obtain '%s' stat: %s", stat_keys[i],
-            memcached_strerror(mc, res));
+            memcached_strerror(mcache->mc, res));
         }
       }
 
@@ -339,6 +413,8 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
             res = MEMCACHED_CONNECTION_FAILURE;
           }
 
+          case MEMCACHED_SOME_ERRORS:
+          case MEMCACHED_SERVER_MARKED_DEAD:
           case MEMCACHED_CONNECTION_FAILURE: {
             memcached_server_instance_st server;
 
@@ -353,12 +429,106 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
         default:
           pr_trace_msg(trace_channel, 6,
             "error requesting memcached stats: %s",
-            memcached_strerror(mc, res));
+            memcached_strerror(mcache->mc, res));
           break;
       }
     }
 
-    memcached_stat_free(mc, mst);
+    memcached_stat_free(mcache->mc, mst);
+  }
+
+  return 0;
+}
+
+pr_memcache_t *pr_memcache_conn_get(void) {
+  if (sess_mcache != NULL) {
+    return sess_mcache;
+  }
+
+  return pr_memcache_conn_new(session.pool, NULL, memcache_sess_flags,
+    memcache_sess_nreplicas);
+}
+
+pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
+    uint64_t nreplicas) {
+  pr_memcache_t *mcache;
+  pool *sub_pool;
+  memcached_st *mc;
+  memcached_return res;
+
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (configured_server_list == NULL) {
+    pr_trace_msg(trace_channel, 9, "%s",
+      "unable to create new memcache connection: No servers configured");
+    errno = EPERM;
+    return NULL;
+  }
+
+  mc = memcached_create(NULL);
+  if (mc == NULL) {
+    errno = ENOMEM;
+    return NULL;
+  }
+
+  res = memcached_server_push(mc, configured_server_list); 
+  if (res != MEMCACHED_SUCCESS) {
+    unsigned int count;
+
+    count = memcached_server_list_count(configured_server_list);
+    pr_trace_msg(trace_channel, 2,
+      "error adding %u memcached %s to connection: %s",
+      count, count != 1 ? "servers" : "server", memcached_strerror(mc, res));
+    memcached_free(mc);
+
+    errno = EPERM;
+    return NULL;
+  }
+
+  sub_pool = pr_pool_create_sz(p, 128);
+  pr_pool_tag(sub_pool, "Memcache connection pool");
+
+  mcache = palloc(sub_pool, sizeof(pr_memcache_t));
+  mcache->pool = sub_pool;
+  mcache->owner = m;
+  mcache->mc = mc;
+
+  /* Set some of the desired behavior flags on the connection */
+  if (mcache_set_options(mcache, flags, nreplicas) < 0) {
+    int xerrno = errno;
+
+    pr_memcache_conn_close(mcache);
+    destroy_pool(mcache->pool);
+
+    errno = xerrno;
+    return NULL;    
+  }
+
+  /* Check that all of the configured servers are alive and usable. */
+  if (mcache_ping_servers(mcache) < 0) {
+    int xerrno = errno;
+
+    pr_memcache_conn_close(mcache);
+    destroy_pool(mcache->pool);
+
+    errno = xerrno;
+    return NULL;    
+  }
+
+  /* Make sure we are connected to the configured servers by querying
+   * some stats/info from them.
+   */
+  if (mcache_stat_servers(mcache) < 0) {
+    int xerrno = errno;
+
+    pr_memcache_conn_close(mcache);
+    destroy_pool(mcache->pool);
+
+    errno = xerrno;
+    return NULL;    
   }
 
   if (sess_mcache == NULL) {
@@ -532,6 +702,7 @@ int pr_memcache_kadd(pr_memcache_t *mcache, const char *key, size_t keysz,
         res = MEMCACHED_CONNECTION_FAILURE;
       }
 
+    case MEMCACHED_SERVER_MARKED_DEAD:
     case MEMCACHED_CONNECTION_FAILURE: {
       memcached_server_instance_st server;
 
@@ -593,6 +764,7 @@ void *pr_memcache_kget(pr_memcache_t *mcache, const char *key, size_t keysz,
           res = MEMCACHED_CONNECTION_FAILURE;
         }
 
+      case MEMCACHED_SERVER_MARKED_DEAD:
       case MEMCACHED_CONNECTION_FAILURE: {
         memcached_server_instance_st server;
 
@@ -664,6 +836,7 @@ char *pr_memcache_kget_str(pr_memcache_t *mcache, const char *key,
           res = MEMCACHED_CONNECTION_FAILURE;
         }
 
+      case MEMCACHED_SERVER_MARKED_DEAD:
       case MEMCACHED_CONNECTION_FAILURE: {
         memcached_server_instance_st server;
 
@@ -728,6 +901,7 @@ int pr_memcache_kremove(pr_memcache_t *mcache, const char *key, size_t keysz,
         res = MEMCACHED_CONNECTION_FAILURE;
       }
 
+    case MEMCACHED_SERVER_MARKED_DEAD:
     case MEMCACHED_CONNECTION_FAILURE: {
       memcached_server_instance_st server;
 
@@ -784,6 +958,7 @@ int pr_memcache_kset(pr_memcache_t *mcache, const char *key, size_t keysz,
         res = MEMCACHED_CONNECTION_FAILURE;
       }
 
+    case MEMCACHED_SERVER_MARKED_DEAD:
     case MEMCACHED_CONNECTION_FAILURE: {
       memcached_server_instance_st server;
 
@@ -836,15 +1011,16 @@ int memcache_set_servers(void *server_list) {
     return -1;
   }
 
-  servers = server_list;
+  configured_server_list = server_list;
   return 0;
 }
 
-int memcache_set_timeouts(unsigned long conn_ms, unsigned long read_ms,
-    unsigned long write_ms) {
-  memcache_conn_ms = conn_ms;
-  memcache_rcv_ms = read_ms;
-  memcache_snd_ms = write_ms;
+int memcache_set_timeouts(unsigned long conn_millis, unsigned long read_millis,
+    unsigned long write_millis, unsigned long ejected_sec) {
+  memcache_conn_millis = conn_millis;
+  memcache_rcv_millis = read_millis;
+  memcache_snd_millis = write_millis;
+  memcache_ejected_sec = ejected_sec;
 
   return 0;
 }
@@ -980,8 +1156,8 @@ int memcache_set_servers(void *server_list) {
   return -1;
 }
 
-int memcache_set_timeouts(unsigned long conn_ms, unsigned long read_ms,
-    unsigned long write_ms) {
+int memcache_set_timeouts(unsigned long conn_millis, unsigned long read_millis,
+    unsigned long write_millis, unsigned long ejected_sec) {
   errno = ENOSYS;
   return -1;
 }

@@ -22,8 +22,8 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Libraries: -lmemcached$
- * $Id: mod_memcache.c,v 1.11 2011-01-21 08:09:06 castaglia Exp $
+ * $Libraries: -lmemcached -lmemcachedutil$
+ * $Id: mod_memcache.c,v 1.12 2011-01-23 00:38:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -203,33 +203,48 @@ MODRET set_memcacheservers(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: MemcacheTimeouts conn-timeout read-timeout write-timeout */
+/* usage: MemcacheTimeouts conn-timeout read-timeout write-timeout
+ *                         [ejected-timeout]
+ */
 MODRET set_memcachetimeouts(cmd_rec *cmd) {
   config_rec *c;
-  unsigned long conn_timeout, read_timeout, write_timeout;
+  unsigned long conn_millis, read_millis, write_millis, ejected_sec = 0;
   char *ptr = NULL;
 
-  CHECK_ARGS(cmd, 3);
+  if (cmd->argc-1 < 3 ||
+      cmd->argc-1 > 4) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  conn_timeout = strtoul(cmd->argv[1], &ptr, 10);
+  conn_millis = strtoul(cmd->argv[1], &ptr, 10);
   if (ptr && *ptr) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "badly formatted connect timeout value: ", cmd->argv[1], NULL));
   }
 
   ptr = NULL;
-  read_timeout = strtoul(cmd->argv[2], &ptr, 10);
+  read_millis = strtoul(cmd->argv[2], &ptr, 10);
   if (ptr && *ptr) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "badly formatted read timeout value: ", cmd->argv[2], NULL));
   }
 
   ptr = NULL;
-  write_timeout = strtoul(cmd->argv[3], &ptr, 10);
+  write_millis = strtoul(cmd->argv[3], &ptr, 10);
   if (ptr && *ptr) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "badly formatted write timeout value: ", cmd->argv[3], NULL));
+  }
+
+  if (cmd->argc-1 == 4) {
+    ptr = NULL;
+    ejected_sec = strtoul(cmd->argv[4], &ptr, 10);
+    if (ptr && *ptr) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "badly formatted retry timeout value: ", cmd->argv[4], NULL));
+    }
   }
 
 #if 0
@@ -237,16 +252,20 @@ MODRET set_memcachetimeouts(cmd_rec *cmd) {
    * This would let mod_memcache talk to those servers for e.g. ftpdctl
    * actions.
    */
-  memcache_set_timeouts(conn_timeout, read_timeout, write_timeout);
+  memcache_set_timeouts(conn_timeout, read_timeout, write_timeout,
+    ejected_sec);
 #endif
 
-  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
   c->argv[0] = palloc(c->pool, sizeof(unsigned long));
-  *((unsigned long *) c->argv[0]) = conn_timeout;
+  *((unsigned long *) c->argv[0]) = conn_millis;
   c->argv[1] = palloc(c->pool, sizeof(unsigned long));
-  *((unsigned long *) c->argv[1]) = read_timeout;
+  *((unsigned long *) c->argv[1]) = read_millis;
   c->argv[2] = palloc(c->pool, sizeof(unsigned long));
-  *((unsigned long *) c->argv[2]) = write_timeout;
+  *((unsigned long *) c->argv[2]) = write_millis;
+  c->argv[3] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[3]) = ejected_sec;
+
   return PR_HANDLED(cmd);
 }
 
@@ -378,13 +397,15 @@ static int mcache_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "MemcacheTimeouts", FALSE);
   if (c) {
-    unsigned long conn_ms, read_ms, write_ms;
+    unsigned long conn_millis, read_millis, write_millis, retry_sec;
 
-    conn_ms = *((unsigned long *) c->argv[0]);
-    read_ms = *((unsigned long *) c->argv[1]);
-    write_ms = *((unsigned long *) c->argv[2]);
+    conn_millis = *((unsigned long *) c->argv[0]);
+    read_millis = *((unsigned long *) c->argv[1]);
+    write_millis = *((unsigned long *) c->argv[2]);
+    retry_sec = *((unsigned long *) c->argv[3]);
 
-    if (memcache_set_timeouts(conn_ms, read_ms, write_ms) < 0) {
+    if (memcache_set_timeouts(conn_millis, read_millis, write_millis,
+        retry_sec) < 0) {
       (void) pr_log_writefile(memcache_logfd, MOD_MEMCACHE_VERSION,
         "error setting memcache timeouts: %s", strerror(errno));
     }

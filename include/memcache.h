@@ -23,7 +23,7 @@
  */
 
 /* Memcache support
- * $Id: memcache.h,v 1.7 2011-01-21 07:15:16 castaglia Exp $
+ * $Id: memcache.h,v 1.8 2011-01-23 00:38:06 castaglia Exp $
  */
 
 #ifndef PR_MEMCACHE_H
@@ -79,9 +79,16 @@ int memcache_set_sess_flags(unsigned long flags);
 int memcache_set_sess_replicas(uint64_t count);
 int memcache_set_servers(void *server_list);
 
-/* Configure the timeouts in millisecs. */
-int memcache_set_timeouts(unsigned long conn_ms, unsigned long read_ms,
-  unsigned long write_ms);
+/* Configure the timeouts in millisecs.
+ *
+ * The last timeout argument is timeout in seconds.  When a server is marked
+ * as "dead", that server will be automatically ejected from the pool of servers
+ * used for storage/retrieval.  This "ejected timeout" argument configures the
+ * number of seconds that an ejected server will be out of the pool, before
+ * being added back in.
+ */
+int memcache_set_timeouts(unsigned long conn_millis, unsigned long read_millis,
+  unsigned long write_millis, unsigned long ejected_sec);
 
 int memcache_init(void);
 
