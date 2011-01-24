@@ -3021,6 +3021,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   /* TLS handshake on the control channel... */
   if (!on_data) {
+    int reused;
+
     subj = tls_get_subj_name();
     if (subj)
       tls_log("Client: %s", subj);
@@ -3045,6 +3047,12 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
     /* Setup the TLS environment variables, if requested. */
     tls_setup_environ(ssl);
+
+    reused = SSL_session_reused(ssl);
+    if (reused > 0) {
+      pr_log_writefile(tls_logfd, MOD_TLS_VERSION, "%s",
+        "client reused previous SSL session for control connection");
+    }
 
   /* TLS handshake on the data channel... */
   } else {
