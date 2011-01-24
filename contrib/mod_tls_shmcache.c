@@ -2,7 +2,7 @@
  * ProFTPD: mod_tls_shmcache -- a module which provides a shared SSL session
  *                              cache using SysV shared memory
  *
- * Copyright (c) 2009 TJ Saunders
+ * Copyright (c) 2009-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_shmcache.c,v 1.7 2009-12-18 17:40:13 castaglia Exp $
+ *  $Id: mod_tls_shmcache.c,v 1.8 2011-01-24 05:54:40 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -315,14 +315,18 @@ static struct shmcache_data *shmcache_get_shm(pr_fh_t *fh,
   rem = shm_size % SHMLBA;
   if (rem != 0) {
     shm_size = (shm_size - rem + SHMLBA);
-    pr_log_debug(DEBUG9, MOD_TLS_SHMCACHE_VERSION
-      ": rounded requested size up to %lu bytes", (unsigned long) shm_size);
+    pr_trace_msg(trace_channel, 9,
+      "rounded requested size up to %lu bytes", (unsigned long) shm_size);
   }
 
   key = ftok(fh->fh_path, TLS_SHMCACHE_PROJ_ID);
   if (key == (key_t) -1) {
-    pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-      ": unable to get key for path '%s': %s", fh->fh_path, strerror(errno));
+    xerrno = errno;
+
+    pr_trace_msg(trace_channel, 1,
+      "unable to get key for path '%s': %s", fh->fh_path, strerror(xerrno));
+
+    errno = xerrno;
     return NULL;
   }
 
@@ -350,21 +354,32 @@ static struct shmcache_data *shmcache_get_shm(pr_fh_t *fh,
       PRIVS_RELINQUISH
 
       if (shmid < 0) {
-        pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-          ": unable to get shm for existing key: %s", strerror(xerrno));
+        pr_trace_msg(trace_channel, 1,
+          "unable to get shm for existing key: %s", strerror(xerrno));
         errno = xerrno;
         return NULL;
       }
 
     } else {
+      /* Try to provide more helpful/informative log messages. */
+      if (xerrno == ENOMEM) {
+        pr_trace_msg(trace_channel, 1,
+          "not enough memory for %lu shm bytes; try specifying a smaller size",
+          (unsigned long) shm_size);
+
+      } else if (xerrno == ENOSPC) {
+        pr_trace_msg(trace_channel, 1, "%s",
+          "unable to allocate a new shm ID; system limit of shm IDs reached");
+      }
+
       errno = xerrno;
       return NULL;
     }
   }
 
   /* Attach to the shm. */
-  pr_log_debug(DEBUG10, MOD_TLS_SHMCACHE_VERSION
-    ": attempting to attach to shm ID %d", shmid);
+  pr_trace_msg(trace_channel, 10,
+    "attempting to attach to shm ID %d", shmid);
 
   PRIVS_ROOT
   data = (struct shmcache_data *) shmat(shmid, NULL, 0);
@@ -372,8 +387,8 @@ static struct shmcache_data *shmcache_get_shm(pr_fh_t *fh,
   PRIVS_RELINQUISH
 
   if (data == NULL) {
-    pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-      ": unable to attach to shm ID %d: %s", shmid, strerror(xerrno));
+    pr_trace_msg(trace_channel, 1,
+      "unable to attach to shm ID %d: %s", shmid, strerror(xerrno));
     errno = xerrno;
     return NULL;
   }
@@ -393,8 +408,8 @@ static struct shmcache_data *shmcache_get_shm(pr_fh_t *fh,
     PRIVS_RELINQUISH
 
     if (res == 0) {
-      pr_log_debug(DEBUG10, MOD_TLS_SHMCACHE_VERSION
-        ": existing shm size: %u bytes", (unsigned int) ds.shm_segsz);
+      pr_trace_msg(trace_channel, 10,
+        "existing shm size: %u bytes", (unsigned int) ds.shm_segsz);
 
       if (ds.shm_segsz != shm_size) {
         if (ds.shm_segsz > shm_size) {
@@ -440,32 +455,31 @@ static struct shmcache_data *shmcache_get_shm(pr_fh_t *fh,
       }
 
     } else {
-      pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-        ": unable to stat shm ID %d: %s", shmid, strerror(xerrno));
+      pr_trace_msg(trace_channel, 1,
+        "unable to stat shm ID %d: %s", shmid, strerror(xerrno));
       errno = xerrno;
     }
 
   } else {
     /* Make sure the memory is initialized. */
     if (shmcache_lock_shm(F_WRLCK) < 0) {
-      pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-        ": error write-locking shmcache: %s", strerror(errno));
+      pr_trace_msg(trace_channel, 1,
+        "error write-locking shmcache: %s", strerror(errno));
     }
 
     memset(data, 0, shm_size);
 
     if (shmcache_lock_shm(F_UNLCK) < 0) {
-      pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-        ": error unlocking shmcache: %s", strerror(errno));
+      pr_trace_msg(trace_channel, 1,
+        "error unlocking shmcache: %s", strerror(errno));
     }
   }
 
   shmcache_datasz = shm_size;
 
   shmcache_shmid = shmid;
-  pr_log_debug(DEBUG9, MOD_TLS_SHMCACHE_VERSION
-    ": using shm ID %d for shmcache path '%s'", shmcache_shmid,
-    fh->fh_path);
+  pr_trace_msg(trace_channel, 9,
+    "using shm ID %d for shmcache path '%s'", shmcache_shmid, fh->fh_path);
 
   data->sd_entries = (struct shmcache_entry *) (data + sizeof(struct shmcache_data));
   data->sd_listsz = shm_sess_max;
@@ -590,8 +604,8 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
 
       size = strtol(ptr + 6, &tmp, 10);
       if (tmp && *tmp) {
-        pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-          ": badly formatted size parameter '%s', ignoring", ptr + 1);
+        pr_trace_msg(trace_channel, 1,
+          "badly formatted size parameter '%s', ignoring", ptr + 1);
 
         /* Default size of 1.5M.  That should hold around 100 sessions. */
         requested_size = 1538 * 1024;
@@ -604,8 +618,8 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
           sizeof(struct shmcache_entry);
 
         if (size < min_size) {
-          pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-            ": requested size (%lu bytes) smaller than minimum size "
+          pr_trace_msg(trace_channel, 1,
+            "requested size (%lu bytes) smaller than minimum size "
             "(%lu bytes), ignoring", (unsigned long) size,
             (unsigned long) min_size);
         
@@ -618,8 +632,8 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
       }
 
     } else {
-      pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-        ": badly formatted size parameter '%s', ignoring", ptr + 1);
+      pr_trace_msg(trace_channel, 1, 
+        "badly formatted size parameter '%s', ignoring", ptr + 1);
 
       /* Default size of 1.5M.  That should hold around 100 sessions. */
       requested_size = 1538 * 1024;
@@ -696,16 +710,21 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
     }
   }
 
-  pr_log_debug(DEBUG10, MOD_TLS_SHMCACHE_VERSION
-    ": requested shmcache file: %s (fd %d)", shmcache_fh->fh_path,
+  pr_trace_msg(trace_channel, 9,
+    "requested shmcache file: %s (fd %d)", shmcache_fh->fh_path,
     PR_FH_FD(shmcache_fh));
-  pr_log_debug(DEBUG10, MOD_TLS_SHMCACHE_VERSION
-    ": requested shmcache size: %lu bytes", (unsigned long) requested_size);
+  pr_trace_msg(trace_channel, 9, 
+    "requested shmcache size: %lu bytes", (unsigned long) requested_size);
 
   shmcache_data = shmcache_get_shm(shmcache_fh, requested_size);
   if (shmcache_data == NULL) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 1,
+      "unable to allocate shm: %s", strerror(xerrno));
     pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-      ": unable to allocate shm: %s", strerror(errno));
+      ": unable to allocate shm: %s", strerror(xerrno));
+
     pr_fsio_close(shmcache_fh);
     shmcache_fh = NULL;
 
@@ -717,7 +736,6 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
   pr_pool_tag(cache->cache_pool, MOD_TLS_SHMCACHE_VERSION);
 
   cache->cache_timeout = timeout;
-
   return 0;
 }
 
