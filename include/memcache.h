@@ -23,7 +23,7 @@
  */
 
 /* Memcache support
- * $Id: memcache.h,v 1.9 2011-01-23 01:38:23 castaglia Exp $
+ * $Id: memcache.h,v 1.10 2011-01-25 07:44:40 castaglia Exp $
  */
 
 #ifndef PR_MEMCACHE_H
@@ -56,10 +56,14 @@ int pr_memcache_conn_set_namespace(pr_memcache_t *mcache, module *m,
 
 int pr_memcache_add(pr_memcache_t *mcache, module *m, const char *key,
   void *value, size_t valuesz, time_t expires, uint32_t flags);
+int pr_memcache_decr(pr_memcache_t *mcache, module *m, const char *key,
+  uint32_t decr, uint64_t *value);
 void *pr_memcache_get(pr_memcache_t *mcache, module *m, const char *key,
   size_t *valuesz, uint32_t *flags);
 char *pr_memcache_get_str(pr_memcache_t *mcache, module *m, const char *key,
   uint32_t *flags);
+int pr_memcache_incr(pr_memcache_t *mcache, module *m, const char *key,
+  uint32_t incr, uint64_t *value);
 int pr_memcache_remove(pr_memcache_t *mcache, module *m, const char *key,
   time_t expires);
 int pr_memcache_set(pr_memcache_t *mcache, module *m, const char *key,
@@ -70,10 +74,14 @@ int pr_memcache_set(pr_memcache_t *mcache, module *m, const char *key,
  */
 int pr_memcache_kadd(pr_memcache_t *mcache, module *m, const char *key,
   size_t keysz, void *value, size_t valuesz, time_t expires, uint32_t flags);
+int pr_memcache_kdecr(pr_memcache_t *mcache, module *m, const char *key,
+  size_t keysz, uint32_t decr, uint64_t *value);
 void *pr_memcache_kget(pr_memcache_t *mcache, module *m, const char *key,
   size_t keysz, size_t *valuesz, uint32_t *flags);
 char *pr_memcache_kget_str(pr_memcache_t *mcache, module *m, const char *key,
   size_t keysz, uint32_t *flags);
+int pr_memcache_kincr(pr_memcache_t *mcache, module *m, const char *key,
+  size_t keysz, uint32_t incr, uint64_t *value);
 int pr_memcache_kremove(pr_memcache_t *mcache, module *m, const char *key,
   size_t keysz, time_t expires);
 int pr_memcache_kset(pr_memcache_t *mcache, module *m, const char *key,

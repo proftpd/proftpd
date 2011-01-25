@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.15 2011-01-23 01:38:23 castaglia Exp $
+ * $Id: memcache.c,v 1.16 2011-01-25 07:44:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -641,10 +641,43 @@ int pr_memcache_add(pr_memcache_t *mcache, module *m, const char *key,
   res = pr_memcache_kadd(mcache, m, key, strlen(key), value, valuesz, expires,
     flags); 
   if (res < 0) {
+    int xerrno = errno;
+
     pr_trace_msg(trace_channel, 2,
       "error adding key '%s', value (%lu bytes): %s", key,
-      (unsigned long) valuesz, strerror(errno));
-    errno = EPERM;
+      (unsigned long) valuesz, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
+
+int pr_memcache_decr(pr_memcache_t *mcache, module *m, const char *key,
+    uint32_t decr, uint64_t *value) {
+  int res;
+
+  /* XXX Should we allow null values to be added, thus allowing use of keys
+   * as sentinels?
+   */
+  if (mcache == NULL ||
+      m == NULL ||
+      key == NULL ||
+      decr == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_memcache_kdecr(mcache, m, key, strlen(key), decr, value);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error decrementing key '%s' by %lu: %s", key,
+      (unsigned long) decr, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -666,9 +699,12 @@ void *pr_memcache_get(pr_memcache_t *mcache, module *m, const char *key,
 
   ptr = pr_memcache_kget(mcache, m, key, strlen(key), valuesz, flags);
   if (ptr == NULL) {
+    int xerrno = errno;
+
     pr_trace_msg(trace_channel, 2,
-      "error getting data for key '%s': %s", key, strerror(errno));
-    errno = EPERM;
+      "error getting data for key '%s': %s", key, strerror(xerrno));
+
+    xerrno = errno;
     return NULL;
   }
 
@@ -689,13 +725,46 @@ char *pr_memcache_get_str(pr_memcache_t *mcache, module *m, const char *key,
 
   ptr = pr_memcache_kget_str(mcache, m, key, strlen(key), flags);
   if (ptr == NULL) {
+    int xerrno = errno;
+
     pr_trace_msg(trace_channel, 2,
-      "error getting data for key '%s': %s", key, strerror(errno));
-    errno = EPERM;
+      "error getting data for key '%s': %s", key, strerror(xerrno));
+
+    errno = xerrno; 
     return NULL;
   }
 
   return ptr;
+}
+
+int pr_memcache_incr(pr_memcache_t *mcache, module *m, const char *key,
+    uint32_t incr, uint64_t *value) {
+  int res;
+
+  /* XXX Should we allow null values to be added, thus allowing use of keys
+   * as sentinels?
+   */
+  if (mcache == NULL ||
+      m == NULL ||
+      key == NULL ||
+      incr == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_memcache_kincr(mcache, m, key, strlen(key), incr, value);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error incrementing key '%s' by %lu: %s", key,
+      (unsigned long) incr, strerror(xerrno));
+ 
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
 }
 
 int pr_memcache_remove(pr_memcache_t *mcache, module *m, const char *key,
@@ -711,9 +780,12 @@ int pr_memcache_remove(pr_memcache_t *mcache, module *m, const char *key,
 
   res = pr_memcache_kremove(mcache, m, key, strlen(key), expires);
   if (res < 0) {
+    int xerrno = errno;
+
     pr_trace_msg(trace_channel, 2,
-      "error removing key '%s': %s", key, strerror(errno));
-    errno = EPERM;
+      "error removing key '%s': %s", key, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -738,10 +810,13 @@ int pr_memcache_set(pr_memcache_t *mcache, module *m, const char *key,
   res = pr_memcache_kset(mcache, m, key, strlen(key), value, valuesz, expires,
     flags);
   if (res < 0) {
+    int xerrno = errno;
+
     pr_trace_msg(trace_channel, 2,
       "error setting key '%s', value (%lu bytes): %s", key,
-      (unsigned long) valuesz, strerror(errno));
-    errno = EPERM;
+      (unsigned long) valuesz, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -806,9 +881,13 @@ int pr_memcache_kadd(pr_memcache_t *mcache, module *m, const char *key,
 
     case MEMCACHED_ERRNO:
       if (errno != EINPROGRESS) {
+        int xerrno = errno;
+
         pr_trace_msg(trace_channel, 3,
           "error adding key (%lu bytes), value (%lu bytes): system error: %s",
-          (unsigned long) keysz, (unsigned long) valuesz, strerror(errno));
+          (unsigned long) keysz, (unsigned long) valuesz, strerror(xerrno));
+
+        errno = xerrno;
         break;
 
       } else {
@@ -836,6 +915,69 @@ int pr_memcache_kadd(pr_memcache_t *mcache, module *m, const char *key,
       pr_trace_msg(trace_channel, 2,
         "error adding key (%lu bytes), value (%lu bytes): %s",
         (unsigned long) keysz, (unsigned long) valuesz,
+        memcached_strerror(mcache->mc, res));
+      errno = EPERM;
+  }
+
+  return -1;
+}
+
+int pr_memcache_kdecr(pr_memcache_t *mcache, module *m, const char *key,
+    size_t keysz, uint32_t decr, uint64_t *value) {
+  memcached_return res;
+
+  if (mcache == NULL ||
+      m == NULL ||
+      key == NULL ||
+      decr == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  mcache_set_module_namespace(mcache, m);
+  res = memcached_decrement(mcache->mc, key, keysz, decr, value);
+  mcache_set_module_namespace(mcache, NULL);
+
+  switch (res) {
+    case MEMCACHED_SUCCESS:
+      return 0;
+
+    case MEMCACHED_ERRNO:
+      if (errno != EINPROGRESS) {
+        int xerrno = errno;
+
+        pr_trace_msg(trace_channel, 3,
+          "error decrementing key (%lu bytes) by %lu: system error: %s",
+          (unsigned long) keysz, (unsigned long) decr, strerror(xerrno));
+
+        errno = xerrno;
+        break;
+
+      } else {
+        /* We know that we're not using nonblocking IO; this value usually
+         * means that libmemcached could not connect to the configured
+         * memcached servers.  So set the value to something more
+         * indicative, and fall through.
+         */
+        res = MEMCACHED_CONNECTION_FAILURE;
+      }
+
+    case MEMCACHED_SERVER_MARKED_DEAD:
+    case MEMCACHED_CONNECTION_FAILURE: {
+      memcached_server_instance_st server;
+
+      server = memcached_server_get_last_disconnect(mcache->mc);
+      if (server != NULL) {
+        pr_trace_msg(trace_channel, 3,
+          "unable to connect to %s:%d", memcached_server_name(server),
+          memcached_server_port(server));
+      }
+    }
+
+    default:
+      pr_trace_msg(trace_channel, 2,
+        "error decrementing key (%lu bytes) by %lu: %s",
+        (unsigned long) keysz, (unsigned long) decr,
         memcached_strerror(mcache->mc, res));
       errno = EPERM;
   }
@@ -872,9 +1014,12 @@ void *pr_memcache_kget(pr_memcache_t *mcache, module *m, const char *key,
 
       case MEMCACHED_ERRNO:
         if (errno != EINPROGRESS) {
+          int xerrno = errno;
           pr_trace_msg(trace_channel, 3,
             "no data found for key (%lu bytes): system error: %s",
-            (unsigned long) keysz, strerror(errno));
+            (unsigned long) keysz, strerror(xerrno));
+
+          errno = xerrno;
           break;
 
         } else {
@@ -948,9 +1093,13 @@ char *pr_memcache_kget_str(pr_memcache_t *mcache, module *m, const char *key,
 
       case MEMCACHED_ERRNO:
         if (errno != EINPROGRESS) {
+          int xerrno = errno;
+
           pr_trace_msg(trace_channel, 3,
             "no data found for key (%lu bytes): system error: %s",
-            (unsigned long) keysz, strerror(errno));
+            (unsigned long) keysz, strerror(xerrno));
+
+          errno = xerrno;
           break;
 
         } else {
@@ -996,6 +1145,69 @@ char *pr_memcache_kget_str(pr_memcache_t *mcache, module *m, const char *key,
   return ptr;
 }
 
+int pr_memcache_kincr(pr_memcache_t *mcache, module *m, const char *key,
+    size_t keysz, uint32_t incr, uint64_t *value) {
+  memcached_return res;
+
+  if (mcache == NULL ||
+      m == NULL ||
+      key == NULL ||
+      incr == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  mcache_set_module_namespace(mcache, m);
+  res = memcached_increment(mcache->mc, key, keysz, incr, value);
+  mcache_set_module_namespace(mcache, NULL);
+
+  switch (res) {
+    case MEMCACHED_SUCCESS:
+      return 0;
+
+    case MEMCACHED_ERRNO:
+      if (errno != EINPROGRESS) {
+        int xerrno = errno;
+
+        pr_trace_msg(trace_channel, 3,
+          "error incrementing key (%lu bytes) by %lu: system error: %s",
+          (unsigned long) keysz, (unsigned long) incr, strerror(xerrno));
+
+        errno = xerrno;
+        break;
+
+      } else {
+        /* We know that we're not using nonblocking IO; this value usually
+         * means that libmemcached could not connect to the configured
+         * memcached servers.  So set the value to something more
+         * indicative, and fall through.
+         */
+        res = MEMCACHED_CONNECTION_FAILURE;
+      }
+
+    case MEMCACHED_SERVER_MARKED_DEAD:
+    case MEMCACHED_CONNECTION_FAILURE: {
+      memcached_server_instance_st server;
+
+      server = memcached_server_get_last_disconnect(mcache->mc);
+      if (server != NULL) {
+        pr_trace_msg(trace_channel, 3,
+          "unable to connect to %s:%d", memcached_server_name(server),
+          memcached_server_port(server));
+      }
+    }
+
+    default:
+      pr_trace_msg(trace_channel, 2,
+        "error incrementing key (%lu bytes) by %lu: %s",
+        (unsigned long) keysz, (unsigned long) incr,
+        memcached_strerror(mcache->mc, res));
+      errno = EPERM;
+  }
+
+  return -1;
+}
+
 int pr_memcache_kremove(pr_memcache_t *mcache, module *m, const char *key,
     size_t keysz, time_t expires) {
   memcached_return res;
@@ -1017,9 +1229,13 @@ int pr_memcache_kremove(pr_memcache_t *mcache, module *m, const char *key,
 
     case MEMCACHED_ERRNO:
       if (errno != EINPROGRESS) {
+        int xerrno = errno;
+
         pr_trace_msg(trace_channel, 3,
           "error removing key (%lu bytes): system error: %s",
-          (unsigned long) keysz, strerror(errno));
+          (unsigned long) keysz, strerror(xerrno));
+
+        errno = xerrno;
         break;
 
       } else {
@@ -1078,9 +1294,13 @@ int pr_memcache_kset(pr_memcache_t *mcache, module *m, const char *key,
 
     case MEMCACHED_ERRNO:
       if (errno != EINPROGRESS) {
+        int xerrno = errno;
+
         pr_trace_msg(trace_channel, 3,
           "error setting key (%lu bytes), value (%lu bytes): system error: %s",
-          (unsigned long) keysz, (unsigned long) valuesz, strerror(errno));
+          (unsigned long) keysz, (unsigned long) valuesz, strerror(xerrno));
+
+        errno = xerrno;
         break;
 
       } else {
@@ -1219,6 +1439,12 @@ int pr_memcache_add(pr_memcache_t *mcache, module *m, const char *key,
   return -1;
 }
 
+int pr_memcache_decr(pr_memcache_t *mcache, module *m, const char *key,
+    uint32_t decr, uint64_t *value) {
+  errno = ENOSYS;
+  return -1;
+}
+
 void *pr_memcache_get(pr_memcache_t *mcache, module *m, const char *key,
     size_t *valuesz, uint32_t *flags) {
   errno = ENOSYS;
@@ -1229,6 +1455,12 @@ char *pr_memcache_get_str(pr_memcache_t *mcache, module *m, const char *key,
     uint32_t *flags) {
   errno = ENOSYS;
   return NULL;
+}
+
+int pr_memcache_incr(pr_memcache_t *mcache, module *m, const char *key,
+    uint32_t incr, uint64_t *value) {
+  errno = ENOSYS;
+  return -1;
 }
 
 int pr_memcache_remove(pr_memcache_t *mcache, module *m, const char *key,
