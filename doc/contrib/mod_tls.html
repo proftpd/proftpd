@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.28 2010-10-06 18:45:42 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.29 2011-01-25 18:23:02 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -1290,6 +1290,13 @@ OpenSSL's default internal SSL session caching will be used.  Thus multiple
 SSL sessions to the same server process (<i>e.g.</i> for FTP data transfers)
 will benefit from the speedup, but parallel simultaneous FTP connections from
 the same FTPS client will each need to perform the full SSL/TLS handshake.
+By default, OpenSSL caches SSL sessions for 300 seconds (5 minutes).  If
+your FTP sessions last longer than this (<i>e.g.</i> for downloading large
+files), you may need to configure a longer cache lifetime using:
+<pre>
+  # Configure OpenSSL's internal caching to be 1800 seconds (30 minutes)
+  TLSSessionCache internal: 1800
+</pre>
 
 <p>
 The <em>type</em> and <em>info</em> parameters all depend on the module
@@ -1551,11 +1558,11 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-10-06 18:45:42 $</i><br>
+Last Updated: <i>$Date: 2011-01-25 18:23:02 $</i><br>
 
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2010 TJ Saunders<br>
+&copy; Copyright 2002-2011 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
