@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1282 2011-01-23 17:56:36 castaglia Exp $
+$Id: NEWS,v 1.1283 2011-01-25 18:10:43 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -27,6 +27,8 @@ CVS
 - Bug 3578 - Ability to suppress sending messages from PAM to clients.
 - Bug 3580 - TLSSessionCache needs to allow configuring OpenSSL's internal
   session caching expiration, for long-lived sessions.
+- Bug 3585 - Allow client-requested SSL session renegotiation when securely
+  supported.
 
 1.3.4rc1 - Released 17-Dec-2010
 --------------------------------

@@ -3004,6 +3004,16 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     ctrl_ssl = ssl;
     tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data = (void *) ssl;
 
+#if OPENSSL_VERSION_NUMBER >= 0x009080dfL
+    if (SSL_get_secure_renegotiation_support(ssl) == 1) {
+      /* If the peer indicates that it can support secure renegotiations,
+       * then automatically enable them.
+       */
+      tls_log("client supports secure renegotiations, automatically setting AllowClientRenegotiations TLSOption");
+      tls_opts |= TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS;
+    }
+#endif /* OpenSSL 0.9.8m and later */
+
   } else if (conn == session.d) {
     tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = (void *) ssl;
   }
@@ -3498,18 +3508,20 @@ static void tls_fatal_error(long error, int lineno) {
          * examine the error value itself.
          */
 
-        if (errno == EOF)
+        if (errno == EOF) {
           tls_log("panic: SSL_ERROR_SYSCALL, line %d: "
             "EOF that violates protocol", lineno);
 
-        else
+        } else {
           /* Check errno */
-          tls_log("panic: SSL_ERROR_SYSCALL, line %d: %s", lineno,
+          tls_log("panic: SSL_ERROR_SYSCALL, line %d: system error: %s", lineno,
             strerror(errno));
+        }
 
-      } else
+      } else {
         tls_log("panic: SSL_ERROR_SYSCALL, line %d: %s", lineno,
           tls_get_errors());
+      }
 
       break;
     }
