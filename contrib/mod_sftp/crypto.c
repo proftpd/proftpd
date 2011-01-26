@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp OpenSSL interface
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.16 2010-05-18 21:43:12 castaglia Exp $
+ * $Id: crypto.c,v 1.17 2011-01-26 01:03:04 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -880,7 +880,18 @@ void sftp_crypto_free(int flags) {
 #endif
 
     ERR_free_strings();
+
+#if OPENSSL_VERSION_NUMBER >= 0x10000001L
+    /* The ERR_remove_state(0) usage is deprecated due to thread ID
+     * differences among platforms; see the OpenSSL-1.0.0c CHANGES file
+     * for details.  So for new enough OpenSSL installations, use the
+     * proper way to clear the error queue state.
+     */
+    ERR_remove_thread_state(NULL);
+#else
     ERR_remove_state(0);
+#endif /* OpenSSL prior to 1.0.0-beta1 */
+
     EVP_cleanup();
     RAND_cleanup();
   }
