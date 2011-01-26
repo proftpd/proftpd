@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.17 2011-01-26 06:52:13 castaglia Exp $
+ * $Id: memcache.c,v 1.18 2011-01-26 07:21:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -583,8 +583,6 @@ static unsigned int modptr_hash_cb(const void *k, size_t ksz) {
 
 int pr_memcache_conn_set_namespace(pr_memcache_t *mcache, module *m,
     const char *prefix) {
-  int count;
-  size_t prefix_len;
 
   if (mcache == NULL ||
       m == NULL) {
@@ -612,24 +610,33 @@ int pr_memcache_conn_set_namespace(pr_memcache_t *mcache, module *m,
     mcache->namespace_tab = tab;
   }
 
-  prefix_len = strlen(prefix);
+  if (prefix != NULL) {
+    int count;
+    size_t prefix_len;
 
-  count = pr_table_kexists(mcache->namespace_tab, m, sizeof(module *));
-  if (count <= 0) {
-    if (pr_table_kadd(mcache->namespace_tab, m, sizeof(module *),
-        pstrndup(mcache->pool, prefix, prefix_len), prefix_len) < 0) {
-      pr_trace_msg(trace_channel, 7,
-        "error adding namespace prefix '%s' for module 'mod_%s.c': %s",
-        prefix, m->name, strerror(errno));
+    prefix_len = strlen(prefix);
+
+    count = pr_table_kexists(mcache->namespace_tab, m, sizeof(module *));
+    if (count <= 0) {
+      if (pr_table_kadd(mcache->namespace_tab, m, sizeof(module *),
+          pstrndup(mcache->pool, prefix, prefix_len), prefix_len) < 0) {
+        pr_trace_msg(trace_channel, 7,
+          "error adding namespace prefix '%s' for module 'mod_%s.c': %s",
+          prefix, m->name, strerror(errno));
+      }
+
+    } else {
+      if (pr_table_kset(mcache->namespace_tab, m, sizeof(module *),
+          pstrndup(mcache->pool, prefix, prefix_len), prefix_len) < 0) {
+        pr_trace_msg(trace_channel, 7,
+          "error setting namespace prefix '%s' for module 'mod_%s.c': %s",
+          prefix, m->name, strerror(errno));
+      }
     }
 
   } else {
-    if (pr_table_kset(mcache->namespace_tab, m, sizeof(module *),
-        pstrndup(mcache->pool, prefix, prefix_len), prefix_len) < 0) {
-      pr_trace_msg(trace_channel, 7,
-        "error setting namespace prefix '%s' for module 'mod_%s.c': %s",
-        prefix, m->name, strerror(errno));
-    }
+    /* A NULL prefix means the caller is removing their namespace maping. */
+    (void) pr_table_kremove(mcache->namespace_tab, m, sizeof(module *), NULL);
   }
 
   return 0;
