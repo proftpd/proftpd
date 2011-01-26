@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.44 2011-01-23 01:38:23 castaglia Exp $
+ * $Id: mod_ban.c,v 1.45 2011-01-26 06:45:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -257,17 +257,26 @@ static int ban_mcache_entry_get(pool *p, unsigned int type, const char *name,
   /* Unmarshal the ban entry. */
 
   tn = tpl_map(BAN_MCACHE_VALUE_FMT, bme);
+  if (tn == NULL) {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "error allocating tpl_map for format '%s'", BAN_MCACHE_VALUE_FMT);
+    return -1;
+  }
 
   res = tpl_load(tn, TPL_MEM, value, valuesz);
   if (res < 0) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "%s", "error loading marshalled ban memcache data");
+    tpl_free(tn);
+    return -1;
   }
 
   res = tpl_unpack(tn, 0);
   if (res < 0) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "%s", "error unpacking marshalled ban memcache data");
+    tpl_free(tn);
+    return -1;
   }
 
   tpl_free(tn);
