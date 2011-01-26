@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.16 2011-01-25 07:44:40 castaglia Exp $
+ * $Id: memcache.c,v 1.17 2011-01-26 06:52:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -47,6 +47,12 @@ struct mcache_rec {
   pool *pool;
   module *owner;
   memcached_st *mc;
+
+  /* For tracking the number of "opens"/"closes" on a shared mcache_rec,
+   * as the same struct might be used by multiple modules in the same
+   * session, each module doing a conn_get()/conn_close().
+   */
+  unsigned int refcount;
 
   /* Table mapping modules to their namespaces */
   pr_table_t *namespace_tab;
@@ -433,6 +439,7 @@ static int mcache_stat_servers(pr_memcache_t *mcache) {
 
 pr_memcache_t *pr_memcache_conn_get(void) {
   if (sess_mcache != NULL) {
+    sess_mcache->refcount++;
     return sess_mcache;
   }
 
@@ -486,6 +493,7 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
   mcache->pool = sub_pool;
   mcache->owner = m;
   mcache->mc = mc;
+  mcache->refcount = 1;
 
   /* The namespace table is null; it will be created if/when callers
    * configure namespace prefixes.
@@ -540,12 +548,16 @@ int pr_memcache_conn_close(pr_memcache_t *mcache) {
     return -1;
   }
 
-  memcached_free(mcache->mc);
+  mcache->refcount--;
 
-  if (mcache->namespace_tab != NULL) {
-    (void) pr_table_empty(mcache->namespace_tab);
-    (void) pr_table_free(mcache->namespace_tab);
-    mcache->namespace_tab = NULL;
+  if (mcache->refcount == 0) {
+    memcached_free(mcache->mc);
+
+    if (mcache->namespace_tab != NULL) {
+      (void) pr_table_empty(mcache->namespace_tab);
+      (void) pr_table_free(mcache->namespace_tab);
+      mcache->namespace_tab = NULL;
+    }
   }
 
   return 0;
