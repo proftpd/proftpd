@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.22 2010-12-16 21:31:16 castaglia Exp $
+ * $Id: packet.c,v 1.23 2011-02-12 17:39:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -45,6 +45,12 @@ extern pr_response_t *resp_list, *resp_err_list;
 
 static uint32_t packet_client_seqno = 0;
 static uint32_t packet_server_seqno = 0;
+
+/* Maximum length of the payload data of an SSH2 packet we're willing to
+ * accept.  Any packets reporting a payload length longer than this will be
+ * ignored/dropped.
+ */
+#define SFTP_PACKET_MAX_PAYLOAD_LEN	(256 * 1024)
 
 /* RFC4344 recommends 2^31 for the client packet sequence number at which
  * we should request a rekey, and 2^32 for the server packet sequence number.
@@ -169,7 +175,8 @@ static int packet_poll(int sockfd, int io) {
  * It is the caller's responsibility to ensure that buf is large enough to
  * hold reqlen bytes.
  */
-int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen) {
+int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
+    int flags) {
   void *ptr;
   size_t remainlen;
 
@@ -251,6 +258,13 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen) {
 
     if (res == remainlen)
       break;
+
+    if (flags & SFTP_PACKET_READ_FL_PESSIMISTIC) {
+      pr_trace_msg(trace_channel, 20, "read %lu bytes, expected %lu bytes; "
+        "pessimistically returning", (unsigned long) res,
+        (unsigned long) remainlen);
+      break;
+    }
 
     pr_trace_msg(trace_channel, 20, "read %lu bytes, expected %lu bytes; "
       "reading more", (unsigned long) res, (unsigned long) remainlen);
@@ -477,7 +491,12 @@ static void read_packet_discard(int sockfd) {
     (unsigned long) buflen);
 
   if (buflen > 0) {
-    sftp_ssh2_packet_sock_read(sockfd, buf, buflen);
+    int flags = SFTP_PACKET_READ_FL_PESSIMISTIC;
+
+    /* We don't necessary want to wait for the entire random amount of data
+     * to be read in.
+     */
+    sftp_ssh2_packet_sock_read(sockfd, buf, buflen, flags);
   }
 
   return;
@@ -497,7 +516,7 @@ static int read_packet_len(int sockfd, struct ssh2_packet *pkt,
    * how many more bytes there are in the packet.
    */
 
-  res = sftp_ssh2_packet_sock_read(sockfd, buf, blocksz);
+  res = sftp_ssh2_packet_sock_read(sockfd, buf, blocksz, 0);
   if (res < 0)
     return res;
 
@@ -555,8 +574,26 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
   if (payload_len + padding_len == 0)
     return 0;
 
-  if (payload_len > 0)
+  if (payload_len > 0) {
+    /* We don't want to reject the packet outright yet; but we can ignore
+     * the payload data we're going to read in.  This packet will fail
+     * eventually anyway.
+     */
+    if (payload_len > SFTP_PACKET_MAX_PAYLOAD_LEN) {
+      pr_trace_msg(trace_channel, 20,
+        "payload len (%lu bytes) exceeds max payload len (%lu), "
+        "ignoring payload", (unsigned long) payload_len,
+        (unsigned long) SFTP_PACKET_MAX_PAYLOAD_LEN);
+
+      pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "client sent buggy/malicious packet payload length, ignoring");
+
+      errno = EPERM;
+      return -1;
+    }
+
     pkt->payload = pcalloc(pkt->pool, payload_len);
+  }
 
   /* If there's data in the buffer we received, it's probably already part
    * of the payload, unencrypted.  That will leave the remaining payload
@@ -617,7 +654,7 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
     return -1;
   }
 
-  res = sftp_ssh2_packet_sock_read(sockfd, buf + *offset, data_len);
+  res = sftp_ssh2_packet_sock_read(sockfd, buf + *offset, data_len, 0);
   if (res < 0) {
     return res;
   }
@@ -645,7 +682,7 @@ static int read_packet_mac(int sockfd, struct ssh2_packet *pkt, char *buf) {
   if (mac_len == 0)
     return 0;
 
-  res = sftp_ssh2_packet_sock_read(sockfd, buf, mac_len);
+  res = sftp_ssh2_packet_sock_read(sockfd, buf, mac_len, 0);
   if (res < 0)
     return res;
 

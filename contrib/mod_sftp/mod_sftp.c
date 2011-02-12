@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.42 2010-12-15 00:58:59 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.43 2011-02-12 17:39:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -85,12 +85,12 @@ static int sftp_get_client_version(conn_t *conn) {
     memset(buf, '\0', sizeof(buf));
 
     for (i = 0; i < sizeof(buf) - 1; i++) {
-      res = sftp_ssh2_packet_sock_read(conn->rfd, &buf[i], 1);
+      res = sftp_ssh2_packet_sock_read(conn->rfd, &buf[i], 1, 0);
       while (res <= 0) {
         if (errno == EINTR) {
           pr_signals_handle();
 
-          res = sftp_ssh2_packet_sock_read(conn->rfd, &buf[i], 1);
+          res = sftp_ssh2_packet_sock_read(conn->rfd, &buf[i], 1, 0);
           continue;
         }
 
