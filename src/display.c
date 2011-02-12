@@ -23,14 +23,14 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.22 2011-01-10 21:57:24 castaglia Exp $
+ * $Id: display.c,v 1.23 2011-02-12 17:45:14 castaglia Exp $
  */
 
 #include "conf.h"
 
 static int first_msg_sent = FALSE;
 static const char *first_msg = NULL;
-const const char *prev_msg = NULL;
+static const char *prev_msg = NULL;
 
 static void format_size_str(char *buf, size_t buflen, off_t size) {
   char units[] = {'K', 'M', 'G', 'T', 'P'};
