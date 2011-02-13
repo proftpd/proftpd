@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.117 2010-12-17 03:24:33 castaglia Exp $
+ * $Id: fxp.c,v 1.118 2011-02-13 17:35:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5882,6 +5882,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
       fxp_strerror(status_code), NULL);
 
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -5925,6 +5926,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
       fxp_strerror(status_code), NULL);
 
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -5944,6 +5946,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
       fxp_strerror(status_code), NULL);
 
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -5980,6 +5983,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
       NULL);
 
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -6004,6 +6008,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
     fxp_strerror(status_code), NULL);
 
   pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
+  pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -8209,6 +8214,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
       fxp_strerror(status_code), NULL);
 
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -8249,6 +8255,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
       fxp_strerror(status_code), NULL);
 
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -8268,6 +8275,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
       fxp_strerror(status_code), NULL);
 
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -8335,6 +8343,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
 
   pr_cmd_dispatch_phase(cmd2, errno == 0 ? POST_CMD : POST_CMD_ERR, 0);
+  pr_cmd_dispatch_phase(cmd2, errno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
   pr_cmd_dispatch_phase(cmd, errno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
