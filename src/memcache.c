@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.18 2011-01-26 07:21:10 castaglia Exp $
+ * $Id: memcache.c,v 1.19 2011-02-13 00:30:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1179,6 +1179,16 @@ int pr_memcache_kincr(pr_memcache_t *mcache, module *m, const char *key,
   mcache_set_module_namespace(mcache, m);
   res = memcached_increment(mcache->mc, key, keysz, incr, value);
   mcache_set_module_namespace(mcache, NULL);
+
+  if (res == MEMCACHED_NOTFOUND) {
+    /* Automatically create a value for this key, with the given increment. */
+
+    pr_trace_msg(trace_channel, 18,
+      "unable to increment nonexistent key (%lu bytes), automatically "
+      "creating one", (unsigned long) keysz);
+    return pr_memcache_kset(mcache, m, key, keysz, &incr, sizeof(uint32_t),
+      0, 0);
+  }
 
   switch (res) {
     case MEMCACHED_SUCCESS:
