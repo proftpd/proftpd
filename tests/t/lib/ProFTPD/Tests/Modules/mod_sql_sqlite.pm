@@ -206,6 +206,10 @@ my $TESTS = {
     test_class => [qw(bug forking mod_rewrite)],
   },
 
+  sql_sqllog_note_sql_user_info => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
 };
 
 sub new {
@@ -6476,6 +6480,207 @@ EOS
   $expected = $domain;
   $self->assert($expected eq $session_id,
     test_msg("Expected '$expected', got '$session_id'"));
+
+  unlink($log_file);
+}
+
+sub get_sql_notes {
+  my $db_file = shift;
+  my $where = shift;
+
+  my $sql = "SELECT user, primary_group, home, shell FROM ftpnotes";
+  if ($where) {
+    $sql .= " WHERE $where";
+  }
+
+  my $cmd = "sqlite3 $db_file \"$sql\"";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my $res = join('', `$cmd`);
+  chomp($res);
+
+  # The default sqlite3 delimiter is '|'
+  return split(/\|/, $res);
+}
+
+sub sql_sqllog_note_sql_user_info {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlite.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $user = 'proftpd';
+  my $group = 'ftpd',
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+  my $shell = '/bin/bash';
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT,
+  shell TEXT,
+  lastdir TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '$shell');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
+
+CREATE TABLE ftpnotes (
+  user TEXT,
+  primary_group TEXT,
+  home TEXT,
+  shell TEXT
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 sql:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLAuthTypes => 'plaintext',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLMinID => 100,
+        SQLLogFile => $log_file,
+        SQLNamedQuery => 'sql_notes FREEFORM "INSERT INTO ftpnotes (user, primary_group, home, shell) VALUES (\'%u\', \'%{note:sql.group}\', \'%{note:sql.home}\', \'%{note:sql.shell}\')"',
+        SQLLog => 'PASS sql_notes',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  my ($login, $sql_group, $sql_home, $sql_shell) = get_sql_notes($db_file,
+    "user = \'$user\'");
+
+  my $expected;
+
+  $expected = $user;
+  $self->assert($expected eq $login,
+    test_msg("Expected '$expected', got '$login'"));
+
+  $expected = $group;
+  $self->assert($expected eq $sql_group,
+    test_msg("Expected '$expected', got '$sql_group'"));
+
+  $expected = $home_dir;
+  $self->assert($expected eq $sql_home,
+    test_msg("Expected '$expected', got '$sql_home'"));
+
+  $expected = $shell;
+  $self->assert($expected eq $sql_shell,
+    test_msg("Expected '$expected', got '$sql_shell'"));
 
   unlink($log_file);
 }

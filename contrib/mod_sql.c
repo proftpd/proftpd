@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.195 2011-01-04 19:48:09 castaglia Exp $
+ * $Id: mod_sql.c,v 1.196 2011-02-13 01:25:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1173,11 +1173,23 @@ static struct passwd *_sql_addpasswd(cmd_rec *cmd, char *username,
     pwd->pw_uid = uid;
     pwd->pw_gid = gid;
    
-    if (shell) 
+    if (shell) {
       pwd->pw_shell = pstrdup(sql_pool, shell);
 
-    if (dir)
+      if (pr_table_add(session.notes, "sql.shell", pwd->pw_shell, 0) < 0) {
+        pr_trace_msg(trace_channel, 8,
+          "error setting 'sql.shell' session note: %s", strerror(errno));
+      }
+    }
+
+    if (dir) {
       pwd->pw_dir = pstrdup(sql_pool, dir);
+
+      if (pr_table_add(session.notes, "sql.home", pwd->pw_dir, 0) < 0) {
+        pr_trace_msg(trace_channel, 8,
+          "error setting 'sql.home' session note: %s", strerror(errno));
+      }
+    }
     
     cache_addentry(passwd_name_cache, pwd);
     cache_addentry(passwd_uid_cache, pwd);
@@ -1471,8 +1483,14 @@ static struct group *_sql_addgroup(cmd_rec *cmd, char *groupname, gid_t gid,
   } else {
     grp = pcalloc(sql_pool, sizeof(struct group));
 
-    if (groupname)
+    if (groupname) {
       grp->gr_name = pstrdup(sql_pool, groupname);
+
+      if (pr_table_add(session.notes, "sql.group", grp->gr_name, 0) < 0) {
+        pr_trace_msg(trace_channel, 8,
+          "error setting 'sql.group' session note: %s", strerror(errno));
+      }
+    }
 
     grp->gr_gid = gid;
 
