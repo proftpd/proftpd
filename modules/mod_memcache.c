@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached -lmemcachedutil$
- * $Id: mod_memcache.c,v 1.12 2011-01-23 00:38:06 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.13 2011-02-13 00:31:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -173,6 +173,7 @@ MODRET set_memcacheservers(cmd_rec *cmd) {
   register unsigned int i;
   config_rec *c;
   char *str = "";
+  int ctxt;
   memcached_server_st *memcache_servers;
 
   if (cmd->argc-1 < 1) {
@@ -191,13 +192,16 @@ MODRET set_memcacheservers(cmd_rec *cmd) {
     CONF_ERROR(cmd, "unable to parse server parameters");
   }
 
-#if 0
-  /* XXX If we're the "server config" context, set the server list now.
-   * This would let mod_memcache talk to those servers for e.g. ftpdctl
-   * actions.
-   */
-  memcache_set_servers(memcache_servers);
-#endif
+  ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+    cmd->config->config_type : cmd->server->config_type ?
+    cmd->server->config_type : CONF_ROOT);
+
+  if (ctxt == CONF_ROOT) {
+    /* If we're the "server config" context, set the server list now.  This
+     * would let mod_memcache talk to those servers for e.g. ftpdctl actions.
+     */
+    memcache_set_servers(memcache_servers);
+  }
 
   c->argv[0] = memcache_servers;
   return PR_HANDLED(cmd);
