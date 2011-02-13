@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.196 2011-02-13 01:25:38 castaglia Exp $
+ * $Id: mod_sql.c,v 1.197 2011-02-13 17:53:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2242,11 +2242,16 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
         sstrncpy(argp, session.xfer.path, sizeof(arg));
 
       } else {
-        /* Some commands (i.e. DELE) have associated filenames that are not
-         * stored in the session.xfer structure; these should be expanded
+        /* Some commands (i.e. DELE, MKD, RMD, XMKD, and XRMD) have associated
+         * filenames that are not stored in the session.xfer structure; these
+         * should be expanded
          * properly as well.
          */
-        if (strcmp(cmd->argv[0], C_DELE) == 0) {
+        if (strcmp(cmd->argv[0], C_DELE) == 0 ||
+            strcmp(cmd->argv[0], C_MKD) == 0 ||
+            strcmp(cmd->argv[0], C_RMD) == 0 ||
+            strcmp(cmd->argv[0], C_XMKD) == 0 ||
+            strcmp(cmd->argv[0], C_XRMD) == 0) {
           char *path;
 
           path = dir_best_path(cmd->tmp_pool,

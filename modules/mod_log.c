@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.111 2010-12-11 21:06:32 castaglia Exp $
+ * $Id: mod_log.c,v 1.112 2011-02-13 17:53:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -796,19 +796,24 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
         sstrncpy(argp, session.xfer.path, sizeof(arg));
 
       } else {
-        /* Some commands (i.e. DELE) have associated filenames that are not
-         * stored in the session.xfer structure; these should be expanded
-         * properly as well.
+        /* Some commands (i.e. DELE, MKD, XMKD, RMD, XRMD) have associated
+         * filenames that are not stored in the session.xfer structure; these
+         * should be expanded properly as well.
          */
-        if (strcmp(cmd->argv[0], C_DELE) == 0) {
+        if (strcmp(cmd->argv[0], C_DELE) == 0 ||
+            strcmp(cmd->argv[0], C_MKD) == 0 ||
+            strcmp(cmd->argv[0], C_XMKD) == 0 ||
+            strcmp(cmd->argv[0], C_RMD) == 0 ||
+            strcmp(cmd->argv[0], C_XRMD) == 0) {
           char *path;
 
           path = dir_best_path(cmd->tmp_pool,
             pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
           sstrncpy(arg, path, sizeof(arg));
 
-        } else
+        } else {
           sstrncpy(argp, "-", sizeof(arg));
+        }
       }
 
       m++;

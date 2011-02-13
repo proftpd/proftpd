@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1284 2011-02-12 17:39:08 castaglia Exp $
+$Id: NEWS,v 1.1285 2011-02-13 17:53:37 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -30,6 +30,7 @@ CVS
 - Bug 3585 - Allow client-requested SSL session renegotiation when securely
   supported.
 - Bug 3586 - mod_sftp behaves badly when receiving badly formed SSH messages.
+- Bug 3591 - %F LogFormat variable should work for MKD/RMD commands.
 
 1.3.4rc1 - Released 17-Dec-2010
 --------------------------------
