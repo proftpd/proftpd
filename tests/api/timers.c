@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2010 The ProFTPD Project team
+ * Copyright (c) 2008-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * Timers API tests
- * $Id: timers.c,v 1.4 2010-12-27 05:27:26 castaglia Exp $
+ * $Id: timers.c,v 1.5 2011-02-14 00:46:01 castaglia Exp $
  */
 
 #include "tests.h"
@@ -252,6 +252,18 @@ START_TEST (timer_sleep_test) {
 }
 END_TEST
 
+START_TEST (timer_usleep_test) {
+  int res;
+
+  res = pr_timer_usleep(0);
+  fail_unless(res == -1, "Failed to handle sleep len of zero");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pr_timer_usleep(500000);
+  fail_unless(res == 0, "Failed to sleep: %s", strerror(errno));
+}
+END_TEST
+
 Suite *tests_get_timers_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -267,6 +279,7 @@ Suite *tests_get_timers_suite(void) {
   tcase_add_test(testcase, timer_remove_multi_test);
   tcase_add_test(testcase, timer_reset_test);
   tcase_add_test(testcase, timer_sleep_test);
+  tcase_add_test(testcase, timer_usleep_test);
 
   /* Allow a longer timeout on these tests, as they will need a second or
    * two to actually run through the test itself, plus overhead.

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: timers.h,v 1.16 2010-08-11 14:56:36 castaglia Exp $
+ * $Id: timers.h,v 1.17 2011-02-14 00:46:01 castaglia Exp $
  */
 
 #ifndef PR_TIMERS_H
@@ -63,12 +63,17 @@ int pr_timer_remove(int timerno, module *m);
  */
 int pr_timer_reset(int timerno, module *m);
 
-/* This is a convenience function that can be used to "sleep" for the
- * given number of seconds.  This function can be used instead of
- * the sleep(3) function, for it cannot be interrupted by signals or
- * other timers.
+/* This is a convenience function that can be used to "sleep" for the given
+ * number of seconds.  This function can be used instead of the sleep(3)
+ * function, for it cannot be interrupted by signals or other timers.
  */
 int pr_timer_sleep(int secs);
+
+/* This is a convenience function that can be used to "sleep" for the given
+ * number of microseconds.  This function can be used instead of the usleep(3)
+ * function, for it cannot be interrupted by signals or other timers.
+ */
+int pr_timer_usleep(unsigned long usecs);
 
 /* For internal use only. */
 void handle_alarm(void);

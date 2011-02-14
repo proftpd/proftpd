@@ -24,7 +24,7 @@
  */
 
 /* Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.35 2011-01-12 06:54:49 castaglia Exp $
+ * $Id: timers.c,v 1.36 2011-02-14 00:46:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -481,6 +481,24 @@ int pr_timer_sleep(int seconds) {
     sigsuspend(&oset);
     handle_alarm();
   }
+
+  return 0;
+}
+
+int pr_timer_usleep(unsigned long usecs) {
+  struct timeval tv;
+
+  if (usecs == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  tv.tv_sec = (usecs / 1000000);
+  tv.tv_usec = (usecs - (tv.tv_sec * 1000000));
+
+  pr_signals_block();
+  (void) select(0, NULL, NULL, NULL, &tv);
+  pr_signals_unblock();
 
   return 0;
 }
