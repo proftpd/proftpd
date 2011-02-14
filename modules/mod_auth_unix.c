@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.47 2011-01-13 18:12:49 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.48 2011-02-14 22:41:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -128,6 +128,7 @@ extern unsigned char persistent_passwd;
 /* mod_auth_unix option flags */
 #define AUTH_UNIX_OPT_AIX_NO_RLOGIN		0x0001
 #define AUTH_UNIX_OPT_NO_GETGROUPLIST		0x0002
+#define AUTH_UNIX_OPT_MAGIC_TOKEN_CHROOT	0x0004
 
 static unsigned long auth_unix_opts = 0UL;
 
@@ -206,8 +207,9 @@ static struct passwd *p_getpwnam(const char *name) {
   while ((pw = p_getpwent()) != NULL) {
     pr_signals_handle();
 
-    if (strcmp(name, pw->pw_name) == 0)
+    if (strcmp(name, pw->pw_name) == 0) {
       break;
+    }
   }
 
   return pw;
@@ -338,11 +340,92 @@ MODRET pw_getpwnam(cmd_rec *cmd) {
   const char *name;
 
   name = cmd->argv[0];
-  if (persistent_passwd)
+  if (persistent_passwd) {
     pw = p_getpwnam(name);
 
-  else
+  } else {
     pw = getpwnam(name);
+  }
+
+  if (auth_unix_opts & AUTH_UNIX_OPT_MAGIC_TOKEN_CHROOT) {
+    char *home_dir, *ptr;
+
+    /* Here is where we do the "magic token" chroot monstrosity inflicted
+     * on the world by wu-ftpd.
+     *
+     * If the magic token '/./' appears in the user's home directory, the
+     * directory portion before the token is the directory to use for
+     * the chroot; the directory portion after the token is the directory
+     * to use for the initial chdir.
+     */
+
+    home_dir = pstrdup(cmd->tmp_pool, pw->pw_dir);
+
+    /* We iterate through the home directory string since it is possible
+     * for the '.' character to appear without it being part of the magic
+     * token.
+     */
+    ptr = strchr(home_dir, '.');
+    while (ptr != NULL) {
+      pr_signals_handle();
+
+      /* If we're at the start of the home directory string, stop looking:
+       * this home directory is not really valid anyway.
+       */
+      if (ptr == home_dir) {
+        break;
+      }
+
+      /* Back up one character. */
+      ptr--;
+
+      /* If we're at the start of the home directory now, stop looking:
+       * this home directory cannot contain a valid magic token.  I.e.
+       *
+       * /./home/foo
+       *
+       * cannot be valid, as there is no directory portion before the
+       * token.
+       */
+      if (ptr == home_dir) {
+        break;
+      }
+
+      if (strncmp(ptr, "/./", 3) == 0) {
+        char *default_chdir;
+        config_rec *c;
+
+        *ptr = '\0';
+        default_chdir = pstrdup(cmd->tmp_pool, ptr + 2);
+
+        /* In order to make sure that this user is chrooted to this
+         * directory, we remove all DefaultRoot directives and add a new
+         * one.  Same for the DefaultChdir directive.
+         */
+
+        (void) remove_config(main_server->conf, "DefaultRoot", FALSE);
+        c = add_config_param_set(&main_server->conf, "DefaultRoot", 1, NULL);
+        c->argv[0] = pstrdup(c->pool, home_dir);
+
+        (void) remove_config(main_server->conf, "DefaultChdir", FALSE);
+        c = add_config_param_set(&main_server->conf, "DefaultChdir", 1, NULL);
+        c->argv[0] = pstrdup(c->pool, default_chdir);
+
+        pr_log_debug(DEBUG9, "AuthUnixOption magicTokenChroot: "
+          "found magic token in '%s', using 'DefaultRoot %s' and "
+          "'DefaultChdir %s'", pw->pw_dir, home_dir, default_chdir);
+
+        /* We need to use a long-lived memory pool for overwriting the
+         * normal home directory.
+         */
+        pw->pw_dir = pstrdup(session.pool, home_dir);
+
+        break;
+      }
+
+      ptr = strchr(ptr + 2, '.');
+    }
+  }
 
   return pw ? mod_create_data(cmd, pw) : PR_DECLINED(cmd);
 }
@@ -1126,6 +1209,9 @@ MODRET set_authunixoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "noGetgrouplist") == 0) {
       opts |= AUTH_UNIX_OPT_NO_GETGROUPLIST;
+
+    } else if (strcmp(cmd->argv[i], "magicTokenChroot") == 0) {
+      opts |= AUTH_UNIX_OPT_MAGIC_TOKEN_CHROOT;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown AuthUnixOption '",
