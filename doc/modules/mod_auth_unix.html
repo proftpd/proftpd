@@ -52,6 +52,24 @@ currently implemented options are:
   </li>
 
   <p>
+  <li><code>magicTokenChroot</code><br>
+    <p>
+    This option causes <code>mod_auth_unix</code> to examine the home
+    directory retrieved for a user for the magic "/./" token.  If found,
+    the portion of the directory before the token will be used for the
+    <code>chroot()</code> for the process; the portion after the token
+    will be the default directory for the process.
+
+    <p>
+    <b>Note</b> that this will override any configured <code>DefaultRoot</code>
+    and <code>DefaultChdir</code> directives.
+
+    <p>
+    This option is intended for use for sites which are migrating from
+    old <code>wuftpd</code>-based installations.
+  </li>
+
+  <p>
   <li><code>noGetgrouplist</code><br>
     <p>
     On systems which support it, the <code>getgrouplist(3)</code> function
@@ -117,12 +135,12 @@ The <code>mod_auth_unix</code> module is compiled by default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-06-23 00:03:26 $</i><br>
+Last Updated: <i>$Date: 2011-02-14 22:46:12 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2010<br>
+&copy; Copyright 2010-2011<br>
  All Rights Reserved<br>
 </i></b></font>
 
