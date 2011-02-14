@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key exchange (kex)
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.19 2010-11-16 19:20:25 castaglia Exp $
+ * $Id: kex.c,v 1.20 2011-02-14 22:21:54 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -739,11 +739,36 @@ static int create_kexrsa(struct sftp_kex *kex, int type) {
   }
 
   if (type == SFTP_KEXRSA_SHA1) {
+    BIGNUM *e = NULL;
+
+#if OPENSSL_VERSION_NUMBER > 0x000908000L
+    e = BN_new();
+    if (e == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error allocated BIGNUM: %s", sftp_crypto_get_errors());
+      return -1;
+    }
+
+    if (BN_set_word(e, 17) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error setting BIGNUM word: %s", sftp_crypto_get_errors());
+      BN_free(e);
+      return -1;
+    }
+
+    if (RSA_generate_key_ex(rsa, SFTP_KEXRSA_SHA1_SIZE, e, NULL) != 1) {
+#else
     rsa = RSA_generate_key(SFTP_KEXRSA_SHA1_SIZE, 17, NULL, NULL);
-    if (!rsa) {
+    if (rsa == NULL) {
+#endif /* OpenSSL version 0.9.8 and later */
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error generating %u-bit RSA key: %s", SFTP_KEXRSA_SHA1_SIZE,
         sftp_crypto_get_errors());
+
+      if (e != NULL) {
+        BN_free(e);
+      }
+
       return -1;
     }
 
@@ -752,11 +777,36 @@ static int create_kexrsa(struct sftp_kex *kex, int type) {
 #if (OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
     (OPENSSL_VERSION_NUMBER > 0x000908000L)
   } else if (type == SFTP_KEXRSA_SHA256) {
+    BIGNUM *e = NULL;
+
+#if OPENSSL_VERSION_NUMBER > 0x000908000L
+    e = BN_new();
+    if (e == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error allocated BIGNUM: %s", sftp_crypto_get_errors());
+      return -1;
+    }
+
+    if (BN_set_word(e, 65537) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error setting BIGNUM word: %s", sftp_crypto_get_errors());
+      BN_free(e);
+      return -1;
+    }
+
+    if (RSA_generate_key_ex(rsa, SFTP_KEXRSA_SHA256_SIZE, e, NULL) != 1) {
+#else
     rsa = RSA_generate_key(SFTP_KEXRSA_SHA256_SIZE, 65537, NULL, NULL);
-    if (!rsa) {
+    if (rsa == NULL) {
+#endif /* OpenSSL version 0.9.8 and later */
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error generating %u-bit RSA key: %s", SFTP_KEXRSA_SHA256_SIZE,
         sftp_crypto_get_errors());
+
+      if (e != NULL) {
+        BN_free(e);
+      }
+
       return -1;
     }
 

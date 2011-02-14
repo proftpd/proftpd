@@ -3747,10 +3747,36 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
 }
 
 static RSA *tls_rsa_cb(SSL *ssl, int is_export, int keylength) {
-  if (tls_tmp_rsa)
-    return tls_tmp_rsa;
+  BIGNUM *e = NULL;
 
+  if (tls_tmp_rsa) {
+    return tls_tmp_rsa;
+  }
+
+#if OPENSSL_VERSION_NUMBER > 0x000908000L
+  e = BN_new();
+  if (e == NULL) {
+    return NULL;
+  }
+
+  if (BN_set_word(e, RSA_F4) != 1) {
+    BN_free(e);
+    return NULL;
+  }
+
+  if (RSA_generate_key_ex(tls_tmp_rsa, keylength, e, NULL) != 1) {
+    BN_free(e);
+    return NULL;
+  }
+
+#else
   tls_tmp_rsa = RSA_generate_key(keylength, RSA_F4, NULL, NULL);
+#endif /* OpenSSL version 0.9.8 and later */
+
+  if (e != NULL) {
+    BN_free(e);
+  }
+
   return tls_tmp_rsa;
 }
 
