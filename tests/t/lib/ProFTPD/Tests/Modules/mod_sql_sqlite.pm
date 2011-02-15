@@ -6607,7 +6607,7 @@ EOS
         SQLConnectInfo => $db_file,
         SQLMinID => 100,
         SQLLogFile => $log_file,
-        SQLNamedQuery => 'sql_notes FREEFORM "INSERT INTO ftpnotes (user, primary_group, home, shell) VALUES (\'%u\', \'%{note:sql.group}\', \'%{note:sql.home}\', \'%{note:sql.shell}\')"',
+        SQLNamedQuery => 'sql_notes FREEFORM "INSERT INTO ftpnotes (user, primary_group, home, shell) VALUES (\'%u\', \'%{note:primary-group}\', \'%{note:home}\', \'%{note:shell}\')"',
         SQLLog => 'PASS sql_notes',
       },
     },
