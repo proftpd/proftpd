@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.47 2011-01-12 06:54:49 castaglia Exp $
+ * $Id: mod_delay.c,v 1.48 2011-02-15 21:29:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -248,8 +248,8 @@ static long delay_get_median(pool *p, unsigned int rownum, const char *protocol,
       /* Ignore any possible garbage (i.e. negative) values in the
        * DelayTable.
        */
-      if (tab_vals[DELAY_NVALUES - i] >= 0) {
-        *((long *) push_array(list)) = tab_vals[DELAY_NVALUES - i];
+      if (tab_vals[DELAY_NVALUES - 1 - i] >= 0) {
+        *((long *) push_array(list)) = tab_vals[DELAY_NVALUES - 1 - i];
       }
     }
   }
@@ -950,7 +950,8 @@ static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
         char buf[80];
 
         memset(buf, '\0', sizeof(buf));
-        snprintf(buf, sizeof(buf)-1, "%10ld", dv->dv_vals[DELAY_NVALUES - j]);
+        snprintf(buf, sizeof(buf)-1, "%10ld",
+          dv->dv_vals[DELAY_NVALUES - 1 - j]);
 
         vals = pstrcat(tmp_pool, vals, " ", buf, NULL);
 
@@ -990,7 +991,8 @@ static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
         char buf[80];
 
         memset(buf, '\0', sizeof(buf));
-        snprintf(buf, sizeof(buf)-1, "%10ld", dv->dv_vals[DELAY_NVALUES - j]);
+        snprintf(buf, sizeof(buf)-1, "%10ld",
+          dv->dv_vals[DELAY_NVALUES - 1 - j]);
 
         vals = pstrcat(tmp_pool, vals, " ", buf, NULL);
 
