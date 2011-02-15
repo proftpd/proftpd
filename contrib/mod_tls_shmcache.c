@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_shmcache.c,v 1.8 2011-01-24 05:54:40 castaglia Exp $
+ *  $Id: mod_tls_shmcache.c,v 1.9 2011-02-15 21:35:18 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -792,7 +792,7 @@ static int shmcache_close(tls_sess_cache_t *cache) {
 static int shmcache_add_large_sess(tls_sess_cache_t *cache,
     unsigned char *sess_id, unsigned int sess_id_len, time_t expires,
     SSL_SESSION *sess, int sess_len) {
-  struct shmcache_large_entry *entry;
+  struct shmcache_large_entry *entry = NULL;
 
   if (sess_len > TLS_MAX_SSL_SESSION_SIZE) {
     /* We may get sessions to add to the list which do not exceed the max
@@ -841,6 +841,12 @@ static int shmcache_add_large_sess(tls_sess_cache_t *cache,
     shmcache_sess_list = make_array(cache->cache_pool, 1,
       sizeof(struct shmcache_large_entry));
     entry = push_array(shmcache_sess_list);
+  }
+
+  /* Be defensive, and catch the case where entry might still be null here. */
+  if (entry == NULL) {
+    errno = EPERM;
+    return -1;
   }
 
   entry->expires = expires;
