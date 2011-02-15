@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.390 2011-01-12 06:54:49 castaglia Exp $
+ * $Id: mod_core.c,v 1.391 2011-02-15 00:58:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1815,17 +1815,43 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg = NULL;
   config_rec *c = NULL;
-  int res = 0;
+  int regex_flags = REG_EXTENDED|REG_NOSUB, res = 0;
 
-  CHECK_ARGS(cmd, 1);
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 2) {
+    CONF_ERROR(cmd, "bad number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR|
     CONF_DYNDIR);
+
+  /* Make sure that, if present, the flags parameter is correctly formatted. */
+  if (cmd->argc-1 == 2) {
+    int flags = 0;
+
+    /* We need to parse the flags parameter here, to see if any flags which
+     * affect the compilation of the regex (e.g. NC) are present.
+     */
+
+    flags = pr_filter_parse_flags(cmd->tmp_pool, cmd->argv[2]);
+    if (flags < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": badly formatted flags parameter: '", cmd->argv[2], "'", NULL));
+    }
+
+    if (flags == 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": unknown filter flags '", cmd->argv[2], "'", NULL));
+    }
+
+    regex_flags |= flags;
+  }
 
   pr_log_debug(DEBUG4, "%s: compiling %s regex '%s'", cmd->argv[0], type,
     cmd->argv[1]);
   preg = pr_regexp_alloc();
 
-  res = regcomp(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  res = regcomp(preg, cmd->argv[1], regex_flags);
   if (res != 0) {
     char errstr[200] = {'\0'};
 

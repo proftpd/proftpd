@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009 The ProFTPD Project team
+ * Copyright (c) 2009-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: filter.c,v 1.1 2009-02-22 00:28:07 castaglia Exp $
+ * $Id: filter.c,v 1.2 2011-02-15 00:58:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -62,4 +62,26 @@ int pr_filter_allow_path(xaset_t *set, const char *path) {
 #else
   return 0;
 #endif
+}
+
+int pr_filter_parse_flags(pool *p, const char *flags_str) {
+  if (p == NULL ||
+      flags_str == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (flags_str[0] != '[' ||
+      flags_str[strlen(flags_str)-1] != ']') {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Right now, we only support "[NC]", for "no case", i.e. REG_ICASE. */
+  if (strcmp(flags_str, "[NC]") == 0 ||
+      strcmp(flags_str, "[nocase]") == 0) {
+    return REG_ICASE;
+  }
+
+  return 0;
 }
