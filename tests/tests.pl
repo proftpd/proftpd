@@ -119,6 +119,7 @@ if (scalar(@ARGV) > 0) {
     t/config/hidegroup.t
     t/config/hidenoaccess.t
     t/config/hideuser.t
+    t/config/include.t
     t/config/maxclients.t
     t/config/maxclientsperhost.t
     t/config/maxcommandrate.t
