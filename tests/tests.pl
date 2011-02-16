@@ -292,6 +292,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_tls)],
     },
 
+    't/modules/mod_tls_memcache.t' => {
+      order => ++$order,
+      test_class => [qw(mod_tls_memcache)],
+    },
+
     't/modules/mod_tls_shmcache.t' => {
       order => ++$order,
       test_class => [qw(mod_tls_shmcache)],
