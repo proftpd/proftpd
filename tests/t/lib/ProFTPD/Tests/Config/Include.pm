@@ -480,6 +480,19 @@ EOC
     print $fh <<EOC;
 <Limit STOR>
   Order allow,deny
+EOC
+
+    unless (close($fh)) {
+      die("Can't write $include_config: $!");
+    }
+
+  } else {
+    die("Can't open $include_config: $!");
+  }
+
+  $include_config = File::Spec->rel2abs("$include_dir/c.conf");
+  if (open(my $fh, "> $include_config")) {
+    print $fh <<EOC;
   AllowUser $user
   DenyAll
 </Limit>
