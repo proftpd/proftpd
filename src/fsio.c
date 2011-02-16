@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.95 2011-01-11 00:52:24 castaglia Exp $
+ * $Id: fsio.c,v 1.96 2011-02-16 19:10:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3786,6 +3786,7 @@ static int fs_getsize(char *path, off_t *fs_size) {
   struct statvfs fs;
 #  endif /* LFS && !Solaris 2.5.1 && !Solaris 2.6 && !Solaris 2.7 */
 
+  pr_trace_msg(trace_channel, 18, "using statvfs() on '%s'", path);
   if (statvfs(path, &fs) < 0) {
     int xerrno = errno;
 
@@ -3802,15 +3803,18 @@ static int fs_getsize(char *path, off_t *fs_size) {
    */
   if (sizeof(fs.f_bavail) > 4 ||
       sizeof(fs.f_frsize) > 4) {
-    return ((off_t) fs.f_bavail * (off_t) fs.f_frsize);
+    *fs_size = ((off_t) fs.f_bavail * (off_t) fs.f_frsize);
 
   } else {
-    return calc_fs_size(fs.f_bavail, fs.f_frsize);
+    *fs_size = calc_fs_size(fs.f_bavail, fs.f_frsize);
   }
+
+  return 0;
 
 # elif defined(HAVE_SYS_VFS_H)
   struct statfs fs;
 
+  pr_trace_msg(trace_channel, 18, "using statfs() on '%s'", path);
   if (statfs(path, &fs) < 0) {
     int xerrno = errno;
 
@@ -3827,15 +3831,18 @@ static int fs_getsize(char *path, off_t *fs_size) {
    */
   if (sizeof(fs.f_bavail) > 4 ||
       sizeof(fs.f_bsize) > 4) {
-    return ((off_t) fs.f_bavail * (off_t) fs.f_bsize);
+    *fs_size = ((off_t) fs.f_bavail * (off_t) fs.f_bsize);
 
   } else {
-    return calc_fs_size(fs.f_bavail, fs.f_bsize);
+    *fs_size = calc_fs_size(fs.f_bavail, fs.f_bsize);
   }
+
+  return 0;
 
 # elif defined(HAVE_STATFS)
   struct statfs fs;
 
+  pr_trace_msg(trace_channel, 18, "using statfs() on '%s'", path);
   if (statfs(path, &fs) < 0) {
     int xerrno = errno;
 
@@ -3852,11 +3859,13 @@ static int fs_getsize(char *path, off_t *fs_size) {
    */
   if (sizeof(fs.f_bavail) > 4 ||
       sizeof(fs.f_bsize) > 4) {
-    return ((off_t) fs.f_bavail * (off_t) fs.f_bsize);
+    *fs_size = ((off_t) fs.f_bavail * (off_t) fs.f_bsize);
 
   } else {
-    return calc_fs_size(fs.f_bavail, fs.f_bsize);
+    *fs_size = calc_fs_size(fs.f_bavail, fs.f_bsize);
   }
+
+  return 0;
 
 # endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
   errno = ENOSYS;

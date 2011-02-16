@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.5 2011-02-15 03:19:29 castaglia Exp $
+ * $Id: display.c,v 1.6 2011-02-16 19:10:42 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -60,6 +60,9 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
       strerror(errno));
     fs_size = 0;
   }
+
+  snprintf(mg_size, sizeof(mg_size), "%" PR_LU, (pr_off_t) fs_size);
+  format_size_str(mg_size_units, sizeof(mg_size_units), fs_size);
 
   mg_time = pr_strtime(time(NULL));
 

@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.23 2011-02-12 17:45:14 castaglia Exp $
+ * $Id: display.c,v 1.24 2011-02-16 19:10:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -165,6 +165,9 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
       fh->fh_path, strerror(errno));
     fs_size = 0;
   }
+
+  snprintf(mg_size, sizeof(mg_size), "%" PR_LU, (pr_off_t) fs_size);
+  format_size_str(mg_size_units, sizeof(mg_size_units), fs_size);
 
   p = make_sub_pool(session.pool);
   pr_pool_tag(p, "Display Pool");
