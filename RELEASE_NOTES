@@ -12,6 +12,12 @@ ChangeLog files.
   + New --enable-memcache configuration option;
     see doc/modules/mod_memcache.html
 
+  + New modules
+
+    mod_tls_memcache
+
+      See doc/contrib/mod_tls_memcache.html
+
   + Changed configuration directives:
 
     PathAllowFilter, PathDenyFilter
@@ -180,4 +186,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2011-02-15 00:59:37 $
+Last Updated: $Date: 2011-02-16 00:06:45 $

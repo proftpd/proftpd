@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1287 2011-02-15 20:06:22 castaglia Exp $
+$Id: NEWS,v 1.1288 2011-02-16 00:06:45 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -34,6 +34,7 @@ CVS
 - Bug 3592 - Support case-insensitivity option for
   PathAllowFilter/PathDenyFilter directives.
 - Bug 3593 - Using "$shell $libtool" in prxs does not work for all shells.
+- Added new mod_tls_memcache contrib module.
 
 1.3.4rc1 - Released 17-Dec-2010
 --------------------------------
