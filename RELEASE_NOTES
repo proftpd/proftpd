@@ -23,6 +23,9 @@ ChangeLog files.
     PathAllowFilter, PathDenyFilter
       [NC|nocase] flags
 
+    SFTPOptions
+      IgnoreSFTPSetPerms
+
     SFTPPAMOptions
       NoInfoMsgs
 
@@ -186,4 +189,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2011-02-16 00:06:45 $
+Last Updated: $Date: 2011-02-17 00:49:44 $
