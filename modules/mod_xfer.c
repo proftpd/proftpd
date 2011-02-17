@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.282 2011-01-12 06:54:49 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.283 2011-02-17 02:12:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1317,8 +1317,18 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
     /* If we're using HiddenStores, then REST won't work. */
     if (session.restart_pos) {
+      pr_log_debug(DEBUG9, "HiddenStore in effect, refusing restarted upload");
       pr_response_add_err(R_501,
         _("REST not compatible with server configuration"));
+      errno = EINVAL;
+      return PR_ERROR(cmd);
+    }
+
+    /* APPE is not compatible with HiddenStores either (Bug#3598) */
+    if (session.xfer.xfer_type == STOR_APPEND) {
+      pr_log_debug(DEBUG9, "HiddenStore in effect, refusing APPE upload");
+      pr_response_add_err(R_550,
+        _("APPE not compatible with server configuration"));
       errno = EINVAL;
       return PR_ERROR(cmd);
     }
