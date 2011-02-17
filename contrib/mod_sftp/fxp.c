@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.118 2011-02-13 17:35:51 castaglia Exp $
+ * $Id: fxp.c,v 1.119 2011-02-17 00:46:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4969,6 +4969,16 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   }
   cmd->argv[0] = cmd_name;
 
+  /* If the SFTPOption for ignoring the perms for SFTP setstat requests is set,
+   * handle it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.
+   */
+  if ((sftp_opts & SFTP_OPT_IGNORE_SFTP_SET_PERMS) &&
+      (attr_flags & SSH2_FX_ATTR_PERMISSIONS)) {
+    pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPSetPerms' "
+      "configured, ignoring perms sent by client");
+    attr_flags &= ~SSH2_FX_ATTR_PERMISSIONS;
+  }
+
   if (fxh->fh != NULL) {
     res = fxp_attrs_set(fxh->fh, fxh->fh->fh_path, attrs, attr_flags, &buf,
       &buflen, fxp);
@@ -8445,6 +8455,16 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
   cmd->argv[0] = cmd_name;
+
+  /* If the SFTPOption for ignoring the perms for SFTP setstat requests is set,
+   * handle it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.
+   */
+  if ((sftp_opts & SFTP_OPT_IGNORE_SFTP_SET_PERMS) &&
+      (attr_flags & SSH2_FX_ATTR_PERMISSIONS)) {
+    pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPSetPerms' "
+      "configured, ignoring perms sent by client");
+    attr_flags &= ~SSH2_FX_ATTR_PERMISSIONS;
+  }
 
   res = fxp_attrs_set(NULL, path, attrs, attr_flags, &buf, &buflen, fxp);
   if (res < 0) {

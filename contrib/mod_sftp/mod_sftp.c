@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.43 2011-02-12 17:39:08 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.44 2011-02-17 00:46:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1225,6 +1225,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
   for (i = 1; i < cmd->argc; i++) {
     if (strcmp(cmd->argv[i], "IgnoreSFTPUploadPerms") == 0) {
       opts |= SFTP_OPT_IGNORE_SFTP_UPLOAD_PERMS;
+
+    } else if (strcmp(cmd->argv[i], "IgnoreSFTPSetPerms") == 0) {
+      opts |= SFTP_OPT_IGNORE_SFTP_SET_PERMS;
 
     } else if (strcmp(cmd->argv[i], "IgnoreSCPUploadPerms") == 0) {
       opts |= SFTP_OPT_IGNORE_SCP_UPLOAD_PERMS;
