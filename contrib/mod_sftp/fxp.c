@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.119 2011-02-17 00:46:47 castaglia Exp $
+ * $Id: fxp.c,v 1.120 2011-02-18 23:14:44 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5816,7 +5816,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
 static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   char *buf, *cmd_name, *ptr, *path;
   struct stat *attrs;
-  int have_error = FALSE;
+  int have_error = FALSE, res = 0;
   mode_t dir_mode;
   uint32_t attr_flags, buflen, bufsz, status_code;
   struct fxp_packet *resp;
@@ -5971,7 +5971,8 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "creating directory '%s' with mode 0%o", path, (unsigned int) dir_mode);
 
-  if (pr_fsio_mkdir(path, dir_mode) < 0) {
+  res = pr_fsio_mkdir(path, dir_mode);
+  if (res < 0) {
     const char *reason;
     int xerrno = errno;
 
@@ -8158,7 +8159,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
   cmd_rec *cmd, *cmd2;
-  int have_error = FALSE;
+  int have_error = FALSE, res = 0;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
@@ -8295,7 +8296,8 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (pr_fsio_rmdir(path) < 0) {
+  res = pr_fsio_rmdir(path);
+  if (res < 0) {
     int xerrno = errno;
 
     (void) pr_trace_msg("fileperms", 1, "RMDIR, user '%s' (UID %lu, GID %lu): "
@@ -8306,45 +8308,43 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error removing directory '%s': %s", path, strerror(xerrno));
 
-    errno = xerrno;
+#if defined(ENOTEMPTY) && ENOTEMPTY != EEXIST
+    status_code = fxp_errno2status(xerrno, &reason);
+
+#else
+    /* On AIX5, ENOTEMPTY and EEXIST are defined to the same value.  See:
+     *
+     *  http://forums.proftpd.org/smf/index.php/topic,3971.0.html
+     *
+     * We still want to send the proper SFTP error code/string if we see
+     * these values, though.  The fix for handling this case in
+     * fxp_errno2status() means that we need to do the errno lookup a little
+     * more manually here.
+     */
+
+    if (xerrno != ENOTEMPTY) {
+      status_code = fxp_errno2status(xerrno, &reason);
+
+    } else {
+      /* Generic failure code, works for all protocol versions. */
+      status_code = SSH2_FX_FAILURE;
+
+      if (fxp_session->client_version > 3) {
+        status_code = SSH2_FX_FILE_ALREADY_EXISTS;
+      }
+
+      if (fxp_session->client_version > 5) {
+        status_code = SSH2_FX_DIR_NOT_EMPTY;
+      }
+
+      reason = fxp_strerror(status_code);
+    }
+#endif
 
   } else {
     /* No error. */
-    errno = 0;
+    status_code = SSH2_FX_OK;
   }
-
-#if defined(ENOTEMPTY) && ENOTEMPTY != EEXIST
-  status_code = fxp_errno2status(errno, &reason);
-
-#else
-  /* On AIX5, ENOTEMPTY and EEXIST are defined to the same value.  See:
-   *
-   *  http://forums.proftpd.org/smf/index.php/topic,3971.0.html
-   *
-   * We still want to send the proper SFTP error code/string if we see
-   * these values, though.  The fix for handling this case in
-   * fxp_errno2status() means that we need to do the errno lookup a little
-   * more manually here.
-   */
-
-  if (errno != ENOTEMPTY) {
-    status_code = fxp_errno2status(errno, &reason);
-
-  } else {
-    /* Generic failure code, works for all protocol versions. */
-    status_code = SSH2_FX_FAILURE;
-
-    if (fxp_session->client_version > 3) {
-      status_code = SSH2_FX_FILE_ALREADY_EXISTS;
-    }
-
-    if (fxp_session->client_version > 5) {
-      status_code = SSH2_FX_DIR_NOT_EMPTY;
-    }
-
-    reason = fxp_strerror(status_code);
-  }
-#endif
 
   pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
     "('%s' [%d])", (unsigned long) status_code, reason,
@@ -8352,9 +8352,9 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
 
   fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
 
-  pr_cmd_dispatch_phase(cmd2, errno == 0 ? POST_CMD : POST_CMD_ERR, 0);
-  pr_cmd_dispatch_phase(cmd2, errno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
-  pr_cmd_dispatch_phase(cmd, errno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+  pr_cmd_dispatch_phase(cmd2, res == 0 ? POST_CMD : POST_CMD_ERR, 0);
+  pr_cmd_dispatch_phase(cmd2, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+  pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
