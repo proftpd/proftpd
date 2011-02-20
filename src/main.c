@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.411 2011-02-14 00:46:01 castaglia Exp $
+ * $Id: main.c,v 1.412 2011-02-20 23:14:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -669,7 +669,8 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
   if (flags & PR_CMD_DISPATCH_FL_CLEAR_RESPONSE) {
     pr_trace_msg("response", 9,
       "clearing response lists before dispatching command '%s'", cmd->argv[0]);
-    resp_list = resp_err_list = NULL;
+    pr_response_clear(&resp_list);
+    pr_response_clear(&resp_err_list);
   }
 
   /* Get any previous pool that may be being used by the Response API.
@@ -701,7 +702,6 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
       success = _dispatch(cmd, PRE_CMD, FALSE, NULL);
 
     if (success < 0) {
-
       /* Dispatch to POST_CMD_ERR handlers as well. */
 
       _dispatch(cmd, POST_CMD_ERR, FALSE, C_ANY);
@@ -717,7 +717,6 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
     }
 
     success = _dispatch(cmd, CMD, FALSE, C_ANY);
-
     if (!success)
       success = _dispatch(cmd, CMD, TRUE, NULL);
 
