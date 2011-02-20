@@ -1,4 +1,4 @@
-<!-- $Id: mod_memcache.html,v 1.3 2011-01-21 00:13:37 castaglia Exp $ -->
+<!-- $Id: mod_memcache.html,v 1.4 2011-02-20 17:30:03 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_memcache.html,v $ -->
 
 <html>
@@ -115,10 +115,19 @@ This option causes the <code>mod_memcache</code> module to be compiled into
 <code>proftpd</code>.
 
 <p>
+You may also need to tell <code>configure</code> how to find the
+<code>libmemcached</code> header and library files:
+<pre>
+  # ./configure --enable-memcache \
+    --with-includes=<i>/path/to/libmemcached/include</i> \
+    --with-libraries=<i>/path/to/libmemcached/lib</i>
+</pre>
+
+<p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-01-21 00:13:37 $</i><br>
+Last Updated: <i>$Date: 2011-02-20 17:30:03 $</i><br>
 
 <br><hr>
 
