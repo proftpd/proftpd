@@ -330,9 +330,22 @@ AC_ARG_WITH(modules,
   [
     if test x"$withval" != x; then
       modules_list=`echo "$withval" | sed -e 's/:/ /g'`;
+
       for amodule in $modules_list; do
         if test x"$amodule" == xmod_dso ; then
           AC_MSG_ERROR([use --enable-dso instead of --with-modules=mod_dso for DSO support])
+        fi
+
+        if test x"$amodule" == xmod_ifsession ; then
+            ifsession_requested="true"
+        fi
+
+        if test x"$amodule" == xmod_memcache ; then
+          AC_MSG_ERROR([use --enable-memcache instead of --with-modules=mod_memcache for Memcache support])
+        fi
+
+        if test x"$amodule" == xmod_lang ; then
+          AC_MSG_ERROR([use --enable-nls instead of --with-modules=mod_lang for NLS/UTF8 support])
         fi
       done
 
@@ -341,6 +354,16 @@ AC_ARG_WITH(modules,
       for amodule in $ac_static_modules; do
         ac_build_static_modules="modules/$amodule $ac_build_static_modules"
       done
+
+      dnl Make sure that mod_ifsession, if present in the list, appears at
+      dnl the end.
+      if test x"$ifsession_requested" == xtrue; then
+        ac_static_modules=`echo "$ac_static_modules" | sed -e 's/mod_ifsession\.o//g'`
+        ac_static_modules="$ac_static_modules mod_ifsession.o"
+
+        ac_build_static_modules=`echo "$ac_build_static_modules" | sed -e 's/modules\/mod_ifsession\.o//g'`
+        ac_build_static_modules="$ac_build_static_modules modules/mod_ifsession.o";
+      fi
     fi
   ])
 
