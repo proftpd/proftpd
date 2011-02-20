@@ -18,6 +18,10 @@ ChangeLog files.
 
       See doc/contrib/mod_tls_memcache.html
 
+  + New configuration directives:
+
+    MaxCommandRate
+
   + Changed configuration directives:
 
     PathAllowFilter, PathDenyFilter
@@ -189,4 +193,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2011-02-17 00:49:44 $
+Last Updated: $Date: 2011-02-20 01:06:52 $
