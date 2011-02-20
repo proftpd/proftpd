@@ -12875,10 +12875,27 @@ if test "${with_modules+set}" = set; then
   withval=$with_modules;
     if test x"$withval" != x; then
       modules_list=`echo "$withval" | sed -e 's/:/ /g'`;
+
       for amodule in $modules_list; do
         if test x"$amodule" == xmod_dso ; then
           { { echo "$as_me:$LINENO: error: use --enable-dso instead of --with-modules=mod_dso for DSO support" >&5
 echo "$as_me: error: use --enable-dso instead of --with-modules=mod_dso for DSO support" >&2;}
+   { (exit 1); exit 1; }; }
+        fi
+
+        if test x"$amodule" == xmod_ifsession ; then
+            ifsession_requested="true"
+        fi
+
+        if test x"$amodule" == xmod_memcache ; then
+          { { echo "$as_me:$LINENO: error: use --enable-memcache instead of --with-modules=mod_memcache for Memcache support" >&5
+echo "$as_me: error: use --enable-memcache instead of --with-modules=mod_memcache for Memcache support" >&2;}
+   { (exit 1); exit 1; }; }
+        fi
+
+        if test x"$amodule" == xmod_lang ; then
+          { { echo "$as_me:$LINENO: error: use --enable-nls instead of --with-modules=mod_lang for NLS/UTF8 support" >&5
+echo "$as_me: error: use --enable-nls instead of --with-modules=mod_lang for NLS/UTF8 support" >&2;}
    { (exit 1); exit 1; }; }
         fi
       done
@@ -12888,6 +12905,14 @@ echo "$as_me: error: use --enable-dso instead of --with-modules=mod_dso for DSO 
       for amodule in $ac_static_modules; do
         ac_build_static_modules="modules/$amodule $ac_build_static_modules"
       done
+
+                  if test x"$ifsession_requested" == xtrue; then
+        ac_static_modules=`echo "$ac_static_modules" | sed -e 's/mod_ifsession\.o//g'`
+        ac_static_modules="$ac_static_modules mod_ifsession.o"
+
+        ac_build_static_modules=`echo "$ac_build_static_modules" | sed -e 's/modules\/mod_ifsession\.o//g'`
+        ac_build_static_modules="$ac_build_static_modules modules/mod_ifsession.o";
+      fi
     fi
 
 fi
@@ -14029,7 +14054,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 14032 "configure"
+#line 14057 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
