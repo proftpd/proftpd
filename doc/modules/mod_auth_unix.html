@@ -131,11 +131,32 @@ from <code>NIS</code> maps or <code>NSS</code> lookups, and local users.
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_auth_unix</code> module is compiled by default.
 
+<p><a name="FAQ">
+<b>Frequently Asked Questions</b><br>
+
+<p><a name="ExpiredPasswords">
+<font color=red>Question</font>: It appears that the handling of expired
+passwords by <code>mod_auth_unix</code> is wrong.  Is this a bug?<br>
+<font color=blue>Answer</font>: Not really.  Different implementations
+have implemented expired passwords differently.  One particular implementation
+even has special values, <i>e.g.</i> for the date of last password change:
+<blockquote>
+  The value 0 has a special meaning, which is that the user should
+  change her pasword the next time she will log in the system.
+</blockquote>
+
+<p>
+These special cases vary from implementation to implementation; in the end,
+it is better to use the
+<a href="mod_auth_pam.html"><code>mod_auth_pam</code></a> module and a PAM
+configuration which can better handle password expiration according to your
+site's needs.
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-02-14 22:46:12 $</i><br>
+Last Updated: <i>$Date: 2011-02-20 17:23:44 $</i><br>
 
 <br><hr>
 
