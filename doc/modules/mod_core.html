@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.4 2011-02-20 01:06:52 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.5 2011-02-20 02:01:09 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -19,11 +19,43 @@ The <code>mod_core</code> module handles most of the core FTP commands.
 
 <h2>Directives</h2>
 <ul>
+  <li><a href="#Include">Include</a>
   <li><a href="#MaxCommandRate">MaxCommandRate</a>
   <li><a href="#ProcessTitles">ProcessTitles</a>
   <li><a href="#Protocols">Protocols</a>
 </ul>
 
+<hr>
+<h2><a name="Include">Include</a></h2>
+<strong>Syntax:</strong> Include <em>path|pattern</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.10rc1 and later
+
+<p>
+The <code>Include</code> directive allows inclusion of other configuration
+files from within the server configuration files.
+
+<p>
+Shell-style (<code>fnmatch(3)</code>) wildcard characters can be used to
+include several files at once, in alphabetical order.  In addition, if
+<code>Include</code> points to a directory, rather than a file, then
+<code>proftpd</code> will read all files in that directory.  <b>Note</b>
+that including entire directories is <b>not</b> recommended, as it is easy to
+accidentally leave temporary files in a directory that can cause
+<code>proftpd</code> to fail.
+
+<p>
+The <em>path</em> must be an absolute path.
+
+Examples:
+<pre>
+  Include /etc/proftpd/conf/tls.conf
+  Include /etc/proftpd/conf/vhosts/*.conf
+</pre>
+
+<p>
 <hr>
 <h2><a name="MaxCommandRate">MaxCommandRate</a></h2>
 <strong>Syntax:</strong> MaxCommandRate <em>count</em> <em>[secs]</em><br>
@@ -135,7 +167,7 @@ The <code>mod_core</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-02-20 01:06:52 $</i><br>
+Last Updated: <i>$Date: 2011-02-20 02:01:09 $</i><br>
 
 <br><hr>
 
