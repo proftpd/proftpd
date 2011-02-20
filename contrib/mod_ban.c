@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.45 2011-01-26 06:45:57 castaglia Exp $
+ * $Id: mod_ban.c,v 1.46 2011-02-20 01:14:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -123,6 +123,7 @@ struct ban_event_entry {
 #define BAN_EV_TYPE_CLIENT_CONNECT_RATE		10
 #define BAN_EV_TYPE_TIMEOUT_LOGIN		11
 #define BAN_EV_TYPE_LOGIN_RATE			12
+#define BAN_EV_TYPE_MAX_CMD_RATE		13
 
 struct ban_event_list {
   struct ban_event_entry bel_entries[BAN_EVENT_LIST_MAXSZ];
@@ -197,6 +198,7 @@ static void ban_clientconnectrate_ev(const void *, void *);
 static void ban_maxclientsperclass_ev(const void *, void *);
 static void ban_maxclientsperhost_ev(const void *, void *);
 static void ban_maxclientsperuser_ev(const void *, void *);
+static void ban_maxcmdrate_ev(const void *, void *);
 static void ban_maxconnperhost_ev(const void *, void *);
 static void ban_maxhostsperuser_ev(const void *, void *);
 static void ban_maxloginattempts_ev(const void *, void *);
@@ -1128,6 +1130,9 @@ static const char *ban_event_entry_typestr(unsigned int type) {
 
     case BAN_EV_TYPE_LOGIN_RATE:
       return "LoginRate";
+
+    case BAN_EV_TYPE_MAX_CMD_RATE:
+      return "MaxCommandRate";
   }
 
   return NULL;
@@ -1534,6 +1539,7 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
           case BAN_EV_TYPE_MAX_CONN_PER_HOST:
           case BAN_EV_TYPE_CLIENT_CONNECT_RATE:
           case BAN_EV_TYPE_LOGIN_RATE:
+          case BAN_EV_TYPE_MAX_CMD_RATE:
             if (!have_banner) {
               pr_ctrls_add_response(ctrl, "Ban Events:");
               have_banner = TRUE;
@@ -2322,6 +2328,11 @@ MODRET set_banonevent(cmd_rec *cmd) {
     pr_event_register(&ban_module, "mod_auth.max-clients-per-user",
       ban_maxclientsperuser_ev, bee);
 
+  } else if (strcasecmp(cmd->argv[1], "MaxCommandRate") == 0) {
+    bee->bee_type = BAN_EV_TYPE_MAX_CMD_RATE;
+    pr_event_register(&ban_module, "core.max-command-rate",
+      ban_maxcmdrate_ev, bee);
+  
   } else if (strcasecmp(cmd->argv[1], "MaxConnectionsPerHost") == 0) {
     bee->bee_type = BAN_EV_TYPE_MAX_CONN_PER_HOST;
     pr_event_register(&ban_module, "mod_auth.max-connections-per-host",
@@ -2619,6 +2630,23 @@ static void ban_maxclientsperuser_ev(const void *event_data, void *user_data) {
 
   ban_handle_event(BAN_EV_TYPE_MAX_CLIENTS_PER_USER, BAN_TYPE_USER,
     user, tmpl);
+}
+
+static void ban_maxcmdrate_ev(const void *event_data, void *user_data) {
+
+  /* For this event, event_data is the client. */
+  conn_t *c = (conn_t *) event_data;
+  const char *ipstr;
+
+  /* user_data is a template of the ban event entry. */
+  struct ban_event_entry *tmpl = user_data;
+
+  if (ban_engine != TRUE)
+    return;
+
+  ipstr = pr_netaddr_get_ipstr(c->remote_addr);
+  ban_handle_event(BAN_EV_TYPE_MAX_CMD_RATE, BAN_TYPE_HOST,
+    ipstr, tmpl);
 }
 
 static void ban_maxconnperhost_ev(const void *event_data, void *user_data) {
