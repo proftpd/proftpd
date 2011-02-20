@@ -1,4 +1,4 @@
-<!-- $Id: mod_log.html,v 1.1 2011-02-20 19:58:38 castaglia Exp $ -->
+<!-- $Id: mod_log.html,v 1.2 2011-02-20 20:00:20 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_log.html,v $ -->
 
 <html>
@@ -36,7 +36,7 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
 
 <p>
 By default, the server will the path of any configured
-<a href="#SystemLog"><code>SystemLog</code>, any configured
+<a href="#SystemLog"><code>SystemLog</code></a>, any configured
 <a href="mod_core.html#TransferLog"><code>TransferLog</code></a>s, and any
 configured <a href="#ExtendedLog"><code>ExtendedLog</code></a>s to see if they
 are symbolic links. If the paths <i>are</i> symbolic links, <code>proftpd</code>
@@ -372,7 +372,7 @@ See also: <a href="#ExtendedLog"><code>ExtendedLog</code></a>, <a href="mod_core
 <p>
 <hr>
 <h2><a name="ServerLog">ServerLog</a></h2>
-<strong>Syntax:</strong> ServerLog <em>path|"none"</em><br>
+<strong>Syntax:</strong> ServerLog <em>path</em>|"none"<br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_log<br>
@@ -391,7 +391,7 @@ this can be used to override a global <code>ServerLog</code> setting.
 <p>
 <hr>
 <h2><a name="SystemLog">SystemLog</a></h2>
-<strong>Syntax:</strong> SystemLog <em>path|"none"</em><br>
+<strong>Syntax:</strong> SystemLog <em>path</em>|"none"<br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_log<br>
@@ -422,7 +422,7 @@ The <code>mod_log</code> module is compiled by default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-02-20 19:58:38 $</i><br>
+Last Updated: <i>$Date: 2011-02-20 20:00:20 $</i><br>
 
 <br><hr>
 
