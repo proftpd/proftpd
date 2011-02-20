@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.391 2011-02-15 00:58:30 castaglia Exp $
+ * $Id: mod_core.c,v 1.392 2011-02-20 01:00:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -116,6 +116,63 @@ static ssize_t get_num_bytes(char *nbytes_str) {
   /* Default return value: the given argument was badly formatted.
    */
   return PR_BYTES_BAD_FORMAT;
+}
+
+/* These are for handling any configured MaxCommandRate. */
+static unsigned long core_cmd_count = 0UL;
+static unsigned long core_max_cmds = 0UL;
+static unsigned int core_max_cmd_interval = 1;
+static time_t core_max_cmd_ts = 0;
+
+static unsigned long core_exceeded_cmd_rate(cmd_rec *cmd) {
+  unsigned long res = 0;
+  long over = 0;
+  time_t now;
+
+  if (core_max_cmds == 0) {
+    return 0;
+  }
+
+  core_cmd_count++;
+
+  over = core_cmd_count - core_max_cmds;
+  if (over > 0) {
+    /* Determine the delay, in ms.
+     *
+     * The value for this delay must be a value which will cause the command
+     * rate to not be exceeded.  For example, if the config is:
+     *
+     *  MaxCommandRate 200 1
+     *
+     * it means a maximum of 200 commands a sec.  This works out to a command
+     * every 5 ms, maximum:
+     *
+     *  1 sec * 1000 ms / 200 cmds per sec = 5 ms
+     *
+     * That 5 ms, then, would be the delay to use. For each command over the
+     * maximum number of commands per interval, we add this delay factor.
+     * This means that the more over the limit the session is, the longer the
+     * delay.
+     */
+
+    res = (unsigned long) (((core_max_cmd_interval * 1000) / core_max_cmds) * over);
+  }
+
+  now = time(NULL);
+  if (core_max_cmd_ts > 0) {
+    if ((now - core_max_cmd_ts) > core_max_cmd_interval) {
+      /* If it's been longer than the MaxCommandRate interval, reset the
+       * command counter.
+       */
+      core_cmd_count = 0;
+      core_max_cmd_ts = now;
+    }
+
+  } else {
+    core_max_cmd_ts = now;
+  }
+
+  return res;
 }
 
 static int core_idle_timeout_cb(CALLBACK_FRAME) {
@@ -803,6 +860,50 @@ MODRET set_maxinstances(cmd_rec *cmd) {
   ServerMaxInstances = max;
   return PR_HANDLED(cmd);
 }
+
+/* usage: MaxCommandRate rate [interval] */
+MODRET set_maxcommandrate(cmd_rec *cmd) {
+  config_rec *c;
+  long cmd_max = 0L;
+  unsigned int max_cmd_interval = 1;
+  char *endp = NULL;
+
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 2) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  cmd_max = strtol(cmd->argv[1], &endp, 10);
+
+  if (endp && *endp) {
+    CONF_ERROR(cmd, "invalid command rate");
+  }
+
+  if (cmd_max < 0) {
+    CONF_ERROR(cmd, "command rate must be positive");
+  }
+
+  /* If the optional interval parameter is given, parse it. */
+  if (cmd->argc-1 == 2) {
+    max_cmd_interval = atoi(cmd->argv[2]);
+
+    if (max_cmd_interval < 1) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": interval must be greater than zero", NULL));
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = cmd_max;
+  c->argv[1] = palloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[1]) = max_cmd_interval;
+
+  return PR_HANDLED(cmd);
+}
+
 
 /* usage: MaxConnectionRate rate [interval] */
 MODRET set_maxconnrate(cmd_rec *cmd) {
@@ -3152,9 +3253,34 @@ MODRET regex_filters(cmd_rec *cmd) {
 }
 #endif /* HAVE_REGEX_H && HAVE_REGCOMP */
 
-MODRET core_clear_fs(cmd_rec *cmd) {
+MODRET core_pre_any(cmd_rec *cmd) {
+  unsigned long cmd_delay = 0;
+
   /* Make sure any FS caches are clear before each command. */
   pr_fs_clear_cache();
+
+  /* Check for an exceeded MaxCommandRate. */
+  cmd_delay = core_exceeded_cmd_rate(cmd);
+  if (cmd_delay > 0) {
+    struct timeval tv;
+
+    pr_event_generate("core.max-command-rate", NULL);
+
+    pr_log_pri(PR_LOG_NOTICE,
+      "MaxCommandRate (%lu cmds/%u %s) exceeded, injecting processing delay "
+      "of %lu ms", core_max_cmds, core_max_cmd_interval,
+      core_max_cmd_interval == 1 ? "sec" : "secs", cmd_delay);
+
+    pr_trace_msg("command", 8, "MaxCommandRate exceeded, delaying for %lu ms",
+      cmd_delay);
+
+    tv.tv_sec = (cmd_delay / 1000);
+    tv.tv_usec = (cmd_delay - (tv.tv_sec * 1000)) * 1000;
+
+    pr_signals_block();
+    (void) select(0, NULL, NULL, NULL, &tv);
+    pr_signals_unblock();
+  }
 
   return PR_DECLINED(cmd);
 }
@@ -4789,6 +4915,15 @@ MODRET core_post_pass(cmd_rec *cmd) {
   }
 #endif /* PR_USE_TRACE */
 
+  /* Look for a configured MaxCommandRate. */
+  c = find_config(main_server->conf, CONF_PARAM, "MaxCommandRate", FALSE);
+  if (c) {
+    core_cmd_count = 0UL;
+    core_max_cmds = *((unsigned long *) c->argv[0]);
+    core_max_cmd_interval = *((unsigned int *) c->argv[1]);
+    core_max_cmd_ts = 0;
+  }
+
   /* Note: we MUST return HANDLED here, not DECLINED, to indicate that at
    * least one POST_CMD handler of the PASS command succeeded.  Since
    * mod_core is always the last module to which commands are dispatched,
@@ -5295,6 +5430,7 @@ static conftable core_conftab[] = {
   { "IgnoreHidden",		set_ignorehidden,		NULL },
   { "Include",			add_include,	 		NULL },
   { "MasqueradeAddress",	set_masqueradeaddress,		NULL },
+  { "MaxCommandRate",		set_maxcommandrate,		NULL },
   { "MaxConnectionRate",	set_maxconnrate,		NULL },
   { "MaxInstances",		set_maxinstances,		NULL },
   { "MultilineRFC2228",		set_multilinerfc2228,		NULL },
@@ -5345,7 +5481,7 @@ static cmdtable core_cmdtab[] = {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   { PRE_CMD, C_ANY, G_NONE,  regex_filters, FALSE, FALSE, CL_NONE },
 #endif
-  { PRE_CMD, C_ANY, G_NONE, core_clear_fs,FALSE, FALSE, CL_NONE },
+  { PRE_CMD, C_ANY, G_NONE, core_pre_any,FALSE, FALSE, CL_NONE },
   { CMD, C_HELP, G_NONE,  core_help,	FALSE,	FALSE, CL_INFO },
   { CMD, C_PORT, G_NONE,  core_port,	TRUE,	FALSE, CL_MISC },
   { CMD, C_PASV, G_NONE,  core_pasv,	TRUE,	FALSE, CL_MISC },
