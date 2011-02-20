@@ -74,6 +74,9 @@ Modules included upon request:
     mod_lang
         Handles the LANG command (see README.NLS)
 
+    mod_memcache
+        Handles Memcache support
+
 Contributed ProFTPD Modules (contrib/ subdirectory)
 --------------------------------------------------
 
@@ -86,7 +89,7 @@ Security/encryption modules:
         See doc/contrib/mod_sftp.html
         Contributed by TJ Saunders <tj@castaglia.org>
 
-    mod_tls
+    mod_tls, mod_tls_memcache, mod_tls_shmcache
         SSL/TLS authentication/encryption
         See doc/contrib/mod_tls.html
         Originally by Peter Runestig
