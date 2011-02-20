@@ -20,9 +20,12 @@ ChangeLog files.
 
   + New configuration directives:
 
-    MaxCommandRate
+    MaxCommandRate 
 
   + Changed configuration directives:
+
+    BanOnEvent
+      MaxCommandRate, UnhandledCommand
 
     ExtendedLog
       EXIT command class
@@ -196,4 +199,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2011-02-20 01:48:05 $
+Last Updated: $Date: 2011-02-20 02:21:50 $
