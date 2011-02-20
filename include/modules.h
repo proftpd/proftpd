@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.54 2010-03-06 17:42:20 castaglia Exp $
+ * $Id: modules.h,v 1.55 2011-02-20 01:48:05 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -87,7 +87,11 @@ typedef struct {
 #define CL_WRITE			(1 << 4) /* Writing commands (STOR, MKD, etc) */
 #define CL_MISC				(1 << 5) /* Miscellaneous (RNFR/RNTO, SITE, etc) */
 #define CL_SEC				(1 << 6) /* RFC2228 Security commands */
+#define CL_EXIT				(1 << 7) /* Session exit */
 
+/* Note that CL_ALL explicitly does NOT include CL_EXIT; this is to preserve
+ * backward compatible behavior.
+ */
 #define CL_ALL				(CL_AUTH|CL_INFO|CL_DIRS|CL_READ| \
 					CL_WRITE|CL_MISC|CL_SEC)
 

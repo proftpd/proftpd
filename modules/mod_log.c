@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.112 2011-02-13 17:53:37 castaglia Exp $
+ * $Id: mod_log.c,v 1.113 2011-02-20 01:48:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -451,6 +451,9 @@ static int parse_classes(char *s) {
                strcasecmp(s, "SECURE") == 0) {
       classes |= CL_SEC;
 
+    } else if (strcasecmp(s, "EXIT") == 0) {
+      classes |= CL_EXIT;
+
     } else {
       pr_log_pri(PR_LOG_NOTICE, "ExtendedLog class '%s' is not defined", s);
       return -1;
@@ -504,7 +507,7 @@ MODRET set_extendedlog(cmd_rec *cmd) {
     res = parse_classes(cmd->argv[2]);
     if (res < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid log class in '",
-        cmd->argv[2], NULL));    
+        cmd->argv[2], "'", NULL));    
     }
 
     c->argv[1] = palloc(c->pool, sizeof(int));
@@ -1249,6 +1252,15 @@ MODRET log_any(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+static void log_exit_ev(const void *event_data, void *user_data) {
+  cmd_rec *cmd;
+
+  cmd = pr_cmd_alloc(session.pool, 1, "EXIT");
+  cmd->class |= CL_EXIT;
+
+  (void) log_any(cmd);
+}
+
 static void log_restart_ev(const void *event_data, void *user_data) {
   destroy_pool(log_pool);
 
@@ -1455,8 +1467,8 @@ static int log_sess_init(void) {
   logfile_t *lf = NULL;
 
   /* Open the ServerLog, if present. */
-  if ((serverlog_name = get_param_ptr(main_server->conf, "ServerLog",
-      FALSE)) != NULL) {
+  serverlog_name = get_param_ptr(main_server->conf, "ServerLog", FALSE);
+  if (serverlog_name != NULL) {
     PRIVS_ROOT
     log_closesyslog();
     log_opensyslog(serverlog_name);
@@ -1467,7 +1479,6 @@ static int log_sess_init(void) {
   find_extendedlogs();
 
   for (lf = logs; lf; lf = lf->next) {
-
     if (lf->lf_fd == -1) {
 
       /* Is this ExtendedLog to be written to a file, or to syslog? */
@@ -1509,6 +1520,9 @@ static int log_sess_init(void) {
       }
     }
   }
+
+  /* Register an exit handler for the session. */
+  pr_event_register(&log_module, "core.exit", log_exit_ev, NULL);
 
   return 0;
 }
