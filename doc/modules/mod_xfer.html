@@ -1,4 +1,4 @@
-<!-- $Id: mod_xfer.html,v 1.1 2011-01-07 19:03:11 castaglia Exp $ -->
+<!-- $Id: mod_xfer.html,v 1.2 2011-02-21 02:58:02 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_xfer.html,v $ -->
 
 <html>
@@ -20,7 +20,22 @@ file transfers.
 
 <h2>Directives</h2>
 <ul>
+  <li><a href="#AllowOverwrite">AllowOverwrite</a>
+  <li><a href="#AllowRetrieveRestart">AllowRetrieveRestart</a>
+  <li><a href="#AllowStoreRestart">AllowStoreRestart</a>
+  <li><a href="#DeleteAbortedStores">DeleteAbortedStores</a>
+  <li><a href="#DisplayFileTransfer">DisplayFileTransfer</a>
+  <li><a href="#HiddenStores">HiddenStores</a>
+  <li><a href="#MaxRetrieveFileSize">MaxRetrieveFileSize</a>
+  <li><a href="#MaxStoreFileSize">MaxStoreFileSize</a>
+  <li><a href="#MaxTransfersPerHost">MaxTransfersPerHost</a>
+  <li><a href="#MaxTransfersPerUser">MaxTransfersPerUser</a>
+  <li><a href="#StoreUniquePrefix">StoreUniquePrefix</a>
+  <li><a href="#TimeoutNoTransfer">TimeoutNoTransfer</a>
+  <li><a href="#TimeoutStalled">TimeoutStalled</a>
   <li><a href="#TransferPriority">TransferPriority</a>
+  <li><a href="#TransferRate">TransferRate</a>
+  <li><a href="#UseSendfile">UseSendfile</a>
 </ul>
 
 <hr>
@@ -58,6 +73,22 @@ fine:
 
 <p>
 <hr>
+<h2><a name="UseSendfile">UseSendfile</a></h2>
+<strong>Syntax:</strong> UseSendfile <em>on|off|len units|percentage/em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>
+<strong>Module:</strong> mod_xfer<br>
+<strong>Compatibility:</strong> 1.3.0rc1 and later
+
+<p>
+The <code>UseSendfile</code> directive controls use of <code>sendfile(2)</code>
+functionality, which is an optimization for sending files to clients.  Use of
+<code>sendfile(2)</code> functionality avoids separate read and send kernel
+operations, and buffer allocations.  Read this
+<a href="../howto/Sendfile.html">howto</a> for more details.
+
+<p>
+<hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_xfer</code>module is <b>always</b> installed.
 
@@ -65,7 +96,7 @@ The <code>mod_xfer</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-01-07 19:03:11 $</i><br>
+Last Updated: <i>$Date: 2011-02-21 02:58:02 $</i><br>
 
 <br><hr>
 
