@@ -243,6 +243,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_quotatab mod_quotatab_sql mod_sql_sqlite)],
     },
 
+    't/modules/mod_ratio.t' => {
+      order => ++$order,
+      test_class => [qw(mod_ratio)],
+    },
+
     't/modules/mod_rewrite.t' => {
       order => ++$order,
       test_class => [qw(mod_rewrite)],
