@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.h,v 1.7 2010-11-04 18:51:29 castaglia Exp $
+ * $Id: response.h,v 1.8 2011-02-21 00:46:23 castaglia Exp $
  */
 
 #ifndef PR_RESPONSE_H
@@ -75,27 +75,6 @@ void pr_response_send(const char *, const char *, ...)
 void pr_response_send_async(const char *, const char *, ...)
 #ifdef __GNUC__
        __attribute__ ((format (printf, 2, 3)));
-#else
-       ;
-#endif
-
-void pr_response_send_ml_start(const char *, const char *, ...)
-#ifdef __GNUC__
-       __attribute__ ((format (printf, 2, 3)));
-#else
-       ;
-#endif
-
-void pr_response_send_ml(const char *, ...)
-#ifdef __GNUC__
-       __attribute__ ((format (printf, 1, 2)));
-#else
-       ;
-#endif
-
-void pr_response_send_ml_end(const char *, ...)
-#ifdef __GNUC__
-       __attribute__ ((format (printf, 1, 2)));
 #else
        ;
 #endif

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.17 2010-12-17 04:01:20 castaglia Exp $
+ * $Id: response.c,v 1.18 2011-02-21 00:46:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -290,54 +290,6 @@ void pr_response_send(const char *resp_numeric, const char *fmt, ...) {
   resp_last_response_msg = pstrdup(resp_pool, resp_buf);
 
   RESPONSE_WRITE_NUM_STR(session.c->outstrm, "%s %s\r\n", resp_numeric,
-    resp_buf)
-}
-
-void pr_response_send_ml_start(const char *resp_numeric, const char *fmt, ...) {
-  va_list msg;
-
-  if (resp_blocked)
-    return;
-
-  va_start(msg, fmt);
-  vsnprintf(resp_buf, sizeof(resp_buf), fmt, msg);
-  va_end(msg);
-
-  resp_buf[sizeof(resp_buf) - 1] = '\0';
-  sstrncpy(resp_ml_numeric, resp_numeric, sizeof(resp_ml_numeric));
-
-  RESPONSE_WRITE_NUM_STR(session.c->outstrm, "%s-%s\r\n", resp_ml_numeric,
-    resp_buf)
-}
-
-void pr_response_send_ml(const char *fmt, ...) {
-  va_list msg;
-
-  if (resp_blocked)
-    return;
-
-  va_start(msg, fmt);
-  vsnprintf(resp_buf, sizeof(resp_buf), fmt, msg);
-  va_end(msg);
-
-  resp_buf[sizeof(resp_buf) - 1] = '\0';
-
-  RESPONSE_WRITE_STR(session.c->outstrm, " %s\r\n", resp_buf)
-}
-
-void pr_response_send_ml_end(const char *fmt, ...) {
-  va_list msg;
-
-  if (resp_blocked)
-    return;
- 
-  va_start(msg, fmt);
-  vsnprintf(resp_buf, sizeof(resp_buf), fmt, msg);
-  va_end(msg);
-
-  resp_buf[sizeof(resp_buf) - 1] = '\0';
-
-  RESPONSE_WRITE_NUM_STR(session.c->outstrm, "%s %s\r\n", resp_ml_numeric,
     resp_buf)
 }
 
