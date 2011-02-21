@@ -3252,7 +3252,6 @@ EOS
 }
 
 sub wrap2_allow_msg_anon_bug3538 {
-$ENV{TEST_VERBOSE}=1;
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
