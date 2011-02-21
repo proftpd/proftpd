@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.198 2011-02-15 19:29:45 castaglia Exp $
+ * $Id: mod_sql.c,v 1.199 2011-02-21 02:32:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2774,7 +2774,6 @@ MODRET info_master(cmd_rec *cmd) {
   char outs[SQL_MAX_STMT_LEN+1], *outsp;
   char *argp = NULL; 
   char *tmp = NULL, *resp_code = NULL;
-  int display_flags = 0;
   modret_t *mr = NULL;
   sql_data_t *sd = NULL;
 
@@ -2914,8 +2913,7 @@ MODRET info_master(cmd_rec *cmd) {
        * flushing the added lines out to the client.
        */
       resp_code = c->argv[0];
-
-      pr_display_add_line(cmd->tmp_pool, resp_code, outs);
+      pr_response_add(resp_code, "%s", outs);
     }
 
     sql_log(DEBUG_FUNC, "<<< info_master (%s)", name);
@@ -3056,26 +3054,13 @@ MODRET info_master(cmd_rec *cmd) {
        * flushing the added lines out to the client.
        */
       resp_code = c->argv[0];
-
-      pr_display_add_line(cmd->tmp_pool, resp_code, outs);
+      pr_response_add(resp_code, "%s", outs);
     }
 
     sql_log(DEBUG_FUNC, "<<< info_master (%s)", name);
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
-
-  /* If this is the PASS command, then we're handling a login; we need to
-   * tell the Display API to NOT send the end-of-message marker.  Same
-   * goes for directory-switching commands (CWD, XCWD).
-   */
-  if (strcmp(cmd->argv[0], C_PASS) == 0 ||
-      strcmp(cmd->argv[0], C_CWD) == 0 ||
-      strcmp(cmd->argv[0], C_XCWD) == 0) {
-    display_flags = PR_DISPLAY_FL_NO_EOM;
-  }
-
-  pr_display_flush_lines(cmd->tmp_pool, resp_code, display_flags);
 
   return PR_DECLINED(cmd);
 }
@@ -3227,8 +3212,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
        * flushing the added lines out to the client.
        */
       resp_code = c->argv[0];
-
-      pr_display_add_line(cmd->tmp_pool, resp_code, outs);
+      pr_response_add(resp_code, "%s", outs);
     }
 
     sql_log(DEBUG_FUNC, "<<< errinfo_master (%s)", name);
@@ -3370,16 +3354,13 @@ MODRET errinfo_master(cmd_rec *cmd) {
        * flushing the added lines out to the client.
        */
       resp_code = c->argv[0];
-
-      pr_display_add_line(cmd->tmp_pool, resp_code, outs);
+      pr_response_add(resp_code, "%s", outs);
     }
 
     sql_log(DEBUG_FUNC, "<<< errinfo_master (%s)", name);
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
-
-  pr_display_flush_lines(cmd->tmp_pool, resp_code, 0);
 
   return PR_DECLINED(cmd);
 }

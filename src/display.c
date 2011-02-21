@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.24 2011-02-16 19:10:42 castaglia Exp $
+ * $Id: display.c,v 1.25 2011-02-21 02:32:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -46,17 +46,10 @@ static void format_size_str(char *buf, size_t buflen, off_t size) {
   snprintf(buf, buflen, "%.3" PR_LU "%cB", (pr_off_t) size, units[i]);
 }
 
-int pr_display_add_line(pool *p, const char *resp_code,
+static int display_add_line(pool *p, const char *resp_code,
     const char *resp_msg) {
 
-  /* Handle the case where the data to Display might contain only one line.
-   *
-   * We _could_ just use pr_response_add(), and let the response code
-   * automatically handle all of the multiline response formatting.
-   * However, some of the Display files are at times waiting for the
-   * response chains to be flushed, which won't work (e.g. login, logout).
-   * Thus we have to deal with multiline files appropriately here.
-   */
+  /* Handle the case where the data to Display might contain only one line. */
 
   if (first_msg_sent == FALSE &&
       first_msg == NULL) {
@@ -86,8 +79,7 @@ int pr_display_add_line(pool *p, const char *resp_code,
   return 0;
 }
 
-int pr_display_flush_lines(pool *p, const char *resp_code, int flags) {
-
+static int display_flush_lines(pool *p, const char *resp_code, int flags) {
   if (first_msg != NULL) {
     if (session.auth_mech != NULL) {
       if (flags & PR_DISPLAY_FL_NO_EOM) {
@@ -290,7 +282,8 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
     buf[sizeof(buf)-1] = '\0';
     len = strlen(buf);
 
-    while(len && (buf[len-1] == '\r' || buf[len-1] == '\n')) {
+    while (len &&
+           (buf[len-1] == '\r' || buf[len-1] == '\n')) {
       buf[len-1] = '\0';
       len--;
     }
@@ -389,10 +382,23 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
 
     sstrncpy(buf, outs, sizeof(buf));
 
-    pr_display_add_line(p, code, outs);
+    if (flags & PR_DISPLAY_FL_SEND_NOW) {
+      /* Normally we use pr_response_add(), and let the response code
+       * automatically handle all of the multiline response formatting.
+       * However, some of the Display files are at times waiting for the
+       * response chains to be flushed, which won't work (i.e. DisplayConnect
+       * and DisplayQuit).
+       */
+      display_add_line(p, code, outs);
+
+    } else {
+      pr_response_add(code, "%s", outs);
+    }
   }
 
-  pr_display_flush_lines(p, code, flags);
+  if (flags & PR_DISPLAY_FL_SEND_NOW) {
+    display_flush_lines(p, code, flags);
+  }
 
   destroy_pool(p);
   return 0;

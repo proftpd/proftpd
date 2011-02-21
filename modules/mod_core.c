@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.392 2011-02-20 01:00:42 castaglia Exp $
+ * $Id: mod_core.c,v 1.393 2011-02-21 02:32:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3286,8 +3286,10 @@ MODRET core_pre_any(cmd_rec *cmd) {
 }
 
 MODRET core_quit(cmd_rec *cmd) {
+  int flags = PR_DISPLAY_FL_SEND_NOW;
+
   if (displayquit_fh) {
-    if (pr_display_fh(displayquit_fh, NULL, R_221, 0) < 0) {
+    if (pr_display_fh(displayquit_fh, NULL, R_221, flags) < 0) {
       pr_log_debug(DEBUG6, "unable to display DisplayQuit file '%s': %s",
         displayquit_fh->fh_path, strerror(errno));
     }
@@ -3298,13 +3300,13 @@ MODRET core_quit(cmd_rec *cmd) {
   } else {
     char *display = get_param_ptr(TOPLEVEL_CONF, "DisplayQuit", FALSE); 
     if (display) {
-      if (pr_display_file(display, NULL, R_221, 0) < 0) {
+      if (pr_display_file(display, NULL, R_221, flags) < 0) {
         pr_log_debug(DEBUG6, "unable to display DisplayQuit file '%s': %s",
           display, strerror(errno));
       }
 
     } else {
-      pr_response_send(R_221, _("Goodbye."));
+      pr_response_send(R_221, "%s", _("Goodbye."));
     }
   }
 
@@ -4234,8 +4236,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
         !S_ISDIR(st.st_mode) &&
         (bool ? st.st_mtime > prev : TRUE)) {
 
-      if (pr_display_file(display, session.cwd, R_250,
-          PR_DISPLAY_FL_NO_EOM) < 0) {
+      if (pr_display_file(display, session.cwd, R_250, 0) < 0) {
         pr_log_debug(DEBUG3, "error displaying '%s': %s", display,
           strerror(errno));
       }
