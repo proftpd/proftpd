@@ -1,4 +1,4 @@
-<!-- $Id: mod_xfer.html,v 1.2 2011-02-21 02:58:02 castaglia Exp $ -->
+<!-- $Id: mod_xfer.html,v 1.3 2011-02-21 03:08:33 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_xfer.html,v $ -->
 
 <html>
@@ -73,8 +73,56 @@ fine:
 
 <p>
 <hr>
+<h2><a name="TransferRate">TransferRate</a></h2>
+<strong>Syntax:</strong> TransferRate <em>cmd-list kbytes-per-sec[:free-bytes]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>
+<strong>Module:</strong> mod_xfer<br>
+<strong>Compatibility:</strong> 1.2.8rc1 and later
+
+<p>
+The <code>TransferRate</code> directive is used to set transfer rate limits
+on the transfer of data.  This directive allows for transfer rates to be set
+in a wide variety of contexts, on a per-command basis, and for certain subsets
+of users (via
+<a href="../contrib/mod_ifsession.html"><code>mod_ifsession</code></a>).
+<b>Note</b> that these limits only apply to <i>an individual session</i>, and
+do <b>not</b> apply to the overall transfer rate of the entire daemon.
+
+<p>
+The <em>cmd-list</em> parameter may be an comma-separated list of any of the
+following commands: <code>APPE</code>, <code>RETR</code>, <code>STOR</code>,
+and <code>STOU</code>.
+
+<p>
+The <em>kbytes-per-sec</em> parameter is the actual transfer rate to be applied.
+
+<p>
+The <em>free-bytes</em> parameter, if configured, allows that number of bytes
+to be transferred before the rate limit is applied.  This allows for clients
+transferring small files to be unthrottled, but for larger files, such as MP3s
+and ISO images, to be throttled.
+
+<p>
+Here are some examples:
+<pre>
+  # Limit downloads for everyone
+  TransferRate RETR 1.5
+
+  # Limit uploads (and appends!) to the prolific users in the
+  # lotsofuploadfiles.net domain. This presumes that a Class has been defined
+  # for that domain, and that that Class has been named "uploaders". Let them
+  # upload small files without throttling, though.
+
+  &lt;IfClass uploaders&gt;
+    TransferRate APPE,STOR 8.0:1024
+  &lt;/IfClass&gt;
+</pre>
+
+<p>
+<hr>
 <h2><a name="UseSendfile">UseSendfile</a></h2>
-<strong>Syntax:</strong> UseSendfile <em>on|off|len units|percentage/em><br>
+<strong>Syntax:</strong> UseSendfile <em>on|off|len units|percentage</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>
 <strong>Module:</strong> mod_xfer<br>
@@ -96,7 +144,7 @@ The <code>mod_xfer</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-02-21 02:58:02 $</i><br>
+Last Updated: <i>$Date: 2011-02-21 03:08:33 $</i><br>
 
 <br><hr>
 
