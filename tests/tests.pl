@@ -107,7 +107,9 @@ if (scalar(@ARGV) > 0) {
     t/config/createhome.t
     t/config/defaultchdir.t
     t/config/deleteabortedstores.t
+    t/config/dirfakegroup.t
     t/config/dirfakemode.t
+    t/config/dirfakeuser.t
     t/config/displaychdir.t
     t/config/displayconnect.t
     t/config/displayfiletransfer.t 
