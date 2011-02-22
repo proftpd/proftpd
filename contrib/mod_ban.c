@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.47 2011-02-20 02:21:50 castaglia Exp $
+ * $Id: mod_ban.c,v 1.48 2011-02-22 03:36:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2644,10 +2644,7 @@ static void ban_maxclientsperuser_ev(const void *event_data, void *user_data) {
 }
 
 static void ban_maxcmdrate_ev(const void *event_data, void *user_data) {
-
-  /* For this event, event_data is the client. */
-  conn_t *c = (conn_t *) event_data;
-  const char *ipstr;
+  const char *ipstr = pr_netaddr_get_ipstr(session.c->remote_addr);
 
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
@@ -2655,9 +2652,7 @@ static void ban_maxcmdrate_ev(const void *event_data, void *user_data) {
   if (ban_engine != TRUE)
     return;
 
-  ipstr = pr_netaddr_get_ipstr(c->remote_addr);
-  ban_handle_event(BAN_EV_TYPE_MAX_CMD_RATE, BAN_TYPE_HOST,
-    ipstr, tmpl);
+  ban_handle_event(BAN_EV_TYPE_MAX_CMD_RATE, BAN_TYPE_HOST, ipstr, tmpl);
 }
 
 static void ban_maxconnperhost_ev(const void *event_data, void *user_data) {
