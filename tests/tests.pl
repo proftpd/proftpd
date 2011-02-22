@@ -248,6 +248,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_ratio)],
     },
 
+    't/modules/mod_readme.t' => {
+      order => ++$order,
+      test_class => [qw(mod_readme)],
+    },
+
     't/modules/mod_rewrite.t' => {
       order => ++$order,
       test_class => [qw(mod_rewrite)],
