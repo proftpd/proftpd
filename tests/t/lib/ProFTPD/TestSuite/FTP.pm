@@ -77,7 +77,7 @@ sub response_code {
 sub response_msg {
   my $self = shift;
   my $index = shift;
-  $index = 1 unless defined($index);
+  $index = 0 unless defined($index);
 
   if (defined($self->{mesg})) {
     my $msg = $self->{mesg};
@@ -87,9 +87,19 @@ sub response_msg {
   }
 
   my @msgs = $self->{ftp}->message;
-  if (scalar(@msgs) > 1) {
+  my $nmsgs = scalar(@msgs);
+  if ($nmsgs > 1) {
+    if ($index > ($nmsgs - 1)) {
+      return undef;
+    }
+
     chomp($msgs[$index]);
     return $msgs[$index];
+
+  } else {
+    if ($index > 0) {
+      return undef;
+    }
   }
 
   if (defined($msgs[0])) {
