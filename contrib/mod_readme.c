@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2008 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,13 +37,7 @@
 
 #include "conf.h"
 
-/* Flood: Nov 1, 1998
- *
- * The original logic was slightly off, using find_config in recursive mode
- * starting from the server root, which caused all DisplayReadme entries
- * to be evaluated, even if not actually part of the "closest" context
- * (i.e. picking up ALL Anonymous blocks)
- */
+#define MOD_README_VERSION		"mod_readme/1.0"
 
 static void add_readme_response(pool *p, const char *file) {
   int days;
@@ -53,77 +47,87 @@ static void add_readme_response(pool *p, const char *file) {
   struct tm *tp;
   
   char *tptr;
-  char ctime_str[28] = {'\0'};
+  char ctime_str[32] = {'\0'};
   
   if (pr_fsio_stat(file, &buf) == 0) {
     (void) time(&clock);
 
     tp = pr_gmtime(p, &clock);
-    days = (int)(365.25 * tp->tm_year) + tp->tm_yday;
+    days = (int) (365.25 * tp->tm_year) + tp->tm_yday;
 
     tp = pr_gmtime(p, &buf.st_mtime);
-    days -= (int)(365.25 * tp->tm_year) + tp->tm_yday;
+    days -= (int) (365.25 * tp->tm_year) + tp->tm_yday;
 
     memset(ctime_str, '\0', sizeof(ctime_str));
-    snprintf(ctime_str, sizeof(ctime_str), "%.26s", ctime(&buf.st_mtime));
+    snprintf(ctime_str, sizeof(ctime_str)-1, "%.26s", ctime(&buf.st_mtime));
     
-    if ((tptr = strchr(ctime_str, '\n')) != NULL) {
+    tptr = strchr(ctime_str, '\n');
+    if (tptr != NULL) {
       *tptr = '\0';
     }
     
     pr_response_add(R_DUP, _("Please read the file %s"), file);
     pr_response_add(R_DUP, _("   it was last modified on %.26s - %i %s ago"),
-		 ctime_str, days, days == 1 ? _("day") : _("days"));
+      ctime_str, days, days == 1 ? _("day") : _("days"));
   }
 }
 
 static void add_pattern_response(pool *p, const char *pattern) {
   glob_t g;
-  int    a;
+  int a;
   char **path;
   
-  if (!(a = pr_fs_glob(pattern, 0, NULL, &g))) {
+  a = pr_fs_glob(pattern, 0, NULL, &g);
+  if (!a) {
     path = g.gl_pathv;
     while (path && *path) {
+      pr_signals_handle();
       add_readme_response(p, *path);
       path++;
     }
-  } else if (a == GLOB_NOSPACE)
+
+  } else if (a == GLOB_NOSPACE) {
     pr_response_add(R_226, _("Out of memory during globbing of %s"), pattern);
 
-  else if (a == GLOB_ABORTED)
+  } else if (a == GLOB_ABORTED) {
     pr_response_add(R_226, _("Read error during globbing of %s"), pattern);
 
-  else if (a != GLOB_NOMATCH)
+  } else if (a != GLOB_NOMATCH) {
     pr_response_add(R_226, _("Unknown error during globbing of %s"), pattern);
-  
+  }
+ 
   pr_fs_globfree(&g);
 }
 
-MODRET show_readme(cmd_rec *cmd) {
+/* Command handlers
+ */
+
+MODRET readme_post_cmd(cmd_rec *cmd) {
   config_rec *c;
-  char *file;
   
   c = find_config(CURRENT_CONF, CONF_PARAM, "DisplayReadme", FALSE);
   while (c) {
-    file = c->argv[0];
+    char *path;
+
+    path = c->argv[0];
     
-    pr_log_debug(DEBUG5, "Checking for display pattern %s", file);
-    add_pattern_response(cmd->tmp_pool, file);
+    pr_log_debug(DEBUG5, "Checking for display pattern %s", path);
+    add_pattern_response(cmd->tmp_pool, path);
     
     c = find_config_next(c, c->next, CONF_PARAM, "DisplayReadme",FALSE);
   }
-  
-  /* Originally this returned HANDLED, which was incorrect, and
-   * could cause other POST_CMD handlers to not run
-   */
+
   return PR_DECLINED(cmd);
 }
 
-MODRET readme_add_entry(cmd_rec *cmd) {
+/* Configuration handlers
+ */
+
+/* usage: DisplayReadme path|pattern */
+MODRET set_displayreadme(cmd_rec *cmd) {
   config_rec *c;
   
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
   
   if (cmd->argc != 2) {
     CONF_ERROR(cmd, "syntax: DisplayReadme <filename-or-pattern>");
@@ -136,30 +140,51 @@ MODRET readme_add_entry(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-static conftable readme_config[] = {
-  { "DisplayReadme",		readme_add_entry,	},
+/* Module API tables
+ */
+
+static conftable readme_conftab[] = {
+  { "DisplayReadme", set_displayreadme, NULL },
   { NULL }
 };
 
-static cmdtable readme_commands[] = {
-	{ POST_CMD,	C_CWD,	G_NONE,	show_readme,	FALSE,	FALSE },
-	{ POST_CMD,	C_CDUP,	G_NONE,	show_readme,	FALSE,	FALSE },
-	{ POST_CMD,	C_XCWD,	G_NONE,	show_readme,	FALSE,	FALSE },
-	{ POST_CMD,	C_XCUP,	G_NONE,	show_readme,	FALSE,	FALSE },
+static cmdtable readme_cmdtab[] = {
+  { POST_CMD,	C_CWD,	G_NONE,	readme_post_cmd, FALSE,	FALSE },
+  { POST_CMD,	C_CDUP,	G_NONE,	readme_post_cmd, FALSE,	FALSE },
+  { POST_CMD,	C_XCWD,	G_NONE,	readme_post_cmd, FALSE,	FALSE },
+  { POST_CMD,	C_XCUP,	G_NONE,	readme_post_cmd, FALSE,	FALSE },
 
-	{ POST_CMD,	C_PASS,	G_NONE, show_readme,	FALSE,	FALSE },
+  { POST_CMD,	C_PASS,	G_NONE, readme_post_cmd, FALSE,	FALSE },
 
-	{ 0,		NULL }
+  { 0, NULL }
 };
 
 module readme_module = {
-	NULL, NULL,		/* Always NULL */
-	0x20,			/* API Version 2.0 */
-	"readme",
-	readme_config,		/* configuration table */
-	readme_commands,	/* command table is for local use only */
-	NULL,			/* No authentication handlers */
-	NULL,			/* Initialization function */
-	NULL			/* Post-fork "child mode" init */
+  /* Always NULL */
+  NULL, NULL,
+
+  /* Module API version */
+  0x20,
+
+  /* Module name */
+  "readme",
+
+  /* Module configuration directive table */
+  readme_conftab,
+
+  /* Module command handler table */
+  readme_cmdtab,
+
+  /* Module auth handler table */
+  NULL,
+
+  /* Module initialization */
+  NULL,
+
+  /* Session initialization */
+  NULL,
+
+  /* Module version */
+  MOD_README_VERSION
 };
 
