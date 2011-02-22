@@ -23,7 +23,7 @@
  */
 
 /* Memcache support
- * $Id: memcache.h,v 1.10 2011-01-25 07:44:40 castaglia Exp $
+ * $Id: memcache.h,v 1.11 2011-02-22 03:20:30 castaglia Exp $
  */
 
 #ifndef PR_MEMCACHE_H
@@ -109,6 +109,7 @@ int memcache_set_servers(void *server_list);
 int memcache_set_timeouts(unsigned long conn_millis, unsigned long read_millis,
   unsigned long write_millis, unsigned long ejected_sec);
 
+int memcache_clear(void);
 int memcache_init(void);
 
 #endif /* PR_MEMCACHE_H */

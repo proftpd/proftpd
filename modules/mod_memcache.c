@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached -lmemcachedutil$
- * $Id: mod_memcache.c,v 1.13 2011-02-13 00:31:42 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.14 2011-02-22 03:20:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -276,6 +276,10 @@ MODRET set_memcachetimeouts(cmd_rec *cmd) {
 /* Event handlers
  */
 
+static void mcache_exit_ev(const void *event_data, void *user_data) {
+  memcache_clear();
+}
+
 static void mcache_restart_ev(const void *event_data, void *user_data) {
   server_rec *s;
 
@@ -330,6 +334,8 @@ static int mcache_sess_init(void) {
       return 0;
     }
   }
+
+  pr_event_register(&memcache_module, "core.exit", mcache_exit_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "MemcacheLog", FALSE);
   if (c) {

@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.19 2011-02-13 00:30:16 castaglia Exp $
+ * $Id: memcache.c,v 1.20 2011-02-22 03:20:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1429,6 +1429,15 @@ static void memcache_tpl_fatal(char *fmt, ...) {
   _exit(1);
 }
 
+int memcache_clear(void) {
+  if (sess_mcache != NULL) {
+    pr_memcache_conn_close(sess_mcache);
+    sess_mcache = NULL;
+  }
+
+  return 0;
+}
+
 int memcache_init(void) {
 
   /* Set the tpl callbacks */
@@ -1560,6 +1569,11 @@ int memcache_set_servers(void *server_list) {
 
 int memcache_set_timeouts(unsigned long conn_millis, unsigned long read_millis,
     unsigned long write_millis, unsigned long ejected_sec) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int memcache_clear(void) {
   errno = ENOSYS;
   return -1;
 }
