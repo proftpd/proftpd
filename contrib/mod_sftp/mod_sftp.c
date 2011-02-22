@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.44 2011-02-17 00:46:47 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.45 2011-02-22 03:40:00 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1407,6 +1407,21 @@ static void sftp_exit_ev(const void *event_data, void *user_data) {
   sftp_logfd = -1;
 }
 
+static void sftp_ban_class_ev(const void *event_data, void *user_data) {
+  sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, "Banned",
+    __FILE__, __LINE__, "");
+}
+
+static void sftp_ban_host_ev(const void *event_data, void *user_data) {
+  sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, "Banned",
+    __FILE__, __LINE__, "");
+}
+
+static void sftp_ban_user_ev(const void *event_data, void *user_data) {
+  sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, "Banned",
+    __FILE__, __LINE__, "");
+}
+
 static void sftp_max_conns_ev(const void *event_data, void *user_data) {
   sftp_disconnect_send(SFTP_SSH2_DISCONNECT_TOO_MANY_CONNECTIONS,
     "Maximum connections for host/user reached", __FILE__, __LINE__, "");
@@ -1509,6 +1524,9 @@ static int sftp_init(void) {
     sftp_max_conns_ev, NULL);
   pr_event_register(&sftp_module, "mod_auth.max-hosts-per-user",
     sftp_max_conns_ev, NULL);
+  pr_event_register(&sftp_module, "mod_ban.ban-class", sftp_ban_class_ev, NULL);
+  pr_event_register(&sftp_module, "mod_ban.ban-host", sftp_ban_host_ev, NULL);
+  pr_event_register(&sftp_module, "mod_ban.ban-user", sftp_ban_user_ev, NULL);
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&sftp_module, "core.module-unload", sftp_mod_unload_ev,
     NULL);
