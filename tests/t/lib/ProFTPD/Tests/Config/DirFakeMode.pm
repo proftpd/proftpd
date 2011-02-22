@@ -15,7 +15,7 @@ $| = 1;
 my $order = 0;
 
 my $TESTS = {
-  dirfakemode_ok => {
+  dirfakemode_list => {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
@@ -30,7 +30,7 @@ sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
 }
 
-sub dirfakemode_ok {
+sub dirfakemode_list {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -45,6 +45,7 @@ sub dirfakemode_ok {
   
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -63,7 +64,7 @@ sub dirfakemode_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash'); 
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
 
@@ -111,12 +112,11 @@ sub dirfakemode_ok {
       }
 
       my $buf;
-      $conn->read($buf, 16384, 30);
-      $conn->close();
+      $conn->read($buf, 16384, 25);
+      eval { $conn->close() };
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
       my $expected;
 
