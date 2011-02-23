@@ -22,13 +22,13 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.35 2011-01-21 03:45:10 castaglia Exp $
+ * $Id: mod_facts.c,v 1.36 2011-02-23 01:16:13 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_FACTS_VERSION		"mod_facts/0.2"
+#define MOD_FACTS_VERSION		"mod_facts/0.3"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030101
 # error "ProFTPD 1.3.1rc1 or later required"
@@ -296,7 +296,7 @@ static void facts_mlinfobuf_flush(void) {
 }
 
 static int facts_mlinfo_get(struct mlinfo *info, const char *path,
-    const char *dent_name, int flags) {
+    const char *dent_name, int flags, uid_t uid, gid_t gid, mode_t *mode) {
   char *perm = "";
   int res;
 
@@ -305,6 +305,14 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": error lstat'ing '%s': %s",
       path, strerror(errno));
     return -1;
+  }
+
+  if (uid != (uid_t) -1) {
+    info->st.st_uid = uid;
+  }
+
+  if (gid != (gid_t) -1) {
+    info->st.st_gid = gid;
   }
 
   info->tm = pr_gmtime(info->pool, &(info->st.st_mtime));
@@ -399,6 +407,15 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
   }
 
   info->perm = perm;
+
+  if (mode != NULL) {
+    /* We cheat here by simply overwriting the entire st.st_mode value with
+     * the DirFakeMode.  This works because later operations on this data
+     * don't pay attention to the file type.
+     */
+    info->st.st_mode = *mode;
+  }
+
   return 0;
 }
 
@@ -950,6 +967,10 @@ MODRET facts_mfmt(cmd_rec *cmd) {
 
 MODRET facts_mlsd(cmd_rec *cmd) {
   const char *path, *decoded_path, *best_path;
+  config_rec *c;
+  uid_t fake_uid = -1;
+  gid_t fake_gid = -1;
+  mode_t *fake_mode = NULL;
   struct mlinfo info;
   unsigned char *ptr;
   int flags = 0;
@@ -1005,6 +1026,37 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
   best_path = dir_best_path(cmd->tmp_pool, decoded_path);
 
+  fake_mode = get_param_ptr(get_dir_ctxt(cmd->tmp_pool, (char *) best_path),
+    "DirFakeMode", FALSE);
+ 
+  c = find_config(get_dir_ctxt(cmd->tmp_pool, (char *) best_path), CONF_PARAM,
+    "DirFakeUser", FALSE);
+  if (c) {
+    const char *fake_user;
+
+    fake_user = c->argv[0];
+    if (strcmp(fake_user, "~") != 0) {
+      fake_uid = pr_auth_name2uid(cmd->tmp_pool, fake_user);
+
+    } else {
+      fake_uid = session.uid;
+    }
+  }
+
+  c = find_config(get_dir_ctxt(cmd->tmp_pool, (char *) best_path), CONF_PARAM,
+    "DirFakeGroup", FALSE);
+  if (c) {
+    const char *fake_group;
+
+    fake_group = c->argv[0];
+    if (strcmp(fake_group, "~") != 0) {
+      fake_gid = pr_auth_name2gid(cmd->tmp_pool, fake_group);
+
+    } else {
+      fake_gid = session.gid;
+    }
+  }
+
   dirh = pr_fsio_opendir(best_path);
   if (dirh == NULL) {
     int xerrno = errno;
@@ -1056,7 +1108,8 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     memset(&info, 0, sizeof(struct mlinfo));
 
     info.pool = cmd->tmp_pool;
-    if (facts_mlinfo_get(&info, rel_path, dent->d_name, flags) < 0) {
+    if (facts_mlinfo_get(&info, rel_path, dent->d_name, flags,
+        fake_uid, fake_gid, fake_mode) < 0) {
       pr_log_debug(DEBUG3, MOD_FACTS_VERSION
         ": MLSD: unable to get info for '%s': %s", abs_path, strerror(errno));
       continue;
@@ -1099,6 +1152,10 @@ MODRET facts_mlsd_cleanup(cmd_rec *cmd) {
 
 MODRET facts_mlst(cmd_rec *cmd) {
   int flags = 0, hidden = FALSE;
+  config_rec *c;
+  uid_t fake_uid = -1;
+  gid_t fake_gid = -1;
+  mode_t *fake_mode = NULL;
   unsigned char *ptr;
   const char *path, *decoded_path;
   struct mlinfo info;
@@ -1136,10 +1193,42 @@ MODRET facts_mlst(cmd_rec *cmd) {
     flags |= FACTS_MLINFO_FL_SHOW_SYMLINKS;
   }
 
+  fake_mode = get_param_ptr(get_dir_ctxt(cmd->tmp_pool, (char *) decoded_path),
+    "DirFakeMode", FALSE);
+
+  c = find_config(get_dir_ctxt(cmd->tmp_pool, (char *) decoded_path),
+    CONF_PARAM, "DirFakeUser", FALSE);
+  if (c) {
+    const char *fake_user;
+
+    fake_user = c->argv[0];
+    if (strcmp(fake_user, "~") != 0) {
+      fake_uid = pr_auth_name2uid(cmd->tmp_pool, fake_user);
+
+    } else {
+      fake_uid = session.uid;
+    }
+  }
+
+  c = find_config(get_dir_ctxt(cmd->tmp_pool, (char *) decoded_path),
+    CONF_PARAM, "DirFakeGroup", FALSE);
+  if (c) {
+    const char *fake_group;
+
+    fake_group = c->argv[0];
+    if (strcmp(fake_group, "~") != 0) {
+      fake_gid = pr_auth_name2gid(cmd->tmp_pool, fake_group);
+
+    } else {
+      fake_gid = session.gid;
+    }
+  }
+
   info.pool = cmd->tmp_pool;
 
   pr_fs_clear_cache();
-  if (facts_mlinfo_get(&info, decoded_path, decoded_path, flags) < 0) {
+  if (facts_mlinfo_get(&info, decoded_path, decoded_path, flags, fake_uid,
+      fake_gid, fake_mode) < 0) {
     pr_response_add_err(R_550, _("'%s' cannot be listed"), path);
     return PR_ERROR(cmd);
   }
