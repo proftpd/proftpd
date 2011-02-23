@@ -44,14 +44,14 @@ static void readme_add_path(pool *p, const char *path) {
   
   if (pr_fsio_stat(path, &st) == 0) {
     int days;
-    time_t clock;
+    time_t now;
     struct tm *tm = NULL;
     char *ptr = NULL;
     char time_str[32] = {'\0'};
 
-    (void) time(&clock);
+    (void) time(&now);
 
-    tm = pr_gmtime(p, &clock);
+    tm = pr_gmtime(p, &now);
     days = (int) (365.25 * tm->tm_year) + tm->tm_yday;
 
     tm = pr_gmtime(p, &st.st_mtime);
@@ -64,7 +64,16 @@ static void readme_add_path(pool *p, const char *path) {
     if (ptr != NULL) {
       *ptr = '\0';
     }
-    
+
+    /* As a format nicety, if we're handling the PASS command, automatically
+     * add a blank line before this message, so as to separate the
+     * login message that mod_auth's POST_CMD handler for PASS will add from
+     * our message (see Bug#3605).
+     */
+    if (strcmp(session.curr_cmd, C_PASS) == 0) {
+      pr_response_add(R_DUP, "%s", "");
+    }
+
     pr_response_add(R_DUP, _("Please read the file %s"), path);
     pr_response_add(R_DUP, _("   it was last modified on %.26s - %i %s ago"),
       time_str, days, days == 1 ? _("day") : _("days"));
@@ -156,7 +165,10 @@ static cmdtable readme_cmdtab[] = {
   { POST_CMD,	C_XCWD,	G_NONE,	readme_post_cmd, FALSE,	FALSE },
   { POST_CMD,	C_XCUP,	G_NONE,	readme_post_cmd, FALSE,	FALSE },
 
-  { POST_CMD,	C_PASS,	G_NONE, readme_post_cmd, FALSE,	FALSE },
+  /* We specifically use a LOG_CMD handler here, so that any DisplayReadme
+   * output is append after any possible DisplayLogin data (see Bug#3605).
+   */
+  { LOG_CMD,	C_PASS,	G_NONE, readme_post_cmd, FALSE,	FALSE },
 
   { 0, NULL }
 };
