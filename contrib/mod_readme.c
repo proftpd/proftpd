@@ -30,49 +30,48 @@
  *   DisplayReadme <file-or-pattern>
  *
  * "DisplayReadme Readme" will tell the user when "Readme" on the current 
- * working directory was last changed. When cwd is changed (cd, cdup, ...)
- * it'll seach for Readme agin in it and also display it's last changing dates.
- * if found.
+ * working directory was last changed.  When the current working directory is
+ * changed (i.e. CWD, CDUP, etc), mod_readme will search for Readme again
+ * in that directory and also display its last changing dates if found.
  */
 
 #include "conf.h"
 
 #define MOD_README_VERSION		"mod_readme/1.0"
 
-static void add_readme_response(pool *p, const char *file) {
-  int days;
-  time_t clock;
+static void readme_add_path(pool *p, const char *path) {
+  struct stat st;
   
-  struct stat buf;
-  struct tm *tp;
-  
-  char *tptr;
-  char ctime_str[32] = {'\0'};
-  
-  if (pr_fsio_stat(file, &buf) == 0) {
+  if (pr_fsio_stat(path, &st) == 0) {
+    int days;
+    time_t clock;
+    struct tm *tm = NULL;
+    char *ptr = NULL;
+    char time_str[32] = {'\0'};
+
     (void) time(&clock);
 
-    tp = pr_gmtime(p, &clock);
-    days = (int) (365.25 * tp->tm_year) + tp->tm_yday;
+    tm = pr_gmtime(p, &clock);
+    days = (int) (365.25 * tm->tm_year) + tm->tm_yday;
 
-    tp = pr_gmtime(p, &buf.st_mtime);
-    days -= (int) (365.25 * tp->tm_year) + tp->tm_yday;
+    tm = pr_gmtime(p, &st.st_mtime);
+    days -= (int) (365.25 * tm->tm_year) + tm->tm_yday;
 
-    memset(ctime_str, '\0', sizeof(ctime_str));
-    snprintf(ctime_str, sizeof(ctime_str)-1, "%.26s", ctime(&buf.st_mtime));
+    memset(time_str, '\0', sizeof(time_str));
+    snprintf(time_str, sizeof(time_str)-1, "%.26s", ctime(&st.st_mtime));
     
-    tptr = strchr(ctime_str, '\n');
-    if (tptr != NULL) {
-      *tptr = '\0';
+    ptr = strchr(time_str, '\n');
+    if (ptr != NULL) {
+      *ptr = '\0';
     }
     
-    pr_response_add(R_DUP, _("Please read the file %s"), file);
+    pr_response_add(R_DUP, _("Please read the file %s"), path);
     pr_response_add(R_DUP, _("   it was last modified on %.26s - %i %s ago"),
-      ctime_str, days, days == 1 ? _("day") : _("days"));
+      time_str, days, days == 1 ? _("day") : _("days"));
   }
 }
 
-static void add_pattern_response(pool *p, const char *pattern) {
+static void readme_add_pattern(pool *p, const char *pattern) {
   glob_t g;
   int a;
   char **path;
@@ -82,18 +81,21 @@ static void add_pattern_response(pool *p, const char *pattern) {
     path = g.gl_pathv;
     while (path && *path) {
       pr_signals_handle();
-      add_readme_response(p, *path);
+      readme_add_path(p, *path);
       path++;
     }
 
   } else if (a == GLOB_NOSPACE) {
-    pr_response_add(R_226, _("Out of memory during globbing of %s"), pattern);
+    pr_log_debug(DEBUG3, MOD_README_VERSION
+      ": out of memory during globbing of '%s'", pattern);
 
   } else if (a == GLOB_ABORTED) {
-    pr_response_add(R_226, _("Read error during globbing of %s"), pattern);
+    pr_log_debug(DEBUG3, MOD_README_VERSION
+      ": read error during globbing of '%s'", pattern);
 
   } else if (a != GLOB_NOMATCH) {
-    pr_response_add(R_226, _("Unknown error during globbing of %s"), pattern);
+    pr_log_debug(DEBUG3, MOD_README_VERSION
+      ": unknown error during globbing of '%s'", pattern);
   }
  
   pr_fs_globfree(&g);
@@ -112,7 +114,7 @@ MODRET readme_post_cmd(cmd_rec *cmd) {
     path = c->argv[0];
     
     pr_log_debug(DEBUG5, "Checking for display pattern %s", path);
-    add_pattern_response(cmd->tmp_pool, path);
+    readme_add_pattern(cmd->tmp_pool, path);
     
     c = find_config_next(c, c->next, CONF_PARAM, "DisplayReadme",FALSE);
   }
