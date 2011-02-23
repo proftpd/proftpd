@@ -76,11 +76,12 @@ sub response_code {
 
 sub response_msg {
   my $self = shift;
-  my $index = shift;
+  my $req_index = shift;
 
-  # This default index needs to be 1, not 0, in order to handle the
-  # responses sent during directory listings (i.e. the 150 responses)
-  $index = 1 unless defined($index);
+  my $index = 1;
+  if (defined($req_index)) {
+    $index = $req_index;
+  }
 
   if (defined($self->{mesg})) {
     my $msg = $self->{mesg};
@@ -100,8 +101,10 @@ sub response_msg {
     return $msgs[$index];
 
   } else {
-    if ($index > 0) {
-      return undef;
+    if (defined($req_index)) {
+      if ($index > 0) {
+        return undef;
+      }
     }
   }
 
