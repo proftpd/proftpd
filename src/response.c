@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.18 2011-02-21 00:46:23 castaglia Exp $
+ * $Id: response.c,v 1.19 2011-02-23 02:47:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -152,13 +152,14 @@ void pr_response_flush(pr_response_t **head) {
   for (resp = *head; resp; resp = resp->next) {
     if (ml) {
       /* Look for end of multiline */
-      if (!resp->next || (resp->num && strcmp(resp->num, last_numeric) != 0)) {
+      if (resp->next == NULL ||
+          (resp->num != NULL &&
+           strcmp(resp->num, last_numeric) != 0)) {
         RESPONSE_WRITE_NUM_STR(session.c->outstrm, "%s %s\r\n", last_numeric,
           resp->msg)
         ml = FALSE;
 
       } else {
-
         /* RFC2228's multiline responses are required for protected sessions. */
 	if (session.multiline_rfc2228 || session.sp_flags) {
           RESPONSE_WRITE_NUM_STR(session.c->outstrm, "%s-%s\r\n", last_numeric,
@@ -171,8 +172,9 @@ void pr_response_flush(pr_response_t **head) {
 
     } else {
       /* Look for start of multiline */
-      if (resp->next && (!resp->next->num ||
-          strcmp(resp->num, resp->next->num) == 0)) {
+      if (resp->next &&
+          (resp->next->num == NULL ||
+           strcmp(resp->num, resp->next->num) == 0)) {
         RESPONSE_WRITE_NUM_STR(session.c->outstrm, "%s-%s\r\n", resp->num,
           resp->msg)
         ml = TRUE;
@@ -208,10 +210,25 @@ void pr_response_add_err(const char *numeric, const char *fmt, ...) {
   pr_trace_msg(trace_channel, 7, "error response added to pending list: %s %s",
     resp->num ? resp->num : "(null)", resp->msg);
 
+  if (numeric != NULL) {
+    pr_response_t *iter;
+    
+    /* Handle the case where the first messages in the list may have R_DUP
+     * for the numeric response code (i.e. NULL).  To do this, we scan the
+     * list for the first non-null response code, and use that for any R_DUP
+     * messages.
+     */
+    for (iter = resp_err_list; iter; iter = iter->next) {
+      if (iter->num == NULL) {
+        iter->num = resp->num;
+      }
+    }
+  }
+
   for (head = &resp_err_list;
     *head &&
     (!numeric || !(*head)->num || strcmp((*head)->num, numeric) <= 0) &&
-    !(numeric && !(*head)->num && head == &resp_list);
+    !(numeric && !(*head)->num && head == &resp_err_list);
   head = &(*head)->next);
 
   resp->next = *head;
@@ -237,6 +254,21 @@ void pr_response_add(const char *numeric, const char *fmt, ...) {
 
   pr_trace_msg(trace_channel, 7, "response added to pending list: %s %s",
     resp->num ? resp->num : "(null)", resp->msg);
+
+  if (numeric != NULL) {
+    pr_response_t *iter;
+    
+    /* Handle the case where the first messages in the list may have R_DUP
+     * for the numeric response code (i.e. NULL).  To do this, we scan the
+     * list for the first non-null response code, and use that for any R_DUP
+     * messages.
+     */
+    for (iter = resp_list; iter; iter = iter->next) {
+      if (iter->num == NULL) {
+        iter->num = resp->num;
+      }
+    }
+  }
 
   for (head = &resp_list;
     *head &&
