@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.54 2011-01-04 19:48:08 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.55 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -37,8 +37,7 @@
 # error "ProFTPD 1.3.1rc1 or later required"
 #endif
 
-#ifdef HAVE_REGEX_H
-# include <regex.h>
+#if defined(HAVE_REGEX_H) || defined(PR_USE_PCRE)
 
 #define REWRITE_FIFO_MAXLEN		256
 #define REWRITE_LOG_MODE		0640
@@ -765,7 +764,7 @@ static unsigned char rewrite_regexec(const char *string, regex_t *regbuf,
   memset(matches->match_groups, '\0', sizeof(regmatch_t) * REWRITE_MAX_MATCHES);
 
   /* Execute the given regex. */
-  while ((res = regexec(regbuf, tmpstr, REWRITE_MAX_MATCHES,
+  while ((res = pr_regexp_exec(regbuf, tmpstr, REWRITE_MAX_MATCHES,
       matches->match_groups, 0)) == 0) {
     have_match = TRUE;
     break;
@@ -1962,11 +1961,11 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
     cond_op = REWRITE_COND_OP_REGEX;
     cond_data = rewrite_regalloc();
 
-    res = regcomp(cond_data, cmd->argv[2], regex_flags);
+    res = pr_regexp_compile(cond_data, cmd->argv[2], regex_flags);
     if (res != 0) {
       char errstr[200] = {'\0'};
 
-      regerror(res, cond_data, errstr, sizeof(errstr));
+      pr_regexp_error(res, cond_data, errstr, sizeof(errstr));
       regfree(cond_data);
 
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to compile '",
@@ -2232,11 +2231,11 @@ MODRET set_rewriterule(cmd_rec *cmd) {
     cmd->argv[1]++;
   }
 
-  res = regcomp(preg, cmd->argv[1], regex_flags);
+  res = pr_regexp_compile(preg, cmd->argv[1], regex_flags);
   if (res != 0) {
     char errstr[200] = {'\0'};
 
-    regerror(res, preg, errstr, sizeof(errstr));
+    pr_regexp_error(res, preg, errstr, sizeof(errstr));
     regfree(preg);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to compile '",
@@ -2737,4 +2736,4 @@ module rewrite_module = {
   MOD_REWRITE_VERSION
 };
 
-#endif /* HAVE_REGEX_H */
+#endif /* regex support */

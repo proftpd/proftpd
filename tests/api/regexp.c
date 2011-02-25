@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008 The ProFTPD Project team
+ * Copyright (c) 2008-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * Env API tests
- * $Id: regexp.c,v 1.1 2008-10-06 18:16:50 castaglia Exp $
+ * $Id: regexp.c,v 1.2 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "tests.h"
@@ -68,6 +68,52 @@ START_TEST (regexp_free_test) {
 }
 END_TEST
 
+START_TEST (regexp_compile) {
+  regex_t *re = NULL;
+  int res;
+  char errstr[256], *pattern;
+  size_t errstrlen;
+
+  re = pr_regexp_alloc();
+
+  pattern = "[=foo";
+  res = pr_regexp_compile(re, pattern, 0); 
+  fail_unless(res != 0, "Successfully compiled pattern unexpectedly"); 
+
+  errstrlen = pr_regexp_error(res, re, errstr, sizeof(errstr));
+  fail_unless(errstrlen > 0, "Failed to get regex compilation error string");
+
+  pattern = "foo";
+  res = pr_regexp_compile(re, pattern, 0);
+  fail_unless(res == 0, "Failed to compile regex pattern");
+
+  pr_regexp_free(re);
+}
+END_TEST
+
+START_TEST (regexp_exec) {
+  regex_t *re = NULL;
+  int res;
+  char *pattern, *str;
+
+  re = pr_regexp_alloc();
+
+  pattern = "^foo";
+  res = pr_regexp_compile(re, pattern, 0);
+  fail_unless(res == 0, "Failed to compile regex pattern");
+
+  str = "bar";
+  res = pr_regexp_exec(re, str, 0, NULL, 0);
+  fail_unless(res != 0, "Matched string unexpectedly");
+
+  str = "foobar";
+  res = pr_regexp_exec(re, str, 0, NULL, 0);
+  fail_unless(res == 0, "Failed to match string");
+
+  pr_regexp_free(re);
+}
+END_TEST
+
 Suite *tests_get_regexp_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -80,6 +126,8 @@ Suite *tests_get_regexp_suite(void) {
 
   tcase_add_test(testcase, regexp_alloc_test);
   tcase_add_test(testcase, regexp_free_test);
+  tcase_add_test(testcase, regexp_compile);
+  tcase_add_test(testcase, regexp_exec);
 
   suite_add_tcase(suite, testcase);
 

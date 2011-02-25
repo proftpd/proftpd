@@ -2,7 +2,7 @@
  * ProFTPD: mod_ifsession -- a module supporting conditional
  *                            per-user/group/class configuration contexts.
  *
- * Copyright (c) 2002-2010 TJ Saunders
+ * Copyright (c) 2002-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.28 2010-12-01 18:42:03 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.29 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -205,7 +205,7 @@ MODRET start_ifctxt(cmd_rec *cmd) {
       argv = cmd->argv+1;
 
     } else if (strcmp(cmd->argv[1], "regex") == 0) {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
       regex_t *preg = NULL;
       int res = 0;
 
@@ -214,11 +214,11 @@ MODRET start_ifctxt(cmd_rec *cmd) {
 
       preg = pr_regexp_alloc();
 
-      res = regcomp(preg, cmd->argv[2], REG_EXTENDED|REG_NOSUB);
+      res = pr_regexp_compile(preg, cmd->argv[2], REG_EXTENDED|REG_NOSUB);
       if (res != 0) {
         char errstr[200] = {'\0'};
 
-        regerror(res, preg, errstr, sizeof(errstr));
+        pr_regexp_error(res, preg, errstr, sizeof(errstr));
         pr_regexp_free(preg);
 
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": '", cmd->argv[2], "' failed "
@@ -237,7 +237,7 @@ MODRET start_ifctxt(cmd_rec *cmd) {
 #else
       CONF_ERROR(cmd, "The 'regex' parameter cannot be used on this system, "
         "as you do not have POSIX compliant regex support");
-#endif /* HAVE_REGEX_H && HAVE_REGCOMP */
+#endif /* regex support */
 
     } else {
       argc = cmd->argc-1;
@@ -335,26 +335,26 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
     if (list != NULL) {
       unsigned char mergein = FALSE;
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
         regex_t *preg = (regex_t *) list->argv[2];
 
         if (session.group != NULL &&
-            regexec(preg, session.group, 0, NULL, 0) == 0) {
+            pr_regexp_exec(preg, session.group, 0, NULL, 0) == 0) {
           mergein = TRUE;
 
         } else if (session.groups) {
           register int j = 0;
 
           for (j = session.groups->nelts-1; j >= 0; j--)
-            if (regexec(preg, *(((char **) session.groups->elts) + j), 0,
+            if (pr_regexp_exec(preg, *(((char **) session.groups->elts) + j), 0,
                 NULL, 0) == 0) {
               mergein = TRUE;
           }
         }
 
       } else
-#endif /* HAVE_REGEX_H && HAVE_REGCOMP */
+#endif /* regex support */
     
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
           pr_expr_eval_group_or((char **) &list->argv[2]) == TRUE) {
@@ -424,15 +424,15 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
     if (list != NULL) {
       unsigned char mergein = FALSE;
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
         regex_t *preg = (regex_t *) list->argv[2];
 
-        if (regexec(preg, session.user, 0, NULL, 0) == 0)
+        if (pr_regexp_exec(preg, session.user, 0, NULL, 0) == 0)
           mergein = TRUE;
 
       } else
-#endif /* HAVE_REGEX_H && HAVE_REGCOMP */
+#endif /* regex support */
 
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
           pr_expr_eval_user_or((char **) &list->argv[2]) == TRUE)
@@ -569,16 +569,17 @@ static int ifsess_sess_init(void) {
     if (list != NULL) {
       unsigned char mergein = FALSE;
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
         regex_t *preg = (regex_t *) list->argv[2];
 
-        if (session.class && regexec(preg, session.class->cls_name, 0, NULL,
-            0) == 0)
+        if (session.class &&
+            pr_regexp_exec(preg, session.class->cls_name, 0, NULL, 0) == 0) {
           mergein = TRUE;
+        }
 
       } else
-#endif /* HAVE_REGEX_H && HAVE_REGCOMP */
+#endif /* regex support */
 
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
           pr_expr_eval_class_or((char **) &list->argv[2]) == TRUE)

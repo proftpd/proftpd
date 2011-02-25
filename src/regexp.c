@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,14 +24,13 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/*
- * Regex management code
- * $Id: regexp.c,v 1.13 2004-09-05 00:38:14 castaglia Exp $
+/* Regex management code
+ * $Id: regexp.c,v 1.14 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "conf.h"
 
-#ifdef HAVE_REGEX_H
+#if defined(HAVE_REGEX_H) || defined(PR_USE_PCRE)
 
 static pool *regexp_pool = NULL;
 static array_header *regexp_list = NULL;
@@ -115,6 +114,23 @@ void pr_regexp_free(regex_t *regex) {
       regexp[i] = NULL;
     }
   }
+}
+
+int pr_regexp_compile(regex_t *re, const char *pattern, int flags) {
+  return regcomp(re, pattern, flags);
+}
+
+size_t pr_regexp_error(int errcode, const regex_t *re, char *buf,
+  size_t bufsz) {
+
+  /* Make sure the given buffer is always zeroed out first. */
+  memset(buf, '\0', bufsz);
+  return regerror(errcode, re, buf, bufsz-1);
+}
+
+int pr_regexp_exec(const regex_t *re, const char *str, size_t nmatches,
+    regmatch_t *matches, int flags) {
+  return regexec(re, str, nmatches, matches, flags);
 }
 
 void init_regexp(void) {

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp interoperability
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: interop.c,v 1.9 2010-07-21 20:23:24 castaglia Exp $
+ * $Id: interop.c,v 1.10 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -184,7 +184,7 @@ int sftp_interop_handle_version(const char *client_version) {
       "checking client version '%s' against regex '%s'", version,
       known_versions[i].pattern);
 
-    res = regexec(known_versions[i].preg, version, 0, NULL, 0);
+    res = pr_regexp_exec(known_versions[i].preg, version, 0, NULL, 0);
     if (res == 0) {
       pr_trace_msg(trace_channel, 18,
         "client version '%s' matched against regex '%s'", version,
@@ -248,7 +248,7 @@ int sftp_interop_handle_version(const char *client_version) {
       "checking client version '%s' against SFTPClientMatch regex '%s'",
       version, pattern);
 
-    res = regexec(preg, version, 0, NULL, 0);
+    res = pr_regexp_exec(preg, version, 0, NULL, 0);
     if (res == 0) {
       pr_table_t *tab;
       void *v, *v2;
@@ -388,12 +388,13 @@ int sftp_interop_init(void) {
 
     preg = pr_regexp_alloc();
 
-    res = regcomp(preg, known_versions[i].pattern, REG_EXTENDED|REG_NOSUB);
+    res = pr_regexp_compile(preg, known_versions[i].pattern,
+      REG_EXTENDED|REG_NOSUB);
     if (res != 0) {
       char errmsg[256];
 
       memset(errmsg, '\0', sizeof(errmsg));
-      regerror(res, preg, errmsg, sizeof(errmsg));
+      pr_regexp_error(res, preg, errmsg, sizeof(errmsg));
       pr_regexp_free(preg);
 
       pr_log_debug(DEBUG0, MOD_SFTP_VERSION

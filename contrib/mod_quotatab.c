@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
  *
- * Copyright (c) 2001-2010 TJ Saunders
+ * Copyright (c) 2001-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.67 2010-11-09 18:43:38 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.68 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -82,7 +82,7 @@ static unsigned long have_quota_update = 0;
 #define QUOTA_HAVE_READ_UPDATE			10000
 #define QUOTA_HAVE_WRITE_UPDATE			20000
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
 static regex_t *quota_exclude_re = NULL;
 static const char *quota_exclude_filter = NULL;
 #endif
@@ -553,7 +553,7 @@ static int quotatab_ignore_path(pool *p, const char *path) {
     return FALSE;
   }
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
   if (quota_exclude_re == NULL) {
     return FALSE;
   }
@@ -566,7 +566,7 @@ static int quotatab_ignore_path(pool *p, const char *path) {
     abs_path = (char *) path;
   }
 
-  if (regexec(quota_exclude_re, abs_path, 0, NULL, 0) == 0) {
+  if (pr_regexp_exec(quota_exclude_re, abs_path, 0, NULL, 0) == 0) {
     return TRUE;
   }
 
@@ -1295,7 +1295,7 @@ MODRET set_quotaengine(cmd_rec *cmd) {
 
 /* usage: QuotaExcludeFilter regex|"none" */
 MODRET set_quotaexcludefilter(cmd_rec *cmd) {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
   regex_t *re = NULL;
   config_rec *c;
   int res;
@@ -1310,11 +1310,11 @@ MODRET set_quotaexcludefilter(cmd_rec *cmd) {
 
   re = pr_regexp_alloc();
 
-  res = regcomp(re, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  res = pr_regexp_compile(re, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
   if (res != 0) {
     char errstr[256] = {'\0'};
 
-    regerror(res, re, errstr, sizeof(errstr));
+    pr_regexp_error(res, re, errstr, sizeof(errstr));
     pr_regexp_free(re);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "

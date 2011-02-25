@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: filter.c,v 1.2 2011-02-15 00:58:30 castaglia Exp $
+ * $Id: filter.c,v 1.3 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -29,7 +29,7 @@
 static const char *trace_channel = "filter";
 
 int pr_filter_allow_path(xaset_t *set, const char *path) {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
   regex_t *preg;
   int res;
 
@@ -37,7 +37,7 @@ int pr_filter_allow_path(xaset_t *set, const char *path) {
 
   preg = get_param_ptr(set, "PathAllowFilter", FALSE);
   if (preg) {
-    res = regexec(preg, path, 0, NULL, 0);
+    res = pr_regexp_exec(preg, path, 0, NULL, 0);
     if (res != 0) {
       return PR_FILTER_ERR_FAILS_ALLOW_FILTER;
     }
@@ -50,7 +50,7 @@ int pr_filter_allow_path(xaset_t *set, const char *path) {
   preg = get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
  
   if (preg) {
-    res = regexec(preg, path, 0, NULL, 0);
+    res = pr_regexp_exec(preg, path, 0, NULL, 0);
     if (res == 0) {
       return PR_FILTER_ERR_FAILS_DENY_FILTER;
     } 

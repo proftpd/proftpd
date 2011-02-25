@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.413 2011-02-21 02:33:00 castaglia Exp $
+ * $Id: main.c,v 1.414 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -37,14 +37,6 @@
 #ifdef HAVE_LIBUTIL_H
 # include <libutil.h>
 #endif /* HAVE_LIBUTIL_H */
-
-#ifdef HAVE_REGEX_H
-# include <regex.h>
-#endif
-
-#ifdef HAVE_REGEXP_H
-# include <regexp.h>
-#endif /* HAVE_REGEXP_H */
 
 #ifdef HAVE_EXECINFO_H
 # include <execinfo.h>
@@ -2738,6 +2730,12 @@ static void show_settings(void) {
 #else
   printf("%s", "    - OpenSSL support\n");
 #endif /* PR_USE_OPENSSL */
+
+#ifdef PR_USE_PCRE
+  printf("%s", "    + PCRE support\n");
+#else
+  printf("%s", "    - PCRE support\n");
+#endif /* PR_USE_PCRE */
 
 #ifdef PR_USE_FACL
   printf("%s", "    + POSIX ACL support\n");

@@ -25,17 +25,13 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.393 2011-02-21 02:32:59 castaglia Exp $
+ * $Id: mod_core.c,v 1.394 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
 #include <ctype.h>
-
-#ifdef HAVE_REGEX_H
-# include <regex.h>
-#endif
 
 extern module site_module;
 extern xaset_t *server_list;
@@ -1913,7 +1909,7 @@ MODRET set_timesgmt(cmd_rec *cmd) {
 }
 
 MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
   regex_t *preg = NULL;
   config_rec *c = NULL;
   int regex_flags = REG_EXTENDED|REG_NOSUB, res = 0;
@@ -1952,11 +1948,11 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
     cmd->argv[1]);
   preg = pr_regexp_alloc();
 
-  res = regcomp(preg, cmd->argv[1], regex_flags);
+  res = pr_regexp_compile(preg, cmd->argv[1], regex_flags);
   if (res != 0) {
     char errstr[200] = {'\0'};
 
-    regerror(res, preg, errstr, sizeof(errstr));
+    pr_regexp_error(res, preg, errstr, sizeof(errstr));
     pr_regexp_free(preg);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
@@ -1975,7 +1971,7 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
 }
 
 MODRET set_allowdenyfilter(cmd_rec *cmd) {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
   regex_t *preg = NULL;
   config_rec *c = NULL;
   int res = 0;
@@ -1987,11 +1983,11 @@ MODRET set_allowdenyfilter(cmd_rec *cmd) {
   preg = pr_regexp_alloc();
 
   pr_log_debug(DEBUG4, "%s: compiling regex '%s'", cmd->argv[0], cmd->argv[1]);
-  res = regcomp(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  res = pr_regexp_compile(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
   if (res != 0) {
     char errstr[200] = {'\0'};
 
-    regerror(res, preg, errstr, sizeof(errstr));
+    pr_regexp_error(res, preg, errstr, sizeof(errstr));
     pr_regexp_free(preg);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
@@ -2184,7 +2180,7 @@ MODRET add_directory(cmd_rec *cmd) {
 }
 
 MODRET set_hidefiles(cmd_rec *cmd) {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
   regex_t *regexp = NULL;
   config_rec *c = NULL;
   unsigned int precedence = 0;
@@ -2231,11 +2227,11 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 
     regexp = pr_regexp_alloc();
   
-    res = regcomp(regexp, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+    res = pr_regexp_compile(regexp, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
     if (res != 0) {
       char errstr[200] = {'\0'};
 
-      regerror(res, regexp, errstr, sizeof(errstr));
+      pr_regexp_error(res, regexp, errstr, sizeof(errstr));
       pr_regexp_free(regexp);
 
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
@@ -2787,7 +2783,7 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
       argv = cmd->argv+1;
 
     } else if (strcasecmp(cmd->argv[1], "regex") == 0) {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
       regex_t *preg;
       int res;
 
@@ -2796,11 +2792,11 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
 
       preg = pr_regexp_alloc();
 
-      res = regcomp(preg, cmd->argv[2], REG_EXTENDED|REG_NOSUB);
+      res = pr_regexp_compile(preg, cmd->argv[2], REG_EXTENDED|REG_NOSUB);
       if (res != 0) {
         char errstr[200] = {'\0'};
 
-        regerror(res, preg, errstr, sizeof(errstr));
+        pr_regexp_error(res, preg, errstr, sizeof(errstr));
         pr_regexp_free(preg);
 
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[2], "' failed "
@@ -2818,7 +2814,7 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
 #else
       CONF_ERROR(cmd, "The 'regex' parameter cannot be used on this system, "
         "as you do not have POSIX compliant regex support");
-#endif /* HAVE_REGEX_H and HAVE_REGCOMP */
+#endif /* regex support */
 
     } else {
       argc = cmd->argc-1;
@@ -3217,7 +3213,7 @@ MODRET end_virtualhost(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
 MODRET regex_filters(cmd_rec *cmd) {
   regex_t *allow_regex = NULL, *deny_regex = NULL;
 
@@ -3231,7 +3227,7 @@ MODRET regex_filters(cmd_rec *cmd) {
   allow_regex = get_param_ptr(CURRENT_CONF, "AllowFilter", FALSE);
 
   if (allow_regex && cmd->arg &&
-      regexec(allow_regex, cmd->arg, 0, NULL, 0) != 0) {
+      pr_regexp_exec(allow_regex, cmd->arg, 0, NULL, 0) != 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by AllowFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, _("%s: Forbidden command argument"), cmd->arg);
@@ -3242,7 +3238,7 @@ MODRET regex_filters(cmd_rec *cmd) {
   deny_regex = get_param_ptr(CURRENT_CONF, "DenyFilter", FALSE);
 
   if (deny_regex && cmd->arg &&
-      regexec(deny_regex, cmd->arg, 0, NULL, 0) == 0) {
+      pr_regexp_exec(deny_regex, cmd->arg, 0, NULL, 0) == 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by DenyFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, _("%s: Forbidden command argument"), cmd->arg);
@@ -3251,7 +3247,7 @@ MODRET regex_filters(cmd_rec *cmd) {
 
   return PR_DECLINED(cmd);
 }
-#endif /* HAVE_REGEX_H && HAVE_REGCOMP */
+#endif /* regex support */
 
 MODRET core_pre_any(cmd_rec *cmd) {
   unsigned long cmd_delay = 0;
@@ -5479,7 +5475,7 @@ static conftable core_conftab[] = {
 };
 
 static cmdtable core_cmdtab[] = {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
   { PRE_CMD, C_ANY, G_NONE,  regex_filters, FALSE, FALSE, CL_NONE },
 #endif
   { PRE_CMD, C_ANY, G_NONE, core_pre_any,FALSE, FALSE, CL_NONE },

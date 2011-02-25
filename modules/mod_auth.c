@@ -25,15 +25,11 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.284 2011-02-21 02:32:59 castaglia Exp $
+ * $Id: mod_auth.c,v 1.285 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
-
-#ifdef HAVE_REGEX_H
-# include <regex.h>
-#endif /* HAVE_REGEX_H */
 
 extern pid_t mpid;
 
@@ -823,17 +819,17 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     /* Check for configured AnonRejectPasswords regex here, and fail the login
      * if the given password matches the regex.
      */
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
     if ((tmpc = find_config(c->subset, CONF_PARAM, "AnonRejectPasswords",
         FALSE)) != NULL) {
       int re_res;
       regex_t *pw_regex = (regex_t *) tmpc->argv[0];
 
       if (pw_regex && pass &&
-          ((re_res = regexec(pw_regex, pass, 0, NULL, 0)) == 0)) {
+          ((re_res = pr_regexp_exec(pw_regex, pass, 0, NULL, 0)) == 0)) {
         char errstr[200] = {'\0'};
 
-        regerror(re_res, pw_regex, errstr, sizeof(errstr));
+        pr_regexp_error(re_res, pw_regex, errstr, sizeof(errstr));
         pr_log_auth(PR_LOG_NOTICE, "ANON %s: AnonRejectPasswords denies login",
           origuser);
  
@@ -2180,7 +2176,7 @@ MODRET set_anonrequirepassword(cmd_rec *cmd) {
 }
 
 MODRET set_anonrejectpasswords(cmd_rec *cmd) {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
   config_rec *c = NULL;
   regex_t *preg = NULL;
   int res;
@@ -2190,11 +2186,11 @@ MODRET set_anonrejectpasswords(cmd_rec *cmd) {
 
   preg = pr_regexp_alloc();
 
-  res = regcomp(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  res = pr_regexp_compile(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
   if (res != 0) {
     char errstr[200] = {'\0'};
 
-    regerror(res, preg, errstr, 200);
+    pr_regexp_error(res, preg, errstr, 200);
     pr_regexp_free(preg);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unable to compile regex '",

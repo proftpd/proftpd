@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.45 2011-02-22 03:40:00 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.46 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -511,12 +511,12 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
 
   preg = pr_regexp_alloc();
 
-  res = regcomp(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  res = pr_regexp_compile(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
   if (res != 0) {
     char errstr[200];
 
     memset(errstr, '\0', sizeof(errstr));
-    regerror(res, preg, errstr, sizeof(errstr));
+    pr_regexp_error(res, preg, errstr, sizeof(errstr));
     pr_regexp_free(preg);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "

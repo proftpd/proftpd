@@ -903,6 +903,9 @@
 /* Define if OpenSSL support, if available, should be used.  */
 #undef PR_USE_OPENSSL
 
+/* Define if using PCRE support.  */
+#undef PR_USE_PCRE
+
 /* Define if sendfile support, if available, should be used.  */
 #undef PR_USE_SENDFILE
 

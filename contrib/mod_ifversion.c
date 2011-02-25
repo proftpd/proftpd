@@ -2,7 +2,7 @@
  * ProFTPD: mod_ifversion -- a module supporting conditional configuration
  *                           depending on the proftpd server version
  *
- * Copyright (c) 2009 TJ Saunders
+ * Copyright (c) 2009-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  * This is mod_ifversion, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifversion.c,v 1.1 2010-06-29 14:52:29 castaglia Exp $
+ * $Id: mod_ifversion.c,v 1.2 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -301,18 +301,18 @@ static int compare_version(pool *p, char *version_str, char **error) {
 }
 
 static int match_version(pool *p, const char *pattern_str, char **error) {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
   regex_t *preg;
   int res;
 
   preg = pr_regexp_alloc();
 
-  res = regcomp(preg, pattern_str, REG_EXTENDED|REG_NOSUB|REG_ICASE);
+  res = pr_regexp_compile(preg, pattern_str, REG_EXTENDED|REG_NOSUB|REG_ICASE);
   if (res != 0) {
     char errstr[256];
 
     memset(errstr, '\0', sizeof(errstr));
-    regerror(res, preg, errstr, sizeof(errstr)-1);
+    pr_regexp_error(res, preg, errstr, sizeof(errstr)-1);
 
     pr_regexp_free(preg);
     *error = pstrcat(p, "unable to compile pattern '", pattern_str, "': ",
@@ -321,7 +321,7 @@ static int match_version(pool *p, const char *pattern_str, char **error) {
     return 0;
   }
 
-  res = regexec(preg, pr_version_get_str(), 0, NULL, 0);
+  res = pr_regexp_exec(preg, pr_version_get_str(), 0, NULL, 0);
 
   if (res != 0) {
     *error = pstrcat(p, "server version '", pr_version_get_str(),
@@ -334,7 +334,7 @@ static int match_version(pool *p, const char *pattern_str, char **error) {
 #else
   *error = pstrdup(p, "system does not support POSIX regular expressions");
   return 0;
-#endif /* !HAVE_REGEX_H or !HAVE_REGCOMP */
+#endif /* regex support */
 }
 
 /* Configuration handlers

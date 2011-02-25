@@ -25,14 +25,10 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.96 2011-02-16 19:10:42 castaglia Exp $
+ * $Id: fsio.c,v 1.97 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "conf.h"
-
-#ifdef HAVE_REGEX_H
-# include <regex.h>
-#endif
 
 #ifdef HAVE_SYS_STATVFS_H
 # include <sys/statvfs.h>
@@ -1209,7 +1205,7 @@ pr_fs_t *pr_get_fs(const char *path, int *exact) {
   return best_match_fs;
 }
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
 #ifdef PR_FS_MATCH
 void pr_associate_fs(pr_fs_match_t *fsm, pr_fs_t *fs) {
   *((pr_fs_t **) push_array(fsm->fsm_fs_objs)) = fs;
@@ -1244,9 +1240,9 @@ pr_fs_match_t *pr_create_fs_match(pool *p, const char *name,
 
   regexp = pr_regexp_alloc();
 
-  if ((res = regcomp(regexp, pattern, REG_EXTENDED|REG_NOSUB)) != 0) {
-
-    regerror(res, regexp, regerr, sizeof(regerr));
+  res = pr_regexp_compile(regexp, pattern, REG_EXTENDED|REG_NOSUB);
+  if (res != 0) {
+    pr_regexp_error(res, regexp, regerr, sizeof(regerr));
     pr_regexp_free(regexp);
 
     pr_log_pri(PR_LOG_ERR, "unable to compile regex '%s': %s", pattern, regerr);
@@ -1403,7 +1399,7 @@ pr_fs_match_t *pr_get_next_fs_match(pr_fs_match_t *fsm, const char *path,
 
   for (fsmi = fsm->fsm_next; fsmi; fsmi = fsmi->fsm_next) {
     if ((fsmi->fsm_opmask & op) &&
-        regexec(fsmi->fsm_regex, path, 0, NULL, 0) == 0)
+        pr_regexp_exec(fsmi->fsm_regex, path, 0, NULL, 0) == 0)
       return fsmi;
   }
 
@@ -1420,14 +1416,14 @@ pr_fs_match_t *pr_get_fs_match(const char *path, int op) {
   fsm = fs_match_list;
 
   if ((fsm->fsm_opmask & op) &&
-      regexec(fsm->fsm_regex, path, 0, NULL, 0) == 0)
+      pr_regexp_exec(fsm->fsm_regex, path, 0, NULL, 0) == 0)
     return fsm;
 
   /* ...otherwise, hand the search off to pr_get_next_fs_match() */
   return pr_get_next_fs_match(fsm, path, op);
 }
 #endif /* PR_FS_MATCH */
-#endif /* HAVE_REGEX_H && HAVE_REGCOMP */
+#endif /* regex support */
 
 void pr_fs_setcwd(const char *dir) {
   pr_fs_resolve_path(dir, cwd, sizeof(cwd)-1, FSIO_DIR_CHDIR);

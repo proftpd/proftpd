@@ -26,17 +26,13 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.25 2011-01-10 21:57:24 castaglia Exp $
+ * $Id: fsio.h,v 1.26 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
 #define PR_FSIO_H
 
 #include "conf.h"
-
-#ifdef HAVE_REGEX_H
-#include <regex.h>
-#endif
 
 /* This is a Tru64-specific hack, to work around some macro funkiness
  * in their /usr/include/sys/mount.h header.

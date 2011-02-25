@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,17 +25,13 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.247 2010-11-10 19:23:52 castaglia Exp $
+ * $Id: dirtree.c,v 1.248 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "conf.h"
 
 #ifdef HAVE_ARPA_INET_H
 # include <arpa/inet.h>
-#endif
-
-#ifdef HAVE_REGEX_H
-# include <regex.h>
 #endif
 
 xaset_t *server_list = NULL;
@@ -281,7 +277,7 @@ char *path_subst_uservar(pool *path_pool, char **path) {
  * be visible.
  */
 unsigned char dir_hide_file(const char *path) {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
   char *file_name = NULL, *dir_name = NULL;
   config_rec *c = NULL;
   regex_t *regexp = NULL;
@@ -416,7 +412,7 @@ unsigned char dir_hide_file(const char *path) {
       return FALSE;
     }
 
-    if (regexec(regexp, file_name, 0, NULL, 0) != 0) {
+    if (pr_regexp_exec(regexp, file_name, 0, NULL, 0) != 0) {
       destroy_pool(tmp_pool);
 
       pr_log_debug(DEBUG9, "file '%s' did not match %sHideFiles pattern",
@@ -443,7 +439,7 @@ unsigned char dir_hide_file(const char *path) {
   }
 
   destroy_pool(tmp_pool);
-#endif /* !HAVE_REGEX_H and !HAVE_REGCOMP */
+#endif /* regex support */
 
   /* Return FALSE by default. */
   return FALSE;	
@@ -970,17 +966,17 @@ static int check_user_access(xaset_t *set, const char *name) {
   while (c) {
     pr_signals_handle();
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
       regex_t *preg = (regex_t *) c->argv[1];
 
-      if (regexec(preg, session.user, 0, NULL, 0) == 0) {
+      if (pr_regexp_exec(preg, session.user, 0, NULL, 0) == 0) {
         res = TRUE;
         break;
       }
 
     } else
-#endif /* HAVE_REGEX_H and HAVE_REGCOMP */
+#endif /* regex support */
 
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
       res = pr_expr_eval_user_or((char **) &c->argv[1]);
@@ -1006,11 +1002,12 @@ static int check_group_access(xaset_t *set, const char *name) {
   config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
 
   while (c) {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
       regex_t *preg = (regex_t *) c->argv[1];
 
-      if (session.group && regexec(preg, session.group, 0, NULL, 0) == 0) {
+      if (session.group &&
+          pr_regexp_exec(preg, session.group, 0, NULL, 0) == 0) {
         res = TRUE;
         break;
 
@@ -1018,7 +1015,7 @@ static int check_group_access(xaset_t *set, const char *name) {
         register int i = 0;
 
         for (i = session.groups->nelts-1; i >= 0; i--)
-          if (regexec(preg, *(((char **) session.groups->elts) + i), 0,
+          if (pr_regexp_exec(preg, *(((char **) session.groups->elts) + i), 0,
               NULL, 0) == 0) {
             res = TRUE;
             break;
@@ -1026,7 +1023,7 @@ static int check_group_access(xaset_t *set, const char *name) {
       }
 
     } else
-#endif /* HAVE_REGEX_H and HAVE_REGCOMP */
+#endif /* regex support */
 
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
       res = pr_expr_eval_group_or((char **) &c->argv[1]);
@@ -1054,18 +1051,18 @@ static int check_class_access(xaset_t *set, const char *name) {
   while (c) {
     pr_signals_handle();
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
       regex_t *preg = (regex_t *) c->argv[1];
 
       if (session.class &&
-          regexec(preg, session.class->cls_name, 0, NULL, 0) == 0) {
+          pr_regexp_exec(preg, session.class->cls_name, 0, NULL, 0) == 0) {
         res = TRUE;
         break;
       }
 
     } else
-#endif /* HAVE_REGEX_H and HAVE_REGCOMP */
+#endif /* regex support */
 
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
       res = pr_expr_eval_class_or((char **) &c->argv[1]);
@@ -1087,7 +1084,7 @@ static int check_class_access(xaset_t *set, const char *name) {
 }
 
 static int check_filter_access(xaset_t *set, const char *name, cmd_rec *cmd) {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
   int res = 0;
   config_rec *c;
 
@@ -1100,7 +1097,7 @@ static int check_filter_access(xaset_t *set, const char *name, cmd_rec *cmd) {
 
     pr_signals_handle();
 
-    if (regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
+    if (pr_regexp_exec(preg, cmd->arg, 0, NULL, 0) == 0) {
       res = TRUE;
       break;
     }
@@ -1111,7 +1108,7 @@ static int check_filter_access(xaset_t *set, const char *name, cmd_rec *cmd) {
   return res;
 #else
   return 0;
-#endif /* HAVE_REGEX_H and HAVE_REGCOMP */
+#endif /* regex support */
 }
 
 /* As of 1.2.0rc3, a '!' character in front of the IP address

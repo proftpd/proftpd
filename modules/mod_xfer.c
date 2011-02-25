@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.283 2011-02-17 02:12:00 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.284 2011-02-25 20:15:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,10 +34,6 @@
 
 #ifdef HAVE_SYS_SENDFILE_H
 # include <sys/sendfile.h>
-#endif
-
-#ifdef HAVE_REGEX_H
-# include <regex.h>
 #endif
 
 /* Minimum priority a process can have. */
