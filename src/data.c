@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.132 2011-01-12 06:54:49 castaglia Exp $
+ * $Id: data.c,v 1.133 2011-02-26 02:31:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -227,8 +227,10 @@ static void data_new_xfer(char *filename, int direction) {
 
   session.xfer.filename = pstrdup(session.xfer.p, filename);
   session.xfer.direction = direction;
-  session.xfer.bufsize = pr_config_get_xfer_bufsz();
+  session.xfer.bufsize = pr_config_get_server_xfer_bufsz(direction);
   session.xfer.buf = pcalloc(session.xfer.p, session.xfer.bufsize + 1);
+  pr_trace_msg("data", 8, "allocated data transfer buffer of %lu bytes",
+    (unsigned long) session.xfer.bufsize);
   session.xfer.buf++;	/* leave room for ascii translation */
   session.xfer.buflen = 0;
 }
@@ -258,11 +260,11 @@ static int data_pasv_open(char *reason, off_t size) {
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
     pr_inet_set_socket_opts(session.d->pool, session.d,
-      (main_server->tcp_rcvbuf_override ?  main_server->tcp_rcvbuf_len : 0), 0);
+      (main_server->tcp_rcvbuf_override ? main_server->tcp_rcvbuf_len : 0), 0);
 
   } else {
     pr_inet_set_socket_opts(session.d->pool, session.d,
-      0, (main_server->tcp_sndbuf_override ?  main_server->tcp_sndbuf_len : 0));
+      0, (main_server->tcp_sndbuf_override ? main_server->tcp_sndbuf_len : 0));
   }
 
   c = pr_inet_accept(session.pool, session.d, session.c, -1, -1, TRUE);
@@ -279,12 +281,14 @@ static int data_pasv_open(char *reason, off_t size) {
       pr_netaddr_get_ipstr(session.d->remote_addr), session.d->remote_port);
 
     if (session.xfer.xfer_type != STOR_UNIQUE) {
-      if (size)
+      if (size) {
         pr_response_send(R_150, _("Opening %s mode data connection for %s "
           "(%" PR_LU " bytes)"), MODE_STRING, reason, (pr_off_t) size);
-      else
+
+      } else {
         pr_response_send(R_150, _("Opening %s mode data connection for %s"),
           MODE_STRING, reason);
+      }
 
     } else {
 
@@ -360,11 +364,11 @@ static int data_active_open(char *reason, off_t size) {
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
     pr_inet_set_socket_opts(session.d->pool, session.d,
-      (main_server->tcp_rcvbuf_override ?  main_server->tcp_rcvbuf_len : 0), 0);
+      (main_server->tcp_rcvbuf_override ? main_server->tcp_rcvbuf_len : 0), 0);
     
   } else {
     pr_inet_set_socket_opts(session.d->pool, session.d,
-      0, (main_server->tcp_sndbuf_override ?  main_server->tcp_sndbuf_len : 0));
+      0, (main_server->tcp_sndbuf_override ? main_server->tcp_sndbuf_len : 0));
   }
 
   /* Make sure that the necessary socket options are set on the socket prior
@@ -1191,8 +1195,8 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 
       pr_signals_handle();
 
-      if (buflen > pr_config_get_xfer_bufsz())
-        buflen = pr_config_get_xfer_bufsz();
+      if (buflen > pr_config_get_server_xfer_bufsz(PR_NETIO_IO_WR))
+        buflen = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_WR);
 
       xferbuflen = buflen;
 

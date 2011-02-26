@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.284 2011-02-25 20:15:25 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.285 2011-02-26 02:31:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1682,9 +1682,10 @@ MODRET xfer_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  bufsz = (main_server->tcp_rcvbuf_len > 0 ?  main_server->tcp_rcvbuf_len :
-    pr_config_get_xfer_bufsz());
+  bufsz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_RD);
   lbuf = (char *) palloc(cmd->tmp_pool, bufsz);
+  pr_trace_msg("data", 8, "allocated upload buffer of %lu bytes",
+    (unsigned long) bufsz);
 
   while ((len = pr_data_xfer(lbuf, bufsz)) > 0) {
     pr_signals_handle();
@@ -2080,9 +2081,10 @@ MODRET xfer_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  bufsz = (main_server->tcp_sndbuf_len > 0 ?  main_server->tcp_sndbuf_len :
-    pr_config_get_xfer_bufsz());
+  bufsz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_WR);
   lbuf = (char *) palloc(cmd->tmp_pool, bufsz);
+  pr_trace_msg("data", 8, "allocated download buffer of %lu bytes",
+    (unsigned long) bufsz);
 
   nbytes_sent = curr_pos;
 

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.181 2010-11-05 03:20:41 castaglia Exp $
+ * $Id: mod_ls.c,v 1.182 2011-02-26 02:31:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -262,7 +262,7 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
 
 /* sendline() now has an internal buffer, to help speed up LIST output.
  * This buffer is allocated one, the first time sendline() is called.
- * By using a runtime allocation, we can use pr_config_get_xfer_bufsz()
+ * By using a runtime allocation, we can use pr_config_get_server_xfer_bufsz()
  * to get the optimal buffer size for network transfers.
  */
 static char *listbuf = NULL;
@@ -274,8 +274,10 @@ static int sendline(int flags, char *fmt, ...) {
   int res = 0;
 
   if (listbuf == NULL) {
-    listbufsz = pr_config_get_xfer_bufsz();
+    listbufsz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_WR);
     listbuf = pcalloc(session.pool, listbufsz);
+    pr_trace_msg("data", 8, "allocated list buffer of %lu bytes",
+      (unsigned long) listbufsz);
   }
 
   if (flags & LS_SENDLINE_FL_FLUSH) {

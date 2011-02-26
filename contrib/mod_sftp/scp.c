@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.56 2011-01-17 18:24:16 castaglia Exp $
+ * $Id: scp.c,v 1.57 2011-02-26 02:31:36 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1421,8 +1421,7 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
   /* Include space for one more character, i.e. for the terminating NUL
    * character that indicates the last chunk of the file.
    */
-  chunksz = (main_server->tcp_rcvbuf_len > 0 ? main_server->tcp_rcvbuf_len :
-    pr_config_get_xfer_bufsz()) + 1;
+  chunksz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_WR) + 1;
   chunk = palloc(p, chunksz);
 
   /* Keep sending chunks until we have sent the entire file, or until the

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.77 2010-10-23 19:37:40 castaglia Exp $
+ * $Id: dirtree.h,v 1.78 2011-02-26 02:31:36 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -64,6 +64,10 @@ typedef struct server_struc {
    */
   int tcp_mss_len;
 
+  /* If the tcp_rcvbuf_override/tcp_sndbuf_override flags are true, then
+   * the corresponding buffer lengths are to be configured as socket options
+   * via setsockopt(2).
+   */ 
   int tcp_rcvbuf_len;
   unsigned char tcp_rcvbuf_override;
 
@@ -237,9 +241,23 @@ int remove_config(xaset_t *, const char *, int);
  */
 unsigned int pr_config_get_id(const char *name);
 
-/* Returns the buffer size to use for data transfers.
+/* Returns the buffer size to use for data transfers, regardless of IO
+ * direction.
  */
 int pr_config_get_xfer_bufsz(void);
+
+/* Returns the buffer size to use for data transfers given an IO direction
+ * (either PR_NETIO_IO_RD for reads/uploads, or PR_NETIO_IO_WR for
+ * writes/downloads).
+ */
+int pr_config_get_xfer_bufsz2(int);
+
+/* Returns the buffer size to use for data transfers given an IO direction
+ * (either PR_NETIO_IO_RD for reads/uploads, or PR_NETIO_IO_WR for
+ * writes/downloads).  This takes into account any server-specific buffer
+ * sizes, e.g. as configured via SocketOptions.
+ */
+int pr_config_get_server_xfer_bufsz(int);
 
 /* Assigns a unique ID for the given configuration directive.  The
  * mapping of directive to ID is stored in a lookup table, so that

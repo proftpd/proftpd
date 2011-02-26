@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.248 2011-02-25 20:15:25 castaglia Exp $
+ * $Id: dirtree.c,v 1.249 2011-02-26 02:31:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3554,3 +3554,30 @@ unsigned int pr_config_set_id(const char *name) {
 int pr_config_get_xfer_bufsz(void) {
   return xfer_bufsz;
 }
+
+int pr_config_get_xfer_bufsz2(int direction) {
+  switch (direction) {
+    case PR_NETIO_IO_RD:
+      return tcp_rcvbufsz;
+
+    case PR_NETIO_IO_WR:
+      return tcp_sndbufsz;
+  }
+
+  return xfer_bufsz;
+}
+
+int pr_config_get_server_xfer_bufsz(int direction) {
+  if (main_server != NULL) {
+    switch (direction) {
+      case PR_NETIO_IO_RD:
+        return main_server->tcp_rcvbuf_len;
+
+      case PR_NETIO_IO_WR:
+        return main_server->tcp_sndbuf_len;
+    }
+  }
+
+  return pr_config_get_xfer_bufsz2(direction);
+}
+
