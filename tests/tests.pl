@@ -141,6 +141,7 @@ if (scalar(@ARGV) > 0) {
     t/config/serveradmin.t
     t/config/serverident.t
     t/config/showsymlinks.t
+    t/config/socketoptions.t
     t/config/storeuniqueprefix.t
     t/config/timeoutidle.t
     t/config/timeoutlogin.t
