@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.19 2011-02-23 02:47:42 castaglia Exp $
+ * $Id: response.c,v 1.20 2011-02-26 17:06:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,6 @@ static int resp_blocked = FALSE;
 static pool *resp_pool = NULL;
 
 static char resp_buf[PR_RESPONSE_BUFFER_SIZE] = {'\0'};
-static char resp_ml_numeric[4] = {'\0'};
 
 static char *resp_last_response_code = NULL;
 static char *resp_last_response_msg = NULL;
