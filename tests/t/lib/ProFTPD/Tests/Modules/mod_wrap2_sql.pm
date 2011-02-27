@@ -6,6 +6,7 @@ use strict;
 
 use File::Spec;
 use IO::Handle;
+use IO::Socket::INET6;
 
 use ProFTPD::TestSuite::FTP;
 use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
@@ -56,6 +57,11 @@ my $TESTS = {
   },
 
   wrap2_sql_deny_table_ipv4mappedv6_netmask => {
+    order => ++$order,
+    test_class => [qw(bug feature_ipv6 forking)],
+  },
+
+  wrap2_sql_deny_table_ipv6_netmask_bug3606 => {
     order => ++$order,
     test_class => [qw(bug feature_ipv6 forking)],
   },
@@ -1942,6 +1948,302 @@ EOS
       $expected = "Access denied";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub wrap2_sql_deny_table_ipv6_netmask_bug3606 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
+
+  # Build up sqlite3 command to create allow, deny tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/wrap2.sql");
+
+  my $fh;
+  if (open($fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE ftpallow (
+  name TEXT,
+  allowed TEXT
+);
+
+CREATE TABLE ftpdeny (
+  name TEXT,
+  denied TEXT
+);
+
+INSERT INTO ftpdeny (name, denied) VALUES ('', 'ALL');
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+
+  unlink($db_script);
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $timeout_idle = 30;
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+    TimeoutIdle => $timeout_idle,
+
+    DefaultAddress => '::1',
+    UseIPv6 => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql_sqlite.c' => [
+        "SQLAuthenticate off",
+        "SQLConnectInfo $db_file",
+        'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
+        'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
+        "SQLLogFile $log_file",
+      ],
+
+      'mod_wrap2_sql.c' => {
+        WrapEngine => 'on',
+        WrapTables => "sql:/get-allowed-clients sql:/get-denied-clients",
+        WrapLog => $log_file,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(2);
+
+      my $client = IO::Socket::INET6->new(
+        PeerAddr => '::1',
+        PeerPort => $port,
+        Proto => 'tcp',
+        Timeout => 5,
+      );
+      unless ($client) {
+        die("Can't connect to ::1: $!");
+      } 
+
+      # Read the banner
+      my $banner = <$client>;
+
+      # Send the USER command
+      my $cmd = "USER $user\r\n";
+      $client->print($cmd);
+      $client->flush();
+
+      # Read USER response
+      my $resp = <$client>;
+
+      my $expected = "331 Password required for $user\r\n";
+      $self->assert($expected eq $resp,
+        test_msg("Expected '$expected', got '$resp'"));
+ 
+      # Send the PASS command
+      $cmd = "PASS $passwd\r\n";
+      $client->print($cmd);
+      $client->flush();
+
+      # Read PASS response
+      $resp = <$client>;
+
+      my $expected = "530 Access denied\r\n";
+      $self->assert($expected eq $resp,
+        test_msg("Expected '$expected', got '$resp'"));
+ 
+      $client->close();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  if (open($fh, "> $db_script")) {
+    print $fh <<EOS;
+DELETE FROM ftpdeny;
+INSERT INTO ftpdeny (name, denied) VALUES ('', '[::1]/32');
+EOS
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  @output = `$cmd`;
+
+  unlink($db_script);
+
+  ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Fork child
+  $self->handle_sigchld();
+  defined($pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(2);
+
+      my $client = IO::Socket::INET6->new(
+        PeerAddr => '::1',
+        PeerPort => $port,
+        Proto => 'tcp',
+        Timeout => 5,
+      );
+      unless ($client) {
+        die("Can't connect to ::1: $!");
+      } 
+
+      # Read the banner
+      my $banner = <$client>;
+
+      # Send the USER command
+      my $cmd = "USER $user\r\n";
+      $client->print($cmd);
+      $client->flush();
+
+      # Read USER response
+      my $resp = <$client>;
+
+      my $expected = "331 Password required for $user\r\n";
+      $self->assert($expected eq $resp,
+        test_msg("Expected '$expected', got '$resp'"));
+ 
+      # Send the PASS command
+      $cmd = "PASS $passwd\r\n";
+      $client->print($cmd);
+      $client->flush();
+
+      # Read PASS response
+      $resp = <$client>;
+
+      my $expected = "530 Access denied\r\n";
+      $self->assert($expected eq $resp,
+        test_msg("Expected '$expected', got '$resp'"));
+ 
+      $client->close();
     };
 
     if ($@) {
