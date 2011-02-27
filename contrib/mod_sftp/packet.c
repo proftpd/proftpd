@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp packet IO
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.23 2011-02-12 17:39:08 castaglia Exp $
+ * $Id: packet.c,v 1.24 2011-02-27 19:47:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -230,7 +230,7 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
             errno == EPIPE) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "disconnecting client (%s)", strerror(errno));
-          end_login(1);
+          pr_session_end(0);
         }
 
         return -1;
@@ -242,7 +242,7 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "disconnecting client (received EOF)");
-        end_login(1);
+        pr_session_end(0);
       }
     }
 
@@ -346,7 +346,7 @@ static void handle_disconnect_mesg(struct ssh2_packet *pkt) {
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "client sent SSH_DISCONNECT message: %s (%s)", explain, reason_str);
-  end_login(1);
+  pr_session_end(0);
 }
 
 static void handle_global_request_mesg(struct ssh2_packet *pkt) {
@@ -1329,7 +1329,7 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
         errno == EPIPE) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "disconnecting client (%s)", strerror(errno));
-      end_login(1);
+      pr_session_end(0);
     }
 
     /* Always clear the iovec array after sending the data. */

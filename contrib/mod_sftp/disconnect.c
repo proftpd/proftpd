@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp disconnect msgs
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: disconnect.c,v 1.5 2010-10-29 22:28:17 castaglia Exp $
+ * $Id: disconnect.c,v 1.6 2011-02-27 19:47:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -143,6 +143,6 @@ void sftp_disconnect_conn(uint32_t reason, const char *explain,
   abort();
 
 #else
-  end_login(1);
+  pr_session_end(0);
 #endif /* PR_DEVEL_COREDUMP */
 }

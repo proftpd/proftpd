@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.10 2010-02-10 23:29:22 castaglia Exp $
+ * $Id: keys.c,v 1.11 2011-02-27 19:47:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1572,7 +1572,7 @@ void sftp_keys_get_passphrases(void) {
         pr_log_pri(PR_LOG_ERR, MOD_SFTP_VERSION
           ": unable to use key in SFTPHostKey '%s', exiting",
           (const char *) c->argv[0]);
-        end_login(1);
+        pr_session_end(0);
       }
 
       k->next = sftp_pkey_list;

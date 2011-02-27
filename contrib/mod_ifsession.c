@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.29 2011-02-25 20:15:25 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.30 2011-02-27 19:47:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -489,7 +489,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
 
       pr_log_auth(PR_LOG_NOTICE, "%s %s: Limit access denies login.",
         session.anon_config ? "ANON" : C_USER, session.user);
-      end_login(0);
+      pr_session_end(0);
     }
   }
 
@@ -532,7 +532,7 @@ static void ifsess_postparse_ev(const void *event_data, void *user_data) {
       break;
   }
 
-  end_login(1);
+  pr_session_end(0);
   return;
 }
 

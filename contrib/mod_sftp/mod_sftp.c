@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.46 2011-02-25 20:15:25 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.47 2011-02-27 19:47:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -189,18 +189,18 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
   } else {
     /* If we are being optimistic, we can reduce the connection latency
      * by sending our KEXINIT message now; this will have the server version
-     * string automatically appended.
+     * string automatically prepended.
      */  
     res = sftp_kex_send_first_kexinit();
   }
 
   if (res < 0) {
-    end_login(1);
+    pr_session_end(0);
   }
 
   res = sftp_get_client_version(conn);
   if (res < 0) {
-    end_login(1);
+    pr_session_end(0);
   }
 
   sftp_kex_init(sftp_client_version, SFTP_ID_STRING);
@@ -233,7 +233,7 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
   if (sftp_opts & SFTP_OPT_PESSIMISTIC_KEXINIT) {
     res = sftp_kex_send_first_kexinit();
     if (res < 0) {
-      end_login(1);
+      pr_session_end(0);
     }
   }
 

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: interop.c,v 1.10 2011-02-25 20:15:25 castaglia Exp $
+ * $Id: interop.c,v 1.11 2011-02-27 19:47:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -218,7 +218,7 @@ int sftp_interop_handle_version(const char *client_version) {
     /* We should use the PROTOCOL_VERSION_NOT_SUPPORTED disconnect code,
      * but for probes/scans, simply hanging up on the client seems better.
      */
-    end_login(0);
+    pr_session_end(0);
   }
 
   if (is_scan) {
@@ -228,7 +228,7 @@ int sftp_interop_handle_version(const char *client_version) {
     /* We should use the PROTOCOL_VERSION_NOT_SUPPORTED disconnect code,
      * but for probes/scans, simply hanging up on the client seems better.
      */
-    end_login(0);
+    pr_session_end(0);
   }
 
   /* Now iterate through any SFTPClientMatch rules. */
