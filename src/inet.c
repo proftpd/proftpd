@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.128 2011-02-26 02:31:36 castaglia Exp $
+ * $Id: inet.c,v 1.129 2011-02-27 19:28:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -450,8 +450,9 @@ conn_t *pr_inet_create_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
    * NOT occur in inet.c, it should be handled by the caller.
    */
 
-  if (!c)
-    end_login(1);
+  if (c == NULL) {
+    pr_session_end(0);
+  }
 
   return c;
 }
@@ -511,7 +512,7 @@ conn_t *pr_inet_create_conn_portrange(pool *p, pr_netaddr_t *bind_addr,
           inet_errno != EADDRINUSE) {
         pr_log_pri(PR_LOG_ERR, "error initializing connection: %s",
           strerror(inet_errno));
-        end_login(1);
+        pr_session_end(0);
       }
     }
   }
@@ -857,7 +858,7 @@ int pr_inet_listen(pool *p, conn_t *c, int backlog) {
 
       pr_log_pri(PR_LOG_ERR, "unable to listen on %s#%u: %s",
         pr_netaddr_get_ipstr(c->local_addr), c->local_port, strerror(errno));
-      end_login(1);
+      pr_session_end(0);
 
     } else
       break;

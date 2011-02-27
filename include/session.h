@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009 The ProFTPD Project team
+ * Copyright (c) 2009-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: session.h,v 1.2 2009-09-02 17:58:54 castaglia Exp $
+ * $Id: session.h,v 1.3 2011-02-27 19:28:53 castaglia Exp $
  */
 
 #ifndef PR_SESSION_H
@@ -34,6 +34,14 @@
  */
 const char *pr_session_get_protocol(int);
 #define PR_SESS_PROTO_FL_LOGOUT		0x01
+
+/* Ends the current session process, unless the PR_SESS_END_FL_NOEXIT
+ * flag value is set.  (This flag is really only used by signal handlers
+ * which are going to use abort(2) rather than _exit(2) to end the process.)
+ */
+void pr_session_end(int flags);
+#define PR_SESS_END_FL_NOEXIT		0x01
+#define PR_SESS_END_FL_SYNTAX_CHECK	0x02
 
 /* Returns a so-called "tty name" suitable for use via PAM, and in WtmpLog
  * logging.

@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.415 2011-02-26 02:31:36 castaglia Exp $
+ * $Id: main.c,v 1.416 2011-02-27 19:28:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -165,96 +165,6 @@ void pr_cmd_set_handler(void (*handler)(server_rec *, conn_t *)) {
   }
 }
 
-static void end_login_noexit(void) {
-
-  /* Clear the scoreboard entry. */
-  if (ServerType == SERVER_STANDALONE) {
-
-    /* For standalone daemons, we only clear the scoreboard slot if we are
-     * an exiting child process.
-     */
-
-    if (!is_master) {
-      if (pr_scoreboard_entry_del(TRUE) < 0 &&
-          errno != EINVAL &&
-          errno != ENOENT) {
-        pr_log_debug(DEBUG1, "error deleting scoreboard entry: %s",
-          strerror(errno));
-      }
-    }
-
-  } else if (ServerType == SERVER_INETD) {
-    /* For inetd-spawned daemons, we always clear the scoreboard slot. */
-    if (pr_scoreboard_entry_del(TRUE) < 0 &&
-        errno != EINVAL &&
-        errno != ENOENT) {
-      pr_log_debug(DEBUG1, "error deleting scoreboard entry: %s",
-        strerror(errno));
-    }
-  }
-
-  /* If session.user is set, we have a valid login. */
-  if (session.user &&
-      session.wtmp_log) {
-    const char *sess_ttyname;
-
-    sess_ttyname = pr_session_get_ttyname(session.pool);
-    log_wtmp(sess_ttyname, "", pr_netaddr_get_sess_remote_name(),
-      pr_netaddr_get_sess_remote_addr());
-  }
-
-  /* These are necessary in order that cleanups associated with these pools
-   * (and their subpools) are properly run.
-   */
-  if (session.d) {
-    pr_inet_close(session.pool, session.d);
-    session.d = NULL;
-  }
-
-  if (session.c) {
-    pr_inet_close(session.pool, session.c);
-    session.c = NULL;
-  }
-
-  /* Run all the exit handlers */
-  pr_event_generate("core.exit", NULL);
-
-  if (!is_master ||
-      (ServerType == SERVER_INETD && !syntax_check)) {
-    pr_log_pri(PR_LOG_INFO, "%s session closed.",
-      pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT));
-  }
-
-  log_closesyslog();
-}
-
-/* Finish any cleaning up, mark utmp as closed and exit without flushing
- * buffers
- */
-void end_login(int exitcode) {
-  end_login_noexit();
-
-#ifdef PR_USE_DEVEL
-  destroy_pool(session.pool);
-
-  if (is_master) {
-    main_server = NULL;
-    free_pools();
-    pr_proctitle_free();
-  }
-#endif /* PR_USE_DEVEL */
-
-#ifdef PR_DEVEL_PROFILE
-  /* Populating the gmon.out gprof file requires that the process exit
-   * via exit(2) or by returning from main().  Using _exit(2) doesn't allow
-   * the process the time to write its profile data out.
-   */
-  exit(exitcode);
-#else
-  _exit(exitcode);
-#endif /* PR_DEVEL_PROFILE */
-}
-
 void session_exit(int pri, void *lv, int exitval, void *dummy) {
   char *msg = (char *) lv;
 
@@ -272,7 +182,7 @@ void session_exit(int pri, void *lv, int exitval, void *dummy) {
     PRIVS_RELINQUISH
   }
 
-  end_login(exitval);
+  pr_session_end(0);
 }
 
 static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
@@ -919,7 +829,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 
 #ifndef PR_DEVEL_NO_DAEMON
       /* Otherwise, EOF */
-      end_login(0);
+      pr_session_end(0);
 #else
       return;
 #endif /* PR_DEVEL_NO_DAEMON */
@@ -1008,14 +918,14 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
       pr_log_pri(PR_LOG_ERR,
         "Fatal: unable to read configuration file '%s': %s",
         config_filename, strerror(errno));
-      end_login(1);
+      pr_session_end(0);
     }
     PRIVS_RELINQUISH
 
     if (pr_parser_cleanup() < 0) {
       pr_log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s': "
        "unclosed configuration section", config_filename);
-      end_login(1);
+      pr_session_end(0);
     }
 
 #ifdef PR_USE_NLS
@@ -1034,7 +944,7 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
     if (fixup_servers(server_list) < 0) {
       pr_log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s'",
         config_filename);
-      end_login(1);
+      pr_session_end(0);
     }
 
     pr_event_generate("core.postparse", NULL);
@@ -1433,8 +1343,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   /* Inform all the modules that we are now a child */
   pr_log_debug(DEBUG7, "performing module session initializations");
-  if (modules_session_init() < 0)
-    end_login(1);
+  if (modules_session_init() < 0) {
+    pr_session_end(0);
+  }
 
   pr_log_debug(DEBUG4, "connected - local  : %s:%d",
     pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
@@ -1458,7 +1369,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
 #ifdef PR_DEVEL_NO_DAEMON
   /* Cleanup */
-  end_login_noexit();
+  pr_session_end(PR_SESS_END_FL_NOEXIT);
   main_server = NULL;
   free_pools();
   pr_proctitle_free();
@@ -1873,7 +1784,7 @@ static RETSIGTYPE sig_abort(int signo) {
 #ifdef PR_DEVEL_COREDUMP
   pr_log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, generating core "
     "file in %s", prepare_core());
-  end_login_noexit();
+  pr_session_end(PR_SESS_END_FL_NOEXIT);
   abort();
 #endif /* PR_DEVEL_COREDUMP */
 }
@@ -1923,7 +1834,7 @@ static RETSIGTYPE sig_terminate(int signo) {
 
   /* Make sure the scoreboard slot is properly cleared.  Note that this is
    * possibly redundant, as it should already be handled properly in
-   * end_login_noexit().
+   * pr_session_end().
    */
   pr_scoreboard_entry_del(FALSE);
 
@@ -2051,7 +1962,7 @@ static void finish_terminate(void) {
     pr_event_generate("core.shutdown", NULL);
 
     /* Remove the registered exit handlers now, so that the ensuing
-     * end_login() call (outside the root privs condition) does not call
+     * pr_session_end() call (outside the root privs condition) does not call
      * the exit handlers for the master process again.
      */
     pr_event_unregister(NULL, "core.exit", NULL);
@@ -2070,7 +1981,7 @@ static void finish_terminate(void) {
     }
   }
 
-  end_login(1);
+  pr_session_end(0);
 }
 
 #ifdef PR_DEVEL_STACK_TRACE
@@ -3151,7 +3062,7 @@ int main(int argc, char *argv[], char **envp) {
   /* We're only doing a syntax check of the configuration file. */
   if (syntax_check) {
     printf("%s", "Syntax check complete.\n");
-    end_login(0);
+    pr_session_end(PR_SESS_END_FL_SYNTAX_CHECK);
   }
 
   /* After configuration is complete, make sure that passwd, group
