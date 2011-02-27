@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.249 2011-02-26 02:31:36 castaglia Exp $
+ * $Id: dirtree.c,v 1.250 2011-02-27 01:08:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3241,7 +3241,7 @@ static void set_tcp_bufsz(void) {
 #endif
 
   p = getprotobyname("tcp");
-  if (!p) {
+  if (p == NULL) {
 #ifndef PR_TUNABLE_RCVBUFSZ
     tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
 #else
@@ -3295,7 +3295,7 @@ static void set_tcp_bufsz(void) {
   }
 #else
   optlen = -1;
-  tcp_sndbufsz = PR_TUNABLE_RCVBUFSZ;
+  tcp_rcvbufsz = PR_TUNABLE_RCVBUFSZ;
   pr_log_debug(DEBUG5, "using preset TCP receive buffer size of %d bytes",
     tcp_rcvbufsz);
 #endif /* PR_TUNABLE_RCVBUFSZ */
