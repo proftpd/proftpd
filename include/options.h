@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.31 2010-03-03 17:40:52 castaglia Exp $
+ * $Id: options.h,v 1.32 2011-02-27 01:12:40 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -74,6 +74,13 @@
 /* The default TCP send/receive buffer sizes, should explicit sizes not
  * be defined at compile time, or should the runtime determination process
  * fail.
+ *
+ * Note that these default buffer sizes are only used if the service cannot
+ * determine the platform's favored network buffer sizes using getsockopt(2).
+ * If you wish to override the use of getsockopt(2) to determine the network
+ * buffer sizes to use, you can use the PR_TUNABLE_RCVBUFSZ and
+ * PR_TUNABLE_SNDBUFSZ macros to define, at compile-time, the network buffer
+ * sizes to use.
  */
 
 #ifndef PR_TUNABLE_DEFAULT_RCVBUFSZ
