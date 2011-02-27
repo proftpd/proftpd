@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.285 2011-02-25 20:15:25 castaglia Exp $
+ * $Id: mod_auth.c,v 1.286 2011-02-27 19:40:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -324,7 +324,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
         if (!allow_ftp) {
           pr_log_debug(DEBUG0, "%s", "ftp protocol denied by Protocols config");
           pr_response_send(R_530, "%s", _("Login incorrect."));
-          end_login(1);
+          pr_session_end(0);
         }
       }
     }
@@ -1073,8 +1073,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
       pr_log_pri(PR_LOG_ERR, "changing from %s back to daemon uid/gid: %s",
             session.user, strerror(errno));
-
-      end_login(1);
+      pr_session_end(0);
     }
 #endif /* HAVE_GETEUID */
 
@@ -1257,7 +1256,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     if (pr_auth_chroot(defroot) == -1) {
       pr_log_pri(PR_LOG_ERR, "error: unable to set default root directory");
       pr_response_send(R_530, _("Login incorrect."));
-      end_login(1);
+      pr_session_end(0);
     }
 
     /* Re-calc the new cwd based on this root dir.  If not applicable
@@ -1281,7 +1280,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
       pr_auth_chroot(session.chroot_path) == -1) {
     pr_log_pri(PR_LOG_ERR, "error: unable to set anonymous privileges");
     pr_response_send(R_530, _("Login incorrect."));
-    end_login(1);
+    pr_session_end(0);
   }
 
   /* new in 1.1.x, I gave in and we don't give up root permanently..
@@ -1310,7 +1309,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     pr_log_pri(PR_LOG_ERR, "error: %s setregid() or setreuid(): %s",
       session.user, strerror(errno));
     pr_response_send(R_530, _("Login incorrect."));
-    end_login(1);
+    pr_session_end(0);
   }
 #endif
 
@@ -1320,7 +1319,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     pr_log_pri(PR_LOG_ERR, "error: user %s home directory is NULL or \"\"",
       session.user);
     pr_response_send(R_530, _("Login incorrect."));
-    end_login(1);
+    pr_session_end(0);
   }
 
   {
@@ -1356,7 +1355,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
         pr_log_pri(PR_LOG_ERR, "%s chdir(\"/\"): %s", session.user,
           strerror(errno));
         pr_response_send(R_530, _("Login incorrect."));
-        end_login(1);
+        pr_session_end(0);
       }
 
     } else if (defchdir) {
@@ -1371,7 +1370,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
         pr_log_pri(PR_LOG_ERR, "%s chdir(\"%s\"): %s", session.user,
           session.cwd, strerror(errno));
         pr_response_send(R_530, _("Login incorrect."));
-        end_login(1);
+        pr_session_end(0);
       }
 
     } else {
@@ -1382,7 +1381,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
       pr_log_pri(PR_LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
         strerror(errno));
       pr_response_send(R_530, _("Login incorrect."));
-      end_login(1);
+      pr_session_end(0);
     }
   }
 
@@ -1571,7 +1570,7 @@ static int auth_scan_scoreboard(void) {
 
       pr_log_auth(PR_LOG_NOTICE,
         "Connection refused (MaxConnectionsPerHost %u)", *max);
-      end_login(1);
+      pr_session_end(0);
     }
   }
 
@@ -1719,7 +1718,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
       pr_log_auth(PR_LOG_NOTICE,
         "Connection refused (max clients %u per class %s).", *max,
         session.class->cls_name);
-      end_login(0);
+      pr_session_end(0);
     }
 
     break;
@@ -1744,7 +1743,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
         NULL));
       pr_log_auth(PR_LOG_NOTICE,
         "Connection refused (max clients per host %u).", *max);
-      end_login(0);
+      pr_session_end(0);
     }
   }
 
@@ -1768,7 +1767,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
         NULL));
       pr_log_auth(PR_LOG_NOTICE,
         "Connection refused (max clients per user %u).", *max);
-      end_login(0);
+      pr_session_end(0);
     }
   }
 
@@ -1790,7 +1789,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
       pr_log_auth(PR_LOG_NOTICE, "Connection refused (max clients %u).", *max);
-      end_login(0);
+      pr_session_end(0);
     }
   }
 
@@ -1813,7 +1812,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
         NULL));
       pr_log_auth(PR_LOG_NOTICE, "Connection refused (max hosts per host %u).",
         *max);
-      end_login(0);
+      pr_session_end(0);
     }
   }
 
@@ -1904,7 +1903,7 @@ MODRET auth_user(cmd_rec *cmd) {
         pr_response_send(R_530, _("Login incorrect."));
       }
 
-      end_login(0);
+      pr_session_end(0);
     }
 
     aclp = login_check_limits(main_server->conf, FALSE, TRUE, &i);
@@ -1932,7 +1931,7 @@ MODRET auth_user(cmd_rec *cmd) {
           pr_response_send(R_530, _("Login incorrect."));
         }
 
-        end_login(0);
+        pr_session_end(0);
       }
     }
 
@@ -1950,7 +1949,7 @@ MODRET auth_user(cmd_rec *cmd) {
         pr_response_send(R_530, "%s", _("Login incorrect."));
       }
 
-      end_login(0);
+      pr_session_end(0);
     }
   }
 
@@ -2111,7 +2110,7 @@ MODRET auth_pass(cmd_rec *cmd) {
       /* Generate an event about this limit being exceeded. */
       pr_event_generate("mod_auth.max-login-attempts", session.c);
 
-      end_login(0);
+      pr_session_end(0);
     }
 
     return PR_ERROR_MSG(cmd, R_530, denymsg ? denymsg : _("Login incorrect."));

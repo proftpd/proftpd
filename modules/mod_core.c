@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.394 2011-02-25 20:15:25 castaglia Exp $
+ * $Id: mod_core.c,v 1.395 2011-02-27 19:40:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3316,10 +3316,10 @@ MODRET core_quit(cmd_rec *cmd) {
 MODRET core_log_quit(cmd_rec *cmd) {
 
 #ifndef PR_DEVEL_NO_DAEMON
-  end_login(0);
+  pr_session_end(0);
 #endif /* PR_DEVEL_NO_DAEMON */
 
-  /* Even though end_login() does not return, this is necessary to avoid
+  /* Even though pr_session_end() does not return, this is necessary to avoid
    * compiler warnings.
    */
   return PR_HANDLED(cmd);
