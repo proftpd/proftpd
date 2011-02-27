@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql_postgres -- Support for connecting to Postgres databases.
  * Time-stamp: <1999-10-04 03:21:21 root>
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2009 TJ Saunders
+ * Copyright (c) 2004-2011 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.51 2009-10-20 01:11:18 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.52 2011-02-27 21:36:04 castaglia Exp $
  */
 
 /*
@@ -181,7 +181,7 @@ static void _sql_check_cmd(cmd_rec *cmd, char *msg) {
       ": '%s' was passed an invalid cmd_rec. Shutting down.", msg);
     sql_log(DEBUG_WARN, "'%s' was passed an invalid cmd_rec. Shutting down.",
       msg);
-    end_login(1);
+    pr_session_end(0);
   }    
 
   return;
@@ -1522,7 +1522,7 @@ static void sql_postgres_mod_load_ev(const void *event_data,
     if (sql_register_backend("postgres", sql_postgres_cmdtable) < 0) {
       pr_log_pri(PR_LOG_NOTICE, MOD_SQL_POSTGRES_VERSION
         ": notice: error registering backend: %s", strerror(errno));
-      end_login(1);
+      pr_session_end(0);
     }
   }
 }
@@ -1535,7 +1535,7 @@ static void sql_postgres_mod_unload_ev(const void *event_data,
     if (sql_unregister_backend("postgres") < 0) {
       pr_log_pri(PR_LOG_NOTICE, MOD_SQL_POSTGRES_VERSION
         ": notice: error unregistering backend: %s", strerror(errno));
-      end_login(1);
+      pr_session_end(0);
     }
 
     /* Unregister ourselves from all events. */

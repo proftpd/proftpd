@@ -26,7 +26,7 @@
  * This is mod_shaper, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_shaper.c,v 1.8 2011-02-15 21:31:36 castaglia Exp $
+ * $Id: mod_shaper.c,v 1.9 2011-02-27 21:36:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -214,7 +214,7 @@ static int shaper_msg_recv(void) {
   msg = malloc(sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
   if (msg == NULL) {
     pr_log_pri(PR_LOG_CRIT, "Out of memory!");
-    end_login(1);
+    pr_session_end(0);
   }
 
   msglen = msgrcv(shaper_qid, msg, msgsz, getpid(), IPC_NOWAIT|MSG_NOERROR);
@@ -265,7 +265,7 @@ static int shaper_msg_send(pid_t dst_pid, unsigned int prio,
   msg = malloc(sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
   if (msg == NULL) {
     pr_log_pri(PR_LOG_CRIT, "Out of memory!");
-    end_login(1);
+    pr_session_end(0);
   }
 
   msg->mtype = dst_pid;
@@ -362,7 +362,7 @@ static void shaper_msg_clear(pid_t dst_pid) {
   msg = malloc(sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
   if (msg == NULL) {
     pr_log_pri(PR_LOG_CRIT, "Out of memory!");
-    end_login(1);
+    pr_session_end(0);
   }
 
   (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
@@ -2158,7 +2158,7 @@ static void shaper_postparse_ev(const void *event_data, void *user_data) {
       pr_log_debug(DEBUG0, MOD_SHAPER_VERSION
         ": error opening ShaperTable '%s': %s", shaper_tab_path,
         strerror(errno));
-      end_login(1);
+      pr_session_end(0);
     }
 
     /* Initialize ShaperTable */

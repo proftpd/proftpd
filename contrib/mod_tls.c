@@ -565,7 +565,7 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
             tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
               ctrl_ssl = NULL;
 
-            end_login(1);
+            pr_session_end(0);
           }
         }
       }
@@ -598,7 +598,7 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
             tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
               ctrl_ssl = NULL;
 
-            end_login(1);
+            pr_session_end(0);
           }
         }
       }
@@ -3566,7 +3566,7 @@ static void tls_fatal_error(long error, int lineno) {
   pr_log_pri(PR_LOG_ERR, "%s", MOD_TLS_VERSION
     ": unexpected OpenSSL error, disconnecting");
 
-  end_login(1);
+  pr_session_end(0);
 }
 
 /* This function checks if the client's cert is in the ~/.tlslogin file
@@ -6169,7 +6169,7 @@ MODRET tls_auth(cmd_rec *cmd) {
 
       if (tls_required_on_ctrl == 1) {
         pr_response_send(R_550, _("TLS handshake failed"));
-        end_login(1);
+        pr_session_end(0);
       }
 
       /* If we reach this point, the debug logging may show gibberish
@@ -6177,7 +6177,7 @@ MODRET tls_auth(cmd_rec *cmd) {
        * more encrypted data from the client.
        */
       pr_response_send(R_550, _("TLS handshake failed"));
-      end_login(1);
+      pr_session_end(0);
     }
 
 #if OPENSSL_VERSION_NUMBER < 0x0090702fL
@@ -6199,7 +6199,7 @@ MODRET tls_auth(cmd_rec *cmd) {
 
       if (tls_required_on_ctrl == 1) {
         pr_response_send(R_550, _("TLS handshake failed"));
-        end_login(1);
+        pr_session_end(0);
       }
 
       /* If we reach this point, the debug logging may show gibberish
@@ -6207,7 +6207,7 @@ MODRET tls_auth(cmd_rec *cmd) {
        * more encrypted data from the client.
        */
       pr_response_send(R_550, _("TLS handshake failed"));
-      end_login(1);
+      pr_session_end(0);
     }
 
 #if OPENSSL_VERSION_NUMBER < 0x0090702fL
@@ -6355,7 +6355,7 @@ MODRET tls_post_pass(cmd_rec *cmd) {
         tls_log("SSL/TLS required but absent on control channel, "
           "disconnecting");
         pr_response_send(R_530, "%s", _("Login incorrect."));
-        end_login(0);
+        pr_session_end(0);
       }
     }
 
@@ -6389,7 +6389,7 @@ MODRET tls_post_pass(cmd_rec *cmd) {
       if (!allow_ftps) {
         tls_log("ftps protocol denied by Protocols config");
         pr_response_send(R_530, "%s", _("Login incorrect."));
-        end_login(1);
+        pr_session_end(0);
       }
     }
   }
@@ -7430,7 +7430,7 @@ static void tls_get_passphrases(void) {
 
         pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
           "RSA certificate key in '%s', exiting", (char *) rsa->argv[0]);
-        end_login(1);
+        pr_session_end(0);
       }
     }
 
@@ -7452,7 +7452,7 @@ static void tls_get_passphrases(void) {
 
         pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
           "DSA certificate key '%s', exiting", (char *) dsa->argv[0]);
-        end_login(1);
+        pr_session_end(0);
       }
     }
 
@@ -7475,7 +7475,7 @@ static void tls_get_passphrases(void) {
 
         pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
           "PKCS12 certificate '%s', exiting", (char *) pkcs12->argv[0]);
-        end_login(1);
+        pr_session_end(0);
       }
     }
 
@@ -7608,7 +7608,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
       pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": Server %s: cannot enforce "
         "both 'TLSRequired auth' and 'TLSOptions AllowPerUser' at the "
         "same time", s->ServerName);
-      end_login(1);
+      pr_session_end(0);
     }
   }
 
@@ -7616,7 +7616,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
   if (tls_init_ctx() < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
       ": error initialising OpenSSL context");
-    end_login(1);
+    pr_session_end(0);
   }
 
   /* We can only get the passphrases from certs once OpenSSL has been

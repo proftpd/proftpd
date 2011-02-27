@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_odbc -- Support for connecting to databases via ODBC
  *
- * Copyright (c) 2003-2009 TJ Saunders
+ * Copyright (c) 2003-2011 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_odbc.c,v 1.11 2009-10-02 21:22:56 castaglia Exp $
+ * $Id: mod_sql_odbc.c,v 1.12 2011-02-27 21:36:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1678,7 +1678,7 @@ static void sqlodbc_mod_load_ev(const void *event_data, void *user_data) {
     if (sql_register_backend("odbc", sqlodbc_cmdtable) < 0) {
       pr_log_pri(PR_LOG_NOTICE, MOD_SQL_ODBC_VERSION
         ": notice: error registering backend: %s", strerror(errno));
-      end_login(1);
+      pr_session_end(0);
     }
   }
 }
@@ -1690,7 +1690,7 @@ static void sqlodbc_mod_unload_ev(const void *event_data, void *user_data) {
     if (sql_unregister_backend("odbc") < 0) {
       pr_log_pri(PR_LOG_NOTICE, MOD_SQL_ODBC_VERSION
         ": notice: error unregistering backend: %s", strerror(errno));
-      end_login(1);
+      pr_session_end(0);
     }
 
     /* Unregister ourselves from all events. */
