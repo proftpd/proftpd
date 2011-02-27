@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1298 2011-02-27 00:53:09 castaglia Exp $
+$Id: NEWS,v 1.1299 2011-02-27 01:54:49 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -53,6 +53,7 @@ CVS
   PCRE library for regular expression support.
 - Bug 3607 - SocketOptions receive/send buffer size parameters no longer work.
 - Bug 3606 - mod_wrap2 needs to support netmask rules for IPv6 addresses.
+- Bug 3608 - Make mod_quotatab poll for the QuotaLock file.
 
 1.3.4rc1 - Released 17-Dec-2010
 --------------------------------

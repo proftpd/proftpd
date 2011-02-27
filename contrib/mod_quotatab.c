@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.68 2011-02-25 20:15:25 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.69 2011-02-27 01:54:49 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -102,6 +102,8 @@ static int quotatab_have_dele_st = FALSE;
 
 /* For locking (e.g. during tally creation). */
 static int quota_lockfd = -1;
+
+#define QUOTA_MAX_LOCK_ATTEMPTS		10
 
 /* It is the case where sometimes a command may be denied by a PRE_CMD
  * handler of this module, in which case an appropriate error response is
@@ -953,17 +955,19 @@ static int quotatab_mutex_lock(int lock_type) {
         xerrno == EACCES) {
       /* Treat this as an interrupted call, call pr_signals_handle() (which
        * will delay for a few msecs because of EINTR), and try again.
-       * After 10 attempts, give up altogether.
+       * After QUOTA_MAX_LOCK_ATTEMPTS attempts, give up altogether.
        */
 
       nattempts++;
-      if (nattempts <= 10) {
+      if (nattempts <= QUOTA_MAX_LOCK_ATTEMPTS) {
         errno = EINTR;
 
         pr_signals_handle();
         continue;
       }
 
+      quotatab_log("unable to acquire %s lock on QuotaLock for user '%s': %s",
+        lock_desc, session.user, strerror(xerrno));
       errno = xerrno;
       return -1;
     }
@@ -975,19 +979,62 @@ static int quotatab_mutex_lock(int lock_type) {
 }
 
 static int quotatab_rlock(quota_table_t *tab) {
-  int res = 0;
 
   if (tab->rlock_count == 0 &&
       tab->wlock_count == 0) {
+    unsigned int nattempts = 1;
+
     tab->tab_lockfd = quota_lockfd;
-    res = tab->tab_rlock(tab);
+
+    pr_trace_msg("lock", 9, "attempting to read-lock QuotaLock fd %d",
+      quota_lockfd);
+   
+    while (tab->tab_rlock(tab) < 0) { 
+      int xerrno = errno;
+
+      if (xerrno == EINTR) {
+        pr_signals_handle();
+        continue;
+      }
+
+      if (xerrno == EACCES) {
+        struct flock locker;
+
+        /* Get the PID of the process blocking this lock. */
+        if (fcntl(quota_lockfd, F_GETLK, &locker) == 0) {
+          pr_trace_msg("lock", 3, "process ID %lu has blocking %s on "
+            "QuotaLock fd %d", (unsigned long) locker.l_pid,
+            (locker.l_type == F_WRLCK ? "write-lock" :
+             locker.l_type == F_RDLCK ? "read-lock" : "unlock"),
+            quota_lockfd);
+        }
+      }
+
+      if (xerrno == EAGAIN ||
+          xerrno == EACCES) {
+        /* Treat this as an interrupted call, call pr_signals_handle() (which
+         * will delay for a few msecs because of EINTR), and try again.
+         * After QUOTA_MAX_LOCK_ATTEMPTS attempts, give up altogether.
+         */
+
+        nattempts++;
+        if (nattempts <= QUOTA_MAX_LOCK_ATTEMPTS) {
+          errno = EINTR;
+
+          pr_signals_handle();
+          continue;
+        }
+      }
+
+      quotatab_log("unable to acquire read lock on QuotaLock for user '%s': %s",
+        session.user, strerror(xerrno));
+      errno = xerrno;
+      return -1;
+    }
   }
 
-  if (res == 0) {
-    tab->rlock_count++;
-  }
-
-  return res;
+  tab->rlock_count++;
+  return 0;
 }
 
 static int quotatab_runlock(quota_table_t *tab) {
@@ -996,7 +1043,18 @@ static int quotatab_runlock(quota_table_t *tab) {
   if (tab->rlock_count == 1 &&
       tab->wlock_count == 0) {
     tab->tab_lockfd = quota_lockfd;
-    res = tab->tab_unlock(tab);
+
+    while (tab->tab_unlock(tab) < 0) {
+      int xerrno = errno;
+
+      if (xerrno == EINTR) {
+        pr_signals_handle();
+        continue;
+      }
+
+      res = -1;
+      break;
+    }
   }
 
   if (res == 0 &&
@@ -1004,22 +1062,65 @@ static int quotatab_runlock(quota_table_t *tab) {
     tab->rlock_count--;
   }
 
-  return 0;
+  return res;
 }
 
 static int quotatab_wlock(quota_table_t *tab) {
-  int res = 0;
 
   if (tab->wlock_count == 0) {
+    unsigned int nattempts = 1;
+
     tab->tab_lockfd = quota_lockfd;
-    res = tab->tab_wlock(tab);
+
+    pr_trace_msg("lock", 9, "attempting to write-lock QuotaLock fd %d",
+      quota_lockfd);
+
+    while (tab->tab_wlock(tab) < 0) {
+      int xerrno = errno;
+
+      if (xerrno == EINTR) {
+        pr_signals_handle();
+        continue;
+      }
+
+      if (xerrno == EACCES) {
+        struct flock locker;
+
+        /* Get the PID of the process blocking this lock. */
+        if (fcntl(quota_lockfd, F_GETLK, &locker) == 0) {
+          pr_trace_msg("lock", 3, "process ID %lu has blocking %s on "
+            "QuotaLock fd %d", (unsigned long) locker.l_pid,
+            (locker.l_type == F_WRLCK ? "write-lock" :
+             locker.l_type == F_RDLCK ? "read-lock" : "unlock"),
+            quota_lockfd);
+        }
+      }
+
+      if (xerrno == EAGAIN ||
+          xerrno == EACCES) {
+        /* Treat this as an interrupted call, call pr_signals_handle() (which
+         * will delay for a few msecs because of EINTR), and try again.
+         * After QUOTA_MAX_LOCK_ATTEMPTS attempts, give up altogether.
+         */
+
+        nattempts++;
+        if (nattempts <= QUOTA_MAX_LOCK_ATTEMPTS) {
+          errno = EINTR;
+
+          pr_signals_handle();
+          continue;
+        }
+      }
+
+      quotatab_log("unable to acquire write lock on QuotaLock for "
+        "user '%s': %s", session.user, strerror(xerrno));
+      errno = xerrno;
+      return -1;
+    }
   }
 
-  if (res == 0) {
-    tab->wlock_count++;
-  }
-
-  return res;
+  tab->wlock_count++;
+  return 0;
 }
 
 static int quotatab_wunlock(quota_table_t *tab) {
@@ -1033,7 +1134,17 @@ static int quotatab_wunlock(quota_table_t *tab) {
 
     if (tab->rlock_count == 0) {
       /* The write-lock is the only lock left on the table; do a full unlock. */
-      res = tab->tab_unlock(tab);
+      while (tab->tab_unlock(tab) < 0) {
+        int xerrno = errno;
+
+        if (xerrno == EINTR) {
+          pr_signals_handle();
+          continue;
+        }
+
+        res = -1;
+        break;
+      }
 
     } else {
       /* We have some read-locks on the table; downgrade the write-lock to
