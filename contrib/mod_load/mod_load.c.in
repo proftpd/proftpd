@@ -31,7 +31,7 @@
  *   Copyright (C) 1985, 86, 87, 88, 89, 91, 92, 93, 1994, 1995, 1997
  *     Free Software Foundation, Inc.
  * 
- * $Id: mod_load.c.in,v 1.7 2011-02-27 19:51:19 castaglia Exp $
+ * $Id: mod_load.c.in,v 1.8 2011-02-28 06:31:24 castaglia Exp $
  * $Libraries: @MODULE_LIBS@ $
  */
 
@@ -935,6 +935,8 @@ static int getloadavg(double *loadavg, int nelem) {
 
 #endif /* !HAVE_GETLOADAVG */
 
+module load_module;
+
 static double load_get_system_load(void) {
   int res;
   double loadavg = -1.0;
@@ -1033,7 +1035,8 @@ static int load_sess_init(void) {
       pr_response_send(R_421, _("System busy, try again later"));
     }
 
-    pr_session_end(0);
+    pr_session_disconnect(&load_module, PR_SESS_DISCONNECT_MODULE_ACL,
+      "MaxLoad");
   }
 
   /* Register some Variable entries for showing the system load. */

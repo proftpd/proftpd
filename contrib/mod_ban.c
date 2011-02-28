@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.49 2011-02-27 19:47:43 castaglia Exp $
+ * $Id: mod_ban.c,v 1.50 2011-02-28 06:31:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2554,7 +2554,7 @@ static void ban_handle_event(unsigned int ev_type, int ban_type,
     pr_log_debug(DEBUG3, MOD_BAN_VERSION
       ": autoban threshold reached, ending session");
     ban_send_mesg(tmp_pool, ban_type == BAN_TYPE_USER ? src : "(none)", NULL);
-    pr_session_end(0);
+    pr_session_disconnect(&ban_module, PR_SESS_DISCONNECT_BANNED, NULL);
   }
 
   return;
@@ -2777,10 +2777,10 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
   }
 
   /* Make sure the BanTable exists. */
-  if (!ban_table) {
+  if (ban_table == NULL) {
     pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
       ": missing required BanTable configuration");
-    pr_session_end(0);
+    pr_session_disconnect(&ban_module, PR_SESS_DISCONNECT_BAD_CONFIG, NULL);
   }
 
   PRIVS_ROOT
@@ -2790,7 +2790,7 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
   if (!ban_tabfh) {
     pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
       ": unable to open BanTable '%s': %s", ban_table, strerror(errno));
-    pr_session_end(0);
+    pr_session_disconnect(&ban_module, PR_SESS_DISCONNECT_BAD_CONFIG, NULL);
   }
 
   /* Get the shm for storing all of our ban info. */
@@ -2800,7 +2800,7 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
     pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
       ": unable to get shared memory for BanTable '%s': %s", ban_table,
       strerror(errno));
-    pr_session_end(0);
+    pr_session_disconnect(&ban_module, PR_SESS_DISCONNECT_BAD_CONFIG, NULL);
   }
 
   if (lists)

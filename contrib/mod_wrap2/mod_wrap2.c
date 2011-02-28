@@ -1806,7 +1806,7 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
     }
 
     pr_response_send(R_530, "%s", msg ? msg : _("Access denied"));
-    pr_session_end(0);
+    pr_session_disconnect(&wrap2_module, PR_SESS_DISCONNECT_MODULE_ACL, NULL);
   }
 
   wrap2_log("allowed connection from %s", wrap2_get_client(&conn));
@@ -1978,7 +1978,8 @@ static int wrap2_sess_init(void) {
         }
 
         pr_response_send(R_530, "%s", msg ? msg : _("Access denied"));
-        pr_session_end(0);
+        pr_session_disconnect(&wrap2_module, PR_SESS_DISCONNECT_MODULE_ACL,
+          NULL);
       }
     }
   }

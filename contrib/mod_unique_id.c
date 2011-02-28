@@ -26,7 +26,7 @@
  * This is mod_unique_id, contrib software for proftpd 1.2.x/1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_unique_id.c,v 1.3 2011-02-27 21:36:04 castaglia Exp $
+ * $Id: mod_unique_id.c,v 1.4 2011-02-28 06:31:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -99,7 +99,8 @@ static void uniqid_postparse_ev(const void *event_data, void *user_data) {
     pr_log_pri(PR_LOG_WARNING, MOD_UNIQUE_ID_VERSION
       ": unable to determine hostname");
     destroy_pool(tmp_pool);
-    pr_session_end(0);
+    pr_session_disconnect(&unique_id_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+      NULL);
   }
 
   host_addr = pr_netaddr_get_addr(tmp_pool, host_name, NULL);
@@ -107,7 +108,8 @@ static void uniqid_postparse_ev(const void *event_data, void *user_data) {
     pr_log_pri(PR_LOG_WARNING, MOD_UNIQUE_ID_VERSION
       ": unable to resolve '%s' to an IP address", host_name);
     destroy_pool(tmp_pool);
-    pr_session_end(0);
+    pr_session_disconnect(&unique_id_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+      NULL);
   }
 
   addr_data = pr_netaddr_get_inaddr(host_addr);
