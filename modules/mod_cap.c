@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.23 2011-02-27 19:40:06 castaglia Exp $
+ * $Id: mod_cap.c,v 1.24 2011-02-28 06:17:26 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -68,6 +68,8 @@ static unsigned int cap_flags = 0;
 #define CAP_USE_SETUID		0x0008
 #define CAP_USE_AUDIT_WRITE	0x0010
 #define CAP_USE_FOWNER		0x0020
+
+module cap_module;
 
 /* log current capabilities */
 static void lp_debug(void) {
@@ -304,7 +306,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid: %s", strerror(errno));
     lp_free_cap();
     pr_signals_unblock();
-    pr_session_end(0);
+    pr_session_disconnect(&cap_module, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
   }
   pr_signals_unblock();
 
@@ -466,15 +468,18 @@ static int cap_module_init(void) {
    * even if it may not work.
    */
   res = cap_get_proc();
-  if (res == NULL && errno == ENOSYS) {
+  if (res == NULL &&
+      errno == ENOSYS) {
     pr_log_debug(DEBUG2, MOD_CAP_VERSION
-              ": kernel does not support capabilities, disabling module");
+      ": kernel does not support capabilities, disabling module");
     use_capabilities = FALSE;
   }
 
-  if (res && cap_free(res) < 0)
+  if (res != 0 &&
+      cap_free(res) < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
       ": error freeing cap at line %d: %s", __LINE__ - 2, strerror(errno));
+  }
 
   return 0;
 }

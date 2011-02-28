@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.33 2011-02-27 19:40:06 castaglia Exp $
+ * $Id: mod_lang.c,v 1.34 2011-02-28 06:17:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -430,7 +430,7 @@ MODRET lang_lang(cmd_rec *cmd) {
     if (lang_set_lang(cmd->tmp_pool, lang_default) < 0) {
       pr_log_pri(PR_LOG_WARNING, MOD_LANG_VERSION
         ": unable to use LangDefault '%s': %s", lang_default, strerror(errno));
-      pr_session_end(0);
+      pr_session_disconnect(&lang_module, PR_SESS_DISCONNECT_BAD_CONFIG, NULL);
     }
   }
 
