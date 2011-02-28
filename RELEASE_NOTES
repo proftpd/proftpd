@@ -30,6 +30,9 @@ ChangeLog files.
 
     ExtendedLog
       EXIT command class
+
+    LogFormat
+      %E variable, for end-of-session reason
  
     PathAllowFilter, PathDenyFilter
       [NC|nocase] flags
@@ -212,4 +215,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2011-02-27 19:28:53 $
+Last Updated: $Date: 2011-02-28 05:50:32 $
