@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: disconnect.c,v 1.6 2011-02-27 19:47:43 castaglia Exp $
+ * $Id: disconnect.c,v 1.7 2011-02-28 06:54:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -29,6 +29,8 @@
 #include "msg.h"
 #include "packet.h"
 #include "disconnect.h"
+
+extern module sftp_module;
 
 struct disconnect_reason {
   uint32_t code;
@@ -140,9 +142,10 @@ void sftp_disconnect_conn(uint32_t reason, const char *explain,
   sftp_disconnect_send(reason, explain, file, lineno, func);
 
 #ifdef PR_DEVEL_COREDUMP
+  pr_session_end(PR_SESS_END_FL_NOEXIT);
   abort();
 
 #else
-  pr_session_end(0);
+  pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
 #endif /* PR_DEVEL_COREDUMP */
 }

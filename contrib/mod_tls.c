@@ -63,8 +63,8 @@
 #define MOD_TLS_VERSION		"mod_tls/2.4.1"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001021001 
-# error "ProFTPD 1.2.10rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030402 
+# error "ProFTPD 1.3.4rc2 or later required"
 #endif
 
 extern session_t session;
@@ -565,7 +565,8 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
             tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
               ctrl_ssl = NULL;
 
-            pr_session_end(0);
+            pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+              "TLSOption AllowClientRenegotiations");
           }
         }
       }
@@ -598,7 +599,8 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
             tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
               ctrl_ssl = NULL;
 
-            pr_session_end(0);
+            pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+              "TLSOption AllowClientRenegotiations");
           }
         }
       }
@@ -3457,8 +3459,8 @@ static char *tls_get_page(size_t sz, void **ptr) {
 
   d = calloc(1, sz + (pagesz-1));
   if (d == NULL) {
-    pr_log_pri(PR_LOG_ERR, "out of memory!");
-    exit(1);
+    pr_log_pri(PR_LOG_ERR, "Out of memory!");
+    pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_NOMEM, NULL);
   }
 
   *ptr = d;
@@ -3566,7 +3568,7 @@ static void tls_fatal_error(long error, int lineno) {
   pr_log_pri(PR_LOG_ERR, "%s", MOD_TLS_VERSION
     ": unexpected OpenSSL error, disconnecting");
 
-  pr_session_end(0);
+  pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
 }
 
 /* This function checks if the client's cert is in the ~/.tlslogin file
@@ -6169,7 +6171,8 @@ MODRET tls_auth(cmd_rec *cmd) {
 
       if (tls_required_on_ctrl == 1) {
         pr_response_send(R_550, _("TLS handshake failed"));
-        pr_session_end(0);
+        pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+          "TLSRequired");
       }
 
       /* If we reach this point, the debug logging may show gibberish
@@ -6177,7 +6180,8 @@ MODRET tls_auth(cmd_rec *cmd) {
        * more encrypted data from the client.
        */
       pr_response_send(R_550, _("TLS handshake failed"));
-      pr_session_end(0);
+      pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+        NULL);
     }
 
 #if OPENSSL_VERSION_NUMBER < 0x0090702fL
@@ -6199,7 +6203,8 @@ MODRET tls_auth(cmd_rec *cmd) {
 
       if (tls_required_on_ctrl == 1) {
         pr_response_send(R_550, _("TLS handshake failed"));
-        pr_session_end(0);
+        pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+          "TLSRequired");
       }
 
       /* If we reach this point, the debug logging may show gibberish
@@ -6207,7 +6212,8 @@ MODRET tls_auth(cmd_rec *cmd) {
        * more encrypted data from the client.
        */
       pr_response_send(R_550, _("TLS handshake failed"));
-      pr_session_end(0);
+      pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+        NULL);
     }
 
 #if OPENSSL_VERSION_NUMBER < 0x0090702fL
@@ -6355,7 +6361,8 @@ MODRET tls_post_pass(cmd_rec *cmd) {
         tls_log("SSL/TLS required but absent on control channel, "
           "disconnecting");
         pr_response_send(R_530, "%s", _("Login incorrect."));
-        pr_session_end(0);
+        pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+          "TLSRequired");
       }
     }
 
@@ -6389,7 +6396,8 @@ MODRET tls_post_pass(cmd_rec *cmd) {
       if (!allow_ftps) {
         tls_log("ftps protocol denied by Protocols config");
         pr_response_send(R_530, "%s", _("Login incorrect."));
-        pr_session_end(0);
+        pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+          "Denied by Protocols setting");
       }
     }
   }
@@ -7419,8 +7427,8 @@ static void tls_get_passphrases(void) {
 
       k->rsa_pkey = tls_get_page(PEM_BUFSIZE, &k->rsa_pkey_ptr);
       if (k->rsa_pkey == NULL) {
-        pr_log_pri(PR_LOG_ERR, "out of memory!");
-        exit(1);
+        pr_log_pri(PR_LOG_ERR, "Out of memory!");
+        pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_NOMEM, NULL);
       }
 
       if (tls_get_passphrase(s, rsa->argv[0], buf, k->rsa_pkey,
@@ -7430,7 +7438,8 @@ static void tls_get_passphrases(void) {
 
         pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
           "RSA certificate key in '%s', exiting", (char *) rsa->argv[0]);
-        pr_session_end(0);
+        pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+          NULL);
       }
     }
 
@@ -7442,7 +7451,7 @@ static void tls_get_passphrases(void) {
       k->dsa_pkey = tls_get_page(PEM_BUFSIZE, &k->dsa_pkey_ptr);
       if (k->dsa_pkey == NULL) {
         pr_log_pri(PR_LOG_ERR, "out of memory!");
-        exit(1);
+        pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_NOMEM, NULL);
       }
 
       if (tls_get_passphrase(s, dsa->argv[0], buf, k->dsa_pkey,
@@ -7452,7 +7461,8 @@ static void tls_get_passphrases(void) {
 
         pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
           "DSA certificate key '%s', exiting", (char *) dsa->argv[0]);
-        pr_session_end(0);
+        pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+          NULL);
       }
     }
 
@@ -7465,7 +7475,7 @@ static void tls_get_passphrases(void) {
       k->pkcs12_passwd = tls_get_page(PEM_BUFSIZE, &k->pkcs12_passwd_ptr);
       if (k->pkcs12_passwd == NULL) {
         pr_log_pri(PR_LOG_ERR, "out of memory!");
-        exit(1);
+        pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_NOMEM, NULL);
       }
 
       if (tls_get_passphrase(s, pkcs12->argv[0], buf, k->pkcs12_passwd,
@@ -7475,7 +7485,8 @@ static void tls_get_passphrases(void) {
 
         pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
           "PKCS12 certificate '%s', exiting", (char *) pkcs12->argv[0]);
-        pr_session_end(0);
+        pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+          NULL);
       }
     }
 
@@ -7608,7 +7619,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
       pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": Server %s: cannot enforce "
         "both 'TLSRequired auth' and 'TLSOptions AllowPerUser' at the "
         "same time", s->ServerName);
-      pr_session_end(0);
+      pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BAD_CONFIG, NULL);
     }
   }
 
@@ -7616,7 +7627,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
   if (tls_init_ctx() < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
       ": error initialising OpenSSL context");
-    pr_session_end(0);
+    pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
   }
 
   /* We can only get the passphrases from certs once OpenSSL has been

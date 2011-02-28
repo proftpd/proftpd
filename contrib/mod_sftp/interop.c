@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: interop.c,v 1.11 2011-02-27 19:47:43 castaglia Exp $
+ * $Id: interop.c,v 1.12 2011-02-28 06:54:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -30,6 +30,8 @@
 #include "disconnect.h"
 #include "interop.h"
 #include "fxp.h"
+
+extern module sftp_module;
 
 /* By default, each client is assumed to support all of the features in
  * which we are interested.
@@ -218,7 +220,8 @@ int sftp_interop_handle_version(const char *client_version) {
     /* We should use the PROTOCOL_VERSION_NOT_SUPPORTED disconnect code,
      * but for probes/scans, simply hanging up on the client seems better.
      */
-    pr_session_end(0);
+    pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+      NULL);
   }
 
   if (is_scan) {
@@ -228,7 +231,8 @@ int sftp_interop_handle_version(const char *client_version) {
     /* We should use the PROTOCOL_VERSION_NOT_SUPPORTED disconnect code,
      * but for probes/scans, simply hanging up on the client seems better.
      */
-    pr_session_end(0);
+    pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+      NULL);
   }
 
   /* Now iterate through any SFTPClientMatch rules. */

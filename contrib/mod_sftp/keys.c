@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.11 2011-02-27 19:47:43 castaglia Exp $
+ * $Id: keys.c,v 1.12 2011-02-28 06:54:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -33,6 +33,7 @@
 #include "interop.h"
 
 extern xaset_t *server_list;
+extern module sftp_module;
 
 #define SFTP_DEFAULT_HOSTKEY_SZ		4096
 #define SFTP_MAX_SIG_SZ			4096
@@ -1572,7 +1573,8 @@ void sftp_keys_get_passphrases(void) {
         pr_log_pri(PR_LOG_ERR, MOD_SFTP_VERSION
           ": unable to use key in SFTPHostKey '%s', exiting",
           (const char *) c->argv[0]);
-        pr_session_end(0);
+        pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_BAD_CONFIG,
+          NULL);
       }
 
       k->next = sftp_pkey_list;

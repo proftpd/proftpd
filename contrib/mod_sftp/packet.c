@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.24 2011-02-27 19:47:43 castaglia Exp $
+ * $Id: packet.c,v 1.25 2011-02-28 06:54:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -42,6 +42,8 @@
 #define SFTP_PACKET_IO_WR	7
 
 extern pr_response_t *resp_list, *resp_err_list;
+
+extern module sftp_module;
 
 static uint32_t packet_client_seqno = 0;
 static uint32_t packet_server_seqno = 0;
@@ -228,9 +230,12 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
             errno == ESHUTDOWN ||
 #endif /* ESHUTDOWNN */
             errno == EPIPE) {
+          int xerrno = errno;
+
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "disconnecting client (%s)", strerror(errno));
-          pr_session_end(0);
+            "disconnecting client (%s)", strerror(xerrno));
+          pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_CLIENT_EOF,
+            strerror(xerrno));
         }
 
         return -1;
@@ -242,7 +247,8 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "disconnecting client (received EOF)");
-        pr_session_end(0);
+        pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_CLIENT_EOF,
+          NULL);
       }
     }
 
@@ -346,7 +352,7 @@ static void handle_disconnect_mesg(struct ssh2_packet *pkt) {
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "client sent SSH_DISCONNECT message: %s (%s)", explain, reason_str);
-  pr_session_end(0);
+  pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_CLIENT_QUIT, explain);
 }
 
 static void handle_global_request_mesg(struct ssh2_packet *pkt) {
@@ -1327,9 +1333,12 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
     if (errno == ECONNRESET ||
         errno == ECONNABORTED ||
         errno == EPIPE) {
+      int xerrno = errno;
+
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "disconnecting client (%s)", strerror(errno));
-      pr_session_end(0);
+        "disconnecting client (%s)", strerror(xerrno));
+      pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+        strerror(xerrno));
     }
 
     /* Always clear the iovec array after sending the data. */
