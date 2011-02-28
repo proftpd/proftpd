@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.67 2011-02-27 19:28:53 castaglia Exp $
+ * $Id: proftpd.h,v 1.68 2011-02-28 02:29:04 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -63,6 +63,7 @@ typedef int (*callback_t)(CALLBACK_FRAME);
 struct conn_struc;
 struct cmd_struc;
 struct config_struc;
+struct modret_struc;
 
 typedef struct {
   pool *pool;
@@ -187,6 +188,14 @@ typedef struct {
    * the session.
    */
   off_t total_raw_out;
+
+  /* Reason code for end of session/disconnection; in reality, the values
+   * come from the pr_disconnect_reason_e enum in session.h.
+   */
+  int disconnect_reason;
+
+  /* Module which disconnected/ended the session */
+  struct module_struc *disconnect_module;
 
 } session_t;
 

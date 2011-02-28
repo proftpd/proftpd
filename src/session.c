@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: session.c,v 1.7 2011-02-27 19:28:53 castaglia Exp $
+ * $Id: session.c,v 1.8 2011-02-28 02:29:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -93,6 +93,24 @@ static void sess_cleanup(int flags) {
   log_closesyslog();
 }
 
+void pr_session_disconnect(module *m, int reason_code,
+    const char *details) {
+
+  session.disconnect_reason = reason_code;
+  session.disconnect_module = m;
+
+  if (details != NULL) {
+    /* Stash any extra details in the session.notes table */
+    if (pr_table_add_dup(session.notes, "core.disconnect-details",
+        (char *) details, 0) < 0) {
+      pr_log_debug(DEBUG5, "error stashing 'core.disconnect-details' in "
+        "session.notes: %s", strerror(errno));
+    }
+  }
+
+  pr_session_end(0);
+}
+
 void pr_session_end(int flags) {
   int exitcode = 0;
 
@@ -121,6 +139,66 @@ void pr_session_end(int flags) {
 #else
   _exit(exitcode);
 #endif /* PR_DEVEL_PROFILE */
+}
+
+const char *pr_session_get_disconnect_reason(char **details) {
+  const char *reason_str = NULL;
+
+  switch (session.disconnect_reason) {
+    case PR_SESS_DISCONNECT_UNSPECIFIED:
+      reason_str = "Unknown/unspecified";
+      break;
+
+    case PR_SESS_DISCONNECT_CLIENT_QUIT:
+      reason_str = "Quit";
+      break;
+
+    case PR_SESS_DISCONNECT_CLIENT_EOF:
+      reason_str = "Read EOF from client";
+      break;
+
+    case PR_SESS_DISCONNECT_SESSION_INIT_FAILED:
+      reason_str = "Session initialized failed";
+      break;
+
+    case PR_SESS_DISCONNECT_SIGNAL:
+      reason_str = "Terminated by signal";
+      break;
+
+    case PR_SESS_DISCONNECT_NOMEM:
+      reason_str = "Low memory";
+      break;
+
+    case PR_SESS_DISCONNECT_SERVER_SHUTDOWN:
+      reason_str = "Server shutting down";
+      break;
+
+    case PR_SESS_DISCONNECT_TIMEOUT:
+      reason_str = "Timeout exceeded";
+      break;
+
+    case PR_SESS_DISCONNECT_BANNED:
+      reason_str = "Banned";
+      break;
+
+    case PR_SESS_DISCONNECT_CONFIG_ACL:
+      reason_str = "Configured policy";
+      break;
+
+    case PR_SESS_DISCONNECT_MODULE_ACL:
+      reason_str = "Module-specific policy";
+      break;
+
+    case PR_SESS_DISCONNECT_BAD_CONFIG:
+      reason_str = "Server misconfiguration";
+      break;
+  }
+
+  if (details != NULL) {
+    *details = pr_table_get(session.notes, "core.disconnect-details", NULL);
+  }
+
+  return reason_str;
 }
 
 const char *pr_session_get_protocol(int flags) {

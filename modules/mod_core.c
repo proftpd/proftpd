@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.395 2011-02-27 19:40:06 castaglia Exp $
+ * $Id: mod_core.c,v 1.396 2011-02-28 02:29:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3316,7 +3316,7 @@ MODRET core_quit(cmd_rec *cmd) {
 MODRET core_log_quit(cmd_rec *cmd) {
 
 #ifndef PR_DEVEL_NO_DAEMON
-  pr_session_end(0);
+  pr_session_disconnect(&core_module, PR_SESS_DISCONNECT_CLIENT_QUIT, NULL);
 #endif /* PR_DEVEL_NO_DAEMON */
 
   /* Even though pr_session_end() does not return, this is necessary to avoid

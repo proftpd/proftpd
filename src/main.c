@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.416 2011-02-27 19:28:53 castaglia Exp $
+ * $Id: main.c,v 1.417 2011-02-28 02:29:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -823,13 +823,14 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 
     res = pr_cmd_read(&cmd);
     if (res < 0) {
-      if (PR_NETIO_ERRNO(session.c->instrm) == EINTR)
+      if (PR_NETIO_ERRNO(session.c->instrm) == EINTR) {
         /* Simple interrupted syscall */
         continue;
+      }
 
 #ifndef PR_DEVEL_NO_DAEMON
       /* Otherwise, EOF */
-      pr_session_end(0);
+      pr_session_disconnect(NULL, PR_SESS_DISCONNECT_CLIENT_EOF, NULL);
 #else
       return;
 #endif /* PR_DEVEL_NO_DAEMON */
@@ -1344,7 +1345,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* Inform all the modules that we are now a child */
   pr_log_debug(DEBUG7, "performing module session initializations");
   if (modules_session_init() < 0) {
-    pr_session_end(0);
+    pr_session_disconnect(NULL, PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
   }
 
   pr_log_debug(DEBUG4, "connected - local  : %s:%d",
