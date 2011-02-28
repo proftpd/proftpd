@@ -12871,6 +12871,7 @@ if test "${with_libraries+set}" = set; then
 fi
 
 
+ifsession_requested="false"
 
 # Check whether --with-modules was given.
 if test "${with_modules+set}" = set; then
@@ -12889,15 +12890,15 @@ echo "$as_me: error: use --enable-dso instead of --with-modules=mod_dso for DSO 
             ifsession_requested="true"
         fi
 
-        if test x"$amodule" == xmod_memcache ; then
-          { { echo "$as_me:$LINENO: error: use --enable-memcache instead of --with-modules=mod_memcache for Memcache support" >&5
-echo "$as_me: error: use --enable-memcache instead of --with-modules=mod_memcache for Memcache support" >&2;}
-   { (exit 1); exit 1; }; }
-        fi
-
         if test x"$amodule" == xmod_lang ; then
           { { echo "$as_me:$LINENO: error: use --enable-nls instead of --with-modules=mod_lang for NLS/UTF8 support" >&5
 echo "$as_me: error: use --enable-nls instead of --with-modules=mod_lang for NLS/UTF8 support" >&2;}
+   { (exit 1); exit 1; }; }
+        fi
+
+        if test x"$amodule" == xmod_memcache ; then
+          { { echo "$as_me:$LINENO: error: use --enable-memcache instead of --with-modules=mod_memcache for Memcache support" >&5
+echo "$as_me: error: use --enable-memcache instead of --with-modules=mod_memcache for Memcache support" >&2;}
    { (exit 1); exit 1; }; }
         fi
       done
@@ -14056,7 +14057,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 14059 "configure"
+#line 14060 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -19742,9 +19743,19 @@ echo $ECHO_N "checking whether to enable mod_cap... $ECHO_C" >&6; }
 { echo "$as_me:$LINENO: result: $ac_add_mod_cap" >&5
 echo "${ECHO_T}$ac_add_mod_cap" >&6; }
 
-if test $ac_add_mod_cap = "yes"; then
-  ac_static_modules="$ac_static_modules mod_cap.o"
-  ac_build_static_modules="modules/mod_cap.o $ac_build_static_modules"
+if test x"$ac_add_mod_cap" = xyes; then
+
+      if test x"$ifsession_requested" == xtrue; then
+    ac_static_modules=`echo "$ac_static_modules" | sed -e 's/mod_ifsession\.o//g'`
+    ac_static_modules="$ac_static_modules mod_cap.o mod_ifsession.o"
+
+    ac_build_static_modules=`echo "$ac_build_static_modules" | sed -e 's/modules\/mod_ifsession\.o//g'`
+    ac_build_static_modules="$ac_build_static_modules modules/mod_cap.o modules/mod_ifsession.o";
+
+  else
+    ac_static_modules="$ac_static_modules mod_cap.o"
+    ac_build_static_modules="$ac_build_static_modules modules/mod_cap.o"
+  fi
 fi
 
 
