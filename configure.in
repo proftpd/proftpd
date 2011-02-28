@@ -322,6 +322,9 @@ AC_ARG_WITH(libraries,
     fi
   ])
 
+dnl This variable is used to impose a certain ordering between mod_ifsession
+dnl and mod_cap, per Bug#3576
+ifsession_requested="false"
 AC_ARG_WITH(modules,
   [AC_HELP_STRING(
     [--with-modules=LIST],
@@ -340,12 +343,12 @@ AC_ARG_WITH(modules,
             ifsession_requested="true"
         fi
 
-        if test x"$amodule" == xmod_memcache ; then
-          AC_MSG_ERROR([use --enable-memcache instead of --with-modules=mod_memcache for Memcache support])
-        fi
-
         if test x"$amodule" == xmod_lang ; then
           AC_MSG_ERROR([use --enable-nls instead of --with-modules=mod_lang for NLS/UTF8 support])
+        fi
+
+        if test x"$amodule" == xmod_memcache ; then
+          AC_MSG_ERROR([use --enable-memcache instead of --with-modules=mod_memcache for Memcache support])
         fi
       done
 
@@ -1245,9 +1248,21 @@ fi
 AC_MSG_CHECKING([whether to enable mod_cap])
 AC_MSG_RESULT($ac_add_mod_cap)
 
-if test $ac_add_mod_cap = "yes"; then
-  ac_static_modules="$ac_static_modules mod_cap.o"
-  ac_build_static_modules="modules/mod_cap.o $ac_build_static_modules"
+if test x"$ac_add_mod_cap" = xyes; then
+
+  dnl Make sure that mod_ifsession, if present in the list, appears at
+  dnl the end.
+  if test x"$ifsession_requested" == xtrue; then
+    ac_static_modules=`echo "$ac_static_modules" | sed -e 's/mod_ifsession\.o//g'`
+    ac_static_modules="$ac_static_modules mod_cap.o mod_ifsession.o"
+
+    ac_build_static_modules=`echo "$ac_build_static_modules" | sed -e 's/modules\/mod_ifsession\.o//g'`
+    ac_build_static_modules="$ac_build_static_modules modules/mod_cap.o modules/mod_ifsession.o";
+
+  else
+    ac_static_modules="$ac_static_modules mod_cap.o"
+    ac_build_static_modules="$ac_build_static_modules modules/mod_cap.o"
+  fi
 fi
 
 AC_CHECK_HEADERS(bstring.h crypt.h ctype.h execinfo.h iconv.h inttypes.h langinfo.h limits.h locale.h)
