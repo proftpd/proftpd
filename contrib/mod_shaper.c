@@ -26,7 +26,7 @@
  * This is mod_shaper, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_shaper.c,v 1.10 2011-02-28 06:31:24 castaglia Exp $
+ * $Id: mod_shaper.c,v 1.11 2011-02-28 07:02:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -41,8 +41,8 @@
 #define MOD_SHAPER_VERSION		"mod_shaper/0.6.6"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030202
-# error "ProFTPD 1.3.2rc2 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030402
+# error "ProFTPD 1.3.4rc2 or later required"
 #endif
 
 #ifndef PR_USE_CTRLS
