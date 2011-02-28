@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.113 2011-02-20 01:48:05 castaglia Exp $
+ * $Id: mod_log.c,v 1.114 2011-02-28 05:48:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -104,6 +104,7 @@ struct logfile_struc {
 #define META_GID		32
 #define META_RAW_BYTES_IN	33
 #define META_RAW_BYTES_OUT	34
+#define META_EOS_REASON		35
 
 /* For tracking the size of deleted files. */
 static off_t log_dele_filesz = 0;
@@ -121,6 +122,7 @@ static xaset_t			*log_set = NULL;
    %c			- Class
    %D			- full directory path
    %d			- directory (for client)
+   %E			- End-of-session reason
    %{FOOBAR}e		- Contents of environment variable FOOBAR
    %F			- Transfer path (filename for client)
    %f			- Filename
@@ -266,6 +268,10 @@ static void logformat(char *nickname, char *fmts) {
 
           case 'd':
             add_meta(&outs, META_DIR_NAME, 0);
+            break;
+
+          case 'E':
+            add_meta(&outs, META_EOS_REASON, 0);
             break;
 
           case 'e':
@@ -738,6 +744,23 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
       m++;
       break;
+
+    case META_EOS_REASON: {
+      const char *reason_str;
+      char *details = NULL;
+
+      argp = arg;
+
+      reason_str = pr_session_get_disconnect_reason(&details);
+      sstrncpy(argp, reason_str, sizeof(arg));
+      if (details != NULL) {
+        sstrcat(argp, ": ", sizeof(arg));
+        sstrcat(argp, details, sizeof(arg));
+      }
+
+      m++;
+      break;
+    }
 
     case META_FILENAME:
       argp = arg;

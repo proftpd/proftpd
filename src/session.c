@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: session.c,v 1.8 2011-02-28 02:29:04 castaglia Exp $
+ * $Id: session.c,v 1.9 2011-02-28 05:48:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -191,6 +191,10 @@ const char *pr_session_get_disconnect_reason(char **details) {
 
     case PR_SESS_DISCONNECT_BAD_CONFIG:
       reason_str = "Server misconfiguration";
+      break;
+
+    case PR_SESS_DISCONNECT_BY_APPLICATION:
+      reason_str = "Application error";
       break;
   }
 

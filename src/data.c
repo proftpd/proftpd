@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.134 2011-02-27 19:28:53 castaglia Exp $
+ * $Id: data.c,v 1.135 2011-02-28 05:48:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -62,7 +62,8 @@ static int stalled_timeout_cb(CALLBACK_FRAME) {
   pr_event_generate("core.timeout-stalled", NULL);
   pr_log_pri(PR_LOG_NOTICE, "Data transfer stall timeout: %d seconds",
     timeout_stalled);
-  pr_session_end(0);
+  pr_session_disconnect(NULL, PR_SESS_DISCONNECT_TIMEOUT,
+    "TimeoutStalled during data transfer");
 
   /* Prevent compiler warning.
    */
@@ -538,20 +539,20 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   /* Passive data transfers... */
   if (session.sf_flags & SF_PASSIVE ||
       session.sf_flags & SF_EPSV_ALL) {
-    if (!session.d) {
+    if (session.d == NULL) {
       pr_log_pri(PR_LOG_ERR, "Internal error: PASV mode set, but no data "
-        "connection listening.");
-      pr_session_end(0);
+        "connection listening");
+      pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
     }
 
     res = data_pasv_open(reason, size);
 
   /* Active data transfers... */
   } else {
-    if (session.d) {
+    if (session.d != NULL) {
       pr_log_pri(PR_LOG_ERR, "Internal error: non-PASV mode, yet data "
         "connection already exists?!?");
-      pr_session_end(0);
+      pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
     }
 
     res = data_active_open(reason, size);
@@ -919,7 +920,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 
 #ifndef PR_DEVEL_NO_DAEMON
       /* Otherwise, EOF */
-      pr_session_end(0);
+      pr_session_disconnect(NULL, PR_SESS_DISCONNECT_CLIENT_EOF, NULL);
 #else
       return -1;
 #endif /* PR_DEVEL_NO_DAEMON */

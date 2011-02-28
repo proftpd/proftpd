@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.286 2011-02-27 19:40:06 castaglia Exp $
+ * $Id: mod_auth.c,v 1.287 2011-02-28 05:48:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -66,10 +66,6 @@ static int auth_cmd_chk_cb(cmd_rec *cmd) {
   return TRUE;
 }
 
-/* As for 1.2.0, timer callbacks are now non-reentrant, so it's
- * safe to call session_exit().
- */
-
 static int auth_login_timeout_cb(CALLBACK_FRAME) {
   pr_response_send_async(R_421,
     _("Login timeout (%d seconds): closing control connection"), TimeoutLogin);
@@ -79,10 +75,12 @@ static int auth_login_timeout_cb(CALLBACK_FRAME) {
    * TimeoutLogin has been exceeded to the log here, in addition to the
    * scheduled session exit message.
    */
-  pr_log_pri(PR_LOG_NOTICE, "Login timeout exceeded, disconnected");
+  pr_log_pri(PR_LOG_NOTICE, "%s", "Login timeout exceeded, disconnected");
   pr_event_generate("core.timeout-login", NULL);
 
-  session_exit(PR_LOG_NOTICE, "Session timed out, disconnected", 0, NULL);
+  pr_log_pri(PR_LOG_NOTICE, "%s", "Session timed out, disconnected");
+  pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_TIMEOUT,
+    "TimeoutLogin");
 
   /* Do not restart the timer (should never be reached). */
   return 0;
@@ -94,7 +92,9 @@ static int auth_session_timeout_cb(CALLBACK_FRAME) {
     _("Session Timeout (%u seconds): closing control connection"),
     TimeoutSession);
 
-  session_exit(PR_LOG_NOTICE, "FTP session timed out, disconnected", 0, NULL);
+  pr_log_pri(PR_LOG_NOTICE, "%s", "FTP session timed out, disconnected");
+  pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_TIMEOUT,
+    "TimeoutSession");
 
   /* no need to restart the timer -- session's over */
   return 0;
@@ -324,7 +324,8 @@ MODRET auth_post_pass(cmd_rec *cmd) {
         if (!allow_ftp) {
           pr_log_debug(DEBUG0, "%s", "ftp protocol denied by Protocols config");
           pr_response_send(R_530, "%s", _("Login incorrect."));
-          pr_session_end(0);
+          pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+            "Denied by Protocols setting");
         }
       }
     }
@@ -846,7 +847,8 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     }
   }
 
-  if (!c && !aclp) {
+  if (c == NULL &&
+      aclp == 0) {
     pr_log_auth(PR_LOG_NOTICE,
       "USER %s (Login failed): Limit access denies login", origuser);
     goto auth_failure;
@@ -1073,7 +1075,8 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
       pr_log_pri(PR_LOG_ERR, "changing from %s back to daemon uid/gid: %s",
             session.user, strerror(errno));
-      pr_session_end(0);
+      pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+        NULL);
     }
 #endif /* HAVE_GETEUID */
 
@@ -1570,7 +1573,8 @@ static int auth_scan_scoreboard(void) {
 
       pr_log_auth(PR_LOG_NOTICE,
         "Connection refused (MaxConnectionsPerHost %u)", *max);
-      pr_session_end(0);
+      pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+        "Denied by MaxConnectionsPerHost");
     }
   }
 
@@ -1718,7 +1722,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
       pr_log_auth(PR_LOG_NOTICE,
         "Connection refused (max clients %u per class %s).", *max,
         session.class->cls_name);
-      pr_session_end(0);
+      pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+        "Denied by MaxClientsPerClass");
     }
 
     break;
@@ -1743,7 +1748,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
         NULL));
       pr_log_auth(PR_LOG_NOTICE,
         "Connection refused (max clients per host %u).", *max);
-      pr_session_end(0);
+      pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+        "Denied by MaxClientsPerHost");
     }
   }
 
@@ -1767,7 +1773,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
         NULL));
       pr_log_auth(PR_LOG_NOTICE,
         "Connection refused (max clients per user %u).", *max);
-      pr_session_end(0);
+      pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+        "Denied by MaxClientsPerUser");
     }
   }
 
@@ -1789,7 +1796,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
       pr_log_auth(PR_LOG_NOTICE, "Connection refused (max clients %u).", *max);
-      pr_session_end(0);
+      pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+        "Denied by MaxClients");
     }
   }
 
@@ -1812,7 +1820,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
         NULL));
       pr_log_auth(PR_LOG_NOTICE, "Connection refused (max hosts per host %u).",
         *max);
-      pr_session_end(0);
+      pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+        "Denied by MaxHostsPerUser");
     }
   }
 
@@ -1931,11 +1940,13 @@ MODRET auth_user(cmd_rec *cmd) {
           pr_response_send(R_530, _("Login incorrect."));
         }
 
-        pr_session_end(0);
+        pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+          "Denied by <Limit LOGIN>");
       }
     }
 
-    if (!c && !aclp) {
+    if (c == NULL &&
+        aclp == 0) {
       (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
       (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
@@ -1949,7 +1960,8 @@ MODRET auth_user(cmd_rec *cmd) {
         pr_response_send(R_530, "%s", _("Login incorrect."));
       }
 
-      pr_session_end(0);
+      pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+        "Denied by <Limit LOGIN>");
     }
   }
 
@@ -2110,7 +2122,8 @@ MODRET auth_pass(cmd_rec *cmd) {
       /* Generate an event about this limit being exceeded. */
       pr_event_generate("mod_auth.max-login-attempts", session.c);
 
-      pr_session_end(0);
+      pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+        "Denied by MaxLoginAttempts");
     }
 
     return PR_ERROR_MSG(cmd, R_530, denymsg ? denymsg : _("Login incorrect."));

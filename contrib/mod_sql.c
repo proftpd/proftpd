@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.200 2011-02-27 21:36:04 castaglia Exp $
+ * $Id: mod_sql.c,v 1.201 2011-02-28 05:48:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2193,6 +2193,22 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
         sstrncpy(argp, "", sizeof(arg));
       }
       break;
+
+    case 'E': {
+      const char *reason_str;
+      char *details = NULL;
+
+      argp = arg;
+
+      reason_str = pr_session_get_disconnect_reason(&details);
+      sstrncpy(argp, reason_str, sizeof(arg));
+      if (details != NULL) {
+        sstrcat(argp, ": ", sizeof(arg));
+        sstrcat(argp, details, sizeof(arg));
+      }
+
+      break;
+    }
 
     case 'f':
       argp = arg;

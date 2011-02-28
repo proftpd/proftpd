@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: session.h,v 1.4 2011-02-28 02:29:04 castaglia Exp $
+ * $Id: session.h,v 1.5 2011-02-28 05:48:29 castaglia Exp $
  */
 
 #ifndef PR_SESSION_H
@@ -65,6 +65,9 @@
 
 /* Disconnected due to module misconfiguration, bad config syntax, etc */
 #define PR_SESS_DISCONNECT_BAD_CONFIG		11
+
+/* Disconnected by application (general purpose code). */
+#define PR_SESS_DISCONNECT_BY_APPLICATION	12
 
 /* Returns a string describing the reason the client was disconnected or
  * the session ended.  If a pointer to a char * was provided, any extra

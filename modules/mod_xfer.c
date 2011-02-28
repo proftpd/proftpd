@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.285 2011-02-26 02:31:36 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.286 2011-02-28 05:48:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2373,9 +2373,10 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
   }
 
   proto = pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT);
-  session_exit(PR_LOG_NOTICE,
-    pstrcat(session.pool, proto, " no transfer timeout, disconnected", NULL),
-    0, NULL);
+
+  pr_log_pri(PR_LOG_NOTICE, "%s no transfer timeout, disconnected", proto);
+  pr_session_disconnect(&xfer_module, PR_SESS_DISCONNECT_TIMEOUT,
+    "TimeoutNoTransfer");
 
   return 0;
 }

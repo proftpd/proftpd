@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.396 2011-02-28 02:29:04 castaglia Exp $
+ * $Id: mod_core.c,v 1.397 2011-02-28 05:48:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -184,11 +184,13 @@ static int core_idle_timeout_cb(CALLBACK_FRAME) {
   pr_response_send_async(R_421,
     _("Idle timeout (%d seconds): closing control connection"),
     pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE));
-  session_exit(PR_LOG_INFO, "Client session idle timeout, disconnected", 0,
-    NULL);
 
   pr_timer_remove(PR_TIMER_LOGIN, ANY_MODULE);
   pr_timer_remove(PR_TIMER_NOXFER, ANY_MODULE);
+
+  pr_log_pri(PR_LOG_INFO, "%s", "Client session idle timeout, disconnected");
+  pr_session_disconnect(&core_module, PR_SESS_DISCONNECT_TIMEOUT,
+    "TimeoutIdle");
   return 0;
 }
 

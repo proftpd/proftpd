@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.417 2011-02-28 02:29:04 castaglia Exp $
+ * $Id: main.c,v 1.418 2011-02-28 05:48:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -228,7 +228,9 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
                    NULL );
 
     pr_response_send_async(R_421, _("FTP server shutting down - %s"), msg);
-    session_exit(PR_LOG_NOTICE, msg, 0, NULL);
+
+    pr_log_pri(PR_LOG_NOTICE, "%s", msg);
+    pr_session_disconnect(NULL, PR_SESS_DISCONNECT_SERVER_SHUTDOWN, NULL);
   }
 
   signal(SIGUSR1, sig_disconnect);
@@ -1677,7 +1679,8 @@ void pr_signals_handle(void) {
     if (recvd_signal_flags & RECEIVED_SIG_EXIT) {
       recvd_signal_flags &= ~RECEIVED_SIG_EXIT;
       pr_trace_msg("signal", 9, "handling SIGUSR1 (signal %d)", SIGUSR1);
-      session_exit(PR_LOG_NOTICE, "Parent process requested shutdown", 0, NULL);
+      pr_log_pri(PR_LOG_NOTICE, "%s", "Parent process requested shutdown");
+      pr_session_disconnect(NULL, PR_SESS_DISCONNECT_SERVER_SHUTDOWN, NULL);
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_SHUTDOWN) {
