@@ -91,9 +91,9 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
-  hidefiles_bug3595 => {
+  hidefiles_pcre_bug3595 => {
     order => ++$order,
-    test_class => [qw(bug feature_pcre forking inprogress)],
+    test_class => [qw(bug feature_pcre forking)],
   },
 
 };
@@ -2852,7 +2852,7 @@ sub hidefiles_none_per_user_bug3397 {
   unlink($log_file);
 }
 
-sub hidefiles_bug3595 {
+sub hidefiles_pcre_bug3595 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
