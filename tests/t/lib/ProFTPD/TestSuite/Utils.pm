@@ -357,7 +357,6 @@ sub config_write {
     print $fh "# Written on: $timestamp\n\n";
 
     while (my ($k, $v) = each(%$config)) {
-
       if ($k eq 'IfModules') {
         my $modules = $v;
 
@@ -486,6 +485,15 @@ sub config_write {
           print $fh "</Class>\n";
         }
 
+      } elsif ($k eq 'Global') {
+        print $fh "<Global>\n";
+
+        foreach my $name (keys(%$v)) {
+          print $fh "  $name $v->{$name}\n";
+        }
+
+        print $fh "</Global>\n";
+ 
       } else {
         print $fh "$k $v\n";
       }
