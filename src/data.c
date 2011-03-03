@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.135 2011-02-28 05:48:29 castaglia Exp $
+ * $Id: data.c,v 1.136 2011-03-03 17:09:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -673,6 +673,12 @@ void pr_data_cleanup(void) {
   }
 
   pr_data_clear_xfer_pool();
+
+  /* Clear/restore the default data transfer type. Otherwise, things like
+   * APPEs or STOUs will be preserved for the next upload erroneously
+   * (see Bug#3612).
+   */
+  session.xfer.xfer_type = STOR_DEFAULT;
 }
 
 /* In order to avoid clearing the transfer counters in session.xfer, we don't
