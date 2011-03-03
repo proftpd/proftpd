@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.26 2011-02-25 20:15:25 castaglia Exp $
+ * $Id: fsio.h,v 1.27 2011-03-03 21:38:54 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -193,8 +193,7 @@ struct fh_rec {
  */
 #define PR_FH_FD(f)	((f)->fh_fd)
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-#ifdef PR_FS_MATCH
+#if defined(PR_USE_REGEX) && defined(PR_FS_MATCH)
 typedef struct fs_match_rec pr_fs_match_t;
 struct fs_match_rec {
 
@@ -226,8 +225,7 @@ struct fs_match_rec {
    */
   array_header *fsm_fs_objs;
 };
-#endif /* PR_FS_MATCH */
-#endif /* HAVE_REGEX_H && HAVE_REGCOMP */
+#endif /* PR_USE_REGEX and PR_FS_MATCH */
 
 int pr_fsio_stat(const char *, struct stat *);
 int pr_fsio_stat_canon(const char *, struct stat *);
@@ -289,8 +287,7 @@ pr_fs_t *pr_remove_fs(const char *);
 pr_fs_t *pr_unmount_fs(const char *, const char *);
 int pr_unregister_fs(const char *);
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_RECOMP)
-#ifdef PR_FS_MATCH
+#if defined(PR_USE_REGEX) && defined(PR_FS_MATCH)
 pr_fs_match_t *pr_register_fs_match(pool *, const char *, const char *, int);
 void pr_associate_fs(pr_fs_match_t *, pr_fs_t *);
 pr_fs_match_t *pr_create_fs_match(pool *, const char *, const char *, int);
@@ -298,8 +295,7 @@ pr_fs_match_t *pr_get_fs_match(const char *, int);
 pr_fs_match_t *pr_get_next_fs_match(pr_fs_match_t *, const char *, int);
 int pr_insert_fs_match(pr_fs_match_t *);
 int pr_unregister_fs_match(const char *);
-#endif /* PR_FS_MATCH */
-#endif /* HAVE_REGEX_H && HAVE_REGCOMP */
+#endif /* PR_USE_REGEX and PR_FS_MATCH */
 
 void pr_fs_clear_cache(void);
 int pr_fs_copy_file(const char *, const char *);

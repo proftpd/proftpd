@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.69 2011-02-27 01:54:49 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.70 2011-03-03 21:38:54 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -82,8 +82,8 @@ static unsigned long have_quota_update = 0;
 #define QUOTA_HAVE_READ_UPDATE			10000
 #define QUOTA_HAVE_WRITE_UPDATE			20000
 
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
-static regex_t *quota_exclude_re = NULL;
+#ifdef PR_USE_REGEX
+static pr_regex_t *quota_exclude_pre = NULL;
 static const char *quota_exclude_filter = NULL;
 #endif
 
@@ -555,8 +555,8 @@ static int quotatab_ignore_path(pool *p, const char *path) {
     return FALSE;
   }
 
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
-  if (quota_exclude_re == NULL) {
+#ifdef PR_USE_REGEX
+  if (quota_exclude_pre == NULL) {
     return FALSE;
   }
 
@@ -568,7 +568,7 @@ static int quotatab_ignore_path(pool *p, const char *path) {
     abs_path = (char *) path;
   }
 
-  if (pr_regexp_exec(quota_exclude_re, abs_path, 0, NULL, 0) == 0) {
+  if (pr_regexp_exec(quota_exclude_pre, abs_path, 0, NULL, 0, 0, 0) == 0) {
     return TRUE;
   }
 
@@ -1406,8 +1406,8 @@ MODRET set_quotaengine(cmd_rec *cmd) {
 
 /* usage: QuotaExcludeFilter regex|"none" */
 MODRET set_quotaexcludefilter(cmd_rec *cmd) {
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
-  regex_t *re = NULL;
+#ifdef PR_USE_REGEX
+  pr_regex_t *pre = NULL;
   config_rec *c;
   int res;
 
@@ -1419,14 +1419,14 @@ MODRET set_quotaexcludefilter(cmd_rec *cmd) {
     return PR_HANDLED(cmd);
   }
 
-  re = pr_regexp_alloc();
+  pre = pr_regexp_alloc(&quotatab_module);
 
-  res = pr_regexp_compile(re, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  res = pr_regexp_compile(pre, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
   if (res != 0) {
     char errstr[256] = {'\0'};
 
-    pr_regexp_error(res, re, errstr, sizeof(errstr));
-    pr_regexp_free(re);
+    pr_regexp_error(res, pre, errstr, sizeof(errstr));
+    pr_regexp_free(NULL, pre);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
       "compilation: ", errstr, NULL));
@@ -1434,7 +1434,7 @@ MODRET set_quotaexcludefilter(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
-  c->argv[1] = (void *) re;
+  c->argv[1] = (void *) pre;
   return PR_HANDLED(cmd);
 
 #else
@@ -3716,6 +3716,7 @@ static void quotatab_exit_ev(const void *event_data, void *user_data) {
 static void quotatab_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_quotatab.c", (const char *) event_data) == 0) {
     pr_event_unregister(&quotatab_module, NULL, NULL);
+    pr_regex_free(NULL, quota_exclude_pre);
 
     if (quotatab_pool) {
       destroy_pool(quotatab_pool);
@@ -3851,7 +3852,7 @@ static int quotatab_sess_init(void) {
   if (c &&
       c->argc == 2) {
      quota_exclude_filter = c->argv[0];
-     quota_exclude_re = c->argv[1];
+     quota_exclude_pre = c->argv[1];
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "QuotaOptions", FALSE);

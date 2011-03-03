@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.32 2011-02-28 07:02:07 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.33 2011-03-03 21:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -205,21 +205,21 @@ MODRET start_ifctxt(cmd_rec *cmd) {
       argv = cmd->argv+1;
 
     } else if (strcmp(cmd->argv[1], "regex") == 0) {
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
-      regex_t *preg = NULL;
+#ifdef PR_USE_REGEX
+      pr_regex_t *pre = NULL;
       int res = 0;
 
       if (cmd->argc != 3)
         CONF_ERROR(cmd, "wrong number of parameters");
 
-      preg = pr_regexp_alloc();
+      pre = pr_regexp_alloc(&ifsession_module);
 
-      res = pr_regexp_compile(preg, cmd->argv[2], REG_EXTENDED|REG_NOSUB);
+      res = pr_regexp_compile(pre, cmd->argv[2], REG_EXTENDED|REG_NOSUB);
       if (res != 0) {
         char errstr[200] = {'\0'};
 
-        pr_regexp_error(res, preg, errstr, sizeof(errstr));
-        pr_regexp_free(preg);
+        pr_regexp_error(res, pre, errstr, sizeof(errstr));
+        pr_regexp_free(NULL, pre);
 
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": '", cmd->argv[2], "' failed "
           "regex compilation: ", errstr, NULL));
@@ -230,7 +230,7 @@ MODRET start_ifctxt(cmd_rec *cmd) {
       c->argv[0] = pstrdup(c->pool, cmd->arg);
       c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
       *((unsigned char *) c->argv[0]) = PR_EXPR_EVAL_REGEX;
-      c->argv[2] = (void *) preg;
+      c->argv[2] = (void *) pre;
 
       return PR_HANDLED(cmd);
 
@@ -335,20 +335,20 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
     if (list != NULL) {
       unsigned char mergein = FALSE;
 
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
+#ifdef PR_USE_REGEX
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
-        regex_t *preg = (regex_t *) list->argv[2];
+        pr_regex_t *pre = list->argv[2];
 
         if (session.group != NULL &&
-            pr_regexp_exec(preg, session.group, 0, NULL, 0) == 0) {
+            pr_regexp_exec(pre, session.group, 0, NULL, 0, 0, 0) == 0) {
           mergein = TRUE;
 
         } else if (session.groups) {
           register int j = 0;
 
           for (j = session.groups->nelts-1; j >= 0; j--)
-            if (pr_regexp_exec(preg, *(((char **) session.groups->elts) + j), 0,
-                NULL, 0) == 0) {
+            if (pr_regexp_exec(pre, *(((char **) session.groups->elts) + j), 0,
+                NULL, 0, 0, 0) == 0) {
               mergein = TRUE;
           }
         }
@@ -424,11 +424,11 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
     if (list != NULL) {
       unsigned char mergein = FALSE;
 
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
+#ifdef PR_USE_REGEX
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
-        regex_t *preg = (regex_t *) list->argv[2];
+        pr_regex_t *pre = list->argv[2];
 
-        if (pr_regexp_exec(preg, session.user, 0, NULL, 0) == 0)
+        if (pr_regexp_exec(pre, session.user, 0, NULL, 0, 0, 0) == 0)
           mergein = TRUE;
 
       } else
@@ -570,12 +570,13 @@ static int ifsess_sess_init(void) {
     if (list != NULL) {
       unsigned char mergein = FALSE;
 
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
+#ifdef PR_USE_REGEX
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
-        regex_t *preg = (regex_t *) list->argv[2];
+        pr_regex_t *pre = list->argv[2];
 
         if (session.class &&
-            pr_regexp_exec(preg, session.class->cls_name, 0, NULL, 0) == 0) {
+            pr_regexp_exec(pre, session.class->cls_name, 0, NULL, 0,
+              0, 0) == 0) {
           mergein = TRUE;
         }
 

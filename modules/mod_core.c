@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.397 2011-02-28 05:48:29 castaglia Exp $
+ * $Id: mod_core.c,v 1.398 2011-03-03 21:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1402,6 +1402,72 @@ MODRET set_protocols(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: RegexOptions [MatchLimit limit] [MatchLimitRecursion limit]
+ */
+MODRET set_regexoptions(cmd_rec *cmd) {
+  config_rec *c;
+  unsigned long match_limit = 0, match_limit_recursion = 0;
+  register unsigned int i;
+
+  if (cmd->argc < 3) {
+    CONF_ERROR(cmd, "Wrong number of parameters");
+
+  } else {
+    int npairs;
+
+    /* Make sure we have an even number of args for the key/value pairs. */
+    npairs = cmd->argc - 1;
+    if (npairs % 2 != 0) {
+      CONF_ERROR(cmd, "Wrong number of parameters");
+    }
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  /* XXX If more limits/options are supported, switch to using a table
+   * for storing the key/value pairs.
+   */
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "MatchLimit") == 0) {
+      char *ptr = NULL;
+
+      match_limit = strtoul(cmd->argv[i+1], &ptr, 10);
+      if (ptr && *ptr) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad MatchLimit value: ",
+          cmd->argv[i+1], NULL));
+      }
+
+      /* Don't forget to advance i past the value. */
+      i += 2;
+
+    } else if (strcmp(cmd->argv[i], "MatchLimitRecursion") == 0) {
+      char *ptr = NULL;
+
+      match_limit_recursion = strtoul(cmd->argv[i+1], &ptr, 10);
+      if (ptr && *ptr) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "bad MatchLimitRecursion value: ", cmd->argv[i+1], NULL));
+      }
+
+      /* Don't forget to advance i past the value. */
+      i += 2;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown RegexOptions option: '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = match_limit;
+  c->argv[1] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[1]) = match_limit_recursion;
+
+  return PR_HANDLED(cmd);
+}
+
 MODRET set_rlimitcpu(cmd_rec *cmd) {
 #ifdef RLIMIT_CPU
   /* Make sure the directive has between 1 and 3 parameters */
@@ -1911,8 +1977,8 @@ MODRET set_timesgmt(cmd_rec *cmd) {
 }
 
 MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
-  regex_t *preg = NULL;
+#ifdef PR_USE_REGEX
+  pr_regex_t *pre = NULL;
   config_rec *c = NULL;
   int regex_flags = REG_EXTENDED|REG_NOSUB, res = 0;
 
@@ -1948,20 +2014,20 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
 
   pr_log_debug(DEBUG4, "%s: compiling %s regex '%s'", cmd->argv[0], type,
     cmd->argv[1]);
-  preg = pr_regexp_alloc();
+  pre = pr_regexp_alloc(&core_module);
 
-  res = pr_regexp_compile(preg, cmd->argv[1], regex_flags);
+  res = pr_regexp_compile(pre, cmd->argv[1], regex_flags);
   if (res != 0) {
     char errstr[200] = {'\0'};
 
-    pr_regexp_error(res, preg, errstr, sizeof(errstr));
-    pr_regexp_free(preg);
+    pr_regexp_error(res, pre, errstr, sizeof(errstr));
+    pr_regexp_free(NULL, pre);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
       "compilation: ", errstr, NULL));
   }
 
-  c = add_config_param(param, 1, preg);
+  c = add_config_param(param, 1, pre);
   c->flags |= CF_MERGEDOWN;
   return PR_HANDLED(cmd);
 
@@ -1973,8 +2039,8 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
 }
 
 MODRET set_allowdenyfilter(cmd_rec *cmd) {
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
-  regex_t *preg = NULL;
+#ifdef PR_USE_REGEX
+  pr_regex_t *pre = NULL;
   config_rec *c = NULL;
   int res = 0;
 
@@ -1982,21 +2048,21 @@ MODRET set_allowdenyfilter(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR|
     CONF_DYNDIR|CONF_LIMIT);
 
-  preg = pr_regexp_alloc();
+  pre = pr_regexp_alloc(&core_module);
 
   pr_log_debug(DEBUG4, "%s: compiling regex '%s'", cmd->argv[0], cmd->argv[1]);
-  res = pr_regexp_compile(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  res = pr_regexp_compile(pre, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
   if (res != 0) {
     char errstr[200] = {'\0'};
 
-    pr_regexp_error(res, preg, errstr, sizeof(errstr));
-    pr_regexp_free(preg);
+    pr_regexp_error(res, pre, errstr, sizeof(errstr));
+    pr_regexp_free(NULL, pre);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
       "compilation: ", errstr, NULL));
   }
 
-  c = add_config_param(cmd->argv[0], 1, preg);
+  c = add_config_param(cmd->argv[0], 1, pre);
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 
@@ -2182,8 +2248,8 @@ MODRET add_directory(cmd_rec *cmd) {
 }
 
 MODRET set_hidefiles(cmd_rec *cmd) {
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
-  regex_t *regexp = NULL;
+#ifdef PR_USE_REGEX
+  pr_regex_t *pre = NULL;
   config_rec *c = NULL;
   unsigned int precedence = 0;
   unsigned char negated = FALSE, none = FALSE;
@@ -2227,14 +2293,14 @@ MODRET set_hidefiles(cmd_rec *cmd) {
   if (!none) {
     int res;
 
-    regexp = pr_regexp_alloc();
+    pre = pr_regexp_alloc(&core_module);
   
-    res = pr_regexp_compile(regexp, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+    res = pr_regexp_compile(pre, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
     if (res != 0) {
       char errstr[200] = {'\0'};
 
-      pr_regexp_error(res, regexp, errstr, sizeof(errstr));
-      pr_regexp_free(regexp);
+      pr_regexp_error(res, pre, errstr, sizeof(errstr));
+      pr_regexp_free(NULL, pre);
 
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
         "' failed regex compilation: ", errstr, NULL));
@@ -2260,8 +2326,8 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 
   if (cmd->argc-1 == 1) {
     c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
-    c->argv[0] = pcalloc(c->pool, sizeof(regex_t *));
-    *((regex_t **) c->argv[0]) = regexp;
+    c->argv[0] = pcalloc(c->pool, sizeof(pr_regex_t *));
+    *((pr_regex_t **) c->argv[0]) = pre;
     c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
     *((unsigned char *) c->argv[1]) = negated;
     c->argv[2] = pcalloc(c->pool, sizeof(unsigned int));
@@ -2289,8 +2355,8 @@ MODRET set_hidefiles(cmd_rec *cmd) {
     argv = (char **) c->argv;
 
     /* Copy in the regexp. */
-    *argv = pcalloc(c->pool, sizeof(regex_t *));
-    *((regex_t **) *argv++) = regexp;
+    *argv = pcalloc(c->pool, sizeof(pr_regex_t *));
+    *((pr_regex_t **) *argv++) = pre;
 
     /* Copy in the 'negated' flag */
     *argv = pcalloc(c->pool, sizeof(unsigned char));
@@ -2785,21 +2851,21 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
       argv = cmd->argv+1;
 
     } else if (strcasecmp(cmd->argv[1], "regex") == 0) {
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
-      regex_t *preg;
+#ifdef PR_USE_REGEX
+      pr_regex_t *pre;
       int res;
 
       if (cmd->argc != 3)
         CONF_ERROR(cmd, "wrong number of parameters");
 
-      preg = pr_regexp_alloc();
+      pre = pr_regexp_alloc(&core_module);
 
-      res = pr_regexp_compile(preg, cmd->argv[2], REG_EXTENDED|REG_NOSUB);
+      res = pr_regexp_compile_posix(pre, cmd->argv[2], REG_EXTENDED|REG_NOSUB);
       if (res != 0) {
         char errstr[200] = {'\0'};
 
-        pr_regexp_error(res, preg, errstr, sizeof(errstr));
-        pr_regexp_free(preg);
+        pr_regexp_error(res, pre, errstr, sizeof(errstr));
+        pr_regexp_free(NULL, pre);
 
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[2], "' failed "
           "regex compilation: ", errstr, NULL));
@@ -2808,7 +2874,7 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
       c = add_config_param(cmd->argv[0], 2, NULL, NULL);
       c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
       *((unsigned char *) c->argv[0]) = PR_EXPR_EVAL_REGEX;
-      c->argv[1] = (void *) preg;
+      c->argv[1] = (void *) pre;
       c->flags |= CF_MERGEDOWN_MULTI;
 
       return PR_HANDLED(cmd);
@@ -3215,9 +3281,9 @@ MODRET end_virtualhost(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
+#ifdef PR_USE_REGEX
 MODRET regex_filters(cmd_rec *cmd) {
-  regex_t *allow_regex = NULL, *deny_regex = NULL;
+  pr_regex_t *allow_regex = NULL, *deny_regex = NULL;
 
   /* Don't apply the filter checks to passwords (arguments to the PASS
    * command).
@@ -3227,9 +3293,9 @@ MODRET regex_filters(cmd_rec *cmd) {
 
   /* Check for an AllowFilter */
   allow_regex = get_param_ptr(CURRENT_CONF, "AllowFilter", FALSE);
-
-  if (allow_regex && cmd->arg &&
-      pr_regexp_exec(allow_regex, cmd->arg, 0, NULL, 0) != 0) {
+  if (allow_regex != NULL &&
+      cmd->arg != NULL &&
+      pr_regexp_exec(allow_regex, cmd->arg, 0, NULL, 0, 0, 0) != 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by AllowFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, _("%s: Forbidden command argument"), cmd->arg);
@@ -3238,9 +3304,9 @@ MODRET regex_filters(cmd_rec *cmd) {
 
   /* Check for a DenyFilter */
   deny_regex = get_param_ptr(CURRENT_CONF, "DenyFilter", FALSE);
-
-  if (deny_regex && cmd->arg &&
-      pr_regexp_exec(deny_regex, cmd->arg, 0, NULL, 0) == 0) {
+  if (deny_regex != NULL &&
+      cmd->arg != NULL &&
+      pr_regexp_exec(deny_regex, cmd->arg, 0, NULL, 0, 0, 0) == 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by DenyFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, _("%s: Forbidden command argument"), cmd->arg);
@@ -5139,6 +5205,21 @@ static int core_sess_init(void) {
   if (debug_level != NULL)
     pr_log_setdebuglevel(*debug_level);
 
+  /* Check for any server-specific RegexOptions */
+  c = find_config(main_server->conf, CONF_PARAM, "RegexOptions", FALSE);
+  if (c != NULL) {
+    unsigned long match_limit, match_limit_recursion;
+
+    match_limit = *((unsigned long *) c->argv[0]);
+    match_limit_recursion = *((unsigned long *) c->argv[1]);
+
+    pr_trace_msg("regexp", 4,
+      "using regex options: match limit = %lu, match limit recursion = %lu",
+      match_limit, match_limit_recursion);
+
+    pr_regexp_set_limits(match_limit, match_limit_recursion);
+  }
+
   /* Check for configured SetEnvs. */
   c = find_config(main_server->conf, CONF_PARAM, "SetEnv", FALSE);
 
@@ -5441,6 +5522,7 @@ static conftable core_conftab[] = {
   { "Port",			set_serverport, 		NULL },
   { "ProcessTitles",		set_processtitles,		NULL },
   { "Protocols",		set_protocols,			NULL },
+  { "RegexOptions",		set_regexoptions,		NULL },
   { "RLimitCPU",		set_rlimitcpu,			NULL },
   { "RLimitMemory",		set_rlimitmemory,		NULL },
   { "RLimitOpenFiles",		set_rlimitopenfiles,		NULL },
@@ -5477,7 +5559,7 @@ static conftable core_conftab[] = {
 };
 
 static cmdtable core_cmdtab[] = {
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
+#ifdef PR_USE_REGEX
   { PRE_CMD, C_ANY, G_NONE,  regex_filters, FALSE, FALSE, CL_NONE },
 #endif
   { PRE_CMD, C_ANY, G_NONE, core_pre_any,FALSE, FALSE, CL_NONE },

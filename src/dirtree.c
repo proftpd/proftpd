@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.250 2011-02-27 01:08:25 castaglia Exp $
+ * $Id: dirtree.c,v 1.251 2011-03-03 21:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -277,10 +277,10 @@ char *path_subst_uservar(pool *path_pool, char **path) {
  * be visible.
  */
 unsigned char dir_hide_file(const char *path) {
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
+#ifdef PR_USE_REGEX
   char *file_name = NULL, *dir_name = NULL;
   config_rec *c = NULL;
-  regex_t *regexp = NULL;
+  pr_regex_t *pre = NULL;
   pool *tmp_pool;
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_regex, have_group_regex, have_class_regex,
@@ -332,7 +332,7 @@ unsigned char dir_hide_file(const char *path) {
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
 
-            regexp = *((regex_t **) c->argv[0]);
+            pre = *((pr_regex_t **) c->argv[0]);
             negated = *((unsigned char *) c->argv[1]);
 
             have_group_regex = have_class_regex = have_all_regex = FALSE;
@@ -346,7 +346,7 @@ unsigned char dir_hide_file(const char *path) {
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
 
-            regexp = *((regex_t **) c->argv[0]);
+            pre = *((pr_regex_t **) c->argv[0]);
             negated = *((unsigned char *) c->argv[1]);
 
             have_user_regex = have_class_regex = have_all_regex = FALSE;
@@ -364,7 +364,7 @@ unsigned char dir_hide_file(const char *path) {
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
 
-            regexp = *((regex_t **) c->argv[0]);
+            pre = *((pr_regex_t **) c->argv[0]);
             negated = *((unsigned char *) c->argv[1]);
 
             have_user_regex = have_group_regex = have_all_regex = FALSE;
@@ -383,7 +383,7 @@ unsigned char dir_hide_file(const char *path) {
       if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
         ctxt_precedence = *((unsigned int *) c->argv[2]);
 
-        regexp = *((regex_t **) c->argv[0]);
+        pre = *((pr_regex_t **) c->argv[0]);
         negated = *((unsigned char *) c->argv[1]);
 
         have_user_regex = have_group_regex = have_class_regex = FALSE;
@@ -402,7 +402,7 @@ unsigned char dir_hide_file(const char *path) {
       have_user_regex ? "user" : have_group_regex ? "group" :
       have_class_regex ? "class" : "session");
 
-    if (regexp == NULL) {
+    if (pre == NULL) {
       destroy_pool(tmp_pool);
 
       /* HideFiles none for this user/group/class */
@@ -412,7 +412,7 @@ unsigned char dir_hide_file(const char *path) {
       return FALSE;
     }
 
-    if (pr_regexp_exec(regexp, file_name, 0, NULL, 0) != 0) {
+    if (pr_regexp_exec(pre, file_name, 0, NULL, 0, 0, 0) != 0) {
       destroy_pool(tmp_pool);
 
       pr_log_debug(DEBUG9, "file '%s' did not match %sHideFiles pattern",
@@ -966,11 +966,11 @@ static int check_user_access(xaset_t *set, const char *name) {
   while (c) {
     pr_signals_handle();
 
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
+#ifdef PR_USE_REGEX
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
-      regex_t *preg = (regex_t *) c->argv[1];
+      pr_regex_t *pre = (pr_regex_t *) c->argv[1];
 
-      if (pr_regexp_exec(preg, session.user, 0, NULL, 0) == 0) {
+      if (pr_regexp_exec(pre, session.user, 0, NULL, 0, 0, 0) == 0) {
         res = TRUE;
         break;
       }
@@ -1002,12 +1002,12 @@ static int check_group_access(xaset_t *set, const char *name) {
   config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
 
   while (c) {
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
+#ifdef PR_USE_REGEX
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
-      regex_t *preg = (regex_t *) c->argv[1];
+      pr_regex_t *pre = (pr_regex_t *) c->argv[1];
 
       if (session.group &&
-          pr_regexp_exec(preg, session.group, 0, NULL, 0) == 0) {
+          pr_regexp_exec(pre, session.group, 0, NULL, 0, 0, 0) == 0) {
         res = TRUE;
         break;
 
@@ -1015,8 +1015,8 @@ static int check_group_access(xaset_t *set, const char *name) {
         register int i = 0;
 
         for (i = session.groups->nelts-1; i >= 0; i--)
-          if (pr_regexp_exec(preg, *(((char **) session.groups->elts) + i), 0,
-              NULL, 0) == 0) {
+          if (pr_regexp_exec(pre, *(((char **) session.groups->elts) + i), 0,
+              NULL, 0, 0, 0) == 0) {
             res = TRUE;
             break;
           }
@@ -1051,12 +1051,12 @@ static int check_class_access(xaset_t *set, const char *name) {
   while (c) {
     pr_signals_handle();
 
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
+#ifdef PR_USE_REGEX
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
-      regex_t *preg = (regex_t *) c->argv[1];
+      pr_regex_t *pre = (pr_regex_t *) c->argv[1];
 
       if (session.class &&
-          pr_regexp_exec(preg, session.class->cls_name, 0, NULL, 0) == 0) {
+          pr_regexp_exec(pre, session.class->cls_name, 0, NULL, 0, 0, 0) == 0) {
         res = TRUE;
         break;
       }
@@ -1084,7 +1084,7 @@ static int check_class_access(xaset_t *set, const char *name) {
 }
 
 static int check_filter_access(xaset_t *set, const char *name, cmd_rec *cmd) {
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
+#ifdef PR_USE_REGEX
   int res = 0;
   config_rec *c;
 
@@ -1093,11 +1093,11 @@ static int check_filter_access(xaset_t *set, const char *name, cmd_rec *cmd) {
 
   c = find_config(set, CONF_PARAM, name, FALSE);
   while (c) {
-    regex_t *preg = (regex_t *) c->argv[0];
+    pr_regex_t *pre = (pr_regex_t *) c->argv[0];
 
     pr_signals_handle();
 
-    if (pr_regexp_exec(preg, cmd->arg, 0, NULL, 0) == 0) {
+    if (pr_regexp_exec(pre, cmd->arg, 0, NULL, 0, 0, 0) == 0) {
       res = TRUE;
       break;
     }

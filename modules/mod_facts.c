@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.38 2011-02-26 02:31:36 castaglia Exp $
+ * $Id: mod_facts.c,v 1.39 2011-03-03 21:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -64,20 +64,18 @@ static void facts_mlinfobuf_flush(void);
  */
 
 static int facts_filters_allow_path(cmd_rec *cmd, const char *path) {
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
-  regex_t *preg = get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
-
-  if (preg &&
-      pr_regexp_exec(preg, path, 0, NULL, 0) != 0) {
+#ifdef PR_USE_REGEX
+  pr_regex_t *pre = get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
+  if (pre != NULL &&
+      pr_regexp_exec(pre, path, 0, NULL, 0, 0, 0) != 0) {
     pr_log_debug(DEBUG2, MOD_FACTS_VERSION
       ": %s denied by PathAllowFilter on '%s'", cmd->argv[0], cmd->arg);
     return -1;
   }
 
-  preg = get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
-
-  if (preg &&
-      pr_regexp_exec(preg, path, 0, NULL, 0) == 0) {
+  pre = get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
+  if (pre != NULL &&
+      pr_regexp_exec(pre, path, 0, NULL, 0, 0, 0) == 0) {
     pr_log_debug(DEBUG2, MOD_FACTS_VERSION
       ": %s denied by PathDenyFilter on '%s'", cmd->argv[0], cmd->arg);
     return -1;

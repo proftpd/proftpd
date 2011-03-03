@@ -11,8 +11,9 @@ ChangeLog files.
 
   + New --enable-memcache configure option; see doc/modules/mod_memcache.html
 
-  + New --enable-pcre configure option; see doc/howto/Compiling.html
-
+  + New --enable-pcre configure option
+      see doc/howto/Compiling.html, doc/howto/Regex.html
+   
   + New modules
 
     mod_tls_memcache
@@ -215,4 +216,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2011-02-28 05:50:32 $
+Last Updated: $Date: 2011-03-03 21:38:54 $

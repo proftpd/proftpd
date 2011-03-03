@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.55 2011-02-25 20:15:25 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.56 2011-03-03 21:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -37,7 +37,7 @@
 # error "ProFTPD 1.3.1rc1 or later required"
 #endif
 
-#if defined(HAVE_REGEX_H) || defined(PR_USE_PCRE)
+#ifdef PR_USE_REGEX
 
 #define REWRITE_FIFO_MAXLEN		256
 #define REWRITE_LOG_MODE		0640
@@ -97,7 +97,7 @@ static pool *rewrite_pool = NULL;
 static pool *rewrite_cond_pool = NULL;
 
 static unsigned int rewrite_nrules = 0;
-static array_header *rewrite_conds = NULL, *rewrite_regexes = NULL;
+static array_header *rewrite_conds = NULL;
 static rewrite_match_t rewrite_cond_matches;
 static rewrite_match_t rewrite_rule_matches;
 
@@ -138,8 +138,7 @@ static unsigned char rewrite_parse_map_str(char *, rewrite_map_t *);
 static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *);
 static unsigned int rewrite_parse_rule_flags(pool *, const char *);
 static int rewrite_read_fifo(int, char *, size_t);
-static regex_t *rewrite_regalloc(void);
-static unsigned char rewrite_regexec(const char *, regex_t *, unsigned char,
+static unsigned char rewrite_regexec(const char *, pr_regex_t *, unsigned char,
     rewrite_match_t *);
 static void rewrite_replace_cmd_arg(cmd_rec *, char *);
 static char *rewrite_subst(cmd_rec *c, char *);
@@ -471,7 +470,7 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
 
       memset(&rewrite_cond_matches, '\0', sizeof(rewrite_cond_matches));
       rewrite_cond_matches.match_string = cond_str;
-      return rewrite_regexec(cond_str, (regex_t *) cond->argv[1], negated,
+      return rewrite_regexec(cond_str, cond->argv[1], negated,
         &rewrite_cond_matches);
     }
 
@@ -728,44 +727,24 @@ static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *txtmap) {
   return TRUE;
 }
 
-static regex_t *rewrite_regalloc(void) {
-  regex_t *preg = NULL;
-
-  /* If no regex-tracking array has been allocated, create one.  Register
-   * a cleanup handler for this pool, to call regfree(3) on all
-   * regex_t pointers in the array.
-   */
-  if (!rewrite_regexes)
-    rewrite_regexes = make_array(rewrite_pool, 0, sizeof(regex_t *));
-
-  preg = calloc(1, sizeof(regex_t));
-  if (preg == NULL) {
-    rewrite_log("fatal: memory exhausted during regex_t allocation");
-    exit(1);
-  }
-
-  /* Add the regex_t pointer to the array. */
-  *((regex_t **) push_array(rewrite_regexes)) = preg;
-
-  return preg;
-}
-
-static unsigned char rewrite_regexec(const char *string, regex_t *regbuf,
+static unsigned char rewrite_regexec(const char *string, pr_regex_t *pre,
     unsigned char negated, rewrite_match_t *matches) {
   int res = -1;
   char *tmpstr = (char *) string;
   unsigned char have_match = FALSE;
 
   /* Sanity checks */
-  if (!string || !regbuf)
+  if (string == NULL ||
+      pre == NULL) {
     return FALSE;
+  }
 
   /* Prepare the given match group array. */
   memset(matches->match_groups, '\0', sizeof(regmatch_t) * REWRITE_MAX_MATCHES);
 
   /* Execute the given regex. */
-  while ((res = pr_regexp_exec(regbuf, tmpstr, REWRITE_MAX_MATCHES,
-      matches->match_groups, 0)) == 0) {
+  while ((res = pr_regexp_exec(pre, tmpstr, REWRITE_MAX_MATCHES,
+      matches->match_groups, 0, 0, 0)) == 0) {
     have_match = TRUE;
     break;
   }
@@ -1959,7 +1938,7 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
 
   } else {
     cond_op = REWRITE_COND_OP_REGEX;
-    cond_data = rewrite_regalloc();
+    cond_data = pr_regexp_alloc(&rewrite_module);
 
     res = pr_regexp_compile(cond_data, cmd->argv[2], regex_flags);
     if (res != 0) {
@@ -2196,7 +2175,7 @@ MODRET set_rewritemap(cmd_rec *cmd) {
 /* usage: RewriteRule pattern substitution [flags] */
 MODRET set_rewriterule(cmd_rec *cmd) {
   config_rec *c = NULL;
-  regex_t *preg = NULL;
+  pr_regex_t *pre = NULL;
   unsigned int rule_flags = 0;
   unsigned char negated = FALSE;
   int regex_flags = REG_EXTENDED, res = -1;
@@ -2223,7 +2202,7 @@ MODRET set_rewriterule(cmd_rec *cmd) {
       regex_flags |= REG_ICASE;
   }
 
-  preg = rewrite_regalloc();
+  pre = pr_regexp_alloc(&rewrite_module);
 
   /* Check for a leading '!' prefix, signifying regex negation */
   if (*cmd->argv[1] == '!') {
@@ -2231,12 +2210,12 @@ MODRET set_rewriterule(cmd_rec *cmd) {
     cmd->argv[1]++;
   }
 
-  res = pr_regexp_compile(preg, cmd->argv[1], regex_flags);
+  res = pr_regexp_compile_posix(pre, cmd->argv[1], regex_flags);
   if (res != 0) {
     char errstr[200] = {'\0'};
 
-    pr_regexp_error(res, preg, errstr, sizeof(errstr));
-    regfree(preg);
+    pr_regexp_error(res, pre, errstr, sizeof(errstr));
+    pr_regexp_free(NULL, pre);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to compile '",
       cmd->argv[1], "' regex: ", errstr, NULL));
@@ -2247,7 +2226,7 @@ MODRET set_rewriterule(cmd_rec *cmd) {
    */
   tmp = NULL;
 
-  c = add_config_param(cmd->argv[0], 6, preg, NULL, NULL, NULL, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 6, pre, NULL, NULL, NULL, NULL, NULL);
 
   /* Note: how to handle the substitution expression? Later? */
   c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
@@ -2279,8 +2258,9 @@ MODRET set_rewriterule(cmd_rec *cmd) {
     rewrite_cond_pool = NULL;
     rewrite_conds = NULL;
 
-  } else
+  } else {
     c->argv[3] = NULL;
+  }
 
   c->argv[4] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[4]) = rule_flags;
@@ -2382,7 +2362,7 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
     /* Make sure the given RewriteRule regex matches the command argument. */
     memset(&rewrite_rule_matches, '\0', sizeof(rewrite_rule_matches));
     rewrite_rule_matches.match_string = cmd_arg;
-    if (!rewrite_regexec(cmd_arg, (regex_t *) c->argv[0],
+    if (!rewrite_regexec(cmd_arg, c->argv[0],
         *((unsigned char *) c->argv[2]), &rewrite_rule_matches)) {
       rewrite_log("rewrite_fixup(): %s arg '%s' does not match RewriteRule "
         "regex", cmd_name, cmd_arg);
@@ -2532,17 +2512,7 @@ static void rewrite_exit_ev(const void *event_data, void *user_data) {
 static void rewrite_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_rewrite.c", (const char *) event_data) == 0) {
     pr_event_unregister(&rewrite_module, NULL, NULL);
-
-    if (rewrite_regexes) {
-      register unsigned int i = 0;
-      regex_t **regexes = (regex_t **) rewrite_regexes->elts;
-
-      for (i = 0; i < rewrite_regexes->nelts && regexes[i]; i++) {
-        regfree(regexes[i]);
-        free(regexes[i]);
-      }
-    }
-
+    pr_regexp_free(&rewrite_module, NULL);
     if (rewrite_pool) {
       destroy_pool(rewrite_pool);
       rewrite_pool = NULL;
@@ -2552,21 +2522,12 @@ static void rewrite_mod_unload_ev(const void *event_data, void *user_data) {
 #endif /* PR_SHARED_MODULE */
 
 static void rewrite_restart_ev(const void *event_data, void *user_data) {
-  if (rewrite_regexes) {
-    register unsigned int i = 0;
-    regex_t **regexes = (regex_t **) rewrite_regexes->elts;
-
-    for (i = 0; i < rewrite_regexes->nelts && regexes[i]; i++) {
-      regfree(regexes[i]);
-      free(regexes[i]);
-    }
-  }
+  pr_regexp_free(&rewrite_module, NULL);
 
   if (rewrite_pool) {
     destroy_pool(rewrite_pool);
     rewrite_cond_pool = NULL;
     rewrite_conds = NULL;
-    rewrite_regexes = NULL;
 
     /* Re-allocate a pool for this module's use. */
     rewrite_pool = make_sub_pool(permanent_pool);

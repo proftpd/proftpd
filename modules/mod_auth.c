@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.287 2011-02-28 05:48:29 castaglia Exp $
+ * $Id: mod_auth.c,v 1.288 2011-03-03 21:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -820,14 +820,14 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     /* Check for configured AnonRejectPasswords regex here, and fail the login
      * if the given password matches the regex.
      */
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
+#ifdef PR_USE_REGEX
     if ((tmpc = find_config(c->subset, CONF_PARAM, "AnonRejectPasswords",
         FALSE)) != NULL) {
       int re_res;
-      regex_t *pw_regex = (regex_t *) tmpc->argv[0];
+      pr_regex_t *pw_regex = (pr_regex_t *) tmpc->argv[0];
 
       if (pw_regex && pass &&
-          ((re_res = pr_regexp_exec(pw_regex, pass, 0, NULL, 0)) == 0)) {
+          ((re_res = pr_regexp_exec(pw_regex, pass, 0, NULL, 0, 0, 0)) == 0)) {
         char errstr[200] = {'\0'};
 
         pr_regexp_error(re_res, pw_regex, errstr, sizeof(errstr));
@@ -2188,28 +2188,28 @@ MODRET set_anonrequirepassword(cmd_rec *cmd) {
 }
 
 MODRET set_anonrejectpasswords(cmd_rec *cmd) {
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
+#ifdef PR_USE_REGEX
   config_rec *c = NULL;
-  regex_t *preg = NULL;
+  pr_regex_t *pre = NULL;
   int res;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON);
 
-  preg = pr_regexp_alloc();
+  pre = pr_regexp_alloc(&auth_module);
 
-  res = pr_regexp_compile(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  res = pr_regexp_compile(pre, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
   if (res != 0) {
     char errstr[200] = {'\0'};
 
-    pr_regexp_error(res, preg, errstr, 200);
-    pr_regexp_free(preg);
+    pr_regexp_error(res, pre, errstr, 200);
+    pr_regexp_free(NULL, pre);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unable to compile regex '",
       cmd->argv[1], "': ", errstr, NULL));
   }
 
-  c = add_config_param(cmd->argv[0], 1, (void *) preg);
+  c = add_config_param(cmd->argv[0], 1, (void *) pre);
   return PR_HANDLED(cmd);
 
 #else

@@ -22,7 +22,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.17 2011-02-25 20:15:25 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.18 2011-03-03 21:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -32,20 +32,18 @@
 static unsigned int site_misc_engine = TRUE;
 
 static int site_misc_check_filters(cmd_rec *cmd, const char *path) {
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
-  regex_t *preg = get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
-
-  if (preg &&
-      pr_regexp_exec(preg, path, 0, NULL, 0) != 0) {
+#ifdef PR_USE_REGEX
+  pr_regex_t *pre = get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
+  if (pre != NULL &&
+      pr_regexp_exec(pre, path, 0, NULL, 0, 0, 0) != 0) {
     pr_log_debug(DEBUG2, MOD_SITE_MISC_VERSION
       ": 'SITE %s' denied by PathAllowFilter", cmd->arg);
     return -1;
   }
 
-  preg = get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
-
-  if (preg &&
-      pr_regexp_exec(preg, path, 0, NULL, 0) == 0) {
+  pre = get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
+  if (pre != NULL &&
+      pr_regexp_exec(pre, path, 0, NULL, 0, 0, 0) == 0) {
     pr_log_debug(DEBUG2, MOD_SITE_MISC_VERSION
       ": 'SITE %s' denied by PathDenyFilter", cmd->arg);
     return -1;

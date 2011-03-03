@@ -26,7 +26,7 @@
  * This is mod_ifversion, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifversion.c,v 1.2 2011-02-25 20:15:25 castaglia Exp $
+ * $Id: mod_ifversion.c,v 1.3 2011-03-03 21:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,6 +48,8 @@
  */
 #define IFVERSION_STATUS_RC		100
 #define IFVERSION_STATUS_STABLE		300
+
+module ifversion_module;
 
 static int parse_version(char *version_str, unsigned int *version,
     unsigned int *version_status) {
@@ -301,34 +303,33 @@ static int compare_version(pool *p, char *version_str, char **error) {
 }
 
 static int match_version(pool *p, const char *pattern_str, char **error) {
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
-  regex_t *preg;
+#ifdef PR_USE_REGEX
+  pr_regex_t *pre;
   int res;
 
-  preg = pr_regexp_alloc();
+  pre = pr_regexp_alloc(&ifversion_module);
 
-  res = pr_regexp_compile(preg, pattern_str, REG_EXTENDED|REG_NOSUB|REG_ICASE);
+  res = pr_regexp_compile(pre, pattern_str, REG_EXTENDED|REG_NOSUB|REG_ICASE);
   if (res != 0) {
     char errstr[256];
 
     memset(errstr, '\0', sizeof(errstr));
-    pr_regexp_error(res, preg, errstr, sizeof(errstr)-1);
+    pr_regexp_error(res, pre, errstr, sizeof(errstr)-1);
 
-    pr_regexp_free(preg);
+    pr_regexp_free(NULL, pre);
     *error = pstrcat(p, "unable to compile pattern '", pattern_str, "': ",
       errstr, NULL);
 
     return 0;
   }
 
-  res = pr_regexp_exec(preg, pr_version_get_str(), 0, NULL, 0);
-
+  res = pr_regexp_exec(pre, pr_version_get_str(), 0, NULL, 0, 0, 0);
   if (res != 0) {
     *error = pstrcat(p, "server version '", pr_version_get_str(),
       "' failed to match pattern '", pattern_str, "'", NULL);
   }
 
-  pr_regexp_free(preg);
+  pr_regexp_free(NULL, pre);
   return (res == 0 ? 1 : 0);
 
 #else

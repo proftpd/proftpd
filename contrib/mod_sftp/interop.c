@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: interop.c,v 1.12 2011-02-28 06:54:47 castaglia Exp $
+ * $Id: interop.c,v 1.13 2011-03-03 21:38:54 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -30,6 +30,8 @@
 #include "disconnect.h"
 #include "interop.h"
 #include "fxp.h"
+
+extern module sftp_module;
 
 extern module sftp_module;
 
@@ -50,7 +52,7 @@ static unsigned int interop_flags =
 struct sftp_version_pattern {
   const char *pattern;
   int interop_flags;
-  regex_t *preg;
+  pr_regex_t *pre;
 };
 
 static struct sftp_version_pattern known_versions[] = {
@@ -186,7 +188,7 @@ int sftp_interop_handle_version(const char *client_version) {
       "checking client version '%s' against regex '%s'", version,
       known_versions[i].pattern);
 
-    res = pr_regexp_exec(known_versions[i].preg, version, 0, NULL, 0);
+    res = pr_regexp_exec(known_versions[i].pre, version, 0, NULL, 0, 0, 0);
     if (res == 0) {
       pr_trace_msg(trace_channel, 18,
         "client version '%s' matched against regex '%s'", version,
@@ -241,18 +243,18 @@ int sftp_interop_handle_version(const char *client_version) {
   while (c) {
     int res;
     char *pattern;
-    regex_t *preg;
+    pr_regex_t *pre;
 
     pr_signals_handle();
 
     pattern = c->argv[0];
-    preg = c->argv[1];
+    pre = c->argv[1];
 
     pr_trace_msg(trace_channel, 18,
       "checking client version '%s' against SFTPClientMatch regex '%s'",
       version, pattern);
 
-    res = pr_regexp_exec(preg, version, 0, NULL, 0);
+    res = pr_regexp_exec(pre, version, 0, NULL, 0, 0, 0);
     if (res == 0) {
       pr_table_t *tab;
       void *v, *v2;
@@ -385,21 +387,21 @@ int sftp_interop_init(void) {
    * time when a client connects.
    */
   for (i = 0; known_versions[i].pattern; i++) {
-    regex_t *preg;
+    pr_regex_t *pre;
     int res;
 
     pr_signals_handle();
 
-    preg = pr_regexp_alloc();
+    pre = pr_regexp_alloc(&sftp_module);
 
-    res = pr_regexp_compile(preg, known_versions[i].pattern,
+    res = pr_regexp_compile(pre, known_versions[i].pattern,
       REG_EXTENDED|REG_NOSUB);
     if (res != 0) {
       char errmsg[256];
 
       memset(errmsg, '\0', sizeof(errmsg));
-      pr_regexp_error(res, preg, errmsg, sizeof(errmsg));
-      pr_regexp_free(preg);
+      pr_regexp_error(res, pre, errmsg, sizeof(errmsg));
+      pr_regexp_free(NULL, pre);
 
       pr_log_debug(DEBUG0, MOD_SFTP_VERSION
         ": error compiling regex pattern '%s' (known_versions[%u]): %s",
@@ -407,7 +409,7 @@ int sftp_interop_init(void) {
       continue;
     }
 
-    known_versions[i].preg = preg;
+    known_versions[i].pre = pre;
   }
 
   return 0;
@@ -416,8 +418,8 @@ int sftp_interop_init(void) {
 int sftp_interop_free(void) {
   register unsigned int i;
 
-  for (i = 0; known_versions[i].preg; i++) {
-    pr_regexp_free(known_versions[i].preg);
+  for (i = 0; known_versions[i].pre; i++) {
+    pr_regexp_free(NULL, known_versions[i].pre);
   }
 
   return 0;

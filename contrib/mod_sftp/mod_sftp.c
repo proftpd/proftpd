@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.48 2011-02-28 06:54:47 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.49 2011-03-03 21:38:54 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -489,11 +489,11 @@ MODRET set_sftpclientalive(cmd_rec *cmd) {
 
 /* usage: SFTPClientMatch pattern key1 val1 ... */
 MODRET set_sftpclientmatch(cmd_rec *cmd) {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#ifdef PR_USE_REGEX
   register unsigned int i;
   config_rec *c;
   pr_table_t *tab;
-  regex_t *preg;
+  pr_regex_t *pre;
   int res;
 
   if (cmd->argc < 4) {
@@ -512,15 +512,15 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  preg = pr_regexp_alloc();
+  pre = pr_regexp_alloc(&sftp_module);
 
-  res = pr_regexp_compile(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  res = pr_regexp_compile(pre, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
   if (res != 0) {
     char errstr[200];
 
     memset(errstr, '\0', sizeof(errstr));
-    pr_regexp_error(res, preg, errstr, sizeof(errstr));
-    pr_regexp_free(preg);
+    pr_regexp_error(res, pre, errstr, sizeof(errstr));
+    pr_regexp_free(NULL, pre);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
       "compilation: ", errstr, NULL));
@@ -528,7 +528,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
-  c->argv[1] = preg;
+  c->argv[1] = pre;
 
   tab = pr_table_alloc(c->pool, 0);
 

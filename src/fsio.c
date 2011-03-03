@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.97 2011-02-25 20:15:25 castaglia Exp $
+ * $Id: fsio.c,v 1.98 2011-03-03 21:38:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1205,8 +1205,7 @@ pr_fs_t *pr_get_fs(const char *path, int *exact) {
   return best_match_fs;
 }
 
-#if defined(PR_USE_PCRE) || (defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP))
-#ifdef PR_FS_MATCH
+#if defined(PR_USE_REGEX) && defined(PR_FS_MATCH)
 void pr_associate_fs(pr_fs_match_t *fsm, pr_fs_t *fs) {
   *((pr_fs_t **) push_array(fsm->fsm_fs_objs)) = fs;
 }
@@ -1422,8 +1421,7 @@ pr_fs_match_t *pr_get_fs_match(const char *path, int op) {
   /* ...otherwise, hand the search off to pr_get_next_fs_match() */
   return pr_get_next_fs_match(fsm, path, op);
 }
-#endif /* PR_FS_MATCH */
-#endif /* regex support */
+#endif /* PR_USE_REGEX and PR_FS_MATCH */
 
 void pr_fs_setcwd(const char *dir) {
   pr_fs_resolve_path(dir, cwd, sizeof(cwd)-1, FSIO_DIR_CHDIR);
