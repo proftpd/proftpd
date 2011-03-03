@@ -1,4 +1,4 @@
-<!-- $Id: ftpasswd.html,v 1.1 2011-03-03 22:08:15 castaglia Exp $ -->
+<!-- $Id: ftpasswd.html,v 1.2 2011-03-03 22:17:29 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/utils/ftpasswd.html,v $ -->
 
 <html>
@@ -15,15 +15,12 @@
 <hr><br>
 
 This program is used to create and manage files, correctly formatted, suitable
-for use with ProFTPD's <a href="http://www.proftpd.org/docs/configuration.html#AuthUserFile"><code>AuthUserFile</code></a> and <a href="http://www.proftpd.org/docs/configuration.html#AuthGroupFile"><code>AuthGroupFile</code></a>
-configuration directives.  It can also generate password hashes for ProFTPD's
-<a href="http://www.proftpd.org/docs/configuration.html#UserPassword"><code>UserPassword</code></a> directive.
+for use with ProFTPD's <a href="../modules/mod_auth_file.html#AuthUserFile"><code>AuthUserFile</code></a> and <a href="../modules/mod_auth_file.html#AuthGroupFile"><code>AuthGroupFile</code></a> configuration directives.  It can also
+generate password hashes for ProFTPD's <a href="../modules/mod_auth.html#UserPassword"><code>UserPassword</code></a> directive.
 
 <p>
-The most current version of <code>ftpasswd</code> can be found at:
-<pre>
-  <a href="http://www.castaglia.org/proftpd/">http://www.castaglia.org/proftpd/</a>
-</pre>
+The most current version of <code>ftpasswd</code> is distributed with the
+ProFTPD source code, under the <code>contrib/</code> directory.
 
 <h2>Author</h2>
 <p>
@@ -40,11 +37,10 @@ The options supported are described in more detail
 <p>
 This script is intended to replace the <code>genuser.pl</code> script that
 is currently distributed with <code>proftpd</code>.  That script can
-generate DES-hashed passwords, suitable for use with the <a href="http://www.proftpd.org/docs/configuration.html#UserPassword"><code>UserPassword</code></a>
-configuration directive, but it is not quite right for
-<code>AuthUserFile</code>s.  Another common mistake is to use the
-<code>htpasswd</code> program from Apache to create files for
-<code>proftpd</code>.  Apache and ProFTPD both have the same
+generate DES-hashed passwords, suitable for use with the <a href="../modules/mod_auth.html#UserPassword"><code>UserPassword</code></a> configuration directive,
+but it is not quite right for <code>AuthUserFile</code>s.  Another common
+mistake is to use the <code>htpasswd</code> program from Apache to create files
+for <code>proftpd</code>.  Apache and ProFTPD both have the same
 <code>AuthUserFile</code> and <code>AuthGroupFile</code> directives; the format
 of the files used by each server is different.
 
@@ -142,7 +138,8 @@ more information.
 
 <p>
 There are other issues that arise when using <code>AuthUserFile</code>s.
-This <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-AuthFiles.html">document</a> discusses these issues in greater detail.
+This <a href="../howto/AuthFiles.html">document</a> discusses these issues in
+greater detail.
 
 <p>
 <hr><br>
@@ -321,12 +318,12 @@ usage: ftpasswd [--help] [--hash|--group|--passwd]
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-03-03 22:08:15 $</i><br>
+Last Updated: <i>$Date: 2011-03-03 22:17:29 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2002 TJ Saunders<br>
+&copy; Copyright 2000-2011 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
