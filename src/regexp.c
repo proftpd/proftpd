@@ -25,7 +25,7 @@
  */
 
 /* Regex management code
- * $Id: regexp.c,v 1.15 2011-03-03 21:38:54 castaglia Exp $
+ * $Id: regexp.c,v 1.16 2011-03-05 05:29:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -293,7 +293,7 @@ const char *pr_regexp_get_pattern(const pr_regex_t *pre) {
   }
 
   if (pre->pattern == NULL) {
-    errno = ENONET;
+    errno = ENOENT;
     return NULL;
   }
 
