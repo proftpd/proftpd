@@ -25,7 +25,7 @@
  */
 
 /* Regex management code
- * $Id: regexp.c,v 1.16 2011-03-05 05:29:03 castaglia Exp $
+ * $Id: regexp.c,v 1.17 2011-03-06 21:20:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -182,9 +182,9 @@ void pr_regexp_free(module *m, pr_regex_t *pre) {
   }
 }
 
+#ifdef PR_USE_PCRE
 static int regexp_compile_pcre(pr_regex_t *pre, const char *pattern,
     int flags) {
-#ifdef PR_USE_PCRE
   int err_offset, timerno = -1;
 
   if (pre == NULL ||
@@ -212,12 +212,8 @@ static int regexp_compile_pcre(pr_regex_t *pre, const char *pattern,
     pattern);
   pre->pcre_extra = pcre_study(pre->pcre, 0, &(pre->pcre_errstr));
   return 0;
-
-#else
-  errno = ENOSYS;
-  return -1;
-#endif /* PR_USE_PCRE */
 }
+#endif /* PR_USE_PCRE */
 
 int pr_regexp_compile_posix(pr_regex_t *pre, const char *pattern, int flags) {
   int res;
@@ -300,6 +296,7 @@ const char *pr_regexp_get_pattern(const pr_regex_t *pre) {
   return pre->pattern;
 }
 
+#ifdef PR_USE_PCRE
 static int regexp_exec_pcre(pr_regex_t *pre, const char *str,
     size_t nmatches, regmatch_t *matches, int flags, unsigned long match_limit,
     unsigned long match_limit_recursion) {
@@ -309,7 +306,6 @@ static int regexp_exec_pcre(pr_regex_t *pre, const char *str,
     return -1;
   }
 
-#ifdef PR_USE_PCRE
   if (pre->pcre != NULL) {
     int res;
     size_t str_len;
@@ -414,12 +410,8 @@ static int regexp_exec_pcre(pr_regex_t *pre, const char *str,
 
   errno = EINVAL;
   return -1;
-
-#else
-  errno = ENOSYS;
-  return -1;
-#endif /* PR_USE_PCRE */
 }
+#endif /* PR_USE_PCRE */
 
 static int regexp_exec_posix(pr_regex_t *pre, const char *str,
     size_t nmatches, regmatch_t *matches, int flags) {
