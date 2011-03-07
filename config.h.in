@@ -237,6 +237,12 @@
 /* The number of bytes in a time_t.  */
 #undef SIZEOF_TIME_T
 
+/* The number of bytes in a pointer to a char.  */
+#undef SIZEOF_CHAR_P
+
+/* The number of bytes in a pointer to a void.  */
+#undef SIZEOF_VOID_P
+
 /* Define if you have the backtrace function.  */
 #undef HAVE_BACKTRACE
 
