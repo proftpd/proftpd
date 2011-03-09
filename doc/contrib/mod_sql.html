@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.23 2010-02-01 22:14:14 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.24 2011-03-09 22:28:13 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -590,21 +590,28 @@ need to specify <b>all</b> of them.
 As of <code>1.3.3rc1</code>, the <code>SQLGroupInfo</code> directive accepts
 an alternate syntax:
 <pre>
-  SQLGroupInfo custom:/<i>group-by-name</i>/<i>group-by-id</i>/<i>group-by-member</i>
+  SQLGroupInfo custom:/<i>get-group-by-name</i>/<i>get-group-by-id</i>/<i>get-group-by-member</i>
 </pre>
-where <i>group-by-name</i> refers to a configured SELECT
+where <i>get-group-by-name</i> refers to a configured SELECT
 <code>SQLNamedQuery</code>.  This named query <b>must</b> return one row, and
 return the following columns, in this order: <code>groupname, gid,
 members</code>.  The configured query may make use of the variables mentioned
 in the <code>SQLLog</code> description.  The <code>%{0}</code> variable will
 be populated with the group name for which info is being retrieved.  The
-<i>group-by-id</i> here refers to a <code>SQLNamedQuery</code> which is
-<i>just</i> like the lookup given a group name, only the <i>group-by-id</i>
+<i>get-group-by-id</i> here refers to a <code>SQLNamedQuery</code> which is
+<i>just</i> like the lookup given a group name, only the <i>get-group-by-id</i>
 query needs to return group information given a GID.  For the
-<i>group-by-id</i> query, the <code>%{0}</code> variable is populated with
-the GID in question.  Last, the <i>group-by-member</i> query returns group
+<i>get-group-by-id</i> query, the <code>%{0}</code> variable is populated with
+the GID in question.  Last, the <i>get-group-by-member</i> query returns group
 information given a user member; again, the <code>%{0}</code> will contain
 the member/user name by which to look up the group information.
+
+<p>
+<b><i>If</i></b> your custom <em>get-group-by-name</em> query references a table
+other than the default groups table, then you <b>must</b> also supply a
+custom <em>get-group-by-id</em> query as well.  Otherwise, <code>mod_sql</code>
+will fail with a "Table not found" error, and disconnect the client, whenever
+the client asks for a directory listing.
 
 <p>
 <b>Note</b>, however, that if you use the <em>groupset</em> or
@@ -1243,6 +1250,11 @@ a user name.  For example:
 
   SQLUserInfo custom:/get-user-by-name/get-user-by-id
 </pre>
+<b><i>If</i></b> your custom <em>get-user-by-name</em> query references a table
+other than the default users table, then you <b>must</b> also supply a
+custom <em>get-user-by-id</em> query as well.  Otherwise, <code>mod_sql</code>
+will fail with a "Table not found" error, and disconnect the client, whenever
+the client asks for a directory listing.
 
 <p>
 <b>Note</b>, however, that if you use the <em>userset</em> or
@@ -1346,12 +1358,12 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2010-02-01 22:14:14 $</i><br>
+Last Updated: <i>$Date: 2011-03-09 22:28:13 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2010 The ProFTPD Project<br>
+&copy; Copyright 2000-2011 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 
