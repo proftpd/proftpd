@@ -24,7 +24,7 @@
 
 /*
  * Env API tests
- * $Id: regexp.c,v 1.2 2011-02-25 20:15:25 castaglia Exp $
+ * $Id: regexp.c,v 1.3 2011-03-09 18:51:53 castaglia Exp $
  */
 
 #include "tests.h"
@@ -48,69 +48,68 @@ static void tear_down(void) {
 }
 
 START_TEST (regexp_alloc_test) {
-  regex_t *res;
+  pr_regex_t *res;
 
-  res = pr_regexp_alloc();
+  res = pr_regexp_alloc(NULL);
   fail_unless(res != NULL, "Failed to allocate regex");
 }
 END_TEST
 
 START_TEST (regexp_free_test) {
-  regex_t *res = NULL;
+  pr_regex_t *res = NULL;
 
-  pr_regexp_free(NULL);
+  pr_regexp_free(NULL, res);
 
-  res = pr_regexp_alloc();
+  res = pr_regexp_alloc(NULL);
   fail_unless(res != NULL, "Failed to allocate regex");
 
-  pr_regexp_free(NULL);
-  pr_regexp_free(res);
+  pr_regexp_free(NULL, res);
 }
 END_TEST
 
 START_TEST (regexp_compile) {
-  regex_t *re = NULL;
+  pr_regex_t *pre = NULL;
   int res;
   char errstr[256], *pattern;
   size_t errstrlen;
 
-  re = pr_regexp_alloc();
+  pre = pr_regexp_alloc(NULL);
 
   pattern = "[=foo";
-  res = pr_regexp_compile(re, pattern, 0); 
+  res = pr_regexp_compile(pre, pattern, 0); 
   fail_unless(res != 0, "Successfully compiled pattern unexpectedly"); 
 
-  errstrlen = pr_regexp_error(res, re, errstr, sizeof(errstr));
+  errstrlen = pr_regexp_error(res, pre, errstr, sizeof(errstr));
   fail_unless(errstrlen > 0, "Failed to get regex compilation error string");
 
   pattern = "foo";
-  res = pr_regexp_compile(re, pattern, 0);
+  res = pr_regexp_compile(pre, pattern, 0);
   fail_unless(res == 0, "Failed to compile regex pattern");
 
-  pr_regexp_free(re);
+  pr_regexp_free(NULL, pre);
 }
 END_TEST
 
 START_TEST (regexp_exec) {
-  regex_t *re = NULL;
+  pr_regex_t *pre = NULL;
   int res;
   char *pattern, *str;
 
-  re = pr_regexp_alloc();
+  pre = pr_regexp_alloc(NULL);
 
   pattern = "^foo";
-  res = pr_regexp_compile(re, pattern, 0);
+  res = pr_regexp_compile(pre, pattern, 0);
   fail_unless(res == 0, "Failed to compile regex pattern");
 
   str = "bar";
-  res = pr_regexp_exec(re, str, 0, NULL, 0);
+  res = pr_regexp_exec(pre, str, 0, NULL, 0, 0, 0);
   fail_unless(res != 0, "Matched string unexpectedly");
 
   str = "foobar";
-  res = pr_regexp_exec(re, str, 0, NULL, 0);
+  res = pr_regexp_exec(pre, str, 0, NULL, 0, 0, 0);
   fail_unless(res == 0, "Failed to match string");
 
-  pr_regexp_free(re);
+  pr_regexp_free(NULL, pre);
 }
 END_TEST
 
