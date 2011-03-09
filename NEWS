@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1302 2011-03-03 21:38:54 castaglia Exp $
+$Id: NEWS,v 1.1303 2011-03-09 22:10:46 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -59,6 +59,7 @@ CVS
 - Bug 3612 - APPE/STOU upload flags erroneously preserved across upload
   commands.
 - Bug 3609 - Support full PCRE regular expressions if PCRE support is enabled.
+- Bug 3614 - Malicious module can use sreplace() function to overflow buffer.
 
 1.3.4rc1 - Released 17-Dec-2010
 --------------------------------

@@ -23,17 +23,20 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.8 2010-10-23 19:37:40 castaglia Exp $
+ * $Id: str.c,v 1.9 2011-03-09 22:10:46 castaglia Exp $
  */
 
 #include "conf.h"
 
+/* Maximum number of replacements that we will do in a given string. */
+#define PR_STR_MAX_REPLACEMENTS			128
+
 char *sreplace(pool *p, char *s, ...) {
   va_list args;
   char *m, *r, *src, *cp;
-  char *marr[33], *rarr[33];
+  char *matches[PR_STR_MAX_REPLACEMENTS+1], *replaces[PR_STR_MAX_REPLACEMENTS+1];
   char buf[PR_TUNABLE_PATH_MAX] = {'\0'}, *pbuf = NULL;
-  size_t mlen = 0, rlen = 0;
+  size_t nmatches = 0, rlen = 0;
   int blen = 0;
 
   if (p == NULL ||
@@ -46,13 +49,15 @@ char *sreplace(pool *p, char *s, ...) {
   cp = buf;
   *cp = '\0';
 
-  memset(marr, '\0', sizeof(marr));
-  memset(rarr, '\0', sizeof(rarr));
+  memset(matches, 0, sizeof(matches));
+  memset(replaces, 0, sizeof(replaces));
+
   blen = strlen(src) + 1;
 
   va_start(args, s);
 
-  while ((m = va_arg(args, char *)) != NULL && mlen < sizeof(marr)-1) {
+  while ((m = va_arg(args, char *)) != NULL &&
+         nmatches < PR_STR_MAX_REPLACEMENTS) {
     char *tmp = NULL;
     int count = 0;
 
@@ -99,15 +104,15 @@ char *sreplace(pool *p, char *s, ...) {
          */
         return s;
       }
-      marr[mlen] = m;
-      rarr[mlen++] = r;
+      matches[nmatches] = m;
+      replaces[nmatches++] = r;
     }
   }
 
   va_end(args);
 
   /* If there are no matches, then there is nothing to replace. */
-  if (mlen == 0) {
+  if (nmatches == 0) {
     return s;
   }
 
@@ -130,7 +135,9 @@ char *sreplace(pool *p, char *s, ...) {
   while (*src) {
     char **mptr, **rptr;
 
-    for (mptr = marr, rptr = rarr; *mptr; mptr++, rptr++) {
+    for (mptr = matches, rptr = replaces; *mptr; mptr++, rptr++) {
+      size_t mlen;
+
       mlen = strlen(*mptr);
       rlen = strlen(*rptr);
 
