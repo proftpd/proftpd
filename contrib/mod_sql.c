@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.201 2011-02-28 05:48:29 castaglia Exp $
+ * $Id: mod_sql.c,v 1.202 2011-03-12 23:53:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -400,7 +400,8 @@ static int check_response(modret_t *mr) {
     ": check the SQLLogFile for more details");
 
   if (!(pr_sql_opts & SQL_OPT_NO_DISCONNECT_ON_ERROR)) {
-    pr_session_end(0);
+    pr_session_disconnect(&sql_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+      "Database error");
   }
 
   sql_log(DEBUG_FUNC, "SQLOption noDisconnectOnError in effect, not exiting");
