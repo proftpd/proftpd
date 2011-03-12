@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.56 2011-03-03 21:38:54 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.57 2011-03-12 23:49:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -123,8 +123,7 @@ static char rewrite_vars[REWRITE_MAX_VARS][3] = {
   "%w"		/* Rename from (whence) */
 };
 
-/* Necessary prototypes
- */
+/* Necessary prototypes */
 static char *rewrite_argsep(char **);
 static void rewrite_closelog(void);
 static char *rewrite_expand_var(cmd_rec *, const char *, const char *);
@@ -132,7 +131,7 @@ static char *rewrite_get_cmd_name(cmd_rec *);
 static void rewrite_log(char *format, ...);
 static unsigned char rewrite_match_cond(cmd_rec *, config_rec *);
 static void rewrite_openlog(void);
-static unsigned char rewrite_open_fifo(config_rec *);
+static int rewrite_open_fifo(config_rec *);
 static unsigned int rewrite_parse_cond_flags(pool *, const char *);
 static unsigned char rewrite_parse_map_str(char *, rewrite_map_t *);
 static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *);
@@ -1256,7 +1255,15 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
   pr_signals_block();
 
   /* Make sure the data in the write buffer has been flushed into the FIFO. */
-  fsync(fifo_fd);
+  if (fsync(fifo_fd) < 0) {
+    rewrite_log("rewrite_subst_maps_fifo(): error flushing data to FIFO %d: %s",
+      fifo_fd, strerror(errno));
+  }
+
+  /* And make sure that the data has been read from the buffer by the other
+   * end.
+   */
+  rewrite_wait_fifo(fifo_fd);
 
   /* Allocate memory into which to read the lookup value. */
   value = pcalloc(cmd->pool, sizeof(char) * REWRITE_FIFO_MAXLEN);
@@ -1291,10 +1298,11 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
   }
   pr_signals_block();
 
-  rewrite_wait_fifo(fifo_fd);
-
   /* Make sure the data from the read buffer is completely flushed. */
-  fsync(fifo_fd);
+  if (fsync(fifo_fd) < 0) {
+    rewrite_log("rewrite_subst_maps_fifo(): error flushing data to FIFO %d: %s",
+      fifo_fd, strerror(errno));
+  }
 
   if (fifo_lockfd != -1) {
 #ifdef HAVE_FLOCK
@@ -1626,8 +1634,8 @@ static char *rewrite_map_int_unescape(pool *map_pool, char *key) {
   return value;
 }
 
-static unsigned char rewrite_open_fifo(config_rec *c) {
-  int fd = -1;
+static int rewrite_open_fifo(config_rec *c) {
+  int fd = -1, flags = -1;
   char *fifo = c->argv[2];
 
   /* No interruptions, please. */
@@ -1638,22 +1646,20 @@ static unsigned char rewrite_open_fifo(config_rec *c) {
     rewrite_log("rewrite_open_fifo(): unable to open FIFO '%s': %s", fifo,
       strerror(errno));
     pr_signals_unblock();
-    return FALSE;
+    return -1;
+  }
 
-  } else {
-    int flags = -1;
-
-    /* Set this descriptor for blocking. */
-    flags = fcntl(fd, F_GETFL);
-    if (fcntl(fd, F_SETFL, flags & (REWRITE_U32_BITS^O_NONBLOCK)) < 0)
-      rewrite_log("rewrite_open_fifo(): error setting FIFO "
-        "blocking mode: %s", strerror(errno));
+  /* Set this descriptor for blocking. */
+  flags = fcntl(fd, F_GETFL);
+  if (fcntl(fd, F_SETFL, flags & (REWRITE_U32_BITS^O_NONBLOCK)) < 0) {
+    rewrite_log("rewrite_open_fifo(): error setting FIFO "
+      "blocking mode: %s", strerror(errno));
   }
 
   /* Add the file descriptor into the config_rec. */
   *((int *) c->argv[3]) = fd;
 
-  return TRUE;
+  return 0;
 }
 
 static int rewrite_read_fifo(int fd, char *buf, size_t buflen) {
@@ -1686,9 +1692,14 @@ static int rewrite_read_fifo(int fd, char *buf, size_t buflen) {
   return res;
 }
 
+#define REWRITE_WAIT_MAX_ATTEMPTS	10
+
 static void rewrite_wait_fifo(int fd) {
+  unsigned int nattempts = 0;
   int size = 0;
   struct timeval tv;
+
+  rewrite_log("rewrite_wait_fifo: waiting on FIFO (fd %d)", fd);
 
   /* Wait for the data written to the FIFO buffer to be read.  Use
    * ioctl(2) (yuck) to poll the buffer, waiting for the number of bytes
@@ -1698,11 +1709,19 @@ static void rewrite_wait_fifo(int fd) {
    * the FIFO, so we won't need to poll the buffer similarly there.
    */
 
-  if (ioctl(fd, FIONREAD, &size) < 0)
+  if (ioctl(fd, FIONREAD, &size) < 0) {
     rewrite_log("rewrite_wait_fifo(): ioctl error: %s", strerror(errno));
+    return;
+  }
+
+  if (size == 0) {
+    rewrite_log("rewrite_wait_fifo(): found %d bytes waiting in FIFO (fd %d)",
+      size, fd);
+  }
 
   while (size != 0) {
-    rewrite_log("rewrite_wait_fifo(): waiting for buffer to be read");
+    rewrite_log("rewrite_wait_fifo(): waiting for buffer to be read "
+      "(%d bytes remaining)", size);
 
     /* Handling signals is always a Good Thing in a while() loop. */
     pr_signals_handle();
@@ -1713,8 +1732,16 @@ static void rewrite_wait_fifo(int fd) {
  
     select(0, NULL, NULL, NULL, &tv);
 
-    if (ioctl(fd, FIONREAD, &size) < 0)
+    if (ioctl(fd, FIONREAD, &size) < 0) {
       rewrite_log("rewrite_wait_fifo(): ioctl error: %s", strerror(errno));
+    }
+
+    nattempts++;
+    if (nattempts >= REWRITE_WAIT_MAX_ATTEMPTS) {
+      rewrite_log("rewrite_wait_fifo(): exceeded max poll attempts (%d), "
+        "returning", REWRITE_WAIT_MAX_ATTEMPTS);
+      break;
+    }
   }
 }
 
@@ -2610,8 +2637,9 @@ static int rewrite_sess_init(void) {
 
     if (strcmp(c->argv[1], "fifo") == 0) {
       PRIVS_ROOT
-      if (!rewrite_open_fifo(c))
+      if (rewrite_open_fifo(c) < 0) {
         rewrite_log("error preparing FIFO RewriteMap");
+      }
       PRIVS_RELINQUISH
     }
 
