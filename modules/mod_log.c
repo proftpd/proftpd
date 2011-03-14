@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.114 2011-02-28 05:48:29 castaglia Exp $
+ * $Id: mod_log.c,v 1.115 2011-03-14 22:37:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -795,13 +795,14 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
             strcmp(cmd->argv[0], C_MKD) == 0 ||
             strcmp(cmd->argv[0], C_RMD) == 0 ||
             strcmp(cmd->argv[0], C_XMKD) == 0 ||
-            strcmp(cmd->argv[0], C_XRMD) == 0)
+            strcmp(cmd->argv[0], C_XRMD) == 0) {
           sstrncpy(arg, dir_abs_path(p, pr_fs_decode_path(p, cmd->arg), TRUE),
             sizeof(arg));
 
-        else
+        } else {
           /* All other situations get a "-".  */
           sstrncpy(argp, "-", sizeof(arg));
+        }
       }
 
       m++;
@@ -881,8 +882,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       argp = arg;
       if (strcmp(cmd->argv[0], C_RNTO) == 0) {
         rnfr_path = pr_table_get(session.notes, "mod_core.rnfr-path", NULL);
-        if (rnfr_path == NULL)
+        if (rnfr_path != NULL) {
+          rnfr_path = dir_abs_path(p, pr_fs_decode_path(p, rnfr_path), TRUE);
+
+        } else {
           rnfr_path = "-";
+        }
       }
 
       sstrncpy(argp, rnfr_path, sizeof(arg));

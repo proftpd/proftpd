@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.120 2011-02-18 23:14:44 castaglia Exp $
+ * $Id: fxp.c,v 1.121 2011-03-14 22:37:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -7942,12 +7942,13 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
-  cmd2 = fxp_cmd_alloc(fxp->pool, C_RNTO, new_path);
+  cmd2 = fxp_cmd_alloc(fxp->pool, C_RNFR, old_path);
+  cmd2->class =  CL_MISC|CL_WRITE;
   if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "RENAME to '%s' blocked by '%s' handler", new_path, cmd2->argv[0]);
+      "RENAME from '%s' blocked by '%s' handler", old_path, cmd2->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -7956,6 +7957,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       fxp_strerror(status_code), NULL);
 
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -7965,14 +7967,18 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  new_path = cmd2->arg;
+  old_path = cmd2->arg;
 
-  cmd3 = fxp_cmd_alloc(fxp->pool, C_RNFR, old_path);
+  pr_table_add(session.notes, "mod_core.rnfr-path",
+    pstrdup(session.pool, old_path), 0);
+
+  cmd3 = fxp_cmd_alloc(fxp->pool, C_RNTO, new_path);
+  cmd3->class = CL_MISC|CL_WRITE;
   if (pr_cmd_dispatch_phase(cmd3, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "RENAME from '%s' blocked by '%s' handler", old_path, cmd3->argv[0]);
+      "RENAME to '%s' blocked by '%s' handler", new_path, cmd3->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -7981,6 +7987,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       fxp_strerror(status_code), NULL);
 
     pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -7990,7 +7997,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  old_path = cmd3->arg;
+  new_path = cmd3->arg;
 
   if (!dir_check(fxp->pool, cmd3, G_DIRS, old_path, NULL) ||
       !dir_check(fxp->pool, cmd2, G_WRITE, new_path, NULL)) {
@@ -8007,6 +8014,9 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       fxp_strerror(status_code), NULL);
 
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -8032,6 +8042,9 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       NULL);
 
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -8056,6 +8069,9 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       fxp_strerror(status_code), NULL);
 
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -8076,6 +8092,9 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       fxp_strerror(status_code), NULL);
 
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -8143,8 +8162,33 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
 
   fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
 
+  /* Clear out any transfer-specific data. */
+  if (session.xfer.p) {
+    destroy_pool(session.xfer.p);
+  }
+  memset(&session.xfer, 0, sizeof(session.xfer));
+
+  /* The timing of these steps may look peculiar, but it's deliberate,
+   * in order to get the expected log messages in an ExtendedLog.
+   */
+
   pr_cmd_dispatch_phase(cmd2, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
+  pr_cmd_dispatch_phase(cmd2, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+  session.xfer.p = pr_pool_create_sz(fxp_pool, 64);
+  session.xfer.path = pstrdup(session.xfer.p, new_path);
+  memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
+  gettimeofday(&session.xfer.start_time, NULL);
+
+  pr_cmd_dispatch_phase(cmd3, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
+  pr_cmd_dispatch_phase(cmd3, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
   pr_cmd_dispatch_phase(cmd, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+  /* Clear out any transfer-specific data. */
+  if (session.xfer.p) {
+    destroy_pool(session.xfer.p);
+  }
+  memset(&session.xfer, 0, sizeof(session.xfer));
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
