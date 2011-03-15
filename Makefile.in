@@ -119,6 +119,7 @@ install-modules: $(DESTDIR)$(libexecdir) $(DESTDIR)$(sysconfdir)
 	test -z "$(SHARED_MODULE_OBJS)" -a -z "$(SHARED_MODULE_DIRS)" -a -z "$(STATIC_MODULE_DIRS)" || (cd modules/ && $(MAKE) install)
 
 install-utils: $(DESTDIR)$(sbindir) $(DESTDIR)$(bindir)
+	cd contrib/ && $(MAKE) install-utils
 	$(INSTALL_BIN)  ftpcount $(DESTDIR)$(bindir)/ftpcount
 	$(INSTALL_BIN)  ftpdctl  $(DESTDIR)$(bindir)/ftpdctl
 	$(INSTALL_SBIN) ftpscrub $(DESTDIR)$(sbindir)/ftpscrub

@@ -24,6 +24,9 @@ ChangeLog files.
 
     MaxCommandRate 
 
+  + The following utilities are now installed under $prefix/bin/ by the
+    'make install' target: ftpasswd, ftpmail, ftpquota
+
   + Changed configuration directives:
 
     BanOnEvent
@@ -220,4 +223,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2011-03-04 00:24:13 $
+Last Updated: $Date: 2011-03-15 21:05:45 $

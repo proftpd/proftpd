@@ -2588,6 +2588,7 @@ AC_SUBST(VERSION)
 AC_CONFIG_HEADER(config.h)
 
 AC_OUTPUT(
+  contrib/Makefile
   include/Makefile
   lib/Makefile
   locale/Makefile
