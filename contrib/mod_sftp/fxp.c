@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.122 2011-03-15 18:45:49 castaglia Exp $
+ * $Id: fxp.c,v 1.123 2011-03-15 18:51:39 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4602,8 +4602,12 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
       PR_SCORE_CMD_ARG, "%s", fxh->dir, NULL, NULL);
 
     res = pr_fsio_closedir(fxh->dirh);
-    if (res < 0)
+    if (res < 0) {
       xerrno = errno;
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error closing directory '%s': %s", fxh->dir, strerror(xerrno));
+    }
+
     fxh->dirh = NULL;
   }
 
@@ -6704,7 +6708,10 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
       NULL);
 
-    pr_fsio_closedir(dirh);
+    if (pr_fsio_closedir(dirh) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error closing directory '%s': %s", fxh->dir, strerror(xerrno));
+    }
 
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
