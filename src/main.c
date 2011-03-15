@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.419 2011-03-01 01:58:03 castaglia Exp $
+ * $Id: main.c,v 1.420 2011-03-15 05:27:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2641,7 +2641,11 @@ static void show_settings(void) {
 #endif /* PR_USE_NLS */
 
 #ifdef PR_USE_OPENSSL
-  printf("%s", "    + OpenSSL support\n");
+# ifdef PR_USE_OPENSSL_FIPS
+    printf("%s", "    + OpenSSL support (FIPS enabled)\n");
+# else
+    printf("%s", "    + OpenSSL support\n");
+# endif /* PR_USE_OPENSSL_FIPS */
 #else
   printf("%s", "    - OpenSSL support\n");
 #endif /* PR_USE_OPENSSL */

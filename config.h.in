@@ -909,6 +909,11 @@
 /* Define if OpenSSL support, if available, should be used.  */
 #undef PR_USE_OPENSSL
 
+/* Define if OpenSSL support (with FIPS enabled), if available, should be
+ * used.
+ */
+#undef PR_USE_OPENSSL_FIPS
+
 /* Define if using PCRE support.  */
 #undef PR_USE_PCRE
 
