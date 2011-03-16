@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: session.c,v 1.9 2011-02-28 05:48:29 castaglia Exp $
+ * $Id: session.c,v 1.10 2011-03-16 22:04:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -103,8 +103,12 @@ void pr_session_disconnect(module *m, int reason_code,
     /* Stash any extra details in the session.notes table */
     if (pr_table_add_dup(session.notes, "core.disconnect-details",
         (char *) details, 0) < 0) {
-      pr_log_debug(DEBUG5, "error stashing 'core.disconnect-details' in "
-        "session.notes: %s", strerror(errno));
+      int xerrno = errno;
+
+      if (xerrno != EEXIST) {
+        pr_log_debug(DEBUG5, "error stashing 'core.disconnect-details' in "
+          "session.notes: %s", strerror(xerrno));
+      }
     }
   }
 
