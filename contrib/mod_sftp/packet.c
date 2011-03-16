@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.25 2011-02-28 06:54:47 castaglia Exp $
+ * $Id: packet.c,v 1.26 2011-03-16 22:00:13 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -140,11 +140,17 @@ static int packet_poll(int sockfd, int io) {
     }
 
     if (res < 0) {
-      if (errno == EINTR) {
+      int xerrno = errno;
+
+      if (xerrno == EINTR) {
         pr_signals_handle();
         continue;
       }
 
+      pr_trace_msg(trace_channel, 18, "error calling select(2) on fd %d: %s",
+        sockfd, strerror(xerrno));
+
+      errno = xerrno;
       return -1;
 
     } else if (res == 0) {
@@ -155,6 +161,9 @@ static int packet_poll(int sockfd, int io) {
         is_client_alive();
 
       } else {
+        pr_trace_msg(trace_channel, 18,
+          "polling on socket %d timed out after %lu sec, trying again", sockfd,
+          (unsigned long) tv.tv_sec);
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "polling on socket %d timed out after %lu sec, trying again", sockfd,
           (unsigned long) tv.tv_sec);
@@ -205,13 +214,19 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
 
     while (res <= 0) {
       if (res < 0) {
-        if (errno == EINTR) {
+        int xerrno = errno;
+
+        if (xerrno == EINTR) {
           pr_signals_handle();
           continue;
         }
 
+        pr_trace_msg(trace_channel, 16,
+          "error reading from client (fd %d): %s", sockfd, strerror(xerrno));
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error reading from client (fd %d): %s", sockfd, strerror(errno));
+          "error reading from client (fd %d): %s", sockfd, strerror(xerrno));
+
+        errno = xerrno;
 
         /* We explicitly disconnect the client here, rather than sending
          * a DISCONNECT message, because the errors below all indicate
@@ -230,8 +245,10 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
             errno == ESHUTDOWN ||
 #endif /* ESHUTDOWNN */
             errno == EPIPE) {
-          int xerrno = errno;
+          xerrno = errno;
 
+          pr_trace_msg(trace_channel, 16,
+            "disconnecting client (%s)", strerror(xerrno));
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "disconnecting client (%s)", strerror(xerrno));
           pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_CLIENT_EOF,
@@ -245,6 +262,8 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
          * the uncommunicative client.
          */
 
+        pr_trace_msg(trace_channel, 16, "%s",
+          "disconnecting client (received EOF)");
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "disconnecting client (received EOF)");
         pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_CLIENT_EOF,
