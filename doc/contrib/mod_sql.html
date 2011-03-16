@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.24 2011-03-09 22:28:13 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.25 2011-03-16 19:50:22 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -277,6 +277,10 @@ using the Unix <code>crypt(3)</code> function, then, if that fails, determine
 if the password in the database is empty (thus matching <i>any</i> given
 password).  If all of the configured authentication methods fail,
 <code>mod_sql</code> will fail to authenticate the user.
+
+<p>
+Note that the <a href="mod_sql_passwd.html"><code>mod_sql_passwd</code></a>
+module also provides other <code>SQLAuthTypes</code> values.
 
 <p>
 <hr>
@@ -1358,7 +1362,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-03-09 22:28:13 $</i><br>
+Last Updated: <i>$Date: 2011-03-16 19:50:22 $</i><br>
 
 <br><hr>
 
