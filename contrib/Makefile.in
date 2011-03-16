@@ -18,6 +18,6 @@ Makefile: Makefile.in ../config.status
 	cd ../ && ./config.status
 
 install-utils:
-	$(INSTALL_BIN) ftpasswd	$(DESTDIR)$(bindir)/ftpasswd
-	$(INSTALL_BIN) ftpmail	$(DESTDIR)$(bindir)/ftpmail
-	$(INSTALL_BIN) ftpquota	$(DESTDIR)$(bindir)/ftpquota
+	$(INSTALL) ftpasswd	$(DESTDIR)$(bindir)/ftpasswd
+	$(INSTALL) ftpmail	$(DESTDIR)$(bindir)/ftpmail
+	$(INSTALL) ftpquota	$(DESTDIR)$(bindir)/ftpquota
