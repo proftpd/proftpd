@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.202 2011-03-12 23:53:46 castaglia Exp $
+ * $Id: mod_sql.c,v 1.203 2011-03-16 21:45:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1178,8 +1178,12 @@ static struct passwd *_sql_addpasswd(cmd_rec *cmd, char *username,
       pwd->pw_shell = pstrdup(sql_pool, shell);
 
       if (pr_table_add(session.notes, "shell", pwd->pw_shell, 0) < 0) {
-        pr_trace_msg(trace_channel, 8,
-          "error setting 'shell' session note: %s", strerror(errno));
+        int xerrno = errno;
+
+        if (xerrno != EEXIST) {
+          pr_trace_msg(trace_channel, 8,
+            "error setting 'shell' session note: %s", strerror(xerrno));
+        }
       }
     }
 
@@ -1187,8 +1191,12 @@ static struct passwd *_sql_addpasswd(cmd_rec *cmd, char *username,
       pwd->pw_dir = pstrdup(sql_pool, dir);
 
       if (pr_table_add(session.notes, "home", pwd->pw_dir, 0) < 0) {
-        pr_trace_msg(trace_channel, 8,
-          "error setting 'home' session note: %s", strerror(errno));
+        int xerrno = errno;
+
+        if (xerrno != EEXIST) {
+          pr_trace_msg(trace_channel, 8,
+            "error setting 'home' session note: %s", strerror(xerrno));
+        }
       }
     }
     
@@ -1488,8 +1496,12 @@ static struct group *_sql_addgroup(cmd_rec *cmd, char *groupname, gid_t gid,
       grp->gr_name = pstrdup(sql_pool, groupname);
 
       if (pr_table_add(session.notes, "primary-group", grp->gr_name, 0) < 0) {
-        pr_trace_msg(trace_channel, 8,
-          "error setting 'primary-group' session note: %s", strerror(errno));
+        int xerrno = errno;
+
+        if (xerrno != EEXIST) {
+          pr_trace_msg(trace_channel, 8,
+            "error setting 'primary-group' session note: %s", strerror(xerrno));
+        }
       }
     }
 
