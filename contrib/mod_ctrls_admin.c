@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ctrls_admin -- a module implementing admin control handlers
  *
- * Copyright (c) 2000-2010 TJ Saunders
+ * Copyright (c) 2000-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.42 2010-07-13 21:21:51 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.43 2011-03-16 18:26:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -892,10 +892,10 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
 
     for (i = 0; i < reqargc; i++) {
       char *channel, *tmp;
-      int level;
+      int min_level, max_level, res;
 
       tmp = strchr(reqargv[i], ':');
-      if (!tmp) {
+      if (tmp == NULL) {
         pr_ctrls_add_response(ctrl, "trace: badly formatted parameter: '%s'",
           reqargv[i]);
         return -1;
@@ -903,17 +903,25 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
 
       channel = reqargv[i];
       *tmp = '\0';
-      level = atoi(++tmp);
 
-      if (pr_trace_set_level(channel, level) < 0) {
-        pr_ctrls_add_response(ctrl,
-          "trace: error setting channel '%s' to level %d: %s", channel, level,
-          strerror(errno));
-        return -1;
+      res = pr_trace_parse_levels(tmp + 1, &min_level, &max_level);
+      if (res == 0) {
+        if (pr_trace_set_levels(channel, min_level, max_level) < 0) {
+          pr_ctrls_add_response(ctrl,
+            "trace: error setting channel '%s' to levels %d-%d: %s", channel,
+            min_level, max_level, strerror(errno));
+          return -1;
+
+        } else {
+          pr_ctrls_add_response(ctrl, "trace: set channel '%s' to levels %d-%d",
+            channel, min_level, max_level);
+        }
 
       } else {
-        pr_ctrls_add_response(ctrl, "trace: set channel '%s' to level %d",
-          channel, level);
+        pr_ctrls_add_response(ctrl,
+          "trace: error parsing level '%s' for channel '%s': %s", tmp + 1,
+          channel, strerror(errno));
+        return -1;
       }
     }
  

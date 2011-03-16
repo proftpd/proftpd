@@ -23,7 +23,7 @@
  */
 
 /* Trace API
- * $Id: trace.h,v 1.3 2011-01-18 05:29:15 castaglia Exp $
+ * $Id: trace.h,v 1.4 2011-03-16 18:26:48 castaglia Exp $
  */
 
 #ifndef PR_TRACE_H
@@ -33,8 +33,21 @@
 
 pr_table_t *pr_trace_get_table(void);
 int pr_trace_get_level(const char *);
+int pr_trace_get_max_level(const char *);
+int pr_trace_get_min_level(const char *);
+
+/* Parse the given str to get the log level range.  Returns 0 on success,
+ * and -1 (setting errno appropriately) if there was a parse error.  The
+ * parsed min and max levels will be returned in the level pointers.
+ *
+ * For example, a string of "17-20" would return a min level of 17, and
+ * a max level of 20.  A string of "20" would return a min level of 1 and
+ * a max level of 20.
+ */
+int pr_trace_parse_levels(char *str, int *min_level, int *max_level);
+
 int pr_trace_set_file(const char *);
-int pr_trace_set_level(const char *, int);
+int pr_trace_set_levels(const char *, int, int);
 int pr_trace_msg(const char *, int, const char *, ...)
 #ifdef __GNUC__
       __attribute__ ((format (printf, 3, 4)));

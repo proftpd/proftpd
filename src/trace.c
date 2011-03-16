@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.28 2011-01-18 05:29:15 castaglia Exp $
+ * $Id: trace.c,v 1.29 2011-03-16 18:26:48 castaglia Exp $
  */
 
 
@@ -35,6 +35,11 @@
 static int trace_logfd = -1;
 static pool *trace_pool = NULL;
 static pr_table_t *trace_tab = NULL;
+
+struct trace_levels {
+  int min_level;
+  int max_level;
+};
 
 static const char *trace_channels[] = {
   "auth",
@@ -59,6 +64,7 @@ static const char *trace_channels[] = {
   "pool",
   "regexp",
   "response",
+  "scoreboard",
   "signal",
   "site",
   "timer",
@@ -124,29 +130,124 @@ pr_table_t *pr_trace_get_table(void) {
   return trace_tab;
 }
 
-int pr_trace_get_level(const char *channel) {
-  int level;
+static struct trace_levels *trace_get_levels(const char *channel) {
   void *value;
 
-  if (!channel) {
+  if (channel == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (trace_tab == NULL ||
+      trace_logfd < 0) {
+    errno = EPERM;
+    return NULL;
+  }
+
+  value = pr_table_get(trace_tab, channel, NULL);
+  if (value == NULL) {
+    errno = ENOENT;
+    return NULL;
+  }
+
+  return value;
+}
+
+int pr_trace_get_level(const char *channel) {
+  return pr_trace_get_max_level(channel);
+}
+
+int pr_trace_get_max_level(const char *channel) {
+  struct trace_levels *levels;
+
+  levels = trace_get_levels(channel);
+  if (levels == NULL)
+    return -1;
+
+  return levels->max_level;
+}
+
+int pr_trace_get_min_level(const char *channel) {
+  struct trace_levels *levels;
+
+  levels = trace_get_levels(channel);
+  if (levels == NULL)
+    return -1;
+
+  return levels->min_level;
+}
+
+int pr_trace_parse_levels(char *str, int *min_level, int *max_level) {
+  int low = 1, high = -1;
+  char *ptr = NULL, *tmp = NULL;
+
+  if (str == NULL ||
+      min_level == NULL ||
+      max_level == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  if (!trace_tab ||
-      trace_logfd < 0) {
-    errno = EPERM;
+  /* Check for a value range. */
+  ptr = strchr(str, '-');
+  if (ptr == NULL) {
+    /* Just a single value. */
+    high = (int) strtol(str, &ptr, 10);
+    if (ptr && *ptr) {
+      errno = EINVAL;
+      return -1;
+    }
+
+    if (high < 0) {
+      errno = EINVAL;
+      return -1;
+    }
+
+    /* A special case is where the single value is zero.  If this is the
+     * case, we make sure that the min value is the same.
+     */
+    if (high != 0) {
+      *min_level = 1;
+
+    } else {
+      *min_level = 0;
+    }
+
+    *max_level = high;
+    return 0;
+  }
+
+  /* We have a range of values. */
+  *ptr = '\0';
+
+  low = (int) strtol(str, &tmp, 10);
+  if (tmp && *tmp) {
+    *ptr = '-';
+    errno = EINVAL;
+    return -1;
+  }
+  *ptr = '-';
+
+  if (low < 0) {
+    errno = EINVAL;
     return -1;
   }
 
-  value = pr_table_get(trace_tab, channel, NULL);
-  if (!value) {
-    errno = ENOENT;
+  tmp = NULL;
+  high = (int) strtol(ptr + 1, &tmp, 10);
+  if (tmp && *tmp) {
+    errno = EINVAL;
     return -1;
   }
 
-  memcpy(&level, value, sizeof(int));
-  return level;
+  if (high < 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  *min_level = low;
+  *max_level = high;
+  return 0;
 }
 
 int pr_trace_set_file(const char *path) {
@@ -191,18 +292,24 @@ int pr_trace_set_file(const char *path) {
   return 0;
 }
 
-int pr_trace_set_level(const char *channel, int level) {
+int pr_trace_set_levels(const char *channel, int min_level, int max_level) {
 
-  if (!channel) {
+  if (channel == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  if (!trace_tab &&
-      level < 0)
-    return 0;
+  if (min_level > max_level) {
+    errno = EINVAL;
+    return -1;
+  }
 
-  if (!trace_pool) {
+  if (trace_tab == NULL &&
+      min_level < 0) {
+    return 0;
+  }
+
+  if (trace_pool == NULL) {
     trace_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(trace_pool, "Trace API");
 
@@ -212,22 +319,25 @@ int pr_trace_set_level(const char *channel, int level) {
     pr_event_register(NULL, "core.restart", trace_restart_ev, NULL);
   }
 
-  if (level >= 0) {
-    void *value = palloc(trace_pool, sizeof(int));
-    memcpy(value, &level, sizeof(int));
+  if (min_level >= 0) {
+    struct trace_levels *levels;
+
+    levels = pcalloc(trace_pool, sizeof(struct trace_levels));
+    levels->min_level = min_level;
+    levels->max_level = max_level;
 
     if (strcmp(channel, PR_TRACE_DEFAULT_CHANNEL) != 0) {
       int count = pr_table_exists(trace_tab, channel);
 
       if (count <= 0) {
-        if (pr_table_add(trace_tab, pstrdup(trace_pool, channel), value,
-            sizeof(int)) < 0) {
+        if (pr_table_add(trace_tab, pstrdup(trace_pool, channel), levels,
+            sizeof(struct trace_levels)) < 0) {
           return -1;
         }
 
       } else {
-        if (pr_table_set(trace_tab, pstrdup(trace_pool, channel), value,
-            sizeof(int)) < 0)
+        if (pr_table_set(trace_tab, pstrdup(trace_pool, channel), levels,
+            sizeof(struct trace_levels)) < 0)
           return -1;
       }
 
@@ -235,7 +345,7 @@ int pr_trace_set_level(const char *channel, int level) {
       register unsigned int i;
 
       for (i = 0; trace_channels[i]; i++) {
-        (void) pr_trace_set_level(trace_channels[i], level);
+        (void) pr_trace_set_levels(trace_channels[i], min_level, max_level);
       }
     }
 
@@ -270,7 +380,7 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
     va_list msg) {
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   size_t buflen;
-  int res;
+  struct trace_levels *levels;
 
   /* Writing a trace message at level zero is NOT helpful; this makes it
    * impossible to quell messages to that trace channel by setting the level
@@ -285,17 +395,22 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
     return -1;
   }
 
-  if (!trace_tab) {
+  if (trace_tab == NULL) {
     errno = EPERM;
     return -1;
   }
 
-  res = pr_trace_get_level(channel);
-  if (res < 0)
+  levels = trace_get_levels(channel);
+  if (levels == NULL)
     return -1;
 
-  if (res < level)
+  if (level < levels->min_level) {
     return 0;
+  }
+
+  if (level > levels->max_level) {
+    return 0;
+  }
 
   vsnprintf(buf, sizeof(buf), fmt, msg);
 
@@ -326,12 +441,27 @@ int pr_trace_get_level(const char *channel) {
   return -1;
 }
 
+int pr_trace_get_max_level(const char *channel) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_trace_get_min_level(const char *channel) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_trace_parse_levels(char *str, int *min_level, int *max_level) {
+  errno = ENOSYS;
+  return -1;
+}
+
 int pr_trace_set_file(const char *path) {
   errno = ENOSYS;
   return -1;
 }
 
-int pr_trace_set_level(const char *channel, int level) {
+int pr_trace_set_levels(const char *channel, int min_level, int max_level) {
   errno = ENOSYS;
   return -1;
 }

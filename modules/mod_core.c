@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.398 2011-03-03 21:38:54 castaglia Exp $
+ * $Id: mod_core.c,v 1.399 2011-03-16 18:26:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1240,7 +1240,7 @@ MODRET set_trace(cmd_rec *cmd) {
   if (!per_session) {
     for (i = idx; i < cmd->argc; i++) {
       char *channel, *ptr;
-      int level;
+      int min_level, max_level, res;
 
       ptr = strchr(cmd->argv[i], ':');
       if (ptr == NULL) {
@@ -1250,10 +1250,15 @@ MODRET set_trace(cmd_rec *cmd) {
 
       channel = cmd->argv[i];
       *ptr = '\0';
-      level = atoi(++ptr);
 
-      if (pr_trace_set_level(channel, level) < 0) {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error setting level ", ptr,
+      res = pr_trace_parse_levels(ptr + 1, &min_level, &max_level);
+      if (res < 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing level ", ptr + 1,
+          " for channel '", channel, "': ", strerror(errno), NULL));
+      }
+
+      if (pr_trace_set_levels(channel, min_level, max_level) < 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error setting level ", ptr + 1,
           " for channel '", channel, "': ", strerror(errno), NULL));
       }
     }
@@ -4962,19 +4967,26 @@ MODRET core_post_pass(cmd_rec *cmd) {
 
     for (i = 0; i < c->argc; i++) {
       char *channel, *ptr;
-      int level, res;
+      int min_level, max_level, res;
 
       ptr = strchr(c->argv[i], ':');
       channel = c->argv[i];
       *ptr = '\0';
-      level = atoi(ptr + 1);
 
-      res = pr_trace_set_level(channel, level);
-      *ptr = ':';
+      res = pr_trace_parse_levels(ptr + 1, &min_level, &max_level);
+      if (res == 0) {
+        res = pr_trace_set_levels(channel, min_level, max_level);
+        *ptr = ':';
 
-      if (res < 0) {
-        pr_log_debug(DEBUG6, "%s: error setting level %d for channel '%s': %s",
-          c->name, level, channel, strerror(errno));
+        if (res < 0) {
+          pr_log_debug(DEBUG6, "%s: error setting levels %d-%d for "
+            "channel '%s': %s", c->name, min_level, max_level, channel,
+            strerror(errno));
+        }
+
+      } else {
+        pr_log_debug(DEBUG6, "%s: error parsing level '%s' for channel '%s': "
+          "%s", c->name, ptr + 1, channel, strerror(errno));
       }
     }
   }
@@ -5070,7 +5082,7 @@ static void core_restart_ev(const void *event_data, void *user_data) {
 
 #ifdef PR_USE_TRACE
   if (trace_log) {
-    pr_trace_set_level(PR_TRACE_DEFAULT_CHANNEL, -1);
+    pr_trace_set_levels(PR_TRACE_DEFAULT_CHANNEL, -1, -1);
     pr_trace_set_file(NULL);
     trace_log = NULL;
   }
@@ -5336,12 +5348,12 @@ static int core_sess_init(void) {
       *ptr = '\0';
       level = atoi(ptr + 1);
 
-      res = pr_trace_set_level(channel, level);
+      res = pr_trace_set_levels(channel, 1, level);
       *ptr = ':';
 
       if (res < 0) {
-        pr_log_debug(DEBUG6, "%s: error setting level %d for channel '%s': %s",
-          c->name, level, channel, strerror(errno));
+        pr_log_debug(DEBUG6, "%s: error setting levels %d-%d for "
+          "channel '%s': %s", c->name, 1, level, channel, strerror(errno));
       }
     }
   }

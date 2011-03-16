@@ -47,6 +47,9 @@ ChangeLog files.
     SFTPPAMOptions
       NoInfoMsgs
 
+    Trace
+      log level range syntax
+
   + New documentation:
 
     doc/howto/ConnectionACLs.html
@@ -223,4 +226,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2011-03-15 21:05:45 $
+Last Updated: $Date: 2011-03-16 18:26:47 $
