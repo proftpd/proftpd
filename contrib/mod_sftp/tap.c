@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: tap.c,v 1.6 2010-02-03 23:42:30 castaglia Exp $
+ * $Id: tap.c,v 1.7 2011-03-16 22:38:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -248,7 +248,12 @@ int sftp_tap_send_packet(void) {
     pkt->payload_len = (bufsz - buflen);
 
     sending_tap_packet = TRUE;
-    (void) sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+    if (sftp_ssh2_packet_write(sftp_conn->wfd, pkt) < 0) {
+      int xerrno = errno;
+
+      pr_trace_msg(trace_channel, 12,
+        "error writing TAP packet: %s", strerror(xerrno));
+    }
 
     destroy_pool(pkt->pool);
   }

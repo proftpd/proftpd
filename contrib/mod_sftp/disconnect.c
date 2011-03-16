@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: disconnect.c,v 1.7 2011-02-28 06:54:47 castaglia Exp $
+ * $Id: disconnect.c,v 1.8 2011-03-16 22:38:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -133,7 +133,16 @@ void sftp_disconnect_send(uint32_t reason, const char *explain,
     sockfd = session.c->wfd;
   }
 
-  (void) sftp_ssh2_packet_write(sockfd, pkt);
+  /* Explicitly set a short poll timeout of 5 secs. */
+  sftp_ssh2_packet_set_poll_timeout(5);
+
+  if (sftp_ssh2_packet_write(sockfd, pkt) < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 12,
+      "error writing DISCONNECT message: %s", strerror(xerrno));
+  }
+
   destroy_pool(pkt->pool);
 }
 

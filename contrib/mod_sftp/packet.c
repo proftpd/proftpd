@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.26 2011-03-16 22:00:13 castaglia Exp $
+ * $Id: packet.c,v 1.27 2011-03-16 22:38:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -114,6 +114,10 @@ static int packet_poll(int sockfd, int io) {
 
   tv.tv_sec = timeout;
   tv.tv_usec = 0;
+
+  pr_trace_msg(trace_channel, 19,
+    "waiting for max of %lu secs while polling socket %d using select(2)",
+    (unsigned long) tv.tv_sec, sockfd);
 
   while (1) {
     pr_signals_handle();
