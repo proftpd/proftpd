@@ -33166,7 +33166,7 @@ _ACEOF
 ac_config_headers="$ac_config_headers config.h"
 
 
-ac_config_files="$ac_config_files include/Makefile lib/Makefile locale/Makefile modules/Makefile src/Makefile src/prxs src/ftpdctl.8 src/proftpd.8 src/xferlog.5 tests/Makefile utils/Makefile utils/ftpcount.1 utils/ftpscrub.8 utils/ftpshut.8 utils/ftptop.1 utils/ftpwho.1 Makefile Make.rules"
+ac_config_files="$ac_config_files contrib/Makefile include/Makefile lib/Makefile locale/Makefile modules/Makefile src/Makefile src/prxs src/ftpdctl.8 src/proftpd.8 src/xferlog.5 tests/Makefile utils/Makefile utils/ftpcount.1 utils/ftpscrub.8 utils/ftpshut.8 utils/ftptop.1 utils/ftpwho.1 Makefile Make.rules"
 
 ac_config_commands="$ac_config_commands default"
 
@@ -34005,6 +34005,7 @@ do
   case $ac_config_target in
     "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
+    "contrib/Makefile") CONFIG_FILES="$CONFIG_FILES contrib/Makefile" ;;
     "include/Makefile") CONFIG_FILES="$CONFIG_FILES include/Makefile" ;;
     "lib/Makefile") CONFIG_FILES="$CONFIG_FILES lib/Makefile" ;;
     "locale/Makefile") CONFIG_FILES="$CONFIG_FILES locale/Makefile" ;;
