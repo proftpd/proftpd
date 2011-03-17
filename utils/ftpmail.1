@@ -40,13 +40,13 @@ ftpmail \- FIFO-based Perl script for sending email based on proftpd TransferLog
 ]
 .SH DESCRIPTION
 .B ftpmail
-is a Perl script designed to read ProFTPD's TransferLog log entries, watching
-for uploads, and to send an automatic email notification when uploads occur.
-To use
+is a Perl script designed to read ProFTPD's \fITransferLog\fP log entries,
+watching for uploads, and to send an automatic email notification when uploads
+occur.  To use
 .B ftpmail
 , you configure your
 .B proftpd
-daemon to write its TransferLog to a FIFO>; the
+daemon to write its \fITransferLog\fP to a FIFO; the
 .B ftpmail
 program is a FIFO reading program which then processes those log messages.
 .SH OPTIONS
