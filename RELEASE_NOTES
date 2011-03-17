@@ -37,6 +37,7 @@ ChangeLog files.
 
     LogFormat
       %E variable, for end-of-session reason
+      %H variable, for IP address of server handling session
  
     PathAllowFilter, PathDenyFilter
       [NC|nocase] flags
@@ -229,4 +230,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2011-03-17 01:02:25 $
+Last Updated: $Date: 2011-03-17 03:42:01 $

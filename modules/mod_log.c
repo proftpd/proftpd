@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.115 2011-03-14 22:37:20 castaglia Exp $
+ * $Id: mod_log.c,v 1.116 2011-03-17 03:42:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -105,6 +105,7 @@ struct logfile_struc {
 #define META_RAW_BYTES_IN	33
 #define META_RAW_BYTES_OUT	34
 #define META_EOS_REASON		35
+#define META_VHOST_IP		36
 
 /* For tracking the size of deleted files. */
 static off_t log_dele_filesz = 0;
@@ -126,10 +127,11 @@ static xaset_t			*log_set = NULL;
    %{FOOBAR}e		- Contents of environment variable FOOBAR
    %F			- Transfer path (filename for client)
    %f			- Filename
+   %H                   - Local IP address of server handling session
    %h			- Remote client DNS name
    %I                   - Total number of "raw" bytes read in from network
    %J                   - Request (command) arguments (file.txt, etc)
-   %L                   - Local server IP address
+   %L                   - Local IP address contacted by client
    %l			- Remote logname (from identd)
    %m			- Request (command) method (RETR, etc)
    %O                   - Total number of "raw" bytes written out to network
@@ -287,6 +289,10 @@ static void logformat(char *nickname, char *fmts) {
 
           case 'F':
             add_meta(&outs, META_XFER_PATH, 0);
+            break;
+
+          case 'H':
+            add_meta(&outs, META_VHOST_IP, 0);
             break;
 
           case 'h':
@@ -1189,6 +1195,13 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) session.total_raw_out);
       m++;
       break;
+
+    case META_VHOST_IP:
+      argp = arg;
+      sstrncpy(argp, cmd->server->ServerAddress, sizeof(arg));
+      m++;
+      break;
+
   }
  
   *f = m;
