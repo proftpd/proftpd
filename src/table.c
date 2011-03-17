@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.18 2011-01-04 19:41:58 castaglia Exp $
+ * $Id: table.c,v 1.19 2011-03-17 13:02:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -72,7 +72,8 @@ static const char *trace_channel = "table";
 
 static int key_cmp(const void *key1, size_t keysz1, const void *key2,
     size_t keysz2) {
-  return strcmp((const char *) key1, (const char *) key2);
+  size_t min_keylen = keysz1 < keysz2 ? keysz1 : keysz2;
+  return strncmp((const char *) key1, (const char *) key2, min_keylen);
 }
 
 /* Use Perl's hashing algorithm by default. */
@@ -343,7 +344,8 @@ int pr_table_kadd(pr_table_t *tab, const void *key_data, size_t key_datasz,
        * is identical.  If so, we have multiple values for the same key.
        */
 
-      if (tab->keycmp(ei->key->key_data, 0, key_data, 0) == 0) {
+      if (tab->keycmp(ei->key->key_data, ei->key->key_datasz,
+          key_data, key_datasz) == 0) {
 
         /* Check if this table allows multivalues. */
         if (!(tab->flags & PR_TABLE_FL_MULTI_VALUE)) {
