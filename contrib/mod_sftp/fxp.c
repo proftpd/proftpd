@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.123 2011-03-15 18:51:39 castaglia Exp $
+ * $Id: fxp.c,v 1.124 2011-03-17 18:15:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -9771,7 +9771,7 @@ int sftp_fxp_set_displaylogin(const char *path) {
   /* Support "DisplayLogin none", in case we need to disable support for
    * DisplayLogin files inherited from <Global> configurations.
    */
-  if (strcasecmp(path, "none") == 0) {
+  if (strncasecmp(path, "none", 5) == 0) {
     return 0;
   }
 

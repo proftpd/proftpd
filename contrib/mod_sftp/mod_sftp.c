@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.49 2011-03-03 21:38:54 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.50 2011-03-17 18:15:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -293,16 +293,16 @@ MODRET set_sftpauthmeths(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strcasecmp(cmd->argv[i], "publickey") == 0) {
+    if (strncasecmp(cmd->argv[i], "publickey", 10) == 0) {
       enabled |= SFTP_AUTH_FL_METH_PUBLICKEY;
 
-    } else if (strcasecmp(cmd->argv[i], "hostbased") == 0) {
+    } else if (strncasecmp(cmd->argv[i], "hostbased", 10) == 0) {
       enabled |= SFTP_AUTH_FL_METH_HOSTBASED;
 
-    } else if (strcasecmp(cmd->argv[i], "password") == 0) {
+    } else if (strncasecmp(cmd->argv[i], "password", 9) == 0) {
       enabled |= SFTP_AUTH_FL_METH_PASSWORD;
 
-    } else if (strcasecmp(cmd->argv[i], "keyboard-interactive") == 0) {
+    } else if (strncasecmp(cmd->argv[i], "keyboard-interactive", 21) == 0) {
       if (sftp_kbdint_have_drivers() == 0) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
           "unable to support '", cmd->argv[i],
@@ -342,10 +342,10 @@ MODRET set_sftpauthorizedkeys(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (strcasecmp(cmd->argv[0], "SFTPAuthorizedHostKeys") == 0) {
+  if (strncasecmp(cmd->argv[0], "SFTPAuthorizedHostKeys", 23) == 0) {
     requested_key_type = SFTP_SSH2_HOST_KEY_STORE;
 
-  } else if (strcasecmp(cmd->argv[0], "SFTPAuthorizedUserKeys") == 0) {
+  } else if (strncasecmp(cmd->argv[0], "SFTPAuthorizedUserKeys", 23) == 0) {
     requested_key_type = SFTP_SSH2_USER_KEY_STORE;
   }
 
@@ -417,16 +417,16 @@ static uint32_t get_size(const char *bytes, const char *units) {
   if (*units == '\0') {
     units_factor = 1.0;
 
-  } else if (strcasecmp("Gb", units) == 0) {
+  } else if (strncasecmp(units, "Gb", 3) == 0) {
     units_factor = 1024.0 * 1024.0 * 1024.0;
 
-  } else if (strcasecmp("Mb", units) == 0) {
+  } else if (strncasecmp(units, "Mb", 3) == 0) {
     units_factor = 1024.0 * 1024.0;
 
-  } else if (strcasecmp("Kb", units) == 0) {
+  } else if (strncasecmp(units, "Kb", 3) == 0) {
     units_factor = 1024.0;
 
-  } else if (strcasecmp("b", units) == 0) {
+  } else if (strncasecmp(units, "b", 2) == 0) {
     units_factor = 1.0;
 
   } else {
@@ -866,7 +866,7 @@ MODRET set_sftpcompression(cmd_rec *cmd) {
 
   bool = get_boolean(cmd, 1);
   if (bool == -1) {
-    if (strcasecmp(cmd->argv[1], "delayed") != 0) {
+    if (strncasecmp(cmd->argv[1], "delayed", 8) != 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "unknown compression setting: ", cmd->argv[1], NULL));
     }
@@ -989,7 +989,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
 
     ext++;
 
-    if (strcasecmp(ext, "checkFile") == 0) {
+    if (strncasecmp(ext, "checkFile", 10) == 0) {
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_CHECK_FILE;
@@ -1000,7 +1000,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
-    } else if (strcasecmp(ext, "copyFile") == 0) {
+    } else if (strncasecmp(ext, "copyFile", 9) == 0) {
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_COPY_FILE;
@@ -1011,7 +1011,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
-    } else if (strcasecmp(ext, "vendorID") == 0) {
+    } else if (strncasecmp(ext, "vendorID", 9) == 0) {
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_VENDOR_ID;
@@ -1022,7 +1022,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
-    } else if (strcasecmp(ext, "versionSelect") == 0) {
+    } else if (strncasecmp(ext, "versionSelect", 14) == 0) {
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_VERSION_SELECT;
@@ -1033,7 +1033,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
-    } else if (strcasecmp(ext, "posixRename") == 0) {
+    } else if (strncasecmp(ext, "posixRename", 12) == 0) {
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_POSIX_RENAME;
@@ -1044,7 +1044,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
-    } else if (strcasecmp(ext, "spaceAvailable") == 0) {
+    } else if (strncasecmp(ext, "spaceAvailable", 15) == 0) {
 #ifdef HAVE_SYS_STATVFS_H
       switch (action) {
         case '-':
@@ -1061,7 +1061,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
 #endif /* !HAVE_SYS_STATVFS_H */
 
 
-    } else if (strcasecmp(ext, "statvfs") == 0) {
+    } else if (strncasecmp(ext, "statvfs", 8) == 0) {
 #ifdef HAVE_SYS_STATVFS_H
       switch (action) {
         case '-':
@@ -1121,7 +1121,7 @@ MODRET set_sftpkeyblacklist(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (strcasecmp(cmd->argv[1], "none") != 0) {
+  if (strncasecmp(cmd->argv[1], "none", 5) != 0) {
     if (pr_fs_valid_path(cmd->argv[1]) < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "path '", cmd->argv[1],
         "' not an absolute path", NULL));
@@ -1300,7 +1300,7 @@ MODRET set_sftprekey(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (strcasecmp(cmd->argv[1], "none") == 0) {
+  if (strncasecmp(cmd->argv[1], "none", 5) == 0) {
     c = add_config_param(cmd->argv[0], 1, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(int));
     *((int *) c->argv[0]) = FALSE;
@@ -1308,7 +1308,7 @@ MODRET set_sftprekey(cmd_rec *cmd) {
     return PR_HANDLED(cmd);
   }
 
-  if (strcasecmp(cmd->argv[1], "required") != 0) {
+  if (strncasecmp(cmd->argv[1], "required", 9) != 0) {
     CONF_ERROR(cmd, "expected either 'none' or 'required'");
   }
 
@@ -1658,7 +1658,7 @@ static int sftp_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPKeyBlacklist", FALSE);
   if (c) {
-    if (strcasecmp((char *) c->argv[0], "none") != 0) {
+    if (strncasecmp((char *) c->argv[0], "none", 5) != 0) {
       sftp_blacklist_set_file(c->argv[0]);
 
     } else {

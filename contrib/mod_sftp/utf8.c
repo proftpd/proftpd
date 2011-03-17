@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp UTF8 encoding
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: utf8.c,v 1.13 2010-04-18 18:42:16 castaglia Exp $
+ * $Id: utf8.c,v 1.14 2011-03-17 18:15:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -223,7 +223,7 @@ char *sftp_utf8_decode_str(pool *p, const char *str) {
    * convert between the same charsets results in a tightly spinning CPU
    * (see Bug#3272).
    */
-  if (strcasecmp(local_charset, "UTF-8") == 0) {
+  if (strncasecmp(local_charset, "UTF-8", 6) == 0) {
     return (char *) str;
   }
 

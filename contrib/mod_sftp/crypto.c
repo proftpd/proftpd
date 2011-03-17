@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.17 2011-01-26 01:03:04 castaglia Exp $
+ * $Id: crypto.c,v 1.18 2011-03-17 18:15:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -906,7 +906,7 @@ int sftp_crypto_set_driver(const char *driver) {
 
   crypto_engine = driver;
 
-  if (strcasecmp(driver, "ALL") == 0) {
+  if (strncasecmp(driver, "ALL", 4) == 0) {
     /* Load all ENGINE implementations bundled with OpenSSL. */
     ENGINE_load_builtin_engines();
     ENGINE_register_all_complete();

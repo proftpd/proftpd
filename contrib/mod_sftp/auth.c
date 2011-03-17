@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.31 2011-01-23 22:23:13 castaglia Exp $
+ * $Id: auth.c,v 1.32 2011-03-17 18:15:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -441,7 +441,7 @@ static int setup_env(pool *p, char *user) {
     xferlog = c->argv[0];
   }
 
-  if (strcasecmp(xferlog, "none") == 0) {
+  if (strncasecmp(xferlog, "none", 5) == 0) {
     xferlog_open(NULL);
 
   } else {
@@ -1172,10 +1172,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
       protocol = elts[i];
       if (protocol != NULL) {
-        if (strcasecmp(protocol, "sftp") == 0) {
+        if (strncasecmp(protocol, "sftp", 5) == 0) {
           services |= SFTP_SERVICE_FL_SFTP;
 
-        } else if (strcasecmp(protocol, "scp") == 0) {
+        } else if (strncasecmp(protocol, "scp", 4) == 0) {
           services |= SFTP_SERVICE_FL_SCP;
         }
       }

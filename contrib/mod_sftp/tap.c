@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp traffic analysis protection
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: tap.c,v 1.7 2011-03-16 22:38:51 castaglia Exp $
+ * $Id: tap.c,v 1.8 2011-03-17 18:15:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -272,7 +272,7 @@ int sftp_tap_set_policy(const char *policy) {
      * the 'rogaway' policy.
      */
     if (strcmp(curr_policy.policy, "none") == 0 &&
-        strcasecmp(policy, "rogaway") == 0) {
+        strncasecmp(policy, "rogaway", 8) == 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "'none' traffic policy explicitly configured, ignoring '%s' policy",
         policy);
