@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.420 2011-03-15 05:27:45 castaglia Exp $
+ * $Id: main.c,v 1.421 2011-03-17 16:43:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2117,7 +2117,8 @@ void set_daemon_rlimits(void) {
 #ifdef RLIMIT_CPU
   while (c) {
     /* Does this limit apply to the daemon? */
-    if (c->argv[1] == NULL || !strcmp(c->argv[1], "daemon")) {
+    if (c->argv[1] == NULL ||
+        strncmp(c->argv[1], "daemon", 7) == 0) {
       struct rlimit *cpu_rlimit = (struct rlimit *) c->argv[0];
 
       PRIVS_ROOT
@@ -2143,7 +2144,8 @@ void set_daemon_rlimits(void) {
 #if defined(RLIMIT_DATA) || defined(RLIMIT_AS) || defined(RLIMIT_VMEM)
   while (c) {
     /* Does this limit apply to the daemon? */
-    if (c->argv[1] == NULL || !strcmp(c->argv[1], "daemon")) {
+    if (c->argv[1] == NULL ||
+        strncmp(c->argv[1], "daemon", 7) == 0) {
       struct rlimit *memory_rlimit = (struct rlimit *) c->argv[0];
 
       PRIVS_ROOT
@@ -2189,7 +2191,8 @@ void set_daemon_rlimits(void) {
 #if defined(RLIMIT_NOFILE) || defined(RLIMIT_OFILE)
   while (c) {
     /* Does this limit apply to the daemon? */
-    if (c->argv[1] == NULL || !strcmp(c->argv[1], "daemon")) {
+    if (c->argv[1] == NULL ||
+        strncmp(c->argv[1], "daemon", 7) == 0) {
       struct rlimit *nofile_rlimit = (struct rlimit *) c->argv[0];
 
       PRIVS_ROOT
@@ -2231,7 +2234,8 @@ void set_session_rlimits(void) {
 #ifdef RLIMIT_CPU
   while (c) {
     /* Does this limit apply to the session? */
-    if (c->argv[1] == NULL || !strcmp(c->argv[1], "session")) {
+    if (c->argv[1] == NULL ||
+        strncmp(c->argv[1], "session", 8) == 0) {
       struct rlimit *cpu_rlimit = (struct rlimit *) c->argv[0];
 
       PRIVS_ROOT
@@ -2257,7 +2261,8 @@ void set_session_rlimits(void) {
 #if defined(RLIMIT_DATA) || defined(RLIMIT_AS) || defined(RLIMIT_VMEM)
   while (c) {
     /* Does this limit apply to the session? */
-    if (c->argv[1] == NULL || !strcmp(c->argv[1], "session")) {
+    if (c->argv[1] == NULL ||
+        strncmp(c->argv[1], "session", 8) == 0) {
       struct rlimit *memory_rlimit = (struct rlimit *) c->argv[0];
 
       PRIVS_ROOT
@@ -2303,7 +2308,8 @@ void set_session_rlimits(void) {
 #if defined(RLIMIT_NOFILE) || defined(RLIMIT_OFILE)
   while (c) {
     /* Does this limit apply to the session? */
-    if (c->argv[1] == NULL || !strcmp(c->argv[1], "session")) {
+    if (c->argv[1] == NULL ||
+        strncmp(c->argv[1], "session", 8) == 0) {
       struct rlimit *nofile_rlimit = (struct rlimit *) c->argv[0];
 
       PRIVS_ROOT

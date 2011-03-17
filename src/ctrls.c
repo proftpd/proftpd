@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.24 2010-08-14 16:25:46 castaglia Exp $
+ * $Id: ctrls.c,v 1.25 2011-03-17 16:43:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -887,7 +887,7 @@ int pr_set_registered_actions(module *mod, const char *action,
       continue;
 
     if ((!action ||
-         strcmp(action, "all") == 0 ||
+         strncmp(action, "all", 4) == 0 ||
          strcmp(act->action, action) == 0) &&
         (act->module == mod || mod == ANY_MODULE || mod == NULL)) {
       have_action = TRUE;
@@ -1681,10 +1681,12 @@ void pr_ctrls_set_group_acl(pool *grp_acl_pool, ctrls_grp_acl_t *grp_acl,
 
   tmp_pool = make_sub_pool(grp_acl_pool);
 
-  if (strcmp(allow, "allow") == 0)
+  if (strncmp(allow, "allow", 6) == 0) {
     grp_acl->allow = TRUE;
-  else
+
+  } else {
     grp_acl->allow = FALSE;
+  }
 
   /* Parse the given expression into an array, then retrieve the GID
    * for each given name.
@@ -1735,10 +1737,12 @@ void pr_ctrls_set_user_acl(pool *usr_acl_pool, ctrls_usr_acl_t *usr_acl,
 
   tmp_pool = make_sub_pool(usr_acl_pool);
 
-  if (strcmp(allow, "allow") == 0)
+  if (strncmp(allow, "allow", 6) == 0) {
     usr_acl->allow = TRUE;
-  else
+
+  } else {
     usr_acl->allow = FALSE;
+  }
 
   /* Parse the given expression into an array, then retrieve the UID
    * for each given name.
@@ -1784,7 +1788,7 @@ char *pr_ctrls_set_module_acls(ctrls_acttab_t *acttab, pool *acl_pool,
     register unsigned int j = 0;
     unsigned char valid_action = FALSE;
 
-    if (strcmp(actions[i], "all") == 0)
+    if (strncmp(actions[i], "all", 4) == 0)
       continue;
 
     for (j = 0; acttab[j].act_action; j++) {
@@ -1801,7 +1805,8 @@ char *pr_ctrls_set_module_acls(ctrls_acttab_t *acttab, pool *acl_pool,
   for (i = 0; actions[i]; i++) {
     register unsigned int j = 0;
 
-    if (!all_actions && strcmp(actions[i], "all") == 0)
+    if (!all_actions &&
+        strncmp(actions[i], "all", 4) == 0)
       all_actions = TRUE;
 
     for (j = 0; acttab[j].act_action; j++) {
@@ -1810,11 +1815,11 @@ char *pr_ctrls_set_module_acls(ctrls_acttab_t *acttab, pool *acl_pool,
         /* Use the type parameter to determine whether the list is of users or
          * of groups.
          */
-        if (strcmp(type, "user") == 0) {
+        if (strncmp(type, "user", 5) == 0) {
           pr_ctrls_set_user_acl(acl_pool, &(acttab[j].act_acl->acl_usrs),
             allow, list);
 
-        } else if (strcmp(type, "group") == 0) {
+        } else if (strncmp(type, "group", 6) == 0) {
           pr_ctrls_set_group_acl(acl_pool, &(acttab[j].act_acl->acl_grps),
             allow, list);
         }
