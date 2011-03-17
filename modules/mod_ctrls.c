@@ -3,7 +3,7 @@
  *          server, as well as several utility functions for other Controls
  *          modules
  *
- * Copyright (c) 2000-2009 TJ Saunders
+ * Copyright (c) 2000-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.45 2009-07-17 01:16:02 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.46 2011-03-17 16:53:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -849,9 +849,9 @@ static int ctrls_handle_rmctrl(pr_ctrls_t *ctrl, int reqargc,
   /* The three controls added by this module _cannot_ be removed (at least
    * not via this control handler).
    */
-  if (strcmp(reqargv[0], "insctrl") == 0 ||
-      strcmp(reqargv[0], "lsctrl") == 0 ||
-      strcmp(reqargv[0], "rmctrl") == 0) {
+  if (strncmp(reqargv[0], "insctrl", 8) == 0 ||
+      strncmp(reqargv[0], "lsctrl", 7) == 0 ||
+      strncmp(reqargv[0], "rmctrl", 7) == 0) {
     pr_ctrls_add_response(ctrl, "'%s' control cannot be removed", reqargv[0]);
     return -1;
   }
@@ -864,18 +864,21 @@ static int ctrls_handle_rmctrl(pr_ctrls_t *ctrl, int reqargc,
 
   if (pr_set_registered_actions(m, reqargv[0], FALSE,
       PR_CTRLS_ACT_DISABLED) < 0) {
+    int xerrno = errno;
 
-    if (errno == ENOENT)
+    if (xerrno == ENOENT) {
       pr_ctrls_add_response(ctrl, "no such control: '%s'", reqargv[0]);
-    else
+
+    } else {
       pr_ctrls_add_response(ctrl, "unable to disable '%s': %s", reqargv[0],
-        strerror(errno));
+        strerror(xerrno));
+    }
 
   } else {
-    if (strcmp(reqargv[0], "all") != 0) 
+    if (strncmp(reqargv[0], "all", 4) != 0) {
       pr_ctrls_add_response(ctrl, "'%s' control disabled", reqargv[0]);
 
-    else {
+    } else {
 
       /* If all actions have been disabled, stop listening on the local
        * socket, and turn off this module's engine.
@@ -914,14 +917,16 @@ MODRET set_ctrlsacls(cmd_rec *cmd) {
   actions = ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
 
   /* Check the second parameter to make sure it is "allow" or "deny" */
-  if (strcmp(cmd->argv[2], "allow") != 0 &&
-      strcmp(cmd->argv[2], "deny") != 0)
+  if (strncmp(cmd->argv[2], "allow", 6) != 0 &&
+      strncmp(cmd->argv[2], "deny", 5) != 0) {
     CONF_ERROR(cmd, "second parameter must be 'allow' or 'deny'");
+  }
 
   /* Check the third parameter to make sure it is "user" or "group" */
-  if (strcmp(cmd->argv[3], "user") != 0 &&
-      strcmp(cmd->argv[3], "group") != 0)
+  if (strncmp(cmd->argv[3], "user", 5) != 0 &&
+      strncmp(cmd->argv[3], "group", 6) != 0) {
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
+  }
 
   bad_action = pr_ctrls_set_module_acls(ctrls_acttab, ctrls_pool, actions,
     cmd->argv[2], cmd->argv[3], cmd->argv[4]);
@@ -1052,16 +1057,17 @@ MODRET set_ctrlssocketacl(cmd_rec *cmd) {
   pr_ctrls_init_acl(&ctrls_sock_acl);
 
   /* Check the first argument to make sure it either "allow" or "deny" */
-  if (strcmp(cmd->argv[1], "allow") != 0 &&
-      strcmp(cmd->argv[1], "deny") != 0)
+  if (strncmp(cmd->argv[1], "allow", 6) != 0 &&
+      strncmp(cmd->argv[1], "deny", 5) != 0) {
     CONF_ERROR(cmd, "first parameter must be either 'allow' or 'deny'");
+  }
 
   /* Check the second argument to see how to handle the directive */
-  if (strcmp(cmd->argv[2], "user") == 0) {
+  if (strncmp(cmd->argv[2], "user", 5) == 0) {
     pr_ctrls_set_user_acl(ctrls_pool, &ctrls_sock_acl.acl_usrs, cmd->argv[1],
       cmd->argv[3]);
  
-  } else if (strcmp(cmd->argv[2], "group") == 0) {
+  } else if (strncmp(cmd->argv[2], "group", 6) == 0) {
     pr_ctrls_set_group_acl(ctrls_pool, &ctrls_sock_acl.acl_grps, cmd->argv[1],
       cmd->argv[3]);
 
