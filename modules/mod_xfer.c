@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.286 2011-02-28 05:48:29 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.287 2011-03-17 17:16:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -105,7 +105,7 @@ static unsigned long find_max_nbytes(char *directive) {
      */
 
     if (c->argc > 3) {
-      if (strcmp(c->argv[2], "user") == 0) {
+      if (strncmp(c->argv[2], "user", 5) == 0) {
 
         if (pr_expr_eval_user_or((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
@@ -120,7 +120,7 @@ static unsigned long find_max_nbytes(char *directive) {
           }
         }
 
-      } else if (strcmp(c->argv[2], "group") == 0) {
+      } else if (strncmp(c->argv[2], "group", 6) == 0) {
 
         if (pr_expr_eval_group_or((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
@@ -135,7 +135,7 @@ static unsigned long find_max_nbytes(char *directive) {
           }
         }
 
-      } else if (strcmp(c->argv[2], "class") == 0) {
+      } else if (strncmp(c->argv[2], "class", 6) == 0) {
 
         if (pr_expr_eval_class_or((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
@@ -1179,10 +1179,12 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix) {
 MODRET xfer_post_prot(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 2);
 
-  if (strcmp(cmd->argv[1], "C") != 0)
+  if (strncmp(cmd->argv[1], "C", 2) != 0) {
     have_prot = TRUE;
-  else
+
+  } else {
     have_prot = FALSE;
+  }
 
   return PR_DECLINED(cmd);
 }
@@ -1190,10 +1192,12 @@ MODRET xfer_post_prot(cmd_rec *cmd) {
 MODRET xfer_post_mode(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 2);
 
-  if (strcmp(cmd->argv[1], "Z") == 0)
+  if (strncmp(cmd->argv[1], "Z", 2) == 0) {
     have_zmode = TRUE;
-  else
+
+  } else {
     have_zmode = FALSE;
+  }
 
   return PR_DECLINED(cmd);
 }
@@ -2190,16 +2194,18 @@ MODRET xfer_type(cmd_rec *cmd) {
 
   cmd->argv[1][0] = toupper(cmd->argv[1][0]);
 
-  if (!strcmp(cmd->argv[1], "A") ||
-      (cmd->argc == 3 && !strcmp(cmd->argv[1], "L") &&
-       !strcmp(cmd->argv[2], "7"))) {
+  if (strncmp(cmd->argv[1], "A", 2) == 0 ||
+      (cmd->argc == 3 &&
+       strncmp(cmd->argv[1], "L", 2) == 0 &&
+       strncmp(cmd->argv[2], "7", 2) == 0)) {
 
     /* TYPE A(SCII) or TYPE L 7. */
     session.sf_flags |= SF_ASCII;
 
-  } else if (!strcmp(cmd->argv[1], "I") ||
-      (cmd->argc == 3 && !strcmp(cmd->argv[1], "L") &&
-       !strcmp(cmd->argv[2], "8"))) {
+  } else if (strncmp(cmd->argv[1], "I", 2) == 0 ||
+      (cmd->argc == 3 &&
+       strncmp(cmd->argv[1], "L", 2) == 0 &&
+       strncmp(cmd->argv[2], "8", 2) == 0)) {
 
     /* TYPE I(MAGE) or TYPE L 8. */
     session.sf_flags &= (SF_ALL^(SF_ASCII|SF_ASCII_OVERRIDE));
@@ -2552,8 +2558,9 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
      cmd->server->config_type : CONF_ROOT);
 
   if (cmd->argc-1 == 1) {
-    if (strcmp(cmd->argv[1], "*") != 0)
+    if (strncmp(cmd->argv[1], "*", 2) != 0) {
       CONF_ERROR(cmd, "incorrect number of parameters");
+    }
 
   } else if (cmd->argc-1 != 2 && cmd->argc-1 != 4)
     CONF_ERROR(cmd, "incorrect number of parameters");
@@ -2585,15 +2592,16 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
    * one.
    */
   if (cmd->argc-1 == 4) {
-    if (!strcmp(cmd->argv[3], "user") ||
-        !strcmp(cmd->argv[3], "group") ||
-        !strcmp(cmd->argv[3], "class")) {
+    if (strncmp(cmd->argv[3], "user", 5) == 0 ||
+        strncmp(cmd->argv[3], "group", 6) == 0 ||
+        strncmp(cmd->argv[3], "class", 6) == 0) {
 
        /* no-op */
 
-     } else
+     } else {
        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown classifier used: '",
          cmd->argv[3], "'", NULL));
+    }
   }
 
   if (cmd->argc-1 == 1) {
@@ -2912,14 +2920,16 @@ MODRET set_transferrate(cmd_rec *cmd) {
 
   /* Check for a valid classifier. */
   if (cmd->argc-1 > 2) {
-    if (!strcmp(cmd->argv[3], "user") ||
-        !strcmp(cmd->argv[3], "group") ||
-        !strcmp(cmd->argv[3], "class"))
+    if (strncmp(cmd->argv[3], "user", 5) == 0 ||
+        strncmp(cmd->argv[3], "group", 6) == 0 ||
+        strncmp(cmd->argv[3], "class", 6) == 0) {
       /* do nothing */
       ;
-    else
+
+    } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown classifier requested: '",
         cmd->argv[3], "'", NULL));
+    }
   }
 
   if ((tmp = strchr(cmd->argv[2], ':')) != NULL)
