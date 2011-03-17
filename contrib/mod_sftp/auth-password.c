@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'password' user authentication
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-password.c,v 1.3 2009-03-19 06:04:08 castaglia Exp $
+ * $Id: auth-password.c,v 1.4 2011-03-17 22:16:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -58,8 +58,8 @@ int sftp_auth_password(struct ssh2_packet *pkt, const char *orig_user,
   cipher_algo = sftp_cipher_get_read_algo();
   mac_algo = sftp_mac_get_read_algo();
 
-  if (strcmp(cipher_algo, "none") == 0 ||
-      strcmp(mac_algo, "none") == 0) {
+  if (strncmp(cipher_algo, "none", 5) == 0 ||
+      strncmp(mac_algo, "none", 5) == 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "cipher algorithm '%s' or MAC algorithm '%s' unacceptable for "
       "password authentication, denying password authentication request",

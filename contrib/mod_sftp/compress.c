@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp compression
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: compress.c,v 1.4 2010-12-08 22:30:21 castaglia Exp $
+ * $Id: compress.c,v 1.5 2011-03-17 22:16:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -168,17 +168,17 @@ int sftp_compress_set_read_algo(const char *algo) {
     idx = get_next_read_index();
   }
 
-  if (strcmp(algo, "zlib@openssh.com") == 0) {
+  if (strncmp(algo, "zlib@openssh.com", 9) == 0) {
     read_compresses[idx].use_zlib = SFTP_COMPRESS_FL_AUTHENTICATED;
     return 0;
   }
 
-  if (strcmp(algo, "zlib") == 0) {
+  if (strncmp(algo, "zlib", 5) == 0) {
     read_compresses[idx].use_zlib = SFTP_COMPRESS_FL_NEW_KEY;
     return 0;
   }
 
-  if (strcmp(algo, "none") == 0) {
+  if (strncmp(algo, "none", 5) == 0) {
     return 0;
   }
 
@@ -360,17 +360,17 @@ int sftp_compress_set_write_algo(const char *algo) {
     idx = get_next_write_index();
   }
 
-  if (strcmp(algo, "zlib@openssh.com") == 0) {
+  if (strncmp(algo, "zlib@openssh.com", 9) == 0) {
     write_compresses[idx].use_zlib = SFTP_COMPRESS_FL_AUTHENTICATED;
     return 0;
   }
 
-  if (strcmp(algo, "zlib") == 0) {
+  if (strncmp(algo, "zlib", 5) == 0) {
     write_compresses[idx].use_zlib = SFTP_COMPRESS_FL_NEW_KEY;
     return 0;
   }
 
-  if (strcmp(algo, "none") == 0) {
+  if (strncmp(algo, "none", 5) == 0) {
     return 0;
   }
 

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.20 2011-02-14 22:21:54 castaglia Exp $
+ * $Id: kex.c,v 1.21 2011-03-17 22:16:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1109,7 +1109,7 @@ static void destroy_kex(struct sftp_kex *kex) {
 
 static int setup_kex_algo(struct sftp_kex *kex, const char *algo) {
 
-  if (strcmp(algo, "diffie-hellman-group1-sha1") == 0) {
+  if (strncmp(algo, "diffie-hellman-group1-sha1", 27) == 0) {
     if (create_dh(kex, SFTP_DH_GROUP1_SHA1) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error using '%s' as the key exchange algorithm: %s", algo,
@@ -1120,7 +1120,7 @@ static int setup_kex_algo(struct sftp_kex *kex, const char *algo) {
     kex->session_names->kex_algo = algo;
     return 0;
 
-  } else if (strcmp(algo, "diffie-hellman-group14-sha1") == 0) {
+  } else if (strncmp(algo, "diffie-hellman-group14-sha1", 28) == 0) {
     if (create_dh(kex, SFTP_DH_GROUP14_SHA1) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error using '%s' as the key exchange algorithm: %s", algo,
@@ -1131,7 +1131,7 @@ static int setup_kex_algo(struct sftp_kex *kex, const char *algo) {
     kex->session_names->kex_algo = algo;
     return 0;
 
-  } else if (strcmp(algo, "diffie-hellman-group-exchange-sha1") == 0) {
+  } else if (strncmp(algo, "diffie-hellman-group-exchange-sha1", 35) == 0) {
     if (prepare_dh(kex, SFTP_DH_GEX_SHA1) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error using '%s' as the key exchange algorithm: %s", algo,
@@ -1143,7 +1143,7 @@ static int setup_kex_algo(struct sftp_kex *kex, const char *algo) {
     kex->use_gex = TRUE;
     return 0;
 
-  } else if (strcmp(algo, "rsa1024-sha1") == 0) {
+  } else if (strncmp(algo, "rsa1024-sha1", 13) == 0) {
     if (create_kexrsa(kex, SFTP_KEXRSA_SHA1) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error using '%s' as the key exchange algorithm: %s", algo,
@@ -1157,7 +1157,7 @@ static int setup_kex_algo(struct sftp_kex *kex, const char *algo) {
 
 #if (OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
     (OPENSSL_VERSION_NUMBER > 0x000908000L)
-  } else if (strcmp(algo, "diffie-hellman-group-exchange-sha256") == 0) {
+  } else if (strncmp(algo, "diffie-hellman-group-exchange-sha256", 37) == 0) {
     if (prepare_dh(kex, SFTP_DH_GEX_SHA256) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error using '%s' as the key exchange algorithm: %s", algo,
@@ -1169,7 +1169,7 @@ static int setup_kex_algo(struct sftp_kex *kex, const char *algo) {
     kex->use_gex = TRUE;
     return 0;
 
-  } else if (strcmp(algo, "rsa2048-sha256") == 0) {
+  } else if (strncmp(algo, "rsa2048-sha256", 15) == 0) {
     if (create_kexrsa(kex, SFTP_KEXRSA_SHA256) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error using '%s' as the key exchange algorithm: %s", algo,
@@ -1192,12 +1192,12 @@ static int setup_kex_algo(struct sftp_kex *kex, const char *algo) {
 static int setup_hostkey_algo(struct sftp_kex *kex, const char *algo) {
   kex->session_names->server_hostkey_algo = (char *) algo;
 
-  if (strcmp(algo, "ssh-dss") == 0) {
+  if (strncmp(algo, "ssh-dss", 8) == 0) {
     kex->use_hostkey_type = EVP_PKEY_DSA;
     return 0;
   }
 
-  if (strcmp(algo, "ssh-rsa") == 0) {
+  if (strncmp(algo, "ssh-rsa", 8) == 0) {
     kex->use_hostkey_type = EVP_PKEY_RSA;
     return 0;
   }

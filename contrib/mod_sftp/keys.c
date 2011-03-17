@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.12 2011-02-28 06:54:47 castaglia Exp $
+ * $Id: keys.c,v 1.13 2011-03-17 22:16:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -747,7 +747,7 @@ static EVP_PKEY *get_pkey_from_data(pool *p, char *pkey_data,
 
   pkey_type = sftp_msg_read_string(p, &pkey_data, &pkey_datalen);
 
-  if (strcmp(pkey_type, "ssh-rsa") == 0) {
+  if (strncmp(pkey_type, "ssh-rsa", 8) == 0) {
     RSA *rsa;
 
     pkey = EVP_PKEY_new();
@@ -776,7 +776,7 @@ static EVP_PKEY *get_pkey_from_data(pool *p, char *pkey_data,
       return NULL;
     }
 
-  } else if (strcmp(pkey_type, "ssh-dss") == 0) {
+  } else if (strncmp(pkey_type, "ssh-dss", 8) == 0) {
     DSA *dsa;
 
     pkey = EVP_PKEY_new();
@@ -1430,7 +1430,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
     return -1;
   }
 
-  if (strcmp(pubkey_algo, "ssh-dss") == 0) {
+  if (strncmp(pubkey_algo, "ssh-dss", 8) == 0) {
     if (sftp_interop_supports_feature(SFTP_SSH2_FEAT_HAVE_PUBKEY_ALGO_IN_DSA_SIG)) {
       sig_type = sftp_msg_read_string(p, &signature, &signaturelen);
 
@@ -1453,7 +1453,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
   EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
   EVP_DigestFinal(&ctx, digest, &digestlen);
 
-  if (strcmp(sig_type, "ssh-rsa") == 0) {
+  if (strncmp(sig_type, "ssh-rsa", 8) == 0) {
     RSA *rsa;
     int ok;
 
@@ -1475,7 +1475,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
 
     RSA_free(rsa);
 
-  } else if (strcmp(sig_type, "ssh-dss") == 0) {
+  } else if (strncmp(sig_type, "ssh-dss", 8) == 0) {
     DSA *dsa;
     DSA_SIG *dsa_sig;
     int ok;

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.18 2011-03-17 18:15:19 castaglia Exp $
+ * $Id: crypto.c,v 1.19 2011-03-17 22:16:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -582,20 +582,20 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
     if (strcmp(ciphers[i].name, name) == 0) {
       const EVP_CIPHER *cipher;
 
-      if (strcmp(name, "blowfish-ctr") == 0) {
+      if (strncmp(name, "blowfish-ctr", 13) == 0) {
         cipher = get_bf_ctr_cipher();
 
-      } else if (strcmp(name, "3des-ctr") == 0) {
+      } else if (strncmp(name, "3des-ctr", 9) == 0) {
         cipher = get_des3_ctr_cipher();
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-      } else if (strcmp(name, "aes256-ctr") == 0) {
+      } else if (strncmp(name, "aes256-ctr", 11) == 0) {
         cipher = get_aes_ctr_cipher(32);
 
-      } else if (strcmp(name, "aes192-ctr") == 0) {
+      } else if (strncmp(name, "aes192-ctr", 11) == 0) {
         cipher = get_aes_ctr_cipher(24);
 
-      } else if (strcmp(name, "aes128-ctr") == 0) {
+      } else if (strncmp(name, "aes128-ctr", 11) == 0) {
         cipher = get_aes_ctr_cipher(16);
 #endif /* OpenSSL older than 0.9.7 */
 
@@ -604,7 +604,7 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
       }
 
       if (key_len) {
-        if (strcmp(name, "arcfour256") != 0) {
+        if (strncmp(name, "arcfour256", 11) != 0) {
           *key_len = 0;
 
         } else {
@@ -665,7 +665,7 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
 
       for (j = 0; ciphers[j].name; j++) {
         if (strcmp(c->argv[i], ciphers[j].name) == 0) {
-          if (strcmp(c->argv[i], "none") != 0) {
+          if (strncmp(c->argv[i], "none", 5) != 0) {
             if (EVP_get_cipherbyname(ciphers[j].openssl_name) != NULL) {
               res = pstrcat(p, res, *res ? "," : "",
                 pstrdup(p, ciphers[j].name), NULL);
@@ -673,12 +673,12 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
             } else {
               /* The CTR modes are special cases. */
 
-              if (strcmp(ciphers[j].name, "blowfish-ctr") == 0 ||
-                  strcmp(ciphers[j].name, "3des-ctr") == 0
+              if (strncmp(ciphers[j].name, "blowfish-ctr", 13) == 0 ||
+                  strncmp(ciphers[j].name, "3des-ctr", 9) == 0
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-                  || strcmp(ciphers[j].name, "aes256-ctr") == 0 ||
-                  strcmp(ciphers[j].name, "aes192-ctr") == 0 ||
-                  strcmp(ciphers[j].name, "aes128-ctr") == 0
+                  || strncmp(ciphers[j].name, "aes256-ctr", 11) == 0 ||
+                  strncmp(ciphers[j].name, "aes192-ctr", 11) == 0 ||
+                  strncmp(ciphers[j].name, "aes128-ctr", 11) == 0
 #endif
                   ) {
                 res = pstrcat(p, res, *res ? "," : "",
@@ -704,7 +704,7 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
 
     for (i = 0; ciphers[i].name; i++) {
       if (ciphers[i].enabled) {
-        if (strcmp(ciphers[i].name, "none") != 0) {
+        if (strncmp(ciphers[i].name, "none", 5) != 0) {
           if (EVP_get_cipherbyname(ciphers[i].openssl_name) != NULL) {
             res = pstrcat(p, res, *res ? "," : "",
               pstrdup(p, ciphers[i].name), NULL);
@@ -712,12 +712,12 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
           } else {
             /* The CTR modes are special cases. */
 
-            if (strcmp(ciphers[i].name, "blowfish-ctr") == 0 ||
-                strcmp(ciphers[i].name, "3des-ctr") == 0
+            if (strncmp(ciphers[i].name, "blowfish-ctr", 13) == 0 ||
+                strncmp(ciphers[i].name, "3des-ctr", 9) == 0
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-                || strcmp(ciphers[i].name, "aes256-ctr") == 0 ||
-                strcmp(ciphers[i].name, "aes192-ctr") == 0 ||
-                strcmp(ciphers[i].name, "aes128-ctr") == 0
+                || strncmp(ciphers[i].name, "aes256-ctr", 11) == 0 ||
+                strncmp(ciphers[i].name, "aes192-ctr", 11) == 0 ||
+                strncmp(ciphers[i].name, "aes128-ctr", 11) == 0
 #endif
                 ) {
               res = pstrcat(p, res, *res ? "," : "",
@@ -763,7 +763,7 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
 
       for (j = 0; digests[j].name; j++) {
         if (strcmp(c->argv[i], digests[j].name) == 0) {
-          if (strcmp(c->argv[i], "none") != 0) {
+          if (strncmp(c->argv[i], "none", 5) != 0) {
             if (EVP_get_digestbyname(digests[j].openssl_name) != NULL) {
               res = pstrcat(p, res, *res ? "," : "",
                 pstrdup(p, digests[j].name), NULL);
@@ -787,7 +787,7 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
 
     for (i = 0; digests[i].name; i++) {
       if (digests[i].enabled) {
-        if (strcmp(digests[i].name, "none") != 0) {
+        if (strncmp(digests[i].name, "none", 5) != 0) {
           if (EVP_get_digestbyname(digests[i].openssl_name) != NULL) {
             res = pstrcat(p, res, *res ? "," : "",
               pstrdup(p, digests[i].name), NULL);

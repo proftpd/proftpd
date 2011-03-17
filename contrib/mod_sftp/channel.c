@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp channels
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.38 2010-12-15 00:58:59 castaglia Exp $
+ * $Id: channel.c,v 1.39 2011-03-17 22:16:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -402,7 +402,7 @@ static int read_channel_open(struct ssh2_packet *pkt, uint32_t *channel_id) {
   cmd->arg = channel_type;
   cmd->class = CL_MISC;
 
-  if (strcmp(channel_type, "session") != 0) {
+  if (strncmp(channel_type, "session", 8) != 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported channel type '%s' requested, denying", channel_type);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -879,49 +879,49 @@ static int handle_signal_channel(struct ssh2_channel *chan,
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "'signal' channel request: SIG%s", sig_name);
 
-  if (strcmp(sig_name, "ABRT") == 0) {
+  if (strncmp(sig_name, "ABRT", 5) == 0) {
     res = raise(SIGABRT);
 
-  } else if (strcmp(sig_name, "ALRM") == 0) {
+  } else if (strncmp(sig_name, "ALRM", 5) == 0) {
     res = raise(SIGALRM);
 
 #ifdef SIGFPE
-  } else if (strcmp(sig_name, "FPE") == 0) {
+  } else if (strncmp(sig_name, "FPE", 4) == 0) {
     res = raise(SIGFPE);
 
 #endif
-  } else if (strcmp(sig_name, "HUP") == 0) {
+  } else if (strncmp(sig_name, "HUP", 4) == 0) {
     /* Sending SIGHUP to this process is not a good idea, but we'll act
      * like it succeeded anyway.
      */
     res = 0;
 
 #ifdef SIGILL
-  } else if (strcmp(sig_name, "ILL") == 0) {
+  } else if (strncmp(sig_name, "ILL", 4) == 0) {
     res = raise(SIGILL);
 
 #endif
-  } else if (strcmp(sig_name, "INT") == 0) {
+  } else if (strncmp(sig_name, "INT", 4) == 0) {
     res = raise(SIGINT);
 
-  } else if (strcmp(sig_name, "KILL") == 0) {
+  } else if (strncmp(sig_name, "KILL", 5) == 0) {
     res = raise(SIGKILL);
 
-  } else if (strcmp(sig_name, "PIPE") == 0) {
+  } else if (strncmp(sig_name, "PIPE", 5) == 0) {
     /* Ignore SIGPIPE, since we told the kernel we would ignore it. */
     res = 0;
 
-  } else if (strcmp(sig_name, "QUIT") == 0) {
+  } else if (strncmp(sig_name, "QUIT", 5) == 0) {
     res = raise(SIGQUIT);
 
-  } else if (strcmp(sig_name, "SEGV") == 0) {
+  } else if (strncmp(sig_name, "SEGV", 5) == 0) {
     res = raise(SIGSEGV);
 
-  } else if (strcmp(sig_name, "TERM") == 0) {
+  } else if (strncmp(sig_name, "TERM", 5) == 0) {
     res = raise(SIGTERM);
 
-  } else if (strcmp(sig_name, "USR1") == 0 ||
-             strcmp(sig_name, "USR2") == 0) {
+  } else if (strncmp(sig_name, "USR1", 5) == 0 ||
+             strncmp(sig_name, "USR2", 5) == 0) {
     /* We already use these for very specific uses. */
     res = 0;
 
@@ -943,7 +943,7 @@ static int handle_subsystem_channel(struct ssh2_channel *chan,
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "'subsystem' channel request for '%s' subsystem", subsystem);
 
-  if (strcmp(subsystem, "sftp") == 0) {
+  if (strncmp(subsystem, "sftp", 5) == 0) {
 
     if (sftp_services & SFTP_SERVICE_FL_SFTP) {
       chan->prepare = sftp_fxp_open_session;
@@ -999,19 +999,19 @@ static int handle_channel_req(struct ssh2_packet *pkt) {
     return -1;
   }
 
-  if (strcmp(channel_request, "subsystem") == 0) {
+  if (strncmp(channel_request, "subsystem", 10) == 0) {
     res = handle_subsystem_channel(chan, pkt, &buf, &buflen);
 
-  } else if (strcmp(channel_request, "exec") == 0) {
+  } else if (strncmp(channel_request, "exec", 5) == 0) {
     res = handle_exec_channel(chan, pkt, &buf, &buflen);
 
-  } else if (strcmp(channel_request, "env") == 0) {
+  } else if (strncmp(channel_request, "env", 4) == 0) {
     res = handle_env_channel(chan, pkt, &buf, &buflen);
 
-  } else if (strcmp(channel_request, "signal") == 0) {
+  } else if (strncmp(channel_request, "signal", 7) == 0) {
     res = handle_signal_channel(chan, pkt, &buf, &buflen);
 
-  } else if (strcmp(channel_request, "break") == 0) {
+  } else if (strncmp(channel_request, "break", 6) == 0) {
     uint32_t breaklen;
 
     /* Handle RFC4335 messages.  We will still return CHANNEL_FAILURE for

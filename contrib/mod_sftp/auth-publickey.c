@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'publickey' user authentication
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-publickey.c,v 1.5 2010-06-17 17:56:51 castaglia Exp $
+ * $Id: auth-publickey.c,v 1.6 2011-03-17 22:16:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -99,10 +99,10 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, const char *orig_user,
   pr_trace_msg(trace_channel, 9, "client sent '%s' public key %s",
     pubkey_algo, have_signature ? "with signature" : "without signature");
 
-  if (strcmp(pubkey_algo, "ssh-rsa") == 0) {
+  if (strncmp(pubkey_algo, "ssh-rsa", 8) == 0) {
     pubkey_type = EVP_PKEY_RSA;
 
-  } else if (strcmp(pubkey_algo, "ssh-dss") == 0) {
+  } else if (strncmp(pubkey_algo, "ssh-dss", 8) == 0) {
     pubkey_type = EVP_PKEY_DSA;
 
   } else {

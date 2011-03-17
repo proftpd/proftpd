@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: tap.c,v 1.8 2011-03-17 18:15:19 castaglia Exp $
+ * $Id: tap.c,v 1.9 2011-03-17 22:16:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -271,7 +271,7 @@ int sftp_tap_set_policy(const char *policy) {
      * explicitly configured, and it should override the automatic use of
      * the 'rogaway' policy.
      */
-    if (strcmp(curr_policy.policy, "none") == 0 &&
+    if (strncmp(curr_policy.policy, "none", 5) == 0 &&
         strncasecmp(policy, "rogaway", 8) == 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "'none' traffic policy explicitly configured, ignoring '%s' policy",

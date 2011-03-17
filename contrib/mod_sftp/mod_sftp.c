@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.50 2011-03-17 18:15:19 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.51 2011-03-17 22:16:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -535,7 +535,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
   c->argv[2] = tab;
 
   for (i = 2; i < cmd->argc; i++) {
-    if (strcmp(cmd->argv[i], "channelWindowSize") == 0) {
+    if (strncmp(cmd->argv[i], "channelWindowSize", 18) == 0) {
       uint32_t window_size;
       void *value;
       char *arg, units[3];
@@ -607,7 +607,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       /* Don't forget to advance i past the value. */
       i++;
 
-    } else if (strcmp(cmd->argv[i], "channelPacketSize") == 0) {
+    } else if (strncmp(cmd->argv[i], "channelPacketSize", 18) == 0) {
       uint32_t packet_size;
       void *value;
       char *arg, units[3];
@@ -685,7 +685,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       /* Don't forget to advance i past the value. */
       i++;
 
-    } else if (strcmp(cmd->argv[i], "pessimisticNewkeys") == 0) {
+    } else if (strncmp(cmd->argv[i], "pessimisticNewkeys", 19) == 0) {
       int pessimistic_newkeys;
       void *value;
 
@@ -706,7 +706,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       /* Don't forget to advance i past the value. */
       i++;
 
-    } else if (strcmp(cmd->argv[i], "sftpProtocolVersion") == 0) {
+    } else if (strncmp(cmd->argv[i], "sftpProtocolVersion", 20) == 0) {
       void *min_value, *max_value;
       char *ptr = NULL;
 
@@ -806,7 +806,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       i++;
 
 #ifdef PR_USE_NLS
-    } else if (strcmp(cmd->argv[i], "sftpUTF8ProtocolVersion") == 0) {
+    } else if (strncmp(cmd->argv[i], "sftpUTF8ProtocolVersion", 24) == 0) {
       char *ptr = NULL;
       void *value;
       long protocol_version;
@@ -1150,14 +1150,14 @@ MODRET set_sftpkeyexchanges(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strcmp(cmd->argv[i], "diffie-hellman-group1-sha1") != 0 &&
-        strcmp(cmd->argv[i], "diffie-hellman-group14-sha1") != 0 &&
+    if (strncmp(cmd->argv[i], "diffie-hellman-group1-sha1", 27) != 0 &&
+        strncmp(cmd->argv[i], "diffie-hellman-group14-sha1", 28) != 0 &&
 #if (OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
     (OPENSSL_VERSION_NUMBER > 0x000908000L)
-        strcmp(cmd->argv[i], "diffie-hellman-group-exchange-sha256") != 0 &&
+        strncmp(cmd->argv[i], "diffie-hellman-group-exchange-sha256", 37) != 0 &&
 #endif
-        strcmp(cmd->argv[i], "diffie-hellman-group-exchange-sha1") != 0 &&
-        strcmp(cmd->argv[i], "rsa1024-sha1") != 0) {
+        strncmp(cmd->argv[i], "diffie-hellman-group-exchange-sha1", 35) != 0 &&
+        strncmp(cmd->argv[i], "rsa1024-sha1", 13) != 0) {
 
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "unsupported key exchange algorithm: ", cmd->argv[i], NULL));
@@ -1226,16 +1226,16 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strcmp(cmd->argv[i], "IgnoreSFTPUploadPerms") == 0) {
+    if (strncmp(cmd->argv[i], "IgnoreSFTPUploadPerms", 22) == 0) {
       opts |= SFTP_OPT_IGNORE_SFTP_UPLOAD_PERMS;
 
-    } else if (strcmp(cmd->argv[i], "IgnoreSFTPSetPerms") == 0) {
+    } else if (strncmp(cmd->argv[i], "IgnoreSFTPSetPerms", 19) == 0) {
       opts |= SFTP_OPT_IGNORE_SFTP_SET_PERMS;
 
-    } else if (strcmp(cmd->argv[i], "IgnoreSCPUploadPerms") == 0) {
+    } else if (strncmp(cmd->argv[i], "IgnoreSCPUploadPerms", 20) == 0) {
       opts |= SFTP_OPT_IGNORE_SCP_UPLOAD_PERMS;
 
-    } else if (strcmp(cmd->argv[i], "OldProtocolCompat") == 0) {
+    } else if (strncmp(cmd->argv[i], "OldProtocolCompat", 18) == 0) {
       opts |= SFTP_OPT_OLD_PROTO_COMPAT;
 
       /* This option also automatically enables PessimisticKexint,
@@ -1243,10 +1243,10 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
        */
       opts |= SFTP_OPT_PESSIMISTIC_KEXINIT;
  
-    } else if (strcmp(cmd->argv[i], "PessimisticKexinit") == 0) {
+    } else if (strncmp(cmd->argv[i], "PessimisticKexinit", 19) == 0) {
       opts |= SFTP_OPT_PESSIMISTIC_KEXINIT;
 
-    } else if (strcmp(cmd->argv[i], "MatchKeySubject") == 0) {
+    } else if (strncmp(cmd->argv[i], "MatchKeySubject", 16) == 0) {
       opts |= SFTP_OPT_MATCH_KEY_SUBJECT;
 
     } else {
@@ -1432,7 +1432,7 @@ static void sftp_max_conns_ev(const void *event_data, void *user_data) {
 
 #if defined(PR_SHARED_MODULE)
 static void sftp_mod_unload_ev(const void *event_data, void *user_data) {
-  if (strcmp("mod_sftp.c", (const char *) event_data) == 0) {
+  if (strncmp((const char *) event_data, "mod_sftp.c", 11) == 0) {
     /* Unregister ourselves from all events. */
     pr_event_unregister(&sftp_module, NULL, NULL);
 

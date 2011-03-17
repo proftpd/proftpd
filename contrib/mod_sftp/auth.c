@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.32 2011-03-17 18:15:19 castaglia Exp $
+ * $Id: auth.c,v 1.33 2011-03-17 22:16:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -146,7 +146,7 @@ static char *get_default_root(pool *p) {
   if (path) {
     path = path_subst_uservar(p, &path);
 
-    if (strcmp(path, "/") == 0) {
+    if (strncmp(path, "/", 2) == 0) {
       path = NULL;
 
     } else {
@@ -505,7 +505,7 @@ static int setup_env(pool *p, char *user) {
 #endif
 
   if (pw->pw_dir == NULL ||
-      strcmp(pw->pw_dir, "") == 0) {
+      strncmp(pw->pw_dir, "", 1) == 0) {
     pr_log_pri(PR_LOG_ERR, "Home directory for user '%s' is NULL/empty",
       session.user);
     return -1;
@@ -693,16 +693,16 @@ static int send_userauth_failure(char *failed_meth) {
       meths = sreplace(pkt->pool, meths, ",,", ",", NULL);
     }
 
-    if (strcmp(failed_meth, "publickey") == 0) {
+    if (strncmp(failed_meth, "publickey", 10) == 0) {
       auth_meths_enabled &= ~SFTP_AUTH_FL_METH_PUBLICKEY;
 
-    } else if (strcmp(failed_meth, "hostbased") == 0) {
+    } else if (strncmp(failed_meth, "hostbased", 10) == 0) {
       auth_meths_enabled &= ~SFTP_AUTH_FL_METH_HOSTBASED;
 
-    } else if (strcmp(failed_meth, "password") == 0) {
+    } else if (strncmp(failed_meth, "password", 9) == 0) {
       auth_meths_enabled &= ~SFTP_AUTH_FL_METH_PASSWORD;
 
-    } else if (strcmp(failed_meth, "keyboard-interactive") == 0) {
+    } else if (strncmp(failed_meth, "keyboard-interactive", 21) == 0) {
       auth_meths_enabled &= ~SFTP_AUTH_FL_METH_KBDINT;
     }
 
@@ -957,7 +957,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     return -1;
   }
 
-  if (strcmp(method, "none") == 0) {
+  if (strncmp(method, "none", 5) == 0) {
     /* If the client requested the "none" auth method at this point, then
      * the list of authentication methods supported by the server is being
      * queried.
@@ -977,7 +977,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
     return 0;
 
-  } else if (strcmp(method, "publickey") == 0) {
+  } else if (strncmp(method, "publickey", 10) == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_PUBLICKEY) {
       res = sftp_auth_publickey(pkt, orig_user, user, *service, &buf, &buflen,
         &send_userauth_fail);
@@ -1002,7 +1002,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       return 0;
     }
 
-  } else if (strcmp(method, "keyboard-interactive") == 0) {
+  } else if (strncmp(method, "keyboard-interactive", 21) == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_KBDINT) {
       res = sftp_auth_kbdint(pkt, orig_user, user, *service, &buf, &buflen,
         &send_userauth_fail);
@@ -1027,7 +1027,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       return 0;
     }
 
-  } else if (strcmp(method, "password") == 0) {
+  } else if (strncmp(method, "password", 9) == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_PASSWORD) {
       res = sftp_auth_password(pkt, orig_user, user, *service, &buf, &buflen,
         &send_userauth_fail);
@@ -1052,7 +1052,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       return 0;
     }
 
-  } else if (strcmp(method, "hostbased") == 0) {
+  } else if (strncmp(method, "hostbased", 10) == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_HOSTBASED) {
       res = sftp_auth_hostbased(pkt, orig_user, user, *service, &buf, &buflen,
         &send_userauth_fail);

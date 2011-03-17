@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'hostbased' user authentication
- * Copyright (c) 2008-2009 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-hostbased.c,v 1.4 2009-03-19 06:04:08 castaglia Exp $
+ * $Id: auth-hostbased.c,v 1.5 2011-03-17 22:16:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -66,10 +66,10 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, const char *orig_user,
     "client sent '%s' host key, FQDN %s, and remote user '%s'",
     hostkey_algo, host_fqdn, host_user);
 
-  if (strcmp(hostkey_algo, "ssh-rsa") == 0) {
+  if (strncmp(hostkey_algo, "ssh-rsa", 8) == 0) {
     pubkey_type = EVP_PKEY_RSA;
 
-  } else if (strcmp(hostkey_algo, "ssh-dss") == 0) {
+  } else if (strncmp(hostkey_algo, "ssh-dss", 8) == 0) {
     pubkey_type = EVP_PKEY_DSA;
 
   /* XXX Need to support X509v3 certs here */

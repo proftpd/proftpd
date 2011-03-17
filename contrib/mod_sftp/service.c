@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp services
- * Copyright (c) 2008 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: service.c,v 1.4 2009-07-04 00:34:08 castaglia Exp $
+ * $Id: service.c,v 1.5 2011-03-17 22:16:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -49,8 +49,8 @@ static int read_service_req(struct ssh2_packet *pkt, char **service) {
   cmd->arg = service_name;
   cmd->class = CL_MISC;
 
-  if (strcmp(service_name, "ssh-userauth") == 0 ||
-      strcmp(service_name, "ssh-connection") == 0) {
+  if (strncmp(service_name, "ssh-userauth", 13) == 0 ||
+      strncmp(service_name, "ssh-connection", 14) == 0) {
     if (service)
       *service = pstrdup(service_pool, service_name);
 

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.57 2011-02-26 02:31:36 castaglia Exp $
+ * $Id: scp.c,v 1.58 2011-03-17 22:16:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -538,7 +538,7 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
     struct scp_path *sp) {
 
   if (strchr(name_str, '/') != NULL ||
-      strcmp(name_str, "..") == 0) {
+      strncmp(name_str, "..", 3) == 0) {
     pr_trace_msg(trace_channel, 2, "bad filename: '%s'", name_str);
     write_confirm(p, channel_id, 1,
       pstrcat(p, "unexpected filename: ", name_str, NULL));
@@ -1553,8 +1553,8 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
     pr_signals_handle();
 
     /* Skip "." and "..". */
-    if (strcmp(dent->d_name, ".") == 0 ||
-        strcmp(dent->d_name, "..") == 0) {
+    if (strncmp(dent->d_name, ".", 2) == 0 ||
+        strncmp(dent->d_name, "..", 3) == 0) {
       continue;
     }
 
