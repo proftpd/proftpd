@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.39 2011-03-03 21:38:54 castaglia Exp $
+ * $Id: mod_facts.c,v 1.40 2011-03-17 17:00:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1035,7 +1035,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     const char *fake_user;
 
     fake_user = c->argv[0];
-    if (strcmp(fake_user, "~") != 0) {
+    if (strncmp(fake_user, "~", 2) != 0) {
       fake_uid = pr_auth_name2uid(cmd->tmp_pool, fake_user);
 
     } else {
@@ -1049,7 +1049,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     const char *fake_group;
 
     fake_group = c->argv[0];
-    if (strcmp(fake_group, "~") != 0) {
+    if (strncmp(fake_group, "~", 2) != 0) {
       fake_gid = pr_auth_name2gid(cmd->tmp_pool, fake_group);
 
     } else {
@@ -1202,7 +1202,7 @@ MODRET facts_mlst(cmd_rec *cmd) {
     const char *fake_user;
 
     fake_user = c->argv[0];
-    if (strcmp(fake_user, "~") != 0) {
+    if (strncmp(fake_user, "~", 2) != 0) {
       fake_uid = pr_auth_name2uid(cmd->tmp_pool, fake_user);
 
     } else {
@@ -1216,7 +1216,7 @@ MODRET facts_mlst(cmd_rec *cmd) {
     const char *fake_group;
 
     fake_group = c->argv[0];
-    if (strcmp(fake_group, "~") != 0) {
+    if (strncmp(fake_group, "~", 2) != 0) {
       fake_gid = pr_auth_name2gid(cmd->tmp_pool, fake_group);
 
     } else {

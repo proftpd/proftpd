@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.34 2011-02-28 06:17:26 castaglia Exp $
+ * $Id: mod_lang.c,v 1.35 2011-03-17 17:00:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -621,8 +621,8 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
 
       pr_signals_handle();
 
-      if (strcmp(dent->d_name, ".") == 0 ||
-          strcmp(dent->d_name, "..") == 0) {
+      if (strncmp(dent->d_name, ".", 2) == 0 ||
+          strncmp(dent->d_name, "..", 3) == 0) {
         continue;
       }
 
