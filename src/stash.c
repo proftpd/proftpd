@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2010 The ProFTPD Project team
+ * Copyright (c) 2010-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Symbol table hashes
- * $Id: stash.c,v 1.2 2010-03-06 18:28:21 castaglia Exp $
+ * $Id: stash.c,v 1.3 2011-03-17 05:31:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -110,15 +110,19 @@ static int sym_cmp(struct stash *s1, struct stash *s2) {
   return res;
 }
 
-static int symtab_hash(const char *name) {
-  unsigned char *cp = NULL;
+static int symtab_hash(const char *name, size_t namelen) {
+  register unsigned int i;
   int total = 0;
 
-  if (!name)
+  if (name == NULL)
     return 0;
 
-  for (cp = (unsigned char *)name; *cp; cp++)
-    total += (int)*cp;
+  for (i = 0; i < namelen; i++) {
+    unsigned char *cp;
+
+    cp = &(name[i]);
+    total += (int) *cp;
+  }
 
   return (total < PR_TUNABLE_HASH_TABLE_SIZE ? total :
     (total % PR_TUNABLE_HASH_TABLE_SIZE));
@@ -180,19 +184,22 @@ int pr_stash_add_symbol(pr_stash_type_t sym_type, void *data) {
 
   /* XXX Ugly hack to support mixed cases of directives in config files. */
   if (sym_type != PR_SYM_CONF) {
-    idx = symtab_hash(sym->sym_name);
+    idx = symtab_hash(sym->sym_name, strlen(sym->sym_name));
 
   } else {
     register unsigned int i;
     char buf[1024];
+    size_t buflen;
 
     memset(buf, '\0', sizeof(buf));
     sstrncpy(buf, sym->sym_name, sizeof(buf)-1);
 
-    for (i = 0; i < strlen(buf); i++)
+    buflen = strlen(buf);
+    for (i = 0; i < buflen; i++) {
       buf[i] = tolower((int) buf[i]);
+    }
 
-    idx = symtab_hash(buf);
+    idx = symtab_hash(buf, buflen);
   }
 
   if (!symbol_table[idx]) {
@@ -204,15 +211,50 @@ int pr_stash_add_symbol(pr_stash_type_t sym_type, void *data) {
 }
 
 static struct stash *stash_lookup(pr_stash_type_t sym_type,
-    const char *name, int idx) {
+    const char *name, size_t namelen, int idx) {
   struct stash *sym = NULL;
 
   if (symbol_table[idx]) {
     for (sym = (struct stash *) symbol_table[idx]->xas_list; sym;
         sym = sym->next) {
-      if (sym->sym_type == sym_type &&
-          (!name || strcasecmp(sym->sym_name, name) == 0)) {
-        break;
+      if (sym->sym_type == sym_type) {
+        char name_start[2], sym_start[2];
+
+        if (name == NULL) {
+          break;
+        }
+
+        /* Cheap way of short-ciruiting the full strcasecmp(3), if we can:
+         * just check the first two characters in a case-insensitive fashion.
+         */
+        name_start[0] = sym_start[1] = '\0';
+        if (namelen >= 1) {
+          name_start[0] = tolower((int) name[0]);
+        }
+
+        if (sym->sym_name[0]) {
+          sym_start[0] = tolower((int) sym->sym_name[0]);
+        }
+
+        if (name_start[0] != sym_start[0]) {
+          continue;
+        }
+
+        if (namelen >= 2) {
+          name_start[1] = tolower((int) name[1]);
+        }
+
+        if (sym->sym_name[1]) {
+          sym_start[1] = tolower((int) sym->sym_name[1]);
+        }
+
+        if (name_start[1] != sym_start[1]) {
+          continue;
+        }
+
+        if (strncasecmp(sym->sym_name, name, namelen) == 0) {
+          break;
+        }
       }
     }
   }
@@ -221,16 +263,52 @@ static struct stash *stash_lookup(pr_stash_type_t sym_type,
 }
 
 static struct stash *stash_lookup_next(pr_stash_type_t sym_type,
-    const char *name, int idx, void *prev) {
+    const char *name, size_t namelen, int idx, void *prev) {
   struct stash *sym = NULL;
   int last_hit = 0;
 
   if (symbol_table[idx]) {
     for (sym = (struct stash *) symbol_table[idx]->xas_list; sym;
         sym = sym->next) {
-      if (last_hit && sym->sym_type == sym_type &&
-          (!name || strcasecmp(sym->sym_name, name) == 0)) {
-        break;
+      if (last_hit &&
+          sym->sym_type == sym_type) {
+        char name_start[2], sym_start[2];
+
+        if (name == NULL) {
+          break;
+        }
+
+        /* Cheap way of short-ciruiting the full strcasecmp(3), if we can:
+         * just check the first two characters in a case-insensitive fashion.
+         */
+        name_start[0] = sym_start[1] = '\0';
+        if (namelen >= 1) {
+          name_start[0] = tolower((int) name[0]);
+        }
+
+        if (sym->sym_name[0]) {
+          sym_start[0] = tolower((int) sym->sym_name[0]);
+        }
+
+        if (name_start[0] != sym_start[0]) {
+          continue;
+        }
+
+        if (namelen >= 2) {
+          name_start[1] = tolower((int) name[1]);
+        }
+
+        if (sym->sym_name[1]) {
+          sym_start[1] = tolower((int) sym->sym_name[1]);
+        }
+
+        if (name_start[1] != sym_start[1]) {
+          continue;
+        }
+
+        if (strncasecmp(sym->sym_name, name, namelen) == 0) {
+          break;
+        }
       }
 
       if (sym->ptr.sym_generic == prev) {
@@ -246,6 +324,11 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
     void *prev, int *idx_cache) {
   int idx;
   struct stash *sym = NULL;
+  size_t namelen = 0;
+
+  if (name != NULL) {
+    namelen = strlen(name);
+  }
 
   if (idx_cache &&
       *idx_cache != -1) {
@@ -255,37 +338,44 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
 
     /* XXX Ugly hack to support mixed cases of directives in config files. */
     if (sym_type != PR_SYM_CONF) {
-      idx = symtab_hash(name);
+      idx = symtab_hash(name, namelen);
 
     } else {
       register unsigned int i;
       char buf[1024];
+      size_t buflen;
 
       memset(buf, '\0', sizeof(buf));
       sstrncpy(buf, name, sizeof(buf)-1);
 
-      for (i = 0; i < strlen(buf); i++)
+      buflen = strlen(buf);
+      for (i = 0; i < buflen; i++) {
         buf[i] = tolower((int) buf[i]);
+      }
 
-      idx = symtab_hash(buf);
+      idx = symtab_hash(buf, buflen);
     }
 
-    if (idx_cache)
+    if (idx_cache) {
       *idx_cache = idx;
+    }
   }
 
   if (idx >= PR_TUNABLE_HASH_TABLE_SIZE) {
-    if (*idx_cache)
+    if (*idx_cache) {
       *idx_cache = -1;
+    }
 
     errno = EINVAL;
     return NULL;
   }
 
-  if (prev)
-    curr_sym = sym = stash_lookup_next(sym_type, name, idx, prev);
-  else
-    curr_sym = sym = stash_lookup(sym_type, name, idx);
+  if (prev) {
+    curr_sym = sym = stash_lookup_next(sym_type, name, namelen, idx, prev);
+
+  } else {
+    curr_sym = sym = stash_lookup(sym_type, name, namelen, idx);
+  }
 
   switch (sym_type) {
     case PR_SYM_CONF:
@@ -328,27 +418,33 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
 int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
     module *sym_module) {
   int count = 0, symtab_idx = 0;
+  size_t sym_namelen = 0;
 
-  if (!sym_name) {
+  if (sym_name == NULL) {
     errno = EINVAL;
     return -1;
   }
 
+  sym_namelen = strlen(sym_name);
+
   /* XXX Ugly hack to support mixed cases of directives in config files. */
   if (sym_type != PR_SYM_CONF) {
-    symtab_idx = symtab_hash(sym_name);
+    symtab_idx = symtab_hash(sym_name, sym_namelen);
 
   } else {
     register unsigned int i;
     char buf[1024];
+    size_t buflen;
 
     memset(buf, '\0', sizeof(buf));
     sstrncpy(buf, sym_name, sizeof(buf)-1);
 
-    for (i = 0; i < strlen(buf); i++)
+    buflen = strlen(buf);
+    for (i = 0; i < buflen; i++) {
       buf[i] = tolower((int) buf[i]);
+    }
 
-    symtab_idx = symtab_hash(buf);
+    symtab_idx = symtab_hash(buf, buflen);
   }
 
   switch (sym_type) {
@@ -470,8 +566,9 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
 }
 
 int init_stash(void) {
-  if (symbol_pool)
+  if (symbol_pool != NULL) {
     destroy_pool(symbol_pool);
+  }
 
   symbol_pool = make_sub_pool(permanent_pool); 
   pr_pool_tag(symbol_pool, "Stash Pool");
