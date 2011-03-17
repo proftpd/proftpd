@@ -55,7 +55,10 @@ ChangeLog files.
     doc/howto/ConnectionACLs.html
     doc/utils/ftpasswd.html
     doc/utils/ftpcount.html
+    doc/utils/ftpdctl.html
     doc/utils/ftpquota.html
+    doc/utils/ftpscrub.html
+    doc/utils/ftptop.html
     doc/utils/ftpwho.html
 
   + Developer/API Changes
@@ -226,4 +229,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2011-03-16 18:26:47 $
+Last Updated: $Date: 2011-03-17 01:02:25 $
