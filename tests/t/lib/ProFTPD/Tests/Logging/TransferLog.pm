@@ -72,7 +72,8 @@ sub xferlog_retr_ascii_ok {
   my $config_file = "$tmpdir/xferlog.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/xferlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/xferlog.scoreboard");
-  my $log_file = File::Spec->rel2abs('xferlog.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/xferlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/xferlog.group");
@@ -81,6 +82,7 @@ sub xferlog_retr_ascii_ok {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -99,7 +101,7 @@ sub xferlog_retr_ascii_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $xfer_log = File::Spec->rel2abs("$tmpdir/xfer.log");
 
@@ -231,7 +233,8 @@ sub xferlog_retr_binary_ok {
   my $config_file = "$tmpdir/xferlog.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/xferlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/xferlog.scoreboard");
-  my $log_file = File::Spec->rel2abs('xferlog.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/xferlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/xferlog.group");
@@ -240,6 +243,7 @@ sub xferlog_retr_binary_ok {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -258,7 +262,7 @@ sub xferlog_retr_binary_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $xfer_log = File::Spec->rel2abs("$tmpdir/xfer.log");
 
@@ -390,7 +394,8 @@ sub xferlog_retr_aborted {
   my $config_file = "$tmpdir/xferlog.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/xferlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/xferlog.scoreboard");
-  my $log_file = File::Spec->rel2abs('xferlog.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/xferlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/xferlog.group");
@@ -409,6 +414,7 @@ sub xferlog_retr_aborted {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -427,7 +433,7 @@ sub xferlog_retr_aborted {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $xfer_log = File::Spec->rel2abs("$tmpdir/xfer.log");
 
@@ -563,7 +569,8 @@ sub xferlog_stor_ascii_ok {
   my $config_file = "$tmpdir/xferlog.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/xferlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/xferlog.scoreboard");
-  my $log_file = File::Spec->rel2abs('xferlog.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/xferlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/xferlog.group");
@@ -572,6 +579,7 @@ sub xferlog_stor_ascii_ok {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -590,7 +598,7 @@ sub xferlog_stor_ascii_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $xfer_log = File::Spec->rel2abs("$tmpdir/xfer.log");
 
@@ -722,7 +730,8 @@ sub xferlog_stor_binary_ok {
   my $config_file = "$tmpdir/xferlog.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/xferlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/xferlog.scoreboard");
-  my $log_file = File::Spec->rel2abs('xferlog.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/xferlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/xferlog.group");
@@ -731,6 +740,7 @@ sub xferlog_stor_binary_ok {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -749,7 +759,7 @@ sub xferlog_stor_binary_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $xfer_log = File::Spec->rel2abs("$tmpdir/xfer.log");
 
@@ -881,7 +891,8 @@ sub xferlog_stor_aborted {
   my $config_file = "$tmpdir/xferlog.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/xferlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/xferlog.scoreboard");
-  my $log_file = File::Spec->rel2abs('xferlog.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/xferlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/xferlog.group");
@@ -890,6 +901,7 @@ sub xferlog_stor_aborted {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -908,7 +920,7 @@ sub xferlog_stor_aborted {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $xfer_log = File::Spec->rel2abs("$tmpdir/xfer.log");
 
@@ -1036,7 +1048,8 @@ sub xferlog_dele_ok {
   my $config_file = "$tmpdir/xferlog.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/xferlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/xferlog.scoreboard");
-  my $log_file = File::Spec->rel2abs('xferlog.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/xferlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/xferlog.group");
@@ -1057,6 +1070,7 @@ sub xferlog_dele_ok {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1075,7 +1089,7 @@ sub xferlog_dele_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $xfer_log = File::Spec->rel2abs("$tmpdir/xfer.log");
 
@@ -1200,7 +1214,8 @@ sub xferlog_device_full {
   my $config_file = "$tmpdir/xferlog.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/xferlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/xferlog.scoreboard");
-  my $log_file = File::Spec->rel2abs('xferlog.log');
+
+  my $log_file = File::Spec->rel2abs('tests.log');
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/xferlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/xferlog.group");
@@ -1219,6 +1234,7 @@ sub xferlog_device_full {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1237,7 +1253,7 @@ sub xferlog_device_full {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   # XXX The /dev/full device only exists on Linux, as far as I know
   my $xfer_log = File::Spec->rel2abs('/dev/full');
