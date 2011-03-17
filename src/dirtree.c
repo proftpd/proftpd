@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.251 2011-03-03 21:38:54 castaglia Exp $
+ * $Id: dirtree.c,v 1.252 2011-03-17 14:05:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -110,9 +110,12 @@ static int allow_dyn_config(const char *path) {
 
 /* Return true if dir is ".", "./", "../", or "..". */
 int is_dotdir(const char *dir) {
-  if (strcmp(dir, ".") == 0 || strcmp(dir, "./") == 0 ||
-      strcmp(dir, "..") == 0 || strcmp(dir, "../") == 0)
+  if (strncmp(dir, ".", 2) == 0 ||
+      strncmp(dir, "./", 2) == 0 ||
+      strncmp(dir, "..", 3) == 0 ||
+      strncmp(dir, "../", 3) == 0) {
     return TRUE;
+  }
 
   return FALSE;
 }
@@ -326,7 +329,7 @@ unsigned char dir_hide_file(const char *path) {
     if (c->argc >= 4) {
 
       /* check for a specified "user" classifier first... */
-      if (strcmp(c->argv[3], "user") == 0) {
+      if (strncmp(c->argv[3], "user", 5) == 0) {
         if (pr_expr_eval_user_or((char **) &c->argv[4]) == TRUE) {
 
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
@@ -341,7 +344,7 @@ unsigned char dir_hide_file(const char *path) {
         }
 
       /* ...then for a "group" classifier... */
-      } else if (strcmp(c->argv[3], "group") == 0) {
+      } else if (strncmp(c->argv[3], "group", 6) == 0) {
         if (pr_expr_eval_group_and((char **) &c->argv[4]) == TRUE) {
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
@@ -359,7 +362,7 @@ unsigned char dir_hide_file(const char *path) {
        * core code at some point.  When that happens, then this code will
        * need to be updated to process class-expressions.
        */
-      } else if (strcmp(c->argv[3], "class") == 0) {
+      } else if (strncmp(c->argv[3], "class", 6) == 0) {
         if (pr_expr_eval_class_or((char **) &c->argv[4]) == TRUE) {
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
@@ -1803,7 +1806,7 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
        * we know that we are dealing with the "/path" case.
        */
       if (ptr == curr_dir_path) {
-        if (strcmp(curr_dir_path, "/") == 0) {
+        if (strncmp(curr_dir_path, "/", 2) == 0) {
           /* We've reached the top; stop scanning. */
           curr_dir_path = NULL;
 

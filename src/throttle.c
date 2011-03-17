@@ -23,7 +23,7 @@
  */
 
 /* TransferRate throttling
- * $Id: throttle.c,v 1.8 2011-01-12 06:54:49 castaglia Exp $
+ * $Id: throttle.c,v 1.9 2011-03-17 14:05:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -136,7 +136,7 @@ void pr_throttle_init(cmd_rec *cmd) {
     }
 
     if (c->argc > 4) {
-      if (strcmp(c->argv[4], "user") == 0) {
+      if (strncmp(c->argv[4], "user", 5) == 0) {
 
         if (pr_expr_eval_user_or((char **) &c->argv[5]) == TRUE &&
             *((unsigned int *) c->argv[3]) > precedence) {
@@ -151,7 +151,7 @@ void pr_throttle_init(cmd_rec *cmd) {
           have_group_rate = have_class_rate = FALSE;
         }
 
-      } else if (strcmp(c->argv[4], "group") == 0) {
+      } else if (strncmp(c->argv[4], "group", 6) == 0) {
 
         if (pr_expr_eval_group_and((char **) &c->argv[5]) == TRUE &&
             *((unsigned int *) c->argv[3]) > precedence) {
@@ -166,7 +166,7 @@ void pr_throttle_init(cmd_rec *cmd) {
           have_user_rate = have_class_rate = FALSE;
         }
 
-      } else if (strcmp(c->argv[4], "class") == 0) {
+      } else if (strncmp(c->argv[4], "class", 6) == 0) {
 
         if (pr_expr_eval_class_or((char **) &c->argv[5]) == TRUE &&
           *((unsigned int *) c->argv[3]) > precedence) {

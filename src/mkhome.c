@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2010 The ProFTPD Project team
+ * Copyright (c) 2003-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.15 2010-09-13 23:13:27 castaglia Exp $
+ * $Id: mkhome.c,v 1.16 2011-03-17 14:05:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -195,8 +195,8 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
     pr_signals_handle();
 
     /* Skip "." and ".." */
-    if (strcmp(dent->d_name, ".") == 0 ||
-        strcmp(dent->d_name, "..") == 0) {
+    if (strncmp(dent->d_name, ".", 2) == 0 ||
+        strncmp(dent->d_name, "..", 3) == 0) {
       continue;
     }
 

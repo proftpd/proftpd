@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.98 2011-03-03 21:38:54 castaglia Exp $
+ * $Id: fsio.c,v 1.99 2011-03-17 14:05:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -367,8 +367,9 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
      * On some systems (e.g. Cygwin), this duplication can cause problems,
      * as the path may then have different semantics.
      */
-    if (strcmp(cwd, "/") != 0)
+    if (strncmp(cwd, "/", 2) != 0) {
       sstrcat(pathbuf, "/", sizeof(pathbuf)-1);
+    }
 
     sstrcat(pathbuf, path, sizeof(pathbuf)-1);
 
@@ -1628,13 +1629,13 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
       pr_signals_handle();
 
       /* Handle "." */
-      if (strcmp(where, ".") == 0) {
+      if (strncmp(where, ".", 2) == 0) {
         where++;
         continue;
       }
 
       /* Handle ".." */
-      if (strcmp(where, "..") == 0) {
+      if (strncmp(where, "..", 3) == 0) {
         where += 2;
         ptr = last = workpath;
 
@@ -1688,8 +1689,9 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
         if (*--last != '/')
           sstrcat(namebuf, "/", sizeof(namebuf)-1);
 
-      } else
+      } else {
         sstrcat(namebuf, "/", sizeof(namebuf)-1);
+      }
 
       sstrcat(namebuf, where, sizeof(namebuf)-1);
 
@@ -1807,19 +1809,19 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
     while (*where != '\0') {
       pr_signals_handle();
 
-      if (strcmp(where, ".") == 0) {
+      if (strncmp(where, ".", 2) == 0) {
         where++;
         continue;
       }
 
       /* handle "./" */
-      if (!strncmp(where, "./", 2)) {
+      if (strncmp(where, "./", 2) == 0) {
         where += 2;
         continue;
       }
 
       /* handle "../" */
-      if (!strncmp(where, "../", 3)) {
+      if (strncmp(where, "../", 3) == 0) {
         where += 3;
         ptr = last = workpath;
         while (*ptr) {
@@ -1960,19 +1962,19 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
     while (*where != '\0') {
       pr_signals_handle();
 
-      if (strcmp(where, ".") == 0) {
+      if (strncmp(where, ".", 2) == 0) {
         where++;
         continue;
       }
 
       /* handle "./" */
-      if (!strncmp(where, "./", 2)) {
+      if (strncmp(where, "./", 2) == 0) {
         where += 2;
         continue;
       }
 
       /* handle ".." */
-      if (strcmp(where, "..") == 0) {
+      if (strncmp(where, "..", 3) == 0) {
         where += 2;
         ptr = last = workpath;
 
@@ -1987,7 +1989,7 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
       }
 
       /* handle "../" */
-      if (!strncmp(where, "../", 3)) {
+      if (strncmp(where, "../", 3) == 0) {
         where += 3;
         ptr = last = workpath;
 
@@ -2142,19 +2144,19 @@ void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {
   while (fini--) {
     where = curpath;
     while (*where != '\0') {
-      if (strcmp(where, ".") == 0) {
+      if (strncmp(where, ".", 2) == 0) {
         where++;
         continue;
       }
 
       /* handle "./" */
-      if (!strncmp(where, "./", 2)) {
+      if (strncmp(where, "./", 2) == 0) {
         where += 2;
         continue;
       }
 
       /* handle ".." */
-      if (strcmp(where, "..") == 0) {
+      if (strncmp(where, "..", 3) == 0) {
         where += 2;
         ptr = last = workpath;
         while (*ptr) {
@@ -2168,7 +2170,7 @@ void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {
       }
 
       /* handle "../" */
-      if (!strncmp(where, "../", 3)) {
+      if (strncmp(where, "../", 3) == 0) {
         where += 3;
         ptr = last = workpath;
         while (*ptr) {
@@ -3930,7 +3932,7 @@ void pr_resolve_fs_map(void) {
      * to re-add that slash to the adjusted path -- these trailing slashes
      * are important!
      */
-    if ((strcmp(tmpfs->fs_path, "/") != 0 &&
+    if ((strncmp(tmpfs->fs_path, "/", 2) != 0 &&
         (tmpfs->fs_path)[strlen(tmpfs->fs_path) - 1] == '/'))
       add_slash = TRUE;
 
