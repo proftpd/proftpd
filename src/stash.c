@@ -23,7 +23,7 @@
  */
 
 /* Symbol table hashes
- * $Id: stash.c,v 1.3 2011-03-17 05:31:58 castaglia Exp $
+ * $Id: stash.c,v 1.4 2011-03-17 05:42:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -240,9 +240,14 @@ static struct stash *stash_lookup(pr_stash_type_t sym_type,
           continue;
         }
 
-        if (namelen >= 2) {
-          name_start[1] = tolower((int) name[1]);
+        /* No need to continue checking if we know that the first and
+         * only character doesn't match.
+         */
+        if (namelen == 1) {
+          continue;
         }
+
+        name_start[1] = tolower((int) name[1]);
 
         if (sym->sym_name[1]) {
           sym_start[1] = tolower((int) sym->sym_name[1]);
@@ -252,7 +257,18 @@ static struct stash *stash_lookup(pr_stash_type_t sym_type,
           continue;
         }
 
-        if (strncasecmp(sym->sym_name, name, namelen) == 0) {
+        /* No need to continue checking if we know that the first two
+         * (and only) characters don't match.
+         */
+        if (namelen == 2) {
+          continue;
+        }
+
+        /* Since we've already checked the first two characters, advance
+         * past them to check the remaining characters (and reduce the
+         * number of bytes compared by strncasecmp(3)).
+         */
+        if (strncasecmp(sym->sym_name + 2, name + 2, namelen - 2) == 0) {
           break;
         }
       }
@@ -294,9 +310,14 @@ static struct stash *stash_lookup_next(pr_stash_type_t sym_type,
           continue;
         }
 
-        if (namelen >= 2) {
-          name_start[1] = tolower((int) name[1]);
+        /* No need to continue checking if we know that the first and
+         * only character doesn't match.
+         */
+        if (namelen == 1) {
+          continue;
         }
+
+        name_start[1] = tolower((int) name[1]);
 
         if (sym->sym_name[1]) {
           sym_start[1] = tolower((int) sym->sym_name[1]);
@@ -306,7 +327,18 @@ static struct stash *stash_lookup_next(pr_stash_type_t sym_type,
           continue;
         }
 
-        if (strncasecmp(sym->sym_name, name, namelen) == 0) {
+        /* No need to continue checking if we know that the first two
+         * (and only) characters don't match.
+         */
+        if (namelen == 2) {
+          continue;
+        }
+
+        /* Since we've already checked the first two characters, advance
+         * past them to check the remaining characters (and reduce the
+         * number of bytes compared by strncasecmp(3)).
+         */
+        if (strncasecmp(sym->sym_name + 2, name + 2, namelen - 2) == 0) {
           break;
         }
       }
