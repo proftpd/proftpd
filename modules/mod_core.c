@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.399 2011-03-16 18:26:48 castaglia Exp $
+ * $Id: mod_core.c,v 1.400 2011-03-17 17:08:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1226,7 +1226,7 @@ MODRET set_trace(cmd_rec *cmd) {
   /* Look for the optional "session" keyword, which will indicate that these
    * Trace settings are to be applied to a session process only.
    */
-  if (strcmp(cmd->argv[1], "session") == 0) {
+  if (strncmp(cmd->argv[1], "session", 8) == 0) {
 
     /* If this is the only parameter, it's a config error. */
     if (cmd->argc == 2) {
@@ -1434,7 +1434,7 @@ MODRET set_regexoptions(cmd_rec *cmd) {
    */
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strcmp(cmd->argv[i], "MatchLimit") == 0) {
+    if (strncmp(cmd->argv[i], "MatchLimit", 11) == 0) {
       char *ptr = NULL;
 
       match_limit = strtoul(cmd->argv[i+1], &ptr, 10);
@@ -1446,7 +1446,7 @@ MODRET set_regexoptions(cmd_rec *cmd) {
       /* Don't forget to advance i past the value. */
       i += 2;
 
-    } else if (strcmp(cmd->argv[i], "MatchLimitRecursion") == 0) {
+    } else if (strncmp(cmd->argv[i], "MatchLimitRecursion", 20) == 0) {
       char *ptr = NULL;
 
       match_limit_recursion = strtoul(cmd->argv[i+1], &ptr, 10);
@@ -1486,7 +1486,7 @@ MODRET set_rlimitcpu(cmd_rec *cmd) {
    * Otherwise, it can appear in the full range of server contexts.
    */
 
-  if (strcmp(cmd->argv[1], "daemon") == 0) {
+  if (strncmp(cmd->argv[1], "daemon", 7) == 0) {
     CHECK_CONF(cmd, CONF_ROOT);
 
   } else {
@@ -1496,8 +1496,8 @@ MODRET set_rlimitcpu(cmd_rec *cmd) {
   /* Handle the newer format, which uses "daemon" or "session" or "none"
    * as the first parameter.
    */
-  if (strcmp(cmd->argv[1], "daemon") == 0 ||
-      strcmp(cmd->argv[1], "session") == 0) {
+  if (strncmp(cmd->argv[1], "daemon", 7) == 0 ||
+      strncmp(cmd->argv[1], "session", 8) == 0) {
     config_rec *c = NULL;
     struct rlimit *rlim = pcalloc(cmd->server->pool, sizeof(struct rlimit));
 
@@ -1612,7 +1612,7 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
    * Otherwise, it can appear in the full range of server contexts.
    */
 
-  if (strcmp(cmd->argv[1], "daemon") == 0) {
+  if (strncmp(cmd->argv[1], "daemon", 7) == 0) {
     CHECK_CONF(cmd, CONF_ROOT);
 
   } else {
@@ -1622,8 +1622,8 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
   /* Handle the newer format, which uses "daemon" or "session" or "none"
    * as the first parameter.
    */
-  if (strcmp(cmd->argv[1], "daemon") == 0 ||
-      strcmp(cmd->argv[1], "session") == 0) {
+  if (strncmp(cmd->argv[1], "daemon", 7) == 0 ||
+      strncmp(cmd->argv[1], "session", 8) == 0) {
     config_rec *c = NULL;
     struct rlimit *rlim = pcalloc(cmd->server->pool, sizeof(struct rlimit));
 
@@ -1758,7 +1758,7 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
    * Otherwise, it can appear in the full range of server contexts.
    */
 
-  if (strcmp(cmd->argv[1], "daemon") == 0) {
+  if (strncmp(cmd->argv[1], "daemon", 7) == 0) {
     CHECK_CONF(cmd, CONF_ROOT);
 
   } else {
@@ -1768,8 +1768,8 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
   /* Handle the newer format, which uses "daemon" or "session" or "none"
    * as the first parameter.
    */
-  if (strcmp(cmd->argv[1], "daemon") == 0 ||
-      strcmp(cmd->argv[1], "session") == 0) {
+  if (strncmp(cmd->argv[1], "daemon", 7) == 0 ||
+      strncmp(cmd->argv[1], "session", 8) == 0) {
     config_rec *c = NULL;
     struct rlimit *rlim = pcalloc(cmd->server->pool, sizeof(struct rlimit));
 
@@ -2193,7 +2193,7 @@ MODRET add_directory(cmd_rec *cmd) {
       cmd->config->config_type == CONF_ANON &&
       *dir != '/' &&
       *dir != '~') {
-    if (strcmp(dir, "*") != 0)
+    if (strncmp(dir, "*", 2) != 0)
       dir = pdircat(cmd->tmp_pool, "/", dir, NULL);
     rootdir = cmd->config->name;
 
@@ -2317,9 +2317,9 @@ MODRET set_hidefiles(cmd_rec *cmd) {
    * a valid classifier was used.
    */
   if (cmd->argc-1 == 3) {
-    if (strcmp(cmd->argv[2], "user") == 0 ||
-        strcmp(cmd->argv[2], "group") == 0 ||
-        strcmp(cmd->argv[2], "class") == 0) {
+    if (strncmp(cmd->argv[2], "user", 5) == 0 ||
+        strncmp(cmd->argv[2], "group", 6) == 0 ||
+        strncmp(cmd->argv[2], "class", 6) == 0) {
 
       /* no-op */
 
@@ -2431,7 +2431,7 @@ MODRET set_hideuser(cmd_rec *cmd) {
     user++;
   }
 
-  if (strcmp(user, "~") != 0) {
+  if (strncmp(user, "~", 2) != 0) {
     struct passwd *pw;
 
     pw = pr_auth_getpwnam(cmd->tmp_pool, user);
@@ -2471,7 +2471,7 @@ MODRET set_hidegroup(cmd_rec *cmd) {
     group++;
   }
 
-  if (strcmp(group, "~") != 0) {
+  if (strncmp(group, "~", 2) != 0) {
     struct group *gr;
 
     gr = pr_auth_getgrnam(cmd->tmp_pool, group);
@@ -2601,7 +2601,7 @@ MODRET add_anonymous(cmd_rec *cmd) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") wildcards not allowed "
       "in pathname", NULL));
 
-  if (strcmp(dir,"/") == 0)
+  if (strncmp(dir, "/", 2) == 0)
     CONF_ERROR(cmd, "'/' not permitted for anonymous root directory");
 
   if (*(dir+strlen(dir)-1) != '/')
@@ -2830,10 +2830,10 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
   /* For AllowClass/DenyClass and AllowUser/DenyUser, the default expression
    * type is "or".
    */
-  if (strcmp(cmd->argv[0], "AllowClass") == 0 ||
-      strcmp(cmd->argv[0], "AllowUser") == 0 ||
-      strcmp(cmd->argv[0], "DenyClass") == 0 ||
-      strcmp(cmd->argv[0], "DenyUser") == 0) {
+  if (strncmp(cmd->argv[0], "AllowClass", 11) == 0 ||
+      strncmp(cmd->argv[0], "AllowUser", 10) == 0 ||
+      strncmp(cmd->argv[0], "DenyClass", 10) == 0 ||
+      strncmp(cmd->argv[0], "DenyUser", 9) == 0) {
     eval_type = PR_EXPR_EVAL_OR;
 
   /* For AllowGroup and DenyGroup, the default expression type is "and". */
