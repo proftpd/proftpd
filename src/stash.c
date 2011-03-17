@@ -23,16 +23,17 @@
  */
 
 /* Symbol table hashes
- * $Id: stash.c,v 1.5 2011-03-17 05:46:50 castaglia Exp $
+ * $Id: stash.c,v 1.6 2011-03-17 13:18:07 castaglia Exp $
  */
 
 #include "conf.h"
 
 /* This local structure vastly speeds up symbol lookups. */
 struct stash {
-  struct stash *next,*prev;
+  struct stash *next, *prev;
   pool *sym_pool;
   const char *sym_name;
+  size_t sym_namelen;
   pr_stash_type_t sym_type;
   module *sym_module;
 
@@ -71,8 +72,11 @@ static struct stash *sym_alloc(void) {
 
 static int sym_cmp(struct stash *s1, struct stash *s2) {
   int res;
+  size_t namelen;
 
-  res = strcmp(s1->sym_name, s2->sym_name);
+  namelen = s1->sym_namelen < s2->sym_namelen ? s1->sym_namelen :
+    s2->sym_namelen;
+  res = strncmp(s1->sym_name, s2->sym_name, namelen);
 
   /* Higher priority modules must go BEFORE lower priority in the
    * hash tables.
@@ -120,7 +124,7 @@ static int symtab_hash(const char *name, size_t namelen) {
   for (i = 0; i < namelen; i++) {
     unsigned char *cp;
 
-    cp = &(name[i]);
+    cp = (unsigned char *) &(name[i]);
     total += (int) *cp;
   }
 
@@ -182,9 +186,11 @@ int pr_stash_add_symbol(pr_stash_type_t sym_type, void *data) {
     return -1;
   }
 
+  sym->sym_namelen = strlen(sym->sym_name);
+
   /* XXX Ugly hack to support mixed cases of directives in config files. */
   if (sym_type != PR_SYM_CONF) {
-    idx = symtab_hash(sym->sym_name, strlen(sym->sym_name));
+    idx = symtab_hash(sym->sym_name, sym->sym_namelen);
 
   } else {
     register unsigned int i;
