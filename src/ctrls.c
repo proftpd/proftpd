@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.25 2011-03-17 16:43:11 castaglia Exp $
+ * $Id: ctrls.c,v 1.26 2011-03-17 16:47:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1699,7 +1699,7 @@ void pr_ctrls_set_group_acl(pool *grp_acl_pool, ctrls_grp_acl_t *grp_acl,
   for (group = *groups; group != NULL; group = *++groups) {
 
     /* Handle a group name of "*" differently. */
-    if (strcmp("*", group) == 0) {
+    if (strncmp(group, "*", 2) == 0) {
       grp_acl->ngids = 1;
       grp_acl->gids = NULL;
       destroy_pool(tmp_pool);
@@ -1755,7 +1755,7 @@ void pr_ctrls_set_user_acl(pool *usr_acl_pool, ctrls_usr_acl_t *usr_acl,
   for (user = *users; user != NULL; user = *++users) {
 
     /* Handle a user name of "*" differently. */
-    if (strcmp("*", user) == 0) {
+    if (strncmp(user, "*", 2) == 0) {
       usr_acl->nuids = 1;
       usr_acl->uids = NULL;
       destroy_pool(tmp_pool);
