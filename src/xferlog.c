@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2010 The ProFTPD Project team
+ * Copyright (c) 2003-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD xferlog(5) logging support.
- * $Id: xferlog.c,v 1.7 2010-03-10 16:14:28 castaglia Exp $
+ * $Id: xferlog.c,v 1.8 2011-03-17 13:10:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -87,7 +87,7 @@ int xferlog_write(long xfertime, const char *remhost, off_t fsize, char *fname,
      * "*", since "*" is to be logged in the xferlog, as per the doc, when
      * the authenticated user ID is not available.
      */
-    if (strcmp(rfc1413_ident, "UNKNOWN") == 0)
+    if (strncmp(rfc1413_ident, "UNKNOWN", 7) == 0)
       rfc1413_ident = "*";
 
   } else {
