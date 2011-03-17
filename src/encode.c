@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.28 2011-03-17 14:10:26 castaglia Exp $
+ * $Id: encode.c,v 1.29 2011-03-17 17:35:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -106,11 +106,11 @@ static void set_supports_telnet_iac(const char *codeset) {
    * commonly used character sets.
    */
 
-  if (strcasecmp(codeset, "CP1251") == 0 ||
-      strcasecmp(codeset, "CP866") == 0 ||
-      strcasecmp(codeset, "ISO-8859-1") == 0 ||
-      strcasecmp(codeset, "KOI8-R") == 0 ||
-      strcasecmp(codeset, "WINDOWS-1251") == 0) {
+  if (strncasecmp(codeset, "CP1251", 7) == 0 ||
+      strncasecmp(codeset, "CP866", 6) == 0 ||
+      strncasecmp(codeset, "ISO-8859-1", 11) == 0 ||
+      strncasecmp(codeset, "KOI8-R", 7) == 0 ||
+      strncasecmp(codeset, "WINDOWS-1251", 13) == 0) {
     supports_telnet_iac = FALSE;
     return;
   }
@@ -472,8 +472,8 @@ int pr_encode_is_utf8(const char *codeset) {
     return -1;
   }
 
-  if (strcasecmp(codeset, "UTF8") == 0 ||
-      strcasecmp(codeset, "UTF-8") == 0) {
+  if (strncasecmp(codeset, "UTF8", 5) == 0 ||
+      strncasecmp(codeset, "UTF-8", 6) == 0) {
     return TRUE;
   }
 

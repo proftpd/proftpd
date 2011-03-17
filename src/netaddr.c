@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2010 The ProFTPD Project team
+ * Copyright (c) 2003-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.76 2010-12-15 03:07:36 castaglia Exp $
+ * $Id: netaddr.c,v 1.77 2011-03-17 17:35:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -292,11 +292,12 @@ int pr_getaddrinfo(const char *node, const char *service,
          *pe->p_name != 0)
       proto_name = pe->p_name;
 
-    if (hints->ai_socktype != 0)
+    if (hints->ai_socktype != 0) {
       socktype = hints->ai_socktype;
 
-    else if (strcasecmp(proto_name, "udp") == 0)
+    } else if (strncasecmp(proto_name, "udp", 4) == 0) {
       socktype = SOCK_DGRAM;
+    }
   }
 
   if (service != NULL) {

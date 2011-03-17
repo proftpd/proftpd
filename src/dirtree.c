@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.254 2011-03-17 16:35:51 castaglia Exp $
+ * $Id: dirtree.c,v 1.255 2011-03-17 17:35:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1380,7 +1380,7 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
   for (c = (config_rec *) set->xas_list; c; c = c->next) {
     if (c->config_type == CONF_LIMIT) {
       for (argc = c->argc, argv = (char **) c->argv; argc; argc--, argv++) {
-        if (strcasecmp("LOGIN", *argv) == 0) {
+        if (strncasecmp(*argv, "LOGIN", 6) == 0) {
           break;
         }
       }

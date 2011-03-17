@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.104 2011-01-12 06:54:49 castaglia Exp $
+ * $Id: log.c,v 1.105 2011-03-17 17:35:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -540,29 +540,30 @@ int pr_log_setdebuglevel(int level) {
  */
 int pr_log_str2sysloglevel(const char *name) {
 
-  if (strcasecmp(name, "emerg") == 0)
+  if (strncasecmp(name, "emerg", 6) == 0) {
     return PR_LOG_EMERG;
 
-  else if (strcasecmp(name, "alert") == 0)
+  } else if (strncasecmp(name, "alert", 6) == 0) {
     return PR_LOG_ALERT;
 
-  else if (strcasecmp(name, "crit") == 0)
+  } else if (strncasecmp(name, "crit", 5) == 0) {
     return PR_LOG_CRIT;
 
-  else if (strcasecmp(name, "error") == 0)
+  } else if (strncasecmp(name, "error", 6) == 0) {
     return PR_LOG_ERR;
 
-  else if (strcasecmp(name, "warn") == 0)
+  } else if (strncasecmp(name, "warn", 5) == 0) {
     return PR_LOG_WARNING;
 
-  else if (strcasecmp(name, "notice") == 0)
+  } else if (strncasecmp(name, "notice", 7) == 0) {
     return PR_LOG_NOTICE;
 
-  else if (strcasecmp(name, "info") == 0)
+  } else if (strncasecmp(name, "info", 5) == 0) {
     return PR_LOG_INFO;
 
-  else if (strcasecmp(name, "debug") == 0)
+  } else if (strncasecmp(name, "debug", 6) == 0) {
     return PR_LOG_DEBUG;
+  }
 
   errno = ENOENT;
   return -1;

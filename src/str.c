@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2010 The ProFTPD Project team
+ * Copyright (c) 2008-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.9 2011-03-09 22:10:46 castaglia Exp $
+ * $Id: str.c,v 1.10 2011-03-17 17:35:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -451,29 +451,37 @@ int pr_str_is_boolean(const char *str) {
     return -1;
   }
 
-  if (strcasecmp(str, "on") == 0)
+  if (strncasecmp(str, "on", 3) == 0) {
     return TRUE;
+  }
 
-  if (strcasecmp(str, "off") == 0)
+  if (strncasecmp(str, "off", 4) == 0) {
     return FALSE;
+  }
 
-  if (strcasecmp(str, "yes") == 0)
+  if (strncasecmp(str, "yes", 4) == 0) {
     return TRUE;
+  }
  
-  if (strcasecmp(str, "no") == 0) 
+  if (strncasecmp(str, "no", 3) == 0) {
     return FALSE;
+  }
 
-  if (strcasecmp(str, "true") == 0)
+  if (strncasecmp(str, "true", 5) == 0) {
     return TRUE;
+  }
 
-  if (strcasecmp(str, "false") == 0)
+  if (strncasecmp(str, "false", 6) == 0) {
     return FALSE;
+  }
 
-  if (strcasecmp(str, "1") == 0)
+  if (strncasecmp(str, "1", 2) == 0) {
     return TRUE;
+  }
 
-  if (strcasecmp(str, "0") == 0)
+  if (strncasecmp(str, "0", 2) == 0) {
     return FALSE;
+  }
 
   errno = EINVAL;
   return -1;

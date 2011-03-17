@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2010 The ProFTPD Project team
+ * Copyright (c) 2003-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.23 2010-10-19 22:18:24 castaglia Exp $
+ * $Id: netacl.c,v 1.24 2011-03-17 17:35:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -229,11 +229,11 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
 
   aclstr_dup = pstrdup(p, aclstr);
 
-  if (strcasecmp(aclstr, "all") == 0) {
+  if (strncasecmp(aclstr, "all", 4) == 0) {
     aclstr_dup = pstrdup(p, "all");
     acl->type = PR_NETACL_TYPE_ALL;
 
-  } else if (strcasecmp(aclstr, "none") == 0) {
+  } else if (strncasecmp(aclstr, "none", 5) == 0) {
     aclstr_dup = pstrdup(p, "none");
     acl->type = PR_NETACL_TYPE_NONE;
 
