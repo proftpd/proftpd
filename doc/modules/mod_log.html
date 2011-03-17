@@ -1,4 +1,4 @@
-<!-- $Id: mod_log.html,v 1.4 2011-03-14 22:38:23 castaglia Exp $ -->
+<!-- $Id: mod_log.html,v 1.5 2011-03-17 03:43:25 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_log.html,v $ -->
 
 <html>
@@ -260,6 +260,11 @@ indicated when logging.
   </tr>
 
   <tr>
+    <td>&nbsp;<code>%H</code>&nbsp;</td>
+    <td>Local IP address of vhost/server hosting the session</td>
+  </tr>
+
+  <tr>
     <td>&nbsp;<code>%I</code>&nbsp;</td>
     <td>Total number of "raw" bytes read in from network</td>
   </tr>
@@ -277,7 +282,7 @@ indicated when logging.
 
   <tr>
     <td>&nbsp;<code>%L</code>&nbsp;</td>
-    <td>Local server IP address</td>
+    <td>Local IP address contacted by client</td>
   </tr>
 
   <tr>
@@ -427,7 +432,7 @@ The <code>mod_log</code> module is compiled by default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-03-14 22:38:23 $</i><br>
+Last Updated: <i>$Date: 2011-03-17 03:43:25 $</i><br>
 
 <br><hr>
 
