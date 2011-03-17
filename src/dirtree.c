@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.253 2011-03-17 14:10:26 castaglia Exp $
+ * $Id: dirtree.c,v 1.254 2011-03-17 16:35:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2253,12 +2253,12 @@ static void reorder_dirs(xaset_t *set, int flags) {
        */
       if (c->parent &&
           c->parent->config_type == CONF_ANON &&
-          strcmp(c->name, "*") == 0) {
+          strncmp(c->name, "*", 2) == 0) {
 
         if (c->subset)
           reparent_all(c->parent, c->subset);
 
-        xaset_remove(c->parent->subset, (xasetmember_t*) c);
+        xaset_remove(c->parent->subset, (xasetmember_t *) c);
 
       } else {
         newparent = _find_best_dir(set, c->name, &tmp);
@@ -2652,7 +2652,7 @@ static void fixup_globals(xaset_t *list) {
       cnext = c->next;
 
       if (c->config_type == CONF_GLOBAL &&
-          strcmp(c->name, "<Global>") == 0) {
+          strncmp(c->name, "<Global>", 9) == 0) {
         /* Copy the contents of the block to all other servers
          * (including this one), then pull the block "out of play".
          */

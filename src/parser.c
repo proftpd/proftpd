@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.23 2011-01-05 16:36:20 castaglia Exp $
+ * $Id: parser.c,v 1.24 2011-03-17 16:35:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -276,7 +276,7 @@ config_rec *pr_parser_config_ctxt_open(const char *name) {
    * parent server.  This keeps <Global> config recs from being freed
    * prematurely, and helps to avoid memory leaks.
    */
-  if (strcmp(name, "<Global>") == 0) {
+  if (strncmp(name, "<Global>", 9) == 0) {
     if (!global_config_pool) {
       global_config_pool = make_sub_pool(permanent_pool);
       pr_pool_tag(global_config_pool, "<Global> Pool");
@@ -500,7 +500,7 @@ cmd_rec *pr_parser_parse_line(pool *p) {
       if (*(cp + strlen(cp)-1) == '>' &&
           cmd->argc > 1) {
 
-        if (strcmp(cp, ">") == 0) {
+        if (strncmp(cp, ">", 2) == 0) {
           cmd->argv[cmd->argc-1] = NULL;
           cmd->argc--;
 
