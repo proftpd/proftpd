@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.289 2011-03-17 17:24:34 castaglia Exp $
+ * $Id: mod_auth.c,v 1.290 2011-03-17 18:30:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1318,7 +1318,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
   /* If the home directory is NULL or "", reject the login. */
   if (pw->pw_dir == NULL ||
-      strncmp(pw->pw_dir, "", 2) == 0) {
+      strncmp(pw->pw_dir, "", 1) == 0) {
     pr_log_pri(PR_LOG_ERR, "error: user %s home directory is NULL or \"\"",
       session.user);
     pr_response_send(R_530, _("Login incorrect."));
