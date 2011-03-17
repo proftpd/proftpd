@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2010 The ProFTPD Project team
+ * Copyright (c) 2006-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.27 2010-04-18 18:42:16 castaglia Exp $
+ * $Id: encode.c,v 1.28 2011-03-17 14:10:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -379,7 +379,7 @@ const char *pr_encode_get_local_charset(void) {
      * returns "646" to mean "US-ASCII".  The problem is that iconv_open(3)
      * doesn't accept "646" as an acceptable encoding.
      */
-    if (strcmp(charset, "646") == 0) {
+    if (strncmp(charset, "646", 4) == 0) {
       charset = "US-ASCII";
     }
 

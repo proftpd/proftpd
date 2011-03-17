@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.252 2011-03-17 14:05:37 castaglia Exp $
+ * $Id: dirtree.c,v 1.253 2011-03-17 14:10:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3079,8 +3079,8 @@ int parse_config_path(pool *p, const char *path) {
     file_list = make_array(p, 0, sizeof(char *));
 
     while ((dent = pr_fsio_readdir(dirh)) != NULL) {
-      if (strcmp(dent->d_name, ".") != 0 &&
-          strcmp(dent->d_name, "..") != 0 &&
+      if (strncmp(dent->d_name, ".", 2) != 0 &&
+          strncmp(dent->d_name, "..", 3) != 0 &&
           (!have_glob ||
            pr_fnmatch(tmp, dent->d_name, PR_FNM_PERIOD) == 0))
         *((char **) push_array(file_list)) = pdircat(p, dup_path,
