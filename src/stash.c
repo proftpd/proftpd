@@ -23,7 +23,7 @@
  */
 
 /* Symbol table hashes
- * $Id: stash.c,v 1.4 2011-03-17 05:42:23 castaglia Exp $
+ * $Id: stash.c,v 1.5 2011-03-17 05:46:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -243,7 +243,7 @@ static struct stash *stash_lookup(pr_stash_type_t sym_type,
         /* No need to continue checking if we know that the first and
          * only character doesn't match.
          */
-        if (namelen == 1) {
+        if (namelen <= 1) {
           continue;
         }
 
@@ -313,7 +313,7 @@ static struct stash *stash_lookup_next(pr_stash_type_t sym_type,
         /* No need to continue checking if we know that the first and
          * only character doesn't match.
          */
-        if (namelen == 1) {
+        if (namelen <= 1) {
           continue;
         }
 
