@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD xferlog(5) logging support.
- * $Id: xferlog.c,v 1.8 2011-03-17 13:10:17 castaglia Exp $
+ * $Id: xferlog.c,v 1.9 2011-03-17 13:48:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -66,12 +66,16 @@ int xferlog_write(long xfertime, const char *remhost, off_t fsize, char *fname,
     char abort_flag, const char *action_flags) {
   const char *xfer_proto;
   char buf[LOGBUFFER_SIZE] = {'\0'}, fbuf[LOGBUFFER_SIZE] = {'\0'};
-  int have_ident = FALSE;
+  int have_ident = FALSE, len;
   char *rfc1413_ident = NULL;
   register unsigned int i = 0;
 
-  if (xferlogfd == -1 || !remhost || !user || !fname)
+  if (xferlogfd == -1 ||
+      remhost == NULL ||
+      user == NULL ||
+      fname == NULL) {
     return 0;
+  }
 
   for (i = 0; (i + 1 < sizeof(fbuf)) && fname[i] != '\0'; i++) {
     fbuf[i] = (isspace((int) fname[i]) || iscntrl((int) fname[i])) ? '_' :
@@ -87,7 +91,7 @@ int xferlog_write(long xfertime, const char *remhost, off_t fsize, char *fname,
      * "*", since "*" is to be logged in the xferlog, as per the doc, when
      * the authenticated user ID is not available.
      */
-    if (strncmp(rfc1413_ident, "UNKNOWN", 7) == 0)
+    if (strncmp(rfc1413_ident, "UNKNOWN", 8) == 0)
       rfc1413_ident = "*";
 
   } else {
@@ -99,7 +103,7 @@ int xferlog_write(long xfertime, const char *remhost, off_t fsize, char *fname,
 
   xfer_proto = pr_session_get_protocol(0);
 
-  snprintf(buf, sizeof(buf),
+  len = snprintf(buf, sizeof(buf),
     "%s %ld %s %" PR_LU " %s %c %s %c %c %s %s %c %s %c\n",
       pr_strtime(time(NULL)),
       xfertime,
@@ -118,5 +122,5 @@ int xferlog_write(long xfertime, const char *remhost, off_t fsize, char *fname,
 
   buf[sizeof(buf)-1] = '\0';
 
-  return write(xferlogfd, buf, strlen(buf));
+  return write(xferlogfd, buf, len);
 }

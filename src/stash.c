@@ -23,7 +23,7 @@
  */
 
 /* Symbol table hashes
- * $Id: stash.c,v 1.6 2011-03-17 13:18:07 castaglia Exp $
+ * $Id: stash.c,v 1.7 2011-03-17 13:48:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -186,7 +186,8 @@ int pr_stash_add_symbol(pr_stash_type_t sym_type, void *data) {
     return -1;
   }
 
-  sym->sym_namelen = strlen(sym->sym_name);
+  /* Don't forget to include one for the terminating NUL. */
+  sym->sym_namelen = strlen(sym->sym_name) + 1;
 
   /* XXX Ugly hack to support mixed cases of directives in config files. */
   if (sym_type != PR_SYM_CONF) {
@@ -200,7 +201,7 @@ int pr_stash_add_symbol(pr_stash_type_t sym_type, void *data) {
     memset(buf, '\0', sizeof(buf));
     sstrncpy(buf, sym->sym_name, sizeof(buf)-1);
 
-    buflen = strlen(buf);
+    buflen = strlen(buf) + 1;
     for (i = 0; i < buflen; i++) {
       buf[i] = tolower((int) buf[i]);
     }
@@ -365,7 +366,8 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
   size_t namelen = 0;
 
   if (name != NULL) {
-    namelen = strlen(name);
+    /* Don't forget to include one for the terminating NUL. */
+    namelen = strlen(name) + 1;
   }
 
   if (idx_cache &&
@@ -386,7 +388,7 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
       memset(buf, '\0', sizeof(buf));
       sstrncpy(buf, name, sizeof(buf)-1);
 
-      buflen = strlen(buf);
+      buflen = strlen(buf) + 1;
       for (i = 0; i < buflen; i++) {
         buf[i] = tolower((int) buf[i]);
       }
@@ -463,7 +465,8 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
     return -1;
   }
 
-  sym_namelen = strlen(sym_name);
+  /* Don't forget to include one for the terminating NUL. */
+  sym_namelen = strlen(sym_name) + 1;
 
   /* XXX Ugly hack to support mixed cases of directives in config files. */
   if (sym_type != PR_SYM_CONF) {
@@ -477,7 +480,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
     memset(buf, '\0', sizeof(buf));
     sstrncpy(buf, sym_name, sizeof(buf)-1);
 
-    buflen = strlen(buf);
+    buflen = strlen(buf) + 1;
     for (i = 0; i < buflen; i++) {
       buf[i] = tolower((int) buf[i]);
     }

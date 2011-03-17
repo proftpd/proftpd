@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: filter.c,v 1.5 2011-03-17 13:22:04 castaglia Exp $
+ * $Id: filter.c,v 1.6 2011-03-17 13:48:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -77,8 +77,8 @@ int pr_filter_parse_flags(pool *p, const char *flags_str) {
   }
 
   /* Right now, we only support "[NC]", for "no case", i.e. REG_ICASE. */
-  if (strncmp(flags_str, "[NC]", 4) == 0 ||
-      strncmp(flags_str, "[nocase]", 8) == 0) {
+  if (strncmp(flags_str, "[NC]", 5) == 0 ||
+      strncmp(flags_str, "[nocase]", 9) == 0) {
     return REG_ICASE;
   }
 
