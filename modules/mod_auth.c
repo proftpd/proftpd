@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.288 2011-03-03 21:38:54 castaglia Exp $
+ * $Id: mod_auth.c,v 1.289 2011-03-17 17:24:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -306,7 +306,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
        *    b) an SSH protocol is not in use.
        */
       if (session.rfc2228_mech == NULL &&
-          strcmp(protocol, "SSH2") != 0) {
+          strncmp(protocol, "SSH2", 5) != 0) {
         int allow_ftp = FALSE;
 
         for (i = 0; i < protocols->nelts; i++) {
@@ -314,7 +314,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
 
           proto = elts[i];
           if (proto != NULL) {
-            if (strcasecmp(proto, "ftp") == 0) {
+            if (strncasecmp(proto, "ftp", 4) == 0) {
               allow_ftp = TRUE;
               break;
             }
@@ -354,7 +354,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
     pr_signals_handle();
 
     if (c->argc == 3) {
-      if (strcmp(c->argv[1], "user") == 0) {
+      if (strncmp(c->argv[1], "user", 5) == 0) {
         if (pr_expr_eval_user_or((char **) &c->argv[2]) == TRUE) {
 
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
@@ -369,7 +369,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
           }
         }
 
-      } else if (strcmp(c->argv[1], "group") == 0) {
+      } else if (strncmp(c->argv[1], "group", 6) == 0) {
         if (pr_expr_eval_group_and((char **) &c->argv[2]) == TRUE) {
 
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
@@ -384,7 +384,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
           }
         }
 
-      } else if (strcmp(c->argv[1], "class") == 0) {
+      } else if (strncmp(c->argv[1], "class", 6) == 0) {
         if (session.class &&
             strcmp(session.class->cls_name, c->argv[2]) == 0) {
 
@@ -638,7 +638,7 @@ static char *get_default_root(pool *p) {
     /* Check for any expandable variables. */
     dir = path_subst_uservar(p, &dir);
 
-    if (strcmp(dir, "/") == 0) {
+    if (strncmp(dir, "/", 2) == 0) {
       dir = NULL;
 
     } else {
@@ -1318,7 +1318,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
   /* If the home directory is NULL or "", reject the login. */
   if (pw->pw_dir == NULL ||
-      strcmp(pw->pw_dir, "") == 0) {
+      strncmp(pw->pw_dir, "", 2) == 0) {
     pr_log_pri(PR_LOG_ERR, "error: user %s home directory is NULL or \"\"",
       session.user);
     pr_response_send(R_530, _("Login incorrect."));
@@ -1510,7 +1510,7 @@ static int auth_scan_scoreboard(void) {
         hcur++;
 
       /* Only count up authenticated clients, as per the documentation. */
-      if (strcmp(score->sce_user, "(none)") == 0)
+      if (strncmp(score->sce_user, "(none)", 7) == 0)
         continue;
 
       /* Note: the class member of the scoreboard entry will never be
@@ -1625,7 +1625,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
               cur = 1;
 
           /* Only count authenticated clients, as per the documentation. */
-          if (strcmp(score->sce_user, "(none)") == 0)
+          if (strncmp(score->sce_user, "(none)", 7) == 0)
             continue;
 
           cur++;
@@ -2346,7 +2346,7 @@ MODRET set_createhome(cmd_rec *cmd) {
       } else if (strcasecmp(cmd->argv[i], "uid") == 0) {
 
         /* Check for a "~" parameter. */
-        if (strcmp(cmd->argv[i+1], "~") != 0) {
+        if (strncmp(cmd->argv[i+1], "~", 2) != 0) {
           char *tmp = NULL;
           uid_t uid;
 
@@ -2370,7 +2370,7 @@ MODRET set_createhome(cmd_rec *cmd) {
       } else if (strcasecmp(cmd->argv[i], "gid") == 0) {
 
         /* Check for a "~" parameter. */
-        if (strcmp(cmd->argv[i+1], "~") != 0) {
+        if (strncmp(cmd->argv[i+1], "~", 2) != 0) {
           char *tmp = NULL;
           gid_t gid;
 
@@ -2959,15 +2959,16 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
   }
 
   if (cmd->argc-1 == 3) {
-    if (!strcmp(cmd->argv[2], "user") ||
-        !strcmp(cmd->argv[2], "group") ||
-        !strcmp(cmd->argv[2], "class")) {
+    if (strncmp(cmd->argv[2], "user", 5) == 0 ||
+        strncmp(cmd->argv[2], "group", 6) == 0 ||
+        strncmp(cmd->argv[2], "class", 6) == 0) {
 
        /* no op */
 
-     } else
+     } else {
        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[0],
          ": unknown classifier used: '", cmd->argv[2], "'", NULL));
+    }
   }
 
   if (cmd->argc-1 == 1) {
