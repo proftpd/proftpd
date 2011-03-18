@@ -23,7 +23,7 @@
  */
 
 /* Symbol table hashes
- * $Id: stash.c,v 1.7 2011-03-17 13:48:21 castaglia Exp $
+ * $Id: stash.c,v 1.8 2011-03-18 00:03:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -74,9 +74,48 @@ static int sym_cmp(struct stash *s1, struct stash *s2) {
   int res;
   size_t namelen;
 
-  namelen = s1->sym_namelen < s2->sym_namelen ? s1->sym_namelen :
-    s2->sym_namelen;
-  res = strncmp(s1->sym_name, s2->sym_name, namelen);
+  if (s1->sym_namelen != s2->sym_namelen) {
+    return s1->sym_namelen < s2->sym_namelen ? -1 : 1;
+  }
+
+  namelen = s1->sym_namelen;
+
+  /* Try to avoid strncmp(3) if we can. */
+  if (namelen >= 1) {
+    char c1, c2;
+
+    c1 = s1->sym_name[0];
+    c2 = s2->sym_name[0];
+
+    if (c1 != c2) {
+      return c1 < c2 ? -1 : 1;
+    }
+
+    /* Special case (unlikely, but possible) */
+    if (namelen == 1 &&
+        c1 == '\0') {
+      return 0;
+    }
+  }
+
+  if (namelen >= 2) {
+    char c1, c2;
+
+    c1 = s1->sym_name[1];
+    c2 = s2->sym_name[1];
+
+    if (c1 != c2) {
+      return c1 < c2 ? -1 : 1;
+    }
+
+    /* Special case */
+    if (namelen == 2 &&
+        c1 == '\0') {
+      return 0;
+    }
+  }
+
+  res = strncmp(s1->sym_name + 2, s2->sym_name + 2, namelen - 2);
 
   /* Higher priority modules must go BEFORE lower priority in the
    * hash tables.
@@ -201,12 +240,12 @@ int pr_stash_add_symbol(pr_stash_type_t sym_type, void *data) {
     memset(buf, '\0', sizeof(buf));
     sstrncpy(buf, sym->sym_name, sizeof(buf)-1);
 
-    buflen = strlen(buf) + 1;
+    buflen = strlen(buf);
     for (i = 0; i < buflen; i++) {
       buf[i] = tolower((int) buf[i]);
     }
 
-    idx = symtab_hash(buf, buflen);
+    idx = symtab_hash(buf, buflen + 1);
   }
 
   if (!symbol_table[idx]) {
@@ -225,57 +264,53 @@ static struct stash *stash_lookup(pr_stash_type_t sym_type,
     for (sym = (struct stash *) symbol_table[idx]->xas_list; sym;
         sym = sym->next) {
       if (sym->sym_type == sym_type) {
-        char name_start[2], sym_start[2];
+        int res;
 
         if (name == NULL) {
           break;
         }
 
-        /* Cheap way of short-ciruiting the full strcasecmp(3), if we can:
-         * just check the first two characters in a case-insensitive fashion.
-         */
-        name_start[0] = sym_start[1] = '\0';
+        if (sym->sym_namelen != namelen) {
+          continue;
+        }
+
+        /* Try to avoid strncmp(3) if we can. */
         if (namelen >= 1) {
-          name_start[0] = tolower((int) name[0]);
+          char c1, c2;
+
+          c1 = tolower((int) sym->sym_name[0]);
+          c2 = tolower((int) name[0]);
+
+          if (c1 != c2) {
+            continue;
+          }
+
+          /* Special case (unlikely, but possible) */
+          if (namelen == 1 &&
+              c1 == '\0') {
+            break;
+          }
         }
 
-        if (sym->sym_name[0]) {
-          sym_start[0] = tolower((int) sym->sym_name[0]);
+        if (namelen >= 2) {
+          char c1, c2;
+
+          c1 = tolower((int) sym->sym_name[1]);
+          c2 = tolower((int) name[1]);
+
+          if (c1 != c2) {
+            continue;
+          }
+
+          /* Special case */
+          if (namelen == 2 &&
+              c1 == '\0') {
+            break;
+          }
         }
 
-        if (name_start[0] != sym_start[0]) {
-          continue;
-        }
-
-        /* No need to continue checking if we know that the first and
-         * only character doesn't match.
-         */
-        if (namelen <= 1) {
-          continue;
-        }
-
-        name_start[1] = tolower((int) name[1]);
-
-        if (sym->sym_name[1]) {
-          sym_start[1] = tolower((int) sym->sym_name[1]);
-        }
-
-        if (name_start[1] != sym_start[1]) {
-          continue;
-        }
-
-        /* No need to continue checking if we know that the first two
-         * (and only) characters don't match.
-         */
-        if (namelen == 2) {
-          continue;
-        }
-
-        /* Since we've already checked the first two characters, advance
-         * past them to check the remaining characters (and reduce the
-         * number of bytes compared by strncasecmp(3)).
-         */
-        if (strncasecmp(sym->sym_name + 2, name + 2, namelen - 2) == 0) {
+        res = strncasecmp(sym->sym_name + 2, name + 2, namelen - 2);
+        if (res == 0) {
           break;
         }
       }
@@ -295,57 +330,53 @@ static struct stash *stash_lookup_next(pr_stash_type_t sym_type,
         sym = sym->next) {
       if (last_hit &&
           sym->sym_type == sym_type) {
-        char name_start[2], sym_start[2];
+        int res;
 
         if (name == NULL) {
           break;
         }
 
-        /* Cheap way of short-ciruiting the full strcasecmp(3), if we can:
-         * just check the first two characters in a case-insensitive fashion.
-         */
-        name_start[0] = sym_start[1] = '\0';
+        if (sym->sym_namelen != namelen) {
+          continue;
+        }
+
+        /* Try to avoid strncmp(3) if we can. */
         if (namelen >= 1) {
-          name_start[0] = tolower((int) name[0]);
+          char c1, c2;
+
+          c1 = tolower((int) sym->sym_name[0]);
+          c2 = tolower((int) name[0]);
+
+          if (c1 != c2) {
+            continue;
+          }
+
+          /* Special case (unlikely, but possible) */
+          if (namelen == 1 &&
+              c1 == '\0') {
+            break;
+          }
         }
 
-        if (sym->sym_name[0]) {
-          sym_start[0] = tolower((int) sym->sym_name[0]);
+        if (namelen >= 2) {
+          char c1, c2;
+
+          c1 = tolower((int) sym->sym_name[1]);
+          c2 = tolower((int) name[1]);
+
+          if (c1 != c2) {
+            continue;
+          }
+
+          /* Special case */
+          if (namelen == 2 &&
+              c1 == '\0') {
+            break;
+          }
         }
 
-        if (name_start[0] != sym_start[0]) {
-          continue;
-        }
-
-        /* No need to continue checking if we know that the first and
-         * only character doesn't match.
-         */
-        if (namelen <= 1) {
-          continue;
-        }
-
-        name_start[1] = tolower((int) name[1]);
-
-        if (sym->sym_name[1]) {
-          sym_start[1] = tolower((int) sym->sym_name[1]);
-        }
-
-        if (name_start[1] != sym_start[1]) {
-          continue;
-        }
-
-        /* No need to continue checking if we know that the first two
-         * (and only) characters don't match.
-         */
-        if (namelen == 2) {
-          continue;
-        }
-
-        /* Since we've already checked the first two characters, advance
-         * past them to check the remaining characters (and reduce the
-         * number of bytes compared by strncasecmp(3)).
-         */
-        if (strncasecmp(sym->sym_name + 2, name + 2, namelen - 2) == 0) {
+        res = strncasecmp(sym->sym_name + 2, name + 2, namelen - 2);
+        if (res == 0) {
           break;
         }
       }
@@ -388,12 +419,12 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
       memset(buf, '\0', sizeof(buf));
       sstrncpy(buf, name, sizeof(buf)-1);
 
-      buflen = strlen(buf) + 1;
+      buflen = strlen(buf);
       for (i = 0; i < buflen; i++) {
         buf[i] = tolower((int) buf[i]);
       }
 
-      idx = symtab_hash(buf, buflen);
+      idx = symtab_hash(buf, buflen + 1);
     }
 
     if (idx_cache) {
@@ -480,12 +511,12 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
     memset(buf, '\0', sizeof(buf));
     sstrncpy(buf, sym_name, sizeof(buf)-1);
 
-    buflen = strlen(buf) + 1;
+    buflen = strlen(buf);
     for (i = 0; i < buflen; i++) {
       buf[i] = tolower((int) buf[i]);
     }
 
-    symtab_idx = symtab_hash(buf, buflen);
+    symtab_idx = symtab_hash(buf, buflen + 1);
   }
 
   switch (sym_type) {
