@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.46 2011-03-17 16:53:46 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.47 2011-03-18 18:22:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -509,9 +509,10 @@ static int ctrls_listen(const char *sock_file) {
     (void) close(sockfd);
     errno = xerrno;
     pr_ctrls_log(MOD_CTRLS_VERSION,
-      "error: unable to listen on local socket: %s", strerror(xerrno));
-    pr_trace_msg(trace_channel, 1, "unable to listen on local socket: %s",
+      "error: unable to listen on local socket '%s': %s", sock.sun_path,
       strerror(xerrno));
+    pr_trace_msg(trace_channel, 1, "unable to listen on local socket '%s': %s",
+      sock.sun_path, strerror(xerrno));
     return -1;
   }
 
@@ -1145,10 +1146,6 @@ static void ctrls_postparse_ev(const void *event_data, void *user_data) {
   PRIVS_ROOT
   ctrls_sockfd = ctrls_listen(ctrls_sock_file);
   PRIVS_RELINQUISH
-  if (ctrls_sockfd < 0) {
-    pr_log_pri(PR_LOG_NOTICE, "notice: unable to listen to local socket: %s",
-      strerror(errno));
-  }
 }
 
 static void ctrls_restart_ev(const void *event_data, void *user_data) {
@@ -1240,10 +1237,6 @@ static int ctrls_init(void) {
 
   /* Start listening on the ctrl socket */
   ctrls_sockfd = ctrls_listen(ctrls_sock_file);
-  if (ctrls_sockfd < 0) {
-    pr_log_pri(PR_LOG_NOTICE, "notice: unable to listen to local socket: %s",
-      strerror(errno));
-  }
 
   pr_event_register(&ctrls_module, "core.exit", ctrls_exit_ev, NULL);
   pr_event_register(&ctrls_module, "core.postparse", ctrls_postparse_ev, NULL);
