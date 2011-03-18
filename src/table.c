@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.19 2011-03-17 13:02:58 castaglia Exp $
+ * $Id: table.c,v 1.20 2011-03-18 17:33:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -72,8 +72,12 @@ static const char *trace_channel = "table";
 
 static int key_cmp(const void *key1, size_t keysz1, const void *key2,
     size_t keysz2) {
-  size_t min_keylen = keysz1 < keysz2 ? keysz1 : keysz2;
-  return strncmp((const char *) key1, (const char *) key2, min_keylen);
+
+  if (keysz1 != keysz2) {
+    return keysz1 < keysz2 ? -1 : 1;
+  }
+
+  return strncmp((const char *) key1, (const char *) key2, keysz1);
 }
 
 /* Use Perl's hashing algorithm by default. */
