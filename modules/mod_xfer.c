@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.287 2011-03-17 17:16:00 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.288 2011-03-19 23:39:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2295,7 +2295,57 @@ MODRET xfer_mode(cmd_rec *cmd) {
 }
 
 MODRET xfer_allo(cmd_rec *cmd) {
-  pr_response_add(R_202, _("No storage allocation necessary"));
+  off_t requested_sz;
+  char *tmp = NULL;
+
+  /* Even though we only handle the "ALLO <size>" command, we should not
+   * barf on the unlikely (but RFC-compliant) "ALLO <size> R <size>" commands.
+   * See RFC 959, Section 4.1.3.
+   */
+  if (cmd->argc != 2 &&
+      cmd->argc != 4) {
+    pr_response_add_err(R_504, _("'%s' not understood"), get_full_cmd(cmd));
+    return PR_ERROR(cmd);
+  }
+
+#ifdef HAVE_STRTOULL
+  requested_sz = strtoull(cmd->argv[1], &tmp, 10);
+#else
+  requested_sz = strtoul(cmd->argv[1], &tmp, 10);
+#endif /* !HAVE_STRTOULL */
+
+  if (tmp && *tmp) {
+    pr_response_add_err(R_504, _("%s: invalid ALLO argument"), cmd->arg);
+    return PR_ERROR(cmd);
+  }
+
+  if (requested_sz > 0) {
+    const char *path;
+    off_t avail_sz;
+    int res;
+
+    path = pr_fs_getcwd();
+    res = pr_fs_getsize2((char *) path, &avail_sz);
+    if (res < 0) {
+      /* If we can't check the filesystem stats for any reason, let the request
+       * proceed anyway.
+       */
+      pr_log_debug(DEBUG7,
+        "error getting available size for filesystem containing '%s': %s",
+        path, strerror(errno));
+
+    } else {
+      if (requested_sz > avail_sz) {
+        pr_log_debug(DEBUG5, "%s requested %" PR_LU " bytes, only %" PR_LU
+          " bytes available on '%s'", cmd->argv[0], (pr_off_t) requested_sz,
+          (pr_off_t) avail_sz, path);
+        pr_response_add_err(R_552, "%s: %s", cmd->arg, strerror(ENOSPC));
+        return PR_ERROR(cmd);
+      }
+    }
+  }
+
+  pr_response_add(R_200, _("%s command successful"), cmd->argv[0]);
   return PR_HANDLED(cmd);
 }
 
