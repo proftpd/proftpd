@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: cmd.c,v 1.3 2011-03-19 19:02:19 castaglia Exp $
+ * $Id: cmd.c,v 1.4 2011-03-19 23:08:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -168,6 +168,16 @@ int pr_cmd_cmp(cmd_rec *cmd, int cmd_id) {
     return -1;
   }
 
+  /* The cmd ID is unknown; look it up. */
+  if (cmd->cmd_id == 0) {
+    cmd->cmd_id = pr_cmd_get_id(cmd->argv[0]);
+  }
+
+  /* The cmd ID is known to be unknown. */
+  if (cmd->cmd_id < 0) {
+    return 1;
+  }
+
   if (cmd->cmd_id == cmd_id) {
     return 0;
   }
@@ -177,6 +187,7 @@ int pr_cmd_cmp(cmd_rec *cmd, int cmd_id) {
 
 int pr_cmd_strcmp(cmd_rec *cmd, const char *cmd_name) {
   int cmd_id, res;
+  size_t cmd_namelen;
 
   if (cmd == NULL ||
       cmd_name == NULL) {
@@ -184,14 +195,25 @@ int pr_cmd_strcmp(cmd_rec *cmd, const char *cmd_name) {
     return -1;
   }
 
-  cmd_id = pr_cmd_get_id(cmd_name); 
-
-  res = pr_cmd_cmp(cmd, cmd_id);
-  if (res == 0) {
-    return 0;
+  /* The cmd ID is unknown; look it up. */
+  if (cmd->cmd_id == 0) {
+    cmd->cmd_id = pr_cmd_get_id(cmd->argv[0]);
   }
 
-  return strncmp(cmd_name, cmd->argv[0], cmd_ids[cmd->cmd_id].cmd_namelen + 1);
+  if (cmd->cmd_id > 0) {
+    cmd_id = pr_cmd_get_id(cmd_name); 
+
+    res = pr_cmd_cmp(cmd, cmd_id);
+    if (res == 0) {
+      return 0;
+    }
+
+    return strncmp(cmd_name, cmd->argv[0],
+      cmd_ids[cmd->cmd_id].cmd_namelen + 1);
+  }
+
+  cmd_namelen = strlen(cmd_name);
+  return strncmp(cmd->argv[0], cmd_name, cmd_namelen + 1);
 }
 
 char *pr_cmd_get_displayable_str(cmd_rec *cmd) {
