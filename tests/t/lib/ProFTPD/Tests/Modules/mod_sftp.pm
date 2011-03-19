@@ -242,7 +242,7 @@ my $TESTS = {
     test_class => [qw(bug forking ssh2)],
   },
 
-  ssh2_auth_publickey_rsa_with_bug3493 => {
+  ssh2_auth_publickey_rsa_with_match_bug3493 => {
     order => ++$order,
     test_class => [qw(bug forking ssh2)],
   },
@@ -1973,8 +1973,11 @@ sub ssh2_hostkey_rsa_only {
 
       my ($err_code, $err_name, $err_str) = $ssh2->error();
 
-      $self->assert($err_name eq 'LIBSSH2_ERROR_KEX_FAILURE',
-        test_msg("Expected 'LIBSSH2_ERROR_KEX_FAILURE', got '$err_name'"));
+      # The expected error messages depend on the version of libssh2 being
+      # used.
+      $self->assert($err_name eq 'LIBSSH2_ERROR_KEX_FAILURE' or
+                    $err_name eq 'LIBSSH2_ERROR_KEY_EXCHANGE_FAILURE',
+        test_msg("Expected 'LIBSSH2_ERROR_KEX_FAILURE' or 'LIBSSH2_ERROR_KEY_EXCHANGE_FAILURE', got '$err_name'"));
     };
 
     if ($@) {
@@ -2241,8 +2244,12 @@ sub ssh2_hostkey_dss_only {
       }
 
       my ($err_code, $err_name, $err_str) = $ssh2->error();
-      $self->assert($err_name eq 'LIBSSH2_ERROR_KEX_FAILURE',
-        test_msg("Expected 'LIBSSH2_ERROR_KEX_FAILURE', got '$err_name'"));
+
+      # The expected error messages depend on the version of libssh2 being
+      # used.
+      $self->assert($err_name eq 'LIBSSH2_ERROR_KEX_FAILURE' or
+                    $err_name eq 'LIBSSH2_ERROR_KEY_EXCHANGE_FAILURE',
+        test_msg("Expected 'LIBSSH2_ERROR_KEX_FAILURE' or 'LIBSSH2_ERROR_KEY_EXCHANGE_FAILURE', got '$err_name'"));
     };
 
     if ($@) {
@@ -7256,6 +7263,7 @@ sub ssh2_auth_publickey_rsa16384 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -7274,7 +7282,7 @@ sub ssh2_auth_publickey_rsa16384 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -7288,15 +7296,18 @@ sub ssh2_auth_publickey_rsa16384 {
     die("Can't copy $rsa_rfc4716_key to $authorized_keys: $!");
   }
 
+  my $timeout_idle = 15;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
     TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    TimeoutIdle => $timeout_idle,
 
     IfModules => {
       'mod_delay.c' => {
@@ -7357,7 +7368,7 @@ sub ssh2_auth_publickey_rsa16384 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 5) };
     if ($@) {
       warn($@);
       exit 1;
