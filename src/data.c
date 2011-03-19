@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.136 2011-03-03 17:09:11 castaglia Exp $
+ * $Id: data.c,v 1.137 2011-03-19 19:24:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -937,6 +937,8 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
       for (ch = cmd->argv[0]; *ch; ch++)
         *ch = toupper(*ch);
 
+      cmd->cmd_id = pr_cmd_get_id(cmd->argv[0]);
+
       /* Only handle commands which do not involve data transfers; we
        * already have a data transfer in progress.  For any data transfer
        * command, send a 450 ("busy") reply.  Looks like almost all of the
@@ -947,19 +949,19 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
        * so, we break RFC compliance a little; RFC959 does not allow a
        * response code of 450 for those commands (although it should).
        */
-      if (strcmp(cmd->argv[0], C_APPE) == 0 ||
-          strcmp(cmd->argv[0], C_LIST) == 0 ||
-          strcmp(cmd->argv[0], C_MLSD) == 0 ||
-          strcmp(cmd->argv[0], C_NLST) == 0 ||
-          strcmp(cmd->argv[0], C_RETR) == 0 ||
-          strcmp(cmd->argv[0], C_STOR) == 0 ||
-          strcmp(cmd->argv[0], C_STOU) == 0 ||
-          strcmp(cmd->argv[0], C_RNFR) == 0 ||
-          strcmp(cmd->argv[0], C_RNTO) == 0 ||
-          strcmp(cmd->argv[0], C_PORT) == 0 ||
-          strcmp(cmd->argv[0], C_EPRT) == 0 ||
-          strcmp(cmd->argv[0], C_PASV) == 0 ||
-          strcmp(cmd->argv[0], C_EPSV) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_STOU_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_RNFR_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_PORT_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_EPRT_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_PASV_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_EPSV_ID) == 0) {
         pool *resp_pool;
 
         pr_trace_msg(trace_channel, 5,
@@ -985,7 +987,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
        * NOOP doesn't take a 450 response (as per RFC959), we will simply
        * return 200.
        */
-      } else if (strcmp(cmd->argv[0], C_NOOP) == 0) {
+      } else if (pr_cmd_cmp(cmd, PR_CMD_NOOP_ID) == 0) {
         pool *resp_pool;
 
         pr_trace_msg(trace_channel, 5,
