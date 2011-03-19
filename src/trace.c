@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.29 2011-03-16 18:26:48 castaglia Exp $
+ * $Id: trace.c,v 1.30 2011-03-19 18:44:31 castaglia Exp $
  */
 
 
@@ -104,8 +104,8 @@ static int trace_write(const char *channel, int level, const char *msg) {
   strftime(buf, sizeof(buf), "%b %d %H:%M:%S", t);
   buf[sizeof(buf)-1] = '\0';
 
-  snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-    " [%u] <%s:%d>: %s",
+  buflen = strlen(buf);
+  snprintf(buf + buflen, sizeof(buf) - buflen, " [%u] <%s:%d>: %s",
     (unsigned int) (session.pid ? session.pid : getpid()), channel, level, msg);
 
   buf[sizeof(buf)-1] = '\0';
