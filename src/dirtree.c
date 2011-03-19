@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.256 2011-03-19 19:02:19 castaglia Exp $
+ * $Id: dirtree.c,v 1.257 2011-03-19 19:52:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1888,6 +1888,11 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   if (!c && session.anon_config)
     c = session.anon_config;
 
+  /* Make sure this cmd_rec has a cmd_id. */
+  if (cmd->cmd_id == 0) {
+    cmd->cmd_id = pr_cmd_get_id(cmd->argv[0]);
+  }
+
   if (!_kludge_disable_umask) {
     /* Check for a directory Umask. */
     if (S_ISDIR(st.st_mode) ||
@@ -2035,6 +2040,11 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
 
   if (!c && session.anon_config)
     c = session.anon_config;
+
+  /* Make sure this cmd_rec has a cmd_id. */
+  if (cmd->cmd_id == 0) {
+    cmd->cmd_id = pr_cmd_get_id(cmd->argv[0]);
+  }
 
   if (!_kludge_disable_umask) {
     /* Check for a directory Umask. */
