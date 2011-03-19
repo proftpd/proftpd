@@ -5749,6 +5749,8 @@ sub extlog_cmd_resp {
         my $expected = "$cmd $cmd_args";
         $self->assert($expected eq $full_cmd,
           test_msg("Expected '$expected', got '$full_cmd'"));
+
+        $ok = 1;
       }
     }
 
