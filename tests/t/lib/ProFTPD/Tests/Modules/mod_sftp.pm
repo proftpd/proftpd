@@ -9967,10 +9967,12 @@ sub sftp_without_auth {
 
       my $expected;
 
-      $expected = 'LIBSSH2_ERROR_CHANNEL_FAILURE';
-      $self->assert($expected eq $err_name,
-        test_msg("Expected '$expected', got '$err_name'"));
-      
+      # The expected error messages depend on the version of libssh2 being
+      # used.
+      $self->assert($err_name eq 'LIBSSH2_ERROR_INVAL' or
+                    $err_name eq 'LIBSSH2_ERROR_CHANNEL_FAILURE',
+        test_msg("Expected 'LIBSSH2_ERROR_INVAL' or 'LIBSSH2_ERROR_CHANNEL_FAILURE', got '$err_name'"));
+
       $ssh2->disconnect();
     };
 
@@ -10129,6 +10131,7 @@ sub sftp_stat {
       $self->assert($expected == $file_gid,
         test_msg("Expected '$expected', got '$file_gid'"));
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -10296,6 +10299,7 @@ sub sftp_fstat {
       $self->assert($expected == $file_gid,
         test_msg("Expected '$expected', got '$file_gid'"));
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -10472,6 +10476,7 @@ sub sftp_lstat {
       $self->assert($expected == $file_gid,
         test_msg("Expected '$expected', got '$file_gid'"));
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -10620,6 +10625,7 @@ sub sftp_setstat {
         die("FXP_STAT sftp.conf failed: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       my $expected;
@@ -10783,6 +10789,7 @@ sub sftp_setstat_sgid {
       $self->assert($expected eq $file_mode,
         test_msg("Expected '$expected', got '$file_mode'"));
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -10940,6 +10947,7 @@ sub sftp_fsetstat {
         die("FXP_STAT sftp.conf failed: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       my $expected;
@@ -11096,6 +11104,7 @@ sub sftp_realpath {
       $self->assert($expected eq $cwd,
         test_msg("Expected '$expected', got '$cwd'"));
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -11251,6 +11260,7 @@ sub sftp_open_enoent_bug3345 {
       $self->assert($expected == $err_code,
         test_msg("Expected $expected, got $err_code"));
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -11454,6 +11464,7 @@ sub sftp_open_trunc_bug3449 {
       $self->assert($expected == $file_size,
         test_msg("Expected '$expected', got '$file_size'"));
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -11599,6 +11610,7 @@ sub sftp_open_creat {
       # To issue a CLOSE, we need to destroy the filehandle
       $fh = undef;
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       unless (-f $test_file) {
@@ -11774,6 +11786,7 @@ sub sftp_open_creat_excl {
       # To issue a CLOSE, we need to destroy the filehandle
       $fh = undef;
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       unless (-f $test_file) {
@@ -11940,6 +11953,7 @@ sub sftp_open_append_bug3450 {
       # To issue a CLOSE, we need to destroy the filehandle
       $fh = undef;
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       unless (-f $test_file) {
@@ -12115,6 +12129,7 @@ sub sftp_open_rdonly {
       $self->assert($expected eq $err_name,
         test_msg("Expected '$expected', got '$err_name'"));
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -12280,6 +12295,7 @@ sub sftp_open_wronly {
       $self->assert($expected eq $err_name,
         test_msg("Expected '$expected', got '$err_name'"));
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -12445,6 +12461,7 @@ sub sftp_open_rdwr {
       $self->assert($expected eq $err_name,
         test_msg("Expected '$expected', got '$err_name'"));
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -12592,9 +12609,10 @@ sub sftp_upload {
         print $fh "ABCD" x 8192;
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -12748,8 +12766,11 @@ sub sftp_upload_with_compression {
         print $fh "ABCD" x 8192;
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
     };
@@ -12895,8 +12916,11 @@ sub sftp_upload_zero_len_file {
         die("Can't open test.txt: [$err_name] ($err_code)");
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -13093,8 +13117,11 @@ sub sftp_upload_largefile {
 
       close($test_rfh);
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $test_wfh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -13278,8 +13305,11 @@ sub sftp_upload_device_full {
       # This means that, for now, you have to double-check the generated
       # logs to make sure that mod_sftp is sending the correct error/response.
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
     };
@@ -13434,6 +13464,7 @@ sub sftp_upload_fifo_bug3312 {
       $self->assert($expected eq $err_name,
         test_msg("Expected '$expected', got '$err_name'"));
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -13595,7 +13626,7 @@ sub sftp_upload_fifo_bug3313 {
       }
 
       $fh = undef;
-
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -14013,8 +14044,11 @@ sub sftp_download {
         $res = $fh->read($buf, 8192);
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $self->assert($test_sz == $size,
         test_msg("Expected $test_sz, got $size"));
@@ -14203,10 +14237,11 @@ sub sftp_download_with_compression {
         }
       }
 
-      $fh->CLOSE();
-
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $self->assert($test_sz == $size,
         test_msg("Expected $test_sz, got $size"));
@@ -14375,8 +14410,11 @@ sub sftp_download_zero_len_file {
         $res = $fh->read($buf, 8192);
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $self->assert($test_sz == $size,
         test_msg("Expected $test_sz, got $size"));
@@ -14577,8 +14615,11 @@ sub sftp_download_largefile {
         die("Can't write $test_file2: $!");
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $test_rfh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
     };
@@ -14752,8 +14793,11 @@ sub sftp_download_fifo_bug3314 {
         $res = $fh->read($buf, 8192);
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
     };
@@ -15166,8 +15210,11 @@ sub sftp_readdir {
         'sftp.scoreboard.lck' => 1,
       };
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the dirhandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the dirhandle
       $dir = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -15370,8 +15417,11 @@ sub sftp_readdir_symlink_dir {
         '..' => 1,
       };
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the dirhandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the dirhandle
       $dir = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -15542,6 +15592,7 @@ sub sftp_mkdir {
         die("Can't mkdir testdir: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       unless (-d $test_dir) {
@@ -15736,6 +15787,9 @@ sub sftp_mkdir_readdir_bug3481 {
 
       $dir = undef;
 
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
+
       # Make sure that the same paths were returned in the directory listings
       foreach my $file (keys(%$files1)) {
         unless (defined($files2->{$file})) {
@@ -15891,6 +15945,7 @@ sub sftp_rmdir {
         die("Can't rmdir testdir: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       if (-d $test_dir) {
@@ -16046,6 +16101,7 @@ sub sftp_remove {
         die("Can't remove test.txt: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       if (-f $test_file) {
@@ -16203,6 +16259,7 @@ sub sftp_rename {
         die("Can't rename test.txt to test2.txt: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       if (-f $test_file) {
@@ -16364,6 +16421,7 @@ sub sftp_symlink {
         die("Can't symlink test.lnk to test.txt: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       unless (-l $test_symlink) {
@@ -16524,6 +16582,7 @@ sub sftp_readlink {
         die("Can't readlink test.lnk: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       $self->assert($test_file eq $path,
@@ -16684,6 +16743,7 @@ sub sftp_config_allowoverwrite {
       }
 
       my ($err_code, $err_name) = $sftp->error();
+      $sftp = undef;
       $ssh2->disconnect();
 
       my $expected = 'SSH_FX_PERMISSION_DENIED';
@@ -16848,6 +16908,7 @@ sub sftp_config_allowstorerestart {
       }
 
       my ($err_code, $err_name) = $sftp->error();
+      $sftp = undef;
       $ssh2->disconnect();
 
       my $expected = 'SSH_FX_PERMISSION_DENIED';
@@ -17007,6 +17068,7 @@ sub sftp_config_client_alive {
         sleep($delay);
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -17153,6 +17215,7 @@ sub sftp_config_client_match {
       # via the Net::SSH2 methods (yet).  So we have to rely on the
       # generated TraceLog.
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -17281,6 +17344,7 @@ sub sftp_config_createhome {
         die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -17467,8 +17531,11 @@ sub sftp_config_defaultchdir {
         'test.txt' => 1,
       };
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the dirhandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the dirhandle
       $dir = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -17832,8 +17899,11 @@ sub sftp_config_dirfakemode {
         'sftp.scoreboard.lck' => '0310',
       };
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the dirhandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the dirhandle
       $dir = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -18028,13 +18098,16 @@ sub sftp_config_hiddenstores {
 
       print $fh "ABCD\n" x 32;
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
+
+      $ssh2->disconnect();
 
       # Check that the HiddenStores file is gone, and the requested
       # file exists.
-
-      $ssh2->disconnect();
 
       if (-f $hidden_file) {
         die("File $hidden_file exists unexpectedly");
@@ -18218,8 +18291,11 @@ sub sftp_config_hidefiles_abs_path {
         'test.txt' => 1,
       };
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the dirhandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the dirhandle
       $dir = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -18425,8 +18501,11 @@ sub sftp_config_hidefiles_deferred_path_bug3470 {
         'test.txt' => 1,
       };
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the dirhandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the dirhandle
       $dir = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -18633,8 +18712,11 @@ sub sftp_config_hidefiles_deferred_path_chroot_bug3470 {
         'test.txt' => 1,
       };
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the dirhandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the dirhandle
       $dir = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -18855,8 +18937,11 @@ sub sftp_config_hidenoaccess {
         'sftp.scoreboard.lck' => 1,
       };
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the dirhandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the dirhandle
       $dir = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -19186,6 +19271,9 @@ sub sftp_config_pathdenyfilter {
       my $expected = 'SSH_FX_PERMISSION_DENIED';
       $self->assert($expected eq $err_name,
         test_msg("Expected '$expected', got '$err_name'"));
+
+      $sftp = undef;
+      $ssh2->disconnect();
     };
 
     if ($@) {
@@ -19359,8 +19447,11 @@ sub sftp_config_rekey_short_timeout_failed {
         $res = $fh->read($buf, $buflen);
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -19545,8 +19636,11 @@ sub sftp_config_rekey_long_timeout_ok {
         $res = $fh->read($buf, $buflen);
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -20309,6 +20403,9 @@ sub sftp_config_timeoutnotransfer_download {
       my $expected = 'LIBSSH2_ERROR_SOCKET_NONE';
       $self->assert($expected eq $err_name,
         test_msg("Expected '$expected', got '$err_name'"));
+
+      $sftp = undef;
+      $ssh2->disconnect();
     };
 
     if ($@) {
@@ -20467,6 +20564,9 @@ sub sftp_config_timeoutnotransfer_readdir {
       my $expected = 'LIBSSH2_ERROR_SOCKET_NONE';
       $self->assert($expected eq $err_name,
         test_msg("Expected '$expected', got '$err_name'"));
+
+      $sftp = undef;
+      $ssh2->disconnect();
     };
 
     if ($@) {
@@ -20625,6 +20725,9 @@ sub sftp_config_timeoutnotransfer_upload {
       my $expected = 'LIBSSH2_ERROR_SOCKET_NONE';
       $self->assert($expected eq $err_name,
         test_msg("Expected '$expected', got '$err_name'"));
+
+      $sftp = undef;
+      $ssh2->disconnect();
     };
 
     if ($@) {
@@ -20800,6 +20903,9 @@ sub sftp_config_timeoutstalled {
       my $expected = 'LIBSSH2_ERROR_SOCKET_NONE';
       $self->assert($expected eq $err_name,
         test_msg("Expected '$expected', got '$err_name'"));
+
+      $sftp = undef;
+      $ssh2->disconnect();
     };
 
     if ($@) {
@@ -20950,8 +21056,11 @@ sub sftp_config_ignore_upload_perms {
         print $fh "ABCD" x 8192;
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
     };
@@ -21124,6 +21233,7 @@ sub sftp_config_ignore_set_perms_bug3599 {
         die("FXP_STAT test.txt failed: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -21291,8 +21401,11 @@ sub sftp_config_userowner {
         print $fh "ABCD" x 8192;
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -21462,8 +21575,11 @@ sub sftp_config_groupowner {
         print $fh "ABCD" x 8192;
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -21646,8 +21762,11 @@ sub sftp_config_groupowner_suppl_group_norootprivs {
         print $fh "ABCD" x 8192;
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
@@ -21931,6 +22050,7 @@ EOF
       }
 
       $fh = undef;
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -22098,6 +22218,7 @@ sub sftp_config_limit_appe {
       }
 
       my ($err_code, $err_name) = $sftp->error();
+      $sftp = undef;
       $ssh2->disconnect();
 
       my $expected = 'SSH_FX_PERMISSION_DENIED';
@@ -22254,6 +22375,7 @@ sub sftp_config_limit_chmod {
         die("FXP_STAT sftp.conf failed: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       my $expected;
@@ -22418,6 +22540,7 @@ sub sftp_config_limit_list {
       # To close the dirhandle, we explicitly destroy it.
       $dir = undef;
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       my $expected = {};
@@ -22605,6 +22728,7 @@ sub sftp_config_limit_nlst {
       # To close the dirhandle, we explicitly destroy it.
       $dir = undef;
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       my $expected = {};
@@ -23226,8 +23350,11 @@ sub sftp_log_xferlog_download {
         $res = $fh->read($buf, 8192);
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $self->assert($test_sz == $size,
         test_msg("Expected $test_sz, got $size"));
@@ -23711,6 +23838,7 @@ sub sftp_log_xferlog_delete {
         die("Can't delete test.txt: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -23940,6 +24068,7 @@ sub sftp_log_xferlog_delete_chrooted {
         die("Can't delete test.txt: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -24162,8 +24291,11 @@ sub sftp_log_xferlog_upload {
       my $buf = ("ABCD" x 256);
       print $fh $buf;
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
     };
@@ -24832,7 +24964,7 @@ sub sftp_log_extlog_var_s_reads {
         $file = $dir->read();
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the dirhandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the dirhandle
       $dir = undef;
 
       foreach my $file (keys(%$files)) {
@@ -25302,7 +25434,7 @@ sub sftp_log_extlog_file_modified_bug3457 {
       }
 
       $fh = undef;
-
+      $sftp = undef;
       $ssh2->disconnect();
 
       # Give a little time for the server to do its end-of-session thing.
@@ -25493,6 +25625,7 @@ sub sftp_log_extlog_retr_file_size {
       # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       $self->assert($test_sz == $size,
@@ -25958,6 +26091,7 @@ sub sftp_log_extlog_var_F_mkdir_rmdir_bug3591 {
         die("Can't rmdir testdir: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       if (-d $test_dir) {
@@ -26167,6 +26301,7 @@ sub sftp_log_extlog_var_w_rename_bug3029 {
         die("Can't rename test.txt to test2.txt: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       if (-f $test_file1) {
@@ -26262,7 +26397,7 @@ sub sftp_log_extlog_var_w_rename_bug3029 {
     die("Can't read $extlog_file: $!");
   }
 
-#  unlink($log_file);
+  unlink($log_file);
 }
 
 sub sftp_sighup {
@@ -26375,6 +26510,7 @@ sub sftp_sighup {
         die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -26708,6 +26844,7 @@ sub sftp_wrap_login_allowed_bug3352 {
         die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
       }
       
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -27035,6 +27172,7 @@ sub sftp_wrap2_file_login {
         die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
       }
       
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -27233,6 +27371,7 @@ EOS
         die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
       }
       
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -32451,6 +32590,7 @@ EOS
       $self->assert($expected == $err_code,
         test_msg("Expected $expected, got $err_code"));
 
+      $sftp = undef;
       $ssh2->disconnect();
     };
 
@@ -32690,8 +32830,11 @@ EOS
 
       my $res = $fh->read($buf, 8192);
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
     };
@@ -32889,8 +33032,11 @@ EOS
 
       my $res = $fh->read($buf, 8192);
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
     };
@@ -33103,8 +33249,11 @@ EOS
 
       print $fh "ABCD" x 8192;
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
     };
@@ -33328,8 +33477,11 @@ EOS
 
       print $fh "ABCD" x 8192;
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
     };
@@ -33548,8 +33700,11 @@ EOS
         die("Can't open sftp.conf: [$err_name] ($err_code)");
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
     };
@@ -33772,8 +33927,11 @@ EOS
         die("Can't open sftp.conf: [$err_name] ($err_code)");
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
     };
@@ -33996,8 +34154,11 @@ EOS
         die("Can't open sftp.conf: [$err_name] ($err_code)");
       }
 
-      # To issue the FXP_CLOSE, we have to explicit destroy the filehandle
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
       $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
 
       $ssh2->disconnect();
 
