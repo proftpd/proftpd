@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.21 2011-03-15 22:59:05 castaglia Exp $
+ * $Id: event.c,v 1.22 2011-03-19 18:32:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -303,6 +303,13 @@ void pr_event_generate(const char *event, const void *event_data) {
       break;
     }
   }
+
+  /* Clear any cached data after publishing the event to all interested
+   * listeners.
+   */
+  curr_event = NULL;
+  curr_evl = NULL;
+  curr_evh = NULL;
 
   return;
 }
