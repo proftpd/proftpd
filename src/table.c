@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.20 2011-03-18 17:33:19 castaglia Exp $
+ * $Id: table.c,v 1.21 2011-03-19 18:57:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -72,9 +72,28 @@ static const char *trace_channel = "table";
 
 static int key_cmp(const void *key1, size_t keysz1, const void *key2,
     size_t keysz2) {
+  const char *k1, *k2;
 
   if (keysz1 != keysz2) {
     return keysz1 < keysz2 ? -1 : 1;
+  }
+
+  k1 = key1;
+  k2 = key2;
+
+  if (keysz1 >= 1) {
+    /* Basic check of the first character in each key, trying to reduce
+     * the chances of calling strncmp(3) if not needed.
+     */
+
+    if (k1[0] != k2[0]) {
+      return k1[0] < k2[0] ? -1 : 1;
+    }
+
+    /* Special case (unlikely, but possible). */
+    if (keysz1 == 1) {
+      return 0;
+    }
   }
 
   return strncmp((const char *) key1, (const char *) key2, keysz1);
