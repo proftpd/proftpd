@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.116 2011-03-17 03:42:01 castaglia Exp $
+ * $Id: mod_log.c,v 1.117 2011-03-19 19:02:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -670,7 +670,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
         snprintf(argp, sizeof(arg), "%" PR_LU,
           (pr_off_t) session.xfer.total_bytes);
 
-      } else if (strcmp(cmd->argv[0], C_DELE) == 0) {
+      } else if (pr_cmd_cmp(cmd, PR_CMD_DELE_ID) == 0) {
         snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) log_dele_filesz);
 
       } else
@@ -689,14 +689,14 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     case META_DIR_NAME:
       argp = arg;
 
-      if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
-          strcmp(cmd->argv[0], C_CWD) == 0 ||
-          strcmp(cmd->argv[0], C_MKD) == 0 ||
-          strcmp(cmd->argv[0], C_RMD) == 0 ||
-          strcmp(cmd->argv[0], C_XCWD) == 0 ||
-          strcmp(cmd->argv[0], C_XCUP) == 0 ||
-          strcmp(cmd->argv[0], C_XMKD) == 0 ||
-          strcmp(cmd->argv[0], C_XRMD) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_CWD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XCWD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
         char *path, *tmp;
 
         path = pr_fs_decode_path(p, cmd->arg);
@@ -714,17 +714,17 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     case META_DIR_PATH:
       argp = arg;
 
-      if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
-          strcmp(cmd->argv[0], C_MKD) == 0 ||
-          strcmp(cmd->argv[0], C_RMD) == 0 ||
-          strcmp(cmd->argv[0], C_XCUP) == 0 ||
-          strcmp(cmd->argv[0], C_XMKD) == 0 ||
-          strcmp(cmd->argv[0], C_XRMD) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
         sstrncpy(argp, dir_abs_path(p, pr_fs_decode_path(p, cmd->arg), TRUE),
           sizeof(arg));
 
-      } else if (strcmp(cmd->argv[0], C_CWD) == 0 ||
-                 strcmp(cmd->argv[0], C_XCWD) == 0) {
+      } else if (pr_cmd_cmp(cmd, PR_CMD_CWD_ID) == 0 ||
+                 pr_cmd_cmp(cmd, PR_CMD_XCWD_ID) == 0) {
 
         /* Note: by this point in the dispatch cycle, the current working
          * directory has already been changed.  For the CWD/XCWD commands,
@@ -740,13 +740,15 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
             pdircat(p, session.chroot_path, pr_fs_getvwd(), NULL) :
             session.chroot_path, sizeof(arg));
 
-        } else
+        } else {
 
           /* Non-chrooted session. */
           sstrncpy(arg, pr_fs_getcwd(), sizeof(arg));
+        }
 
-      } else
+      } else {
         sstrncpy(argp, "", sizeof(arg));
+      }
 
       m++;
       break;
@@ -771,7 +773,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     case META_FILENAME:
       argp = arg;
 
-      if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
         sstrncpy(argp, dir_abs_path(p, pr_fs_decode_path(p, cmd->arg), TRUE),
           sizeof(arg));
 
@@ -779,7 +781,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
                  session.xfer.path) {
         sstrncpy(argp, dir_abs_path(p, session.xfer.path, TRUE), sizeof(arg));
 
-      } else if (strcmp(cmd->argv[0], C_SITE) == 0 &&
+      } else if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) == 0 &&
                  (strcasecmp(cmd->argv[1], "CHGRP") == 0 ||
                   strcasecmp(cmd->argv[1], "CHMOD") == 0)) {
         register unsigned int i;
@@ -797,11 +799,11 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
          * filenames that are not stored in the session.xfer structure; these
          * should be expanded properly as well.
          */
-        if (strcmp(cmd->argv[0], C_DELE) == 0 ||
-            strcmp(cmd->argv[0], C_MKD) == 0 ||
-            strcmp(cmd->argv[0], C_RMD) == 0 ||
-            strcmp(cmd->argv[0], C_XMKD) == 0 ||
-            strcmp(cmd->argv[0], C_XRMD) == 0) {
+        if (pr_cmd_cmp(cmd, PR_CMD_DELE_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
           sstrncpy(arg, dir_abs_path(p, pr_fs_decode_path(p, cmd->arg), TRUE),
             sizeof(arg));
 
@@ -817,7 +819,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     case META_XFER_PATH:
       argp = arg;
 
-      if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
         char *path;
 
         path = dir_best_path(cmd->tmp_pool,
@@ -833,11 +835,11 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
          * filenames that are not stored in the session.xfer structure; these
          * should be expanded properly as well.
          */
-        if (strcmp(cmd->argv[0], C_DELE) == 0 ||
-            strcmp(cmd->argv[0], C_MKD) == 0 ||
-            strcmp(cmd->argv[0], C_XMKD) == 0 ||
-            strcmp(cmd->argv[0], C_RMD) == 0 ||
-            strcmp(cmd->argv[0], C_XRMD) == 0) {
+        if (pr_cmd_cmp(cmd, PR_CMD_DELE_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
           char *path;
 
           path = dir_best_path(cmd->tmp_pool,
@@ -886,7 +888,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       char *rnfr_path = "-";
 
       argp = arg;
-      if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
         rnfr_path = pr_table_get(session.notes, "mod_core.rnfr-path", NULL);
         if (rnfr_path != NULL) {
           rnfr_path = dir_abs_path(p, pr_fs_decode_path(p, rnfr_path), TRUE);
@@ -918,7 +920,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     case META_METHOD:
       argp = arg;
 
-      if (strcmp(cmd->argv[0], C_SITE) != 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) != 0) {
         sstrncpy(argp, cmd->argv[0], sizeof(arg));
 
       } else {
@@ -1013,10 +1015,10 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
           gettimeofday(&end_time, NULL);
           end_time.tv_sec -= session.xfer.start_time.tv_sec;
 
-          if (end_time.tv_usec >= session.xfer.start_time.tv_usec)
+          if (end_time.tv_usec >= session.xfer.start_time.tv_usec) {
             end_time.tv_usec -= session.xfer.start_time.tv_usec;
 
-          else {
+          } else {
             end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
               end_time.tv_usec);
             end_time.tv_sec--;
@@ -1025,11 +1027,13 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
           snprintf(argp, sizeof(arg), "%ld.%03ld", (long) end_time.tv_sec,
             (long) (end_time.tv_usec / 1000));
 
-        } else
+        } else {
           sstrncpy(argp, "-", sizeof(arg));
+        }
 
-      } else
+      } else {
         sstrncpy(argp, "-", sizeof(arg));
+      }
 
       m++;
       break;
@@ -1037,7 +1041,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     case META_COMMAND:
       argp = arg;
 
-      if (strcasecmp(cmd->argv[0], C_PASS) == 0 &&
+      if (pr_cmd_cmp(cmd, PR_CMD_PASS_ID) == 0 &&
           session.hide_password) {
         sstrncpy(argp, "PASS (hidden)", sizeof(arg));
 
@@ -1050,7 +1054,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
     case META_CMD_PARAMS:
       argp = arg;
-      if (strcasecmp(cmd->argv[0], C_PASS) == 0 &&
+      if (pr_cmd_cmp(cmd, PR_CMD_PASS_ID) == 0 &&
           session.hide_password) {
         sstrncpy(argp, "(hidden)", sizeof(arg));
 
@@ -1070,10 +1074,11 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     case META_USER:
       argp = arg;
 
-      if (!session.user) {
+      if (session.user == NULL) {
         char *u = get_param_ptr(cmd->server->conf, "UserName", FALSE);
-        if (!u)
+        if (u == NULL) {
           u = "root";
+        }
 
         sstrncpy(argp, u, sizeof(arg));
 
@@ -1113,7 +1118,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
         sstrncpy(argp, resp_code, sizeof(arg));
 
       /* Hack to add return code for proper logging of QUIT command. */
-      } else if (strcasecmp(cmd->argv[0], C_QUIT) == 0) {
+      } else if (pr_cmd_cmp(cmd, PR_CMD_QUIT_ID) == 0) {
         sstrncpy(argp, R_221, sizeof(arg));
 
       } else {

@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.421 2011-03-17 16:43:11 castaglia Exp $
+ * $Id: main.c,v 1.422 2011-03-19 19:02:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -594,8 +594,13 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
   for (cp = cmd->argv[0]; *cp; cp++)
     *cp = toupper(*cp);
 
-  if (!cmd->class)
+  if (cmd->class == 0) {
     cmd->class = get_command_class(cmd->argv[0]);
+  }
+
+  if (cmd->cmd_id == 0) {
+    cmd->cmd_id = pr_cmd_get_id(cmd->argv[0]);
+  }
 
   if (phase == 0) {
         

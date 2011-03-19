@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.204 2011-03-17 03:42:01 castaglia Exp $
+ * $Id: mod_sql.c,v 1.205 2011-03-19 19:02:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2133,7 +2133,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
         snprintf(argp, sizeof(arg), "%" PR_LU,
           (pr_off_t) session.xfer.total_bytes);
 
-      } else if (strcmp(cmd->argv[0], C_DELE) == 0) {
+      } else if (pr_cmd_cmp(cmd, PR_CMD_DELE_ID) == 0) {
         snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) sql_dele_filesz);
 
       } else {
@@ -2150,14 +2150,14 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
     case 'd':
       argp = arg;
 
-      if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
-          strcmp(cmd->argv[0], C_CWD) == 0 ||
-          strcmp(cmd->argv[0], C_MKD) == 0 ||
-          strcmp(cmd->argv[0], C_RMD) == 0 ||
-          strcmp(cmd->argv[0], C_XCWD) == 0 ||
-          strcmp(cmd->argv[0], C_XCUP) == 0 ||
-          strcmp(cmd->argv[0], C_XMKD) == 0 ||
-          strcmp(cmd->argv[0], C_XRMD) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_CWD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XCWD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
         char *tmp = strrchr(cmd->arg, '/');
 
         sstrncpy(argp, tmp ? tmp : cmd->arg, sizeof(arg));
@@ -2170,17 +2170,17 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
     case 'D':
       argp = arg;
 
-      if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
-          strcmp(cmd->argv[0], C_MKD) == 0 ||
-          strcmp(cmd->argv[0], C_RMD) == 0 ||
-          strcmp(cmd->argv[0], C_XCUP) == 0 ||
-          strcmp(cmd->argv[0], C_XMKD) == 0 ||
-          strcmp(cmd->argv[0], C_XRMD) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
         sstrncpy(argp, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE),
           sizeof(arg));
 
-      } else if (strcmp(cmd->argv[0], C_CWD) == 0 ||
-                 strcmp(cmd->argv[0], C_XCWD) == 0) {
+      } else if (pr_cmd_cmp(cmd, PR_CMD_CWD_ID) == 0 ||
+                 pr_cmd_cmp(cmd, PR_CMD_XCWD_ID) == 0) {
 
         /* Note: by this point in the dispatch cycle, the current working
          * directory has already been changed.  For the CWD/XCWD commands,
@@ -2226,7 +2226,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
     case 'f':
       argp = arg;
 
-      if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
         sstrncpy(argp, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE),
           sizeof(arg));
 
@@ -2241,11 +2241,11 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
          * filenames that are not stored in the session.xfer structure; these
          * should be expanded properly as well.
          */
-        if (strcmp(cmd->argv[0], C_DELE) == 0 ||
-            strcmp(cmd->argv[0], C_MKD) == 0 ||
-            strcmp(cmd->argv[0], C_RMD) == 0 ||
-            strcmp(cmd->argv[0], C_XMKD) == 0 ||
-            strcmp(cmd->argv[0], C_XRMD) == 0) {
+        if (pr_cmd_cmp(cmd, PR_CMD_DELE_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
           sstrncpy(arg, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE),
             sizeof(arg));
 
@@ -2259,7 +2259,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
     case 'F':
       argp = arg;
 
-      if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
         char *path;
 
         path = dir_best_path(cmd->tmp_pool,
@@ -2276,11 +2276,11 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
          * should be expanded
          * properly as well.
          */
-        if (strcmp(cmd->argv[0], C_DELE) == 0 ||
-            strcmp(cmd->argv[0], C_MKD) == 0 ||
-            strcmp(cmd->argv[0], C_RMD) == 0 ||
-            strcmp(cmd->argv[0], C_XMKD) == 0 ||
-            strcmp(cmd->argv[0], C_XRMD) == 0) {
+        if (pr_cmd_cmp(cmd, PR_CMD_DELE_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
           char *path;
 
           path = dir_best_path(cmd->tmp_pool,
@@ -2310,7 +2310,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
     case 'J':
       argp = arg;
-      if (strcasecmp(cmd->argv[0], C_PASS) == 0 &&
+      if (pr_cmd_cmp(cmd, PR_CMD_PASS_ID) == 0 &&
           session.hide_password) {
         sstrncpy(argp, "(hidden)", sizeof(arg));
 
@@ -2360,7 +2360,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
     case 'r':
       argp = arg;
-      if (strcmp(cmd->argv[0], C_PASS) == 0 &&
+      if (pr_cmd_cmp(cmd, PR_CMD_PASS_ID) == 0 &&
           session.hide_password) {
         sstrncpy(argp, C_PASS " (hidden)", sizeof(arg));
 
@@ -2438,8 +2438,9 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       argp = arg;
 
       login_user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
-      if (!login_user)
+      if (login_user == NULL) {
         login_user = "root";
+      }
 
       sstrncpy(argp, login_user, sizeof(arg));
       break;
@@ -2448,12 +2449,13 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
     case 'u': {
       argp = arg;
 
-      if (!session.user) {
+      if (session.user == NULL) {
         char *u;
 
         u = get_param_ptr(main_server->conf, "UserName", FALSE);
-        if (!u)
+        if (u == NULL) {
           u = "root";
+        }
 
         sstrncpy(argp, u, sizeof(arg));
 
@@ -2478,7 +2480,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
     case 'w': {
       char *rnfr_path = "-";
 
-      if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
         rnfr_path = pr_table_get(session.notes, "mod_core.rnfr-path", NULL);
         if (rnfr_path == NULL)
           rnfr_path = "-";

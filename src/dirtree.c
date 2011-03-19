@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.255 2011-03-17 17:35:49 castaglia Exp $
+ * $Id: dirtree.c,v 1.256 2011-03-19 19:02:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1891,8 +1891,8 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   if (!_kludge_disable_umask) {
     /* Check for a directory Umask. */
     if (S_ISDIR(st.st_mode) ||
-        strcmp(cmd->argv[0], C_MKD) == 0 ||
-        strcmp(cmd->argv[0], C_XMKD) == 0) {
+        pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0) {
       mode_t *dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
       _umask = dir_umask ? *dir_umask : (mode_t) -1;
     }
@@ -1954,10 +1954,10 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
      * ALL group (i.e. EPRT, EPSV, PASV, PORT, and OPTS).
      */
     if (res == 1 &&
-        strcmp(cmd->argv[0], C_EPRT) != 0 &&
-        strcmp(cmd->argv[0], C_EPSV) != 0 &&
-        strcmp(cmd->argv[0], C_PASV) != 0 &&
-        strcmp(cmd->argv[0], C_PORT) != 0 &&
+        pr_cmd_cmp(cmd, PR_CMD_EPRT_ID) != 0 &&
+        pr_cmd_cmp(cmd, PR_CMD_EPSV_ID) != 0 &&
+        pr_cmd_cmp(cmd, PR_CMD_PASV_ID) != 0 &&
+        pr_cmd_cmp(cmd, PR_CMD_PORT_ID) != 0 &&
         strncmp(cmd->argv[0], C_OPTS, 4) != 0) {
       res = dir_check_limits(cmd, c, "ALL", op_hidden || regex_hidden);
     }
@@ -2039,8 +2039,8 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   if (!_kludge_disable_umask) {
     /* Check for a directory Umask. */
     if (S_ISDIR(st.st_mode) ||
-        strcmp(cmd->argv[0], C_MKD) == 0 ||
-        strcmp(cmd->argv[0], C_XMKD) == 0) {
+        pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0) {
       mode_t *dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
       _umask = dir_umask ? *dir_umask : (mode_t) -1;
     }
@@ -2100,10 +2100,10 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
      * ALL group (i.e. EPRT, EPSV, PASV, PORT, and OPTS).
      */
     if (res == 1 &&
-        strcmp(cmd->argv[0], C_EPRT) != 0 &&
-        strcmp(cmd->argv[0], C_EPSV) != 0 &&
-        strcmp(cmd->argv[0], C_PASV) != 0 &&
-        strcmp(cmd->argv[0], C_PORT) != 0 &&
+        pr_cmd_cmp(cmd, PR_CMD_EPRT_ID) != 0 &&
+        pr_cmd_cmp(cmd, PR_CMD_EPSV_ID) != 0 &&
+        pr_cmd_cmp(cmd, PR_CMD_PASV_ID) != 0 &&
+        pr_cmd_cmp(cmd, PR_CMD_PORT_ID) != 0 &&
         strncmp(cmd->argv[0], C_OPTS, 4) != 0) {
       res = dir_check_limits(cmd, c, "ALL", op_hidden || regex_hidden);
     }

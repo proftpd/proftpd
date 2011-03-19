@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.290 2011-03-17 18:30:07 castaglia Exp $
+ * $Id: mod_auth.c,v 1.291 2011-03-19 19:02:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1395,13 +1395,14 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   dir_check_full(p, cmd, G_NONE, session.cwd, NULL);
 
   if (c) {
-    if (!session.hide_password)
+    if (!session.hide_password) {
       session.proc_prefix = pstrcat(session.pool, session.c->remote_name,
         ": anonymous/", pass, NULL);
 
-    else
+    } else {
       session.proc_prefix = pstrcat(session.pool, session.c->remote_name,
         ": anonymous", NULL);
+    }
 
     session.sf_flags = SF_ANON;
 

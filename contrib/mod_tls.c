@@ -6019,10 +6019,10 @@ MODRET tls_any(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
 
   /* Some commands need not be hindered. */
-  if (strcmp(cmd->argv[0], C_SYST) == 0 ||
-      strcmp(cmd->argv[0], C_AUTH) == 0 ||
-      strcmp(cmd->argv[0], C_FEAT) == 0 ||
-      strcmp(cmd->argv[0], C_QUIT) == 0) {
+  if (pr_cmd_cmp(cmd, PR_CMD_SYST_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_AUTH_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_FEAT_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_QUIT_ID) == 0) {
     return PR_DECLINED(cmd);
   }
 
@@ -6030,9 +6030,9 @@ MODRET tls_any(cmd_rec *cmd) {
       !(tls_flags & TLS_SESS_ON_CTRL)) {
 
     if (!(tls_opts & TLS_OPT_ALLOW_PER_USER)) {
-      if (strcmp(cmd->argv[0], C_USER) == 0 ||
-          strcmp(cmd->argv[0], C_PASS) == 0 ||
-          strcmp(cmd->argv[0], C_ACCT) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_USER_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_PASS_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_ACCT_ID) == 0) {
         tls_log("SSL/TLS required but absent for authentication, "
           "denying %s command", cmd->argv[0]);
         pr_response_add_err(R_550,
@@ -6073,13 +6073,13 @@ MODRET tls_any(cmd_rec *cmd) {
      */
 
     if (!(tls_flags & TLS_SESS_NEED_DATA_PROT)) {
-      if (strcmp(cmd->argv[0], C_APPE) == 0 ||
-          strcmp(cmd->argv[0], C_LIST) == 0 ||
-          strcmp(cmd->argv[0], C_MLSD) == 0 ||
-          strcmp(cmd->argv[0], C_NLST) == 0 ||
-          strcmp(cmd->argv[0], C_RETR) == 0 ||
-          strcmp(cmd->argv[0], C_STOR) == 0 ||
-          strcmp(cmd->argv[0], C_STOU) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_STOU_ID) == 0) {
         tls_log("SSL/TLS required but absent on data channel, "
           "denying %s command", cmd->argv[0]);
         pr_response_add_err(R_550, _("SSL/TLS required on the data channel"));
@@ -6098,13 +6098,13 @@ MODRET tls_any(cmd_rec *cmd) {
      * do the lookup based on the target location.
      */
 
-    if (strcmp(cmd->argv[0], C_APPE) == 0 ||
-        strcmp(cmd->argv[0], C_LIST) == 0 ||
-        strcmp(cmd->argv[0], C_MLSD) == 0 ||
-        strcmp(cmd->argv[0], C_NLST) == 0 ||
-        strcmp(cmd->argv[0], C_RETR) == 0 ||
-        strcmp(cmd->argv[0], C_STOR) == 0 ||
-        strcmp(cmd->argv[0], C_STOU) == 0) {
+    if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_STOU_ID) == 0) {
       config_rec *c;
 
       c = find_config(CURRENT_CONF, CONF_PARAM, "TLSRequired", FALSE);
