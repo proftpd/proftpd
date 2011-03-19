@@ -23,6 +23,10 @@ ChangeLog files.
   + New configuration directives:
 
     MaxCommandRate 
+      doc/modules/mod_core.html#MaxCommandRate
+
+    SQLNamedConnectInfo
+      doc/contrib/mod_sql.html#SQLNamedConnectInfo
 
   + The following utilities are now installed under $prefix/bin/ by the
     'make install' target: ftpasswd, ftpmail, ftpquota
@@ -47,6 +51,9 @@ ChangeLog files.
 
     SFTPPAMOptions
       NoInfoMsgs
+
+    SQLNamedQuery
+      Optional connection name to use (Bug#3262)
 
     Trace
       log level range syntax
@@ -230,4 +237,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2011-03-17 03:42:01 $
+Last Updated: $Date: 2011-03-19 19:13:31 $
