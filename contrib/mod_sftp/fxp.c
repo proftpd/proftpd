@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.125 2011-03-17 22:16:47 castaglia Exp $
+ * $Id: fxp.c,v 1.126 2011-03-19 20:26:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4545,13 +4545,16 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
     if (fxh->fh_flags & O_APPEND) {
       cmd2 = fxp_cmd_alloc(fxp->pool, C_APPE, pstrdup(fxp->pool, real_path));
+      cmd2->cmd_id = pr_cmd_get_id(C_APPE);
 
     } else if ((fxh->fh_flags & O_WRONLY) ||
                (fxh->fh_flags & O_RDWR)) {
       cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, pstrdup(fxp->pool, real_path));
+      cmd2->cmd_id = pr_cmd_get_id(C_STOR);
 
     } else if (fxh->fh_flags == O_RDONLY) {
       cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, pstrdup(fxp->pool, real_path));
+      cmd2->cmd_id = pr_cmd_get_id(C_RETR);
     }
 
     fxh->fh = NULL;
@@ -4560,8 +4563,8 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
       int post_phase = POST_CMD, log_phase = LOG_CMD;
 
       if (fxh->fh_existed &&
-          (strcmp(cmd2->argv[0], C_STOR) == 0 ||
-           strcmp(cmd2->argv[0], C_APPE) == 0)) {
+          (pr_cmd_cmp(cmd2, PR_CMD_STOR_ID) == 0 ||
+           pr_cmd_cmp(cmd2, PR_CMD_APPE_ID) == 0)) {
 
         /* Clear any existing key in the notes. */
         (void) pr_table_remove(cmd->notes, "mod_xfer.file-modified", NULL);
@@ -6260,11 +6263,13 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   if (open_flags & O_APPEND) {
     cmd->class = CL_WRITE;
     cmd2 = fxp_cmd_alloc(fxp->pool, C_APPE, path);
+    cmd2->cmd_id = pr_cmd_get_id(C_APPE);
     session.curr_cmd = C_APPE;
 
   } else if ((open_flags & O_WRONLY) ||
              (open_flags & O_RDWR)) {
     cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, path);
+    cmd2->cmd_id = pr_cmd_get_id(C_STOR);
 
     if (open_flags & O_WRONLY) {
       cmd->class = CL_WRITE;
@@ -6278,6 +6283,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   } else if (open_flags == O_RDONLY) {
     cmd->class = CL_READ;
     cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, path);
+    cmd2->cmd_id = pr_cmd_get_id(C_RETR);
     session.curr_cmd = C_RETR;
   }
 
@@ -6346,8 +6352,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     file_existed = exists(hiddenstore_path ? hiddenstore_path : path);
 
     if (file_existed &&
-        (strcmp(cmd2->argv[0], C_STOR) == 0 ||
-         strcmp(cmd2->argv[0], C_APPE) == 0)) {
+        (pr_cmd_cmp(cmd2, PR_CMD_STOR_ID) == 0 ||
+         pr_cmd_cmp(cmd2, PR_CMD_APPE_ID) == 0)) {
 
       /* Clear any existing key in the notes. */
       (void) pr_table_remove(cmd->notes, "mod_xfer.file-modified", NULL);
@@ -8470,9 +8476,13 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
     }
 #endif
 
+    errno = xerrno;
+
   } else {
     /* No error. */
+    errno = 0;
     status_code = SSH2_FX_OK;
+    reason = fxp_strerror(status_code);
   }
 
   pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
