@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.48 2011-02-14 22:41:35 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.49 2011-03-19 23:12:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1150,10 +1150,12 @@ MODRET pw_getgroups(cmd_rec *cmd) {
     free(ptr);
 #else
     char **gr_member = NULL;
+    size_t pw_namelen;
 
     /* This is where things get slow, expensive, and ugly.  Loop through
      * everything, checking to make sure we haven't already added it.
      */
+    pw_namelen = strlen(pw->pw_name);
     while ((gr = my_getgrent()) != NULL && gr->gr_mem) {
       pr_signals_handle();
 
@@ -1161,7 +1163,7 @@ MODRET pw_getgroups(cmd_rec *cmd) {
       for (gr_member = gr->gr_mem; *gr_member; gr_member++) {
 
         /* If it matches the given username... */
-        if (strcmp(*gr_member, pw->pw_name) == 0) {
+        if (strncmp(*gr_member, pw->pw_name, pw_namelen + 1) == 0) {
 
           /* ...add the GID and name */
           if (gids)
