@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.12 2011-01-12 06:54:49 castaglia Exp $
+ * $Id: mod_exec.c,v 1.13 2011-03-19 19:53:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -37,8 +37,8 @@
 #define MOD_EXEC_VERSION	"mod_exec/0.9.10"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030301
-# error "ProFTPD 1.3.3rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030402
+# error "ProFTPD 1.3.4rc2 or later required"
 #endif
 
 module exec_module;
@@ -890,7 +890,7 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
 
   ptr = strstr(varstr, "%F");
   if (ptr != NULL) {
-    if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+    if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
       char *path;
 
       path = dir_best_path(tmp_pool, pr_fs_decode_path(tmp_pool, cmd->arg));
@@ -901,9 +901,9 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
       varstr = sreplace(tmp_pool, varstr, "%F", session.xfer.path, NULL);
 
     } else if (session.curr_phase == PRE_CMD &&
-               (strcmp(cmd->argv[0], C_STOR) == 0 ||
-                strcmp(cmd->argv[0], C_RETR) == 0 ||
-                strcmp(cmd->argv[0], C_APPE) == 0)) {
+               (pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0 ||
+                pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0 ||
+                pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0)) {
       char *path;
 
       /* If we're in the PRE_CMD phase, then the %f variable can't be
@@ -917,7 +917,7 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
        * stored in the session.xfer structure; these should be expanded
        * properly as well.
        */
-      if (strcmp(cmd->argv[0], C_DELE) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_DELE_ID) == 0) {
         char *path;
 
         path = dir_best_path(tmp_pool, pr_fs_decode_path(tmp_pool, cmd->arg));
@@ -932,7 +932,7 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
   ptr = strstr(varstr, "%f");
   if (ptr != NULL) {
 
-    if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+    if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
       char *path;
 
       path = pr_fs_decode_path(tmp_pool, cmd->arg);
@@ -945,9 +945,9 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
         dir_abs_path(tmp_pool, session.xfer.path, TRUE), NULL);
 
     } else if (session.curr_phase == PRE_CMD &&
-               (strcmp(cmd->argv[0], C_STOR) == 0 ||
-                strcmp(cmd->argv[0], C_RETR) == 0 ||
-                strcmp(cmd->argv[0], C_APPE) == 0)) {
+               (pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0 ||
+                pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0 ||
+                pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0)) {
       char *path;
 
       /* If we're in the PRE_CMD phase, then the %f variable can't be
@@ -963,11 +963,11 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
        * filenames that are not stored in the session.xfer structure; these
        * should be expanded properly as well.
        */
-      if (strcmp(cmd->argv[0], C_DELE) == 0 ||
-          strcmp(cmd->argv[0], C_MKD) == 0 ||
-          strcmp(cmd->argv[0], C_RMD) == 0 ||
-          strcmp(cmd->argv[0], C_XMKD) == 0 ||
-          strcmp(cmd->argv[0], C_XRMD) == 0) {
+      if (pr_cmd_cmp(cmd, PR_CMD_DELE_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
         varstr = sreplace(tmp_pool, varstr, "%f",
           dir_abs_path(tmp_pool, cmd->arg, TRUE), NULL);
 
@@ -1013,7 +1013,7 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
   ptr = strstr(varstr, "%r");
   if (ptr != NULL) {
     if (cmd) {
-      if (strcasecmp(cmd->argv[0], C_PASS) == 0 &&
+      if (pr_cmd_cmp(cmd, PR_CMD_PASS_ID) == 0 &&
           session.hide_password) {
         varstr = sreplace(tmp_pool, varstr, "%r", "PASS (hidden)", NULL);
 
@@ -1055,7 +1055,7 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
   if (ptr != NULL) {
     char *rnfr_path = "-";
 
-    if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+    if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
       rnfr_path = pr_table_get(session.notes, "mod_core.rnfr-path", NULL);
       if (rnfr_path == NULL)
         rnfr_path = "-";
