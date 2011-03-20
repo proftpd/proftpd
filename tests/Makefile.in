@@ -29,7 +29,8 @@ TEST_API_DEPS=\
   $(top_srcdir)/src/expr.o \
   $(top_srcdir)/src/scoreboard.o \
   $(top_srcdir)/src/stash.o \
-  $(top_srcdir)/src/modules.o
+  $(top_srcdir)/src/modules.o \
+  $(top_srcdir)/src/cmd.o
 
 TEST_API_LIBS=-lcheck
 
@@ -53,6 +54,7 @@ TEST_API_OBJS=\
   api/scoreboard.o \
   api/stash.o \
   api/modules.o \
+  api/cmd.o \
   api/stubs.o \
   api/tests.o
 

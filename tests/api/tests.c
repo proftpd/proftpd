@@ -1,6 +1,6 @@
 /*
- * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2010 The ProFTPD Project team
+ * ProFTPD - FTP server API testsuite
+ * Copyright (c) 2008-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,25 +30,26 @@ struct testsuite_info {
 };
 
 static struct testsuite_info suites[] = {
-  { "pool", 	tests_get_pool_suite },
-  { "array", 	tests_get_array_suite },
-  { "str", 	tests_get_str_suite },
-  { "sets", 	tests_get_sets_suite },
-  { "timers", 	tests_get_timers_suite },
-  { "table", 	tests_get_table_suite },
-  { "var", 	tests_get_var_suite },
-  { "event", 	tests_get_event_suite },
-  { "env", 	tests_get_env_suite },
-  { "version", 	tests_get_version_suite },
-  { "feat", 	tests_get_feat_suite },
-  { "netaddr", 	tests_get_netaddr_suite },
-  { "netacl",	tests_get_netacl_suite },
-  { "class",	tests_get_class_suite },
-  { "regexp",	tests_get_regexp_suite },
-  { "expr",	tests_get_expr_suite },
+  { "pool", 		tests_get_pool_suite },
+  { "array", 		tests_get_array_suite },
+  { "str", 		tests_get_str_suite },
+  { "sets", 		tests_get_sets_suite },
+  { "timers", 		tests_get_timers_suite },
+  { "table", 		tests_get_table_suite },
+  { "var", 		tests_get_var_suite },
+  { "event", 		tests_get_event_suite },
+  { "env", 		tests_get_env_suite },
+  { "version", 		tests_get_version_suite },
+  { "feat", 		tests_get_feat_suite },
+  { "netaddr", 		tests_get_netaddr_suite },
+  { "netacl",		tests_get_netacl_suite },
+  { "class",		tests_get_class_suite },
+  { "regexp",		tests_get_regexp_suite },
+  { "expr",		tests_get_expr_suite },
   { "scoreboard",	tests_get_scoreboard_suite },
-  { "stash",	tests_get_stash_suite },
-  { "modules",	tests_get_modules_suite },
+  { "stash",		tests_get_stash_suite },
+  { "modules",		tests_get_modules_suite },
+  { "cmd",		tests_get_cmd_suite },
 
   { NULL, NULL }
 };
@@ -110,6 +111,9 @@ static Suite *tests_get_suite(const char *suite) {
 
   } else if (strcmp(suite, "modules") == 0) {
     return tests_get_modules_suite();
+
+  } else if (strcmp(suite, "cmd") == 0) {
+    return tests_get_cmd_suite();
   }
 
   return NULL;
