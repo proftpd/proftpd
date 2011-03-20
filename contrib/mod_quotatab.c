@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.70 2011-03-03 21:38:54 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.71 2011-03-20 18:54:43 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -104,6 +104,13 @@ static int quotatab_have_dele_st = FALSE;
 static int quota_lockfd = -1;
 
 #define QUOTA_MAX_LOCK_ATTEMPTS		10
+
+/* Used to indicate whether a transfer was aborted via the ABORT command.
+ * This is needed, in conjunction with checking the SF_ABORT/SF_POST_ABORT
+ * session flags, since it is possible for clients to abort transfers without
+ * using the OOB signal byte.
+ */
+static unsigned char have_aborted_transfer = FALSE;
 
 /* It is the case where sometimes a command may be denied by a PRE_CMD
  * handler of this module, in which case an appropriate error response is
@@ -1649,9 +1656,15 @@ static const char *quota_get_files_str(void *data, size_t datasz) {
 /* Command handlers
  */
 
+MODRET quotatab_post_abor(cmd_rec *cmd) {
+  have_aborted_transfer = TRUE;
+  return PR_DECLINED(cmd);
+}
+
 MODRET quotatab_pre_appe(cmd_rec *cmd) {
   struct stat st;
 
+  have_aborted_transfer = FALSE;
   have_err_response = FALSE;
 
   /* Sanity check */
@@ -1919,6 +1932,7 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
 MODRET quotatab_pre_copy(cmd_rec *cmd) {
   struct stat st;
 
+  have_aborted_transfer = FALSE;
   have_err_response = FALSE;
 
   /* Sanity check */
@@ -2824,6 +2838,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 }
 
 MODRET quotatab_pre_retr(cmd_rec *cmd) {
+  have_aborted_transfer = FALSE;
   have_err_response = FALSE;
 
   /* Sanity check */
@@ -3147,6 +3162,7 @@ MODRET quotatab_post_rnto(cmd_rec *cmd) {
 MODRET quotatab_pre_stor(cmd_rec *cmd) {
   struct stat st;
  
+  have_aborted_transfer = FALSE;
   have_err_response = FALSE;
 
   /* Sanity check */
@@ -3262,6 +3278,23 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
       cmd->argv[0], cmd->arg, quota_exclude_filter);
     have_quota_update = 0;
     return PR_DECLINED(cmd);
+  }
+
+  /* If the transfer was aborted, AND if DeleteAbortedStores is on, then
+   * don't update the tally (Bug#3621).
+   */
+  if (have_aborted_transfer ||
+      (session.sf_flags & (SF_ABORT|SF_POST_ABORT))) {
+    unsigned char *delete_stores;
+
+    delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
+    if (delete_stores != NULL &&
+        *delete_stores == TRUE) {
+      quotatab_log("%s: upload aborted and DeleteAbortedStores on, "
+        "skipping tally update", cmd->argv[0]);
+      have_quota_update = 0;
+      return PR_DECLINED(cmd);
+    }
   }
 
   /* Check on the size of the stored file again, and use the difference
@@ -3397,6 +3430,23 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
     have_quota_update = 0;
     return PR_DECLINED(cmd);
   }
+
+  /* If the transfer was aborted, AND if DeleteAbortedStores is on, then
+   * don't update the tally (Bug#3621).
+   */
+  if (have_aborted_transfer ||
+      (session.sf_flags & (SF_ABORT|SF_POST_ABORT))) {
+    unsigned char *delete_stores;
+    
+    delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
+    if (delete_stores != NULL &&
+        *delete_stores == TRUE) {
+      quotatab_log("%s: upload aborted and DeleteAbortedStores on, "
+        "skipping tally update", cmd->argv[0]);
+      have_quota_update = 0;
+      return PR_DECLINED(cmd);
+    } 
+  } 
 
   if (store_bytes > 0) {
     /* Check on the size of the stored file again, and use the difference
@@ -3916,6 +3966,7 @@ static conftable quotatab_conftab[] = {
 };
 
 static cmdtable quotatab_cmdtab[] = {
+  { POST_CMD,		C_ABOR,	G_NONE,	quotatab_post_abor,	FALSE,	FALSE },
   { PRE_CMD,		C_APPE, G_NONE, quotatab_pre_appe,	FALSE,	FALSE },
   { POST_CMD,		C_APPE,	G_NONE,	quotatab_post_appe,	FALSE,	FALSE },
   { POST_CMD_ERR,	C_APPE,	G_NONE,	quotatab_post_appe_err,	FALSE,	FALSE },
