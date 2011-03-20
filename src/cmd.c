@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: cmd.c,v 1.4 2011-03-19 23:08:04 castaglia Exp $
+ * $Id: cmd.c,v 1.5 2011-03-20 05:59:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -113,6 +113,11 @@ cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
   pool *newpool = NULL;
   cmd_rec *cmd = NULL;
   va_list args;
+
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
  
   newpool = make_sub_pool(p); 
   pr_pool_tag(newpool, "cmd_rec pool");
@@ -168,6 +173,11 @@ int pr_cmd_cmp(cmd_rec *cmd, int cmd_id) {
     return -1;
   }
 
+  if (cmd->argc == 0 ||
+      cmd->argv == NULL) {
+    return 1;
+  }
+
   /* The cmd ID is unknown; look it up. */
   if (cmd->cmd_id == 0) {
     cmd->cmd_id = pr_cmd_get_id(cmd->argv[0]);
@@ -193,6 +203,11 @@ int pr_cmd_strcmp(cmd_rec *cmd, const char *cmd_name) {
       cmd_name == NULL) {
     errno = EINVAL;
     return -1;
+  }
+
+  if (cmd->argc == 0 ||
+      cmd->argv == NULL) {
+    return 1;
   }
 
   /* The cmd ID is unknown; look it up. */
