@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.50 2011-03-20 20:47:00 castaglia Exp $
+ * $Id: mod_delay.c,v 1.51 2011-03-20 23:38:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1238,7 +1238,7 @@ MODRET delay_post_pass(cmd_rec *cmd) {
    * poisoning the cache.
    */
   if (delay_npass < (DELAY_NVALUES / DELAY_SESS_NVALUES)) {
-    pr_trace_msg("delay", 8, "adding %ld usecs to PASS row", interval);
+    pr_trace_msg(trace_channel, 8, "adding %ld usecs to PASS row", interval);
     delay_table_add_interval(rownum, proto, interval);
     delay_npass++;
 
@@ -1314,7 +1314,7 @@ MODRET delay_post_user(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": unable to load DelayTable '%s' (fd %d) into memory: %s",
       delay_tab.dt_path, delay_tab.dt_fd, strerror(xerrno));
-    pr_trace_msg("delay", 1,
+    pr_trace_msg(trace_channel, 1,
       "unable to load DelayTable '%s' (fd %d) into memory: %s",
       delay_tab.dt_path, delay_tab.dt_fd, strerror(xerrno));
 
@@ -1341,7 +1341,7 @@ MODRET delay_post_user(cmd_rec *cmd) {
    * poisoning the cache.
    */
   if (delay_nuser < (DELAY_NVALUES / DELAY_SESS_NVALUES)) {
-    pr_trace_msg("delay", 8, "adding %ld usecs to USER row", interval);
+    pr_trace_msg(trace_channel, 8, "adding %ld usecs to USER row", interval);
     delay_table_add_interval(rownum, proto, interval);
     delay_nuser++;
 
@@ -1481,7 +1481,7 @@ static void delay_shutdown_ev(const void *event_data, void *user_data) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": unable to load DelayTable '%s' (fd %d) into memory: %s",
       delay_tab.dt_path, delay_tab.dt_fd, strerror(xerrno));
-    pr_trace_msg("delay", 1,
+    pr_trace_msg(trace_channel, 1,
       "unable to load DelayTable '%s' (fd %d) into memory: %s",
       delay_tab.dt_path, delay_tab.dt_fd, strerror(xerrno));
     
@@ -1575,7 +1575,7 @@ static int delay_sess_init(void) {
   delay_nuser = 0;
   delay_npass = 0;
 
-  pr_trace_msg("delay", 6, "opening DelayTable '%s'", delay_tab.dt_path);
+  pr_trace_msg(trace_channel, 6, "opening DelayTable '%s'", delay_tab.dt_path);
 
   PRIVS_ROOT
   fh = pr_fsio_open(delay_tab.dt_path, O_RDWR);
@@ -1588,7 +1588,7 @@ static int delay_sess_init(void) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": unable to open DelayTable '%s': %s", delay_tab.dt_path,
       strerror(xerrno));
-    pr_trace_msg("delay", 1, "unable to open DelayTable '%s': %s",
+    pr_trace_msg(trace_channel, 1, "unable to open DelayTable '%s': %s",
       delay_tab.dt_path, strerror(xerrno));
     delay_engine = FALSE;
     return 0;
