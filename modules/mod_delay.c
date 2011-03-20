@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.48 2011-02-15 21:29:27 castaglia Exp $
+ * $Id: mod_delay.c,v 1.49 2011-03-20 20:39:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1422,11 +1422,22 @@ static void delay_postparse_ev(const void *event_data, void *user_data) {
 }
 
 static void delay_restart_ev(const void *event_data, void *user_data) {
+#if defined(PR_USE_CTRLS)
+    register unsigned int i;
+#endif /* PR_USE_CTRLS */
+
   if (delay_pool)
     destroy_pool(delay_pool);
 
   delay_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(delay_pool, MOD_DELAY_VERSION);
+
+#if defined(PR_USE_CTRLS)
+  for (i = 0; delay_acttab[i].act_action; i++) {
+    delay_acttab[i].act_acl = pcalloc(delay_pool, sizeof(ctrls_acl_t));
+    pr_ctrls_init_acl(delay_acttab[i].act_acl);
+  }
+#endif /* PR_USE_CTRLS */
 
   return;
 }
