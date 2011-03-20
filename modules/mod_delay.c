@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.49 2011-03-20 20:39:29 castaglia Exp $
+ * $Id: mod_delay.c,v 1.50 2011-03-20 20:47:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -903,11 +903,11 @@ static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
     xerrno = errno;
 
     pr_ctrls_add_response(ctrl,
-      "unable to load DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(xerrno));
+      "unable to load DelayTable '%s' (fd %d) into memory: %s",
+      delay_tab.dt_path, delay_tab.dt_fd, strerror(xerrno));
     pr_trace_msg(trace_channel, 1,
-      "unable to load DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(xerrno));
+      "unable to load DelayTable '%s' (fd %d) into memory: %s",
+      delay_tab.dt_path, delay_tab.dt_fd, strerror(xerrno));
 
     pr_fsio_close(fh);
     delay_tab.dt_fd = -1;
@@ -1209,11 +1209,11 @@ MODRET delay_post_pass(cmd_rec *cmd) {
     int xerrno = errno;
 
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      ": unable to load DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(xerrno));
+      ": unable to load DelayTable '%s' (fd %d) into memory: %s",
+      delay_tab.dt_path, delay_tab.dt_fd, strerror(xerrno));
     pr_trace_msg(trace_channel, 1,
-      "unable to load DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(xerrno));
+      "unable to load DelayTable '%s' (fd %d) into memory: %s",
+      delay_tab.dt_path, delay_tab.dt_fd, strerror(xerrno));
 
     errno = xerrno;
     return PR_DECLINED(cmd);
@@ -1312,10 +1312,11 @@ MODRET delay_post_user(cmd_rec *cmd) {
     int xerrno = errno;
 
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      ": unable to load DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(xerrno));
-    pr_trace_msg("delay", 1, "unable to load DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(xerrno));
+      ": unable to load DelayTable '%s' (fd %d) into memory: %s",
+      delay_tab.dt_path, delay_tab.dt_fd, strerror(xerrno));
+    pr_trace_msg("delay", 1,
+      "unable to load DelayTable '%s' (fd %d) into memory: %s",
+      delay_tab.dt_path, delay_tab.dt_fd, strerror(xerrno));
 
     errno = xerrno;
     return PR_DECLINED(cmd);
@@ -1462,7 +1463,7 @@ static void delay_shutdown_ev(const void *event_data, void *user_data) {
   }
   PRIVS_RELINQUISH
 
-  if (!fh) {
+  if (fh == NULL) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": unable to open DelayTable '%s': %s", delay_tab.dt_path,
       strerror(xerrno));
@@ -1477,12 +1478,14 @@ static void delay_shutdown_ev(const void *event_data, void *user_data) {
     xerrno = errno;
     pr_fsio_close(fh);
 
-    errno = xerrno;
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      ": unable to load DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(errno));
-    pr_trace_msg("delay", 1, "unable to load DelayTable '%s' into memory: %s",
-      delay_tab.dt_path, strerror(errno));
+      ": unable to load DelayTable '%s' (fd %d) into memory: %s",
+      delay_tab.dt_path, delay_tab.dt_fd, strerror(xerrno));
+    pr_trace_msg("delay", 1,
+      "unable to load DelayTable '%s' (fd %d) into memory: %s",
+      delay_tab.dt_path, delay_tab.dt_fd, strerror(xerrno));
+    
+    errno = xerrno;
     return;
   }
 
