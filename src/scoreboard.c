@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.64 2011-03-21 01:44:38 castaglia Exp $
+ * $Id: scoreboard.c,v 1.65 2011-03-21 21:55:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1151,7 +1151,7 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
           memset(entry.sce_client_name, '\0', sizeof(entry.sce_client_name));
 
           snprintf(entry.sce_client_name,
-            str_getlen(remote_name, sizeof(entry.sce_client_name)-1),
+            str_getlen(remote_name, sizeof(entry.sce_client_name)-1) + 1,
             "%s", remote_name);
           entry.sce_client_name[sizeof(entry.sce_client_name)-1] = '\0';
 
