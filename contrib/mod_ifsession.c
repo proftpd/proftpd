@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.33 2011-03-03 21:38:54 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.34 2011-03-21 21:36:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -225,11 +225,13 @@ MODRET start_ifctxt(cmd_rec *cmd) {
           "regex compilation: ", errstr, NULL));
       }
 
+      eval_type = PR_EXPR_EVAL_REGEX;
+
       c = add_config_param(name, 3, NULL, NULL, NULL);
       c->config_type = config_type;
       c->argv[0] = pstrdup(c->pool, cmd->arg);
       c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
-      *((unsigned char *) c->argv[0]) = PR_EXPR_EVAL_REGEX;
+      *((unsigned char *) c->argv[1]) = eval_type;
       c->argv[2] = (void *) pre;
 
       return PR_HANDLED(cmd);
