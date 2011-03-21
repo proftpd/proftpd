@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.62 2011-03-15 23:39:40 castaglia Exp $
+ * $Id: scoreboard.c,v 1.63 2011-03-21 00:48:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -178,6 +178,8 @@ static int rlock_scoreboard(void) {
         errno = EINTR;
 
         pr_signals_handle();
+
+        errno = 0;
         pr_trace_msg("lock", 9,
           "attempt #%u to read-lock scoreboard mutex fd %d", nattempts,
           scoreboard_mutex_fd);
@@ -275,6 +277,9 @@ static int unlock_scoreboard(void) {
         errno = EINTR;
 
         pr_signals_handle();
+
+        errno = 0;
+
         pr_trace_msg("lock", 9,
           "attempt #%u to unlock scoreboard mutex fd %d", nattempts,
           scoreboard_mutex_fd);
@@ -372,6 +377,8 @@ static int wlock_scoreboard(void) {
         errno = EINTR;
 
         pr_signals_handle();
+
+        errno = 0;
         pr_trace_msg("lock", 9,
           "attempt #%u to write-lock scoreboard mutex fd %d", nattempts,
           scoreboard_mutex_fd);
@@ -1337,6 +1344,7 @@ int pr_scoreboard_scrub(void) {
   pr_scoreboard_entry_t sce;
 
   pr_log_debug(DEBUG9, "scrubbing scoreboard");
+  pr_trace_msg(trace_channel, 9, "%s", "scrubbing scoreboard");
 
   /* Manually open the scoreboard.  It won't hurt if the process already
    * has a descriptor opened on the scoreboard file.
@@ -1390,33 +1398,48 @@ int pr_scoreboard_scrub(void) {
      */
     if (sce.sce_pid &&
         scoreboard_valid_pid(sce.sce_pid, curr_pgrp) < 0) {
+      pid_t slot_pid;
+
+      slot_pid = sce.sce_pid;
 
       /* OK, the recorded PID is no longer valid. */
-      pr_log_debug(DEBUG9, "scrubbing scoreboard slot for PID %u",
-        (unsigned int) sce.sce_pid);
+      pr_log_debug(DEBUG9, "scrubbing scoreboard slot for PID %lu",
+        (unsigned long) slot_pid);
 
       /* Rewind to the start of this slot. */
       if (lseek(fd, curr_offset, SEEK_SET) < 0) {
-        pr_log_debug(DEBUG0, "error scrubbing scoreboard: %s",
-          strerror(errno));
+        int xerrno = errno;
+
+        pr_log_debug(DEBUG0, "error seeking to scoreboard slot to scrub: %s",
+          strerror(xerrno));
+
+        pr_trace_msg(trace_channel, 3,
+          "error seeking to scoreboard slot for PID %lu (offset %" PR_LU ") to "
+          "scrub: %s", (unsigned long) slot_pid, (pr_off_t) curr_offset,
+          strerror(xerrno));
       }
 
       memset(&sce, 0, sizeof(sce));
       while (write(fd, &sce, sizeof(sce)) != sizeof(sce)) {
+        int xerrno = errno;
+
         /* XXX Should we worry about short writes here? */
 
-        if (errno == EINTR) {
+        if (xerrno == EINTR) {
           pr_signals_handle();
           continue;
         }
 
         pr_log_debug(DEBUG0, "error scrubbing scoreboard: %s",
-          strerror(errno));
+          strerror(xerrno));
+        pr_trace_msg(trace_channel, 3,
+          "error writing out scrubbed scoreboard slot for PID %lu: %s",
+          (unsigned long) slot_pid, strerror(xerrno));
       }
     }
 
     /* Mark the current offset. */
-    curr_offset = lseek(fd, 0, SEEK_CUR);
+    curr_offset = lseek(fd, (off_t) 0, SEEK_CUR);
   }
   PRIVS_RELINQUISH
 
@@ -1426,7 +1449,7 @@ int pr_scoreboard_scrub(void) {
   lock.l_start = 0;
   lock.l_len = 0;
 
-  while (fcntl(fd, F_SETLK, &lock) < 0) {
+  while (fcntl(fd, F_SETLKW, &lock) < 0) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
@@ -1435,5 +1458,9 @@ int pr_scoreboard_scrub(void) {
 
   /* Don't need the descriptor anymore. */
   (void) close(fd);
+
+  pr_log_debug(DEBUG9, "finished scrubbing scoreboard");
+  pr_trace_msg(trace_channel, 9, "%s", "finished scrubbing scoreboard");
+
   return 0;
 }
