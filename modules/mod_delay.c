@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.51 2011-03-20 23:38:47 castaglia Exp $
+ * $Id: mod_delay.c,v 1.52 2011-03-21 01:26:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1219,9 +1219,9 @@ MODRET delay_post_pass(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  delay_table_wlock(rownum);
-
   gettimeofday(&tv, NULL);
+
+  delay_table_wlock(rownum);
 
   interval = (tv.tv_sec - delay_tv.tv_sec) * 1000000 +
     (tv.tv_usec - delay_tv.tv_usec);
@@ -1322,9 +1322,9 @@ MODRET delay_post_user(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  delay_table_wlock(rownum);
-
   gettimeofday(&tv, NULL);
+
+  delay_table_wlock(rownum);
 
   interval = (tv.tv_sec - delay_tv.tv_sec) * 1000000 +
     (tv.tv_usec - delay_tv.tv_usec);
