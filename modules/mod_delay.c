@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.52 2011-03-21 01:26:27 castaglia Exp $
+ * $Id: mod_delay.c,v 1.53 2011-03-21 02:01:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -672,9 +672,9 @@ static int delay_table_init(void) {
 }
 
 static int delay_table_load(int lock_table) {
+  struct flock lock;
 
   if (lock_table) {
-    struct flock lock;
     lock.l_type = F_WRLCK;
     lock.l_whence = 0;
     lock.l_start = 0;
@@ -686,9 +686,9 @@ static int delay_table_load(int lock_table) {
       if (errno == EINTR) {
         pr_signals_handle();
         continue;
+      }
 
-     } else
-       return -1;
+      return -1;
     }
   }
 
@@ -700,7 +700,28 @@ static int delay_table_load(int lock_table) {
       MAP_SHARED, delay_tab.dt_fd, 0);
 
     if (delay_tab.dt_data == MAP_FAILED) {
+      int xerrno = errno;
+
       delay_tab.dt_data = NULL;
+
+      if (lock_table) {
+        /* Make sure we release the lock before returning. */
+        lock.l_type = F_UNLCK;
+        lock.l_whence = 0;
+        lock.l_start = 0;
+        lock.l_len = 0;
+
+        pr_trace_msg(trace_channel, 8, "unlocking DelayTable '%s'",
+          delay_tab.dt_path);
+        while (fcntl(delay_tab.dt_fd, F_SETLKW, &lock) < 0) {
+          if (errno == EINTR) {
+            pr_signals_handle();
+            continue;
+          }
+        }
+      }
+
+      errno = xerrno; 
       return -1;
     }
   }
