@@ -60,7 +60,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.4.1"
+#define MOD_TLS_VERSION		"mod_tls/2.4.2"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402 
@@ -3004,6 +3004,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   /* Stash the SSL object in the pointers of the correct NetIO streams. */
   if (conn == session.c) {
+    pr_buffer_t *strm_buf;
+
     ctrl_ssl = ssl;
     tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data = (void *) ssl;
 
@@ -3017,8 +3019,24 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     }
 #endif /* OpenSSL 0.9.8m and later */
 
+    /* Clear any data from the NetIO stream buffers which may have been read
+     * in before the SSL/TLS handshake occurred (Bug#3624).
+     */
+    strm_buf = tls_ctrl_rd_nstrm->strm_buf;
+    strm_buf->current = NULL;
+    strm_buf->remaining = strm_buf->buflen;
+
   } else if (conn == session.d) {
+    pr_buffer_t *strm_buf;
+
     tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = (void *) ssl;
+
+    /* Clear any data from the NetIO stream buffers which may have been read
+     * in before the SSL/TLS handshake occurred (Bug#3624).
+     */
+    strm_buf = tls_data_rd_nstrm->strm_buf;
+    strm_buf->current = NULL;
+    strm_buf->remaining = strm_buf->buflen;
   }
 
 #if OPENSSL_VERSION_NUMBER == 0x009080cfL
