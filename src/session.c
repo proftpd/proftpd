@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: session.c,v 1.12 2011-03-17 13:48:21 castaglia Exp $
+ * $Id: session.c,v 1.13 2011-03-21 03:20:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -99,7 +99,8 @@ void pr_session_disconnect(module *m, int reason_code,
   session.disconnect_reason = reason_code;
   session.disconnect_module = m;
 
-  if (details != NULL) {
+  if (details != NULL &&
+      session.notes != NULL) {
     /* Stash any extra details in the session.notes table */
     if (pr_table_add_dup(session.notes, "core.disconnect-details",
         (char *) details, 0) < 0) {
