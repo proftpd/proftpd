@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1312 2011-03-20 18:54:43 castaglia Exp $
+$Id: NEWS,v 1.1313 2011-03-21 15:47:25 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -69,6 +69,7 @@ CVS
 - Bug 3574 - Better handling of ALLO command.
 - Bug 3621 - mod_quotatab increments tallies for aborted uploads if
   DeleteAbortedStores is on.
+- Bug 3622 - mod_delay sometimes logs "unable to load DelayTable into memory".
 
 1.3.4rc1 - Released 17-Dec-2010
 --------------------------------

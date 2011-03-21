@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.53 2011-03-21 02:01:38 castaglia Exp $
+ * $Id: mod_delay.c,v 1.54 2011-03-21 15:47:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1214,10 +1214,18 @@ MODRET delay_post_pass(cmd_rec *cmd) {
   unsigned int rownum;
   long interval, median;
   const char *proto;
+  unsigned char *authenticated;
 
   if (!delay_engine)
     return PR_DECLINED(cmd);
 
+  /* Has the client already authenticated? */
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (authenticated != NULL &&
+      *authenticated == TRUE) {
+    return PR_DECLINED(cmd);
+  }
+ 
   /* We use sid-1, since the sid is a server number, and the locking
    * routines want a row index.  However, PASS rows are always after
    * USER rows, so we need to add 1 to the row number, leaving us
@@ -1319,10 +1327,18 @@ MODRET delay_post_user(cmd_rec *cmd) {
   unsigned int rownum;
   long interval, median;
   const char *proto;
+  unsigned char *authenticated;
 
   if (!delay_engine)
     return PR_DECLINED(cmd);
 
+  /* Has the client already authenticated? */
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (authenticated != NULL &&
+      *authenticated == TRUE) {
+    return PR_DECLINED(cmd);
+  }
+ 
   /* We use sid-1, since the sid is a server number, and the locking
    * routines want a row index.
    */
