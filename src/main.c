@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.422 2011-03-19 19:02:19 castaglia Exp $
+ * $Id: main.c,v 1.423 2011-03-21 02:14:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1990,7 +1990,7 @@ static void finish_terminate(void) {
     }
   }
 
-  pr_session_end(0);
+  pr_session_disconnect(NULL, PR_SESS_DISCONNECT_SIGNAL, "Killed by signal");
 }
 
 #ifdef PR_DEVEL_STACK_TRACE
