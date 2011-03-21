@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab_file -- a mod_quotatab sub-module for managing quota
  *                               data via file-based tables
  *
- * Copyright (c) 2002-2010 TJ Saunders
+ * Copyright (c) 2002-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_quotatab_file.c,v 1.6 2010-03-03 23:10:43 castaglia Exp $
+ * $Id: mod_quotatab_file.c,v 1.7 2011-03-21 01:03:12 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -86,7 +86,7 @@ static int filetab_create(quota_table_t *filetab, void *ptr) {
   quotav[7].iov_len = sizeof(tally->files_xfer_used);
 
   /* Seek to the end of the table */
-  current_pos = lseek(filetab->tab_handle, 0, SEEK_END);
+  current_pos = lseek(filetab->tab_handle, (off_t) 0, SEEK_END);
 
   while ((res = writev(filetab->tab_handle, quotav, 8)) < 0) {
     if (errno == EINTR) {
@@ -124,7 +124,7 @@ static unsigned char filetab_lookup(quota_table_t *filetab, void *ptr,
   /* Make sure the table pointer is positioned at the start of the table,
    * skipping the magic header value of the table.
    */
-  if (lseek(filetab->tab_handle, sizeof(unsigned int), SEEK_SET) < 0) {
+  if (lseek(filetab->tab_handle, (off_t) sizeof(unsigned int), SEEK_SET) < 0) {
     quotatab_log("error seeking past table header: %s", strerror(errno));
     return FALSE;
   }
@@ -194,7 +194,7 @@ static int filetab_read(quota_table_t *filetab, void *ptr) {
   struct iovec quotav[10];
 
   /* Mark the current file position. */
-  off_t current_pos = lseek(filetab->tab_handle, 0, SEEK_CUR);
+  off_t current_pos = lseek(filetab->tab_handle, (off_t) 0, SEEK_CUR);
 
   /* Use readv() to make this more efficient.  It is done piecewise, rather
    * than doing a normal read(2) directly into the struct pointer, to avoid
@@ -325,7 +325,7 @@ static unsigned char filetab_verify(quota_table_t *filetab) {
   unsigned int magic = 0L;
 
   /* Make sure we are positioned at the start of the table. */
-  if (lseek(filetab->tab_handle, 0, SEEK_SET) < 0) {
+  if (lseek(filetab->tab_handle, (off_t) 0, SEEK_SET) < 0) {
     quotatab_log("error seeking to start of table: %s", strerror(errno));
     return FALSE;
   }
@@ -348,7 +348,7 @@ static int filetab_write(quota_table_t *filetab, void *ptr) {
   quota_tally_t *tally = ptr;
 
   /* Mark the current file position. */
-  off_t current_pos = lseek(filetab->tab_handle, 0, SEEK_CUR);
+  off_t current_pos = lseek(filetab->tab_handle, (off_t) 0, SEEK_CUR);
 
   /* Use writev() to make this more efficient.  It is done piecewise, rather
    * than doing a normal write(2) directly from the struct pointer, to avoid
