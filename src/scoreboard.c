@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.63 2011-03-21 00:48:56 castaglia Exp $
+ * $Id: scoreboard.c,v 1.64 2011-03-21 01:44:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -703,12 +703,13 @@ int pr_rewind_scoreboard(void) {
     return -1;
   }
 
-  current_pos = lseek(scoreboard_fd, 0, SEEK_CUR);
+  current_pos = lseek(scoreboard_fd, (off_t) 0, SEEK_CUR);
 
   /* Position the file position pointer of the scoreboard at the
    * start of the scoreboard (past the header).
    */
-  if (lseek(scoreboard_fd, sizeof(pr_scoreboard_header_t), SEEK_SET) < 0) {
+  if (lseek(scoreboard_fd, (off_t) sizeof(pr_scoreboard_header_t),
+      SEEK_SET) < 0) {
     return -1;
   }
 
@@ -830,14 +831,14 @@ int pr_scoreboard_entry_add(void) {
        * reused.
        */
       if (!entry.sce_pid) {
-        entry_lock.l_start = lseek(scoreboard_fd, 0, SEEK_CUR) - sizeof(entry);
+        entry_lock.l_start = lseek(scoreboard_fd, (off_t) 0, SEEK_CUR) - sizeof(entry);
         found_slot = TRUE;
         break;
       }
     }
 
     if (res == 0) {
-      entry_lock.l_start = lseek(scoreboard_fd, 0, SEEK_CUR);
+      entry_lock.l_start = lseek(scoreboard_fd, (off_t) 0, SEEK_CUR);
       found_slot = TRUE;
     }
 
@@ -1379,7 +1380,7 @@ int pr_scoreboard_scrub(void) {
   }
 
   /* Skip past the scoreboard header. */
-  curr_offset = lseek(fd, sizeof(pr_scoreboard_header_t), SEEK_SET);
+  curr_offset = lseek(fd, (off_t) sizeof(pr_scoreboard_header_t), SEEK_SET);
 
   memset(&sce, 0, sizeof(sce));
  
