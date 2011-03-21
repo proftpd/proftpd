@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support (modified for use by external utilities).
- * $Id: scoreboard.c,v 1.15 2011-01-12 06:54:49 castaglia Exp $
+ * $Id: scoreboard.c,v 1.16 2011-03-21 01:45:24 castaglia Exp $
  */
 
 #include "utils.h"
@@ -298,7 +298,7 @@ int util_scoreboard_scrub(int verbose) {
   }
 
   /* Skip past the scoreboard header. */
-  curr_offset = lseek(fd, sizeof(pr_scoreboard_header_t), SEEK_SET);
+  curr_offset = lseek(fd, (off_t) sizeof(pr_scoreboard_header_t), SEEK_SET);
 
   memset(&sce, 0, sizeof(sce));
 
@@ -339,7 +339,7 @@ int util_scoreboard_scrub(int verbose) {
     }
 
     /* Mark the current offset. */
-    curr_offset = lseek(fd, 0, SEEK_CUR);
+    curr_offset = lseek(fd, (off_t) 0, SEEK_CUR);
   }
 
   /* Release the scoreboard. */
