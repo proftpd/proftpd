@@ -508,6 +508,8 @@ static ctrls_acttab_t tls_acttab[];
 
 static int tls_need_init_handshake = TRUE;
 
+static const char *trace_channel = "tls";
+
 static void tls_diags_cb(const SSL *ssl, int where, int ret) {
   const char *str = "(unknown)";
   int w;
@@ -1363,6 +1365,12 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
 
     PRIVS_ROOT
 
+    pr_trace_msg(trace_channel, 17,
+      "executing '%s' with uid %lu (euid %lu), gid %lu (egid %lu)",
+      tls_passphrase_provider,
+      (unsigned long) getuid(), (unsigned long) geteuid(),
+      (unsigned long) getgid(), (unsigned long) getegid());
+
     pr_log_debug(DEBUG6, MOD_TLS_VERSION
       ": executing '%s' with uid %lu (euid %lu), gid %lu (egid %lu)",
       tls_passphrase_provider,
@@ -1410,8 +1418,9 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
           status = -1;
           break;
 
-        } else
+        } else {
           pr_signals_handle();
+        }
       }
 
       /* Check the time elapsed since we started. */
@@ -1464,10 +1473,19 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
                 res--;
               buf[res] = '\0';
 
-          } else if (res < 0){
+              pr_trace_msg(trace_channel, 18,
+                "read passphrase from '%s'", tls_passphrase_provider);
+
+          } else if (res < 0) {
+            int xerrno = errno;
+
+            pr_trace_msg(trace_channel, 3,
+              "error reading stdout from '%s': %s",
+              tls_passphrase_provider, strerror(xerrno));
+
             pr_log_debug(DEBUG2, MOD_TLS_VERSION
               ": error reading stdout from '%s': %s",
-              tls_passphrase_provider, strerror(errno));
+              tls_passphrase_provider, strerror(xerrno));
           }
         }
 
