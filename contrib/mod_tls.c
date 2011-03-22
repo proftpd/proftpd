@@ -7707,12 +7707,12 @@ static int tls_init(void) {
 
   pr_log_debug(DEBUG2, MOD_TLS_VERSION ": using " OPENSSL_VERSION_TEXT);
 
-  pr_event_register(&tls_module, "core.exit", tls_shutdown_ev, NULL);
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&tls_module, "core.module-unload", tls_mod_unload_ev, NULL);
 #endif /* PR_SHARED_MODULE */
   pr_event_register(&tls_module, "core.postparse", tls_postparse_ev, NULL);
   pr_event_register(&tls_module, "core.restart", tls_restart_ev, NULL);
+  pr_event_register(&tls_module, "core.shutdown", tls_shutdown_ev, NULL);
 
   SSL_load_error_strings();
   SSL_library_init();
@@ -7750,12 +7750,6 @@ static int tls_sess_init(void) {
   unsigned char *tmp = NULL;
   unsigned long *opts = NULL;
   config_rec *c = NULL;
-
-  /* Unregister the listener for the 'core.exit' event that was registered
-   * for the daemon process; we inherited it due to the fork, but we don't
-   * want that listener being invoked when we exit.
-   */
-  pr_event_unregister(&tls_module, "core.exit", tls_shutdown_ev);
 
   /* First, check to see whether mod_tls is even enabled. */
   tmp = get_param_ptr(main_server->conf, "TLSEngine", FALSE);
