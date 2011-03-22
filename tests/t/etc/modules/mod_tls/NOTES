@@ -17,8 +17,17 @@ OpenSSL command:
 
 When prompted for a password, leave it blank (i.e. just hit enter).
 
-To create the client-cert-localhost.pem file in this diretory, I used:
+To create the client-cert-localhost.pem file in this directory, I used:
 
   # cert-tool --days-valid=3650 --common-name=localhost --combined \
       --create-cert=client-cert-localhost \
       --signing-ca=ca-cert.pem --signing-key=ca-cert.pem
+
+To create the password-protected server cert server-cert-passwd.pem in this
+directory, I used:
+
+  # cert-tool --days-valid=3650 --combined --key-cipher aes128 \
+      --create-cert=server-cert-passwd \
+      --signing-ca=ca-cert.pem --signing-key=ca-cert.pem
+
+The passphrase is "password".
