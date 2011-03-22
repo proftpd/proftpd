@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.54 2011-03-21 15:47:25 castaglia Exp $
+ * $Id: mod_delay.c,v 1.55 2011-03-22 18:44:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1559,13 +1559,13 @@ static int delay_init(void) {
   delay_tab.dt_path = PR_RUN_DIR "/proftpd.delay";
   delay_tab.dt_data = NULL;
 
-  pr_event_register(&delay_module, "core.exit", delay_shutdown_ev, NULL);
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&delay_module, "core.module-unload", delay_mod_unload_ev,
     NULL);
 #endif
   pr_event_register(&delay_module, "core.postparse", delay_postparse_ev, NULL);
   pr_event_register(&delay_module, "core.restart", delay_restart_ev, NULL);
+  pr_event_register(&delay_module, "core.shutdown", delay_shutdown_ev, NULL);
 
   delay_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(delay_pool, MOD_DELAY_VERSION);
@@ -1593,8 +1593,6 @@ static int delay_sess_init(void) {
   pr_fh_t *fh;
   config_rec *c;
   int xerrno = errno;
-
-  pr_event_unregister(&delay_module, "core.exit", delay_shutdown_ev);
 
   if (!delay_engine)
     return 0;

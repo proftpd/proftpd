@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.47 2011-03-18 18:22:18 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.48 2011-03-22 18:44:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1119,7 +1119,7 @@ MODRET set_ctrlssocketowner(cmd_rec *cmd) {
 /* Event handlers
  */
 
-static void ctrls_exit_ev(const void *event_data, void *user_data) {
+static void ctrls_shutdown_ev(const void *event_data, void *user_data) {
   if (!is_master || !ctrls_engine)
     return;
 
@@ -1238,9 +1238,9 @@ static int ctrls_init(void) {
   /* Start listening on the ctrl socket */
   ctrls_sockfd = ctrls_listen(ctrls_sock_file);
 
-  pr_event_register(&ctrls_module, "core.exit", ctrls_exit_ev, NULL);
   pr_event_register(&ctrls_module, "core.postparse", ctrls_postparse_ev, NULL);
   pr_event_register(&ctrls_module, "core.restart", ctrls_restart_ev, NULL);
+  pr_event_register(&ctrls_module, "core.shutdown", ctrls_shutdown_ev, NULL);
   pr_event_register(&ctrls_module, "core.startup", ctrls_startup_ev, NULL);
 
   return 0;
@@ -1252,7 +1252,6 @@ static int ctrls_sess_init(void) {
   ctrls_engine = FALSE;
   pr_timer_remove(CTRLS_TIMER_ID, &ctrls_module);
 
-  pr_event_unregister(&ctrls_module, "core.exit", ctrls_exit_ev);
   pr_event_unregister(&ctrls_module, "core.restart", ctrls_restart_ev);
 
   /* Close the inherited socket */

@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.50 2011-02-28 06:31:24 castaglia Exp $
+ * $Id: mod_ban.c,v 1.51 2011-03-22 18:44:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2406,7 +2406,7 @@ static int ban_timer_cb(CALLBACK_FRAME) {
 /* Event handlers
  */
 
-static void ban_exit_ev(const void *event_data, void *user_data) {
+static void ban_shutdown_ev(const void *event_data, void *user_data) {
 
   /* Remove the shm from the system.  We can only do this reliably
    * when the standalone daemon process exits; if it's an inetd process,
@@ -2957,13 +2957,13 @@ static int ban_init(void) {
         ban_acttab[i].act_action, strerror(errno));
   }
 
-  pr_event_register(&ban_module, "core.exit", ban_exit_ev, NULL);
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&ban_module, "core.module-unload", ban_mod_unload_ev,
     NULL);
 #endif /* PR_SHARED_MODULE */
   pr_event_register(&ban_module, "core.postparse", ban_postparse_ev, NULL);
   pr_event_register(&ban_module, "core.restart", ban_restart_ev, NULL);
+  pr_event_register(&ban_module, "core.shutdown", ban_shutdown_ev, NULL);
 
   return 0;
 }
@@ -3061,7 +3061,6 @@ static int ban_sess_init(void) {
 
   pr_event_generate("mod_ban.client-connect-rate", session.c);
 
-  pr_event_unregister(&ban_module, "core.exit", ban_exit_ev);
   pr_event_unregister(&ban_module, "core.restart", ban_restart_ev);
 
   return 0;

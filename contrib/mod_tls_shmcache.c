@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_shmcache.c,v 1.9 2011-02-15 21:35:18 castaglia Exp $
+ *  $Id: mod_tls_shmcache.c,v 1.10 2011-03-22 18:44:16 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -1510,13 +1510,13 @@ static void shmcache_restart_ev(const void *event_data, void *user_data) {
  */
 
 static int tls_shmcache_init(void) {
-  pr_event_register(&tls_shmcache_module, "core.exit", shmcache_shutdown_ev,
-    NULL);
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&tls_shmcache_module, "core.module-unload",
     shmcache_mod_unload_ev, NULL);
 #endif /* !PR_SHARED_MODULE */
   pr_event_register(&tls_shmcache_module, "core.restart", shmcache_restart_ev,
+    NULL);
+  pr_event_register(&tls_shmcache_module, "core.shutdown", shmcache_shutdown_ev,
     NULL);
 
   /* Prepare our cache handler. */
@@ -1552,7 +1552,6 @@ static int tls_shmcache_init(void) {
 }
 
 static int tls_shmcache_sess_init(void) {
-  pr_event_unregister(&tls_shmcache_module, "core.exit", shmcache_shutdown_ev);
 
 #ifdef HAVE_MLOCK
   if (shmcache_data != NULL) {

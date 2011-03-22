@@ -26,7 +26,7 @@
  * This is mod_shaper, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_shaper.c,v 1.11 2011-02-28 07:02:07 castaglia Exp $
+ * $Id: mod_shaper.c,v 1.12 2011-03-22 18:44:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2312,7 +2312,6 @@ static int shaper_init(void) {
     }
   }
 
-  pr_event_register(&shaper_module, "core.exit", shaper_shutdown_ev, NULL);
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&shaper_module, "core.module-unload", shaper_mod_unload_ev,
     NULL);
@@ -2320,12 +2319,12 @@ static int shaper_init(void) {
   pr_event_register(&shaper_module, "core.postparse", shaper_postparse_ev,
     NULL);
   pr_event_register(&shaper_module, "core.restart", shaper_restart_ev, NULL);
+  pr_event_register(&shaper_module, "core.shutdown", shaper_shutdown_ev, NULL);
 
   return 0;
 }
 
 static int shaper_sess_init(void) {
-  pr_event_unregister(&shaper_module, "core.exit", shaper_shutdown_ev);
 
   /* The ShaperTable scrubbing timer should only run in the daemon. */
   pr_timer_remove(shaper_scrub_timer_id, &shaper_module);
