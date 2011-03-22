@@ -3023,8 +3023,10 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
      * in before the SSL/TLS handshake occurred (Bug#3624).
      */
     strm_buf = tls_ctrl_rd_nstrm->strm_buf;
-    strm_buf->current = NULL;
-    strm_buf->remaining = strm_buf->buflen;
+    if (strm_buf != NULL) {
+      strm_buf->current = NULL;
+      strm_buf->remaining = strm_buf->buflen;
+    }
 
   } else if (conn == session.d) {
     pr_buffer_t *strm_buf;
@@ -3035,8 +3037,10 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
      * in before the SSL/TLS handshake occurred (Bug#3624).
      */
     strm_buf = tls_data_rd_nstrm->strm_buf;
-    strm_buf->current = NULL;
-    strm_buf->remaining = strm_buf->buflen;
+    if (strm_buf != NULL) {
+      strm_buf->current = NULL;
+      strm_buf->remaining = strm_buf->buflen;
+    }
   }
 
 #if OPENSSL_VERSION_NUMBER == 0x009080cfL
