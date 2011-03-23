@@ -1,4 +1,4 @@
-<!-- $Id: mod_log.html,v 1.5 2011-03-17 03:43:25 castaglia Exp $ -->
+<!-- $Id: mod_log.html,v 1.6 2011-03-23 17:46:15 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_log.html,v $ -->
 
 <html>
@@ -62,7 +62,7 @@ warned.</i>
 <p>
 The <code>ExtendedLog</code> directive allows customizable logfiles to be
 generated, either globally or per <code>&lt;VirtualHost&gt;</code>.  The
-<em>path</em> argument must contain an absolute pathname to a logfile which
+<em>path</em> argument should contain an absolute pathname to a logfile which
 will be appended to when <code>proftpd</code> starts; the pathname should
 <b>not</b> be to a file in a nonexistent directory, to a world-writable
 directory, or be a symbolic link (unless
@@ -74,6 +74,16 @@ specified, <code>proftpd</code> logs all commands by default.
 <b>Note</b> that passwords are hidden.  If used, the <em>cmd-classes</em>
 parameter is a comma-delimited (with <b>no whitespace</b>) list of which
 commands to log.
+
+<p>
+In <code>proftpd-1.2.8rc1</code> and later, the <em>path</em> argument can
+be of the form &quot;syslog:<i>level</i>&quot;.  The &quot;syslog:&quot; prefix
+configures <code>mod_log</code> to write the <code>ExtendedLog</code> data
+to syslog rather than to a file.  The <i>level</i> configures the syslog
+level at which to log the data.  For example:
+<pre>
+  ExtendedLog syslog:info ALL default
+</pre>
 
 <p>
 This table shows the supported command classes:
@@ -432,7 +442,7 @@ The <code>mod_log</code> module is compiled by default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-03-17 03:43:25 $</i><br>
+Last Updated: <i>$Date: 2011-03-23 17:46:15 $</i><br>
 
 <br><hr>
 
