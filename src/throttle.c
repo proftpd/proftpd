@@ -23,7 +23,7 @@
  */
 
 /* TransferRate throttling
- * $Id: throttle.c,v 1.9 2011-03-17 14:05:37 castaglia Exp $
+ * $Id: throttle.c,v 1.10 2011-03-23 16:22:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -297,13 +297,18 @@ void pr_throttle_pause(off_t xferlen, int xfer_ending) {
     xfer_rate_sigmask(TRUE);
 
     if (select(0, NULL, NULL, NULL, &tv) < 0) {
+      int xerrno = errno;
+
       if (XFER_ABORTED) {
         pr_log_pri(PR_LOG_NOTICE, "throttling interrupted, transfer aborted");
         return;
       }
 
-      pr_log_pri(PR_LOG_WARNING, "warning: unable to throttle bandwidth: %s",
-        strerror(errno));
+      /* At this point, we've probably been interrupted by one of the few
+       * signals not masked off, e.g. SIGTERM.
+       */
+      pr_log_debug(DEBUG0, "unable to throttle bandwidth: %s",
+        strerror(xerrno));
     }
 
     xfer_rate_sigmask(FALSE);
