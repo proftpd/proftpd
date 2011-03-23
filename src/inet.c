@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.130 2011-02-28 06:08:42 castaglia Exp $
+ * $Id: inet.c,v 1.131 2011-03-23 16:36:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -221,7 +221,8 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
 
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
-    defined(FREEBSD7) || defined(__OpenBSD__) || defined(__NetBSD__) || \
+    defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
+    defined(__OpenBSD__) || defined(__NetBSD__) || \
     defined(DARWIN6) || defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9) || defined(DARWIN10) || \
     defined(SCO3) || defined(CYGWIN) || defined(SYSV4_2MP) || \
     defined(SYSV5SCO_SV6) || defined(SYSV5UNIXWARE7)
@@ -239,7 +240,8 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
 
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
-    defined(FREEBSD7) || defined(__OpenBSD__) || defined(__NetBSD__) || \
+    defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
+    defined(__OpenBSD__) || defined(__NetBSD__) || \
     defined(DARWIN6) || defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9) || defined(DARWIN10) || \
     defined(SCO3) || defined(CYGWIN) || defined(SYSV4_2MP) || \
     defined(SYSV5SCO_SV6) || defined(SYSV5UNIXWARE7)
