@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.53 2011-03-24 05:23:27 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.54 2011-03-24 15:35:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1410,23 +1410,51 @@ static void sftp_exit_ev(const void *event_data, void *user_data) {
 }
 
 static void sftp_ban_class_ev(const void *event_data, void *user_data) {
-  sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, "Banned",
-    __FILE__, __LINE__, "");
+  const char *proto;
+
+  proto = pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT);
+
+  /* Only send an SSH2 DISCONNECT if we're dealing with an SSH2 client. */
+  if (strncmp(proto, "SSH2", 5) == 0) {
+    sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, "Banned",
+      __FILE__, __LINE__, "");
+  }
 }
 
 static void sftp_ban_host_ev(const void *event_data, void *user_data) {
-  sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, "Banned",
-    __FILE__, __LINE__, "");
+  const char *proto;
+
+  proto = pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT);
+
+  /* Only send an SSH2 DISCONNECT if we're dealing with an SSH2 client. */
+  if (strncmp(proto, "SSH2", 5) == 0) {
+    sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, "Banned",
+      __FILE__, __LINE__, "");
+  }
 }
 
 static void sftp_ban_user_ev(const void *event_data, void *user_data) {
-  sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, "Banned",
-    __FILE__, __LINE__, "");
+  const char *proto;
+
+  proto = pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT);
+
+  /* Only send an SSH2 DISCONNECT if we're dealing with an SSH2 client. */
+  if (strncmp(proto, "SSH2", 5) == 0) {
+    sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, "Banned",
+      __FILE__, __LINE__, "");
+  }
 }
 
 static void sftp_max_conns_ev(const void *event_data, void *user_data) {
-  sftp_disconnect_send(SFTP_SSH2_DISCONNECT_TOO_MANY_CONNECTIONS,
-    "Maximum connections for host/user reached", __FILE__, __LINE__, "");
+  const char *proto;
+
+  proto = pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT);
+
+  /* Only send an SSH2 DISCONNECT if we're dealing with an SSH2 client. */
+  if (strncmp(proto, "SSH2", 5) == 0) {
+    sftp_disconnect_send(SFTP_SSH2_DISCONNECT_TOO_MANY_CONNECTIONS,
+      "Maximum connections for host/user reached", __FILE__, __LINE__, "");
+  }
 }
 
 #if defined(PR_SHARED_MODULE)
