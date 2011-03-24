@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.51 2011-03-17 22:16:47 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.52 2011-03-24 05:15:15 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1515,18 +1515,6 @@ static int sftp_init(void) {
   sftp_keystore_init();
 
   pr_event_register(&sftp_module, "core.exit", sftp_exit_ev, NULL);
-  pr_event_register(&sftp_module, "mod_auth.max-clients",
-    sftp_max_conns_ev, NULL);
-  pr_event_register(&sftp_module, "mod_auth.max-clients-per-class",
-    sftp_max_conns_ev, NULL);
-  pr_event_register(&sftp_module, "mod_auth.max-clients-per-host",
-    sftp_max_conns_ev, NULL);
-  pr_event_register(&sftp_module, "mod_auth.max-clients-per-user",
-    sftp_max_conns_ev, NULL);
-  pr_event_register(&sftp_module, "mod_auth.max-connections-per-host",
-    sftp_max_conns_ev, NULL);
-  pr_event_register(&sftp_module, "mod_auth.max-hosts-per-user",
-    sftp_max_conns_ev, NULL);
   pr_event_register(&sftp_module, "mod_ban.ban-class", sftp_ban_class_ev, NULL);
   pr_event_register(&sftp_module, "mod_ban.ban-host", sftp_ban_host_ev, NULL);
   pr_event_register(&sftp_module, "mod_ban.ban-user", sftp_ban_user_ev, NULL);
@@ -1551,6 +1539,19 @@ static int sftp_sess_init(void) {
 
   if (!sftp_engine)
     return 0;
+
+  pr_event_register(&sftp_module, "mod_auth.max-clients",
+    sftp_max_conns_ev, NULL);
+  pr_event_register(&sftp_module, "mod_auth.max-clients-per-class",
+    sftp_max_conns_ev, NULL);
+  pr_event_register(&sftp_module, "mod_auth.max-clients-per-host",
+    sftp_max_conns_ev, NULL);
+  pr_event_register(&sftp_module, "mod_auth.max-clients-per-user",
+    sftp_max_conns_ev, NULL);
+  pr_event_register(&sftp_module, "mod_auth.max-connections-per-host",
+    sftp_max_conns_ev, NULL);
+  pr_event_register(&sftp_module, "mod_auth.max-hosts-per-user",
+    sftp_max_conns_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPLog", FALSE);
   if (c) {

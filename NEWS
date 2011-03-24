@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1318 2011-03-23 16:22:30 castaglia Exp $
+$Id: NEWS,v 1.1319 2011-03-24 05:15:14 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -76,6 +76,8 @@ CVS
 - Bug 3627 - %w variable populated with non-absolute path in SQLLog statement.
 - Bug 3628 - Unnecessarily verbose "warning: unable to throttle bandwidth:
   Interrupted system call".
+- Bug 3630 - SSH DISCONNECT messages sent by mod_sftp even for FTP connections
+  in some cases.
 
 1.3.4rc1 - Released 17-Dec-2010
 --------------------------------
