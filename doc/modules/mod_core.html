@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.6 2011-03-16 18:49:22 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.7 2011-03-24 22:13:12 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -25,6 +25,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#Protocols">Protocols</a>
   <li><a href="#Trace">Trace</a>
   <li><a href="#TraceLog">TraceLog</a>
+  <li><a href="#TraceOptions">TraceOptions</a>
 </ul>
 
 <hr>
@@ -210,9 +211,6 @@ See the <a href="../howto/Tracing.html">Tracing</a> howto for more information.
 <strong>Compatibility:</strong> 1.3.1rc1 and later
 
 <p>
-The <code>TraceLog</code> directive...
-
-<p>
 The <code>TraceLog</code> directive is used to specify a log file for trace
 logging messages.  The <em>path</em> parameter given must be the full path to
 the file to use for logging.
@@ -227,6 +225,37 @@ See the <a href="../howto/Tracing.html">Tracing</a> howto for more information.
 
 <p>
 <hr>
+<h2><a name="TraceOptions">TraceOptions</a></h2>
+<strong>Syntax:</strong> TraceOptions <em>opt1 ... optN</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.3.4rc2 and later
+
+<p>
+The <code>TraceOptions</code> directive can be used to change the format
+of the <a href="#TraceLog"><code>TraceLog</code></a> messages, <i>e.g.</i>
+adding/remove certain fields of data.
+
+<p>
+The options supported by the <code>TraceOptions</code> directive are:
+<ul>
+  <li>ConnIPs
+  <li>TimestampMillis
+</ul>
+These options are all <em>disabled</em> by default.
+
+<p>
+To enable an option, preface the option name with a '+' (plus) character;
+to disable the option, use a '-' (minus) character prefix.  For example:
+<pre>
+  # Log timestamps inncluding millisecs, but do not include the connection
+  # IP address/port information
+  TraceOptions +TimestampMillis -ConnIPs
+</pre>
+
+<p>
+<hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_core</code>module is <b>always</b> installed.
 
@@ -234,7 +263,7 @@ The <code>mod_core</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-03-16 18:49:22 $</i><br>
+Last Updated: <i>$Date: 2011-03-24 22:13:12 $</i><br>
 
 <br><hr>
 
