@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.52 2011-03-24 05:15:15 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.53 2011-03-24 05:23:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1400,14 +1400,13 @@ static void sftp_exit_ev(const void *event_data, void *user_data) {
   sftp_keys_free();
   sftp_kex_free();
 
-  if (session.pid &&
-      session.pid != mpid) {
-    sftp_crypto_free(0);
-    sftp_utf8_free();
-  }
+  sftp_crypto_free(0);
+  sftp_utf8_free();
 
-  (void) close(sftp_logfd);
-  sftp_logfd = -1;
+  if (sftp_logfd >= 0) {
+    (void) close(sftp_logfd);
+    sftp_logfd = -1;
+  }
 }
 
 static void sftp_ban_class_ev(const void *event_data, void *user_data) {
@@ -1484,6 +1483,24 @@ static void sftp_restart_ev(const void *event_data, void *user_data) {
   }
 }
 
+static void sftp_shutdown_ev(const void *event_data, void *user_data) {
+  sftp_interop_free();
+  sftp_keystore_free();
+  sftp_keys_free();
+  sftp_utf8_free();
+
+  /* Clean up the OpenSSL stuff. */
+  sftp_crypto_free(0);
+
+  destroy_pool(sftp_pool);
+  sftp_pool = NULL;
+
+  if (sftp_logfd >= 0) {
+    close(sftp_logfd);
+    sftp_logfd = -1;
+  }
+}
+
 /* Initialization routines
  */
 
@@ -1514,7 +1531,6 @@ static int sftp_init(void) {
 
   sftp_keystore_init();
 
-  pr_event_register(&sftp_module, "core.exit", sftp_exit_ev, NULL);
   pr_event_register(&sftp_module, "mod_ban.ban-class", sftp_ban_class_ev, NULL);
   pr_event_register(&sftp_module, "mod_ban.ban-host", sftp_ban_host_ev, NULL);
   pr_event_register(&sftp_module, "mod_ban.ban-user", sftp_ban_user_ev, NULL);
@@ -1524,6 +1540,7 @@ static int sftp_init(void) {
 #endif
   pr_event_register(&sftp_module, "core.postparse", sftp_postparse_ev, NULL);
   pr_event_register(&sftp_module, "core.restart", sftp_restart_ev, NULL);
+  pr_event_register(&sftp_module, "core.shutdown", sftp_shutdown_ev, NULL);
 
   return 0;
 }
@@ -1540,6 +1557,7 @@ static int sftp_sess_init(void) {
   if (!sftp_engine)
     return 0;
 
+  pr_event_register(&sftp_module, "core.exit", sftp_exit_ev, NULL);
   pr_event_register(&sftp_module, "mod_auth.max-clients",
     sftp_max_conns_ev, NULL);
   pr_event_register(&sftp_module, "mod_auth.max-clients-per-class",
