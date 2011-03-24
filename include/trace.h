@@ -23,7 +23,7 @@
  */
 
 /* Trace API
- * $Id: trace.h,v 1.4 2011-03-16 18:26:48 castaglia Exp $
+ * $Id: trace.h,v 1.5 2011-03-24 21:57:05 castaglia Exp $
  */
 
 #ifndef PR_TRACE_H
@@ -48,6 +48,12 @@ int pr_trace_parse_levels(char *str, int *min_level, int *max_level);
 
 int pr_trace_set_file(const char *);
 int pr_trace_set_levels(const char *, int, int);
+
+int pr_trace_set_options(unsigned long trace_opts);
+#define PR_TRACE_OPT_DEFAULT			0x0000
+#define PR_TRACE_OPT_LOG_CONN_IPS		0x0001
+#define PR_TRACE_OPT_USE_TIMESTAMP_MILLIS	0x0002
+
 int pr_trace_msg(const char *, int, const char *, ...)
 #ifdef __GNUC__
       __attribute__ ((format (printf, 3, 4)));

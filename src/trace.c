@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.30 2011-03-19 18:44:31 castaglia Exp $
+ * $Id: trace.c,v 1.31 2011-03-24 21:57:05 castaglia Exp $
  */
 
 
@@ -33,6 +33,7 @@
 #ifdef PR_USE_TRACE
 
 static int trace_logfd = -1;
+static unsigned long trace_opts = PR_TRACE_OPT_DEFAULT;
 static pool *trace_pool = NULL;
 static pr_table_t *trace_tab = NULL;
 
@@ -74,6 +75,8 @@ static const char *trace_channels[] = {
 };
 
 static void trace_restart_ev(const void *event_data, void *user_data) {
+  trace_opts = PR_TRACE_OPT_DEFAULT;
+
   close(trace_logfd);
   trace_logfd = -1;
 
@@ -91,28 +94,78 @@ static void trace_restart_ev(const void *event_data, void *user_data) {
 static int trace_write(const char *channel, int level, const char *msg) {
   char buf[PR_TUNABLE_BUFFER_SIZE];
   size_t buflen;
-  time_t now;
-  struct tm *t;
+  struct tm *tm;
+  int use_conn_ips = FALSE;
 
   if (trace_logfd < 0)
     return 0;
 
-  now = time(NULL);
-  t = pr_localtime(NULL, &now);
-
   memset(buf, '\0', sizeof(buf));
-  strftime(buf, sizeof(buf), "%b %d %H:%M:%S", t);
-  buf[sizeof(buf)-1] = '\0';
+
+  if (!(trace_opts & PR_TRACE_OPT_USE_TIMESTAMP_MILLIS)) {
+    time_t now;
+
+    now = time(NULL);
+    tm = pr_localtime(NULL, &now);
+
+    strftime(buf, sizeof(buf), "%b %d %H:%M:%S", tm);
+    buf[sizeof(buf)-1] = '\0';
+
+  } else {
+    struct timeval now;
+    unsigned long millis;
+
+    gettimeofday(&now, NULL);
+
+    tm = pr_localtime(NULL, &(now.tv_sec));
+
+    strftime(buf, sizeof(buf), "%b %d %H:%M:%S", tm);
+
+    buflen = strlen(buf);
+
+    /* Convert microsecs to millisecs. */
+    millis = now.tv_usec / 1000;
+
+    snprintf(buf + buflen, sizeof(buf) - buflen, ",%03lu", millis);
+  }
 
   buflen = strlen(buf);
-  snprintf(buf + buflen, sizeof(buf) - buflen, " [%u] <%s:%d>: %s",
-    (unsigned int) (session.pid ? session.pid : getpid()), channel, level, msg);
+
+  if ((trace_opts & PR_TRACE_OPT_LOG_CONN_IPS) &&
+      session.c != NULL) {
+    /* We can only support the "+ConnIPs" TraceOption if there actually
+     * is a client connected in this process.  We might be the daemon
+     * process, in which there is no client.
+     */
+    use_conn_ips = TRUE;
+  }
+
+  if (use_conn_ips == FALSE) {
+    snprintf(buf + buflen, sizeof(buf) - buflen, " [%u] <%s:%d>: %s",
+      (unsigned int) (session.pid ? session.pid : getpid()), channel, level,
+      msg);
+
+  } else {
+    char *client_ip, *server_ip;
+    int server_port;
+
+    client_ip = pr_netaddr_get_ipstr(session.c->remote_addr);
+    server_ip = pr_netaddr_get_ipstr(session.c->local_addr);
+    server_port = pr_netaddr_get_port(session.c->local_addr);
+
+    snprintf(buf + buflen, sizeof(buf) - buflen,
+      " [%u] (client %s, server %s:%d) <%s:%d>: %s",
+      (unsigned int) (session.pid ? session.pid : getpid()),
+      client_ip != NULL ? client_ip : "none",
+      server_ip != NULL ? server_ip : "none", server_port, channel, level, msg);
+  }
 
   buf[sizeof(buf)-1] = '\0';
 
   buflen = strlen(buf);
   if (buflen < (sizeof(buf) - 1)) {
     buf[buflen] = '\n';
+    buflen++;
 
   } else {
     buf[sizeof(buf)-2] = '\n';
@@ -365,6 +418,11 @@ int pr_trace_set_levels(const char *channel, int min_level, int max_level) {
   return 0;
 }
 
+int pr_trace_set_options(unsigned long opts) {
+  trace_opts = opts;
+  return 0;
+}
+
 int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
   int res;
   va_list msg;
@@ -462,6 +520,11 @@ int pr_trace_set_file(const char *path) {
 }
 
 int pr_trace_set_levels(const char *channel, int min_level, int max_level) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_trace_set_options(unsigned long opts) {
   errno = ENOSYS;
   return -1;
 }

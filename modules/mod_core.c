@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.400 2011-03-17 17:08:26 castaglia Exp $
+ * $Id: mod_core.c,v 1.401 2011-03-24 21:57:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1315,6 +1315,88 @@ MODRET set_tracelog(cmd_rec *cmd) {
 #else
   CONF_ERROR(cmd,
     "Use of the TraceLog directive requires trace support (--enable-trace)");
+#endif /* PR_USE_TRACE */
+}
+
+/* usage: TraceOptions opt1 ... optN */
+MODRET set_traceoptions(cmd_rec *cmd) {
+#ifdef PR_USE_TRACE
+  register unsigned int i;
+  int ctx;
+  config_rec *c;
+  unsigned long trace_opts = PR_TRACE_OPT_DEFAULT;
+
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    char action, *opt;
+
+    opt = cmd->argv[i];
+    action = *opt;
+
+    if (action != '-' &&
+        action != '+') {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad TraceOption: '", opt, "'",
+        NULL));
+    }
+
+    opt++;
+
+    if (strncasecmp(opt, "ConnIPs", 8) == 0) {
+      switch (action) {
+        case '-':
+          trace_opts &= ~PR_TRACE_OPT_LOG_CONN_IPS;
+          break;
+
+        case '+':
+          trace_opts |= PR_TRACE_OPT_LOG_CONN_IPS;
+          break;
+      }
+
+    } else if (strncasecmp(opt, "TimestampMillis", 16) == 0) {
+      switch (action) {
+        case '-':
+          trace_opts &= ~PR_TRACE_OPT_USE_TIMESTAMP_MILLIS;
+          break;
+
+        case '+':
+          trace_opts |= PR_TRACE_OPT_USE_TIMESTAMP_MILLIS;
+          break;
+      }
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown TraceOption: '",
+        opt, "'", NULL));
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = trace_opts;
+
+  ctx = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+    cmd->config->config_type : cmd->server->config_type ?
+    cmd->server->config_type : CONF_ROOT);
+
+  if (ctx == CONF_ROOT) {
+    /* If we're the "server config" context, set the TraceOptions here,
+     * too.  This will apply these TraceOptions to the daemon process.
+     */
+    if (pr_trace_set_options(trace_opts) < 0) {
+      pr_log_debug(DEBUG6, "%s: error setting TraceOptions (%lu): %s",
+        cmd->argv[0], trace_opts, strerror(errno));
+    }
+  }
+
+  return PR_HANDLED(cmd);
+
+#else
+  CONF_ERROR(cmd,
+    "Use of the TraceOptions directive requires trace support (--enable-trace)");
 #endif /* PR_USE_TRACE */
 }
 
@@ -4990,6 +5072,18 @@ MODRET core_post_pass(cmd_rec *cmd) {
       }
     }
   }
+
+  /* Handle any user/group-specific TraceOptions settings. */
+  c = find_config(main_server->conf, CONF_PARAM, "TraceOptions", FALSE);
+  if (c != NULL) {
+    unsigned long trace_opts;
+
+    trace_opts = *((unsigned long *) c->argv[0]);
+    if (pr_trace_set_options(trace_opts) < 0) {
+      pr_log_debug(DEBUG6, "%s: error setting TraceOptions (%lu): %s",
+        c->name, trace_opts, strerror(errno));
+    }
+  }
 #endif /* PR_USE_TRACE */
 
   /* Look for a configured MaxCommandRate. */
@@ -5357,6 +5451,18 @@ static int core_sess_init(void) {
       }
     }
   }
+
+  /* Handle any session-specific TraceOptions settings. */
+  c = find_config(main_server->conf, CONF_PARAM, "TraceOptions", FALSE);
+  if (c != NULL) {
+    unsigned long trace_opts;
+
+    trace_opts = *((unsigned long *) c->argv[0]);
+    if (pr_trace_set_options(trace_opts) < 0) {
+      pr_log_debug(DEBUG6, "%s: error setting TraceOptions (%lu): %s",
+        c->name, trace_opts, strerror(errno));
+    }
+  }
 #endif /* PR_USE_TRACE */
 
   if (ServerType == SERVER_STANDALONE) {
@@ -5556,6 +5662,7 @@ static conftable core_conftab[] = {
   { "TimesGMT",			set_timesgmt,			NULL },
   { "Trace",			set_trace,			NULL },
   { "TraceLog",			set_tracelog,			NULL },
+  { "TraceOptions",		set_traceoptions,		NULL },
   { "TransferLog",		add_transferlog,		NULL },
   { "Umask",			set_umask,			NULL },
   { "UnsetEnv",			set_unsetenv,			NULL },
