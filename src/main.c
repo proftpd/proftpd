@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.423 2011-03-21 02:14:03 castaglia Exp $
+ * $Id: main.c,v 1.424 2011-03-25 01:14:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -363,11 +363,27 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
         success = 1;
 
       } else if (MODRET_ISERROR(mr)) {
+        success = -1;
+
         if (cmd_type == POST_CMD ||
             cmd_type == LOG_CMD ||
             cmd_type == LOG_CMD_ERR) {
-          if (MODRET_ERRMSG(mr))
+          if (MODRET_ERRMSG(mr)) {
             pr_log_pri(PR_LOG_NOTICE, "%s", MODRET_ERRMSG(mr));
+          }
+
+          /* Even though we normally want to return a negative value
+           * for success (indicating lack of success), for
+           * LOG_CMD/LOG_CMD_ERR handlers, we always want to handle
+           * errors as a success value of zero (meaning "keep looking").
+           *
+           * This will allow the cmd_rec to continue to be dispatched to
+           * the other interested handlers (Bug#3633).
+           */
+          if (cmd_type == LOG_CMD || 
+              cmd_type == LOG_CMD_ERR) {
+            success = 0;
+          }
 
         } else if (send_error) {
           if (MODRET_ERRNUM(mr) &&
@@ -378,8 +394,6 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
             pr_response_send_raw("%s", MODRET_ERRMSG(mr));
           }
         }
-
-        success = -1;
       }
 
       if (session.user &&

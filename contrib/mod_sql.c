@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.208 2011-03-24 19:09:56 castaglia Exp $
+ * $Id: mod_sql.c,v 1.209 2011-03-25 01:14:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2876,6 +2876,15 @@ MODRET log_master(cmd_rec *cmd) {
     mr = process_sqllog(cmd, c, "log_master");
     if (mr != NULL &&
         MODRET_ISERROR(mr)) {
+
+      /* We always return DECLINED if we're in the LOG_CMD/LOG_CMD_ERR phase,
+       * regardless of the SQLLog processing outcome (Bug#3633).
+       */
+      if (session.curr_phase == LOG_CMD ||
+          session.curr_phase == LOG_CMD_ERR) {
+        return PR_DECLINED(cmd);
+      }
+
       return mr;
     }
 
@@ -2892,6 +2901,15 @@ MODRET log_master(cmd_rec *cmd) {
     mr = process_sqllog(cmd, c, "log_master");
     if (mr != NULL &&
         MODRET_ISERROR(mr)) {
+
+      /* We always return DECLINED if we're in the LOG_CMD/LOG_CMD_ERR phase,
+       * regardless of the SQLLog processing outcome (Bug#3633).
+       */
+      if (session.curr_phase == LOG_CMD ||
+          session.curr_phase == LOG_CMD_ERR) {
+        return PR_DECLINED(cmd);
+      }
+
       return mr;
     }
 
@@ -2919,6 +2937,15 @@ MODRET err_master(cmd_rec *cmd) {
     mr = process_sqllog(cmd, c, "err_master");
     if (mr != NULL &&
         MODRET_ISERROR(mr)) {
+
+      /* We always return DECLINED if we're in the LOG_CMD/LOG_CMD_ERR phase,
+       * regardless of the SQLLog processing outcome (Bug#3633).
+       */
+      if (session.curr_phase == LOG_CMD ||
+          session.curr_phase == LOG_CMD_ERR) {
+        return PR_DECLINED(cmd);
+      }
+
       return mr;
     }
 
@@ -2935,6 +2962,15 @@ MODRET err_master(cmd_rec *cmd) {
     mr = process_sqllog(cmd, c, "err_master");
     if (mr != NULL &&
         MODRET_ISERROR(mr)) {
+
+      /* We always return DECLINED if we're in the LOG_CMD/LOG_CMD_ERR phase,
+       * regardless of the SQLLog processing outcome (Bug#3633).
+       */
+      if (session.curr_phase == LOG_CMD ||
+          session.curr_phase == LOG_CMD_ERR) {
+        return PR_DECLINED(cmd);
+      }
+
       return mr;
     }
 
