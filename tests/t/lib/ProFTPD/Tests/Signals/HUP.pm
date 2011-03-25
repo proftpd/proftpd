@@ -24,7 +24,7 @@ my $TESTS = {
 
   hup_directory_bug3610 => {
     order => ++$order,
-    test_class => [qw(bug)],
+    test_class => [qw(bug mod_sql_sqlite)],
   },
 
 };
