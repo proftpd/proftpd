@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.31 2011-03-24 21:57:05 castaglia Exp $
+ * $Id: trace.c,v 1.32 2011-03-25 04:11:45 castaglia Exp $
  */
 
 
@@ -146,7 +146,7 @@ static int trace_write(const char *channel, int level, const char *msg) {
       msg);
 
   } else {
-    char *client_ip, *server_ip;
+    const char *client_ip, *server_ip;
     int server_port;
 
     client_ip = pr_netaddr_get_ipstr(session.c->remote_addr);
