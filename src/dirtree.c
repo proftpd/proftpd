@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.257 2011-03-19 19:52:27 castaglia Exp $
+ * $Id: dirtree.c,v 1.258 2011-03-25 16:51:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2354,6 +2354,58 @@ void pr_dirs_dump(void (*dumpf)(const char *, ...), xaset_t *s, char *indent) {
 }
 #endif /* PR_USE_DEVEL */
 
+static const char *config_type_str(int config_type) {
+  const char *type = "(unknown)";
+
+  switch (config_type) {
+    case CONF_ROOT:
+      type = "CONF_ROOT";
+      break;
+
+    case CONF_DIR:
+      type = "CONF_DIR";
+      break;
+
+    case CONF_ANON:
+      type = "CONF_ANON";
+      break;
+
+    case CONF_LIMIT:
+      type = "CONF_LIMIT";
+      break;
+
+    case CONF_VIRTUAL:
+      type = "CONF_VIRTUAL";
+      break;
+
+    case CONF_DYNDIR:
+      type = "CONF_DYNDIR";
+      break;
+
+    case CONF_GLOBAL:
+      type = "CONF_GLOBAL";
+      break;
+
+    case CONF_CLASS:
+      type = "CONF_CLASS";
+      break;
+
+    case CONF_NAMED:
+      type = "CONF_NAMED";
+      break;
+
+    case CONF_USERDATA:
+      type = "CONF_USERDATA";
+      break;
+
+    case CONF_PARAM:
+      type = "CONF_PARAM";
+      break;
+  };
+
+  return type;
+}
+
 /* Compare two different config_recs to see if they are the same.  Note
  * that "same" here has to be very specific.
  *
@@ -2372,8 +2424,9 @@ static int config_cmp(const config_rec *a, const char *a_name,
 
   if (a->config_type != b->config_type) {
     pr_trace_msg(trace_channel, 18,
-      "configs '%s' and '%s' have mismatched config_type (%d != %d)",
-      a_name, b_name, a->config_type, b->config_type);
+      "configs '%s' and '%s' have mismatched config_type (%s != %s)",
+      a_name, b_name, config_type_str(a->config_type),
+      config_type_str(b->config_type));
     return 1;
   }
 
