@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.50 2011-02-17 00:48:52 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.51 2011-03-25 01:24:12 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -1761,11 +1761,38 @@ do the following:
 The configure your <code>SFTPHostKey</code> directive with the path to the
 new file.
 
+<p><a name="SFTPOpenSSLVersionMismatch">
+<font color=red>Question</font>: When I start <code>proftpd</code>, I
+see warnings that look like this:
+<pre>
+  - mod_sftp/0.9.7: compiled using OpenSSL version 'OpenSSL 0.9.8n 24 Mar 2010' headers, but linked to OpenSSL version 'OpenSSL 0.9.8q 2 Dec 2010' library
+</pre>
+What does this mean?<br>
+<font color=blue>Answer</font>: That is an informational/warning message.
+
+<p>
+Some systems are badly maintained by their admins (and/or by the packages
+installed on the systems), such that the OpenSSL headers can become quite badly
+out of sync with the OpenSSL libraries.  If this discrepancy becomes bad
+enough, you can see strange behavior from OpenSSL, ranging from random behavior
+to segfaults.  So <code>mod_sftp</code> tries to let the admin know about the
+system's mismatched OpenSSL header/library versions.
+
+<p>
+Usually a minor OpenSSL version difference like the example above is OK,
+but it really depends on exactly what changed in OpenSSL, and how.
+
+<p>
+If you see the above message, it is not a <i>requirement</i> that you recompile
+<code>proftpd</code> against the OpenSSL headers of the same version as the
+OpenSSL libraries.  However, the version discrepancy <em>is</em> a possible
+source of trouble.  
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-02-17 00:48:52 $</i><br>
+Last Updated: <i>$Date: 2011-03-25 01:24:12 $</i><br>
 
 <br><hr>
 

@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.26 2009-12-28 20:12:29 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.27 2011-03-25 01:24:12 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -908,9 +908,36 @@ certificate (<i>i.e.</i> <code>TLSRSACertificateFile</code>,
 file configured for the server certificate might also be badly formatted,
 which would result in the same error.
 
+<p><a name="TLSOpenSSLVersionMismatch">
+<font color=red>Question</font>: When I start <code>proftpd</code>, I
+see warnings that look like this:
+<pre>
+  - mod_tls/2.4.1: compiled using OpenSSL version 'OpenSSL 0.9.8n 24 Mar 2010' headers, but linked to OpenSSL version 'OpenSSL 0.9.8q 2 Dec 2010' library
+</pre>
+What does this mean?<br>
+<font color=blue>Answer</font>: That is an informational/warning message.
+
+<p>
+Some systems are badly maintained by their admins (and/or by the packages
+installed on the systems), such that the OpenSSL headers can become quite badly
+out of sync with the OpenSSL libraries.  If this discrepancy becomes bad
+enough, you can see strange behavior from OpenSSL, ranging from random behavior
+to segfaults.  So <code>mod_tls</code> tries to let the admin know about the
+system's mismatched OpenSSL header/library versions.
+
+<p>
+Usually a minor OpenSSL version difference like the example above is OK,
+but it really depends on exactly what changed in OpenSSL, and how.
+
+<p>
+If you see the above message, it is not a <i>requirement</i> that you recompile
+<code>proftpd</code> against the OpenSSL headers of the same version as the
+OpenSSL libraries.  However, the version discrepancy <em>is</em> a possible 
+source of trouble.
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2009-12-28 20:12:29 $</i><br>
+Last Updated: <i>$Date: 2011-03-25 01:24:12 $</i><br>
 <hr>
 
 </body>
