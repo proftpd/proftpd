@@ -144,6 +144,8 @@ sub hup_directory_bug3610 {
 
   my $user = 'proftpd';
 
+  my $db_file = File::Spec->rel2abs("$tmpdir/signals.db");
+
   my $include_file = File::Spec->rel2abs("$tmpdir/include.conf");
   if (open(my $fh, "> $include_file")) {
 
@@ -199,8 +201,8 @@ EOC
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
     TraceLog => $log_file,
-    Trace => 'config:20',
-    TraceOptions => '+TimestampMillis',
+    Trace => 'config:12-12',
+#    TraceOptions => '+TimestampMillis',
 
     ServerIdent => 'on foo',
 
@@ -246,10 +248,10 @@ EOC
 SQLEngine               on
 
 SQLLogFile /var/log/proftpd/proftpd.mysql.log
-#SQLBackend mysql
+SQLBackend sqlite3
 SQLAuthenticate users usersetfast
-SQLAuthTypes Plaintext Crypt OpenSSL
-SQLConnectInfo ftpdb\@localhost ftpuser ftppw
+SQLAuthTypes Plaintext Crypt
+SQLConnectInfo $db_file ftpuser ftppw
 SQLUserInfo users username password uid gid homedir shell
 SQLUserWhereClause "LoginAllowed = 'true' "
 SQLMinUserUID 1000
@@ -296,15 +298,31 @@ EOC
   # Start server
   server_start($config_file); 
 
+  # Give the server some time to start up
+  sleep(2);
+
+  # Restart the server
+  server_restart($pid_file);
+
+  sleep(2);
+
+  my $conn_start = [gettimeofday];
   my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+  my $conn_elapsed = tv_interval($conn_start);
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR " + Connect elapsed time: $conn_elapsed\n";
+  }
 
-  my ($resp_code, $resp_msg);
+  # If we can connect in under 5 secs, we've made progress on Bug#3610
+  my $max_elapsed = 5;
+  $self->assert($conn_elapsed < $max_elapsed,
+    test_msg("Expected connection elapsed time < $max_elapsed, got $conn_elapsed"));
 
-  $resp_code = $client->response_code();
-  $resp_msg = $client->response_msg();
+  my $resp_code = $client->response_code();
+  my $resp_msg = $client->response_msg();
 
   my $expected;
-    
+
   $expected = 220;
   $self->assert($expected == $resp_code,
     test_msg("Expected $expected, got $resp_code"));
@@ -312,36 +330,6 @@ EOC
   $expected = "foo";
   $self->assert($expected eq $resp_msg,
     test_msg("Expected '$expected', got '$resp_msg'"));
-
-  # Now change the config a little, and send the HUP signal
-  $config->{ServerIdent} = 'on bar';
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
-
-  # Restart the server
-  server_restart($pid_file);
-
-  my $conn_start = [gettimeofday];
-  $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-  my $conn_elapsed = tv_interval($conn_start);
-  if ($ENV{TEST_VERBOSE}) {
-    print STDERR " + Connect elapsed time: $conn_elapsed\n";
-  }
-
-  $resp_code = $client->response_code();
-  $resp_msg = $client->response_msg();
-
-  $expected = 220;
-  $self->assert($expected == $resp_code,
-    test_msg("Expected $expected, got $resp_code"));
-
-  $expected = "bar";
-  $self->assert($expected eq $resp_msg,
-    test_msg("Expected '$expected', got '$resp_msg'"));
-
-  # If we can connect in under 5 secs, we've made progress on Bug#3610
-  my $max_elapsed = 5;
-  $self->assert($conn_elapsed < $max_elapsed,
-    test_msg("Expected connection elapsed time < $max_elapsed, got $conn_elapsed"));
 
   server_stop($pid_file);
   unlink($log_file);
