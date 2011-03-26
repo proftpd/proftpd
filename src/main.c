@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.424 2011-03-25 01:14:35 castaglia Exp $
+ * $Id: main.c,v 1.425 2011-03-26 00:17:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -880,9 +880,13 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
   if (is_master && mpid) {
     int maxfd;
     fd_set childfds;
+    struct timeval restart_start, restart_finish;
+    long restart_elapsed = 0;
 
     pr_log_pri(PR_LOG_NOTICE, "received SIGHUP -- master server reparsing "
       "configuration file");
+
+    gettimeofday(&restart_start, NULL);
 
     /* Make sure none of our children haven't completed start up */
     FD_ZERO(&childfds);
@@ -976,6 +980,12 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
      */
     init_bindings();
 
+    gettimeofday(&restart_finish, NULL);
+
+    restart_elapsed = ((restart_finish.tv_sec - restart_start.tv_sec) * 1000L) +
+      ((restart_finish.tv_usec - restart_start.tv_usec) / 1000L);
+    pr_trace_msg("config", 12, "restart took %ld millisecs", restart_elapsed);
+      
   } else {
 
     /* Child process -- cannot restart, log error */
