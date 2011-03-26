@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: session.h,v 1.5 2011-02-28 05:48:29 castaglia Exp $
+ * $Id: session.h,v 1.6 2011-03-26 05:32:36 castaglia Exp $
  */
 
 #ifndef PR_SESSION_H
@@ -68,6 +68,9 @@
 
 /* Disconnected by application (general purpose code). */
 #define PR_SESS_DISCONNECT_BY_APPLICATION	12
+
+/* Disconnected due to snprintf(3) buffer truncation. */
+#define PR_SESS_DISCONNECT_SNPRINTF_TRUNCATED	13
 
 /* Returns a string describing the reason the client was disconnected or
  * the session ended.  If a pointer to a char * was provided, any extra
