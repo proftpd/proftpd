@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.35 2011-03-22 02:40:18 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.36 2011-03-26 00:43:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -113,9 +113,10 @@ static void ifsess_dup_param(pool *dst_pool, xaset_t **dst, config_rec *c,
        * directive then effectively replaces any directive there.
        */
       if (c->config_type == CONF_PARAM &&
-          !(c->flags & CF_MERGEDOWN_MULTI)) {
+          !(c->flags & CF_MERGEDOWN_MULTI) &&
+          !(c->flags & CF_MULTI)) {
           pr_trace_msg(trace_channel, 15, "removing '%s' config because "
-            "c->flags does not contain MERGEDOWN_MULTI", c->name);
+            "c->flags does not contain MULTI or MERGEDOWN_MULTI", c->name);
         ifsess_remove_param(dup_c->subset, c->name);
       }
 

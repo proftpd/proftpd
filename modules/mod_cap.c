@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.25 2011-02-28 18:27:13 castaglia Exp $
+ * $Id: mod_cap.c,v 1.26 2011-03-26 00:43:27 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -205,7 +205,7 @@ MODRET set_caps(cmd_rec *cmd) {
   /* Make sure to set this flag, so that mod_ifsession handles these
    * config_recs properly.
    */
-  c->flags |= CF_MERGEDOWN_MULTI;
+  c->flags |= CF_MULTI;
 
   return PR_HANDLED(cmd);
 }

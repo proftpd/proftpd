@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.209 2011-03-25 01:14:35 castaglia Exp $
+ * $Id: mod_sql.c,v 1.210 2011-03-26 00:43:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4996,14 +4996,11 @@ MODRET set_sqllog(cmd_rec *cmd) {
 
     if (pr_module_exists("mod_ifsession.c")) {
       /* If the mod_ifsession module is in use, then we need to set the
-       * CF_MERGEDOWN_MULTI flag, so that SQLLog directives that appear
-       * in mod_ifsession's <IfClass>/<IfGroup>/<IfUser> sections work
+       * CF_MULTI flag, so that SQLLog directives that appear in
+       * mod_ifsession's <IfClass>/<IfGroup>/<IfUser> sections work
        * properly.
        */
-      c->flags |= CF_MERGEDOWN_MULTI;
-
-    } else {
-      c->flags |= CF_MERGEDOWN;
+      c->flags |= CF_MULTI;
     }
   }
   
@@ -5020,7 +5017,6 @@ MODRET set_sqllogfile(cmd_rec *cmd) {
 
 /* usage: SQLNamedConnectInfo name backend info [user [pass [ttl]]] */
 MODRET set_sqlnamedconnectinfo(cmd_rec *cmd) {
-  config_rec *c;
   char *conn_name = NULL;
   char *backend = NULL;
   char *info = NULL;
@@ -5067,9 +5063,8 @@ MODRET set_sqlnamedconnectinfo(cmd_rec *cmd) {
     ttl = "0";
   }
 
-  c = add_config_param_str(cmd->argv[0], 6, conn_name, backend, info, user,
+  (void) add_config_param_str(cmd->argv[0], 6, conn_name, backend, info, user,
     pass, ttl);
-  c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
@@ -5141,7 +5136,7 @@ MODRET set_sqlnamedquery(cmd_rec *cmd) {
     CONF_ERROR(cmd, "type must be SELECT, INSERT, UPDATE, or FREEFORM");
   }
 
-  c->flags |= CF_MERGEDOWN;
+  c->flags |= CF_MULTI;
 
   return PR_HANDLED(cmd);
 }
@@ -5172,14 +5167,11 @@ MODRET set_sqlshowinfo(cmd_rec *cmd) {
 
     if (pr_module_exists("mod_ifsession.c")) {
       /* If the mod_ifsession module is in use, then we need to set the
-       * CF_MERGEDOWN_MULTI flag, so that SQLShowInfo directives that appear
-       * in mod_ifsession's <IfClass>/<IfGroup>/<IfUser> sections work
+       * CF_MULTI flag, so that SQLShowInfo directives that appear in
+       * mod_ifsession's <IfClass>/<IfGroup>/<IfUser> sections work
        * properly.
        */
-      c->flags |= CF_MERGEDOWN_MULTI;
-
-    } else {
-      c->flags |= CF_MERGEDOWN;
+      c->flags |= CF_MULTI;
     }
   }
 
@@ -5290,7 +5282,6 @@ MODRET set_sqlauthenticate(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = authmask;
-  c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
@@ -5351,7 +5342,6 @@ static int sql_openlog(void) {
 
 /* usage: SQLConnectInfo info [user [pass [policy]]] */
 MODRET set_sqlconnectinfo(cmd_rec *cmd) {
-  config_rec *c;
   char *info = NULL;
   char *user = "";
   char *pass = "";
@@ -5380,8 +5370,7 @@ MODRET set_sqlconnectinfo(cmd_rec *cmd) {
     ttl = "0";
   }
 
-  c = add_config_param_str(cmd->argv[0], 4, info, user, pass, ttl);
-  c->flags |= CF_MERGEDOWN;
+  (void) add_config_param_str(cmd->argv[0], 4, info, user, pass, ttl);
 
   return PR_HANDLED(cmd);
 }
@@ -5416,7 +5405,7 @@ MODRET set_sqlengine(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = engine;
-  c->flags = CF_MERGEDOWN;
+  c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
@@ -5484,7 +5473,6 @@ MODRET set_sqlminid(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[0]) = val;
-  c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
@@ -5511,7 +5499,6 @@ MODRET set_sqlminuseruid(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
   *((uid_t *) c->argv[0]) = val;
-  c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
@@ -5538,7 +5525,6 @@ MODRET set_sqlminusergid(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
   *((gid_t *) c->argv[0]) = val;
-  c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
@@ -5567,7 +5553,6 @@ MODRET set_sqldefaultuid(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
   *((uid_t *) c->argv[0]) = val;
-  c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
@@ -5596,7 +5581,6 @@ MODRET set_sqldefaultgid(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
   *((gid_t *) c->argv[0]) = val;
-  c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
