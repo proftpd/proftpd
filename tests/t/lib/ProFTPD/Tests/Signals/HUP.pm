@@ -202,7 +202,6 @@ EOC
     SystemLog => $log_file,
     TraceLog => $log_file,
     Trace => 'config:12-12',
-#    TraceOptions => '+TimestampMillis',
 
     ServerIdent => 'on foo',
 
