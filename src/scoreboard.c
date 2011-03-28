@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.65 2011-03-21 21:55:37 castaglia Exp $
+ * $Id: scoreboard.c,v 1.66 2011-03-28 06:03:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -491,7 +491,12 @@ void pr_delete_scoreboard(void) {
   scoreboard_mutex_fd = -1;
   scoreboard_opener = 0;
 
-  if (*scoreboard_file) {
+  /* As a performance hack, setting "ScoreboardFile /dev/null" makes
+   * proftpd write all its scoreboard entries to /dev/null.  But we don't
+   * want proftpd to delete /dev/null.
+   */
+  if (*scoreboard_file &&
+      strcmp(scoreboard_file, "/dev/null") != 0) {
     struct stat st;
 
     if (stat(scoreboard_file, &st) == 0) {
