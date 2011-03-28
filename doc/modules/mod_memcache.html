@@ -1,4 +1,4 @@
-<!-- $Id: mod_memcache.html,v 1.4 2011-02-20 17:30:03 castaglia Exp $ -->
+<!-- $Id: mod_memcache.html,v 1.5 2011-03-28 22:38:23 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_memcache.html,v $ -->
 
 <html>
@@ -53,6 +53,17 @@ support for the <code>proftpd</code> daemon.
 <strong>Compatibility:</strong> 1.3.4rc2 and later
 
 <p>
+The <code>MemcacheLog</code> directive is used to specify a log file for
+<code>mod_memcache</code>'s reporting on a per-server basis.  The
+<em>file</em> parameter given must be the full path to the file to use for
+logging.
+
+<p>
+Note that this path must <b>not</b> be to a world-writable directory and,
+unless <code>AllowLogSymlinks</code> is explicitly set to <em>on</em>
+(generally a bad idea), the path must <b>not</b> be a symbolic link.
+
+<p>
 <hr>
 <h2><a name="MemcacheOptions">MemcacheOptions</a></h2>
 <strong>Syntax:</strong> MemcacheOptions <em>opt1 ... optN</em><br>
@@ -77,6 +88,9 @@ The currently supported <code>MemcacheOptions</code> are:
 <strong>Compatibility:</strong> 1.3.4rc2 and later
 
 <p>
+<em>Experimental feature</em>
+
+<p>
 <hr>
 <h2><a name="MemcacheServers">MemcacheServers</a></h2>
 <strong>Syntax:</strong> MemcacheServers <em>servers</em><br>
@@ -86,7 +100,10 @@ The currently supported <code>MemcacheOptions</code> are:
 <strong>Compatibility:</strong> 1.3.4rc2 and later
 
 <p>
-Example:
+The <code>MemcacheServers</code> directive is used to configure the
+IP addresses/ports of the <code>memcached</code> servers that the
+<code>mod_memcache</code> module is to use.  The list of servers is expressed
+as a space-delimited list.  For example:
 <pre>
   MemcacheServers 1.2.3.4:11211 1.2.3.5:22422
 </pre>
@@ -99,6 +116,9 @@ Example:
 <strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_memcache<br>
 <strong>Compatibility:</strong> 1.3.4rc2 and later
+
+<p>
+<em>Experimental feature</em>
 
 <p>
 <hr>
@@ -127,7 +147,7 @@ You may also need to tell <code>configure</code> how to find the
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-02-20 17:30:03 $</i><br>
+Last Updated: <i>$Date: 2011-03-28 22:38:23 $</i><br>
 
 <br><hr>
 
