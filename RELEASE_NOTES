@@ -9,27 +9,66 @@ ChangeLog files.
 1.3.4rc2
 ---------
 
-  + New --enable-memcache configure option; see doc/modules/mod_memcache.html
+  + Fixes plaintext command injection vulnerability in FTPS implementation
+    (i.e. mod_tls).  See http://bugs.proftpd.org/show_bug.cgi?id=3624 for
+    details.
+
+  + Performance improvements, especially during server startup/restarts.
+
+  + New --enable-memcache configure option
+
+    ProFTPD now provides an API for modules for using memcached servers for
+    caching information among different proftpd server and/or across
+    sessions.  For more information, see the mod_memcache documentation
+    in doc/modules/mod_memcache.html.
 
   + New --enable-pcre configure option
-      see doc/howto/Compiling.html, doc/howto/Regex.html
+
+    The C library support for POSIX regular expressions is vulnerable to
+    some pathological regex patterns; the glibc library in particular
+    can be made to burn CPU with such patterns.  Sites which wish to avoid
+    such buggy C library implementations can instead use PCRE for regular
+    expression support in ProFTPD, by using the --enable-pcre configure
+    option.
    
   + New modules
 
     mod_tls_memcache
 
-      See doc/contrib/mod_tls_memcache.html
+      The mod_tls_memcache module uses the new mod_memcache/memcached support
+      in ProFTPD to use memcached servers for caching SSL session information.
+      This can be useful, especially when clusters of proftpd servers are
+      in used, or for preserving SSL session caches across proftpd restarts.
+      See doc/contrib/mod_tls_memcache.html for more details on this module.
 
   + New configuration directives:
 
     MaxCommandRate 
-      doc/modules/mod_core.html#MaxCommandRate
+
+      Some clients send FTP commands too quickly.  The new MaxCommandRate
+      directive is used to detect and to throttle such malicious clients;
+      it also generates an event that can be used by the mod_ban module
+      for banning these clients.  See doc/modules/mod_core.html#MaxCommandRate.
 
     SQLNamedConnectInfo
-      doc/contrib/mod_sql.html#SQLNamedConnectInfo
+
+      Some sites wish to have mod_sql connections to multiple different
+      databases simultaneously, e.g. one connection for retrieving user
+      data and a separate connection for logging.  To support such sites,
+      the new SQLNamedConnectInfo directive can be used to create "named
+      connection".  These "named connections" can then be used in a
+      SQLNamedQuery, i.e. you can specify the named connection that a
+      SQLNamedQuery is to use when it is expected.  More information can
+      found at doc/contrib/mod_sql.html#SQLNamedConnectInfo.
 
     TraceOptions
-      doc/modules/mod_core.html#TraceOptions
+
+      The TraceLog can provide very detailed information, especially when
+      diagnosing an issue.  To aid in such diagnoses, the new TraceOptions
+      directive can be used to add more information to the TraceLog,
+      such as client/server IP addresses (if available), and timestamps
+      with millisecond granularity.  The documentation at
+      doc/modules/mod_core.html#TraceOptions has the details.
 
   + The following utilities are now installed under $prefix/bin/ by the
     'make install' target: ftpasswd, ftpmail, ftpquota
@@ -37,33 +76,85 @@ ChangeLog files.
   + Changed configuration directives:
 
     BanOnEvent
-      MaxCommandRate, UnhandledCommand
+
+      The mod_ban module's BanOnEvent directive now supports a few more
+      events, namely 'MaxCommandRate' and 'UnhandledCommand'.  These events
+      can be used to ban clients which send commands too quickly, or which
+      send too many unhandled/unknown commands.
 
     ExtendedLog
-      EXIT command class
+
+      For some LogFormat variables (e.g. %E, %I, %O) it is useful to log
+      them when then session exits.  The mod_sql module has had the ability
+      to log at session exit for quite some time.  The ExtendedLog directive
+      can how log at session exit as well, using the new "EXIT" command class.
 
     LogFormat
-      %E variable, for end-of-session reason
-      %H variable, for IP address of server handling session
- 
+
+      The LogFormat directive now supports a couple of new variables:
+
+        %E variable, for end-of-session reason
+        %H variable, for IP address of server handling session
+
+      These are listed in the LogFormat docs; see
+      doc/modules/mod_log.html#LogFormat. 
+
     PathAllowFilter, PathDenyFilter
-      [NC|nocase] flags
+
+      The PathAllowFilter and PathDenyFilter directives now support an
+      optional flags parameter, which can be used to specify e.g.
+      case-insensitive evaluation of the configured regular expression.
+      For example:
+
+        PathDenyFilter .jpg$ [NC]
+
+      See doc/modules/mod_core.html#PathAllowFilter for more details.
 
     SFTPOptions
-      IgnoreSFTPSetPerms
+
+      The mod_sftp module's SFTPOptions directive supports a new
+      'IgnoreSFTPSetPerms' option.  This option is similar to the existing
+      'IgnoreSFTPUploadPerms'; it causes mod_sftp to silently ignore the SFTP
+      client's attempts to change file permissions.  See
+      doc/contrib/mod_sftp.html#SFTPOptions.
 
     SFTPPAMOptions
-      NoInfoMsgs
+
+      The SFTPPAMOptions directive for the mod_sftp_pam module now supports
+      a 'NoInfoMsgs' option, which disables the sending of informational
+      messages from the PAM library to the connecting SSH client.  This
+      option can be used to make mod_sftp_pam behavior like OpenSSH with
+      regard to PAM support.
 
     SQLNamedQuery
-      Optional connection name to use (Bug#3262)
+
+      The SQLNamedQuery directive now supports an optional "named connection"
+      name, for supporting multiple database connections.  See the
+      doc/contrib/mod_sql.html#SQLNamedConnectInfo docs for more information.
+
+    TLSSessionCache
+
+      The TLSSessionCache directive from the mod_tls module can now be
+      used to explicitly configure the session cache timeout when OpenSSL's
+      internal session caching mechanism (used by default) is being used.
+      See doc/contrib/mod_tls.html#TLSSessionCache for details.
 
     Trace
-      log level range syntax
+ 
+      The Trace directive can now to be used to specify a range of trace
+      channel log levels, rather than simply specifying the maximum log
+      level for a channel.  For example, to see only messages from log
+      levels 5 to 8, you would do:
+
+        Trace DEFAULT:5-8
+
+      This is documented in the Trace directive documentation, at
+      doc/modules/mod_core.html#Trace.
 
   + New documentation:
 
     doc/howto/ConnectionACLs.html
+
     doc/utils/ftpasswd.html
     doc/utils/ftpcount.html
     doc/utils/ftpdctl.html
@@ -84,6 +175,12 @@ ChangeLog files.
     The following function has been renamed/moved:
 
       end_login() is now pr_session_end()
+
+    A related new function, pr_session_disconnect() is added.  This new
+    function allows the caller to specify a reason code indicating why
+    the session is ending, as well as support for an optional string
+    for more details about the reason for ending the session.
+
 
 1.3.4rc1
 ---------
@@ -240,4 +337,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2011-03-24 21:57:05 $
+Last Updated: $Date: 2011-03-29 17:44:00 $
