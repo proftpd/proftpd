@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.8 2011-03-29 16:51:42 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.9 2011-03-29 17:33:24 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -21,6 +21,8 @@ The <code>mod_core</code> module handles most of the core FTP commands.
 <ul>
   <li><a href="#Include">Include</a>
   <li><a href="#MaxCommandRate">MaxCommandRate</a>
+  <li><a href="#PathAllowFilter">PathAllowFilter</a>
+  <li><a href="#PathDenyFilter">PathDenyFilter</a>
   <li><a href="#ProcessTitles">ProcessTitles</a>
   <li><a href="#Protocols">Protocols</a>
   <li><a href="#Trace">Trace</a>
@@ -85,6 +87,93 @@ sets a maximum command rate of 200 commands per sec. Or:
   MaxCommandRate 500 2
 </pre>
 sets a maximum command rate of 500 commands every 2 secs.
+
+<p>
+<hr>
+<h2><a name="PathAllowFilter">PathAllowFilter</a></h2>
+<strong>Syntax:</strong> PathAllowFilter <em>pattern [flags]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.1.7 and later
+
+<p>
+The <code>PathAllowFilter</code> directive allows the configuration of a
+regular expression <em>pattern</em> that <b>must be matched</b> for all newly
+uploaded (stored) files.  The regular expression is applied against the entire
+pathname specified by the client, so care must be taken when creating a proper
+regex.  Paths that fail the regex match result in a "Forbidden filename" error
+being returned to the client.  If the regular expression <em>pattern</em> 
+parameter contains whitespace, it must be enclosed in quotes.
+
+<p>
+For example:
+<pre>
+  # Only allow a-z 0-9 . - _ in file names
+  PathAllowFilter ^[a-z0-9._-]+$
+
+  # As above but with upper case characters as well
+  PathAllowFilter ^[A-Za-z0-9._-]+$
+</pre>
+
+<p>
+The optional <em>flags</em> paramete, if present, modifies how the given
+<em>pattern</em> will be evaludated.  The supported flags are:
+<ul>
+  <li><b>nocase|NC</b> (<b>n</b>o <b>c</b>ase)<br>
+      This makes the <em>pattern</em> case-insensitive, <i>i.e.</i> there is
+      no difference between 'A-Z' and 'a-z' when <em>pattern</em> is matched
+      against the path
+  </li>
+</ul>
+
+<p>
+The <a href="../howto/Filters.html">Filters</a> howto covers filtering in
+greater detail.
+
+<p>
+See also: <a href="#PathDenyFilter"><code>PathDenyFilter</code</a>
+
+<p>
+<hr>
+<h2><a name="PathDenyFilter">PathDenyFilter</a></h2>
+<strong>Syntax:</strong> PathDenyFilter <em>pattern [flags]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.1.7 and later
+
+<p>
+Similar to the <a href="#PathAllowFilter"><code>PathAllowFilter</code></a>
+directive, <code>PathDenyFilter</code> specifies a regular expression
+<em>pattern</em> which <b>must not match</b> any uploaded pathnames.  If the
+regex does match, a "Forbidden filename" error is returned to the client.
+This can be especially useful for forbidding .ftpaccess or .htaccess files.
+
+<p>
+For example:
+<pre>
+  # We don't want .ftpaccess or .htaccess files to be uploaded
+  PathDenyFilter "(\\.ftpaccess|\\.htaccess)$"
+</pre>
+
+<p>
+The optional <em>flags</em> paramete, if present, modifies how the given
+<em>pattern</em> will be evaludated.  The supported flags are:
+<ul>
+  <li><b>nocase|NC</b> (<b>n</b>o <b>c</b>ase)<br>
+      This makes the <em>pattern</em> case-insensitive, <i>i.e.</i> there is
+      no difference between 'A-Z' and 'a-z' when <em>pattern</em> is matched
+      against the path
+  </li>
+</ul>
+
+<p>
+The <a href="../howto/Filters.html">Filters</a> howto covers filtering in
+greater detail.
+
+<p>
+See also: <a href="#PathAllowFilter"><code>PathAllowFilter</code</a>
 
 <p>
 <hr>
@@ -286,7 +375,7 @@ The <code>mod_core</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-03-29 16:51:42 $</i><br>
+Last Updated: <i>$Date: 2011-03-29 17:33:24 $</i><br>
 
 <br><hr>
 
