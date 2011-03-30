@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.9 2011-03-29 17:33:24 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.10 2011-03-30 20:50:17 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -25,6 +25,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#PathDenyFilter">PathDenyFilter</a>
   <li><a href="#ProcessTitles">ProcessTitles</a>
   <li><a href="#Protocols">Protocols</a>
+  <li><a href="#TCPBacklog">TCPBacklog</a>
   <li><a href="#Trace">Trace</a>
   <li><a href="#TraceLog">TraceLog</a>
   <li><a href="#TraceOptions">TraceOptions</a>
@@ -253,6 +254,43 @@ The currently known/supported protocols include:
 
 <p>
 <hr>
+<h2><a name="TCPBacklog">TCPBacklog</a></h2>
+<strong>Syntax:</strong> TCPBacklog <em>backlog-size</em><br>
+<strong>Default:</strong> 5<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>TCPBacklog</code> directive controls the TCP connection queue
+size for listening sockets; this directive only applies to <code>proftpd</code>
+when it is configured with "<code>ServerType standalone</code>".  It has
+<b>no effect</b> if "<code>ServerType inetd</code>" is configured.
+
+<p>
+When a TCP connection is established by the TCP/IP stack within the kernel,
+there is a short period of time between the actual establishment of the
+TCP connection and when that connection is accepted for use by the listening
+daemon via the <code>accept(2)</code> system call.  The duration of this period
+of time can vary quite a bit, and can depend upon several factors (<i>e.g.</i>
+hardware, system load, <i>etc</i>).  Any TCP connection which hasn't been
+accepted by the listening daemon is placed in a "backlog" or queue of pending
+connections.  The <code>TCPBacklog</code> directive controls how the size
+of this queue of pending connections.
+
+<p>
+If this queue of pending connections becomes full, new TCP connections
+<b>cannot</b> be estaslished.  Under heavy load, this can result in occasional
+(or even frequent) errors seen by clients, such as "Connection refused",
+even though the daemon is clearly running.
+
+<p>
+The larger the <em>backlog-size</em>, the more TCP connections can be
+established to the daemon.  This also means more kernel memory and other kernel
+resources.
+
+<p>
+<hr>
 <h2><a name="Trace">Trace</a></h2>
 <strong>Syntax:</strong> Trace <em>channel1:level1 ...</em><br>
 <strong>Default:</strong> None<br>
@@ -375,7 +413,7 @@ The <code>mod_core</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-03-29 17:33:24 $</i><br>
+Last Updated: <i>$Date: 2011-03-30 20:50:17 $</i><br>
 
 <br><hr>
 
