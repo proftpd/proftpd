@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.10 2011-03-30 20:50:17 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.11 2011-03-30 21:51:30 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -290,6 +290,20 @@ established to the daemon.  This also means more kernel memory and other kernel
 resources.
 
 <p>
+The issue is complicated further by the fact that different operating
+systems handle the <em>backlog-size</em> value differently.  The pending
+connection queue is a critical kernel-level structure, and is sensitive
+to <a href="http://en.wikipedia.org/wiki/Syn_flood">TCP syn floods</a>.
+Each operating system, then, has different ways of handling incoming and
+pending connections, to attempt to guard against such attacks.  For Linux
+systems, read the <code>tcp(7)</code> man page and specifically about
+<code>tcp_abort_on_overflow</code>, </code>tcp_max_syn_backlog</code>,
+and <code>tcp_syncookies</code>.  On FreeBSD, read the
+<code>syncookies(4)</code> man page.  And read
+<a href="http://www.sean.de/Solaris/soltune.html#backlog">here</a> for
+additional tuning considerations on Solaris.
+
+<p>
 <hr>
 <h2><a name="Trace">Trace</a></h2>
 <strong>Syntax:</strong> Trace <em>channel1:level1 ...</em><br>
@@ -413,7 +427,7 @@ The <code>mod_core</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-03-30 20:50:17 $</i><br>
+Last Updated: <i>$Date: 2011-03-30 21:51:30 $</i><br>
 
 <br><hr>
 
