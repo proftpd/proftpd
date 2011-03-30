@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.21 2011-03-19 18:57:26 castaglia Exp $
+ * $Id: table.c,v 1.22 2011-03-30 18:40:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -107,7 +107,6 @@ static unsigned int key_hash(const void *key, size_t keysz) {
   while (sz--) {
     const char *k = key;
     unsigned int c = *k;
-    k++;
 
     if (!handling_signal) {
       /* Always handle signals in potentially long-running while loops. */
@@ -1108,7 +1107,8 @@ void pr_table_dump(void (*dumpf)(const char *fmt, ...), pr_table_t *tab) {
         pr_signals_handle();
       }
 
-      dumpf("[chain %u#%u] '%s' => '%s' (%u)", i, j++, ent->key->key_data,
+      dumpf("[hash %u (%u chains) chain %u#%u] '%s' => '%s' (%u)",
+        ent->key->hash, tab->nchains, i, j++, ent->key->key_data,
         ent->value_data, ent->value_datasz);
       ent = ent->next;
     }
