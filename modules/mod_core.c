@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.402 2011-03-26 00:43:27 castaglia Exp $
+ * $Id: mod_core.c,v 1.403 2011-03-30 17:48:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1261,6 +1261,8 @@ MODRET set_trace(cmd_rec *cmd) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error setting level ", ptr + 1,
           " for channel '", channel, "': ", strerror(errno), NULL));
       }
+
+      *ptr = ':';
     }
 
   } else {
@@ -5435,19 +5437,26 @@ static int core_sess_init(void) {
 
     for (i = 0; i < c->argc; i++) {
       char *channel, *ptr;
-      int level, res;
+      int min_level, max_level, res;
 
       ptr = strchr(c->argv[i], ':');
       channel = c->argv[i];
       *ptr = '\0';
-      level = atoi(ptr + 1);
 
-      res = pr_trace_set_levels(channel, 1, level);
-      *ptr = ':';
+      res = pr_trace_parse_levels(ptr + 1, &min_level, &max_level);
+      if (res == 0) {
+        res = pr_trace_set_levels(channel, min_level, max_level);
+        *ptr = ':';
 
-      if (res < 0) {
-        pr_log_debug(DEBUG6, "%s: error setting levels %d-%d for "
-          "channel '%s': %s", c->name, 1, level, channel, strerror(errno));
+        if (res < 0) {
+          pr_log_debug(DEBUG6, "%s: error setting levels %d-%d for "
+            "channel '%s': %s", c->name, min_level, max_level, channel,
+            strerror(errno));
+        }
+
+      } else {
+        pr_log_debug(DEBUG6, "%s: error parsing level '%s' for channel '%s': "
+          "%s", c->name, ptr + 1, channel, strerror(errno));
       }
     }
   }

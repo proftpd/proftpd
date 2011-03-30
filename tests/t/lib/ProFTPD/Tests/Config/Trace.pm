@@ -38,7 +38,12 @@ my $TESTS = {
   trace_level_range_bug3617 => {
     order => ++$order,
     test_class => [qw(bug feature_trace forking)],
-  }
+  },
+
+  trace_session_level_range_bug3617 => {
+    order => ++$order,
+    test_class => [qw(bug feature_trace forking)],
+  },
 
 };
 
@@ -721,6 +726,149 @@ sub trace_level_range_bug3617 {
     SystemLog => $log_file,
     TraceLog => $trace_log,
     Trace => 'DEFAULT:9-9',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if (open(my $fh, "< $trace_log")) {
+    my $ok = 0;
+
+    while (my $line = <$fh>) {
+      chomp($line);
+
+      my $expected = '\[\d+\]\s+<(\S+):(\d+)>: (.*?)$';
+
+      if ($line =~ /$expected/) {
+        my $trace_channel = $1;
+        my $trace_level = $2;
+        my $trace_msg = $3;
+
+        my $expected = 9;
+        $self->assert($expected == $trace_level,
+          test_msg("Expected trace level $expected, got $trace_level"));
+
+        next unless $trace_channel eq 'signal';
+
+        $expected = 'signal';
+        $self->assert($expected eq $trace_channel,
+          test_msg("Expected trace channel '$expected', got '$trace_channel'"));
+
+        $ok = 1;
+      }
+    }
+
+    close($fh);
+
+    unless ($ok) {
+      die("Missing expected TraceLog messages");
+    }
+
+  } else {
+    die("Can't read $trace_log: $!");
+  }
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub trace_session_level_range_bug3617 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/trace.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/trace.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/trace.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/trace.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/trace.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $trace_log = File::Spec->rel2abs("$tmpdir/trace.log");
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $trace_log,
+    Trace => 'session DEFAULT:9-9',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
