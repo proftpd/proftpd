@@ -66,6 +66,11 @@ my $TESTS = {
     test_class => [qw(forking ssh2)],
   },
 
+  ssh2_hostkey_dss_bug3634 => {
+    order => ++$order,
+    test_class => [qw(bug forking slow ssh2)],
+  },
+
   ssh2_cipher_c2s_aes256_cbc => {
     order => ++$order,
     test_class => [qw(forking ssh2)],
@@ -2276,6 +2281,212 @@ sub ssh2_hostkey_dss_only {
 
   } else {
     eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub ssh2_hostkey_dss_bug3634 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sftp.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $dsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_dsa_key');
+  my $dsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_dsa_key.pub');
+  my $dsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_dsa_keys');
+
+  my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
+  unless (copy($dsa_rfc4716_key, $authorized_keys)) {
+    die("Can't copy $dsa_rfc4716_key to $authorized_keys: $!");
+  }
+
+  my $batch_file = File::Spec->rel2abs("$tmpdir/sftp-batch.txt");
+  if (open(my $fh, "> $batch_file")) {
+    print $fh "pwd\n";
+
+    unless (close($fh)) {
+      die("Can't write $batch_file: $!");
+    }
+
+  } else {
+    die("Can't open $batch_file: $!");
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $log_file",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+        "SFTPAuthorizedUserKeys file:~/.authorized_keys",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(1);
+
+      my @cmd = (
+        'sftp',
+        '-oBatchMode=yes',
+        '-oCheckHostIP=no',
+        '-oCompression=yes',
+        "-oPort=$port",
+        '-oHostKeyAlgorithms=ssh-dss',
+        "-oIdentityFile=$dsa_priv_key",
+        '-oPubkeyAuthentication=yes',
+        '-oStrictHostKeyChecking=no',
+        '-vvv',
+        '-b',
+        "$batch_file",
+        "$user\@127.0.0.1",
+      );
+
+      my $count = 250;
+
+      for (my $i = 0; $i < $count; $i++) {
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Connect #", $i + 1, "\n";
+        }
+
+        my $sftp_rh = IO::Handle->new();
+        my $sftp_wh = IO::Handle->new();
+        my $sftp_eh = IO::Handle->new();
+
+        $sftp_wh->autoflush(1);
+
+        sleep(1);
+
+        local $SIG{CHLD} = 'DEFAULT';
+
+        # Make sure that the perms on the priv key are what OpenSSH wants
+        unless (chmod(0400, $dsa_priv_key)) {
+          die("Can't set perms on $dsa_priv_key to 0400: $!");
+        }
+
+        if ($ENV{TEST_VERBOSE}) {
+            print STDERR "Executing: ", join(' ', @cmd), "\n";
+        }
+
+        my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
+        waitpid($sftp_pid, 0);
+
+        # Restore the perms on the priv key
+        unless (chmod(0644, $dsa_priv_key)) {
+          die("Can't set perms on $dsa_priv_key to 0644: $!");
+        }
+
+        my ($res, $errstr);
+        if ($? >> 8) {
+          $errstr = join('', <$sftp_eh>);
+          $res = 0;
+
+        } else {
+          if ($ENV{TEST_VERBOSE}) {
+            $errstr = join('', <$sftp_eh>);
+            print STDERR "Stderr: $errstr\n";
+          }
+
+          $res = 1;
+        }
+
+        $self->assert($res == 1, test_msg("Can't pwd on server: $errstr"));
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh, 300) };
     if ($@) {
       warn($@);
       exit 1;
