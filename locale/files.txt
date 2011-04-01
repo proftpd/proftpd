@@ -86,6 +86,7 @@
 ../contrib/mod_sql_sqlite.c
 ../contrib/mod_tls.c
 ../contrib/mod_tls.h
+../contrib/mod_tls_memcache.c
 ../contrib/mod_tls_shmcache.c
 ../contrib/mod_unique_id.c
 ../contrib/mod_wrap2_file.c
@@ -143,6 +144,7 @@
 ../include/table.h
 ../include/throttle.h
 ../include/timers.h
+../include/tpl.h
 ../include/trace.h
 ../include/var.h
 ../include/version.h
