@@ -61,6 +61,10 @@ void pr_signals_block(void) {
 void pr_signals_unblock(void) {
 }
 
+int pr_trace_get_level(const char *channel) {
+  return 0;
+}
+
 int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
   return 0;
 }
