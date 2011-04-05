@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.20 2011-02-22 03:20:30 castaglia Exp $
+ * $Id: memcache.c,v 1.21 2011-04-05 22:18:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -31,15 +31,17 @@
 #ifdef PR_USE_MEMCACHE
 
 #include <libmemcached/memcached.h>
-#include <libmemcached/util.h>
 
 #if defined(LIBMEMCACHED_VERSION_HEX)
-# if LIBMEMCACHED_VERSION_HEX < 0x00037000
-#  error "libmemcached-0.37 or later required"
+# if LIBMEMCACHED_VERSION_HEX < 0x00041000
+#  error "libmemcached-0.41 or later required"
 # endif /* LIBMEMCACHED_VERSION_HEX too old */
 #else
 # error "Unable to determine libmemcached version"
 #endif /* LIBMEMCACHED_VERSION_HEX */
+
+/* libmemcached-0.41 and later included this header file. */
+#include <libmemcached/util.h>
 
 extern tpl_hook_t tpl_hook;
 

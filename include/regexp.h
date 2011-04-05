@@ -23,7 +23,7 @@
  */
 
 /* Regular expression management
- * $Id: regexp.h,v 1.7 2011-03-03 21:38:54 castaglia Exp $
+ * $Id: regexp.h,v 1.8 2011-04-05 22:18:17 castaglia Exp $
  */
 
 #ifndef PR_REGEXP_H
@@ -37,7 +37,14 @@
 #ifdef PR_USE_PCRE
 # include <pcre.h>
 # include <pcreposix.h>
+
+/* Make sure that we are using PCRE-7.0 or later. */
+# if defined(PCRE_MAJOR) && PCRE_MAJOR >= 7 && \
+     defined(PCRE_MINOR) && PCRE_MINOR >= 0
 # define PR_USE_REGEX		1
+# else
+# error "pcre-7.0 or later required"
+# endif /* PCRE-7.0 or later */
 #else
 # ifdef HAVE_REGEX_H
 # include <regex.h>
