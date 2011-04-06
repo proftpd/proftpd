@@ -106,6 +106,7 @@ if (scalar(@ARGV) > 0) {
     t/config/commandbuffersize.t
     t/config/createhome.t
     t/config/defaultchdir.t
+    t/config/defaultroot.t
     t/config/deleteabortedstores.t
     t/config/dirfakegroup.t
     t/config/dirfakemode.t
