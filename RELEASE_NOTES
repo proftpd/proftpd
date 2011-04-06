@@ -55,6 +55,15 @@ ChangeLog files.
       it also generates an event that can be used by the mod_ban module
       for banning these clients.  See doc/modules/mod_core.html#MaxCommandRate.
 
+    ProcessTitles
+
+      By default, proftpd changes the process title for session processes
+      to include the authenticated user name and the FTP command being
+      handled, including the paths to files being downloaded.  The new
+      ProcessTitles directive can be used to modify proftpd's behavior with
+      regard to this session process title changing. See
+      doc/modules/mod_core.html#ProcessTitles for more info.
+
     SQLNamedConnectInfo
 
       Some sites wish to have mod_sql connections to multiple different
@@ -342,4 +351,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2011-03-29 17:52:48 $
+Last Updated: $Date: 2011-04-06 08:09:49 $
