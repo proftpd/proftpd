@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.50 2011-02-26 02:31:36 castaglia Exp $
+ * $Id: netio.c,v 1.51 2011-04-06 17:16:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -922,8 +922,24 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
           }
 
 #ifdef EAGAIN
-	  if (bread == -1 && errno == EAGAIN)
+	  if (bread == -1 &&
+              errno == EAGAIN) {
+            int xerrno = EAGAIN;
+
+            /* Treat this as an interrupted call, call pr_signals_handle()
+             * (which will delay for a few msecs because of EINTR), and try
+             * again.
+             *
+             * This should avoid a tightly spinning loop if read(2) returns
+             * EAGAIN, as on a data transfer (Bug#3639).
+             */
+
+            errno = EINTR;
+            pr_signals_handle();
+
+            errno = xerrno;
             goto polling;
+          }
 #endif
 
         } while (bread == -1 && errno == EINTR);

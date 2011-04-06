@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1326 2011-04-05 22:18:17 castaglia Exp $
+$Id: NEWS,v 1.1327 2011-04-06 17:16:08 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -12,6 +12,7 @@ $Id: NEWS,v 1.1326 2011-04-05 22:18:17 castaglia Exp $
 CVS
 --------------------------------
 - Bug 3637 - Enforce pcre and libmemcached version requirements.
+- Bug 3639 - Avoid spinning proftpd process if read(2) returns EAGAIN.
 
 1.3.4rc2 - Released 01-Apr-2011
 --------------------------------
