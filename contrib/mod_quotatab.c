@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.72 2011-03-21 01:01:34 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.73 2011-04-09 20:26:30 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -3584,11 +3584,36 @@ MODRET quotatab_pre_site(cmd_rec *cmd) {
   if (cmd->argc < 2)
     return PR_DECLINED(cmd);
 
-  if (strcasecmp(cmd->argv[1], "COPY") == 0) {
+  if (strncasecmp(cmd->argv[1], "COPY", 5) == 0) {
     cmd_rec *copy_cmd;
 
     copy_cmd = pr_cmd_alloc(cmd->tmp_pool, 3, cmd->argv[1], cmd->argv[2],
       cmd->argv[3]);
+    return quotatab_pre_copy(copy_cmd);
+
+  } else if (strncasecmp(cmd->argv[1], "CPTO", 5) == 0) {
+    register unsigned int i;
+    cmd_rec *copy_cmd;
+    char *from, *to = "";
+
+    if (cmd->argc < 3)
+      return PR_DECLINED(cmd);
+
+    from = pr_table_get(session.notes, "mod_copy.cpfr-path", NULL);
+    if (from == NULL) {
+      pr_response_add_err(R_503, _("Bad sequence of commands"));
+      return PR_ERROR(cmd);
+    }
+
+    /* Construct the target file name by concatenating all the parameters after
+     * the "SITE CPTO", separating them with spaces.
+     */
+    for (i = 2; i <= cmd->argc-1; i++) {
+      to = pstrcat(cmd->tmp_pool, to, *to ? " " : "",
+        pr_fs_decode_path(cmd->tmp_pool, cmd->argv[i]), NULL);
+    }
+
+    copy_cmd = pr_cmd_alloc(cmd->tmp_pool, 3, "COPY", from, to);
     return quotatab_pre_copy(copy_cmd);
   }
 
@@ -3601,7 +3626,7 @@ MODRET quotatab_site(cmd_rec *cmd) {
   if (cmd->argc < 2)
     return PR_DECLINED(cmd);
 
-  if (strcasecmp(cmd->argv[1], "QUOTA") == 0) {
+  if (strncasecmp(cmd->argv[1], "QUOTA", 6) == 0) {
     char *cmd_name;
     unsigned char *authenticated = get_param_ptr(cmd->server->conf,
       "authenticated", FALSE);
@@ -3686,7 +3711,7 @@ MODRET quotatab_site(cmd_rec *cmd) {
     return PR_HANDLED(cmd);
   }
 
-  if (strcasecmp(cmd->argv[1], "HELP") == 0) {
+  if (strncasecmp(cmd->argv[1], "HELP", 5) == 0) {
 
     /* Add a description of SITE QUOTA to the output. */
     pr_response_add(R_214, "QUOTA");
@@ -3701,11 +3726,36 @@ MODRET quotatab_post_site(cmd_rec *cmd) {
   if (cmd->argc < 2)
     return PR_DECLINED(cmd);
 
-  if (strcasecmp(cmd->argv[1], "COPY") == 0) {
+  if (strncasecmp(cmd->argv[1], "COPY", 5) == 0) {
     cmd_rec *copy_cmd;
 
     copy_cmd = pr_cmd_alloc(cmd->tmp_pool, 3, cmd->argv[1], cmd->argv[2],
       cmd->argv[3]);
+    return quotatab_post_copy(copy_cmd);
+
+  } else if (strncasecmp(cmd->argv[1], "CPTO", 5) == 0) {
+    register unsigned int i;
+    cmd_rec *copy_cmd;
+    char *from, *to = "";
+
+    if (cmd->argc < 3)
+      return PR_DECLINED(cmd);
+
+    from = pr_table_get(session.notes, "mod_copy.cpfr-path", NULL);
+    if (from == NULL) {
+      pr_response_add_err(R_503, _("Bad sequence of commands"));
+      return PR_ERROR(cmd);
+    }
+
+    /* Construct the target file name by concatenating all the parameters after
+     * the "SITE CPTO", separating them with spaces.
+     */
+    for (i = 2; i <= cmd->argc-1; i++) {
+      to = pstrcat(cmd->tmp_pool, to, *to ? " " : "",
+        pr_fs_decode_path(cmd->tmp_pool, cmd->argv[i]), NULL);
+    }
+
+    copy_cmd = pr_cmd_alloc(cmd->tmp_pool, 3, "COPY", from, to);
     return quotatab_post_copy(copy_cmd);
   }
 
@@ -3718,11 +3768,33 @@ MODRET quotatab_post_site_err(cmd_rec *cmd) {
   if (cmd->argc < 2)
     return PR_DECLINED(cmd);
 
-  if (strcasecmp(cmd->argv[1], "COPY") == 0) {
+  if (strncasecmp(cmd->argv[1], "COPY", 5) == 0) {
     cmd_rec *copy_cmd;
 
     copy_cmd = pr_cmd_alloc(cmd->tmp_pool, 3, cmd->argv[1], cmd->argv[2],
       cmd->argv[3]);
+    return quotatab_post_copy_err(copy_cmd);
+
+  } else if (strncasecmp(cmd->argv[1], "CPTO", 5) == 0) {
+    register unsigned int i;
+    cmd_rec *copy_cmd;
+    char *from, *to = "";
+
+    from = pr_table_get(session.notes, "mod_copy.cpfr-path", NULL);
+    if (from == NULL) {
+      pr_response_add_err(R_503, _("Bad sequence of commands"));
+      return PR_ERROR(cmd);
+    }
+
+    /* Construct the target file name by concatenating all the parameters after
+     * the "SITE CPTO", separating them with spaces.
+     */
+    for (i = 2; i <= cmd->argc-1; i++) {
+      to = pstrcat(cmd->tmp_pool, to, *to ? " " : "",
+        pr_fs_decode_path(cmd->tmp_pool, cmd->argv[i]), NULL);
+    }
+
+    copy_cmd = pr_cmd_alloc(cmd->tmp_pool, 3, "COPY", from, to);
     return quotatab_post_copy_err(copy_cmd);
   }
 

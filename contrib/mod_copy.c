@@ -2,7 +2,7 @@
  * ProFTPD: mod_copy -- a module supporting copying of files on the server
  *                      without transferring the data to the client and back
  *
- * Copyright (c) 2009-2010 TJ Saunders
+ * Copyright (c) 2009-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,12 +26,12 @@
  * This is mod_copy, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_copy.c,v 1.2 2010-03-10 19:24:04 castaglia Exp $
+ * $Id: mod_copy.c,v 1.3 2011-04-09 20:26:30 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_COPY_VERSION	"mod_copy/0.2"
+#define MOD_COPY_VERSION	"mod_copy/0.3"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030401
@@ -319,7 +319,7 @@ MODRET copy_copy(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  if (strcasecmp(cmd->argv[1], "COPY") == 0) {
+  if (strncasecmp(cmd->argv[1], "COPY", 5) == 0) {
     char *cmd_name, *from, *to;
     unsigned char *authenticated;
 
@@ -363,7 +363,7 @@ MODRET copy_copy(cmd_rec *cmd) {
     return PR_HANDLED(cmd);
   }
 
-  if (strcasecmp(cmd->argv[1], "HELP") == 0) {
+  if (strncasecmp(cmd->argv[1], "HELP", 5) == 0) {
     pr_response_add(R_214, _("CPFR <sp> pathname"));
     pr_response_add(R_214, _("CPTO <sp> pathname"));
   }
@@ -376,7 +376,7 @@ MODRET copy_cpfr(cmd_rec *cmd) {
   int res;
   char *path = "";
 
-  if (strcasecmp(cmd->argv[1], "CPFR") != 0) {
+  if (strncasecmp(cmd->argv[1], "CPFR", 5) != 0) {
     return PR_DECLINED(cmd);
   }
 
@@ -430,7 +430,7 @@ MODRET copy_cpto(cmd_rec *cmd) {
   register unsigned int i;
   char *from, *to = "";
 
-  if (strcasecmp(cmd->argv[1], "CPTO") != 0) {
+  if (strncasecmp(cmd->argv[1], "CPTO", 5) != 0) {
     return PR_DECLINED(cmd);
   }
 
@@ -459,9 +459,18 @@ MODRET copy_cpto(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  pr_table_remove(session.notes, "mod_copy.cpfr-path", NULL);
-
   pr_response_add(R_250, _("Copy successful"));
+  return PR_HANDLED(cmd);
+}
+
+MODRET copy_log_site(cmd_rec *cmd) {
+  if (strncasecmp(cmd->argv[1], "CPTO", 5) != 0) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* Delete the stashed CPFR path from the session.notes table. */
+  (void) pr_table_remove(session.notes, "mod_copy.cpfr-path", NULL);
+
   return PR_HANDLED(cmd);
 }
 
@@ -479,9 +488,12 @@ static int copy_sess_init(void) {
  */
 
 static cmdtable copy_cmdtab[] = {
-  { CMD, C_SITE, G_WRITE,	copy_copy,	FALSE,	FALSE, CL_MISC },
-  { CMD, C_SITE, G_DIRS,	copy_cpfr,	FALSE,	FALSE, CL_MISC },
-  { CMD, C_SITE, G_WRITE,	copy_cpto,	FALSE,	FALSE, CL_MISC },
+  { CMD, 	C_SITE, G_WRITE,	copy_copy,	FALSE,	FALSE, CL_MISC },
+  { CMD, 	C_SITE, G_DIRS,		copy_cpfr,	FALSE,	FALSE, CL_MISC },
+  { CMD, 	C_SITE, G_WRITE,	copy_cpto,	FALSE,	FALSE, CL_MISC },
+  { LOG_CMD, 	C_SITE, G_NONE,		copy_log_site,	FALSE,	FALSE },
+  { LOG_CMD_ERR, C_SITE, G_NONE,	copy_log_site,	FALSE,	FALSE },
+
   { 0, NULL }
 };
 
