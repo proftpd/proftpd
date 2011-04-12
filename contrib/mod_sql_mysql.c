@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.61 2011-02-27 21:36:04 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.62 2011-04-12 21:20:27 castaglia Exp $
  */
 
 /*
@@ -914,7 +914,7 @@ MODRET cmd_select(cmd_rec *cmd) {
   int cnt = 0;
   cmd_rec *close_cmd;
 
-  sql_log(DEBUG_FUNC, "%s", ": entering \tmysql cmd_select");
+  sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_select");
 
   _sql_check_cmd(cmd, "cmd_select");
 
