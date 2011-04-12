@@ -163,7 +163,7 @@ my $TESTS = {
 
   sql_sqllog_var_uid_gid_bug3390 => {
     order => ++$order,
-    test_class => [qw(bug forking rootprivs)],
+    test_class => [qw(bug forking)],
   },
 
   sql_sqlite_auth_type_backend_bug3511 => {
@@ -4778,6 +4778,7 @@ sub sql_sqllog_var_d_chroot_bug3395 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -4785,21 +4786,9 @@ sub sql_sqllog_var_d_chroot_bug3395 {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/foo");
   mkpath($sub_dir);
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -4835,6 +4824,18 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir, $sub_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -4842,7 +4843,6 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultRoot => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -5042,8 +5042,8 @@ EOS
         SQLBackend => 'sqlite3',
         SQLConnectInfo => "$db_file foo bar PERCONNECTION",
         SQLLogFile => $log_file,
-        SQLNamedQuery => 'location FREEFORM "INSERT INTO ftpsessions (user, ip_addr, uid, gid) VALUES (\'%u\', \'%L\', \'%{uid}\', \'%{gid}\')"',
-        SQLLog => 'EXIT location',
+        SQLNamedQuery => 'location FREEFORM "INSERT INTO ftpsessions (user, ip_addr, uid, gid) VALUES (\'%u\', \'%L\', %{uid}, %{gid})"',
+        SQLLog => 'PASS location',
       },
     },
   };

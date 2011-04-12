@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.210 2011-03-26 00:43:27 castaglia Exp $
+ * $Id: mod_sql.c,v 1.211 2011-04-12 00:54:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2146,7 +2146,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
     char buf[64];
 
     memset(buf, '\0', sizeof(buf));
-    snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) session.uid);
+    snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) session.login_uid);
     
     long_tag = pstrdup(cmd->tmp_pool, buf);
   }
@@ -2156,7 +2156,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
     char buf[64];
 
     memset(buf, '\0', sizeof(buf));
-    snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) session.gid);
+    snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) session.login_gid);
     
     long_tag = pstrdup(cmd->tmp_pool, buf);
   }

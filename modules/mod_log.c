@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.117 2011-03-19 19:02:19 castaglia Exp $
+ * $Id: mod_log.c,v 1.118 2011-04-12 00:54:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1156,13 +1156,13 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
     case META_UID:
       argp = arg;
-      snprintf(argp, sizeof(arg), "%lu", (unsigned long) session.uid);
+      snprintf(argp, sizeof(arg), "%lu", (unsigned long) session.login_uid);
       m++;
       break;
 
     case META_GID:
       argp = arg;
-      snprintf(argp, sizeof(arg), "%lu", (unsigned long) session.gid);
+      snprintf(argp, sizeof(arg), "%lu", (unsigned long) session.login_gid);
       m++;
       break;
 
