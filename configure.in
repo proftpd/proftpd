@@ -291,34 +291,46 @@ AC_ARG_WITH(includes,
   ],
   [
     if test x"$withval" != x; then
-      ac_addl_includes=`echo "$withval" | sed -e 's/:/ /g'` ;
-      for ainclude in $ac_addl_includes; do
-        if test x"$ac_build_addl_includes" = x ; then
-          ac_build_addl_includes="-I$ainclude"
-        else
-          ac_build_addl_includes="-I$ainclude $ac_build_addl_includes"
-        fi
-      done
-      CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
+      if test x"$withval" = xyes; then
+        AC_MSG_ERROR([--with-includes parameter missing required colon-separated list of include paths])
+      fi
+
+      if test x"$withval" != xno; then
+        ac_addl_includes=`echo "$withval" | sed -e 's/:/ /g'` ;
+        for ainclude in $ac_addl_includes; do
+          if test x"$ac_build_addl_includes" = x ; then
+            ac_build_addl_includes="-I$ainclude"
+          else
+            ac_build_addl_includes="-I$ainclude $ac_build_addl_includes"
+          fi
+        done
+        CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
+      fi
     fi
   ])
 
 AC_ARG_WITH(libraries,
   [AC_HELP_STRING(
     [--with-libraries=LIST],
-    [add additional library paths to proftpd. LIST is a colon-separated list of include paths to add e.g. --with-libraries=/some/mysql/libdir:/my/libs])
+    [add additional library paths to proftpd. LIST is a colon-separated list of library paths to add e.g. --with-libraries=/some/mysql/libdir:/my/libs])
   ],
   [
     if test x"$withval" != x; then
-      ac_addl_libdirs=`echo "$withval" | sed -e 's/:/ /g'` ;
-      for alibdir in $ac_addl_libdirs; do
-        if test x"$ac_build_addl_libdirs" = x ; then
-          ac_build_addl_libdirs="-L$alibdir"
-        else
-          ac_build_addl_libdirs="-L$alibdir $ac_build_addl_libdirs"
-        fi
-      done 
-      LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
+      if test x"$withval" = xyes; then
+        AC_MSG_ERROR([--with-libraries parameter missing required colon-separated list of library paths])
+      fi
+
+      if test x"$withval" != xno; then
+        ac_addl_libdirs=`echo "$withval" | sed -e 's/:/ /g'` ;
+        for alibdir in $ac_addl_libdirs; do
+          if test x"$ac_build_addl_libdirs" = x ; then
+            ac_build_addl_libdirs="-L$alibdir"
+          else
+            ac_build_addl_libdirs="-L$alibdir $ac_build_addl_libdirs"
+          fi
+        done 
+        LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
+      fi
     fi
   ])
 
@@ -332,40 +344,46 @@ AC_ARG_WITH(modules,
   ],
   [
     if test x"$withval" != x; then
-      modules_list=`echo "$withval" | sed -e 's/:/ /g'`;
+      if test x"$withval" = xyes; then
+        AC_MSG_ERROR([--with-modules parameter missing required colon-separated list of modules])
+      fi
 
-      for amodule in $modules_list; do
-        if test x"$amodule" == xmod_dso ; then
-          AC_MSG_ERROR([use --enable-dso instead of --with-modules=mod_dso for DSO support])
-        fi
+      if test x"$withval" != xno; then
+        modules_list=`echo "$withval" | sed -e 's/:/ /g'`;
 
-        if test x"$amodule" == xmod_ifsession ; then
+        for amodule in $modules_list; do
+          if test x"$amodule" == xmod_dso ; then
+            AC_MSG_ERROR([use --enable-dso instead of --with-modules=mod_dso for DSO support])
+          fi
+
+          if test x"$amodule" == xmod_ifsession ; then
             ifsession_requested="true"
+          fi
+
+          if test x"$amodule" == xmod_lang ; then
+            AC_MSG_ERROR([use --enable-nls instead of --with-modules=mod_lang for NLS/UTF8 support])
+          fi
+
+          if test x"$amodule" == xmod_memcache ; then
+            AC_MSG_ERROR([use --enable-memcache instead of --with-modules=mod_memcache for Memcache support])
+          fi
+        done
+
+        ac_static_modules=`echo "$withval" | sed -e 's/:/.o /g'`.o ;
+
+        for amodule in $ac_static_modules; do
+          ac_build_static_modules="modules/$amodule $ac_build_static_modules"
+        done
+
+        dnl Make sure that mod_ifsession, if present in the list, appears at
+        dnl the end.
+        if test x"$ifsession_requested" == xtrue; then
+          ac_static_modules=`echo "$ac_static_modules" | sed -e 's/mod_ifsession\.o//g'`
+          ac_static_modules="$ac_static_modules mod_ifsession.o"
+
+          ac_build_static_modules=`echo "$ac_build_static_modules" | sed -e 's/modules\/mod_ifsession\.o//g'`
+          ac_build_static_modules="$ac_build_static_modules modules/mod_ifsession.o";
         fi
-
-        if test x"$amodule" == xmod_lang ; then
-          AC_MSG_ERROR([use --enable-nls instead of --with-modules=mod_lang for NLS/UTF8 support])
-        fi
-
-        if test x"$amodule" == xmod_memcache ; then
-          AC_MSG_ERROR([use --enable-memcache instead of --with-modules=mod_memcache for Memcache support])
-        fi
-      done
-
-      ac_static_modules=`echo "$withval" | sed -e 's/:/.o /g'`.o ;
-
-      for amodule in $ac_static_modules; do
-        ac_build_static_modules="modules/$amodule $ac_build_static_modules"
-      done
-
-      dnl Make sure that mod_ifsession, if present in the list, appears at
-      dnl the end.
-      if test x"$ifsession_requested" == xtrue; then
-        ac_static_modules=`echo "$ac_static_modules" | sed -e 's/mod_ifsession\.o//g'`
-        ac_static_modules="$ac_static_modules mod_ifsession.o"
-
-        ac_build_static_modules=`echo "$ac_build_static_modules" | sed -e 's/modules\/mod_ifsession\.o//g'`
-        ac_build_static_modules="$ac_build_static_modules modules/mod_ifsession.o";
       fi
     fi
   ])
@@ -389,22 +407,28 @@ AC_ARG_WITH(shared,
   ],
   [
     if test x"$withval" != x; then
-      shared_modules=`echo "$withval" | sed -e 's/:/ /g'`;
+      if test x"$withval" = xyes; then
+        AC_MSG_ERROR([--with-shared parameter missing required colon-separated list of modules])
+      fi
 
-      # First double-check that the given list does not contain any
-      # unshareable modules
-      for amodule in $shared_modules; do
-        for smodule in $ac_unshareable_modules; do
-          if test x"$amodule" = x"$smodule"; then
-            AC_MSG_ERROR([cannot build $amodule as a shared module])
-          fi
+      if test x"$withval" != xno; then
+        shared_modules=`echo "$withval" | sed -e 's/:/ /g'`;
+
+        # First double-check that the given list does not contain any
+        # unshareable modules
+        for amodule in $shared_modules; do
+          for smodule in $ac_unshareable_modules; do
+            if test x"$amodule" = x"$smodule"; then
+              AC_MSG_ERROR([cannot build $amodule as a shared module])
+            fi
+          done
         done
-      done
 
-      ac_shared_modules=`echo "$withval" | sed -e 's/:/.la /g'`.la ;
-      for amodule in $ac_shared_modules; do
-        ac_build_shared_modules="modules/$amodule $ac_build_shared_modules"
-      done
+        ac_shared_modules=`echo "$withval" | sed -e 's/:/.la /g'`.la ;
+        for amodule in $ac_shared_modules; do
+          ac_build_shared_modules="modules/$amodule $ac_build_shared_modules"
+        done
+      fi
     fi
   ])
 
@@ -487,7 +511,13 @@ AC_ARG_WITH(pkgconfig,
   ],
   [
     if test x"$withval" != x; then
-      pkgconfigdir=`echo "$withval"`
+      if test x"$withval" = xyes; then
+        AC_MSG_ERROR([--with-pkgconfig parameter missing required directory path])
+      fi
+
+      if test x"$withval" != xno; then
+        pkgconfigdir=`echo "$withval"`
+      fi
     fi
   ])
 
