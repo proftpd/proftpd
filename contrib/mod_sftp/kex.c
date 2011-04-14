@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.21 2011-03-17 22:16:47 castaglia Exp $
+ * $Id: kex.c,v 1.22 2011-04-14 22:30:54 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -836,22 +836,30 @@ static int create_kexrsa(struct sftp_kex *kex, int type) {
 static array_header *parse_namelist(pool *p, const char *names) {
   char *ptr;
   array_header *list;
+  size_t names_len;
 
   list = make_array(p, 0, sizeof(const char *));
 
-  ptr = strchr(names, ',');
+  names_len = strlen(names);
+
+  ptr = memchr(names, ',', names_len);
   while (ptr) {
     char *elt;
+    size_t elt_len;
 
     pr_signals_handle();
 
-    elt = pcalloc(p, (ptr - names) + 1);
-    memcpy(elt, names, (ptr - names));
+    elt_len = ptr - names;
+
+    elt = palloc(p, elt_len + 1);
+    memcpy(elt, names, elt_len);
+    elt[elt_len] = '\0';
 
     *((const char **) push_array(list)) = elt;
     names = ++ptr;
+    names_len -= elt_len;
 
-    ptr = strchr(names, ',');
+    ptr = memchr(names, ',', names_len);
   }
   *((const char **) push_array(list)) = pstrdup(p, names);
 
