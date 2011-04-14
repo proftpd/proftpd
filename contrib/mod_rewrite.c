@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.60 2011-03-24 04:42:42 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.61 2011-04-14 18:36:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -465,7 +465,8 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
     }
 
     case REWRITE_COND_OP_REGEX: {
-      rewrite_log("rewrite_match_cond(): checking regex cond");
+      rewrite_log("rewrite_match_cond(): checking regex cond against '%s'",
+        cond_str);
 
       memset(&rewrite_cond_matches, '\0', sizeof(rewrite_cond_matches));
       rewrite_cond_matches.match_string = cond_str;
@@ -476,7 +477,8 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
     case REWRITE_COND_OP_TEST_DIR: {
       int res = FALSE;
       struct stat st;
-      rewrite_log("rewrite_match_cond(): checking dir test cond");
+      rewrite_log("rewrite_match_cond(): checking dir test cond against "
+        "path '%s'", cond_str);
 
       pr_fs_clear_cache();
       if (pr_fsio_lstat(cond_str, &st) >= 0 &&
@@ -492,7 +494,8 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
     case REWRITE_COND_OP_TEST_FILE: {
       int res = FALSE;
       struct stat st;
-      rewrite_log("rewrite_match_cond(): checking file test cond");
+      rewrite_log("rewrite_match_cond(): checking file test cond against "
+        "path '%s'", cond_str);
 
       pr_fs_clear_cache();
       if (pr_fsio_lstat(cond_str, &st) >= 0 &&
@@ -508,7 +511,8 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
     case REWRITE_COND_OP_TEST_SYMLINK: {
       int res = FALSE;
       struct stat st;
-      rewrite_log("rewrite_match_cond(): checking symlink test cond");
+      rewrite_log("rewrite_match_cond(): checking symlink test cond against "
+        "path '%s'", cond_str);
 
       pr_fs_clear_cache();
       if (pr_fsio_lstat(cond_str, &st) >= 0 &&
@@ -524,7 +528,8 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
     case REWRITE_COND_OP_TEST_SIZE: {
       int res = FALSE;
       struct stat st;
-      rewrite_log("rewrite_match_cond(): checking size test cond");
+      rewrite_log("rewrite_match_cond(): checking size test cond against "
+        "path '%s'", cond_str);
 
       pr_fs_clear_cache();
       if (pr_fsio_lstat(cond_str, &st) >= 0 &&
