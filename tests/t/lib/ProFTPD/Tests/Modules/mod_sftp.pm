@@ -18033,7 +18033,7 @@ sub sftp_config_deleteabortedstores {
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
     TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    Trace => 'DEFAULT:20 ssh2:20 sftp:20 scp:20',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
@@ -18112,21 +18112,11 @@ sub sftp_config_deleteabortedstores {
 
       # Explicitly close the channel before we have closed the file, to
       # simulate an "aborted" transfer.
+      $sftp = undef;
       $ssh2->disconnect();
 
       # Give the server a little time to do its end-of-session thing.
       sleep(1);
-
-      # Check that the HiddenStores file is gone, and the requested
-      # file does NOT exist.
-
-      if (-f $hidden_file) {
-        die("File $hidden_file exists unexpectedly");
-      }
-
-      if (-f $test_file) {
-        die("File $test_file does not exist as expected");
-      }
     };
 
     if ($@) {
@@ -18146,14 +18136,23 @@ sub sftp_config_deleteabortedstores {
     exit 0;
   }
 
+  if ($ex) {
+    die($ex);
+  }
+
   # Stop server
   server_stop($pid_file);
 
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
+  # Check that the HiddenStores file is gone, and the requested
+  # file does NOT exist.
+
+  $self->assert(!-f $hidden_file,
+    test_msg("File $hidden_file exists unexpectedly"));
+
+  $self->assert(!-f $test_file,
+    test_msg("File $test_file does not exist as expected"));
 
   unlink($log_file);
 }
@@ -20535,7 +20534,7 @@ sub sftp_config_timeoutidle {
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $timeout_idle = 2;
+  my $timeout_idle = 5;
 
   my $config = {
     PidFile => $pid_file,
@@ -20586,7 +20585,7 @@ sub sftp_config_timeoutidle {
     eval {
       my $ssh2 = Net::SSH2->new();
 
-      sleep(1);
+      sleep(2);
 
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
