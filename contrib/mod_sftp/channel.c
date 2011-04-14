@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.39 2011-03-17 22:16:47 castaglia Exp $
+ * $Id: channel.c,v 1.40 2011-04-14 23:27:36 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -144,6 +144,9 @@ static void destroy_channel(uint32_t channel_id) {
       if (chans[i]->recvd_close &&
           chans[i]->sent_close) {
         if (chans[i]->finish != NULL) {
+          pr_trace_msg(trace_channel, 15,
+            "calling finish handler for channel ID %lu",
+            (unsigned long) channel_id);
           (chans[i]->finish)(channel_id);
         }
 
