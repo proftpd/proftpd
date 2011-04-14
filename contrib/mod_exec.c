@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.14 2011-03-26 00:43:26 castaglia Exp $
+ * $Id: mod_exec.c,v 1.15 2011-04-14 20:42:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -837,12 +837,22 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
     return errno;
   }
 
-  if (WIFEXITED(status))
-    return WEXITSTATUS(status);
+  if (WIFEXITED(status)) {
+    int exit_status;
+
+    exit_status = WEXITSTATUS(status);
+    exec_log("'%s' terminated normally, with exit status %d", exit_status);
+    return exit_status;
+  }
 
   if (WIFSIGNALED(status)) {
     exec_log("'%s' died from signal %d", (const char *) c->argv[2],
       WTERMSIG(status));
+
+    if (WCOREDUMP(status)) {
+      exec_log("'%s' created a coredump", (const char *) c->argv[2]);
+    }
+
     return EPERM;
   }
 
