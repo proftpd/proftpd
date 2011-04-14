@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.66 2011-03-28 06:03:26 castaglia Exp $
+ * $Id: scoreboard.c,v 1.67 2011-04-14 21:43:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -402,6 +402,8 @@ static int wlock_scoreboard(void) {
 }
 
 static int write_entry(void) {
+  int res;
+
   if (scoreboard_fd < 0) {
     errno = EINVAL;
     return -1;
@@ -411,12 +413,23 @@ static int write_entry(void) {
     return -1;
   }
 
-  while (write(scoreboard_fd, &entry, sizeof(entry)) != sizeof(entry)) {
-    if (errno == EINTR) {
-      pr_signals_handle();
-      continue;
+  res = write(scoreboard_fd, &entry, sizeof(entry));
+  while (res != sizeof(entry)) {
+    if (res < 0) {
+      if (errno == EINTR) {
+        pr_signals_handle();
+        res = write(scoreboard_fd, &entry, sizeof(entry));
+        continue;
+      }
+
+      return -1;
     }
 
+    /* Watch out for short writes here. */
+    pr_log_pri(PR_LOG_NOTICE,
+      "error updating scoreboard entry: only wrote %d of %lu bytes", res,
+      (unsigned long) sizeof(entry));
+    errno = EIO;
     return -1;
   }
 
@@ -1343,7 +1356,7 @@ static int scoreboard_valid_pid(pid_t pid, pid_t curr_pgrp) {
 }
 
 int pr_scoreboard_scrub(void) {
-  int fd = -1;
+  int fd = -1, res;
   off_t curr_offset = 0;
   struct flock lock;
   pid_t curr_pgrp = 0;
@@ -1409,38 +1422,47 @@ int pr_scoreboard_scrub(void) {
       slot_pid = sce.sce_pid;
 
       /* OK, the recorded PID is no longer valid. */
-      pr_log_debug(DEBUG9, "scrubbing scoreboard slot for PID %lu",
+      pr_log_debug(DEBUG9, "scrubbing scoreboard entry for PID %lu",
         (unsigned long) slot_pid);
 
       /* Rewind to the start of this slot. */
       if (lseek(fd, curr_offset, SEEK_SET) < 0) {
         int xerrno = errno;
 
-        pr_log_debug(DEBUG0, "error seeking to scoreboard slot to scrub: %s",
+        pr_log_debug(DEBUG0, "error seeking to scoreboard entry to scrub: %s",
           strerror(xerrno));
 
         pr_trace_msg(trace_channel, 3,
-          "error seeking to scoreboard slot for PID %lu (offset %" PR_LU ") to "
-          "scrub: %s", (unsigned long) slot_pid, (pr_off_t) curr_offset,
+          "error seeking to scoreboard entry for PID %lu (offset %" PR_LU ") "
+          "to scrub: %s", (unsigned long) slot_pid, (pr_off_t) curr_offset,
           strerror(xerrno));
       }
 
       memset(&sce, 0, sizeof(sce));
-      while (write(fd, &sce, sizeof(sce)) != sizeof(sce)) {
-        int xerrno = errno;
 
-        /* XXX Should we worry about short writes here? */
+      res = write(fd, &sce, sizeof(sce));
+      while (res != sizeof(sce)) {
+        if (res < 0) {
+          int xerrno = errno;
 
-        if (xerrno == EINTR) {
-          pr_signals_handle();
-          continue;
+          if (xerrno == EINTR) {
+            pr_signals_handle();
+            res = write(fd, &sce, sizeof(sce));
+            continue;
+          }
+
+          pr_log_debug(DEBUG0, "error scrubbing scoreboard: %s",
+            strerror(xerrno));
+          pr_trace_msg(trace_channel, 3,
+            "error writing out scrubbed scoreboard entry for PID %lu: %s",
+            (unsigned long) slot_pid, strerror(xerrno));
+
+        } else {
+          /* Watch out for short writes here. */
+          pr_log_pri(PR_LOG_NOTICE,
+            "error scrubbing scoreboard entry: only wrote %d of %lu bytes", res,
+            (unsigned long) sizeof(sce));
         }
-
-        pr_log_debug(DEBUG0, "error scrubbing scoreboard: %s",
-          strerror(xerrno));
-        pr_trace_msg(trace_channel, 3,
-          "error writing out scrubbed scoreboard slot for PID %lu: %s",
-          (unsigned long) slot_pid, strerror(xerrno));
       }
     }
 
