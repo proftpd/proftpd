@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.11 2011-03-30 21:51:30 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.12 2011-04-14 17:59:16 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -26,6 +26,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#ProcessTitles">ProcessTitles</a>
   <li><a href="#Protocols">Protocols</a>
   <li><a href="#TCPBacklog">TCPBacklog</a>
+  <li><a href="#TimeoutLinger">TimeoutLinger</a>
   <li><a href="#Trace">Trace</a>
   <li><a href="#TraceLog">TraceLog</a>
   <li><a href="#TraceOptions">TraceOptions</a>
@@ -305,6 +306,44 @@ additional tuning considerations on Solaris.
 
 <p>
 <hr>
+<h2><a name="TimeoutLinger">TimeoutLinger</a></h2>
+<strong>Syntax:</strong> TimeoutLinger <em>secs</em><br>
+<strong>Default:</strong> 30<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.10rc2 and later
+
+<p>
+The <code>TimeoutLinger</code> directive configures the maximum number of
+seconds that <code>proftpd</code> will wait (or "linger") when closing a data
+connection (<i>i.e.</i> for uploads, downloads, and directory listings).  Once
+the data connection is closed, <code>proftpd</code> will send a response
+message ("226 Transfer complete") on the control connection indicating the
+closure.  This delay is necessary for properly handling some FTP clients.
+
+<p>
+If the client aborts a transfer and there is a long delay, this lingering close
+is the most likely culprit.  So if you encounter this delay, set
+<code>TimeoutLinger</code> to a low number to remove the delay.
+
+<p>
+For the curious, here are the full details: some FTP clients will close their
+end of a data connection as soon as they are done sending their data; other
+FTP clients will wait until the server closes its end of the data connection,
+and some will close their side of the data connection <i>only after</i> they
+receive the "226 Transfer complete" message on the control connection.  In
+order to ensure that all of the data has been transferred on a data connection,
+<code>proftpd</code> will "linger" for a certain amount of time (governed
+by the <code>TimeoutLinger</code> directive) before sending that
+"226 Transfer complete" response, thus giving all client behaviors a chance
+to do the right thing.  However, this means that some clients will see a
+this <code>TimeoutLinger</code> delay unnecessarily.  The <code>proftpd</code>
+daemon can't detect which type of behavior the client will use, so it is
+up to the site admin to configure <code>proftpd</code> to work best with
+their FTP clients.
+
+<p>
+<hr>
 <h2><a name="Trace">Trace</a></h2>
 <strong>Syntax:</strong> Trace <em>channel1:level1 ...</em><br>
 <strong>Default:</strong> None<br>
@@ -427,7 +466,7 @@ The <code>mod_core</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-03-30 21:51:30 $</i><br>
+Last Updated: <i>$Date: 2011-04-14 17:59:16 $</i><br>
 
 <br><hr>
 
