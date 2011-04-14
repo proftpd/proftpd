@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: cmd.h,v 1.3 2011-03-19 19:02:19 castaglia Exp $
+ * $Id: cmd.h,v 1.4 2011-04-14 23:15:52 castaglia Exp $
  */
 
 #ifndef PR_CMD_H
@@ -29,7 +29,7 @@
 
 cmd_rec *pr_cmd_alloc(pool *, int, ...);
 int pr_cmd_clear_cache(cmd_rec *);
-char *pr_cmd_get_displayable_str(cmd_rec *);
+char *pr_cmd_get_displayable_str(cmd_rec *, size_t *);
 
 int pr_cmd_cmp(cmd_rec *cmd, int cmd_id);
 int pr_cmd_strcmp(cmd_rec *cmd, const char *cmd_name);

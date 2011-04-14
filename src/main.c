@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.426 2011-04-07 05:03:16 castaglia Exp $
+ * $Id: main.c,v 1.427 2011-04-14 23:15:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -280,6 +280,8 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
   c = pr_stash_get_symbol(PR_SYM_CMD, match, NULL, index_cache);
 
   while (c && !success) {
+    size_t cmdargstrlen = 0;
+
     pr_signals_handle();
 
     session.curr_cmd = cmd->argv[0];
@@ -304,13 +306,13 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
         pr_pool_tag(cmd->tmp_pool, "cmd_rec tmp pool");
       }
 
-      cmdargstr = pr_cmd_get_displayable_str(cmd);
+      cmdargstr = pr_cmd_get_displayable_str(cmd, &cmdargstrlen);
 
       if (cmd_type == CMD) {
 
         /* The client has successfully authenticated... */
         if (session.user) {
-          char *args = strchr(cmdargstr, ' ');
+          char *args = memchr(cmdargstr, ' ', cmdargstrlen);
 
           pr_scoreboard_entry_update(session.pid,
             PR_SCORE_CMD, "%s", cmd->argv[0], NULL, NULL);
