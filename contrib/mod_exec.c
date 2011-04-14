@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.15 2011-04-14 20:42:31 castaglia Exp $
+ * $Id: mod_exec.c,v 1.16 2011-04-14 21:18:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -841,7 +841,8 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
     int exit_status;
 
     exit_status = WEXITSTATUS(status);
-    exec_log("'%s' terminated normally, with exit status %d", exit_status);
+    exec_log("'%s' terminated normally, with exit status %d",
+      (const char *) c->argv[2], exit_status);
     return exit_status;
   }
 
