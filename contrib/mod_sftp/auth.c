@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.33 2011-03-17 22:16:47 castaglia Exp $
+ * $Id: auth.c,v 1.34 2011-04-15 16:27:26 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -851,7 +851,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   user_cmd->arg = orig_user;
 
   pass_cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, C_PASS));
-  pass_cmd->arg = "(hidden)";
+  pass_cmd->arg = pstrdup(pkt->pool, "(hidden)");
 
   /* Dispatch these as a PRE_CMDs, so that mod_delay's tactics can be used
    * to ameliorate any timing-based attacks.
