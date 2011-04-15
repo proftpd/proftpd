@@ -231,6 +231,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  sql_named_conn_sqllog_exit_bug3645 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
+  },
+
   sql_sqllog_vars_H_L_matching_server_bug3620 => {
     order => ++$order,
     test_class => [qw(bug forking)],
@@ -7747,6 +7752,241 @@ EOS
         'SQLUserInfo custom:/get-sql-user',
         'SQLNamedQuery session_start FREEFORM "INSERT INTO ftpsessions (user, ip_addr, timestamp) VALUES (\'%u\', \'%L\', \'%{time:%Y-%m-%d %H:%M:%S}\')" logdb',
         'SQLLog PASS session_start',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      $client->login($user, $passwd);
+
+      my $resp_msgs = $client->response_msgs();
+      my $nmsgs = scalar(@$resp_msgs);
+
+      my $expected;
+
+      $expected = 1;
+      $self->assert($expected == $nmsgs,
+        test_msg("Expected $expected, got $nmsgs")); 
+
+      $expected = "User proftpd logged in";
+      $self->assert($expected eq $resp_msgs->[0],
+        test_msg("Expected '$expected', got '$resp_msgs->[0]'"));
+
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  my ($login, $ip_addr, $timestamp) = get_sessions($userdb_file,
+    "user = \'$user\'");
+
+  $self->assert(!defined($login),
+    test_msg("Expected undef, got '$login'"));
+
+  $self->assert(!defined($ip_addr),
+    test_msg("Expected undef, got '$ip_addr'"));
+
+  $self->assert(!defined($timestamp),
+    test_msg("Expected undef, got '$timestamp'"));
+
+  ($login, $ip_addr, $timestamp) = get_sessions($logdb_file,
+    "user = \'$user\'");
+
+  my $expected;
+
+  $expected = $user;
+  $self->assert($expected eq $login,
+    test_msg("Expected '$expected', got '$login'"));
+
+  $expected = '127.0.0.1';
+  $self->assert($expected eq $ip_addr,
+    test_msg("Expected '$expected', got '$ip_addr'"));
+
+  $expected = '\d{4}\-\d{2}\-\d{2} \d{2}:\d{2}:\d{2}';
+  $self->assert(qr/$expected/, $timestamp,
+    test_msg("Expected '$expected', got '$timestamp'"));
+
+  unlink($log_file);
+}
+
+sub sql_named_conn_sqllog_exit_bug3645 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlite.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  my $userdb_file = File::Spec->rel2abs("$tmpdir/proftpd-users.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd-users.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT, 
+  shell TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $userdb_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  my $logdb_file = File::Spec->rel2abs("$tmpdir/proftpd-log.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  $db_script = File::Spec->rel2abs("$tmpdir/proftpd-log.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE ftpsessions (
+  user TEXT,
+  ip_addr TEXT,
+  timestamp TEXT
+);
+
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  $cmd = "sqlite3 $logdb_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $userdb_file, $logdb_file)) {
+      die("Can't set perms on $userdb_file, $logdb_file to 0666: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    DefaultRoot => '~',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => [
+        'SQLAuthTypes plaintext',
+        'SQLBackend sqlite3',
+        "SQLConnectInfo $userdb_file",
+        "SQLNamedConnectInfo logdb sqlite3 $logdb_file",
+        "SQLLogFile $log_file",
+        'SQLNamedQuery session_end FREEFORM "INSERT INTO ftpsessions (user, ip_addr, timestamp) VALUES (\'%u\', \'%L\', \'%{time:%Y-%m-%d %H:%M:%S}\')" logdb',
+        'SQLLog EXIT session_end',
       ],
     },
   };

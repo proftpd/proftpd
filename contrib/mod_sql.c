@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.212 2011-04-12 22:47:46 castaglia Exp $
+ * $Id: mod_sql.c,v 1.213 2011-04-15 17:34:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -255,6 +255,7 @@ static cmdtable *sql_cmdtable = NULL, *sql_default_cmdtable = NULL;
 struct sql_named_conn {
   struct sql_named_conn *next, *prev;
   const char *conn_name;
+  unsigned int conn_policy;
   const char *backend;
 };
 
@@ -5588,6 +5589,34 @@ MODRET set_sqldefaultgid(cmd_rec *cmd) {
 /* Event handlers
  */
 
+static void sql_chroot_ev(const void *event_data, void *user_data) {
+  /* Loop through our list of named connections, making sure that any
+   * with a connection policy of PERSESSION are opened.
+   */
+  if (sql_named_conns != NULL) {
+    pool *tmp_pool;
+    struct sql_named_conn *snc;
+
+    tmp_pool = make_sub_pool(session.pool);
+
+    for (snc = sql_named_conns; snc; snc = snc->next) {
+      pr_signals_handle();
+
+      if (snc->conn_policy == SQL_CONN_POLICY_PERSESSION) {
+        cmd_rec *cmd;
+        modret_t *mr; 
+
+        cmd = _sql_make_cmd(tmp_pool, 1, snc->conn_name);
+        mr = _sql_dispatch(cmd, "sql_open");
+        (void) check_response(mr);
+        SQL_FREE_CMD(cmd);
+      }
+    }
+
+    destroy_pool(tmp_pool);
+  }
+}
+
 static void sql_exit_ev(const void *event_data, void *user_data) {
   config_rec *c;
   cmd_rec *cmd;
@@ -6113,11 +6142,11 @@ static int sql_sess_init(void) {
       if (get_named_conn_backend(conn_name) == NULL) {
         pr_sql_conn_policy = SQL_CONN_POLICY_PERSESSION;
 
-        if (strcasecmp(c->argv[5], "perconn") == 0 ||
-            strcasecmp(c->argv[5], "perconnection") == 0) {
+        if (strncasecmp(c->argv[5], "perconn", 8) == 0 ||
+            strncasecmp(c->argv[5], "perconnection", 14) == 0) {
           pr_sql_conn_policy = SQL_CONN_POLICY_PERCONN;
 
-        } else if (strcasecmp(c->argv[5], "percall") == 0) {
+        } else if (strncasecmp(c->argv[5], "percall", 8) == 0) {
           pr_sql_conn_policy = SQL_CONN_POLICY_PERCALL;
         }
 
@@ -6129,17 +6158,12 @@ static int sql_sess_init(void) {
           return -1;
         }
 
-        /* Restore the default connection policy. */
-        pr_sql_conn_policy = default_conn_policy;
-
-        sql_log(DEBUG_INFO, "connection '%s' successfully established",
-          conn_name );
-
         /* Add the mapping of the connection name to the backend to the
          * lookup list.
          */
         snc = pcalloc(sql_pool, sizeof(struct sql_named_conn));
         snc->conn_name = conn_name;
+        snc->conn_policy = pr_sql_conn_policy;
         snc->backend = c->argv[1];
 
         if (sql_named_conns != NULL) {
@@ -6148,6 +6172,12 @@ static int sql_sess_init(void) {
         }
 
         sql_named_conns = snc;
+
+        /* Restore the default connection policy. */
+        pr_sql_conn_policy = default_conn_policy;
+
+        sql_log(DEBUG_INFO, "connection '%s' successfully established",
+          conn_name );
 
       } else {
         sql_log(DEBUG_INFO, MOD_SQL_VERSION
@@ -6255,7 +6285,7 @@ static int sql_sess_init(void) {
 
   destroy_pool(tmp_pool);
 
-  /* Add our exit handler */
+  pr_event_register(&sql_module, "core.chroot", sql_chroot_ev, NULL);
   pr_event_register(&sql_module, "core.exit", sql_exit_ev, NULL);
 
   return 0;
