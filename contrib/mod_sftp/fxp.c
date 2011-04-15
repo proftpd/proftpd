@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.126 2011-03-19 20:26:51 castaglia Exp $
+ * $Id: fxp.c,v 1.127 2011-04-15 00:14:54 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -266,22 +266,29 @@ static int fxp_packet_write(struct fxp_packet *);
 static array_header *fxp_parse_namelist(pool *p, const char *names) {
   char *ptr;
   array_header *list;
+  size_t names_len;
 
   list = make_array(p, 0, sizeof(const char *));
+  names_len = strlen(names);
 
-  ptr = strchr(names, ',');
+  ptr = memchr(names, ',', names_len);
   while (ptr) {
     char *elt;
+    size_t elt_len;
 
     pr_signals_handle();
 
-    elt = pcalloc(p, (ptr - names) + 1);
-    memcpy(elt, names, (ptr - names));
+    elt_len = ptr - names;
+
+    elt = palloc(p, elt_len + 1);
+    memcpy(elt, names, elt_len);
+    elt[elt_len] = '\0';
 
     *((const char **) push_array(list)) = elt;
     names = ++ptr;
+    names_len -= elt_len;
 
-    ptr = strchr(names, ',');
+    ptr = memchr(names, ',', names_len);
   }
   *((const char **) push_array(list)) = pstrdup(p, names);
 
@@ -9887,7 +9894,6 @@ int sftp_fxp_close_session(uint32_t channel_id) {
     pr_signals_handle();
 
     if (sess->channel_id == channel_id) {
-
       if (sess->next)
         sess->next->prev = sess->prev;
 
