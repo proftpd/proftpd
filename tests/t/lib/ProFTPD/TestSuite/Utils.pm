@@ -326,6 +326,10 @@ sub config_write {
     $config->{TimeoutIdle} = '10';
   }
 
+  unless (defined($config->{TimeoutLinger})) {
+    $config->{TimeoutLinger} = '1';
+  }
+
   unless (defined($config->{TransferLog})) {
     $config->{TransferLog} = 'none';
   }
