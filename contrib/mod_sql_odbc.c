@@ -21,13 +21,13 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_odbc.c,v 1.12 2011-02-27 21:36:04 castaglia Exp $
+ * $Id: mod_sql_odbc.c,v 1.13 2011-04-19 22:14:07 castaglia Exp $
  */
 
 #include "conf.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_ODBC_VERSION    "mod_sql_odbc/0.3.2"
+#define MOD_SQL_ODBC_VERSION    "mod_sql_odbc/0.3.3"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030001
@@ -342,7 +342,14 @@ static modret_t *sqlodbc_get_error(cmd_rec *cmd, SQLSMALLINT handle_type,
 
   res = SQLGetDiagRec(handle_type, handle, recno++, state, &odbc_errno,
     errstr, sizeof(errstr), &errlen);
-  while (res != SQL_NO_DATA) {
+  while (res != SQL_NO_DATA
+#ifdef SQL_ERROR
+         && res != SQL_ERROR
+#endif /* SQL_ERROR */
+#ifdef SQL_INVALID_HANDLE
+         && res != SQL_INVALID_HANDLE
+#endif /* SQL_INVALID_HANDLE */
+        ) {
     pr_signals_handle();
 
     sql_log(DEBUG_FUNC, "odbc error: [%d] %s", odbc_errno, errstr);
@@ -393,6 +400,8 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
   while (TRUE) {
     int done_fetching = FALSE;
     register unsigned int i;
+
+    pr_signals_handle();
 
     res = SQLFetch(conn->sth);
 
@@ -844,9 +853,8 @@ MODRET sqlodbc_open(cmd_rec *cmd) {
     conn->state |= SQLODBC_HAVE_DBC_HANDLE;
   }
 
-  res = SQLConnect(conn->dbh, (SQLCHAR *) conn->dsn, strlen(conn->dsn),
-    (SQLCHAR *) conn->user, strlen(conn->user), (SQLCHAR *) conn->pass,
-    strlen(conn->pass));
+  res = SQLConnect(conn->dbh, (SQLCHAR *) conn->dsn, SQL_NTS,
+    (SQLCHAR *) conn->user, SQL_NTS, (SQLCHAR *) conn->pass, SQL_NTS);
   if (res != SQL_SUCCESS) {
     sql_log(DEBUG_FUNC, "error connecting to dsn '%s': %s", conn->dsn,
       sqlodbc_strerror(res));
@@ -1665,23 +1673,12 @@ static cmdtable sqlodbc_cmdtable[] = {
   { CMD, "sql_exit",		G_NONE, sqlodbc_exit,	FALSE, FALSE },
   { CMD, "sql_checkauth",	G_NONE, sqlodbc_checkauth, FALSE, FALSE },
   { CMD, "sql_identify",	G_NONE, sqlodbc_identify, FALSE, FALSE },
+
   { 0, NULL }
 };
 
 /* Event handlers
  */
-
-static void sqlodbc_mod_load_ev(const void *event_data, void *user_data) {
-
-  if (strcmp("mod_sql_odbc.c", (const char *) event_data) == 0) {
-    /* Register ourselves with mod_sql. */
-    if (sql_register_backend("odbc", sqlodbc_cmdtable) < 0) {
-      pr_log_pri(PR_LOG_NOTICE, MOD_SQL_ODBC_VERSION
-        ": notice: error registering backend: %s", strerror(errno));
-      pr_session_end(0);
-    }
-  }
-}
 
 static void sqlodbc_mod_unload_ev(const void *event_data, void *user_data) {
 
@@ -1703,9 +1700,15 @@ static void sqlodbc_mod_unload_ev(const void *event_data, void *user_data) {
 
 static int sqlodbc_init(void) {
 
-  /* Register listeners for the load and unload events. */
-  pr_event_register(&sql_odbc_module, "core.module-load",
-    sqlodbc_mod_load_ev, NULL);
+  /* Register ourselves with mod_sql. */
+  if (sql_register_backend("odbc", sqlodbc_cmdtable) < 0) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_SQL_ODBC_VERSION
+      ": notice: error registering backend: %s", strerror(errno));
+    errno = EPERM;
+    return -1;
+  }
+
+  /* Register listeners for the unload event. */
   pr_event_register(&sql_odbc_module, "core.module-unload",
     sqlodbc_mod_unload_ev, NULL);
 
