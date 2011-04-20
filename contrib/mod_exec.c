@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.16 2011-04-14 21:18:23 castaglia Exp $
+ * $Id: mod_exec.c,v 1.17 2011-04-20 16:10:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,7 +34,7 @@
 # include <sys/resource.h>
 #endif
 
-#define MOD_EXEC_VERSION	"mod_exec/0.9.10"
+#define MOD_EXEC_VERSION	"mod_exec/0.9.11"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -1795,9 +1795,12 @@ static void exec_restart_ev(const void *event_data, void *user_data) {
 static int exec_sess_init(void) {
   unsigned char *use_exec = NULL;
   config_rec *c = NULL;
+  unsigned long opts;
+  const char *proto;
 
- if ((use_exec = get_param_ptr(main_server->conf, "ExecEngine",
-    FALSE)) != NULL && *use_exec == TRUE) {
+  use_exec = get_param_ptr(main_server->conf, "ExecEngine", FALSE);
+  if (use_exec != NULL &&
+      *use_exec == TRUE) {
     exec_engine = TRUE;
 
   } else {
@@ -1830,6 +1833,19 @@ static int exec_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "ExecOnConnect", FALSE);
 
+  /* If we are handling an SSH2 session, then disable the sendStdout
+   * ExecOption, if present, while we handle any ExecOnConnect scripts.
+   *
+   * Attempting to send the stdout of commands to connecting SSH2 clients
+   * can confuse them and lead to connection problems.
+   */
+  proto = pr_session_get_protocol(0);
+  opts = exec_opts;
+
+  if (strncmp(proto, "ssh2", 5) == 0) {
+    exec_opts &= ~EXEC_OPT_SEND_STDOUT;
+  }
+
   while (c) {
     int res;
 
@@ -1846,6 +1862,8 @@ static int exec_sess_init(void) {
 
     c = find_config_next(c, c->next, CONF_PARAM, "ExecOnConnect", FALSE);
   }
+
+  exec_opts = opts;
 
   /* Register a "core.exit" event handler. */
   pr_event_register(&exec_module, "core.exit", exec_exit_ev, NULL);
