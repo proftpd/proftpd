@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.17 2011-04-20 16:10:12 castaglia Exp $
+ * $Id: mod_exec.c,v 1.18 2011-04-20 16:13:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1795,7 +1795,6 @@ static void exec_restart_ev(const void *event_data, void *user_data) {
 static int exec_sess_init(void) {
   unsigned char *use_exec = NULL;
   config_rec *c = NULL;
-  unsigned long opts;
   const char *proto;
 
   use_exec = get_param_ptr(main_server->conf, "ExecEngine", FALSE);
@@ -1834,14 +1833,12 @@ static int exec_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "ExecOnConnect", FALSE);
 
   /* If we are handling an SSH2 session, then disable the sendStdout
-   * ExecOption, if present, while we handle any ExecOnConnect scripts.
+   * ExecOption, if present.
    *
    * Attempting to send the stdout of commands to connecting SSH2 clients
    * can confuse them and lead to connection problems.
    */
   proto = pr_session_get_protocol(0);
-  opts = exec_opts;
-
   if (strncmp(proto, "ssh2", 5) == 0) {
     exec_opts &= ~EXEC_OPT_SEND_STDOUT;
   }
@@ -1862,8 +1859,6 @@ static int exec_sess_init(void) {
 
     c = find_config_next(c, c->next, CONF_PARAM, "ExecOnConnect", FALSE);
   }
-
-  exec_opts = opts;
 
   /* Register a "core.exit" event handler. */
   pr_event_register(&exec_module, "core.exit", exec_exit_ev, NULL);
