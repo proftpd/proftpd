@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.54 2011-03-24 15:35:19 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.55 2011-04-20 16:11:15 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -177,7 +177,6 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
   char buf[256];
   const char *k, *v;
 
-  pr_session_set_protocol("ssh2");
   sftp_conn = conn;
 
   if (sftp_opts & SFTP_OPT_PESSIMISTIC_KEXINIT) {
@@ -1837,6 +1836,7 @@ static int sftp_sess_init(void) {
   /* Use our own "authenticated yet?" check. */
   set_auth_check(sftp_have_authenticated);
 
+  pr_session_set_protocol("ssh2");
   pr_cmd_set_handler(sftp_cmd_loop);
 
   /* Check for any UseEncoding directives.  Specifically, we're interested
