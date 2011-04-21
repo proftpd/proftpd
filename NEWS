@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1330 2011-04-15 17:34:46 castaglia Exp $
+$Id: NEWS,v 1.1331 2011-04-21 16:27:07 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -18,6 +18,7 @@ CVS
   used.
 - Bug 3645 - Ensure that SQLNamedConnectInfos with PERSESSION connection
   policies are opened before chroot.
+- Bug 3644 - Disable signal handling for exiting session processes.
 
 1.3.4rc2 - Released 01-Apr-2011
 --------------------------------

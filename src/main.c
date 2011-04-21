@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.427 2011-04-14 23:15:53 castaglia Exp $
+ * $Id: main.c,v 1.428 2011-04-21 16:27:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1868,12 +1868,6 @@ static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
 
 static RETSIGTYPE sig_terminate(int signo) {
 
-  /* Make sure the scoreboard slot is properly cleared.  Note that this is
-   * possibly redundant, as it should already be handled properly in
-   * pr_session_end().
-   */
-  pr_scoreboard_entry_del(FALSE);
-
   /* Capture the signal number for later display purposes. */
   term_signo = signo;
 
@@ -1904,11 +1898,8 @@ static RETSIGTYPE sig_terminate(int signo) {
     pr_log_pri(PR_LOG_INFO, "%s session closed.",
       pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT));
 
-    /* Restore the default signal handlers. */
 #ifdef PR_DEVEL_STACK_TRACE
     install_stacktrace_handler();
-#else
-    signal(signo, SIG_DFL);
 #endif /* PR_DEVEL_STACK_TRACE */
 
   } else if (signo == SIGTERM) {
@@ -1917,6 +1908,9 @@ static RETSIGTYPE sig_terminate(int signo) {
   } else {
     recvd_signal_flags |= RECEIVED_SIG_TERM_OTHER;
   }
+
+  /* Ignore future occurrences of this signal; we'll be terminating anyway. */
+  signal(signo, SIG_IGN);
 }
 
 static void handle_chld(void) {
