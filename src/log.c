@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.106 2011-03-19 18:44:31 castaglia Exp $
+ * $Id: log.c,v 1.107 2011-04-22 02:49:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -312,6 +312,9 @@ int pr_log_vwritefile(int logfd, const char *ident, const char *fmt,
   }
 
   buflen = strlen(buf);
+
+  pr_log_event_generate(PR_LOG_TYPE_UNSPEC, logfd, -1, buf, buflen);
+
   while (write(logfd, buf, buflen) < 0) {
     if (errno == EINTR) {
       pr_signals_handle();
@@ -394,7 +397,7 @@ void log_discard(void) {
   syslog_discard = TRUE;
 }
 
-static void log_write(int priority, int f, char *s) {
+static void log_write(int priority, int f, char *s, int discard) {
   unsigned int *max_priority = NULL;
   char serverinfo[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 
@@ -417,29 +420,61 @@ static void log_write(int priority, int f, char *s) {
     }
   }
 
-  if (logstderr ||
-      !main_server) {
-    fprintf(stderr, "%s - %s\n", serverinfo, s);
+  if (!discard &&
+      (logstderr || !main_server)) {
+    char buf[LOGBUFFER_SIZE] = {'\0'};
+    size_t buflen;
+
+    if (*serverinfo) {
+      snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+               "%s proftpd[%u] %s: %s\n", systemlog_host,
+               (unsigned int) (session.pid ? session.pid : getpid()),
+               serverinfo, s);
+    } else {
+      snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+               "%s proftpd[%u]: %s\n", systemlog_host,
+               (unsigned int) (session.pid ? session.pid : getpid()), s);
+    }
+
+    buf[sizeof(buf) - 1] = '\0';
+    buflen = strlen(buf);
+
+    pr_log_event_generate(PR_LOG_TYPE_SYSTEMLOG, STDERR_FILENO, priority,
+      buf, buflen);
+
+    fprintf(stderr, "%s", buf);
     return;
   }
 
-  if (syslog_discard)
-    return;
+  if (syslog_discard) {
+    /* Only return now if we don't have any log listeners. */
+    if (pr_log_event_listening(PR_LOG_TYPE_SYSLOG) == FALSE &&
+        pr_log_event_listening(PR_LOG_TYPE_SYSTEMLOG) == FALSE) {
+      return;
+    }
+  }
 
   max_priority = get_param_ptr(main_server->conf, "SyslogLevel", FALSE);
   if (max_priority != NULL &&
       priority > *max_priority) {
-    return;
+
+    /* Only return now if we don't have any log listeners. */
+    if (pr_log_event_listening(PR_LOG_TYPE_SYSLOG) == FALSE &&
+        pr_log_event_listening(PR_LOG_TYPE_SYSTEMLOG) == FALSE) {
+      return;
+    }
   }
 
   if (systemlog_fd != -1) {
     char buf[LOGBUFFER_SIZE] = {'\0'};
+    size_t buflen;
     time_t tt = time(NULL);
     struct tm *t;
 
     t = pr_localtime(NULL, &tt);
-    if (!t)
+    if (t == NULL) {
       return;
+    }
 
     strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);
     buf[sizeof(buf) - 1] = '\0';
@@ -456,7 +491,28 @@ static void log_write(int priority, int f, char *s) {
     }
 
     buf[sizeof(buf) - 1] = '\0';
-    while (write(systemlog_fd, buf, strlen(buf)) < 0) {
+    buflen = strlen(buf);
+
+    pr_log_event_generate(PR_LOG_TYPE_SYSTEMLOG, systemlog_fd, priority,
+      buf, buflen);
+
+    /* Now we need to enforce the discard, syslog_discard and SyslogLevel
+     * filtering.
+     */
+    if (discard) {
+      return;
+    }
+
+    if (syslog_discard) {
+      return;
+    }
+
+    if (max_priority != NULL &&
+        priority > *max_priority) {
+      return;
+    }
+
+    while (write(systemlog_fd, buf, buflen) < 0) {
       if (errno == EINTR) {
         pr_signals_handle();
         continue;
@@ -467,6 +523,9 @@ static void log_write(int priority, int f, char *s) {
 
     return;
   }
+
+  pr_log_event_generate(PR_LOG_TYPE_SYSLOG, syslog_sockfd, priority, s,
+    strlen(s));
 
   if (set_facility != -1)
     f = set_facility;
@@ -503,7 +562,7 @@ void pr_log_pri(int priority, const char *fmt, ...) {
   /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf) - 1] = '\0';
 
-  log_write(priority, facility, buf);
+  log_write(priority, facility, buf, FALSE);
 }
 
 /* Like pr_log_pri(), but sends the log entry in the LOG_AUTHPRIV
@@ -520,7 +579,7 @@ void pr_log_auth(int priority, const char *fmt, ...) {
   /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf) - 1] = '\0';
 
-  log_write(priority, LOG_AUTHPRIV, buf);
+  log_write(priority, LOG_AUTHPRIV, buf, FALSE);
 }
 
 /* Disable logging to stderr, should be done right before forking
@@ -578,9 +637,16 @@ int pr_log_str2sysloglevel(const char *name) {
 void pr_log_debug(int level, const char *fmt, ...) {
   char buf[LOGBUFFER_SIZE] = {'\0'};
   va_list msg;
+  int discard = FALSE;
 
-  if (debug_level < level)
-    return;
+  if (debug_level < level) {
+    discard = TRUE;
+
+    if (pr_log_event_listening(PR_LOG_TYPE_SYSLOG) == FALSE &&
+        pr_log_event_listening(PR_LOG_TYPE_SYSTEMLOG) == FALSE) {
+      return;
+    }
+  }
 
   if (fmt == NULL)
     return;
@@ -593,7 +659,89 @@ void pr_log_debug(int level, const char *fmt, ...) {
   /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf) - 1] = '\0';
 
-  log_write(PR_LOG_DEBUG, facility, buf);
+  log_write(PR_LOG_DEBUG, facility, buf, discard);
+}
+
+static const char *get_log_event_name(unsigned int log_type) {
+  const char *event_name = NULL;
+
+  switch (log_type) {
+    case PR_LOG_TYPE_UNSPEC:
+      event_name = "core.log.unspec";
+      break;
+
+    case PR_LOG_TYPE_XFERLOG:
+      event_name = "core.log.xferlog";
+      break;
+
+    case PR_LOG_TYPE_SYSLOG:
+      event_name = "core.log.syslog"; 
+      break;
+
+    case PR_LOG_TYPE_SYSTEMLOG:
+      event_name = "core.log.systemlog"; 
+      break;
+
+    case PR_LOG_TYPE_EXTLOG:
+      event_name = "core.log.extendedlog"; 
+      break;
+
+    case PR_LOG_TYPE_TRACELOG:
+      event_name = "core.log.tracelog"; 
+      break;
+
+    default:
+      errno = EINVAL;
+      return NULL;
+  }
+
+  return event_name;
+}
+
+int pr_log_event_generate(unsigned int log_type, int log_fd, int log_level,
+    const char *log_msg, size_t log_msglen) {
+  const char *event_name;
+  pr_log_event_t le;
+
+  if (log_msg == NULL ||
+      log_msglen == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (pr_log_event_listening(log_type) == FALSE) {
+    errno = ENOENT;
+    return -1;
+  }
+
+  event_name = get_log_event_name(log_type);
+
+  memset(&le, 0, sizeof(le));
+  le.log_type = log_type;
+  le.log_fd = log_fd;
+  le.log_level = log_level;
+  le.log_msg = log_msg;
+  le.log_msglen = log_msglen;
+
+  pr_event_generate(event_name, &le);
+  return 0;
+}
+
+int pr_log_event_listening(unsigned int log_type) {
+  const char *event_name;
+  int res;
+
+  event_name = get_log_event_name(log_type);
+  if (event_name == NULL) {
+    return FALSE;
+  }
+
+  res = pr_event_listening(event_name);
+  if (res <= 0) {
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 void init_log(void) {

@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD xferlog(5) logging support.
- * $Id: xferlog.c,v 1.9 2011-03-17 13:48:21 castaglia Exp $
+ * $Id: xferlog.c,v 1.10 2011-04-22 02:49:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -122,5 +122,6 @@ int xferlog_write(long xfertime, const char *remhost, off_t fsize, char *fname,
 
   buf[sizeof(buf)-1] = '\0';
 
+  pr_log_event_generate(PR_LOG_TYPE_XFERLOG, xferlogfd, -1, buf, len);
   return write(xferlogfd, buf, len);
 }

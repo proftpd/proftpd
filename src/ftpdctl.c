@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD Controls command-line client
- * $Id: ftpdctl.c,v 1.16 2011-01-12 06:54:49 castaglia Exp $
+ * $Id: ftpdctl.c,v 1.17 2011-04-22 02:49:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -56,6 +56,15 @@ gid_t pr_auth_name2gid(pool *p, const char *name) {
 
 uid_t pr_auth_name2uid(pool *p, const char *name) {
   return (uid_t) -1;
+}
+
+void pr_event_generate(const char *event, const void *event_data) {
+  (void) event;
+  (void) event_data;
+}
+
+int pr_event_listening(const char *event) {
+  return -1;
 }
 
 int pr_fs_get_usable_fd(int fd) {

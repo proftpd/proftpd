@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.428 2011-04-21 16:27:08 castaglia Exp $
+ * $Id: main.c,v 1.429 2011-04-22 02:49:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1862,7 +1862,7 @@ static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
 
   pr_log_pri(PR_LOG_ERR, "-----END STACK TRACE-----");
 
-  exit(0);
+  finish_terminate();
 }
 #endif /* PR_DEVEL_STACK_TRACE */
 
