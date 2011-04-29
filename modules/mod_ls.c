@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.182 2011-02-26 02:31:36 castaglia Exp $
+ * $Id: mod_ls.c,v 1.183 2011-04-29 18:15:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -869,23 +869,35 @@ static int outputfiles(cmd_rec *cmd) {
     while (q) {
       char pad[6] = {'\0'};
 
+      pr_signals_handle();
+
       if (!q->right) {
         sstrncpy(pad, "\n", sizeof(pad));
 
       } else {
+        unsigned int idx = 0;
+
         sstrncpy(pad, "\t\t\t\t\t", sizeof(pad));
-        pad[(colwidth + 7 - strlen(q->line)) / 8] = '\0';
+
+        idx = (colwidth + 7 - strlen(q->line)) / 8;
+        if (idx >= sizeof(pad)) {
+          idx = sizeof(pad)-1;
+        }
+
+        pad[idx] = '\0';
       }
 
-      if (sendline(0, "%s%s", q->line, pad) < 0)
+      if (sendline(0, "%s%s", q->line, pad) < 0) {
         return -1;
+      }
 
       q = q->right;
     }
   }
 
-  if (sendline(LS_SENDLINE_FL_FLUSH, " ") < 0)
+  if (sendline(LS_SENDLINE_FL_FLUSH, " ") < 0) {
     res = -1;
+  }
 
   destroy_pool(fpool);
   fpool = NULL;
