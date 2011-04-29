@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.99 2011-03-17 14:05:37 castaglia Exp $
+ * $Id: fsio.c,v 1.100 2011-04-29 18:25:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -426,6 +426,7 @@ static pr_fs_t *lookup_dir_fs(const char *path, int op) {
   char tmp_path[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   pr_fs_t *fs = NULL;
   int exact = FALSE;
+  size_t tmp_pathlen = 0;
 
 #ifdef PR_FS_MATCH
   pr_fs_match_t *fsm = NULL;
@@ -438,18 +439,25 @@ static pr_fs_t *lookup_dir_fs(const char *path, int op) {
    * not absolute, prepend the current location.
    */
   if (pr_fs_valid_path(path) < 0) {
-    if (pr_fs_dircat(tmp_path, sizeof(tmp_path), cwd, buf) < 0)
+    if (pr_fs_dircat(tmp_path, sizeof(tmp_path), cwd, buf) < 0) {
       return NULL;
+    }
 
-  } else
+  } else {
     sstrncpy(tmp_path, buf, sizeof(tmp_path));
+  }
 
   /* Make sure that if this is a directory operation, the path being
    * search ends in a trailing slash -- this is how files and directories
    * are differentiated in the fs_map.
    */
-  if ((FSIO_DIR_COMMON & op) && tmp_path[strlen(tmp_path) - 1] != '/')
+  tmp_pathlen = strlen(tmp_path);
+  if ((FSIO_DIR_COMMON & op) &&
+      tmp_pathlen > 0 &&
+      tmp_pathlen < sizeof(tmp_path) &&
+      tmp_path[tmp_pathlen - 1] != '/') {
     sstrcat(tmp_path, "/", sizeof(tmp_path));
+  }
 
   fs = pr_get_fs(tmp_path, &exact);
 
