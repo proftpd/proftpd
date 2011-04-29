@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.292 2011-04-07 05:19:24 castaglia Exp $
+ * $Id: mod_auth.c,v 1.293 2011-04-29 22:47:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -641,8 +641,13 @@ static char *get_default_root(pool *p) {
   }
 
   if (dir) {
+    char *new_dir;
+
     /* Check for any expandable variables. */
-    dir = path_subst_uservar(p, &dir);
+    new_dir = path_subst_uservar(p, &dir);
+    if (new_dir != NULL) {
+      dir = new_dir;
+    }
 
     if (strncmp(dir, "/", 2) == 0) {
       dir = NULL;
