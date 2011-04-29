@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.288 2011-03-19 23:39:29 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.289 2011-04-29 22:32:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1588,7 +1588,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
   }
 
-  if (stor_fh &&
+  if (stor_fh != NULL &&
       session.restart_pos) {
     int xerrno = 0;
 
@@ -1612,7 +1612,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     /* Make sure that the requested offset is valid (within the size of the
      * file being resumed).
      */
-    if (stor_fh &&
+    if (stor_fh != NULL &&
         session.restart_pos > st.st_size) {
       pr_response_add_err(R_554, _("%s: invalid REST argument"), cmd->arg);
       (void) pr_fsio_close(stor_fh);
@@ -1624,12 +1624,17 @@ MODRET xfer_stor(cmd_rec *cmd) {
     session.restart_pos = 0L;
   }
 
-  if (!stor_fh) {
+  if (stor_fh == NULL) {
     pr_log_debug(DEBUG4, "unable to open '%s' for writing: %s", cmd->arg,
       strerror(ferrno));
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(ferrno));
     return PR_ERROR(cmd);
   }
+
+  /* Get the latest stats on the file.  If the file already existed, we
+   * want to know its current size.
+   */
+  (void) pr_fsio_fstat(stor_fh, &st);
 
   /* Perform the actual transfer now */
   pr_data_init(cmd->arg, PR_NETIO_IO_RD);
@@ -1659,10 +1664,13 @@ MODRET xfer_stor(cmd_rec *cmd) {
    * This check is needed during the pr_data_xfer() loop, below, because
    * the size of the file being uploaded isn't known in advance
    */
-  if ((nbytes_max_store = find_max_nbytes("MaxStoreFileSize")) == 0UL)
+  nbytes_max_store = find_max_nbytes("MaxStoreFileSize");
+  if (nbytes_max_store == 0UL) {
     have_limit = FALSE;
-  else
+
+  } else {
     have_limit = TRUE;
+  }
 
   /* Check the MaxStoreFileSize, and abort now if zero. */
   if (have_limit &&
@@ -1699,11 +1707,12 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
     nbytes_stored += len;
 
-    /* Double-check the current number of bytes stored against the
-     * MaxStoreFileSize, if configured.
+    /* If MaxStoreFileSize is configured, double-check the number of bytes
+     * uploaded so far against the configured limit.  Also make sure that
+     * we take into account the size of the file, i.e. if it already existed.
      */
     if (have_limit &&
-        nbytes_stored > nbytes_max_store) {
+        (nbytes_stored + st.st_size > nbytes_max_store)) {
 
       pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " bytes) reached: "
         "aborting transfer of '%s'", (pr_off_t) nbytes_max_store, path);
