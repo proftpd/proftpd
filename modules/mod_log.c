@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.119 2011-04-22 02:49:17 castaglia Exp $
+ * $Id: mod_log.c,v 1.120 2011-04-29 18:57:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1543,26 +1543,23 @@ static int log_sess_init(void) {
 
         pr_signals_block();
         PRIVS_ROOT
-        res = pr_log_openfile(lf->lf_filename, &lf->lf_fd, EXTENDED_LOG_MODE);
+        res = pr_log_openfile(lf->lf_filename, &(lf->lf_fd), EXTENDED_LOG_MODE);
         PRIVS_RELINQUISH
         pr_signals_unblock();
 
-        if (res == -1) {
-          pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': %s",
-            lf->lf_filename, strerror(errno));
-          continue;
+        if (res < 0) {
+          if (res == -1) {
+            pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': %s",
+              lf->lf_filename, strerror(errno));
 
-        } else if (res == PR_LOG_WRITABLE_DIR) {
-          pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
-            "containing directory is world writable", lf->lf_filename);
-          continue;
+          } else if (res == PR_LOG_WRITABLE_DIR) {
+            pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
+              "containing directory is world writable", lf->lf_filename);
 
-        } else if (res == PR_LOG_SYMLINK) {
-          pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
-            "%s is a symbolic link", lf->lf_filename, lf->lf_filename);
-          close(lf->lf_fd);
-          lf->lf_fd = -1;
-          continue;
+          } else if (res == PR_LOG_SYMLINK) {
+            pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
+              "%s is a symbolic link", lf->lf_filename, lf->lf_filename);
+          }
         }
 
       } else {
