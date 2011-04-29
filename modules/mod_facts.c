@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.40 2011-03-17 17:00:14 castaglia Exp $
+ * $Id: mod_facts.c,v 1.41 2011-04-29 18:27:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -807,7 +807,7 @@ MODRET facts_mff(cmd_rec *cmd) {
       }
 
       if (facts_modify_mtime(cmd->tmp_pool, decoded_path, timestamp) < 0) {
-        int xerrno = xerrno;
+        int xerrno = errno;
 
         pr_response_add_err(xerrno == ENOENT ? R_550 : R_501, "%s: %s", path,
           strerror(xerrno));
