@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.41 2011-04-29 18:27:11 castaglia Exp $
+ * $Id: mod_facts.c,v 1.42 2011-04-30 22:29:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -162,10 +162,10 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
 
   memset(buf, '\0', bufsz);
 
-  ptr = buf + buflen;
+  ptr = buf;
 
   if (facts_opts & FACTS_OPT_SHOW_MODIFY) {
-    snprintf(ptr, bufsz - buflen, "modify=%04d%02d%02d%02d%02d%02d;",
+    snprintf(ptr, bufsz, "modify=%04d%02d%02d%02d%02d%02d;",
       info->tm->tm_year+1900, info->tm->tm_mon+1, info->tm->tm_mday,
       info->tm->tm_hour, info->tm->tm_min, info->tm->tm_sec);
     buflen = strlen(buf);
