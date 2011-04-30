@@ -23,7 +23,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define TPL_VERSION 1.5
 
-static const char id[]="$Id: tpl.c,v 1.1 2011-01-18 06:12:52 castaglia Exp $";
+static const char id[]="$Id: tpl.c,v 1.2 2011-04-30 23:04:12 castaglia Exp $";
 
 
 #include <stdlib.h>  /* malloc */
@@ -1261,7 +1261,7 @@ static size_t tpl_size_for(char c) {
 TPL_API char* tpl_peek(int mode, ...) {
     va_list ap;
     int xendian=0,found_nul=0,old_string_format=0;
-    char *filename=NULL, *datapeek_f=NULL, *datapeek_c, *datapeek_s;
+    char *filename=NULL, *datapeek_f=NULL, *datapeek_c=NULL, *datapeek_s=NULL;
     void *addr=NULL, *dv, *datapeek_p=NULL;
     size_t sz=0, fmt_len, first_atom, num_fxlens=0;
     uint32_t datapeek_ssz, datapeek_csz, datapeek_flen;
@@ -1368,7 +1368,7 @@ TPL_API char* tpl_peek(int mode, ...) {
 
        /* advance to data start, then copy out requested elements */
        dv = (void*)((uintptr_t)dv +  (num_fxlens * sizeof(uint32_t)));  
-       for(datapeek_c = datapeek_f; *datapeek_c != '\0'; datapeek_c++) {
+       for(datapeek_c = datapeek_f; datapeek_c != NULL && *datapeek_c != '\0'; datapeek_c++) {
          datapeek_p = va_arg(ap, void*);
          if (*datapeek_c == 's') {  /* special handling for strings */
            if ((uintptr_t)dv-(uintptr_t)addr + sizeof(uint32_t) > sz) {
@@ -1464,7 +1464,7 @@ TPL_API int tpl_load(tpl_node *r, int mode, ...) {
     va_list ap;
     int rc=0,fd=0;
     char *filename=NULL;
-    void *addr;
+    void *addr=NULL;
     size_t sz;
 
     va_start(ap,mode);
@@ -1620,7 +1620,7 @@ static void tpl_free_atyp(tpl_node *n, tpl_atyp *atyp) {
  */
 static int tpl_serlen(tpl_node *r, tpl_node *n, void *dv, size_t *serlen) {
     uint32_t slen;
-    int num,fidx;
+    int num=0,fidx;
     tpl_node *c;
     size_t len=0, alen, buf_past, itermax;
     tpl_pound_data *pd;
