@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.55 2011-03-22 18:44:16 castaglia Exp $
+ * $Id: mod_delay.c,v 1.56 2011-04-30 22:46:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -909,11 +909,11 @@ static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
   }
   PRIVS_RELINQUISH
 
-  if (!fh) {
+  if (fh == NULL) {
     pr_ctrls_add_response(ctrl,
       "warning: unable to open DelayTable '%s': %s", delay_tab.dt_path,
       strerror(xerrno));
-    xerrno = errno;
+    errno = xerrno;
     return -1;
   }
 
