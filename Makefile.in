@@ -162,11 +162,12 @@ depend:
 	cd utils/   && $(MAKE) depend
 
 clean:
-	cd src/     && $(MAKE) clean
-	cd modules/ && $(MAKE) clean
 	cd lib/     && $(MAKE) clean
-	cd utils/   && $(MAKE) clean
 	cd locale/  && $(MAKE) clean
+	cd modules/ && $(MAKE) clean
+	cd src/     && $(MAKE) clean
+	cd tests/   && $(MAKE) clean
+	cd utils/   && $(MAKE) clean
 	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) clean)
 
 	@dirs="$(DIRS)"; \
@@ -180,8 +181,9 @@ clean:
 distclean: clean
 	cd lib/ && $(MAKE) distclean
 	rm -f Makefile Make.modules Make.rules \
-	      lib/Makefile locale/Makefile modules/Makefile src/Makefile \
-              utils/Makefile
+	      contrib/Makefile include/Makefile lib/Makefile \
+	      locale/Makefile modules/Makefile src/Makefile \
+	      tests/Makefile utils/Makefile
 	rm -f config.h config.status config.cache config.log libtool stamp-h
 	rm -f include/buildstamp.h
 	rm -rf .libs/
