@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.213 2011-04-15 17:34:46 castaglia Exp $
+ * $Id: mod_sql.c,v 1.214 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -637,7 +637,8 @@ int sql_unregister_backend(const char *backend) {
  * is available.
  */
 static cmdtable *sql_set_backend(const char *backend) {
-  if (sql_nbackends == 0) {
+  if (sql_nbackends == 0 ||
+      sql_backends == NULL) {
     pr_log_debug(DEBUG0, MOD_SQL_VERSION ": no SQL backends registered");
     sql_log(DEBUG_INFO, "%s", "no SQL backends registered");
     errno = ENOENT;
@@ -1878,7 +1879,7 @@ static void _setstats(cmd_rec *cmd, int fstor, int fretr, int bstor,
 static int sql_getgroups(cmd_rec *cmd) {
   struct passwd *pw = NULL, lpw;
   struct group *grp, lgr;
-  char *grpwhere = NULL, *where = NULL, **rows = NULL;
+  char *grpwhere = NULL, *where = NULL;
   sql_data_t *sd = NULL;
   modret_t *mr = NULL;
   array_header *gids = NULL, *groups = NULL;
@@ -2005,7 +2006,6 @@ static int sql_getgroups(cmd_rec *cmd) {
     return -1;
   }
 
-  rows = sd->data;
   numrows = sd->rnum;
 
   for (i = 0; i < numrows; i++) {
@@ -3698,7 +3698,8 @@ MODRET sql_lookup(cmd_rec *cmd) {
 	       strcasecmp(type, SQL_FREEFORM_C) == 0)) {
     mr = process_named_query(cmd, cmd->argv[1]);
     
-    if (!MODRET_ISERROR(mr)) {
+    if (mr != NULL &&
+        !MODRET_ISERROR(mr)) {
       register unsigned int i;
 
       sd = (sql_data_t *) mr->data;
@@ -3849,67 +3850,71 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
       }
     }
  
-    /* walk through the array, adding users to the cache */
-    for (i = 0, cnt = 0; cnt < sd->rnum; cnt++) {
-      username = sd->data[i++];
+    /* Walk through the array, adding users to the cache */
+    if (sd != NULL) {
+      for (i = 0, cnt = 0; cnt < sd->rnum; cnt++) {
+        username = sd->data[i++];
 
-      /* if the username is NULL, skip it */
-      if (username == NULL)
-        continue;
+        /* if the username is NULL, skip it */
+        if (username == NULL)
+          continue;
 
-      password = sd->data[i++];
-      
-      uid = cmap.defaultuid;
-      if (cmap.uidfield) {
-	if (sd->data[i]) {
-	  uid = atoi(sd->data[i++]);
-	} else {
-	  i++;
-	}
-      }
-      
-      gid = cmap.defaultgid;
-      if (cmap.gidfield) {
-	if (sd->data[i]) {
-	  gid = atoi(sd->data[i++]);
-	} else {
-	  i++;
-	}
-      }
+        password = sd->data[i++];
 
-      dir = cmap.defaulthomedir;
-      if (sd->data[i]) {
-        if (strcmp(sd->data[i], "") == 0 ||
-            strcmp(sd->data[i], "NULL") == 0)
-
-          /* Leave dir pointing to the SQLDefaultHomedir, if any. */
-          i++;
-
-        else
-          dir = sd->data[i++];
-      }
-
-      if (cmap.shellfield)
-	shell = sd->data[i++];
-      else
-	shell =  "";
-
-      if (uid < cmap.minuseruid) {
-        sql_log(DEBUG_INFO, "user UID %lu below SQLMinUserUID %lu, using "
-          "SQLDefaultUID %lu", (unsigned long) uid,
-          (unsigned long) cmap.minuseruid, (unsigned long) cmap.defaultuid);
         uid = cmap.defaultuid;
-      }
-      
-      if (gid < cmap.minusergid) {
-        sql_log(DEBUG_INFO, "user GID %lu below SQLMinUserGID %lu, using "
-          "SQLDefaultGID %lu", (unsigned long) gid,
-          (unsigned long) cmap.minusergid, (unsigned long) cmap.defaultgid);
-        gid = cmap.defaultgid;
-      }
+        if (cmap.uidfield) {
+          if (sd->data[i]) {
+            uid = atoi(sd->data[i++]);
+          } else {
+            i++;
+          }
+        }
 
-      _sql_addpasswd(cmd, username, password, uid, gid, shell, dir);
-    } 
+        gid = cmap.defaultgid;
+        if (cmap.gidfield) {
+          if (sd->data[i]) {
+            gid = atoi(sd->data[i++]);
+          } else {
+            i++;
+          }
+        }
+
+        dir = cmap.defaulthomedir;
+        if (sd->data[i]) {
+          if (strncmp(sd->data[i], "", 2) == 0 ||
+              strncmp(sd->data[i], "NULL", 5) == 0) {
+            /* Leave dir pointing to the SQLDefaultHomedir, if any. */
+            i++;
+
+          } else {
+            dir = sd->data[i++];
+          }
+        }
+
+        if (cmap.shellfield) {
+          shell = sd->data[i++];
+
+        } else {
+          shell =  "";
+        }
+
+        if (uid < cmap.minuseruid) {
+          sql_log(DEBUG_INFO, "user UID %lu below SQLMinUserUID %lu, using "
+            "SQLDefaultUID %lu", (unsigned long) uid,
+            (unsigned long) cmap.minuseruid, (unsigned long) cmap.defaultuid);
+          uid = cmap.defaultuid;
+        }
+      
+        if (gid < cmap.minusergid) {
+          sql_log(DEBUG_INFO, "user GID %lu below SQLMinUserGID %lu, using "
+            "SQLDefaultGID %lu", (unsigned long) gid,
+            (unsigned long) cmap.minusergid, (unsigned long) cmap.defaultgid);
+          gid = cmap.defaultgid;
+        }
+
+        _sql_addpasswd(cmd, username, password, uid, gid, shell, dir);
+      } 
+    }
 
   } else {
     /* Retrieve our list of users */
@@ -3943,17 +3948,19 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
       }
     }
 
-    for (cnt = 0; cnt < sd->rnum; cnt++) {
-      username = sd->data[cnt];
+    if (sd != NULL) {
+      for (cnt = 0; cnt < sd->rnum; cnt++) {
+        username = sd->data[cnt];
       
-      /* if the username is NULL for whatever reason, skip it */
-      if (username == NULL)
-        continue;
+        /* if the username is NULL for whatever reason, skip it */
+        if (username == NULL)
+          continue;
       
-      /* otherwise, add it to the cache */
-      lpw.pw_uid = -1;
-      lpw.pw_name = username;
-      sql_getpasswd(cmd, &lpw);
+        /* otherwise, add it to the cache */
+        lpw.pw_uid = -1;
+        lpw.pw_name = username;
+        sql_getpasswd(cmd, &lpw);
+      }
     }
   }
   

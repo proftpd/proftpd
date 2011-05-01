@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.58 2011-03-17 22:16:47 castaglia Exp $
+ * $Id: scp.c,v 1.59 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -675,7 +675,9 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   }
 
   msg = data + 1;
-  *ptr = '\0';
+  if (ptr != NULL) {
+    *ptr = '\0';
+  }
 
   pr_trace_msg(trace_channel, 5, "'%s' control message: %c%s", sp->path,
     !have_dir ? 'C' : 'D', msg);
@@ -1938,7 +1940,8 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
 
 #if defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
     defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
-    defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9)
+    defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9) || \
+    defined(DARWIN10) || defined(DARWIN11)
   optreset = 1;
   opterr = 1;
   optind = 1;
@@ -2055,7 +2058,6 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
              glob_path[pathlen-1] == '"')) {
           glob_path[pathlen-1] = '\0';
           glob_path = (glob_path + 1);
-          pathlen -= 2;
         }
 
         res = pr_fs_glob(glob_path, GLOB_NOSORT|GLOB_BRACE, NULL, &gl);

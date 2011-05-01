@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.27 2011-03-16 22:38:51 castaglia Exp $
+ * $Id: packet.c,v 1.28 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -372,6 +372,10 @@ static void handle_disconnect_mesg(struct ssh2_packet *pkt) {
   }
 
   /* XXX Use the language tag somehow, if provided. */
+  if (lang != NULL) {
+    pr_trace_msg(trace_channel, 19, "client sent DISCONNECT language tag '%s'",
+      lang);
+  }
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "client sent SSH_DISCONNECT message: %s (%s)", explain, reason_str);

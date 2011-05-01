@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.22 2011-03-30 18:40:30 castaglia Exp $
+ * $Id: table.c,v 1.23 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -125,7 +125,10 @@ static unsigned int key_hash(const void *key, size_t keysz) {
 static void entry_insert(pr_table_entry_t **h, pr_table_entry_t *e) {
   pr_table_entry_t *ei;
 
-  for (ei = *h; ei && ei->next; ei = ei->next);
+  if (*h == NULL)
+    return;
+
+  for (ei = *h; ei != NULL && ei->next; ei = ei->next);
 
   /* Now, ei points to the last entry in the chain. */
   ei->next = e;

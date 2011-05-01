@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.40 2011-04-14 23:27:36 castaglia Exp $
+ * $Id: channel.c,v 1.41 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -874,7 +874,6 @@ static int handle_signal_channel(struct ssh2_channel *chan,
   if (bool != FALSE) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "malformed 'signal' request (bool must be FALSE)");
-    res = -1;
   }
 
   sig_name = sftp_msg_read_string(pkt->pool, buf, buflen);

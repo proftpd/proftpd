@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_quotatab_sql.c,v 1.12 2011-01-11 23:13:38 castaglia Exp $
+ * $Id: mod_quotatab_sql.c,v 1.13 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -77,7 +77,8 @@ static char *sqltab_get_name(pool *p, char *name) {
   res = pr_module_call(cmdtab->m, cmdtab->handler, cmd);
 
   /* Check the results. */
-  if (MODRET_ISERROR(res)) {
+  if (res == NULL ||
+      MODRET_ISERROR(res)) {
     quotatab_log("error executing 'sql_escapestring'");
     return name;
   }

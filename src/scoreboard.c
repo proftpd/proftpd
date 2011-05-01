@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.67 2011-04-14 21:43:47 castaglia Exp $
+ * $Id: scoreboard.c,v 1.68 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -352,8 +352,9 @@ static int wlock_scoreboard(void) {
       continue;
     }
 
-    pr_trace_msg("lock", 3, "write-lock of scoreboard mutex fd %d failed: %s",
-      scoreboard_mutex_fd, strerror(xerrno));
+    pr_trace_msg("lock", 3,
+      "write-lock (attempt #%u) of scoreboard mutex fd %d failed: %s",
+      nattempts, scoreboard_mutex_fd, strerror(xerrno));
     if (xerrno == EACCES) {
       struct flock locker;
 
@@ -385,9 +386,9 @@ static int wlock_scoreboard(void) {
         continue;
       }
 
-      pr_trace_msg("lock", 9,
-        "unable to acquire write-lock on scoreboard mutex fd %d: %s",
-        scoreboard_mutex_fd, strerror(xerrno));
+      pr_trace_msg("lock", 9, "unable to acquire write-lock on "
+        "scoreboard mutex fd %d after %u attempts: %s",
+        nattempts, scoreboard_mutex_fd, strerror(xerrno));
     }
 
     errno = xerrno;
@@ -1204,7 +1205,7 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
 
           memset(entry.sce_cmd, '\0', sizeof(entry.sce_cmd));
           sstrncpy(entry.sce_cmd, cmdstr, sizeof(entry.sce_cmd));
-          tmp = va_arg(ap, void *);
+          (void) va_arg(ap, void *);
 
           pr_trace_msg(trace_channel, 15, "updated scoreboard entry "
             "command to '%s'", entry.sce_cmd);
@@ -1219,7 +1220,7 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
           memset(entry.sce_cmd_arg, '\0', sizeof(entry.sce_cmd_arg));
           sstrncpy(entry.sce_cmd_arg, argstr,
             str_getlen(argstr, sizeof(entry.sce_cmd_arg)-1) + 1);
-          tmp = va_arg(ap, void *);
+          (void) va_arg(ap, void *);
 
           pr_trace_msg(trace_channel, 15, "updated scoreboard entry "
             "command args to '%s'", entry.sce_cmd_arg);

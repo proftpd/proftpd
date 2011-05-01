@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp RFC4716 keystore
- * Copyright (c) 2008-2010 TJ Saunders
+ * Copyright (c) 2008-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: rfc4716.c,v 1.13 2010-08-02 23:57:25 castaglia Exp $
+ * $Id: rfc4716.c,v 1.14 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -212,6 +212,7 @@ static struct filestore_key *filestore_get_key(sftp_keystore_t *store,
   BIO *bio = NULL;
   struct filestore_key *key = NULL;
   struct filestore_data *store_data = store->keystore_data;
+  size_t begin_markerlen = 0, end_markerlen = 0;
 
   line = filestore_getline(store, p);
   while (line == NULL &&
@@ -219,14 +220,21 @@ static struct filestore_key *filestore_get_key(sftp_keystore_t *store,
     line = filestore_getline(store, p);
   }
 
+  begin_markerlen = strlen(SFTP_SSH2_PUBKEY_BEGIN_MARKER);
+  end_markerlen = strlen(SFTP_SSH2_PUBKEY_END_MARKER);
+
   while (line) {
     pr_signals_handle();
 
-    if (strcmp(line, SFTP_SSH2_PUBKEY_BEGIN_MARKER) == 0) {
+    if (key == NULL &&
+        strncmp(line, SFTP_SSH2_PUBKEY_BEGIN_MARKER,
+        begin_markerlen + 1) == 0) {
       key = pcalloc(p, sizeof(struct filestore_key));
       bio = BIO_new(BIO_s_mem());
 
-    } else if (strcmp(line, SFTP_SSH2_PUBKEY_END_MARKER) == 0) {
+    } else if (key != NULL &&
+               strncmp(line, SFTP_SSH2_PUBKEY_END_MARKER,
+                 end_markerlen + 1) == 0) {
       if (bio) {
         BIO *b64 = NULL, *bmem = NULL;
         char chunk[1024], *data = NULL;

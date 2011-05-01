@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.404 2011-04-01 16:15:54 castaglia Exp $
+ * $Id: mod_core.c,v 1.405 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3256,13 +3256,19 @@ MODRET add_virtualhost(cmd_rec *cmd) {
    */
 
   addr = pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[1], &addrs);
+  if (addr == NULL) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '", cmd->argv[1],
+      "': ", strerror(errno), NULL));
+  }
+
   if (addrs) {
     register unsigned int i;
     pr_netaddr_t **elts = addrs->elts;
 
     /* For every additional address, implicitly add a bind record. */
-    for (i = 0; i < addrs->nelts; i++)
+    for (i = 0; i < addrs->nelts; i++) {
       add_config_param_str("_bind", 1, pr_netaddr_get_ipstr(elts[i]));
+    }
   }
 
   /* Handle multiple addresses in a <VirtualHost> directive.  We do
@@ -3276,10 +3282,10 @@ MODRET add_virtualhost(cmd_rec *cmd) {
       addrs = NULL;
 
       addr = pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[i], &addrs);
-
-      if (addr == NULL)
+      if (addr == NULL) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '",
           cmd->argv[i], "': ", strerror(errno), NULL));
+      }
 
       add_config_param_str("_bind", 1, pr_netaddr_get_ipstr(addr));
 
@@ -3288,8 +3294,9 @@ MODRET add_virtualhost(cmd_rec *cmd) {
         pr_netaddr_t **elts = addrs->elts;
 
         /* For every additional address, implicitly add a bind record. */
-        for (j = 0; j < addrs->nelts; j++)
+        for (j = 0; j < addrs->nelts; j++) {
           add_config_param_str("_bind", 1, pr_netaddr_get_ipstr(elts[j]));
+        }
       }
     }
   }

@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.293 2011-04-29 22:47:38 castaglia Exp $
+ * $Id: mod_auth.c,v 1.294 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -676,7 +676,7 @@ static char *get_default_root(pool *p) {
         char interp_dir[PR_TUNABLE_PATH_MAX + 1];
 
         memset(interp_dir, '\0', sizeof(interp_dir));
-        ret = pr_fs_interpolate(dir, interp_dir, sizeof(interp_dir)-1); 
+        (void) pr_fs_interpolate(dir, interp_dir, sizeof(interp_dir)-1); 
 
         pr_log_pri(PR_LOG_NOTICE,
           "notice: unable to use '%s' [resolved to '%s']: %s", dir, interp_dir,
@@ -2201,7 +2201,6 @@ MODRET set_anonrequirepassword(cmd_rec *cmd) {
 
 MODRET set_anonrejectpasswords(cmd_rec *cmd) {
 #ifdef PR_USE_REGEX
-  config_rec *c = NULL;
   pr_regex_t *pre = NULL;
   int res;
 
@@ -2221,7 +2220,7 @@ MODRET set_anonrejectpasswords(cmd_rec *cmd) {
       cmd->argv[1], "': ", errstr, NULL));
   }
 
-  c = add_config_param(cmd->argv[0], 1, (void *) pre);
+  (void) add_config_param(cmd->argv[0], 1, (void *) pre);
   return PR_HANDLED(cmd);
 
 #else
@@ -2950,22 +2949,24 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
   /* Set the precedence for this config_rec based on its configuration
    * context.
    */
-  if (ctxt & CONF_GLOBAL)
+  if (ctxt & CONF_GLOBAL) {
     precedence = 1;
 
-  /* these will never appear simultaneously */
-  else if (ctxt & CONF_ROOT || ctxt & CONF_VIRTUAL)
+  /* These will never appear simultaneously */
+  } else if ((ctxt & CONF_ROOT) ||
+             (ctxt & CONF_VIRTUAL)) {
     precedence = 2;
 
-  else if (ctxt & CONF_ANON)
+  } else if (ctxt & CONF_ANON) {
     precedence = 3;
+  }
 
-  if ((seconds = atoi(cmd->argv[1])) < 0) {
+  seconds = atoi(cmd->argv[1]);
+  if (seconds < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "seconds must be greater than or equal to 0", NULL));
 
   } else if (seconds == 0) {
-
     /* do nothing */
     return PR_HANDLED(cmd);
   }
@@ -3032,6 +3033,10 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
 
     /* don't forget the terminating NULL */
     *argv = NULL;
+
+  } else {
+    /* Should never reach here. */
+    CONF_ERROR(cmd, "wrong number of parameters");
   }
 
   c->flags |= CF_MERGEDOWN_MULTI;

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2009 The ProFTPD Project team
+ * Copyright (c) 2004-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* HELP management code
- * $Id: help.c,v 1.5 2009-06-30 23:31:18 castaglia Exp $
+ * $Id: help.c,v 1.6 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -93,10 +93,12 @@ int pr_help_add_response(cmd_rec *cmd, const char *target) {
       for (i = 0; i < help_list->nelts; i++) {
         outstr = "";
 
-        if (helps[i].impl)
+        if (helps[i].impl) {
           outa[col++] = (char *) helps[i].cmd;
-        else
+
+        } else {
           outa[col++] = pstrcat(cmd->tmp_pool, helps[i].cmd, "*", NULL);
+        }
 
         /* 8 rows */
         if ((i + 1) % 8 == 0 ||
@@ -109,8 +111,9 @@ int pr_help_add_response(cmd_rec *cmd, const char *target) {
               buf[sizeof(buf)-1] = '\0';
               outstr = pstrcat(cmd->tmp_pool, outstr, buf, NULL);
 
-            } else
+            } else {
               break;
+            }
           }
 
           if (*outstr)
@@ -118,7 +121,6 @@ int pr_help_add_response(cmd_rec *cmd, const char *target) {
 
           memset(outa, '\0', sizeof(outa));
           col = 0;
-          outstr = "";
         }
       }
 

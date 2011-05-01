@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.51 2011-03-22 18:44:16 castaglia Exp $
+ * $Id: mod_ban.c,v 1.52 2011-05-01 04:32:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1337,7 +1337,8 @@ static int ban_get_sid_by_addr(pr_netaddr_t *server_addr,
 static void ban_reset_getopt(void) {
 #if defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
     defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
-    defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9)
+    defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9) || \
+    defined(DARWIN10) || defined(DARWIN11)
   optreset = 1;
   opterr = 1;
   optind = 1;
@@ -1358,7 +1359,7 @@ static void ban_reset_getopt(void) {
 
 static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   register unsigned int i;
-  int optc, verbose = FALSE, show_events = FALSE, have_bans = FALSE;
+  int optc, verbose = FALSE, show_events = FALSE;
   const char *reqopts = "ev";
 
   /* Check for options. */
@@ -1393,7 +1394,6 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
 
     for (i = 0; i < BAN_LIST_MAXSZ; i++) {
       if (ban_lists->bans.bl_entries[i].be_type == BAN_TYPE_USER) {
-        have_bans = TRUE;
 
         if (!have_user) {
           pr_ctrls_add_response(ctrl, "Banned Users:");
@@ -1432,7 +1432,6 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
 
     for (i = 0; i < BAN_LIST_MAXSZ; i++) {
       if (ban_lists->bans.bl_entries[i].be_type == BAN_TYPE_HOST) {
-        have_bans = TRUE;
 
         if (!have_host) {
           if (have_user)
@@ -1474,7 +1473,6 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
 
     for (i = 0; i < BAN_LIST_MAXSZ; i++) {
       if (ban_lists->bans.bl_entries[i].be_type == BAN_TYPE_CLASS) {
-        have_bans = TRUE;
 
         if (!have_class) {
           if (have_host)

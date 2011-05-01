@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.42 2011-04-30 22:29:20 castaglia Exp $
+ * $Id: mod_facts.c,v 1.43 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -646,14 +646,16 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
 
       if (matching_gid == TRUE &&
           (st.st_mode & S_IWGRP)) {
-        int merrno = xerrno;
+        int merrno = 0;
 
         /* Try the utimes(2) call again, this time with root privs. */
 
         pr_signals_block();
         PRIVS_ROOT
         res = pr_fsio_utimes(path, tvs);
-        merrno = errno;
+        if (res < 0) {
+          merrno = errno;
+        }
         PRIVS_RELINQUISH
         pr_signals_unblock();
 

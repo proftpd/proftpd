@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.13 2011-01-08 00:21:45 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.14 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -114,7 +114,8 @@ static char *sql_passwd_get_str(pool *p, char *str) {
   res = pr_module_call(cmdtab->m, cmdtab->handler, cmd);
 
   /* Check the results. */
-  if (MODRET_ISERROR(res)) {
+  if (res == NULL ||
+      MODRET_ISERROR(res)) {
     pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
       ": error executing 'sql_escapestring'");
     return str;

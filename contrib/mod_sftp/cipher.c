@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: cipher.c,v 1.7 2009-10-29 15:24:04 castaglia Exp $
+ * $Id: cipher.c,v 1.8 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -449,7 +449,6 @@ int sftp_cipher_read_data(pool *p, unsigned char *data, uint32_t data_len,
 
     } else {
       ptr = (unsigned char *) *buf;
-      bufsz = *buflen;
     }
 
     res = EVP_Cipher(cipher_ctx, ptr, data, data_len);

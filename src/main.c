@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.429 2011-04-22 02:49:17 castaglia Exp $
+ * $Id: main.c,v 1.430 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1450,7 +1450,6 @@ static void daemon_loop(void) {
     run_schedule();
 
     FD_ZERO(&listenfds);
-    maxfd = 0;
     maxfd = pr_ipbind_listen(&listenfds);
 
     /* Monitor children pipes */

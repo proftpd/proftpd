@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.29 2011-03-17 17:35:50 castaglia Exp $
+ * $Id: encode.c,v 1.30 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -64,7 +64,8 @@ static int str_convert(iconv_t conv, const char *inbuf, size_t *inbuflen,
      * whereas Linux/Mac OSX iconv(3) use char ** for the input buffer.
      */
 #if defined(LINUX) || defined(DARWIN6) || defined(DARWIN7) || \
-    defined(DARWIN8) || defined(DARWIN9)
+    defined(DARWIN8) || defined(DARWIN9) || defined(DARWIN10) || \
+    defined(DARWIN11)
 
     nconv = iconv(conv, (char **) &inbuf, inbuflen, &outbuf, outbuflen);
 #else

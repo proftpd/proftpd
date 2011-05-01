@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.27 2011-03-18 18:22:19 castaglia Exp $
+ * $Id: ctrls.c,v 1.28 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1272,12 +1272,12 @@ static int ctrls_get_creds_basic(struct sockaddr_un *sock, int cl_fd,
          "secs)", sock->sun_path, (unsigned long) age, max_age);
     }
 
-    if (pr_ctrls_send_msg(cl_fd, -1, 1, &msg) < 0)
+    if (pr_ctrls_send_msg(cl_fd, -1, 1, &msg) < 0) {
       pr_trace_msg(trace_channel, 2, "error sending message: %s",
         strerror(errno));
+    }
 
-    close(cl_fd);
-    cl_fd = -1;
+    (void) close(cl_fd);
 
     errno = ETIMEDOUT;
     return -1;

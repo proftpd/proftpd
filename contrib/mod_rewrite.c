@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.61 2011-04-14 18:36:39 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.62 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1364,12 +1364,15 @@ static char *rewrite_subst_maps_txt(cmd_rec *cmd, config_rec *c,
   txt_keys = (char **) txtmap->txt_keys;
   txt_vals = (char **) txtmap->txt_values;
 
-  for (i = 0; i < txtmap->txt_nents; i++)
-    if (strcmp(txtmap->txt_keys[i], map->map_lookup_key) == 0)
-      value = txtmap->txt_values[i];
+  for (i = 0; i < txtmap->txt_nents; i++) {
+    if (strcmp(txt_keys[i], map->map_lookup_key) == 0) {
+      value = txt_vals[i];
+    }
+  }
 
-  if (!value)
+  if (value == NULL) {
     value = map->map_default_value;
+  }
 
   return value;
 }
@@ -1874,10 +1877,9 @@ static void rewrite_closelog(void) {
 
 static void rewrite_log(char *fmt, ...) {
   va_list msg;
-  int res;
 
   va_start(msg, fmt);
-  res = pr_log_vwritefile(rewrite_logfd, MOD_REWRITE_VERSION, fmt, msg);
+  (void) pr_log_vwritefile(rewrite_logfd, MOD_REWRITE_VERSION, fmt, msg);
   va_end(msg);
 
   return;
@@ -2592,6 +2594,12 @@ static void rewrite_rewrite_home_ev(const void *event_data, void *user_data) {
    * command dispatch mechanism.
    */
   mr = rewrite_fixup(cmd);
+  if (mr == NULL ||
+      MODRET_ISERROR(mr)) {
+    rewrite_log("unable to rewrite home '%s'", pw_dir);
+    destroy_pool(tmp_pool);
+    return;
+  }
 
   rewrite_log("rewrote home to be '%s'", cmd->arg);
 

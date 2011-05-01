@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.86 2011-03-20 18:01:49 castaglia Exp $
+ * $Id: auth.c,v 1.87 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -325,10 +325,9 @@ static modret_t *dispatch_auth(cmd_rec *cmd, char *match, module **m) {
 
 void pr_auth_setpwent(pool *p) {
   cmd_rec *cmd = NULL;
-  modret_t *mr = NULL;
 
   cmd = make_cmd(p, 0);
-  mr = dispatch_auth(cmd, "setpwent", NULL);
+  (void) dispatch_auth(cmd, "setpwent", NULL);
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -340,10 +339,9 @@ void pr_auth_setpwent(pool *p) {
 
 void pr_auth_endpwent(pool *p) {
   cmd_rec *cmd = NULL;
-  modret_t *mr = NULL;
 
   cmd = make_cmd(p, 0);
-  mr = dispatch_auth(cmd, "endpwent", NULL);
+  (void) dispatch_auth(cmd, "endpwent", NULL);
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -362,10 +360,9 @@ void pr_auth_endpwent(pool *p) {
 
 void pr_auth_setgrent(pool *p) {
   cmd_rec *cmd = NULL;
-  modret_t *mr = NULL;
 
   cmd = make_cmd(p, 0);
-  mr = dispatch_auth(cmd, "setgrent", NULL);
+  (void) dispatch_auth(cmd, "setgrent", NULL);
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -377,10 +374,9 @@ void pr_auth_setgrent(pool *p) {
 
 void pr_auth_endgrent(pool *p) {
   cmd_rec *cmd = NULL;
-  modret_t *mr = NULL;
 
   cmd = make_cmd(p, 0);
-  mr = dispatch_auth(cmd, "endgrent", NULL);
+  (void) dispatch_auth(cmd, "endgrent", NULL);
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -1409,28 +1405,43 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
   char *strgids = "";
 
   /* sanity check */
-  if (!p || !suppl_gids)
-    return 0;
+  if (p == NULL ||
+      suppl_gids == NULL) {
+
+# ifndef PR_DEVEL_COREDUMP
+    /* Set the primary GID of the process. */
+    res = setgid(primary_gid);
+# endif /* PR_DEVEL_COREDUMP */
+
+    return res;
+  }
+
+  ngids = suppl_gids->nelts;
+  gids = suppl_gids->elts;
+
+  if (ngids == 0 ||
+      gids == NULL) {
+    /* No supplemental GIDs to process. */
+
+# ifndef PR_DEVEL_COREDUMP
+    /* Set the primary GID of the process. */
+    res = setgid(primary_gid);
+# endif /* PR_DEVEL_COREDUMP */
+
+    return res;
+  }
 
   tmp_pool = make_sub_pool(p);
   pr_pool_tag(tmp_pool, "set_groups() tmp pool");
 
-  /* Check for a NULL supplemental group ID list. */
-  if (suppl_gids) {
-    ngids = suppl_gids->nelts;
-    gids = suppl_gids->elts;
+  proc_gids = pcalloc(tmp_pool, sizeof(gid_t) * (ngids));
 
-    if (ngids && gids) {
-      proc_gids = pcalloc(tmp_pool, sizeof(gid_t) * (ngids));
-
-      /* Note: the list of supplemental GIDs may contain duplicates.  Sort
-       * through the list and keep only the unique IDs - this should help avoid
-       * running into the NGROUPS limit when possible.  This algorithm may slow
-       * things down some; optimize it if/when possible.
-       */
-      proc_gids[nproc_gids++] = gids[0];
-    }
-  }
+  /* Note: the list of supplemental GIDs may contain duplicates.  Sort
+   * through the list and keep only the unique IDs - this should help avoid
+   * running into the NGROUPS limit when possible.  This algorithm may slow
+   * things down some; optimize it if/when possible.
+   */
+  proc_gids[nproc_gids++] = gids[0];
 
   for (i = 1; i < ngids; i++) {
     register unsigned int j = 0;

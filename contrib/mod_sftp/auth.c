@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.34 2011-04-15 16:27:26 castaglia Exp $
+ * $Id: auth.c,v 1.35 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -164,11 +164,10 @@ static char *get_default_root(pool *p) {
         path = real_path;
 
       } else {
-        int res;
         char interp_path[PR_TUNABLE_PATH_MAX + 1];
 
         memset(interp_path, '\0', sizeof(interp_path));
-        res = pr_fs_interpolate(path, interp_path, sizeof(interp_path) - 1);
+        (void) pr_fs_interpolate(path, interp_path, sizeof(interp_path) - 1);
 
         pr_log_pri(PR_LOG_NOTICE,
           "notice: unable to use %s (resolved to '%s'): %s", path, interp_path,

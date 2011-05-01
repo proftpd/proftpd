@@ -23,7 +23,7 @@
  */
 
 /* Symbol table hashes
- * $Id: stash.c,v 1.8 2011-03-18 00:03:37 castaglia Exp $
+ * $Id: stash.c,v 1.9 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -401,7 +401,7 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
     namelen = strlen(name) + 1;
   }
 
-  if (idx_cache &&
+  if (idx_cache != NULL &&
       *idx_cache != -1) {
     idx = *idx_cache;
 
@@ -427,13 +427,13 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
       idx = symtab_hash(buf, buflen + 1);
     }
 
-    if (idx_cache) {
+    if (idx_cache != NULL) {
       *idx_cache = idx;
     }
   }
 
   if (idx >= PR_TUNABLE_HASH_TABLE_SIZE) {
-    if (*idx_cache) {
+    if (idx_cache != NULL) {
       *idx_cache = -1;
     }
 

@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.77 2011-03-17 17:35:49 castaglia Exp $
+ * $Id: netaddr.c,v 1.78 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -643,8 +643,6 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
        * being as fast as AF_INET/AF_INET6, it just seemed easier to
        * do it this way.)
        */
-
-      gai_res = 0;
 
       memset(&hints, 0, sizeof(hints));
 

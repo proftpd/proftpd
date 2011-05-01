@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: utf8.c,v 1.14 2011-03-17 18:15:19 castaglia Exp $
+ * $Id: utf8.c,v 1.15 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -57,7 +57,8 @@ static int utf8_convert(iconv_t conv, const char *inbuf, size_t *inbuflen,
      * whereas Linux/Mac OSX iconv(3) use char ** for the input buffer.
      */
 #if defined(LINUX) || defined(DARWIN6) || defined(DARWIN7) || \
-    defined(DARWIN8) || defined(DARWIN9)
+    defined(DARWIN8) || defined(DARWIN9) || defined(DARWIN10) || \
+    defined(DARWIN11)
  
     nconv = iconv(conv, (char **) &inbuf, inbuflen, &outbuf, outbuflen);
 #else

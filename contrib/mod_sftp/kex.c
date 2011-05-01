@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.22 2011-04-14 22:30:54 castaglia Exp $
+ * $Id: kex.c,v 1.23 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1642,7 +1642,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 }
 
 static int read_kexinit(struct ssh2_packet *pkt, struct sftp_kex *kex) {
-  char *buf, *cookie, *list;
+  char *buf, *list;
   uint32_t buflen;
 
   buf = pkt->payload;
@@ -1654,7 +1654,7 @@ static int read_kexinit(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   memcpy(kex->client_kexinit_payload, pkt->payload, pkt->payload_len);
 
   /* Read the cookie, which is a mandated length of 16 bytes. */
-  cookie = sftp_msg_read_data(pkt->pool, &buf, &buflen, 16);
+  (void) sftp_msg_read_data(pkt->pool, &buf, &buflen, 16);
 
   list = sftp_msg_read_string(kex_pool, &buf, &buflen);
   kex->client_names->kex_algo = list;
@@ -3131,7 +3131,6 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
     }
 
     destroy_pool(pkt->pool);
-    sent_newkeys = TRUE;
   }
 
   /* Last but certainly not least, set up the keys for encryption and

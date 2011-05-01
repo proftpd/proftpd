@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.289 2011-04-29 22:32:25 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.290 2011-05-01 04:32:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1509,6 +1509,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
   unsigned char have_limit = FALSE;
   struct stat st;
   off_t curr_pos = 0;
+
+  memset(&st, 0, sizeof(st));
 
   /* Prepare for any potential throttling. */
   pr_throttle_init(cmd);

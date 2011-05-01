@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_deflate -- a module for supporting on-the-fly compression
  *
- * Copyright (c) 2004-2010 TJ Saunders
+ * Copyright (c) 2004-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_deflate, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_deflate.c,v 1.5 2010-12-11 21:06:32 castaglia Exp $
+ * $Id: mod_deflate.c,v 1.6 2011-05-01 04:32:27 castaglia Exp $
  * $Libraries: -lz $
  */
 
@@ -283,7 +283,6 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
     z_stream *zstrm;
 
     zstrm = nstrm->strm_data;
-    res = 0;
 
     /* If we have data leftover in deflate_zbuf, start by copying all of that
      * into the provided buffer.  Only read more data from the network and
@@ -400,8 +399,6 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
         "read: processing %d bytes of leftover compressed data from client",
         datalen);
     }
-
-    copylen = 0;
 
     zstrm->next_out = deflate_zbuf;
     zstrm->avail_out = deflate_zbufsz;

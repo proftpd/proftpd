@@ -2696,14 +2696,16 @@ static int tls_init_server(void) {
      * can safely call X509_free() on it.  However, we need to keep that
      * pointer around until after the handling of a cert chain file.
      */
-    switch (EVP_PKEY_type(pkey->type)) {
-      case EVP_PKEY_RSA:
-        server_rsa_cert = cert;
-        break;
+    if (pkey != NULL) {
+      switch (EVP_PKEY_type(pkey->type)) {
+        case EVP_PKEY_RSA:
+          server_rsa_cert = cert;
+          break;
 
-      case EVP_PKEY_DSA:
-        server_dsa_cert = cert;
-        break;
+        case EVP_PKEY_DSA:
+          server_dsa_cert = cert;
+          break;
+      }
     }
 
     if (pkey)
@@ -5268,7 +5270,8 @@ static int tls_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   /* All the fun portability of resetting getopt(3). */
 #if defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
     defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
-    defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9)
+    defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9) || \
+    defined(DARWIN10) || defined(DARWIN11)
   optreset = 1;
   opterr = 1;
   optind = 1;
@@ -8027,9 +8030,12 @@ static int tls_sess_init(void) {
   }
 #endif
 
-  /* NOTE: fail session init if TLS server init fails (e.g. res < 0)? */
   /* Initialize the OpenSSL context for this server's configuration. */
   res = tls_init_server();
+  if (res < 0) {
+    /* NOTE: should we fail session init if TLS server init fails? */
+    tls_log("%s", "error initializing OpenSSL context for this session");
+  }
 
   /* Add the additional features implemented by this module into the
    * list, to be displayed in response to a FEAT command.
