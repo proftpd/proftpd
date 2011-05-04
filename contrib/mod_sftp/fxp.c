@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.127 2011-04-15 00:14:54 castaglia Exp $
+ * $Id: fxp.c,v 1.128 2011-05-04 21:45:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -7780,6 +7780,34 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
 
   path = cmd->arg;
 
+  cmd2 = fxp_cmd_alloc(fxp_pool, C_DELE, path);
+  if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) == -1) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "DELE of '%s' blocked by '%s' handler", path, cmd2->argv[0]);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  /* The path may have been changed by any PRE_CMD handlers. */
+  path = cmd2->arg;
+
   cmd_name = cmd->argv[0];
   cmd->argv[0] = C_DELE;
 
@@ -7797,6 +7825,8 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
@@ -7806,6 +7836,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
+
   cmd->argv[0] = cmd_name;
 
   if (fxp_path_pass_regex_filters(fxp->pool, "REMOVE", path) < 0) {
@@ -7817,6 +7848,8 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
@@ -7843,6 +7876,8 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
       NULL);
 
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
@@ -7869,6 +7904,8 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
       NULL);
 
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
@@ -7894,6 +7931,8 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
       NULL);
 
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
@@ -7903,9 +7942,6 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-
-  cmd2 = fxp_cmd_alloc(fxp_pool, "DELE", path);
-  pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0);
 
   res = pr_fsio_unlink(real_path);
   if (res < 0) {
@@ -8374,6 +8410,9 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
+
+  /* The path may have been changed by any PRE_CMD handlers. */
+  path = cmd2->arg;
 
   cmd_name = cmd->argv[0];
   cmd->argv[0] = C_RMD;
