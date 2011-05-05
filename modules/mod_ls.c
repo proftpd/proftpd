@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.184 2011-05-01 04:32:27 castaglia Exp $
+ * $Id: mod_ls.c,v 1.185 2011-05-05 22:34:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1037,7 +1037,6 @@ static char **sreaddir(const char *dirname, const int sort) {
 static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
   char **dir;
   int dest_workp = 0;
-  config_rec *c = NULL;
   register unsigned int i = 0;
 
   if (list_ndepth.curr && list_ndepth.max &&
