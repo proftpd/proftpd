@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: cmd.c,v 1.6 2011-04-14 23:15:53 castaglia Exp $
+ * $Id: cmd.c,v 1.7 2011-05-05 22:54:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -105,6 +105,8 @@ static struct cmd_entry cmd_ids[] = {
   { C_MIC,	3 },	/* PR_CMD_MIC_ID (53) */
   { C_PBSZ,	4 },	/* PR_CMD_PBSZ_ID (54) */
   { C_PROT,	4 },	/* PR_CMD_PROT_ID (55) */
+  { C_MFF,	3 },	/* PR_CMD_MFF_ID (56) */
+  { C_MFMT,	4 },	/* PR_CMD_PROT_ID (57) */
 
   { NULL,	0 }
 };

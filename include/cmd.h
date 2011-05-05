@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: cmd.h,v 1.4 2011-04-14 23:15:52 castaglia Exp $
+ * $Id: cmd.h,v 1.5 2011-05-05 22:54:14 castaglia Exp $
  */
 
 #ifndef PR_CMD_H
@@ -99,6 +99,8 @@ int pr_cmd_get_id(const char *name_name);
 #define PR_CMD_MIC_ID		53
 #define PR_CMD_PBSZ_ID		54
 #define PR_CMD_PROT_ID		55
+#define PR_CMD_MFF_ID		56
+#define PR_CMD_MFMT_ID		57
 
 /* The minimum and maximum command name lengths. */
 #define PR_CMD_MIN_NAMELEN	3
