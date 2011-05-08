@@ -1,5 +1,5 @@
 top_builddir=../..
-top_srcdir=../../
+top_srcdir=../..
 srcdir=@srcdir@
 
 include $(top_srcdir)/Make.rules
