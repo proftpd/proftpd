@@ -1035,6 +1035,19 @@ AC_ARG_ENABLE(scoreboard-updates,
     fi
   ])
 
+keepsyms="no"
+AC_ARG_ENABLE(symbols,
+  [AC_HELP_STRING(
+    [--enable-symbols],
+    [do not strip debugging symbols from code (default=no)])
+  ],
+  [
+    if test x"$enableval" != xno ; then
+      keepsyms="yes"
+    fi
+  ]
+)
+
 AC_ARG_ENABLE(timeout-ident,
   [AC_HELP_STRING(
     [--enable-timeout-ident],
@@ -2620,8 +2633,14 @@ if test x"$devel" = xyes ; then
   INSTALL_STRIP=""
 else
 
-  dnl Make sure to strip symbols from non-developer object files.
-  INSTALL_STRIP="-s"
+  if test x"$keepsyms" = xyes ; then
+    dnl Do not strip symbols from object files.
+    INSTALL_STRIP=""
+
+  else 
+    dnl Make sure to strip symbols from non-developer object files.
+    INSTALL_STRIP="-s"
+  fi
 fi
 
 if test "$OSTYPE" = "-DDARWIN6" -o "$OSTYPE" = "-DDARWIN7" -o "$OSTYPE" = "-DDARWIN8"; then
