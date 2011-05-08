@@ -1570,6 +1570,9 @@ Optional Features:
                           set how often (in loops) the mod_xfer module updates
                           the scoreboard (default=10)
 
+  --enable-symbols        do not strip debugging symbols from code
+                          (default=no)
+
   --enable-timeout-ident  set the default timeout (in secs) for RFC931
                           connections (default=10)
 
@@ -3860,13 +3863,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:3863: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:3866: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:3866: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:3869: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:3869: output\"" >&5)
+  (eval echo "\"\$as_me:3872: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -5088,7 +5091,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 5091 "configure"' > conftest.$ac_ext
+  echo '#line 5094 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -6938,11 +6941,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:6941: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:6944: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:6945: \$? = $ac_status" >&5
+   echo "$as_me:6948: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7277,11 +7280,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7280: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7283: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7284: \$? = $ac_status" >&5
+   echo "$as_me:7287: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7382,11 +7385,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7385: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7388: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7389: \$? = $ac_status" >&5
+   echo "$as_me:7392: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -7437,11 +7440,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7440: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7443: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7444: \$? = $ac_status" >&5
+   echo "$as_me:7447: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -10206,7 +10209,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10209 "configure"
+#line 10212 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -10302,7 +10305,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10305 "configure"
+#line 10308 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14097,7 +14100,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 14100 "configure"
+#line 14103 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -16914,6 +16917,18 @@ _ACEOF
 _ACEOF
 
     fi
+
+fi
+
+
+keepsyms="no"
+# Check whether --enable-symbols was given.
+if test "${enable_symbols+set}" = set; then
+  enableval=$enable_symbols;
+    if test x"$enableval" != xno ; then
+      keepsyms="yes"
+    fi
+
 
 fi
 
@@ -33330,7 +33345,12 @@ echo "${ECHO_T}no" >&6; }
     INSTALL_STRIP=""
 else
 
-    INSTALL_STRIP="-s"
+  if test x"$keepsyms" = xyes ; then
+        INSTALL_STRIP=""
+
+  else
+        INSTALL_STRIP="-s"
+  fi
 fi
 
 if test "$OSTYPE" = "-DDARWIN6" -o "$OSTYPE" = "-DDARWIN7" -o "$OSTYPE" = "-DDARWIN8"; then
