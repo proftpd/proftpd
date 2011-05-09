@@ -2,7 +2,7 @@
  * ProFTPD: mod_wrap -- use Wietse Venema's TCP wrappers library for
  *                      access control
  *
- * Copyright (c) 2000-2009 TJ Saunders
+ * Copyright (c) 2000-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,10 +24,10 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.23 2009-12-10 17:59:14 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.24 2011-05-09 20:36:47 castaglia Exp $
  */
 
-#define MOD_WRAP_VERSION "mod_wrap/1.2.3"
+#define MOD_WRAP_VERSION "mod_wrap/1.2.4"
 
 #include "conf.h"
 #include "privs.h"
@@ -159,11 +159,6 @@ static int wrap_is_usable_file(char *filename) {
 
 static void wrap_log_request_allowed(int priority,
     struct request_info *request) {
-  int facility;
-
-  /* Mask off the facility bit. */
-  facility = log_getfacility();
-  priority &= ~facility;
 
   pr_log_pri(priority, MOD_WRAP_VERSION ": allowed connection from %s",
     eval_client(request));
@@ -174,11 +169,6 @@ static void wrap_log_request_allowed(int priority,
 
 static void wrap_log_request_denied(int priority,
     struct request_info *request) {
-  int facility;
-
-  /* Mask off the facility bit. */
-  facility = log_getfacility();
-  priority &= ~facility;
 
   pr_log_pri(priority, MOD_WRAP_VERSION ": refused connection from %s",
     eval_client(request));
@@ -905,15 +895,6 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     allow_severity = PR_LOG_INFO;
     deny_severity = PR_LOG_WARNING;
   }
-
-  /* While it may look odd to OR together the syslog facility and level,
-   * that is the way that syslog(3) says to do it:
-   *
-   *  "The priority argument is formed by ORing the facility and the level
-   *   values..."
-   */
-  allow_severity = log_getfacility() | allow_severity;
-  deny_severity = log_getfacility() | deny_severity ;
 
   pr_log_debug(DEBUG4, MOD_WRAP_VERSION ": checking under service name '%s'",
     wrap_service_name);
