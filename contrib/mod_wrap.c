@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.24 2011-05-09 20:36:47 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.25 2011-05-11 02:14:25 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.4"
@@ -157,8 +157,12 @@ static int wrap_is_usable_file(char *filename) {
   return TRUE;
 }
 
-static void wrap_log_request_allowed(int priority,
+static void wrap_log_request_allowed(int severity,
     struct request_info *request) {
+  int priority;
+
+  /* Mask off the facility bits. */
+  priority = (severity & PR_LOG_PRIMASK);
 
   pr_log_pri(priority, MOD_WRAP_VERSION ": allowed connection from %s",
     eval_client(request));
@@ -167,8 +171,12 @@ static void wrap_log_request_allowed(int priority,
   return;
 }
 
-static void wrap_log_request_denied(int priority,
+static void wrap_log_request_denied(int severity,
     struct request_info *request) {
+  int priority;
+
+  /* Mask off the facility bits. */
+  priority = (severity & PR_LOG_PRIMASK);
 
   pr_log_pri(priority, MOD_WRAP_VERSION ": refused connection from %s",
     eval_client(request));
@@ -895,6 +903,19 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     allow_severity = PR_LOG_INFO;
     deny_severity = PR_LOG_WARNING;
   }
+
+  /* While it may look odd to OR together the syslog facility and level,
+   * that is the way that syslog(3) says to do it:
+   *
+   *  "The priority argument is formed by ORing the facility and the level
+   *   values..."
+   *
+   * Note that we do this OR here because the allow_severity/deny_severity
+   * values are ALSO used by the libwrap library; it is also why we need
+   * to mask off some bits later, when using proftpd's logging functions.
+   */
+  allow_severity = log_getfacility() | allow_severity;
+  deny_severity = log_getfacility() | deny_severity;
 
   pr_log_debug(DEBUG4, MOD_WRAP_VERSION ": checking under service name '%s'",
     wrap_service_name);
