@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.29 2011-04-22 16:08:35 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.30 2011-05-11 16:09:24 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -1016,8 +1016,41 @@ file configured for the server certificate might also be badly formatted,
 which would result in the same error.
 
 <p>
+<font color=red>Question</font>: Is there a way to require TLS (FTPS) for
+remote clients <b>only</b>, and allow simple FTP (without TLS) for local
+clients (<i>i.e.</i> for clients in networks which we will be able to define
+as "local")?<br>
+<font color=blue>Answer</font>: Yes.
+
+<p>
+To do this, you would use a combination of
+<a href="Classes.html"><code>&lt;Class&gt;</code></a> sections and
+<a href="../contrib/mod_ifsession.html">mod_ifsession</a>'s
+<code>&lt;IfClass&gt;</code>, <i>e.g.</i>:
+<pre>
+  &lt;Class local&gt;
+    From ...
+  &lt;/Class&gt;
+
+  &lt;IfModule mod_tls.c&gt;
+    # Normal mod_tls configuration here
+
+    &lt;IfClass local&gt;
+      # Don't require FTPS from local clients
+      TLSRequired off
+    &lt;/IfClass&gt;
+
+    &lt;IfClass !local&gt;
+      # Require FTPS from remote/non-local clients
+      TLSRequired on
+    &lt;/IfClass&gt;
+
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
 <hr>
-Last Updated: <i>$Date: 2011-04-22 16:08:35 $</i><br>
+Last Updated: <i>$Date: 2011-05-11 16:09:24 $</i><br>
 <hr>
 
 </body>
