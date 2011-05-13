@@ -1570,7 +1570,7 @@ Optional Features:
                           set how often (in loops) the mod_xfer module updates
                           the scoreboard (default=10)
 
-  --enable-symbols        do not strip debugging symbols from code
+  --disable-strip         do not strip debugging symbols from installed code
                           (default=no)
 
   --enable-timeout-ident  set the default timeout (in secs) for RFC931
