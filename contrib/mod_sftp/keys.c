@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.14 2011-03-31 22:17:15 castaglia Exp $
+ * $Id: keys.c,v 1.15 2011-05-13 03:38:33 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -121,7 +121,7 @@ static void prepare_provider_fds(int stdout_fd, int stderr_fd) {
   /* Appears that on some platforms (e.g. Solaris, Mac OSX), having too
    * high of an fd value can lead to undesirable behavior for some reason.
    * Need to track down why; the behavior I saw was the inability of
-   * select() to work property on the stdout/stderr fds attached to the
+   * select() to work properly on the stdout/stderr fds attached to the
    * exec'd script.
    */
   if (nfiles > 255) {
