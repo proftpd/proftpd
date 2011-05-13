@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.430 2011-05-01 04:32:27 castaglia Exp $
+ * $Id: main.c,v 1.431 2011-05-13 15:56:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1207,42 +1207,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* Find the server for this connection. */
   main_server = pr_ipbind_get_server(conn->local_addr, conn->local_port);
 
-  pr_inet_set_proto_opts(permanent_pool, conn, 0, 1, IPTOS_LOWDELAY, 0);
-
-  /* The follow code was ostensibly used to conserve memory, to free all other
-   * servers and associated configurations.  However, when large numbers of
-   * servers are configured, this process adds significant time to the
-   * establishment of a session.  More importantly, I do not think it is
-   * really necessary; copy-on-write semantics mean that those portions of
-   * memory won't actually be in this process' space until changed.  And if
-   * those configurations will never be reached, the only time the associated
-   * memory would change is now, when it is attempted to be freed.
-   *
-   * s = main_server;
-   * while (s) {
-   *   s_saved = s->next;
-   *   if (s != serv) {
-   *     if (s->listen && s->listen != l) {
-   *       if (s->listen->listen_fd == conn->rfd ||
-   *           s->listen->listen_fd == conn->wfd)
-   *         s->listen->listen_fd = -1;
-   *       else
-   *         inet_close(s->pool,s->listen);
-   *     }
-   *
-   *     if (s->listen) {
-   *       if (s->listen->listen_fd == conn->rfd ||
-   *          s->listen->listen_fd == conn->wfd)
-   *            s->listen->listen_fd = -1;
-   *     }
-   *
-   *     xaset_remove(server_list,(xasetmember_t*)s);
-   *     destroy_pool(s->pool);
-   *   }
-   *   s = s_saved;
-   * }
+  /* Make sure we allocate a session pool, even if this connection will
+   * dropped soon.
    */
-
   session.pool = make_sub_pool(permanent_pool);
   pr_pool_tag(session.pool, "Session Pool");
 
@@ -1251,6 +1218,23 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   session.sf_flags = 0;
   session.sp_flags = 0;
   session.proc_prefix = "(connecting)";
+
+  /* If no server is configured to handle the addr the user is connected to,
+   * drop them.
+   */
+  if (main_server == NULL) {
+    pr_log_debug(DEBUG2, "No server configuration found for IP address %s",
+      pr_netaddr_get_ipstr(conn->local_addr));
+    pr_log_debug(DEBUG2, "Use the DefaultServer directive to designate "
+      "a default server configuration to handle requests like this");
+
+    pr_response_send(R_500,
+      _("Sorry, no server available to handle request on %s"),
+      pr_netaddr_get_dnsstr(conn->local_addr));
+    exit(0);
+  }
+
+  pr_inet_set_proto_opts(permanent_pool, conn, 0, 1, IPTOS_LOWDELAY, 0);
 
   /* Close the write side of the semaphore pipe to tell the parent
    * we are all grown up and have finished housekeeping (closing
@@ -1284,9 +1268,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
         pr_netaddr_get_ipstr(session.c->local_addr) :
         main_server->ServerAddress;
 
-      if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
-        FALSE)) != NULL) {
-
+      c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
+        FALSE);
+      if (c != NULL) {
         pr_netaddr_t *masq_addr = (pr_netaddr_t *) c->argv[0];
         serveraddress = pr_netaddr_get_ipstr(masq_addr);
       }
@@ -1312,21 +1296,6 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
         _("FTP server shut down (%s) -- please try again later"), reason);
       exit(0);
     }
-  }
-
-  /* If no server is configured to handle the addr the user is
-   * connected to, drop them.
-   */
-  if (!main_server) {
-    pr_log_debug(DEBUG2, "No server configuration found for IP address %s",
-      pr_netaddr_get_ipstr(conn->local_addr));
-    pr_log_debug(DEBUG2, "Use the DefaultServer directive to designate "
-      "a default server configuration to handle requests like this");
-
-    pr_response_send(R_500,
-      _("Sorry, no server available to handle request on %s"),
-      pr_netaddr_get_dnsstr(conn->local_addr));
-    exit(0);
   }
 
   if (main_server->listen) {
