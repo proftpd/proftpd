@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.55 2011-04-20 16:11:15 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.56 2011-05-13 19:00:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -454,6 +454,10 @@ static uint32_t get_size(const char *bytes, const char *units) {
   }
 
   nbytes = (uint32_t) (res * units_factor);
+  if (nbytes == 0) {
+    errno = EINVAL;
+  }
+ 
   return nbytes;
 }
 
