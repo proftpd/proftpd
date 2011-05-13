@@ -1038,8 +1038,8 @@ AC_ARG_ENABLE(scoreboard-updates,
 keepsyms="no"
 AC_ARG_ENABLE(symbols,
   [AC_HELP_STRING(
-    [--enable-symbols],
-    [do not strip debugging symbols from code (default=no)])
+    [--disable-strip],
+    [do not strip debugging symbols from installed code (default=no)])
   ],
   [
     if test x"$enableval" != xno ; then
