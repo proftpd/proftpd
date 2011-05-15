@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.29 2011-05-15 22:54:22 castaglia Exp $
+ * $Id: packet.c,v 1.30 2011-05-15 23:04:40 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1401,6 +1401,23 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
 
 int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
   int res;
+
+  /* For future reference, I tried buffering up the possible TAP message
+   * and the given message using TCP_CORK/TCP_NOPUSH.  I tried this test
+   * on a Mac OSX 10.5 box.  It was for this test that I refactored the
+   * core pr_inet_* functions, creating pr_inet_set_proto_cork().
+   *
+   * Turned out to be a very bad idea.  Using sftp(1), the login process
+   * itself was incredibly slow.  mod_sftp was behaving as if the
+   * "uncorking" call was not causing any flushing of the partially-full
+   * network buffer to be written out, and instead was waiting until the
+   * buffer was full before writing it out.
+   *
+   * Now, this could be due to a bug in Mac OSX's handling of TCP_NOPUSH;
+   * there are articles about such a problem in earlier Mac OSX versions.
+   * I should try this test again, on a Linux (TCP_CORK) and FreeBSD
+   * (TCP_NOPUSH), to see if this can be done at least on those platforms.
+   */
 
   if (sent_version_id) {
     res = sftp_tap_send_packet();
