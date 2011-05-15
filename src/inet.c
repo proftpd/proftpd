@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.132 2011-05-01 04:32:27 castaglia Exp $
+ * $Id: inet.c,v 1.133 2011-05-15 23:03:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -578,6 +578,36 @@ void pr_inet_lingering_abort(pool *p, conn_t *c, long linger) {
   destroy_pool(c->pool);
 }
 
+int pr_inet_set_proto_cork(int sockfd, int cork) {
+  int res = 0;
+
+  /* Linux defines TCP_CORK; BSD-derived systems (including Mac OSX) use
+   * TCP_NOPUSH.
+   *
+   * Both options work by "corking" the socket, only sending TCP packets
+   * if there's enough data for a full packet, otherwise buffering the data
+   * to be written.  "Uncorking" the socket should flush out the buffered
+   * data.
+   */
+
+#if defined(TCP_CORK) || defined(TCP_NOPUSH)
+# ifdef SOL_TCP
+  int tcp_level = SOL_TCP;
+# else
+  int tcp_level = tcp_proto;
+# endif /* SOL_TCP */
+#endif /* TCP_CORK or TCP_NOPUSH */
+
+#if defined(TCP_CORK)
+  res = setsockopt(sockfd, tcp_level, TCP_CORK, (void *) &cork, sizeof(cork));
+  
+#elif defined(TCP_NOPUSH)
+  res = setsockopt(sockfd, tcp_level, TCP_NOPUSH, (void *) &cork, sizeof(cork));
+#endif
+
+  return res;
+}
+
 int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
     int tos, int nopush) {
 
@@ -663,11 +693,12 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
 #endif /* IP_TOS */
 
 #ifdef TCP_NOPUSH
-  /* NOTE: TCP_NOPUSH is a BSDism. */
+  /* XXX Note: for backward compatibility, we only call set_proto_cork() for
+   * BSD systems.  This condition can be removed in 1.3.5rc1.
+   */
   if (c->listen_fd != -1) {
-    if (setsockopt(c->listen_fd, tcp_level, TCP_NOPUSH, (void *) &nopush,
-        sizeof(nopush)) < 0) {
-      pr_log_pri(PR_LOG_NOTICE, "error setting listen fd TCP_NOPUSH: %s",
+    if (pr_inet_set_proto_cork(c->listen_fd, nopush) < 0) {
+      pr_log_pri(PR_LOG_NOTICE, "error corking listen fd %d: %s", c->listen_fd,
         strerror(errno));
     }
   }

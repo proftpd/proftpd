@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.290 2011-05-01 04:32:27 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.291 2011-05-15 23:03:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -782,29 +782,19 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
     long bufsz) {
   long res;
 
-#ifdef TCP_CORK
-  int on = 1;
-  socklen_t len = sizeof(int);
-
-# ifdef SOL_TCP
-  int tcp_level = SOL_TCP;
-# else
-  int tcp_level = IPPROTO_TCP;
-# endif /* SOL_TCP */
-#endif /* TCP_CORK */
-
 #ifdef HAVE_SENDFILE
   pr_sendfile_t sent_len;
   int ret;
 #endif /* HAVE_SENDFILE */
 
 #ifdef TCP_CORK
-  /* Note: TCP_CORK is a Linuxism, introduced with the 2.4 kernel.  It
-   * has effects similar to BSD's TCP_NOPUSH option.
+  /* XXX Note: For backward compatibility, we only cork the socket on Linux
+   * here.  In 1.3.5rc1, we should do this unconditionally.
    */
-  if (setsockopt(PR_NETIO_FD(session.d->outstrm), tcp_level, TCP_CORK, &on,
-      len) < 0)
-    pr_log_pri(PR_LOG_NOTICE, "error setting TCP_CORK: %s", strerror(errno));
+  if (pr_inet_set_proto_cork(PR_NETIO_FD(session.d->outstrm, 1) < 0) {
+    pr_log_pri(PR_LOG_NOTICE, "error corking socket fd %d: %s",
+      PR_NETIO_FD(session.d->oustrm), strerror(errno));
+  }
 #endif /* TCP_CORK */
 
 #ifdef HAVE_SENDFILE
@@ -829,24 +819,31 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
       "falling back to normal data transmission", strerror(errno),
       errno);
     res = transmit_normal(buf, bufsz);
+
 # else
+#  ifdef TCP_CORK
+    if (session.d != NULL) {
+      (void) pr_inet_set_proto_cork(PR_NETIO_FD(session.d->outstrm), 0);
+    }
+#  endif /* TCP_CORK */
+
     errno = EIO;
     res = -1;
 # endif
   }
+
 #else
   res = transmit_normal(buf, bufsz);
 #endif /* HAVE_SENDFILE */
 
 #ifdef TCP_CORK
-  if (session.d) {
+  if (session.d != NULL) {
     /* The session.d struct can become null after transmit_normal() if the
      * client aborts the transfer, thus we need to check for this.
      */
-    on = 0;
-    if (setsockopt(PR_NETIO_FD(session.d->outstrm), tcp_level, TCP_CORK, &on,
-        len) < 0) {
-      pr_log_pri(PR_LOG_NOTICE, "error setting TCP_CORK: %s", strerror(errno));
+    if (pr_inet_set_proto_cork(PR_NETIO_FD(session.d->outstrm), 0) < 0) {
+      pr_log_pri(PR_LOG_NOTICE, "error uncorking socket fd %d: %s",
+        PR_NETIO_FD(session.d->outstrm), strerror(errno));
     }
   }
 #endif /* TCP_CORK */
