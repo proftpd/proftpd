@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: tap.c,v 1.9 2011-03-17 22:16:47 castaglia Exp $
+ * $Id: tap.c,v 1.10 2011-05-15 22:54:22 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -173,27 +173,12 @@ int sftp_tap_have_policy(const char *policy) {
   return -1;
 }
 
-static int sending_tap_packet = FALSE;
-
 int sftp_tap_send_packet(void) {
   int chance;
 
   if (!sftp_interop_supports_feature(SFTP_SSH2_FEAT_IGNORE_MSG)) {
     pr_trace_msg(trace_channel, 3,
       "unable to send TAP packet: IGNORE not supported by client");
-    return 0;
-  }
-
-  /* ssh2_packet_write() calls tap_send_packet(), which calls
-   * ssh2_packet_write(), which calls tap_send_packet(), etc.
-   *
-   * To prevent an endless loop, we need to keep state.  If we end up
-   * calling ssh2_packet_write(), set a flag prior to doing so.  If that flag
-   * is set when we are called again, clear the flag and return 0.
-   */
-
-  if (sending_tap_packet) {
-    sending_tap_packet = FALSE;
     return 0;
   }
 
@@ -247,8 +232,7 @@ int sftp_tap_send_packet(void) {
     pkt->payload = ptr;
     pkt->payload_len = (bufsz - buflen);
 
-    sending_tap_packet = TRUE;
-    if (sftp_ssh2_packet_write(sftp_conn->wfd, pkt) < 0) {
+    if (sftp_ssh2_packet_send(sftp_conn->wfd, pkt) < 0) {
       int xerrno = errno;
 
       pr_trace_msg(trace_channel, 12,

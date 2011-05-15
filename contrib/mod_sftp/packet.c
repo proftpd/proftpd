@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.28 2011-05-01 04:32:27 castaglia Exp $
+ * $Id: packet.c,v 1.29 2011-05-15 22:54:22 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1212,14 +1212,11 @@ static int write_packet_padding(struct ssh2_packet *pkt) {
   return 0;
 }
 
-/* Reserve space for TWO packets: one potential TAP packet, and one
- * definite packet (i.e. the given packet to be sent).
- */
 #define SFTP_SSH2_PACKET_IOVSZ		12
 static struct iovec packet_iov[SFTP_SSH2_PACKET_IOVSZ];
 static unsigned int packet_niov = 0;
 
-int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
+int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
   char buf[SFTP_MAX_PACKET_LEN * 2], mesg_type;
   size_t buflen = 0, bufsz = SFTP_MAX_PACKET_LEN;
   uint32_t packet_len = 0;
@@ -1228,15 +1225,6 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
   /* Clear the iovec array before sending the data, if possible. */
   if (packet_niov == 0) {
     memset(packet_iov, 0, sizeof(packet_iov));
-  }
-
-  if (sent_version_id) {
-    res = sftp_tap_send_packet();
-    if (res < 0) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error sending TAP packet: %s", strerror(errno));
-      return res;
-    }
   }
 
   mesg_type = peek_mesg_type(pkt);
@@ -1405,10 +1393,24 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
     sftp_kex_rekey();
   }
 
-  pr_trace_msg(trace_channel, 3, "sent %s (%d) packet",
-    sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
+  pr_trace_msg(trace_channel, 3, "sent %s (%d) packet (%d bytes)",
+    sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type, res);
  
   return 0;
+}
+
+int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
+  int res;
+
+  if (sent_version_id) {
+    res = sftp_tap_send_packet();
+    if (res < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error sending TAP packet: %s", strerror(errno));
+    }
+  }
+
+  return sftp_ssh2_packet_send(sockfd, pkt);
 }
 
 int sftp_ssh2_packet_handle(void) {
