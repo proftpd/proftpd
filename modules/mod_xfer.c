@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.292 2011-05-16 16:12:14 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.293 2011-05-16 17:42:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -793,7 +793,7 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
    */
   if (pr_inet_set_proto_cork(PR_NETIO_FD(session.d->outstrm), 1) < 0) {
     pr_log_pri(PR_LOG_NOTICE, "error corking socket fd %d: %s",
-      PR_NETIO_FD(session.d->oustrm), strerror(errno));
+      PR_NETIO_FD(session.d->outstrm), strerror(errno));
   }
 #endif /* TCP_CORK */
 
