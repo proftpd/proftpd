@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.293 2011-05-16 17:42:55 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.294 2011-05-17 17:25:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1682,11 +1682,11 @@ MODRET xfer_stor(cmd_rec *cmd) {
     /* Abort the transfer. */
     stor_abort();
 
-    /* Set errno to EDQOUT (or the most appropriate alternative). */
-#if defined(EDQUOT)
-    pr_data_abort(EDQUOT, FALSE);
-#elif defined(EFBIG)
+    /* Set errno to EFBIG (or the most appropriate alternative). */
+#if defined(EFBIG)
     pr_data_abort(EFBIG, FALSE);
+#elif defined(EDQUOT)
+    pr_data_abort(EDQUOT, FALSE);
 #else
     pr_data_abort(EPERM, FALSE);
 #endif
@@ -1719,11 +1719,11 @@ MODRET xfer_stor(cmd_rec *cmd) {
       /* Abort the transfer. */
       stor_abort();
 
-    /* Set errno to EDQOUT (or the most appropriate alternative). */
-#if defined(EDQUOT)
-      pr_data_abort(EDQUOT, FALSE);
-#elif defined(EFBIG)
+    /* Set errno to EFBIG (or the most appropriate alternative). */
+#if defined(EFBIG)
       pr_data_abort(EFBIG, FALSE);
+#elif defined(EDQUOT)
+      pr_data_abort(EDQUOT, FALSE);
 #else
       pr_data_abort(EPERM, FALSE);
 #endif
