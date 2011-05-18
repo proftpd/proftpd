@@ -1,11 +1,66 @@
-To create the ca-crl.pem file in this directory, I used the following
+To create CRLs, first create the CA and the server/client certs:
+
+  # cert-tool --create-ca=crl-ca --signing-ca=self --combined \
+      --days-valid 3650
+
+  # cert-tool --create-cert=crl-server-cert --signing-ca=crl-ca.pem \
+      --signing-key=crl-ca.pem --combined --days-valid 3650
+
+  # cert-tool --create-cert=crl-client-cert --signing-ca=crl-ca.pem \
+      --signing-key=crl-ca.pem --combined --days-valid 3650
+
+To create the crl-ca-revoked.pem file in this directory, I used the following
 OpenSSL command:
 
-  # openssl ca -config ./etc/cert-tool.conf -revoke server-cert.pem \
-    -cert ca-cert.pem -keyfile ca-cert.pem -crl_reason keyCompromise \
+  # openssl ca -config ./etc/cert-tool.conf -revoke crl-ca.pem \
+    -cert crl-ca.pem -keyfile crl-ca.pem -crl_reason keyCompromise \
     -crldays 3650
-  # openssl ca -gencrl -cert ca-cert.pem -keyfile ca-cert.pem \
-    -out ca-crl.pem 
+
+Note that you will need to set the following environment variables for the
+above 'openssl ca' command to succeed; the cert-tool.conf relies heavily
+on environment variables:
+
+  CERT_TOOL_HOME
+  CERT_TOOL_DAYS_VALID
+  CERT_TOOL_KEY_LEN
+  CERT_TOOL_COMMON_NAME
+  CERT_TOOL_ALT_DNS
+  CERT_TOOL_ALT_EMAIL
+  CERT_TOOL_ALT_IP
+  CERT_TOOL_ALT_URI
+
+For example:
+
+  # CERT_TOOL_HOME=`pwd` CERT_TOOL_DAYS_VALID=3650 CERT_TOOL_KEY_LEN=1024 CERT_TOOL_COMMON_NAME=crl-ca CERT_TOOL_ALT_DNS=www.castaglia.org CERT_TOOL_ALT_EMAIL=tj@castaglia.org CERT_TOOL_ALT_IP=127.0.0.1 CERT_TOOL_ALT_URI=http://www.castaglia.org/proftpd openssl ca -config ./etc/cert-tool.conf -revoke crl-ca.pem -cert crl-ca.pem -keyfile crl-ca.pem -crl_reason keyCompromise -crldays 3650
+
+Then to issue the CRL:
+
+  # openssl ca -gencrl -cert crl-ca.pem -keyfile crl-ca.pem \
+    -out crl-ca-revoked.pem 
+
+Note that the above command may fail like so:
+
+  # openssl ca -gencrl -cert crl-ca.pem -keyfile crl-ca.pem \
+      -out crl-ca-revoked.pem
+  Using configuration from /usr/lib/ssl/openssl.cnf
+  ./demoCA/index.txt: No such file or directory
+  unable to open './demoCA/index.txt'
+  20415:error:02001002:system library:fopen:No such file or directory:bss_file.c:352:fopen('./demoCA/index.txt','r')
+  20415:error:20074002:BIO routines:FILE_CTRL:system lib:bss_file.c:354:
+
+Which suggests that using the cert-tool.conf is again necessary:
+
+  # CERT_TOOL_HOME=`pwd` CERT_TOOL_DAYS_VALID=3650 CERT_TOOL_KEY_LEN=1024 CERT_TOOL_COMMON_NAME=crl-ca CERT_TOOL_ALT_DNS=www.castaglia.org CERT_TOOL_ALT_EMAIL=tj@castaglia.org CERT_TOOL_ALT_IP=127.0.0.1 CERT_TOOL_ALT_URI=http://www.castaglia.org/proftpd openssl ca -config ./etc/cert-tool.conf -gencrl -cert crl-ca.pem -keyfile crl-ca.pem -out crl-ca-revoked.pem
+  Using configuration from ./etc/cert-tool.conf
+  cannot lookup how long until the next CRL is issued
+  20417:error:0E06D06C:configuration file routines:NCONF_get_string:no value:conf_lib.c:329:group=cert_tool_ca name=crlnumber
+  20417:error:0E06D06C:configuration file routines:NCONF_get_string:no value:conf_lib.c:329:group=cert_tool_ca name=default_crl_days
+  20417:error:0E06D06C:configuration file routines:NCONF_get_string:no value:conf_lib.c:329:group=cert_tool_ca name=default_crl_hours
+
+Had to fix the cert-tool and its config file, but finally was able to issue the CRL:
+
+  # CERT_TOOL_HOME=`pwd` CERT_TOOL_DAYS_VALID=3650 CERT_TOOL_KEY_LEN=1024 CERT_TOOL_COMMON_NAME=crl-ca CERT_TOOL_ALT_DNS=www.castaglia.org CERT_TOOL_ALT_EMAIL=tj@castaglia.org CERT_TOOL_ALT_IP=127.0.0.1 CERT_TOOL_ALT_URI=http://www.castaglia.org/proftpd openssl ca -config ./etc/cert-tool.conf -gencrl -cert crl-ca.pem -keyfile crl-ca.pem -out crl-ca-revoked.pem
+  Using configuration from ./etc/cert-tool.conf
 
 To create the .p12 (PKCS#12) file in this directory, I used the following
 OpenSSL command:
