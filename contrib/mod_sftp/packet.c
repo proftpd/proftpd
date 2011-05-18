@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.30 2011-05-15 23:04:40 castaglia Exp $
+ * $Id: packet.c,v 1.31 2011-05-18 05:23:52 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -340,6 +340,8 @@ static void handle_debug_mesg(struct ssh2_packet *pkt) {
     pr_log_debug(DEBUG0, MOD_SFTP_VERSION
       ": client sent SSH_MSG_DEBUG message '%s'", str);
   }
+
+  destroy_pool(pkt->pool);
 }
 
 static void handle_disconnect_mesg(struct ssh2_packet *pkt) {
@@ -415,9 +417,9 @@ static void handle_global_request_mesg(struct ssh2_packet *pkt) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error writing REQUEST_FAILURE message: %s", strerror(errno));
     }
-
-    destroy_pool(pkt2->pool);
   }
+
+  destroy_pool(pkt->pool);
 }
 
 static void handle_client_alive_mesg(struct ssh2_packet *pkt, char mesg_type) {
@@ -429,6 +431,7 @@ static void handle_client_alive_mesg(struct ssh2_packet *pkt, char mesg_type) {
     "client sent %s message, considering client alive", mesg_desc);
 
   client_alive_count = 0;
+  destroy_pool(pkt->pool);
 }
 
 static void handle_ignore_mesg(struct ssh2_packet *pkt) {
@@ -440,6 +443,8 @@ static void handle_ignore_mesg(struct ssh2_packet *pkt) {
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "client sent SSH_MSG_IGNORE message (%u bytes)", (unsigned int) len);
+
+  destroy_pool(pkt->pool);
 }
 
 static void handle_unimplemented_mesg(struct ssh2_packet *pkt) {
@@ -449,6 +454,8 @@ static void handle_unimplemented_mesg(struct ssh2_packet *pkt) {
 
   pr_trace_msg(trace_channel, 7, "received SSH_MSG_UNIMPLEMENTED for "
     "packet #%lu", (unsigned long) seqno);
+
+  destroy_pool(pkt->pool);
 }
 
 static void is_client_alive(void) {
@@ -897,7 +904,6 @@ int sftp_ssh2_packet_set_client_alive(unsigned int max, unsigned int interval) {
 int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
   char buf[SFTP_MAX_PACKET_LEN];
   size_t buflen, bufsz = SFTP_MAX_PACKET_LEN, offset = 0;
-  char mesg_type;
 
   pr_session_set_idle();
 
@@ -1071,76 +1077,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
     }
 
     packet_client_seqno++;
-
     pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
-
-    mesg_type = peek_mesg_type(pkt);
-
-    pr_trace_msg(trace_channel, 3, "received %s (%d) packet",
-      sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
-
-    if (mesg_type == SFTP_SSH2_MSG_DEBUG) {
-      /* Since peeking at the mesg type did not actually update the
-       * payload/len values, do that now.
-       */
-      pkt->payload += sizeof(char);
-      pkt->payload_len -= sizeof(char);
-
-      handle_debug_mesg(pkt);
-      continue;
-    }
-
-    if (mesg_type == SFTP_SSH2_MSG_DISCONNECT) {
-      /* Since peeking at the mesg type did not actually update the
-       * payload/len values, do that now.
-       */
-      pkt->payload += sizeof(char);
-      pkt->payload_len -= sizeof(char);
-
-      handle_disconnect_mesg(pkt);
-      continue;
-    }
-
-    if (mesg_type == SFTP_SSH2_MSG_GLOBAL_REQUEST) {
-      /* Since peeking at the mesg type did not actually update the
-       * payload/len values, do that now.
-       */
-      pkt->payload += sizeof(char);
-      pkt->payload_len -= sizeof(char);
-
-      handle_global_request_mesg(pkt);
-      continue;
-    }
-
-    if (mesg_type == SFTP_SSH2_MSG_REQUEST_SUCCESS ||
-        mesg_type == SFTP_SSH2_MSG_REQUEST_FAILURE ||
-        mesg_type == SFTP_SSH2_MSG_CHANNEL_SUCCESS ||
-        mesg_type == SFTP_SSH2_MSG_CHANNEL_FAILURE) {
-      handle_client_alive_mesg(pkt, mesg_type);
-      continue;
-    }
-
-    if (mesg_type == SFTP_SSH2_MSG_IGNORE) {
-      /* Since peeking at the mesg type did not actually update the
-       * payload/len values, do that now.
-       */
-      pkt->payload += sizeof(char);
-      pkt->payload_len -= sizeof(char);
-
-      handle_ignore_mesg(pkt);
-      continue;
-    }
-
-    if (mesg_type == SFTP_SSH2_MSG_UNIMPLEMENTED) {
-      /* Since peeking at the mesg type did not actually update the
-       * payload/len values, do that now.
-       */
-      pkt->payload += sizeof(char);
-      pkt->payload_len -= sizeof(char);
-
-      handle_unimplemented_mesg(pkt);
-      continue;
-    }
 
     break;
   }
@@ -1443,11 +1380,45 @@ int sftp_ssh2_packet_handle(void) {
   }
 
   mesg_type = sftp_ssh2_packet_get_mesg_type(pkt);
+  pr_trace_msg(trace_channel, 3, "received %s (%d) packet",
+    sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
 
   pr_response_clear(&resp_list);
   pr_response_clear(&resp_err_list);
 
+  /* Note: Some of the SSH messages will be handled regardless of the
+   * sftp_sess_state flags; this is intentional, and is the way that
+   * the protocol is supposed to work.
+   */
+  
   switch (mesg_type) {
+    case SFTP_SSH2_MSG_DEBUG:
+      handle_debug_mesg(pkt);
+      break;
+
+    case SFTP_SSH2_MSG_DISCONNECT:
+      handle_disconnect_mesg(pkt);
+      break;
+
+    case SFTP_SSH2_MSG_GLOBAL_REQUEST:
+      handle_global_request_mesg(pkt);
+      break;
+
+    case SFTP_SSH2_MSG_REQUEST_SUCCESS:
+    case SFTP_SSH2_MSG_REQUEST_FAILURE:
+    case SFTP_SSH2_MSG_CHANNEL_SUCCESS:
+    case SFTP_SSH2_MSG_CHANNEL_FAILURE:
+      handle_client_alive_mesg(pkt, mesg_type);
+      break;
+
+    case SFTP_SSH2_MSG_IGNORE:
+      handle_ignore_mesg(pkt);
+      break;
+
+    case SFTP_SSH2_MSG_UNIMPLEMENTED:
+      handle_unimplemented_mesg(pkt);
+      break;
+
     case SFTP_SSH2_MSG_KEXINIT:
       /* The client might be initiating a rekey; watch for this. */
       if (sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX) {
