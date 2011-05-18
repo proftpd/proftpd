@@ -680,10 +680,10 @@ sub tls_crl_file_ok {
     '/bin/bash');
   auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
-  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
-  my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/client-cert.pem');
-  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
-  my $crl_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-crl.pem');
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-server-cert.pem');
+  my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-client-cert.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-ca.pem');
+  my $crl_file = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-ca-revoked.pem');
 
   my $config = {
     PidFile => $pid_file,
