@@ -44,15 +44,15 @@ sub set_up {
   # Make copies of the original tables into our scratch directory
   my ($src_file, $dst_file);
 
-  $src_file = File::Spec->rel2abs('t/etc/modules/mod_quotatab_file/ftpquota.limittab');
-  $dst_file = File::Spec->rel2abs("$self->{tmpdir}/ftpquota.limittab");
+  $src_file = File::Spec->rel2abs('t/etc/modules/mod_quotatab_file/ftpquota-group-limit.tab');
+  $dst_file = File::Spec->rel2abs("$self->{tmpdir}/ftpquota-group-limit.tab");
 
   unless (copy($src_file, $dst_file)) {
     die("Can't copy $src_file to $dst_file: $!");
   }
 
-  $src_file = File::Spec->rel2abs('t/etc/modules/mod_quotatab_file/ftpquota.tallytab');
-  $dst_file = File::Spec->rel2abs("$self->{tmpdir}/ftpquota.tallytab");
+  $src_file = File::Spec->rel2abs('t/etc/modules/mod_quotatab_file/ftpquota-group-tally.tab');
+  $dst_file = File::Spec->rel2abs("$self->{tmpdir}/ftpquota-group-tally.tab");
 
   unless (copy($src_file, $dst_file)) {
     die("Can't copy $src_file to $dst_file: $!");
@@ -178,8 +178,8 @@ sub quotatab_file_single_suppl_group {
   # primary group, but IS the user's only supplemental group.
   auth_group_write($auth_group_file, 'test', $gid+1, $user);
 
-  my $limit_file = File::Spec->rel2abs("$tmpdir/ftpquota.limittab");
-  my $tally_file = File::Spec->rel2abs("$tmpdir/ftpquota.tallytab");
+  my $limit_file = File::Spec->rel2abs("$tmpdir/ftpquota-group-limit.tab");
+  my $tally_file = File::Spec->rel2abs("$tmpdir/ftpquota-group-tally.tab");
 
   my $config = {
     PidFile => $pid_file,
