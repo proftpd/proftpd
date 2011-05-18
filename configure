@@ -16922,10 +16922,10 @@ fi
 
 
 keepsyms="no"
-# Check whether --enable-symbols was given.
-if test "${enable_symbols+set}" = set; then
-  enableval=$enable_symbols;
-    if test x"$enableval" != xno ; then
+# Check whether --enable-strip was given.
+if test "${enable_strip+set}" = set; then
+  enableval=$enable_strip;
+    if test x"$enableval" = xno ; then
       keepsyms="yes"
     fi
 
