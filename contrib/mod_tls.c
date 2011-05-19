@@ -4328,18 +4328,14 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
       char *mech = c->argv[i];
 
       if (strcasecmp(mech, "crl") == 0) {
+        ok = tls_verify_crl(ok, ctx);
         if (!ok) {
-          ok = tls_verify_crl(ok, ctx);
-
-        } else {
           break;
         }
 
       } else if (strcasecmp(mech, "ocsp") == 0) {
+        ok = tls_verify_ocsp(ok, ctx);
         if (!ok) {
-          ok = tls_verify_ocsp(ok, ctx);
-
-        } else {
           break;
         }
       }
