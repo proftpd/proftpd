@@ -5047,8 +5047,13 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
       break;
 
     case V_OCSP_CERTSTATUS_UNKNOWN:
-      /* XXX Give the client the benefit of the doubt? */
-      ok = TRUE;
+      /* If the client cert points to an OCSP responder which claims not to
+       * know about the client cert, then we shouldn't trust that client
+       * cert.  Otherwise, a client could present a cert pointing to an
+       * OCSP responder which they KNOW won't know about the client cert,
+       * and could then slip through the verification process.
+       */
+      ok = FALSE;
       break;
 
     default:
