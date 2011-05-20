@@ -223,6 +223,24 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  tls_verify_order_crl_bug3658 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  tls_verify_order_ocsp => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  # XXX Need to find a working HTTPS OCSP responder for this test;
+  # OpenSSL's ocsp(1) responder does NOT function in HTTPS mode, contrary
+  # to the impression given by its docs.
+  tls_verify_order_ocsp_https => {
+    order => ++$order,
+    test_class => [qw(bug forking inprogress)],
+  },
+
 };
 
 sub new {
@@ -6409,6 +6427,491 @@ sub tls_getpassphraseprovider {
   }
 
   unlink($log_file);
+}
+
+sub tls_verify_order_crl_bug3658 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/tls.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-server-cert.pem');
+  my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-client-cert.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-ca.pem');
+  my $crl_file = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-ca-revoked.pem');
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $log_file,
+        TLSProtocol => 'SSLv3 TLSv1',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $server_cert,
+        TLSCACertificateFile => $ca_cert,
+
+        # Verifying clients via CRLs only works when verification is
+        # explicitly enabled.
+        TLSCARevocationFile => $crl_file,
+        TLSVerifyClient => 'on',
+        TLSVerifyOrder => 'crl',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client;
+
+      eval {
+        # IO::Socket::SSL options
+        my $ssl_opts = {
+          SSL_use_cert => 1,
+          SSL_cert_file => $client_cert,
+          SSL_key_file => $client_cert,
+        };
+
+        $client = Net::FTPSSL->new('127.0.0.1',
+          Croak => 1,
+          Encryption => 'E',
+          Port => $port,
+          SSL_Advanced => $ssl_opts,
+        );
+      };
+
+      my $ex = $@;
+      unless ($ex) {
+        die("SSL connection succeeded unexpectedly");
+      }
+
+      my $errstr = IO::Socket::SSL::errstr();
+
+      my $expected = 'certificate revoked';
+      $self->assert(qr/$expected/, $errstr,
+        test_msg("Expected '$expected', got '$errstr'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub tls_verify_order_ocsp {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/tls.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ocsp-server.pem');
+  my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ocsp-client.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ocsp-ca.pem');
+
+  # XXX NOTE: Make sure the OCSP responder is running, at URL:
+  #
+  #  http://localhost:7777
+  #
+  # since that is the OCSP URI baked into the OCSP client cert.
+  #
+  # To do this, go to the cert-tool/ directory, and run:
+  #
+  #  openssl ocsp -index etc/cert-tool.index -CA ocsp-ca.pem \
+  #    -rsigner ocsp-ca.pem -url http://localhost:7777
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $log_file,
+        TLSProtocol => 'SSLv3 TLSv1',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $server_cert,
+        TLSCACertificateFile => $ca_cert,
+
+        TLSOptions => 'EnableDiags',
+
+        # Verifying clients via OCSP only works when verification is
+        # explicitly enabled.
+        TLSVerifyClient => 'on',
+
+        TLSVerifyOrder => 'ocsp',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client;
+
+      eval {
+        # IO::Socket::SSL options
+        my $ssl_opts = {
+          SSL_use_cert => 1,
+          SSL_cert_file => $client_cert,
+          SSL_key_file => $client_cert,
+        };
+
+        $client = Net::FTPSSL->new('127.0.0.1',
+          Croak => 1,
+          Encryption => 'E',
+          Port => $port,
+          SSL_Advanced => $ssl_opts,
+        );
+      };
+
+      my $ex = $@;
+      unless ($ex) {
+        die("SSL connection succeeded unexpectedly");
+      }
+
+      my $errstr = IO::Socket::SSL::errstr();
+
+      # In this case, since the CA which is needed to verify the OCSP
+      # response has been revoked, the OCSP response can't be verified,
+      # which results in a handshake failure.
+      my $expected = 'handshake failure';
+      $self->assert(qr/$expected/, $errstr,
+        test_msg("Expected '$expected', got '$errstr'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub tls_verify_order_ocsp_https {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/tls.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ocsp-https-server.pem');
+  my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ocsp-https-client.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ocsp-https-ca.pem');
+
+  # XXX NOTE: Make sure the OCSP responder is running, at URL:
+  #
+  #  https://localhost:7777
+  #
+  # since that is the OCSP URI baked into the OCSP client cert.
+  #
+  # To do this, go to the cert-tool/ directory, and run:
+  #
+  #  openssl ocsp -index etc/cert-tool.index -CA ocsp-https-ca.pem \
+  #    -rsigner ocsp-https-ca.pem -url https://localhost:7777
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $log_file,
+        TLSProtocol => 'SSLv3 TLSv1',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $server_cert,
+        TLSCACertificateFile => $ca_cert,
+
+        TLSOptions => 'EnableDiags',
+
+        # Verifying clients via OCSP only works when verification is
+        # explicitly enabled.
+        TLSVerifyClient => 'on',
+
+        TLSVerifyOrder => 'ocsp',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client;
+
+      eval {
+        # IO::Socket::SSL options
+        my $ssl_opts = {
+          SSL_use_cert => 1,
+          SSL_cert_file => $client_cert,
+          SSL_key_file => $client_cert,
+        };
+
+        $client = Net::FTPSSL->new('127.0.0.1',
+          Croak => 1,
+          Encryption => 'E',
+          Port => $port,
+          SSL_Advanced => $ssl_opts,
+        );
+      };
+
+      my $ex = $@;
+      unless ($ex) {
+        die("SSL connection succeeded unexpectedly");
+      }
+
+      my $errstr = IO::Socket::SSL::errstr();
+
+      # In this case, since the CA which is needed to verify the OCSP
+      # response has been revoked, the OCSP response can't be verified,
+      # which results in a handshake failure.
+      my $expected = 'handshake failure';
+      $self->assert(qr/$expected/, $errstr,
+        test_msg("Expected '$expected', got '$errstr'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+#  unlink($log_file);
 }
 
 1;
