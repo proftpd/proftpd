@@ -4423,7 +4423,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   X509 *xs = NULL;
   X509_CRL *crl = NULL;
   X509_STORE_CTX store_ctx;
-  int n, rc;
+  int n, res;
   register int i = 0;
 
   /* Unless a revocation store for CRLs was created we cannot do any
@@ -4491,10 +4491,10 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   X509_STORE_CTX_init(&store_ctx, tls_crl_store, NULL, NULL);
 #endif
 
-  rc = X509_STORE_get_by_subject(&store_ctx, X509_LU_CRL, subject, &obj);
+  res = X509_STORE_get_by_subject(&store_ctx, X509_LU_CRL, subject, &obj);
   crl = obj.data.crl;
 
-  if (rc > 0 &&
+  if (res > 0 &&
       crl != NULL) {
     EVP_PKEY *pubkey;
     char buf[512];
@@ -4523,19 +4523,20 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
     pubkey = X509_get_pubkey(xs);
 
     /* Verify the signature on this CRL */
-    if (X509_CRL_verify(crl, pubkey) <= 0) {
+    res = X509_CRL_verify(crl, pubkey);
+
+    if (pubkey) {
+      EVP_PKEY_free(pubkey);
+    }
+
+    if (res <= 0) {
       tls_log("invalid signature on CRL: %s", tls_get_errors());
-      if (pubkey)
-        EVP_PKEY_free(pubkey);
 
       X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_SIGNATURE_FAILURE);
       X509_OBJECT_free_contents(&obj);
       X509_STORE_CTX_cleanup(&store_ctx);
-      return 0;
+      return FALSE;
     }
-
-    if (pubkey)
-      EVP_PKEY_free(pubkey);
 
     /* Check date of CRL to make sure it's not expired */
     i = X509_cmp_current_time(X509_CRL_get_nextUpdate(crl));
@@ -4544,7 +4545,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
       X509_STORE_CTX_set_error(ctx, X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD);
       X509_OBJECT_free_contents(&obj);
       X509_STORE_CTX_cleanup(&store_ctx);
-      return 0;
+      return FALSE;
     }
 
     if (i < 0) {
@@ -4557,7 +4558,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
       X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_HAS_EXPIRED);
       X509_OBJECT_free_contents(&obj);
       X509_STORE_CTX_cleanup(&store_ctx);
-      return 0;
+      return FALSE;
     }
 
     X509_OBJECT_free_contents(&obj);
@@ -4568,10 +4569,10 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
    */
   memset(&obj, 0, sizeof(obj));
 
-  rc = X509_STORE_get_by_subject(&store_ctx, X509_LU_CRL, issuer, &obj);
+  res = X509_STORE_get_by_subject(&store_ctx, X509_LU_CRL, issuer, &obj);
   crl = obj.data.crl;
 
-  if (rc > 0 &&
+  if (res > 0 &&
       crl != NULL) {
 
     /* Check if the current certificate is revoked by this CRL */
@@ -4594,7 +4595,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
         X509_STORE_CTX_set_error(ctx, X509_V_ERR_CERT_REVOKED);
         X509_OBJECT_free_contents(&obj);
         X509_STORE_CTX_cleanup(&store_ctx);
-        return 0;
+        return FALSE;
       }
     }
 
@@ -4613,7 +4614,8 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
   X509_NAME *subj = NULL;
   const char *subj_name;
   char *host = NULL, *port = NULL, *uri = NULL;
-  int res = 0, use_ssl = 0, ocsp_status, ocsp_reason;
+  int ok = FALSE, res = 0 , use_ssl = 0, ocsp_status, ocsp_cert_status,
+    ocsp_reason;
   OCSP_REQUEST *req = NULL;
   OCSP_CERTID *cert_id = NULL;
   OCSP_RESPONSE *resp = NULL;
@@ -4622,7 +4624,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
 
   if (cert == NULL ||
       url == NULL) {
-    return res;
+    return FALSE;
   }
 
   subj = X509_get_subject_name(cert);
@@ -4632,8 +4634,10 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
 
   if (OCSP_parse_url((char *) url, &host, &port, &uri, &use_ssl) != 1) {
     tls_log("error parsing OCSP URL '%s': %s", url, tls_get_errors());
-    return res;
+    return FALSE;
   }
+
+  /* XXX Need to check for NULL host, uri. */
 
   if (port == NULL) {
     if (use_ssl == 1) {
@@ -4666,7 +4670,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     OPENSSL_free(port);
     OPENSSL_free(uri);
 
-    return res;
+    return FALSE;
   }
 
   BIO_set_conn_port(conn, port);
@@ -4692,7 +4696,8 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     }
   }
 
-  if (BIO_do_connect(conn) != 1) {
+  res = BIO_do_connect(conn);
+  if (res != 1) {
     tls_log("error connecting to OCSP URL '%s': %s", url, tls_get_errors());
 
     if (ocsp_ssl_ctx != NULL) {
@@ -4710,14 +4715,15 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
      * down (e.g. for maintenance)?
      */
 
-    return res;
+    return FALSE;
   }
 
   /* XXX Why are we querying the OCSP responder about the client cert's
    * issuing CA, rather than querying about the client cert itself?
    */
 
-  if (X509_STORE_CTX_get1_issuer(&issuing_cert, ctx, cert) != 1) {
+  res = X509_STORE_CTX_get1_issuer(&issuing_cert, ctx, cert);
+  if (res != 1) {
     tls_log("error retrieving issuing cert for client cert '%s': %s",
       subj_name, tls_get_errors());
 
@@ -4730,7 +4736,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     OPENSSL_free(port);
     OPENSSL_free(uri);
 
-    return res;
+    return FALSE;
   }
 
   /* Note that the cert_id value will be freed when the request is freed. */
@@ -4752,7 +4758,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     OPENSSL_free(port);
     OPENSSL_free(uri);
 
-    return res;
+    return FALSE;
   }
 
   req = OCSP_REQUEST_new();
@@ -4769,7 +4775,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     OPENSSL_free(port);
     OPENSSL_free(uri);
 
-    return res;
+    return FALSE;
   }
 
   if (OCSP_request_add0_id(req, cert_id) == NULL) {
@@ -4786,7 +4792,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     OPENSSL_free(port);
     OPENSSL_free(uri);
 
-    return res;
+    return FALSE;
   }
 
 # if 0
@@ -4808,11 +4814,12 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     OPENSSL_free(port);
     OPENSSL_free(uri);
 
-    return res;
+    return FALSE;
   }
 # endif
 
-  if (OCSP_request_add1_nonce(req, NULL, 0) != 1) {
+  res = OCSP_request_add1_nonce(req, NULL, 0);
+  if (res != 1) {
     tls_log("error adding nonce to OCSP request: %s", tls_get_errors());
 
     if (ocsp_ssl_ctx != NULL) {
@@ -4826,7 +4833,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     OPENSSL_free(port);
     OPENSSL_free(uri);
 
-    return res;
+    return FALSE;
   }
 
   if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
@@ -4866,7 +4873,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     OPENSSL_free(port);
     OPENSSL_free(uri);
 
-    return res;
+    return FALSE;
   }
 
   if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
@@ -4909,10 +4916,11 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     OPENSSL_free(port);
     OPENSSL_free(uri);
 
-    return res;
+    return FALSE;
   }
 
-  if (OCSP_check_nonce(req, basic_resp) != 1) {
+  res = OCSP_check_nonce(req, basic_resp);
+  if (res != 1) {
     tls_log("unable to use response from OCSP responder at '%s': bad nonce",
       url);
 
@@ -4929,10 +4937,11 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     OPENSSL_free(port);
     OPENSSL_free(uri);
 
-    return res;
+    return FALSE;
   }
 
-  if (OCSP_basic_verify(basic_resp, NULL, ctx->ctx, 0) != 1) {
+  res = OCSP_basic_verify(basic_resp, NULL, ctx->ctx, 0);
+  if (res != 1) {
     tls_log("error verifying basic response from OCSP responder at '%s': %s",
       url, tls_get_errors());
 
@@ -4949,7 +4958,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     OPENSSL_free(port);
     OPENSSL_free(uri);
 
-    return res;
+    return FALSE;
   }
 
   /* Now that we have verified the response, we can check the response status.
@@ -4962,8 +4971,8 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
   ocsp_status = OCSP_response_status(resp);
   if (ocsp_status != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
     tls_log("unable to verify client cert '%s' via OCSP responder at '%s': "
-      "response status '%s'", subj_name, url,
-      OCSP_response_status_str(ocsp_status));
+      "response status '%s' (%d)", subj_name, url,
+      OCSP_response_status_str(ocsp_status), ocsp_status);
 
     if (ocsp_ssl_ctx != NULL) {
       SSL_CTX_free(ocsp_ssl_ctx);
@@ -4978,11 +4987,31 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     OPENSSL_free(port);
     OPENSSL_free(uri);
 
-    return res;
+    switch (ocsp_status) {
+      case OCSP_RESPONSE_STATUS_MALFORMEDREQUEST:
+      case OCSP_RESPONSE_STATUS_INTERNALERROR:
+      case OCSP_RESPONSE_STATUS_SIGREQUIRED:
+      case OCSP_RESPONSE_STATUS_UNAUTHORIZED:
+      case OCSP_RESPONSE_STATUS_TRYLATER:
+        /* XXX For now, for the above OCSP response reasons, give the client
+         * the benefit of the doubt, since all of the above non-success
+         * response codes indicate either a) an issue with the OCSP responder
+         * outside of the client's control, or b) an issue with our OCSP
+         * implementation (e.g. SIGREQUIRED, UNAUTHORIZED).
+         */
+        ok = TRUE;
+        break;
+
+      default:
+        ok = FALSE;
+    }
+
+    return ok;
   }
 
-  if (OCSP_resp_find_status(basic_resp, cert_id, &ocsp_status,
-      &ocsp_reason, NULL, NULL, NULL) != 1) {
+  res = OCSP_resp_find_status(basic_resp, cert_id, &ocsp_cert_status,
+    &ocsp_reason, NULL, NULL, NULL);
+  if (res != 1) {
     tls_log("unable to retrieve cert status from OCSP response: %s",
       tls_get_errors());
 
@@ -4999,19 +5028,31 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     OPENSSL_free(port);
     OPENSSL_free(uri);
 
-    return res;
+    return FALSE;
   }
 
-  tls_log("client cert '%s' has '%s' status according to OCSP responder at "
-    "'%s'", subj_name, OCSP_cert_status_str(ocsp_status), url);
+  tls_log("client cert '%s' has '%s' (%d) status according to OCSP responder "
+    "at '%s'", subj_name, OCSP_cert_status_str(ocsp_cert_status),
+    ocsp_cert_status, url);
 
-  if (ocsp_status == V_OCSP_CERTSTATUS_GOOD) {
-    res = 1;
-  }
+  switch (ocsp_cert_status) {
+    case V_OCSP_CERTSTATUS_GOOD:
+      ok = TRUE;
+      break;
 
-  if (ocsp_status == V_OCSP_CERTSTATUS_REVOKED) {
-    tls_log("client cert '%s' has '%s' status due to: %s", subj_name,
-      OCSP_cert_status_str(ocsp_status), OCSP_crl_reason_str(ocsp_reason));
+    case V_OCSP_CERTSTATUS_REVOKED:
+      tls_log("client cert '%s' has '%s' status due to: %s", subj_name,
+        OCSP_cert_status_str(ocsp_status), OCSP_crl_reason_str(ocsp_reason));
+      ok = FALSE;
+      break;
+
+    case V_OCSP_CERTSTATUS_UNKNOWN:
+      /* XXX Give the client the benefit of the doubt? */
+      ok = TRUE;
+      break;
+
+    default:
+      ok = FALSE;
   }
 
   if (ocsp_ssl_ctx != NULL) {
@@ -5027,7 +5068,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
   OPENSSL_free(port);
   OPENSSL_free(uri);
 
-  return res;
+  return ok;
 }
 #endif
 
@@ -5081,17 +5122,15 @@ static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
     }
   }
 
-  if (ocsp_urls) {
-    tls_log("found %u OCSP %s in AuthorityInfoAccess attribute for client "
-      "cert '%s'", ocsp_urls->nelts, ocsp_urls->nelts != 1 ? "URLs" : "URL",
-      subj);
-
-  } else {
-    tls_log("Found no OCSP URLs in AuthorityInfoAccess attribute for client "
+  if (ocsp_urls == NULL) {
+    tls_log("found no OCSP URLs in AuthorityInfoAccess attribute for client "
       "cert '%s', unable to verify via OCSP", subj);
     AUTHORITY_INFO_ACCESS_free(descs);
     return ok;
   }
+
+  tls_log("found %u OCSP %s in AuthorityInfoAccess attribute for client cert "
+    "'%s'", ocsp_urls->nelts, ocsp_urls->nelts != 1 ? "URLs" : "URL", subj);
 
   /* Check each of the URLs. */
   for (i = 0; i < ocsp_urls->nelts; i++) {
