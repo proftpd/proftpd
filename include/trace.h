@@ -14,7 +14,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
  *
  * As a special exemption, the ProFTPD Project and other respective copyright
  * holders give permission to link this program with OpenSSL, and distribute
@@ -23,7 +23,7 @@
  */
 
 /* Trace API
- * $Id: trace.h,v 1.5 2011-03-24 21:57:05 castaglia Exp $
+ * $Id: trace.h,v 1.6 2011-05-23 20:35:35 castaglia Exp $
  */
 
 #ifndef PR_TRACE_H
