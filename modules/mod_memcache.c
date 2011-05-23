@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
  *
  * As a special exemption, TJ Saunders and other respective copyright holders
  * give permission to link this program with OpenSSL, and distribute the
@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached -lmemcachedutil$
- * $Id: mod_memcache.c,v 1.14 2011-02-22 03:20:30 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.15 2011-05-23 21:11:56 castaglia Exp $
  */
 
 #include "conf.h"

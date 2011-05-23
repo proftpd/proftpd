@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ident -- a module for performing identd lookups [RFC1413]
  *
- * Copyright (c) 2008-2010 The ProFTPD Project
+ * Copyright (c) 2008-2011 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,14 +15,14 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
  *
  * As a special exemption, TJ Saunders and other respective copyright holders
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_ident.c,v 1.8 2010-12-21 04:20:52 castaglia Exp $
+ * $Id: mod_ident.c,v 1.9 2011-05-23 21:11:56 castaglia Exp $
  */
 
 #include "conf.h"
