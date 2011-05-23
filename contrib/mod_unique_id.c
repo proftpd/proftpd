@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
  *
  * As a special exemption, TJ Saunders and other respective copyright holders
  * give permission to link this program with OpenSSL, and distribute the
@@ -26,7 +26,7 @@
  * This is mod_unique_id, contrib software for proftpd 1.2.x/1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_unique_id.c,v 1.5 2011-02-28 07:02:07 castaglia Exp $
+ * $Id: mod_unique_id.c,v 1.6 2011-05-23 20:56:40 castaglia Exp $
  */
 
 #include "conf.h"

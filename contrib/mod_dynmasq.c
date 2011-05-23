@@ -2,7 +2,7 @@
  * ProFTPD: mod_dynmasq -- a module for dynamically updating MasqueradeAddress
  *                         configurations, as when DynDNS names are used
  *
- * Copyright (c) 2004-2010 TJ Saunders
+ * Copyright (c) 2004-2011 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
  *
  * As a special exemption, TJ Saunders and other respective copyright holders
  * give permission to link this program with OpenSSL, and distribute the
@@ -26,7 +26,7 @@
  * This is mod_dynmasq, contrib software for proftpd 1.2.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dynmasq.c,v 1.8 2010-03-18 17:49:10 castaglia Exp $
+ * $Id: mod_dynmasq.c,v 1.9 2011-05-23 20:56:40 castaglia Exp $
  */
 
 #include "conf.h"

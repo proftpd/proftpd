@@ -14,7 +14,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
  *
  * Furthermore, John Morrissey gives permission to link this program with
  * OpenSSL, and distribute the resulting executable, without including the
@@ -45,7 +45,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.92 2010-12-10 22:38:13 jwm Exp $
+ * $Id: mod_ldap.c,v 1.93 2011-05-23 20:56:40 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
