@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.110 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: support.c,v 1.111 2011-05-23 23:23:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -635,6 +635,29 @@ void pr_memscrub(void *ptr, size_t ptrlen) {
   if (memchr(ptr, memscrub_ctr, ptrlen))
     memscrub_ctr += 63;
 #endif
+}
+
+void pr_getopt_reset(void) {
+#if defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
+    defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
+    defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9) || \
+    defined(DARWIN10) || defined(DARWIN11)
+  optreset = 1;
+  opterr = 1;
+  optind = 1;
+
+#elif defined(SOLARIS2) || defined(HPUX11)
+  opterr = 0;
+  optind = 1;
+
+#else
+  opterr = 0;
+  optind = 0;
+#endif /* !FreeBSD, !Mac OSX and !Solaris2 */
+
+  if (pr_env_get(permanent_pool, "POSIXLY_CORRECT") == NULL) {
+    pr_env_set(permanent_pool, "POSIXLY_CORRECT", "1");
+  }
 }
 
 struct tm *pr_gmtime(pool *p, const time_t *t) {

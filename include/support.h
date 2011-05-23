@@ -25,7 +25,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.37 2011-05-23 20:35:35 castaglia Exp $
+ * $Id: support.h,v 1.38 2011-05-23 23:23:44 castaglia Exp $
  */
 
 #ifndef PR_SUPPORT_H
@@ -86,6 +86,7 @@ int check_shutmsg(time_t *, time_t *, time_t *, char *, size_t);
 
 void pr_memscrub(void *, size_t);
 
+void pr_getopt_reset(void);
 struct tm *pr_gmtime(pool *, const time_t *);
 struct tm *pr_localtime(pool *, const time_t *);
 const char *pr_strtime(time_t);

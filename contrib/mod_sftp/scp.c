@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.60 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: scp.c,v 1.61 2011-05-23 23:23:44 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1938,22 +1938,7 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
    *  -v (verbose)
    */
 
-#if defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
-    defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
-    defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9) || \
-    defined(DARWIN10) || defined(DARWIN11)
-  optreset = 1;
-  opterr = 1;
-  optind = 1;
-
-#elif defined(SOLARIS2) || defined(HPUX11)
-  opterr = 0;
-  optind = 1;
-
-#else
-  opterr = 0;
-  optind = 0;
-#endif /* !FreeBSD and !Solaris2 */
+  pr_getopt_reset();
 
   reqargv = (char **) req->elts;
 

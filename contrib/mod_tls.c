@@ -5439,27 +5439,7 @@ static int tls_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   int flags = 0, optc, res;
   const char *opts = "v";
 
-  /* All the fun portability of resetting getopt(3). */
-#if defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
-    defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
-    defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9) || \
-    defined(DARWIN10) || defined(DARWIN11)
-  optreset = 1;
-  opterr = 1;
-  optind = 1;
-
-#elif defined(SOLARIS2) || defined(HPUX11)
-  opterr = 0;
-  optind = 1;
-
-#else
-  opterr = 0;
-  optind = 0;
-#endif /* !FreeBSD, !Mac OSX and !Solaris2 */
-
-  if (pr_env_get(permanent_pool, "POSIXLY_CORRECT") == NULL) {
-    pr_env_set(permanent_pool, "POSIXLY_CORRECT", "1");
-  }
+  pr_getopt_reset();
 
   while ((optc = getopt(reqargc, reqargv, opts)) != -1) {
     switch (optc) {
