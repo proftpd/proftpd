@@ -14,7 +14,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
  *
  * As a special exemption, The ProFTPD Project team and other respective
  * copyright holders give permission to link this program with OpenSSL, and
@@ -22,9 +22,8 @@
  * OpenSSL in the source distribution.
  */
 
-/*
- * Timers API tests
- * $Id: timers.c,v 1.5 2011-02-14 00:46:01 castaglia Exp $
+/* Timers API tests
+ * $Id: timers.c,v 1.6 2011-05-23 20:50:31 castaglia Exp $
  */
 
 #include "tests.h"
