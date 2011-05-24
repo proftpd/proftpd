@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.61 2011-05-23 23:23:44 castaglia Exp $
+ * $Id: scp.c,v 1.62 2011-05-24 17:06:16 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1956,10 +1956,6 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
   need_confirm = FALSE;
   scp_pool = make_sub_pool(sftp_pool);
   pr_pool_tag(scp_pool, "SSH2 SCP Pool");
-
-  if (pr_env_get(permanent_pool, "POSIXLY_CORRECT") == NULL) {
-    pr_env_set(permanent_pool, "POSIXLY_CORRECT", "1");
-  }
 
   while ((optc = getopt(req->nelts, reqargv, opts)) != -1) {
     switch (optc) {
