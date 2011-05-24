@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.44 2011-05-23 20:56:40 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.45 2011-05-24 00:04:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -422,7 +422,8 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
   }
 
   /* Sanity check */
-  if (reqargc == 0 || reqargv == NULL) {
+  if (reqargc == 0 ||
+      reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "missing required parameters");
     return -1;
   }
@@ -430,9 +431,30 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
   /* Handle 'kick user' requests. */
   if (strcmp(reqargv[0], "user") == 0) {
     register unsigned int i = 0;
+    int optc, kicked_count = 0, kicked_max = -1;
+    const char *reqopts = "n:";
     pr_scoreboard_entry_t *score = NULL;
 
-    if (reqargc == 1) {
+    pr_getopt_reset();
+
+    while ((optc = getopt(reqargc, reqargv, reqopts)) != -1) {
+      switch (optc) {
+        case 'n':
+          kicked_max = atoi(optarg);
+          if (kicked_max < 1) {
+            pr_ctrls_add_response(ctrl, "bad number: %s", optarg);
+            return -1;
+          }
+          break;
+
+        case '?':
+          pr_ctrls_add_response(ctrl, "unsupported option: '%c'",
+            (char) optopt);
+          return -1;
+      }
+    }
+
+    if (optind == reqargc) {
       pr_ctrls_add_response(ctrl, "kick user: missing required user name(s)");
       return -1;
     }
@@ -440,28 +462,42 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
     /* Iterate through the scoreboard, and send a SIGTERM to each
      * pid whose name matches the given user name(s).
      */
-    for (i = 1; i < reqargc; i++) {
+    for (i = optind; i < reqargc; i++) {
       unsigned char kicked_user = FALSE;
 
       if (pr_rewind_scoreboard() < 0) {
         pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "error rewinding scoreboard: %s",
           strerror(errno));
+        pr_ctrls_add_response(ctrl, "error rewinding scoreboard: %s",
+          strerror(errno));
+        return -1;
       }
 
       while ((score = pr_scoreboard_entry_read()) != NULL) {
+        pr_signals_handle();
+
+        if (kicked_max > 0 &&
+            kicked_count >= kicked_max) {
+          break;
+        }
+
         if (strcmp(reqargv[i], score->sce_user) == 0) {
+          int xerrno;
+
           res = 0;
 
           PRIVS_ROOT
           res = pr_scoreboard_entry_kill(score, SIGTERM);
+          xerrno = errno;
           PRIVS_RELINQUISH
 
           if (res == 0) {
             kicked_user = TRUE;
+            kicked_count++;
 
           } else {
             pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
-              "error kicking user '%s': %s", reqargv[i], strerror(errno));
+              "error kicking user '%s': %s", reqargv[i], strerror(xerrno));
           }
         }
       }
@@ -472,21 +508,53 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
       }
 
       if (kicked_user) {
-        pr_ctrls_add_response(ctrl, "kicked user '%s'", reqargv[i]);
-        pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "kicked user '%s'", reqargv[i]);
-        pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION ": kicked user '%s'",
-          reqargv[i]);
+        if (kicked_max > 0) {
+          pr_ctrls_add_response(ctrl, "kicked user '%s' (%d clients)",
+            reqargv[i], kicked_max);
+          pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "kicked user '%s' (%d clients)",
+            reqargv[i], kicked_max);
+          pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION
+            ": kicked user '%s' (%d clients)", reqargv[i], kicked_max);
 
-      } else
+        } else {
+          pr_ctrls_add_response(ctrl, "kicked user '%s'", reqargv[i]);
+          pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "kicked user '%s'", reqargv[i]);
+          pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION ": kicked user '%s'",
+            reqargv[i]);
+        }
+
+      } else {
         pr_ctrls_add_response(ctrl, "user '%s' not connected", reqargv[i]);
+      }
     }
 
   /* Handle 'kick host' requests. */
   } else if (strcmp(reqargv[0], "host") == 0) {
     register unsigned int i = 0;
+    int optc, kicked_count = 0, kicked_max = -1;
+    const char *reqopts = "n:";
     pr_scoreboard_entry_t *score = NULL;
 
-    if (reqargc == 1) {
+    pr_getopt_reset();
+
+    while ((optc = getopt(reqargc, reqargv, reqopts)) != -1) {
+      switch (optc) {
+        case 'n':
+          kicked_max = atoi(optarg);
+          if (kicked_max < 1) {
+            pr_ctrls_add_response(ctrl, "bad number: %s", optarg);
+            return -1;
+          }
+          break;
+
+        case '?':
+          pr_ctrls_add_response(ctrl, "unsupported option: '%c'",
+            (char) optopt);
+          return -1;
+      }
+    }
+
+    if (optind == reqargc) {
       pr_ctrls_add_response(ctrl, "kick host: missing required host(s)");
       return -1;
     }
@@ -496,15 +564,15 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
      * stringified IP address).
      */
 
-    for (i = 1; i < reqargc; i++) {
+    for (i = optind; i < reqargc; i++) {
       unsigned char kicked_host = FALSE;
       const char *addr;
       pr_netaddr_t *na;
 
-      na = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, reqargv[1], NULL);
-      if (!na) {
+      na = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, reqargv[i], NULL);
+      if (na == NULL) {
         pr_ctrls_add_response(ctrl, "kick host: error resolving '%s': %s",
-          reqargv[1], strerror(errno));
+          reqargv[i], strerror(errno));
         continue;
       }
 
@@ -513,34 +581,78 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
       if (pr_rewind_scoreboard() < 0) {
         pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "error rewinding scoreboard: %s",
           strerror(errno));
+        pr_ctrls_add_response(ctrl, "error rewinding scoreboard: %s",
+          strerror(errno));
+        return -1;
       }
 
       while ((score = pr_scoreboard_entry_read()) != NULL) {
+        pr_signals_handle();
+
+        if (kicked_max > 0 &&
+            kicked_count >= kicked_max) {
+          break;
+        }
+
         if (strcmp(score->sce_client_addr, addr) == 0) {
           PRIVS_ROOT
-          if (pr_scoreboard_entry_kill(score, SIGTERM) == 0)
+          if (pr_scoreboard_entry_kill(score, SIGTERM) == 0) {
             kicked_host = TRUE;
+            kicked_count++;
+          }
           PRIVS_RELINQUISH
         }
       }
       pr_restore_scoreboard();
 
       if (kicked_host) {
-        pr_ctrls_add_response(ctrl, "kicked host '%s'", addr);
-        pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "kicked host '%s'", addr);
-        pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION ": kicked host '%s'",
-          addr);
+        if (kicked_max > 0) {
+          pr_ctrls_add_response(ctrl, "kicked host '%s' (%d clients)", addr,
+            kicked_max);
+          pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "kicked host '%s' (%d clients)",
+            addr, kicked_max);
+          pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION
+            ": kicked host '%s' (%d clients)", addr, kicked_max);
 
-      } else
+        } else {
+          pr_ctrls_add_response(ctrl, "kicked host '%s'", addr);
+          pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "kicked host '%s'", addr);
+          pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION ": kicked host '%s'",
+            addr);
+        }
+
+      } else {
         pr_ctrls_add_response(ctrl, "host '%s' not connected", addr);
+      }
     }
 
   /* Handle 'kick class' requests. */
   } else if (strcmp(reqargv[0], "class") == 0) {
     register unsigned int i = 0;
+    int optc, kicked_count = 0, kicked_max = -1;
+    const char *reqopts = "n:";
     pr_scoreboard_entry_t *score = NULL;
 
-    if (reqargc == 1) {
+    pr_getopt_reset();
+
+    while ((optc = getopt(reqargc, reqargv, reqopts)) != -1) {
+      switch (optc) {
+        case 'n':
+          kicked_max = atoi(optarg);
+          if (kicked_max < 1) {
+            pr_ctrls_add_response(ctrl, "bad client number: %s", optarg);
+            return -1;
+          }
+          break;
+
+        case '?':
+          pr_ctrls_add_response(ctrl, "unsupported option: '%c'",
+            (char) optopt);
+          return -1;
+      }
+    }
+
+    if (optind == reqargc) {
       pr_ctrls_add_response(ctrl, "kick class: missing required class name(s)");
       return -1;
     }
@@ -548,28 +660,42 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
     /* Iterate through the scoreboard, and send a SIGTERM to each
      * pid whose name matches the given class name(s).
      */
-    for (i = 1; i < reqargc; i++) {
+    for (i = optind; i < reqargc; i++) {
       unsigned char kicked_class = FALSE;
 
       if (pr_rewind_scoreboard() < 0) {
         pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "error rewinding scoreboard: %s",
           strerror(errno));
+        pr_ctrls_add_response(ctrl, "error rewinding scoreboard: %s",
+          strerror(errno));
+        return -1;
       }
 
       while ((score = pr_scoreboard_entry_read()) != NULL) {
+        pr_signals_handle();
+
+        if (kicked_max > 0 &&
+            kicked_count >= kicked_max) {
+          break;
+        }
+
         if (strcmp(reqargv[i], score->sce_class) == 0) {
+          int xerrno;
+
           res = 0;
 
           PRIVS_ROOT
           res = pr_scoreboard_entry_kill(score, SIGTERM);
+          xerrno = errno;
           PRIVS_RELINQUISH
 
           if (res == 0) {
             kicked_class = TRUE;
+            kicked_count++;
 
           } else {
             pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
-              "error kicking class '%s': %s", reqargv[i], strerror(errno));
+              "error kicking class '%s': %s", reqargv[i], strerror(xerrno));
           }
         }
       }
@@ -580,13 +706,25 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
       }
 
       if (kicked_class) {
-        pr_ctrls_add_response(ctrl, "kicked class '%s'", reqargv[i]);
-        pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "kicked class '%s'", reqargv[i]);
-        pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION ": kicked class '%s'",
-          reqargv[i]);
+        if (kicked_max > 0) {
+          pr_ctrls_add_response(ctrl, "kicked class '%s' (%d clients)",
+            reqargv[i], kicked_max);
+          pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
+            "kicked class '%s' (%d clients)", reqargv[i], kicked_max);
+          pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION
+            ": kicked class '%s' (%d clients)", reqargv[i], kicked_max);
 
-      } else
+        } else {
+          pr_ctrls_add_response(ctrl, "kicked class '%s'", reqargv[i]);
+          pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "kicked class '%s'",
+            reqargv[i]);
+          pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION ": kicked class '%s'",
+            reqargv[i]);
+        }
+
+      } else {
         pr_ctrls_add_response(ctrl, "class '%s' not connected", reqargv[i]);
+      }
     }
 
   } else {
