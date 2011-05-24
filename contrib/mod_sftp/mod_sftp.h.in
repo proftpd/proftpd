@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_sftp.h.in,v 1.20 2011-05-24 20:55:50 castaglia Exp $
+ * $Id: mod_sftp.h.in,v 1.21 2011-05-24 21:00:11 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_H
@@ -103,7 +103,7 @@
 #define SFTP_SERVICE_FL_DATE		0x0004
 
 #define SFTP_SERVICE_DEFAULT \
-	(SFTP_SERVICE_FL_SFTP|SFTP_SERVICE_FL_SCP|SFTP_SERVICE_FL_DATE)
+	(SFTP_SERVICE_FL_SFTP|SFTP_SERVICE_FL_SCP)
 
 /* Miscellaneous */
 extern int sftp_logfd;
