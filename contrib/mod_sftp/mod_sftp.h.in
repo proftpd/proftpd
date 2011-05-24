@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_sftp.h.in,v 1.19 2011-05-23 20:44:41 castaglia Exp $
+ * $Id: mod_sftp.h.in,v 1.20 2011-05-24 20:55:50 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_H
@@ -54,7 +54,7 @@
 /* Define if you have OpenSSL with SHA512 support. */
 #undef HAVE_SHA512_OPENSSL
 
-#define MOD_SFTP_VERSION	"mod_sftp/0.9.7"
+#define MOD_SFTP_VERSION	"mod_sftp/0.9.8"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -100,6 +100,10 @@
 /* mod_sftp service flags */
 #define SFTP_SERVICE_FL_SFTP		0x0001
 #define SFTP_SERVICE_FL_SCP		0x0002
+#define SFTP_SERVICE_FL_DATE		0x0004
+
+#define SFTP_SERVICE_DEFAULT \
+	(SFTP_SERVICE_FL_SFTP|SFTP_SERVICE_FL_SCP|SFTP_SERVICE_FL_DATE)
 
 /* Miscellaneous */
 extern int sftp_logfd;
@@ -230,6 +234,7 @@ const char *sftp_crypto_get_errors(void);
 int sftp_channel_register_exec_handler(module *, const char *,
   int (*set_params)(pool *, uint32_t, array_header *),
   int (*prep_chan)(uint32_t),
+  int (*postopen_chan)(uint32_t),
   int (*handle_pkt)(pool *, void *, uint32_t, char *, uint32_t),
   int (*finish_chan)(uint32_t),
   int (**write_data)(pool *, uint32_t, char *, uint32_t));

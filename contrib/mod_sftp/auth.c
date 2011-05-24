@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.36 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: auth.c,v 1.37 2011-05-24 20:55:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1175,6 +1175,9 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
           services |= SFTP_SERVICE_FL_SFTP;
 
         } else if (strncasecmp(protocol, "scp", 4) == 0) {
+          services |= SFTP_SERVICE_FL_SCP;
+
+        } else if (strncasecmp(protocol, "date", 5) == 0) {
           services |= SFTP_SERVICE_FL_SCP;
         }
       }

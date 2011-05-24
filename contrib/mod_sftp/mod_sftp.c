@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.57 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.58 2011-05-24 20:55:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -53,7 +53,7 @@ pool *sftp_pool = NULL;
 conn_t *sftp_conn = NULL;
 unsigned int sftp_sess_state = 0;
 unsigned long sftp_opts = 0UL;
-unsigned int sftp_services = SFTP_SERVICE_FL_SFTP|SFTP_SERVICE_FL_SCP;
+unsigned int sftp_services = SFTP_SERVICE_DEFAULT;
 
 static int sftp_engine = 0;
 static const char *sftp_client_version = NULL;
