@@ -26,17 +26,21 @@
  * This is mod_copy, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_copy.c,v 1.4 2011-05-23 20:56:39 castaglia Exp $
+ * $Id: mod_copy.c,v 1.5 2011-05-25 23:56:53 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_COPY_VERSION	"mod_copy/0.3"
+#define MOD_COPY_VERSION	"mod_copy/0.4"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030401
 # error "ProFTPD 1.3.4rc1 or later required"
 #endif
+
+extern pr_response_t *resp_list, *resp_err_list;
+
+static const char *trace_channel = "copy";
 
 /* These are copied largely from src/mkhome.c */
 
@@ -49,20 +53,28 @@ static int create_dir(const char *dir) {
 
   if (res < 0 &&
       errno != ENOENT) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, MOD_COPY_VERSION ": error checking '%s': %s",
-      dir, strerror(errno));
+      dir, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
   /* The directory already exists. */
   if (res == 0) {
-    pr_log_debug(DEBUG3, MOD_COPY_VERSION ": '%s' already exists", dir);
-    return 0;
+    pr_trace_msg(trace_channel, 9, "path '%s' already exists", dir);
+    return 1;
   }
 
   if (pr_fsio_mkdir(dir, 0777) < 0) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, MOD_COPY_VERSION ": error creating '%s': %s",
-      dir, strerror(errno));
+      dir, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -80,20 +92,62 @@ static int create_path(pool *p, const char *path) {
     return 0;
  
   dup_path = pstrdup(p, path);
-  curr_path = session.cwd;
- 
+
+  curr_path = "/"; 
   while (dup_path &&
          *dup_path) {
     char *curr_dir;
+    int res;
+    cmd_rec *cmd;
+    pool *sub_pool;
 
     pr_signals_handle();
 
     curr_dir = strsep(&dup_path, "/");
     curr_path = pdircat(p, curr_path, curr_dir, NULL);
 
-    if (create_dir(curr_path) < 0) {
+    /* Dispatch fake C_MKD command, e.g. for mod_quotatab */
+    sub_pool = pr_pool_create_sz(p, 64);
+    cmd = pr_cmd_alloc(sub_pool, 2, pstrdup(sub_pool, C_MKD),
+      pstrdup(sub_pool, curr_path));
+    cmd->arg = pstrdup(cmd->tmp_pool, curr_path);
+    cmd->class = CL_DIRS|CL_WRITE;
+
+    pr_response_clear(&resp_list);
+    pr_response_clear(&resp_err_list);
+
+    res = pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
+    if (res < 0) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG3, MOD_COPY_VERSION
+        ": creating directory '%s' blocked by MKD handler: %s", curr_path,
+        strerror(xerrno));
+
+      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+      pr_response_clear(&resp_err_list);
+
+      destroy_pool(sub_pool);
+
+      errno = xerrno;
       return -1;
     }
+
+    res = create_dir(curr_path);
+    if (res < 0) {
+      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+      pr_response_clear(&resp_err_list);
+
+      destroy_pool(sub_pool);
+      return -1;
+    }
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+    pr_response_clear(&resp_list);
+    destroy_pool(sub_pool);
   }
 
   return 0;
@@ -105,16 +159,24 @@ static int copy_symlink(pool *p, const char *src_path, const char *dst_path) {
 
   len = pr_fsio_readlink(src_path, link_path, PR_TUNABLE_BUFFER_SIZE-1);
   if (len < 0) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, MOD_COPY_VERSION ": error reading link '%s': %s",
-      src_path, strerror(errno));
+      src_path, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
   link_path[len] = '\0';
 
   if (pr_fsio_symlink(link_path, dst_path) < 0) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, MOD_COPY_VERSION
       ": error symlinking '%s' to '%s': %s", link_path, dst_path,
-      strerror(errno));
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -125,6 +187,7 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir) {
   DIR *dh = NULL;
   struct dirent *dent = NULL;
   int res = 0;
+  pool *iter_pool = NULL;
 
   dh = opendir(src_dir);
   if (dh == NULL) {
@@ -140,13 +203,18 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir) {
     pr_signals_handle();
 
     /* Skip "." and ".." */
-    if (strcmp(dent->d_name, ".") == 0 ||
-        strcmp(dent->d_name, "..") == 0) {
+    if (strncmp(dent->d_name, ".", 2) == 0 ||
+        strncmp(dent->d_name, "..", 3) == 0) {
       continue;
     }
 
-    src_path = pdircat(p, src_dir, dent->d_name, NULL);
-    dst_path = pdircat(p, dst_dir, dent->d_name, NULL);
+    if (iter_pool != NULL) {
+      destroy_pool(iter_pool);
+    }
+
+    iter_pool = pr_pool_create_sz(p, 128);
+    src_path = pdircat(iter_pool, src_dir, dent->d_name, NULL);
+    dst_path = pdircat(iter_pool, dst_dir, dent->d_name, NULL);
 
     if (pr_fsio_lstat(src_path, &st) < 0) {
       pr_log_debug(DEBUG3, MOD_COPY_VERSION
@@ -156,8 +224,12 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir) {
 
     /* Is this path to a directory? */
     if (S_ISDIR(st.st_mode)) {
-      create_path(p, dst_path);
-      if (copy_dir(p, src_path, dst_path) < 0) {
+      if (create_path(iter_pool, dst_path) < 0) {
+        res = -1;
+        break;
+      }
+
+      if (copy_dir(iter_pool, src_path, dst_path) < 0) {
         res = -1;
         break;
       }
@@ -165,15 +237,74 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir) {
 
     /* Is this path to a regular file? */
     } else if (S_ISREG(st.st_mode)) {
-      if (pr_fs_copy_file(src_path, dst_path) < 0) {
+      cmd_rec *cmd;
+
+      /* Dispatch fake COPY command, e.g. for mod_quotatab */
+      cmd = pr_cmd_alloc(iter_pool, 4, pstrdup(iter_pool, "SITE"),
+        pstrdup(iter_pool, "COPY"), pstrdup(iter_pool, src_path),
+        pstrdup(iter_pool, dst_path));
+      cmd->arg = pstrcat(iter_pool, "COPY ", src_path, " ", dst_path, NULL);
+      cmd->class = CL_WRITE;
+
+      pr_response_clear(&resp_list);
+      pr_response_clear(&resp_err_list);
+
+      if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+        int xerrno = errno;
+
+        pr_log_debug(DEBUG3, MOD_COPY_VERSION
+          ": COPY of '%s' to '%s' blocked by COPY handler: %s", src_path,
+          dst_path, strerror(xerrno));
+
+        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+        pr_response_clear(&resp_err_list);
+
+        errno = xerrno;
         res = -1;
         break;
+
+      } else {
+        if (pr_fs_copy_file(src_path, dst_path) < 0) {
+          pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+          pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+          pr_response_clear(&resp_err_list);
+
+          res = -1;
+          break;
+
+        } else {
+          char *abs_path;
+          
+          pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+          pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+          pr_response_clear(&resp_list);
+
+          /* Write a TransferLog entry as well. */
+
+          pr_fs_clear_cache();
+          pr_fsio_stat(dst_path, &st);
+
+          abs_path = dir_abs_path(p, dst_path, TRUE);
+
+          if (session.sf_flags & SF_ANON) {
+            xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
+               (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'a',
+               session.anon_user, 'c', "_");
+
+          } else {
+            xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
+              (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'r',
+              session.user, 'c', "_");
+          }
+        }
       }
+
       continue;
 
     /* Is this path a symlink? */
     } else if (S_ISLNK(st.st_mode)) {
-      if (copy_symlink(p, src_path, dst_path) < 0) {
+      if (copy_symlink(iter_pool, src_path, dst_path) < 0) {
         res = -1;
         break;
       }
@@ -185,6 +316,10 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir) {
         src_path);
       continue;
     }
+  }
+
+  if (iter_pool != NULL) {
+    destroy_pool(iter_pool);
   }
 
   closedir(dh);
@@ -220,8 +355,12 @@ static int copy_paths(pool *p, const char *from, const char *to) {
    */
   res = pr_fsio_lstat(from, &st);
   if (res < 0) {
+    int xerrno = errno;
+
     pr_log_debug(DEBUG7, MOD_COPY_VERSION ": error checking '%s': %s", from,
-      strerror(errno));
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
    
@@ -245,8 +384,12 @@ static int copy_paths(pool *p, const char *from, const char *to) {
 
     res = pr_fs_copy_file(from, to);
     if (res < 0) {
+      int xerrno = errno;
+
       pr_log_debug(DEBUG7, MOD_COPY_VERSION
-        ": error copying file '%s' to '%s': %s", from, to, strerror(errno));
+        ": error copying file '%s' to '%s': %s", from, to, strerror(xerrno));
+
+      errno = xerrno;
       return -1;
     }
 
@@ -268,12 +411,26 @@ static int copy_paths(pool *p, const char *from, const char *to) {
     }
 
   } else if (S_ISDIR(st.st_mode)) {
-    create_path(p, to);
+    res = create_path(p, to);
+    if (res < 0) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG7, MOD_COPY_VERSION
+        ": error creating path '%s': %s", to, strerror(xerrno));
+
+      errno = xerrno;
+      return -1;
+    }
+
     res = copy_dir(p, from, to);
     if (res < 0) {
+      int xerrno = errno;
+
       pr_log_debug(DEBUG7, MOD_COPY_VERSION
         ": error copying directory '%s' to '%s': %s", from, to,
-        strerror(errno));
+        strerror(xerrno));
+
+      errno = xerrno;
       return -1;
     }
 
@@ -295,9 +452,12 @@ static int copy_paths(pool *p, const char *from, const char *to) {
 
     res = copy_symlink(p, from, to);
     if (res < 0) {
+      int xerrno = errno;
+
       pr_log_debug(DEBUG7, MOD_COPY_VERSION
-        ": error copying symlink '%s' to '%s': %s", from, to,
-        strerror(errno));
+        ": error copying symlink '%s' to '%s': %s", from, to, strerror(xerrno));
+
+      errno = xerrno;
       return -1;
     }
 
@@ -336,10 +496,10 @@ MODRET copy_copy(cmd_rec *cmd) {
 
     /* XXX What about paths which contain spaces? */
     from = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[2]);
-    from = dir_canonical_path(cmd->tmp_pool, from);
+    from = dir_canonical_vpath(cmd->tmp_pool, from);
 
     to = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[3]);
-    to = dir_canonical_path(cmd->tmp_pool, to);
+    to = dir_canonical_vpath(cmd->tmp_pool, to);
 
     cmd_name = cmd->argv[0];
     cmd->argv[0] = "SITE_COPY";
@@ -376,7 +536,8 @@ MODRET copy_cpfr(cmd_rec *cmd) {
   int res;
   char *path = "";
 
-  if (strncasecmp(cmd->argv[1], "CPFR", 5) != 0) {
+  if (cmd->argc < 3 ||
+      strncasecmp(cmd->argv[1], "CPFR", 5) != 0) {
     return PR_DECLINED(cmd);
   }
 
@@ -409,7 +570,7 @@ MODRET copy_cpfr(cmd_rec *cmd) {
   }
 
   /* Allow renaming a symlink, even a dangling one. */
-  path = dir_canonical_path(cmd->tmp_pool, path);
+  path = dir_canonical_vpath(cmd->tmp_pool, path);
 
   if (!path ||
       !dir_check_canon(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
@@ -430,7 +591,8 @@ MODRET copy_cpto(cmd_rec *cmd) {
   register unsigned int i;
   char *from, *to = "";
 
-  if (strncasecmp(cmd->argv[1], "CPTO", 5) != 0) {
+  if (cmd->argc < 3 ||
+      strncasecmp(cmd->argv[1], "CPTO", 5) != 0) {
     return PR_DECLINED(cmd);
   }
 
@@ -450,6 +612,8 @@ MODRET copy_cpto(cmd_rec *cmd) {
       pr_fs_decode_path(cmd->tmp_pool, cmd->argv[i]), NULL);
   }
 
+  to = dir_canonical_vpath(cmd->tmp_pool, to);
+
   if (copy_paths(cmd->tmp_pool, from, to) < 0) {
     int xerrno = errno;
 
@@ -459,19 +623,20 @@ MODRET copy_cpto(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  pr_response_add(R_250, _("Copy successful"));
+  pr_response_add(R_250, "%s", _("Copy successful"));
   return PR_HANDLED(cmd);
 }
 
 MODRET copy_log_site(cmd_rec *cmd) {
-  if (strncasecmp(cmd->argv[1], "CPTO", 5) != 0) {
+  if (cmd->argc < 3 ||
+      strncasecmp(cmd->argv[1], "CPTO", 5) != 0) {
     return PR_DECLINED(cmd);
   }
 
   /* Delete the stashed CPFR path from the session.notes table. */
   (void) pr_table_remove(session.notes, "mod_copy.cpfr-path", NULL);
 
-  return PR_HANDLED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Initialization functions
