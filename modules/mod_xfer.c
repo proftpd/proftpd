@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.295 2011-05-23 21:11:56 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.296 2011-05-25 23:51:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1685,10 +1685,13 @@ MODRET xfer_stor(cmd_rec *cmd) {
     /* Set errno to EFBIG (or the most appropriate alternative). */
 #if defined(EFBIG)
     pr_data_abort(EFBIG, FALSE);
+    errno = EFBIG;
 #elif defined(EDQUOT)
     pr_data_abort(EDQUOT, FALSE);
+    errno = EDQUOT;
 #else
     pr_data_abort(EPERM, FALSE);
+    errno = EPERM;
 #endif
     return PR_ERROR(cmd);
   }
@@ -1722,10 +1725,13 @@ MODRET xfer_stor(cmd_rec *cmd) {
     /* Set errno to EFBIG (or the most appropriate alternative). */
 #if defined(EFBIG)
       pr_data_abort(EFBIG, FALSE);
+      errno = EFBIG;
 #elif defined(EDQUOT)
       pr_data_abort(EDQUOT, FALSE);
+      errno = EDQUOT;
 #else
       pr_data_abort(EPERM, FALSE);
+      errno = EPERM;
 #endif
       return PR_ERROR(cmd);
     }
@@ -1749,6 +1755,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
       stor_abort();
       pr_data_abort(xerrno, FALSE);
+
+      errno = xerrno;
       return PR_ERROR(cmd);
     }
 
@@ -1774,6 +1782,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
 
     pr_data_abort(xerrno, FALSE);
+    errno = xerrno;
     return PR_ERROR(cmd);
 
   } else {
