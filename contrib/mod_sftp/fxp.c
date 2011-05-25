@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.130 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: fxp.c,v 1.131 2011-05-25 01:15:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3581,8 +3581,9 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
   /* We need to provide an actual argv in this COPY cmd_rec, so we can't
    * use fxp_cmd_alloc(); we have to allocate the cmd_rec ourselves.
    */
-  cmd = pr_cmd_alloc(fxp->pool, 3, pstrdup(fxp->pool, "COPY"), src, dst);
-  cmd->arg = args;
+  cmd = pr_cmd_alloc(fxp->pool, 4, pstrdup(fxp->pool, "SITE"),
+    pstrdup(fxp->pool, "COPY"), src, dst);
+  cmd->arg = pstrcat(fxp->pool, "COPY ", src, " ", dst, NULL);
   cmd->tmp_pool = pr_pool_create_sz(fxp->pool, 64);
   cmd->class = CL_WRITE;
 
@@ -3721,6 +3722,9 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
       xerrno);
 
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
