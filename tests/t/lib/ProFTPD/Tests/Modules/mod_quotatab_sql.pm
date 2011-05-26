@@ -418,8 +418,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -656,8 +656,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -881,8 +881,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -1085,7 +1085,6 @@ EOS
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
-
       $client->login($user, $passwd);
 
       my $conn = $client->retr_raw('test.txt');
@@ -1095,11 +1094,11 @@ EOS
       }
 
       my $buf;
-      $conn->read($buf, 8192, 30);
-      $conn->close();
+      $conn->read($buf, 8192, 25);
+      eval { $conn->close() };
 
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code(1);
+      my $resp_msg = $client->response_msg(1);
 
       my $expected;
 
@@ -1322,8 +1321,8 @@ EOS
       }
 
       my $buf;
-      $conn->read($buf, 8192, 30);
-      $conn->close();
+      $conn->read($buf, 8192, 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -1536,8 +1535,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -1752,8 +1751,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -1955,8 +1954,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -2177,8 +2176,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -2207,8 +2206,8 @@ EOS
       }
 
       $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
@@ -2445,8 +2444,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -2678,8 +2677,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -2708,8 +2707,8 @@ EOS
       }
 
       $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
@@ -2918,8 +2917,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -3155,8 +3154,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -3185,8 +3184,8 @@ EOS
       }
 
       $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
@@ -3431,8 +3430,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -3672,8 +3671,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -3702,8 +3701,8 @@ EOS
       }
 
       $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
@@ -3922,8 +3921,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -4151,8 +4150,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -4181,8 +4180,8 @@ EOS
       }
 
       $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
@@ -4419,8 +4418,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -4652,8 +4651,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -4682,8 +4681,8 @@ EOS
       }
 
       $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
@@ -4894,8 +4893,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -5424,7 +5423,7 @@ EOS
   $self->assert(qr/$expected/, $bytes_xfer_used,
     test_msg("Expected $expected, got $bytes_xfer_used"));
 
-  $expected = 0;
+  $expected = -1;
   $self->assert($expected == $files_in_used,
     test_msg("Expected $expected, got $files_in_used"));
 
@@ -6385,8 +6384,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -6626,8 +6625,8 @@ EOS
       }
 
       my $buf = "Hello, World\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
