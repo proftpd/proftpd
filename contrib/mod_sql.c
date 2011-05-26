@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.215 2011-05-23 20:56:40 castaglia Exp $
+ * $Id: mod_sql.c,v 1.216 2011-05-26 21:48:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3054,7 +3054,7 @@ MODRET info_master(cmd_rec *cmd) {
                 break;
 
               } else {
-                if (strcasecmp(sd->data[0], "null") == 0) {
+                if (strncasecmp(sd->data[0], "null", 5) == 0) {
                   /* Treat the text "null" the same as a real null; just
                    * continue on.
                    */
@@ -3136,7 +3136,7 @@ MODRET info_master(cmd_rec *cmd) {
   }
 
   /* process implicit handlers */
-  name = pstrcat(cmd->tmp_pool, "SQLShowInfo_*", NULL);
+  name = pstrdup(cmd->tmp_pool, "SQLShowInfo_*");
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   while (c) {
@@ -3195,7 +3195,7 @@ MODRET info_master(cmd_rec *cmd) {
                 break;
 
               } else {
-                if (strcasecmp(sd->data[0], "null") == 0) {
+                if (strncasecmp(sd->data[0], "null", 5) == 0) {
                   /* Treat the text "null" the same as a real null; just
                    * continue on.
                    */
@@ -3353,7 +3353,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
                 break;
 
               } else {
-                if (strcasecmp(sd->data[0], "null") == 0) {
+                if (strncasecmp(sd->data[0], "null", 5) == 0) {
                   /* Treat the text "null" the same as a real null; just
                    * continue on.
                    */
@@ -3495,7 +3495,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
                 break;
 
               } else {
-                if (strcasecmp(sd->data[0], "null") == 0) {
+                if (strncasecmp(sd->data[0], "null", 5) == 0) {
                   /* Treat the text "null" the same as a real null; just
                    * continue on.
                    */
@@ -4859,16 +4859,16 @@ MODRET set_sqluserinfo(cmd_rec *cmd) {
   add_config_param_str("SQLPasswordField", 1, (void *) cmd->argv[3]);
 
   /* These could be "NULL" */
-  if (strncasecmp("null", cmd->argv[4], 4) != 0)
+  if (strncasecmp("null", cmd->argv[4], 5) != 0)
     add_config_param_str("SQLUidField", 1, (void *) cmd->argv[4]);
 
-  if (strncasecmp("null", cmd->argv[5], 4) != 0)
+  if (strncasecmp("null", cmd->argv[5], 5) != 0)
     add_config_param_str("SQLGidField", 1, (void *) cmd->argv[5]);
 
-  if (strncasecmp("null", cmd->argv[6], 4) != 0)
+  if (strncasecmp("null", cmd->argv[6], 5) != 0)
     add_config_param_str("SQLHomedirField", 1, (void *) cmd->argv[6]);
 
-  if (strncasecmp("null", cmd->argv[7], 4) != 0)
+  if (strncasecmp("null", cmd->argv[7], 5) != 0)
     add_config_param_str("SQLShellField", 1, (void *) cmd->argv[7]);
 
   return PR_HANDLED(cmd);
