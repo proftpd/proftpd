@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.75 2011-05-25 23:54:45 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.76 2011-05-26 23:14:01 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -1792,7 +1792,16 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
 
     if (sess_tally.bytes_in_used > sess_limit.bytes_in_avail &&
         sess_limit.quota_limit_type == HARD_LIMIT) {
-      if (pr_fsio_unlink(cmd->arg) < 0) {
+      int res;
+
+      res = pr_fsio_unlink(cmd->arg);
+      if (res < 0 &&
+          errno == EISDIR &&
+          use_dirs == TRUE) {
+        res = pr_fsio_rmdir(cmd->arg);
+      }
+
+      if (res < 0) {
         quotatab_log("notice: unable to unlink '%s': %s", cmd->arg,
           strerror(errno));
 
@@ -1892,7 +1901,16 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
 
     if (sess_tally.bytes_in_used > sess_limit.bytes_in_avail &&
         sess_limit.quota_limit_type == HARD_LIMIT) {
-      if (pr_fsio_unlink(cmd->arg) < 0) {
+      int res;
+
+      res = pr_fsio_unlink(cmd->arg);
+      if (res < 0 &&
+          errno == EISDIR &&
+          use_dirs == TRUE) {
+        res = pr_fsio_rmdir(cmd->arg);
+      }
+
+      if (res < 0) {
         quotatab_log("notice: unable to unlink '%s': %s", cmd->arg,
           strerror(errno));
 
@@ -1919,7 +1937,16 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
 
     if (sess_tally.bytes_xfer_used > sess_limit.bytes_xfer_avail &&
         sess_limit.quota_limit_type == HARD_LIMIT) {
-      if (pr_fsio_unlink(cmd->arg) < 0) {
+      int res;
+
+      res = pr_fsio_unlink(cmd->arg);
+      if (res < 0 &&
+          errno == EISDIR &&
+          use_dirs == TRUE) {
+        res = pr_fsio_rmdir(cmd->arg);
+      }
+
+      if (res < 0) {
         quotatab_log("notice: unable to unlink '%s': %s", cmd->arg,
           strerror(errno));
 
@@ -2129,7 +2156,16 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
 
     if (sess_tally.bytes_in_used > sess_limit.bytes_in_avail &&
         sess_limit.quota_limit_type == HARD_LIMIT) {
-      if (pr_fsio_unlink(cmd->argv[2]) < 0) {
+      int res;
+
+      res = pr_fsio_unlink(cmd->argv[2]);
+      if (res < 0 &&
+          errno == EISDIR &&
+          use_dirs == TRUE) {
+        res = pr_fsio_rmdir(cmd->argv[2]);
+      }
+
+      if (res < 0) {
         quotatab_log("notice: unable to unlink '%s': %s", cmd->argv[2],
           strerror(errno));
 
@@ -2158,7 +2194,16 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
 
     if (sess_tally.bytes_xfer_used > sess_limit.bytes_xfer_avail &&
         sess_limit.quota_limit_type == HARD_LIMIT) {
-      if (pr_fsio_unlink(cmd->argv[2]) < 0) {
+      int res;
+
+      res = pr_fsio_unlink(cmd->argv[2]);
+      if (res < 0 &&
+          errno == EISDIR &&
+          use_dirs == TRUE) {
+        res = pr_fsio_rmdir(cmd->argv[2]);
+      }
+
+      if (res < 0) {
         quotatab_log("notice: unable to unlink '%s': %s", cmd->argv[2],
           strerror(errno));
 
@@ -3361,7 +3406,16 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
 
     if (sess_tally.bytes_in_used > sess_limit.bytes_in_avail &&
         sess_limit.quota_limit_type == HARD_LIMIT) {
-      if (pr_fsio_unlink(cmd->arg) < 0) {
+      int res;
+
+      res = pr_fsio_unlink(cmd->arg);
+      if (res < 0 &&
+          errno == EISDIR &&
+          use_dirs == TRUE) {
+        res = pr_fsio_rmdir(cmd->arg);
+      }
+
+      if (res < 0) {
         quotatab_log("notice: unable to unlink '%s': %s", cmd->arg,
           strerror(errno));
 
@@ -3389,7 +3443,16 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
 
     if (sess_tally.bytes_xfer_used > sess_limit.bytes_xfer_avail &&
         sess_limit.quota_limit_type == HARD_LIMIT) {
-      if (pr_fsio_unlink(cmd->arg) < 0) {
+      int res;
+
+      res = pr_fsio_unlink(cmd->arg);
+      if (res < 0 &&
+          errno == EISDIR &&
+          use_dirs == TRUE) {
+        res = pr_fsio_rmdir(cmd->arg);
+      }
+
+      if (res < 0) {
         quotatab_log("notice: unable to unlink '%s': %s", cmd->arg,
           strerror(errno));
 
@@ -3516,7 +3579,16 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
 
     if (sess_tally.bytes_in_used > sess_limit.bytes_in_avail) {
       if (sess_limit.quota_limit_type == HARD_LIMIT) {
-        if (pr_fsio_unlink(cmd->arg) < 0) {
+        int res;
+
+        res = pr_fsio_unlink(cmd->arg);
+        if (res < 0 &&
+            errno == EISDIR &&
+            use_dirs == TRUE) {
+          res = pr_fsio_rmdir(cmd->arg);
+        }
+
+        if (res < 0) {
           quotatab_log("notice: unable to unlink '%s': %s", cmd->arg,
             strerror(errno));
 
@@ -3548,7 +3620,16 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
 
     if (sess_tally.bytes_xfer_used > sess_limit.bytes_xfer_avail) {
       if (sess_limit.quota_limit_type == HARD_LIMIT) {
-        if (pr_fsio_unlink(cmd->arg) < 0) {
+        int res;
+
+        res = pr_fsio_unlink(cmd->arg);
+        if (res < 0 &&
+            errno == EISDIR &&
+            use_dirs == TRUE) {
+          res = pr_fsio_rmdir(cmd->arg);
+        }
+
+        if (res < 0) {
           quotatab_log("notice: unable to unlink '%s': %s", cmd->arg,
             strerror(errno));
 
