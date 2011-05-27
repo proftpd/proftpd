@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.12 2011-04-14 17:59:16 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.13 2011-05-27 03:13:55 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -21,6 +21,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
 <ul>
   <li><a href="#Include">Include</a>
   <li><a href="#MaxCommandRate">MaxCommandRate</a>
+  <li><a href="#PassivePorts">PassivePorts</a>
   <li><a href="#PathAllowFilter">PathAllowFilter</a>
   <li><a href="#PathDenyFilter">PathDenyFilter</a>
   <li><a href="#ProcessTitles">ProcessTitles</a>
@@ -89,6 +90,51 @@ sets a maximum command rate of 200 commands per sec. Or:
   MaxCommandRate 500 2
 </pre>
 sets a maximum command rate of 500 commands every 2 secs.
+
+<p>
+<hr>
+<h2><a name="PassivePorts">PassivePorts</a></h2>
+<strong>Syntax:</strong> PassivePorts <em>min max</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.0rc2 and later
+
+<p>
+The <code>PassivePorts</code> directive restricts the range of ports from which
+the server will select, when the client sends the <code>PASV</code> or
+<code>EPSV</code> commands (<i>i.e.</i> requesting a passive data transfer).
+The server will randomly choose a number from within the specified range until
+an open port is found.  <b>Should no open ports be found within the 
+configured range, the server will default to a random kernel-assigned port,
+and a message logged.</b>
+
+<p>
+The port range configured <b>must</b> be in the non-privileged range
+(<i>e.g.</i> greater than or equal to 1024); it is <b>STRONGLY RECOMMENDED</b>
+that the chosen range be large enough to handle many simultaneous passive
+connections (for example, 49152-65534, the IANA-registered ephemeral port
+range).  The <b>smaller</b> your configured port range is, the greater the
+chance that all of those ports will be in use (depending on the traffic to your
+FTP server), and thus the greater the chance that a port outside that range
+will be configured.
+
+<p>
+Example:
+<pre>
+  # Use the IANA registered ephemeral port range
+  PassivePorts 49152 65534
+</pre>
+
+<p>
+<b>Note</b>: Many admins wonder why the recommended port range is so large.
+The answer is that there is really no value in having a small range.  ProFTPD
+does <b>NOT</b> automatically listen on these ports.  For those people who are
+worried about port scanning, having a larger <code>PassivePorts</code> range
+will not mean that port scans will show those ports as being open AND that
+something is listening there.  Conversely, the question to ask yourself as
+an administrator is: why do you think you need such a small
+<code>PassivePorts</code> range?
 
 <p>
 <hr>
@@ -466,7 +512,7 @@ The <code>mod_core</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-04-14 17:59:16 $</i><br>
+Last Updated: <i>$Date: 2011-05-27 03:13:55 $</i><br>
 
 <br><hr>
 
