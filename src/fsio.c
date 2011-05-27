@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.101 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: fsio.c,v 1.102 2011-05-27 00:38:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -627,8 +627,12 @@ int pr_fs_copy_file(const char *src, const char *dst) {
    */
   src_fh = pr_fsio_open(src, O_RDONLY|O_NONBLOCK);
   if (src_fh == NULL) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, "error opening source file '%s' "
-      "for copying: %s", src, strerror(errno));
+      "for copying: %s", src, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -642,11 +646,14 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   /* This should never fail. */
   (void) pr_fsio_fstat(src_fh, &src_st);
   if (S_ISDIR(src_st.st_mode)) {
+    int xerrno = EISDIR;
+
     pr_fsio_close(src_fh);
 
-    errno = EISDIR;
     pr_log_pri(PR_LOG_WARNING, "warning: cannot copy source '%s': %s", src,
-      strerror(errno));
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -667,10 +674,11 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     int xerrno = errno;
 
     pr_fsio_close(src_fh);
-    errno = xerrno;
 
     pr_log_pri(PR_LOG_WARNING, "error opening destination file '%s' "
-      "for copying: %s", dst, strerror(errno));
+      "for copying: %s", dst, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -679,8 +687,9 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   /* Stat the source file to find its optimal copy block size. */
   if (pr_fsio_fstat(src_fh, &src_st) < 0) {
     int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, "error checking source file '%s' "
-      "for copying: %s", src, strerror(errno));
+      "for copying: %s", src, strerror(xerrno));
 
     pr_fsio_close(src_fh);
     pr_fsio_close(dst_fh);
@@ -718,7 +727,7 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 
   bufsz = src_st.st_blksize;
   buf = malloc(bufsz);
-  if (!buf) {
+  if (buf == NULL) {
     pr_log_pri(PR_LOG_CRIT, "Out of memory!");
     exit(1);
   }
@@ -745,8 +754,8 @@ int pr_fs_copy_file(const char *src, const char *dst) {
       if (res < 0) {
         int xerrno = errno;
 
-        if (errno == EINTR ||
-            errno == EAGAIN) {
+        if (xerrno == EINTR ||
+            xerrno == EAGAIN) {
           pr_signals_handle();
           continue;
         }
@@ -761,6 +770,7 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 
         pr_log_pri(PR_LOG_WARNING, "error copying to '%s': %s", dst,
           strerror(xerrno));
+        free(buf);
 
         errno = xerrno;
         return -1;
@@ -869,8 +879,12 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 
   res = pr_fsio_close(dst_fh);
   if (res < 0) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, "error closing '%s': %s", dst,
-      strerror(errno));
+      strerror(xerrno));
+
+    errno = xerrno;
   }
 
   return res;
