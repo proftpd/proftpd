@@ -1,4 +1,4 @@
-<!-- $Id: Scoreboard.html,v 1.6 2010-12-22 00:13:42 castaglia Exp $ -->
+<!-- $Id: Scoreboard.html,v 1.7 2011-05-27 03:03:07 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Scoreboard.html,v $ -->
 
 <html>
@@ -17,8 +17,10 @@
 The <code>ScoreboardFile</code> is used by <code>proftpd</code> for tracking
 information for each current FTP session.  It is necessary for things like
 <code>MaxClients</code>, <code>MaxClientsPerUser</code>, <i>etc</i>.
-The utility programs (<code>ftpwho</code>, <code>ftpcount</code>,
-<code>ftptop</code>) read the scoreboard and display its information.
+The utility programs (<a href="../utils/ftpwho.html"><code>ftpwho</code></a>,
+<a href="../utils/ftpcount.html"><code>ftpcount</code></a>,
+<a href="../utils/ftptop.html"><code>ftptop</code></a>) read the scoreboard and
+display its information.
 
 <p>
 Here's how <code>proftpd</code> handles its scoreboard: There is a default
@@ -83,7 +85,12 @@ and for each session, the <code>ScoreboardFile</code> records:
   <li>session <a href="Classes.html">class</a>
   <li>time since session started
 </ul>
-and some other data related to data transfers.
+and some other data related to data transfers.  The data transfer-related fields
+include the filename being transferred (may be relative or absolute, depending
+on what the client sent), the transfer command (<i>e.g.</i> <code>RETR</code>
+for downloads, <code>STOR</code> for uploads, <i>etc</i>), the amount of
+data transferred so far, and percentage of transfer completed (for downloads
+only).
 
 <p>
 <b>Scrubbing the Scoreboard</b><br>
@@ -206,7 +213,7 @@ daemon will automatically create a new scoreboard in the correct format.
 
 <p>
 <hr>
-<i>$Date: 2010-12-22 00:13:42 $</i><br>
+<i>$Date: 2011-05-27 03:03:07 $</i><br>
 
 </body>
 </html>
