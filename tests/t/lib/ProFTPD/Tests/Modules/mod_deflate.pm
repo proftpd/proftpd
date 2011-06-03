@@ -450,6 +450,7 @@ sub deflate_list {
         'deflate.passwd' => 1,
         'deflate.pid' => 1,
         'deflate.scoreboard' => 1,
+        'deflate.scoreboard.lck' => 1,
       };
 
       my $ok = 1;
@@ -629,6 +630,7 @@ sub deflate_list_alternating_modes {
           'deflate.passwd' => 1,
           'deflate.pid' => 1,
           'deflate.scoreboard' => 1,
+          'deflate.scoreboard.lck' => 1,
         };
 
         my $ok = 1;
