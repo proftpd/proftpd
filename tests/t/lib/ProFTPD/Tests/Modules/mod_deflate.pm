@@ -9,6 +9,7 @@ use Compress::Zlib;
 use Digest::MD5;
 use File::Spec;
 use IO::Handle;
+use Time::HiRes qw(gettimeofday tv_interval);
 
 use ProFTPD::TestSuite::FTP;
 use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
@@ -68,6 +69,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  deflate_stor_64kb_binary_chunks => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   deflate_mode_z_tls => {
     order => ++$order,
     test_class => [qw(forking mod_tls)],
@@ -98,6 +104,7 @@ sub deflate_opts_modez_level {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -116,7 +123,7 @@ sub deflate_opts_modez_level {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -216,6 +223,7 @@ sub deflate_feat {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -234,7 +242,7 @@ sub deflate_feat {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -350,6 +358,7 @@ sub deflate_list {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -368,7 +377,7 @@ sub deflate_list {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -514,6 +523,7 @@ sub deflate_list_alternating_modes {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -532,7 +542,7 @@ sub deflate_list_alternating_modes {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -697,6 +707,7 @@ sub deflate_rest {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -715,7 +726,7 @@ sub deflate_rest {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -821,6 +832,7 @@ sub deflate_retr {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -839,7 +851,7 @@ sub deflate_retr {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -982,6 +994,7 @@ sub deflate_rest_retr {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1000,7 +1013,7 @@ sub deflate_rest_retr {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $src_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $src_file")) {
@@ -1181,6 +1194,7 @@ sub deflate_stor {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1199,7 +1213,7 @@ sub deflate_stor {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
 
@@ -1329,6 +1343,7 @@ sub deflate_rest_stor {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1347,7 +1362,7 @@ sub deflate_rest_stor {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $src_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $src_file")) {
@@ -1513,6 +1528,7 @@ sub deflate_stor_64kb_binary {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1531,7 +1547,7 @@ sub deflate_stor_64kb_binary {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $input_file = File::Spec->rel2abs("t/etc/modules/mod_deflate/zmode.pdf");
   my $test_file = File::Spec->rel2abs("$tmpdir/zmode.pdf");
@@ -1551,10 +1567,14 @@ sub deflate_stor_64kb_binary {
     die("Can't read $input_file: $!");
   }
 
+  my $timeout_idle = 30;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'deflate:20 DEFAULT:20',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
@@ -1619,7 +1639,6 @@ sub deflate_stor_64kb_binary {
         my $buflen;
         my $bufsz = 8192;
         my $total_read = 0;
-        my $total_written = 0;
 
         binmode($fh);
 
@@ -1661,7 +1680,20 @@ sub deflate_stor_64kb_binary {
           die("Error deflating data: " . $d->msg());
         }
 
-        my $nwrote = $conn->write($deflated, length($deflated));
+        my $deflated_len = length($deflated);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# writing $deflated_len compressed bytes\n";
+        }
+
+        my $upload_start = [gettimeofday];
+        my $nwrote = $conn->write($deflated, $deflated_len, 25);
+        my $upload_elapsed = tv_interval($upload_start);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# wrote $nwrote compressed bytes (elapsed time: $upload_elapsed)\n";
+        }
+
         unless (defined($nwrote)) {
           die("Error writing to client: $!");
         }
@@ -1672,7 +1704,7 @@ sub deflate_stor_64kb_binary {
         die("Can't read $input_file: $!");
       }
 
-      $conn->close();
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
@@ -1715,7 +1747,287 @@ sub deflate_stor_64kb_binary {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 30) };
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub deflate_stor_64kb_binary_chunks {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/deflate.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
+
+  my $log_file = File::Spec->rel2abs('tests.log');
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $input_file = File::Spec->rel2abs("t/etc/modules/mod_deflate/zmode.pdf");
+  my $test_file = File::Spec->rel2abs("$tmpdir/zmode.pdf");
+
+  # Calculate the expected MD5 checksum of this file, for comparison with the
+  # uploaded file.
+  my $ctx = Digest::MD5->new();
+  my $expected_md5;
+
+  if (open(my $fh, "< $input_file")) {
+    binmode($fh);
+    $ctx->addfile($fh);
+    $expected_md5 = $ctx->hexdigest();
+    close($fh);
+
+  } else {
+    die("Can't read $input_file: $!");
+  }
+
+  my $timeout_idle = 30;
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'deflate:20 DEFAULT:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_deflate.c' => {
+        DeflateEngine => 'on',
+        DeflateLog => $log_file,
+      },
+
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      $client->login($user, $passwd);
+      $client->type('binary');
+      $client->mode('Z');
+
+      my $zlevel = 7;
+
+      my ($resp_code, $resp_msg) = $client->opts("MODE Z LEVEL $zlevel");
+
+      my $expected;
+
+      $expected = 200;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = 'OPTS MODE Z OK';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+
+      my $conn = $client->stor_raw('zmode.pdf');
+      unless ($conn) {
+        die("STOR zmode.pdf failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      if (open(my $fh, "< $input_file")) {
+        my $buf;
+        my $buflen;
+        my $bufsz = 32768;
+
+        binmode($fh);
+
+        my ($d, $status) = Compress::Raw::Zlib::Deflate->new({
+          -AppendOutput => 1,
+          -Level => $zlevel,
+        });
+        unless ($status == Z_OK) {
+          die("Can't create deflation stream");
+        }
+
+        my $deflated;
+
+        while (1) {
+          # As we read each chunk of data from disk, compress the chunk
+          # and send it to the server.  The previous regression test buffered
+          # all of the data from disk up, compressed it all in one go, and
+          # uploaded it all at once.
+
+          $buflen = read($fh, $buf, $bufsz);
+          unless (defined($buflen)) {
+            die("Can't read from $input_file: $!");
+          }
+
+          if ($buflen == 0) {
+            # EOF
+            last;
+          }
+
+          $deflated = undef;
+          $status = $d->deflate($buf, $deflated);
+          unless ($status == Z_OK) {
+            die("Error deflating data: " . $d->msg());
+          }
+
+          $status = $d->flush($deflated, Z_SYNC_FLUSH);
+          unless ($status == Z_OK) {
+            die("Error flushing deflated data: " . $d->msg());
+          }
+
+          my $deflated_len = length($deflated);
+          if ($deflated_len > 0) {
+            if ($ENV{TEST_VERBOSE}) {
+              print STDERR "# writing chunk: $deflated_len compressed bytes (from $buflen uncompressed bytes)\n";
+            }
+
+            my $upload_start = [gettimeofday];
+            my $nwrote = $conn->write($deflated, $deflated_len, 25);
+            my $upload_elapsed = tv_interval($upload_start);
+
+            if ($ENV{TEST_VERBOSE}) {
+              print STDERR "# wrote chunk: $nwrote compressed bytes (elapsed time: $upload_elapsed)\n";
+            }
+
+            unless (defined($nwrote)) {
+              die("Error writing to client: $!");
+            }
+          }
+        }
+
+        $deflated = undef;
+        $status = $d->flush($deflated, Z_FINISH);
+        unless ($status == Z_OK) {
+          die("Error deflating data: " . $d->msg());
+        }
+
+        my $deflated_len = length($deflated);
+        if ($deflated_len > 0) {
+          if ($ENV{TEST_VERBOSE}) {
+            print STDERR "# writing final chunk: $deflated_len compressed bytes\n";
+          }
+
+          my $upload_start = [gettimeofday];
+          my $nwrote = $conn->write($deflated, $deflated_len, 25);
+          my $upload_elapsed = tv_interval($upload_start);
+
+          if ($ENV{TEST_VERBOSE}) {
+            print STDERR "# wrote final chunk: $nwrote compressed bytes (elapsed time: $upload_elapsed)\n";
+          }
+
+          unless (defined($nwrote)) {
+            die("Error writing to client: $!");
+          }
+        }
+
+        close($fh);
+
+      } else {
+        die("Can't read $input_file: $!");
+      }
+
+      eval { $conn->close() };
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      my $expected;
+
+      $expected = 226;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = "Transfer complete";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+
+      $client->quit();
+
+      # Calculate the MD5 checksum of the uploaded file
+      $ctx->reset();
+      my $md5;
+
+      if (open(my $fh, "< $test_file")) {
+        binmode($fh);
+        $ctx->addfile($fh);
+        $md5 = $ctx->hexdigest();
+        close($fh);
+
+      } else {
+        die("Can't read $test_file: $!");
+      }
+
+      $self->assert($expected_md5 eq $md5,
+        test_msg("Expected '$expected_md5', got '$md5'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1751,6 +2063,7 @@ sub deflate_mode_z_tls {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1769,7 +2082,7 @@ sub deflate_mode_z_tls {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
   my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
