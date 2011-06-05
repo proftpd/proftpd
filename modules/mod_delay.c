@@ -26,13 +26,13 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.57 2011-05-23 21:11:56 castaglia Exp $
+ * $Id: mod_delay.c,v 1.58 2011-06-05 17:15:39 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_DELAY_VERSION		"mod_delay/0.6"
+#define MOD_DELAY_VERSION		"mod_delay/0.7"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001
@@ -290,7 +290,6 @@ static void delay_mask_signals(unsigned char block) {
     sigaddset(&mask_sigset, SIGUSR1);
     sigaddset(&mask_sigset, SIGINT);
     sigaddset(&mask_sigset, SIGQUIT);
-    sigaddset(&mask_sigset, SIGALRM);
 #ifdef SIGIO
     sigaddset(&mask_sigset, SIGIO);
 #endif
@@ -301,8 +300,9 @@ static void delay_mask_signals(unsigned char block) {
 
     sigprocmask(SIG_BLOCK, &mask_sigset, NULL);
 
-  } else
+  } else {
     sigprocmask(SIG_UNBLOCK, &mask_sigset, NULL);
+  }
 }
 
 static void delay_signals_block(void) {
@@ -316,6 +316,7 @@ static void delay_signals_unblock(void) {
 static void delay_delay(long interval) {
   struct timeval tv;
   long rand_usec;
+  int res, xerrno;
 
   /* Add an additional delay of a random number of usecs, with a 
    * maximum of half of the given interval.
@@ -332,8 +333,16 @@ static void delay_delay(long interval) {
     (long int) ((tv.tv_sec * 1000000) + tv.tv_usec));
 
   delay_signals_block();
-  (void) select(0, NULL, NULL, NULL, &tv);
+  res = select(0, NULL, NULL, NULL, &tv);
+  xerrno = errno;
   delay_signals_unblock();
+
+  if (res < 0 &&
+      xerrno == EINTR) {
+
+    /* If we were interrupted, handle the interrupting signal. */
+    pr_signals_handle();
+  }
 }
 
 static void delay_table_add_interval(unsigned int rownum, const char *protocol,
