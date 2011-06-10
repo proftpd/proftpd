@@ -25,7 +25,7 @@
  * This is mod_deflate, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_deflate.c,v 1.7 2011-05-23 20:56:40 castaglia Exp $
+ * $Id: mod_deflate.c,v 1.8 2011-06-10 02:57:35 castaglia Exp $
  * $Libraries: -lz $
  */
 
@@ -34,7 +34,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_DEFLATE_VERSION		"mod_deflate/0.5.4"
+#define MOD_DEFLATE_VERSION		"mod_deflate/0.5.5"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030201
@@ -88,33 +88,43 @@ static int deflate_zerrno = 0;
 static const char *trace_channel = "deflate";
 
 static const char *deflate_zstrerror(int zerrno) {
+  const char *zstr = "unknown";
+
   switch (zerrno) {
     case Z_OK:
-      return "OK";
+      zstr = "OK";
+      break;
 
     case Z_STREAM_END:
       return "End of stream";
+      break;
 
     case Z_NEED_DICT:
       return "Need dictionary";
+      break;
 
     case Z_ERRNO:
-      return strerror(errno);
+      zstr = strerror(errno);
+      break;
 
     case Z_DATA_ERROR:
-      return "Data error";
+      zstr = "Data error";
+      break;
 
     case Z_MEM_ERROR:
-      return "Memory error";
+      zstr = "Memory error";
+      break;
 
     case Z_BUF_ERROR:
-      return "Buffer error";
+      zstr = "Buffer error";
+      break;
 
     case Z_VERSION_ERROR:
-      return "Version error";
+      zstr = "Version error";
+      break;
   }
 
-  return "unknown";
+  return zstr;
 }
 
 /* NetIO callbacks
@@ -278,11 +288,12 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
   }
 
   if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
-    int datalen = 0, nread = 0, res;
+    int datalen = 0, nread = 0, res, xerrno;
     size_t copylen = 0;
     z_stream *zstrm;
 
     zstrm = nstrm->strm_data;
+    res = 0;
 
     /* If we have data leftover in deflate_zbuf, start by copying all of that
      * into the provided buffer.  Only read more data from the network and
@@ -295,7 +306,7 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
          * buffer.
          */
 
-        pr_trace_msg(trace_channel, 9, "read: returning all %lu bytes of "
+        pr_trace_msg(trace_channel, 9, "read: returning %lu bytes of "
           "previously uncompressed data; no data read from client",
           (unsigned long) deflate_zbuflen);
 
@@ -351,26 +362,29 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
     /* If we reach this point, then the deflate_zbuf buffer is empty of
      * uncompressed data.  We might have some compressed data left over from
      * the previous inflate() call that we need to process
-     * (i.e. zstrm->avail_in > 0), before we can consume more data from the
-     * network.  In which case, we leave the zstrm alone.  Otherwise, read
-     * more data from the network.
+     * (i.e. zstrm->avail_in > 0), though.
+     *
+     * Try to read more deta in from the network.  If we get no data, AND
+     * zstrm->avail_in is zero, then we've reached EOF.  Otherwise, add the
+     * new data to the inflator, and see if we can make some progress.
      */
 
-    if (zstrm->avail_in == 0) {
-      datalen = deflate_rbufsz - deflate_rbuflen;
+    datalen = deflate_rbufsz - deflate_rbuflen;
 
-      /* Read in some data from the stream's fd. */
-      nread = read(nstrm->strm_fd, deflate_rbuf, datalen);
-      if (nread < 0) {
-        int xerrno = errno;
+    /* Read in some data from the stream's fd. */
+    nread = read(nstrm->strm_fd, deflate_rbuf, datalen);
+    if (nread < 0) {
+      xerrno = errno;
 
-        (void) pr_log_writefile(deflate_logfd, MOD_DEFLATE_VERSION,
-          "error reading from socket %d: %s", nstrm->strm_fd, strerror(xerrno));
-        errno = xerrno;
-        return -1;
-      }
+      (void) pr_log_writefile(deflate_logfd, MOD_DEFLATE_VERSION,
+        "error reading from socket %d: %s", nstrm->strm_fd, strerror(xerrno));
 
-      if (nread == 0) {
+      errno = xerrno;
+      return -1;
+    }
+
+    if (nread == 0) {
+      if (zstrm->avail_in == 0) {
         /* EOF.  We know we can return zero here because the deflate_zbuf
          * is empty (see above comment), and we haven't read any more data
          * in from the network.
@@ -379,31 +393,48 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
           "read: read EOF from client, returning 0");
         return 0;
       }
+    }
 
+    pr_trace_msg(trace_channel, 9,
+      "read: read %d bytes of compressed data from client", nread);
+
+    /* Manually adjust the "raw" bytes in counter, so that it will
+     * be accurate for %I logging.
+     */
+    session.total_raw_in += nread;
+
+    if (zstrm->avail_in > 0) {
       pr_trace_msg(trace_channel, 9,
-        "read: read %d bytes of compressed data from client", nread);
-
-      /* Manually adjust the "raw" bytes in counter, so that it will
-       * be accurate for %I logging.
-       */
-      session.total_raw_in += nread;
-
-      datalen = nread;
-      zstrm->next_in = deflate_rbuf;
-      zstrm->avail_in = datalen;
+        "read: processing %d bytes of leftover compressed data from client, "
+        "plus %d additional new bytes from client", zstrm->avail_in, nread);
 
     } else {
-      datalen = zstrm->avail_in;
-
-      pr_trace_msg(trace_channel, 9,
-        "read: processing %d bytes of leftover compressed data from client",
-        datalen);
+      pr_trace_msg(trace_channel, 9, "read: processing %d bytes from client",
+        nread);
     }
+
+    datalen = nread;
+    zstrm->next_in = deflate_rbuf;
+    zstrm->avail_in += datalen;
+
+    copylen = 0;
 
     zstrm->next_out = deflate_zbuf;
     zstrm->avail_out = deflate_zbufsz;
 
+    pr_trace_msg(trace_channel, 19,
+      "read: pre-inflate zstream state: avail_in = %d, avail_out = %d",
+      zstrm->avail_in, zstrm->avail_out);
+
     deflate_zerrno = inflate(zstrm, Z_SYNC_FLUSH);
+    xerrno = errno;
+
+    pr_trace_msg(trace_channel, 19,
+      "read: post-inflate zstream state: avail_in = %d, avail_out = %d "
+      "(zerrno = %s)", zstrm->avail_in, zstrm->avail_out,
+      deflate_zstrerror(deflate_zerrno));
+
+    errno = xerrno;
 
     switch (deflate_zerrno) {
       case Z_OK:
@@ -431,6 +462,7 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
           deflate_zbuf_ptr = deflate_zbuf = tmp;
           deflate_zbufsz = new_bufsz;
         } 
+
         break;
 
       default:
@@ -440,6 +472,7 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
           deflate_zstrerror(deflate_zerrno),
           zstrm->msg ? zstrm->msg : "unavailable");
 
+        errno = xerrno;
         (void) pr_log_writefile(deflate_logfd, MOD_DEFLATE_VERSION,
           "error inflating %lu bytes of data: [%d] %s",
           (unsigned long) datalen, deflate_zerrno,
@@ -472,7 +505,16 @@ static int deflate_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
       zstrm->next_in = Z_NULL;
       zstrm->avail_in = 0;
 
+      pr_trace_msg(trace_channel, 19,
+        "shutdown: pre-deflate zstream state: avail_in = %d, avail_out = %d",
+        zstrm->avail_in, zstrm->avail_out);
+
       deflate_zerrno = deflate(zstrm, Z_FINISH);
+
+      pr_trace_msg(trace_channel, 19,
+        "shutdown: post-inflate zstream state: avail_in = %d, avail_out = %d "
+        "(zerrno = %s)", zstrm->avail_in, zstrm->avail_out,
+        deflate_zstrerror(deflate_zerrno));
 
       if (deflate_zerrno != Z_OK &&
           deflate_zerrno != Z_STREAM_END) {
@@ -539,7 +581,7 @@ static int deflate_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
   }
 
   if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
-    int res = 0;
+    int res = 0, xerrno;
     size_t datalen, offset = 0;
     z_stream *zstrm = nstrm->strm_data;
 
@@ -547,11 +589,26 @@ static int deflate_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
     zstrm->next_in = (Bytef *) buf;
     zstrm->avail_in = buflen;
 
+    pr_trace_msg(trace_channel, 19,
+      "write: pre-deflate zstream state: avail_in = %d, avail_out = %d",
+      zstrm->avail_in, zstrm->avail_out);
+
     deflate_zerrno = deflate(zstrm, Z_SYNC_FLUSH);
+    xerrno = errno;
+
+    pr_trace_msg(trace_channel, 19,
+      "write: post-inflate zstream state: avail_in = %d, avail_out = %d "
+      "(zerrno = %s)", zstrm->avail_in, zstrm->avail_out,
+      deflate_zstrerror(deflate_zerrno));
+
+    errno = xerrno;
+
     if (deflate_zerrno != Z_OK) {
       pr_trace_msg(trace_channel, 3, "write: error deflating data: [%d] %s: %s",
         deflate_zerrno, deflate_zstrerror(deflate_zerrno),
         zstrm->msg ? zstrm->msg : "unavailable");
+
+      errno = xerrno;
 
       (void) pr_log_writefile(deflate_logfd, MOD_DEFLATE_VERSION,
         "error deflating data: [%d] %s", deflate_zerrno,
