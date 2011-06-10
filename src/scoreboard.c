@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.69 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: scoreboard.c,v 1.70 2011-06-10 01:32:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1357,7 +1357,7 @@ static int scoreboard_valid_pid(pid_t pid, pid_t curr_pgrp) {
 }
 
 int pr_scoreboard_scrub(void) {
-  int fd = -1, res;
+  int fd = -1, res, xerrno;
   off_t curr_offset = 0;
   struct flock lock;
   pid_t curr_pgrp = 0;
@@ -1371,11 +1371,14 @@ int pr_scoreboard_scrub(void) {
    */
   PRIVS_ROOT
   fd = open(pr_get_scoreboard(), O_RDWR);
+  xerrno = errno;
   PRIVS_RELINQUISH
 
   if (fd < 0) {
     pr_log_debug(DEBUG1, "unable to scrub ScoreboardFile '%s': %s",
-      pr_get_scoreboard(), strerror(errno));
+      pr_get_scoreboard(), strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -1386,7 +1389,7 @@ int pr_scoreboard_scrub(void) {
   lock.l_len = 0;
 
   while (fcntl(fd, F_SETLKW, &lock) < 0) {
-    int xerrno = errno;
+    xerrno = errno;
 
     if (xerrno == EINTR) {
       pr_signals_handle();
@@ -1428,7 +1431,7 @@ int pr_scoreboard_scrub(void) {
 
       /* Rewind to the start of this slot. */
       if (lseek(fd, curr_offset, SEEK_SET) < 0) {
-        int xerrno = errno;
+        xerrno = errno;
 
         pr_log_debug(DEBUG0, "error seeking to scoreboard entry to scrub: %s",
           strerror(xerrno));
@@ -1444,7 +1447,7 @@ int pr_scoreboard_scrub(void) {
       res = write(fd, &sce, sizeof(sce));
       while (res != sizeof(sce)) {
         if (res < 0) {
-          int xerrno = errno;
+          xerrno = errno;
 
           if (xerrno == EINTR) {
             pr_signals_handle();
