@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1339 2011-06-05 17:15:38 castaglia Exp $
+$Id: NEWS,v 1.1340 2011-06-14 22:25:50 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -29,6 +29,7 @@ CVS
   via 'ftpdctl kick'.
 - Bug 3660 - SITE MKDIR/RMDIR should update quota tallies properly.
 - Bug 3663 - TimeoutLogin cannot interrupt mod_delay as it should.
+- Bug 3664 - mod_sftp does not update process title.
 
 1.3.4rc2 - Released 01-Apr-2011
 --------------------------------

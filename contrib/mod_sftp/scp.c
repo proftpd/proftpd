@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.62 2011-05-24 17:06:16 castaglia Exp $
+ * $Id: scp.c,v 1.63 2011-06-14 22:25:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1823,6 +1823,9 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
   }
 
   if (scp_opts & SFTP_SCP_OPT_ISSRC) {
+    pr_proctitle_set("%s - %s: scp download", session.user,
+      session.proc_prefix);
+
     while (scp_session->path_idx < scp_session->paths->nelts) {
       struct scp_path **paths;
 
@@ -1876,6 +1879,9 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
 
   } else if (scp_opts & SFTP_SCP_OPT_ISDST) {
     struct scp_path **paths;
+
+    pr_proctitle_set("%s - %s: scp upload", session.user,
+      session.proc_prefix);
 
     paths = scp_session->paths->elts;
 

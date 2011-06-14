@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.131 2011-05-25 01:15:17 castaglia Exp $
+ * $Id: fxp.c,v 1.132 2011-06-14 22:25:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4448,6 +4448,9 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", name, NULL, NULL);
 
+  pr_proctitle_set("%s - %s: CLOSE %s", session.user, session.proc_prefix,
+    name);
+
   pr_trace_msg(trace_channel, 7, "received request: CLOSE %s", name);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
@@ -4678,6 +4681,9 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     PR_SCORE_CMD, "%s", "EXTENDED", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", ext_request_name, NULL, NULL);
+
+  pr_proctitle_set("%s - %s: EXTENDED %s", session.user, session.proc_prefix,
+    ext_request_name);
 
   pr_trace_msg(trace_channel, 7, "received request: EXTENDED %s",
     ext_request_name);
@@ -4911,7 +4917,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
-  char *buf, *cmd_name, *ptr, *name;
+  char *attrs_str, *buf, *cmd_name, *ptr, *name;
   const char *reason;
   uint32_t attr_flags, buflen, bufsz, status_code;
   int res;
@@ -4936,8 +4942,13 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
     return 0;
   }
 
+  attrs_str = fxp_strattrs(fxp->pool, attrs, &attr_flags);
+
+  pr_proctitle_set("%s - %s: FSETSTAT %s %s", session.user, session.proc_prefix,
+    name, attrs_str);
+
   pr_trace_msg(trace_channel, 7, "received request: FSETSTAT %s %s", name,
-    fxp_strattrs(fxp->pool, attrs, &attr_flags));
+    attrs_str);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -5088,6 +5099,9 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     PR_SCORE_CMD, "%s", "FSTAT", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", name, NULL, NULL);
+
+  pr_proctitle_set("%s - %s: FSTAT %s", session.user, session.proc_prefix,
+    name);
 
   if (fxp_session->client_version > 3) {
     uint32_t attr_flags;
@@ -5255,6 +5269,9 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", version_str, NULL, NULL);
 
+  pr_proctitle_set("%s - %s: INIT %s", session.user, session.proc_prefix,
+    version_str);
+
   pr_trace_msg(trace_channel, 7, "received request: INIT %lu",
     (unsigned long) fxp_session->client_version);
 
@@ -5364,6 +5381,9 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
     PR_SCORE_CMD_ARG, "%s", args, NULL, NULL);
 
   is_symlink = sftp_msg_read_byte(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+  pr_proctitle_set("%s - %s: LINK %s %s %s", session.user, session.proc_prefix,
+    src_path, dst_path, is_symlink ? "true" : "false");
 
   pr_trace_msg(trace_channel, 7, "received request: LINK %s %s %d", src_path,
     dst_path, is_symlink);
@@ -5496,6 +5516,8 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
     PR_SCORE_CMD, "%s", "LOCK", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", name, NULL, NULL);
+
+  pr_proctitle_set("%s - %s: LOCK %s", session.user, session.proc_prefix, name);
 
   pr_trace_msg(trace_channel, 7,
     "received request: LOCK %s %" PR_LU " %" PR_LU " %lu",
@@ -5737,6 +5759,9 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", path, NULL, NULL);
 
+  pr_proctitle_set("%s - %s: LSTAT %s", session.user, session.proc_prefix,
+    path);
+
   if (fxp_session->client_version > 3) {
     uint32_t attr_flags;
 
@@ -5880,7 +5905,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_mkdir(struct fxp_packet *fxp) {
-  char *buf, *cmd_name, *ptr, *path;
+  char *attrs_str, *buf, *cmd_name, *ptr, *path;
   struct stat *attrs;
   int have_error = FALSE, res = 0;
   mode_t dir_mode;
@@ -5903,8 +5928,13 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
     return 0;
   }
 
+  attrs_str = fxp_strattrs(fxp->pool, attrs, &attr_flags);
+
+  pr_proctitle_set("%s - %s: MKDIR %s %s", session.user, session.proc_prefix,
+    path, attrs_str);
+
   pr_trace_msg(trace_channel, 7, "received request: MKDIR %s %s", path,
-    fxp_strattrs(fxp->pool, attrs, &attr_flags));
+    attrs_str);
 
   if (strlen(path) == 0) {
     /* Use the default directory if the path is empty. */
@@ -6126,6 +6156,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     PR_SCORE_CMD, "%s", "OPEN", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", path, NULL, NULL);
+
+  pr_proctitle_set("%s - %s: OPEN %s", session.user, session.proc_prefix, path);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -6622,6 +6654,9 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", path, NULL, NULL);
 
+  pr_proctitle_set("%s - %s: OPENDIR %s", session.user, session.proc_prefix,
+    path);
+
   pr_trace_msg(trace_channel, 7, "received request: OPENDIR %s", path);
 
   if (strlen(path) == 0) {
@@ -6836,6 +6871,9 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     PR_SCORE_CMD, "%s", "READ", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", name, NULL, NULL);
+
+  pr_proctitle_set("%s - %s: READ %s %" PR_LU " %lu", session.user,
+    session.proc_prefix, name, (pr_off_t) offset, (unsigned long) datalen);
 
   pr_trace_msg(trace_channel, 7, "received request: READ %s %" PR_LU " %lu",
     name, (pr_off_t) offset, (unsigned long) datalen);
@@ -7139,6 +7177,9 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", name, NULL, NULL);
 
+  pr_proctitle_set("%s - %s: READDIR %s", session.user, session.proc_prefix,
+    name);
+
   pr_trace_msg(trace_channel, 7, "received request: READDIR %s", name);
 
   /* XXX What's a good size here?
@@ -7429,6 +7470,9 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", path, NULL, NULL);
 
+  pr_proctitle_set("%s - %s: READLINK %s", session.user, session.proc_prefix,
+    path);
+
   pr_trace_msg(trace_channel, 7, "received request: READLINK %s", path);
 
   if (strlen(path) == 0) {
@@ -7554,6 +7598,9 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     PR_SCORE_CMD, "%s", "REALPATH", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", path, NULL, NULL);
+
+  pr_proctitle_set("%s - %s: REALPATH %s", session.user, session.proc_prefix,
+    path);
 
   pr_trace_msg(trace_channel, 7, "received request: REALPATH %s", path);
 
@@ -7765,6 +7812,9 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     PR_SCORE_CMD, "%s", "REMOVE", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", path, NULL, NULL);
+
+  pr_proctitle_set("%s - %s: REMOVE %s", session.user, session.proc_prefix,
+    path);
 
   pr_trace_msg(trace_channel, 7, "received request: REMOVE %s", path);
 
@@ -8056,6 +8106,9 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     PR_SCORE_CMD, "%s", "RENAME", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", args, NULL, NULL);
+
+  pr_proctitle_set("%s - %s: RENAME %s %s", session.user, session.proc_prefix,
+    old_path, new_path);
 
   if (strlen(old_path) == 0) {
     /* Use the default directory if the path is empty. */
@@ -8372,6 +8425,9 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", path, NULL, NULL);
 
+  pr_proctitle_set("%s - %s: RMDIR %s", session.user, session.proc_prefix,
+    path);
+
   pr_trace_msg(trace_channel, 7, "received request: RMDIR %s", path);
 
   if (strlen(path) == 0) {
@@ -8576,7 +8632,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_setstat(struct fxp_packet *fxp) {
-  char *buf, *cmd_name, *ptr, *path;
+  char *attrs_str, *buf, *cmd_name, *ptr, *path;
   const char *reason;
   uint32_t attr_flags, buflen, bufsz, status_code;
   int res;
@@ -8599,8 +8655,13 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
     return 0;
   }
 
+  attrs_str = fxp_strattrs(fxp->pool, attrs, &attr_flags);
+
+  pr_proctitle_set("%s - %s: SETSTAT %s %s", session.user, session.proc_prefix,
+    path, attrs_str);
+
   pr_trace_msg(trace_channel, 7, "received request: SETSTAT %s %s", path,
-    fxp_strattrs(fxp->pool, attrs, &attr_flags));
+    attrs_str);
 
   if (strlen(path) == 0) {
     /* Use the default directory if the path is empty. */
@@ -8725,6 +8786,8 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     PR_SCORE_CMD, "%s", "STAT", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", path, NULL, NULL);
+
+  pr_proctitle_set("%s - %s: STAT %s", session.user, session.proc_prefix, path);
 
   if (fxp_session->client_version > 3) {
     uint32_t attr_flags;
@@ -8893,13 +8956,16 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
   cmd = fxp_cmd_alloc(fxp->pool, "SYMLINK", args);
   cmd->class = CL_WRITE;
 
-  pr_trace_msg(trace_channel, 7, "received request: SYMLINK %s %s", src_path,
-    dst_path);
-
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "SYMLINK", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", args, NULL, NULL);
+
+  pr_proctitle_set("%s - %s: SYMLINK %s %s", session.user, session.proc_prefix,
+    src_path, dst_path);
+
+  pr_trace_msg(trace_channel, 7, "received request: SYMLINK %s %s", src_path,
+    dst_path);
 
   if (strlen(src_path) == 0) {
     /* Use the default directory if the path is empty. */
@@ -9127,6 +9193,9 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     PR_SCORE_CMD, "%s", "WRITE", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", name, NULL, NULL);
+
+  pr_proctitle_set("%s - %s: WRITE %s %" PR_LU " %lu", session.user,
+    session.proc_prefix, name, (pr_off_t) offset, (unsigned long) datalen);
 
   pr_trace_msg(trace_channel, 7, "received request: WRITE %s %" PR_LU " %lu",
     name, (pr_off_t) offset, (unsigned long) datalen);
@@ -9409,6 +9478,9 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
     PR_SCORE_CMD, "%s", "UNLOCK", NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", name, NULL, NULL);
+
+  pr_proctitle_set("%s - %s: UNLOCK %s", session.user, session.proc_prefix,
+    name);
 
   pr_trace_msg(trace_channel, 7,
     "received request: UNLOCK %s %" PR_LU " %" PR_LU " %lu", name,
