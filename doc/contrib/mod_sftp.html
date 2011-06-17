@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.52 2011-05-13 04:40:44 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.53 2011-06-17 23:28:24 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -330,6 +330,29 @@ In general, there is no need to use this directive unless only one specific
 cipher must be used.
 
 <p>
+For comparison, the cipher algorithms used by OpenSSH by default are:
+<ul>
+  <li>aes128-cbc
+  <li>3des-cbc
+  <li>blowfish-cbc
+  <li>cast128-cbc
+  <li>arcfour128
+  <li>arcfour256
+  <li>aes192-cbc
+  <li>aes256-cbc
+  <li>aes128-ctr
+  <li>aes192-ctr
+  <li>aes256-ctr
+</ul>
+Thus if you wanted to configure <code>mod_sftp</code> to present the same
+cipher algorithms as OpenSSH, you would use:
+<pre>
+  # Make mod_sftp present the same ciphers as OpenSSH
+  SFTPCiphers aes128-cbc 3des-cbc blowfish-cbc cast128-cbc arcfour128 \
+              arcfour256 aes192-cbc aes256-cbc aes128-ctr aes192-ctr aes256-ctr
+</pre>
+
+<p>
 <hr>
 <h2><a name="SFTPClientAlive">SFTPClientAlive</a></h2>
 <strong>Syntax:</strong> SFTPClientAlive <em>count</em> <em>interval</em><br>
@@ -551,6 +574,22 @@ configure it via <code>SFTPDigests</code>.
 <p>
 In general, there is no need to use this directive unless only one specific
 MAC algorithm must be used.
+
+<p>
+For comparison, the MAC algorithms used by OpenSSH by default are:
+<ul>
+  <li>hmac-md5
+  <li>hmac-sha1
+  <li>hmac-ripemd160
+  <li>hmac-sha1-96
+  <li>hmac-md5-96
+</ul>
+Thus if you wanted to configure <code>mod_sftp</code> to present the same
+MAC algorithms as OpenSSH, you would use:
+<pre>
+  # Make mod_sftp present the MAC ciphers as OpenSSH
+  SFTPDigests hmac-md5 hmac-sha1 hmac-ripemd160 hmac-sha1-96 hmac-md5-96
+</pre>
 
 <p>
 <hr>
@@ -776,6 +815,11 @@ The currently implemented options are:
     <code>FSETSTAT</code> SFTP requests; these are equivlant to
     an FTP <code>SITE CHMOD</code> command.
 
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.4rc2</code>.
+  </li>
+
   <p>
   <li><code>IgnoreSFTPUploadPerms</code><br>
     <p>
@@ -804,6 +848,11 @@ The currently implemented options are:
     header.  If so, that the value of that header <b>must</b> match the
     name of the authenticating user/host.
 
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.4rc1</code>.
+  </li>
+
   <p>
   <li><code>OldProtocolCompat</code><br>
     <p>
@@ -816,6 +865,11 @@ The currently implemented options are:
     Note that this option automatically enables the
     <code>PessimisticKexinit</code> SFTPOption as well.
 
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.4rc1</code>.
+  </li>
+
   <p>
   <li><code>PessimisticKexinit</code><br>
     <p>
@@ -824,6 +878,11 @@ The currently implemented options are:
     the <code>KEXINIT</code> key exchange message.  However, some SSH clients
     cannot handle this behavior.  Use this option to disable the optimistic
     sending of the <code>KEXINIT</code> message.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.4rc1</code>.
+  </li>
 </ul>
 
 <p>
@@ -1792,7 +1851,7 @@ source of trouble.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-05-13 04:40:44 $</i><br>
+Last Updated: <i>$Date: 2011-06-17 23:28:24 $</i><br>
 
 <br><hr>
 
