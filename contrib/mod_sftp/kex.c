@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.24 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: kex.c,v 1.25 2011-06-17 22:55:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1316,6 +1316,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       " + Session key exchange: %s", shared);
+    pr_trace_msg(trace_channel, 20, "session key exchange algorithm: %s",
+      shared);
 
   } else {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1350,6 +1352,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       " + Session server hostkey: %s", shared);
+    pr_trace_msg(trace_channel, 20, "session server hostkey algorithm: %s",
+      shared);
 
   } else {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1384,6 +1388,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       " + Session client-to-server encryption: %s", shared);
+    pr_trace_msg(trace_channel, 20,
+      "session client-to-server encryption algorithm: %s", shared);
 
   } else {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1418,6 +1424,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       " + Session server-to-client encryption: %s", shared);
+    pr_trace_msg(trace_channel, 20,
+      "session server-to-client encryption algorithm: %s", shared);
 
   } else {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1452,6 +1460,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       " + Session client-to-server MAC: %s", shared);
+    pr_trace_msg(trace_channel, 20,
+      "session client-to-server MAC algorithm: %s", shared);
 
   } else {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1486,6 +1496,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       " + Session server-to-client MAC: %s", shared);
+    pr_trace_msg(trace_channel, 20,
+      "session server-to-client MAC algorithm: %s", shared);
 
   } else {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1520,6 +1532,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       " + Session client-to-server compression: %s", shared);
+    pr_trace_msg(trace_channel, 20,
+      "session client-to-server compression algorithm: %s", shared);
 
   } else {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1554,6 +1568,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       " + Session server-to-client compression: %s", shared);
+    pr_trace_msg(trace_channel, 20,
+      "session server-to-client compression algorithm: %s", shared);
 
   } else {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1588,6 +1604,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       " + Session client-to-server language: %s", shared);
+    pr_trace_msg(trace_channel, 20,
+      "session client-to-server language: %s", shared);
 
 /* XXX Do not error out if there are no shared languages yet. */
 #if 0
@@ -1625,6 +1643,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       " + Session server-to-client language: %s", shared);
+    pr_trace_msg(trace_channel, 20,
+      "session server-to-client language: %s", shared);
 
 /* XXX Do not error out if there are no shared languages yet. */
 #if 0
