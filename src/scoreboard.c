@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.71 2011-06-21 18:01:20 castaglia Exp $
+ * $Id: scoreboard.c,v 1.72 2011-07-02 23:09:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1381,8 +1381,14 @@ int pr_scoreboard_scrub(void) {
 
   /* Write-lock the scoreboard file. */
   PR_DEVEL_CLOCK(res = wlock_scoreboard());
-  if (res < 0)
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) close(fd);
+
+    errno = xerrno;
     return -1;
+  }
 
 #ifdef HAVE_GETPGRP
   curr_pgrp = getpgrp();
