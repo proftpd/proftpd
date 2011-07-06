@@ -1,4 +1,4 @@
-<!-- $Id: mod_facts.html,v 1.4 2011-03-01 06:17:06 castaglia Exp $ -->
+<!-- $Id: mod_facts.html,v 1.5 2011-07-06 17:14:35 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_facts.html,v $ -->
 
 <html>
@@ -91,10 +91,30 @@ list of files based on those facts.  This is why the <code>ListOptions</code>
 directive has no influence over the <code>MLSD</code> and <code>MLST</code>
 commands.
 
+<p><a name="FactsUIDs">
+<font color=red>Question</font>: Why does <code>MLST</code> show the UIDs/GIDs
+for listed files, where <code>LIST</code>/<code>NLST</code> show the user/group
+names?<br>
+<font color=blue>Answer</code>: The list of "facts" defined by RFC 3659 does
+<b>not</b> include a fact for the stringified version of user/group owner
+names, unfortunately.  This means that the <code>MLSD</code>/<code>MLST</code>
+commands don't have a good way of obtaining the user/group names.
+
+<p>
+To work around this issue, you can add the following to your
+<code>proftpd.conf</code>:
+<pre>
+  &lt;IfModule mod_facts.c&gt;
+    FactsAdvertise off
+  &lt;/IfModule&gt;
+</pre>
+This tells <code>proftpd</code> to not advertise to the client that it can
+support the <code>MLSD</code/<code>MLST</code> commands.
+
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-03-01 06:17:06 $</i><br>
+Last Updated: <i>$Date: 2011-07-06 17:14:35 $</i><br>
 
 <br><hr>
 
