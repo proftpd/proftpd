@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-publickey.c,v 1.7 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: auth-publickey.c,v 1.8 2011-07-09 17:44:58 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -90,7 +90,7 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, const char *orig_user,
   pubkey_data = sftp_msg_read_data(pkt->pool, buf, buflen, pubkey_len);
 
   if (pubkey_algo == NULL) {
-    /* The client did not send the string identify the public key algorithm.
+    /* The client did not send the string identifying the public key algorithm.
      * Thus we need to extract the algorithm string from the public key data.
      */
     pubkey_algo = sftp_msg_read_string(pkt->pool, &pubkey_data, &pubkey_len);
@@ -104,6 +104,14 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, const char *orig_user,
 
   } else if (strncmp(pubkey_algo, "ssh-dss", 8) == 0) {
     pubkey_type = EVP_PKEY_DSA;
+
+  /* XXX This is where we would add support for X509 public keys, e.g.:
+   *
+   *  x509v3-ssh-dss
+   *  x509v3-ssh-rsa
+   *  x509v3-sign (older)
+   *
+   */
 
   } else {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -161,6 +169,12 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, const char *orig_user,
     char *buf2, *ptr2, *signature_data;
     uint32_t buflen2, bufsz2, id_len, signature_len;
 
+    /* XXX This should become a more generic "is this key data
+     * usable/acceptable?" check (and take the pubkey_type parameter), so that
+     * that is where we would check the validity/usability of an X509v3 cert
+     * (if a cert), or if the key is on the blacklist (if a key).
+     */
+
     if (sftp_blacklist_reject_key(pkt->pool, pubkey_data, pubkey_len)) {
       *send_userauth_fail = TRUE;
       errno = EPERM;
@@ -174,6 +188,15 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, const char *orig_user,
      * user with the given pubkey now.  If that succeeds, we use the
      * signature to verify the request.  And if that succeeds, then we're
      * done authenticating.
+     */
+
+    /* XXX Need to pass the pubkey_type here as well, so that the
+     * verification routines can handle different databases of keys/certs.
+     * 
+     * For X509v3 certs, we will want a way to enforce/restrict which
+     * user names can be used with the provided cert.  Perhaps a database
+     * mapping cert fingerprints to user names/UIDs?  Configurable callback
+     * check (HOOK?), for modules to enforce.
      */
 
     if (sftp_keystore_verify_user_key(pkt->pool, user, pubkey_data,

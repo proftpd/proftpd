@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.25 2011-06-17 22:55:50 castaglia Exp $
+ * $Id: kex.c,v 1.26 2011-07-09 17:44:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1209,6 +1209,10 @@ static int setup_hostkey_algo(struct sftp_kex *kex, const char *algo) {
     kex->use_hostkey_type = EVP_PKEY_RSA;
     return 0;
   }
+
+  /* XXX Need to handle "x509v3-ssh-dss", "x509v3-ssh-rsa", "x509v3-sign"
+   * algorithms here.
+   */
 
   errno = EINVAL;
   return -1;
