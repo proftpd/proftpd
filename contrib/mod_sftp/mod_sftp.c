@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.58 2011-05-24 20:55:50 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.59 2011-07-10 16:42:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1532,6 +1532,56 @@ static void sftp_shutdown_ev(const void *event_data, void *user_data) {
   }
 }
 
+static void sftp_wrap_conn_denied_ev(const void *event_data, void *user_data) {
+  const char *proto;
+
+  proto = pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT);
+
+  /* Only send an SSH2 DISCONNECT if we're dealing with an SSH2 client. */
+  if (strncmp(proto, "SSH2", 5) == 0) {
+    char *msg;
+
+    msg = get_param_ptr(main_server->conf, "WrapDenyMsg", FALSE);
+    if (msg != NULL) {
+      /* If the client has authenticated, we can interpolate any '%u'
+       * variable in the configured deny message.
+       */
+      if (sftp_sess_state & SFTP_SESS_STATE_HAVE_AUTH) {
+        msg = sreplace(sftp_pool, msg, "%u", session.user, NULL);
+      }
+
+    } else {
+      msg = _("Access denied");
+    }
+
+    /* If the client has completed the KEXINIT, we can simply use
+     * sftp_disconnect_send().
+     */
+    if (sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX) {
+      sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, msg,
+        __FILE__, __LINE__, "");
+
+    } else {
+      /* If the client has not completed the KEXINIT, then just send the
+       * disconnected message, if any, directly.  Make sure to terminate
+       * the message with a newline character.
+       */
+      msg = pstrcat(sftp_pool, msg, "\n", NULL);
+
+      /* Make sure we block the Response API, otherwise mod_wrap/mod_wrap2 will
+       * also be sending its response, and the SSH client may be confused.
+       */
+      pr_response_block(TRUE);
+
+      if (write(session.c->wfd, msg, strlen(msg)) < 0) {
+        pr_trace_msg("ssh2", 9,
+          "error sending mod_wrap2 connection denied message to client: %s",
+          strerror(errno));
+      }
+    }
+  }
+}
+
 /* Initialization routines
  */
 
@@ -1565,6 +1615,14 @@ static int sftp_init(void) {
   pr_event_register(&sftp_module, "mod_ban.ban-class", sftp_ban_class_ev, NULL);
   pr_event_register(&sftp_module, "mod_ban.ban-host", sftp_ban_host_ev, NULL);
   pr_event_register(&sftp_module, "mod_ban.ban-user", sftp_ban_user_ev, NULL);
+
+  /* Listen for mod_wrap/mod_wrap2 connection denied events, so that we can
+   * attempt to display any deny messages from those modules to the connecting
+   * SSH2 client.
+   */
+  pr_event_register(&sftp_module, "mod_wrap.connection-denied",
+    sftp_wrap_conn_denied_ev, NULL);
+
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&sftp_module, "core.module-unload", sftp_mod_unload_ev,
     NULL);

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1344 2011-07-02 23:09:08 castaglia Exp $
+$Id: NEWS,v 1.1345 2011-07-10 16:42:38 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -41,6 +41,7 @@ CVS
   now handles a parameter value of "~" as "use GID of logged-in user".
 - Bug 3668 - File descriptor leak during scoreboard scrubbing.  This leak
   was inadvertently introduced by the fix for Bug#3667.
+- Bug 3670 - WrapDenyMsg not displayed when using mod_wrap2 + mod_sftp.
 
 1.3.4rc2 - Released 01-Apr-2011
 --------------------------------
