@@ -3031,11 +3031,19 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
 #if OPENSSL_VERSION_NUMBER >= 0x009080dfL
     if (SSL_get_secure_renegotiation_support(ssl) == 1) {
-      /* If the peer indicates that it can support secure renegotiations,
-       * then automatically enable them.
+      /* If the peer indicates that it can support secure renegotiations, log
+       * this fact for reference.
+       *
+       * Note that while we could use this fact to automatically enable the
+       * AllowClientRenegotiations TLSOption, in light of CVE-2011-1473
+       * (where malicious SSL/TLS clients can abuse the fact that session
+       * renegotiations are more computationally intensive for servers than
+       * for clients and repeatedly request renegotiations to create a
+       * denial of service attach), we won't enable AllowClientRenegotiations
+       * programmatically.  The admin will still need to explicitly configure
+       * that.
        */
-      tls_log("client supports secure renegotiations, automatically setting AllowClientRenegotiations TLSOption");
-      tls_opts |= TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS;
+      tls_log("%s", "client supports secure renegotiations");
     }
 #endif /* OpenSSL 0.9.8m and later */
 
