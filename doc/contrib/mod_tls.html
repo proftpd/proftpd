@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.30 2011-04-22 05:21:26 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.31 2011-07-10 18:06:46 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -574,10 +574,11 @@ The currently implemented options are:
     <p>
     The <code>mod_tls</code> will reject any SSL/TLS session renegotiation
     attempts by the client, in order to mitigate any issues arising from the
-    <a href="http://www.educatedguesswork.org/2009/11/understanding_the_tls_renegoti.html">SSL/TLS session renegotiation vulnerability</a> (CVE-2009-3555).
-    If, however, your particular site or clients absolutely require support
-    for client-initiated SSL/TLS session renegotiations, then this option
-    can be used.  <b>Not recommended.</b>
+    <a href="http://www.educatedguesswork.org/2009/11/understanding_the_tls_renegoti.html">SSL/TLS session renegotiation vulnerability</a> (CVE-2009-3555)
+    or <a href="http://www.ietf.org/mail-archive/web/tls/current/msg07553.html">SSL/TLS session renegotiation DoS</a> (CVE-2011-1473).  If, however, your
+    particular site or clients absolutely require support for client-initiated
+    SSL/TLS session renegotiations, then this option can be used.
+    <b>Not recommended.</b>
 
     <p>
     Note, however, that SSL/TLS session renegotiation requests that are
@@ -1569,7 +1570,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-04-22 05:21:26 $</i><br>
+Last Updated: <i>$Date: 2011-07-10 18:06:46 $</i><br>
 
 <hr>
 <font size=2><b><i>
