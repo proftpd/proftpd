@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.408 2011-05-26 23:41:47 castaglia Exp $
+ * $Id: mod_core.c,v 1.409 2011-07-26 21:14:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4981,6 +4981,33 @@ MODRET core_rnto(cmd_rec *cmd) {
         "error renaming '%s' to '%s': %s", cmd->argv[0], session.user,
         (unsigned long) session.uid, (unsigned long) session.gid,
         session.xfer.path, path, strerror(xerrno));
+
+      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
+        strerror(xerrno));
+
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    if (xerrno == EISDIR) {
+      /* In this case, the client has requested that a directory be renamed
+       * across mount points.  The pr_fs_copy_file() function can't handle
+       * copying directories; it only knows about files.  (This could be
+       * fixed to work later, e.g. using code from the mod_copy module.)
+       *
+       * For now, error out now with a more informative error message to the
+       * client.
+       */
+
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+        "error copying '%s' to '%s': %s (previous error was '%s')",
+        cmd->argv[0], session.user, (unsigned long) session.uid,
+        (unsigned long) session.gid, session.xfer.path, path,
+        strerror(xerrno), strerror(EXDEV));
+
+      pr_log_debug(DEBUG4,
+        "Cannot rename directory '%s' across a filesystem mount point",
+        session.xfer.path);
 
       pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
         strerror(xerrno));
