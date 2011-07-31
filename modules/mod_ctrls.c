@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.49 2011-05-23 21:11:56 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.50 2011-07-31 22:07:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -78,6 +78,8 @@ static unsigned int cl_maxlistlen = 5;
 static ctrls_acl_t ctrls_sock_acl;
 
 static unsigned char ctrls_engine = TRUE;
+
+#define CTRLS_LISTEN_FL_REMOVE_SOCKET	0x0001
 
 /* Necessary prototypes */
 static int ctrls_setblock(int sockfd);
@@ -426,7 +428,7 @@ static int ctrls_cls_write(void) {
 }
 
 /* Create a listening local socket */
-static int ctrls_listen(const char *sock_file) {
+static int ctrls_listen(const char *sock_file, int flags) {
   int sockfd = -1, len = 0;
   struct sockaddr_un sock;
 #if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && \
@@ -473,10 +475,12 @@ static int ctrls_listen(const char *sock_file) {
     }
   }
 
-  /* Make sure the path to which we want to bind this socket doesn't already
-   * exist.
-   */
-  unlink(sock_file);
+  if (flags & CTRLS_LISTEN_FL_REMOVE_SOCKET) {
+    /* Make sure the path to which we want to bind this socket doesn't already
+     * exist.
+     */
+    unlink(sock_file);
+  }
 
   /* Fill in the socket structure fields */
   memset(&sock, 0, sizeof(sock));
@@ -493,11 +497,14 @@ static int ctrls_listen(const char *sock_file) {
 
     pr_signals_unblock();
     (void) close(sockfd);
+
     errno = xerrno;
     pr_ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to bind to local socket: %s", strerror(xerrno));
     pr_trace_msg(trace_channel, 1, "unable to bind to local socket: %s",
       strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -507,12 +514,15 @@ static int ctrls_listen(const char *sock_file) {
 
     pr_signals_unblock();
     (void) close(sockfd);
+
     errno = xerrno;
     pr_ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to listen on local socket '%s': %s", sock.sun_path,
       strerror(xerrno));
     pr_trace_msg(trace_channel, 1, "unable to listen on local socket '%s': %s",
       sock.sun_path, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -530,11 +540,14 @@ static int ctrls_listen(const char *sock_file) {
 
     pr_signals_unblock();
     (void) close(sockfd);
+
     errno = xerrno;
     pr_ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to chmod local socket: %s", strerror(xerrno));
     pr_trace_msg(trace_channel, 1, "unable to chmod local socket: %s",
       strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -1136,18 +1149,6 @@ static void ctrls_shutdown_ev(const void *event_data, void *user_data) {
   return;
 }
 
-static void ctrls_postparse_ev(const void *event_data, void *user_data) {
-
-  if (!ctrls_engine) {
-    return;
-  }
-
-  /* Start listening on the ctrl socket */
-  PRIVS_ROOT
-  ctrls_sockfd = ctrls_listen(ctrls_sock_file);
-  PRIVS_RELINQUISH
-}
-
 static void ctrls_restart_ev(const void *event_data, void *user_data) {
   register unsigned int i;
 
@@ -1200,6 +1201,14 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
 }
 
 static void ctrls_startup_ev(const void *event_data, void *user_data) {
+  if (!ctrls_engine) {
+    return;
+  }
+
+  /* Start listening on the ctrl socket */
+  PRIVS_ROOT
+  ctrls_sockfd = ctrls_listen(ctrls_sock_file, CTRLS_LISTEN_FL_REMOVE_SOCKET);
+  PRIVS_RELINQUISH
 
   /* Start a timer for the checking/processing of the ctrl socket.  */
   pr_timer_remove(CTRLS_TIMER_ID, &ctrls_module);
@@ -1236,9 +1245,8 @@ static int ctrls_init(void) {
   ctrls_sock_acl.acl_usrs.allow = ctrls_sock_acl.acl_grps.allow = FALSE;
 
   /* Start listening on the ctrl socket */
-  ctrls_sockfd = ctrls_listen(ctrls_sock_file);
+  ctrls_sockfd = ctrls_listen(ctrls_sock_file, 0);
 
-  pr_event_register(&ctrls_module, "core.postparse", ctrls_postparse_ev, NULL);
   pr_event_register(&ctrls_module, "core.restart", ctrls_restart_ev, NULL);
   pr_event_register(&ctrls_module, "core.shutdown", ctrls_shutdown_ev, NULL);
   pr_event_register(&ctrls_module, "core.startup", ctrls_startup_ev, NULL);
