@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.432 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: main.c,v 1.433 2011-08-01 18:44:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -584,6 +584,11 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
   char *cp = NULL;
   int success = 0;
   pool *resp_pool = NULL;
+
+  if (cmd == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
   cmd->server = main_server;
 
