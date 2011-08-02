@@ -25,7 +25,7 @@
  */
 
 /* Regex management code
- * $Id: regexp.c,v 1.18 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: regexp.c,v 1.19 2011-08-02 17:10:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -185,7 +185,7 @@ void pr_regexp_free(module *m, pr_regex_t *pre) {
 #ifdef PR_USE_PCRE
 static int regexp_compile_pcre(pr_regex_t *pre, const char *pattern,
     int flags) {
-  int err_offset, timerno = -1;
+  int err_offset;
 
   if (pre == NULL ||
       pattern == NULL) {
