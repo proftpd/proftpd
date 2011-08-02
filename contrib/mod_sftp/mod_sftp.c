@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.59 2011-07-10 16:42:38 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.60 2011-08-02 18:24:56 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1551,7 +1551,11 @@ static void sftp_wrap_conn_denied_ev(const void *event_data, void *user_data) {
       }
 
     } else {
-      msg = _("Access denied");
+      /* XXX This needs to be properly localized.  However, trying to use
+       * the _("") construction here causes mod_sftp.c to fail compilation
+       * (see Bug#3677), so leave it hardcoded for now.
+       */
+      msg = "Access denied";
     }
 
     /* If the client has completed the KEXINIT, we can simply use
