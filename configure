@@ -31095,7 +31095,8 @@ fi
 echo "${ECHO_T}$pr_cv_func_sendfile" >&6; }
 
 
-  if test "$pr_cv_func_sendfile" != "none"; then
+  if test x"$pr_cv_func_sendfile" != x"none"; then
+            if test x"$pr_cv_func_sendfile" != x"AIX"; then
 
 cat >>confdefs.h <<\_ACEOF
 #define HAVE_SENDFILE 1
@@ -31106,6 +31107,7 @@ cat >>confdefs.h <<\_ACEOF
 #define PR_USE_SENDFILE 1
 _ACEOF
 
+    fi
   fi
 
   case "$pr_cv_func_sendfile" in
@@ -31266,11 +31268,8 @@ _ACEOF
       ;;
 
     "AIX")
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_AIX_SENDFILE 1
-_ACEOF
-
+      { echo "$as_me:$LINENO: WARNING: ** AIX sendfile support automatically disabled **" >&5
+echo "$as_me: WARNING: ** AIX sendfile support automatically disabled **" >&2;}
       ;;
 
     "Solaris")
