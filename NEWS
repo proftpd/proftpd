@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1347 2011-07-31 22:07:02 castaglia Exp $
+$Id: NEWS,v 1.1348 2011-08-02 19:12:26 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -47,6 +47,7 @@ CVS
   for Bug#3585, in light of CVE-2011-1473.
 - Bug 3674 - After running "proftpd -t" command, ftpdctl commands no longer
   work.
+- Bug 3675 - Automatically disable sendfile support for AIX systems.
 
 1.3.4rc2 - Released 01-Apr-2011
 --------------------------------
