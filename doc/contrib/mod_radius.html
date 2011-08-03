@@ -1,4 +1,4 @@
-<!-- $Id: mod_radius.html,v 1.5 2007-02-20 22:01:40 castaglia Exp $ -->
+<!-- $Id: mod_radius.html,v 1.6 2011-08-03 21:45:57 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_radius.html,v $ -->
 
 <html>
@@ -208,7 +208,8 @@ a <code>&lt;Global&gt;</code> context.
 <p>
 The <code>RadiusNASIdentifier</code> directive configures an NAS
 <em>identifier</em> string that will be in the constructed RADIUS packets.
-By default, the NAS identifier is &quot;ftp&quot;.
+By default, the NAS identifier is &quot;ftp&quot; for FTP sessions, and
+&quot;ssh2&quot; for SFTP/SCP sessions (via the <code>mod_sftp</code> module).
 
 <p>
 Example:
@@ -481,12 +482,12 @@ the normal steps for using third-party modules in proftpd:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2007-02-20 22:01:40 $</i><br>
+Last Updated: <i>$Date: 2011-08-03 21:45:57 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2005 TJ Saunders<br>
+&copy; Copyright 2000-2011 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
