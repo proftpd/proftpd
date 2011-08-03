@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.62 2011-05-23 20:56:40 castaglia Exp $
+ * $Id: mod_radius.c,v 1.63 2011-08-03 21:43:33 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9.1"
@@ -174,7 +174,7 @@ static char *radius_logname = NULL;
 static struct sockaddr radius_local_sock, radius_remote_sock;
 
 /* For tracking various values not stored in the session struct */
-static const char *radius_nas_identifier = "ftp";
+static const char *radius_nas_identifier_config = NULL;
 static char *radius_realm = NULL;
 static time_t radius_session_start = 0;
 static int radius_session_authtype = RADIUS_AUTH_LOCAL;
@@ -2067,6 +2067,7 @@ static void radius_build_packet(radius_packet_t *packet,
   unsigned int nas_port_type = htonl(RADIUS_NAS_PORT_TYPE_VIRTUAL);
   int nas_port = htonl(main_server->ServerPort);
   char *caller_id = NULL;
+  const char *nas_identifier = NULL;
   size_t userlen;
 
   /* Set the packet length. */
@@ -2094,9 +2095,15 @@ static void radius_build_packet(radius_packet_t *packet,
   }
 
   /* Add a NAS identifier attribute of the service name, e.g. 'ftp'. */
+
+  nas_identifier = pr_session_get_protocol(0);
+  if (radius_nas_identifier_config != NULL) {
+    nas_identifier = radius_nas_identifier_config;
+  }
+
   radius_add_attrib(packet, RADIUS_NAS_IDENTIFIER,
-    (const unsigned char *) radius_nas_identifier,
-    strlen((const char *) radius_nas_identifier));
+    (const unsigned char *) nas_identifier,
+    strlen((const char *) nas_identifier));
 
 #ifndef PR_USE_IPV6
   /* Add a NAS IP address attribute. */
@@ -3389,9 +3396,10 @@ static int radius_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "RadiusNASIdentifier", FALSE);
   if (c) {
-    radius_nas_identifier = c->argv[0];
+    radius_nas_identifier_config = c->argv[0];
 
-    radius_log("RadiusNASIdentifier '%s' configured", radius_nas_identifier);
+    radius_log("RadiusNASIdentifier '%s' configured",
+      radius_nas_identifier_config);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "RadiusVendor", FALSE);
