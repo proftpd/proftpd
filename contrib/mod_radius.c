@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.63 2011-08-03 21:43:33 castaglia Exp $
+ * $Id: mod_radius.c,v 1.64 2011-08-04 22:32:34 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9.1"
@@ -102,6 +102,7 @@ typedef struct {
 #define RADIUS_ACCT_SESSION_TIME	46
 #define RADIUS_ACCT_TERMINATE_CAUSE	49
 #define RADIUS_NAS_PORT_TYPE		61
+#define RADIUS_NAS_IPV6_ADDRESS		95
 
 /* RADIUS service types
  */
@@ -1853,6 +1854,33 @@ static void radius_add_attrib(radius_packet_t *packet, unsigned char type,
   memcpy(attrib->data, data, datalen);
 }
 
+#ifdef PR_USE_IPV6
+static void radius_add_nas_ipv6_addr_attrib(radius_packet_t *packet,
+    pr_netaddr_t *addr) {
+  radius_attrib_t *attrib = NULL;
+  struct in6_addr *inaddr;
+
+  /* This length is dictated by RFC3162 */
+  size_t datalen = 16;
+
+  attrib = (radius_attrib_t *) ((unsigned char *) packet +
+    ntohs(packet->length));
+  attrib->type = RADIUS_NAS_IPV6_ADDRESS;
+
+  /* Total size of the attribute.  The "+ 2" takes into account the size
+   * of the attribute identifier.
+   */
+  attrib->length = datalen + 2;
+
+  /* Increment the size of the given packet. */
+  packet->length = htons(ntohs(packet->length) + attrib->length);
+
+  /* Copy in the IPv6 address of the client. */
+  inaddr = pr_netaddr_get_inaddr(addr);
+  memcpy(attrib->data, inaddr->s6_addr32, datalen);
+}
+#endif /* PR_USE_IPV6 */
+
 /* Add a RADIUS password attribute to the packet. */
 static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
     const unsigned char *passwd, unsigned char *secret) {
@@ -2105,8 +2133,18 @@ static void radius_build_packet(radius_packet_t *packet,
     (const unsigned char *) nas_identifier,
     strlen((const char *) nas_identifier));
 
-#ifndef PR_USE_IPV6
-  /* Add a NAS IP address attribute. */
+#ifdef PR_USE_IPV6
+  if (pr_netaddr_use_ipv6()) {
+    /* Add a NAS-IPv6-Address attribute. */
+    radius_add_nas_ipv6_addr_attrib(packet, pr_netaddr_get_sess_local_addr());
+
+  } else {
+    /* Add a NAS-IP-Address attribute. */
+    radius_add_attrib(packet, RADIUS_NAS_IP_ADDRESS, (unsigned char *) &((struct in_addr *) pr_netaddr_get_inaddr(pr_netaddr_get_sess_local_addr()))->s_addr,
+      sizeof(((struct in_addr *) pr_netaddr_get_inaddr(pr_netaddr_get_sess_local_addr()))->s_addr));
+  }
+#else
+  /* Add a NAS-IP-Address attribute. */
   radius_add_attrib(packet, RADIUS_NAS_IP_ADDRESS, (unsigned char *) &((struct in_addr *) pr_netaddr_get_inaddr(pr_netaddr_get_sess_local_addr()))->s_addr,
     sizeof(((struct in_addr *) pr_netaddr_get_inaddr(pr_netaddr_get_sess_local_addr()))->s_addr));
 #endif /* PR_USE_IPV6 */
