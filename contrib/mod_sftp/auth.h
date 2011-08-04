@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.h,v 1.6 2011-05-23 20:40:13 castaglia Exp $
+ * $Id: auth.h,v 1.7 2011-08-04 21:15:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -41,19 +41,19 @@ int sftp_auth_handle(struct ssh2_packet *);
 int sftp_auth_init(void);
 
 /* Handles 'hostbased' user authentication. */
-int sftp_auth_hostbased(struct ssh2_packet *, const char *, const char *,
-  const char *, char **, uint32_t *, int *);
+int sftp_auth_hostbased(struct ssh2_packet *, cmd_rec *,
+  const char *, const char *, const char *, char **, uint32_t *, int *);
 
 /* Handles 'keyboard-interactive' user authentication. */
-int sftp_auth_kbdint(struct ssh2_packet *, const char *, const char *,
-  const char *, char **, uint32_t *, int *);
+int sftp_auth_kbdint(struct ssh2_packet *, cmd_rec *,
+  const char *, const char *, const char *, char **, uint32_t *, int *);
 
 /* Handles 'password' user authentication. */
-int sftp_auth_password(struct ssh2_packet *, const char *, const char *,
-  const char *, char **, uint32_t *, int *);
+int sftp_auth_password(struct ssh2_packet *, cmd_rec *,
+  const char *, const char *, const char *, char **, uint32_t *, int *);
 
 /* Handles 'publickey' user authentication. */
-int sftp_auth_publickey(struct ssh2_packet *, const char *, const char *,
-  const char *, char **, uint32_t *, int *);
+int sftp_auth_publickey(struct ssh2_packet *, cmd_rec *,
+  const char *, const char *, const char *, char **, uint32_t *, int *);
 
 #endif

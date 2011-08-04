@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.37 2011-05-24 20:55:50 castaglia Exp $
+ * $Id: auth.c,v 1.38 2011-08-04 21:15:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -945,16 +945,15 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   set_userauth_methods();
 
-  if (pr_cmd_dispatch_phase(pass_cmd, PRE_CMD, 0) < 0) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "authentication request for user '%s' blocked by '%s' handler",
-      orig_user, pass_cmd->argv[0]);
-
-    pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
-
-    return -1;
-  }
+  /* In order for the actual user password (if any) to be populated properly
+   * in the PRE_CMD PASS dispatch (e.g. this is needed for modules like
+   * mod_radius; see Bug#3676), the PRE_CMD PASS dispatch needs to happen
+   * in the method-specific auth functions, not here.
+   *
+   * Thus this code will look a little strange; the PRE_CMD PASS dispatching
+   * happens in the auth-specific functions, but the POST/LOG_CMD PASS
+   * dispatching will happen here.
+   */
 
   if (strncmp(method, "none", 5) == 0) {
     /* If the client requested the "none" auth method at this point, then
@@ -978,8 +977,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   } else if (strncmp(method, "publickey", 10) == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_PUBLICKEY) {
-      res = sftp_auth_publickey(pkt, orig_user, user, *service, &buf, &buflen,
-        &send_userauth_fail);
+      res = sftp_auth_publickey(pkt, pass_cmd, orig_user, user, *service,
+        &buf, &buflen, &send_userauth_fail);
 
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
@@ -1003,8 +1002,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   } else if (strncmp(method, "keyboard-interactive", 21) == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_KBDINT) {
-      res = sftp_auth_kbdint(pkt, orig_user, user, *service, &buf, &buflen,
-        &send_userauth_fail);
+      res = sftp_auth_kbdint(pkt, pass_cmd, orig_user, user, *service,
+        &buf, &buflen, &send_userauth_fail);
 
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
@@ -1028,8 +1027,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   } else if (strncmp(method, "password", 9) == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_PASSWORD) {
-      res = sftp_auth_password(pkt, orig_user, user, *service, &buf, &buflen,
-        &send_userauth_fail);
+      res = sftp_auth_password(pkt, pass_cmd, orig_user, user, *service,
+        &buf, &buflen, &send_userauth_fail);
 
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
@@ -1053,8 +1052,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   } else if (strncmp(method, "hostbased", 10) == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_HOSTBASED) {
-      res = sftp_auth_hostbased(pkt, orig_user, user, *service, &buf, &buflen,
-        &send_userauth_fail);
+      res = sftp_auth_hostbased(pkt, pass_cmd, orig_user, user, *service,
+        &buf, &buflen, &send_userauth_fail);
 
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);

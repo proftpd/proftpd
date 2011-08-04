@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-kbdint.c,v 1.5 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: auth-kbdint.c,v 1.6 2011-08-04 21:15:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -36,9 +36,9 @@
 
 static const char *trace_channel = "ssh2";
 
-int sftp_auth_kbdint(struct ssh2_packet *pkt, const char *orig_user,
-    const char *user, const char *service, char **buf, uint32_t *buflen,
-    int *send_userauth_fail) {
+int sftp_auth_kbdint(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
+    const char *orig_user, const char *user, const char *service, char **buf,
+    uint32_t *buflen, int *send_userauth_fail) {
   const char *cipher_algo, *mac_algo;
   struct passwd *pw;
   char *submethods;
@@ -49,6 +49,19 @@ int sftp_auth_kbdint(struct ssh2_packet *pkt, const char *orig_user,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "no 'keyboard-interactive' drivers currently registered, unable to "
       "authenticate user '%s' via 'keyboard-interactive' method", user);
+
+    *send_userauth_fail = TRUE;
+    errno = EPERM;
+    return 0;
+  }
+
+  if (pr_cmd_dispatch_phase(pass_cmd, PRE_CMD, 0) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "authentication request for user '%s' blocked by '%s' handler",
+      orig_user, pass_cmd->argv[0]);
+
+    pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
 
     *send_userauth_fail = TRUE;
     errno = EPERM;
