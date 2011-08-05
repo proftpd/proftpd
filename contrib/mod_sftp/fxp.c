@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.132 2011-06-14 22:25:50 castaglia Exp $
+ * $Id: fxp.c,v 1.133 2011-08-05 22:48:06 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5926,6 +5926,16 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags);
   if (attrs == NULL) {
     return 0;
+  }
+
+  /* If the SFTPOption for ignoring perms for SFTP uploads is set, handle
+   * it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.
+   */
+  if ((sftp_opts & SFTP_OPT_IGNORE_SFTP_UPLOAD_PERMS) &&
+      (attr_flags & SSH2_FX_ATTR_PERMISSIONS)) {
+    pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPUploadPerms' "
+      "configured, ignoring perms sent by client");
+    attr_flags &= ~SSH2_FX_ATTR_PERMISSIONS;
   }
 
   attrs_str = fxp_strattrs(fxp->pool, attrs, &attr_flags);

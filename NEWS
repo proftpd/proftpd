@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1350 2011-08-04 22:32:34 castaglia Exp $
+$Id: NEWS,v 1.1351 2011-08-05 22:48:06 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -50,6 +50,7 @@ CVS
 - Bug 3675 - Automatically disable sendfile support for AIX systems.
 - Bug 3676 - RADIUS-based logins don't work using mod_sftp.
 - Bug 3679 - Support NAS-IPv6-Address RADIUS attribute.
+- Bug 3680 - SFTP MKDIR does not respect the IgnoreSFTPUploadPerms option.
 
 1.3.4rc2 - Released 01-Apr-2011
 --------------------------------
