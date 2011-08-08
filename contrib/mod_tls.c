@@ -2150,6 +2150,7 @@ static void tls_blinding_on(SSL *ssl) {
 static int tls_init_ctx(void) {
   config_rec *c;
   int ssl_opts = SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE;
+  long ssl_mode = 0;
 
   if (pr_define_exists("TLS_USE_FIPS") &&
       ServerType == SERVER_INETD) {
@@ -2209,8 +2210,17 @@ static int tls_init_ctx(void) {
 
 #if OPENSSL_VERSION_NUMBER > 0x000906000L
   /* The SSL_MODE_AUTO_RETRY mode was added in 0.9.6. */
-  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
+  ssl_mode |= SSL_MODE_AUTO_RETRY;
 #endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x1000001fL
+  /* The SSL_MODE_RELEASE_BUFFERS mode was added in 1.0.0a. */
+  ssl_mode != SSL_MODE_RELEASE_BUFFERS;
+#endif
+
+  if (ssl_mode != 0) {
+    SSL_CTX_set_mode(ssl_ctx, ssl_mode);
+  }
 
   /* If using OpenSSL-0.9.7 or greater, prevent session resumptions on
    * renegotiations (more secure).
