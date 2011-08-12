@@ -12906,23 +12906,23 @@ echo "$as_me: error: --with-modules parameter missing required colon-separated l
         modules_list=`echo "$withval" | sed -e 's/:/ /g'`;
 
         for amodule in $modules_list; do
-          if test x"$amodule" == xmod_dso ; then
+          if test x"$amodule" = xmod_dso ; then
             { { echo "$as_me:$LINENO: error: use --enable-dso instead of --with-modules=mod_dso for DSO support" >&5
 echo "$as_me: error: use --enable-dso instead of --with-modules=mod_dso for DSO support" >&2;}
    { (exit 1); exit 1; }; }
           fi
 
-          if test x"$amodule" == xmod_ifsession ; then
+          if test x"$amodule" = xmod_ifsession ; then
             ifsession_requested="true"
           fi
 
-          if test x"$amodule" == xmod_lang ; then
+          if test x"$amodule" = xmod_lang ; then
             { { echo "$as_me:$LINENO: error: use --enable-nls instead of --with-modules=mod_lang for NLS/UTF8 support" >&5
 echo "$as_me: error: use --enable-nls instead of --with-modules=mod_lang for NLS/UTF8 support" >&2;}
    { (exit 1); exit 1; }; }
           fi
 
-          if test x"$amodule" == xmod_memcache ; then
+          if test x"$amodule" = xmod_memcache ; then
             { { echo "$as_me:$LINENO: error: use --enable-memcache instead of --with-modules=mod_memcache for Memcache support" >&5
 echo "$as_me: error: use --enable-memcache instead of --with-modules=mod_memcache for Memcache support" >&2;}
    { (exit 1); exit 1; }; }
@@ -12935,7 +12935,7 @@ echo "$as_me: error: use --enable-memcache instead of --with-modules=mod_memcach
           ac_build_static_modules="modules/$amodule $ac_build_static_modules"
         done
 
-                        if test x"$ifsession_requested" == xtrue; then
+                        if test x"$ifsession_requested" = xtrue; then
           ac_static_modules=`echo "$ac_static_modules" | sed -e 's/mod_ifsession\.o//g'`
           ac_static_modules="$ac_static_modules mod_ifsession.o"
 
@@ -15632,7 +15632,7 @@ fi
 # Check whether --enable-pcre was given.
 if test "${enable_pcre+set}" = set; then
   enableval=$enable_pcre;
-    if test x"$enableval" == x"yes" ; then
+    if test x"$enableval" = xyes ; then
 
 cat >>confdefs.h <<\_ACEOF
 #define PR_USE_PCRE 1
@@ -19993,7 +19993,7 @@ echo "${ECHO_T}$ac_add_mod_cap" >&6; }
 
 if test x"$ac_add_mod_cap" = xyes; then
 
-      if test x"$ifsession_requested" == xtrue; then
+      if test x"$ifsession_requested" = xtrue; then
     ac_static_modules=`echo "$ac_static_modules" | sed -e 's/mod_ifsession\.o//g'`
     ac_static_modules="$ac_static_modules mod_cap.o mod_ifsession.o"
 
