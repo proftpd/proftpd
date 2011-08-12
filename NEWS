@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1351 2011-08-05 22:48:06 castaglia Exp $
+$Id: NEWS,v 1.1352 2011-08-12 17:41:43 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -51,6 +51,7 @@ CVS
 - Bug 3676 - RADIUS-based logins don't work using mod_sftp.
 - Bug 3679 - Support NAS-IPv6-Address RADIUS attribute.
 - Bug 3680 - SFTP MKDIR does not respect the IgnoreSFTPUploadPerms option.
+- Bug 3681 - Non POSIX test constructions in autoconf script.
 
 1.3.4rc2 - Released 01-Apr-2011
 --------------------------------

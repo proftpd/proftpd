@@ -352,19 +352,19 @@ AC_ARG_WITH(modules,
         modules_list=`echo "$withval" | sed -e 's/:/ /g'`;
 
         for amodule in $modules_list; do
-          if test x"$amodule" == xmod_dso ; then
+          if test x"$amodule" = xmod_dso ; then
             AC_MSG_ERROR([use --enable-dso instead of --with-modules=mod_dso for DSO support])
           fi
 
-          if test x"$amodule" == xmod_ifsession ; then
+          if test x"$amodule" = xmod_ifsession ; then
             ifsession_requested="true"
           fi
 
-          if test x"$amodule" == xmod_lang ; then
+          if test x"$amodule" = xmod_lang ; then
             AC_MSG_ERROR([use --enable-nls instead of --with-modules=mod_lang for NLS/UTF8 support])
           fi
 
-          if test x"$amodule" == xmod_memcache ; then
+          if test x"$amodule" = xmod_memcache ; then
             AC_MSG_ERROR([use --enable-memcache instead of --with-modules=mod_memcache for Memcache support])
           fi
         done
@@ -377,7 +377,7 @@ AC_ARG_WITH(modules,
 
         dnl Make sure that mod_ifsession, if present in the list, appears at
         dnl the end.
-        if test x"$ifsession_requested" == xtrue; then
+        if test x"$ifsession_requested" = xtrue; then
           ac_static_modules=`echo "$ac_static_modules" | sed -e 's/mod_ifsession\.o//g'`
           ac_static_modules="$ac_static_modules mod_ifsession.o"
 
@@ -750,7 +750,7 @@ AC_ARG_ENABLE(pcre,
     [enable use of PCRE for POSIX regular expressions rather than the system library (default=no)],
   )],
   [
-    if test x"$enableval" == x"yes" ; then
+    if test x"$enableval" = xyes ; then
       AC_DEFINE(PR_USE_PCRE, 1, [Define if using PCRE support.])
       ac_build_addl_libs="$ac_build_addl_libs -lpcreposix -lpcre"
     fi
@@ -1352,7 +1352,7 @@ if test x"$ac_add_mod_cap" = xyes; then
 
   dnl Make sure that mod_ifsession, if present in the list, appears at
   dnl the end.
-  if test x"$ifsession_requested" == xtrue; then
+  if test x"$ifsession_requested" = xtrue; then
     ac_static_modules=`echo "$ac_static_modules" | sed -e 's/mod_ifsession\.o//g'`
     ac_static_modules="$ac_static_modules mod_cap.o mod_ifsession.o"
 
