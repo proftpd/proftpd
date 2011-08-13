@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.409 2011-07-26 21:14:00 castaglia Exp $
+ * $Id: mod_core.c,v 1.410 2011-08-13 19:28:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4330,13 +4330,12 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
       for (cdpath = find_config(main_server->conf, CONF_PARAM, "CDPath", TRUE);
           cdpath != NULL; cdpath =
             find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
-        cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
+        cdir = palloc(cmd->tmp_pool, strlen(cdpath->argv[0]) + strlen(ndir) + 2);
         snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
                  "%s%s%s", (char *) cdpath->argv[0],
                  ((char *) cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
                  ndir);
         dir = dir_realpath(cmd->tmp_pool, cdir);
-        free(cdir);
 
         if (dir &&
             dir_check_full(cmd->tmp_pool, cmd, cmd->group, dir, NULL) &&
@@ -4384,14 +4383,13 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
       for (cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
           cdpath != NULL; cdpath =
             find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
-        cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
+        cdir = palloc(cmd->tmp_pool, strlen(cdpath->argv[0]) + strlen(ndir) + 2);
         snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
                  "%s%s%s", (char *) cdpath->argv[0],
                 ((char *)cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
                 ndir);
         ndir = dir_canonical_vpath(cmd->tmp_pool, cdir);
         dir = dir_realpath(cmd->tmp_pool, ndir);
-        free(cdir);
 
         if (dir &&
             dir_check_full(cmd->tmp_pool, cmd, cmd->group, dir, NULL) &&
