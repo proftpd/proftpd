@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.34 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: trace.c,v 1.35 2011-08-16 16:13:35 castaglia Exp $
  */
 
 
@@ -118,7 +118,7 @@ static int trace_write(const char *channel, int level, const char *msg,
 
     gettimeofday(&now, NULL);
 
-    tm = pr_localtime(NULL, &(now.tv_sec));
+    tm = pr_localtime(NULL, (const time_t *) &(now.tv_sec));
 
     strftime(buf, sizeof(buf), "%b %d %H:%M:%S", tm);
 
