@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.65 2011-08-05 17:21:05 castaglia Exp $
+ * $Id: mod_radius.c,v 1.66 2011-08-16 16:13:02 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9.1"
@@ -2112,9 +2112,18 @@ static void radius_build_packet(radius_packet_t *packet,
 
     inaddr = pr_netaddr_get_inaddr(pr_netaddr_get_sess_local_addr());
 
+    /* Ideally we would use the inaddr->s6_addr32 to get to the 128-bit
+     * IPv6 address.  But `s6_addr32' turns out to be a macro that is not
+     * available on all systems (FreeBSD, for example, does not provide this
+     * macro unless you're building its kernel).
+     *
+     * As a workaround, try using the (hopefully) more portable s6_addr
+     * macro.
+     */
+
     /* Add a NAS-IPv6-Address attribute. */
     radius_add_attrib(packet, RADIUS_NAS_IPV6_ADDRESS,
-      (unsigned char *) inaddr->s6_addr32, sizeof(inaddr->s6_addr32));
+      (unsigned char *) inaddr->s6_addr, sizeof(inaddr->s6_addr));
 
   } else {
 #else
