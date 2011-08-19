@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.410 2011-08-13 19:28:40 castaglia Exp $
+ * $Id: mod_core.c,v 1.411 2011-08-19 16:51:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -483,10 +483,10 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
       }
     }
 
-    pr_log_pri(PR_LOG_INFO, "setting default addresses to %s", addrs_str);
+    pr_log_debug(DEBUG3, "setting default addresses to %s", addrs_str);
 
   } else {
-    pr_log_pri(PR_LOG_INFO, "setting default address to %s",
+    pr_log_debug(DEBUG3, "setting default addresses to %s",
       pr_netaddr_get_ipstr(main_addr));
   }
 
