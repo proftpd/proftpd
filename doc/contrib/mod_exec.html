@@ -1,4 +1,4 @@
-<!-- $Id: mod_exec.html,v 1.6 2011-04-20 16:13:39 castaglia Exp $ -->
+<!-- $Id: mod_exec.html,v 1.7 2011-09-02 17:23:12 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_exec.html,v $ -->
 
 <html>
@@ -583,16 +583,35 @@ module:
   prxs -c -i -d mod_exec.c
 </pre>
 
+<p><a name="FAQ"></a>
+<b>Frequently Asked Questions</b><br>
+<font color=red>Question</font>: Why do <code>%U/%u</code> not work properly with <code>ExecOnConnect</code>?<br>
+<font color=blue>Answer</font>: Both <code>%U</code> and <code>%u</code> will
+be empty on <code>ExecOnConnect</code> because, at that point, the client has
+done a TCP connect to the server, but has not sent any sort of information
+(including user name).  Which means that <code>mod_exec</code> does not have
+a user name to use at connect time.
+
+<p>
+One way to work around this limitation is to use a different trigger,
+<i>e.g.</i>:
+<pre>
+  ExecOnCommand PASS ...
+</pre>
+By the time the client sends the <code>USER</code> and <code>PASS</code>
+commands, the server will have the necessary user information to populate
+the <code>%U/%u</code> variables.
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-04-20 16:13:39 $</i><br>
+Last Updated: <i>$Date: 2011-09-02 17:23:12 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2010 TJ Saunders<br>
+&copy; Copyright 2000-2011 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
