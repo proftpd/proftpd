@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_memcache.c,v 1.2 2011-05-23 20:56:40 castaglia Exp $
+ *  $Id: mod_tls_memcache.c,v 1.3 2011-09-05 19:26:54 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -418,7 +418,7 @@ static int tls_mcache_close(tls_sess_cache_t *cache) {
 static int tls_mcache_add_large_sess(tls_sess_cache_t *cache,
     unsigned char *sess_id, unsigned int sess_id_len, time_t expires,
     SSL_SESSION *sess, int sess_len) {
-  struct mcache_large_entry *entry;
+  struct mcache_large_entry *entry = NULL;
 
   if (sess_len > TLS_MAX_SSL_SESSION_SIZE) {
     const char *exceeds_key = cache_keys[CACHE_KEY_EXCEEDS].key,
@@ -460,6 +460,7 @@ static int tls_mcache_add_large_sess(tls_sess_cache_t *cache,
     register unsigned int i;
     struct mcache_large_entry *entries;
     time_t now;
+    int ok = FALSE;
 
     /* Look for any expired sessions in the list to overwrite/reuse. */
     entries = tls_mcache_sess_list->elts;
@@ -472,8 +473,14 @@ static int tls_mcache_add_large_sess(tls_sess_cache_t *cache,
         entry->expires = 0;
         pr_memscrub(entry->sess_data, entry->sess_datalen);
 
+        ok = TRUE;
         break;
       }
+    }
+
+    if (!ok) {
+      /* We didn't find an open slot in the list.  Need to add one. */
+      entry = push_array(tls_mcache_sess_list);
     }
 
   } else {
@@ -686,7 +693,7 @@ static int tls_mcache_delete(tls_sess_cache_t *cache,
 
 static int tls_mcache_clear(tls_sess_cache_t *cache) {
   register unsigned int i;
-  int res;
+  int res = 0;
 
   pr_trace_msg(trace_channel, 9, "clearing memcache cache %p", cache); 
 
