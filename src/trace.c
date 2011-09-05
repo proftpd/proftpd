@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.35 2011-08-16 16:13:35 castaglia Exp $
+ * $Id: trace.c,v 1.36 2011-09-05 19:19:55 castaglia Exp $
  */
 
 
@@ -559,6 +559,12 @@ int pr_trace_set_options(unsigned long opts) {
 }
 
 int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_trace_vmsg(const char *channel, int level, const char *fmt,
+    va_list vargs) {
   errno = ENOSYS;
   return -1;
 }
