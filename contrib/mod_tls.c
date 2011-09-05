@@ -2215,7 +2215,7 @@ static int tls_init_ctx(void) {
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000001fL
   /* The SSL_MODE_RELEASE_BUFFERS mode was added in 1.0.0a. */
-  ssl_mode != SSL_MODE_RELEASE_BUFFERS;
+  ssl_mode |= SSL_MODE_RELEASE_BUFFERS;
 #endif
 
   if (ssl_mode != 0) {
