@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.22 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: memcache.c,v 1.23 2011-09-06 17:21:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -72,7 +72,10 @@ static unsigned long memcache_rcv_millis = 500;
 static unsigned long memcache_snd_millis = 500;
 static unsigned long memcache_ejected_sec = 0;
 
+#if 0
+/* XXX Unused, for now. */
 static unsigned long memcache_ping_interval = 0;
+#endif
 
 static const char *trace_channel = "memcache";
 
@@ -845,7 +848,7 @@ int pr_memcache_set(pr_memcache_t *mcache, module *m, const char *key,
 }
 
 static void mcache_set_module_namespace(pr_memcache_t *mcache, module *m) {
-  memcached_return res;
+  memcached_return res = MEMCACHED_SUCCESS;
 
   if (m == NULL) {
     res = memcached_callback_set(mcache->mc, MEMCACHED_CALLBACK_PREFIX_KEY,
