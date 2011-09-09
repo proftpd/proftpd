@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.54 2011-08-05 22:49:25 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.55 2011-09-09 17:59:51 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -1290,6 +1290,7 @@ include:
 <ul>
   <li><a href="http://www.ipswitch.com/WS_FTP">WS_FTP Pro</a>
   <li>OpenSSH 3.0 and older
+  <li><a href="http://www.axway.com">Axway</a>
 </ul>
 This <a href="#SFTPBadWindowSize">FAQ</a> describes the configuration to use
 for such clients.
@@ -1583,12 +1584,13 @@ There are two approaches for handling such cases.  You can use the
 <a href="#SFTPClientMatch"><code>SFTPClientMatch</code></a> directive to
 set a smaller channel window size for that particular client, <i>e.g.</i>:
 <pre>
-  SFTPClientMatch ".*WS_FTP.*" channelWindowSize 32MB
+  SFTPClientMatch ".*WS_FTP.*" channelWindowSize 256MB
+  SFTPClientMatch ".*Axway" channelWindowSize 256MB
 </pre>
 or you can use <code>SFTPClientMatch</code> to set a general channel window
 size for all clients:
 <pre>
-  SFTPClientMatch .* channelWindowSize 64MB
+  SFTPClientMatch .* channelWindowSize 256MB
 </pre>
 
 <p>
@@ -1851,7 +1853,7 @@ source of trouble.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-08-05 22:49:25 $</i><br>
+Last Updated: <i>$Date: 2011-09-09 17:59:51 $</i><br>
 
 <br><hr>
 
