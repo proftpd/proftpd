@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1357 2011-09-21 14:48:41 castaglia Exp $
+$Id: NEWS,v 1.1358 2011-09-21 15:30:26 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -58,6 +58,8 @@ CVS
   passive data transfer.
 - Bug 3696 - ExtendedLog not getting written on timeouts.
 - Bug 3697 - Filenames with embedded IAC do not get processed correctly.
+- Bug 3698 - <Limit WRITE> does not prevent deletion of a file/directory via
+  renaming.
 
 1.3.4rc2 - Released 01-Apr-2011
 --------------------------------
