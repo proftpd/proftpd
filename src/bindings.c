@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2010 The ProFTPD Project team
+ * Copyright (c) 2001-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Routines to work with ProFTPD bindings
- * $Id: bindings.c,v 1.43 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: bindings.c,v 1.44 2011-09-21 05:03:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -608,7 +608,7 @@ server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
 }
 
 int pr_ipbind_listen(fd_set *readfds) {
-  int maxfd = 0;
+  int listen_flags = PR_INET_LISTEN_FL_FATAL_ON_ERROR, maxfd = 0;
   register unsigned int i = 0;
 
   /* sanity check */
@@ -623,14 +623,15 @@ int pr_ipbind_listen(fd_set *readfds) {
   }
 
   /* Reset the listener list. */
-  if (!listener_list)
+  if (!listener_list) {
     listener_list = make_array(binding_pool, 1, sizeof(conn_t *));
 
-  else
+  } else {
     /* Nasty hack to "clear" the list by making it think it has no
      * elements.
      */
     listener_list->nelts = 0;
+  }
 
   /* Slower than the hash lookup, but...we have to check each and every
    * ipbind in the table.
@@ -647,12 +648,14 @@ int pr_ipbind_listen(fd_set *readfds) {
 
       if (ipbind->ib_listener) {
 
-        if (ipbind->ib_listener->mode == CM_NONE)
+        if (ipbind->ib_listener->mode == CM_NONE) {
           pr_inet_listen(ipbind->ib_listener->pool, ipbind->ib_listener,
-            tcpBackLog);
+            tcpBackLog, listen_flags);
+        }
 
-        if (ipbind->ib_listener->mode == CM_ACCEPT)
+        if (ipbind->ib_listener->mode == CM_ACCEPT) {
           pr_inet_resetlisten(ipbind->ib_listener->pool, ipbind->ib_listener);
+        }
 
         if (ipbind->ib_listener->mode == CM_LISTEN) {
           FD_SET(ipbind->ib_listener->listen_fd, readfds);

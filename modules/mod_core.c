@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.411 2011-08-19 16:51:04 castaglia Exp $
+ * $Id: mod_core.c,v 1.412 2011-09-21 05:03:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3615,7 +3615,14 @@ MODRET core_pasv(cmd_rec *cmd) {
     session.d->local_addr, session.d->listen_fd);
 
   pr_inet_set_block(session.pool, session.d);
-  pr_inet_listen(session.pool, session.d, 1);
+  if (pr_inet_listen(session.pool, session.d, 1, 0) < 0) {
+    int xerrno = errno;
+
+    pr_response_add_err(R_425, "%s: %s", cmd->argv[0], strerror(xerrno));
+
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
 
   session.d->instrm = pr_netio_open(session.pool, PR_NETIO_STRM_DATA,
     session.d->listen_fd, PR_NETIO_IO_RD);
@@ -4191,7 +4198,14 @@ MODRET core_epsv(cmd_rec *cmd) {
     session.d->local_addr, session.d->listen_fd);
 
   pr_inet_set_block(session.pool, session.d);
-  pr_inet_listen(session.pool, session.d, 1);
+  if (pr_inet_listen(session.pool, session.d, 1, 0) < 0) {
+    int xerrno = errno;
+
+    pr_response_add_err(R_425, "%s: %s", cmd->argv[0], strerror(xerrno));
+
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
 
   session.d->instrm = pr_netio_open(session.pool, PR_NETIO_STRM_DATA,
     session.d->listen_fd, PR_NETIO_IO_RD);

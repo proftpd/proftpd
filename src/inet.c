@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.134 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: inet.c,v 1.135 2011-09-21 05:03:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -880,23 +880,33 @@ int pr_inet_set_block(pool *p, conn_t *c) {
 
 /* Put a connection in listen mode
  */
-int pr_inet_listen(pool *p, conn_t *c, int backlog) {
+int pr_inet_listen(pool *p, conn_t *c, int backlog, int flags) {
   if (!c || c->mode == CM_LISTEN)
     return -1;
 
-  while (TRUE)
+  while (TRUE) {
     if (listen(c->listen_fd, backlog) == -1) {
-      if (errno == EINTR) {
+      int xerrno = errno;
+
+      if (xerrno == EINTR) {
         pr_signals_handle();
         continue;
       }
 
       pr_log_pri(PR_LOG_ERR, "unable to listen on %s#%u: %s",
-        pr_netaddr_get_ipstr(c->local_addr), c->local_port, strerror(errno));
-      pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
+        pr_netaddr_get_ipstr(c->local_addr), c->local_port, strerror(xerrno));
 
-    } else
+      if (flags & PR_INET_LISTEN_FL_FATAL_ON_ERROR) {
+        pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
+      }
+
+      errno = xerrno;
+      return -1;
+
+    } else {
       break;
+    }
+  }
 
   c->mode = CM_LISTEN;
   return 0;

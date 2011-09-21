@@ -25,7 +25,7 @@
  */
 
 /* BSD socket manipulation tools.
- * $Id: inet.h,v 1.36 2011-05-23 20:35:35 castaglia Exp $
+ * $Id: inet.h,v 1.37 2011-09-21 05:03:05 castaglia Exp $
  */
 
 #ifndef PR_INET_H
@@ -153,7 +153,10 @@ int pr_inet_set_nonblock(pool *, conn_t *);
 int pr_inet_set_proto_cork(int, int);
 int pr_inet_set_proto_opts(pool *, conn_t *, int, int, int, int);
 int pr_inet_set_socket_opts(pool *, conn_t *, int, int);
-int pr_inet_listen(pool *, conn_t *, int);
+
+int pr_inet_listen(pool *p, conn_t *conn, int backlog, int flags);
+#define PR_INET_LISTEN_FL_FATAL_ON_ERROR		0x0001
+
 int pr_inet_resetlisten(pool *, conn_t *);
 int pr_inet_accept_nowait(pool *, conn_t *);
 int pr_inet_connect(pool *, conn_t *, pr_netaddr_t *, int);
