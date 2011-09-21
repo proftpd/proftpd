@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.121 2011-05-23 21:11:56 castaglia Exp $
+ * $Id: mod_log.c,v 1.122 2011-09-21 05:40:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1305,6 +1305,9 @@ MODRET log_any(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+/* Event handlers
+ */
+
 static void log_exit_ev(const void *event_data, void *user_data) {
   cmd_rec *cmd;
 
@@ -1329,6 +1332,18 @@ static void log_restart_ev(const void *event_data, void *user_data) {
 
   return;
 }
+
+static void log_xfer_stalled_ev(const void *event_data, void *user_data) {
+
+  /* Automatically dispatch the current command, at the LOG_CMD_ERR phase,
+   * so that the ExtendedLog entry for the command gets written out.  This
+   * should handle any LIST/MLSD/NLST commands as well (Bug#3696).
+   */
+  (void) pr_cmd_dispatch_phase(session.curr_cmd_rec, LOG_CMD_ERR, 0);
+}
+
+/* Initialization handlers
+ */
 
 static int log_init(void) {
   log_pool = make_sub_pool(permanent_pool);
@@ -1571,8 +1586,10 @@ static int log_sess_init(void) {
     }
   }
 
-  /* Register an exit handler for the session. */
+  /* Register event handlers for the session. */
   pr_event_register(&log_module, "core.exit", log_exit_ev, NULL);
+  pr_event_register(&log_module, "core.timeout-stalled", log_xfer_stalled_ev,
+    NULL);
 
   return 0;
 }

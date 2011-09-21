@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.70 2011-05-23 20:35:35 castaglia Exp $
+ * $Id: proftpd.h,v 1.71 2011-09-21 05:40:04 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -138,6 +138,8 @@ typedef struct {
 
   char *curr_cmd;                       /* Current FTP command */
   int curr_cmd_id;			/* Current FTP command ID */
+  struct cmd_struc *curr_cmd_rec;       /* Current command */
+
   int curr_phase;                       /* Current handler phase */
 
   off_t restart_pos;			/* Restart marked position */

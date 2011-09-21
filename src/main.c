@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.433 2011-08-01 18:44:23 castaglia Exp $
+ * $Id: main.c,v 1.434 2011-09-21 05:40:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -286,6 +286,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
 
     session.curr_cmd = cmd->argv[0];
     session.curr_cmd_id = cmd->cmd_id;
+    session.curr_cmd_rec = cmd;
     session.curr_phase = cmd_type;
 
     if (c->cmd_type == cmd_type) {
