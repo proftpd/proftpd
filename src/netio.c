@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.52 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: netio.c,v 1.53 2011-09-21 14:48:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1152,7 +1152,6 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
               case TELNET_DONT:
               case TELNET_IP:
               case TELNET_DM:
-
                 /* Why do we do this crazy thing where we set the "telnet mode"
                  * to be the action, and let the while loop, on the next pass,
                  * handle that action?  It's because we don't know, right now,
@@ -1163,6 +1162,16 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
                  */
                 telnet_mode = cp;
                 continue;
+
+              case TELNET_IAC:
+                /* In this case, we know that the previous byte was TELNET_IAC,
+                 * and that the current byte is another TELNET_IAC.  The
+                 * first TELNET_IAC thus "escapes" the second, telling us
+                 * that the current byte (TELNET_IAC) should be written out
+                 * as is (Bug#3697).
+                 */
+                telnet_mode = 0;
+                break;
 
               default:
                 /* In this case, we know that the previous byte was TELNET_IAC,
