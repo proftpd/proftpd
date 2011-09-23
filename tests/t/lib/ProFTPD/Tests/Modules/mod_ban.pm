@@ -534,8 +534,6 @@ EOI
         $resp_msg = $client->response_msg();
       }
 
-      my $expected;
-
       $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));

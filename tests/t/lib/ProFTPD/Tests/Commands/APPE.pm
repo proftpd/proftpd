@@ -736,7 +736,7 @@ sub appe_ok_files_new_and_existing_bug3612 {
 
       my $test_sz2 = length($buf);
       $expected = $test_sz2;
-      my $test_sz = -s $test_file2;
+      $test_sz = -s $test_file2;
       $self->assert($expected == $test_sz,
         test_msg("Expected $expected bytes, got $test_sz bytes"));
 
@@ -763,7 +763,7 @@ sub appe_ok_files_new_and_existing_bug3612 {
         test_msg("Expected '$expected', got '$resp_msg'"));
 
       $expected = $test_sz1 + length($buf);
-      my $test_sz = -s $test_file1;
+      $test_sz = -s $test_file1;
       $self->assert($expected == $test_sz,
         test_msg("Expected $expected bytes, got $test_sz bytes"));
 
@@ -790,7 +790,7 @@ sub appe_ok_files_new_and_existing_bug3612 {
         test_msg("Expected '$expected', got '$resp_msg'"));
 
       $expected = $test_sz2;
-      my $test_sz = -s $test_file2;
+      $test_sz = -s $test_file2;
       $self->assert($expected == $test_sz,
         test_msg("Expected $expected bytes, got $test_sz bytes"));
     };

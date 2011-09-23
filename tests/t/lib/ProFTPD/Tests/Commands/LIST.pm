@@ -4250,7 +4250,7 @@ sub list_opt_R {
 
       eval { $conn->close() };
 
-      my $res = {};
+      $res = {};
       my $lines = [split(/\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /\s+(\S+)$/) {

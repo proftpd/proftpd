@@ -12008,7 +12008,7 @@ sub sftp_open_creat_excl {
       # Now remove that file, and try again.
       unlink($test_file);
 
-      my $fh = $sftp->open('test.txt', O_CREAT|O_EXCL, 0640);
+      $fh = $sftp->open('test.txt', O_CREAT|O_EXCL, 0640);
       unless ($fh) {
         my ($err_code, $err_name) = $sftp->error();
         die("OPEN test.txt failed: [$err_name] ($err_code)");
@@ -22728,7 +22728,8 @@ sub sftp_config_groupowner_suppl_group_norootprivs {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my $port;
+  ($port, $config_user, $config_group) = config_write($config_file, $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -22910,17 +22911,6 @@ EOF
 
   my $sub_writable_dir = File::Spec->rel2abs("$writable_dir/subwritable");
   mkpath($sub_writable_dir);
-
-  my $test_file = File::Spec->rel2abs("$sub_writable_dir/test.txt");
-  if (open(my $fh, "> $test_file")) {
-    print $fh "Hello, World!\n";
-    unless (close($fh)) {
-      die("Can't write $test_file: $!");
-    }
-
-  } else {
-    die("Can't open $test_file: $!");
-  }
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
@@ -26881,7 +26871,7 @@ sub sftp_log_extlog_putty_mget_retr_file_size_bug3560 {
       my $size = 0;
 
       # READ file1
-      my $res = $fh->read($buf, 8192);
+      $res = $fh->read($buf, 8192);
       while ($res) {
         $size += $res;
 
@@ -26892,7 +26882,7 @@ sub sftp_log_extlog_putty_mget_retr_file_size_bug3560 {
       $fh = undef;
 
       # OPEN file2
-      my $fh = $sftp->open('test2.txt', O_RDONLY);
+      $fh = $sftp->open('test2.txt', O_RDONLY);
       unless ($fh) {
         my ($err_code, $err_name) = $sftp->error();
         die("Can't open test2.txt: [$err_name] ($err_code)");
@@ -27440,7 +27430,6 @@ sub sftp_log_extlog_var_f_remove {
   my $uid = 500;
   my $gid = 500;
 
-  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   my $write_sz = 32;
 
   # Make sure that, if we're running as root, that the home directory has
@@ -32326,7 +32315,8 @@ sub scp_config_groupowner_suppl_group_norootprivs {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my $port;
+  ($port, $config_user, $config_group) = config_write($config_file, $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -33546,10 +33536,10 @@ EOS
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+  $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
   # Build up sqlite3 command to create users, groups tables and populate them
-  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+  $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
 
   if (open(my $fh, "> $db_script")) {
     print $fh <<EOS;
@@ -33571,13 +33561,13 @@ EOS
     die("Can't open $db_script: $!");
   }
 
-  my $cmd = "sqlite3 $db_file < $db_script";
+  $cmd = "sqlite3 $db_file < $db_script";
 
   if ($ENV{TEST_VERBOSE}) {
     print STDERR "Executing sqlite3: $cmd\n";
   }
 
-  my @output = `$cmd`;
+  @output = `$cmd`;
   if (scalar(@output) > 0 &&
       $ENV{TEST_VERBOSE}) {
     print STDERR "Output: ", join('', @output), "\n";

@@ -251,7 +251,7 @@ my $TESTS = {
     test_class => [qw(forking mod_ifsession)],
   },
 
-  sql_sqllog_exit_ifuser => {
+  sql_sqllog_exit_ifgroup => {
     order => ++$order,
     test_class => [qw(forking mod_ifsession)],
   },
@@ -6616,7 +6616,8 @@ EOS
     die($ex);
   }
 
-  my ($login, $ip_addr, $cmd, $req) = get_cmds($db_file, "user = \'$user\'");
+  my ($login, $ip_addr, $req);
+  ($login, $ip_addr, $cmd, $req) = get_cmds($db_file, "user = \'$user\'");
 
   my $expected;
 
@@ -8629,7 +8630,7 @@ EOC
       $client->quit();
 
       # Then connect, login, and quit
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
       $client->quit();
     };
@@ -8686,7 +8687,7 @@ EOC
   unlink($log_file);
 }
 
-sub sql_sqllog_exit_ifuser {
+sub sql_sqllog_exit_ifgroup {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -8791,7 +8792,7 @@ EOS
   if (open(my $fh, ">> $config_file")) {
     print $fh <<EOC;
 <IfModule mod_ifsession.c>
-  <IfUser regex .*>
+  <IfGroup regex .*>
     SQLLog EXIT logout
   </IfUser>
 </IfModule>
@@ -8825,7 +8826,7 @@ EOC
       $client->quit();
 
       # Then connect, login, and quit
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
       $client->quit();
     };

@@ -279,7 +279,7 @@ sub showsymlinks_off_list_rel_symlinked_file {
       };
 
       my $ok = 1;
-      my $mismatch;
+      my $mismatch = '';
       foreach my $name (keys(%$res)) {
         unless (defined($expected->{$name})) {
           $mismatch = $name;
@@ -464,7 +464,7 @@ sub showsymlinks_on_list_rel_symlinked_file {
       };
 
       my $ok = 1;
-      my $mismatch;
+      my $mismatch = '';
       foreach my $name (keys(%$res)) {
         unless (defined($expected->{$name})) {
           $mismatch = $name;
@@ -638,7 +638,7 @@ sub showsymlinks_off_list_rel_symlinked_dir {
       };
 
       my $ok = 1;
-      my $mismatch;
+      my $mismatch = '';
       foreach my $name (keys(%$res)) {
         unless (defined($expected->{$name})) {
           $mismatch = $name;
@@ -815,7 +815,7 @@ sub showsymlinks_on_list_rel_symlinked_dir {
       };
 
       my $ok = 1;
-      my $mismatch;
+      my $mismatch = '';
       foreach my $name (keys(%$res)) {
         unless (defined($expected->{$name})) {
           $mismatch = $name;
@@ -995,7 +995,7 @@ sub showsymlinks_off_nlst_rel_symlinked_file {
       };
 
       my $ok = 1;
-      my $mismatch;
+      my $mismatch = '';
       foreach my $name (keys(%$res)) {
         unless (defined($expected->{$name})) {
           $mismatch = $name;
@@ -1169,7 +1169,7 @@ sub showsymlinks_on_nlst_rel_symlinked_file {
       };
 
       my $ok = 1;
-      my $mismatch;
+      my $mismatch = '';
       foreach my $name (keys(%$res)) {
         unless (defined($expected->{$name})) {
           $mismatch = $name;
@@ -1335,7 +1335,7 @@ sub showsymlinks_off_nlst_rel_symlinked_dir {
       };
 
       my $ok = 1;
-      my $mismatch;
+      my $mismatch = '';
       foreach my $name (keys(%$res)) {
         unless (defined($expected->{$name})) {
           $mismatch = $name;
@@ -1501,7 +1501,7 @@ sub showsymlinks_on_nlst_rel_symlinked_dir {
       };
 
       my $ok = 1;
-      my $mismatch;
+      my $mismatch = '';
       foreach my $name (keys(%$res)) {
         unless (defined($expected->{$name})) {
           $mismatch = $name;
