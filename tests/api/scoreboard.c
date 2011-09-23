@@ -23,7 +23,7 @@
  */
 
 /* Scoreboard API tests
- * $Id: scoreboard.c,v 1.5 2011-05-23 20:50:31 castaglia Exp $
+ * $Id: scoreboard.c,v 1.6 2011-09-23 16:54:03 castaglia Exp $
  */
 
 #include "tests.h"
@@ -511,15 +511,16 @@ START_TEST (scoreboard_scrub_test) {
 
   euid = geteuid();
   if (euid != 0) {
-    if (errno != EPERM) {
+    if (errno != EPERM &&
+        errno != ENOENT) {
       int xerrno = errno;
 
       (void) unlink(path);
       (void) unlink(mutex_path);
       (void) rmdir(dir);
 
-      fail("Failed to set errno to EPERM, got %d (euid = %lu)", xerrno,
-        (unsigned long) euid);
+      fail("Failed to set errno to EPERM/ENOENT, got %d [%s] (euid = %lu)",
+        xerrno, strerror(xerrno), (unsigned long) euid);
     }
 
   } else {
@@ -530,8 +531,8 @@ START_TEST (scoreboard_scrub_test) {
       (void) unlink(mutex_path);
       (void) rmdir(dir);
 
-      fail("Failed to set errno to ENOENT, got %d (euid = %lu)", xerrno,
-        (unsigned long) euid);
+      fail("Failed to set errno to ENOENT, got %d [%s] (euid = %lu)", xerrno,
+        strerror(xerrno), (unsigned long) euid);
     }
   }
 
