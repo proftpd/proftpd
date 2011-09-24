@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.63 2011-06-14 22:25:50 castaglia Exp $
+ * $Id: scp.c,v 1.64 2011-09-24 21:56:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -156,7 +156,6 @@ static cmd_rec *scp_cmd_alloc(pool *p, const char *name, const char *arg) {
 
   cmd = pr_cmd_alloc(p, 2, pstrdup(p, name), arg ? arg : "");
   cmd->arg = (char *) arg;
-  cmd->tmp_pool = pr_pool_create_sz(p, 64);
 
   return cmd;
 }
@@ -1626,11 +1625,46 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", sp->path, NULL, NULL);
 
-  if (pr_fsio_stat(sp->path, &st) < 0) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error stat'ing '%s': %s", sp->path, strerror(errno));
+  cmd = scp_cmd_alloc(p, C_RETR, sp->path);
+  session.curr_cmd_rec = cmd;
 
-    if (sp->fh) {
+  /* First, dispatch the command to the PRE_CMD handlers.  They might,
+   * for example, change the path.
+   */
+  if (sp->fh == NULL) {
+    /* Note, however, that SCP also has to deal with directories, which will
+     * be blocked by the PRE_CMD RETR handler in mod_xfer.
+     */
+
+    if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+      int xerrno = errno;
+ 
+      if (xerrno != EISDIR) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "scp download of '%s' blocked by '%s' handler", sp->path,
+          cmd->argv[0]);
+
+        (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+        destroy_pool(cmd->pool);
+        session.curr_cmd_rec = NULL;
+        return 1;
+      }
+    }
+
+    if (strcmp(sp->path, cmd->arg) != 0) {
+      sp->path = cmd->arg;
+    }
+  }
+
+  if (pr_fsio_stat(sp->path, &st) < 0) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error stat'ing '%s': %s", sp->path, strerror(xerrno));
+
+    if (sp->fh != NULL) {
       /* Set session.curr_cmd, for any FSIO callbacks that might be
        * interested.
        */
@@ -1643,6 +1677,8 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     }
 
+    destroy_pool(cmd->pool);
+    session.curr_cmd_rec = NULL;
     return 1;
   }
 
@@ -1654,6 +1690,8 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
     if (S_ISDIR(st.st_mode)) {
       if (scp_opts & SFTP_SCP_OPT_RECURSE) {
         res = send_dir(p, channel_id, sp, &st);
+        destroy_pool(cmd->pool);
+        session.curr_cmd_rec = NULL;
         return res;
 
       } else {
@@ -1663,6 +1701,8 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
         (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
+        destroy_pool(cmd->pool);
+        session.curr_cmd_rec = NULL;
         return 1;
       }
 
@@ -1673,28 +1713,13 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
       (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
+      destroy_pool(cmd->pool);
+      session.curr_cmd_rec = NULL;
       return 1;
     }
   }
 
   if (sp->fh == NULL) {
-    cmd = scp_cmd_alloc(p, C_RETR, sp->path);
-
-    if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "scp download of '%s' blocked by '%s' handler", sp->path,
-        cmd->argv[0]);
-
-      (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
-      return 1;
-    }
-
-    if (strcmp(sp->path, cmd->arg) != 0) {
-      sp->path = cmd->arg;
-    }
-
     sp->best_path = dir_canonical_vpath(scp_pool, sp->path);
 
     if (!dir_check(p, cmd, G_READ, sp->best_path, NULL)) {
@@ -1704,6 +1729,8 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
       (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
+      destroy_pool(cmd->pool);
+      session.curr_cmd_rec = NULL;
       return 1;
     }
 
@@ -1721,6 +1748,9 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
       (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+      destroy_pool(cmd->pool);
+      session.curr_cmd_rec = NULL;
 
       errno = xerrno;
       return 1;
@@ -1748,6 +1778,8 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     }
 
+    destroy_pool(cmd->pool);
+    session.curr_cmd_rec = NULL;
     return res;
   }
 
@@ -1758,6 +1790,8 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     }
 
+    destroy_pool(cmd->pool);
+    session.curr_cmd_rec = NULL;
     return res;
   }
 
@@ -1766,9 +1800,12 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
     res = send_data(p, channel_id, sp, &st);
     if (res == 1) {
-      cmd = scp_cmd_alloc(p, C_RETR, sp->path);
       (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+      destroy_pool(cmd->pool);
+      session.curr_cmd_rec = NULL;
+
       return res;
     }
   }
@@ -1776,9 +1813,11 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
   pr_fsio_close(sp->fh);
   sp->fh = NULL;
 
-  cmd = scp_cmd_alloc(p, C_RETR, sp->path);
   (void) pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   (void) pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+
+  destroy_pool(cmd->pool);
+  session.curr_cmd_rec = NULL;
 
   return 1;
 }
