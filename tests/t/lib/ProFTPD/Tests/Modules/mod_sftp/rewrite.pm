@@ -585,12 +585,12 @@ sub sftp_rewrite_lstat {
     die("Can't open $test_file: $!");
   }
 
-  my $test_size = (stat($test_file))[7];
-
   my $test_symlink = File::Spec->rel2abs("$tmpdir/test_link");
   unless (symlink($test_file, $test_symlink)) {
     die("Can't symlink $test_symlink to $test_file: $!");
   }
+
+  my $test_size = (lstat($test_symlink))[7];
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2697,6 +2697,9 @@ sub sftp_rewrite_symlink {
         die("FXP_SYMLINK failed: [$err_name] ($err_code)");
       }
 
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
+
       $ssh2->disconnect();
 
       unless (-l $test_symlink) {
@@ -3021,6 +3024,7 @@ sub sftp_rewrite_homedir {
         die("FXP_REALPATH failed: [$err_name] ($err_code)");
       }
 
+      $sftp = undef;
       $ssh2->disconnect();
 
       my $expected = $home_dir;
@@ -3335,7 +3339,7 @@ sub scp_rewrite_download {
       my $res = $ssh2->scp_get('test&file.txt', $output_file);
       unless ($res) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
-        die("Can't download sftp.conf from server: [$err_name] ($err_code) $err_str");
+        die("Can't download test&file.txt from server: [$err_name] ($err_code) $err_str");
       }
 
       $ssh2->disconnect();
