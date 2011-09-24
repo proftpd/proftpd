@@ -45,6 +45,7 @@ sub help_ok {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -63,7 +64,7 @@ sub help_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -86,12 +87,6 @@ sub help_ok {
     ' NOOP    FEAT    OPTS    AUTH*   CCC*    CONF*   ENC*    MIC*    ',
     ' PBSZ*   PROT*   TYPE    STRU    MODE    RETR    STOR    STOU    ',
   ];
-  if (feature_have_module_compiled("mod_tls.c")) {
-    $auth_helps = [
-      ' NOOP    FEAT    OPTS    AUTH    CCC*    CONF*   ENC*    MIC*    ',
-      ' PBSZ    PROT    TYPE    STRU    MODE    RETR    STOR    STOU    ',
-    ];
-  }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
