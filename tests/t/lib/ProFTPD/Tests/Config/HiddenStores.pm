@@ -134,7 +134,7 @@ sub hiddenstores_ok {
         die("File $hidden_file does not exist as expected");
       }
 
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -292,7 +292,7 @@ sub hiddenstores_bug3156 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -438,7 +438,7 @@ sub hiddenstores_bug3294 {
         die("File $hidden_file does not exist as expected");
       }
 
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -584,7 +584,7 @@ sub hiddenstores_bool_prefix_bug3294 {
         die("File $hidden_file does not exist as expected");
       }
 
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
