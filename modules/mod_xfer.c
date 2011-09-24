@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.296 2011-05-25 23:51:01 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.297 2011-09-24 19:54:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1266,7 +1266,9 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 #endif
        ) {
       pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
-      errno = EPERM;
+
+      /* Deliberately use EISDIR for anything non-file (e.g. directories). */
+      errno = EISDIR;
       return PR_ERROR(cmd);
     }
   }
@@ -1445,6 +1447,9 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
       !S_ISREG(mode)) {
     (void) pr_fsio_unlink(cmd->arg);
     pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
+
+    /* Deliberately use EISDIR for anything non-file (e.g. directories). */
+    errno = EISDIR;
     return PR_ERROR(cmd);
   }
 
@@ -1949,7 +1954,11 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
   fmode = file_mode(dir);
   if (fmode == 0) {
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    int xerrno = errno;
+
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
+
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -1959,7 +1968,9 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 #endif
      ) {
     pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
-    errno = EPERM;
+
+    /* Deliberately use EISDIR for anything non-file (e.g. directories). */
+    errno = EISDIR;
     return PR_ERROR(cmd);
   }
 
