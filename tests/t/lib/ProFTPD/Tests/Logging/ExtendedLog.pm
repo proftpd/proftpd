@@ -3355,8 +3355,8 @@ sub extlog_ftps_raw_bytes_bug3554 {
         next unless $cmd eq 'QUIT';
 
         # The expected bytes in/out will vary on the ciphers used, etc.
-        my $expected_min = 42340;
-        my $expected_max = 42358;
+        my $expected_min = 42240;
+        my $expected_max = 42378;
         $self->assert($expected_min <= $bytes_in &&
                       $expected_max >= $bytes_in,
           test_msg("Expected $expected_min - $expected_max, got $bytes_in"));
@@ -3555,7 +3555,7 @@ sub extlog_sftp_raw_bytes_bug3554 {
                       $expected_max >= $bytes_in,
           test_msg("Expected $expected_min - $expected_max, got $bytes_in"));
 
-        $expected_min = 2156;
+        $expected_min = 2116;
         $expected_max = 2196;
         $self->assert($expected_min <= $bytes_out &&
                       $expected_max >= $bytes_out,
@@ -3921,7 +3921,7 @@ sub extlog_exit_bug3559 {
         # number is ephemeral, chosen by the kernel.
 
         my $expected_min = 232;
-        my $expected_max = 236;
+        my $expected_max = 286;
         $self->assert($expected_min <= $bytes_out &&
                       $expected_max >= $bytes_out,
           test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
