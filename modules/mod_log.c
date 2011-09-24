@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.122 2011-09-21 05:40:04 castaglia Exp $
+ * $Id: mod_log.c,v 1.123 2011-09-24 19:12:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1334,12 +1334,13 @@ static void log_restart_ev(const void *event_data, void *user_data) {
 }
 
 static void log_xfer_stalled_ev(const void *event_data, void *user_data) {
-
-  /* Automatically dispatch the current command, at the LOG_CMD_ERR phase,
-   * so that the ExtendedLog entry for the command gets written out.  This
-   * should handle any LIST/MLSD/NLST commands as well (Bug#3696).
-   */
-  (void) pr_cmd_dispatch_phase(session.curr_cmd_rec, LOG_CMD_ERR, 0);
+  if (session.curr_cmd_rec != NULL) {
+    /* Automatically dispatch the current command, at the LOG_CMD_ERR phase,
+     * so that the ExtendedLog entry for the command gets written out.  This
+     * should handle any LIST/MLSD/NLST commands as well (Bug#3696).
+     */
+    (void) pr_cmd_dispatch_phase(session.curr_cmd_rec, LOG_CMD_ERR, 0);
+  }
 }
 
 /* Initialization handlers
