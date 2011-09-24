@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.434 2011-09-21 05:40:04 castaglia Exp $
+ * $Id: main.c,v 1.435 2011-09-24 19:52:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -255,7 +255,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
   char *cmdargstr = NULL;
   cmdtable *c;
   modret_t *mr;
-  int success = 0;
+  int success = 0, xerrno = 0;
   int send_error = 0;
   static int match_index_cache = -1;
   static char *last_match = NULL;
@@ -299,6 +299,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
         pr_trace_msg("command", 8,
           "command '%s' failed 'requires_auth' check for mod_%s.c",
           cmd->argv[0], c->m->name);
+        errno = EACCES;
         return -1;
       }
 
@@ -367,6 +368,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
         success = 1;
 
       } else if (MODRET_ISERROR(mr)) {
+        xerrno = errno;
         success = -1;
 
         if (cmd_type == POST_CMD ||
@@ -398,6 +400,8 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
             pr_response_send_raw("%s", MODRET_ERRMSG(mr));
           }
         }
+
+        errno = xerrno;
       }
 
       if (session.user &&
@@ -583,7 +587,7 @@ int pr_cmd_read(cmd_rec **res) {
 
 int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
   char *cp = NULL;
-  int success = 0;
+  int success = 0, xerrno = 0;
   pool *resp_pool = NULL;
 
   if (cmd == NULL) {
@@ -642,9 +646,12 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
       _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
       _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
 
+      xerrno = errno;
       pr_trace_msg("response", 9, "flushing error response list for '%s'",
         cmd->argv[0]);
       pr_response_flush(&resp_err_list);
+
+      errno = xerrno;
       return success;
     }
 
@@ -660,9 +667,12 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
       _dispatch(cmd, LOG_CMD, FALSE, C_ANY);
       _dispatch(cmd, LOG_CMD, FALSE, NULL);
 
+      xerrno = errno;
       pr_trace_msg("response", 9, "flushing response list for '%s'",
         cmd->argv[0]);
       pr_response_flush(&resp_list);
+
+      errno = xerrno;
 
     } else if (success < 0) {
 
@@ -675,9 +685,12 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
       _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
       _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
 
+      xerrno = errno;
       pr_trace_msg("response", 9, "flushing error response list for '%s'",
         cmd->argv[0]);
       pr_response_flush(&resp_err_list);
+
+      errno = xerrno;
     }
 
   } else {
@@ -686,8 +699,10 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
       case POST_CMD:
       case POST_CMD_ERR:
         success = _dispatch(cmd, phase, FALSE, C_ANY);
-        if (!success)
+        if (!success) {
           success = _dispatch(cmd, phase, FALSE, NULL);
+          xerrno = errno;
+        }
         break;
 
       case CMD:
@@ -708,6 +723,8 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
     }
 
     if (flags & PR_CMD_DISPATCH_FL_SEND_RESPONSE) {
+      xerrno = errno;
+
       if (success == 1) {
         pr_trace_msg("response", 9, "flushing response list for '%s'",
           cmd->argv[0]);
@@ -718,12 +735,15 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
           cmd->argv[0]);
         pr_response_flush(&resp_err_list);
       }
+
+      errno = xerrno;
     }
   }
 
   /* Restore any previous pool to the Response API. */
   pr_response_set_pool(resp_pool);
 
+  errno = xerrno;
   return success;
 }
 
