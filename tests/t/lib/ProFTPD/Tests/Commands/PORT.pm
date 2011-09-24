@@ -877,7 +877,7 @@ sub port_eaddrnotavail {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'Unable to build data connection: (Cannot assign requested address|Address already in use)';
+      $expected = 'Unable to build data connection: (Cannot assign requested address|Address already in use|Connection refused)';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
