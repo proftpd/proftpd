@@ -147,7 +147,7 @@ sub displaychdir_singleline {
       $client->quit();
 
       $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg(1);
+      $resp_msg = $client->response_msg();
 
       $expected = 221;
       $self->assert($expected == $resp_code,
