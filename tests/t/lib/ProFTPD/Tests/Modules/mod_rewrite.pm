@@ -770,7 +770,7 @@ sub rewrite_bug3027 {
 
       my $buf = "Hello, World\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
@@ -1065,7 +1065,7 @@ sub rewrite_bug3169 {
 
       my $buf = "Hello, World\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
@@ -1209,7 +1209,7 @@ sub rewrite_map_unescape_bug3170 {
 
       my $buf = "Hello, World\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
