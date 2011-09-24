@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.63 2011-05-23 20:56:40 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.64 2011-09-24 05:33:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2512,8 +2512,9 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
 
         pr_cmd_clear_cache(cmd);
 
-      } else
+      } else {
         rewrite_log("rewrite_fixup(): error processing RewriteRule");
+      }
 
       /* If this Rule is marked as "last", break out of the loop. */
       if (rule_flags & REWRITE_RULE_FLAG_LAST) {
@@ -2594,24 +2595,29 @@ static void rewrite_rewrite_home_ev(const void *event_data, void *user_data) {
    * command dispatch mechanism.
    */
   mr = rewrite_fixup(cmd);
-  if (mr == NULL ||
-      MODRET_ISERROR(mr)) {
+  if (MODRET_ISERROR(mr)) {
     rewrite_log("unable to rewrite home '%s'", pw_dir);
     destroy_pool(tmp_pool);
     return;
   }
 
-  rewrite_log("rewrote home to be '%s'", cmd->arg);
+  if (strcmp(pw_dir, cmd->arg) != 0) {
+    rewrite_log("rewrote home to be '%s'", cmd->arg);
 
-  /* Make sure to use a pool whose lifetime is longer/outside of the pools
-   * used here.
-   */
-  if (pr_table_set(session.notes, "mod_auth.home-dir",
-      pstrdup(session.pool, cmd->arg), 0) < 0) {
-    pr_trace_msg("auth", 3, MOD_REWRITE_VERSION
-      ": error stashing home directory in session.notes: %s", strerror(errno));
-    destroy_pool(tmp_pool);
-    return;
+    /* Make sure to use a pool whose lifetime is longer/outside of the pools
+     * used here.
+     */
+    if (pr_table_set(session.notes, "mod_auth.home-dir",
+        pstrdup(session.pool, cmd->arg), 0) < 0) {
+      pr_trace_msg("auth", 3, MOD_REWRITE_VERSION
+        ": error stashing home directory in session.notes: %s",
+        strerror(errno));
+      destroy_pool(tmp_pool);
+      return;
+    }
+
+  } else {
+    rewrite_log("home directory '%s' not changed by RewriteHome", pw_dir);
   }
 
   destroy_pool(tmp_pool);
