@@ -198,7 +198,7 @@ EOF
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
@@ -218,7 +218,7 @@ EOF
       }
 
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
@@ -416,7 +416,7 @@ EOF
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
@@ -436,7 +436,7 @@ EOF
       }
 
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
@@ -634,7 +634,7 @@ EOF
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();

@@ -121,7 +121,7 @@ sub timeoutnoxfer_ok {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
     };
 
     if ($@) {

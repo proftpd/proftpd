@@ -316,7 +316,7 @@ sub extlog_retr_bug3137 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
     };
 
     if ($@) {
@@ -451,7 +451,7 @@ sub extlog_stor_bug3137 {
 
       my $buf = "Foo!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
     };
 
     if ($@) {
@@ -1354,7 +1354,7 @@ sub extlog_bug1908 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       $client->quit();
     };
@@ -1515,7 +1515,7 @@ sub extlog_file_modified_bug3457 {
           $client->response_msg());
       }
 
-      $conn->close();
+      eval { $conn->close() };
       $client->quit();
     };
 
@@ -2179,7 +2179,7 @@ sub extlog_uid_bug3390 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
     };
 
     if ($@) {
@@ -2311,7 +2311,7 @@ sub extlog_gid_bug3390 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
     };
 
     if ($@) {
@@ -2733,7 +2733,7 @@ sub extlog_ftp_raw_bytes_bug3554 {
 
       my $buf = "ABCD\n" x 8;
       $conn->write($buf, length($buf), 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -2916,7 +2916,7 @@ sub extlog_ftp_sendfile_raw_bytes_bug3554 {
 
       my $buf;
       $conn->read($buf, 16382, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -3095,7 +3095,7 @@ sub extlog_ftp_deflate_raw_bytes_bug3554 {
       my $buf = "ABCD\n" x 8;
       my $deflated = compress($buf);
       $conn->write($deflated, length($deflated), 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -3857,7 +3857,7 @@ sub extlog_exit_bug3559 {
 
       my $buf = "ABCD\n" x 8;
       $conn->write($buf, length($buf), 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -5868,7 +5868,7 @@ sub extlog_xfer_timeout_bug3696 {
       eval {
         my $buf = "Foo!\n";
         $conn->write($buf, length($buf));
-        $conn->close();
+        eval { $conn->close() };
 
         $client->quit();
       };

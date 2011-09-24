@@ -123,7 +123,7 @@ sub maxstorefilesize_ok {
 
       my $buf = "Hello, World!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
 
       my $expected;
 
@@ -247,7 +247,7 @@ sub maxstorefilesize_exceeded {
 
       my $buf = "Hello, World!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
