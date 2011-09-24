@@ -150,7 +150,7 @@ sub stor_ok_raw_active {
 
       my $buf = "Foo!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
 
       my ($resp_code, $resp_msg);
       $resp_code = $client->response_code();
@@ -275,7 +275,7 @@ sub stor_ok_raw_passive {
 
       my $buf = "Foo!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
 
       my ($resp_code, $resp_msg);
       $resp_code = $client->response_code();
@@ -402,7 +402,7 @@ sub stor_ok_file {
 
       my $buf = "Foo!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
 
       my ($resp_code, $resp_msg);
       $resp_code = $client->response_code();
@@ -1006,7 +1006,7 @@ sub stor_leading_whitespace {
 
       my $buf = "Foo!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
 
       my ($resp_code, $resp_msg);
       $resp_code = $client->response_code();
@@ -1137,7 +1137,7 @@ sub stor_multiple_periods {
 
       my $buf = "Foo!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
 
       my ($resp_code, $resp_msg);
       $resp_code = $client->response_code();

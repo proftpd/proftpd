@@ -247,7 +247,7 @@ sub list_ok_raw_active {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
@@ -391,7 +391,7 @@ sub list_ok_raw_passive {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
@@ -537,7 +537,7 @@ sub list_ok_file {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -665,7 +665,7 @@ sub list_ok_dir {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -794,7 +794,7 @@ sub list_ok_no_path {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -918,7 +918,7 @@ sub list_ok_glob {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -1559,7 +1559,7 @@ sub list_bug2821 {
       while ($conn->read($tmp, 32768, $timeout)) {
         $buf .= $tmp;
       }
-      $conn->close();
+      eval { $conn->close() };
       $client->quit();
 
       my $res = {};
@@ -1707,7 +1707,7 @@ sub list_opt_C {
 
       my $buf;
       $conn->read($buf, 32768, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -1862,7 +1862,7 @@ sub list_nonascii_chars_bug3032 {
 
       my $buf;
       $conn->read($buf, 32768, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -2006,7 +2006,7 @@ sub list_leading_whitespace_bug3268 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -2165,7 +2165,7 @@ sub list_leading_whitespace_with_opts_bug3268 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -2326,7 +2326,7 @@ sub list_leading_whitespace_with_strict_opts_bug3268 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -2569,7 +2569,7 @@ EOL
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -2720,7 +2720,7 @@ sub list_showsymlinks_on {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -2863,7 +2863,7 @@ sub list_glob_bug2367 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -2991,7 +2991,7 @@ sub list_glob_legit_dir_name {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -3119,7 +3119,7 @@ sub list_glob_legit_dir_name_bug3407 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -3269,7 +3269,7 @@ sub list_opt_c {
 
       my $buf;
       $conn->read($buf, 32768, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -3426,7 +3426,7 @@ sub list_opt_u {
 
       my $buf;
       $conn->read($buf, 32768, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -3566,7 +3566,7 @@ sub list_dash_filename_bug3476 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -3700,7 +3700,7 @@ sub list_opt_noerrorifabsent_bug3506 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -3865,7 +3865,7 @@ sub list_slashstar_bug3529 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -4051,7 +4051,7 @@ sub list_star_bug3529 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();

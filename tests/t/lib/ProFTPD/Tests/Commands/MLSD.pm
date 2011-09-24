@@ -187,7 +187,7 @@ sub mlsd_ok_raw_active {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
@@ -333,7 +333,7 @@ sub mlsd_ok_raw_passive {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
@@ -600,7 +600,7 @@ sub mlsd_ok_dir {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -727,7 +727,7 @@ sub mlsd_ok_chrooted_dir {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -854,7 +854,7 @@ sub mlsd_ok_empty_dir {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -991,7 +991,7 @@ sub mlsd_ok_no_path {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -1603,7 +1603,7 @@ sub mlsd_ok_hidden_file {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -1734,7 +1734,7 @@ sub mlsd_ok_path_with_spaces {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -1861,7 +1861,7 @@ sub mlsd_nonascii_chars_bug3032 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -2179,7 +2179,7 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
