@@ -1573,6 +1573,18 @@ EOS
   unlink($log_file);
 }
 
+# NOTE: If this unit test is failing with an error like the following:
+#
+#  not ok ERROR sftp_exec_opt_send_stdout
+#  Test::Unit::ExceptionError:
+#  Can't connect to SSH2 server: [LIBSSH2_ERROR_SOCKET_NONE] (-1) Unable to exchange encryption keys at t/lib/ProFTPD/Tests/Modules/mod_sftp/exec.pm line 1693.
+#
+# Then it is most likely caused by having mod_exec appear AFTER mod_sftp in
+# the --with-modules configure argument.  This means that mod_exec's sess_init
+# callback would run BEFORE mod_sftp's, which in turn means that mod_exec
+# would not be able to detect that this is an SSH connection (and thus
+# would not automatically disable the sendStdout ExecOptions).
+
 sub sftp_exec_opt_send_stdout {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
