@@ -258,7 +258,7 @@ sub maxstorefilesize_exceeded {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'Transfer aborted. (Disc|Disk) quota exceeded';
+      $expected = 'Transfer aborted. ((Disc|Disk) quota exceeded|File too large)';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -401,7 +401,7 @@ sub maxstorefilesize_appe_bug3649 {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'Transfer aborted. (Disc|Disk) quota exceeded';
+      $expected = 'Transfer aborted. ((Disc|Disk) quota exceeded|File too large)';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
