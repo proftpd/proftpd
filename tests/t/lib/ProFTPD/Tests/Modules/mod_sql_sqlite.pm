@@ -5205,6 +5205,7 @@ sub sql_sqllog_var_uid_gid_bug3390 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5226,7 +5227,7 @@ sub sql_sqllog_var_uid_gid_bug3390 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -5278,7 +5279,6 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultRoot => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -6446,10 +6446,10 @@ sub get_cmds {
     chomp($row);
 
     # The default sqlite3 delimiter is '|'
-    $res = split(/\|/, $row);
+    $res = [split(/\|/, $row)];
   }
 
-  return $res;
+  return @$res;
 }
 
 sub sql_resolve_tag_bug3536 {
@@ -6559,7 +6559,7 @@ EOS
         SQLConnectInfo => $db_file,
         SQLLogFile => $log_file,
         SQLNamedQuery => 'command FREEFORM "INSERT INTO ftpsessions (user, ip_addr, command, request) VALUES (\'%u\', \'%L\', \'%m\', \'%r\')"',
-#        SQLLog => '* command',
+        SQLLog => '* command',
       },
     },
   };
@@ -6617,11 +6617,11 @@ EOS
   }
 
   my ($login, $ip_addr, $req);
-  ($login, $ip_addr, $cmd, $req) = get_cmds($db_file, "user = \'$user\'");
+  ($login, $ip_addr, $cmd, $req) = get_cmds($db_file, "user = \'$config_user\'");
 
   my $expected;
 
-  $expected = $user;
+  $expected = $config_user;
   $self->assert($expected eq $login,
     test_msg("Expected '$expected', got '$login'"));
 
@@ -8794,7 +8794,7 @@ EOS
 <IfModule mod_ifsession.c>
   <IfGroup regex .*>
     SQLLog EXIT logout
-  </IfUser>
+  </IfGroup>
 </IfModule>
 EOC
     unless (close($fh)) {
