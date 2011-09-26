@@ -12,4 +12,4 @@ unsigned long pr_version_get_number(void);
 const char *pr_version_get_str(void);
 
 /* PR_STATUS is reported by --version-status -- don't ask why */
-#define PR_STATUS          		"(CVS)"
+#define PR_STATUS          		"(devel)"
