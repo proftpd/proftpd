@@ -29143,19 +29143,19 @@ sub scp_upload_fifo_bug3312 {
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      my $res = $ssh2->scp_put($config_file, 'test.fifo');
-      if ($res) {
+      if ($ssh2->scp_put($config_file, 'test.fifo')) {
         die("Upload of $config_file to server succeeded unexpectedly");
       }
 
       my ($err_code, $err_name, $err_str) = $ssh2->error();
       chomp($err_str);
 
-      my $expected = "$fifo: (No such device or address|Device not configured)";
+      $ssh2->disconnect();
+
+      my $expected = 'test.fifo: (No such device or address|Device not configured)$';
+
       $self->assert(qr/$expected/, $err_str,
         test_msg("Expected '$expected', got '$err_str'"));
-
-      $ssh2->disconnect();
     };
 
     if ($@) {
