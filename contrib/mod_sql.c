@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.217 2011-09-06 21:14:35 castaglia Exp $
+ * $Id: mod_sql.c,v 1.218 2011-10-04 05:27:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -118,7 +118,7 @@ static off_t sql_dele_filesz = 0;
 static char *sql_prepare_where(int, cmd_rec *, int, ...);
 #define SQL_PREPARE_WHERE_FL_NO_TAGS	0x00001
 
-static modret_t *process_named_query(cmd_rec *cmd, char *name);
+static modret_t *process_named_query(cmd_rec *cmd, char *name, int flags);
 static const char *resolve_long_tag(cmd_rec *, char *);
 static int resolve_numeric_tag(cmd_rec *, char *);
 static char *resolve_short_tag(cmd_rec *, char);
@@ -480,7 +480,7 @@ cmd_rec *_sql_make_cmd(pool *p, int argc, ...) {
   return cmd;
 }
 
-static int check_response(modret_t *mr, int ignore_errors) {
+static int check_response(modret_t *mr, int flags) {
   if (!MODRET_ISERROR(mr))
     return 0;
 
@@ -493,13 +493,13 @@ static int check_response(modret_t *mr, int ignore_errors) {
   pr_log_pri(PR_LOG_ERR, MOD_SQL_VERSION
     ": check the SQLLogFile for more details");
 
-  if (!ignore_errors &&
+  if (!(flags & SQL_LOG_FL_IGNORE_ERRORS) &&
       !(pr_sql_opts & SQL_OPT_NO_DISCONNECT_ON_ERROR)) {
     pr_session_disconnect(&sql_module, PR_SESS_DISCONNECT_BY_APPLICATION,
       "Database error");
   }
 
-  if (ignore_errors) {
+  if (flags & SQL_LOG_FL_IGNORE_ERRORS) {
     sql_log(DEBUG_FUNC, "SQLLog IGNORE_ERRORS in effect, not exiting");
 
   } else {
@@ -947,7 +947,7 @@ static char *_sql_realuser(cmd_rec *cmd) {
   /* Do we need to check for useralias? see mod_time.c, get_user_cmd_times(). */
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
     user), "sql_escapestring");
-  if (check_response(mr, FALSE) < 0) {
+  if (check_response(mr, 0) < 0) {
     return NULL;
   }
 
@@ -961,7 +961,7 @@ static int sql_define_conn(pool *p, char *conn_name, char *user, char *passwd,
 
   cmd = _sql_make_cmd(p, 5, conn_name, user, passwd, info, ttl);
   mr = _sql_dispatch(cmd, "sql_defineconnection");
-  if (check_response(mr, FALSE) < 0) {
+  if (check_response(mr, 0) < 0) {
     return -1;
   }
 
@@ -973,7 +973,7 @@ static int sql_define_conn(pool *p, char *conn_name, char *user, char *passwd,
      */
     cmd = _sql_make_cmd(p, 1, conn_name);
     mr = _sql_dispatch(cmd, "sql_open");
-    if (check_response(mr, FALSE) < 0) {
+    if (check_response(mr, 0) < 0) {
       return -1;
     }
 
@@ -1049,7 +1049,7 @@ static char *sql_prepare_where(int flags, cmd_rec *cmd, int cnt, ...) {
 
             mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2,
               MOD_SQL_DEF_CONN_NAME, str), "sql_escapestring");
-            if (check_response(mr, FALSE) < 0)
+            if (check_response(mr, 0) < 0)
               return NULL;
 
             /* Make sure we don't write too much data. */
@@ -1081,7 +1081,7 @@ static char *sql_prepare_where(int flags, cmd_rec *cmd, int cnt, ...) {
           str = resolve_short_tag(cmd, *tmp);
           mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2,
             MOD_SQL_DEF_CONN_NAME, str), "sql_escapestring");
-          if (check_response(mr, FALSE) < 0)
+          if (check_response(mr, 0) < 0)
             return NULL;
 
           /* Make sure we don't write too much data. */
@@ -1402,7 +1402,7 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
 
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
       realname), "sql_escapestring");
-    if (check_response(mr, FALSE) < 0)
+    if (check_response(mr, 0) < 0)
       return NULL;
 
     username = (char *) mr->data;
@@ -1425,7 +1425,7 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
 
       mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5, MOD_SQL_DEF_CONN_NAME,
         cmap.usrtable, cmap.usrfields, where, "1"), "sql_select");
-      if (check_response(mr, FALSE) < 0)
+      if (check_response(mr, 0) < 0)
         return NULL;
 
       if (MODRET_HASDATA(mr)) {
@@ -1436,7 +1436,7 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
       mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME,
         cmap.usercustom, realname ? realname : "NULL"));
 
-      if (check_response(mr, FALSE) < 0)
+      if (check_response(mr, 0) < 0)
         return NULL;
 
       if (MODRET_HASDATA(mr)) {
@@ -1473,7 +1473,7 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
         mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5,
           MOD_SQL_DEF_CONN_NAME, cmap.usrtable, cmap.usrfields, where, "1"),
           "sql_select");
-        if (check_response(mr, FALSE) < 0) {
+        if (check_response(mr, 0) < 0) {
           return NULL;
         }
 
@@ -1496,7 +1496,7 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
 
       mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME,
         cmap.usercustombyid, uidstr));
-      if (check_response(mr, FALSE) < 0) {
+      if (check_response(mr, 0) < 0) {
         return NULL;
       }
 
@@ -1736,7 +1736,7 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
 
       mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5, MOD_SQL_DEF_CONN_NAME,
         cmap.grptable, cmap.grpfield, where, "1"), "sql_select");
-      if (check_response(mr, FALSE) < 0) {
+      if (check_response(mr, 0) < 0) {
         return NULL;
       }
 
@@ -1745,7 +1745,7 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
     } else {
       mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME,
         cmap.groupcustombyid, gidstr));
-      if (check_response(mr, FALSE) < 0) {
+      if (check_response(mr, 0) < 0) {
         return NULL;
       }
 
@@ -1781,7 +1781,7 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
 
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, MOD_SQL_DEF_CONN_NAME,
       cmap.grptable, cmap.grpfields, where), "sql_select");
-    if (check_response(mr, FALSE) < 0) {
+    if (check_response(mr, 0) < 0) {
       return NULL;
     }
  
@@ -1790,7 +1790,7 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
   } else {
     mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME,
       cmap.groupcustombyname, groupname ? groupname : "NULL"));
-    if (check_response(mr, FALSE) < 0) {
+    if (check_response(mr, 0) < 0) {
       return NULL;
     }
 
@@ -1884,7 +1884,7 @@ static void _setstats(cmd_rec *cmd, int fstor, int fretr, int bstor,
 
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, MOD_SQL_DEF_CONN_NAME,
     cmap.usrtable, query, where), "sql_update");
-  (void) check_response(mr, FALSE);
+  (void) check_response(mr, 0);
 }
 
 static int sql_getgroups(cmd_rec *cmd) {
@@ -1936,7 +1936,7 @@ static int sql_getgroups(cmd_rec *cmd) {
 
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
     name), "sql_escapestring");
-  if (check_response(mr, FALSE) < 0) {
+  if (check_response(mr, 0) < 0) {
     cmd->argc = argc;
     return -1;
   }
@@ -1972,7 +1972,7 @@ static int sql_getgroups(cmd_rec *cmd) {
   
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, MOD_SQL_DEF_CONN_NAME,
       cmap.grptable, cmap.grpfields, where), "sql_select");
-    if (check_response(mr, FALSE) < 0) {
+    if (check_response(mr, 0) < 0) {
       cmd->argc = argc;
       return -1;
     }
@@ -1987,7 +1987,7 @@ static int sql_getgroups(cmd_rec *cmd) {
      */
     mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME,
       cmap.groupcustommembers, username));
-    if (check_response(mr, FALSE) < 0) {
+    if (check_response(mr, 0) < 0) {
       cmd->argc = argc;
       return -1;
     }
@@ -2665,7 +2665,7 @@ static char *named_query_type(cmd_rec *cmd, char *name) {
   return NULL;
 }
 
-static modret_t *process_named_query(cmd_rec *cmd, char *name) {
+static modret_t *process_named_query(cmd_rec *cmd, char *name, int flags) {
   config_rec *c;
   char *conn_name, *query = NULL, *tmp = NULL, *argp = NULL;
   char outs[SQL_MAX_STMT_LEN+1], *outsp = NULL;
@@ -2736,7 +2736,7 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name) {
 
               mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, conn_name,
                 argp), "sql_escapestring");
-              if (check_response(mr, FALSE) < 0) {
+              if (check_response(mr, flags) < 0) {
                 set_named_conn_backend(NULL);
                 return PR_ERROR_MSG(cmd, MOD_SQL_VERSION, "database error");
               }
@@ -2755,7 +2755,7 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name) {
 
           mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, conn_name,
             argp), "sql_escapestring");
-          if (check_response(mr, FALSE) < 0) {
+          if (check_response(mr, flags) < 0) {
             set_named_conn_backend(NULL);
             return PR_ERROR_MSG(cmd, MOD_SQL_VERSION, "database error");
           }
@@ -2859,8 +2859,8 @@ MODRET process_sqllog(cmd_rec *cmd, config_rec *c, const char *label,
     if (strcasecmp(type, SQL_UPDATE_C) == 0 ||
         strcasecmp(type, SQL_FREEFORM_C) == 0 ||
         strcasecmp(type, SQL_INSERT_C) == 0) {
-      mr = process_named_query(cmd, qname);
-      if (check_response(mr, ignore_errors) < 0)
+      mr = process_named_query(cmd, qname, flags);
+      if (check_response(mr, flags) < 0)
         return mr;
 
     } else {
@@ -3083,8 +3083,8 @@ MODRET info_master(cmd_rec *cmd) {
           type = named_query_type(cmd, query);
           if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
                        strcasecmp(type, SQL_FREEFORM_C) == 0)) {
-            mr = process_named_query(cmd, query);
-            if (check_response(mr, FALSE) < 0) {
+            mr = process_named_query(cmd, query, 0);
+            if (check_response(mr, 0) < 0) {
               memset(outs, '\0', sizeof(outs));
               break;
 
@@ -3223,8 +3223,8 @@ MODRET info_master(cmd_rec *cmd) {
           type = named_query_type(cmd, query);
           if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
                        strcasecmp(type, SQL_FREEFORM_C) == 0)) {
-            mr = process_named_query(cmd, query);
-            if (check_response(mr, FALSE) < 0) {
+            mr = process_named_query(cmd, query, 0);
+            if (check_response(mr, 0) < 0) {
               memset(outs, '\0', sizeof(outs));
               break;
 
@@ -3380,8 +3380,8 @@ MODRET errinfo_master(cmd_rec *cmd) {
           type = named_query_type(cmd, query);
           if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
                        strcasecmp(type, SQL_FREEFORM_C) == 0)) {
-            mr = process_named_query(cmd, query);
-            if (check_response(mr, FALSE) < 0) {
+            mr = process_named_query(cmd, query, 0);
+            if (check_response(mr, 0) < 0) {
               memset(outs, '\0', sizeof(outs));
               break;
 
@@ -3521,8 +3521,8 @@ MODRET errinfo_master(cmd_rec *cmd) {
           type = named_query_type(cmd, query);
           if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
                        strcasecmp(type, SQL_FREEFORM_C) == 0)) {
-            mr = process_named_query(cmd, query);
-            if (check_response(mr, FALSE) < 0) {
+            mr = process_named_query(cmd, query, 0);
+            if (check_response(mr, 0) < 0) {
               memset(outs, '\0', sizeof(outs));
               break;
 
@@ -3627,7 +3627,7 @@ MODRET sql_cleanup(cmd_rec *cmd) {
   sql_log(DEBUG_FUNC, "%s", ">>> sql_cleanup");
 
   res = _sql_dispatch(cmd, "sql_cleanup");
-  if (check_response(res, FALSE) < 0) {
+  if (check_response(res, 0) < 0) {
     sql_log(DEBUG_FUNC, "%s", "<<< sql_cleanup");
     return res;
   }
@@ -3738,7 +3738,7 @@ MODRET sql_lookup(cmd_rec *cmd) {
   type = named_query_type(cmd, cmd->argv[1]);
   if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
 	       strcasecmp(type, SQL_FREEFORM_C) == 0)) {
-    mr = process_named_query(cmd, cmd->argv[1]);
+    mr = process_named_query(cmd, cmd->argv[1], 0);
     
     if (mr != NULL &&
         !MODRET_ISERROR(mr)) {
@@ -3759,7 +3759,7 @@ MODRET sql_lookup(cmd_rec *cmd) {
 
     } else {
       /* We have an error.  Log it and die. */
-      if (check_response(mr, FALSE) < 0) {
+      if (check_response(mr, 0) < 0) {
         sql_log(DEBUG_FUNC, "%s", "<<< sql_lookup");
         return mr;
       }
@@ -3791,8 +3791,8 @@ MODRET sql_change(cmd_rec *cmd) {
 	       (!strcasecmp(type, SQL_FREEFORM_C)))) {
     /* fixup the cmd_rec */
 
-    mr = process_named_query(cmd, cmd->argv[1]);
-    if (check_response(mr, FALSE) < 0) {
+    mr = process_named_query(cmd, cmd->argv[1], 0);
+    if (check_response(mr, 0) < 0) {
       sql_log(DEBUG_FUNC, "%s", "<<< sql_change");
       return mr;
     }
@@ -3812,7 +3812,7 @@ MODRET sql_escapestr(cmd_rec *cmd) {
 
   mr =_sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
     cmd->argv[0]), "sql_escapestring");
-  if (check_response(mr, FALSE) < 0) {
+  if (check_response(mr, 0) < 0) {
     sql_log(DEBUG_FUNC, "%s", "<<< sql_escapestr");
     return mr;
   }
@@ -3864,7 +3864,7 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
 
       mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, MOD_SQL_DEF_CONN_NAME,
         cmap.usrtable, cmap.usrfields, where), "sql_select");
-      if (check_response(mr, FALSE) < 0) {
+      if (check_response(mr, 0) < 0) {
         return mr;
       }
  
@@ -3873,7 +3873,7 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
     } else {
       mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
         cmap.usercustomusersetfast));
-      if (check_response(mr, FALSE) < 0) {
+      if (check_response(mr, 0) < 0) {
         return mr;
       }
 
@@ -3966,7 +3966,7 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
 
       mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, MOD_SQL_DEF_CONN_NAME,
         cmap.usrtable, cmap.usrfield, where), "sql_select");
-      if (check_response(mr, FALSE) < 0) {
+      if (check_response(mr, 0) < 0) {
         return mr;
       }
  
@@ -3975,7 +3975,7 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
     } else {
       mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
         cmap.usercustomuserset));
-      if (check_response(mr, FALSE) < 0) {
+      if (check_response(mr, 0) < 0) {
         return mr;
       }
 
@@ -4097,7 +4097,7 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
 
       mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5, MOD_SQL_DEF_CONN_NAME,
         cmap.grptable, cmap.grpfields, where, "1"), "sql_select");
-      if (check_response(mr, FALSE) < 0) {
+      if (check_response(mr, 0) < 0) {
         return mr;
       }
  
@@ -4106,7 +4106,7 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
     } else {
       mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
         cmap.groupcustomgroupsetfast));
-      if (check_response(mr, FALSE) < 0) {
+      if (check_response(mr, 0) < 0) {
         return mr;
       }
 
@@ -4158,7 +4158,7 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
  
       mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 6, MOD_SQL_DEF_CONN_NAME,
         cmap.grptable, cmap.grpfield, where, NULL, "DISTINCT"), "sql_select");
-      if (check_response(mr, FALSE) < 0) {
+      if (check_response(mr, 0) < 0) {
         return mr;
       }
  
@@ -4167,7 +4167,7 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
     } else {
       mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
         cmap.groupcustomgroupset));
-      if (check_response(mr, FALSE) < 0) {
+      if (check_response(mr, 0) < 0) {
         return mr;
       }
 
@@ -4370,7 +4370,7 @@ MODRET cmd_auth(cmd_rec *cmd) {
   /* escape our username */
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
     user), "sql_escapestring");
-  if (check_response(mr, FALSE) < 0) {
+  if (check_response(mr, 0) < 0) {
     return mr;
   }
  
@@ -4663,7 +4663,7 @@ MODRET cmd_getstats(cmd_rec *cmd) {
   
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, MOD_SQL_DEF_CONN_NAME,
     cmap.usrtable, query, where), "sql_select");
-  if (check_response(mr, FALSE) < 0) {
+  if (check_response(mr, 0) < 0) {
     return mr;
   }
  
@@ -4701,7 +4701,7 @@ MODRET cmd_getratio(cmd_rec *cmd) {
   
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, MOD_SQL_DEF_CONN_NAME,
     cmap.usrtable, query, where), "sql_select");
-  if (check_response(mr, FALSE) < 0)
+  if (check_response(mr, 0) < 0)
     return mr;
   
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_getratio");
@@ -5657,7 +5657,7 @@ static void sql_chroot_ev(const void *event_data, void *user_data) {
 
         cmd = _sql_make_cmd(tmp_pool, 1, snc->conn_name);
         mr = _sql_dispatch(cmd, "sql_open");
-        (void) check_response(mr, FALSE);
+        (void) check_response(mr, 0);
         SQL_FREE_CMD(cmd);
       }
     }
@@ -5693,7 +5693,7 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
 
   cmd = _sql_make_cmd(session.pool, 0);
   mr = _sql_dispatch(cmd, "sql_exit");
-  (void) check_response(mr, TRUE);
+  (void) check_response(mr, SQL_LOG_FL_IGNORE_ERRORS);
 
   sql_closelog();
   return;
@@ -5806,7 +5806,7 @@ static int sql_sess_init(void) {
   /* Get our backend info and toss it up */
   cmd = _sql_make_cmd(tmp_pool, 1, "foo");
   mr = _sql_dispatch(cmd, "sql_identify");
-  if (check_response(mr, FALSE) < 0)
+  if (check_response(mr, 0) < 0)
     return -1;
 
   sd = (sql_data_t *) mr->data;
