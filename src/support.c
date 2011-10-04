@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.111 2011-05-23 23:23:44 castaglia Exp $
+ * $Id: support.c,v 1.112 2011-10-04 20:59:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -74,10 +74,16 @@ static void mask_signals(unsigned char block) {
 #endif
     sigaddset(&mask_sigset, SIGHUP);
 
-    sigprocmask(SIG_BLOCK, &mask_sigset, NULL);
+    if (sigprocmask(SIG_BLOCK, &mask_sigset, NULL) < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "unable to block signal set: %s", strerror(errno));
+    }
 
   } else {
-    sigprocmask(SIG_UNBLOCK, &mask_sigset, NULL);
+    if (sigprocmask(SIG_UNBLOCK, &mask_sigset, NULL) < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "unable to unblock signal set: %s", strerror(errno));
+    }
   }
 }
 

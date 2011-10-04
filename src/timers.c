@@ -24,7 +24,7 @@
  */
 
 /* Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.37 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: timers.c,v 1.38 2011-10-04 20:59:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -170,10 +170,17 @@ static RETSIGTYPE sig_alarm(int signo) {
 #endif
 
   /* Install this handler for SIGALRM. */
-  sigaction(SIGALRM, &act, NULL);
+  if (sigaction(SIGALRM, &act, NULL) < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGALRM handler via sigaction(2): %s",
+      strerror(errno));
+  }
 
 #ifdef HAVE_SIGINTERRUPT
-  siginterrupt(SIGALRM, 1);
+  if (siginterrupt(SIGALRM, 1) < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to allow SIGALRM to interrupt system calls: %s", strerror(errno));
+  }
 #endif
 
   recvd_signal_flags |= RECEIVED_SIG_ALRM;
@@ -198,10 +205,17 @@ static void set_sig_alarm(void) {
 #endif
 
   /* Install this handler for SIGALRM. */
-  sigaction(SIGALRM, &act, NULL);
+  if (sigaction(SIGALRM, &act, NULL) < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGALRM handler via sigaction(2): %s",
+      strerror(errno));
+  }
 
 #ifdef HAVE_SIGINTERRUPT
-  siginterrupt(SIGALRM, 1);
+  if (siginterrupt(SIGALRM, 1) < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to allow SIGALRM to interrupt system calls: %s", strerror(errno));
+  }
 #endif
 }
 

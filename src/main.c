@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.435 2011-09-24 19:52:48 castaglia Exp $
+ * $Id: main.c,v 1.436 2011-10-04 20:59:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -233,7 +233,11 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
     pr_session_disconnect(NULL, PR_SESS_DISCONNECT_SERVER_SHUTDOWN, NULL);
   }
 
-  signal(SIGUSR1, sig_disconnect);
+  if (signal(SIGUSR1, sig_disconnect) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGUSR1 (signal %d) handler: %s", SIGUSR1,
+      strerror(errno));
+  }
 }
 
 static int get_command_class(const char *name) {
@@ -1115,27 +1119,38 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     sigaddset(&sig_set, SIGUSR1);
     sigaddset(&sig_set, SIGUSR2);
 
-    sigprocmask(SIG_BLOCK, &sig_set, NULL);
+    if (sigprocmask(SIG_BLOCK, &sig_set, NULL) < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "unable to block signal set: %s", strerror(errno));
+    }
 
     switch ((pid = fork())) {
+
     case 0: /* child */
 
       /* No longer the master process. */
       is_master = FALSE;
-      sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
+      if (sigprocmask(SIG_UNBLOCK, &sig_set, NULL) < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "unable to unblock signal set: %s", strerror(errno));
+      }
 
       /* No longer need the read side of the semaphore pipe. */
-      close(semfds[0]);
+      (void) close(semfds[0]);
       break;
 
     case -1:
-      sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
+      if (sigprocmask(SIG_UNBLOCK, &sig_set, NULL) < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "unable to unblock signal set: %s", strerror(errno));
+      }
+
       pr_log_pri(PR_LOG_ERR, "fork(): %s", strerror(errno));
 
       /* The parent doesn't need the socket open. */
-      close(fd);
-      close(semfds[0]);
-      close(semfds[1]);
+      (void) close(fd);
+      (void) close(semfds[0]);
+      (void) close(semfds[1]);
 
       return;
 
@@ -1149,7 +1164,11 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
       /* Unblock the signals now as sig_child() will catch
        * an "immediate" death and remove the pid from the children list
        */
-      sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
+      if (sigprocmask(SIG_UNBLOCK, &sig_set, NULL) < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "unable to unblock signal set: %s", strerror(errno));
+      }
+
       return;
     }
   }
@@ -1183,11 +1202,29 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 #endif /* PR_DEVEL_NO_FORK */
 
   /* Child is running here */
-  signal(SIGUSR1, sig_disconnect);
-  signal(SIGUSR2, sig_evnt);
+  if (signal(SIGUSR1, sig_disconnect) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGUSR1 (signal %d) handler: %s", SIGUSR1,
+      strerror(errno));
+  }
 
-  signal(SIGCHLD, SIG_DFL);
-  signal(SIGHUP, SIG_IGN);
+  if (signal(SIGUSR2, sig_evnt) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGUSR2 (signal %d) handler: %s", SIGUSR2,
+      strerror(errno));
+  }
+
+  if (signal(SIGCHLD, SIG_DFL) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGCHLD (signal %d) handler: %s", SIGCHLD,
+      strerror(errno));
+  }
+
+  if (signal(SIGHUP, SIG_IGN) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGHUP (signal %d) handler: %s", SIGHUP,
+      strerror(errno));
+  }
 
   /* From this point on, syslog stays open. We close it first so that the
    * logger will pick up our new PID.
@@ -1417,13 +1454,19 @@ static void disc_children(void) {
     sigaddset(&sig_set, SIGUSR1);
     sigaddset(&sig_set, SIGUSR2);
 
-    sigprocmask(SIG_BLOCK, &sig_set, NULL);
+    if (sigprocmask(SIG_BLOCK, &sig_set, NULL) < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "unable to block signal set: %s", strerror(errno));
+    }
 
     PRIVS_ROOT
     child_signal(SIGUSR1);
     PRIVS_RELINQUISH
 
-    sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
+    if (sigprocmask(SIG_UNBLOCK, &sig_set, NULL) < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "unable to unblock signal set: %s", strerror(errno));
+    }
   }
 }
 
@@ -1516,12 +1559,19 @@ static void daemon_loop(void) {
       sigaddset(&sig_set, SIGCHLD);
       sigaddset(&sig_set, SIGTERM);
       pr_alarms_block();
-      sigprocmask(SIG_BLOCK, &sig_set, NULL);
+      if (sigprocmask(SIG_BLOCK, &sig_set, NULL) < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "unable to block signal set: %s", strerror(errno));
+      }
 
       have_dead_child = FALSE;
       child_update();
 
-      sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
+      if (sigprocmask(SIG_UNBLOCK, &sig_set, NULL) < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "unable to unblock signal set: %s", strerror(errno));
+      }
+
       pr_alarms_unblock();
     }
 
@@ -1727,12 +1777,22 @@ void pr_signals_handle(void) {
  */
 static RETSIGTYPE sig_restart(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_RESTART;
-  signal(SIGHUP, sig_restart);
+
+  if (signal(SIGHUP, sig_restart) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGHUP (signal %d) handler: %s", SIGHUP,
+      strerror(errno));
+  }
 }
 
 static RETSIGTYPE sig_evnt(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_EVENT;
-  signal(SIGUSR2, sig_evnt);
+
+  if (signal(SIGUSR2, sig_evnt) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGUSR2 (signal %d) handler: %s", SIGUSR2,
+      strerror(errno));
+  }
 }
 
 /* sig_disconnect is called in children when the parent daemon
@@ -1747,12 +1807,18 @@ static RETSIGTYPE sig_disconnect(int signo) {
    * perform the exit a little later...
    */
   if ((session.sf_flags & SF_ANON) ||
-      (session.sf_flags & SF_XFER))
+      (session.sf_flags & SF_XFER)) {
     recvd_signal_flags |= RECEIVED_SIG_EXIT;
-  else
-    recvd_signal_flags |= RECEIVED_SIG_SHUTDOWN;
 
-  signal(SIGUSR1, SIG_IGN);
+  } else {
+    recvd_signal_flags |= RECEIVED_SIG_SHUTDOWN;
+  }
+
+  if (signal(SIGUSR1, SIG_IGN) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGUSR1 (signal %d) handler: %s", SIGUSR1,
+      strerror(errno));
+  }
 }
 
 static RETSIGTYPE sig_child(int signo) {
@@ -1785,7 +1851,12 @@ static RETSIGTYPE sig_child(int signo) {
    */
 
   handle_chld();
-  signal(SIGCHLD, sig_child);
+
+  if (signal(SIGCHLD, sig_child) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGCHLD (signal %d) handler: %s", SIGCHLD,
+      strerror(errno));
+  }
 }
 
 #ifdef PR_DEVEL_COREDUMP
@@ -1809,7 +1880,12 @@ static char *prepare_core(void) {
 
 static RETSIGTYPE sig_abort(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_ABORT;
-  signal(SIGABRT, SIG_DFL);
+
+  if (signal(SIGABRT, SIG_DFL) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGABRT (signal %d) handler: %s", SIGABRT,
+      strerror(errno));
+  }
 
 #ifdef PR_DEVEL_COREDUMP
   pr_log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, generating core "
@@ -1904,7 +1980,11 @@ static RETSIGTYPE sig_terminate(int signo) {
   }
 
   /* Ignore future occurrences of this signal; we'll be terminating anyway. */
-  signal(signo, SIG_IGN);
+
+  if (signal(signo, SIG_IGN) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install handler for signal %d: %s", signo, strerror(errno));
+  }
 }
 
 static void handle_chld(void) {
@@ -1920,14 +2000,21 @@ static void handle_chld(void) {
   /* Block SIGTERM in here, so we don't create havoc with the child list
    * while modifying it.
    */
-  sigprocmask(SIG_BLOCK, &sig_set, NULL);
+  if (sigprocmask(SIG_BLOCK, &sig_set, NULL) < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to block signal set: %s", strerror(errno));
+  }
 
   while ((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
     if (child_remove(pid) == 0)
       have_dead_child = TRUE;
   }
 
-  sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
+  if (sigprocmask(SIG_UNBLOCK, &sig_set, NULL) < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to unblock signal set: %s", strerror(errno));
+  }
+
   pr_alarms_unblock();
 }
 
@@ -2064,21 +2151,70 @@ static void install_signal_handlers(void) {
   sigaddset(&sig_set, SIGBUS);
 #endif /* SIGBUS */
 
-  signal(SIGCHLD, sig_child);
-  signal(SIGHUP, sig_restart);
-  signal(SIGINT, sig_terminate);
-  signal(SIGQUIT, sig_terminate);
-  signal(SIGILL, sig_terminate);
-  signal(SIGFPE, sig_terminate);
-  signal(SIGABRT, sig_abort);
+  if (signal(SIGCHLD, sig_child) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGCHLD (signal %d) handler: %s", SIGCHLD,
+      strerror(errno));
+  }
+
+  if (signal(SIGHUP, sig_restart) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGHUP (signal %d) handler: %s", SIGHUP,
+      strerror(errno));
+  }
+
+  if (signal(SIGINT, sig_terminate) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGINT (signal %d) handler: %s", SIGINT,
+      strerror(errno));
+  }
+
+  if (signal(SIGQUIT, sig_terminate) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGQUIT (signal %d) handler: %s", SIGQUIT,
+      strerror(errno));
+  }
+
+  if (signal(SIGILL, sig_terminate) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGILL (signal %d) handler: %s", SIGILL,
+      strerror(errno));
+  }
+
+  if (signal(SIGFPE, sig_terminate) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGFPE (signal %d) handler: %s", SIGFPE,
+      strerror(errno));
+  }
+
+  if (signal(SIGABRT, sig_abort) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGABRT (signal %d) handler: %s", SIGABRT,
+      strerror(errno));
+  }
+
 #ifdef PR_DEVEL_STACK_TRACE
   /* Installs stacktrace handlers for SIGSEGV, SIGXCPU, and SIGBUS. */
   install_stacktrace_handler();
 #else
-  signal(SIGSEGV, sig_terminate);
-  signal(SIGXCPU, sig_terminate);
+  if (signal(SIGSEGV, sig_terminate) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGSEGV (signal %d) handler: %s", SIGSEGV,
+      strerror(errno));
+  }
+
+  if (signal(SIGXCPU, sig_terminate) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGXCPU (signal %d) handler: %s", SIGXCPU,
+      strerror(errno));
+  }
+
 # ifdef SIGBUS
-  signal(SIGBUS, sig_terminate);
+  if (signal(SIGBUS, sig_terminate) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGBUS (signal %d) handler: %s", SIGBUS,
+      strerror(errno));
+  }
 # endif /* SIGBUS */
 #endif /* PR_DEVEL_STACK_TRACE */
 
@@ -2086,22 +2222,53 @@ static void install_signal_handlers(void) {
    * this will prevent SIGALRMs from killing us if we don't currently have
    * any timers registered.
     */
-  signal(SIGALRM, SIG_IGN);
+  if (signal(SIGALRM, SIG_IGN) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGALRM (signal %d) handler: %s", SIGALRM,
+      strerror(errno));
+  }
 
-  signal(SIGTERM, sig_terminate);
-  signal(SIGURG, SIG_IGN);
+  if (signal(SIGTERM, sig_terminate) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGTERM (signal %d) handler: %s", SIGTERM,
+      strerror(errno));
+  }
+
+  if (signal(SIGURG, SIG_IGN) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGURG (signal %d) handler: %s", SIGURG,
+      strerror(errno));
+  }
+
 #ifdef SIGSTKFLT
-  signal(SIGSTKFLT, sig_terminate);
+  if (signal(SIGSTKFLT, sig_terminate) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGSTKFLT (signal %d) handler: %s", SIGSTKFLT,
+      strerror(errno));
+  }
 #endif /* SIGSTKFLT */
+
 #ifdef SIGIO
-  signal(SIGIO, SIG_IGN);
+  if (signal(SIGIO, SIG_IGN) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGIO (signal %d) handler: %s", SIGIO,
+      strerror(errno));
+  }
 #endif /* SIGIO */
-  signal(SIGUSR2, sig_evnt);
+
+  if (signal(SIGUSR2, sig_evnt) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGUSR2 (signal %d) handler: %s", SIGUSR2,
+      strerror(errno));
+  }
 
   /* In case our parent left signals blocked (as happens under some
    * poor inetd implementations)
    */
-  sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
+  if (sigprocmask(SIG_UNBLOCK, &sig_set, NULL) < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to block signal set: %s", strerror(errno));
+  }
 }
 
 void set_daemon_rlimits(void) {
