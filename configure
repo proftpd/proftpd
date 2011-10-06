@@ -32634,7 +32634,9 @@ my_static_modules=`echo "$ac_static_modules" | sed -e 's/\.o//g'`;
 my_shared_modules=`echo "$ac_shared_modules" | sed -e 's/\.la//g'`;
 all_modules="$my_core_modules $my_static_modules $my_shared_modules";
 
+pr_use_mysql="no"
 pr_use_openssl="no"
+pr_use_postgres="no"
 
 { echo "$as_me:$LINENO: checking for duplicate module build requests" >&5
 echo $ECHO_N "checking for duplicate module build requests... $ECHO_C" >&6; }
@@ -32667,6 +32669,8 @@ echo "$as_me: error: duplicate build request for $j -- aborting" >&2;}
   done
 
       if test x"$i" = x"mod_sql_mysql"; then
+    pr_use_mysql="yes"
+
     if test x"$my_config" != xno; then
       if `$my_config --version 2>/dev/null 1>&2`; then
         # mysql_config --include gives path WITH -I prefix
@@ -32697,6 +32701,8 @@ echo "$as_me: error: duplicate build request for $j -- aborting" >&2;}
     fi
 
   elif test x"$i" = x"mod_sql_postgres"; then
+    pr_use_postgres="yes"
+
     if test x"$pg_config" != xno; then
       if `$pg_config 2>/dev/null 1>&2`; then
         # pg_config --includedir gives path, no -I prefix
@@ -32716,6 +32722,96 @@ echo "$as_me: error: duplicate build request for $j -- aborting" >&2;}
 done
 { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
+
+if test x"$pr_use_mysql" = xyes; then
+  # Check for other MySQL-specific functionality here
+  saved_ldflags="$LDFLAGS"
+  saved_libs="$LIBS"
+  saved_cppflags="$CPPFLAGS"
+
+  { echo "$as_me:$LINENO: checking for MySQL's make_scrambled_password_323" >&5
+echo $ECHO_N "checking for MySQL's make_scrambled_password_323... $ECHO_C" >&6; }
+
+  # fiddle with CPPFLAGS, LDFLAGS
+  CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
+  LDFLAGS="$LDFLAGS -lm -lmysqlclient -lz"
+
+    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="$LIBS $ac_build_addl_libdirs"
+
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
+      #ifdef HAVE_SYS_TYPES_H
+      # include <sys/types.h>
+      #endif
+      #include <mysql.h>
+
+int
+main ()
+{
+
+      char input[32];
+      char *output = NULL;
+      (void) make_scrambled_password_323(input, output);
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+
+      { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD_323 1
+_ACEOF
+
+
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+      { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+
+  # restore CPPFLAGS, LDFLAGS
+  CPPFLAGS="$saved_cppflags"
+  LDFLAGS="$saved_ldflags"
+  LIBS="$saved_libs"
+fi
 
 if test x"$pr_use_openssl" = xyes; then
 
