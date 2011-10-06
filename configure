@@ -32675,13 +32675,21 @@ echo "$as_me: error: duplicate build request for $j -- aborting" >&2;}
           ac_build_addl_includes="$ac_build_addl_includes $mysql_includes"
         fi
 
-        # mysql_config --libs gives ALL options; use just the -L ones
+        # mysql_config --libs gives ALL options; use just the -L ones.
+        #
+        # Note that due to Bug#3702, we also need to look for -pthread, and
+        # if present, add it to the LIBS list of flags.
+
         mysql_libdirs=`$my_config --libs 2>/dev/null`
         if test ! -z "$mysql_libdirs"; then
           for my_libdir in $mysql_libdirs; do
             l=`echo -n "$my_libdir" | sed -n '/^-L/{p;}'`
             if test ! -z "$l"; then
               ac_build_addl_libdirs="$ac_build_addl_libdirs $my_libdir"
+            fi
+
+            if test x"$my_libdir" = x"-pthread"; then
+              LIBS="$LIBS -pthread"
             fi
           done
         fi
