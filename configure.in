@@ -2179,7 +2179,9 @@ my_static_modules=`echo "$ac_static_modules" | sed -e 's/\.o//g'`;
 my_shared_modules=`echo "$ac_shared_modules" | sed -e 's/\.la//g'`;
 all_modules="$my_core_modules $my_static_modules $my_shared_modules";
 
+pr_use_mysql="no"
 pr_use_openssl="no"
+pr_use_postgres="no"
 
 AC_MSG_CHECKING([for duplicate module build requests])
 for i in $all_modules; do
@@ -2211,6 +2213,8 @@ for i in $all_modules; do
   dnl Use database-specific config scripts, if we can.  Note that
   dnl these will cause problems for cross-compiles!
   if test x"$i" = x"mod_sql_mysql"; then
+    pr_use_mysql="yes"
+
     if test x"$my_config" != xno; then
       if `$my_config --version 2>/dev/null 1>&2`; then
         # mysql_config --include gives path WITH -I prefix
@@ -2241,6 +2245,8 @@ for i in $all_modules; do
     fi
 
   elif test x"$i" = x"mod_sql_postgres"; then
+    pr_use_postgres="yes"
+
     if test x"$pg_config" != xno; then
       if `$pg_config 2>/dev/null 1>&2`; then
         # pg_config --includedir gives path, no -I prefix
@@ -2259,6 +2265,52 @@ for i in $all_modules; do
   fi
 done
 AC_MSG_RESULT([no])
+
+if test x"$pr_use_mysql" = xyes; then
+  # Check for other MySQL-specific functionality here
+  saved_ldflags="$LDFLAGS"
+  saved_libs="$LIBS"
+  saved_cppflags="$CPPFLAGS"
+
+  AC_MSG_CHECKING([for MySQL's make_scrambled_password_323])
+
+  # fiddle with CPPFLAGS, LDFLAGS
+  CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
+  LDFLAGS="$LDFLAGS -lm -lmysqlclient -lz"
+
+  dnl Splice out -lsupp, since that library hasn't been built yet
+  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="$LIBS $ac_build_addl_libdirs"
+
+  AC_TRY_LINK(
+    [
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
+      #ifdef HAVE_SYS_TYPES_H
+      # include <sys/types.h>
+      #endif
+      #include <mysql.h>
+    ],
+    [
+      char input[32];
+      char *output = NULL;
+      (void) make_scrambled_password_323(input, output);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD_323, 1, [Define if you have MySQL's make_scrambled_password_323])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+
+  # restore CPPFLAGS, LDFLAGS
+  CPPFLAGS="$saved_cppflags"
+  LDFLAGS="$saved_ldflags"
+  LIBS="$saved_libs"
+fi
 
 if test x"$pr_use_openssl" = xyes; then
   AC_DEFINE(PR_USE_OPENSSL, 1, [Define if using OpenSSL support.])

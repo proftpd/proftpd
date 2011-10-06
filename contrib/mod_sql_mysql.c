@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.63 2011-05-23 20:56:40 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.64 2011-10-06 15:27:08 castaglia Exp $
  */
 
 /*
@@ -1485,7 +1485,7 @@ MODRET cmd_checkauth(cmd_rec * cmd) {
 
   if (!success) {
 
-#if MYSQL_VERSION_ID >= 40101
+#ifdef HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD_323
     /* Try to work around MySQL's stupid handling of password length
      * changes in 4.1, and the stupidity and whining of admins who
      * cannot deal with those changes.
@@ -1495,12 +1495,14 @@ MODRET cmd_checkauth(cmd_rec * cmd) {
 
     sql_log(DEBUG_FUNC, "%s",
       "checking again using deprecated legacy MySQL password algorithm");
+    sql_log(DEBUG_FUNC, "%s",
+      "warning: support for this legacy MySQ-3.xL password algorithm will be dropped from MySQL in the future");
     success = !strcmp(scrambled, c_hash);
     if (!success)
       sql_log(DEBUG_FUNC, "%s", "password mismatch");
 #else
     sql_log(DEBUG_FUNC, "%s", "password mismatch");
-#endif
+#endif /* No MySQL make_scrambled_password_323() function */
   }
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_checkauth");
