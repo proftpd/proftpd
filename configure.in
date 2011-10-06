@@ -2408,6 +2408,54 @@ if test x"$pr_use_openssl" = xyes; then
   )
 fi
 
+if test x"$pr_use_postgres" = xyes; then
+  # Check for other Postgres-specific functionality here
+  saved_ldflags="$LDFLAGS"
+  saved_libs="$LIBS"
+  saved_cppflags="$CPPFLAGS"
+
+  AC_MSG_CHECKING([for Postgres's PQescapeStringConn])
+
+  # fiddle with CPPFLAGS, LDFLAGS
+  CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
+  LDFLAGS="$LDFLAGS -lm -lpq"
+
+  dnl Splice out -lsupp, since that library hasn't been built yet
+  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="$LIBS $ac_build_addl_libdirs"
+
+  AC_TRY_LINK(
+    [
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
+      #ifdef HAVE_SYS_TYPES_H
+      # include <sys/types.h>
+      #endif
+      #include <libpq-fe.h>
+    ],
+    [
+      char *input = NULL, *output = NULL;
+      size_t inputlen = 0;
+      PGconn *postgres = NULL;
+      int pgerr = 0;
+      PQescapeStringConn(postgres, output, input, inputlen, &pgerr);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_POSTGRES_PQESCAPESTRINGCONN, 1, [Define if you have Postgres's PQescapeStringConn])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+
+  # restore CPPFLAGS, LDFLAGS
+  CPPFLAGS="$saved_cppflags"
+  LDFLAGS="$saved_ldflags"
+  LIBS="$saved_libs"
+fi
+
 for module in $ac_shared_modules ; do
   moduledir=`echo "$module" | sed -e 's/\.la$//'`;
 

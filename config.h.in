@@ -396,6 +396,9 @@
 /* Define if you have the perm_copy_fd function.  */
 #undef HAVE_PERM_COPY_FD
 
+/* Define if you have the Postgres PQescapeStringConn function.  */
+#undef HAVE_POSTGRES_PQESCAPESTRINGCONN
+
 /* Define if you have the pstat function.  */
 #undef HAVE_PSTAT
 
