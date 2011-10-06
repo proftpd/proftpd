@@ -33084,6 +33084,98 @@ rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
 fi
 
+if test x"$pr_use_postgres" = xyes; then
+  # Check for other Postgres-specific functionality here
+  saved_ldflags="$LDFLAGS"
+  saved_libs="$LIBS"
+  saved_cppflags="$CPPFLAGS"
+
+  { echo "$as_me:$LINENO: checking for Postgres's PQescapeStringConn" >&5
+echo $ECHO_N "checking for Postgres's PQescapeStringConn... $ECHO_C" >&6; }
+
+  # fiddle with CPPFLAGS, LDFLAGS
+  CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
+  LDFLAGS="$LDFLAGS -lm -lpq"
+
+    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="$LIBS $ac_build_addl_libdirs"
+
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
+      #ifdef HAVE_SYS_TYPES_H
+      # include <sys/types.h>
+      #endif
+      #include <libpq-fe.h>
+
+int
+main ()
+{
+
+      char *input = NULL, *output = NULL;
+      size_t inputlen = 0;
+      PGconn *postgres = NULL;
+      int pgerr = 0;
+      PQescapeStringConn(postgres, output, input, inputlen, &pgerr);
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+
+      { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_POSTGRES_PQESCAPESTRINGCONN 1
+_ACEOF
+
+
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+      { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+
+  # restore CPPFLAGS, LDFLAGS
+  CPPFLAGS="$saved_cppflags"
+  LDFLAGS="$saved_ldflags"
+  LIBS="$saved_libs"
+fi
+
 for module in $ac_shared_modules ; do
   moduledir=`echo "$module" | sed -e 's/\.la$//'`;
 
