@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1363 2011-10-10 20:56:41 castaglia Exp $
+$Id: NEWS,v 1.1364 2011-10-10 21:05:49 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -16,6 +16,8 @@ CVS
   MySQL 5.5 on Fedora.
 - Bug 3192 - PQescapeStringConn() needs a better check.
 - Bug 3704 - Enable OpenSSL countermeasure against SSLv3/TLSv1 BEAST attacks.
+  To disable this countermeasure, which may cause interoperability issues
+  with some clients, use the NoEmptyFragments TLSOption.
 
 1.3.4rc3 - Released 26-Sep-2011
 --------------------------------
