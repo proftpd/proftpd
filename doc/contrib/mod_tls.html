@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.31 2011-07-10 18:06:46 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.32 2011-10-10 21:02:09 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -678,6 +678,24 @@ The currently implemented options are:
     Some FTP clients are known to be buggy when handling a server's certificate
     request.  This option causes the server to <b>not</b> send such a request
     during an SSL handshake.
+
+  <p>
+  <li><code>NoEmptyFragments</code><br>
+    <p>
+    In order to prevent certain attacks (<i>e.g.</i> the so-called
+    <a href="http://www.kb.cert.org/vuls/id/864643">&quotBEAST&quot;
+    attack</a>), the <code>mod_tls/code> module was changed to use OpenSSL's
+    builtin countermeasure of inserting <a href="http://www.openssl.org/~bodo/tls-cbc.txt">empty fragments</a>.  However, some browsers/clients may not handle
+    such empty fragments well.  Use this <code>NoEmptyFragaments</code>
+    TLSOption in order to interoperate with such clients, with risk of losing
+    the protective countermeasure.
+   
+    <p>
+    Note that this protective countermeasure only applies to SSLv3 and TLSv1
+    sessions; it does not affect TLSv1.1 or TLSv1.2 sessions. 
+
+    <p>
+    Added in ProFTPD 1.3.4rc4.
 
   <p>
   <li><code>NoSessionReuseRequired</code><br>
@@ -1570,7 +1588,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-07-10 18:06:46 $</i><br>
+Last Updated: <i>$Date: 2011-10-10 21:02:09 $</i><br>
 
 <hr>
 <font size=2><b><i>
