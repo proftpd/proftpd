@@ -378,6 +378,8 @@ static char *tls_passphrase_provider = NULL;
 #define TLS_PROTO_TLS_V1		0x0002
 static unsigned int tls_protocol = TLS_PROTO_SSL_V3|TLS_PROTO_TLS_V1;
 
+static int tls_ssl_opts = SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE^SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
+
 static int tls_required_on_auth = 0;
 static int tls_required_on_ctrl = 0;
 static int tls_required_on_data = 0;
@@ -2149,7 +2151,7 @@ static void tls_blinding_on(SSL *ssl) {
 
 static int tls_init_ctx(void) {
   config_rec *c;
-  int ssl_opts = SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE;
+  int ssl_opts = tls_ssl_opts;
   long ssl_mode = 0;
 
   if (pr_define_exists("TLS_USE_FIPS") &&
@@ -6965,6 +6967,14 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "NoCertRequest") == 0) {
       opts |= TLS_OPT_NO_CERT_REQUEST;
+
+    } else if (strcmp(cmd->argv[i], "NoEmptyFragments") == 0) {
+      /* Unlike the other TLSOptions, this option is handled slightly
+       * differently, due to the fact that option affects the creation
+       * of the SSL_CTX.
+       *
+       */
+      tls_ssl_opts |= SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
 
     } else if (strcmp(cmd->argv[i], "NoSessionReuseRequired") == 0) {
       opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;

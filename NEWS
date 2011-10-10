@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1362 2011-10-06 15:56:46 castaglia Exp $
+$Id: NEWS,v 1.1363 2011-10-10 20:56:41 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -15,6 +15,7 @@ CVS
 - Bug 3669 - mod_sql_mysql.so: undefined symbol: make_scrambled_password with
   MySQL 5.5 on Fedora.
 - Bug 3192 - PQescapeStringConn() needs a better check.
+- Bug 3704 - Enable OpenSSL countermeasure against SSLv3/TLSv1 BEAST attacks.
 
 1.3.4rc3 - Released 26-Sep-2011
 --------------------------------
