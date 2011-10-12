@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.60 2011-08-02 18:24:56 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.61 2011-10-12 17:15:56 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1234,6 +1234,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
 
     } else if (strncmp(cmd->argv[i], "IgnoreSFTPSetPerms", 19) == 0) {
       opts |= SFTP_OPT_IGNORE_SFTP_SET_PERMS;
+
+    } else if (strncmp(cmd->argv[i], "IgnoreSFTPSetTimes", 19) == 0) {
+      opts |= SFTP_OPT_IGNORE_SFTP_SET_TIMES;
 
     } else if (strncmp(cmd->argv[i], "IgnoreSCPUploadPerms", 20) == 0) {
       opts |= SFTP_OPT_IGNORE_SCP_UPLOAD_PERMS;

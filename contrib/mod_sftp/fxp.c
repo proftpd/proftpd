@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.133 2011-08-05 22:48:06 castaglia Exp $
+ * $Id: fxp.c,v 1.134 2011-10-12 17:15:55 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5035,6 +5035,19 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
     attr_flags &= ~SSH2_FX_ATTR_PERMISSIONS;
   }
 
+  /* If the SFTPOption for ignoring the times for SFTP setstat requests is set,
+   * handle it by clearing the time-related SSH2_FX_ATTR flags.
+   */
+  if (sftp_opts & SFTP_OPT_IGNORE_SFTP_SET_TIMES) {
+    if ((attr_flags & SSH2_FX_ATTR_ACCESSTIME) ||
+        (attr_flags & SSH2_FX_ATTR_MODIFYTIME)) {
+      pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPSetTimes' "
+        "configured, ignoring times sent by client");
+      attr_flags &= ~SSH2_FX_ATTR_ACCESSTIME;
+      attr_flags &= ~SSH2_FX_ATTR_MODIFYTIME;
+    }
+  }
+
   if (fxh->fh != NULL) {
     res = fxp_attrs_set(fxh->fh, fxh->fh->fh_path, attrs, attr_flags, &buf,
       &buflen, fxp);
@@ -8748,6 +8761,19 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
     pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPSetPerms' "
       "configured, ignoring perms sent by client");
     attr_flags &= ~SSH2_FX_ATTR_PERMISSIONS;
+  }
+
+  /* If the SFTPOption for ignoring the times for SFTP setstat requests is set,
+   * handle it by clearing the time-related SSH2_FX_ATTR flags.
+   */
+  if (sftp_opts & SFTP_OPT_IGNORE_SFTP_SET_TIMES) {
+    if ((attr_flags & SSH2_FX_ATTR_ACCESSTIME) ||
+        (attr_flags & SSH2_FX_ATTR_MODIFYTIME)) {
+      pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPSetTimes' "
+        "configured, ignoring times sent by client");
+      attr_flags &= ~SSH2_FX_ATTR_ACCESSTIME;
+      attr_flags &= ~SSH2_FX_ATTR_MODIFYTIME;
+    }
   }
 
   res = fxp_attrs_set(NULL, path, attrs, attr_flags, &buf, &buflen, fxp);
