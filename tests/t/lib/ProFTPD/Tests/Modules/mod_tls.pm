@@ -910,8 +910,14 @@ sub tls_list_no_session_reuse {
       # Since we are requiring SSL session resuse for data transfers,
       # and this client is not using SSL session resumption, I expect
       # this data transfer to fail.
-      my $res = $client->list('.');
-      if ($res) {
+      eval { 
+        my $res = $client->list('.');
+        if ($res) {
+          die("LIST succeeded unexpectedly");
+        }
+      };
+
+      unless ($@) {
         die("LIST succeeded unexpectedly");
       }
 
@@ -3998,6 +4004,7 @@ sub tls_stor_empty_file {
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
+        TLSOptions => 'NoSessionReuseRequired',
       },
     },
   };
@@ -4155,6 +4162,7 @@ sub tls_retr_empty_file {
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
+        TLSOptions => 'NoSessionReuseRequired',
       },
     },
   };
