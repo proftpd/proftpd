@@ -23,7 +23,7 @@
  */
 
 /* Testsuite management
- * $Id: tests.h,v 1.4 2011-05-23 20:44:41 castaglia Exp $
+ * $Id: tests.h,v 1.5 2011-10-31 18:38:51 castaglia Exp $
  */
 
 #ifndef PR_TESTS_H
@@ -58,6 +58,7 @@ Suite *tests_get_scoreboard_suite(void);
 Suite *tests_get_stash_suite(void);
 Suite *tests_get_modules_suite(void);
 Suite *tests_get_cmd_suite(void);
+Suite *tests_get_response_suite(void);
 
 /* Temporary hack/placement for this variable, until we get to testing
  * the Signals API.

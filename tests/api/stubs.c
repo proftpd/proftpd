@@ -52,6 +52,16 @@ void pr_log_debug(int level, const char *fmt, ...) {
 void pr_log_pri(int prio, const char *fmt, ...) {
 }
 
+int pr_netio_printf(pr_netio_stream_t *strm, const char *fmt, ...) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_netio_printf_async(pr_netio_stream_t *strm, char *fmt, ...) {
+  errno = ENOSYS;
+  return -1;
+}
+
 void pr_signals_handle(void) {
 }
 

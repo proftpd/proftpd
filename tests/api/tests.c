@@ -50,6 +50,7 @@ static struct testsuite_info suites[] = {
   { "stash",		tests_get_stash_suite },
   { "modules",		tests_get_modules_suite },
   { "cmd",		tests_get_cmd_suite },
+  { "response",		tests_get_response_suite },
 
   { NULL, NULL }
 };
@@ -114,6 +115,9 @@ static Suite *tests_get_suite(const char *suite) {
 
   } else if (strcmp(suite, "cmd") == 0) {
     return tests_get_cmd_suite();
+
+  } else if (strcmp(suite, "response") == 0) {
+    return tests_get_response_suite();
   }
 
   return NULL;
