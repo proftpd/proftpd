@@ -1607,7 +1607,6 @@ AC_CHECK_LIB(ucb, alloca)
 LDFLAGS=$old_LDFLAGS
 
 AC_PROG_GCC_TRADITIONAL
-AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS(bcopy crypt fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo futimes getpgid getpgrp nl_langinfo)
@@ -2335,7 +2334,8 @@ if test x"$pr_use_openssl" = xyes; then
       }
     ],
     AC_MSG_RESULT(yes); AC_DEFINE(PR_USE_OPENSSL_FIPS, 1, [Define if your OpenSSL supports FIPS]),
-    AC_MSG_RESULT(no)
+    AC_MSG_RESULT(no),
+    AC_MSG_RESULT(unknown)
   )
   LIBS="$saved_libs"
 
