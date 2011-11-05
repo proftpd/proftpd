@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.186 2011-05-23 21:11:56 castaglia Exp $
+ * $Id: mod_ls.c,v 1.187 2011-11-05 23:01:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -257,7 +257,7 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
 }
 
 /* sendline() now has an internal buffer, to help speed up LIST output.
- * This buffer is allocated one, the first time sendline() is called.
+ * This buffer is allocated once, the first time sendline() is called.
  * By using a runtime allocation, we can use pr_config_get_server_xfer_bufsz()
  * to get the optimal buffer size for network transfers.
  */
@@ -268,6 +268,7 @@ static int sendline(int flags, char *fmt, ...) {
   va_list msg;
   char buf[PR_TUNABLE_BUFFER_SIZE+1] = {'\0'};
   int res = 0;
+  size_t listbuflen;
 
   if (listbuf == NULL) {
     listbufsz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_WR);
@@ -277,7 +278,7 @@ static int sendline(int flags, char *fmt, ...) {
   }
 
   if (flags & LS_SENDLINE_FL_FLUSH) {
-    size_t listbuflen = strlen(listbuf);
+    listbuflen = strlen(listbuf);
 
     if (listbuflen > 0) {
       res = pr_data_xfer(listbuf, listbuflen);
@@ -294,6 +295,8 @@ static int sendline(int flags, char *fmt, ...) {
       }
 
       memset(listbuf, '\0', listbufsz);
+      pr_trace_msg("data", 8, "flushed %lu bytes of list buffer",
+        (unsigned long) listbuflen);
     }
 
     return res;
@@ -306,8 +309,10 @@ static int sendline(int flags, char *fmt, ...) {
   buf[sizeof(buf)-1] = '\0';
 
   /* If buf won't fit completely into listbuf, flush listbuf */
-  if (strlen(buf) >= (listbufsz - strlen(listbuf))) {
-    res = pr_data_xfer(listbuf, strlen(listbuf));
+  listbuflen = strlen(listbuf);
+
+  if (strlen(buf) >= (listbufsz - listbuflen)) {
+    res = pr_data_xfer(listbuf, listbuflen);
     if (res < 0 &&
         errno != 0) {
       int xerrno = errno;
@@ -322,6 +327,8 @@ static int sendline(int flags, char *fmt, ...) {
     }
 
     memset(listbuf, '\0', listbufsz);
+    pr_trace_msg("data", 8, "flushed %lu bytes of list buffer",
+      (unsigned long) listbuflen);
   }
 
   sstrcat(listbuf, buf, listbufsz);
@@ -982,6 +989,9 @@ static char **sreaddir(const char *dirname, const int sort) {
    * only freed when the _entire_ directory structure has been parsed.  Also,
    * this helps to keep the memory footprint a little smaller.
    */
+  pr_trace_msg("data", 8, "allocating readdir buffer of %lu bytes",
+    (unsigned long) (dsize * sizeof(char *)));
+
   p = malloc(dsize * sizeof(char *));
   if (p == NULL) {
     pr_log_pri(PR_LOG_ERR, "fatal: memory exhausted");
@@ -1004,7 +1014,11 @@ static char **sreaddir(const char *dirname, const int sort) {
         "entries", dsize, dsize * 2);
 
       /* Allocate bigger array for pointers to filenames */
-      if ((newp = (char **) realloc(p, 2 * dsize * sizeof(char *))) == NULL) {
+      pr_trace_msg("data", 8, "allocating readdir buffer of %lu bytes",
+        (unsigned long) (2 * dsize * sizeof(char *)));
+
+      newp = (char **) realloc(p, 2 * dsize * sizeof(char *));
+      if (newp == NULL) {
         pr_log_pri(PR_LOG_ERR, "fatal: memory exhausted");
         exit(1);
       }
@@ -1013,8 +1027,8 @@ static char **sreaddir(const char *dirname, const int sort) {
     }
 
     /* Append the filename to the block. */
-    if ((p[i] = (char *) calloc(strlen(de->d_name) + 1,
-        sizeof(char))) == NULL) {
+    p[i] = (char *) calloc(strlen(de->d_name) + 1, sizeof(char));
+    if (p[i] == NULL) {
       pr_log_pri(PR_LOG_ERR, "fatal: memory exhausted");
       exit(1);
     }
@@ -1027,8 +1041,9 @@ static char **sreaddir(const char *dirname, const int sort) {
    */
   p[i] = NULL;
 
-  if (sort)
-    qsort(p, i, sizeof(char *), dircmp);
+  if (sort) {
+    PR_DEVEL_CLOCK(qsort(p, i, sizeof(char *), dircmp));
+  }
 
   return p;
 }
@@ -1078,7 +1093,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
     dest_workp++;
   }
 
-  dir = sreaddir(".", TRUE);
+  PR_DEVEL_CLOCK(dir = sreaddir(".", TRUE));
 
   if (dir) {
     char **s;
@@ -2014,7 +2029,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 
     /* If dir is not '.', then we need to change directories.  Hence we
      * push our current working directory onto the stack, do the chdir,
-     * and pop bac, afterwards.
+     * and pop back, afterwards.
      */
     push_cwd(cwd_buf, &symhold);
 
@@ -2026,7 +2041,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     }
   }
 
-  list = sreaddir(".", FALSE);
+  PR_DEVEL_CLOCK(list = sreaddir(".", FALSE));
   if (list == NULL) {
     if (!curdir)
       pop_cwd(cwd_buf, &symhold);
@@ -2092,7 +2107,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
         } else {
           count++;
 
-          if (list_nfiles.curr && list_nfiles.max &&
+          if (list_nfiles.curr > 0 &&
+              list_nfiles.max > 0 &&
               list_nfiles.curr >= list_nfiles.max) {
 
             if (!list_nfiles.logged) {
@@ -2113,7 +2129,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
         } else {
           count++;
 
-          if (list_nfiles.curr && list_nfiles.max &&
+          if (list_nfiles.curr > 0 &&
+              list_nfiles.max > 0 &&
               list_nfiles.curr >= list_nfiles.max) {
 
             if (!list_nfiles.logged) {
