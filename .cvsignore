@@ -5,6 +5,7 @@ config.status
 autom4te.cache
 proftpd
 proftpd.pc
+module-libs.txt
 ftpshut
 ftpwho
 ftpcount
