@@ -54,6 +54,11 @@ ADDL_CPPFLAGS=@ADDL_CPPFLAGS@
 CFLAGS=@CFLAGS@
 DEFINES=$(PLATFORM)
 
+# Module-specific libraries to link against.  These libraries may be
+# conditional, i.e. depending on the module-specific configure script and
+# options.
+MODULE_LIBS_FILE=$(top_builddir)/module-libs.txt
+
 OBJS=main.o timers.o sets.o pool.o privs.o str.o table.o regexp.o dirtree.o \
      expr.o support.o netaddr.o inet.o child.o parser.o log.o lastlog.o \
      xferlog.o bindings.o netacl.o class.o scoreboard.o help.o feat.o netio.o \

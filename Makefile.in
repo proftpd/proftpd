@@ -52,7 +52,8 @@ dirs: include/buildstamp.h dummy
 	done
 
 proftpd$(EXEEXT): lib src modules dirs locale
-	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) $(MAIN_LDFLAGS) -o $@ $(BUILD_PROFTPD_OBJS) $(BUILD_PROFTPD_ARCHIVES) $(LIBS) $(MAIN_LIBS)
+	test -f $(MODULE_LIBS_FILE) || touch $(MODULE_LIBS_FILE)
+	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) $(MAIN_LDFLAGS) -o $@ $(BUILD_PROFTPD_OBJS) $(BUILD_PROFTPD_ARCHIVES) $(LIBS) $(MAIN_LIBS) `uniq $(MODULE_LIBS_FILE) | tr '\n' ' '`
 
 ftpcount$(EXEEXT): lib utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPCOUNT_OBJS) $(UTILS_LIBS)
@@ -176,7 +177,7 @@ clean:
 	done
 
 	rm -f proftpd.pc include/buildstamp.h
-	rm -f $(BUILD_BIN)
+	rm -f $(BUILD_BIN) $(MODULE_LIBS_FILE)
 
 distclean: clean
 	cd lib/ && $(MAKE) distclean
