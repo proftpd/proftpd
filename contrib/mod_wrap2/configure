@@ -614,6 +614,7 @@ LIBS
 build_alias
 host_alias
 target_alias
+MODULE_LIBS
 LIBOBJS
 LTLIBOBJS'
 ac_subst_files=''
@@ -1628,7 +1629,7 @@ _ACEOF
 
 
       ac_os=`uname`
-      if test "$ac_os" != "FreeBSD"; then
+      if test x"$ac_os" != xFreeBSD -a x"$ac_os" != xDarwin; then
         ac_wrap2_libs="$ac_wrap2_libs -lnsl"
       fi
     fi
@@ -1646,6 +1647,9 @@ _ACEOF
     fi
 
 fi
+
+
+MODULE_LIBS="$ac_wrap2_libs"
 
 
 ac_config_headers="$ac_config_headers mod_wrap2.h"
@@ -2304,11 +2308,12 @@ LIBS!$LIBS$ac_delim
 build_alias!$build_alias$ac_delim
 host_alias!$host_alias$ac_delim
 target_alias!$target_alias$ac_delim
+MODULE_LIBS!$MODULE_LIBS$ac_delim
 LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 39; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 40; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
@@ -2732,7 +2737,3 @@ if test "$no_create" != yes; then
   $ac_cs_success || { (exit 1); exit 1; }
 fi
 
-
-
-sed -e "s/@WRAP2_LIBS@/$ac_wrap2_libs/" mod_wrap2.h > .mod_wrap2.h.tmp
-mv .mod_wrap2.h.tmp mod_wrap2.h
