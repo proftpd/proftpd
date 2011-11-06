@@ -12,10 +12,11 @@ AC_ARG_ENABLE(nis,
 
       dnl Hack to make sure that the correct libraries are linked on the right
       dnl platforms: FreeBSD's libc itself defines the NIS/YP functions, rather
-      dnl than defining those functions in a separate libnsl library.
+      dnl than defining those functions in a separate libnsl library.  Same
+      dnl for Mac OSX as well, apparently.
 
       ac_os=`uname`
-      if test "$ac_os" != "FreeBSD"; then
+      if test x"$ac_os" != xFreeBSD -a x"$ac_os" != xDarwin; then
         ac_wrap2_libs="$ac_wrap2_libs -lnsl"
       fi
     fi ])
@@ -31,13 +32,8 @@ AC_ARG_ENABLE(wrapper-options,
     fi
   ])
 
+MODULE_LIBS="$ac_wrap2_libs"
+
+AC_SUBST(MODULE_LIBS)
 AC_CONFIG_HEADER(mod_wrap2.h)
 AC_OUTPUT(Makefile)
-
-dnl It looks like configure does not substitute AC_SUBST values for an
-dnl AC_CONFIG_HEADER file, only for AC_OUTPUT files.  And since we
-dnl specifically need this $Libraries$ line in the header, that does not
-dnl help.  So, do the substitution by hand.
-
-sed -e "s/@WRAP2_LIBS@/$ac_wrap2_libs/" mod_wrap2.h > .mod_wrap2.h.tmp
-mv .mod_wrap2.h.tmp mod_wrap2.h

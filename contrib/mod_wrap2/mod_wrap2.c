@@ -24,6 +24,11 @@
 
 #include "mod_wrap2.h"
 
+#ifdef WRAP2_USE_NIS
+#include <rpc/rpc.h>
+#include <rpcsvc/ypclnt.h>
+#endif /* WRAP2_USE_NIS */
+
 typedef struct regtab_obj {
   struct regtab_obj *prev, *next;
 
