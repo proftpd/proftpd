@@ -31,7 +31,6 @@ ChangeLog files.
 
   + ExtendedLog entries now written for data transfers which time out.
 
-
 1.3.4rc2
 ---------
 
@@ -221,7 +220,6 @@ ChangeLog files.
     the session is ending, as well as support for an optional string
     for more details about the reason for ending the session.
 
-
 1.3.4rc1
 ---------
 
@@ -377,4 +375,4 @@ ChangeLog files.
 
       Support for this directive has been removed.
 
-Last Updated: $Date: 2011-11-09 17:36:48 $
+Last Updated: $Date: 2011-11-09 17:40:14 $
