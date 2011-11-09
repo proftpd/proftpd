@@ -1,3 +1,348 @@
+2011-11-09 14:35  castaglia
+
+	* contrib/dist/rpm/proftpd.spec, include/version.h:
+	  Updating for 1.3.4 release.
+
+2011-11-09 09:47  castaglia
+
+	* NEWS:
+	  Updating NEWS, getting ready for release.
+
+2011-11-09 09:47  castaglia
+
+	* NEWS, RELEASE_NOTES:
+	  Updating NEWS, release notes, getting ready for release.
+
+2011-11-09 09:40  castaglia
+
+	* RELEASE_NOTES:
+	  Minor formatting consistency fix.
+
+2011-11-09 09:40  castaglia
+
+	* RELEASE_NOTES:
+	  Updated release notes.
+
+2011-11-09 09:36  castaglia
+
+	* RELEASE_NOTES:
+	  Updating release notes.
+
+2011-11-09 09:34  castaglia
+
+	* NEWS, src/main.c:
+	  Backport of fix for Bug#3711 to 1.3.3 branch.
+
+2011-11-09 09:32  castaglia
+
+	* NEWS, src/main.c:
+	  Bug#3711 - Response pool use-after-free memory corruption error.
+
+2011-11-08 11:03  castaglia
+
+	* tests/api/response.c:
+	  Adding more unit tests for the Response API, including a
+	  demonstration of Bug#3711.
+
+2011-11-08 10:20  castaglia
+
+	* contrib/dist/rpm/xinetd:
+	  Updating the xinetd config file for the RPM package, as per
+	  Bug#3640.
+
+2011-11-07 14:42  castaglia
+
+	* RELEASE_NOTES:
+	  Updated release notes to mention the RPM/.spec changes.
+
+2011-11-07 14:41  castaglia
+
+	* contrib/dist/rpm/: basic-pam.conf, proftpd.spec:
+	  More updates for Bug#3640, reworking the proftpd.spec file and
+	  related config files.
+
+2011-11-07 14:25  castaglia
+
+	* NEWS, contrib/dist/rpm/proftpd-tmpfs.conf,
+	  contrib/dist/rpm/proftpd.init.d,
+	  contrib/dist/rpm/proftpd.logrotate, contrib/dist/rpm/proftpd.pam,
+	  contrib/dist/rpm/proftpd.service:
+	  Bug#3640 - rpmbuild on CentOS5.5 (64bit): "File not found by
+	  glob".
+
+	  This involves a fairly large reworking of the .spec file, and
+	  adding new files expected by the .spec file.
+
+2011-11-06 14:25  castaglia
+
+	* contrib/mod_load/configure:
+	  Updated mod_load configure.
+
+2011-11-06 14:19  castaglia
+
+	* .cvsignore:
+	  Ignore the auto-generated module-libs.txt file.
+
+2011-11-06 14:16  castaglia
+
+	* contrib/mod_load/: Makefile.in, configure.in, mod_load.c,
+	  mod_load.c.in:
+	  Updating the mod_load configure/Makefiles to use the
+	  $(MODULE_LIBS_FILE) mechanism.
+
+2011-11-06 13:58  castaglia
+
+	* contrib/mod_wrap2/configure:
+	  Updated mod_wrap2 configure.
+
+2011-11-06 13:56  castaglia
+
+	* contrib/mod_wrap2/: Makefile.in, configure.in, mod_wrap2.c,
+	  mod_wrap2.h.in:
+	  Updating the mod_wrap2 build files to use the new
+	  $(MODULE_LIBS_FILE), rather than modifying the generated
+	  mod_wrap2.h file.
+
+2011-11-06 13:37  castaglia
+
+	* Make.rules.in, Makefile.in:
+	  Modifying the build system/scripts to support a
+	  $(MODULE_LIBS_FILE) file, which will contain a list of libraries
+	  that modules will want to add to the linker list, when linking
+	  the full proftpd executable AND when the modules in question are
+	  being built as static modules.  Shared modules are built as .la
+	  files, which contain their own linkage lists.
+
+	  Consider the case where a module like mod_load (or mod_wrap2)
+	  might want to conditionally link against a library, depending on
+	  whether the host requires that library or depending on the
+	  configure options given when building proftpd.  The libraries
+	  needed by the module won't be known by the top-level main
+	  Makefile -- hence the need for this new $(MODULE_LIBS_FILE) file.
+	   The top-level Makefile knows to read from this file for
+	  additional libraries; the module configure scripts/Makefiles can
+	  append the libraries they need to the $(MODULE_LIBS_FILE) file.
+
+	  I'll be updating the mod_wrap2 configure/Makefile files to use
+	  this mechanism shortly.
+
+2011-11-05 16:01  castaglia
+
+	* modules/mod_ls.c:
+	  Adding a little more trace logging, and some
+	  --enable-devel=timing instrumenting of the code, trying to track
+	  down a reported CPU spike.
+
+2011-11-03 10:12  castaglia
+
+	* config.h.in:
+	  Since the AC_FUNC_SETPGRP macro has been removed from the
+	  configure.in file, we should always assume the POSIX setpgrp(2)
+	  signature.
+
+2011-11-01 07:04  castaglia
+
+	* RELEASE_NOTES:
+	  Updated release notes.
+
+2011-10-31 23:16  castaglia
+
+	* configure:
+	  Updated configure.
+
+2011-10-31 23:13  castaglia
+
+	* configure.in, m4/proftpd.m4:
+	  Start tweaking the configure script to work better in
+	  cross-compiling situations.
+
+2011-10-31 11:39  castaglia
+
+	* tests/Makefile.in:
+	  Make sure to build the response unit tests, and include them in
+	  the api-tests binary.
+
+2011-10-31 11:38  castaglia
+
+	* tests/api/: response.c, stubs.c, tests.c, tests.h:
+	  Start working on API-level regression tests for the Response API.
+
+2011-10-24 16:06  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_tls.pm:
+	  Fixing some of the broken mod_tls regression tests so that they
+	  pass properly again.
+
+2011-10-24 15:59  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_tls.pm:
+	  Updating the mod_tls tests to reflect changes to the
+	  Net:FTPSSL-0.19 version of the dependent Perl module.
+
+2011-10-23 19:31  castaglia
+
+	* tests/: tests.pl, t/config/listoptions.t,
+	  t/lib/ProFTPD/Tests/Config/ListOptions.pm:
+	  Start working on regression tests for the ListOptions directive,
+	  spurred by some questions about it in the online forums.
+
+2011-10-18 07:52  castaglia
+
+	* doc/contrib/mod_sftp.html:
+	  Mention that mod_sftp does not honor the ListOptions directive.
+
+2011-10-17 16:43  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_rewrite.pm:
+	  Adding mod_rewrite regression test for rewriting backslashes to
+	  slashes.
+
+2011-10-17 11:25  castaglia
+
+	* doc/howto/Rewrite.html:
+	  Adding new mod_rewrite example, for converting backslashes to
+	  slashes.
+
+2011-10-13 09:23  castaglia
+
+	* contrib/mod_sftp/Makefile.in:
+	  Remove redundant object file from `ar' command list; the
+	  mod_sftp.o object is already mentioned in the $(MODULE_OBJS) list
+	  of object files.
+
+2011-10-12 10:17  castaglia
+
+	* doc/contrib/mod_sftp.html:
+	  Updated SFTPOptions documentation to mention new
+	  IgnoreSFTPSetTimes option (Bug#3706).
+
+2011-10-12 10:15  castaglia
+
+	* NEWS, contrib/mod_sftp/fxp.c, contrib/mod_sftp/mod_sftp.c,
+	  contrib/mod_sftp/mod_sftp.h.in,
+	  tests/t/lib/ProFTPD/Tests/Modules/mod_sftp.pm:
+	  Bug#3706 - Support SFTPOption for ignoring requests to modify
+	  timestamps.
+
+2011-10-10 14:08  castaglia
+
+	* NEWS, RELEASE_NOTES, contrib/mod_tls.c:
+	  Backport of fix for Bug#3704 to 1.3.3 branch.
+
+2011-10-10 14:05  castaglia
+
+	* NEWS, RELEASE_NOTES:
+	  Fuller description in NEWS for Bug#3704, and mention the new
+	  TLSOption in the release notes.
+
+2011-10-10 14:02  castaglia
+
+	* doc/contrib/mod_tls.html:
+	  Documenting the new NoEmptyFragments TLSOption.
+
+2011-10-10 13:56  castaglia
+
+	* NEWS, contrib/mod_tls.c:
+	  Bug#3704 - Enable OpenSSL countermeasure against SSLv3/TLSv1
+	  BEAST attacks.
+
+2011-10-06 09:00  castaglia
+
+	* configure:
+	  Updated configure for Bug#3192.
+
+2011-10-06 08:56  castaglia
+
+	* NEWS, config.h.in, configure.in, contrib/mod_sql_postgres.c:
+	  Bug#3192 - PQescapeStringConn() needs a better check.
+
+2011-10-06 08:33  castaglia
+
+	* configure:
+	  Updated configure for Bug#3669.
+
+2011-10-06 08:27  castaglia
+
+	* NEWS, config.h.in, configure.in, contrib/mod_sql_mysql.c:
+	  Bug#3669 - mod_sql_mysql.so: undefined symbol:
+	  make_scrambled_password with MySQL 5.5 on Fedora.
+
+2011-10-05 18:05  castaglia
+
+	* NEWS, src/timers.c:
+	  Backport of fix for Bug#3702.  For the 1.3.3 branch, a different
+	  fix is used, since the necessary configure code is not present in
+	  this branch.
+
+2011-10-05 18:04  castaglia
+
+	* configure:
+	  Updated configure for Bug#3702.
+
+2011-10-05 17:59  castaglia
+
+	* NEWS, configure.in:
+	  Bug#3702 - ProFTPD with mod_sql_mysql dies of "Alarm clock" on
+	  FreeBSD.
+
+2011-10-04 13:59  castaglia
+
+	* src/: main.c, support.c, timers.c:
+	  Add checking of the return values for calling signal(2),
+	  sigaction(2), and siginterrupt(2), and logging of any errors.
+
+2011-10-03 22:27  castaglia
+
+	* contrib/mod_sql.c,
+	  tests/t/lib/ProFTPD/Tests/Modules/mod_sql_sqlite.pm:
+	  Further fix to Bug#3692: make sure that if the processing of the
+	  SQLLog directive (marked with "IGNORE_ERRORS") needs to open a
+	  database connection, and the database info is bad (e.g. bad
+	  database name), this bad database open is also ignored, rather
+	  than causing the session to be disconnected.
+
+2011-09-29 07:17  castaglia
+
+	* contrib/mod_sftp/date.c:
+	  Bug#3650 - Update the FSF address.
+
+2011-09-26 20:57  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_sftp.pm:
+	  Minor update to unit test, trying to avoid ugly regex error on
+	  Mac OSX (due to its temporary file naming scheme).
+
+2011-09-26 09:41  castaglia
+
+	* ChangeLog:
+	  Updating ChangeLog.
+
+2011-09-26 09:40  castaglia
+
+	* NEWS, RELEASE_NOTES, contrib/dist/rpm/proftpd.spec,
+	  include/version.h:
+	  Updated files for release of 1.3.3f.
+
+2011-09-26 08:53  castaglia
+
+	* include/version.h:
+	  Updated version for CVS status.
+
+2011-09-26 08:15  castaglia
+
+	* contrib/dist/rpm/proftpd.spec, include/version.h:
+	  Update the versions for RC3.
+
+2011-09-26 08:14  castaglia
+
+	* NEWS:
+	  Update NEWS with the release date.
+
+2011-09-26 08:08  castaglia
+
+	* ChangeLog:
+	  Updated ChangeLog.
+
 2011-09-26 08:05  castaglia
 
 	* RELEASE_NOTES:
@@ -34740,7 +35085,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c:
-	  Missing $Id: ChangeLog,v 1.148 2011-09-26 15:08:42 castaglia Exp $ keyword.
+	  Missing $Id: ChangeLog,v 1.149 2011-11-09 22:37:36 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -35919,7 +36264,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	  mod_sql_postgres.c:
-	  Adding $Id: ChangeLog,v 1.148 2011-09-26 15:08:42 castaglia Exp $ tags to the mod_sql files.
+	  Adding $Id: ChangeLog,v 1.149 2011-11-09 22:37:36 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -36438,12 +36783,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	  include/timers.h:
-	  Adding more $Id: ChangeLog,v 1.148 2011-09-26 15:08:42 castaglia Exp $ keywords.
+	  Adding more $Id: ChangeLog,v 1.149 2011-11-09 22:37:36 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c:
-	  Added $Id: ChangeLog,v 1.148 2011-09-26 15:08:42 castaglia Exp $ keyword.
+	  Added $Id: ChangeLog,v 1.149 2011-11-09 22:37:36 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
