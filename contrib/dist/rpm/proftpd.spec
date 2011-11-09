@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.78 2011-11-07 22:41:29 castaglia Exp $
+# $Id: proftpd.spec,v 1.79 2011-11-09 22:35:48 castaglia Exp $
 
 # Module List:
 #
@@ -44,7 +44,7 @@
 # so use --with rhel5 to inhibit those features when using --with everything
 
 %global proftpd_version           1.3.4
-%global release_cand_version      rc3
+%global release_cand_version      stable
 %global usecvsversion             0%{?_with_cvs:1}
 %global proftpd_cvs_version_main  1.3.4
 %global proftpd_cvs_version_date  20110525
