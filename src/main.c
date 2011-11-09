@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.436 2011-10-04 20:59:57 castaglia Exp $
+ * $Id: main.c,v 1.437 2011-11-09 17:32:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -655,6 +655,9 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
         cmd->argv[0]);
       pr_response_flush(&resp_err_list);
 
+      /* Restore any previous pool to the Response API. */
+      pr_response_set_pool(resp_pool);
+
       errno = xerrno;
       return success;
     }
@@ -722,6 +725,9 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
         break;
 
       default:
+        /* Restore any previous pool to the Response API. */
+        pr_response_set_pool(resp_pool);
+
         errno = EINVAL;
         return -1;
     }
