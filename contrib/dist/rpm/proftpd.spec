@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.80 2011-11-10 16:44:04 castaglia Exp $
+# $Id: proftpd.spec,v 1.81 2011-11-11 18:18:34 castaglia Exp $
 
 # Module List:
 #
@@ -43,14 +43,17 @@
 # RHEL5 and clones don't have suitably recent versions of pcre/libmemcached
 # so use --with rhel5 to inhibit those features when using --with everything
 
-%global proftpd_version           1.3.4
+%global proftpd_version           1.3.5
 
-# When doing a stable release, comment out this line.  When doing an RC,
-# define it to be e.g. 'rc2'.  And for a maint release, just 'a' or whatever.
-#%global release_cand_version      stable
+# When doing a stable or maint release, this line is to be commented out.
+# When doing an RC, define it to be e.g. 'rc2'.
+#
+# NOTE: rpmbuild is really bloody stupid, and CANNOT handle a leading '#'
+# character followed by a '%' character.  
+%global release_cand_version      rc1
 
 %global usecvsversion             0%{?_with_cvs:1}
-%global proftpd_cvs_version_main  1.3.4
+%global proftpd_cvs_version_main  1.3.5rc1
 %global proftpd_cvs_version_date  20110525
 
 # Handle optional functionality
