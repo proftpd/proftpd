@@ -378,7 +378,14 @@ static char *tls_passphrase_provider = NULL;
 #define TLS_PROTO_TLS_V1		0x0002
 static unsigned int tls_protocol = TLS_PROTO_SSL_V3|TLS_PROTO_TLS_V1;
 
-static int tls_ssl_opts = SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE^SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
+#ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
+static int tls_ssl_opts = (SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE)^SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
+#else
+/* OpenSSL-0.9.6 and earlier (yes, it appears people still have these versions
+ * installed) does not define the DONT_INSERT_EMPTY_FRAGMENTS option.
+ */
+static int tls_ssl_opts = SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE;
+#endif
 
 static int tls_required_on_auth = 0;
 static int tls_required_on_ctrl = 0;
@@ -6968,6 +6975,7 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "NoCertRequest") == 0) {
       opts |= TLS_OPT_NO_CERT_REQUEST;
 
+#ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
     } else if (strcmp(cmd->argv[i], "NoEmptyFragments") == 0) {
       /* Unlike the other TLSOptions, this option is handled slightly
        * differently, due to the fact that option affects the creation
@@ -6975,6 +6983,9 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
        *
        */
       tls_ssl_opts |= SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
+#else
+      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION ": TLSOption NoEmptyFragments not supported (OpenSSL version is too old)");
+#endif
 
     } else if (strcmp(cmd->argv[i], "NoSessionReuseRequired") == 0) {
       opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;
