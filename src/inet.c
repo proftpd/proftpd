@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.135 2011-09-21 05:03:05 castaglia Exp $
+ * $Id: inet.c,v 1.136 2011-11-14 22:13:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -678,9 +678,7 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
 #endif /* TCP_MAXSEG */
 
 #ifdef IP_TOS
-  /* Only set TOS flags on IPv4 sockets; IPv6 sockets don't seem to support
-   * them.
-   */
+  /* Only set TOS flags on IPv4 sockets; IPv6 sockets use TCLASS. */
   if (pr_netaddr_get_family(c->local_addr) == AF_INET) {
     if (c->listen_fd != -1) {
       if (setsockopt(c->listen_fd, ip_level, IP_TOS, (void *) &tos,
@@ -691,6 +689,21 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
     }
   }
 #endif /* IP_TOS */
+
+#ifdef IPV6_TCLASS
+  if (pr_netaddr_use_ipv6()) {
+    /* Only set TCLASS flags on IPv6 sockets; IPv4 sockets use TOS. */
+    if (pr_netaddr_get_family(c->local_addr) == AF_INET6) {
+      if (c->listen_fd != -1) {
+        if (setsockopt(c->listen_fd, ip_level, IPV6_TCLASS, (void *) &tos,
+            sizeof(tos)) < 0) {
+          pr_log_pri(PR_LOG_NOTICE, "error setting listen fd IPV6_TCLASS: %s",
+            strerror(errno));
+        }
+      }
+    }
+  }
+#endif /* IPV6_TCLASS */
 
 #ifdef TCP_NOPUSH
   /* XXX Note: for backward compatibility, we only call set_proto_cork() for
