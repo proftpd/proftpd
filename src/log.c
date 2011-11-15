@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.108 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: log.c,v 1.109 2011-11-15 22:20:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -424,19 +424,30 @@ static void log_write(int priority, int f, char *s, int discard) {
       (logstderr || !main_server)) {
     char buf[LOGBUFFER_SIZE] = {'\0'};
     size_t buflen;
+    time_t now = time(NULL);
+    struct tm *tm = NULL;
+
+    tm = pr_localtime(NULL, &now);
+    if (tm == NULL) {
+      return;
+    }
+
+    strftime(buf, sizeof(buf)-1, "%b %d %H:%M:%S ", tm);
+    buf[sizeof(buf)-1] = '\0';
+    buflen = strlen(buf);
 
     if (*serverinfo) {
-      snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+      snprintf(buf + buflen, sizeof(buf) - buflen,
                "%s proftpd[%u] %s: %s\n", systemlog_host,
                (unsigned int) (session.pid ? session.pid : getpid()),
                serverinfo, s);
     } else {
-      snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+      snprintf(buf + buflen, sizeof(buf) - buflen,
                "%s proftpd[%u]: %s\n", systemlog_host,
                (unsigned int) (session.pid ? session.pid : getpid()), s);
     }
 
-    buf[sizeof(buf) - 1] = '\0';
+    buf[sizeof(buf)-1] = '\0';
     buflen = strlen(buf);
 
     pr_log_event_generate(PR_LOG_TYPE_SYSTEMLOG, STDERR_FILENO, priority,
