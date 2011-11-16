@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.45 2011-05-23 21:11:56 castaglia Exp $
+ * $Id: mod_facts.c,v 1.46 2011-11-16 23:49:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1034,13 +1034,19 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   c = find_config(get_dir_ctxt(cmd->tmp_pool, (char *) best_path), CONF_PARAM,
     "DirFakeUser", FALSE);
   if (c) {
-    const char *fake_user;
+    const char *fake_user = NULL;
 
-    fake_user = c->argv[0];
-    if (strncmp(fake_user, "~", 2) != 0) {
-      fake_uid = pr_auth_name2uid(cmd->tmp_pool, fake_user);
+    if (c->argc > 0) {
+      fake_user = c->argv[0];
+      if (strncmp(fake_user, "~", 2) != 0) {
+        fake_uid = pr_auth_name2uid(cmd->tmp_pool, fake_user);
+
+      } else {
+        fake_uid = session.uid;
+      }
 
     } else {
+      /* Handle the "DirFakeUser off" case (Bug#3715). */
       fake_uid = session.uid;
     }
   }
@@ -1048,13 +1054,19 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   c = find_config(get_dir_ctxt(cmd->tmp_pool, (char *) best_path), CONF_PARAM,
     "DirFakeGroup", FALSE);
   if (c) {
-    const char *fake_group;
+    const char *fake_group = NULL;
 
-    fake_group = c->argv[0];
-    if (strncmp(fake_group, "~", 2) != 0) {
-      fake_gid = pr_auth_name2gid(cmd->tmp_pool, fake_group);
+    if (c->argc > 0) {
+      fake_group = c->argv[0];
+      if (strncmp(fake_group, "~", 2) != 0) {
+        fake_gid = pr_auth_name2gid(cmd->tmp_pool, fake_group);
+
+      } else {
+        fake_gid = session.gid;
+      }
 
     } else {
+      /* Handle the "DirFakeGroup off" case (Bug#3715). */
       fake_gid = session.gid;
     }
   }
