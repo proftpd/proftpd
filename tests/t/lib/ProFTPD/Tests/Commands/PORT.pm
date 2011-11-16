@@ -80,6 +80,7 @@ sub port_ok {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -98,7 +99,7 @@ sub port_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -284,6 +285,7 @@ sub port_fails_bad_format {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -302,7 +304,7 @@ sub port_fails_bad_format {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -405,6 +407,7 @@ sub port_fails_bad_values {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -423,7 +426,7 @@ sub port_fails_bad_values {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -525,6 +528,7 @@ sub port_fails_bad_addr {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -543,7 +547,7 @@ sub port_fails_bad_addr {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -647,6 +651,7 @@ sub port_fails_bad_port {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -665,7 +670,7 @@ sub port_fails_bad_port {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -769,6 +774,7 @@ sub port_eaddrnotavail {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -787,7 +793,7 @@ sub port_eaddrnotavail {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -846,7 +852,7 @@ sub port_eaddrnotavail {
       }
 
       my $buf1;
-      $conn1->read($buf1, 32768);
+      $conn1->read($buf1, 32768, 25);
 
       # Explicitly do NOT close the connection here.  We keep it open, so
       # as to trigger an error when the second client tries to use the
@@ -926,6 +932,7 @@ sub port_during_xfer_bug3487 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -960,7 +967,7 @@ sub port_during_xfer_bug3487 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1006,7 +1013,7 @@ sub port_during_xfer_bug3487 {
       }
 
       my ($buf, $tmp);
-      $conn->read($tmp, 8, 30);
+      $conn->read($tmp, 8, 25);
       $buf .= $tmp;
 
       eval { $client->port() };
@@ -1028,10 +1035,10 @@ sub port_during_xfer_bug3487 {
         test_msg("Expected '$expected', got '$resp_msg'"));
 
       # Finish reading the data
-      while ($conn->read($tmp, 32768, 30)) {
+      while ($conn->read($tmp, 32768, 25)) {
         $buf .= $tmp;
       }
-      $conn->close();
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
