@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.437 2011-11-09 17:32:35 castaglia Exp $
+ * $Id: main.c,v 1.438 2011-11-16 20:00:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -318,7 +318,18 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
 
         /* The client has successfully authenticated... */
         if (session.user) {
-          char *args = memchr(cmdargstr, ' ', cmdargstrlen);
+          char *args = NULL;
+
+          /* Be defensive, and check whether cmdargstrlen has a value.
+           * If it's zero, assume we need to use strchr(3), rather than
+           * memchr(2); see Bug#3714.
+           */
+          if (cmdargstrlen > 0) {
+            args = memchr(cmdargstr, ' ', cmdargstrlen);
+
+          } else {
+            args = strchr(cmdargstr, ' ');
+          }
 
           pr_scoreboard_entry_update(session.pid,
             PR_SCORE_CMD, "%s", cmd->argv[0], NULL, NULL);
