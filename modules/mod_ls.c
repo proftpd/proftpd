@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.188 2011-11-16 21:34:22 castaglia Exp $
+ * $Id: mod_ls.c,v 1.189 2011-11-16 23:30:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -209,8 +209,9 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
     fakemode = *fake_mode;
     have_fake_mode = TRUE;
 
-  } else
+  } else {
     have_fake_mode = FALSE;
+  }
 
   return res;
 }
@@ -250,8 +251,9 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
     fakemode = *fake_mode;
     have_fake_mode = TRUE;
 
-  } else
+  } else {
     have_fake_mode = FALSE;
+  }
 
   return res;
 }
@@ -2241,22 +2243,27 @@ MODRET genericlist(cmd_rec *cmd) {
   fakeuser = get_param_ptr(CURRENT_CONF, "DirFakeUser", FALSE);
 
   /* Check for a configured "logged in user" DirFakeUser. */
-  if (fakeuser && strcmp(fakeuser, "~") == 0)
+  if (fakeuser != NULL &&
+      strncmp(fakeuser, "~", 2) == 0) {
     fakeuser = session.user;
+  }
 
   fakegroup = get_param_ptr(CURRENT_CONF, "DirFakeGroup", FALSE);
 
   /* Check for a configured "logged in user" DirFakeGroup. */
-  if (fakegroup && strcmp(fakegroup, "~") == 0)
+  if (fakegroup != NULL &&
+      strncmp(fakegroup, "~", 2) == 0) {
     fakegroup = session.group;
+  }
 
   fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE);
   if (fake_mode) {
     fakemode = *fake_mode;
     have_fake_mode = TRUE;
 
-  } else
+  } else {
     have_fake_mode = FALSE;
+  }
 
   tmp = get_param_ptr(TOPLEVEL_CONF, "TimesGMT", FALSE);
   if (tmp != NULL)
@@ -2393,14 +2400,18 @@ MODRET ls_stat(cmd_rec *cmd) {
   fakeuser = get_param_ptr(CURRENT_CONF, "DirFakeUser", FALSE);
 
   /* Check for a configured "logged in user" DirFakeUser. */
-  if (fakeuser && strcmp(fakeuser, "~") == 0)
+  if (fakeuser != NULL &&
+      strncmp(fakeuser, "~", 2) == 0) {
     fakeuser = session.user;
+  }
 
   fakegroup = get_param_ptr(CURRENT_CONF, "DirFakeGroup", FALSE);
 
   /* Check for a configured "logged in user" DirFakeGroup. */
-  if (fakegroup && strcmp(fakegroup, "~") == 0)
+  if (fakegroup != NULL &&
+      strncmp(fakegroup, "~", 2) == 0) {
     fakegroup = session.group;
+  }
 
   fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE);
   if (fake_mode) {
@@ -2851,20 +2862,25 @@ MODRET set_dirfakeusergroup(cmd_rec *cmd) {
   char *as = "ftp";
   config_rec *c = NULL;
 
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|
     CONF_DIR|CONF_DYNDIR);
 
-  if (cmd->argc < 2 || cmd->argc > 3)
+  if (cmd->argc < 2 ||
+      cmd->argc > 3) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "syntax: ", cmd->argv[0],
       " on|off [<id to display>]", NULL));
+  }
 
-  if ((bool = get_boolean(cmd,1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1) {
      CONF_ERROR(cmd, "expected boolean argument");
+  }
 
   if (bool == TRUE) {
     /* Use the configured ID to display rather than the default "ftp". */
-    if (cmd->argc > 2)
+    if (cmd->argc > 2) {
       as = cmd->argv[2];
+    }
 
     c = add_config_param_str(cmd->argv[0], 1, as);
 
@@ -2874,7 +2890,6 @@ MODRET set_dirfakeusergroup(cmd_rec *cmd) {
   }
 
   c->flags |= CF_MERGEDOWN;
-
   return PR_HANDLED(cmd);
 }
 
