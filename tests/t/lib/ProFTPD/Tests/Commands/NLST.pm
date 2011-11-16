@@ -132,6 +132,7 @@ sub nlst_ok_raw_active {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -150,7 +151,7 @@ sub nlst_ok_raw_active {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -195,7 +196,7 @@ sub nlst_ok_raw_active {
       }
 
       my $buf;
-      $conn->read($buf, 8192, 30);
+      $conn->read($buf, 8192, 25);
       eval { $conn->close() };
 
       # We have to be careful of the fact that readdir returns directory
@@ -274,6 +275,7 @@ sub nlst_ok_raw_passive {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -292,7 +294,7 @@ sub nlst_ok_raw_passive {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -339,7 +341,7 @@ sub nlst_ok_raw_passive {
       my $buf = '';
 
       my $info;
-      while ($conn->read($info, 8192, 30)) {
+      while ($conn->read($info, 8192, 25)) {
         $buf .= $info;
       }
       eval { $conn->close() };
@@ -420,6 +422,7 @@ sub nlst_ok_file {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -438,7 +441,7 @@ sub nlst_ok_file {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $test_file = File::Spec->rel2abs($config_file);
 
@@ -485,7 +488,7 @@ sub nlst_ok_file {
       }
 
       my $buf;
-      $conn->read($buf, 8192, 30);
+      $conn->read($buf, 8192, 25);
       eval { $conn->close() };
 
       my $res = {};
@@ -548,6 +551,7 @@ sub nlst_ok_dir {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -566,7 +570,7 @@ sub nlst_ok_dir {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -611,7 +615,7 @@ sub nlst_ok_dir {
       }
 
       my $buf;
-      $conn->read($buf, 8192, 30);
+      $conn->read($buf, 8192, 25);
       eval { $conn->close() };
 
       my $res = {};
@@ -671,6 +675,7 @@ sub nlst_ok_no_path {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -689,7 +694,7 @@ sub nlst_ok_no_path {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -734,7 +739,7 @@ sub nlst_ok_no_path {
       }
 
       my $buf;
-      $conn->read($buf, 8192, 30);
+      $conn->read($buf, 8192, 25);
       eval { $conn->close() };
 
       my $res = {};
@@ -793,6 +798,7 @@ sub nlst_ok_glob {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -811,7 +817,7 @@ sub nlst_ok_glob {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -856,7 +862,7 @@ sub nlst_ok_glob {
       }
 
       my $buf;
-      $conn->read($buf, 8192, 30);
+      $conn->read($buf, 8192, 25);
       eval { $conn->close() };
 
       my $res = {};
@@ -1011,6 +1017,7 @@ sub nlst_fails_enoent {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1029,7 +1036,7 @@ sub nlst_fails_enoent {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1136,6 +1143,7 @@ sub nlst_fails_enoent_glob {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1154,7 +1162,7 @@ sub nlst_fails_enoent_glob {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1260,6 +1268,7 @@ sub nlst_fails_eperm {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1289,7 +1298,7 @@ sub nlst_fails_eperm {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1395,6 +1404,7 @@ sub nlst_bug2821 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1435,7 +1445,7 @@ sub nlst_bug2821 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout = 600;
 
@@ -1497,7 +1507,7 @@ sub nlst_bug2821 {
 
       my $buf;
       my $tmp;
-      while ($conn->read($tmp, 32768, 30)) {
+      while ($conn->read($tmp, 32768, 25)) {
         $buf .= $tmp;
       }
       eval { $conn->close() };
@@ -1569,6 +1579,7 @@ sub nlst_nonascii_chars_bug3032 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1595,7 +1606,7 @@ sub nlst_nonascii_chars_bug3032 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1643,7 +1654,7 @@ sub nlst_nonascii_chars_bug3032 {
 
       my $buf;
       my $tmp;
-      while ($conn->read($tmp, 32768, 30)) {
+      while ($conn->read($tmp, 32768, 25)) {
         $buf .= $tmp;
       }
       eval { $conn->close() };
@@ -1717,6 +1728,7 @@ sub nlst_leading_whitespace_bug3268 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1735,7 +1747,7 @@ sub nlst_leading_whitespace_bug3268 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $test_file = File::Spec->rel2abs("$tmpdir/ test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1787,7 +1799,7 @@ sub nlst_leading_whitespace_bug3268 {
       }
 
       my $buf;
-      $conn->read($buf, 8192, 30);
+      $conn->read($buf, 8192, 25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -1874,6 +1886,7 @@ sub nlst_leading_whitespace_with_opts_bug3268 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1892,7 +1905,7 @@ sub nlst_leading_whitespace_with_opts_bug3268 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $test_file = File::Spec->rel2abs("$tmpdir/ test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1944,7 +1957,7 @@ sub nlst_leading_whitespace_with_opts_bug3268 {
       }
 
       my $buf;
-      $conn->read($buf, 8192, 30);
+      $conn->read($buf, 8192, 25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -2031,6 +2044,7 @@ sub nlst_leading_whitespace_with_strict_opts_bug3268 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2049,7 +2063,7 @@ sub nlst_leading_whitespace_with_strict_opts_bug3268 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $test_file = File::Spec->rel2abs("$tmpdir/ test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -2103,7 +2117,7 @@ sub nlst_leading_whitespace_with_strict_opts_bug3268 {
       }
 
       my $buf;
-      $conn->read($buf, 8192, 30);
+      $conn->read($buf, 8192, 25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -2190,6 +2204,7 @@ sub nlst_symlink_bug3254 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2294,7 +2309,7 @@ EOL
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2344,7 +2359,7 @@ EOL
       }
 
       my $buf;
-      $conn->read($buf, 8192, 30);
+      $conn->read($buf, 8192, 25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -2409,6 +2424,7 @@ sub nlst_dash_filename_bug3476 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2427,7 +2443,7 @@ sub nlst_dash_filename_bug3476 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $test_file = File::Spec->rel2abs("$tmpdir/-test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -2480,7 +2496,7 @@ sub nlst_dash_filename_bug3476 {
       }
 
       my $buf;
-      $conn->read($buf, 8192, 30);
+      $conn->read($buf, 8192, 25);
       eval { $conn->close() };
 
       my $res = {};
@@ -2544,6 +2560,7 @@ sub nlst_opt_noerrorifabsent_bug3506 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2562,7 +2579,7 @@ sub nlst_opt_noerrorifabsent_bug3506 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $test_file = File::Spec->rel2abs('foo-bar.txt');
 
@@ -2611,7 +2628,7 @@ sub nlst_opt_noerrorifabsent_bug3506 {
       }
 
       my $buf;
-      $conn->read($buf, 8192, 30);
+      $conn->read($buf, 8192, 25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
