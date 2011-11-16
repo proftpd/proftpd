@@ -80,7 +80,24 @@ api-tests$(EXEEXT): $(TEST_API_OBJS) $(TEST_API_DEPS)
 running-tests:
 	perl tests.pl
 
-check: dummy api-tests$(EXEEXT) running-tests
+check-api: dummy api-tests$(EXEEXT)
+
+check-commands:
+	perl tests.pl --pattern '^t\/(commands\/|logins\.t)'
+
+check-configs:
+	perl tests.pl --pattern '^t\/config\/'
+
+check-logging:
+	perl tests.pl --pattern '^t\/logging\/'
+
+check-modules:
+	perl tests.pl --pattern '^t\/logging\/'
+
+check-utils:
+	perl tests.pl --pattern '^t\/utils\/'
+
+check: check-api running-tests
 
 clean:
 	$(LIBTOOL) --mode=clean $(RM) *.o api/*.o api-tests$(EXEEXT) api-tests.log

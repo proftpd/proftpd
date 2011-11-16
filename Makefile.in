@@ -73,6 +73,31 @@ ftptop$(EXEEXT): lib utils
 ftpwho$(EXEEXT): lib utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPWHO_OBJS) $(UTILS_LIBS)
 
+# Run the API tests
+check-api: proftpd$(EXEEXT)
+	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check-api)
+
+# Run the FTP command testsuite
+check-commands: proftpd$(EXEEXT)
+	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check-commands)
+
+# Run the FTP configuration testsuite
+check-configs: proftpd$(EXEEXT)
+	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check-configs)
+
+# Run the FTP logging testsuite
+check-logging: proftpd$(EXEEXT)
+	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check-logging)
+
+# Run the FTP module testsuite
+check-modules: proftpd$(EXEEXT)
+	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check-modules)
+
+# Run the FTP utils testsuite
+check-utils: proftpd$(EXEEXT)
+	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check-utils)
+
+# Run the entire testsuite
 check: proftpd$(EXEEXT)
 	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check)
 
