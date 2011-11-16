@@ -50,6 +50,7 @@ sub pwd_ok {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -68,7 +69,7 @@ sub pwd_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -115,6 +116,12 @@ sub pwd_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "\"$home_dir\" is the current directory";
+
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack, due to how it handles tmp files
+        $expected = '"/private' . "$home_dir\" is the current directory";
+      }
+
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -163,6 +170,7 @@ sub xpwd_ok {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -181,7 +189,7 @@ sub xpwd_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -229,6 +237,12 @@ sub xpwd_ok {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "\"$home_dir\" is the current directory";
+
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack, due to how it handles tmp files
+        $expected = '"/private' . "$home_dir\" is the current directory";
+      }
+
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
