@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.187 2011-11-05 23:01:58 castaglia Exp $
+ * $Id: mod_ls.c,v 1.188 2011-11-16 21:34:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -395,7 +395,6 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
     p = cmd->tmp_pool;
 
   if (pr_fsio_lstat(name, &st) == 0) {
-
     char *display_name = NULL;
 
     suffix[0] = suffix[1] = '\0';
@@ -404,23 +403,41 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
 
 #ifndef PR_USE_NLS
     if (opt_B) {
-      register unsigned int i;
+      register unsigned int i, j;
+      size_t display_namelen, printable_namelen;
+      char *printable_name = NULL;
+
+      display_namelen = strlen(display_name);
+
+      /* Allocate 4 times as much space as necessary, in case every single
+       * character is non-printable.
+       */
+      printable_namelen = (display_namelen * 4);
+      printable_name = pcalloc(p, printable_namelen + 1);
 
       /* Check for any non-printable characters, and replace them with the
        * octal escape sequence equivalent.
        */
-      for (i = 0; i < strlen(display_name); i++) {
+      for (i = 0, j = 0; i < display_namelen && j < printable_namelen; i++) {
         if (!isprint((int) display_name[i])) {
+          register unsigned int k;
+          int replace_len = 0;
           char replace[32];
 
           memset(replace, '\0', sizeof(replace));
-          snprintf(replace, sizeof(replace)-1, "\\%03o", display_name[i]);
+          replace_len = snprintf(replace, sizeof(replace)-1, "\\%03o",
+            display_name[i]);
 
-          display_name = pstrndup(p, display_name, i);
-          display_name = pstrcat(p, display_name, replace,
-            &(display_name[i+1]), NULL);
+          for (k = 0; k < replace_len; k++) {
+            printable_name[j++] = replace[k];
+          }
+
+        } else {
+          printable_name[j++] = display_name[i];
         }
       }
+
+      display_name = pstrdup(p, printable_name);
     }
 #endif /* PR_USE_NLS */
 
@@ -1952,21 +1969,41 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
 
 #ifndef PR_USE_NLS
   if (opt_B) {
-    register unsigned int i;
+    register unsigned int i, j;
+    size_t display_namelen, printable_namelen;
+    char *printable_name = NULL;
 
-    /* Check for any non-printable characters, and replace them with '?'. */
-    for (i = 0; i < strlen(display_name); i++) {
+    display_namelen = strlen(display_name);
+
+    /* Allocate 4 times as much space as necessary, in case every single
+     * character is non-printable.
+     */
+    printable_namelen = (display_namelen * 4);
+    printable_name = pcalloc(cmd->tmp_pool, printable_namelen + 1);
+
+    /* Check for any non-printable characters, and replace them with the octal
+     * escape sequence equivalent.
+     */
+    for (i = 0, j = 0; i < display_namelen && j < printable_namelen; i++) {
       if (!isprint((int) display_name[i])) {
+        register unsigned int k;
+        int replace_len = 0;
         char replace[32];
 
         memset(replace, '\0', sizeof(replace));
-        snprintf(replace, sizeof(replace)-1, "\\%03o", display_name[i]);
+        replace_len = snprintf(replace, sizeof(replace)-1, "\\%03o",
+          display_name[i]);
 
-        display_name = pstrndup(cmd->tmp_pool, display_name, i);
-        display_name = pstrcat(cmd->tmp_pool, display_name, replace,
-          &(display_name[i+1]), NULL);
+        for (k = 0; k < replace_len; k++) {
+          printable_name[j++] = replace[k];
+        }
+
+      } else {
+        printable_name[j++] = display_name[i];
       }
     }
+
+    display_name = pstrdup(cmd->tmp_pool, printable_name);
   }
 #endif /* PR_USE_NLS */
 
