@@ -8,7 +8,7 @@ use Getopt::Long;
 use Test::Harness qw(&runtests $verbose);
 
 my $opts = {};
-GetOptions($opts, 'h|help', 'C|class=s@', 'K|keep-tmpfiles', 'P|pattern=s',
+GetOptions($opts, 'h|help', 'C|class=s@', 'K|keep-tmpfiles', 'F|file-pattern=s',
   'V|verbose');
 
 if ($opts->{h}) {
@@ -405,15 +405,15 @@ if (defined($opts->{C})) {
   $ENV{PROFTPD_TEST_DISABLE_CLASS} = 'inprogress:slow';
 }
 
-if (defined($opts->{P})) {
+if (defined($opts->{F})) {
   # Using the provided string as a regex, and run only the tests whose
   # files match the pattern
 
-  my $pattern = $opts->{P};
+  my $file_pattern = $opts->{F};
 
   my $filtered_files = [];
   foreach my $test_file (@$test_files) {
-    if ($test_file =~ /$pattern/) {
+    if ($test_file =~ /$file_pattern/) {
       push(@$filtered_files, $test_file);
     }
   }
