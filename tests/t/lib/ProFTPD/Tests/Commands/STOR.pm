@@ -190,7 +190,7 @@ sub stor_ok_raw_active {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -318,7 +318,7 @@ sub stor_ok_raw_passive {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -453,7 +453,7 @@ sub stor_ok_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -579,7 +579,7 @@ sub stor_fails_not_reg {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -673,7 +673,7 @@ sub stor_fails_login_required {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -797,7 +797,7 @@ sub stor_fails_no_path {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -937,7 +937,7 @@ sub stor_fails_eperm {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -1071,7 +1071,7 @@ sub stor_leading_whitespace {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -1205,7 +1205,7 @@ sub stor_multiple_periods {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);

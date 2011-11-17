@@ -254,7 +254,7 @@ sub nlst_ok_raw_active {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -404,7 +404,7 @@ sub nlst_ok_raw_passive {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -536,7 +536,7 @@ sub nlst_ok_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -663,7 +663,7 @@ sub nlst_ok_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -789,7 +789,7 @@ sub nlst_ok_no_path {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -920,7 +920,7 @@ sub nlst_ok_glob {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -1014,7 +1014,7 @@ sub nlst_fails_login_required {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -1143,7 +1143,7 @@ sub nlst_fails_enoent {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -1271,7 +1271,7 @@ sub nlst_fails_enoent_glob {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -1410,7 +1410,7 @@ sub nlst_fails_eperm {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -1582,8 +1582,9 @@ sub nlst_bug2821 {
   server_stop($pid_file);
 
   $self->assert_child_ok($pid);
+
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -1739,8 +1740,9 @@ sub nlst_nonascii_chars_bug3032 {
   server_stop($pid_file);
 
   $self->assert_child_ok($pid);
+
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -1901,7 +1903,7 @@ sub nlst_leading_whitespace_bug3268 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -2062,7 +2064,7 @@ sub nlst_leading_whitespace_with_opts_bug3268 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -2225,7 +2227,7 @@ sub nlst_leading_whitespace_with_strict_opts_bug3268 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -2448,7 +2450,7 @@ EOL
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -2587,7 +2589,7 @@ sub nlst_dash_filename_bug3476 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -2730,7 +2732,7 @@ sub nlst_opt_noerrorifabsent_bug3506 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);

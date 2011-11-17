@@ -195,7 +195,7 @@ sub appe_ok_raw_active {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -323,7 +323,7 @@ sub appe_ok_raw_passive {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -460,7 +460,7 @@ sub appe_ok_file_new {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -608,7 +608,7 @@ sub appe_ok_file_existing {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -830,7 +830,7 @@ sub appe_ok_files_new_and_existing_bug3612 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -956,7 +956,7 @@ sub appe_fails_not_reg {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -1050,7 +1050,7 @@ sub appe_fails_login_required {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -1174,7 +1174,7 @@ sub appe_fails_no_path {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -1315,7 +1315,7 @@ sub appe_fails_eperm {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -1442,7 +1442,7 @@ sub appe_hiddenstores_bug3598 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);

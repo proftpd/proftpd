@@ -170,7 +170,7 @@ sub stou_ok_raw_active {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -299,7 +299,7 @@ sub stou_ok_raw_passive {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -438,7 +438,7 @@ sub stou_ok_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -532,7 +532,7 @@ sub stou_fails_login_required {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -666,7 +666,7 @@ sub stou_fails_eperm {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);

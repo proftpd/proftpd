@@ -144,7 +144,7 @@ sub stat_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
@@ -264,7 +264,7 @@ sub stat_listoptions_bug3295 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file);
+    test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
