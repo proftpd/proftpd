@@ -174,6 +174,8 @@ sub port_ok {
 
   if ($ex) {
     test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -266,6 +268,8 @@ sub port_fails_login_required {
 
   if ($ex) {
     test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -389,6 +393,8 @@ sub port_fails_bad_format {
 
   if ($ex) {
     test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -511,6 +517,8 @@ sub port_fails_bad_values {
 
   if ($ex) {
     test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -635,6 +643,8 @@ sub port_fails_bad_addr {
 
   if ($ex) {
     test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -759,6 +769,8 @@ sub port_fails_bad_port {
 
   if ($ex) {
     test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -918,6 +930,8 @@ sub port_eaddrnotavail {
 
   if ($ex) {
     test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1083,6 +1097,8 @@ sub port_during_xfer_bug3487 {
 
   if ($ex) {
     test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
