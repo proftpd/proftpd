@@ -783,8 +783,10 @@ sub test_append_logfile {
 
   my ($infh, $outfh); 
 
-  unless (open($outfh, ">> tests.log")) {
-    die("Can't append to tests.log: $!");
+  my $out_file = File::Spec->rel2abs('tests.log');
+
+  unless (open($outfh, ">> $out_file")) {
+    die("Can't append to $out_file: $!");
   }
 
   unless (open($infh, "< $log_file")) {
@@ -804,7 +806,7 @@ sub test_append_logfile {
   close($infh);
 
   unless (close($outfh)) {
-    die("Can't write tests.log: $!");
+    die("Can't write $out_file: $!");
   }
 }
 
