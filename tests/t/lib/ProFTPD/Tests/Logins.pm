@@ -68,7 +68,7 @@ sub login_plaintext_fails {
   my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/login.scoreboard");
 
-  my $log_file = File::Spec->rel2abs("tests.log");
+  my $log_file = test_get_logfile();
 
   my $config = {
     PidFile => $pid_file,
@@ -132,6 +132,9 @@ sub login_plaintext_fails {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -146,7 +149,7 @@ sub login_anonymous_ok {
   my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/login.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/login.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/login.group");
@@ -258,6 +261,9 @@ sub login_anonymous_ok {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -272,7 +278,7 @@ sub login_anonymous_with_delay_ok {
   my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/login.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/login.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/login.group");
@@ -386,6 +392,9 @@ sub login_anonymous_with_delay_ok {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -400,7 +409,7 @@ sub login_anonymous_user_alias_ok {
   my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/login.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/login.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/login.group");
@@ -512,6 +521,9 @@ sub login_anonymous_user_alias_ok {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -526,7 +538,7 @@ sub login_anonymous_fails {
   my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/login.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $anon_dir = File::Spec->rel2abs($tmpdir);
 
@@ -606,6 +618,9 @@ sub login_anonymous_fails {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -620,7 +635,7 @@ sub login_multiple_attempts_per_conn {
   my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/login.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/login.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/login.group");
@@ -712,7 +727,11 @@ sub login_multiple_attempts_per_conn {
   server_stop($pid_file);
 
   $self->assert_child_ok($pid);
+
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -727,7 +746,7 @@ sub login_regular_with_anon_defined_bug3307 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/login.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/login.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/login.group");
@@ -838,7 +857,11 @@ sub login_regular_with_anon_defined_bug3307 {
   server_stop($pid_file);
 
   $self->assert_child_ok($pid);
+
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
