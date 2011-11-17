@@ -35,6 +35,8 @@ our @RUNNING = qw(
 );
 
 our @TEST = qw(
+  test_append_logfile
+  test_get_logfile
   test_msg
 );
 
@@ -774,6 +776,51 @@ sub server_wait {
   alarm(0);
   $SIG{ALRM} = 'DEFAULT';
   return 1;
+}
+
+sub test_append_logfile {
+  my $log_file = shift;
+
+  my ($infh, $outfh); 
+
+  unless (open($outfh, ">> tests.log")) {
+    die("Can't append to tests.log: $!");
+  }
+
+  unless (open($infh, "< $log_file")) {
+    die("Can't read $log_file: $!");
+  }
+
+  my ($pkg, $filename, $lineno, $func) = (caller(1))[0, 1, 2, 3];
+
+  print $outfh "-----BEGIN $func-----\n";
+
+  while (my $line = <$infh>) {
+    print $outfh $line;
+  }
+
+  print $outfh "-----END $func-----\n";
+
+  close($infh);
+
+  unless (close($outfh)) {
+    die("Can't write tests.log: $!");
+  }
+}
+
+sub test_get_logfile {
+  # Returns the testcase-specific logfile name to use
+
+  my ($pkg, $filename, $lineno, $func) = (caller(1))[0, 1, 2, 3];
+
+  # We use the function name as the basis for the testcase-specific log
+  # file name.  We ignore the first two parts (which are always 'ProFTPD' and
+  # 'Tests'), and merge the rest into a log file name.
+
+  my @parts = split('::', $func);
+  my $logfile = File::Spec->rel2abs(join('_', @parts) . '.log');
+
+  return $logfile;
 }
 
 sub test_msg {
