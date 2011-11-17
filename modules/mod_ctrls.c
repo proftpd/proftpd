@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.50 2011-07-31 22:07:03 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.51 2011-11-17 23:40:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -486,7 +486,7 @@ static int ctrls_listen(const char *sock_file, int flags) {
   memset(&sock, 0, sizeof(sock));
 
   sock.sun_family = AF_UNIX;
-  strncpy(sock.sun_path, sock_file, strlen(sock_file));
+  sstrncpy(sock.sun_path, sock_file, strlen(sock_file));
 
   len = sizeof(sock);
 

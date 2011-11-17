@@ -23,7 +23,7 @@
  */
 
 /* Controls API routines
- * $Id: ctrls.c,v 1.30 2011-06-05 22:45:14 castaglia Exp $
+ * $Id: ctrls.c,v 1.31 2011-11-17 23:40:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -982,7 +982,7 @@ int pr_ctrls_connect(const char *socket_file) {
   memset(&ctrl_sock, 0, sizeof(ctrl_sock));
 
   ctrl_sock.sun_family = AF_UNIX;
-  strncpy(ctrl_sock.sun_path, socket_file, strlen(socket_file));
+  sstrncpy(ctrl_sock.sun_path, socket_file, strlen(socket_file));
   len = sizeof(ctrl_sock);
 
   if (connect(sockfd, (struct sockaddr *) &ctrl_sock, len) < 0) {

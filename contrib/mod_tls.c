@@ -1941,13 +1941,13 @@ static int tls_pkey_cb(char *buf, int buflen, int rwflag, void *data) {
   k = (tls_pkey_t *) data;
 
   if ((k->flags & TLS_PKEY_USE_RSA) && k->rsa_pkey) {
-    strncpy(buf, k->rsa_pkey, buflen);
+    sstrncpy(buf, k->rsa_pkey, buflen);
     buf[buflen - 1] = '\0';
     return strlen(buf);
   }
 
   if ((k->flags & TLS_PKEY_USE_DSA) && k->dsa_pkey) {
-    strncpy(buf, k->dsa_pkey, buflen);
+    sstrncpy(buf, k->dsa_pkey, buflen);
     buf[buflen - 1] = '\0';
     return strlen(buf);
   }

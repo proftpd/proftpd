@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-/* $Id: pr-syslog.c,v 1.24 2011-05-01 04:32:27 castaglia Exp $
+/* $Id: pr-syslog.c,v 1.25 2011-11-17 23:40:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -324,17 +324,17 @@ int pr_openlog(const char *ident, int opts, int facility) {
        * hold more data than 14 bytes, so...
        */
       if (sizeof(syslog_addr.sa_data) >= (strlen(PR_PATH_LOG) + 1)) {
-        strncpy(syslog_addr.sa_data, PR_PATH_LOG, sizeof(syslog_addr.sa_data));
+        sstrncpy(syslog_addr.sa_data, PR_PATH_LOG, sizeof(syslog_addr.sa_data));
         syslog_addr.sa_data[sizeof(syslog_addr.sa_data)-1] = '\0';
         addrlen = sizeof(syslog_addr);
 
       } else {
-        strncpy(syslog_addr.sa_data, PR_PATH_LOG, strlen(PR_PATH_LOG) + 1);
+        sstrncpy(syslog_addr.sa_data, PR_PATH_LOG, strlen(PR_PATH_LOG) + 1);
         addrlen = sizeof(syslog_addr) +
           ((strlen(PR_PATH_LOG) + 1) - sizeof(syslog_addr.sa_data));
       }
 # else
-      strncpy(syslog_addr.sa_data, PR_PATH_LOG, sizeof(syslog_addr.sa_data));
+      sstrncpy(syslog_addr.sa_data, PR_PATH_LOG, sizeof(syslog_addr.sa_data));
       syslog_addr.sa_data[sizeof(syslog_addr.sa_data)-1] = '\0';
       addrlen = sizeof(syslog_addr);
 # endif /* !Mac OSX */

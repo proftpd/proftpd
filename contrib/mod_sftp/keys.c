@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.16 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: keys.c,v 1.17 2011-11-17 23:40:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -718,7 +718,7 @@ static int pkey_cb(char *buf, int buflen, int rwflag, void *d) {
   k = (struct sftp_pkey *) d;
 
   if (k->host_pkey) {
-    strncpy(buf, k->host_pkey, buflen);
+    sstrncpy(buf, k->host_pkey, buflen);
     buf[buflen - 1] = '\0';
     return strlen(buf);
   }
