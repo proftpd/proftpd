@@ -889,13 +889,19 @@ sub port_eaddrnotavail {
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
-      eval { $client2->list() };
-      unless ($@) {
+      my $conn2;
+      eval { $conn2 = $client2->list_raw() };
+      if ($conn2) {
         die("LIST succeeded unexpectedly");
       }
 
       $resp_code = $client2->response_code();
       $resp_msg = $client2->response_msg();
+
+      $client2->quit();
+      eval { $conn1->close() };
+
+      $client1->quit();
 
       $expected = 425;
       $self->assert($expected == $resp_code,
