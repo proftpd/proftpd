@@ -116,7 +116,7 @@ sub mlsd_ok_raw_active {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -248,6 +248,9 @@ sub mlsd_ok_raw_active {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -262,7 +265,7 @@ sub mlsd_ok_raw_passive {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -394,6 +397,9 @@ sub mlsd_ok_raw_passive {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -408,7 +414,7 @@ sub mlsd_fails_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -515,6 +521,9 @@ sub mlsd_fails_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -529,7 +538,7 @@ sub mlsd_ok_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -640,6 +649,9 @@ sub mlsd_ok_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -654,7 +666,7 @@ sub mlsd_ok_chrooted_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -766,6 +778,9 @@ sub mlsd_ok_chrooted_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -780,7 +795,7 @@ sub mlsd_ok_empty_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -906,6 +921,9 @@ sub mlsd_ok_empty_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -920,7 +938,7 @@ sub mlsd_ok_no_path {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -1030,6 +1048,9 @@ sub mlsd_ok_no_path {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1044,7 +1065,7 @@ sub mlsd_ok_glob {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -1153,6 +1174,9 @@ sub mlsd_ok_glob {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1167,7 +1191,7 @@ sub mlsd_fails_login_required {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $config = {
     PidFile => $pid_file,
@@ -1244,6 +1268,9 @@ sub mlsd_fails_login_required {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1258,7 +1285,7 @@ sub mlsd_fails_enoent {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -1369,6 +1396,9 @@ sub mlsd_fails_enoent {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1383,7 +1413,7 @@ sub mlsd_fails_eperm {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -1504,6 +1534,9 @@ sub mlsd_fails_eperm {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1518,7 +1551,7 @@ sub mlsd_ok_hidden_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -1646,6 +1679,9 @@ sub mlsd_ok_hidden_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1660,7 +1696,7 @@ sub mlsd_ok_path_with_spaces {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -1773,6 +1809,9 @@ sub mlsd_ok_path_with_spaces {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1787,7 +1826,7 @@ sub mlsd_nonascii_chars_bug3032 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -1900,6 +1939,9 @@ sub mlsd_nonascii_chars_bug3032 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1914,7 +1956,7 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -2063,6 +2105,9 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2077,7 +2122,7 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
@@ -2234,6 +2279,9 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file);
+    unlink($log_file);
+
     die($ex);
   }
 
