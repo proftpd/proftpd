@@ -83,19 +83,19 @@ running-tests:
 check-api: dummy api-tests$(EXEEXT)
 
 check-commands:
-	perl tests.pl --pattern '^t\/(commands\/|logins\.t)'
+	perl tests.pl --file-pattern '^t\/(commands\/|logins\.t)'
 
 check-configs:
-	perl tests.pl --pattern '^t\/config\/'
+	perl tests.pl --file-pattern '^t\/config\/'
 
 check-logging:
-	perl tests.pl --pattern '^t\/logging\/'
+	perl tests.pl --file-pattern '^t\/logging\/'
 
 check-modules:
-	perl tests.pl --pattern '^t\/logging\/'
+	perl tests.pl --file-pattern '^t\/logging\/'
 
 check-utils:
-	perl tests.pl --pattern '^t\/utils\/'
+	perl tests.pl --file-pattern '^t\/utils\/'
 
 check: check-api running-tests
 
