@@ -780,6 +780,7 @@ sub server_wait {
 
 sub test_append_logfile {
   my $log_file = shift;
+  my $ex = shift;
 
   my ($infh, $outfh); 
 
@@ -799,6 +800,11 @@ sub test_append_logfile {
 
   while (my $line = <$infh>) {
     print $outfh $line;
+  }
+
+  # If an exception was provided, write that out to the log file, too.
+  if (defined($ex)) {
+    print $outfh "\nException:\n\t$ex\n";
   }
 
   print $outfh "-----END $func-----\n";
