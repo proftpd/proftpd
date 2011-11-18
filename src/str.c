@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.12 2011-11-18 05:06:55 castaglia Exp $
+ * $Id: str.c,v 1.13 2011-11-18 05:21:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -185,9 +185,7 @@ char *sreplace(pool *p, char *s, ...) {
  * than "n" bytes.
  */
 char *sstrcat(char *dst, const char *src, size_t n) {
-#ifndef HAVE_STRLCAT
   register char *d = dst;
-#endif /* HAVE_STRLCAT */
 
   if (dst == NULL ||
       src == NULL ||
