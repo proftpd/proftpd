@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.11 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: str.c,v 1.12 2011-11-18 05:06:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -185,19 +185,38 @@ char *sreplace(pool *p, char *s, ...) {
  * than "n" bytes.
  */
 char *sstrcat(char *dst, const char *src, size_t n) {
-  register char *d;
+#ifndef HAVE_STRLCAT
+  register char *d = dst;
+#endif /* HAVE_STRLCAT */
 
-  if (!dst || !src || n == 0) {
+  if (dst == NULL ||
+      src == NULL ||
+      n == 0) {
     errno = EINVAL;
     return NULL;
   }
 
-  for (d = dst; *d && n > 1; d++, n--) ;
+  /* Edge case short ciruit; strlcat(3) doesn't do what I think it should
+   * do for this particular case.
+   */
+  if (n > 1) {
+#ifdef HAVE_STRLCAT
+    strlcat(dst, src, n);
+  
+#else
+    for (; *d && n > 1; d++, n--) ;
 
-  while (n-- > 1 && *src)
-    *d++ = *src++;
+    while (n-- > 1 && *src) {
+      *d++ = *src++;
+    }
 
-  *d = 0;
+    *d = '\0';
+#endif /* HAVE_STRLCAT */
+
+  } else {
+    *d = '\0';
+  }
+
   return dst;
 }
 

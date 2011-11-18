@@ -1695,7 +1695,7 @@ AC_CHECK_FUNCS(gettimeofday hstrerror inet_aton inet_ntop inet_pton)
 AC_CHECK_FUNCS(loginrestrictions)
 AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp mlock mlockall munlock munlockall)
 AC_CHECK_FUNCS(pathconf putenv regcomp rmdir select setgroups socket statfs strchr strcoll strerror)
-AC_CHECK_FUNCS(strsep strtod strtof strtol strtoull setprotoent setspent endprotoent)
+AC_CHECK_FUNCS(strlcat strlcpy strsep strtod strtof strtol strtoull setprotoent setspent endprotoent)
 # __snprintf and __vsnprintf are only on solaris and _really_ broken there.
 AC_CHECK_FUNCS(vsnprintf snprintf)
 if test x"$ac_cv_func_vsnprintf" != xyes || test x"$ac_cv_func_snprintf" != xyes

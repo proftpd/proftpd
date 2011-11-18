@@ -33,15 +33,21 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#ifdef HAVE_STRING_H
+# include <string.h>
+#endif
+
 #include "libsupp.h"
 
 /* "safe" strncpy, saves room for \0 at end of dest, and refuses to copy
  * more than "n" bytes.
  */
-char *sstrncpy(char *dest, const char *src, size_t n) {
-  register char *d = dest;
+char *sstrncpy(char *dst, const char *src, size_t n) {
+#ifndef HAVE_STRLCPY
+  register char *d = dst;
+#endif /* HAVE_STRLCPY */
 
-  if (dest == NULL) {
+  if (dst == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -54,13 +60,18 @@ char *sstrncpy(char *dest, const char *src, size_t n) {
   if (n == 0)
     return NULL;
 
+#ifdef HAVE_STRLCPY
+  strlcpy(dst, src, n);
+
+#else
   if (src && *src) {
     for (; *src && n > 1; n--)
       *d++ = *src++;
   }
 
   *d = '\0';
+#endif /* HAVE_STRLCPY */
 
-  return dest;
+  return dst;
 }
 
