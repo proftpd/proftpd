@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2007-2010 The ProFTPD Project team
+ * Copyright (c) 2007-2011 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Proctitle management
- * $Id: proctitle.c,v 1.11 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: proctitle.c,v 1.12 2011-11-19 02:44:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -147,10 +147,6 @@ void pr_proctitle_free(void) {
 void pr_proctitle_set_str(const char *str) {
 #ifndef PR_DEVEL_STACK_TRACE
 
-  if (proc_flags & PR_PROCTITLE_FL_USE_STATIC) {
-    return;
-  }
-
 # ifndef HAVE_SETPROCTITLE
   char *p;
   int i, procbuflen, maxlen = (prog_last_argv - prog_argv[0]) - 2;
@@ -158,6 +154,10 @@ void pr_proctitle_set_str(const char *str) {
 #  if PF_ARGV_TYPE == PF_ARGV_PSTAT
   union pstun pst;
 #  endif /* PF_ARGV_PSTAT */
+
+  if (proc_flags & PR_PROCTITLE_FL_USE_STATIC) {
+    return;
+  }
 
   sstrncpy(proc_title_buf, str, sizeof(proc_title_buf));
   procbuflen = strlen(proc_title_buf);
@@ -190,6 +190,10 @@ void pr_proctitle_set_str(const char *str) {
 #  endif /* PF_ARGV_PSSTRINGS */
 
 # else
+  if (proc_flags & PR_PROCTITLE_FL_USE_STATIC) {
+    return;
+  }
+
   setproctitle("%s", str);
 # endif /* HAVE_SETPROCTITLE */
 #endif /* PR_DEVEL_STACK_TRACE */
@@ -199,10 +203,6 @@ void pr_proctitle_set(const char *fmt, ...) {
 #ifndef PR_DEVEL_STACK_TRACE
   va_list msg;
 
-  if (proc_flags & PR_PROCTITLE_FL_USE_STATIC) {
-    return;
-  }
-
 # ifndef HAVE_SETPROCTITLE
 #  if PF_ARGV_TYPE == PF_ARGV_PSTAT
   union pstun pst;
@@ -210,6 +210,10 @@ void pr_proctitle_set(const char *fmt, ...) {
   char *p;
   int i, procbuflen, maxlen = (prog_last_argv - prog_argv[0]) - 2;
 # endif /* HAVE_SETPROCTITLE */
+
+  if (proc_flags & PR_PROCTITLE_FL_USE_STATIC) {
+    return;
+  }
 
   if (!fmt)
     return;
