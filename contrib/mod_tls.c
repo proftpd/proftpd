@@ -1251,7 +1251,7 @@ static void tls_prepare_provider_fds(int stdout_fd, int stderr_fd) {
     nfiles = 255;
 
   } else
-    nfiles = rlim.rlim_max;
+    nfiles = (unsigned long) rlim.rlim_max;
 #else /* no RLIMIT_NOFILE or RLIMIT_OFILE */
    nfiles = 255;
 #endif
