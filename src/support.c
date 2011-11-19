@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.112 2011-10-04 20:59:57 castaglia Exp $
+ * $Id: support.c,v 1.113 2011-11-19 02:40:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -171,38 +171,38 @@ void run_schedule(void) {
  * Alas, current (Jul 2000) Linux systems define NAME_MAX anyway.
  * NB: NAME_MAX_GUESS is defined in support.h.
  */
-int get_name_max(char *dirname, int dir_fd) {
-  int name_max = 0;
+size_t get_name_max(char *dirname, int dir_fd) {
+  long res = 0;
 #if defined(HAVE_FPATHCONF) || defined(HAVE_PATHCONF)
   char *msgfmt = "";
 
 # if defined(HAVE_FPATHCONF)
   if (dir_fd > 0) {
-    name_max = fpathconf(dir_fd, _PC_NAME_MAX);
-    msgfmt = "fpathconf(%s, _PC_NAME_MAX) = %d, errno = %d";
+    res = fpathconf(dir_fd, _PC_NAME_MAX);
+    msgfmt = "fpathconf(%s, _PC_NAME_MAX) = %ld, errno = %d";
   } else
 # endif
 # if defined(HAVE_PATHCONF)
   if (dirname != NULL) {
-    name_max = pathconf(dirname, _PC_NAME_MAX);
-    msgfmt = "pathconf(%s, _PC_NAME_MAX) = %d, errno = %d";
+    res = pathconf(dirname, _PC_NAME_MAX);
+    msgfmt = "pathconf(%s, _PC_NAME_MAX) = %ld, errno = %d";
   } else
 # endif
   /* No data provided to use either pathconf() or fpathconf() */
   return -1;
 
-  if (name_max < 0) {
+  if (res < 0) {
     /* NB: errno may not be set if the failure is due to a limit or option
      * not being supported.
      */
-    pr_log_debug(DEBUG1, msgfmt, dirname ? dirname : "(NULL)", name_max, errno);
+    pr_log_debug(DEBUG1, msgfmt, dirname ? dirname : "(NULL)", res, errno);
   }
 
 #else
-  name_max = NAME_MAX_GUESS;
+  res = NAME_MAX_GUESS;
 #endif /* HAVE_FPATHCONF or HAVE_PATHCONF */
 
-  return name_max;
+  return (size_t) res;
 }
 
 

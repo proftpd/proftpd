@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.189 2011-11-16 23:30:24 castaglia Exp $
+ * $Id: mod_ls.c,v 1.190 2011-11-19 02:40:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -953,8 +953,9 @@ static char **sreaddir(const char *dirname, const int sort) {
   DIR *d;
   struct dirent *de;
   struct stat st;
-  int i, dsize, ssize, dir_fd;
+  int i, dir_fd;
   char **p;
+  size_t ssize, dsize;
 
   if (pr_fsio_stat(dirname, &st) < 0)
     return NULL;
@@ -975,7 +976,9 @@ static char **sreaddir(const char *dirname, const int sort) {
    * 'dsize' must be greater than zero or we loop forever.
    * 'ssize' must be at least big enough to hold a maximum-length name.
    */
-  dsize = (st.st_size / 4) + 10;	 /* Guess number of entries in dir */
+
+  /* Guess the number of entries in the directory. */
+  dsize = (((size_t) st.st_size) / 4) + 10;
 
   /* The directory has been opened already, but portably accessing the file
    * descriptor inside the DIR struct isn't easy.  Some systems use "dd_fd" or
@@ -995,8 +998,8 @@ static char **sreaddir(const char *dirname, const int sort) {
 
   ssize = get_name_max((char *) dirname, dir_fd);
   if (ssize < 1) {
-    pr_log_debug(DEBUG1, "get_name_max(%s, %d) = %d, using %d", dirname,
-      dir_fd, ssize, NAME_MAX_GUESS);
+    pr_log_debug(DEBUG1, "get_name_max(%s, %d) = %lu, using %d", dirname,
+      dir_fd, (unsigned long) ssize, NAME_MAX_GUESS);
     ssize = NAME_MAX_GUESS;
   }
 
@@ -1029,8 +1032,8 @@ static char **sreaddir(const char *dirname, const int sort) {
        * in the directory and thus next time we will want to NULL-terminate
        * the array.
        */
-      pr_log_debug(DEBUG0, "Reallocating sreaddir buffer from %d entries to %d "
-        "entries", dsize, dsize * 2);
+      pr_log_debug(DEBUG0, "Reallocating sreaddir buffer from %lu entries to "
+        "%lu entries", (unsigned long) dsize, (unsigned long) dsize * 2);
 
       /* Allocate bigger array for pointers to filenames */
       pr_trace_msg("data", 8, "allocating readdir buffer of %lu bytes",
