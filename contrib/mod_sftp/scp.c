@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.64 2011-09-24 21:56:47 castaglia Exp $
+ * $Id: scp.c,v 1.65 2011-11-19 03:02:16 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -907,7 +907,7 @@ static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   writelen = datalen;
   if (writelen > (sp->filesz - sp->recvlen)) {
-    writelen = (sp->filesz - sp->recvlen);
+    writelen = (uint32_t) (sp->filesz - sp->recvlen);
   }
 
   if (writelen > 0) {

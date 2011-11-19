@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.17 2011-11-17 23:40:28 castaglia Exp $
+ * $Id: keys.c,v 1.18 2011-11-19 03:02:16 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -111,7 +111,7 @@ static void prepare_provider_fds(int stdout_fd, int stderr_fd) {
     nfiles = 255;
 
   } else {
-    nfiles = rlim.rlim_max;
+    nfiles = (unsigned long) rlim.rlim_max;
   }
 
 #else /* no RLIMIT_NOFILE or RLIMIT_OFILE */

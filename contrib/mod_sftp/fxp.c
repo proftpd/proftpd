@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.134 2011-10-12 17:15:55 castaglia Exp $
+ * $Id: fxp.c,v 1.135 2011-11-19 03:02:16 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3173,7 +3173,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
   struct stat st;
   pr_fh_t *fh;
   cmd_rec *cmd;
-  unsigned int nblocks;
+  unsigned long nblocks;
   off_t range_len, total_len = 0;
   void *data;
   BIO *bio, *fd_bio, *md_bio;
@@ -3365,14 +3365,14 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     nblocks = 1;
 
   } else {
-    nblocks = range_len / blocksz;
+    nblocks = (unsigned long) (range_len / blocksz);
     if (range_len % blocksz != 0) {
       nblocks++;
     }
   }
 
   pr_trace_msg(trace_channel, 15, "for check-file request on '%s', "
-    "calculate %s digest of %u %s", path, digest_name, nblocks,
+    "calculate %s digest of %lu %s", path, digest_name, nblocks,
     nblocks == 1 ? "block/checksum" : "nblocks/checksums");
 
   fh = pr_fsio_open(path, O_RDONLY|O_NONBLOCK);
@@ -3468,7 +3468,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
   sftp_msg_write_string(&buf, &buflen, digest_name);
 
   pr_trace_msg(trace_channel, 8,
-    "sending response: EXTENDED_REPLY %s digest of %u %s", digest_name,
+    "sending response: EXTENDED_REPLY %s digest of %lu %s", digest_name,
     nblocks, nblocks == 1 ? "block" : "blocks");
 
   if (blocksz == 0) {
