@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.60 2011-06-05 23:18:23 castaglia Exp $
+ * $Id: mod_delay.c,v 1.61 2011-11-19 02:49:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -116,7 +116,7 @@ struct delay_rec {
 struct {
   const char *dt_path;
   int dt_fd;
-  off_t dt_size;
+  size_t dt_size;
   void *dt_data;
 
 } delay_tab;
@@ -535,11 +535,10 @@ static int delay_table_init(void) {
   }
 
   delay_tab.dt_fd = fh->fh_fd;
-  delay_tab.dt_size = tab_size;
+  delay_tab.dt_size = (size_t) tab_size;
 
-  pr_trace_msg(trace_channel, 8, "mapping DelayTable '%s' (%" PR_LU
-    " bytes, fd %d) into memory", fh->fh_path, (pr_off_t) delay_tab.dt_size,
-    delay_tab.dt_fd);
+  pr_trace_msg(trace_channel, 8, "mapping DelayTable '%s' (%lu bytes, fd %d) "
+    "into memory", fh->fh_path, delay_tab.dt_size, delay_tab.dt_fd);
   delay_tab.dt_data = mmap(NULL, delay_tab.dt_size, PROT_READ|PROT_WRITE,
     MAP_SHARED, delay_tab.dt_fd, 0);
 
@@ -731,9 +730,8 @@ static int delay_table_load(int lock_table) {
   }
 
   if (delay_tab.dt_data == NULL) {
-    pr_trace_msg(trace_channel, 8, "mapping DelayTable '%s' (%" PR_LU
-      " bytes, fd %d) into memory", delay_tab.dt_path,
-      (pr_off_t) delay_tab.dt_size, delay_tab.dt_fd);
+    pr_trace_msg(trace_channel, 8, "mapping DelayTable '%s' (%lu bytes, fd %d) "
+      "into memory", delay_tab.dt_path, delay_tab.dt_size, delay_tab.dt_fd);
     delay_tab.dt_data = mmap(NULL, delay_tab.dt_size, PROT_READ|PROT_WRITE,
       MAP_SHARED, delay_tab.dt_fd, 0);
 
