@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1374 2011-11-17 23:40:27 castaglia Exp $
+$Id: NEWS,v 1.1375 2011-11-21 21:58:09 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -18,6 +18,7 @@ CVS
   file name).
 - Bug 3715 - MLSD/MLST fail when "DirFakeUser off" or "DirFakeGroup off" used.
 - Bug 3717 - proftpd fails to run with "Abort trap" error message.
+- Bug 3719 - LIST -R can loop endlessly if bad directory symlink exists.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.190 2011-11-19 02:40:12 castaglia Exp $
+ * $Id: mod_ls.c,v 1.191 2011-11-21 21:58:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -460,6 +460,11 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
 
         m[len] = '\0';
 
+        /* If the symlink points to either '.' or '..', skip it (Bug#3719). */
+        if (is_dotdir(m)) {
+          return 0;
+        }
+
         if (!ls_perms_full(p, cmd, m, NULL)) {
           return 0;
         }
@@ -477,6 +482,11 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         return 0;
 
       l[len] = '\0';
+
+      /* If the symlink points to either '.' or '..', skip it (Bug#3719). */
+      if (is_dotdir(l)) {
+        return 0;
+      }
 
       if (!ls_perms_full(p, cmd, l, &hidden)) {
         return 0;
