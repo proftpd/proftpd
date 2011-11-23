@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.76 2011-05-26 23:14:01 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.77 2011-11-23 18:04:37 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -429,7 +429,7 @@ int quotatab_openlog(void) {
 
   pr_signals_block();
   PRIVS_ROOT
-  res = pr_log_openfile(quota_logname, &quota_logfd, 0640);
+  res = pr_log_openfile(quota_logname, &quota_logfd, PR_LOG_SYSTEM_MODE);
   PRIVS_RELINQUISH
   pr_signals_unblock();
 

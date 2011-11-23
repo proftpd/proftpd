@@ -150,7 +150,7 @@ static int wrap2_openlog(void) {
 
   pr_signals_block();
   PRIVS_ROOT
-  res = pr_log_openfile(wrap2_logname, &wrap2_logfd, 0640);
+  res = pr_log_openfile(wrap2_logname, &wrap2_logfd, PR_LOG_SYSTEM_MODE);
   PRIVS_RELINQUISH
   pr_signals_unblock();
 

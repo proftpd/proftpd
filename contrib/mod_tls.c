@@ -6152,7 +6152,7 @@ static int tls_openlog(void) {
 
   pr_signals_block();
   PRIVS_ROOT
-  res = pr_log_openfile(tls_logname, &tls_logfd, 0600);
+  res = pr_log_openfile(tls_logname, &tls_logfd, PR_LOG_SYSTEM_MODE);
   PRIVS_RELINQUISH
   pr_signals_unblock();
 

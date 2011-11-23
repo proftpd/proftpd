@@ -25,7 +25,7 @@
  * This is mod_deflate, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_deflate.c,v 1.8 2011-06-10 02:57:35 castaglia Exp $
+ * $Id: mod_deflate.c,v 1.9 2011-11-23 18:04:37 castaglia Exp $
  * $Libraries: -lz $
  */
 
@@ -898,7 +898,7 @@ static int deflate_sess_init(void) {
 
     pr_signals_block();
     PRIVS_ROOT
-    res = pr_log_openfile(c->argv[0], &deflate_logfd, 0640);
+    res = pr_log_openfile(c->argv[0], &deflate_logfd, PR_LOG_SYSTEM_MODE);
     PRIVS_RELINQUISH
     pr_signals_unblock();
 

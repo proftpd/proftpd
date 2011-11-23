@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.20 2011-09-24 06:44:36 castaglia Exp $
+ * $Id: mod_exec.c,v 1.21 2011-11-23 18:04:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -192,7 +192,7 @@ static int exec_openlog(void) {
 
   pr_signals_block();
   PRIVS_ROOT
-  res = pr_log_openfile(exec_logname, &exec_logfd, 0640);
+  res = pr_log_openfile(exec_logname, &exec_logfd, PR_LOG_SYSTEM_MODE);
   PRIVS_RELINQUISH
   pr_signals_unblock();
 

@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.66 2011-08-16 16:13:02 castaglia Exp $
+ * $Id: mod_radius.c,v 1.67 2011-11-23 18:04:37 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9.1"
@@ -1825,7 +1825,7 @@ static int radius_openlog(void) {
 
   pr_signals_block();
   PRIVS_ROOT
-  res = pr_log_openfile(radius_logname, &radius_logfd, 0640);
+  res = pr_log_openfile(radius_logname, &radius_logfd, PR_LOG_SYSTEM_MODE);
   PRIVS_RELINQUISH
   pr_signals_unblock();
 

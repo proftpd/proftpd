@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached -lmemcachedutil$
- * $Id: mod_memcache.c,v 1.15 2011-05-23 21:11:56 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.16 2011-11-23 18:04:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -347,7 +347,7 @@ static int mcache_sess_init(void) {
 
       pr_signals_block();
       PRIVS_ROOT
-      res = pr_log_openfile(path, &memcache_logfd, 0600);
+      res = pr_log_openfile(path, &memcache_logfd, PR_LOG_SYSTEM_MODE);
       PRIVS_RELINQUISH
       pr_signals_unblock();
 

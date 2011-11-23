@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.61 2011-10-12 17:15:56 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.62 2011-11-23 18:04:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1675,7 +1675,7 @@ static int sftp_sess_init(void) {
 
     pr_signals_block();
     PRIVS_ROOT
-    res = pr_log_openfile(sftp_logname, &sftp_logfd, 0600);
+    res = pr_log_openfile(sftp_logname, &sftp_logfd, PR_LOG_SYSTEM_MODE);
     PRIVS_RELINQUISH
     pr_signals_unblock();
 

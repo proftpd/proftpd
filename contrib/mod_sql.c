@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.218 2011-10-04 05:27:18 castaglia Exp $
+ * $Id: mod_sql.c,v 1.219 2011-11-23 18:04:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -5383,7 +5383,7 @@ static int sql_openlog(void) {
 
   pr_signals_block();
   PRIVS_ROOT
-  res = pr_log_openfile(sql_logfile, &sql_logfd, 0640);
+  res = pr_log_openfile(sql_logfile, &sql_logfd, PR_LOG_SYSTEM_MODE);
   PRIVS_RELINQUISH
   pr_signals_unblock();
 
