@@ -131,13 +131,14 @@ sub rewrite_map_lowercase {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -173,7 +174,7 @@ sub rewrite_map_lowercase {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -261,6 +262,9 @@ sub rewrite_map_lowercase {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -275,13 +279,14 @@ sub rewrite_map_underscores {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -317,7 +322,7 @@ sub rewrite_map_underscores {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -404,6 +409,9 @@ sub rewrite_map_underscores {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -418,13 +426,14 @@ sub rewrite_rule_append_pid {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -443,7 +452,7 @@ sub rewrite_rule_append_pid {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -535,6 +544,9 @@ sub rewrite_rule_append_pid {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -549,13 +561,14 @@ sub rewrite_bug2915 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -587,7 +600,7 @@ sub rewrite_bug2915 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -676,6 +689,9 @@ sub rewrite_bug2915 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -690,13 +706,14 @@ sub rewrite_bug3027 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -715,7 +732,7 @@ sub rewrite_bug3027 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
 
@@ -819,6 +836,9 @@ sub rewrite_bug3027 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -833,13 +853,14 @@ sub rewrite_bug3034 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -858,7 +879,7 @@ sub rewrite_bug3034 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -954,6 +975,9 @@ sub rewrite_bug3034 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -968,13 +992,14 @@ sub rewrite_bug3169 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -993,7 +1018,7 @@ sub rewrite_bug3169 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $test_file = File::Spec->rel2abs("$tmpdir/taestoe.txt");
 
@@ -1112,6 +1137,9 @@ sub rewrite_bug3169 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1126,13 +1154,14 @@ sub rewrite_map_unescape_bug3170 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1151,7 +1180,7 @@ sub rewrite_map_unescape_bug3170 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test file.txt");
 
@@ -1256,6 +1285,9 @@ sub rewrite_map_unescape_bug3170 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1270,13 +1302,14 @@ sub rewrite_cond_env_var_failed {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1312,7 +1345,7 @@ sub rewrite_cond_env_var_failed {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1409,6 +1442,9 @@ sub rewrite_cond_env_var_failed {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1423,13 +1459,14 @@ sub rewrite_cond_env_var_ok {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1465,7 +1502,7 @@ sub rewrite_cond_env_var_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1556,6 +1593,9 @@ sub rewrite_cond_env_var_ok {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1570,13 +1610,14 @@ sub rewrite_rule_env_var_failed {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1609,7 +1650,7 @@ sub rewrite_rule_env_var_failed {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1703,6 +1744,9 @@ sub rewrite_rule_env_var_failed {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1717,13 +1761,14 @@ sub rewrite_rule_env_var_ok {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1756,7 +1801,7 @@ sub rewrite_rule_env_var_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1844,6 +1889,9 @@ sub rewrite_rule_env_var_ok {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1858,13 +1906,14 @@ sub rewrite_escape_rule_backref_bug3028 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1894,7 +1943,7 @@ sub rewrite_escape_rule_backref_bug3028 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1979,6 +2028,9 @@ sub rewrite_escape_rule_backref_bug3028 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1993,13 +2045,14 @@ sub rewrite_escape_cond_backref_bug3028 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2029,7 +2082,7 @@ sub rewrite_escape_cond_backref_bug3028 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2114,6 +2167,9 @@ sub rewrite_escape_cond_backref_bug3028 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2128,13 +2184,14 @@ sub rewrite_cond_rename_var_bug3029 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2164,7 +2221,7 @@ sub rewrite_cond_rename_var_bug3029 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $src_dir = File::Spec->rel2abs("$tmpdir/srcdir");
   mkpath($src_dir);
@@ -2246,6 +2303,9 @@ sub rewrite_cond_rename_var_bug3029 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2260,13 +2320,14 @@ sub rewrite_cond_or_flags_bug3269 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2285,7 +2346,7 @@ sub rewrite_cond_or_flags_bug3269 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2378,6 +2439,9 @@ sub rewrite_cond_or_flags_bug3269 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2392,13 +2456,14 @@ sub rewrite_cond_nc_flags {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2417,7 +2482,7 @@ sub rewrite_cond_nc_flags {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2510,6 +2575,9 @@ sub rewrite_cond_nc_flags {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2524,7 +2592,7 @@ sub rewrite_map_fifo_bug3611 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
@@ -2692,6 +2760,9 @@ sub rewrite_map_fifo_bug3611 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2706,7 +2777,7 @@ sub rewrite_rule_replaceall_backslash_with_slash {
   my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
@@ -2825,6 +2896,9 @@ sub rewrite_rule_replaceall_backslash_with_slash {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
