@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.413 2011-09-21 15:30:27 castaglia Exp $
+ * $Id: mod_core.c,v 1.414 2011-12-01 15:22:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3240,16 +3240,6 @@ MODRET set_displayquit(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET set_displaygoaway(cmd_rec *cmd) {
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  pr_log_debug(DEBUG0, "The %s directive has been deprecated; use the "
-    "MaxClientsPerClass optional message parameter instead", cmd->argv[0]);
-
-  return PR_HANDLED(cmd);
-}
-
 MODRET add_virtualhost(cmd_rec *cmd) {
   server_rec *s = NULL;
   pr_netaddr_t *addr = NULL;
@@ -5824,7 +5814,6 @@ static conftable core_conftab[] = {
   { "DenyUser",			set_allowdenyusergroupclass,	NULL },
   { "DisplayChdir",		set_displaychdir,		NULL },
   { "DisplayConnect",		set_displayconnect,		NULL },
-  { "DisplayGoAway",		set_displaygoaway,		NULL },
   { "DisplayQuit",		set_displayquit,		NULL },
   { "From",			add_from,			NULL },
   { "Group",			set_group, 			NULL },
