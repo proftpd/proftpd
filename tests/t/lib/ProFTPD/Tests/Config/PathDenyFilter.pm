@@ -119,13 +119,14 @@ sub pathdenyfilter_dele_allowed {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -152,7 +153,7 @@ sub pathdenyfilter_dele_allowed {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -231,6 +232,9 @@ sub pathdenyfilter_dele_allowed {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -245,13 +249,14 @@ sub pathdenyfilter_dele_denied {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -270,7 +275,7 @@ sub pathdenyfilter_dele_denied {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -356,6 +361,9 @@ sub pathdenyfilter_dele_denied {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -370,13 +378,14 @@ sub pathdenyfilter_mkd_allowed {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -397,7 +406,7 @@ sub pathdenyfilter_mkd_allowed {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -476,6 +485,9 @@ sub pathdenyfilter_mkd_allowed {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -490,13 +502,14 @@ sub pathdenyfilter_mkd_denied {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -515,7 +528,7 @@ sub pathdenyfilter_mkd_denied {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -601,6 +614,9 @@ sub pathdenyfilter_mkd_denied {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -615,13 +631,14 @@ sub pathdenyfilter_rmd_allowed {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -642,7 +659,7 @@ sub pathdenyfilter_rmd_allowed {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -721,6 +738,9 @@ sub pathdenyfilter_rmd_allowed {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -735,13 +755,14 @@ sub pathdenyfilter_rmd_denied {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -760,7 +781,7 @@ sub pathdenyfilter_rmd_denied {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -846,6 +867,9 @@ sub pathdenyfilter_rmd_denied {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -860,13 +884,14 @@ sub pathdenyfilter_rnfr_allowed {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -887,7 +912,7 @@ sub pathdenyfilter_rnfr_allowed {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -966,6 +991,9 @@ sub pathdenyfilter_rnfr_allowed {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -980,13 +1008,14 @@ sub pathdenyfilter_rnfr_denied {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1005,7 +1034,7 @@ sub pathdenyfilter_rnfr_denied {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1091,6 +1120,9 @@ sub pathdenyfilter_rnfr_denied {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1105,13 +1137,14 @@ sub pathdenyfilter_rnto_allowed {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1133,7 +1166,7 @@ sub pathdenyfilter_rnto_allowed {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1213,6 +1246,9 @@ sub pathdenyfilter_rnto_allowed {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1227,13 +1263,14 @@ sub pathdenyfilter_rnto_denied {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1254,7 +1291,7 @@ sub pathdenyfilter_rnto_denied {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1341,6 +1378,9 @@ sub pathdenyfilter_rnto_denied {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1355,13 +1395,14 @@ sub pathdenyfilter_stor_allowed {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1380,7 +1421,7 @@ sub pathdenyfilter_stor_allowed {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1470,6 +1511,9 @@ sub pathdenyfilter_stor_allowed {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1484,13 +1528,14 @@ sub pathdenyfilter_stor_denied {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1509,7 +1554,7 @@ sub pathdenyfilter_stor_denied {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1596,6 +1641,9 @@ sub pathdenyfilter_stor_denied {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1610,13 +1658,14 @@ sub pathdenyfilter_stor_denied_bug3032 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1635,7 +1684,7 @@ sub pathdenyfilter_stor_denied_bug3032 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1722,6 +1771,9 @@ sub pathdenyfilter_stor_denied_bug3032 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1736,13 +1788,14 @@ sub pathdenyfilter_stor_trailing_space {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1761,7 +1814,7 @@ sub pathdenyfilter_stor_trailing_space {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1848,6 +1901,9 @@ sub pathdenyfilter_stor_trailing_space {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1862,13 +1918,14 @@ sub pathdenyfilter_stor_leading_space {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1887,7 +1944,7 @@ sub pathdenyfilter_stor_leading_space {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1974,6 +2031,9 @@ sub pathdenyfilter_stor_leading_space {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1988,13 +2048,14 @@ sub pathdenyfilter_stor_leading_trailing_space {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2013,7 +2074,7 @@ sub pathdenyfilter_stor_leading_trailing_space {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2100,6 +2161,9 @@ sub pathdenyfilter_stor_leading_trailing_space {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2114,7 +2178,7 @@ sub pathdenyfilter_stor_denied_nocase_bug3592 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -2227,6 +2291,9 @@ sub pathdenyfilter_stor_denied_nocase_bug3592 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
