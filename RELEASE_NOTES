@@ -22,8 +22,10 @@ ChangeLog files.
 
   + New configuration directives:
 
+    RewriteMaxReplace
+
   + Changed configuration directives:
 
   + Deprecated configuration directives:
 
-Last Updated: $Date: 2011-12-01 16:38:03 $
+Last Updated: $Date: 2011-12-03 19:29:55 $
