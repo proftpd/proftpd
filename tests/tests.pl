@@ -109,6 +109,7 @@ if (scalar(@ARGV) > 0) {
     t/config/defaultchdir.t
     t/config/defaultroot.t
     t/config/deleteabortedstores.t
+    t/config/denyfilter.t
     t/config/dirfakegroup.t
     t/config/dirfakemode.t
     t/config/dirfakeuser.t
