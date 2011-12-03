@@ -23,11 +23,14 @@
  */
 
 /* String manipulation functions
- * $Id: str.h,v 1.6 2011-05-23 20:35:35 castaglia Exp $
+ * $Id: str.h,v 1.7 2011-12-03 01:46:42 castaglia Exp $
  */
 
 #ifndef PR_STR_H
 #define PR_STR_H
+
+/* Default maximum number of replacements that will do in a given string. */
+#define PR_STR_MAX_REPLACEMENTS                 8
 
 char *sstrcat(char *, const char *, size_t);
 char *sreplace(pool *, char *, ...);
@@ -37,6 +40,8 @@ char *pstrcat(pool *, ...);
 char *pstrdup(pool *, const char *);
 char *pstrndup(pool *, const char *, size_t);
 
+/* Newer version of sreplace(), with more control and better error reporting. */
+char *pr_str_replace(pool *, unsigned int, char *, ...);
 char *pr_str_strip(pool *, char *);
 char *pr_str_strip_end(char *, char *);
 char *pr_str_get_word(char **, int);

@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.64 2011-09-24 05:33:59 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.65 2011-12-03 01:46:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -100,6 +100,8 @@ static unsigned int rewrite_nrules = 0;
 static array_header *rewrite_conds = NULL;
 static rewrite_match_t rewrite_cond_matches;
 static rewrite_match_t rewrite_rule_matches;
+
+static unsigned int rewrite_max_replace = PR_STR_MAX_REPLACEMENTS;
 
 static const char *trace_channel = "rewrite";
 
@@ -915,15 +917,24 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
          * string with the literal string.
          */
         if (*(ptr - 1) == '$') {
-          char *var;
+          char *res, *var;
           size_t var_len = sizeof(buf) + 1;
 
           var = pcalloc(cmd->tmp_pool, var_len);
           var[0] = '$';
           sstrcat(var, buf, var_len);
 
-          replacement_pattern = sreplace(cmd->pool, replacement_pattern, var,
-            buf, NULL);
+          res = pr_str_replace(cmd->pool, rewrite_max_replace,
+            replacement_pattern, var, buf, NULL);
+          if (res == NULL) {
+            pr_trace_msg(trace_channel, 3,
+              "error replacing '%s' with '%s' in '%s': %s", var, buf,
+              replacement_pattern, strerror(errno));
+            
+          } else {
+            replacement_pattern = res;
+          }
+
           continue;
         }
 
@@ -934,22 +945,31 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
          * string with the literal string.
          */
         if (*(ptr - 1) == '%') {
-          char *var;
+          char *res, *var;
           size_t var_len = sizeof(buf) + 1;
 
           var = pcalloc(cmd->tmp_pool, var_len);
           var[0] = '%';
           sstrcat(var, buf, var_len);
 
-          replacement_pattern = sreplace(cmd->pool, replacement_pattern, var,
-            buf, NULL);
+          res = pr_str_replace(cmd->pool, rewrite_max_replace,
+            replacement_pattern, var, buf, NULL);
+          if (res == NULL) {
+            pr_trace_msg(trace_channel, 3,
+              "error replacing '%s' with '%s' in '%s': %s", var, buf,
+              replacement_pattern, strerror(errno));
+            
+          } else {
+            replacement_pattern = res;
+          }
+
           continue;
         }
       }
     }
 
     if (matches->match_groups[i].rm_so != -1) {
-      char *value, tmp;
+      char *value, *res, tmp;
 
       /* There's a match for the backref in the string, substitute in
        * the backreferenced value.
@@ -985,13 +1005,22 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
         }
       }
 
-      replacement_pattern = sreplace(cmd->pool, replacement_pattern, buf,
-        value, NULL);
-   
+      res = pr_str_replace(cmd->pool, rewrite_max_replace,
+        replacement_pattern, buf, value, NULL);
+      if (res == NULL) {
+        pr_trace_msg(trace_channel, 3,
+          "error replacing '%s' with '%s' in '%s': %s", buf, value,
+          replacement_pattern, strerror(errno));
+            
+      } else {
+        replacement_pattern = res;
+      }
+
       /* Undo the twiddling of the NUL character. */ 
       (matches->match_string)[matches->match_groups[i].rm_eo] = tmp;
 
     } else {
+      char *res;
 
       /* There's backreference in the string, but there no matching
        * group (i.e. backreferenced value).  Substitute in an empty string
@@ -1023,8 +1052,16 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
         }
       }
 
-      replacement_pattern = sreplace(cmd->pool, replacement_pattern, buf,
-        "", NULL);
+      res = pr_str_replace(cmd->pool, rewrite_max_replace, replacement_pattern,
+        buf, "", NULL);
+      if (res == NULL) {
+        pr_trace_msg(trace_channel, 3,
+          "error replacing '%s' with '' in '%s': %s", buf,
+          replacement_pattern, strerror(errno));
+
+      } else {
+        replacement_pattern = res;
+      }
     }
   }
 
@@ -1036,7 +1073,7 @@ static char *rewrite_subst_env(cmd_rec *cmd, char *pattern) {
 
   ptr = strstr(pattern, "%{ENV:");
   while (ptr) {
-    char ch, *ptr2, *key, *val;
+    char ch, *ptr2, *key, *res, *val;
 
     pr_signals_handle();
 
@@ -1060,7 +1097,16 @@ static char *rewrite_subst_env(cmd_rec *cmd, char *pattern) {
         new_pattern = pstrdup(cmd->pool, pattern);
       }
 
-      new_pattern = sreplace(cmd->pool, new_pattern, key, val, NULL);
+      res = pr_str_replace(cmd->pool, rewrite_max_replace, new_pattern, key,
+        val, NULL);
+      if (res == NULL) {
+        pr_trace_msg(trace_channel, 3,
+          "error replacing '%s' with '%s' in '%s': %s", key, val, new_pattern,
+          strerror(errno));
+
+      } else {
+        new_pattern = res;
+      }
     }
 
     /* Look for the next environment variable to process. */
@@ -1096,7 +1142,7 @@ static char *rewrite_subst_maps(cmd_rec *cmd, char *pattern) {
       pr_signals_handle();
 
       if (strcmp(c->argv[0], map.map_name) == 0) { 
-        char *lookup_value = NULL;
+        char *lookup_value = NULL, *res;
         have_map = TRUE;
 
         rewrite_log("rewrite_subst_maps(): mapping '%s' using '%s'",
@@ -1127,11 +1173,21 @@ static char *rewrite_subst_maps(cmd_rec *cmd, char *pattern) {
         rewrite_log("rewrite_subst_maps(): substituting '%s' for '%s'",
           lookup_value, map.map_string);
 
-        if (!new_pattern)
+        if (new_pattern == NULL) {
           new_pattern = pstrdup(cmd->pool, pattern);
+        }
 
-        new_pattern = sreplace(cmd->pool, new_pattern, map.map_string,
-          lookup_value, NULL);
+        res = pr_str_replace(cmd->pool, rewrite_max_replace, new_pattern,
+          map.map_string, lookup_value, NULL);
+        if (res == NULL) {
+          pr_trace_msg(trace_channel, 3,
+            "error replacing '%s' with '%s' in '%s': %s",
+            (char *) map.map_string, lookup_value, new_pattern,
+            strerror(errno));
+
+        } else {
+          new_pattern = res;
+        }
       }
 
       c = find_config_next(c, c->next, CONF_PARAM, "RewriteMap", FALSE);
@@ -1382,7 +1438,7 @@ static char *rewrite_subst_vars(cmd_rec *cmd, char *pattern) {
   char *new_pattern = NULL;
 
   for (i = 0; i < REWRITE_MAX_VARS; i++) {
-    char *val = NULL;
+    char *res, *val = NULL;
 
     /* Does this variable occur in the substitution pattern? */
     if (strstr(pattern, rewrite_vars[i]) == NULL)
@@ -1392,11 +1448,20 @@ static char *rewrite_subst_vars(cmd_rec *cmd, char *pattern) {
     if (val != NULL) {
       rewrite_log("rewrite_subst_vars(): replacing variable '%s' with '%s'",
         rewrite_vars[i], val);
-      if (!new_pattern)
+      if (new_pattern == NULL) {
         new_pattern = pstrdup(cmd->pool, pattern);
+      }
 
-      new_pattern = sreplace(cmd->pool, new_pattern, rewrite_vars[i], val,
-        NULL);
+      res = pr_str_replace(cmd->pool, rewrite_max_replace, new_pattern,
+        rewrite_vars[i], val, NULL);
+      if (res == NULL) {
+        pr_trace_msg(trace_channel, 3,
+          "error replacing '%s' with '%s' in '%s': %s", rewrite_vars[i], val,
+          new_pattern, strerror(errno));
+
+      } else {
+        new_pattern = res;
+      }
     }
   }
 
@@ -1540,7 +1605,7 @@ static int rewrite_utf8_to_ucs4(unsigned long *ucs4_buf,
 static char *rewrite_map_int_replaceall(pool *map_pool, char *key) {
   char sep = *key;
   char *value = NULL, *src = NULL, *dst = NULL;
-  char *tmp = NULL;
+  char *tmp = NULL, *res = NULL;
 
   /* Due to the way in which this internal function works, the first
    * character of the given key is used as a delimiter separating
@@ -1548,7 +1613,7 @@ static char *rewrite_map_int_replaceall(pool *map_pool, char *key) {
    */
   char *str = pstrdup(map_pool, key + 1);
 
-  tmp = strchr(str , sep);
+  tmp = strchr(str, sep);
   if (tmp == NULL) {
     rewrite_log("rewrite_map_int_replaceall(): badly formatted input key");
     return NULL;
@@ -1580,7 +1645,20 @@ static char *rewrite_map_int_replaceall(pool *map_pool, char *key) {
     return NULL;
   }
 
-  return sreplace(map_pool, value, src, dst, NULL);
+  res = pr_str_replace(map_pool, rewrite_max_replace, value, src, dst, NULL);
+  if (res == NULL) {
+    int xerrno = errno;
+
+    rewrite_log("rewrite_map_int_replaceall(): error replacing "
+      "'%s' with '%s' in '%s': %s", src, dst, value, strerror(xerrno));
+
+    errno = xerrno;
+
+  } else {
+    rewrite_log("rewrite_map_int_replaceall(): returning '%s'", res);
+  }
+
+  return res;
 }
 
 static char *rewrite_map_int_tolower(pool *map_pool, char *key) {
@@ -2082,6 +2160,26 @@ MODRET set_rewritelock(cmd_rec *cmd) {
     CONF_ERROR(cmd, "absolute path required");
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: RewriteMaxReplace count */
+MODRET set_rewritemaxreplace(cmd_rec *cmd) {
+  int max_replace = -1;
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  max_replace = atoi(cmd->argv[1]);
+  if (max_replace <= 0) {
+    CONF_ERROR(cmd, "count must be greater than zero");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = max_replace;
 
   return PR_HANDLED(cmd);
 }
@@ -2673,6 +2771,12 @@ static int rewrite_sess_init(void) {
       rewrite_rewrite_home_ev, NULL);
   }
 
+  /* Check for the configured number of max replacements */
+  c = find_config(main_server->conf, CONF_PARAM, "RewriteMaxReplace", FALSE);
+  if (c) {
+    rewrite_max_replace = *((unsigned int *) c->argv[0]);
+  }
+
   return 0;
 }
 
@@ -2703,6 +2807,7 @@ static conftable rewrite_conftab[] = {
   { "RewriteCondition",		set_rewritecondition,	NULL },
   { "RewriteEngine",		set_rewriteengine,	NULL },
   { "RewriteLock",		set_rewritelock,	NULL },
+  { "RewriteMaxReplace",	set_rewritemaxreplace,	NULL },
   { "RewriteLog",		set_rewritelog,		NULL },
   { "RewriteMap",		set_rewritemap,		NULL },
   { "RewriteRule",		set_rewriterule,	NULL },

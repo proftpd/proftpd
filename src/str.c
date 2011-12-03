@@ -23,27 +23,21 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.13 2011-11-18 05:21:08 castaglia Exp $
+ * $Id: str.c,v 1.14 2011-12-03 01:46:42 castaglia Exp $
  */
 
 #include "conf.h"
 
-/* Maximum number of replacements that we will do in a given string. */
-#define PR_STR_MAX_REPLACEMENTS			128
+/* Maximum number of matches that we will do in a given string. */
+#define PR_STR_MAX_MATCHES			128
 
-char *sreplace(pool *p, char *s, ...) {
-  va_list args;
+static char *str_vreplace(pool *p, unsigned int max_replaces, char *s,
+    va_list args) {
   char *m, *r, *src, *cp;
-  char *matches[PR_STR_MAX_REPLACEMENTS+1], *replaces[PR_STR_MAX_REPLACEMENTS+1];
+  char *matches[PR_STR_MAX_MATCHES+1], *replaces[PR_STR_MAX_MATCHES+1];
   char buf[PR_TUNABLE_PATH_MAX] = {'\0'}, *pbuf = NULL;
   size_t nmatches = 0, rlen = 0;
   int blen = 0;
-
-  if (p == NULL ||
-      s == NULL) {
-    errno = EINVAL;
-    return NULL;
-  }
 
   src = s;
   cp = buf;
@@ -54,10 +48,8 @@ char *sreplace(pool *p, char *s, ...) {
 
   blen = strlen(src) + 1;
 
-  va_start(args, s);
-
   while ((m = va_arg(args, char *)) != NULL &&
-         nmatches < PR_STR_MAX_REPLACEMENTS) {
+         nmatches < PR_STR_MAX_MATCHES) {
     char *tmp = NULL;
     int count = 0;
 
@@ -74,11 +66,9 @@ char *sreplace(pool *p, char *s, ...) {
     while (tmp) {
       pr_signals_handle();
       count++;
-      if (count > 8) {
-        /* More than eight instances of the same escape on the same line?
-         * Give me a break.
-         */
-        return s;
+      if (count > max_replaces) {
+        errno = E2BIG;
+        return NULL;
       }
 
       /* Be sure to increment the pointer returned by strstr(3), to
@@ -108,8 +98,6 @@ char *sreplace(pool *p, char *s, ...) {
       replaces[nmatches++] = r;
     }
   }
-
-  va_end(args);
 
   /* If there are no matches, then there is nothing to replace. */
   if (nmatches == 0) {
@@ -179,6 +167,47 @@ char *sreplace(pool *p, char *s, ...) {
   *cp = '\0';
 
   return pbuf;
+}
+
+char *pr_str_replace(pool *p, unsigned int max_replaces, char *s, ...) {
+  va_list args;
+  char *res = NULL;
+
+  if (p == NULL ||
+      s == NULL ||
+      max_replaces == 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  va_start(args, s);
+  res = str_vreplace(p, max_replaces, s, args);
+  va_end(args);
+
+  return res;
+}
+
+char *sreplace(pool *p, char *s, ...) {
+  va_list args;
+  char *res = NULL;
+
+  if (p == NULL ||
+      s == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  va_start(args, s);
+  res = str_vreplace(p, PR_STR_MAX_REPLACEMENTS, s, args);
+  va_end(args);
+
+  if (res == NULL &&
+      errno == E2BIG) {
+    /* For backward compatible behavior. */
+    return s;
+  }
+
+  return res;
 }
 
 /* "safe" strcat, saves room for NUL at end of dst, and refuses to copy more
