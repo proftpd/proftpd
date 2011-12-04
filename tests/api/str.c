@@ -23,7 +23,7 @@
  */
 
 /* String API tests
- * $Id: str.c,v 1.5 2011-05-23 20:50:31 castaglia Exp $
+ * $Id: str.c,v 1.6 2011-12-04 22:19:16 castaglia Exp $
  */
 
 #include "tests.h"
@@ -290,6 +290,53 @@ START_TEST (sreplace_bug3614_test) {
     "%{yy}", "bar", "%{zz}", "bar",
     NULL);
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+}
+END_TEST
+
+START_TEST (str_replace_test) {
+  char *fmt = NULL, *res, *ok;
+  int max_replace = PR_STR_MAX_REPLACEMENTS;
+
+  res = pr_str_replace(NULL, max_replace, NULL, 0);
+  fail_unless(res == NULL, "Failed to handle invalid arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pr_str_replace(NULL, max_replace, "", 0);
+  fail_unless(res == NULL, "Failed to handle invalid arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pr_str_replace(p, max_replace, NULL, 0);
+  fail_unless(res == NULL, "Failed to handle invalid arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  fmt = "%a";
+  res = pr_str_replace(p, max_replace, fmt, "foo", NULL);
+  fail_unless(strcmp(res, fmt) == 0, "Expected '%s', got '%s'", fmt, res);
+
+  fmt = "foo %a";
+  res = pr_str_replace(p, max_replace, fmt, "%b", NULL);
+  fail_unless(strcmp(res, fmt) == 0, "Expected '%s', got '%s'", fmt, res);
+
+  fmt = "foo %a";
+  ok = "foo bar";
+  res = pr_str_replace(p, max_replace, fmt, "%a", "bar", NULL);
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  fmt = "foo %a %a";
+  ok = "foo bar bar";
+  res = pr_str_replace(p, max_replace, fmt, "%a", "bar", NULL);
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  fmt = "foo %a %a %a %a %a %a %a %a";
+  ok = "foo bar bar bar bar bar bar bar bar";
+  res = pr_str_replace(p, max_replace, fmt, "%a", "bar", NULL);
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  fmt = "foo %a %a %a %a %a %a %a %a %a";
+  ok = "foo bar bar bar bar bar bar bar bar bar";
+  res = pr_str_replace(p, max_replace, fmt, "%a", "bar", NULL);
+  fail_unless(res == NULL, "Failed to handle too many replacements");
+  fail_unless(errno == E2BIG, "Failed to set errno to E2BIG");
 }
 END_TEST
 
@@ -734,6 +781,7 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, sreplace_test);
   tcase_add_test(testcase, sreplace_enospc_test);
   tcase_add_test(testcase, sreplace_bug3614_test);
+  tcase_add_test(testcase, str_replace_test);
   tcase_add_test(testcase, pdircat_test);
   tcase_add_test(testcase, pstrcat_test);
   tcase_add_test(testcase, pstrdup_test);
