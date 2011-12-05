@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.61 2011-11-19 02:49:32 castaglia Exp $
+ * $Id: mod_delay.c,v 1.62 2011-12-05 00:01:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -538,7 +538,8 @@ static int delay_table_init(void) {
   delay_tab.dt_size = (size_t) tab_size;
 
   pr_trace_msg(trace_channel, 8, "mapping DelayTable '%s' (%lu bytes, fd %d) "
-    "into memory", fh->fh_path, delay_tab.dt_size, delay_tab.dt_fd);
+    "into memory", fh->fh_path, (unsigned long) delay_tab.dt_size,
+    delay_tab.dt_fd);
   delay_tab.dt_data = mmap(NULL, delay_tab.dt_size, PROT_READ|PROT_WRITE,
     MAP_SHARED, delay_tab.dt_fd, 0);
 
@@ -731,7 +732,8 @@ static int delay_table_load(int lock_table) {
 
   if (delay_tab.dt_data == NULL) {
     pr_trace_msg(trace_channel, 8, "mapping DelayTable '%s' (%lu bytes, fd %d) "
-      "into memory", delay_tab.dt_path, delay_tab.dt_size, delay_tab.dt_fd);
+      "into memory", delay_tab.dt_path, (unsigned long) delay_tab.dt_size,
+      delay_tab.dt_fd);
     delay_tab.dt_data = mmap(NULL, delay_tab.dt_size, PROT_READ|PROT_WRITE,
       MAP_SHARED, delay_tab.dt_fd, 0);
 
