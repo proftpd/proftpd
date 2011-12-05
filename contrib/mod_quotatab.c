@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.77 2011-11-23 18:04:37 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.78 2011-12-05 19:57:15 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -3940,7 +3940,11 @@ static void quotatab_exit_ev(const void *event_data, void *user_data) {
 static void quotatab_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_quotatab.c", (const char *) event_data) == 0) {
     pr_event_unregister(&quotatab_module, NULL, NULL);
-    pr_regex_free(NULL, quota_exclude_pre);
+
+    if (quota_exclude_pre != NULL) {
+      pr_regexp_free(NULL, quota_exclude_pre);
+      quota_exclude_pre = NULL;
+    }
 
     if (quotatab_pool) {
       destroy_pool(quotatab_pool);
