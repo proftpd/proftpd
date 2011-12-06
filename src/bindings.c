@@ -23,7 +23,7 @@
  */
 
 /* Routines to work with ProFTPD bindings
- * $Id: bindings.c,v 1.44 2011-09-21 05:03:05 castaglia Exp $
+ * $Id: bindings.c,v 1.45 2011-12-06 01:08:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -960,11 +960,15 @@ static void init_inetd_bindings(void) {
 
   /* Fill in all the important connection information. */
   if (pr_inet_get_conn_info(main_server->listen, STDIN_FILENO) == -1) {
-    pr_log_pri(PR_LOG_ERR, "fatal: %s", strerror(errno));
+    int xerrno = errno;
 
-    if (errno == ENOTSOCK)
+    pr_log_pri(PR_LOG_ERR, "fatal: %s", strerror(xerrno));
+
+    if (xerrno == ENOTSOCK) {
       pr_log_pri(PR_LOG_ERR, "(Running from command line? "
         "Use `ServerType standalone' in config file!)");
+    }
+
     exit(1);
   }
 
