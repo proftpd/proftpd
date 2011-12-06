@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.136 2011-11-14 22:13:34 castaglia Exp $
+ * $Id: inet.c,v 1.137 2011-12-06 18:13:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -397,6 +397,8 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
           pr_netaddr_get_ipstr(&na), port, strerror(hold_errno));
         pr_log_pri(PR_LOG_ERR, "Check the ServerType directive to ensure "
           "you are configured correctly.");
+        pr_log_pri(PR_LOG_ERR, "Check to see another proftpd instance is "
+          "already using %s, port %d", pr_netaddr_get_ipstr(&na), port);
       }
 
       inet_errno = hold_errno;
