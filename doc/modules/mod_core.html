@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.16 2011-11-15 16:13:22 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.17 2011-12-06 00:07:16 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -19,6 +19,8 @@ The <code>mod_core</code> module handles most of the core FTP commands.
 
 <h2>Directives</h2>
 <ul>
+  <li><a href="#AllowFilter">AllowFilter</a>
+  <li><a href="#DenyFilter">DenyFilter</a>
   <li><a href="#GroupOwner">GroupOwner</a>
   <li><a href="#Include">Include</a>
   <li><a href="#MaxCommandRate">MaxCommandRate</a>
@@ -34,6 +36,98 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#TraceOptions">TraceOptions</a>
   <li><a href="#TransferLog">TransferLog</a>
 </ul>
+
+<hr>
+<h2><a name="AllowFilter">AllowFilter</a></h2>
+<strong>Syntax:</strong> AllowFilter <em>pattern [flags]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>,
+<code>&lt;Directory&gt;</code>, .ftpaccess<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.0pre7 and later
+
+<p>
+The <code>AllowFilter</code> allows the configuration of a regular expression
+<em>pattern</em> that must be matched for all command arguments sent to
+ProFTPD.  It is extremely useful in controlling what characters may be sent in
+a command to ProFTPD, preventing some possible types of attacks against ProFTPD.
+
+<p>
+The regular expression <em>pattern</em> is applied against the arguments to the
+command sent by the client, so care must be taken when creating a proper regex.
+Commands that fail the regex match result in a "Forbidden command" error being
+returned to the client. If the <em>pattern</em> contains whitespace, it
+<b>must</b> be enclosed in quotes.
+
+<p>
+The optional <em>flags</em> parameter, if present, modifies how the
+given<em>pattern</em> will be evaludated.  The supported flags are:
+<ul>
+  <li><b>nocase|NC</b> (<b>n</b>o <b>c</b>ase)<br>
+      This makes the <em>pattern</em> case-insensitive, <i>i.e.</i> there is
+      no difference between 'A-Z' and 'a-z' when <em>pattern</em> is matched
+      against the path
+  </li>
+</ul>
+
+<p>
+The example below allows commands which contain alphanumeric characters and
+whitespace:
+<pre>
+  AllowFilter "^[a-zA-Z0-9 ,]*$"
+</pre>
+
+<p>
+The <a href="../howto/Filters.html">Filters</a> howto covers filtering in
+greater detail.
+
+<p>
+See also: <a href="#DenyFilter"><code>DenyFilter</code></a>, <a href="#PathAllowFilter"><code>PathAllowFilter</code></a>, <a href="#PathDenyFilter"><code>PathDenyFilter</code></a>
+
+<hr>
+<h2><a name="DenyFilter">DenyFilter</a></h2>
+<strong>Syntax:</strong> DenyFilter <em>pattern [flags]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>,<code>&lt;Directory&gt;</code>, .ftpaccess<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.0pre7 and later
+
+<p>
+The <code>DenyFilter</code> directive, like the <code>AllowFilter</code>
+directive, specifies a regular expression <em>pattern</em> which must not
+match any of the command arguments.  If the <em>pattern</em> does match, a
+"Forbidden command" error is returned to the client.  This can be especially
+useful for forbidding certain command argument combinations from ever reaching
+ProFTPD.
+
+<p>
+Note that the <code>PASV</code> SFTP command <b>cannot</b> be blocked using
+this directive.
+
+<p>
+The optional <em>flags</em> parameter, if present, modifies how the
+given<em>pattern</em> will be evaludated.  The supported flags are:
+<ul>
+  <li><b>nocase|NC</b> (<b>n</b>o <b>c</b>ase)<br>
+      This makes the <em>pattern</em> case-insensitive, <i>i.e.</i> there is
+      no difference between 'A-Z' and 'a-z' when <em>pattern</em> is matched
+      against the path
+  </li>
+</ul>
+
+<p>
+For example, to reject commands which contain the percent (<code>%</code>)
+character, you could use:
+<pre>
+  DenyFilter "%"
+</pre>
+
+<p>
+The <a href="../howto/Filters.html">Filters</a> howto covers filtering in
+greater detail.
+
+<p>
+See also: <a href="#AllowFilter"><code>AllowFilter</code></a>, <a href="#PathAllowFilter"><code>PathAllowFilter</code></a>, <a href="#PathDenyFilter"><code>PathDenyFilter</code></a>
 
 <hr>
 <h2><a name="GroupOwner">GroupOwner</a></h2>
@@ -204,7 +298,7 @@ For example:
 </pre>
 
 <p>
-The optional <em>flags</em> paramete, if present, modifies how the given
+The optional <em>flags</em> parameter, if present, modifies how the given
 <em>pattern</em> will be evaludated.  The supported flags are:
 <ul>
   <li><b>nocase|NC</b> (<b>n</b>o <b>c</b>ase)<br>
@@ -245,7 +339,7 @@ For example:
 </pre>
 
 <p>
-The optional <em>flags</em> paramete, if present, modifies how the given
+The optional <em>flags</em> parameter, if present, modifies how the given
 <em>pattern</em> will be evaludated.  The supported flags are:
 <ul>
   <li><b>nocase|NC</b> (<b>n</b>o <b>c</b>ase)<br>
@@ -551,7 +645,7 @@ The <code>mod_core</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-11-15 16:13:22 $</i><br>
+Last Updated: <i>$Date: 2011-12-06 00:07:16 $</i><br>
 
 <br><hr>
 
