@@ -243,7 +243,7 @@ sub extlog_retr_bug3137 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -252,6 +252,7 @@ sub extlog_retr_bug3137 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -270,7 +271,7 @@ sub extlog_retr_bug3137 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
@@ -364,6 +365,9 @@ sub extlog_retr_bug3137 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -378,7 +382,7 @@ sub extlog_stor_bug3137 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -387,6 +391,7 @@ sub extlog_stor_bug3137 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -405,7 +410,7 @@ sub extlog_stor_bug3137 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
@@ -499,6 +504,9 @@ sub extlog_stor_bug3137 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -513,13 +521,14 @@ sub extlog_site_cmds_bug3171 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -546,7 +555,7 @@ sub extlog_site_cmds_bug3171 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
@@ -655,6 +664,9 @@ sub extlog_site_cmds_bug3171 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -669,13 +681,14 @@ sub extlog_protocol {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -702,7 +715,7 @@ sub extlog_protocol {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
@@ -807,6 +820,9 @@ sub extlog_protocol {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -821,13 +837,14 @@ sub extlog_protocol_version_quoted_bug3383 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -854,7 +871,7 @@ sub extlog_protocol_version_quoted_bug3383 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
@@ -961,6 +978,9 @@ sub extlog_protocol_version_quoted_bug3383 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -975,7 +995,7 @@ sub extlog_rename_from {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -984,6 +1004,7 @@ sub extlog_rename_from {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1002,7 +1023,7 @@ sub extlog_rename_from {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
@@ -1117,6 +1138,9 @@ sub extlog_rename_from {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1131,7 +1155,7 @@ sub extlog_orig_user {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -1140,6 +1164,7 @@ sub extlog_orig_user {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1158,7 +1183,7 @@ sub extlog_orig_user {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
@@ -1249,6 +1274,9 @@ sub extlog_orig_user {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1263,13 +1291,14 @@ sub extlog_bug1908 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1300,7 +1329,7 @@ sub extlog_bug1908 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/ext.log");
   my $anon_ext_log = File::Spec->rel2abs("$tmpdir/anon-ext.log");
@@ -1318,7 +1347,7 @@ sub extlog_bug1908 {
     Anonymous => {
       $home_dir => [
         "User $user",
-        "Group ftpd",
+        "Group $group",
         "ExtendedLog $anon_ext_log READ",
         "ExtendedLog $ext_log NONE",
       ],
@@ -1387,6 +1416,9 @@ sub extlog_bug1908 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1435,13 +1467,14 @@ sub extlog_file_modified_bug3457 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1460,7 +1493,7 @@ sub extlog_file_modified_bug3457 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $test_file = File::Spec->rel2abs("$home_dir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1562,6 +1595,9 @@ sub extlog_file_modified_bug3457 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1576,13 +1612,14 @@ sub extlog_dele_bug3469 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1601,7 +1638,7 @@ sub extlog_dele_bug3469 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $test_file = File::Spec->rel2abs("$tmpdir/~test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1706,6 +1743,9 @@ sub extlog_dele_bug3469 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1720,7 +1760,7 @@ sub extlog_client_dir_bug3395 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -1729,6 +1769,7 @@ sub extlog_client_dir_bug3395 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1750,7 +1791,7 @@ sub extlog_client_dir_bug3395 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
@@ -1842,6 +1883,9 @@ sub extlog_client_dir_bug3395 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1856,7 +1900,7 @@ sub extlog_client_dir_chroot_bug3395 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -1865,6 +1909,7 @@ sub extlog_client_dir_chroot_bug3395 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1886,7 +1931,7 @@ sub extlog_client_dir_chroot_bug3395 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
@@ -1979,6 +2024,9 @@ sub extlog_client_dir_chroot_bug3395 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1993,7 +2041,7 @@ sub extlog_device_full {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -2002,6 +2050,7 @@ sub extlog_device_full {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2023,7 +2072,7 @@ sub extlog_device_full {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   # XXX The /dev/full device only exists on Linux, as far as I know
   my $ext_log = File::Spec->rel2abs('/dev/full');
@@ -2092,6 +2141,9 @@ sub extlog_device_full {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2106,7 +2158,7 @@ sub extlog_uid_bug3390 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -2115,6 +2167,7 @@ sub extlog_uid_bug3390 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2133,7 +2186,7 @@ sub extlog_uid_bug3390 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
@@ -2224,6 +2277,9 @@ sub extlog_uid_bug3390 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2238,7 +2294,7 @@ sub extlog_gid_bug3390 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -2247,6 +2303,7 @@ sub extlog_gid_bug3390 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2265,7 +2322,7 @@ sub extlog_gid_bug3390 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
@@ -2356,6 +2413,9 @@ sub extlog_gid_bug3390 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2370,7 +2430,7 @@ sub extlog_pass_ok_var_s_bug3528 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -2379,6 +2439,7 @@ sub extlog_pass_ok_var_s_bug3528 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2397,7 +2458,7 @@ sub extlog_pass_ok_var_s_bug3528 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
@@ -2497,6 +2558,9 @@ sub extlog_pass_ok_var_s_bug3528 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2511,7 +2575,7 @@ sub extlog_pass_failed_var_s_bug3528 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -2520,6 +2584,7 @@ sub extlog_pass_failed_var_s_bug3528 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2538,7 +2603,7 @@ sub extlog_pass_failed_var_s_bug3528 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
@@ -2642,6 +2707,9 @@ sub extlog_pass_failed_var_s_bug3528 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2656,7 +2724,7 @@ sub extlog_ftp_raw_bytes_bug3554 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -2814,6 +2882,9 @@ sub extlog_ftp_raw_bytes_bug3554 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2828,7 +2899,7 @@ sub extlog_ftp_sendfile_raw_bytes_bug3554 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -2997,10 +3068,13 @@ sub extlog_ftp_sendfile_raw_bytes_bug3554 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
-#  unlink($log_file);
+  unlink($log_file);
 }
 
 sub extlog_ftp_deflate_raw_bytes_bug3554 {
@@ -3011,7 +3085,7 @@ sub extlog_ftp_deflate_raw_bytes_bug3554 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -3176,6 +3250,9 @@ sub extlog_ftp_deflate_raw_bytes_bug3554 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3190,7 +3267,7 @@ sub extlog_ftps_raw_bytes_bug3554 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -3341,6 +3418,9 @@ sub extlog_ftps_raw_bytes_bug3554 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3391,7 +3471,7 @@ sub extlog_sftp_raw_bytes_bug3554 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -3535,6 +3615,9 @@ sub extlog_sftp_raw_bytes_bug3554 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3585,7 +3668,7 @@ sub extlog_scp_raw_bytes_bug3554 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -3731,6 +3814,9 @@ sub extlog_scp_raw_bytes_bug3554 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3781,7 +3867,7 @@ sub extlog_exit_bug3559 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -3944,6 +4030,9 @@ sub extlog_exit_bug3559 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3958,7 +4047,7 @@ sub extlog_eos_reason_quit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -4085,6 +4174,9 @@ sub extlog_eos_reason_quit {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4099,7 +4191,7 @@ sub extlog_eos_reason_eof {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -4226,6 +4318,9 @@ sub extlog_eos_reason_eof {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4240,7 +4335,7 @@ sub extlog_eos_reason_timeoutidle {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -4373,6 +4468,9 @@ sub extlog_eos_reason_timeoutidle {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4387,7 +4485,7 @@ sub extlog_eos_reason_timeoutlogin {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -4521,6 +4619,9 @@ sub extlog_eos_reason_timeoutlogin {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4535,7 +4636,7 @@ sub extlog_eos_reason_timeoutnotransfer {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -4685,6 +4786,9 @@ sub extlog_eos_reason_timeoutnotransfer {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4699,7 +4803,7 @@ sub extlog_eos_reason_timeoutsession {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -4833,6 +4937,9 @@ sub extlog_eos_reason_timeoutsession {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4847,7 +4954,7 @@ sub extlog_eos_reason_timeoutstalled {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -5010,6 +5117,9 @@ sub extlog_eos_reason_timeoutstalled {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5024,7 +5134,7 @@ sub extlog_vars_H_L_matching_server_bug3620 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -5147,6 +5257,9 @@ sub extlog_vars_H_L_matching_server_bug3620 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5161,7 +5274,7 @@ sub extlog_vars_H_L_default_server_bug3620 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -5318,6 +5431,9 @@ EOC
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5332,7 +5448,7 @@ sub extlog_user_pass {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -5461,6 +5577,9 @@ sub extlog_user_pass {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5475,7 +5594,7 @@ sub extlog_anon_user_pass {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -5624,6 +5743,9 @@ sub extlog_anon_user_pass {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5638,7 +5760,7 @@ sub extlog_cmd_resp {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -5773,6 +5895,9 @@ sub extlog_cmd_resp {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5787,7 +5912,7 @@ sub extlog_xfer_timeout_bug3696 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -5919,6 +6044,9 @@ sub extlog_xfer_timeout_bug3696 {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5933,7 +6061,7 @@ sub extlog_sftp_xfer_timeout_bug3696 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
@@ -6084,6 +6212,9 @@ sub extlog_sftp_xfer_timeout_bug3696 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
