@@ -8235,6 +8235,7 @@ static int tls_sess_init(void) {
    * list, to be displayed in response to a FEAT command.
    */
   pr_feat_add("AUTH TLS");
+  pr_feat_add("CCC");
   pr_feat_add("PBSZ");
   pr_feat_add("PROT");
 

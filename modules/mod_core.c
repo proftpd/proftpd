@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.415 2011-12-03 20:23:27 castaglia Exp $
+ * $Id: mod_core.c,v 1.416 2011-12-06 03:34:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -5482,6 +5482,8 @@ static int core_init(void) {
   /* Add the additional features implemented by this module into the
    * list, to be displayed in response to a FEAT command.
    */
+  pr_feat_add("EPRT");
+  pr_feat_add("EPSV");
   pr_feat_add("MDTM");
   pr_feat_add("REST STREAM");
   pr_feat_add("SIZE");
