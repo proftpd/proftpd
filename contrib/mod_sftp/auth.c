@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.38 2011-08-04 21:15:19 castaglia Exp $
+ * $Id: auth.c,v 1.39 2011-12-06 23:08:32 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1086,6 +1086,11 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       "unsupported authentication method '%s' requested", method);
     return -1;
   }
+
+  /* Make sure that the password cmd_rec arg points back to the static
+   * string for passwords.
+   */
+  pass_cmd->arg = pstrdup(pkt->pool, "(hidden)");
 
   if (res <= 0) {
     int xerrno = errno;
