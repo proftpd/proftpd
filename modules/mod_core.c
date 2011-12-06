@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.416 2011-12-06 03:34:44 castaglia Exp $
+ * $Id: mod_core.c,v 1.417 2011-12-06 19:39:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3711,7 +3711,7 @@ MODRET core_port(cmd_rec *cmd) {
 
   /* Block active transfers (the PORT command) if RootRevoke is in effect
    * and the server's port is below 1025 (binding to the data port in this
-   * case would require root privs, which will have been dropped.
+   * case would require root privs, which will have been dropped).
    */
   privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke", FALSE);
   if (privsdrop != NULL &&
