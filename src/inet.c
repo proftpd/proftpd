@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.138 2011-12-07 00:54:16 castaglia Exp $
+ * $Id: inet.c,v 1.139 2011-12-07 01:01:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -396,9 +396,9 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
         pr_log_pri(PR_LOG_ERR, "Failed binding to %s, port %d: %s",
           pr_netaddr_get_ipstr(&na), port, strerror(hold_errno));
         pr_log_pri(PR_LOG_ERR, "Check the ServerType directive to ensure "
-          "you are configured correctly.");
+          "you are configured correctly");
         pr_log_pri(PR_LOG_ERR, "Check to see if inetd/xinetd, or another "
-          "proftpd instance,  is already using %s, port %d",
+          "proftpd instance, is already using %s, port %d",
           pr_netaddr_get_ipstr(&na), port);
       }
 
