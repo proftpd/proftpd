@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.57 2011-10-18 14:52:24 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.58 2011-12-09 00:02:51 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -558,6 +558,10 @@ The <code>SFTPDigests</code> directive is used to specify the list of
 MAC digest algorithms that <code>mod_sftp</code> should use.  The current list
 of supported MAC algorithms is:
 <ul>
+  <li>hmac-sha2-256
+  <li>hmac-sha2-256-96
+  <li>hmac-sha2-512
+  <li>hmac-sha2-512-96
   <li>hmac-sha1
   <li>hmac-sha1-96
   <li>hmac-md5
@@ -565,7 +569,9 @@ of supported MAC algorithms is:
   <li>hmac-ripemd160
 </ul>
 By default, all of the above MAC algorithms are presented to the client,
-in the above order, during the key exchange.
+in the above order, during the key exchange.  <b>Note</b> that some algorithms
+(<i>e.g.</i> the SHA256 and SHA512 algorithms) may not be supported by
+the version of OpenSSL used; this will be automatically detected.
 
 <p>
 The "none" MAC (<i>i.e.</i> no MAC) will <b>not</b> be presented to the client
@@ -577,10 +583,15 @@ In general, there is no need to use this directive unless only one specific
 MAC algorithm must be used.
 
 <p>
-For comparison, the MAC algorithms used by OpenSSH by default are:
+For comparison, the MAC algorithms used by OpenSSH (depending on the version)
+by default are:
 <ul>
   <li>hmac-md5
   <li>hmac-sha1
+  <li>hmac-sha2-256
+  <li>hmac-sha2-256-96
+  <li>hmac-sha2-512
+  <li>hmac-sha2-512-96
   <li>hmac-ripemd160
   <li>hmac-sha1-96
   <li>hmac-md5-96
@@ -589,7 +600,8 @@ Thus if you wanted to configure <code>mod_sftp</code> to present the same
 MAC algorithms as OpenSSH, you would use:
 <pre>
   # Make mod_sftp present the MAC ciphers as OpenSSH
-  SFTPDigests hmac-md5 hmac-sha1 hmac-ripemd160 hmac-sha1-96 hmac-md5-96
+  SFTPDigests hmac-md5 hmac-sha1 hmac-sha2-256 hmac-sha2-512 \
+    hmac-ripemd160 hmac-sha1-96 hmac-md5-96
 </pre>
 
 <p>
@@ -1867,7 +1879,7 @@ source of trouble.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-10-18 14:52:24 $</i><br>
+Last Updated: <i>$Date: 2011-12-09 00:02:51 $</i><br>
 
 <br><hr>
 
