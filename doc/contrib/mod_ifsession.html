@@ -1,4 +1,4 @@
-<!-- $Id: mod_ifsession.html,v 1.3 2005-06-20 02:05:28 castaglia Exp $ -->
+<!-- $Id: mod_ifsession.html,v 1.4 2011-12-09 02:02:26 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_ifsession.html,v $ -->
 
 <html>
@@ -79,10 +79,37 @@ questions, concerns, or suggestions regarding this module.
 
 <h2>Directives</h2>
 <ul>
+  <li><a href="#IfAuthenticated">&lt;IfAuthenticated&gt;</a>
   <li><a href="#IfClass">&lt;IfClass&gt;</a>
   <li><a href="#IfGroup">&lt;IfGroup&gt;</a>
   <li><a href="#IfUser">&lt;IfUser&gt;</a>
 </ul>
+
+<hr>
+<h2><a name="IfAuthenticated">&lt;IfAuthenticated&gt;</a></h2>
+<strong>Syntax:</strong> &lt;IfAuthenticated&gt;<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_ifsession<br>
+<strong>Compatibility:</strong> 1.3.5rc1 and later
+
+<p>
+The <code>&lt;IfAuthenticated&gt;</code> context should contain any
+configuration directives that should be in effect for any sessions where
+the client has successfully authenticated.
+
+<p>
+Examples:
+<pre>
+  # Only configure SQL logging for authenticated users, to avoid cluttering
+  # database tables with fail login data
+  &lt;IfAuthenticated&gt;
+    SQLLog ...
+  &lt;/IfAuthenticated&gt;
+</pre>
+
+<p>
+See also: <a href="#IfGroup">&lt;IfGroup&gt;</a>, <a href="#IfUser">&lt;IfUser&gt;</a>
 
 <hr>
 <h2><a name="IfClass">&lt;IfClass&gt;</a></h2>
@@ -235,8 +262,8 @@ file into:
 <pre>
   <i>proftpd-dir</i>/contrib/
 </pre>
-after unpacking the latest proftpd-1.2 source code.  Then follow the usual
-steps for using third-party modules in proftpd:
+after unpacking the latest proftpd-1.3.<i>x</i> source code.  Then follow the
+usual steps for using third-party modules in proftpd:
 <pre>
   ./configure --with-modules=mod_ifsession
   make
@@ -251,12 +278,12 @@ properly by other modules.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2005-06-20 02:05:28 $</i><br>
+Last Updated: <i>$Date: 2011-12-09 02:02:26 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2002 TJ Saunders<br>
+&copy; Copyright 2000-2011 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
