@@ -22,6 +22,8 @@ ChangeLog files.
 
   + New configuration directives:
 
+    <IfAuthenticated>
+
     RewriteMaxReplace
 
   + Changed configuration directives:
@@ -29,6 +31,9 @@ ChangeLog files.
     AllowFilter, DenyFilter
       case-insensitive (from Bug#3592)
 
+    SFTPDigests
+      new SHA256/512 digests
+
   + Deprecated configuration directives:
 
-Last Updated: $Date: 2011-12-03 20:23:27 $
+Last Updated: $Date: 2011-12-09 02:03:10 $
