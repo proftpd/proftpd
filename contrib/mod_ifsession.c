@@ -26,12 +26,12 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.37 2011-05-23 20:56:40 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.38 2011-12-09 01:58:01 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_IFSESSION_VERSION	"mod_ifsession/1.1"
+#define MOD_IFSESSION_VERSION	"mod_ifsession/1.2"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -44,6 +44,8 @@
 #define	IFSESS_GROUP_TEXT	"<IfGroup>"
 #define IFSESS_USER_NUMBER	102
 #define	IFSESS_USER_TEXT	"<IfUser>"
+#define IFSESS_AUTHN_NUMBER	103
+#define	IFSESS_AUTHN_TEXT	"<IfAuthenticated>"
 
 module ifsession_module;
 
@@ -134,7 +136,8 @@ static void ifsess_dup_set(pool *dst_pool, xaset_t *dst, xaset_t *src) {
     /* Skip the context lists. */
     if (c->config_type == IFSESS_CLASS_NUMBER ||
         c->config_type == IFSESS_GROUP_NUMBER ||
-        c->config_type == IFSESS_USER_NUMBER)
+        c->config_type == IFSESS_USER_NUMBER ||
+        c->config_type == IFSESS_AUTHN_NUMBER)
       continue;
 
     /* If this directive does not allow multiple instances, make sure
@@ -163,9 +166,6 @@ MODRET start_ifctxt(cmd_rec *cmd) {
   char **argv = NULL;
   array_header *acl = NULL;
 
-  if (cmd->argc-1 < 1)
-    CONF_ERROR(cmd, "wrong number of parameters");
-
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   c = pr_parser_config_ctxt_open(cmd->argv[0]);
@@ -180,15 +180,37 @@ MODRET start_ifctxt(cmd_rec *cmd) {
     ifsess_ctx = config_type = IFSESS_CLASS_NUMBER;
     eval_type = PR_EXPR_EVAL_OR;
 
+    if (cmd->argc-1 < 1) {
+      CONF_ERROR(cmd, "wrong number of parameters");
+    }
+
   } else if (strcmp(cmd->argv[0], IFSESS_GROUP_TEXT) == 0) {
     name = "_IfGroupList";
     ifsess_ctx = config_type = IFSESS_GROUP_NUMBER;
     eval_type = PR_EXPR_EVAL_AND;
 
+    if (cmd->argc-1 < 1) {
+      CONF_ERROR(cmd, "wrong number of parameters");
+    }
+
   } else if (strcmp(cmd->argv[0], IFSESS_USER_TEXT) == 0) {
     name = "_IfUserList";
     ifsess_ctx = config_type = IFSESS_USER_NUMBER;
     eval_type = PR_EXPR_EVAL_OR;
+
+    if (cmd->argc-1 < 1) {
+      CONF_ERROR(cmd, "wrong number of parameters");
+    }
+
+  } else if (strcmp(cmd->argv[0], IFSESS_AUTHN_TEXT) == 0) {
+    name = "_IfAuthenticatedList";
+    ifsess_ctx = config_type = IFSESS_AUTHN_NUMBER;
+    eval_type = PR_EXPR_EVAL_OR;
+
+    /* <IfAuthenticated> sections don't take any parameters. */
+    if (cmd->argc > 1) {
+      CONF_ERROR(cmd, "wrong number of parameters");
+    }
   }
 
   /* Is this a normal expression, an explicit AND, an explicit OR, or a
@@ -297,6 +319,12 @@ MODRET end_ifctxt(cmd_rec *cmd) {
         ifsess_ctx = -1;
       }
       break;
+
+    case IFSESS_AUTHN_NUMBER:
+      if (strcasecmp("</IfAuthenticated>", cmd->argv[0]) == 0) {
+        ifsess_ctx = -1;
+      }
+      break;
   }
 
   return PR_HANDLED(cmd);
@@ -310,6 +338,8 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
   config_rec *c = NULL;
   int found = 0;
   pool *tmp_pool = make_sub_pool(session.pool);
+  array_header *authn_remove_list = make_array(tmp_pool, 1,
+    sizeof(config_rec *));
   array_header *group_remove_list = make_array(tmp_pool, 1,
     sizeof(config_rec *));
   array_header *user_remove_list = make_array(tmp_pool, 1,
@@ -327,8 +357,45 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
    * result in a scan of the whole in-memory db.  Hmm...
    */
 
-  c = find_config(main_server->conf, -1, IFSESS_GROUP_TEXT, FALSE);
+  c = find_config(main_server->conf, -1, IFSESS_AUTHN_TEXT, FALSE);
+  while (c) {
+    config_rec *list = NULL;
 
+    pr_signals_handle();
+
+    list = find_config(c->subset, IFSESS_AUTHN_NUMBER, NULL, FALSE);
+    if (list != NULL) {
+      pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
+        ": merging <IfAuthenticated> directives in");
+      ifsess_dup_set(session.pool, main_server->conf, c->subset);
+
+      /* Add this config_rec pointer to the list of pointers to be
+       * removed later.
+       */
+      *((config_rec **) push_array(authn_remove_list)) = c;
+
+      resolve_deferred_dirs(main_server);
+
+      /* We need to call fixup_dirs() twice: once for any added <Directory>
+       * sections that use absolute paths, and again for any added <Directory>
+       * sections that use deferred-resolution paths (e.g. "~").
+       */
+      fixup_dirs(main_server, 0);
+      fixup_dirs(main_server, CF_DEFER);
+
+      ifsess_merged = TRUE;
+    }
+
+    c = find_config_next(c, c->next, -1, IFSESS_AUTHN_TEXT, FALSE);
+  }
+
+  /* Now, remove any <IfAuthenticated> config_recs that have been merged in. */
+  for (i = 0; i < authn_remove_list->nelts; i++) {
+    c = ((config_rec **) authn_remove_list->elts)[i];
+    xaset_remove(main_server->conf, (xasetmember_t *) c);
+  }
+
+  c = find_config(main_server->conf, -1, IFSESS_GROUP_TEXT, FALSE);
   while (c) {
     config_rec *list = NULL;
 
@@ -430,7 +497,6 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
   }
 
   c = find_config(main_server->conf, -1, IFSESS_USER_TEXT, FALSE);
-
   while (c) {
     config_rec *list = NULL;
 
@@ -661,12 +727,14 @@ static int ifsess_sess_init(void) {
  */
 
 static conftable ifsess_conftab[] = {
-  { IFSESS_CLASS_TEXT,	start_ifctxt,	NULL },
-  { "</IfClass>",	end_ifctxt,	NULL },
-  { IFSESS_GROUP_TEXT,	start_ifctxt,	NULL },
-  { "</IfGroup>",	end_ifctxt,	NULL },
-  { IFSESS_USER_TEXT,	start_ifctxt,	NULL },
-  { "</IfUser>",	end_ifctxt,	NULL },
+  { IFSESS_AUTHN_TEXT,		start_ifctxt,	NULL },
+  { "</IfAuthenticated>",	end_ifctxt,	NULL },
+  { IFSESS_CLASS_TEXT,		start_ifctxt,	NULL },
+  { "</IfClass>",		end_ifctxt,	NULL },
+  { IFSESS_GROUP_TEXT,		start_ifctxt,	NULL },
+  { "</IfGroup>",		end_ifctxt,	NULL },
+  { IFSESS_USER_TEXT,		start_ifctxt,	NULL },
+  { "</IfUser>",		end_ifctxt,	NULL },
   { NULL }
 };
 
