@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.43 2011-05-24 20:55:50 castaglia Exp $
+ * $Id: channel.c,v 1.44 2011-12-10 00:09:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1275,6 +1275,10 @@ unsigned int sftp_channel_set_max_count(unsigned int max) {
   channel_max = max;
 
   return prev_max;
+}
+
+uint32_t sftp_channel_get_max_packetsz(void) {
+  return chan_packet_size;
 }
 
 uint32_t sftp_channel_set_max_packetsz(uint32_t packetsz) {
