@@ -34,6 +34,9 @@ ChangeLog files.
     SFTPDigests
       new SHA256/512 digests
 
+    TLSProtocol
+      support TLSv1.1, TLSv1.2 (assuming OpenSSL-1.0.1 and later)
+
   + Deprecated configuration directives:
 
-Last Updated: $Date: 2011-12-09 02:03:10 $
+Last Updated: $Date: 2011-12-10 21:37:04 $
