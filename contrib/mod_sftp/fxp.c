@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.135 2011-11-19 03:02:16 castaglia Exp $
+ * $Id: fxp.c,v 1.136 2011-12-10 00:14:01 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1182,7 +1182,10 @@ static struct fxp_extpair *fxp_msg_read_extpair(pool *p, char **buf,
 }
 #endif
 
-static void fxp_msg_write_short(char **buf, uint32_t *buflen, uint16_t val) {
+static uint32_t fxp_msg_write_short(char **buf, uint32_t *buflen,
+    uint16_t val) {
+  uint32_t len = 0;
+
   if (*buflen < sizeof(uint16_t)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "SFTP message format error: unable to write short (buflen = %lu)",
@@ -1190,13 +1193,17 @@ static void fxp_msg_write_short(char **buf, uint32_t *buflen, uint16_t val) {
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 
+  len = sizeof(uint16_t);
+
   val = htons(val);
-  memcpy(*buf, &val, sizeof(uint16_t));
-  (*buf) += sizeof(uint16_t);
-  (*buflen) -= sizeof(uint16_t);
+  memcpy(*buf, &val, len);
+  (*buf) += len;
+  (*buflen) -= len;
+
+  return len;
 }
 
-static void fxp_msg_write_long(char **buf, uint32_t *buflen, uint64_t val) {
+static uint32_t fxp_msg_write_long(char **buf, uint32_t *buflen, uint64_t val) {
   unsigned char data[8];
 
   if (*buflen < sizeof(uint64_t)) {
@@ -1215,7 +1222,7 @@ static void fxp_msg_write_long(char **buf, uint32_t *buflen, uint64_t val) {
   data[6] = (unsigned char) (val >> 8) & 0xFF;
   data[7] = (unsigned char) val & 0xFF;
 
-  sftp_msg_write_data(buf, buflen, (char *) data, sizeof(data), FALSE);
+  return sftp_msg_write_data(buf, buflen, (char *) data, sizeof(data), FALSE);
 }
 
 static void fxp_msg_write_extpair(char **buf, uint32_t *buflen,
@@ -1969,9 +1976,9 @@ static char fxp_get_file_type(mode_t mode) {
   return SSH2_FX_ATTR_FTYPE_UNKNOWN;
 }
 
-static void fxp_attrs_write(pool *p, char **buf, uint32_t *buflen,
+static uint32_t fxp_attrs_write(pool *p, char **buf, uint32_t *buflen,
     struct stat *st, const char *user_owner, const char *group_owner) {
-  uint32_t flags;
+  uint32_t flags, len = 0;
   mode_t perms;
 
   if (fxp_session->client_version <= 3) {
@@ -1979,13 +1986,13 @@ static void fxp_attrs_write(pool *p, char **buf, uint32_t *buflen,
       SSH2_FX_ATTR_ACMODTIME;
     perms = st->st_mode;
 
-    sftp_msg_write_int(buf, buflen, flags);
-    fxp_msg_write_long(buf, buflen, st->st_size);
-    sftp_msg_write_int(buf, buflen, st->st_uid);
-    sftp_msg_write_int(buf, buflen, st->st_gid);
-    sftp_msg_write_int(buf, buflen, perms);
-    sftp_msg_write_int(buf, buflen, st->st_atime);
-    sftp_msg_write_int(buf, buflen, st->st_mtime);
+    len += sftp_msg_write_int(buf, buflen, flags);
+    len += fxp_msg_write_long(buf, buflen, st->st_size);
+    len += sftp_msg_write_int(buf, buflen, st->st_uid);
+    len += sftp_msg_write_int(buf, buflen, st->st_gid);
+    len += sftp_msg_write_int(buf, buflen, perms);
+    len += sftp_msg_write_int(buf, buflen, st->st_atime);
+    len += sftp_msg_write_int(buf, buflen, st->st_mtime);
 
   } else {
     char file_type;
@@ -2002,28 +2009,32 @@ static void fxp_attrs_write(pool *p, char **buf, uint32_t *buflen,
 
     file_type = fxp_get_file_type(st->st_mode);
 
-    sftp_msg_write_int(buf, buflen, flags);
-    sftp_msg_write_byte(buf, buflen, file_type);
-    fxp_msg_write_long(buf, buflen, st->st_size);
+    len += sftp_msg_write_int(buf, buflen, flags);
+    len += sftp_msg_write_byte(buf, buflen, file_type);
+    len += fxp_msg_write_long(buf, buflen, st->st_size);
 
     if (user_owner == NULL) {
-      sftp_msg_write_string(buf, buflen, pr_auth_uid2name(p, st->st_uid));
+      len += sftp_msg_write_string(buf, buflen,
+        pr_auth_uid2name(p, st->st_uid));
 
     } else {
-      sftp_msg_write_string(buf, buflen, user_owner);
+      len += sftp_msg_write_string(buf, buflen, user_owner);
     }
 
     if (group_owner == NULL) {
-      sftp_msg_write_string(buf, buflen, pr_auth_gid2name(p, st->st_gid));
+      len += sftp_msg_write_string(buf, buflen,
+        pr_auth_gid2name(p, st->st_gid));
 
     } else {
-      sftp_msg_write_string(buf, buflen, group_owner);
+      len += sftp_msg_write_string(buf, buflen, group_owner);
     }
 
-    sftp_msg_write_int(buf, buflen, perms);
-    fxp_msg_write_long(buf, buflen, st->st_atime);
-    fxp_msg_write_long(buf, buflen, st->st_mtime);
+    len += sftp_msg_write_int(buf, buflen, perms);
+    len += fxp_msg_write_long(buf, buflen, st->st_atime);
+    len += fxp_msg_write_long(buf, buflen, st->st_mtime);
   }
+
+  return len;
 }
 
 /* The strmode(3) function appears in some BSDs, but is not portable. */
@@ -2195,15 +2206,16 @@ static struct fxp_dirent *fxp_get_dirent(pool *p, cmd_rec *cmd,
   return fxd;
 }
 
-static void fxp_name_write(pool *p, char **buf, uint32_t *buflen,
+static uint32_t fxp_name_write(pool *p, char **buf, uint32_t *buflen,
     const char *path, struct stat *st, const char *user_owner,
     const char *group_owner) {
+  uint32_t len = 0;
 
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
-    sftp_msg_write_string(buf, buflen, sftp_utf8_encode_str(p, path));
+    len += sftp_msg_write_string(buf, buflen, sftp_utf8_encode_str(p, path));
 
   } else {
-    sftp_msg_write_string(buf, buflen, path);
+    len += sftp_msg_write_string(buf, buflen, path);
   }
 
   if (fxp_session->client_version <= 3) {
@@ -2212,14 +2224,16 @@ static void fxp_name_write(pool *p, char **buf, uint32_t *buflen,
     path_desc = fxp_get_path_listing(p, path, st, user_owner, group_owner);
 
     if (fxp_session->client_version >= fxp_utf8_protocol_version) {
-      sftp_msg_write_string(buf, buflen, sftp_utf8_encode_str(p, path_desc));
+      len += sftp_msg_write_string(buf, buflen,
+        sftp_utf8_encode_str(p, path_desc));
 
     } else {
-      sftp_msg_write_string(buf, buflen, path_desc);
+      len += sftp_msg_write_string(buf, buflen, path_desc);
     }
   }
 
-  fxp_attrs_write(p, buf, buflen, st, user_owner, group_owner);
+  len += fxp_attrs_write(p, buf, buflen, st, user_owner, group_owner);
+  return len;
 }
 
 /* FX Handle Mgmt */
@@ -7177,16 +7191,15 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
 static int fxp_handle_readdir(struct fxp_packet *fxp) {
   register unsigned int i;
-  unsigned int max_entries = 30;
   char *buf, *cmd_name, *ptr, *name;
-  uint32_t buflen, bufsz;
+  uint32_t buflen, bufsz, curr_packet_pathsz = 0, max_packetsz;
   struct dirent *dent;
   struct fxp_dirent **paths;
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   array_header *path_list;
   cmd_rec *cmd;
-  int have_error = FALSE, res;
+  int have_error = FALSE, have_eod = TRUE, res;
   mode_t *fake_mode = NULL;
   const char *fake_user = NULL, *fake_group = NULL, *vwd = NULL;
 
@@ -7205,11 +7218,10 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
   pr_trace_msg(trace_channel, 7, "received request: READDIR %s", name);
 
-  /* XXX What's a good size here?
-   * Currently we calculate the max path length for the maximum number of
-   * entries, plus 256 bytes of additional data for that path.
-   */
-  buflen = bufsz = (max_entries * ((PR_TUNABLE_PATH_MAX + 1) + 256));
+  /* XXX What's a good size here? */
+
+  max_packetsz = sftp_channel_get_max_packetsz();
+  buflen = bufsz = max_packetsz;
   buf = ptr = palloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(name);
@@ -7254,7 +7266,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", fxh->dir, NULL, NULL);
 
-  path_list = make_array(fxp->pool, max_entries, sizeof(struct fxp_dirent *));
+  path_list = make_array(fxp->pool, 5, sizeof(struct fxp_dirent *));
 
   /* If blocked by <Limit LIST>/<Limit NLST>, return EOF immediately. */
 
@@ -7354,6 +7366,9 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   while ((dent = pr_fsio_readdir(fxh->dirh)) != NULL) {
     char *real_path;
     struct fxp_dirent *fxd;
+    uint32_t curr_packetsz, max_entry_metadata = 128;
+    uint32_t max_entrysz = (PR_TUNABLE_PATH_MAX + 1 + max_entry_metadata);
+    size_t dent_len;
 
     pr_signals_handle();
 
@@ -7379,12 +7394,26 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
       continue;
     }
 
-    fxd->client_path = pstrdup(fxp->pool, dent->d_name);
+    dent_len = strlen(dent->d_name);
+    fxd->client_path = pstrndup(fxp->pool, dent->d_name, dent_len);
+    curr_packet_pathsz += (dent_len + 1);
     
     *((struct fxp_dirent **) push_array(path_list)) = fxd;
 
-    /* Make the number of entries returned per READDIR more dynamic. */
-    if (path_list->nelts == max_entries) {
+    /* We determine the number of entries to send in this packet based on
+     * the maximum packet size and the max entry size.
+     *
+     * We assume that each entry will need up to PR_TUNABLE_PATH_MAX+1 bytes for
+     * the filename, and 128 bytes of associated data.
+     *
+     * We have the total number of entries for this message when there is less
+     * than enough space for one more maximum-sized entry.
+     */
+
+    curr_packetsz = curr_packet_pathsz +
+      (path_list->nelts * max_entry_metadata);
+    if ((max_packetsz - curr_packetsz) <= max_entrysz) {
+      have_eod = FALSE;
       break;
     }
   }
@@ -7454,13 +7483,17 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
   paths = path_list->elts;
   for (i = 0; i < path_list->nelts; i++) {
-    fxp_name_write(fxp->pool, &buf, &buflen, paths[i]->client_path,
+    uint32_t name_len = 0;
+
+    name_len = fxp_name_write(fxp->pool, &buf, &buflen, paths[i]->client_path,
       paths[i]->st, fake_user, fake_group);
+
+    pr_trace_msg(trace_channel, 19, "READDIR: FXP_NAME entry size: %lu bytes",
+      (unsigned long) name_len);
   }
 
   if (fxp_session->client_version > 5) {
-    sftp_msg_write_bool(&buf, &buflen, path_list->nelts == max_entries ?
-      FALSE : TRUE);
+    sftp_msg_write_bool(&buf, &buflen, have_eod ? TRUE : FALSE);
   }
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
