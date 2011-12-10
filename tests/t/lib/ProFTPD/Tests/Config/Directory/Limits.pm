@@ -97,13 +97,14 @@ sub limits_with_glob_then_nonglob_dirs_for_same_path {
   my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/home/users/$user");
   my $uid = 500;
   my $gid = 500;
@@ -124,7 +125,7 @@ sub limits_with_glob_then_nonglob_dirs_for_same_path {
  
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $abs_tmp_dir = File::Spec->rel2abs($tmpdir);
 
@@ -239,6 +240,9 @@ EOD
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -253,13 +257,14 @@ sub limits_with_nonglob_then_glob_dirs_for_same_path {
   my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/home/users/$user");
   my $uid = 500;
   my $gid = 500;
@@ -280,7 +285,7 @@ sub limits_with_nonglob_then_glob_dirs_for_same_path {
  
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $abs_tmp_dir = File::Spec->rel2abs($tmpdir);
 
@@ -390,6 +395,9 @@ EOD
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -409,13 +417,14 @@ sub limits_with_glob_denied_delete_bug3146 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/home/users/$user");
   my $uid = 500;
   my $gid = 500;
@@ -448,7 +457,7 @@ sub limits_with_glob_denied_delete_bug3146 {
  
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $abs_tmp_dir = File::Spec->rel2abs($tmpdir);
 
@@ -553,6 +562,9 @@ sub limits_with_glob_denied_delete_bug3146 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -573,13 +585,14 @@ sub limits_without_glob_denied_delete_bug3146 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/home/users/$user");
   my $uid = 500;
   my $gid = 500;
@@ -612,7 +625,7 @@ sub limits_without_glob_denied_delete_bug3146 {
  
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $abs_tmp_dir = File::Spec->rel2abs($tmpdir);
 
@@ -717,6 +730,9 @@ sub limits_without_glob_denied_delete_bug3146 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -736,13 +752,14 @@ sub limits_commands_comma_space_delimited_deferred_paths_bug3147 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/home/$user");
   my $uid = 500;
   my $gid = 500;
@@ -766,7 +783,7 @@ sub limits_commands_comma_space_delimited_deferred_paths_bug3147 {
  
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -878,6 +895,9 @@ sub limits_commands_comma_space_delimited_deferred_paths_bug3147 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -897,13 +917,14 @@ sub limits_commands_comma_delimited_deferred_paths_bug3147 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/home/$user");
   my $uid = 500;
   my $gid = 500;
@@ -927,7 +948,7 @@ sub limits_commands_comma_delimited_deferred_paths_bug3147 {
  
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1039,6 +1060,9 @@ sub limits_commands_comma_delimited_deferred_paths_bug3147 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1058,13 +1082,14 @@ sub limits_commands_no_commas_deferred_paths_bug3147 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/home/$user");
   my $uid = 500;
   my $gid = 500;
@@ -1088,7 +1113,7 @@ sub limits_commands_no_commas_deferred_paths_bug3147 {
  
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1201,6 +1226,9 @@ sub limits_commands_no_commas_deferred_paths_bug3147 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1215,13 +1243,14 @@ sub limits_rename_dir_ok_write_denied {
   my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/home/$user");
   my $uid = 500;
   my $gid = 500;
@@ -1245,7 +1274,7 @@ sub limits_rename_dir_ok_write_denied {
  
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1356,6 +1385,9 @@ sub limits_rename_dir_ok_write_denied {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1370,13 +1402,14 @@ sub limits_rename_dir_failed_rnfr_denied {
   my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/home/$user");
   my $uid = 500;
   my $gid = 500;
@@ -1400,7 +1433,7 @@ sub limits_rename_dir_failed_rnfr_denied {
  
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1508,6 +1541,9 @@ sub limits_rename_dir_failed_rnfr_denied {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1522,13 +1558,14 @@ sub limits_one_char_dir_bug3337 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1553,7 +1590,7 @@ sub limits_one_char_dir_bug3337 {
  
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   # Reported in
   #
@@ -1689,6 +1726,9 @@ sub limits_one_char_dir_bug3337 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1703,13 +1743,14 @@ sub limits_symlink_dir_bug3166 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1750,7 +1791,7 @@ sub limits_symlink_dir_bug3166 {
  
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1880,6 +1921,9 @@ EOD
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1894,7 +1938,7 @@ sub limits_anon_dir_abs_path_bug3283 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
@@ -1923,7 +1967,7 @@ sub limits_anon_dir_abs_path_bug3283 {
  
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, '/tmp',
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2034,6 +2078,9 @@ EOD
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
