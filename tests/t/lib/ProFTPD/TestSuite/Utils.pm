@@ -22,6 +22,7 @@ our @CONFIG = qw(
 );
 
 our @FEATURES = qw(
+  feature_get_shared_modules
   feature_get_version
   feature_have_feature_enabled
   feature_have_module_compiled
@@ -518,6 +519,44 @@ sub config_write {
   }
 
   return 1;
+}
+
+sub feature_get_shared_modules {
+  my $proftpd_bin = get_proftpd_bin();
+
+  my $shared_modules = [];
+
+  my $configure_args;
+  if (open(my $cmdh, "$proftpd_bin -V |")) {
+    while (my $line = <$cmdh>) {
+      chomp($line);
+
+      next unless $line =~ /^\s+configure (.*?)$/;
+
+      $configure_args = $1;
+      last;
+    }
+
+    close($cmdh);
+
+    my $args = [split(' ', $configure_args)];
+
+    foreach my $arg (@$args) {
+      $arg =~ s/^'//;
+      $arg =~ s/'$//;
+
+      if ($arg =~ /^\-\-with\-shared=(.*?)$/) {
+        my $module_list = $1;
+
+        $shared_modules = [split(':', $module_list)];
+      }
+    }
+
+    return $shared_modules;
+
+  } else {
+    croak("Error listing features");
+  }
 }
 
 sub feature_get_version {
