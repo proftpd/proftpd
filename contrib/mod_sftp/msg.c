@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: msg.c,v 1.7 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: msg.c,v 1.8 2011-12-10 00:08:07 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -236,7 +236,9 @@ char *sftp_msg_read_string(pool *p, char **buf, uint32_t *buflen) {
   return str;
 }
 
-void sftp_msg_write_byte(char **buf, uint32_t *buflen, char byte) {
+uint32_t sftp_msg_write_byte(char **buf, uint32_t *buflen, char byte) {
+  uint32_t len = 0;
+
   if (*buflen < sizeof(char)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "message format error: unable to write byte (buflen = %lu)",
@@ -245,20 +247,26 @@ void sftp_msg_write_byte(char **buf, uint32_t *buflen, char byte) {
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 
-  memcpy(*buf, &byte, sizeof(char));
-  (*buf) += sizeof(char);
-  (*buflen) -= sizeof(char);
+  len = sizeof(char);
+
+  memcpy(*buf, &byte, len);
+  (*buf) += len;
+  (*buflen) -= len;
+
+  return len;
 }
 
-void sftp_msg_write_bool(char **buf, uint32_t *buflen, char bool) {
-  sftp_msg_write_byte(buf, buflen, bool == 0 ? 0 : 1);
+uint32_t sftp_msg_write_bool(char **buf, uint32_t *buflen, char bool) {
+  return sftp_msg_write_byte(buf, buflen, bool == 0 ? 0 : 1);
 }
 
-void sftp_msg_write_data(char **buf, uint32_t *buflen, const char *data,
+uint32_t sftp_msg_write_data(char **buf, uint32_t *buflen, const char *data,
    size_t datalen, int write_len) {
+  uint32_t len = 0;
 
-  if (write_len)
-    sftp_msg_write_int(buf, buflen, datalen);
+  if (write_len) {
+    len += sftp_msg_write_int(buf, buflen, datalen);
+  }
 
   if (*buflen < datalen) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -272,10 +280,16 @@ void sftp_msg_write_data(char **buf, uint32_t *buflen, const char *data,
     memcpy(*buf, data, datalen);
     (*buf) += datalen;
     (*buflen) -= datalen;
+
+    len += datalen;
   }
+
+  return len;
 }
 
-void sftp_msg_write_int(char **buf, uint32_t *buflen, uint32_t val) {
+uint32_t sftp_msg_write_int(char **buf, uint32_t *buflen, uint32_t val) {
+  uint32_t len;
+
   if (*buflen < sizeof(uint32_t)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "message format error: unable to write int (buflen = %lu)",
@@ -284,21 +298,25 @@ void sftp_msg_write_int(char **buf, uint32_t *buflen, uint32_t val) {
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 
+  len = sizeof(uint32_t);
+
   val = htonl(val);
-  memcpy(*buf, &val, sizeof(uint32_t));
-  (*buf) += sizeof(uint32_t);
-  (*buflen) -= sizeof(uint32_t);
+  memcpy(*buf, &val, len);
+  (*buf) += len;
+  (*buflen) -= len;
+
+  return len;
 }
 
-void sftp_msg_write_mpint(char **buf, uint32_t *buflen,
+uint32_t sftp_msg_write_mpint(char **buf, uint32_t *buflen,
     const BIGNUM *mpint) {
   unsigned char *data = NULL;
   size_t datalen = 0;
   int res = 0;
+  uint32_t len = 0;
 
   if (BN_is_zero(mpint)) {
-    sftp_msg_write_int(buf, buflen, 0);
-    return;
+    return sftp_msg_write_int(buf, buflen, 0);
   }
 
   if (mpint->neg) {
@@ -340,19 +358,22 @@ void sftp_msg_write_mpint(char **buf, uint32_t *buflen,
   }
 
   if (data[1] & 0x80) {
-    sftp_msg_write_data(buf, buflen, (char *) data, datalen, TRUE);
+    len += sftp_msg_write_data(buf, buflen, (char *) data, datalen, TRUE);
 
   } else {
-    sftp_msg_write_data(buf, buflen, (char *) data + 1, datalen - 1, TRUE);
+    len += sftp_msg_write_data(buf, buflen, (char *) data + 1, datalen - 1,
+      TRUE);
   }
 
   pr_memscrub(data, datalen);
   free(data);
+
+  return len;
 }
 
-void sftp_msg_write_string(char **buf, uint32_t *buflen, const char *str) {
+uint32_t sftp_msg_write_string(char **buf, uint32_t *buflen, const char *str) {
   uint32_t len = 0;
 
   len = strlen(str);
-  sftp_msg_write_data(buf, buflen, str, len, TRUE);
+  return sftp_msg_write_data(buf, buflen, str, len, TRUE);
 }

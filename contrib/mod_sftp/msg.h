@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: msg.h,v 1.3 2011-05-23 20:40:13 castaglia Exp $
+ * $Id: msg.h,v 1.4 2011-12-10 00:08:07 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -36,12 +36,12 @@ uint32_t sftp_msg_read_int(pool *, char **, uint32_t *);
 BIGNUM *sftp_msg_read_mpint(pool *, char **, uint32_t *);
 char *sftp_msg_read_string(pool *, char **, uint32_t *);
 
-void sftp_msg_write_byte(char **, uint32_t *, char);
-void sftp_msg_write_bool(char **, uint32_t *, char);
-void sftp_msg_write_data(char **, uint32_t *, const char *, size_t, int);
-void sftp_msg_write_int(char **, uint32_t *, uint32_t);
-void sftp_msg_write_mpint(char **, uint32_t *, const BIGNUM *);
-void sftp_msg_write_string(char **, uint32_t *, const char *);
+uint32_t sftp_msg_write_byte(char **, uint32_t *, char);
+uint32_t sftp_msg_write_bool(char **, uint32_t *, char);
+uint32_t sftp_msg_write_data(char **, uint32_t *, const char *, size_t, int);
+uint32_t sftp_msg_write_int(char **, uint32_t *, uint32_t);
+uint32_t sftp_msg_write_mpint(char **, uint32_t *, const BIGNUM *);
+uint32_t sftp_msg_write_string(char **, uint32_t *, const char *);
 
 /* Utility method for obtaining a scratch buffer for constructing SSH2
  * messages without necessarily needing an SSH2 packet.
