@@ -927,6 +927,11 @@
 /* Define if OpenSSL support, if available, should be used.  */
 #undef PR_USE_OPENSSL
 
+/* Define if OpenSSL Elliptic Curve Cryptography (ECC) support, if available,
+ * should be used.
+ */
+#undef PR_USE_OPENSSL_ECC
+
 /* Define if OpenSSL support (with FIPS enabled), if available, should be
  * used.
  */
