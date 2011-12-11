@@ -2440,7 +2440,7 @@ if test x"$pr_use_openssl" = xyes; then
     ],
     [
       AC_MSG_RESULT(yes)
-      AC_DEFINE(PR_USE_OPENSSL_ECC, 1, [Define if your OpenSSL supports ECC]),
+      AC_DEFINE(PR_USE_OPENSSL_ECC, 1, [Define if your OpenSSL supports ECC])
     ],
     [
       AC_MSG_RESULT(no)
