@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.72 2011-12-11 02:14:42 castaglia Exp $
+ * $Id: proftpd.h,v 1.73 2011-12-11 03:36:44 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -66,7 +66,7 @@ struct config_struc;
 struct modret_struc;
 
 typedef struct {
-  pool *pool;
+  struct pool_struc *pool;
 
   volatile int sf_flags;		/* Session/State flags */
   volatile int sp_flags;		/* Session/Protection flags */
@@ -145,7 +145,7 @@ typedef struct {
   off_t restart_pos;			/* Restart marked position */
 
   struct {
-    struct pool *p;
+    struct pool_struc *p;
 
     int xfer_type;     /* xfer session attributes, default/append/hidden */
     int direction;

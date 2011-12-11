@@ -27,30 +27,30 @@
 /* Memory allocation/anti-leak system.  Yes, this *IS* stolen from Apache
  * also.  What can I say?  It makes sense, and it's safe (more overhead
  * though)
- * $Id: pool.h,v 1.25 2011-05-23 20:35:35 castaglia Exp $
+ * $Id: pool.h,v 1.26 2011-12-11 03:36:44 castaglia Exp $
  */
 
 #ifndef PR_POOL_H
 #define PR_POOL_H
 
-typedef struct pool pool;
+typedef struct pool_struc pool;
 
 extern pool *permanent_pool;
 
 void init_pools(void);
 void free_pools(void);
-pool *make_sub_pool(pool *);		/* All pools are sub-pools of perm */
-pool *pr_pool_create_sz(pool *, int);
+pool *make_sub_pool(pool *);	/* All pools are sub-pools of perm */
+pool *pr_pool_create_sz(pool *parent_pool, int sz);
 
 /* Clears out _everything_ in a pool, destroying any sub-pools */
-void destroy_pool(struct pool *);
+void destroy_pool(struct pool_struc *);
 
 /* Allocate memory from a pool */
-void *palloc(struct pool *, int);
-void *pallocsz(struct pool *, int);
-void *pcalloc(struct pool *, int);
-void *pcallocsz(struct pool *, int);
-void pr_pool_tag(struct pool *, const char *);
+void *palloc(struct pool_struc *, int);
+void *pallocsz(struct pool_struc *, int);
+void *pcalloc(struct pool_struc *, int);
+void *pcallocsz(struct pool_struc *, int);
+void pr_pool_tag(struct pool_struc *, const char *);
 
 #ifdef PR_USE_DEVEL
 void pr_pool_debug_memory(void (*)(const char *, ...));
@@ -63,7 +63,7 @@ int pr_pool_debug_set_flags(int);
 /* Array management */
 
 typedef struct {
-  pool *pool;
+  struct pool_struc *pool;
   int elt_size;
   int nelts;
   int nalloc;

@@ -25,7 +25,7 @@
  */
 
 /* Resource allocation code
- * $Id: pool.c,v 1.58 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: pool.c,v 1.59 2011-12-11 03:36:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -228,14 +228,14 @@ static void run_cleanups(struct cleanup *);
 
 /* Pool internal and management */
 
-struct pool {
+struct pool_struc {
   union block_hdr *first;
   union block_hdr *last;
   struct cleanup *cleanups;
-  struct pool *sub_pools;
-  struct pool *sub_next;
-  struct pool *sub_prev;
-  struct pool *parent;
+  struct pool_struc *sub_pools;
+  struct pool_struc *sub_next;
+  struct pool_struc *sub_prev;
+  struct pool_struc *parent;
   char *free_first_avail;
   const char *tag;
 };
@@ -248,7 +248,7 @@ pool *global_config_pool = NULL;
  * aligned).
  */
 
-#define POOL_HDR_CLICKS (1 + ((sizeof(struct pool) - 1) / CLICK_SZ))
+#define POOL_HDR_CLICKS (1 + ((sizeof(struct pool_struc) - 1) / CLICK_SZ))
 #define POOL_HDR_BYTES (POOL_HDR_CLICKS * CLICK_SZ)
 
 #ifdef PR_USE_DEVEL
@@ -340,11 +340,13 @@ static long walk_pools(pool *p, int level,
 }
 
 static void debug_pool_info(void (*debugf)(const char *, ...)) {
-  if (block_freelist)
+  if (block_freelist) {
     debugf("Free block list: %lu bytes",
       bytes_in_block_list(block_freelist));
-  else
+
+  } else {
     debugf("Free block list: empty");
+  }
 
   debugf("%u count blocks allocated", stat_malloc);
   debugf("%u count blocks reused", stat_freehit);
@@ -364,8 +366,10 @@ int pr_pool_debug_set_flags(int flags) {
 #endif /* PR_USE_DEVEL */
 
 void pr_pool_tag(pool *p, const char *tag) {
-  if (!p || !tag)
+  if (p == NULL ||
+      tag == NULL) {
     return;
+  }
 
   p->tag = tag;
 }
@@ -386,7 +390,7 @@ static void pool_release_free_block_list(void) {
   pr_alarms_unblock();
 }
 
-struct pool *make_sub_pool(struct pool *p) {
+struct pool_struc *make_sub_pool(struct pool_struc *p) {
   union block_hdr *blok;
   pool *new_pool;
 
@@ -397,7 +401,7 @@ struct pool *make_sub_pool(struct pool *p) {
   new_pool = (pool *) blok->h.first_avail;
   blok->h.first_avail += POOL_HDR_BYTES;
 
-  memset(new_pool, 0, sizeof(struct pool));
+  memset(new_pool, 0, sizeof(struct pool_struc));
   new_pool->free_first_avail = blok->h.first_avail;
   new_pool->first = new_pool->last = blok;
 
@@ -416,7 +420,7 @@ struct pool *make_sub_pool(struct pool *p) {
   return new_pool;
 }
 
-struct pool *pr_pool_create_sz(struct pool *p, int sz) {
+struct pool_struc *pr_pool_create_sz(struct pool_struc *p, int sz) {
   union block_hdr *blok;
   pool *new_pool;
 
@@ -427,7 +431,7 @@ struct pool *pr_pool_create_sz(struct pool *p, int sz) {
   new_pool = (pool *) blok->h.first_avail;
   blok->h.first_avail += POOL_HDR_BYTES;
 
-  memset(new_pool, 0, sizeof(struct pool));
+  memset(new_pool, 0, sizeof(struct pool_struc));
   new_pool->free_first_avail = blok->h.first_avail;
   new_pool->first = new_pool->last = blok;
 
@@ -449,8 +453,10 @@ struct pool *pr_pool_create_sz(struct pool *p, int sz) {
 /* Initialize the pool system by creating the base permanent_pool. */
 
 void init_pools(void) {
-  if (!permanent_pool)
+  if (permanent_pool == NULL) {
     permanent_pool = make_sub_pool(NULL);
+  }
+
   pr_pool_tag(permanent_pool, "permanent_pool");
 }
 
@@ -460,7 +466,7 @@ void free_pools(void) {
   pool_release_free_block_list();
 }
 
-static void clear_pool(struct pool *p) {
+static void clear_pool(struct pool_struc *p) {
 
   /* Sanity check. */
   if (!p)
@@ -473,8 +479,10 @@ static void clear_pool(struct pool *p) {
   p->cleanups = NULL;
 
   /* Destroy subpools. */
-  while (p->sub_pools)
+  while (p->sub_pools) {
     destroy_pool(p->sub_pools);
+  }
+
   p->sub_pools = NULL;
 
   free_blocks(p->first->h.next, p->tag);
@@ -511,7 +519,7 @@ void destroy_pool(pool *p) {
 /* Allocation interface...
  */
 
-static void *alloc_pool(struct pool *p, int reqsz, int exact) {
+static void *alloc_pool(struct pool_struc *p, int reqsz, int exact) {
 
   /* Round up requested size to an even number of aligned units */
   int nclicks = 1 + ((reqsz - 1) / CLICK_SZ);
@@ -549,21 +557,21 @@ static void *alloc_pool(struct pool *p, int reqsz, int exact) {
   return (void *) first_avail;
 }
 
-void *palloc(struct pool *p, int sz) {
+void *palloc(struct pool_struc *p, int sz) {
   return alloc_pool(p, sz, FALSE);
 }
 
-void *pallocsz(struct pool *p, int sz) {
+void *pallocsz(struct pool_struc *p, int sz) {
   return alloc_pool(p, sz, TRUE);
 }
 
-void *pcalloc(struct pool *p, int sz) {
+void *pcalloc(struct pool_struc *p, int sz) {
   void *res = palloc(p, sz);
   memset(res, '\0', sz);
   return res;
 }
 
-void *pcallocsz(struct pool *p, int sz) {
+void *pcallocsz(struct pool_struc *p, int sz) {
   void *res = pallocsz(p, sz);
   memset(res, '\0', sz);
   return res;
