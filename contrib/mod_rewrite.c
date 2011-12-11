@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.66 2011-12-03 01:47:32 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.67 2011-12-11 02:14:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -162,8 +162,8 @@ static int rewrite_write_fifo(int, char *, size_t);
 static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
     const char *var) {
   if (strcmp(var, "%c") == 0) {
-    REWRITE_CHECK_VAR(session.class, "%c");
-    return (session.class ? session.class->cls_name : NULL);
+    REWRITE_CHECK_VAR(session.conn_class, "%c");
+    return (session.conn_class ? session.conn_class->cls_name : NULL);
 
   } else if (strcmp(var, "%F") == 0) {
     char *cmd_name;

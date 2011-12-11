@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.78 2011-12-05 19:57:15 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.79 2011-12-11 02:14:42 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -2645,22 +2645,23 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
   /* Check for a limit and a tally entry for this class. */
   if (!have_limit_entry &&
-      session.class) {
-    if (quotatab_lookup(TYPE_LIMIT, &sess_limit, session.class->cls_name,
+      session.conn_class != NULL) {
+    if (quotatab_lookup(TYPE_LIMIT, &sess_limit, session.conn_class->cls_name,
         CLASS_QUOTA)) {
-      quotatab_log("found limit entry for class '%s'", session.class->cls_name);
+      quotatab_log("found limit entry for class '%s'",
+        session.conn_class->cls_name);
       have_limit_entry = TRUE;
 
-      if (quotatab_lookup(TYPE_TALLY, &sess_tally, session.class->cls_name,
+      if (quotatab_lookup(TYPE_TALLY, &sess_tally, session.conn_class->cls_name,
           CLASS_QUOTA)) {
         quotatab_log("found tally entry for class '%s'",
-          session.class->cls_name);
+          session.conn_class->cls_name);
         have_quota_entry = TRUE;
 
       } else {
         if (quotatab_create_tally()) {
           quotatab_log("created tally entry for class '%s'",
-            session.class->cls_name);
+            session.conn_class->cls_name);
           have_quota_entry = TRUE;
         }
       }
@@ -2677,7 +2678,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
           quotatab_log("ScanOnLogin enabled, scanning current directory '%s' "
             "for files owned by class '%s'", pr_fs_getcwd(),
-            session.class->cls_name);
+            session.conn_class->cls_name);
 
           time(&then);
           if (quotatab_scan_dir(cmd->tmp_pool, pr_fs_getcwd(), -1, -1, 0,
@@ -2692,7 +2693,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
             quotatab_log("found %0.2lf bytes in %u %s for class '%s' "
               "in %lu secs", byte_count, file_count,
-              file_count != 1 ? "files" : "file", session.class->cls_name,
+              file_count != 1 ? "files" : "file", session.conn_class->cls_name,
               (unsigned long) time(NULL) - then);
 
             quotatab_log("updating tally (%0.2lf bytes, %d %s difference)",

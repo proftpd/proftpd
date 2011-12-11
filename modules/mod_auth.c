@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.295 2011-05-23 21:11:56 castaglia Exp $
+ * $Id: mod_auth.c,v 1.296 2011-12-11 02:14:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -164,7 +164,7 @@ static int auth_sess_init(void) {
     PR_SCORE_SERVER_LABEL, main_server->ServerName,
     PR_SCORE_CLIENT_ADDR, session.c->remote_addr,
     PR_SCORE_CLIENT_NAME, session.c->remote_name,
-    PR_SCORE_CLASS, session.class ? session.class->cls_name : "",
+    PR_SCORE_CLASS, session.conn_class ? session.conn_class->cls_name : "",
     PR_SCORE_PROTOCOL, "ftp",
     PR_SCORE_BEGIN_SESSION, time(NULL),
     NULL);
@@ -391,8 +391,8 @@ MODRET auth_post_pass(cmd_rec *cmd) {
         }
 
       } else if (strncmp(c->argv[1], "class", 6) == 0) {
-        if (session.class &&
-            strcmp(session.class->cls_name, c->argv[2]) == 0) {
+        if (session.conn_class != NULL &&
+            strcmp(session.conn_class->cls_name, c->argv[2]) == 0) {
 
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
@@ -1528,9 +1528,10 @@ static int auth_scan_scoreboard(void) {
       /* Note: the class member of the scoreboard entry will never be
        * NULL.  At most, it may be the empty string.
        */
-      if (session.class &&
-          strcasecmp(score->sce_class, session.class->cls_name) == 0)
+      if (session.conn_class != NULL &&
+          strcasecmp(score->sce_class, session.conn_class->cls_name) == 0) {
         ccur++;
+      }
     }
   }
   pr_restore_scoreboard();
@@ -1545,7 +1546,7 @@ static int auth_scan_scoreboard(void) {
       "warning: error stashing '%s': %s", key, strerror(errno));
   }
 
-  if (session.class) {
+  if (session.conn_class != NULL) {
     key = "class-client-count";
     (void) pr_table_remove(session.notes, key, NULL);
     v = palloc(session.pool, sizeof(unsigned int));
@@ -1668,8 +1669,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
           }
         }
 
-        if (session.class &&
-            strcasecmp(score->sce_class, session.class->cls_name) == 0) {
+        if (session.conn_class != NULL &&
+            strcasecmp(score->sce_class, session.conn_class->cls_name) == 0) {
           ccur++;
         }
       }
@@ -1688,7 +1689,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
       "warning: error stashing '%s': %s", key, strerror(errno));
   }
 
-  if (session.class) {
+  if (session.conn_class != NULL) {
     key = "class-client-count";
     (void) pr_table_remove(session.notes, key, NULL);
     v = palloc(session.pool, sizeof(unsigned int));
@@ -1707,12 +1708,12 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
 
   maxc = find_config(cmd->server->conf, CONF_PARAM, "MaxClientsPerClass",
     FALSE);
-  while (session.class && maxc) {
+  while (session.conn_class != NULL && maxc) {
     char *maxstr = "Sorry, the maximum number of clients (%m) from your class "
       "are already connected.";
     unsigned int *max = maxc->argv[1];
 
-    if (strcmp(maxc->argv[0], session.class->cls_name) != 0) {
+    if (strcmp(maxc->argv[0], session.conn_class->cls_name) != 0) {
       maxc = find_config_next(maxc, maxc->next, CONF_PARAM,
         "MaxClientsPerClass", FALSE);
       continue;
@@ -1726,14 +1727,14 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
       char maxn[20] = {'\0'};
 
       pr_event_generate("mod_auth.max-clients-per-class",
-        session.class ? session.class->cls_name : NULL);
+        session.conn_class->cls_name);
 
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
       pr_log_auth(PR_LOG_NOTICE,
         "Connection refused (max clients %u per class %s).", *max,
-        session.class->cls_name);
+        session.conn_class->cls_name);
       pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
         "Denied by MaxClientsPerClass");
     }

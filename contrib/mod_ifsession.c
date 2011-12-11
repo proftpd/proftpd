@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.38 2011-12-09 01:58:01 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.39 2011-12-11 02:14:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -662,12 +662,12 @@ static int ifsess_sess_init(void) {
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
         pr_regex_t *pre = list->argv[2];
 
-        if (session.class) {
+        if (session.conn_class != NULL) {
           pr_log_debug(DEBUG8, MOD_IFSESSION_VERSION
             ": evaluating regexp pattern '%s' against subject '%s'",
-            pr_regexp_get_pattern(pre), session.class->cls_name);
+            pr_regexp_get_pattern(pre), session.conn_class->cls_name);
 
-          if (pr_regexp_exec(pre, session.class->cls_name, 0, NULL, 0, 0,
+          if (pr_regexp_exec(pre, session.conn_class->cls_name, 0, NULL, 0, 0,
               0) == 0) {
             mergein = TRUE;
           }

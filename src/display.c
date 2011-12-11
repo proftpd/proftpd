@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.26 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: display.c,v 1.27 2011-12-11 02:14:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -177,7 +177,8 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
 
   snprintf(mg_cur, sizeof(mg_cur), "%u", current_clients ? *current_clients: 1);
 
-  if (session.class && session.class->cls_name) {
+  if (session.conn_class != NULL &&
+      session.conn_class->cls_name != NULL) {
     unsigned int *class_clients = NULL;
     config_rec *maxc = NULL;
     unsigned int maxclients = 0;
@@ -201,7 +202,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
     while (maxc) {
       pr_signals_handle();
 
-      if (strcmp(maxc->argv[0], session.class->cls_name) != 0) {
+      if (strcmp(maxc->argv[0], session.conn_class->cls_name) != 0) {
         maxc = find_config_next(maxc, maxc->next, CONF_PARAM,
           "MaxClientsPerClass", FALSE);
         continue;
@@ -375,7 +376,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
       "%U", user,
       "%u", rfc1413_ident,
       "%V", main_server->ServerName,
-      "%x", session.class ? session.class->cls_name : "(unknown)",
+      "%x", session.conn_class ? session.conn_class->cls_name : "(unknown)",
       "%y", mg_cur_class,
       "%z", mg_class_limit,
       NULL);

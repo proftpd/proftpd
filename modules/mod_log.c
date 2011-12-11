@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.124 2011-09-26 15:00:12 castaglia Exp $
+ * $Id: mod_log.c,v 1.125 2011-12-11 02:14:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -681,7 +681,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
     case META_CLASS:
       argp = arg;
-      sstrncpy(argp, session.class ? session.class->cls_name : "-",
+      sstrncpy(argp, session.conn_class ? session.conn_class->cls_name : "-",
         sizeof(arg));
       m++;
       break;

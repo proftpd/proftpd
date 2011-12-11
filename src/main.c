@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.438 2011-11-16 20:00:40 castaglia Exp $
+ * $Id: main.c,v 1.439 2011-12-11 02:14:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1391,10 +1391,10 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   set_server_privs();
 
   /* Find the class for this session. */
-  session.class = pr_class_match_addr(session.c->remote_addr);
-  if (session.class != NULL) {
+  session.conn_class = pr_class_match_addr(session.c->remote_addr);
+  if (session.conn_class != NULL) {
     pr_log_debug(DEBUG2, "session requested from client in '%s' class",
-      session.class->cls_name);
+      session.conn_class->cls_name);
 
   } else {
     pr_log_debug(DEBUG5, "session requested from client in unknown class");

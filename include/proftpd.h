@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.71 2011-09-21 05:40:04 castaglia Exp $
+ * $Id: proftpd.h,v 1.72 2011-12-11 02:14:42 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -120,7 +120,7 @@ typedef struct {
 
   pr_table_t *notes;			/* Session notes table */
 
-  pr_class_t *class;			/* Session class */
+  pr_class_t *conn_class;		/* Session class */
   char *proc_prefix;			/* The "prefix" of our process name */
 
   int wtmp_log;				/* Are we logging to wtmp? */

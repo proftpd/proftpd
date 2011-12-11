@@ -39,4 +39,9 @@ ChangeLog files.
 
   + Deprecated configuration directives:
 
-Last Updated: $Date: 2011-12-10 21:37:04 $
+  + API changes:
+
+    The session.class struct member has been renamed to session.conn_class.
+    This was done to allow for support of C++ modules; see Bug#3079.
+
+Last Updated: $Date: 2011-12-11 02:14:41 $

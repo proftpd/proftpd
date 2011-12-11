@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.260 2011-07-01 18:03:31 castaglia Exp $
+ * $Id: dirtree.c,v 1.261 2011-12-11 02:14:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1058,8 +1058,9 @@ static int check_class_access(xaset_t *set, const char *name) {
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
       pr_regex_t *pre = (pr_regex_t *) c->argv[1];
 
-      if (session.class &&
-          pr_regexp_exec(pre, session.class->cls_name, 0, NULL, 0, 0, 0) == 0) {
+      if (session.conn_class &&
+          pr_regexp_exec(pre, session.conn_class->cls_name, 0, NULL, 0,
+            0, 0) == 0) {
         res = TRUE;
         break;
       }
@@ -1259,7 +1260,7 @@ static int check_limit_allow(config_rec *c, cmd_rec *cmd) {
     return 1;
   }
 
-  if (session.class &&
+  if (session.conn_class != NULL &&
       check_class_access(c->subset, "AllowClass")) {
     return 1;
   }
@@ -1299,7 +1300,7 @@ static int check_limit_deny(config_rec *c, cmd_rec *cmd) {
     return 1;
   }
 
-  if (session.class &&
+  if (session.conn_class != NULL &&
       check_class_access(c->subset, "DenyClass")) {
     return 1;
   }
