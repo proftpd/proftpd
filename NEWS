@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1381 2011-12-09 01:58:01 castaglia Exp $
+$Id: NEWS,v 1.1382 2011-12-11 19:48:08 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -28,6 +28,7 @@ CVS
 - Bug 3686 - Support SHA2 digests in mod_sftp.  See the SFTPDigests directive
   documentation for more information.
 - Bug 3629 - Support <IfAuthenticated> conditional config section.
+- Bug 3682 - Configure does not detect libiconv under Gentoo FreeBSD.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

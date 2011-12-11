@@ -715,18 +715,26 @@ AC_ARG_ENABLE(nls,
       )
 
       dnl Similarly, the libiconv library is only needed on some non-GNU
-      dnl systems.
+      dnl systems.  Note that some systems redefine the iconv_open function
+      dnl to something else (Bug#3682), e.g. libiconv_open.
       AC_CHECK_LIB(iconv, iconv_open,
         [LIBS="$LIBS -liconv"
          AC_DEFINE(HAVE_LIBICONV, 1, [Define if libiconv is present.])
          AC_DEFINE(PR_USE_NLS, 1, [Define if using NLS support.])
          ENABLE_NLS="1"
         ],
-        [AC_CHECK_LIB(c, iconv_open,
-          [AC_DEFINE(PR_USE_NLS, 1, [Define if using NLS support.])
+        [AC_CHECK_LIB(iconv, libiconv_open,
+          [LIBS="$LIBS -liconv"
+           AC_DEFINE(HAVE_LIBICONV, 1, [Define if libiconv is present.])
+           AC_DEFINE(PR_USE_NLS, 1, [Define if using NLS support.])
            ENABLE_NLS="1"
           ],
-          [AC_MSG_ERROR([libiconv support, required for NLS, not present -- aborting])]
+          [AC_CHECK_LIB(c, iconv_open,
+            [AC_DEFINE(PR_USE_NLS, 1, [Define if using NLS support.])
+             ENABLE_NLS="1"
+            ],
+            [AC_MSG_ERROR([libiconv support, required for NLS, not present -- aborting])]
+          ])
         ])
       )
     fi
