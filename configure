@@ -15457,7 +15457,7 @@ fi
 fi
 
 
-                  { echo "$as_me:$LINENO: checking for iconv_open in -liconv" >&5
+                        { echo "$as_me:$LINENO: checking for iconv_open in -liconv" >&5
 echo $ECHO_N "checking for iconv_open in -liconv... $ECHO_C" >&6; }
 if test "${ac_cv_lib_iconv_iconv_open+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
@@ -15533,6 +15533,82 @@ _ACEOF
          ENABLE_NLS="1"
 
 else
+  { echo "$as_me:$LINENO: checking for libiconv_open in -liconv" >&5
+echo $ECHO_N "checking for libiconv_open in -liconv... $ECHO_C" >&6; }
+if test "${ac_cv_lib_iconv_libiconv_open+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-liconv  $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char libiconv_open ();
+int
+main ()
+{
+return libiconv_open ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+  ac_cv_lib_iconv_libiconv_open=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_lib_iconv_libiconv_open=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_lib_iconv_libiconv_open" >&5
+echo "${ECHO_T}$ac_cv_lib_iconv_libiconv_open" >&6; }
+if test $ac_cv_lib_iconv_libiconv_open = yes; then
+  LIBS="$LIBS -liconv"
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_LIBICONV 1
+_ACEOF
+
+
+cat >>confdefs.h <<\_ACEOF
+#define PR_USE_NLS 1
+_ACEOF
+
+           ENABLE_NLS="1"
+
+else
   { echo "$as_me:$LINENO: checking for iconv_open in -lc" >&5
 echo $ECHO_N "checking for iconv_open in -lc... $ECHO_C" >&6; }
 if test "${ac_cv_lib_c_iconv_open+set}" = set; then
@@ -15600,12 +15676,15 @@ cat >>confdefs.h <<\_ACEOF
 #define PR_USE_NLS 1
 _ACEOF
 
-           ENABLE_NLS="1"
+             ENABLE_NLS="1"
 
 else
   { { echo "$as_me:$LINENO: error: libiconv support, required for NLS, not present -- aborting" >&5
 echo "$as_me: error: libiconv support, required for NLS, not present -- aborting" >&2;}
    { (exit 1); exit 1; }; }
+
+fi
+
 
 fi
 
