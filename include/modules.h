@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD module definitions.
- * $Id: modules.h,v 1.56 2011-05-23 20:35:35 castaglia Exp $
+ * $Id: modules.h,v 1.57 2011-12-11 02:37:24 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -119,8 +119,9 @@ typedef struct {
   /* Can this command be issued during a transfer? (Now obsolete) */
   unsigned char interrupt_xfer;
 
-  int class;
+  int cmd_class;
   module *m;
+
 } cmdtable;
 
 typedef struct {

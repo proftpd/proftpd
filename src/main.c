@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.440 2011-12-11 02:33:14 castaglia Exp $
+ * $Id: main.c,v 1.441 2011-12-11 02:37:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -252,7 +252,7 @@ static int get_command_class(const char *name) {
   /* By default, every command has a class of CL_ALL.  This insures that
    * any configured ExtendedLogs that default to "all" will log the command.
    */
-  return (c ? c->class : CL_ALL);
+  return (c ? c->cmd_class : CL_ALL);
 }
 
 static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
@@ -367,7 +367,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
          "(unknown)"),
         cmdargstr, c->m->name);
 
-      cmd->cmd_class |= c->class;
+      cmd->cmd_class |= c->cmd_class;
 
       /* KLUDGE: disable umask() for not G_WRITE operations.  Config/
        * Directory walking code will be completely redesigned in 1.3,
