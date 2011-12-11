@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.44 2011-12-10 00:09:59 castaglia Exp $
+ * $Id: channel.c,v 1.45 2011-12-11 02:33:14 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -405,7 +405,7 @@ static int read_channel_open(struct ssh2_packet *pkt, uint32_t *channel_id) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_OPEN"));
   cmd->arg = channel_type;
-  cmd->class = CL_MISC;
+  cmd->cmd_class = CL_MISC;
 
   if (strncmp(channel_type, "session", 8) != 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -443,7 +443,7 @@ static int handle_channel_close(struct ssh2_packet *pkt) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_CLOSE"));
   cmd->arg = pstrdup(pkt->pool, chan_str);
-  cmd->class = CL_MISC;
+  cmd->cmd_class = CL_MISC;
 
   chan = get_channel(channel_id);
   if (chan == NULL) {
@@ -679,7 +679,7 @@ static int handle_channel_eof(struct ssh2_packet *pkt) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_EOF"));
   cmd->arg = pstrdup(pkt->pool, chan_str);
-  cmd->class = CL_MISC;
+  cmd->cmd_class = CL_MISC;
 
   chan = get_channel(channel_id);
   if (chan == NULL) {
@@ -992,7 +992,7 @@ static int handle_channel_req(struct ssh2_packet *pkt) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_REQUEST"));
   cmd->arg = channel_request;
-  cmd->class = CL_MISC;
+  cmd->cmd_class = CL_MISC;
 
   chan = get_channel(channel_id);
   if (chan == NULL) {
@@ -1147,7 +1147,7 @@ static int handle_channel_window_adjust(struct ssh2_packet *pkt) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_WINDOW_ADJUST"));
   cmd->arg = pstrdup(pkt->pool, adjust_str);
-  cmd->class = CL_MISC;
+  cmd->cmd_class = CL_MISC;
 
   chan = get_channel(channel_id);
   if (chan == NULL) {

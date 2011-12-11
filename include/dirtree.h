@@ -25,7 +25,7 @@
  */
 
 /* Configuration structure, server, command and associated prototypes.
- * $Id: dirtree.h,v 1.81 2011-05-23 20:35:35 castaglia Exp $
+ * $Id: dirtree.h,v 1.82 2011-12-11 02:33:14 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -108,7 +108,7 @@ typedef struct cmd_struc {
   char **argv;
   char *group;			/* Command grouping */
 
-  int  class;			/* The command class */
+  int  cmd_class;		/* The command class */
   int  stash_index;		/* hack to speed up symbol hashing in modules.c */
   pr_table_t *notes;		/* Private data for passing/retaining between handlers */
 

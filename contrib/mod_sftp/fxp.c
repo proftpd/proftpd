@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.136 2011-12-10 00:14:01 castaglia Exp $
+ * $Id: fxp.c,v 1.137 2011-12-11 02:33:14 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3599,7 +3599,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     pstrdup(fxp->pool, "COPY"), src, dst);
   cmd->arg = pstrcat(fxp->pool, "COPY ", src, " ", dst, NULL);
   cmd->tmp_pool = pr_pool_create_sz(fxp->pool, 64);
-  cmd->class = CL_WRITE;
+  cmd->cmd_class = CL_WRITE;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -3811,7 +3811,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
   args = pstrcat(fxp->pool, src, " ", dst, NULL);
 
   cmd = fxp_cmd_alloc(fxp->pool, "RENAME", args);
-  cmd->class = CL_MISC;
+  cmd->cmd_class = CL_MISC;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -4455,7 +4455,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
   cmd = fxp_cmd_alloc(fxp->pool, "CLOSE", name);
-  cmd->class = CL_READ|CL_WRITE;
+  cmd->cmd_class = CL_READ|CL_WRITE;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "CLOSE", NULL, NULL);
@@ -4689,7 +4689,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     &fxp->payload_sz);
 
   cmd = fxp_cmd_alloc(fxp->pool, "EXTENDED", ext_request_name);
-  cmd->class = CL_MISC;
+  cmd->cmd_class = CL_MISC;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "EXTENDED", NULL, NULL);
@@ -4943,7 +4943,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
   cmd = fxp_cmd_alloc(fxp->pool, "FSETSTAT", name);
-  cmd->class = CL_WRITE;
+  cmd->cmd_class = CL_WRITE;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "FSETSTAT", NULL, NULL);
@@ -5120,7 +5120,7 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
   cmd = fxp_cmd_alloc(fxp->pool, "FSTAT", name);
-  cmd->class = CL_READ;
+  cmd->cmd_class = CL_READ;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "FSTAT", NULL, NULL);
@@ -5289,7 +5289,7 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
     (unsigned long) fxp_session->client_version);
 
   cmd = fxp_cmd_alloc(fxp->pool, "INIT", version_str);
-  cmd->class = CL_MISC;
+  cmd->cmd_class = CL_MISC;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "INIT", NULL, NULL);
@@ -5400,7 +5400,7 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
   args = pstrcat(fxp->pool, src_path, " ", dst_path, NULL);
 
   cmd = fxp_cmd_alloc(fxp->pool, "LINK", args);
-  cmd->class = CL_WRITE;
+  cmd->cmd_class = CL_WRITE;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "LINK", NULL, NULL);
@@ -5537,7 +5537,7 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
   lock_flags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
   cmd = fxp_cmd_alloc(fxp->pool, "LOCK", name);
-  cmd->class = CL_WRITE;
+  cmd->cmd_class = CL_WRITE;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "LOCK", NULL, NULL);
@@ -5813,7 +5813,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "LSTAT", path);
-  cmd->class = CL_READ;
+  cmd->cmd_class = CL_READ;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -5982,7 +5982,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "MKDIR", path);
-  cmd->class = CL_WRITE;
+  cmd->cmd_class = CL_WRITE;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -6187,7 +6187,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   /* Set the command class to MISC for now; we'll change it later to
    * READ or WRITE once we know which it is.
    */
-  cmd->class = CL_MISC;
+  cmd->cmd_class = CL_MISC;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "OPEN", NULL, NULL);
@@ -6363,7 +6363,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     fxp_stroflags(fxp->pool, open_flags));
 
   if (open_flags & O_APPEND) {
-    cmd->class = CL_WRITE;
+    cmd->cmd_class = CL_WRITE;
     cmd2 = fxp_cmd_alloc(fxp->pool, C_APPE, path);
     cmd2->cmd_id = pr_cmd_get_id(C_APPE);
     session.curr_cmd = C_APPE;
@@ -6374,16 +6374,16 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     cmd2->cmd_id = pr_cmd_get_id(C_STOR);
 
     if (open_flags & O_WRONLY) {
-      cmd->class = CL_WRITE;
+      cmd->cmd_class = CL_WRITE;
 
     } else if (open_flags & O_RDWR) {
-      cmd->class = CL_READ|CL_WRITE;
+      cmd->cmd_class = CL_READ|CL_WRITE;
     }
 
     session.curr_cmd = C_STOR;
 
   } else if (open_flags == O_RDONLY) {
-    cmd->class = CL_READ;
+    cmd->cmd_class = CL_READ;
     cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, path);
     cmd2->cmd_id = pr_cmd_get_id(C_RETR);
     session.curr_cmd = C_RETR;
@@ -6705,7 +6705,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "OPENDIR", path);
-  cmd->class = CL_DIRS;
+  cmd->cmd_class = CL_DIRS;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -6902,7 +6902,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 #endif
 
   cmd = fxp_cmd_alloc(fxp->pool, "READ", name);
-  cmd->class = CL_READ;
+  cmd->cmd_class = CL_READ;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "READ", NULL, NULL);
@@ -7206,7 +7206,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
   cmd = fxp_cmd_alloc(fxp->pool, "READDIR", name);
-  cmd->class = CL_DIRS;
+  cmd->cmd_class = CL_DIRS;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "READDIR", NULL, NULL);
@@ -7540,7 +7540,7 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "READLINK", path);
-  cmd->class = CL_READ;
+  cmd->cmd_class = CL_READ;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -7669,7 +7669,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "REALPATH", path);
-  cmd->class = CL_INFO;
+  cmd->cmd_class = CL_INFO;
 
   if (fxp_session->client_version >= 6 &&
       fxp->payload_sz >= sizeof(char)) {
@@ -7883,7 +7883,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "REMOVE", path);
-  cmd->class = CL_WRITE;
+  cmd->cmd_class = CL_WRITE;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -8195,13 +8195,13 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "RENAME", args);
-  cmd->class = CL_MISC;
+  cmd->cmd_class = CL_MISC;
  
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
   cmd2 = fxp_cmd_alloc(fxp->pool, C_RNFR, old_path);
-  cmd2->class =  CL_MISC|CL_WRITE;
+  cmd2->cmd_class =  CL_MISC|CL_WRITE;
   if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -8232,7 +8232,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     pstrdup(session.pool, old_path), 0);
 
   cmd3 = fxp_cmd_alloc(fxp->pool, C_RNTO, new_path);
-  cmd3->class = CL_MISC|CL_WRITE;
+  cmd3->cmd_class = CL_MISC|CL_WRITE;
   if (pr_cmd_dispatch_phase(cmd3, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -8495,7 +8495,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "RMDIR", path);
-  cmd->class = CL_WRITE;
+  cmd->cmd_class = CL_WRITE;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -8728,7 +8728,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "SETSTAT", path);
-  cmd->class = CL_WRITE;
+  cmd->cmd_class = CL_WRITE;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -8882,7 +8882,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "STAT", path);
-  cmd->class = CL_READ;
+  cmd->cmd_class = CL_READ;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -9023,7 +9023,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
   args = pstrcat(fxp->pool, src_path, " ", dst_path, NULL);
 
   cmd = fxp_cmd_alloc(fxp->pool, "SYMLINK", args);
-  cmd->class = CL_WRITE;
+  cmd->cmd_class = CL_WRITE;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "SYMLINK", NULL, NULL);
@@ -9122,7 +9122,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
 
   args2 = pstrcat(fxp->pool, src_path, "\t", dst_path, NULL);
   cmd2 = fxp_cmd_alloc(fxp->pool, "SYMLINK", args2);
-  cmd2->class = CL_WRITE;
+  cmd2->cmd_class = CL_WRITE;
 
   if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -9256,7 +9256,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   session.total_bytes += datalen;
   
   cmd = fxp_cmd_alloc(fxp->pool, "WRITE", name);
-  cmd->class = CL_WRITE;
+  cmd->cmd_class = CL_WRITE;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "WRITE", NULL, NULL);
@@ -9541,7 +9541,7 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
   lock_flags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
   cmd = fxp_cmd_alloc(fxp->pool, "UNLOCK", name);
-  cmd->class = CL_WRITE;
+  cmd->cmd_class = CL_WRITE;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "UNLOCK", NULL, NULL);

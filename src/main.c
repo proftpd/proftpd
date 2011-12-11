@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.439 2011-12-11 02:14:43 castaglia Exp $
+ * $Id: main.c,v 1.440 2011-12-11 02:33:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -367,7 +367,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
          "(unknown)"),
         cmdargstr, c->m->name);
 
-      cmd->class |= c->class;
+      cmd->cmd_class |= c->class;
 
       /* KLUDGE: disable umask() for not G_WRITE operations.  Config/
        * Directory walking code will be completely redesigned in 1.3,
@@ -636,8 +636,8 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
   for (cp = cmd->argv[0]; *cp; cp++)
     *cp = toupper(*cp);
 
-  if (cmd->class == 0) {
-    cmd->class = get_command_class(cmd->argv[0]);
+  if (cmd->cmd_class == 0) {
+    cmd->cmd_class = get_command_class(cmd->argv[0]);
   }
 
   if (cmd->cmd_id == 0) {

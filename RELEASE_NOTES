@@ -42,6 +42,8 @@ ChangeLog files.
   + API changes:
 
     The session.class struct member has been renamed to session.conn_class.
-    This was done to allow for support of C++ modules; see Bug#3079.
+    This was done to allow for support of C++ modules.  Similarly, the
+    cmd_rec.class struct member has been renamed to cmd_rec.cmd_class.
+    See Bug#3079 for details.
 
-Last Updated: $Date: 2011-12-11 02:14:41 $
+Last Updated: $Date: 2011-12-11 02:33:14 $

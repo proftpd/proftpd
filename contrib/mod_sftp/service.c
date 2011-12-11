@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: service.c,v 1.6 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: service.c,v 1.7 2011-12-11 02:33:14 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -47,7 +47,7 @@ static int read_service_req(struct ssh2_packet *pkt, char **service) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "SERVICE_REQUEST"));
   cmd->arg = service_name;
-  cmd->class = CL_MISC;
+  cmd->cmd_class = CL_MISC;
 
   if (strncmp(service_name, "ssh-userauth", 13) == 0 ||
       strncmp(service_name, "ssh-connection", 14) == 0) {

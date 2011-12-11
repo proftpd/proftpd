@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.125 2011-12-11 02:14:43 castaglia Exp $
+ * $Id: mod_log.c,v 1.126 2011-12-11 02:33:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1285,13 +1285,13 @@ MODRET log_any(cmd_rec *cmd) {
         /* If the logging class of this command is one of the classes
          * configured for this ExtendedLog...
          */ 
-        ((cmd->class & lf->lf_classes) ||
+        ((cmd->cmd_class & lf->lf_classes) ||
 
          /* ...or if the logging class of this command is unknown (defaults to
           * zero), and this ExtendedLog is configured to log ALL commands, then
           * log it.
           */
-         (cmd->class == 0 && lf->lf_classes == CL_ALL))) {
+         (cmd->cmd_class == 0 && lf->lf_classes == CL_ALL))) {
 
       if (!session.anon_config &&
           lf->lf_conf &&
@@ -1312,7 +1312,7 @@ static void log_exit_ev(const void *event_data, void *user_data) {
   cmd_rec *cmd;
 
   cmd = pr_cmd_alloc(session.pool, 1, "EXIT");
-  cmd->class |= CL_EXIT;
+  cmd->cmd_class |= CL_EXIT;
 
   (void) log_any(cmd);
 }
