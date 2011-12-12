@@ -6207,7 +6207,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_header_stdc=no
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
 
@@ -6228,7 +6228,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_header_stdc=no
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
 
@@ -11550,7 +11550,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 ;;
 esac
-rm -f conftest*
+rm -f -r conftest*
   if test $ac_cv_sys_file_offset_bits = unknown; then
     { echo "$as_me:$LINENO: checking for _LARGE_FILES value needed for large files" >&5
 echo $ECHO_N "checking for _LARGE_FILES value needed for large files... $ECHO_C" >&6; }
@@ -11671,7 +11671,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 ;;
 esac
-rm -f conftest*
+rm -f -r conftest*
   fi
 fi
 
@@ -18769,7 +18769,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_header_stdc=no
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
 
@@ -18790,7 +18790,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_header_stdc=no
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
 
@@ -20756,7 +20756,7 @@ else
 echo "${ECHO_T}no" >&6; }
 
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 
 
@@ -22280,7 +22280,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_type_uid_t=no
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $ac_cv_type_uid_t" >&5
@@ -22637,7 +22637,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_type_getgroups=int
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
 fi
@@ -22683,10 +22683,10 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   pr_cv_header_timer_t="no"
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $pr_cv_header_timer_t" >&5
@@ -26902,7 +26902,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   pr_cv_header_utmaxtype="no"
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $pr_cv_header_utmaxtype" >&5
@@ -26927,7 +26927,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   pr_cv_header_ut_host="no"
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $pr_cv_header_ut_host" >&5
@@ -26952,7 +26952,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   pr_cv_header_ut_exit="no"
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $pr_cv_header_ut_exit" >&5
@@ -27011,7 +27011,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   pr_cv_header_syslog_log_cron="no"
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $pr_cv_header_syslog_log_cron" >&5
@@ -27041,7 +27041,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   pr_cv_header_syslog_log_ftp="no"
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $pr_cv_header_syslog_log_ftp" >&5
@@ -27308,7 +27308,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_os_cray=no
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $ac_cv_os_cray" >&5
@@ -27587,7 +27587,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_prog_gcc_traditional=no
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 
   if test $ac_cv_prog_gcc_traditional = no; then
@@ -27604,7 +27604,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
   $EGREP "$ac_pattern" >/dev/null 2>&1; then
   ac_cv_prog_gcc_traditional=yes
 fi
-rm -f conftest*
+rm -f -r conftest*
 
   fi
 fi
@@ -32432,7 +32432,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   have_psstrings="no"
 fi
-rm -f conftest*
+rm -f -r conftest*
 
     if test "$have_psstrings" = "yes"; then
 	cat >>confdefs.h <<\_ACEOF
@@ -32527,7 +32527,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   pf_cv_argv_type="writeable"
 fi
-rm -f conftest*
+rm -f -r conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $pf_cv_argv_type" >&5
@@ -33145,7 +33145,7 @@ echo "${ECHO_T}yes" >&6; }
 cat >>confdefs.h <<\_ACEOF
 #define PR_USE_OPENSSL_ECC 1
 _ACEOF
-,
+
 
 else
   echo "$as_me: failed program was:" >&5
@@ -35161,7 +35161,7 @@ do
     cat >>$CONFIG_STATUS <<_ACEOF
     # First, check the format of the line:
     cat >"\$tmp/defines.sed" <<\\CEOF
-/^[	 ]*#[	 ]*undef[	 ][	 ]*$ac_word_re[	 ]*\$/b def
+/^[	 ]*#[	 ]*undef[	 ][	 ]*$ac_word_re[	 ]*/b def
 /^[	 ]*#[	 ]*define[	 ][	 ]*$ac_word_re[(	 ]/b def
 b
 :def
