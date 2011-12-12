@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.22 2011-12-12 19:12:08 castaglia Exp $
+ * $Id: mod_exec.c,v 1.23 2011-12-12 19:20:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -705,7 +705,7 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
         }
 
         if (fds >= 0) {
-          size_t buflen;
+          intt buflen;
           char buf[PIPE_BUF];
 
           /* The child sent us something.  How thoughtful. */
