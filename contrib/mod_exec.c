@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.21 2011-11-23 18:04:37 castaglia Exp $
+ * $Id: mod_exec.c,v 1.22 2011-12-12 19:12:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -896,7 +896,7 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
   ptr = strstr(varstr, "%c");
   if (ptr != NULL) {
     varstr = sreplace(tmp_pool, varstr, "%c",
-      session.class ? session.class->cls_name : "", NULL);
+      session.conn_class ? session.conn_class->cls_name : "", NULL);
   }
 
   ptr = strstr(varstr, "%F");
