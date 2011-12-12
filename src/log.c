@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.109 2011-11-15 22:20:40 castaglia Exp $
+ * $Id: log.c,v 1.110 2011-12-12 04:23:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -259,6 +259,11 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
     }
   }
 
+  if (fcntl(*log_fd, F_SETFD, FD_CLOEXEC) < 0) {
+    pr_log_pri(PR_LOG_WARNING, "unable to set CLO_EXEC on log fd %d: %s",
+      *log_fd, strerror(errno));
+  }
+
 #ifdef PR_USE_NONBLOCKING_LOG_OPEN
   /* Return the fd to blocking mode. */
   fd_set_block(*log_fd);
@@ -362,6 +367,8 @@ int log_opensyslog(const char *fn) {
     syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, facility);
     if (syslog_sockfd < 0)
       return -1;
+
+    fcntl(syslog_sockfd, F_SETFD, FD_CLOEXEC);
 
     systemlog_fd = -1;
 

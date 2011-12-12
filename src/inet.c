@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.139 2011-12-07 01:01:36 castaglia Exp $
+ * $Id: inet.c,v 1.140 2011-12-12 04:23:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -345,6 +345,11 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
         port < 1024) {
       pr_signals_block();
       PRIVS_ROOT
+    }
+
+    if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
+      pr_log_pri(PR_LOG_WARNING, "unable to set CLOEXEC on socket fd %d: %s",
+        fd, strerror(errno));
     }
 
     /* According to one expert, the very nature of the FTP protocol, and it's

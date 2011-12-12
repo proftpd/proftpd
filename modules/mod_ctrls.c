@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.52 2011-11-23 18:04:38 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.53 2011-12-12 04:23:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -473,6 +473,19 @@ static int ctrls_listen(const char *sock_file, int flags) {
       (void) close(sockfd);
       sockfd = res;
     }
+  }
+
+  if (fcntl(sockfd, F_SETFD, FD_CLOEXEC) < 0) {
+    int xerrno = errno;
+
+    pr_log_pri(PR_LOG_WARNING,
+      "unable to set CLO_EXEC on ctrls socket fd %d: %s", sockfd,
+      strerror(xerrno));
+
+    (void) close(sockfd);
+    errno = xerrno;
+
+    return -1;
   }
 
   if (flags & CTRLS_LISTEN_FL_REMOVE_SOCKET) {

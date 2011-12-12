@@ -23,7 +23,7 @@
  */
 
 /* Controls API routines
- * $Id: ctrls.c,v 1.31 2011-11-17 23:40:28 castaglia Exp $
+ * $Id: ctrls.c,v 1.32 2011-12-12 04:23:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -943,6 +943,15 @@ int pr_ctrls_connect(const char *socket_file) {
   sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (sockfd < 0) {
     pr_signals_unblock();
+    return -1;
+  }
+
+  if (fcntl(sockfd, F_SETFD, FD_CLOEXEC) < 0) {
+    int xerrno = errno;
+
+    close(sockfd);
+
+    errno = xerrno;
     return -1;
   }
 

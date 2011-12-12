@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.441 2011-12-11 02:37:24 castaglia Exp $
+ * $Id: main.c,v 1.442 2011-12-12 04:23:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -143,8 +143,9 @@ static int semaphore_fds(fd_set *rfd, int maxfd) {
     for (ch = child_get(NULL); ch; ch = child_get(ch)) {
       if (ch->ch_pipefd != -1) {
         FD_SET(ch->ch_pipefd, rfd);
-        if (ch->ch_pipefd > maxfd)
+        if (ch->ch_pipefd > maxfd) {
           maxfd = ch->ch_pipefd;
+        }
       }
     }
   }
@@ -958,7 +959,7 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
           for (ch = child_get(NULL); ch; ch = child_get(ch)) {
             if (ch->ch_pipefd != -1 &&
                FD_ISSET(ch->ch_pipefd, &childfds)) {
-              close(ch->ch_pipefd);
+              (void) close(ch->ch_pipefd);
               ch->ch_pipefd = -1;
             }
           }
@@ -1045,17 +1046,22 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
 
 #ifndef PR_DEVEL_NO_FORK
 static int dup_low_fd(int fd) {
-  int i,need_close[3] = {-1, -1, -1};
+  int i, need_close[3] = {-1, -1, -1};
 
-  for (i = 0; i < 3; i++)
+  for (i = 0; i < 3; i++) {
     if (fd == i) {
       fd = dup(fd);
+      fcntl(fd, F_SETFD, FD_CLOEXEC);
+
       need_close[i] = 1;
     }
+  }
 
-  for (i = 0; i < 3; i++)
-    if (need_close[i] > -1)
-      close(i);
+  for (i = 0; i < 3; i++) {
+    if (need_close[i] > -1) {
+      (void) close(i);
+    }
+  }
 
   return fd;
 }
@@ -1121,9 +1127,14 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     /* Need to make sure the child (writer) end of the pipe isn't
      * < 2 (stdio/stdout/stderr) as this will cause problems later.
      */
-
-    if (semfds[1] < 3)
+    if (semfds[1] < 3) {
       semfds[1] = dup_low_fd(semfds[1]);
+    }
+
+    /* Make sure we set the close-on-exec flag for the parent's read side
+     * of the pipe.
+     */
+    fcntl(semfds[0], F_SETFD, FD_CLOEXEC);
 
     /* We block SIGCHLD to prevent a race condition if the child
      * dies before we can record it's pid.  Also block SIGTERM to
@@ -1627,7 +1638,7 @@ static void daemon_loop(void) {
       for (ch = child_get(NULL); ch; ch = child_get(ch)) {
 	if (ch->ch_pipefd != -1 &&
             FD_ISSET(ch->ch_pipefd, &listenfds)) {
-	  close(ch->ch_pipefd);
+	  (void) close(ch->ch_pipefd);
 	  ch->ch_pipefd = -1;
 	}
 
