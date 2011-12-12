@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.54 2011-05-23 23:23:44 castaglia Exp $
+ * $Id: mod_ban.c,v 1.55 2011-12-12 19:14:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -748,7 +748,7 @@ static void ban_send_mesg(pool *p, const char *user, const char *rule_mesg) {
     if (strstr(mesg, "%c")) {
       const char *class;
 
-      class = session.class ? session.class->cls_name : "(none)";
+      class = session.conn_class ? session.conn_class->cls_name : "(none)";
       mesg = sreplace(p, mesg, "%c", class, NULL);
     }
 
@@ -3017,14 +3017,14 @@ static int ban_sess_init(void) {
   }
 
   /* Check banned class list */
-  if (session.class != NULL) {
+  if (session.conn_class != NULL) {
     if (ban_list_exists(tmp_pool, BAN_TYPE_CLASS, main_server->sid,
-        session.class->cls_name, &rule_mesg) == 0) {
+        session.conn_class->cls_name, &rule_mesg) == 0) {
       (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
         "login from class '%s' denied due to class ban",
-        session.class->cls_name);
+        session.conn_class->cls_name);
       pr_log_pri(PR_LOG_INFO, MOD_BAN_VERSION
-        ": Login denied: class '%s' banned", session.class->cls_name);
+        ": Login denied: class '%s' banned", session.conn_class->cls_name);
 
       ban_send_mesg(tmp_pool, "(none)", rule_mesg); 
       destroy_pool(tmp_pool);
