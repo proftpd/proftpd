@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.103 2011-12-12 04:23:33 castaglia Exp $
+ * $Id: fsio.c,v 1.104 2011-12-13 22:48:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2812,8 +2812,10 @@ pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
   }
 
   if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
-    pr_trace_msg(trace_channel, 1, "error setting CLOEXEC on file fd %d: %s",
-      fh->fh_fd, strerror(errno));
+    if (errno != EBADF) {
+      pr_trace_msg(trace_channel, 1, "error setting CLOEXEC on file fd %d: %s",
+        fh->fh_fd, strerror(errno));
+    }
   }
 
   return fh;
@@ -2862,8 +2864,10 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
   }
 
   if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
-    pr_trace_msg(trace_channel, 1, "error setting CLOEXEC on file fd %d: %s",
-      fh->fh_fd, strerror(errno));
+    if (errno != EBADF) {
+      pr_trace_msg(trace_channel, 1, "error setting CLOEXEC on file fd %d: %s",
+        fh->fh_fd, strerror(errno));
+    }
   }
 
   return fh;
@@ -2907,8 +2911,10 @@ pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
   }
 
   if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
-    pr_trace_msg(trace_channel, 1, "error setting CLOEXEC on file fd %d: %s",
-      fh->fh_fd, strerror(errno));
+    if (errno != EBADF) {
+      pr_trace_msg(trace_channel, 1, "error setting CLOEXEC on file fd %d: %s",
+        fh->fh_fd, strerror(errno));
+    }
   }
 
   return fh;
@@ -2951,8 +2957,10 @@ pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
   }
 
   if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
-    pr_trace_msg(trace_channel, 1, "error setting CLOEXEC on file fd %d: %s",
-      fh->fh_fd, strerror(errno));
+    if (errno != EBADF) {
+      pr_trace_msg(trace_channel, 1, "error setting CLOEXEC on file fd %d: %s",
+        fh->fh_fd, strerror(errno));
+    }
   }
 
   return fh;
