@@ -3979,6 +3979,7 @@ sub list_slashstar_bug3529 {
         '/cmds.passwd' => 1,
         '/cmds.pid' => 1,
         '/cmds.scoreboard' => 1,
+        '/cmds.scoreboard.lck' => 1,
         '/foo.txt' => 1,
       };
 
