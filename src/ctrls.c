@@ -23,7 +23,7 @@
  */
 
 /* Controls API routines
- * $Id: ctrls.c,v 1.32 2011-12-12 04:23:33 castaglia Exp $
+ * $Id: ctrls.c,v 1.33 2011-12-13 22:54:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1975,8 +1975,7 @@ void init_ctrls(void) {
   socklen = sizeof(struct sockaddr_un);
 
   if (bind(sockfd, (struct sockaddr *) &sockun, socklen) < 0) {
-    pr_log_pri(PR_LOG_DEBUG,
-      "unable to bind to Unix domain socket at '%s': %s",
+    pr_log_debug(DEBUG3, "unable to bind to Unix domain socket at '%s': %s",
       sockpath, strerror(errno));
     (void) close(sockfd);
     (void) unlink(sockpath);
