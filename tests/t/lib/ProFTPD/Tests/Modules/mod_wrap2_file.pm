@@ -143,7 +143,7 @@ sub wrap2_allow_msg {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -167,6 +167,7 @@ sub wrap2_allow_msg {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -185,7 +186,7 @@ sub wrap2_allow_msg {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -265,6 +266,9 @@ sub wrap2_allow_msg {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -279,7 +283,7 @@ sub wrap2_deny_msg {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -307,6 +311,7 @@ sub wrap2_deny_msg {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -325,7 +330,7 @@ sub wrap2_deny_msg {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 15;
 
@@ -417,6 +422,9 @@ sub wrap2_deny_msg {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -431,7 +439,7 @@ sub wrap2_engine {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -459,6 +467,7 @@ sub wrap2_engine {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -477,7 +486,7 @@ sub wrap2_engine {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -558,6 +567,9 @@ sub wrap2_engine {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -572,7 +584,7 @@ sub wrap2_file_allow_table {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -603,6 +615,7 @@ sub wrap2_file_allow_table {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -621,7 +634,7 @@ sub wrap2_file_allow_table {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -760,6 +773,9 @@ sub wrap2_file_allow_table {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -774,7 +790,7 @@ sub wrap2_file_allow_table_multi_rows_multi_entries {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -806,6 +822,7 @@ sub wrap2_file_allow_table_multi_rows_multi_entries {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -824,7 +841,7 @@ sub wrap2_file_allow_table_multi_rows_multi_entries {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 30;
 
@@ -909,6 +926,9 @@ sub wrap2_file_allow_table_multi_rows_multi_entries {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -923,7 +943,7 @@ sub wrap2_file_allow_table_ip_addr_prefix {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -955,6 +975,7 @@ sub wrap2_file_allow_table_ip_addr_prefix {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -973,7 +994,7 @@ sub wrap2_file_allow_table_ip_addr_prefix {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 30;
 
@@ -1058,6 +1079,9 @@ sub wrap2_file_allow_table_ip_addr_prefix {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1072,7 +1096,7 @@ sub wrap2_file_allow_table_keyword_local {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -1104,6 +1128,7 @@ sub wrap2_file_allow_table_keyword_local {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1122,7 +1147,7 @@ sub wrap2_file_allow_table_keyword_local {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 30;
 
@@ -1207,6 +1232,9 @@ sub wrap2_file_allow_table_keyword_local {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1221,13 +1249,14 @@ sub wrap2_file_allow_table_user_ip_addr_prefix {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1270,7 +1299,7 @@ sub wrap2_file_allow_table_user_ip_addr_prefix {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1350,6 +1379,9 @@ sub wrap2_file_allow_table_user_ip_addr_prefix {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1364,13 +1396,14 @@ sub wrap2_file_allow_table_user_ip_addr_netmask {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1413,7 +1446,7 @@ sub wrap2_file_allow_table_user_ip_addr_netmask {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1493,6 +1526,9 @@ sub wrap2_file_allow_table_user_ip_addr_netmask {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1507,13 +1543,14 @@ sub wrap2_file_allow_table_user_dns_name_suffix {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1556,7 +1593,7 @@ sub wrap2_file_allow_table_user_dns_name_suffix {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1651,6 +1688,9 @@ sub wrap2_file_allow_table_user_dns_name_suffix {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1665,7 +1705,7 @@ sub wrap2_file_allow_table_tilde {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -1696,6 +1736,7 @@ sub wrap2_file_allow_table_tilde {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1714,7 +1755,7 @@ sub wrap2_file_allow_table_tilde {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1853,6 +1894,9 @@ sub wrap2_file_allow_table_tilde {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1867,7 +1911,7 @@ sub wrap2_file_deny_table_ip_addr {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -1897,6 +1941,7 @@ sub wrap2_file_deny_table_ip_addr {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1915,7 +1960,7 @@ sub wrap2_file_deny_table_ip_addr {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2069,6 +2114,9 @@ sub wrap2_file_deny_table_ip_addr {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2083,7 +2131,7 @@ sub wrap2_file_deny_table_dns_name {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -2113,6 +2161,7 @@ sub wrap2_file_deny_table_dns_name {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2131,7 +2180,7 @@ sub wrap2_file_deny_table_dns_name {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2286,6 +2335,9 @@ sub wrap2_file_deny_table_dns_name {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2300,7 +2352,7 @@ sub wrap2_file_deny_table_tilde {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -2330,6 +2382,7 @@ sub wrap2_file_deny_table_tilde {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2348,7 +2401,7 @@ sub wrap2_file_deny_table_tilde {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2502,6 +2555,9 @@ sub wrap2_file_deny_table_tilde {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2516,7 +2572,7 @@ sub wrap2_file_service_name {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -2547,6 +2603,7 @@ sub wrap2_file_service_name {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2565,7 +2622,7 @@ sub wrap2_file_service_name {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2712,6 +2769,9 @@ sub wrap2_file_service_name {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2726,7 +2786,7 @@ sub wrap2_file_user_tables {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -2756,6 +2816,7 @@ sub wrap2_file_user_tables {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2774,7 +2835,7 @@ sub wrap2_file_user_tables {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2914,6 +2975,9 @@ sub wrap2_file_user_tables {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2928,7 +2992,7 @@ sub wrap2_file_group_tables {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -2958,6 +3022,7 @@ sub wrap2_file_group_tables {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2976,7 +3041,7 @@ sub wrap2_file_group_tables {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -3060,7 +3125,7 @@ sub wrap2_file_group_tables {
   }
 
   # Modify the config a little
-  $config->{IfModules}->{'mod_wrap2.c'}->{WrapGroupTables} = "ftpd file:$allow_file file:$deny_file";
+  $config->{IfModules}->{'mod_wrap2.c'}->{WrapGroupTables} = "$group file:$allow_file file:$deny_file";
 
   ($port, $config_user, $config_group) = config_write($config_file, $config);
 
@@ -3116,6 +3181,9 @@ sub wrap2_file_group_tables {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3130,7 +3198,7 @@ sub wrap2_file_bug3048 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -3161,6 +3229,7 @@ sub wrap2_file_bug3048 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -3179,7 +3248,7 @@ sub wrap2_file_bug3048 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -3259,6 +3328,9 @@ sub wrap2_file_bug3048 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3273,7 +3345,7 @@ sub wrap2_file_syntax {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -3309,6 +3381,7 @@ sub wrap2_file_syntax {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -3327,7 +3400,7 @@ sub wrap2_file_syntax {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 20;
 
@@ -3414,6 +3487,9 @@ sub wrap2_file_syntax {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3428,7 +3504,7 @@ sub wrap2_file_user_plus_global_tables {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -3470,6 +3546,7 @@ sub wrap2_file_user_plus_global_tables {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -3488,7 +3565,7 @@ sub wrap2_file_user_plus_global_tables {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -3573,6 +3650,9 @@ sub wrap2_file_user_plus_global_tables {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3587,7 +3667,7 @@ sub wrap2_file_opt_check_on_connect_bug3508 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -3618,6 +3698,7 @@ sub wrap2_file_opt_check_on_connect_bug3508 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -3636,7 +3717,7 @@ sub wrap2_file_opt_check_on_connect_bug3508 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -3775,6 +3856,9 @@ sub wrap2_file_opt_check_on_connect_bug3508 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3789,7 +3873,7 @@ sub wrap2_file_tilde_opt_check_on_connect_bug3508 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
@@ -3820,6 +3904,7 @@ sub wrap2_file_tilde_opt_check_on_connect_bug3508 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -3838,7 +3923,7 @@ sub wrap2_file_tilde_opt_check_on_connect_bug3508 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -3969,6 +4054,9 @@ sub wrap2_file_tilde_opt_check_on_connect_bug3508 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
