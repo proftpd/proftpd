@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.40 2011-12-11 02:33:14 castaglia Exp $
+ * $Id: auth.c,v 1.41 2011-12-14 18:51:15 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -961,11 +961,11 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
      * queried.
      */
     if (send_userauth_methods() < 0) {
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
       pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
       pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+
+      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
       return -1;
     }
@@ -984,11 +984,11 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
 
       if (send_userauth_methods() < 0) {
-        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
         pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+
+        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
         return -1;
       }
@@ -1009,11 +1009,11 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
 
       if (send_userauth_methods() < 0) {
-        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
         pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+
+        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
         return -1;
       }
@@ -1034,11 +1034,11 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
 
       if (send_userauth_methods() < 0) {
-        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
         pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+
+        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
         return -1;
       }
@@ -1059,11 +1059,11 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
 
       if (send_userauth_methods() < 0) {
-        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
         pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+
+        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
         return -1;
       }
@@ -1076,11 +1076,11 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     }
 
   } else {
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
     pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported authentication method '%s' requested", method);
@@ -1094,6 +1094,9 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   if (res <= 0) {
     int xerrno = errno;
+
+    pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
 
     pr_cmd_dispatch_phase(cmd, res == 0 ? POST_CMD : POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
