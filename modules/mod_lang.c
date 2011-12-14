@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.36 2011-05-23 21:11:56 castaglia Exp $
+ * $Id: mod_lang.c,v 1.37 2011-12-14 21:45:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -731,6 +731,8 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
         pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
           ": LangDefault '%s', configured for server '%s', is not a supported "
           "language, removing", lang, s->ServerName);
+        pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
+          ": Perhaps proftpd has not yet been translated into '%s'", lang);
         remove_config(s->conf, "LangDefault", FALSE);
       }
     }
