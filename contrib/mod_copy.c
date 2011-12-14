@@ -26,7 +26,7 @@
  * This is mod_copy, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_copy.c,v 1.6 2011-05-26 21:46:13 castaglia Exp $
+ * $Id: mod_copy.c,v 1.7 2011-12-14 00:57:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -111,7 +111,7 @@ static int create_path(pool *p, const char *path) {
     cmd = pr_cmd_alloc(sub_pool, 2, pstrdup(sub_pool, C_MKD),
       pstrdup(sub_pool, curr_path));
     cmd->arg = pstrdup(cmd->pool, curr_path);
-    cmd->class = CL_DIRS|CL_WRITE;
+    cmd->cmd_class = CL_DIRS|CL_WRITE;
 
     pr_response_clear(&resp_list);
     pr_response_clear(&resp_err_list);
@@ -244,7 +244,7 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir) {
         pstrdup(iter_pool, "COPY"), pstrdup(iter_pool, src_path),
         pstrdup(iter_pool, dst_path));
       cmd->arg = pstrcat(iter_pool, "COPY ", src_path, " ", dst_path, NULL);
-      cmd->class = CL_WRITE;
+      cmd->cmd_class = CL_WRITE;
 
       pr_response_clear(&resp_list);
       pr_response_clear(&resp_err_list);
