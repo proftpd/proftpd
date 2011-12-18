@@ -1,4 +1,4 @@
-mod_ldap v2.9.1
+mod_ldap v2.9.2
 ===============
 
 mod_ldap is a ProFTPD module that performs user authentication and
@@ -59,6 +59,9 @@ code improvements or ideas for development, please let me know!
 ==========
 3. Changes
 ==========
+v2.9.2:
+- Prevent segmentation fault when no user filters (second and third
+  arguments to LDAPUsers) are specified.
 
 v2.9.1:
 - Handle potential NULL return value from crypt(). (Bug #3551)

@@ -1,6 +1,6 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
- * Copyright (c) 1999-2010, John Morrissey <jwm@horde.net>
+ * Copyright (c) 1999-2011, John Morrissey <jwm@horde.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,14 +45,14 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.94 2011-11-18 17:34:02 jwm Exp $
+ * $Id: mod_ldap.c,v 1.95 2011-12-18 02:12:23 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.9.1"
+#define MOD_LDAP_VERSION	"mod_ldap/2.9.2"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030103
 # error MOD_LDAP_VERSION " requires ProFTPD 1.3.1rc3 or later"
@@ -1978,14 +1978,14 @@ ldap_getconf(void)
     ldap_do_users = 1;
     ldap_user_basedn = pstrdup(session.pool, c->argv[0]);
 
-    if (c->argv[1]) {
+    if (c->argc > 1) {
       ldap_user_name_filter = pstrdup(session.pool, c->argv[1]);
     } else {
       ldap_user_name_filter = pstrcat(session.pool,
         "(&(", ldap_attr_uid, "=%v)(objectclass=posixAccount))", NULL);
     }
 
-    if (c->argv[2]) {
+    if (c->argc > 2) {
       ldap_user_uid_filter = pstrdup(session.pool, c->argv[2]);
     } else {
       ldap_user_uid_filter = pstrcat(session.pool,
