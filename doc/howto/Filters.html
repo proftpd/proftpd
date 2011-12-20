@@ -1,4 +1,4 @@
-<!-- $Id: Filters.html,v 1.11 2009-09-14 17:46:22 castaglia Exp $ -->
+<!-- $Id: Filters.html,v 1.12 2011-12-20 21:39:00 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Filters.html,v $ -->
 
 <html>
@@ -109,6 +109,15 @@ can use:
 </pre>
 
 <p>
+What if you want to prevent clients from uploading so-called "dot files",
+<i>i.e.</i> files whose names start with a period ('.'), so that they are
+"hidden"?  To prevent uploading of all dot files, you can use the following
+<code>PathDenyFilter</code> configuration:
+<pre>
+  PathDenyFilter \.[^/]*$
+</pre>
+
+<p>
 In ProFTPD 1.3.3rc1 and later, you can use the <code>AllowFilter</code> and
 <code>DenyFilter</code> configuration directives inside of
 <code>&lt;Limit&gt;</code> sections, so that those <code>Filter</code>
@@ -135,7 +144,7 @@ will not work as you expect.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2009-09-14 17:46:22 $</i><br>
+Last Updated: <i>$Date: 2011-12-20 21:39:00 $</i><br>
 <hr>
 
 </body>
