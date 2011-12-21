@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD module definitions.
- * $Id: modules.h,v 1.57 2011-12-11 02:37:24 castaglia Exp $
+ * $Id: modules.h,v 1.58 2011-12-21 04:16:58 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -66,7 +66,7 @@ struct modret_struc {
 #define MODRET_ERRMSG(x)		((x) ? (x)->mr_message : NULL)
 #define MODRET_HASDATA(x)		((x) ? ((x)->data ? TRUE : FALSE) : FALSE)
 
-typedef struct {
+typedef struct conftab_rec {
   char *directive;
   modret_t *(*handler)(cmd_rec*);
 
@@ -103,7 +103,7 @@ typedef struct {
 #define LOG_CMD_ERR			6
 #define HOOK				7
 
-typedef struct {
+typedef struct cmdtab_rec {
 
   /* See above for cmd types. */
   unsigned char cmd_type;
@@ -124,7 +124,7 @@ typedef struct {
 
 } cmdtable;
 
-typedef struct {
+typedef struct authtab_rec {
   int auth_flags;			/* future use */
   char *name;
   modret_t *(*handler)(cmd_rec*);
@@ -140,9 +140,9 @@ struct module_struc {
   int api_version;			/* API version _not_ module version */
   char *name;				/* Module name */
 
-  conftable *conftable;			/* Configuration directive table */
-  cmdtable *cmdtable;			/* Command table */
-  authtable *authtable; 		/* Authentication handler table */
+  struct conftab_rec *conftable;	/* Configuration directive table */
+  struct cmdtab_rec *cmdtable;		/* Command table */
+  struct authtab_rec *authtable; 	/* Authentication handler table */
 
   int (*init)(void); 			/* Module initialization */
   int (*sess_init)(void);		/* Session initialization */

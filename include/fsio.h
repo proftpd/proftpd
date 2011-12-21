@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.28 2011-05-23 20:35:35 castaglia Exp $
+ * $Id: fsio.h,v 1.29 2011-12-21 04:16:57 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -102,7 +102,7 @@ struct fs_rec {
   void *fs_data;
 
   /* Pool for this object's use */
-  pool *fs_pool;
+  struct pool_rec *fs_pool;
 
   /* FS function pointers */
   int (*stat)(pr_fs_t *, const char *, struct stat *);
@@ -308,7 +308,7 @@ int pr_fs_resolve_partial(const char *, char *, size_t, int);
 int pr_fs_resolve_path(const char *, char *, size_t, int);
 char *pr_fs_decode_path(pool *, const char *);
 char *pr_fs_encode_path(pool *, const char *);
-int pr_fs_use_encoding(int bool);
+int pr_fs_use_encoding(int);
 int pr_fs_valid_path(const char *);
 void pr_fs_virtual_path(const char *, char *, size_t);
 void pr_fs_clean_path(const char *, char *, size_t);

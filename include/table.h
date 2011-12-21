@@ -23,7 +23,7 @@
  */
 
 /* Table management
- * $Id: table.h,v 1.8 2011-05-23 20:35:35 castaglia Exp $
+ * $Id: table.h,v 1.9 2011-12-21 04:16:58 castaglia Exp $
  */
 
 #ifndef PR_TABLE_H
@@ -272,6 +272,6 @@ pr_table_t *pr_table_nalloc(pool *p, int flags, unsigned int nchains);
 void *pr_table_pcalloc(pr_table_t *tab, size_t sz);
 
 /* Internal use only. */
-int table_handling_signal(int bool);
+int table_handling_signal(int);
 
 #endif /* PR_TABLE_H */

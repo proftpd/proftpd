@@ -25,7 +25,7 @@
  */
 
 /* Network IO stream layer
- * $Id: netio.h,v 1.12 2011-05-23 20:35:35 castaglia Exp $
+ * $Id: netio.h,v 1.13 2011-12-21 04:16:58 castaglia Exp $
  */
 
 #ifndef PR_NETIO_H
@@ -89,7 +89,7 @@ typedef struct {
 typedef struct {
 
   /* Memory pool for this object. */
-  pool *strm_pool;
+  struct pool_rec *strm_pool;
 
   /* Stream type */
   int strm_type;
@@ -125,7 +125,7 @@ typedef struct {
 typedef struct {
 
   /* Memory pool for this object. */
-  pool *pool;
+  struct pool_rec *pool;
 
   /* NetIO callbacks */
   void (*abort)(pr_netio_stream_t *);

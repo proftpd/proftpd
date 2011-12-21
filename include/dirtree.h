@@ -25,7 +25,7 @@
  */
 
 /* Configuration structure, server, command and associated prototypes.
- * $Id: dirtree.h,v 1.82 2011-12-11 02:33:14 castaglia Exp $
+ * $Id: dirtree.h,v 1.83 2011-12-21 04:16:57 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -42,7 +42,7 @@ struct conn_struc;
 typedef struct server_struc {
   struct server_struc *next, *prev;
 
-  pool *pool;			/* Memory pool for this server */
+  struct pool_rec *pool;	/* Memory pool for this server */
   xaset_t *set;			/* Set holding all servers */
 
   /* The label/name for this server configuration. */
@@ -96,10 +96,10 @@ typedef struct server_struc {
 } server_rec;
 
 typedef struct cmd_struc {
-  pool *pool;
+  struct pool_rec *pool;
   server_rec *server;
   config_rec *config;
-  pool *tmp_pool;		/* Temporary pool which only exists
+  struct pool_rec *tmp_pool;	/* Temporary pool which only exists
 				 * while the cmd's handler is running
 				 */
   int argc;
@@ -121,7 +121,7 @@ struct config_struc {
   int config_type;
   unsigned int config_id;
 
-  pool *pool;			/* memory pool for this object */
+  struct pool_rec *pool;	/* Memory pool for this object */
   xaset_t *set;			/* The set we are stored in */
   char *name;
   int argc;
