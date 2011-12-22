@@ -156,6 +156,7 @@ if (scalar(@ARGV) > 0) {
     t/config/trace.t
     t/config/traceoptions.t
     t/config/transferrate.t
+    t/config/umask.t
     t/config/useftpusers.t
     t/config/useglobbing.t
     t/config/useralias.t
