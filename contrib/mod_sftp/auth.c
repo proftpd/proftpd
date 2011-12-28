@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.41 2011-12-14 18:51:15 castaglia Exp $
+ * $Id: auth.c,v 1.42 2011-12-28 22:51:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -262,7 +262,7 @@ static void set_userauth_methods(void) {
 static int setup_env(pool *p, char *user) {
   struct passwd *pw;
   config_rec *c;
-  int login_acl, i, res, show_symlinks = FALSE;
+  int login_acl, i, res, show_symlinks = FALSE, xerrno;
   struct stat st;
   char *default_chdir, *default_root, *home_dir;
   const char *sess_ttyname = NULL, *xferlog = NULL;
@@ -448,10 +448,12 @@ static int setup_env(pool *p, char *user) {
   }
 
   res = set_groups(p, pw->pw_gid, session.gids);
+  xerrno = errno;
   PRIVS_RELINQUISH
 
   if (res < 0) {
-    pr_log_pri(PR_LOG_ERR, "unable to set process groups: %s", strerror(errno));
+    pr_log_pri(PR_LOG_ERR, "unable to set process groups: %s",
+      strerror(xerrno));
   }
 
   default_root = get_default_root(session.pool);
@@ -518,16 +520,21 @@ static int setup_env(pool *p, char *user) {
   }
 
   if (pr_fsio_chdir_canon(session.cwd, !show_symlinks) < 0) {
+    xerrno = errno;
+
     if (session.chroot_path != NULL ||
         default_root != NULL) {
 
       pr_log_debug(DEBUG2, "unable to chdir to %s (%s), defaulting to chroot "
-        "directory %s", session.cwd, strerror(errno),
+        "directory %s", session.cwd, strerror(xerrno),
         (session.chroot_path ? session.chroot_path : default_root));
 
       if (pr_fsio_chdir_canon("/", !show_symlinks) == -1) {
+        xerrno = errno;
+
         pr_log_pri(PR_LOG_ERR, "%s chdir(\"/\"): %s", session.user,
-          strerror(errno));
+          strerror(xerrno));
+        errno = xerrno;
         return -1;
       }
 
@@ -536,14 +543,18 @@ static int setup_env(pool *p, char *user) {
         "directory %s", session.cwd, strerror(errno), pw->pw_dir);
 
       if (pr_fsio_chdir_canon(pw->pw_dir, !show_symlinks) == -1) {
+        xerrno = errno;
+
         pr_log_pri(PR_LOG_ERR, "%s chdir(\"%s\"): %s", session.user,
-          session.cwd, strerror(errno));
+          session.cwd, strerror(xerrno));
+        errno = xerrno;
         return -1;
       }
 
     } else {
       pr_log_pri(PR_LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
-        strerror(errno));
+        strerror(xerrno));
+      errno = xerrno;
       return -1;
     }
 
