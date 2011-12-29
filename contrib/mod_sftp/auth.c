@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.42 2011-12-28 22:51:27 castaglia Exp $
+ * $Id: auth.c,v 1.43 2011-12-29 04:37:46 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -922,7 +922,32 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     }
 
   } else {
-    auth_service = pstrdup(auth_pool, *service);
+
+    /* Check to see if the requested service is one that we support.
+     *
+     * As far as I can tell, the only defined 'service names' are:
+     *
+     *  ssh-userauth (RFC4252)
+     *  ssh-connection (RFC4254)
+     *
+     * If the requested service name is NOT one of the above,
+     * we should disconnect, as recommended by RFC4252.
+     */
+
+    if (strncmp(*service, "ssh-userauth", 13) == 0 ||
+        strncmp(*service, "ssh-connection", 15) == 0) {
+      auth_service = pstrdup(auth_pool, *service);
+
+    } else {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "client requested unknown/unsupported service name '%s' in "
+        "USERAUTH_REQUEST, disconnecting", *service);
+
+      pr_cmd_dispatch_phase(user_cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(user_cmd, LOG_CMD_ERR, 0);
+
+      return -1;
+    }
   }
 
   pr_cmd_dispatch_phase(user_cmd, POST_CMD, 0);
