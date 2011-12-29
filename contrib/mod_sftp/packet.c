@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.32 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: packet.c,v 1.33 2011-12-29 04:34:55 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1460,14 +1460,26 @@ int sftp_ssh2_packet_handle(void) {
 
     case SFTP_SSH2_MSG_USER_AUTH_REQUEST:
       if (sftp_sess_state & SFTP_SESS_STATE_HAVE_SERVICE) {
-        int ok;
 
-        ok = sftp_auth_handle(pkt);
-        if (ok == 1) {
-          sftp_sess_state |= SFTP_SESS_STATE_HAVE_AUTH;
+        /* If the client has already authenticated this connection, then
+         * silently ignore this additional auth request, per recommendation
+         * in RFC4252.
+         */
+        if (sftp_sess_state & SFTP_SESS_STATE_HAVE_AUTH) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "ignoring %s (%d) message: Connection already authenticated",
+            sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
 
-        } else if (ok < 0) {
-          SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+        } else {
+          int ok;
+
+          ok = sftp_auth_handle(pkt);
+          if (ok == 1) {
+            sftp_sess_state |= SFTP_SESS_STATE_HAVE_AUTH;
+
+          } else if (ok < 0) {
+            SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+          }
         }
 
         break;
