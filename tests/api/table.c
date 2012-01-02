@@ -23,7 +23,7 @@
  */
 
 /* Table API tests
- * $Id: table.c,v 1.4 2012-01-02 23:04:48 castaglia Exp $
+ * $Id: table.c,v 1.5 2012-01-02 23:21:49 castaglia Exp $
  */
 
 #include "tests.h"
@@ -635,6 +635,22 @@ START_TEST (table_ctl_test) {
 }
 END_TEST
 
+START_TEST (table_load_test) {
+  pr_table_t *tab = NULL;
+  float load;
+
+  load = pr_table_load(tab);
+  fail_unless(load < 0, "Failed to handle NULL table argument");
+  fail_unless(errno == EINVAL,
+    "Failed to set errno to EINVAL; received %s (%d)", errno, strerror(errno));
+
+  tab = pr_table_alloc(p, 0);
+  load = pr_table_load(tab);
+  fail_unless(load >= 0.0, "Failed to calculate load properly; load = %0.3f",
+    load);
+}
+END_TEST
+
 START_TEST (table_dump_test) {
   pr_table_t *tab;
 
@@ -697,6 +713,7 @@ Suite *tests_get_table_suite(void) {
   tcase_add_test(testcase, table_set_test);
   tcase_add_test(testcase, table_do_test);
   tcase_add_test(testcase, table_ctl_test);
+  tcase_add_test(testcase, table_load_test);
   tcase_add_test(testcase, table_dump_test);
   tcase_add_test(testcase, table_pcalloc_test);
 

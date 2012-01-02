@@ -23,12 +23,12 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.25 2012-01-02 23:04:48 castaglia Exp $
+ * $Id: table.c,v 1.26 2012-01-02 23:21:49 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define PR_TABLE_DEFAULT_NCHAINS	32
+#define PR_TABLE_DEFAULT_NCHAINS	256
 #define PR_TABLE_DEFAULT_MAX_ENTS	8192
 #define PR_TABLE_ENT_POOL_SIZE		64
 
@@ -1149,6 +1149,18 @@ static void table_printf(const char *fmt, ...) {
 
   buf[sizeof(buf)-1] = '\0';
   pr_trace_msg(trace_channel, 19, "dump: %s", buf);
+}
+
+float pr_table_load(pr_table_t *tab) {
+  float load_factor;
+
+  if (tab == NULL) {
+    errno = EINVAL;
+    return -1.0;
+  }
+
+  load_factor = (tab->nents / tab->nchains);
+  return load_factor;
 }
 
 void pr_table_dump(void (*dumpf)(const char *fmt, ...), pr_table_t *tab) {
