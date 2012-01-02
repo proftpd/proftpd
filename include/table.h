@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2011 The ProFTPD Project team
+ * Copyright (c) 2004-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Table management
- * $Id: table.h,v 1.9 2011-12-21 04:16:58 castaglia Exp $
+ * $Id: table.h,v 1.10 2012-01-02 23:04:47 castaglia Exp $
  */
 
 #ifndef PR_TABLE_H
@@ -201,7 +201,7 @@ int pr_table_set(pr_table_t *tab, const char *key_data, void *value_data,
  *    The arg parameter must be a pointer to a function with the following
  *    signature:
  *
- *      unsigned int (*func)(const void *key, size_t keysz)
+ *      unsigned int (*func)(unsigned int seed, const void *key, size_t keysz)
  *
  *    If arg is NULL, the default hash function will be used.
  *
@@ -211,6 +211,11 @@ int pr_table_set(pr_table_t *tab, const char *key_data, void *value_data,
  *    minimum lookup times.  If a table will be holding a large number of
  *    entries, a larger number of chains will ensure a better distribution.
  *    The default number of chains is 32.
+ *
+ *  PR_TABLE_CTL_SET_MAX_ENTS
+ *    Sets the maximum number of entries the table can hold.  Attempts to
+ *    insert entries above this maximum result in an ENOSPC error value.
+ *    The default maximum number of entries is currently 8192.
  */
 int pr_table_ctl(pr_table_t *tab, int cmd, void *arg);
 #define PR_TABLE_CTL_SET_ENT_INSERT	1
@@ -219,6 +224,7 @@ int pr_table_ctl(pr_table_t *tab, int cmd, void *arg);
 #define PR_TABLE_CTL_SET_KEY_CMP	4
 #define PR_TABLE_CTL_SET_KEY_HASH	5
 #define PR_TABLE_CTL_SET_NCHAINS	6
+#define PR_TABLE_CTL_SET_MAX_ENTS	7
 
 /* Dump table information. */
 void pr_table_dump(void (*)(const char *, ...), pr_table_t *tab);

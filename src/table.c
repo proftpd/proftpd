@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2011 The ProFTPD Project team
+ * Copyright (c) 2004-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,17 +23,41 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.24 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: table.c,v 1.25 2012-01-02 23:04:48 castaglia Exp $
  */
 
 #include "conf.h"
 
 #define PR_TABLE_DEFAULT_NCHAINS	32
+#define PR_TABLE_DEFAULT_MAX_ENTS	8192
 #define PR_TABLE_ENT_POOL_SIZE		64
 
 struct table_rec {
   pool *pool;
   unsigned long flags;
+
+  /* These bytes are randomly generated at table creation time, and
+   * are used to seed the hashing function, so as to defend/migitate
+   * against attempts to feed carefully crafted keys which force the
+   * table into its worst-case performance scenario.
+   *
+   * For more information on attacks of this nature, see:
+   *
+   *   http://www.cs.rice.edu/~scrosby/hash/CrosbyWallach_UsenixSec2003/   
+   */
+  unsigned int seed;
+
+  /* Maximum number of entries that can be stored in this table.  The
+   * default maximum (PR_TABLE_DEFAULT_MAX_ENTS) is set fairly high.
+   * This limit is present in order to defend/mitigate against certain abuse
+   * scenarios.
+   *
+   * XXX Note that an additional protective measure can/might be placed on
+   * the maximum length of a given chain, to detect other types of attacks
+   * that force the table into the worse-case performance scenario (i.e.
+   * linear scanning of a long chain).
+   */
+  unsigned int nmaxents;
 
   pr_table_entry_t **chains;
   unsigned int nchains;
@@ -58,7 +82,7 @@ struct table_rec {
 
   /* Table callbacks. */
   int (*keycmp)(const void *, size_t, const void *, size_t);
-  unsigned int (*keyhash)(const void *, size_t);
+  unsigned int (*keyhash)(unsigned int, const void *, size_t);
   void (*entinsert)(pr_table_entry_t **, pr_table_entry_t *);
   void (*entremove)(pr_table_entry_t **, pr_table_entry_t *);
 };
@@ -100,13 +124,15 @@ static int key_cmp(const void *key1, size_t keysz1, const void *key2,
 }
 
 /* Use Perl's hashing algorithm by default. */
-static unsigned int key_hash(const void *key, size_t keysz) {
-  unsigned int i = 0;
+static unsigned int key_hash(unsigned int seed, const void *key, size_t keysz) {
+  unsigned int i = seed;
   size_t sz = !keysz ? strlen((const char *) key) : keysz;
 
   while (sz--) {
     const char *k = key;
-    unsigned int c = *k;
+    unsigned int c;
+
+    c = k[sz];
 
     if (!handling_signal) {
       /* Always handle signals in potentially long-running while loops. */
@@ -322,6 +348,34 @@ static void tab_entry_remove(pr_table_t *tab, pr_table_entry_t *e) {
   tab->nents--;
 }
 
+static unsigned int tab_get_seed(void) {
+  unsigned int seed = 0;
+  FILE *fp = NULL;
+
+#ifdef PR_USE_OPENSSL
+  if (RAND_bytes(&seed, sizeof(seed)) != 1) {
+    RAND_pseudo_bytes(&seed, sizeof(seed));
+  }
+#else
+  /* Try reading from /dev/urandom, if present */
+  fp = fopen("/dev/urandom", "rb");
+  if (fp != NULL) {
+    fread(&seed, sizeof(seed), 1, fp);
+    fclose(fp);
+
+  } else {
+    time_t now = time(NULL);
+
+    /* No /dev/urandom present (e.g. we might be in a chroot), but we still
+     * want a seed.  Fallback to using rand(3), PID, and current time.
+     */
+    seed = (unsigned int) (rand() ^ getpid() ^ now);
+  }
+#endif /* PR_USE_OPENSSL */
+
+  return seed;
+}
+
 /* Public Table API
  */
 
@@ -337,7 +391,13 @@ int pr_table_kadd(pr_table_t *tab, const void *key_data, size_t key_datasz,
     return -1;
   }
 
-  h = tab->keyhash(key_data, key_datasz);
+  if (tab->nents == tab->nmaxents) {
+    /* Table is full. */
+    errno = ENOSPC;
+    return -1;
+  }
+
+  h = tab->keyhash(tab->seed, key_data, key_datasz);
 
   /* The index of the chain to use is the hash value modulo the number
    * of chains.
@@ -430,7 +490,7 @@ int pr_table_kexists(pr_table_t *tab, const void *key_data, size_t key_datasz) {
       return tab->cache_ent->key->nents;
   }
 
-  h = tab->keyhash(key_data, key_datasz);
+  h = tab->keyhash(tab->seed, key_data, key_datasz);
   idx = h % tab->nchains;
 
   head = tab->chains[idx];
@@ -489,7 +549,7 @@ void *pr_table_kget(pr_table_t *tab, const void *key_data, size_t key_datasz,
     return NULL;
   }
 
-  h = tab->keyhash(key_data, key_datasz);
+  h = tab->keyhash(tab->seed, key_data, key_datasz);
 
   /* Has the caller already looked up this same key previously?
    * If so, continue the lookup where we left off.  In this case,
@@ -582,7 +642,7 @@ void *pr_table_kremove(pr_table_t *tab, const void *key_data,
     return value_data;
   }
 
-  h = tab->keyhash(key_data, key_datasz);
+  h = tab->keyhash(tab->seed, key_data, key_datasz);
   idx = h % tab->nchains;
 
   head = tab->chains[idx];
@@ -640,7 +700,7 @@ int pr_table_kset(pr_table_t *tab, const void *key_data, size_t key_datasz,
     return -1;
   }
 
-  h = tab->keyhash(key_data, key_datasz);
+  h = tab->keyhash(tab->seed, key_data, key_datasz);
 
   /* Has the caller already looked up this same key previously?
    * If so, continue the lookup where we left off.  In this case,
@@ -770,6 +830,8 @@ pr_table_t *pr_table_nalloc(pool *p, int flags, unsigned int nchains) {
   tab->entinsert = entry_insert;
   tab->entremove = entry_remove;
 
+  tab->seed = tab_get_seed();
+  tab->nmaxents = PR_TABLE_DEFAULT_MAX_ENTS;
   return tab;
 }
 
@@ -981,8 +1043,8 @@ int pr_table_ctl(pr_table_t *tab, int cmd, void *arg) {
   switch (cmd) {
     case PR_TABLE_CTL_SET_KEY_HASH:
       tab->keyhash = arg ?
-        (unsigned int (*)(const void *, size_t)) arg :
-        (unsigned int (*)(const void *, size_t)) key_hash;
+        (unsigned int (*)(unsigned int, const void *, size_t)) arg :
+        (unsigned int (*)(unsigned int, const void *, size_t)) key_hash;
       return 0;
 
     case PR_TABLE_CTL_SET_FLAGS:
@@ -1033,6 +1095,29 @@ int pr_table_ctl(pr_table_t *tab, int cmd, void *arg) {
        */
       tab->chains = pcalloc(tab->pool,
         sizeof(pr_table_entry_t *) * tab->nchains);
+      return 0;
+    }
+
+    case PR_TABLE_CTL_SET_MAX_ENTS: {
+      unsigned int nmaxents;
+
+      nmaxents = *((unsigned int *) arg);
+
+      if (nmaxents == 0) {
+        errno = EINVAL;
+        return -1;
+      }
+
+      /* If the given maximum is less than the number of entries currently
+       * in the table, we have to return an error; we do not want to get
+       * into the business of table truncation just yet.
+       */
+      if (tab->nents > nmaxents) {
+        errno = EPERM;
+        return -1;
+      }
+
+      tab->nmaxents = nmaxents;
       return 0;
     }
 
