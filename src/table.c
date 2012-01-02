@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.26 2012-01-02 23:21:49 castaglia Exp $
+ * $Id: table.c,v 1.27 2012-01-02 23:31:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -55,7 +55,10 @@ struct table_rec {
    * XXX Note that an additional protective measure can/might be placed on
    * the maximum length of a given chain, to detect other types of attacks
    * that force the table into the worse-case performance scenario (i.e.
-   * linear scanning of a long chain).
+   * linear scanning of a long chain).  If such is added, then a Table API
+   * function should be added for returning the length of the longest chain
+   * in the table.  Such a function could be used by modules to determine
+   * if their tables are being abused (or in need of readjustment).
    */
   unsigned int nmaxents;
 
@@ -123,7 +126,13 @@ static int key_cmp(const void *key1, size_t keysz1, const void *key2,
   return strncmp((const char *) key1, (const char *) key2, keysz1);
 }
 
-/* Use Perl's hashing algorithm by default. */
+/* Use Perl's hashing algorithm by default.
+ *
+ * Here's a good article about this hashing algorithm, and about hashing
+ * functions in general:
+ *
+ *  http://www.perl.com/pub/2002/10/01/hashes.html 
+ */
 static unsigned int key_hash(unsigned int seed, const void *key, size_t keysz) {
   unsigned int i = seed;
   size_t sz = !keysz ? strlen((const char *) key) : keysz;
