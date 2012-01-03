@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.88 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: auth.c,v 1.89 2012-01-03 00:30:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -63,22 +63,26 @@ static int gid_keycmp_cb(const void *key1, size_t keysz1,
 }
 
 /* Key "hash" callback for the uidcache and gidcache. */
-static unsigned int uid_hash_cb(const void *key, size_t keysz) {
+static unsigned int uid_hash_cb(unsigned int seed, const void *key,
+    size_t keysz) {
   uid_t u;
   unsigned int res;
 
   memcpy(&u, key, keysz);
   res = (unsigned int) (u << 8);
+  res ^= seed;
 
   return res;
 }
 
-static unsigned int gid_hash_cb(const void *key, size_t keysz) {
+static unsigned int gid_hash_cb(unsigned int seed, const void *key,
+    size_t keysz) {
   gid_t g;
   unsigned int res;
 
   memcpy(&g, key, keysz);
   res = (unsigned int) (g << 8);
+  res ^= seed;
 
   return res;
 }
