@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.27 2012-01-02 23:31:55 castaglia Exp $
+ * $Id: table.c,v 1.28 2012-01-03 00:32:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -134,7 +134,7 @@ static int key_cmp(const void *key1, size_t keysz1, const void *key2,
  *  http://www.perl.com/pub/2002/10/01/hashes.html 
  */
 static unsigned int key_hash(unsigned int seed, const void *key, size_t keysz) {
-  unsigned int i = seed;
+  unsigned int i = 0;
   size_t sz = !keysz ? strlen((const char *) key) : keysz;
 
   while (sz--) {
@@ -150,6 +150,9 @@ static unsigned int key_hash(unsigned int seed, const void *key, size_t keysz) {
 
     i = (i * 33) + c;
   }
+
+  /* Don't forget to add in the random seed data via XOR. */
+  i ^= seed;
 
   return i; 
 }
