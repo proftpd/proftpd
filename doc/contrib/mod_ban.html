@@ -1,4 +1,4 @@
-<!-- $Id: mod_ban.html,v 1.12 2011-02-20 02:21:50 castaglia Exp $ -->
+<!-- $Id: mod_ban.html,v 1.13 2012-01-09 01:33:21 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_ban.html,v $ -->
 
 <html>
@@ -446,6 +446,46 @@ possible for those clients to use the delaying as a Denial of Service attack,
 eventually tying up your available system resources with waiting
 <code>proftpd</code> processes.
 
+<p><a name="BanMaxLoginAttempts">
+<font color=red>Question</font>: I have the following, taken from
+the example config above, configured for <code>mod_ban</code>, but it does not
+appear to be working.  Why not?<br>
+<pre>
+  # If the same client reaches the MaxLoginAttempts limit 2 times
+  # within 10 minutes, automatically add a ban for that client that
+  # will expire after one hour.
+  BanOnEvent MaxLoginAttempts 2/00:10:00 01:00:00
+</pre>
+<font color=blue>Answer</font>: The most common reason is that the
+<code>MaxLoginAttempts</code> directive does not function the way that many
+assume it does.
+
+<p>
+The above <code>BanOnEvent</code> rule says that the same client (<i>i.e.</i>
+source IP address) which reaches the <code>MaxLoginAttempts</code> limit
+2 times within 10 minutes will be banned.  If you test by connecting to
+<code>proftpd</code>, trying a bad password once, disconnecting, then
+connecting again and trying the same bad password again, you will <b>not</b>
+be hitting the <code>MaxLoginAttempts</code> limit.  Remember that the
+<code>MaxLoginAttempts</code> directive configures a limit to the number
+of bad login attempts <i>for the same connection</i>; it does <b>not</b>
+configure limit on the number of bad login attempts across multiple
+connections.
+
+<p>
+The default <code>MaxLoginAttempts</code> value for <code>proftpd</code>
+is 3.  Which means that simply connecting, trying a bad login attempt once,
+then disconnecting, will not trigger the <code>MaxLoginAttempts</code> limit.
+This is why the example configuration given above explicitly configures
+the <code>MaxLoginAttempts</code> limit to be lower:
+<pre>
+  MaxLoginAttempts 1
+</pre>
+in order to make <code>mod_ban</code> behave the way that most administrators
+assume it will.  If you have not explicitly configured
+<code>MaxLoginAttempts</code> lower, then this is probably why your
+<code>BanOnEvent</code> rule is not taking effect as you expect.
+
 <p>
 <font color=red>Question</font>: It looks like the <code>BanTable</code> file
 I configured is untouched:
@@ -492,12 +532,12 @@ Note that it is <b>important</b> to have <i>both</i>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-02-20 02:21:50 $</i><br>
+Last Updated: <i>$Date: 2012-01-09 01:33:21 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2004-2011 TJ Saunders<br>
+&copy; Copyright 2004-2012 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
