@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.297 2011-09-24 19:54:23 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.298 2012-01-13 05:42:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -787,15 +787,10 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
   int ret;
 #endif /* HAVE_SENDFILE */
 
-#ifdef TCP_CORK
-  /* XXX Note: For backward compatibility, we only cork the socket on Linux
-   * here.  In 1.3.5rc1, we should do this unconditionally.
-   */
   if (pr_inet_set_proto_cork(PR_NETIO_FD(session.d->outstrm), 1) < 0) {
     pr_log_pri(PR_LOG_NOTICE, "error corking socket fd %d: %s",
       PR_NETIO_FD(session.d->outstrm), strerror(errno));
   }
-#endif /* TCP_CORK */
 
 #ifdef HAVE_SENDFILE
   ret = transmit_sendfile(data_len, data_offset, &sent_len);
@@ -821,11 +816,9 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
     res = transmit_normal(buf, bufsz);
 
 # else
-#  ifdef TCP_CORK
     if (session.d != NULL) {
       (void) pr_inet_set_proto_cork(PR_NETIO_FD(session.d->outstrm), 0);
     }
-#  endif /* TCP_CORK */
 
     errno = EIO;
     res = -1;
@@ -836,7 +829,6 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
   res = transmit_normal(buf, bufsz);
 #endif /* HAVE_SENDFILE */
 
-#ifdef TCP_CORK
   if (session.d != NULL) {
     /* The session.d struct can become null after transmit_normal() if the
      * client aborts the transfer, thus we need to check for this.
@@ -846,7 +838,6 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
         PR_NETIO_FD(session.d->outstrm), strerror(errno));
     }
   }
-#endif /* TCP_CORK */
 
   return res;
 }

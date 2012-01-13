@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.140 2011-12-12 04:23:33 castaglia Exp $
+ * $Id: inet.c,v 1.141 2012-01-13 05:42:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -713,17 +713,12 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
   }
 #endif /* IPV6_TCLASS */
 
-#ifdef TCP_NOPUSH
-  /* XXX Note: for backward compatibility, we only call set_proto_cork() for
-   * BSD systems.  This condition can be removed in 1.3.5rc1.
-   */
   if (c->listen_fd != -1) {
     if (pr_inet_set_proto_cork(c->listen_fd, nopush) < 0) {
       pr_log_pri(PR_LOG_NOTICE, "error corking listen fd %d: %s", c->listen_fd,
         strerror(errno));
     }
   }
-#endif /* TCP_NOPUSH */
 
   return 0;
 }
