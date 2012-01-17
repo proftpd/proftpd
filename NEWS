@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1386 2011-12-21 02:58:20 castaglia Exp $
+$Id: NEWS,v 1.1387 2012-01-17 00:51:01 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -36,6 +36,8 @@ CVS
 - Bug 3729 - mod_ldap can segfault when LDAPUsers is used with no optional
   filters.
 - Bug 3728 - Build failure in wtmp.c on Gentoo/FreeBSD on sparc.
+- Bug 3734 - DirFakeUser/DirFakeGroup off with name causes SIGSEGV for
+  MLSD/MLST commands.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------
