@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.81 2011-11-11 18:18:34 castaglia Exp $
+# $Id: proftpd.spec,v 1.82 2012-01-20 03:01:35 castaglia Exp $
 
 # Module List:
 #
@@ -217,6 +217,7 @@ Group:          Development/Libraries
 Requires:       proftpd = %{version}-%{release}
 # devel package requires the same devel packages as were build-required
 # for the main package
+Requires:	gcc, libtool
 Requires:       libacl-devel
 Requires:       libcap-devel
 Requires:       pkgconfig
@@ -543,6 +544,9 @@ rm -rf %{_builddir}/%{name}-%{version}
 %{_mandir}/man1/ftpwho.1*
 
 %changelog
+* Tue Jan 10 2012 Paul Howarth <paul@city-fan.org>
+- devel package requires gcc and libtool (for prxs)
+
 * Tue Oct  4 2011 Paul Howarth <paul@city-fan.org>
 - Upstream RPM package refactored to support Red Hat/Fedora based distributions
   from EL-5 onwards:
