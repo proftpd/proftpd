@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_dso -- support for loading/unloading modules at run-time
  *
- * Copyright (c) 2004-2011 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2004-2012 TJ Saunders <tj@castaglia.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.23 2011-12-21 05:17:01 castaglia Exp $
+ * $Id: mod_dso.c,v 1.24 2012-01-20 02:04:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -76,6 +76,7 @@ static int dso_load_module(char *name) {
   module *m;
   lt_ptr mh = NULL;
   lt_dladvise advise;
+  lt_dlinfo *info = NULL;
 
   if (name == NULL) {
     errno = EINVAL;
@@ -158,6 +159,18 @@ static int dso_load_module(char *name) {
   }
 
   lt_dladvise_destroy(&advise);
+
+  info = lt_dlgetinfo(mh);
+  if (info != NULL) {
+    struct stat st;
+
+    res = stat(info->filename, &st);
+    if (res == 0) {
+      pr_log_debug(DEBUG7, MOD_DSO_VERSION
+        ": loaded module '%s' (from '%s', last modified on %s)", info->name,
+        info->filename, pr_strtime(st.st_mtime));
+    }
+  }
 
   /* Tease name of the module structure out of the given name:
    *  <module>.<ext> --> <module>_module
