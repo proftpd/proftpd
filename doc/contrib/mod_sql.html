@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.27 2011-09-05 20:07:15 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.28 2012-01-23 19:47:12 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -695,6 +695,13 @@ would be appended to every group-related query as the string:
 </pre>
 
 <p>
+<b>Note</b> that if custom group <code>SQLNamedQuery</code> are configured,
+those custom queries will be used <i>as is</i>; any configured
+<code>SQLGroupWhereClause</code> will <b>not</b> be appended.  Custom queries
+can be of any format/syntax, and thus simply appending a
+<code>SQLGroupWhereClause</code> to a custom query may be syntactically invalid.
+
+<p>
 As of ProFTPD 1.3.1rc2, the configured <code>SQLGroupWhereClause</code>
 parameter can use the same set of variables as supported by the
 <a href="#SQLNamedQuery"><code>SQLNamedQuery</code></a> directive.
@@ -1363,6 +1370,13 @@ would be appended to every user-related query as the string:
 </pre>
 
 <p>
+<b>Note</b> that if custom user <code>SQLNamedQuery</code> are configured,
+those custom queries will be used <i>as is</i>; any configured
+<code>SQLUserWhereClause</code> will <b>not</b> be appended.  Custom queries
+can be of any format/syntax, and thus simply appending a
+<code>SQLUserWhereClause</code> to a custom query may be syntactically invalid.
+
+<p>
 As of ProFTPD 1.3.1rc2, the configured <code>SQLUserWhereClause</code>
 parameter can use the same set of variables as supported by the
 <a href="#SQLNamedQuery"><code>SQLNamedQuery</code></a> directive.
@@ -1403,12 +1417,12 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-09-05 20:07:15 $</i><br>
+Last Updated: <i>$Date: 2012-01-23 19:47:12 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2011 The ProFTPD Project<br>
+&copy; Copyright 2000-2012 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 
