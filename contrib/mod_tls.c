@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2011 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2012 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -3412,7 +3412,10 @@ static void tls_end_sess(SSL *ssl, int strms, int flags) {
       }
     }
 
-    if (res == 0) {
+    /* If SSL_shutdown() returned -1 here, an error occurred during the
+     * shutdown.
+     */
+    if (res < 0) {
       long err_code;
 
       err_code = SSL_get_error(ssl, res);
