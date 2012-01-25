@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.417 2011-12-06 19:39:04 castaglia Exp $
+ * $Id: mod_core.c,v 1.418 2012-01-25 16:29:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -762,29 +762,32 @@ MODRET set_sysloglevel(cmd_rec *cmd) {
 }
 
 MODRET set_serverident(cmd_rec *cmd) {
-  int bool = -1;
+  int ident_on = -1;
   config_rec *c = NULL;
 
-  if (cmd->argc < 2 || cmd->argc > 3)
+  if (cmd->argc < 2 ||
+      cmd->argc > 3) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  ident_on = get_boolean(cmd, 1);
+  if (ident_on == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
-  if (bool && cmd->argc == 3) {
+  if (ident_on == TRUE &&
+      cmd->argc == 3) {
     c = add_config_param(cmd->argv[0], 2, NULL, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-    *((unsigned char *) c->argv[0]) = !bool;
+    *((unsigned char *) c->argv[0]) = ident_on;
     c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
 
   } else {
-
     c = add_config_param(cmd->argv[0], 1, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-    *((unsigned char *) c->argv[0]) = !bool;
+    *((unsigned char *) c->argv[0]) = ident_on;
   }
 
   return PR_HANDLED(cmd);

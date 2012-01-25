@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.443 2012-01-25 07:20:42 castaglia Exp $
+ * $Id: main.c,v 1.444 2012-01-25 16:29:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -845,7 +845,7 @@ static void send_session_banner(server_rec *server) {
 
   c = find_config(server->conf, CONF_PARAM, "ServerIdent", FALSE);
   if (c == NULL ||
-      *((unsigned char *) c->argv[0]) == FALSE) {
+      *((unsigned char *) c->argv[0]) == TRUE) {
     unsigned char *defer_welcome = get_param_ptr(main_server->conf,
       "DeferWelcome", FALSE);
 

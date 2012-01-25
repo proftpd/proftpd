@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.63 2012-01-25 06:25:30 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.64 2012-01-25 16:29:00 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1806,7 +1806,7 @@ static int sftp_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "ServerIdent", FALSE);
   if (c) {
-    if (*((unsigned char *) c->argv[0]) == TRUE) {
+    if (*((unsigned char *) c->argv[0]) == FALSE) {
       /* The admin configured "ServerIdent off".  Set the version string to
        * just "mod_sftp", and that's it, no version.
        */
