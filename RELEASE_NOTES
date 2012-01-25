@@ -31,6 +31,9 @@ ChangeLog files.
     AllowFilter, DenyFilter
       case-insensitive (from Bug#3592)
 
+    ServerIdent
+      Now applicable to mod_sftp (Bug#3739)
+
     SFTPDigests
       new SHA256/512 digests
 
@@ -47,4 +50,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2011-12-11 02:37:24 $
+Last Updated: $Date: 2012-01-25 06:27:19 $
