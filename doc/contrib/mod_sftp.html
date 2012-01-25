@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.58 2011-12-09 00:02:51 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.59 2012-01-25 16:11:37 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -1875,16 +1875,39 @@ If you see the above message, it is not a <i>requirement</i> that you recompile
 OpenSSL libraries.  However, the version discrepancy <em>is</em> a possible
 source of trouble.  
 
+<p><a name="SFTPVersionId">
+<font color=red>Question</font>: When a client first connects to
+<code>mod_sftp</code> and starts the SSH handshake, the client sees that
+<code>mod_sftp</code> provides an SSH version identifier like "SSH-2.0-mod_sftp/0.9.8".  Is there any way I can tell <code>mod_sftp</code> to hide/change
+that version?<br>
+<font color=blue>Answer</font>: Yes.  As of <code>proftpd-1.3.5rc1</code>,
+the <code>mod_sftp</code> module will honor the <a href="../modules/mod_core.html#ServerIdent"><code>ServerIdent</code></a> directive.
+
+<p>
+For example, to see just "SSH-2.0-mod_sftp", without any <code>mod_sftp</code>
+version suffix, use the following within your <code>mod_sftp</code> <code>&lt;VirtualHost&gt;</code>:
+<pre>
+  # Tell mod_sftp to not reveal its module version in the SSH version
+  # identification
+  ServerIdent off
+</pre>
+You can also use <code>ServerIdent</code> to make <code>mod_sftp</code> say
+it is something else completely, like this:
+<pre>
+  # Tell mod_sftp to advertise itself as an OpenSSH server
+  ServerIdent on "OpenSSH_5.6p1"
+</pre>
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-12-09 00:02:51 $</i><br>
+Last Updated: <i>$Date: 2012-01-25 16:11:37 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2008-2011 TJ Saunders<br>
+&copy; Copyright 2008-2012 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
