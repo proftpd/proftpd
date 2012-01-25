@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.62 2011-11-23 18:04:38 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.63 2012-01-25 06:25:30 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -57,6 +57,7 @@ unsigned int sftp_services = SFTP_SERVICE_DEFAULT;
 
 static int sftp_engine = 0;
 static const char *sftp_client_version = NULL;
+static const char *sftp_server_version = SFTP_ID_DEFAULT_STRING;
 
 static int sftp_have_authenticated(cmd_rec *cmd) {
   return (sftp_sess_state & SFTP_SESS_STATE_HAVE_AUTH);
@@ -204,7 +205,7 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
       NULL);
   }
 
-  sftp_kex_init(sftp_client_version, SFTP_ID_STRING);
+  sftp_kex_init(sftp_client_version, sftp_server_version);
   sftp_service_init();
   sftp_auth_init();
   sftp_channel_init();
@@ -1800,6 +1801,28 @@ static int sftp_sess_init(void) {
     if (sftp_fxp_set_displaylogin(path) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error using DisplayLogin '%s': %s", path, strerror(errno));
+    }
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "ServerIdent", FALSE);
+  if (c) {
+    if (*((unsigned char *) c->argv[0]) == TRUE) {
+      /* The admin configured "ServerIdent off".  Set the version string to
+       * just "mod_sftp", and that's it, no version.
+       */
+      sftp_server_version = pstrcat(sftp_pool, SFTP_ID_PREFIX, "mod_sftp",
+        NULL);
+      sftp_ssh2_packet_set_version(sftp_server_version);
+
+    } else {
+      /* The admin configured "ServerIdent on", and possibly some custom
+       * string.
+       */
+      if (c->argc > 1) {
+        sftp_server_version = pstrcat(sftp_pool, SFTP_ID_PREFIX, c->argv[1],
+          NULL);
+        sftp_ssh2_packet_set_version(sftp_server_version);
+      }
     }
   }
 

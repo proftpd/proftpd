@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp packet IO
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.33 2011-12-29 04:34:55 castaglia Exp $
+ * $Id: packet.c,v 1.34 2012-01-25 06:25:30 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -74,7 +74,8 @@ static off_t rekey_size = 0;
 static int poll_timeout = -1;
 static time_t last_recvd, last_sent;
 
-static const char *version_id = SFTP_ID_STRING "\r\n";
+static const char *server_version = SFTP_ID_DEFAULT_STRING;
+static const char *version_id = SFTP_ID_DEFAULT_STRING "\r\n";
 static int sent_version_id = FALSE;
 
 static void is_client_alive(void);
@@ -1306,7 +1307,12 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
   memset(packet_iov, 0, sizeof(packet_iov));
   packet_niov = 0;
 
-  sent_version_id = TRUE;
+  if (sent_version_id == FALSE) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "sent server version '%s'", server_version);
+    sent_version_id = TRUE;
+  }
+
   time(&last_sent);
 
   packet_server_seqno++;
@@ -1580,8 +1586,21 @@ int sftp_ssh2_packet_send_version(void) {
 
     sent_version_id = TRUE;
     session.total_raw_out += res;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "sent server version '%s'", server_version);
   }
 
   return 0;
+}
+
+int sftp_ssh2_packet_set_version(const char *version) {
+  if (server_version == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  server_version = version;
+  version_id = pstrcat(sftp_pool, version, "\r\n", NULL);
 }
 
