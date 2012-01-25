@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2011 The ProFTPD Project team
+dnl Copyright (c) 2001-2012 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -2072,6 +2072,13 @@ if test x"$enable_ncurses" != xno ; then
     AC_DEFINE(PR_USE_NCURSES, 1, [Define if using ncurses support])
   fi
 fi
+
+dnl Check for the libtinfo library, which contains the halfdelay() curses
+dnl function on some systems (e.g. OpenSuSE); see Bug#3718.
+AC_CHECK_LIB(tinfo, halfdelay,
+  [ UTILS_LIBS="$UTILS_LIBS -ltinfo"
+    AC_DEFINE(HAVE_LIBTINFO, 1, [Define if you have libtinfo])
+  ])
 
 if test x"$enable_nonblocking_log_open" != xno; then
   AC_DEFINE(PR_USE_NONBLOCKING_LOG_OPEN, 1, [Define if using nonblocking open of log files])
