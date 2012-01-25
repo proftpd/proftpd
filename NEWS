@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1389 2012-01-25 06:46:13 castaglia Exp $
+$Id: NEWS,v 1.1390 2012-01-25 07:03:23 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -42,6 +42,7 @@ CVS
   SSH version identifier can now be configured for mod_sftp via the
   ServerIdent directive.
 - Bug 3718 - ftptop fails to build on OpenSUSE.
+- Bug 3699 - ProFTPD crash on start up on Mac OSX Lion with NLS enabled.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

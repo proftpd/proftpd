@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-/* $Id: pr-syslog.c,v 1.25 2011-11-17 23:40:28 castaglia Exp $
+/* $Id: pr-syslog.c,v 1.26 2012-01-25 07:03:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -291,7 +291,7 @@ void pr_syslog(int sockfd, int pri, const char *fmt, ...) {
 
 #ifndef HAVE_DEV_LOG_STREAMS
 /* AF_UNIX address of local logger */
-static struct sockaddr syslog_addr;
+static struct sockaddr_un syslog_addr;
 #endif
 
 int pr_openlog(const char *ident, int opts, int facility) {
@@ -311,33 +311,11 @@ int pr_openlog(const char *ident, int opts, int facility) {
     socklen_t addrlen = 0;
 
     if (sockfd == -1) {
-      syslog_addr.sa_family = AF_UNIX;
+      syslog_addr.sun_family = AF_UNIX;
 
-# if defined(DARWIN8) || defined(DARWIN9) || defined(DARWIN10) || \
-     defined(DARWIN11)
-      /* On Mac OSX, the sockaddr.sa_data field is 14 bytes.  It is possible
-       * that PR_PATH_LOG exceeds that field length (which would truncate
-       * the field, and ensure that proftpd cannot log via syslog).
-       *
-       * So, if we're on a Mac OSX, check the sa_data field size against
-       * PR_PATH_LOG.  The man pages for Mac OSX say that sa_data can actually
-       * hold more data than 14 bytes, so...
-       */
-      if (sizeof(syslog_addr.sa_data) >= (strlen(PR_PATH_LOG) + 1)) {
-        sstrncpy(syslog_addr.sa_data, PR_PATH_LOG, sizeof(syslog_addr.sa_data));
-        syslog_addr.sa_data[sizeof(syslog_addr.sa_data)-1] = '\0';
-        addrlen = sizeof(syslog_addr);
-
-      } else {
-        sstrncpy(syslog_addr.sa_data, PR_PATH_LOG, strlen(PR_PATH_LOG) + 1);
-        addrlen = sizeof(syslog_addr) +
-          ((strlen(PR_PATH_LOG) + 1) - sizeof(syslog_addr.sa_data));
-      }
-# else
-      sstrncpy(syslog_addr.sa_data, PR_PATH_LOG, sizeof(syslog_addr.sa_data));
-      syslog_addr.sa_data[sizeof(syslog_addr.sa_data)-1] = '\0';
+      sstrncpy(syslog_addr.sun_path, PR_PATH_LOG, sizeof(syslog_addr.sun_path));
+      syslog_addr.sun_path[sizeof(syslog_addr.sun_path)-1] = '\0';
       addrlen = sizeof(syslog_addr);
-# endif /* !Mac OSX */
 
       if (log_opts & LOG_NDELAY) {
         sockfd = socket(AF_UNIX, sock_type, 0);
@@ -352,7 +330,7 @@ int pr_openlog(const char *ident, int opts, int facility) {
     if (sockfd != -1) {
       int old_errno = errno;
 
-      if (connect(sockfd, &syslog_addr, addrlen) == -1) {
+      if (connect(sockfd, (struct sockaddr *) &syslog_addr, addrlen) == -1) {
         int saved_errno = errno;
         close(sockfd);
         sockfd = -1;
