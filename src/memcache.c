@@ -23,7 +23,7 @@
  */
 
 /* Memcache management
- * $Id: memcache.c,v 1.24 2012-01-03 00:30:45 castaglia Exp $
+ * $Id: memcache.c,v 1.25 2012-01-26 17:55:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -575,15 +575,13 @@ static int modptr_cmp_cb(const void *k1, size_t ksz1, const void *k2,
   return (((module *) k1) == ((module *) k2) ? 0 : 1);
 }
 
-static unsigned int modptr_hash_cb(unsigned int seed, const void *k,
-    size_t ksz) {
+static unsigned int modptr_hash_cb(const void *k, size_t ksz) {
   unsigned int key = 0;
 
   /* XXX Yes, this is a bit hacky for "hashing" a pointer value. */
 
   memcpy(&key, k, ksz);
   key ^= (key >> 16);
-  key ^= seed;
 
   return key;
 }

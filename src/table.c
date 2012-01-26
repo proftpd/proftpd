@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.28 2012-01-03 00:32:02 castaglia Exp $
+ * $Id: table.c,v 1.29 2012-01-26 17:55:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -85,7 +85,7 @@ struct table_rec {
 
   /* Table callbacks. */
   int (*keycmp)(const void *, size_t, const void *, size_t);
-  unsigned int (*keyhash)(unsigned int, const void *, size_t);
+  unsigned int (*keyhash)(const void *, size_t);
   void (*entinsert)(pr_table_entry_t **, pr_table_entry_t *);
   void (*entremove)(pr_table_entry_t **, pr_table_entry_t *);
 };
@@ -133,7 +133,7 @@ static int key_cmp(const void *key1, size_t keysz1, const void *key2,
  *
  *  http://www.perl.com/pub/2002/10/01/hashes.html 
  */
-static unsigned int key_hash(unsigned int seed, const void *key, size_t keysz) {
+static unsigned int key_hash(const void *key, size_t keysz) {
   unsigned int i = 0;
   size_t sz = !keysz ? strlen((const char *) key) : keysz;
 
@@ -150,9 +150,6 @@ static unsigned int key_hash(unsigned int seed, const void *key, size_t keysz) {
 
     i = (i * 33) + c;
   }
-
-  /* Don't forget to add in the random seed data via XOR. */
-  i ^= seed;
 
   return i; 
 }
@@ -409,7 +406,10 @@ int pr_table_kadd(pr_table_t *tab, const void *key_data, size_t key_datasz,
     return -1;
   }
 
-  h = tab->keyhash(tab->seed, key_data, key_datasz);
+  h = tab->keyhash(key_data, key_datasz);
+
+  /* Don't forget to add in the random seed data via XOR. */
+  h ^= tab->seed;
 
   /* The index of the chain to use is the hash value modulo the number
    * of chains.
@@ -502,7 +502,11 @@ int pr_table_kexists(pr_table_t *tab, const void *key_data, size_t key_datasz) {
       return tab->cache_ent->key->nents;
   }
 
-  h = tab->keyhash(tab->seed, key_data, key_datasz);
+  h = tab->keyhash(key_data, key_datasz);
+
+  /* Don't forget to add in the random seed data via XOR. */
+  h ^= tab->seed;
+
   idx = h % tab->nchains;
 
   head = tab->chains[idx];
@@ -561,7 +565,10 @@ void *pr_table_kget(pr_table_t *tab, const void *key_data, size_t key_datasz,
     return NULL;
   }
 
-  h = tab->keyhash(tab->seed, key_data, key_datasz);
+  h = tab->keyhash(key_data, key_datasz);
+
+  /* Don't forget to add in the random seed data via XOR. */
+  h ^= tab->seed;
 
   /* Has the caller already looked up this same key previously?
    * If so, continue the lookup where we left off.  In this case,
@@ -654,7 +661,11 @@ void *pr_table_kremove(pr_table_t *tab, const void *key_data,
     return value_data;
   }
 
-  h = tab->keyhash(tab->seed, key_data, key_datasz);
+  h = tab->keyhash(key_data, key_datasz);
+
+  /* Don't forget to add in the random seed data via XOR. */
+  h ^= tab->seed;
+
   idx = h % tab->nchains;
 
   head = tab->chains[idx];
@@ -712,7 +723,10 @@ int pr_table_kset(pr_table_t *tab, const void *key_data, size_t key_datasz,
     return -1;
   }
 
-  h = tab->keyhash(tab->seed, key_data, key_datasz);
+  h = tab->keyhash(key_data, key_datasz);
+
+  /* Don't forget to add in the random seed data via XOR. */
+  h ^= tab->seed;
 
   /* Has the caller already looked up this same key previously?
    * If so, continue the lookup where we left off.  In this case,
@@ -1055,8 +1069,8 @@ int pr_table_ctl(pr_table_t *tab, int cmd, void *arg) {
   switch (cmd) {
     case PR_TABLE_CTL_SET_KEY_HASH:
       tab->keyhash = arg ?
-        (unsigned int (*)(unsigned int, const void *, size_t)) arg :
-        (unsigned int (*)(unsigned int, const void *, size_t)) key_hash;
+        (unsigned int (*)(const void *, size_t)) arg :
+        (unsigned int (*)(const void *, size_t)) key_hash;
       return 0;
 
     case PR_TABLE_CTL_SET_FLAGS:

@@ -23,7 +23,7 @@
  */
 
 /* Table management
- * $Id: table.h,v 1.11 2012-01-02 23:21:49 castaglia Exp $
+ * $Id: table.h,v 1.12 2012-01-26 17:55:07 castaglia Exp $
  */
 
 #ifndef PR_TABLE_H
@@ -201,7 +201,7 @@ int pr_table_set(pr_table_t *tab, const char *key_data, void *value_data,
  *    The arg parameter must be a pointer to a function with the following
  *    signature:
  *
- *      unsigned int (*func)(unsigned int seed, const void *key, size_t keysz)
+ *      unsigned int (*func)(const void *key, size_t keysz)
  *
  *    If arg is NULL, the default hash function will be used.
  *

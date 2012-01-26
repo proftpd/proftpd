@@ -23,7 +23,7 @@
  */
 
 /* Table API tests
- * $Id: table.c,v 1.5 2012-01-02 23:21:49 castaglia Exp $
+ * $Id: table.c,v 1.6 2012-01-26 17:55:07 castaglia Exp $
  */
 
 #include "tests.h"
@@ -313,8 +313,7 @@ START_TEST (table_get_test) {
 }
 END_TEST
 
-static unsigned int cache_key_hash(unsigned int seed,
-    const void *key, size_t keysz) {
+static unsigned int cache_key_hash(const void *key, size_t keysz) {
   return 1;
 }
 

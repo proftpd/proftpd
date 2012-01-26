@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.89 2012-01-03 00:30:45 castaglia Exp $
+ * $Id: auth.c,v 1.90 2012-01-26 17:55:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -63,26 +63,22 @@ static int gid_keycmp_cb(const void *key1, size_t keysz1,
 }
 
 /* Key "hash" callback for the uidcache and gidcache. */
-static unsigned int uid_hash_cb(unsigned int seed, const void *key,
-    size_t keysz) {
+static unsigned int uid_hash_cb(const void *key, size_t keysz) {
   uid_t u;
   unsigned int res;
 
   memcpy(&u, key, keysz);
   res = (unsigned int) (u << 8);
-  res ^= seed;
 
   return res;
 }
 
-static unsigned int gid_hash_cb(unsigned int seed, const void *key,
-    size_t keysz) {
+static unsigned int gid_hash_cb(const void *key, size_t keysz) {
   gid_t g;
   unsigned int res;
 
   memcpy(&g, key, keysz);
   res = (unsigned int) (g << 8);
-  res ^= seed;
 
   return res;
 }
