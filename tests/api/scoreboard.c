@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2011 The ProFTPD Project team
+ * Copyright (c) 2008-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Scoreboard API tests
- * $Id: scoreboard.c,v 1.6 2011-09-23 16:54:03 castaglia Exp $
+ * $Id: scoreboard.c,v 1.7 2012-01-27 01:16:34 castaglia Exp $
  */
 
 #include "tests.h"
@@ -217,7 +217,7 @@ START_TEST (scoreboard_open_close_test) {
   }
 
   /* Now that we have a scoreboard, try opening it again using O_RDONLY. */
-  pr_close_scoreboard();
+  pr_close_scoreboard(FALSE);
 
   res = pr_open_scoreboard(O_RDONLY);
   if (res == 0) {
