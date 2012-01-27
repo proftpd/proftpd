@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.73 2011-08-02 22:09:57 castaglia Exp $
+ * $Id: scoreboard.c,v 1.74 2012-01-27 01:02:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -93,17 +93,17 @@ static int read_scoreboard_header(pr_scoreboard_header_t *sch) {
    */
  
   if (sch->sch_magic != PR_SCOREBOARD_MAGIC) {
-    pr_close_scoreboard();
+    pr_close_scoreboard(FALSE);
     return PR_SCORE_ERR_BAD_MAGIC;
   }
 
   if (sch->sch_version < PR_SCOREBOARD_VERSION) {
-    pr_close_scoreboard();
+    pr_close_scoreboard(FALSE);
     return PR_SCORE_ERR_OLDER_VERSION;
   }
 
   if (sch->sch_version > PR_SCOREBOARD_VERSION) {
-    pr_close_scoreboard();
+    pr_close_scoreboard(FALSE);
     return PR_SCORE_ERR_NEWER_VERSION;
   }
 
@@ -442,7 +442,7 @@ static int write_entry(int fd) {
 
 /* Public routines */
 
-int pr_close_scoreboard(void) {
+int pr_close_scoreboard(int keep_mutex) {
   if (scoreboard_fd == -1)
     return 0;
 
@@ -460,19 +460,25 @@ int pr_close_scoreboard(void) {
     break;
   }
 
-  while (close(scoreboard_mutex_fd) < 0) {
-    if (errno == EINTR) {
-      pr_signals_handle();
-      continue;
+  scoreboard_fd = -1;
+
+  if (!keep_mutex) {
+    pr_trace_msg(trace_channel, 4, "closing scoreboard mutex fd %d",
+      scoreboard_mutex_fd);
+
+    while (close(scoreboard_mutex_fd) < 0) {
+      if (errno == EINTR) {
+        pr_signals_handle();
+        continue;
+      }
+
+      break;
     }
 
-    break;
+    scoreboard_mutex_fd = -1;
   }
 
-  scoreboard_fd = -1;
-  scoreboard_mutex_fd = -1;
   scoreboard_opener = 0;
-
   return 0;
 }
 
@@ -609,26 +615,45 @@ int pr_open_scoreboard(int flags) {
    * (at the cost of having another open fd for the lifetime of the session
    * process).
    */
-  scoreboard_mutex_fd = open(scoreboard_mutex, flags|O_CREAT,
-    PR_SCOREBOARD_MODE);
-  while (scoreboard_mutex_fd < 0) {
-    int xerrno = errno;
+  if (scoreboard_mutex_fd == -1) {
+    scoreboard_mutex_fd = open(scoreboard_mutex, flags|O_CREAT,
+      PR_SCOREBOARD_MODE);
+    while (scoreboard_mutex_fd < 0) {
+      int xerrno = errno;
 
-    if (errno == EINTR) {
-      pr_signals_handle();
-      scoreboard_mutex_fd = open(scoreboard_mutex, flags|O_CREAT,
-        PR_SCOREBOARD_MODE);
-      continue;
+      if (errno == EINTR) {
+        pr_signals_handle();
+        scoreboard_mutex_fd = open(scoreboard_mutex, flags|O_CREAT,
+          PR_SCOREBOARD_MODE);
+        continue;
+      }
+
+      close(scoreboard_fd);
+      scoreboard_fd = -1;
+
+      pr_trace_msg(trace_channel, 9, "error opening ScoreboardMutex '%s': %s",
+        scoreboard_mutex, strerror(xerrno));
+
+      errno = xerrno;
+      return -1;
     }
 
-    close(scoreboard_fd);
-    scoreboard_fd = -1;
+    /* Find a usable fd for the just-opened mutex fd. */
+    if (scoreboard_mutex_fd <= STDERR_FILENO) {
+      res = pr_fs_get_usable_fd(scoreboard_mutex_fd);
+      if (res < 0) {
+        pr_log_debug(DEBUG0, "warning: unable to find good fd for "
+          "ScoreboardMutex fd %d: %s", scoreboard_mutex_fd, strerror(errno));
 
-    pr_trace_msg(trace_channel, 9, "error opening ScoreboardMutex '%s': %s",
-      scoreboard_mutex, strerror(xerrno));
+      } else {
+        close(scoreboard_mutex_fd);
+        scoreboard_mutex_fd = res;
+      }
+    }
 
-    errno = xerrno;
-    return -1;
+  } else {
+    pr_trace_msg(trace_channel, 9, "using already-open scoreboard mutex fd %d",
+      scoreboard_mutex_fd);
   }
 
   scoreboard_opener = getpid();

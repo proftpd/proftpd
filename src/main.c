@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.444 2012-01-25 16:29:00 castaglia Exp $
+ * $Id: main.c,v 1.445 2012-01-27 01:02:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2624,7 +2624,8 @@ static void inetd_main(void) {
 
   /* Make sure the scoreboard file exists. */
   PRIVS_ROOT
-  if ((res = pr_open_scoreboard(O_RDWR)) < 0) {
+  res = pr_open_scoreboard(O_RDWR);
+  if (res < 0) {
     PRIVS_RELINQUISH
 
     switch (res) {
@@ -2652,7 +2653,7 @@ static void inetd_main(void) {
     }
   }
   PRIVS_RELINQUISH
-  pr_close_scoreboard();
+  pr_close_scoreboard(FALSE);
 
   pr_event_generate("core.startup", NULL);
 
@@ -2683,7 +2684,8 @@ static void standalone_main(void) {
 
   PRIVS_ROOT
   pr_delete_scoreboard();
-  if ((res = pr_open_scoreboard(O_RDWR)) < 0) {
+  res = pr_open_scoreboard(O_RDWR);
+  if (res < 0) {
     PRIVS_RELINQUISH
 
     switch (res) {
@@ -2708,7 +2710,7 @@ static void standalone_main(void) {
     }
   }
   PRIVS_RELINQUISH
-  pr_close_scoreboard();
+  pr_close_scoreboard(TRUE);
 
   pr_event_generate("core.startup", NULL);
 
