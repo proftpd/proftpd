@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.137 2011-12-11 02:33:14 castaglia Exp $
+ * $Id: fxp.c,v 1.138 2012-01-31 00:23:10 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2591,6 +2591,11 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
     fxp->packet_len = sftp_msg_read_int(fxp->pool, &buf, &buflen);
     fxp->state |= FXP_PACKET_HAVE_PACKET_LEN;
 
+    pr_trace_msg(trace_channel, 19,
+      "read SFTP request packet len %lu from SSH2 packet buffer "
+      "(%lu bytes remaining in buffer)", (unsigned long) fxp->packet_len,
+      (unsigned long) buflen);
+
     if (buflen == 0) {
       fxp_packet_set_packet(fxp);
       fxp_packet_clear_cache();
@@ -2609,6 +2614,11 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
     fxp->request_type = sftp_msg_read_byte(fxp->pool, &buf, &buflen);
     fxp->state |= FXP_PACKET_HAVE_REQUEST_TYPE;
 
+    pr_trace_msg(trace_channel, 19,
+      "read SFTP request type %d from SSH2 packet buffer "
+      "(%lu bytes remaining in buffer)", (int) fxp->request_type,
+      (unsigned long) buflen);
+
     if (buflen == 0) {
       fxp_packet_set_packet(fxp);
       fxp_packet_clear_cache();
@@ -2622,6 +2632,11 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
     /* And take back one byte for whose request_type this is... */
     fxp->payload_sz = fxp->packet_len - 1;
     fxp->state |= FXP_PACKET_HAVE_PAYLOAD_SIZE;
+
+    pr_trace_msg(trace_channel, 19,
+      "read SFTP request payload size %lu from SSH2 packet buffer "
+      "(%lu bytes remaining in buffer)", (unsigned long) fxp->payload_sz,
+      (unsigned long) buflen);
   }
 
   if (!(fxp->state & FXP_PACKET_HAVE_REQUEST_ID)) {
@@ -2634,6 +2649,11 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
       /* The INIT and VERSION requests do not use request IDs. */
       fxp->request_id = sftp_msg_read_int(fxp->pool, &buf, &buflen);
       fxp->payload_sz -= sizeof(uint32_t);
+
+      pr_trace_msg(trace_channel, 19,
+        "read SFTP request ID %lu from SSH2 packet buffer "
+        "(%lu bytes remaining in buffer)", (unsigned long) fxp->request_id,
+        (unsigned long) buflen);
     }
 
     fxp->state |= FXP_PACKET_HAVE_REQUEST_ID;
@@ -2663,6 +2683,11 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
     } else if (fxp->payload_sz > buflen) {
 
       if (fxp->payload == NULL) {
+        pr_trace_msg(trace_channel, 19,
+          "filling SFTP request payload (%lu bytes) from SSH2 packet buffer "
+          "(%lu bytes in buffer), using pool %p",
+          (unsigned long) fxp->payload_sz, (unsigned long) buflen, fxp->pool);
+
         /* We don't have any existing payload data; copy the entire buffer
          * into the payload buffer.
          */
