@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.191 2011-11-21 21:58:09 castaglia Exp $
+ * $Id: mod_ls.c,v 1.192 2012-02-01 22:03:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -81,6 +81,7 @@ static struct list_limit_rec list_nfiles;
 
 /* ls options */
 static int
+    opt_1 = 0,
     opt_a = 0,
     opt_A = 0,
     opt_B = 0,
@@ -522,21 +523,24 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         break;
     }
 
-    if (list_times_gmt)
+    if (list_times_gmt) {
       t = pr_gmtime(p, (time_t *) &sort_time);
-    else
+
+    } else {
       t = pr_localtime(p, (time_t *) &sort_time);
+    }
 
     if (opt_F) {
-      if (S_ISLNK(st.st_mode))
+      if (S_ISLNK(st.st_mode)) {
         suffix[0] = '@';
 
-      else if (S_ISDIR(st.st_mode)) {
+      } else if (S_ISDIR(st.st_mode)) {
         suffix[0] = '/';
         rval = 1;
 
-      } else if (st.st_mode & 0111)
+      } else if (st.st_mode & 0111) {
         suffix[0] = '*';
+      }
     }
 
     if (opt_l) {
@@ -605,32 +609,38 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         m[2] = (mode & S_IWUSR) ? 'w' : '-';
         m[1] = (mode & S_IRUSR) ? 'r' : '-';
 
-        if (ls_curtime - sort_time > 180 * 24 * 60 * 60)
+        if (ls_curtime - sort_time > 180 * 24 * 60 * 60) {
           snprintf(timeline, sizeof(timeline), "%5d", t->tm_year+1900);
 
-        else
+        } else {
           snprintf(timeline, sizeof(timeline), "%02d:%02d", t->tm_hour,
             t->tm_min);
+        }
 
         ls_fmt_filesize(s, sizeof(s), st.st_size);
 
-        if (!opt_n) {
-
-          /* Format nameline using user/group names. */
-          snprintf(nameline, sizeof(nameline)-1,
-            "%s %3d %-8s %-8s %s %s %2d %s %s", m, (int) st.st_nlink,
-            MAP_UID(st.st_uid), MAP_GID(st.st_gid), s,
-            months[t->tm_mon], t->tm_mday, timeline,
+        if (opt_1) {
+          /* One file per line, with no info other than the file name.  Easy. */
+          snprintf(nameline, sizeof(nameline)-1, "%s",
             pr_fs_encode_path(cmd->tmp_pool, display_name));
 
         } else {
+          if (!opt_n) {
+            /* Format nameline using user/group names. */
+            snprintf(nameline, sizeof(nameline)-1,
+              "%s %3d %-8s %-8s %s %s %2d %s %s", m, (int) st.st_nlink,
+              MAP_UID(st.st_uid), MAP_GID(st.st_gid), s,
+              months[t->tm_mon], t->tm_mday, timeline,
+              pr_fs_encode_path(cmd->tmp_pool, display_name));
 
-          /* Format nameline using user/group IDs. */
-          snprintf(nameline, sizeof(nameline)-1,
-            "%s %3d %-8u %-8u %s %s %2d %s %s", m, (int) st.st_nlink,
-            (unsigned) st.st_uid, (unsigned) st.st_gid, s,
-            months[t->tm_mon], t->tm_mday, timeline,
-            pr_fs_encode_path(cmd->tmp_pool, name));
+          } else {
+            /* Format nameline using user/group IDs. */
+            snprintf(nameline, sizeof(nameline)-1,
+              "%s %3d %-8u %-8u %s %s %2d %s %s", m, (int) st.st_nlink,
+              (unsigned) st.st_uid, (unsigned) st.st_gid, s,
+              months[t->tm_mon], t->tm_mday, timeline,
+              pr_fs_encode_path(cmd->tmp_pool, name));
+          }
         }
 
         nameline[sizeof(nameline)-1] = '\0';
@@ -640,40 +650,45 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
 
           suffix[0] = '\0';
           if (opt_F && pr_fsio_stat(name, &st) == 0) {
-            if (S_ISLNK(st.st_mode))
+            if (S_ISLNK(st.st_mode)) {
               suffix[0] = '@';
 
-            else if (S_ISDIR(st.st_mode))
+            } else if (S_ISDIR(st.st_mode)) {
               suffix[0] = '/';
 
-            else if (st.st_mode & 0111)
+            } else if (st.st_mode & 0111) {
               suffix[0] = '*';
+            }
           }
 
           if (!opt_L && list_show_symlinks) {
-            if (sizeof(nameline) - strlen(nameline) > 4)
+            if (sizeof(nameline) - strlen(nameline) > 4) {
               snprintf(buf, sizeof(nameline) - strlen(nameline) - 4,
                 " -> %s", l);
-            else
+            } else {
               pr_log_pri(PR_LOG_NOTICE, "notice: symlink '%s' yields an "
                 "excessive string, ignoring", name);
+            }
           }
 
           nameline[sizeof(nameline)-1] = '\0';
         }
 
-        if (opt_STAT)
+        if (opt_STAT) {
           pr_response_add(R_211, "%s%s", nameline, suffix);
-        else
+
+        } else {
           addfile(cmd, nameline, suffix, sort_time, st.st_size);
+        }
       }
 
     } else {
       if (S_ISREG(st.st_mode) ||
           S_ISDIR(st.st_mode) ||
-          S_ISLNK(st.st_mode))
+          S_ISLNK(st.st_mode)) {
            addfile(cmd, pr_fs_encode_path(cmd->tmp_pool, name), suffix,
              sort_time, st.st_size);
+      }
     }
   }
 
@@ -1334,6 +1349,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
       switch (**opt) {
         case '1':
           if (strcmp(session.curr_cmd, C_STAT) != 0) {
+            opt_1 = 1;
             opt_l = opt_C = 0;
           }
           break;
@@ -1386,6 +1402,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           if (strcmp(session.curr_cmd, C_NLST) != 0) {
             opt_l = 1;
             opt_C = 0;
+            opt_1 = 0;
           }
           break;
 
@@ -1454,7 +1471,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
     while ((*opt)++ && isalnum((int) **opt)) {
       switch (**opt) {
         case '1':
-          opt_l = opt_C = 0;
+          opt_1 = opt_l = opt_C = 0;
           break;
 
         case 'A':
@@ -1603,8 +1620,8 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
   ls_curtime = time(NULL);
 
   if (clearflags) {
-    opt_A = opt_a = opt_B = opt_C = opt_d = opt_F = opt_h = opt_n = opt_r =
-      opt_R = opt_S = opt_t = opt_STAT = opt_L = 0;
+    opt_1 = opt_A = opt_a = opt_B = opt_C = opt_d = opt_F = opt_h = opt_n =
+      opt_r = opt_R = opt_S = opt_t = opt_STAT = opt_L = 0;
   }
 
   if (have_options(cmd, arg)) {
@@ -1703,8 +1720,10 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
     /* Open data connection */
     if (!opt_STAT) {
-      if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+      if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
         return -1;
+      }
+
       session.sf_flags |= SF_ASCII_OVERRIDE;
     }
 
@@ -1737,7 +1756,6 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       skiparg = TRUE;
 
     } else {
-
       skiparg = FALSE;
 
       if (use_globbing &&
@@ -1977,6 +1995,10 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
     return -1;
   }
 
+  /* XXX Note that "NLST <glob>" was sent, we might be receiving paths
+   * here, not just file names.  And that is not what dir_hide_file() is
+   * expecting.
+   */
   if (dir_hide_file(file))
     return 1;
 
@@ -2021,6 +2043,25 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
     display_name = pstrdup(cmd->tmp_pool, printable_name);
   }
 #endif /* PR_USE_NLS */
+
+  if (opt_1) {
+    char *ptr;
+
+    /* If the -1 option is configured, we want to make sure that we only
+     * display a file, not a path.  And it's possible that we given a path
+     * here.
+     */
+    ptr = strrchr(display_name, '/');
+    if (ptr != NULL) {
+      size_t display_namelen;
+
+      display_namelen = strlen(display_name);
+      if (display_namelen > 1) {
+        /* Make sure that we handle a possible display_name of '/' properly. */
+        display_name = ptr + 1;
+      }
+    }
+  }
 
   /* Be sure to flush the output */
   res = sendline(0, "%s\n", pr_fs_encode_path(cmd->tmp_pool, display_name));
@@ -2150,8 +2191,16 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
         continue;
 
       if (!curdir) {
-        char *str = pr_fs_encode_path(cmd->tmp_pool,
-          pdircat(cmd->tmp_pool, dir, p, NULL));
+        char *str = NULL;
+
+        if (opt_1) {
+          /* Send just the file name, not the path. */
+          str = pr_fs_encode_path(cmd->tmp_pool, p);
+
+        } else {
+          str = pr_fs_encode_path(cmd->tmp_pool,
+            pdircat(cmd->tmp_pool, dir, p, NULL));
+        }
 
         if (sendline(0, "%s\n", str) < 0) {
           count = -1;
@@ -2279,8 +2328,9 @@ MODRET genericlist(cmd_rec *cmd) {
   }
 
   tmp = get_param_ptr(TOPLEVEL_CONF, "TimesGMT", FALSE);
-  if (tmp != NULL)
+  if (tmp != NULL) {
     list_times_gmt = *tmp;
+  }
 
   res = dolist(cmd, pr_fs_decode_path(cmd->tmp_pool, cmd->arg), TRUE);
 
@@ -2288,8 +2338,9 @@ MODRET genericlist(cmd_rec *cmd) {
     pr_data_abort(0, 0);
     res = -1;
 
-  } else if (session.sf_flags & SF_XFER)
+  } else if (session.sf_flags & SF_XFER) {
     ls_done(cmd);
+  }
 
   opt_l = 0;
 
@@ -2476,8 +2527,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
   list_nfiles.logged = list_ndirs.logged = list_ndepth.logged = FALSE;
 
   tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
-  if (tmp != NULL)
+  if (tmp != NULL) {
     list_show_symlinks = *tmp;
+  }
 
   target = cmd->argc == 1 ? "." :
     pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
@@ -2505,8 +2557,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
   }
 
   /* Clear the listing option flags. */
-  opt_A = opt_a = opt_B = opt_C = opt_d = opt_F = opt_n = opt_r = opt_R =
-    opt_S = opt_t = opt_STAT = opt_L = 0;
+  opt_1 = opt_A = opt_a = opt_B = opt_C = opt_d = opt_F = opt_n = opt_r =
+    opt_R = opt_S = opt_t = opt_STAT = opt_L = 0;
 
   if (have_options(cmd, target)) {
     if (!list_strict_opts) {
@@ -2663,8 +2715,10 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
         } else {
           if (list_flags & LS_FL_NO_ERROR_IF_ABSENT) {
-            if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+            if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
               return PR_ERROR(cmd);
+            }
+
             session.sf_flags |= SF_ASCII_OVERRIDE;
             pr_response_add(R_226, _("Transfer complete"));
             ls_done(cmd);
@@ -2678,8 +2732,10 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
       } else {
         if (list_flags & LS_FL_NO_ERROR_IF_ABSENT) {
-          if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+          if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
             return PR_ERROR(cmd);
+          }
+
           session.sf_flags |= SF_ASCII_OVERRIDE;
           pr_response_add(R_226, _("Transfer complete"));
           ls_done(cmd);
@@ -2692,8 +2748,10 @@ MODRET ls_nlst(cmd_rec *cmd) {
       }
     }
 
-    if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+    if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
       return PR_ERROR(cmd);
+    }
+
     session.sf_flags |= SF_ASCII_OVERRIDE;
 
     /* Iterate through each matching entry */
