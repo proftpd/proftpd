@@ -31,6 +31,10 @@ ChangeLog files.
     AllowFilter, DenyFilter
       case-insensitive (from Bug#3592)
 
+    ListOptions
+      Handling of -1 option (Bug#3744)
+      LISTOnly, NLSTOnly keywords (Bug#3746)
+
     ServerIdent
       Now applicable to mod_sftp (Bug#3739)
 
@@ -50,4 +54,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-01-25 06:27:19 $
+Last Updated: $Date: 2012-02-02 00:29:15 $
