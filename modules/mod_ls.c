@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.192 2012-02-01 22:03:50 castaglia Exp $
+ * $Id: mod_ls.c,v 1.193 2012-02-02 00:28:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -54,8 +54,10 @@ static int sendline(int flags, char *fmt, ...)
 #endif
 #define LS_SENDLINE_FL_FLUSH	0x0001
 
-static unsigned long list_flags = 0;
 #define LS_FL_NO_ERROR_IF_ABSENT	0x0001
+#define LS_FL_LIST_ONLY			0x0002
+#define LS_FL_NLST_ONLY			0x0004
+static unsigned long list_flags = 0;
 
 static unsigned char list_strict_opts = FALSE;
 static char *list_options = NULL;
@@ -2273,15 +2275,28 @@ MODRET genericlist(cmd_rec *cmd) {
   config_rec *c = NULL;
 
   tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
-  if (tmp != NULL)
+  if (tmp != NULL) {
     list_show_symlinks = *tmp;
+  }
 
   list_strict_opts = FALSE;
-
   list_nfiles.max = list_ndirs.max = list_ndepth.max = 0;
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions", FALSE);
-  if (c != NULL) {
+  while (c != NULL) {
+    pr_signals_handle();
+
+    list_flags = *((unsigned long *) c->argv[5]);
+
+    /* Make sure that this ListOptions can be applied to the LIST command.
+     * If not, keep looking for other applicable ListOptions.
+     */
+    if (list_flags & LS_FL_NLST_ONLY) {
+      pr_log_debug(DEBUG10, "%s: skipping NLSTOnly ListOptions", cmd->argv[0]);
+      c = find_config_next(c, c->next, CONF_PARAM, "ListOptions", FALSE);
+      continue;
+    }
+
     list_options = c->argv[0];
     list_strict_opts = *((unsigned char *) c->argv[1]);
 
@@ -2299,7 +2314,7 @@ MODRET genericlist(cmd_rec *cmd) {
     list_nfiles.max = *((unsigned int *) c->argv[3]);
     list_ndirs.max = *((unsigned int *) c->argv[4]);
 
-    list_flags = *((unsigned long *) c->argv[5]);
+    break;
   }
 
   fakeuser = get_param_ptr(CURRENT_CONF, "DirFakeUser", FALSE);
@@ -2440,7 +2455,26 @@ MODRET ls_stat(cmd_rec *cmd) {
   list_ndepth.max = list_nfiles.max = list_ndirs.max = 0;
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions", FALSE);
-  if (c != NULL) {
+  while (c != NULL) {
+    pr_signals_handle();
+
+    list_flags = *((unsigned long *) c->argv[5]);
+
+    /* Make sure that this ListOptions can be applied to the STAT command.
+     * If not, keep looking for other applicable ListOptions.
+     */
+    if (list_flags & LS_FL_LIST_ONLY) {
+      pr_log_debug(DEBUG10, "%s: skipping LISTOnly ListOptions", cmd->argv[0]);
+      c = find_config_next(c, c->next, CONF_PARAM, "ListOptions", FALSE);
+      continue;
+    }
+
+    if (list_flags & LS_FL_NLST_ONLY) {
+      pr_log_debug(DEBUG10, "%s: skipping NLSTOnly ListOptions", cmd->argv[0]);
+      c = find_config_next(c, c->next, CONF_PARAM, "ListOptions", FALSE);
+      continue;
+    }
+
     list_options = c->argv[0];
     list_strict_opts = *((unsigned char *) c->argv[1]);
 
@@ -2458,7 +2492,7 @@ MODRET ls_stat(cmd_rec *cmd) {
     list_nfiles.max = *((unsigned int *) c->argv[3]);
     list_ndirs.max = *((unsigned int *) c->argv[4]);
 
-    list_flags = *((unsigned long *) c->argv[5]);
+    break;
   }
 
   fakeuser = get_param_ptr(CURRENT_CONF, "DirFakeUser", FALSE);
@@ -2535,7 +2569,20 @@ MODRET ls_nlst(cmd_rec *cmd) {
     pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions", FALSE);
-  if (c != NULL) {
+  while (c != NULL) {
+    pr_signals_handle();
+
+    list_flags = *((unsigned long *) c->argv[5]);
+    
+    /* Make sure that this ListOptions can be applied to the NLST command.
+     * If not, keep looking for other applicable ListOptions.
+     */
+    if (list_flags & LS_FL_LIST_ONLY) {
+      pr_log_debug(DEBUG10, "%s: skipping LISTOnly ListOptions", cmd->argv[0]);
+      c = find_config_next(c, c->next, CONF_PARAM, "ListOptions", FALSE);
+      continue;
+    }
+
     list_options = c->argv[0];
     list_strict_opts = *((unsigned char *) c->argv[1]);
 
@@ -2554,6 +2601,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
     list_ndirs.max = *((unsigned int *) c->argv[4]);
 
     list_flags = *((unsigned long *) c->argv[5]);
+
+    break;
   }
 
   /* Clear the listing option flags. */
@@ -3019,7 +3068,6 @@ MODRET set_listoptions(cmd_rec *cmd) {
 
   /* The default flags */
   c->argv[5] = pcalloc(c->pool, sizeof(unsigned long));
-  *((unsigned int *) c->argv[5]) = 0;
  
   /* Check for, and handle, optional arguments. */
   if (cmd->argc-1 >= 2) {
@@ -3060,6 +3108,12 @@ MODRET set_listoptions(cmd_rec *cmd) {
 
           *((unsigned int *) c->argv[4]) = maxdirs;
 
+      } else if (strcasecmp(cmd->argv[i], "LISTOnly") == 0) {
+          flags |= LS_FL_LIST_ONLY;
+
+      } else if (strcasecmp(cmd->argv[i], "NLSTOnly") == 0) {
+          flags |= LS_FL_NLST_ONLY;
+
       } else if (strcasecmp(cmd->argv[i], "NoErrorIfAbsent") == 0) {
           flags |= LS_FL_NO_ERROR_IF_ABSENT;
 
@@ -3071,7 +3125,6 @@ MODRET set_listoptions(cmd_rec *cmd) {
   }
 
   *((unsigned long *) c->argv[5]) = flags;
-
   return PR_HANDLED(cmd);
 }
 
