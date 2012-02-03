@@ -24,6 +24,9 @@ ChangeLog files.
 
     <IfAuthenticated>
 
+    FactsOptions
+      UseSlink (Bug#3747)
+
     RewriteMaxReplace
 
   + Changed configuration directives:
@@ -54,4 +57,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-02-02 00:29:15 $
+Last Updated: $Date: 2012-02-03 07:00:34 $

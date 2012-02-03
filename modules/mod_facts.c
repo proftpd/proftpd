@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.47 2012-01-17 00:51:02 castaglia Exp $
+ * $Id: mod_facts.c,v 1.48 2012-02-03 07:00:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -46,7 +46,9 @@ static unsigned long facts_opts = 0;
 #define FACTS_OPT_SHOW_UNIX_MODE	0x00040
 #define FACTS_OPT_SHOW_UNIX_OWNER	0x00080
 
-#define FACTS_MLINFO_FL_SHOW_SYMLINKS	0x00001
+static unsigned long facts_mlinfo_opts = 0;
+#define FACTS_MLINFO_FL_SHOW_SYMLINKS			0x00001
+#define FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK		0x00002
 
 struct mlinfo {
   pool *pool;
@@ -339,7 +341,56 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
       info->st.st_ino = target_st.st_ino;
 
       if (flags & FACTS_MLINFO_FL_SHOW_SYMLINKS) {
-        info->type = "OS.unix=symlink";
+
+        /* Do we use the proper RFC 3659 syntax (i.e. following the BNF rules
+         * of RFC 3659), which would be:
+         *
+         *   type=OS.unix=symlink
+         *
+         * See:
+         *   http://www.rfc-editor.org/errata_search.php?rfc=3659
+         *
+         * and search for "OS.unix=slink".
+         *
+         * Or do we use the syntax in the _examples_ presented in RFC 3659,
+         * which is what clients such as FileZilla expect:
+         *
+         *   type=OS.unix=slink:<target>
+         *
+         * See:
+         *   http://trac.filezilla-project.org/ticket/4490
+         */
+
+        if (flags & FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK) {
+          char target[PR_TUNABLE_PATH_MAX+1];
+          int targetlen;
+
+          targetlen = pr_fsio_readlink(path, target, sizeof(target)-1);
+          if (targetlen < 0) { 
+            int xerrno = errno;
+
+            pr_log_debug(DEBUG4, MOD_FACTS_VERSION
+              ": error reading symlink '%s': %s", path, strerror(xerrno));
+
+            errno = xerrno;
+            return -1;
+          }
+
+          if (targetlen >= sizeof(target)-1) {
+            targetlen = sizeof(target)-1;
+          }
+
+          target[targetlen] = '\0';
+
+          info->type = pstrcat(info->pool, "OS.unix=slink:",
+            dir_best_path(info->pool, target), NULL);
+
+        } else {
+          /* Use the proper syntax.  Too bad for the not-really-compliant
+           * FileZilla.
+           */
+          info->type = "OS.unix=symlink";
+        }
 
       } else {
         info->type = "file";
@@ -1024,6 +1075,10 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   if (ptr &&
       *ptr == TRUE) {
     flags |= FACTS_MLINFO_FL_SHOW_SYMLINKS;
+
+    if (facts_mlinfo_opts & FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK) {
+      flags |= FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK;
+    }
   }
 
   best_path = dir_best_path(cmd->tmp_pool, decoded_path);
@@ -1087,11 +1142,11 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   }
 
   /* Open data connection */
-  session.sf_flags |= SF_ASCII_OVERRIDE;
   if (pr_data_open(NULL, C_MLSD, PR_NETIO_IO_WR, 0) < 0) {
     pr_fsio_closedir(dirh);
     return PR_ERROR(cmd);
   }
+  session.sf_flags |= SF_ASCII_OVERRIDE;
 
   pr_fs_clear_cache();
   facts_mlinfobuf_init();
@@ -1207,6 +1262,10 @@ MODRET facts_mlst(cmd_rec *cmd) {
   if (ptr &&
       *ptr == TRUE) {
     flags |= FACTS_MLINFO_FL_SHOW_SYMLINKS;
+
+    if (facts_mlinfo_opts & FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK) {
+      flags |= FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK;
+    }
   }
 
   fake_mode = get_param_ptr(get_dir_ctxt(cmd->tmp_pool, (char *) decoded_path),
@@ -1274,10 +1333,15 @@ MODRET facts_mlst(cmd_rec *cmd) {
   /* XXX What about chroots? */
 
   if (flags & FACTS_MLINFO_FL_SHOW_SYMLINKS) {
-    /* If we are supposed to symlinks, then use dir_best_path() to get the
-     * full path, including dereferencing the symlink.
-     */
-    info.path = dir_best_path(cmd->tmp_pool, path);
+    if (flags & FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK) {
+      info.path = dir_canonical_path(cmd->tmp_pool, path);
+
+    } else {
+      /* If we are supposed to show symlinks, then use dir_best_path() to get
+       * the full path, including dereferencing the symlink.
+       */
+      info.path = dir_best_path(cmd->tmp_pool, path);
+    }
 
   } else {
     info.path = dir_canonical_path(cmd->tmp_pool, path);
@@ -1407,6 +1471,36 @@ MODRET set_factsadvertise(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: FactsOptions opt1 ... optN */
+MODRET set_factsoptions(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strncmp(cmd->argv[i], "UseSlink", 9) == 0) {
+      opts |= FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown FactsOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  return PR_HANDLED(cmd);
+}
+
 /* Initialization functions
  */
 
@@ -1426,8 +1520,14 @@ static int facts_sess_init(void) {
     advertise = *((int *) c->argv[0]);
   }
 
-  if (advertise == FALSE)
+  if (advertise == FALSE) {
     return 0;
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "FactsOptions", FALSE);
+  if (c) {
+    facts_mlinfo_opts = *((unsigned long *) c->argv[0]);
+  }
 
   facts_opts = FACTS_OPT_SHOW_MODIFY|FACTS_OPT_SHOW_PERM|FACTS_OPT_SHOW_SIZE|
     FACTS_OPT_SHOW_TYPE|FACTS_OPT_SHOW_UNIQUE|FACTS_OPT_SHOW_UNIX_GROUP|
@@ -1451,6 +1551,7 @@ static int facts_sess_init(void) {
 
 static conftable facts_conftab[] = {
   { "FactsAdvertise",	set_factsadvertise,	NULL },
+  { "FactsOptions",	set_factsoptions,	NULL },
   { NULL }
 };
 
