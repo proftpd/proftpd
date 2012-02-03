@@ -118,6 +118,7 @@ if (scalar(@ARGV) > 0) {
     t/config/displayfiletransfer.t 
     t/config/displaylogin.t
     t/config/displayquit.t
+    t/config/factsoptions.t
     t/config/groupowner.t
     t/config/hiddenstores.t
     t/config/hidefiles.t
