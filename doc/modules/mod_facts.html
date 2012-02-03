@@ -1,4 +1,4 @@
-<!-- $Id: mod_facts.html,v 1.5 2011-07-06 17:14:35 castaglia Exp $ -->
+<!-- $Id: mod_facts.html,v 1.6 2012-02-03 04:50:01 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_facts.html,v $ -->
 
 <html>
@@ -98,7 +98,7 @@ names?<br>
 <font color=blue>Answer</code>: The list of "facts" defined by RFC 3659 does
 <b>not</b> include a fact for the stringified version of user/group owner
 names, unfortunately.  This means that the <code>MLSD</code>/<code>MLST</code>
-commands don't have a good way of obtaining the user/group names.
+commands do not have a good way of obtaining the user/group names.
 
 <p>
 To work around this issue, you can add the following to your
@@ -109,12 +109,14 @@ To work around this issue, you can add the following to your
   &lt;/IfModule&gt;
 </pre>
 This tells <code>proftpd</code> to not advertise to the client that it can
-support the <code>MLSD</code/<code>MLST</code> commands.
+support the <code>MLSD</code/<code>MLST</code> commands.  The client will then
+usually fall back to using the older <code>LIST</code> command, which
+<i>does</i> include the file owner user/group names.
 
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-07-06 17:14:35 $</i><br>
+Last Updated: <i>$Date: 2012-02-03 04:50:01 $</i><br>
 
 <br><hr>
 
