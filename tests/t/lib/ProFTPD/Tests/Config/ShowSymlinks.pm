@@ -159,7 +159,7 @@ sub showsymlinks_off_list_rel_symlinked_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -327,6 +327,9 @@ sub showsymlinks_off_list_rel_symlinked_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -341,7 +344,7 @@ sub showsymlinks_on_list_rel_symlinked_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -459,7 +462,7 @@ sub showsymlinks_on_list_rel_symlinked_file {
       }
 
       my $expected = {
-        'test.lnk -> test.txt' => 'lrwxrwxrwx',
+        'test.lnk -> test.txt' => 'lrwxr-xr-x',
         'test.txt' => '-rw-r--r--',
       };
 
@@ -512,6 +515,9 @@ sub showsymlinks_on_list_rel_symlinked_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -526,7 +532,7 @@ sub showsymlinks_off_list_rel_symlinked_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -686,6 +692,9 @@ sub showsymlinks_off_list_rel_symlinked_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -700,7 +709,7 @@ sub showsymlinks_on_list_rel_symlinked_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -810,7 +819,7 @@ sub showsymlinks_on_list_rel_symlinked_dir {
       }
 
       my $expected = {
-        'test.lnk -> test.d/' => 'lrwxrwxrwx',
+        'test.lnk -> test.d/' => 'lrwxr-xr-x',
         'test.d/' => 'drwxr-xr-x',
       };
 
@@ -863,6 +872,9 @@ sub showsymlinks_on_list_rel_symlinked_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -877,7 +889,7 @@ sub showsymlinks_off_nlst_rel_symlinked_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -1037,6 +1049,9 @@ sub showsymlinks_off_nlst_rel_symlinked_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1051,7 +1066,7 @@ sub showsymlinks_on_nlst_rel_symlinked_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -1211,6 +1226,9 @@ sub showsymlinks_on_nlst_rel_symlinked_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1225,7 +1243,7 @@ sub showsymlinks_off_nlst_rel_symlinked_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -1377,6 +1395,9 @@ sub showsymlinks_off_nlst_rel_symlinked_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1391,7 +1412,7 @@ sub showsymlinks_on_nlst_rel_symlinked_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -1543,6 +1564,9 @@ sub showsymlinks_on_nlst_rel_symlinked_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1557,7 +1581,7 @@ sub showsymlinks_off_mlsd_rel_symlinked_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -1707,6 +1731,9 @@ sub showsymlinks_off_mlsd_rel_symlinked_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1721,7 +1748,7 @@ sub showsymlinks_on_mlsd_rel_symlinked_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -1777,7 +1804,7 @@ sub showsymlinks_on_mlsd_rel_symlinked_file {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1878,6 +1905,9 @@ sub showsymlinks_on_mlsd_rel_symlinked_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1892,7 +1922,7 @@ sub showsymlinks_off_mlsd_rel_symlinked_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -2034,6 +2064,9 @@ sub showsymlinks_off_mlsd_rel_symlinked_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2048,7 +2081,7 @@ sub showsymlinks_on_mlsd_rel_symlinked_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -2096,7 +2129,7 @@ sub showsymlinks_on_mlsd_rel_symlinked_dir {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2197,6 +2230,9 @@ sub showsymlinks_on_mlsd_rel_symlinked_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2211,7 +2247,7 @@ sub showsymlinks_off_mlst_rel_symlinked_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -2315,6 +2351,11 @@ sub showsymlinks_off_mlst_rel_symlinked_file {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack, to compensate for how it handles tmp files
+        $test_symlink = ('/private' . $test_symlink);
+      }
+
       $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_symlink . '$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
@@ -2343,6 +2384,9 @@ sub showsymlinks_off_mlst_rel_symlinked_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2357,7 +2401,7 @@ sub showsymlinks_off_mlst_rel_symlinked_file_chrooted {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -2493,6 +2537,9 @@ sub showsymlinks_off_mlst_rel_symlinked_file_chrooted {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2507,7 +2554,7 @@ sub showsymlinks_on_mlst_rel_symlinked_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -2611,6 +2658,11 @@ sub showsymlinks_on_mlst_rel_symlinked_file {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack, to compensate for how it handles tmp files
+        $test_file = ('/private' . $test_file);
+      }
+
       $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_file . '$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
@@ -2639,6 +2691,9 @@ sub showsymlinks_on_mlst_rel_symlinked_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2653,7 +2708,7 @@ sub showsymlinks_on_mlst_rel_symlinked_file_chrooted {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -2789,6 +2844,9 @@ sub showsymlinks_on_mlst_rel_symlinked_file_chrooted {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2803,7 +2861,7 @@ sub showsymlinks_off_mlst_rel_symlinked_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -2899,6 +2957,11 @@ sub showsymlinks_off_mlst_rel_symlinked_dir {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack, to compensate for how it handles tmp files
+        $test_symlink = ('/private' . $test_symlink);
+      }
+
       $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_symlink . '$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
@@ -2927,6 +2990,9 @@ sub showsymlinks_off_mlst_rel_symlinked_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2941,7 +3007,7 @@ sub showsymlinks_off_mlst_rel_symlinked_dir_chrooted {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -3069,6 +3135,9 @@ sub showsymlinks_off_mlst_rel_symlinked_dir_chrooted {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3083,7 +3152,7 @@ sub showsymlinks_on_mlst_rel_symlinked_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -3179,6 +3248,11 @@ sub showsymlinks_on_mlst_rel_symlinked_dir {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack, to compensate for how it handles tmp files
+        $test_dir = ('/private' . $test_dir);
+      }
+
       $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_dir . '$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
@@ -3207,6 +3281,9 @@ sub showsymlinks_on_mlst_rel_symlinked_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3221,7 +3298,7 @@ sub showsymlinks_on_mlst_rel_symlinked_dir_chrooted {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -3349,6 +3426,9 @@ sub showsymlinks_on_mlst_rel_symlinked_dir_chrooted {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3363,7 +3443,7 @@ sub showsymlinks_off_stat_rel_symlinked_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -3507,6 +3587,9 @@ sub showsymlinks_off_stat_rel_symlinked_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3521,7 +3604,7 @@ sub showsymlinks_on_stat_rel_symlinked_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -3588,6 +3671,7 @@ sub showsymlinks_on_stat_rel_symlinked_file {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+
     ShowSymlinks => 'on',
 
     IfModules => {
@@ -3633,7 +3717,7 @@ sub showsymlinks_on_stat_rel_symlinked_file {
       my $info = $1;
       my $path = $2;
 
-      $expected = 'lrwxrwxrwx';
+      $expected = 'lrwxr-xr-x';
       $self->assert($expected eq $info,
         test_msg("Expected '$expected', got '$info'"));
 
@@ -3673,6 +3757,9 @@ sub showsymlinks_on_stat_rel_symlinked_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3687,7 +3774,7 @@ sub showsymlinks_off_stat_rel_symlinked_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -3823,6 +3910,9 @@ sub showsymlinks_off_stat_rel_symlinked_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3837,7 +3927,7 @@ sub showsymlinks_on_stat_rel_symlinked_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
@@ -3976,6 +4066,9 @@ sub showsymlinks_on_stat_rel_symlinked_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
