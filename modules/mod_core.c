@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.419 2012-02-05 18:04:14 castaglia Exp $
+ * $Id: mod_core.c,v 1.420 2012-02-05 18:08:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4157,10 +4157,14 @@ MODRET core_epsv(cmd_rec *cmd) {
 
     default:
 #ifdef PR_USE_IPV6
-      if (pr_netaddr_use_ipv6())
-        pr_response_add_err(R_522, _("Network protocol not supported, use (1,2)"));
-      else
-        pr_response_add_err(R_522, _("Network protocol not supported, use (1)"));
+      if (pr_netaddr_use_ipv6()) {
+        pr_response_add_err(R_522,
+          _("Network protocol not supported, use (1,2)"));
+
+      } else {
+        pr_response_add_err(R_522,
+          _("Network protocol not supported, use (1)"));
+      }
 #else
       pr_response_add_err(R_522, _("Network protocol not supported, use (1)"));
 #endif /* PR_USE_IPV6 */
