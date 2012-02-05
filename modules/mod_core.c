@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.421 2012-02-05 18:25:21 castaglia Exp $
+ * $Id: mod_core.c,v 1.422 2012-02-05 18:29:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3587,6 +3587,27 @@ MODRET core_pasv(cmd_rec *cmd) {
   }
 
   if (pr_netaddr_get_family(session.c->local_addr) == pr_netaddr_get_family(session.c->remote_addr)) {
+
+#ifdef PR_USE_IPV6
+    if (pr_netaddr_use_ipv6()) {
+      /* Make sure that the family is NOT IPv6, even though the family of the
+       * local and remote ends match.  The PASV command cannot be used for
+       * IPv6 addresses (Bug#3745).
+       */
+      if (pr_netaddr_get_family(session.c->local_addr) == AF_INET6) {
+        int xerrno = EPERM;
+
+        pr_log_debug(DEBUG0,
+          "Unable to handle PASV for IPv6 address '%s', rejecting command",
+          pr_netaddr_get_ipstr(session.c->local_addr));
+        pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(xerrno));
+
+        errno = xerrno;
+        return PR_ERROR(cmd);
+      }
+    }
+#endif /* PR_USE_IPV6 */
+
     bind_addr = session.c->local_addr;
 
   } else {
