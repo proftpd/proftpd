@@ -112,6 +112,8 @@ used.
 .br
 .B @SBINDIR@/ftpshut
 .br
+.B /etc/ftpusers
+.br
 .B /var/log/xferlog
 .br
 .B @LOCALSTATEDIR@/proftpd.pid
