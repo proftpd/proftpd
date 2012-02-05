@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.418 2012-01-25 16:29:00 castaglia Exp $
+ * $Id: mod_core.c,v 1.419 2012-02-05 18:04:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1013,16 +1013,18 @@ MODRET set_socketoptions(cmd_rec *cmd) {
        * will be ignored, and will have no effect.
        */
 
-      if (value < 0)
+      if (value < 0) {
         CONF_ERROR(cmd, "maxseg size must be greater than 0");
+      }
 
       cmd->server->tcp_mss_len = value;
 
     } else if (strcasecmp(cmd->argv[i], "rcvbuf") == 0) {
       value = atoi(cmd->argv[++i]);
 
-      if (value < 1024)
+      if (value < 1024) {
         CONF_ERROR(cmd, "rcvbuf size must be greater than or equal to 1024");
+      }
 
       cmd->server->tcp_rcvbuf_len = value;
       cmd->server->tcp_rcvbuf_override = TRUE;
@@ -1030,8 +1032,9 @@ MODRET set_socketoptions(cmd_rec *cmd) {
     } else if (strcasecmp(cmd->argv[i], "sndbuf") == 0) {
       value = atoi(cmd->argv[++i]);
 
-      if (value < 1024)
+      if (value < 1024) {
         CONF_ERROR(cmd, "sndbuf size must be greater than or equal to 1024");
+      }
 
       cmd->server->tcp_sndbuf_len = value;
       cmd->server->tcp_sndbuf_override = TRUE;
@@ -3813,7 +3816,9 @@ MODRET core_port(cmd_rec *cmd) {
    */
 
   if (port < 1024) {
-    pr_log_pri(PR_LOG_WARNING, "Refused PORT %s (bounce attack)", cmd->arg);
+    pr_log_pri(PR_LOG_WARNING,
+      "Refused PORT %s (port %d below 1024, possible bounce attack)", cmd->arg,
+      port);
     pr_response_add_err(R_500, _("Illegal PORT command"));
     errno = EPERM;
     return PR_ERROR(cmd);
@@ -3904,10 +3909,14 @@ MODRET core_eprt(cmd_rec *cmd) {
 
     default:
 #ifdef PR_USE_IPV6
-      if (pr_netaddr_use_ipv6())
-        pr_response_add_err(R_522, _("Network protocol not supported, use (1,2)"));
-      else
-        pr_response_add_err(R_522, _("Network protocol not supported, use (1)"));
+      if (pr_netaddr_use_ipv6()) {
+        pr_response_add_err(R_522,
+          _("Network protocol not supported, use (1,2)"));
+
+      } else {
+        pr_response_add_err(R_522,
+          _("Network protocol not supported, use (1)"));
+      }
 #else
       pr_response_add_err(R_522, _("Network protocol not supported, use (1)"));
 #endif /* PR_USE_IPV6 */
@@ -3916,8 +3925,9 @@ MODRET core_eprt(cmd_rec *cmd) {
   }
 
   /* Now, skip past those numeric characters that atoi() used. */
-  while (isdigit((unsigned char) *argstr))
+  while (isdigit((unsigned char) *argstr)) {
     argstr++;
+  }
 
   /* If the next character is not the delimiter, it's a badly formatted
    * parameter.
@@ -3990,8 +4000,9 @@ MODRET core_eprt(cmd_rec *cmd) {
 
   port = atoi(argstr);
 
-  while (isdigit((unsigned char) *argstr))
+  while (isdigit((unsigned char) *argstr)) {
     argstr++;
+  }
 
   /* If the next character is not the delimiter, it's a badly formatted
    * parameter.
@@ -4010,7 +4021,8 @@ MODRET core_eprt(cmd_rec *cmd) {
   allow_foreign_addr = get_param_ptr(TOPLEVEL_CONF, "AllowForeignAddress",
     FALSE);
 
-  if (!allow_foreign_addr || *allow_foreign_addr == FALSE) {
+  if (allow_foreign_addr == NULL ||
+      *allow_foreign_addr == FALSE) {
     if (pr_netaddr_cmp(&na, session.c->remote_addr) != 0 || !port) {
       pr_log_pri(PR_LOG_WARNING, "Refused EPRT %s (address mismatch)",
         cmd->arg);
@@ -4027,7 +4039,9 @@ MODRET core_eprt(cmd_rec *cmd) {
    */
 
   if (port < 1024) {
-    pr_log_pri(PR_LOG_WARNING, "Refused EPRT %s (bounce attack)", cmd->arg);
+    pr_log_pri(PR_LOG_WARNING,
+      "Refused EPRT %s (port %d below 1024, possible bounce attack)", cmd->arg,
+      port);
     pr_response_add_err(R_500, _("Illegal EPRT command"));
     errno = EPERM;
     return PR_ERROR(cmd);
