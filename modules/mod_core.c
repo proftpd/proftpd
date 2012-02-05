@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.420 2012-02-05 18:08:56 castaglia Exp $
+ * $Id: mod_core.c,v 1.421 2012-02-05 18:25:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3658,9 +3658,10 @@ MODRET core_pasv(cmd_rec *cmd) {
   /* Check for a MasqueradeAddress configuration record, and return that
    * addr if appropriate.
    */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
-      FALSE)) != NULL)
+  c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
+  if (c != NULL) {
     addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+  }
 
   /* Fixup the address string for the PASV response. */
   tmp = strrchr(addrstr, ':');
@@ -4263,9 +4264,10 @@ MODRET core_epsv(cmd_rec *cmd) {
    * be officially determined (Bug#2369).
    */
 #if 0
-  if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
-      FALSE)) != NULL)
+  c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
+  if (c != NULL) {
    addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+  }
 #endif
 
   pr_log_debug(DEBUG1, "Entering Extended Passive Mode (||%s|%u|)",
