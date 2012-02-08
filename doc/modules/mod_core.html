@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.19 2012-01-25 16:16:04 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.20 2012-02-08 03:26:23 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -32,6 +32,8 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#PathDenyFilter">PathDenyFilter</a>
   <li><a href="#ProcessTitles">ProcessTitles</a>
   <li><a href="#Protocols">Protocols</a>
+  <li><a href="#ScoreboardFile>ScoreboardFile</a>
+  <li><a href="#ScoreboardMutex>ScoreboardMutex</a>
   <li><a nref="#ServerIdent">ServerIdent</a>
   <li><a href="#TCPBacklog">TCPBacklog</a>
   <li><a href="#TimeoutLinger">TimeoutLinger</a>
@@ -545,6 +547,63 @@ The currently known/supported protocols include:
 
 <p>
 <hr>
+<h2><a name="ScoreboardFile">ScoreboardFile</a></h2>
+<strong>Syntax:</strong> ScoreboardFile <em>path|"none"</em><br>
+<strong>Default:</strong> ScoreboardFile /usr/local/var/proftpd.scoreboard</br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.7rc1 and later
+
+<p>
+The <code>ScoreboardFile</code> directive sets the path to the file where the
+daemon will store its run-time "scoreboard" session information.  This file is
+necessary for support features such as
+<a href="mod_auth.html#MaxClients"><code>MaxClients</code></a> to work properly,
+as well as other utilities (such as <a href="../utils/ftpwho.html">ftpwho</a>,
+<a href="../utils/ftptop.html">ftptop</a>, and
+<a href="../utils/ftpcount.html">ftpcount</a>).  <b>Note</b> that the directory
+containing the scoreboard <b>cannot</b> be world-writable.
+
+<p>
+For performance reasons, it is <b>strongly recommended</b> that the
+<code>ScoreboardFile</code> path <i>not</i> be located on a networked
+filesystem, but rather be located on a local physical disk.
+
+<p>
+In order to <i>disable</i> scoreboarding (which can increase performance,
+at the cost of functionality), any of the following can be used:
+<pre>
+  ScoreboardFile /dev/null
+  ScoreboardFile none
+  ScoreboardFile off
+</pre>
+Please read the
+<a href="../howto/Scoreboard.html#ScoreboardDisabling">Scoreboard</a> howto
+before disabling scoreboarding.
+
+<p>
+<hr>
+<h2><a name="ScoreboardMutex">ScoreboardMutex</a></h2>
+<strong>Syntax:</strong> ScoreboardMutex <em>path</em><br>
+<strong>Default:</strong> ScoreboardMutex /usr/local/var/proftpd.scoreboard.lck</br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.3.4rc1 and later
+
+<p>
+The <code>ScoreboardMutex</code> directive sets the path to a "mutex" file
+which is used for scoreboard locking/synchronization; this mutex is used to
+increase the daemon's performance under load.
+
+<p>
+For performance reasons, it is <b>strongly recommended</b> that the
+<code>ScoreboardMutex</code> path <i>not</i> be located on a networked
+filesystem, but rather be located on a local physical disk.  It is best if
+the <code>ScoreboardMutex</code> be located in the same directory as the
+<a href="#ScoreboardFile"><code>ScoreboardFile</code></a>.
+
+<p>
+<hr>
 <h2><a name="ServerIdent">ServerIdent</a></h2>
 <strong>Syntax:</strong> ServerIdent <em>off|on "identification string"</em><br>
 <strong>Default:</strong> ServerIdent on "ProFTPD [version] Server (server name) [hostname]"<br>
@@ -785,7 +844,7 @@ The <code>mod_core</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-01-25 16:16:04 $</i><br>
+Last Updated: <i>$Date: 2012-02-08 03:26:23 $</i><br>
 
 <br><hr>
 
