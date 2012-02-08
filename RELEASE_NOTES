@@ -38,6 +38,9 @@ ChangeLog files.
       Handling of -1 option (Bug#3744)
       LISTOnly, NLSTOnly keywords (Bug#3746)
 
+    ScoreboardFile
+      Now possible to disable scoreboard (Bug#3701)
+
     ServerIdent
       Now applicable to mod_sftp (Bug#3739)
 
@@ -57,4 +60,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-02-03 07:00:34 $
+Last Updated: $Date: 2012-02-08 03:11:04 $

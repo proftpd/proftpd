@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.74 2012-01-27 01:02:58 castaglia Exp $
+ * $Id: scoreboard.c,v 1.75 2012-02-08 03:11:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,6 +34,7 @@ extern char ServerType;
 
 static pid_t scoreboard_opener = 0;
 
+static int scoreboard_engine = TRUE;
 static int scoreboard_fd = -1;
 static char scoreboard_file[PR_TUNABLE_PATH_MAX] = PR_RUN_DIR "/proftpd.scoreboard";
 
@@ -69,7 +70,9 @@ static int read_scoreboard_header(pr_scoreboard_header_t *sch) {
 
   pr_trace_msg(trace_channel, 7, "reading scoreboard header");
 
-  /* NOTE: reading a struct from a file using read(2) -- bad (in general). */
+  /* NOTE: reading a struct from a file using read(2) -- bad (in general).
+   * Better would be to use readv(2).  Should also handle short-reads here.
+   */
   while ((res = read(scoreboard_fd, sch, sizeof(pr_scoreboard_header_t))) !=
       sizeof(pr_scoreboard_header_t)) {
     int rd_errno = errno;
@@ -443,8 +446,13 @@ static int write_entry(int fd) {
 /* Public routines */
 
 int pr_close_scoreboard(int keep_mutex) {
-  if (scoreboard_fd == -1)
+  if (scoreboard_engine == FALSE) {
     return 0;
+  }
+
+  if (scoreboard_fd == -1) {
+    return 0;
+  }
 
   if (scoreboard_read_locked || scoreboard_write_locked)
     unlock_scoreboard();
@@ -483,6 +491,10 @@ int pr_close_scoreboard(int keep_mutex) {
 }
 
 void pr_delete_scoreboard(void) {
+  if (scoreboard_engine == FALSE) {
+    return 0;
+  }
+
   if (scoreboard_fd > -1) {
     while (close(scoreboard_fd) < 0) {
       if (errno == EINTR) {
@@ -549,6 +561,10 @@ const char *pr_get_scoreboard_mutex(void) {
 int pr_open_scoreboard(int flags) {
   int res;
   struct stat st;
+
+  if (scoreboard_engine == FALSE) {
+    return 0;
+  }
 
   if (flags != O_RDWR) {
     errno = EINVAL;
@@ -722,6 +738,9 @@ int pr_open_scoreboard(int flags) {
 }
 
 int pr_restore_scoreboard(void) {
+  if (scoreboard_engine == FALSE) {
+    return 0;
+  }
 
   if (scoreboard_fd < 0) {
     errno = EINVAL;
@@ -739,6 +758,9 @@ int pr_restore_scoreboard(void) {
 }
 
 int pr_rewind_scoreboard(void) {
+  if (scoreboard_engine == FALSE) {
+    return 0;
+  }
 
   if (scoreboard_fd < 0) {
     errno = EINVAL;
@@ -762,11 +784,6 @@ static int set_scoreboard_path(const char *path) {
   char dir[PR_TUNABLE_PATH_MAX] = {'\0'};
   struct stat st;
   char *ptr = NULL;
-
-  if (path == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
 
   if (*path != '/') {
     errno = EINVAL;
@@ -812,6 +829,41 @@ static int set_scoreboard_path(const char *path) {
 }
 
 int pr_set_scoreboard(const char *path) {
+  int engine;
+
+  /* By default, scoreboarding is enabled. */
+  scoreboard_engine = TRUE;
+
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Check to see if the given path is "off" or something related, i.e. is
+   * telling us to disable scoreboarding.  Other ways of disabling
+   * scoreboarding are to configure a path of "none", or "/dev/null".
+   */
+  if (pr_str_is_boolean(path) == FALSE) {
+    pr_trace_msg(trace_channel, 3,
+      "ScoreboardFile set to '%s', disabling scoreboarding", path);
+    scoreboard_engine = FALSE;
+    return 0;
+  }
+
+  if (strncasecmp(path, "none", 5) == 0) {
+    pr_trace_msg(trace_channel, 3,
+      "ScoreboardFile set to '%s', disabling scoreboarding", path);
+    scoreboard_engine = FALSE;
+    return 0;
+  }
+
+  if (strncmp(path, "/dev/null", 10) == 0) {
+    pr_trace_msg(trace_channel, 3,
+      "ScoreboardFile set to '%s', disabling scoreboarding", path);
+    scoreboard_engine = FALSE;
+    return 0;
+  }
+
   if (set_scoreboard_path(path) < 0) {
     return -1;
   }
@@ -828,10 +880,6 @@ int pr_set_scoreboard(const char *path) {
 }
 
 int pr_set_scoreboard_mutex(const char *path) {
-  if (set_scoreboard_path(path) < 0) {
-    return -1;
-  }
-
   sstrncpy(scoreboard_mutex, path, sizeof(scoreboard_mutex));
   return 0;
 }
@@ -839,6 +887,10 @@ int pr_set_scoreboard_mutex(const char *path) {
 int pr_scoreboard_entry_add(void) {
   int res;
   unsigned char found_slot = FALSE;
+
+  if (scoreboard_engine == FALSE) {
+    return 0;
+  }
 
   if (scoreboard_fd < 0) {
     errno = EINVAL;
@@ -912,6 +964,10 @@ int pr_scoreboard_entry_add(void) {
 }
 
 int pr_scoreboard_entry_del(unsigned char verbose) {
+  if (scoreboard_engine == FALSE) {
+    return 0;
+  }
+
   if (scoreboard_fd < 0) {
     errno = EINVAL;
     return -1;
@@ -948,16 +1004,28 @@ int pr_scoreboard_entry_del(unsigned char verbose) {
 }
 
 pid_t pr_scoreboard_get_daemon_pid(void) {
+  if (scoreboard_engine == FALSE) {
+    return 0;
+  }
+
   return header.sch_pid;
 }
 
 time_t pr_scoreboard_get_daemon_uptime(void) {
+  if (scoreboard_engine == FALSE) {
+    return 0;
+  }
+
   return header.sch_uptime;
 }
 
 pr_scoreboard_entry_t *pr_scoreboard_entry_read(void) {
   static pr_scoreboard_entry_t scan_entry;
   int res = 0;
+
+  if (scoreboard_engine == FALSE) {
+    return NULL;
+  }
 
   if (scoreboard_fd < 0) {
     errno = EINVAL;
@@ -1007,6 +1075,10 @@ pr_scoreboard_entry_t *pr_scoreboard_entry_read(void) {
  */
 
 const char *pr_scoreboard_entry_get(int field) {
+  if (scoreboard_engine == FALSE) {
+    errno = ENOENT;
+    return NULL;
+  }
 
   if (scoreboard_fd < 0) {
     errno = EINVAL;
@@ -1050,6 +1122,10 @@ const char *pr_scoreboard_entry_get(int field) {
 
 int pr_scoreboard_entry_kill(pr_scoreboard_entry_t *sce, int signo) {
   int res;
+
+  if (scoreboard_engine == FALSE) {
+    return 0;
+  }
 
   if (sce == NULL) {
     errno = EINVAL;
@@ -1141,6 +1217,10 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
   va_list ap;
   char *tmp = NULL;
   int entry_tag = 0;
+
+  if (scoreboard_engine == FALSE) {
+    return 0;
+  }
 
   if (scoreboard_fd < 0) {
     errno = EINVAL;
@@ -1384,6 +1464,10 @@ int pr_scoreboard_scrub(void) {
   off_t curr_offset = 0;
   pid_t curr_pgrp = 0;
   pr_scoreboard_entry_t sce;
+
+  if (scoreboard_engine == FALSE) {
+    return 0;
+  }
 
   pr_log_debug(DEBUG9, "scrubbing scoreboard");
   pr_trace_msg(trace_channel, 9, "%s", "scrubbing scoreboard");
