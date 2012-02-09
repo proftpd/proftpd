@@ -113,7 +113,7 @@ sub ban_on_event_max_login_attempts {
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
 
-    MaxLoginAttempts => 1,
+    MaxLoginAttempts => 2,
 
     IfModules => {
       'mod_ban.c' => {
@@ -152,16 +152,13 @@ sub ban_on_event_max_login_attempts {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      my ($resp_code, $resp_msg);
-
       eval { $client->login($user, 'foo') };
       unless ($@) {
         die("Login succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
       my $expected;
 
@@ -176,11 +173,10 @@ sub ban_on_event_max_login_attempts {
       eval { $client->login($user, 'foo') };
       unless ($@) {
         die("Login succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
 
       $expected = 530;
       $self->assert($expected == $resp_code,
@@ -284,7 +280,7 @@ sub ban_message {
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
 
-    MaxLoginAttempts => 1,
+    MaxLoginAttempts => 2,
 
     IfModules => {
       'mod_ban.c' => {
@@ -325,16 +321,13 @@ sub ban_message {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      my ($resp_code, $resp_msg);
-
       eval { $client->login($user, 'foo') };
       unless ($@) {
         die("Login succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
       my $expected;
 
@@ -349,11 +342,10 @@ sub ban_message {
       eval { $client->login($user, 'foo') };
       unless ($@) {
         die("Login succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
 
       $expected = 530;
       $self->assert($expected == $resp_code,
@@ -455,7 +447,7 @@ sub ban_ifclass_engine_on {
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
 
-    MaxLoginAttempts => 1,
+    MaxLoginAttempts => 2,
 
     Class => {
       test => {
@@ -815,7 +807,7 @@ sub ban_max_logins_exceeded_bug3281 {
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
 
-    MaxLoginAttempts => 1,
+    MaxLoginAttempts => 2,
 
     IfModules => {
       'mod_ban.c' => {
@@ -1156,6 +1148,8 @@ sub ban_engine_vhost_bug3355 {
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
 
+  my $max_login_attempts = 2;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -1167,7 +1161,7 @@ sub ban_engine_vhost_bug3355 {
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
 
-    MaxLoginAttempts => 1,
+    MaxLoginAttempts => $max_login_attempts,
 
     IfModules => {
       'mod_ban.c' => {
@@ -1195,7 +1189,7 @@ sub ban_engine_vhost_bug3355 {
   Port $vhost_port
   AuthUserFile $auth_user_file
   AuthGroupFile $auth_group_file
-  MaxLoginAttempts 1
+  MaxLoginAttempts $max_login_attempts
   <IfModule mod_ban.c>
     BanEngine off
   </IfModule>
