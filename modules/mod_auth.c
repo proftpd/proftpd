@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.297 2012-01-27 01:02:58 castaglia Exp $
+ * $Id: mod_auth.c,v 1.298 2012-02-09 18:08:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -68,7 +68,8 @@ static int auth_cmd_chk_cb(cmd_rec *cmd) {
 
 static int auth_login_timeout_cb(CALLBACK_FRAME) {
   pr_response_send_async(R_421,
-    _("Login timeout (%d seconds): closing control connection"), TimeoutLogin);
+    _("Login timeout (%d %s): closing control connection"), TimeoutLogin,
+    TimeoutLogin != 1 ? "seconds" : "second");
 
   /* It's possible that any listeners of this event might terminate the
    * session process themselves (e.g. mod_ban).  So write out that the
