@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.445 2012-01-27 01:02:58 castaglia Exp $
+ * $Id: main.c,v 1.446 2012-02-09 06:38:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -988,6 +988,8 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
     pr_netaddr_clear_cache();
 
     pr_parser_prepare(NULL, NULL);
+
+    pr_event_generate("core.preparse", NULL);
 
     PRIVS_ROOT
     if (pr_parser_parse_file(NULL, config_filename, NULL, 0) == -1) {
