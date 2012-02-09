@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2011 The ProFTPD Project team
+ * Copyright (c) 2004-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.25 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: parser.c,v 1.26 2012-02-09 06:34:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -276,7 +276,7 @@ config_rec *pr_parser_config_ctxt_open(const char *name) {
    * parent server.  This keeps <Global> config recs from being freed
    * prematurely, and helps to avoid memory leaks.
    */
-  if (strncmp(name, "<Global>", 9) == 0) {
+  if (strncasecmp(name, "<Global>", 9) == 0) {
     if (!global_config_pool) {
       global_config_pool = make_sub_pool(permanent_pool);
       pr_pool_tag(global_config_pool, "<Global> Pool");
