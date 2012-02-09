@@ -73,7 +73,7 @@ sub ban_on_event_max_login_attempts {
   my $pid_file = File::Spec->rel2abs("$tmpdir/ban.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ban.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
 
@@ -82,6 +82,7 @@ sub ban_on_event_max_login_attempts {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -100,7 +101,7 @@ sub ban_on_event_max_login_attempts {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -228,6 +229,9 @@ sub ban_on_event_max_login_attempts {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -242,7 +246,7 @@ sub ban_message {
   my $pid_file = File::Spec->rel2abs("$tmpdir/ban.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ban.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
 
@@ -251,6 +255,7 @@ sub ban_message {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -269,7 +274,7 @@ sub ban_message {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -395,6 +400,9 @@ sub ban_message {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -409,7 +417,7 @@ sub ban_ifclass_engine_on {
   my $pid_file = File::Spec->rel2abs("$tmpdir/ban.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ban.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
 
@@ -418,6 +426,7 @@ sub ban_ifclass_engine_on {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -436,7 +445,7 @@ sub ban_ifclass_engine_on {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -581,6 +590,9 @@ EOI
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -595,7 +607,7 @@ sub ban_ifclass_engine_off {
   my $pid_file = File::Spec->rel2abs("$tmpdir/ban.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ban.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
 
@@ -604,6 +616,7 @@ sub ban_ifclass_engine_off {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -622,7 +635,7 @@ sub ban_ifclass_engine_off {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -745,6 +758,9 @@ EOI
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -759,7 +775,7 @@ sub ban_max_logins_exceeded_bug3281 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/ban.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ban.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
 
@@ -768,6 +784,7 @@ sub ban_max_logins_exceeded_bug3281 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -786,7 +803,7 @@ sub ban_max_logins_exceeded_bug3281 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -922,6 +939,9 @@ sub ban_max_logins_exceeded_bug3281 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -936,7 +956,7 @@ sub ban_timeout_login_exceeded_bug3281 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/ban.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ban.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
 
@@ -945,6 +965,7 @@ sub ban_timeout_login_exceeded_bug3281 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -963,7 +984,7 @@ sub ban_timeout_login_exceeded_bug3281 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_login = 1;
 
@@ -1088,6 +1109,9 @@ sub ban_timeout_login_exceeded_bug3281 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1102,7 +1126,7 @@ sub ban_engine_vhost_bug3355 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/ban.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ban.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
 
@@ -1111,6 +1135,7 @@ sub ban_engine_vhost_bug3355 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1129,7 +1154,7 @@ sub ban_engine_vhost_bug3355 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1271,6 +1296,9 @@ EOC
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1285,7 +1313,7 @@ sub ban_unhandled_cmd {
   my $pid_file = File::Spec->rel2abs("$tmpdir/ban.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ban.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
 
@@ -1449,6 +1477,9 @@ sub ban_unhandled_cmd {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
