@@ -241,6 +241,21 @@ my $TESTS = {
     test_class => [qw(bug forking inprogress)],
   },
 
+  tls_client_cert_verify_failed_selfsigned_cert_only_bug3742 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  tls_client_cert_verify_failed_selfsigned_cert_in_chain_bug3742 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  tls_client_cert_verify_ok_server_selfsigned_cert_in_chain_bug3742 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -7044,6 +7059,557 @@ sub tls_verify_order_ocsp_https {
       my $expected = 'handshake failure';
       $self->assert(qr/$expected/, $errstr,
         test_msg("Expected '$expected', got '$errstr'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub tls_client_cert_verify_failed_selfsigned_cert_only_bug3742 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/tls.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  # Deliberately use the bug3742-ca.pem, which is self-signed CA cert, as the
+  # client cert.  And we deliberately use a different self-signed CA than
+  # the one in ca-cert.pem, since that ca-cert.pem is also used by the
+  # server.
+  my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/bug3742-ca.pem');
+  my $client_key = File::Spec->rel2abs('t/etc/modules/mod_tls/bug3742-ca.pem');
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $log_file,
+        TLSProtocol => 'SSLv3 TLSv1',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $server_cert,
+        TLSCACertificateFile => $ca_cert,
+        TLSVerifyClient => 'on',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client;
+
+      eval {
+        # IO::Socket::SSL options
+        my $ssl_opts = {
+          SSL_use_cert => 1,
+          SSL_cert_file => $client_cert,
+          SSL_key_file => $client_key,
+        };
+
+        eval {
+          $client = Net::FTPSSL->new('127.0.0.1',
+            Croak => 1,
+            Encryption => 'E',
+            Port => $port,
+            SSL_Client_Certificate => $ssl_opts,
+          );
+        };
+
+        # This should die of an exception like:
+        #
+        #  error:14094418:SSL routines:SSL3_READ_BYTES:tlsv1 alert unknown ca
+
+        unless ($@) { 
+          die("Successfully connected to FTPS server unexpectedly");
+        }
+
+      };
+
+      if ($@) {
+        die($@);
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub tls_client_cert_verify_failed_selfsigned_cert_in_chain_bug3742 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/tls.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  # To get the client to send a list of certs (including a self-signed CA)
+  # to the server, we use a cert file which contains a list of certs
+  # (including the client cert).  Easy.
+
+  my $client_cert = File::Spec->rel2abs("$tmpdir/client-cert-chain.pem");
+  if (open(my $outfh, "> $client_cert")) {
+    # First the client cert
+    my $cert = File::Spec->rel2abs('t/etc/modules/mod_tls/bug3742-client.pem');
+
+    if (open(my $infh, "< $cert")) {
+      # Slurp in all of the data at once.  Just easier that way.
+      local $/;
+
+      my $data = <$infh>;
+      close($infh);
+
+      print $outfh $data;
+
+    } else {
+      die("Can't read $cert: $!");
+    }
+
+    # Next the client CA
+    my $cert = File::Spec->rel2abs('t/etc/modules/mod_tls/bug3742-ca.pem');
+
+    if (open(my $infh, "< $cert")) {
+      # Slurp in all of the data at once.  Just easier that way.
+      local $/;
+
+      my $data = <$infh>;
+      close($infh);
+
+      print $outfh $data;
+    
+    } else {
+      die("Can't read $cert: $!");
+    }
+
+    unless (close($outfh)) {
+      die("Can't write $client_cert: $!");
+    }
+
+  } else {
+    die("Can't open $client_cert: $!");
+  }
+
+  my $client_key = File::Spec->rel2abs('t/etc/modules/mod_tls/bug3742-client.pem');
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $log_file,
+        TLSProtocol => 'SSLv3 TLSv1',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $server_cert,
+        TLSCACertificateFile => $ca_cert,
+        TLSVerifyClient => 'on',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client;
+
+      eval {
+        # IO::Socket::SSL options
+        my $ssl_opts = {
+          SSL_use_cert => 1,
+          SSL_cert_file => $client_cert,
+          SSL_key_file => $client_key,
+        };
+
+        eval {
+          $client = Net::FTPSSL->new('127.0.0.1',
+            Croak => 1,
+            Encryption => 'E',
+            Port => $port,
+            SSL_Client_Certificate => $ssl_opts,
+          );
+        };
+
+        # This should die of an exception like:
+        #
+        #  error:14094418:SSL routines:SSL3_READ_BYTES:tlsv1 alert unknown ca
+
+        unless ($@) { 
+          die("Successfully connected to FTPS server unexpectedly");
+        }
+
+      };
+
+      if ($@) {
+        die($@);
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub tls_client_cert_verify_ok_server_selfsigned_cert_in_chain_bug3742 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/tls.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  # To get the client to send a list of certs (including a self-signed CA)
+  # to the server, we use a cert file which contains a list of certs
+  # (including the client cert).  Easy.
+
+  my $client_cert = File::Spec->rel2abs("$tmpdir/client-cert-chain.pem");
+  if (open(my $outfh, "> $client_cert")) {
+    # First the client cert
+    my $cert = File::Spec->rel2abs('t/etc/modules/mod_tls/client-cert.pem');
+
+    if (open(my $infh, "< $cert")) {
+      # Slurp in all of the data at once.  Just easier that way.
+      local $/;
+
+      my $data = <$infh>;
+      close($infh);
+
+      print $outfh $data;
+
+    } else {
+      die("Can't read $cert: $!");
+    }
+
+    # Next the client CA.  This time, use the same CA that the server is
+    # using (and trusting).
+    my $cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+    if (open(my $infh, "< $cert")) {
+      # Slurp in all of the data at once.  Just easier that way.
+      local $/;
+
+      my $data = <$infh>;
+      close($infh);
+
+      print $outfh $data;
+    
+    } else {
+      die("Can't read $cert: $!");
+    }
+
+    unless (close($outfh)) {
+      die("Can't write $client_cert: $!");
+    }
+
+  } else {
+    die("Can't open $client_cert: $!");
+  }
+
+  my $client_key = File::Spec->rel2abs('t/etc/modules/mod_tls/client-cert.pem');
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $log_file,
+        TLSProtocol => 'SSLv3 TLSv1',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $server_cert,
+        TLSCACertificateFile => $ca_cert,
+        TLSVerifyClient => 'on',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client;
+
+      eval {
+        # IO::Socket::SSL options
+        my $ssl_opts = {
+          SSL_use_cert => 1,
+          SSL_cert_file => $client_cert,
+          SSL_key_file => $client_key,
+        };
+
+        $client = Net::FTPSSL->new('127.0.0.1',
+          Croak => 1,
+          Encryption => 'E',
+          Port => $port,
+          SSL_Client_Certificate => $ssl_opts,
+        );
+
+        # If no exception was thrown at this point, we have succeeded.
+      };
+
+      if ($@) {
+        die($@);
+      }
     };
 
     if ($@) {
