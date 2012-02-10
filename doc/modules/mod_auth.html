@@ -1,4 +1,4 @@
-<!-- $Id: mod_auth.html,v 1.3 2011-12-03 18:08:57 castaglia Exp $ -->
+<!-- $Id: mod_auth.html,v 1.4 2012-02-10 03:18:39 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_auth.html,v $ -->
 
 <html>
@@ -20,6 +20,7 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
 <h2>Directives</h2>
 <ul>
   <li><a href="#DefaultRoot">DefaultRoot</a>
+  <li><a href="#MaxLoginAttempts">MaxLoginAttempts</a>
   <li><a href="#RootRevoke">RootRevoke</a>
   <li><a href="#UserPassword">UserPassword</a>
 </ul>
@@ -36,6 +37,22 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
 The <code>DefaultRoot</code> directive is used to <code>chroot()</code> the
 session process for the connecting client.  A fuller explanation can be
 found in the <a href="../howto/Chroot.html">Chroot</a> howto.
+
+<p>
+<hr>
+<h2><a name="MaxLoginAttempts">MaxLoginAttempts</a></h2>
+<strong>Syntax:</strong> MaxLoginAttempts <em>count</em><br>
+<strong>Default:</strong> 3<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>MaxLoginAttempts</code> directive configures the maximum number of
+times a client may attempt to authenticate to the server <i>on the same TCP
+connection</i>.  After the number of attempts exceeds the configured
+<em>count</em>, the client is disconnected and an appropriate message is
+logged.
 
 <p>
 <hr>
@@ -101,7 +118,7 @@ The <code>mod_auth</code> module is compiled by default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-12-03 18:08:57 $</i><br>
+Last Updated: <i>$Date: 2012-02-10 03:18:39 $</i><br>
 
 <br><hr>
 
