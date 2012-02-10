@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1395 2012-02-08 03:11:04 castaglia Exp $
+$Id: NEWS,v 1.1396 2012-02-10 02:25:38 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -50,6 +50,8 @@ CVS
   this purpose.
 - Bug 3745 - Reject PASV command if no IPv4 address available.
 - Bug 3701 - Modify ScoreboardFile directive to support disabling scoreboarding.
+- Bug 3742 - Improper handling of self-signed certificate in client-sent cert
+  list when "TLSVerifyClient on" is used.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

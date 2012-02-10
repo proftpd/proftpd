@@ -4415,6 +4415,7 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
       case X509_V_ERR_CERT_HAS_EXPIRED:
       case X509_V_ERR_CERT_REVOKED:
       case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
+      case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
       case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
       case X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE:
       case X509_V_ERR_APPLICATION_VERIFICATION:
@@ -4438,17 +4439,6 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
         ok = 0;
         break;
       }
-
-      case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
-        /* XXX this is strange. we get this error for certain clients
-         * (i.e. Jeff Altman's kftp) when all is ok. I think it's because the
-         * client is actually sending the whole CA cert. This must be figured
-         * out, but we let it pass for now. If the CA cert isn't available
-         * locally, we will fail anyway.
-         */
-        tls_log("%s", X509_verify_cert_error_string(ctx->error));
-        ok = 1;
-        break;
 
       default:
         tls_log("error verifying client certificate: [%d] %s",
