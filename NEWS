@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1396 2012-02-10 02:25:38 castaglia Exp $
+$Id: NEWS,v 1.1397 2012-02-14 18:38:36 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -52,6 +52,8 @@ CVS
 - Bug 3701 - Modify ScoreboardFile directive to support disabling scoreboarding.
 - Bug 3742 - Improper handling of self-signed certificate in client-sent cert
   list when "TLSVerifyClient on" is used.
+- Bug 3749 - Compile of src/netacl.c fails on Tru64 UNIX (OSF/1) due to
+  conflict with system header.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------
