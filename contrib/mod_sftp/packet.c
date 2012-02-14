@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.34 2012-01-25 06:25:30 castaglia Exp $
+ * $Id: packet.c,v 1.35 2012-02-14 00:10:29 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -534,7 +534,7 @@ static void read_packet_discard(int sockfd) {
   if (buflen > 0) {
     int flags = SFTP_PACKET_READ_FL_PESSIMISTIC;
 
-    /* We don't necessary want to wait for the entire random amount of data
+    /* We don't necessarily want to wait for the entire random amount of data
      * to be read in.
      */
     sftp_ssh2_packet_sock_read(sockfd, buf, buflen, flags);
