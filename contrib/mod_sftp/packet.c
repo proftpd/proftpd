@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.35 2012-02-14 00:10:29 castaglia Exp $
+ * $Id: packet.c,v 1.36 2012-02-15 00:31:48 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1602,5 +1602,6 @@ int sftp_ssh2_packet_set_version(const char *version) {
 
   server_version = version;
   version_id = pstrcat(sftp_pool, version, "\r\n", NULL);
+  return 0;
 }
 
