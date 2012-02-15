@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.139 2012-02-15 22:10:56 castaglia Exp $
+ * $Id: fxp.c,v 1.140 2012-02-15 23:14:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2511,7 +2511,18 @@ static void fxp_packet_add_cache(char *data, uint32_t datalen) {
       fxp_packet_data_allocsz += sz;
     }
 
-    memcpy(curr_buf, data, datalen);
+    /* We explicitly want to use memmove(3) here rather than memcpy(3),
+     * since it is possible (and likely) that after reading data out
+     * of this buffer, there will be leftover data which is put back into
+     * the buffer, only at a different offset.  This means that the
+     * source and destination pointers CAN overlap; using memcpy(3) would
+     * lead to subtle memory copy issue (e.g. Bug#3743).
+     *
+     * This manifested as hard-to-reproduce SFTP upload/download stalls,
+     * segfaults, etc, due to corrupted memory being read out as
+     * packet lengths and such.
+     */
+    memmove(curr_buf, data, datalen);
     curr_buflen = datalen;
 
     return;
@@ -2556,8 +2567,20 @@ static void fxp_packet_add_cache(char *data, uint32_t datalen) {
       }
     }
 
-    /* Append the SSH2 data to the current unconsumed buffer. */
-    memcpy(curr_buf + curr_buflen, data, datalen);
+    /* Append the SSH2 data to the current unconsumed buffer.
+     *
+     * We explicitly want to use memmove(3) here rather than memcpy(3),
+     * since it is possible (and likely) that after reading data out
+     * of this buffer, there will be leftover data which is put back into
+     * the buffer, only at a different offset.  This means that the
+     * source and destination pointers CAN overlap; using memcpy(3) would
+     * lead to subtle memory copy issue (e.g. Bug#3743).
+     *
+     * This manifested as hard-to-reproduce SFTP upload/download stalls,
+     * segfaults, etc, due to corrupted memory being read out as
+     * packet lengths and such.
+     */
+    memmove(curr_buf + curr_buflen, data, datalen);
     curr_buflen += datalen;
   }
 
