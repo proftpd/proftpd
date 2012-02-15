@@ -23,7 +23,7 @@
  */
 
 /* Scoreboard API tests
- * $Id: scoreboard.c,v 1.8 2012-02-08 03:11:05 castaglia Exp $
+ * $Id: scoreboard.c,v 1.9 2012-02-15 19:03:09 castaglia Exp $
  */
 
 #include "tests.h"
@@ -1395,7 +1395,7 @@ START_TEST (scoreboard_disabled_test) {
     fail_unless(res == 0, "Failed to delete entry from '%s' scoreboard: %s",
       path, strerror(errno));
 
-    res = pr_close_scoreboard();
+    res = pr_close_scoreboard(FALSE);
     fail_unless(res == 0, "Failed to close '%s' scoreboard: %s", path,
       strerror(errno));
 

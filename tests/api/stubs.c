@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server API testsuite
- * Copyright (c) 2008-2011 The ProFTPD Project team
+ * Copyright (c) 2008-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,6 +44,10 @@ char *pr_fs_decode_path(pool *p, const char *path) {
 
 char *pr_fs_encode_path(pool *p, const char *path) {
   return (char *) path;
+}
+
+int pr_fs_get_usable_fd(int fd) {
+  return 0;
 }
 
 void pr_log_debug(int level, const char *fmt, ...) {
