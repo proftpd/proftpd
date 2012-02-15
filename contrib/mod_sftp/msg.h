@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp message format
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: msg.h,v 1.4 2011-12-10 00:08:07 castaglia Exp $
+ * $Id: msg.h,v 1.5 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -29,23 +29,24 @@
 #ifndef MOD_SFTP_MSG_H
 #define MOD_SFTP_MSG_H
 
-char sftp_msg_read_byte(pool *, char **, uint32_t *);
-int sftp_msg_read_bool(pool *, char **, uint32_t *);
-char *sftp_msg_read_data(pool *, char **, uint32_t *, size_t);
-uint32_t sftp_msg_read_int(pool *, char **, uint32_t *);
-BIGNUM *sftp_msg_read_mpint(pool *, char **, uint32_t *);
-char *sftp_msg_read_string(pool *, char **, uint32_t *);
+char sftp_msg_read_byte(pool *, unsigned char **, uint32_t *);
+int sftp_msg_read_bool(pool *, unsigned char **, uint32_t *);
+unsigned char *sftp_msg_read_data(pool *, unsigned char **, uint32_t *, size_t);
+uint32_t sftp_msg_read_int(pool *, unsigned char **, uint32_t *);
+BIGNUM *sftp_msg_read_mpint(pool *, unsigned char **, uint32_t *);
+char *sftp_msg_read_string(pool *, unsigned char **, uint32_t *);
 
-uint32_t sftp_msg_write_byte(char **, uint32_t *, char);
-uint32_t sftp_msg_write_bool(char **, uint32_t *, char);
-uint32_t sftp_msg_write_data(char **, uint32_t *, const char *, size_t, int);
-uint32_t sftp_msg_write_int(char **, uint32_t *, uint32_t);
-uint32_t sftp_msg_write_mpint(char **, uint32_t *, const BIGNUM *);
-uint32_t sftp_msg_write_string(char **, uint32_t *, const char *);
+uint32_t sftp_msg_write_byte(unsigned char **, uint32_t *, char);
+uint32_t sftp_msg_write_bool(unsigned char **, uint32_t *, char);
+uint32_t sftp_msg_write_data(unsigned char **, uint32_t *,
+  const unsigned char *, size_t, int);
+uint32_t sftp_msg_write_int(unsigned char **, uint32_t *, uint32_t);
+uint32_t sftp_msg_write_mpint(unsigned char **, uint32_t *, const BIGNUM *);
+uint32_t sftp_msg_write_string(unsigned char **, uint32_t *, const char *);
 
 /* Utility method for obtaining a scratch buffer for constructing SSH2
  * messages without necessarily needing an SSH2 packet.
  */
-char *sftp_msg_getbuf(pool *, size_t);
+unsigned char *sftp_msg_getbuf(pool *, size_t);
 
 #endif

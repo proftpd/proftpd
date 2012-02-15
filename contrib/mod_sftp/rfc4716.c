@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp RFC4716 keystore
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: rfc4716.c,v 1.15 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: rfc4716.c,v 1.16 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -39,7 +39,7 @@ struct filestore_key {
   const char *subject;
 
   /* Key data */
-  char *key_data;
+  unsigned char *key_data;
   uint32_t key_datalen;
 };
 
@@ -331,7 +331,7 @@ static struct filestore_key *filestore_get_key(sftp_keystore_t *store,
 
 static int filestore_verify_host_key(sftp_keystore_t *store, pool *p,
     const char *user, const char *host_fqdn, const char *host_user,
-    char *key_data, uint32_t key_len) {
+    unsigned char *key_data, uint32_t key_len) {
   struct filestore_key *key = NULL;
   struct filestore_data *store_data = store->keystore_data;
 
@@ -388,7 +388,7 @@ static int filestore_verify_host_key(sftp_keystore_t *store, pool *p,
 }
 
 static int filestore_verify_user_key(sftp_keystore_t *store, pool *p,
-    const char *user, char *key_data, uint32_t key_len) {
+    const char *user, unsigned char *key_data, uint32_t key_len) {
   struct filestore_key *key = NULL;
   struct filestore_data *store_data = store->keystore_data;
 

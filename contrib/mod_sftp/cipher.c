@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp ciphers
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: cipher.c,v 1.9 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: cipher.c,v 1.10 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -151,8 +151,8 @@ static void clear_cipher(struct sftp_cipher *cipher) {
 }
 
 static int set_cipher_iv(struct sftp_cipher *cipher, const EVP_MD *hash,
-    const char *k, uint32_t klen, const char *h, uint32_t hlen, char *letter,
-    const unsigned char *id, uint32_t id_len) {
+    const unsigned char *k, uint32_t klen, const char *h, uint32_t hlen,
+    char *letter, const unsigned char *id, uint32_t id_len) {
 
   EVP_MD_CTX ctx;
   unsigned char *iv = NULL;
@@ -209,8 +209,8 @@ static int set_cipher_iv(struct sftp_cipher *cipher, const EVP_MD *hash,
 }
 
 static int set_cipher_key(struct sftp_cipher *cipher, const EVP_MD *hash,
-    const char *k, uint32_t klen, const char *h, uint32_t hlen, char *letter,
-    const unsigned char *id, uint32_t id_len) {
+    const unsigned char *k, uint32_t klen, const char *h, uint32_t hlen,
+    char *letter, const unsigned char *id, uint32_t id_len) {
 
   EVP_MD_CTX ctx;
   unsigned char *key = NULL;
@@ -339,7 +339,8 @@ int sftp_cipher_set_read_algo(const char *algo) {
 int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     const char *h, uint32_t hlen) {
   const unsigned char *id = NULL;
-  char letter, *buf, *ptr;
+  unsigned char *buf, *ptr;
+  char letter;
   uint32_t buflen, bufsz, id_len;
   int key_len;
   struct sftp_cipher *cipher;
@@ -500,7 +501,8 @@ int sftp_cipher_set_write_algo(const char *algo) {
 int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     const char *h, uint32_t hlen) {
   const unsigned char *id = NULL;
-  char letter, *buf, *ptr;
+  unsigned char *buf, *ptr;
+  char letter;
   uint32_t buflen, bufsz, id_len;
   int key_len;
   struct sftp_cipher *cipher;
@@ -589,7 +591,7 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, char *buf, size_t *buflen) {
 
   if (cipher->key) {
     int res;
-    char *data, *ptr;
+    unsigned char *data, *ptr;
     uint32_t datalen, datasz = sizeof(uint32_t) + pkt->packet_len;
 
     datalen = datasz;

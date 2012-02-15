@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp message format
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: msg.c,v 1.8 2011-12-10 00:08:07 castaglia Exp $
+ * $Id: msg.c,v 1.9 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -38,7 +38,7 @@
  * requests a larger size than that, the request is fulfilled using the
  * caller-provided pool.
  */
-static char msg_buf[8 * 1024];
+static unsigned char msg_buf[8 * 1024];
 
 static void log_stacktrace(void) {
 #if defined(HAVE_EXECINFO_H) && \
@@ -74,7 +74,7 @@ static void log_stacktrace(void) {
 #endif
 }
 
-char *sftp_msg_getbuf(pool *p, size_t sz) {
+unsigned char *sftp_msg_getbuf(pool *p, size_t sz) {
   if (sz <= sizeof(msg_buf)) {
     return msg_buf;
   }
@@ -82,7 +82,7 @@ char *sftp_msg_getbuf(pool *p, size_t sz) {
   return palloc(p, sz);
 }
 
-char sftp_msg_read_byte(pool *p, char **buf, uint32_t *buflen) {
+char sftp_msg_read_byte(pool *p, unsigned char **buf, uint32_t *buflen) {
   char byte = 0;
 
   (void) p;
@@ -102,7 +102,7 @@ char sftp_msg_read_byte(pool *p, char **buf, uint32_t *buflen) {
   return byte;
 }
 
-int sftp_msg_read_bool(pool *p, char **buf, uint32_t *buflen) {
+int sftp_msg_read_bool(pool *p, unsigned char **buf, uint32_t *buflen) {
   char bool = 0;
 
   (void) p;
@@ -114,9 +114,9 @@ int sftp_msg_read_bool(pool *p, char **buf, uint32_t *buflen) {
   return 1;
 }
 
-char *sftp_msg_read_data(pool *p, char **buf, uint32_t *buflen,
-    size_t datalen) {
-  char *data = NULL;
+unsigned char *sftp_msg_read_data(pool *p, unsigned char **buf,
+    uint32_t *buflen, size_t datalen) {
+  unsigned char *data = NULL;
 
   if (*buflen < datalen) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -135,7 +135,7 @@ char *sftp_msg_read_data(pool *p, char **buf, uint32_t *buflen,
   return data;
 }
 
-uint32_t sftp_msg_read_int(pool *p, char **buf, uint32_t *buflen) {
+uint32_t sftp_msg_read_int(pool *p, unsigned char **buf, uint32_t *buflen) {
   uint32_t val = 0;
 
   (void) p;
@@ -156,7 +156,7 @@ uint32_t sftp_msg_read_int(pool *p, char **buf, uint32_t *buflen) {
   return val;
 }
 
-BIGNUM *sftp_msg_read_mpint(pool *p, char **buf, uint32_t *buflen) {
+BIGNUM *sftp_msg_read_mpint(pool *p, unsigned char **buf, uint32_t *buflen) {
   BIGNUM *mpint = NULL;
   const unsigned char *data = NULL;
   uint32_t datalen = 0;
@@ -207,7 +207,7 @@ BIGNUM *sftp_msg_read_mpint(pool *p, char **buf, uint32_t *buflen) {
   return mpint;
 }
 
-char *sftp_msg_read_string(pool *p, char **buf, uint32_t *buflen) {
+char *sftp_msg_read_string(pool *p, unsigned char **buf, uint32_t *buflen) {
   uint32_t len = 0;
   char *str = NULL;
 
@@ -236,7 +236,7 @@ char *sftp_msg_read_string(pool *p, char **buf, uint32_t *buflen) {
   return str;
 }
 
-uint32_t sftp_msg_write_byte(char **buf, uint32_t *buflen, char byte) {
+uint32_t sftp_msg_write_byte(unsigned char **buf, uint32_t *buflen, char byte) {
   uint32_t len = 0;
 
   if (*buflen < sizeof(char)) {
@@ -256,12 +256,12 @@ uint32_t sftp_msg_write_byte(char **buf, uint32_t *buflen, char byte) {
   return len;
 }
 
-uint32_t sftp_msg_write_bool(char **buf, uint32_t *buflen, char bool) {
+uint32_t sftp_msg_write_bool(unsigned char **buf, uint32_t *buflen, char bool) {
   return sftp_msg_write_byte(buf, buflen, bool == 0 ? 0 : 1);
 }
 
-uint32_t sftp_msg_write_data(char **buf, uint32_t *buflen, const char *data,
-   size_t datalen, int write_len) {
+uint32_t sftp_msg_write_data(unsigned char **buf, uint32_t *buflen,
+   const unsigned char *data, size_t datalen, int write_len) {
   uint32_t len = 0;
 
   if (write_len) {
@@ -287,7 +287,8 @@ uint32_t sftp_msg_write_data(char **buf, uint32_t *buflen, const char *data,
   return len;
 }
 
-uint32_t sftp_msg_write_int(char **buf, uint32_t *buflen, uint32_t val) {
+uint32_t sftp_msg_write_int(unsigned char **buf, uint32_t *buflen,
+    uint32_t val) {
   uint32_t len;
 
   if (*buflen < sizeof(uint32_t)) {
@@ -308,7 +309,7 @@ uint32_t sftp_msg_write_int(char **buf, uint32_t *buflen, uint32_t val) {
   return len;
 }
 
-uint32_t sftp_msg_write_mpint(char **buf, uint32_t *buflen,
+uint32_t sftp_msg_write_mpint(unsigned char **buf, uint32_t *buflen,
     const BIGNUM *mpint) {
   unsigned char *data = NULL;
   size_t datalen = 0;
@@ -358,10 +359,10 @@ uint32_t sftp_msg_write_mpint(char **buf, uint32_t *buflen,
   }
 
   if (data[1] & 0x80) {
-    len += sftp_msg_write_data(buf, buflen, (char *) data, datalen, TRUE);
+    len += sftp_msg_write_data(buf, buflen, data, datalen, TRUE);
 
   } else {
-    len += sftp_msg_write_data(buf, buflen, (char *) data + 1, datalen - 1,
+    len += sftp_msg_write_data(buf, buflen, data + 1, datalen - 1,
       TRUE);
   }
 
@@ -371,9 +372,11 @@ uint32_t sftp_msg_write_mpint(char **buf, uint32_t *buflen,
   return len;
 }
 
-uint32_t sftp_msg_write_string(char **buf, uint32_t *buflen, const char *str) {
+uint32_t sftp_msg_write_string(unsigned char **buf, uint32_t *buflen,
+    const char *str) {
   uint32_t len = 0;
 
   len = strlen(str);
-  return sftp_msg_write_data(buf, buflen, str, len, TRUE);
+  return sftp_msg_write_data(buf, buflen, (const unsigned char *) str, len,
+    TRUE);
 }

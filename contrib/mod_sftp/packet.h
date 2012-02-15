@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.h,v 1.8 2012-01-25 06:25:30 castaglia Exp $
+ * $Id: packet.h,v 1.9 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -39,14 +39,14 @@ struct ssh2_packet {
   /* Length of the padding field. */
   unsigned char padding_len;
 
-  char *payload;
+  unsigned char *payload;
   uint32_t payload_len;
 
   /* Must be at least 4 bytes of padding, with a maximum of 255 bytes. */
-  char *padding;
+  unsigned char *padding;
 
   /* Message Authentication Code. */
-  char *mac;
+  unsigned char *mac;
   uint32_t mac_len;
 
   /* Packet sequence number. */
@@ -59,13 +59,13 @@ struct ssh2_packet {
 /* From the SFTP Draft, Section 4. */
 struct sftp_packet {
   uint32_t packet_len;
-  char packet_type;
+  unsigned char packet_type;
   uint32_t request_id;
 };
 
 struct ssh2_packet *sftp_ssh2_packet_create(pool *);
 char sftp_ssh2_packet_get_mesg_type(struct ssh2_packet *);
-const char *sftp_ssh2_packet_get_mesg_type_desc(char);
+const char *sftp_ssh2_packet_get_mesg_type_desc(unsigned char);
 
 /* Returns a struct timeval populated with the time we last received an SSH2
  * packet from the client.

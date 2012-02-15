@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.65 2011-11-19 03:02:16 castaglia Exp $
+ * $Id: scp.c,v 1.66 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -286,7 +286,7 @@ static void reset_path(struct scp_path *sp) {
   sp->wrote_errors = FALSE;
 }
 
-static int read_confirm(struct ssh2_packet *pkt, char **buf,
+static int read_confirm(struct ssh2_packet *pkt, unsigned char **buf,
     uint32_t *buflen) {
   char code;
 
@@ -333,7 +333,7 @@ static int read_confirm(struct ssh2_packet *pkt, char **buf,
 
 static int write_confirm(pool *p, uint32_t channel_id, int code,
     const char *msg) {
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
   /* XXX Is this big enough?  Too big? */
@@ -360,7 +360,8 @@ static int write_confirm(pool *p, uint32_t channel_id, int code,
     errlen = strlen(errstr);
 
     sftp_msg_write_byte(&buf, &buflen, code);
-    sftp_msg_write_data(&buf, &buflen, errstr, errlen, FALSE);
+    sftp_msg_write_data(&buf, &buflen, (const unsigned char *) errstr, errlen,
+      FALSE);
   }
 
   return sftp_channel_write_data(p, channel_id, ptr, (bufsz - buflen));
@@ -369,7 +370,7 @@ static int write_confirm(pool *p, uint32_t channel_id, int code,
 /* Functions for receiving files from the client. */
 
 static int recv_errors(pool *p, uint32_t channel_id, struct scp_path *sp,
-    char *data, uint32_t datalen) {
+    unsigned char *data, uint32_t datalen) {
 
   /* Check for error messages from the client first. */
   if (data[0] == '\01') {
@@ -383,11 +384,11 @@ static int recv_errors(pool *p, uint32_t channel_id, struct scp_path *sp,
     }
 
     if (i < datalen) {
-      msg = pstrndup(p, &(data[1]), i + 1);
+      msg = pstrndup(p, (char *) &(data[1]), i + 1);
 
     } else {
       msg = pcalloc(p, i + 1);
-        memcpy(msg, &(data[1]), i);
+      memcpy(msg, &(data[1]), i);
     }
 
     pr_trace_msg(trace_channel, 3,
@@ -412,9 +413,10 @@ static int recv_errors(pool *p, uint32_t channel_id, struct scp_path *sp,
 }
 
 static int recv_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
-    char *data, uint32_t datalen) {
+    unsigned char *data, uint32_t datalen) {
   register unsigned int i;
-  char *msg, *ptr = NULL, *tmp = NULL;
+  unsigned char *msg, *ptr = NULL;
+  char *tmp = NULL;
 
   if (data[0] != 'T') {
     pr_trace_msg(trace_channel, 2, "expected T control message, got '%c'",
@@ -438,31 +440,31 @@ static int recv_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   pr_trace_msg(trace_channel, 5, "'%s' control message: T%s", sp->path, msg);
 
-  sp->times[1].tv_sec = strtoul(msg, &tmp, 10);
+  sp->times[1].tv_sec = strtoul((char *) msg, &tmp, 10);
   if (tmp == NULL ||
       *tmp != ' ') {
     write_confirm(p, channel_id, 1, "mtime secs not delimited");
     return 1;
   }
 
-  msg = tmp + 1;
-  sp->times[1].tv_usec = strtoul(msg, &tmp, 10);
+  msg = ((unsigned char *) tmp) + 1;
+  sp->times[1].tv_usec = strtoul((char *) msg, &tmp, 10);
   if (tmp == NULL ||
       *tmp != ' ') {
     write_confirm(p, channel_id, 1, "mtime usecs not delimited");
     return 1;
   }
 
-  msg = tmp + 1;
-  sp->times[0].tv_sec = strtoul(msg, &tmp, 10);
+  msg = ((unsigned char *) tmp) + 1;
+  sp->times[0].tv_sec = strtoul((char *) msg, &tmp, 10);
   if (tmp == NULL ||
       *tmp != ' ') {
     write_confirm(p, channel_id, 1, "atime secs not delimited");
     return 1;
   }
 
-  msg = tmp + 1;
-  sp->times[0].tv_usec = strtoul(msg, &tmp, 10);
+  msg = ((unsigned char *) tmp) + 1;
+  sp->times[0].tv_usec = strtoul((char *) msg, &tmp, 10);
   if (tmp == NULL ||
       *tmp != '\0') {
     write_confirm(p, channel_id, 1, "atime usecs not delimited");
@@ -634,9 +636,11 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
 }
 
 static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
-    char *data, uint32_t datalen) {
+    unsigned char *data, uint32_t datalen) {
   register unsigned int i;
-  char *hiddenstore_path = NULL, *msg, *ptr = NULL;
+  char *hiddenstore_path = NULL;
+  unsigned char *msg;
+  char *ptr = NULL;
   int have_dir = FALSE;
   cmd_rec *cmd = NULL;
 
@@ -668,7 +672,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   for (i = 1; i < datalen; i++) {
     if (data[i] == '\n') {
-      ptr = &data[i++];
+      ptr = (char *) &data[i++];
       break;
     }
   }
@@ -681,7 +685,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   pr_trace_msg(trace_channel, 5, "'%s' control message: %c%s", sp->path,
     !have_dir ? 'C' : 'D', msg);
 
-  ptr = msg;
+  ptr = (char *) msg;
   if (recv_perms(p, channel_id, ptr, &sp->perms) < 0)
     return 1;
 
@@ -902,7 +906,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 }
 
 static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
-    char *data, uint32_t datalen) {
+    unsigned char *data, uint32_t datalen) {
   uint32_t writelen;
 
   writelen = datalen;
@@ -913,7 +917,7 @@ static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
   if (writelen > 0) {
     while (TRUE) {
       /* XXX Do we need to properly handle short writes here? */
-      if (pr_fsio_write(sp->fh, data, writelen) != writelen) {
+      if (pr_fsio_write(sp->fh, (char *) data, writelen) != writelen) {
         int xerrno = errno;
 
         if (xerrno == EINTR ||
@@ -973,7 +977,7 @@ static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
 }
 
 static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
-    char *data, uint32_t datalen) {
+    unsigned char *data, uint32_t datalen) {
   struct scp_path *parent_sp;
   int ok = TRUE;
 
@@ -1029,7 +1033,7 @@ static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
  * receive it (due to some error).
  */
 static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
-    char *data, uint32_t datalen) {
+    unsigned char *data, uint32_t datalen) {
   int res;
   cmd_rec *cmd = NULL;
 
@@ -1301,7 +1305,7 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
 static int send_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
     struct stat *st) {
   int res;
-  char ctrl_msg[64];
+  unsigned char ctrl_msg[64];
   size_t ctrl_msglen;
 
   memset(ctrl_msg, '\0', sizeof(ctrl_msg));
@@ -1315,15 +1319,15 @@ static int send_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
    *  0       (future proof field for sending atime usecs)
    */
 
-  snprintf(ctrl_msg, sizeof(ctrl_msg), "T%lu 0 %lu 0",
+  snprintf((char *) ctrl_msg, sizeof(ctrl_msg), "T%lu 0 %lu 0",
     (unsigned long) (st->st_mtime > 0 ? st->st_mtime : 0),
     (unsigned long) (st->st_atime > 0 ? st->st_atime : 0));
 
   pr_trace_msg(trace_channel, 3, "sending '%s' T (timestamps): %s", sp->path,
     ctrl_msg);
 
-  ctrl_msg[strlen(ctrl_msg)] = '\n';
-  ctrl_msglen = strlen(ctrl_msg);
+  ctrl_msg[strlen((char *) ctrl_msg)] = '\n';
+  ctrl_msglen = strlen((char *) ctrl_msg);
 
   need_confirm = TRUE;
 
@@ -1338,7 +1342,7 @@ static int send_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 static int send_dirinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
     struct stat *st) {
   int res;
-  char ctrl_msg[1536];
+  unsigned char ctrl_msg[1536];
   size_t ctrl_msglen;
   char *tmp;
 
@@ -1354,14 +1358,14 @@ static int send_dirinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   }
 
   memset(ctrl_msg, '\0', sizeof(ctrl_msg));
-  snprintf(ctrl_msg, sizeof(ctrl_msg), "D%04o 0 %.1024s",
+  snprintf((char *) ctrl_msg, sizeof(ctrl_msg), "D%04o 0 %.1024s",
     (unsigned int) (st->st_mode & SFTP_SCP_ST_MODE_MASK), tmp);
 
   pr_trace_msg(trace_channel, 3, "sending '%s' D (directory): %s", sp->path,
     ctrl_msg);
 
-  ctrl_msg[strlen(ctrl_msg)] = '\n';
-  ctrl_msglen = strlen(ctrl_msg);
+  ctrl_msg[strlen((char *) ctrl_msg)] = '\n';
+  ctrl_msglen = strlen((char *) ctrl_msg);
 
   need_confirm = TRUE;
 
@@ -1376,7 +1380,7 @@ static int send_dirinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 static int send_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
     struct stat *st) {
   int res;
-  char ctrl_msg[1536];
+  unsigned char ctrl_msg[1536];
   size_t ctrl_msglen;
   char *tmp;
 
@@ -1392,15 +1396,15 @@ static int send_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   }
 
   memset(ctrl_msg, '\0', sizeof(ctrl_msg));
-  snprintf(ctrl_msg, sizeof(ctrl_msg), "C%04o %" PR_LU " %.1024s",
+  snprintf((char *) ctrl_msg, sizeof(ctrl_msg), "C%04o %" PR_LU " %.1024s",
     (unsigned int) (st->st_mode & SFTP_SCP_ST_MODE_MASK),
     (pr_off_t) st->st_size, tmp);
 
   pr_trace_msg(trace_channel, 3, "sending '%s' C (info): %s", sp->path,
     ctrl_msg);
 
-  ctrl_msg[strlen(ctrl_msg)] = '\n';
-  ctrl_msglen = strlen(ctrl_msg);
+  ctrl_msg[strlen((char *) ctrl_msg)] = '\n';
+  ctrl_msglen = strlen((char *) ctrl_msg);
 
   need_confirm = TRUE;
 
@@ -1415,7 +1419,7 @@ static int send_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
     struct stat *st) {
   int res;
-  char *chunk;
+  unsigned char *chunk;
   size_t chunksz;
   long chunklen;
 
@@ -1446,7 +1450,7 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
         (pr_off_t) sp->sentlen, (pr_off_t) st->st_size, sp->path);
     }
 
-    chunklen = pr_fsio_read(sp->fh, chunk, chunksz - 1);
+    chunklen = pr_fsio_read(sp->fh, (char *) chunk, chunksz - 1);
     if (chunklen < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error reading from '%s': %s", sp->path, strerror(errno));
@@ -1598,7 +1602,7 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
     /* Send end-of-directory control message */
 
     need_confirm = TRUE;
-    res = sftp_channel_write_data(p, channel_id, "E\n", 2);
+    res = sftp_channel_write_data(p, channel_id, (unsigned char *) "E\n", 2);
     if (res < 0)
       return res;
   }
@@ -1824,7 +1828,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
 /* Main entry point */
 int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
-    char *data, uint32_t datalen) {
+    unsigned char *data, uint32_t datalen) {
   int res = -1;
   struct ssh2_packet *pkt;
 

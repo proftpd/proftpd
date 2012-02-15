@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_sftp.h.in,v 1.23 2012-01-25 06:25:30 castaglia Exp $
+ * $Id: mod_sftp.h.in,v 1.24 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_H
@@ -193,12 +193,12 @@ typedef struct keystore_st {
 
   /* Verify the given host key.  Returns zero on success, -1 otherwise. */
   int (*verify_host_key)(struct keystore_st *store, pool *p, const char *user,
-    const char *host_fqdn, const char *host_user, char *host_key,
+    const char *host_fqdn, const char *host_user, unsigned char *host_key,
     uint32_t host_keylen);
 
   /* Verify the given user key.  Returns zero on success, -1 otherwise. */
   int (*verify_user_key)(struct keystore_st *store, pool *p, const char *user,
-    char *user_key, uint32_t user_keylen);
+    unsigned char *user_key, uint32_t user_keylen);
 
   /* Close this keystore, clean up any allocated resources.  Returns
    * zero on success, -1 otherwise (with errno set appropriately).
@@ -216,7 +216,8 @@ int sftp_keystore_register_store(const char *,
 int sftp_keystore_unregister_store(const char *, unsigned int);
 
 /* For use by keystore backend modules. */
-int sftp_keys_compare_keys(pool *, char *, uint32_t, char *, uint32_t);
+int sftp_keys_compare_keys(pool *, unsigned char *, uint32_t, unsigned char *,
+  uint32_t);
 
 /* These strings are part of any RFC4716 key; thus they will be needed by
  * any keystore backend modules.
@@ -237,8 +238,8 @@ int sftp_channel_register_exec_handler(module *, const char *,
   int (*set_params)(pool *, uint32_t, array_header *),
   int (*prep_chan)(uint32_t),
   int (*postopen_chan)(uint32_t),
-  int (*handle_pkt)(pool *, void *, uint32_t, char *, uint32_t),
+  int (*handle_pkt)(pool *, void *, uint32_t, unsigned char *, uint32_t),
   int (*finish_chan)(uint32_t),
-  int (**write_data)(pool *, uint32_t, char *, uint32_t));
+  int (**write_data)(pool *, uint32_t, unsigned char *, uint32_t));
 
 #endif

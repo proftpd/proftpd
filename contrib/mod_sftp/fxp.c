@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.140 2012-02-15 23:14:02 castaglia Exp $
+ * $Id: fxp.c,v 1.141 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -195,7 +195,7 @@ struct fxp_packet {
   unsigned char request_type;
   uint32_t request_id;
   uint32_t payload_sz;
-  char *payload;
+  unsigned char *payload;
   uint32_t payload_len;
 
   unsigned int state;
@@ -220,7 +220,7 @@ static size_t fxp_packet_data_allocsz = 0;
 struct fxp_extpair {
   char *ext_name;
   uint32_t ext_datalen;
-  char *ext_data;
+  unsigned char *ext_data;
 };
 
 static pool *fxp_pool = NULL;
@@ -1058,8 +1058,9 @@ static int fxp_path_pass_regex_filters(pool *p, const char *request,
 }
 
 /* FXP_STATUS messages */
-static void fxp_status_write(char **buf, uint32_t *buflen, uint32_t request_id,
-    uint32_t status_code, const char *status_msg, const char *extra_data) {
+static void fxp_status_write(unsigned char **buf, uint32_t *buflen,
+    uint32_t request_id, uint32_t status_code, const char *status_msg,
+    const char *extra_data) {
   char num[32];
 
   /* Add a fake response to the response chain, for use by mod_log's
@@ -1116,7 +1117,8 @@ static uint16_t fxp_msg_read_short(pool *p, char **buf, uint32_t *buflen) {
 }
 #endif
 
-static uint64_t fxp_msg_read_long(pool *p, char **buf, uint32_t *buflen) {
+static uint64_t fxp_msg_read_long(pool *p, unsigned char **buf,
+    uint32_t *buflen) {
   uint64_t val;
   unsigned char data[8];
 
@@ -1182,7 +1184,7 @@ static struct fxp_extpair *fxp_msg_read_extpair(pool *p, char **buf,
 }
 #endif
 
-static uint32_t fxp_msg_write_short(char **buf, uint32_t *buflen,
+static uint32_t fxp_msg_write_short(unsigned char **buf, uint32_t *buflen,
     uint16_t val) {
   uint32_t len = 0;
 
@@ -1203,7 +1205,8 @@ static uint32_t fxp_msg_write_short(char **buf, uint32_t *buflen,
   return len;
 }
 
-static uint32_t fxp_msg_write_long(char **buf, uint32_t *buflen, uint64_t val) {
+static uint32_t fxp_msg_write_long(unsigned char **buf, uint32_t *buflen,
+    uint64_t val) {
   unsigned char data[8];
 
   if (*buflen < sizeof(uint64_t)) {
@@ -1222,21 +1225,23 @@ static uint32_t fxp_msg_write_long(char **buf, uint32_t *buflen, uint64_t val) {
   data[6] = (unsigned char) (val >> 8) & 0xFF;
   data[7] = (unsigned char) val & 0xFF;
 
-  return sftp_msg_write_data(buf, buflen, (char *) data, sizeof(data), FALSE);
+  return sftp_msg_write_data(buf, buflen, data, sizeof(data), FALSE);
 }
 
-static void fxp_msg_write_extpair(char **buf, uint32_t *buflen,
+static void fxp_msg_write_extpair(unsigned char **buf, uint32_t *buflen,
     struct fxp_extpair *extpair) {
   uint32_t len;
 
   len = strlen(extpair->ext_name);
-  sftp_msg_write_data(buf, buflen, extpair->ext_name, len, TRUE);
+  sftp_msg_write_data(buf, buflen, (unsigned char *) extpair->ext_name, len,
+    TRUE);
   sftp_msg_write_data(buf, buflen, extpair->ext_data, extpair->ext_datalen,
     TRUE);
 }
 
 static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
-    uint32_t attr_flags, char **buf, uint32_t *buflen, struct fxp_packet *fxp) {
+    uint32_t attr_flags, unsigned char **buf, uint32_t *buflen,
+    struct fxp_packet *fxp) {
   struct stat st;
   int res;
 
@@ -1785,7 +1790,7 @@ static char *fxp_stroflags(pool *p, int flags) {
   return str;
 }
 
-static struct stat *fxp_attrs_read(struct fxp_packet *fxp, char **buf,
+static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
     uint32_t *buflen, uint32_t *flags) {
   struct stat *st;
 
@@ -1834,7 +1839,7 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, char **buf,
       name = sftp_msg_read_string(fxp->pool, buf, buflen);
       uid = pr_auth_name2uid(fxp->pool, name);
       if (uid == (uid_t) -1) {
-        char *buf2, *ptr2;
+        unsigned char *buf2, *ptr2;
         uint32_t buflen2, bufsz2, status_code;
         struct fxp_packet *resp;
 
@@ -1870,7 +1875,7 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, char **buf,
       name = sftp_msg_read_string(fxp->pool, buf, buflen);
       gid = pr_auth_name2gid(fxp->pool, name);
       if (gid == (gid_t) -1) {
-        char *buf2, *ptr2;
+        unsigned char *buf2, *ptr2;
         uint32_t buflen2, bufsz2, status_code;
         struct fxp_packet *resp;
 
@@ -1976,7 +1981,7 @@ static char fxp_get_file_type(mode_t mode) {
   return SSH2_FX_ATTR_FTYPE_UNKNOWN;
 }
 
-static uint32_t fxp_attrs_write(pool *p, char **buf, uint32_t *buflen,
+static uint32_t fxp_attrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
     struct stat *st, const char *user_owner, const char *group_owner) {
   uint32_t flags, len = 0;
   mode_t perms;
@@ -2206,7 +2211,7 @@ static struct fxp_dirent *fxp_get_dirent(pool *p, cmd_rec *cmd,
   return fxd;
 }
 
-static uint32_t fxp_name_write(pool *p, char **buf, uint32_t *buflen,
+static uint32_t fxp_name_write(pool *p, unsigned char **buf, uint32_t *buflen,
     const char *path, struct stat *st, const char *user_owner,
     const char *group_owner) {
   uint32_t len = 0;
@@ -2442,7 +2447,7 @@ static struct fxp_packet *fxp_packet_create(pool *p, uint32_t channel_id) {
 }
 
 static pool *curr_buf_pool = NULL;
-static char *curr_buf = NULL;
+static unsigned char *curr_buf = NULL;
 static uint32_t curr_buflen = 0, curr_bufsz = 0;
 static struct fxp_packet *curr_pkt = NULL;
 
@@ -2466,13 +2471,13 @@ static void fxp_packet_clear_cache(void) {
   curr_buflen = 0;
 }
 
-static uint32_t fxp_packet_get_cache(char **data) {
+static uint32_t fxp_packet_get_cache(unsigned char **data) {
   *data = curr_buf;
   return curr_buflen;
 }
 
-static void fxp_packet_add_cache(char *data, uint32_t datalen) {
-  if (!curr_buf_pool) {
+static void fxp_packet_add_cache(unsigned char *data, uint32_t datalen) {
+  if (curr_buf_pool == NULL) {
     curr_buf_pool = make_sub_pool(fxp_pool);
     pr_pool_tag(curr_buf_pool, "SFTP packet buffer pool");
 
@@ -2601,12 +2606,21 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
   }
 
   buflen = fxp_packet_get_cache(&buf);
+  pr_trace_msg(trace_channel, 19,
+    "using %lu bytes of SSH2 packet buffer data", (unsigned long) buflen);
 
   fxp = fxp_packet_get_packet(channel_id);
 
   if (!(fxp->state & FXP_PACKET_HAVE_PACKET_LEN)) {
     /* Make sure we have enough data in the buffer to cover the packet len. */
     if (buflen < sizeof(uint32_t)) {
+      fxp_packet_set_packet(fxp);
+
+      /* We didn't consume any data, so no need to call
+       * clear_cache()/add_cache().
+       */
+      *have_cache = TRUE;
+
       return NULL;
     }
 
@@ -2625,11 +2639,21 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
 
       return NULL;
     }
+
+  } else {
+    pr_trace_msg(trace_channel, 19,
+      "already have SFTP request packet len %lu from previous buffer data",
+      (unsigned long) fxp->packet_len);
   }
 
   if (!(fxp->state & FXP_PACKET_HAVE_REQUEST_TYPE)) {
     /* Make sure we have enough data in the buffer to cover the request type. */
     if (buflen < sizeof(char)) {
+      fxp_packet_set_packet(fxp);
+      fxp_packet_clear_cache();
+      fxp_packet_add_cache(buf, buflen);
+      *have_cache = TRUE;
+
       return NULL;
     }
 
@@ -2648,6 +2672,11 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
 
       return NULL;
     }
+
+  } else {
+    pr_trace_msg(trace_channel, 19,
+      "already have SFTP request type %d from previous buffer data",
+      fxp->request_type);
   }
 
   if (!(fxp->state & FXP_PACKET_HAVE_PAYLOAD_SIZE)) {
@@ -2659,12 +2688,22 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
       "read SFTP request payload size %lu from SSH2 packet buffer "
       "(%lu bytes remaining in buffer)", (unsigned long) fxp->payload_sz,
       (unsigned long) buflen);
+
+  } else {
+    pr_trace_msg(trace_channel, 19,
+      "already have SFTP request payload size %lu from previous buffer data",
+      (unsigned long) fxp->payload_sz);
   }
 
   if (!(fxp->state & FXP_PACKET_HAVE_REQUEST_ID)) {
     if (fxp->request_type != SFTP_SSH2_FXP_INIT) {
       /* Make sure we have enough data in the buffer to cover the request ID. */
       if (buflen < sizeof(uint32_t)) {
+        fxp_packet_set_packet(fxp);
+        fxp_packet_clear_cache();
+        fxp_packet_add_cache(buf, buflen);
+        *have_cache = TRUE;
+
         return NULL;
       }
 
@@ -2687,12 +2726,70 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
 
       return NULL;
     }
+
+  } else {
+    pr_trace_msg(trace_channel, 19,
+      "already have SFTP request ID %lu from previous buffer data",
+      (unsigned long) fxp->request_id);
   }
 
   if (!(fxp->state & FXP_PACKET_HAVE_PAYLOAD)) {
-    if (fxp->payload_sz == buflen) {
+    uint32_t payload_remaining;
 
-      fxp->payload = buf;
+    /* The first question is: do we have any existing payload data?
+     *
+     * 1. Have no payload data:
+     *   a. Packet buffer is exactly size of needed payload data.
+     *     This means that we will get the full payload, and there will be
+     *     no data left over in the packet buffer.
+     *
+     *   b. Packet buffer is larger than size of needed payload data.
+     *     This means that we will get the full payload, and there will be
+     *     data left over in the packet buffer.
+     *
+     *   c. Packet buffer is smaller than size of needed payload data.
+     *     This means that we will get only a partial payload, and there will
+     *     be no data left over in the packet buffer.
+     *
+     * 2. Have existing payload data:
+     *   a. Packet buffer is exactly size of remaining payload data.
+     *     This means that we will get the full payload, and there will be
+     *     no data left over in the packet buffer.
+     *
+     *   b. Packet buffer is larger than size of remaining payload data.
+     *     This means that we will get the full payload, and there will be
+     *     data left over in the packet buffer.
+     *
+     *   c. Packet buffer is smaller than size of remaining payload data.
+     *     This means that we will get only a partial payload, and there will
+     *     be no data left over in the packet buffer.
+     *
+     * To simplify the code, we can say that if we have no payload data,
+     * it can be handled the same as a partial payload of length zero.
+     */
+
+    if (fxp->payload == NULL) {
+      /* Make sure we have a payload buffer allocated. */
+      fxp->payload = pcalloc(fxp->pool, fxp->payload_sz);
+      fxp->payload_len = 0;
+    }
+
+    /* Now determine the amount of bytes remaining before we have the full
+     * payload.
+     */
+    payload_remaining = fxp->payload_sz - fxp->payload_len;
+
+    /* First case: the packet buffer is exactly the size of the remaining
+     * payload data.
+     */
+    if (buflen == payload_remaining) {
+      pr_trace_msg(trace_channel, 19,
+        "filling remaining SFTP request payload (%lu of %lu total bytes) "
+        "from SSH2 packet buffer (%lu bytes in buffer)",
+        (unsigned long) payload_remaining, (unsigned long) fxp->payload_sz,
+        (unsigned long) buflen);
+
+      memcpy(fxp->payload + fxp->payload_len, buf, buflen);
       fxp->payload_len = buflen;
       fxp->state |= FXP_PACKET_HAVE_PAYLOAD;
 
@@ -2700,132 +2797,66 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
       fxp_packet_clear_cache();
       *have_cache = FALSE;
 
-      return fxp;
-
-    } else if (fxp->payload_sz > buflen) {
-
-      if (fxp->payload == NULL) {
-        pr_trace_msg(trace_channel, 19,
-          "filling SFTP request payload (%lu bytes) from SSH2 packet buffer "
-          "(%lu bytes in buffer), using pool %p",
-          (unsigned long) fxp->payload_sz, (unsigned long) buflen, fxp->pool);
-
-        /* We don't have any existing payload data; copy the entire buffer
-         * into the payload buffer.
-         */
-        fxp->payload = pcalloc(fxp->pool, fxp->payload_sz);
-        memcpy(fxp->payload, buf, buflen);
-        fxp->payload_len = buflen;
-
-        buflen = 0;
-        buf = NULL;
-
-      } else {
-        uint32_t payload_len;
-
-        /* We have existing payload data.  Now we need to see if the
-         * packet buffer plus the existing payload buffer will provide
-         * the complete payload data.
-         */
-
-        if ((fxp->payload_len + buflen) <= fxp->payload_sz) {
-          /* The packet buffer data is less than needed, or is just
-           * enough to complete the payload.
-           */
-
-          payload_len = fxp->payload_len + buflen;
-          memcpy(fxp->payload + fxp->payload_len, buf, buflen);
-
-          buflen = 0;
-          buf = NULL;
-
-        } else {
-
-          /* The packet buffer contains more than enough data.  Copy into
-           * the payload buffer the rest of what's needed.
-           */
-          memcpy(fxp->payload + fxp->payload_len, buf,
-            (fxp->payload_sz - fxp->payload_len));
-
-          buflen -= (fxp->payload_sz - fxp->payload_len);
-          buf += (fxp->payload_sz - fxp->payload_len);
-
-          /* Set this to the payload size, for the following checks for
-           * payload completeness.
-           */
-          payload_len = fxp->payload_sz;
-        }
-
-        fxp->payload_len = payload_len;
-
-        if (fxp->payload_len == fxp->payload_sz) {
-          fxp->state |= FXP_PACKET_HAVE_PAYLOAD;
-          fxp_packet_set_packet(NULL);
-          fxp_packet_clear_cache();
-
-          fxp_packet_add_cache(buf, buflen);
-          *have_cache = buflen > 0 ? TRUE : FALSE;
-
-          return fxp;
-        }
-      }
-
-      fxp_packet_set_packet(fxp);
-      fxp_packet_clear_cache();
-
-      /* We may be adding unconsumed packet buffer data back into the
-       * cache (as when the packet buffer contained more data than needed
-       * to complete the payload), or the packet buffer might be empty
-       * (as when the entire packet buffer was consumed in completing, or
-       * attempting to complete, the payload).
-       */
-
-      fxp_packet_add_cache(buf, buflen);
-      *have_cache = buflen > 0 ? TRUE : FALSE;
-
-      pr_trace_msg(trace_channel, 15, "received %lu bytes of %lu byte payload, "
-        "need more data from client", (unsigned long) fxp->payload_len,
-        (unsigned long) fxp->payload_sz);
-
-      return NULL;
-
-    } else if (fxp->payload_sz < buflen) {
-
-      if (fxp->payload) {
-        /* Append the data to complete this SFTP packet's payload, and stash
-         * the remaining data, to be used for the next packet requested.
-         */
-        memcpy(fxp->payload + fxp->payload_len, buf,
-          fxp->payload_sz - fxp->payload_len);
-
-      } else {
-        fxp->payload = pcalloc(fxp->pool, fxp->payload_sz);
-        memcpy(fxp->payload, buf, fxp->payload_sz);
-      }
-
-      buflen -= (fxp->payload_sz - fxp->payload_len);
-      buf += (fxp->payload_sz - fxp->payload_len);
-
-      fxp->payload_len = fxp->payload_sz;
-
-      fxp->state |= FXP_PACKET_HAVE_PAYLOAD;
-      fxp_packet_set_packet(NULL);
-
-      fxp_packet_clear_cache();
-      fxp_packet_add_cache(buf, buflen);
-      *have_cache = buflen > 0 ? TRUE : FALSE;
-
+      pr_trace_msg(trace_channel, 19, "completely filled payload of %lu bytes "
+        "(0 bytes remaining in buffer)", (unsigned long) fxp->payload_sz);
       return fxp;
     }
+
+    /* Second case: the packet buffer is larger than the size of the remaining
+     * payload data.
+     */
+    if (buflen > payload_remaining) {
+      pr_trace_msg(trace_channel, 19,
+        "filling remaining SFTP request payload (%lu of %lu total bytes) "
+        "from SSH2 packet buffer (%lu bytes in buffer)",
+        (unsigned long) payload_remaining, (unsigned long) fxp->payload_sz,
+        (unsigned long) buflen);
+
+      memcpy(fxp->payload + fxp->payload_len, buf, payload_remaining);
+      fxp->payload_len += payload_remaining;
+      fxp->state |= FXP_PACKET_HAVE_PAYLOAD;
+
+      buflen -= payload_remaining;
+      buf += payload_remaining;
+
+      fxp_packet_set_packet(NULL);
+      fxp_packet_clear_cache();
+      fxp_packet_add_cache(buf, buflen);
+      *have_cache = TRUE;
+
+      pr_trace_msg(trace_channel, 19, "completely filled payload of %lu bytes "
+        "(%lu bytes remaining in buffer)", (unsigned long) fxp->payload_sz,
+        (unsigned long) buflen);
+      return fxp;
+    }
+
+    /* Third (and remaining) case: the packet buffer is smaller than the size
+     * of the remaining payload data.
+     */
+    pr_trace_msg(trace_channel, 19,
+      "filling remaining SFTP request payload (%lu of %lu total bytes) "
+      "from SSH2 packet buffer (%lu bytes in buffer)",
+      (unsigned long) payload_remaining, (unsigned long) fxp->payload_sz,
+      (unsigned long) buflen);
+
+    memcpy(fxp->payload + fxp->payload_len, buf, buflen);
+    fxp->payload_len += buflen;
+
+    fxp_packet_set_packet(fxp);
+    fxp_packet_clear_cache();
+    *have_cache = FALSE;
+
+  } else {
+    pr_trace_msg(trace_channel, 19,
+      "already have SFTP payload (%lu bytes) from previous buffer data",
+      (unsigned long) fxp->payload_sz);
   }
 
-  fxp_packet_clear_cache();
-  *have_cache = FALSE;
-  return fxp;
+  return NULL;
 }
 
 static int fxp_packet_write(struct fxp_packet *fxp) {
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
   int res;
 
@@ -2842,9 +2873,9 @@ static int fxp_packet_write(struct fxp_packet *fxp) {
 
 /* Miscellaneous */
 
-static void fxp_version_add_vendor_id_ext(pool *p, char **buf,
+static void fxp_version_add_vendor_id_ext(pool *p, unsigned char **buf,
     uint32_t *buflen) {
-  char *buf2, *ptr2;
+  unsigned char *buf2, *ptr2;
   const char *vendor_name, *product_name, *product_version;
   uint32_t bufsz2, buflen2;
   uint64_t build_number;
@@ -2875,7 +2906,8 @@ static void fxp_version_add_vendor_id_ext(pool *p, char **buf,
   fxp_msg_write_extpair(buf, buflen, &ext);
 }
 
-static void fxp_version_add_version_ext(pool *p, char **buf, uint32_t *buflen) {
+static void fxp_version_add_version_ext(pool *p, unsigned char **buf,
+    uint32_t *buflen) {
   register unsigned int i;
   struct fxp_extpair ext;
   char *versions_str = "";
@@ -2930,8 +2962,8 @@ static void fxp_version_add_version_ext(pool *p, char **buf, uint32_t *buflen) {
     }
   }
 
-  ext.ext_data = versions_str;
-  ext.ext_datalen = strlen(ext.ext_data);
+  ext.ext_data = (unsigned char *) versions_str;
+  ext.ext_datalen = strlen(versions_str);
 
   pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
     ext.ext_data);
@@ -2946,7 +2978,7 @@ static void fxp_version_add_version_ext(pool *p, char **buf, uint32_t *buflen) {
   allow_version_select = TRUE;
 }
 
-static void fxp_version_add_openssh_exts(pool *p, char **buf,
+static void fxp_version_add_openssh_exts(pool *p, unsigned char **buf,
     uint32_t *buflen) {
   (void) p;
 
@@ -2956,7 +2988,7 @@ static void fxp_version_add_openssh_exts(pool *p, char **buf,
     struct fxp_extpair ext;
 
     ext.ext_name = "posix-rename@openssh.com";
-    ext.ext_data = "1";
+    ext.ext_data = (unsigned char *) "1";
     ext.ext_datalen = 1;
 
     pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
@@ -2969,7 +3001,7 @@ static void fxp_version_add_openssh_exts(pool *p, char **buf,
     struct fxp_extpair ext;
 
     ext.ext_name = "statvfs@openssh.com";
-    ext.ext_data = "2";
+    ext.ext_data = (unsigned char *) "2";
     ext.ext_datalen = 1;
 
     pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
@@ -2977,7 +3009,7 @@ static void fxp_version_add_openssh_exts(pool *p, char **buf,
     fxp_msg_write_extpair(buf, buflen, &ext);
 
     ext.ext_name = "fstatvfs@openssh.com";
-    ext.ext_data = "2";
+    ext.ext_data = (unsigned char *) "2";
     ext.ext_datalen = 1;
 
     pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'",
@@ -2987,24 +3019,25 @@ static void fxp_version_add_openssh_exts(pool *p, char **buf,
 #endif
 }
 
-static void fxp_version_add_newline_ext(pool *p, char **buf, uint32_t *buflen) {
+static void fxp_version_add_newline_ext(pool *p, unsigned char **buf,
+    uint32_t *buflen) {
   struct fxp_extpair ext;
 
   (void) p;
 
   ext.ext_name = "newline";
-  ext.ext_data = "\n";
+  ext.ext_data = (unsigned char *) "\n";
   ext.ext_datalen = 1;
 
   pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '\n'", ext.ext_name);
   fxp_msg_write_extpair(buf, buflen, &ext);
 }
 
-static void fxp_version_add_supported_ext(pool *p, char **buf,
+static void fxp_version_add_supported_ext(pool *p, unsigned char **buf,
     uint32_t *buflen) {
   struct fxp_extpair ext;
   uint32_t attrs_len, attrs_sz;
-  char *attrs_buf, *attrs_ptr;
+  unsigned char *attrs_buf, *attrs_ptr;
   uint32_t file_mask, bits_mask, open_mask, access_mask, max_read_size;
   unsigned int ext_count;
 
@@ -3063,8 +3096,8 @@ static void fxp_version_add_supported_ext(pool *p, char **buf,
    */
 
   if (ext_count > 0) {
+    unsigned char *exts_buf, *exts_ptr;
     uint32_t exts_len, exts_sz;
-    char *exts_buf, *exts_ptr;
 
     exts_len = exts_sz = 256;
     exts_buf = exts_ptr = palloc(p, exts_sz);
@@ -3102,11 +3135,11 @@ static void fxp_version_add_supported_ext(pool *p, char **buf,
   fxp_msg_write_extpair(buf, buflen, &ext);
 }
 
-static void fxp_version_add_supported2_ext(pool *p, char **buf,
+static void fxp_version_add_supported2_ext(pool *p, unsigned char **buf,
     uint32_t *buflen) {
   struct fxp_extpair ext;
   uint32_t attrs_len, attrs_sz;
-  char *attrs_buf, *attrs_ptr;
+  unsigned char *attrs_buf, *attrs_ptr;
   uint32_t file_mask, bits_mask, open_mask, access_mask, max_read_size;
   uint16_t open_lock_mask, lock_mask;
   unsigned int ext_count;
@@ -3226,7 +3259,8 @@ static void fxp_version_add_supported2_ext(pool *p, char **buf,
 
 static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     char *path, off_t offset, off_t len, uint32_t blocksz) {
-  char *buf, *ptr, *supported_digests;
+  unsigned char *buf, *ptr;
+  char *supported_digests;
   const char *digest_name, *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
@@ -3595,7 +3629,8 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
       (void) BIO_flush(bio);
       digest_len = BIO_gets(md_bio, digest, sizeof(digest));
 
-      sftp_msg_write_data(&buf, &buflen, digest, digest_len, FALSE);
+      sftp_msg_write_data(&buf, &buflen, (unsigned char *) digest, digest_len,
+        FALSE);
 
       (void) BIO_reset(md_bio);
 
@@ -3614,7 +3649,8 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     (void) BIO_flush(bio);
     digest_len = BIO_gets(md_bio, digest, sizeof(digest));
 
-    sftp_msg_write_data(&buf, &buflen, digest, digest_len, FALSE);
+    sftp_msg_write_data(&buf, &buflen, (unsigned char *) digest, digest_len,
+      FALSE);
   }
 
   BIO_free_all(bio);
@@ -3629,7 +3665,8 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
 
 static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     char *dst, int overwrite) {
-  char *abs_path, *buf, *ptr, *args;
+  char *abs_path, *args;
+  unsigned char *buf, *ptr;
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
@@ -3848,7 +3885,8 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
 
 static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     char *dst) {
-  char *buf, *ptr, *args;
+  unsigned char *buf, *ptr;
+  char *args;
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
@@ -4148,7 +4186,7 @@ static off_t get_user_bytes_unused(void *ptr) {
 }
 
 static int fxp_handle_ext_space_avail(struct fxp_packet *fxp, char *path) {
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
@@ -4223,7 +4261,7 @@ static int fxp_handle_ext_space_avail(struct fxp_packet *fxp, char *path) {
 }
 
 static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
@@ -4330,7 +4368,8 @@ static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
 #endif /* !HAVE_SYS_STATVFS_H */
 
 static int fxp_handle_ext_vendor_id(struct fxp_packet *fxp) {
-  char *buf, *ptr, *vendor_name, *product_name, *product_version;
+  unsigned char *buf, *ptr;
+  char *vendor_name, *product_name, *product_version;
   uint32_t buflen, bufsz, status_code;
   uint64_t build_number;
   const char *reason;
@@ -4378,7 +4417,7 @@ static int fxp_handle_ext_vendor_id(struct fxp_packet *fxp) {
 
 static int fxp_handle_ext_version_select(struct fxp_packet *fxp,
     char *version_str) {
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, status_code;
   const char *reason;
   struct fxp_packet *resp;
@@ -4492,7 +4531,8 @@ static int fxp_handle_ext_version_select(struct fxp_packet *fxp,
 
 static int fxp_handle_close(struct fxp_packet *fxp) {
   int xerrno = 0, res = 0;
-  char *buf, *ptr, *name;
+  unsigned char *buf, *ptr;
+  char *name;
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_handle *fxh;
@@ -4727,7 +4767,8 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
 static int fxp_handle_extended(struct fxp_packet *fxp) {
   int res;
-  char *buf, *ptr, *ext_request_name;
+  unsigned char *buf, *ptr;
+  char *ext_request_name;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
   cmd_rec *cmd;
@@ -4978,7 +5019,8 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
-  char *attrs_str, *buf, *cmd_name, *ptr, *name;
+  unsigned char *buf, *ptr;
+  char *attrs_str, *cmd_name, *name;
   const char *reason;
   uint32_t attr_flags, buflen, bufsz, status_code;
   int res;
@@ -5156,7 +5198,8 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_fstat(struct fxp_packet *fxp) {
-  char *buf, *cmd_name, *ptr, *name;
+  unsigned char *buf, *ptr;
+  char *cmd_name, *name;
   uint32_t buflen, bufsz;
   struct stat st;
   struct fxp_handle *fxh;
@@ -5323,7 +5366,7 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
 
 static int fxp_handle_init(struct fxp_packet *fxp) {
   char version_str[16];
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
   struct fxp_packet *resp;
   cmd_rec *cmd;
@@ -5426,7 +5469,8 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_link(struct fxp_packet *fxp) {
-  char *buf, *args, *cmd_name, *ptr, *src_path, *dst_path;
+  unsigned char *buf, *ptr;
+  char *args, *cmd_name, *src_path, *dst_path;
   const char *reason;
   char is_symlink;
   int have_error = FALSE, res;
@@ -5569,7 +5613,8 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_lock(struct fxp_packet *fxp) {
-  char *buf, *ptr, *name;
+  unsigned char *buf, *ptr;
+  char *name;
   const char *lock_type_str = NULL;
   uint32_t buflen, bufsz, lock_flags, status_code;
   uint64_t offset, lock_len;
@@ -5816,7 +5861,8 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_lstat(struct fxp_packet *fxp) {
-  char *buf, *cmd_name, *ptr, *path;
+  unsigned char *buf, *ptr;
+  char *cmd_name, *path;
   uint32_t buflen, bufsz;
   struct stat st;
   struct fxp_packet *resp;
@@ -5979,7 +6025,8 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_mkdir(struct fxp_packet *fxp) {
-  char *attrs_str, *buf, *cmd_name, *ptr, *path;
+  unsigned char *buf, *ptr;
+  char *attrs_str, *cmd_name, *path;
   struct stat *attrs;
   int have_error = FALSE, res = 0;
   mode_t dir_mode;
@@ -6215,7 +6262,8 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_open(struct fxp_packet *fxp) {
-  char *buf, *ptr, *path, *hiddenstore_path = NULL;
+  unsigned char *buf, *ptr;
+  char *path, *hiddenstore_path = NULL;
   uint32_t attr_flags, buflen, bufsz, desired_access = 0, flags;
   int file_existed = FALSE, open_flags, res, timeout_stalled;
   pr_fh_t *fh;
@@ -6720,7 +6768,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_opendir(struct fxp_packet *fxp) {
-  char *buf, *ptr, *path, *vpath;
+  unsigned char *buf, *ptr;
+  char *path, *vpath;
   uint32_t buflen, bufsz;
   int timeout_stalled;
   void *dirh;
@@ -6923,7 +6972,8 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_read(struct fxp_packet *fxp) {
-  char *buf, *cmd_name, *ptr, *data = NULL, *name;
+  unsigned char *buf, *data = NULL, *ptr;
+  char *cmd_name, *name;
   int res;
   uint32_t buflen, bufsz, datalen;
   uint64_t offset;
@@ -7159,7 +7209,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     data = palloc(fxp->pool, datalen);
   }
 
-  res = pr_fsio_read(fxh->fh, data, datalen);
+  res = pr_fsio_read(fxh->fh, (char *) data, datalen);
 
   if (pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER) > 0) {
     pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
@@ -7238,7 +7288,8 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
 static int fxp_handle_readdir(struct fxp_packet *fxp) {
   register unsigned int i;
-  char *buf, *cmd_name, *ptr, *name;
+  unsigned char *buf, *ptr;
+  char *cmd_name, *name;
   uint32_t buflen, bufsz, curr_packet_pathsz = 0, max_packetsz;
   struct dirent *dent;
   struct fxp_dirent **paths;
@@ -7557,7 +7608,8 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
 static int fxp_handle_readlink(struct fxp_packet *fxp) {
   char data[PR_TUNABLE_PATH_MAX + 1];
-  char *buf, *ptr, *path;
+  unsigned char *buf, *ptr;
+  char *path;
   int res;
   uint32_t buflen, bufsz;
   struct fxp_packet *resp;
@@ -7686,7 +7738,8 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_realpath(struct fxp_packet *fxp) {
-  char *buf, *ptr, *path;
+  unsigned char *buf, *ptr;
+  char *path;
   uint32_t buflen, bufsz;
   struct stat st;
   struct fxp_packet *resp;
@@ -7898,7 +7951,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_remove(struct fxp_packet *fxp) {
-  char *buf, *cmd_name, *ptr, *path, *real_path;
+  unsigned char *buf, *ptr;
+  char *cmd_name, *path, *real_path;
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct stat st;
@@ -8174,7 +8228,8 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_rename(struct fxp_packet *fxp) {
-  char *buf, *args, *ptr, *old_path, *new_path;
+  unsigned char *buf, *ptr;
+  char *args, *old_path, *new_path;
   const char *reason;
   uint32_t buflen, bufsz, flags, status_code;
   struct fxp_packet *resp;
@@ -8511,7 +8566,8 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_rmdir(struct fxp_packet *fxp) {
-  char *buf, *cmd_name, *ptr, *path;
+  unsigned char *buf, *ptr;
+  char *cmd_name, *path;
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
@@ -8735,7 +8791,8 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_setstat(struct fxp_packet *fxp) {
-  char *attrs_str, *buf, *cmd_name, *ptr, *path;
+  unsigned char *buf, *ptr;
+  char *attrs_str, *cmd_name, *path;
   const char *reason;
   uint32_t attr_flags, buflen, bufsz, status_code;
   int res;
@@ -8886,7 +8943,8 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_stat(struct fxp_packet *fxp) {
-  char *buf, *cmd_name, *ptr, *path;
+  unsigned char *buf, *ptr;
+  char *cmd_name, *path;
   uint32_t buflen, bufsz;
   struct stat st;
   struct fxp_packet *resp;
@@ -9050,7 +9108,8 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_symlink(struct fxp_packet *fxp) {
-  char *buf, *args, *args2, *cmd_name, *ptr, *src_path, *dst_path, *vpath;
+  unsigned char *buf, *ptr;
+  char *args, *args2, *cmd_name, *src_path, *dst_path, *vpath;
   const char *reason;
   int have_error = FALSE, res;
   uint32_t buflen, bufsz, status_code;
@@ -9198,11 +9257,13 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
 
   /* The paths may have been changed by any PRE_CMD handlers. */
   if (strcmp(args2, cmd2->arg) != 0) {
-    ptr = strchr(cmd2->arg, '\t');
-    if (ptr) {
-      *ptr = '\0';
+    char *ptr2;
+
+    ptr2 = strchr(cmd2->arg, '\t');
+    if (ptr2) {
+      *ptr2 = '\0';
       src_path = cmd2->arg;
-      dst_path = ptr + 1;
+      dst_path = ptr2 + 1;
     }
   }
 
@@ -9284,7 +9345,8 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_write(struct fxp_packet *fxp) {
-  char *buf, *cmd_name, *ptr, *data, *name;
+  unsigned char *buf, *data, *ptr;
+  char *cmd_name, *name;
   int res;
   uint32_t buflen, bufsz, datalen, status_code;
   uint64_t offset;
@@ -9512,7 +9574,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
   pr_throttle_init(cmd2);
   
-  res = pr_fsio_write(fxh->fh, data, datalen);
+  res = pr_fsio_write(fxh->fh, (char *) data, datalen);
 
   if (pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER) > 0) {
     pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
@@ -9574,7 +9636,8 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_unlock(struct fxp_packet *fxp) {
-  char *buf, *cmd_name, *ptr, *name;
+  unsigned char *buf, *ptr;
+  char *cmd_name, *name;
   uint32_t buflen, bufsz, lock_flags, status_code;
   uint64_t offset, lock_len;
   struct flock lock;
@@ -9811,7 +9874,7 @@ static int fxp_send_display_login_file(uint32_t channel_id) {
   fxp_displaylogin_fh = NULL;
 
   res = sftp_channel_write_ext_data_stderr(sub_pool, channel_id,
-    (char *) msg, strlen(msg));
+    (unsigned char *) msg, strlen(msg));
   xerrno = errno;
 
   if (res == 0) {
@@ -9825,7 +9888,7 @@ static int fxp_send_display_login_file(uint32_t channel_id) {
 
 /* Main entry point */
 int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
-    char *data, uint32_t datalen) {
+    unsigned char *data, uint32_t datalen) {
   struct ssh2_packet *pkt;
   struct fxp_packet *fxp;
   int have_cache, res;

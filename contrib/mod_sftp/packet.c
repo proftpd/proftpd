@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.36 2012-02-15 00:31:48 castaglia Exp $
+ * $Id: packet.c,v 1.37 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -386,7 +386,7 @@ static void handle_disconnect_mesg(struct ssh2_packet *pkt) {
 }
 
 static void handle_global_request_mesg(struct ssh2_packet *pkt) {
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
   char *request_name;
   int want_reply;
@@ -461,7 +461,7 @@ static void handle_unimplemented_mesg(struct ssh2_packet *pkt) {
 
 static void is_client_alive(void) {
   unsigned int count;
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t bufsz, buflen, channel_id;
   struct ssh2_packet *pkt;
   pool *tmp_pool;
@@ -780,7 +780,7 @@ char sftp_ssh2_packet_get_mesg_type(struct ssh2_packet *pkt) {
   return mesg_type;
 }
 
-const char *sftp_ssh2_packet_get_mesg_type_desc(char mesg_type) {
+const char *sftp_ssh2_packet_get_mesg_type_desc(unsigned char mesg_type) {
   switch (mesg_type) {
     case SFTP_SSH2_MSG_DISCONNECT:
       return "SSH_MSG_DISCONNECT";

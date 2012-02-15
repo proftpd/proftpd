@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.28 2012-02-15 23:38:38 castaglia Exp $
+ * $Id: kex.c,v 1.29 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -79,10 +79,10 @@ struct sftp_kex {
   struct sftp_kex_names *session_names;
 
   /* For constructing the session ID/hash */
-  char *client_kexinit_payload;
+  unsigned char *client_kexinit_payload;
   size_t client_kexinit_payload_len;
 
-  char *server_kexinit_payload;
+  unsigned char *server_kexinit_payload;
   size_t server_kexinit_payload_len;
 
   int first_kex_follows;
@@ -171,10 +171,10 @@ static int kex_rekey_timer_cb(CALLBACK_FRAME) {
 }
 
 static const unsigned char *calculate_h(struct sftp_kex *kex,
-    const char *hostkey_data, size_t hostkey_datalen, const BIGNUM *k,
+    const unsigned char *hostkey_data, size_t hostkey_datalen, const BIGNUM *k,
     uint32_t *hlen) {
   EVP_MD_CTX ctx;
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
   bufsz = buflen = 3072;
@@ -264,10 +264,10 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
 }
 
 static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
-    const char *hostkey_data, size_t hostkey_datalen, const BIGNUM *k,
+    const unsigned char *hostkey_data, size_t hostkey_datalen, const BIGNUM *k,
     uint32_t min, uint32_t pref, uint32_t max, uint32_t *hlen) {
   EVP_MD_CTX ctx;
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
   bufsz = buflen = 8192;
@@ -372,10 +372,10 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
 }
 
 static const unsigned char *calculate_kexrsa_h(struct sftp_kex *kex,
-    const char *hostkey_data, size_t hostkey_datalen, const BIGNUM *k,
-    char *rsa_key, uint32_t rsa_keylen, uint32_t *hlen) {
+    const unsigned char *hostkey_data, size_t hostkey_datalen, const BIGNUM *k,
+    unsigned char *rsa_key, uint32_t rsa_keylen, uint32_t *hlen) {
   EVP_MD_CTX ctx;
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
   bufsz = buflen = 3072;
@@ -408,8 +408,8 @@ static const unsigned char *calculate_kexrsa_h(struct sftp_kex *kex,
   sftp_msg_write_data(&buf, &buflen, rsa_key, rsa_keylen, TRUE);
 
   /* RSA-encrypted secret */
-  sftp_msg_write_data(&buf, &buflen, (const char *) kex->rsa_encrypted,
-    kex->rsa_encrypted_len, TRUE);
+  sftp_msg_write_data(&buf, &buflen, kex->rsa_encrypted, kex->rsa_encrypted_len,
+    TRUE);
 
   /* Shared secret. */
   sftp_msg_write_mpint(&buf, &buflen, k);
@@ -1671,7 +1671,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 }
 
 static int read_kexinit(struct ssh2_packet *pkt, struct sftp_kex *kex) {
-  char *buf, *list;
+  unsigned char *buf;
+  char *list;
   uint32_t buflen;
 
   buf = pkt->payload;
@@ -1731,7 +1732,7 @@ static int read_kexinit(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 
 static int write_kexinit(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   unsigned char cookie[16];
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   const char *list;
   uint32_t bufsz, buflen;
 
@@ -1766,7 +1767,7 @@ static int write_kexinit(struct ssh2_packet *pkt, struct sftp_kex *kex) {
     RAND_pseudo_bytes(cookie, sizeof(cookie));
   }
 
-  sftp_msg_write_data(&buf, &buflen, (char *) cookie, sizeof(cookie), FALSE);
+  sftp_msg_write_data(&buf, &buflen, cookie, sizeof(cookie), FALSE);
 
   list = kex->server_names->kex_algo;
   sftp_msg_write_string(&buf, &buflen, list);
@@ -1816,7 +1817,7 @@ static int write_kexinit(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 }
 
 static int read_dh_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
-  char *buf;
+  unsigned char *buf;
   uint32_t buflen;
 
   buf = pkt->payload;
@@ -1934,8 +1935,8 @@ static int set_session_keys(struct sftp_kex *kex) {
 
 static int write_dh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   const unsigned char *h;
-  const char *hostkey_data, *hsig;
-  char *buf, *ptr;
+  const unsigned char *hostkey_data, *hsig;
+  unsigned char *buf, *ptr;
   uint32_t bufsz, buflen, hlen = 0;
   size_t dhlen, hostkey_datalen, hsiglen;
   BIGNUM *k = NULL;
@@ -2026,7 +2027,7 @@ static int write_dh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 }
 
 static int write_newkeys_reply(struct ssh2_packet *pkt) {
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t bufsz, buflen;
 
   /* Write out the NEWKEYS message. */
@@ -2084,7 +2085,7 @@ static int handle_kex_dh(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 
 static int read_dh_gex(struct ssh2_packet *pkt, uint32_t *min, uint32_t *pref,
     uint32_t *max, int old_request) {
-  char *buf;
+  unsigned char *buf;
   uint32_t buflen;
 
   buf = pkt->payload;
@@ -2377,7 +2378,7 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
 
 static int write_dh_gex_group(struct ssh2_packet *pkt, struct sftp_kex *kex,
     uint32_t min, uint32_t pref, uint32_t max) {
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
   if (get_dh_gex_group(kex, min, pref, max) < 0) {
@@ -2399,7 +2400,7 @@ static int write_dh_gex_group(struct ssh2_packet *pkt, struct sftp_kex *kex,
 }
 
 static int read_dh_gex_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
-  char *buf;
+  unsigned char *buf;
   uint32_t buflen;
 
   buf = pkt->payload;
@@ -2418,9 +2419,8 @@ static int read_dh_gex_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 
 static int write_dh_gex_reply(struct ssh2_packet *pkt, struct sftp_kex *kex,
     uint32_t min, uint32_t pref, uint32_t max, int old_request) {
-  const unsigned char *h;
-  const char *hostkey_data, *hsig;
-  char *buf, *ptr;
+  const unsigned char *h, *hostkey_data, *hsig;
+  unsigned char *buf, *ptr;
   uint32_t bufsz, buflen, hlen = 0;
   size_t dhlen, hostkey_datalen, hsiglen;
   BIGNUM *k = NULL;
@@ -2626,8 +2626,7 @@ static int handle_kex_dh_gex(struct ssh2_packet *pkt, struct sftp_kex *kex,
 }
 
 static int read_kexrsa_secret(struct ssh2_packet *pkt, struct sftp_kex *kex) {
-  char *buf;
-  unsigned char *encrypted, *decrypted;
+  unsigned char *buf, *encrypted, *decrypted;
   uint32_t buflen, encrypted_len;
   BIGNUM *k = NULL;
   int res;
@@ -2680,8 +2679,8 @@ static int read_kexrsa_secret(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 }
 
 static int write_kexrsa_pubkey(struct ssh2_packet *pkt, struct sftp_kex *kex) {
-  char *buf, *ptr, *buf2, *ptr2;
-  const char *hostkey_data;
+  unsigned char *buf, *ptr, *buf2, *ptr2;
+  const unsigned char *hostkey_data;
   uint32_t buflen, bufsz, buflen2, bufsz2, hostkey_datalen;
 
   hostkey_data = sftp_keys_get_hostkey_data(pkt->pool, kex->use_hostkey_type,
@@ -2722,9 +2721,8 @@ static int write_kexrsa_pubkey(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 }
 
 static int write_kexrsa_done(struct ssh2_packet *pkt, struct sftp_kex *kex) {
-  char *buf, *ptr, *buf2, *ptr2;
-  const char *hostkey_data, *hsig;
-  const unsigned char *h;
+  unsigned char *buf, *ptr, *buf2, *ptr2;
+  const unsigned char *h, *hostkey_data, *hsig;
   uint32_t buflen, bufsz, buflen2, bufsz2, hlen;
   size_t hostkey_datalen, hsiglen;
 

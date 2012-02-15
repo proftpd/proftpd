@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.18 2011-11-19 03:02:16 castaglia Exp $
+ * $Id: keys.c,v 1.19 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -740,7 +740,7 @@ static int has_req_perms(int fd) {
   return 0;
 }
 
-static EVP_PKEY *get_pkey_from_data(pool *p, char *pkey_data,
+static EVP_PKEY *get_pkey_from_data(pool *p, unsigned char *pkey_data,
     uint32_t pkey_datalen) {
   EVP_PKEY *pkey = NULL;
   char *pkey_type;
@@ -861,8 +861,8 @@ static const char *get_key_type_desc(int key_type) {
  * with a file pubkey (from an RFC4716 formatted file).  Returns -1 if
  * there was an error, TRUE if the keys are equals, and FALSE if not.
  */
-int sftp_keys_compare_keys(pool *p, char *client_pubkey_data,
-    uint32_t client_pubkey_datalen, char *file_pubkey_data,
+int sftp_keys_compare_keys(pool *p, unsigned char *client_pubkey_data,
+    uint32_t client_pubkey_datalen, unsigned char *file_pubkey_data,
     uint32_t file_pubkey_datalen) {
   EVP_PKEY *client_pkey, *file_pkey;
   int res = -1;
@@ -982,7 +982,7 @@ int sftp_keys_compare_keys(pool *p, char *client_pubkey_data,
   return res;
 }
 
-const char *sftp_keys_get_fingerprint(pool *p, char *key_data,
+const char *sftp_keys_get_fingerprint(pool *p, unsigned char *key_data,
     uint32_t key_datalen, int digest_algo) {
   const EVP_MD *digest;
   EVP_MD_CTX ctx;
@@ -1148,9 +1148,9 @@ int sftp_keys_get_hostkey(const char *path) {
   return 0;
 }
 
-const char *sftp_keys_get_hostkey_data(pool *p, int key_type,
+const unsigned char *sftp_keys_get_hostkey_data(pool *p, int key_type,
     size_t *datalen) {
-  char *buf = NULL, *ptr = NULL;
+  unsigned char *buf = NULL, *ptr = NULL;
   uint32_t buflen = SFTP_DEFAULT_HOSTKEY_SZ;
 
   switch (key_type) {
@@ -1237,13 +1237,13 @@ int sftp_keys_have_rsa_hostkey(void) {
   return -1;
 }
 
-static const char *rsa_sign_data(pool *p, const unsigned char *data,
+static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
     size_t datalen, size_t *siglen) {
   RSA *rsa;
   EVP_MD_CTX ctx;
   const EVP_MD *sha1 = EVP_sha1();
   unsigned char dgst[EVP_MAX_MD_SIZE], *sig_data;
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   size_t bufsz;
   uint32_t buflen, dgstlen = 0, sig_datalen = 0, sig_rsalen = 0;
   int res;
@@ -1282,7 +1282,7 @@ static const char *rsa_sign_data(pool *p, const unsigned char *data,
 
   /* Now build up the signature, SSH2-style */
   sftp_msg_write_string(&buf, &buflen, "ssh-rsa");
-  sftp_msg_write_data(&buf, &buflen, (char *) sig_data, sig_datalen, TRUE);
+  sftp_msg_write_data(&buf, &buflen, sig_data, sig_datalen, TRUE);
 
   pr_memscrub(sig_data, sig_datalen);
   RSA_free(rsa);
@@ -1303,14 +1303,14 @@ static const char *rsa_sign_data(pool *p, const unsigned char *data,
 #define SFTP_DSA_INTEGER_LEN			20
 #define SFTP_DSA_SIGNATURE_LEN			(SFTP_DSA_INTEGER_LEN * 2)
 
-static const char *dsa_sign_data(pool *p, const unsigned char *data,
+static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
     size_t datalen, size_t *siglen) {
   DSA *dsa;
   DSA_SIG *sig;
   EVP_MD_CTX ctx;
   const EVP_MD *sha1 = EVP_sha1();
   unsigned char dgst[EVP_MAX_MD_SIZE], sig_data[SFTP_MAX_SIG_SZ];
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   size_t bufsz;
   uint32_t buflen, dgstlen = 0;
   unsigned int rlen = 0, slen = 0;
@@ -1371,8 +1371,7 @@ static const char *dsa_sign_data(pool *p, const unsigned char *data,
 
   /* Now build up the signature, SSH2-style */
   sftp_msg_write_string(&buf, &buflen, "ssh-dss");
-  sftp_msg_write_data(&buf, &buflen, (char *) sig_data, SFTP_DSA_SIGNATURE_LEN,
-    TRUE);
+  sftp_msg_write_data(&buf, &buflen, sig_data, SFTP_DSA_SIGNATURE_LEN, TRUE);
 
   /* At this point, buflen is the amount remaining in the allocated buffer.
    * So the total length of the signed data is the buffer size, minus those
@@ -1382,9 +1381,9 @@ static const char *dsa_sign_data(pool *p, const unsigned char *data,
   return ptr;
 }
 
-const char *sftp_keys_sign_data(pool *p, int key_type,
+const unsigned char *sftp_keys_sign_data(pool *p, int key_type,
     const unsigned char *data, size_t datalen, size_t *siglen) {
-  const char *res;
+  const unsigned char *res;
 
   switch (key_type) {
     case EVP_PKEY_RSA:
@@ -1402,7 +1401,7 @@ const char *sftp_keys_sign_data(pool *p, int key_type,
   }
 
   if (p) {
-    char *buf = palloc(p, *siglen);
+    unsigned char *buf = palloc(p, *siglen);
     memcpy(buf, res, *siglen);
 
     pr_memscrub((char *) res, *siglen);
@@ -1412,7 +1411,7 @@ const char *sftp_keys_sign_data(pool *p, int key_type,
   return res;
 }
 
-int sftp_keys_verify_pubkey_type(pool *p, char *pubkey_data,
+int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
     uint32_t pubkey_len, int pubkey_type) {
   EVP_PKEY *pkey;
   int res;
@@ -1434,8 +1433,9 @@ int sftp_keys_verify_pubkey_type(pool *p, char *pubkey_data,
 }
 
 int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
-    char *pubkey_data, uint32_t pubkey_datalen, char *signature,
-    uint32_t signaturelen, unsigned char *sig_data, size_t sig_datalen) {
+    unsigned char *pubkey_data, uint32_t pubkey_datalen,
+    unsigned char *signature, uint32_t signaturelen,
+    unsigned char *sig_data, size_t sig_datalen) {
   EVP_PKEY *pkey;
   EVP_MD_CTX ctx;
   unsigned char *sig;

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.h,v 1.4 2011-05-23 20:40:13 castaglia Exp $
+ * $Id: keys.h,v 1.5 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -36,20 +36,21 @@
  * As per draft-ietf-secsh-fingerprint-00, only MD5 fingerprints are currently
  * supported.
  */
-const char *sftp_keys_get_fingerprint(pool *, char *, uint32_t, int);
+const char *sftp_keys_get_fingerprint(pool *, unsigned char *, uint32_t, int);
 #define SFTP_KEYS_FP_DIGEST_MD5		1
 
 void sftp_keys_free(void);
 int sftp_keys_get_hostkey(const char *);
-const char *sftp_keys_get_hostkey_data(pool *, int, size_t *);
+const unsigned char *sftp_keys_get_hostkey_data(pool *, int, size_t *);
 void sftp_keys_get_passphrases(void);
 int sftp_keys_have_dsa_hostkey(void);
 int sftp_keys_have_rsa_hostkey(void);
 int sftp_keys_set_passphrase_provider(const char *);
-const char *sftp_keys_sign_data(pool *, int, const unsigned char *, size_t,
-  size_t *);
-int sftp_keys_verify_pubkey_type(pool *, char *, uint32_t, int);
-int sftp_keys_verify_signed_data(pool *, const char *, char *, uint32_t,
-  char *, uint32_t, unsigned char *, size_t);
+const unsigned char *sftp_keys_sign_data(pool *, int, const unsigned char *,
+  size_t, size_t *);
+int sftp_keys_verify_pubkey_type(pool *, unsigned char *, uint32_t, int);
+int sftp_keys_verify_signed_data(pool *, const char *,
+  unsigned char *, uint32_t, unsigned char *, uint32_t,
+  unsigned char *, size_t);
 
 #endif

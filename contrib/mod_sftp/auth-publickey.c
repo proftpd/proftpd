@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'publickey' user authentication
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-publickey.c,v 1.9 2011-08-04 21:15:19 castaglia Exp $
+ * $Id: auth-publickey.c,v 1.10 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -37,10 +37,10 @@
 
 static const char *trace_channel = "ssh2";
 
-static int send_pubkey_ok(const char *algo, const char *pubkey_data,
+static int send_pubkey_ok(const char *algo, const unsigned char *pubkey_data,
     uint32_t pubkey_len) {
   struct ssh2_packet *pkt;
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
   int res;
 
@@ -74,10 +74,11 @@ static int send_pubkey_ok(const char *algo, const char *pubkey_data,
 }
 
 int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
-    const char *orig_user, const char *user, const char *service, char **buf,
-    uint32_t *buflen, int *send_userauth_fail) {
+    const char *orig_user, const char *user, const char *service,
+    unsigned char **buf, uint32_t *buflen, int *send_userauth_fail) {
   int have_signature, pubkey_type;
-  char *pubkey_algo = NULL, *pubkey_data;
+  unsigned char *pubkey_data;
+  char *pubkey_algo = NULL;
   uint32_t pubkey_len;
   struct passwd *pw;
 
@@ -179,7 +180,7 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
   } else {
     const unsigned char *id;
-    char *buf2, *ptr2, *signature_data;
+    unsigned char *buf2, *ptr2, *signature_data;
     uint32_t buflen2, bufsz2, id_len, signature_len;
 
     /* XXX This should become a more generic "is this key data
@@ -228,7 +229,7 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     bufsz2 = buflen2 = pubkey_len + 1024;
     ptr2 = buf2 = sftp_msg_getbuf(pkt->pool, bufsz2);
 
-    sftp_msg_write_data(&buf2, &buflen2, (char *) id, id_len, TRUE);
+    sftp_msg_write_data(&buf2, &buflen2, id, id_len, TRUE);
     sftp_msg_write_byte(&buf2, &buflen2, SFTP_SSH2_MSG_USER_AUTH_REQUEST);
     sftp_msg_write_string(&buf2, &buflen2, orig_user);
 

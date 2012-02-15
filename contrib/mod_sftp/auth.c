@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.43 2011-12-29 04:37:46 castaglia Exp $
+ * $Id: auth.c,v 1.44 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -493,6 +493,7 @@ static int setup_env(pool *p, char *user) {
       ": retaining root privileges per RootRevoke setting");
 
   } else {
+    PRIVS_ROOT
     PRIVS_REVOKE
     session.disable_id_switching = TRUE;
   }
@@ -606,7 +607,8 @@ static int setup_env(pool *p, char *user) {
 
 static int send_userauth_banner_file(void) {
   struct ssh2_packet *pkt;
-  char *path, *buf, *ptr;
+  char *path;
+  unsigned char *buf, *ptr;
   const char *msg;
   int res;
   uint32_t buflen, bufsz;
@@ -681,7 +683,8 @@ static int send_userauth_banner_file(void) {
 
 static int send_userauth_failure(char *failed_meth) {
   struct ssh2_packet *pkt;
-  char *buf, *ptr, *meths;
+  unsigned char *buf, *ptr;
+  char *meths;
   uint32_t buflen, bufsz = 1024;
   int res;
 
@@ -754,7 +757,7 @@ static int send_userauth_failure(char *failed_meth) {
 
 static int send_userauth_success(void) {
   struct ssh2_packet *pkt;
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t buflen, bufsz = 1024;
   int res;
 
@@ -794,7 +797,7 @@ static int send_userauth_success(void) {
 
 static int send_userauth_methods(void) {
   struct ssh2_packet *pkt;
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t buflen, bufsz = 1024;
   int res;
 
@@ -846,7 +849,8 @@ static void incr_auth_attempts(const char *user) {
 
 /* Return -1 on error, 0 to continue, and 1 if the authentication succeeded. */
 static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
-  char *buf, *orig_user, *user, *method;
+  unsigned char *buf;
+  char *orig_user, *user, *method;
   uint32_t buflen;
   cmd_rec *cmd, *user_cmd, *pass_cmd;
   int res, send_userauth_fail = FALSE;
@@ -1238,7 +1242,7 @@ char *sftp_auth_get_default_dir(void) {
 
 int sftp_auth_send_banner(const char *banner) {
   struct ssh2_packet *pkt;
-  char *buf, *ptr;
+  unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
   size_t banner_len;
   int res;
