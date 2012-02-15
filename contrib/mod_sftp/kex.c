@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key exchange (kex)
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.27 2011-12-11 02:33:14 castaglia Exp $
+ * $Id: kex.c,v 1.28 2012-02-15 23:38:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -841,9 +841,12 @@ static array_header *parse_namelist(pool *p, const char *names) {
   list = make_array(p, 0, sizeof(const char *));
 
   names_len = strlen(names);
+  if (names_len == 0) {
+    return list;
+  }
 
   ptr = memchr(names, ',', names_len);
-  while (ptr) {
+  while (ptr != NULL) {
     char *elt;
     size_t elt_len;
 
@@ -857,7 +860,9 @@ static array_header *parse_namelist(pool *p, const char *names) {
 
     *((const char **) push_array(list)) = elt;
     names = ++ptr;
-    names_len -= elt_len;
+
+    /* Add one for the ',' character we skipped over. */
+    names_len -= (elt_len + 1);
 
     ptr = memchr(names, ',', names_len);
   }
