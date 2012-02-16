@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Resource allocation code
- * $Id: pool.c,v 1.60 2011-12-21 04:16:59 castaglia Exp $
+ * $Id: pool.c,v 1.61 2012-02-16 00:18:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -128,7 +128,7 @@ static void *smalloc(size_t size) {
 /* Grab a completely new block from the system pool.  Relies on malloc()
  * to return truly aligned memory.
  */
-static union block_hdr *malloc_block(int size) {
+static union block_hdr *malloc_block(size_t size) {
   union block_hdr *blok =
     (union block_hdr *) smalloc(size + sizeof(union block_hdr));
 
@@ -420,7 +420,7 @@ struct pool_rec *make_sub_pool(struct pool_rec *p) {
   return new_pool;
 }
 
-struct pool_rec *pr_pool_create_sz(struct pool_rec *p, int sz) {
+struct pool_rec *pr_pool_create_sz(struct pool_rec *p, size_t sz) {
   union block_hdr *blok;
   pool *new_pool;
 
@@ -519,11 +519,11 @@ void destroy_pool(pool *p) {
 /* Allocation interface...
  */
 
-static void *alloc_pool(struct pool_rec *p, int reqsz, int exact) {
+static void *alloc_pool(struct pool_rec *p, size_t reqsz, int exact) {
 
   /* Round up requested size to an even number of aligned units */
-  int nclicks = 1 + ((reqsz - 1) / CLICK_SZ);
-  int sz = nclicks * CLICK_SZ;
+  size_t nclicks = 1 + ((reqsz - 1) / CLICK_SZ);
+  size_t sz = nclicks * CLICK_SZ;
 
   /* For performance, see if space is available in the most recently
    * allocated block.
@@ -532,9 +532,6 @@ static void *alloc_pool(struct pool_rec *p, int reqsz, int exact) {
   union block_hdr *blok = p->last;
   char *first_avail = blok->h.first_avail;
   char *new_first_avail;
-
-  if (reqsz <= 0)
-    return NULL;
 
   new_first_avail = first_avail + sz;
 
@@ -557,23 +554,25 @@ static void *alloc_pool(struct pool_rec *p, int reqsz, int exact) {
   return (void *) first_avail;
 }
 
-void *palloc(struct pool_rec *p, int sz) {
+void *palloc(struct pool_rec *p, size_t sz) {
   return alloc_pool(p, sz, FALSE);
 }
 
-void *pallocsz(struct pool_rec *p, int sz) {
+void *pallocsz(struct pool_rec *p, size_t sz) {
   return alloc_pool(p, sz, TRUE);
 }
 
-void *pcalloc(struct pool_rec *p, int sz) {
-  void *res = palloc(p, sz);
-  memset(res, '\0', sz);
+void *pcalloc(struct pool_rec *p, size_t sz) {
+  void *res;
+
+  res = palloc(p, sz);
   return res;
 }
 
-void *pcallocsz(struct pool_rec *p, int sz) {
-  void *res = pallocsz(p, sz);
-  memset(res, '\0', sz);
+void *pcallocsz(struct pool_rec *p, size_t sz) {
+  void *res;
+
+  res = pallocsz(p, sz);
   return res;
 }
 

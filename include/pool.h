@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 /* Memory allocation/anti-leak system.  Yes, this *IS* stolen from Apache
  * also.  What can I say?  It makes sense, and it's safe (more overhead
  * though)
- * $Id: pool.h,v 1.27 2011-12-21 04:16:58 castaglia Exp $
+ * $Id: pool.h,v 1.28 2012-02-16 00:18:33 castaglia Exp $
  */
 
 #ifndef PR_POOL_H
@@ -40,16 +40,16 @@ extern pool *permanent_pool;
 void init_pools(void);
 void free_pools(void);
 pool *make_sub_pool(pool *);	/* All pools are sub-pools of perm */
-pool *pr_pool_create_sz(pool *parent_pool, int sz);
+pool *pr_pool_create_sz(pool *parent_pool, size_t sz);
 
 /* Clears out _everything_ in a pool, destroying any sub-pools */
 void destroy_pool(struct pool_rec *);
 
 /* Allocate memory from a pool */
-void *palloc(struct pool_rec *, int);
-void *pallocsz(struct pool_rec *, int);
-void *pcalloc(struct pool_rec *, int);
-void *pcallocsz(struct pool_rec *, int);
+void *palloc(struct pool_rec *, size_t);
+void *pallocsz(struct pool_rec *, size_t);
+void *pcalloc(struct pool_rec *, size_t);
+void *pcallocsz(struct pool_rec *, size_t);
 void pr_pool_tag(struct pool_rec *, const char *);
 
 #ifdef PR_USE_DEVEL
@@ -64,9 +64,9 @@ int pr_pool_debug_set_flags(int);
 
 typedef struct {
   struct pool_rec *pool;
-  int elt_size;
-  int nelts;
-  int nalloc;
+  size_t elt_size;
+  unsigned int nelts;
+  unsigned int nalloc;
   void *elts;
 } array_header;
 
