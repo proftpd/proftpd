@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.141 2012-02-15 23:50:51 castaglia Exp $
+ * $Id: fxp.c,v 1.142 2012-02-16 00:03:07 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2592,10 +2592,10 @@ static void fxp_packet_add_cache(unsigned char *data, uint32_t datalen) {
   return;
 }
 
-static struct fxp_packet *fxp_packet_read(uint32_t channel_id, char **data,
-    uint32_t *datalen, int *have_cache) {
+static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
+    unsigned char **data, uint32_t *datalen, int *have_cache) {
   struct fxp_packet *fxp;
-  char *buf;
+  unsigned char *buf;
   uint32_t buflen;
 
   if (datalen) {
