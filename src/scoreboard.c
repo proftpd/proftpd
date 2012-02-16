@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.75 2012-02-08 03:11:05 castaglia Exp $
+ * $Id: scoreboard.c,v 1.76 2012-02-16 00:13:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -492,7 +492,7 @@ int pr_close_scoreboard(int keep_mutex) {
 
 void pr_delete_scoreboard(void) {
   if (scoreboard_engine == FALSE) {
-    return 0;
+    return;
   }
 
   if (scoreboard_fd > -1) {
@@ -829,7 +829,6 @@ static int set_scoreboard_path(const char *path) {
 }
 
 int pr_set_scoreboard(const char *path) {
-  int engine;
 
   /* By default, scoreboarding is enabled. */
   scoreboard_engine = TRUE;
