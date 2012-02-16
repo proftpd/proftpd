@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1398 2012-02-15 23:14:02 castaglia Exp $
+$Id: NEWS,v 1.1399 2012-02-16 23:17:15 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -56,6 +56,8 @@ CVS
   conflict with system header.
 - Bug 3743 - Random stalls/segfaults seen when transferring large files
   via SFTP.
+- Bug 3752 - proftpd process exit status is zero for "Failed binding to
+  address, port N: Address already in use" startup failure.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

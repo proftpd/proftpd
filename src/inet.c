@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,12 +25,13 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.141 2012-01-13 05:42:09 castaglia Exp $
+ * $Id: inet.c,v 1.142 2012-02-16 23:17:15 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
+extern unsigned char is_master;
 extern server_rec *main_server;
 
 /* A private work pool for all pr_inet_* functions to use. */
@@ -458,14 +459,16 @@ conn_t *pr_inet_create_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
 
   c = init_conn(p, fd, bind_addr, port, retry_bind, TRUE);
 
-  /* This code is somewhat of a kludge, because error handling should
-   * NOT occur in inet.c, it should be handled by the caller.
-   */
-
-  if (c == NULL) {
-    pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
+  if (!is_master) {
+    /* This code is somewhat of a kludge, because error handling should
+     * NOT occur in inet.c, it should be handled by the caller.
+     */
+    if (c == NULL) {
+      pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
+    }
   }
 
+  errno = inet_errno;
   return c;
 }
 
