@@ -23,10 +23,14 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.29 2012-01-26 17:55:07 castaglia Exp $
+ * $Id: table.c,v 1.30 2012-02-16 00:13:03 castaglia Exp $
  */
 
 #include "conf.h"
+
+#ifdef PR_USE_OPENSSL
+#include <openssl/rand.h>
+#endif /* PR_USE_OPENSSL */
 
 #define PR_TABLE_DEFAULT_NCHAINS	256
 #define PR_TABLE_DEFAULT_MAX_ENTS	8192
@@ -359,11 +363,13 @@ static void tab_entry_remove(pr_table_t *tab, pr_table_entry_t *e) {
 
 static unsigned int tab_get_seed(void) {
   unsigned int seed = 0;
+#ifndef PR_USE_OPENSSL
   FILE *fp = NULL;
+#endif /* Not PR_USE_OPENSSL */
 
 #ifdef PR_USE_OPENSSL
-  if (RAND_bytes(&seed, sizeof(seed)) != 1) {
-    RAND_pseudo_bytes(&seed, sizeof(seed));
+  if (RAND_bytes((unsigned char *) &seed, sizeof(seed)) != 1) {
+    RAND_pseudo_bytes((unsigned char *) &seed, sizeof(seed));
   }
 #else
   /* Try reading from /dev/urandom, if present */
