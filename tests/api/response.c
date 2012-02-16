@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2011 The ProFTPD Project team
+ * Copyright (c) 2011-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Response API tests
- * $Id: response.c,v 1.3 2011-11-14 02:53:28 castaglia Exp $
+ * $Id: response.c,v 1.4 2012-02-16 17:01:52 castaglia Exp $
  */
 
 #include "tests.h"
@@ -202,8 +202,14 @@ Suite *tests_get_response_suite(void) {
   bug3711_signo = SIGSEGV;
 #endif
 
+  /* Disable this test for now; it's a reproduction recipe rather than
+   * a regression test, and only generates core files which can litter
+   * the filesystems of build/test machines needlessly.
+   */
+#if 0
   tcase_add_test_raise_signal(testcase, response_pool_bug3711_test,
     bug3711_signo);
+#endif
 
   suite_add_tcase(suite, testcase);
 
