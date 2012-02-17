@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
  *
- * Copyright (c) 2004-2011 TJ Saunders
+ * Copyright (c) 2004-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.55 2011-12-12 19:14:45 castaglia Exp $
+ * $Id: mod_ban.c,v 1.56 2012-02-17 01:18:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2819,39 +2819,21 @@ static void ban_restart_ev(const void *event_data, void *user_data) {
   pr_event_unregister(&ban_module, "mod_auth.max-users-per-host", NULL);
   pr_event_unregister(&ban_module, "mod_ban.client-connect-rate", NULL);
 
-  /* "Bounce" the log file descriptor */
+  /* Close the BanLog file descriptor; it will be reopened by the postparse
+   * event listener.
+   */
   close(ban_logfd);
   ban_logfd = -1;
 
-  if (ban_log &&
-      strcasecmp(ban_log, "none") != 0) {
-    int res;
-
-    PRIVS_ROOT
-    res = pr_log_openfile(ban_log, &ban_logfd, 0660);
-    PRIVS_RELINQUISH
-
-    switch (res) {
-      case 0:
-        break;
-
-      case -1:
-        pr_log_debug(DEBUG1, MOD_BAN_VERSION ": unable to open BanLog '%s': %s",
-          ban_log, strerror(errno));
-        break;
-
-      case PR_LOG_SYMLINK:
-        pr_log_debug(DEBUG1, MOD_BAN_VERSION ": unable to open BanLog '%s': %s",
-          ban_log, "is a symlink");
-        break;
-
-      case PR_LOG_WRITABLE_DIR:
-        pr_log_debug(DEBUG1, MOD_BAN_VERSION ": unable to open BanLog '%s': %s",
-          ban_log, "parent directory is world-writable");
-        break;
-    }
+  /* Close the BanTable file descriptor; it will be reopened by the postparse
+   * event listener.
+   */
+  if (ban_tabfh != NULL) {
+    pr_fsio_close(ban_tabfh);
+    ban_tabfh = NULL;
   }
 
+  /* Remove the timer. */
   if (ban_timerno > 0) {
     (void) pr_timer_remove(ban_timerno, &ban_module);
     ban_timerno = -1;
