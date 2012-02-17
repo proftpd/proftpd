@@ -25,7 +25,7 @@
  */
 
 /* Resource allocation code
- * $Id: pool.c,v 1.61 2012-02-16 00:18:34 castaglia Exp $
+ * $Id: pool.c,v 1.62 2012-02-17 15:32:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -566,6 +566,8 @@ void *pcalloc(struct pool_rec *p, size_t sz) {
   void *res;
 
   res = palloc(p, sz);
+  memset(res, '\0', sz);
+
   return res;
 }
 
@@ -573,6 +575,8 @@ void *pcallocsz(struct pool_rec *p, size_t sz) {
   void *res;
 
   res = pallocsz(p, sz);
+  memset(res, '\0', sz);
+
   return res;
 }
 
