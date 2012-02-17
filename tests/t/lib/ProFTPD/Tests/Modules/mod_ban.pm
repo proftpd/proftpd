@@ -4,6 +4,7 @@ use lib qw(t/lib);
 use base qw(ProFTPD::TestSuite::Child);
 use strict;
 
+use Carp;
 use File::Spec;
 use IO::Handle;
 
@@ -60,6 +61,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  ban_sighup_bug3751 => {
+    order => ++$order,
+    test_class => [qw(forking os_linux)],
+  },
+
 };
 
 sub new {
@@ -68,6 +74,65 @@ sub new {
 
 sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
+}
+
+sub get_server_pid {
+  my $pid_file = shift;
+
+  my $pid;
+  if (open(my $fh, "< $pid_file")) {
+    $pid = <$fh>;
+    chomp($pid);
+    close($fh);
+
+  } else {
+    croak("Can't read $pid_file: $!");
+  }
+
+  return $pid;
+}
+
+sub server_open_fds {
+  my $pid_file = shift;
+
+  my $pid = get_server_pid($pid_file);
+
+  my $proc_dir = "/proc/$pid/fd";
+  if (opendir(my $dirh, $proc_dir)) {
+    my $count = 0;
+
+    # Only count entries whose names are numbers
+    while (my $dent = readdir($dirh)) {
+      if ($dent =~ /^\d+$/) {
+        $count++;
+      }
+    }
+ 
+    closedir($dirh); 
+    return $count;
+
+  } else {
+    croak("Can't open directory '$proc_dir': $!");
+  }
+}
+
+sub server_restart {
+  my $pid_file = shift;
+  my $count = shift;
+  $count = 1 unless defined($count);
+
+  my $pid = get_server_pid($pid_file);
+
+  for (my $i = 0; $i < $count; $i++) {
+    unless (kill('HUP', $pid)) {
+      print STDERR "Couldn't send SIGHUP to PID $pid: $!\n";
+
+    } else {
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Restart #", $i + 1, ": Sent SIGHUP to PID $pid\n";
+      }
+    }
+  }
 }
 
 sub ban_on_event_max_login_attempts {
@@ -1649,6 +1714,117 @@ sub ban_on_event_client_connect_rate {
     die($ex);
   }
 
+  unlink($log_file);
+}
+
+sub ban_sighup_bug3751 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/ban.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/ban.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ban.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ban.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ban.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+  
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'event:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    MaxLoginAttempts => 2,
+
+    IfModules => {
+      'mod_ban.c' => {
+        BanEngine => 'on',
+        BanLog => $log_file,
+
+        # This says to ban a client which exceeds the MaxLoginAttempts
+        # limit once within the last 1 minute will be banned for 5 secs
+        BanOnEvent => 'MaxLoginAttempts 1/00:01:00 00:00:05',
+
+        BanTable => $ban_tab,
+      },
+
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Start the server
+  server_start($config_file);
+
+  # Use proc(5) filesystem to count the number of open fds in the daemon
+  my $orig_nfds = server_open_fds($pid_file);
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Found $orig_nfds open fds after server startup\n";
+  }
+
+  # Restart the server
+  server_restart($pid_file);
+  sleep(1);
+
+  # Count the open fds again, make sure we haven't leaked any
+  my $restart_nfds = server_open_fds($pid_file);
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Found $restart_nfds open fds after server restart #1\n";
+  }
+
+  $self->assert($orig_nfds == $restart_nfds,
+    test_msg("Expected $orig_nfds open fds, found $restart_nfds"));
+
+  # Restart the server
+  server_restart($pid_file);
+  sleep(1);
+
+  # And count the open fds one more time, to make doubly sure we are not
+  # leaking fds.
+  $restart_nfds = server_open_fds($pid_file);
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Found $restart_nfds open fds after server restart #2\n";
+  }
+
+  $self->assert($orig_nfds == $restart_nfds,
+    test_msg("Expected $orig_nfds open fds, found $restart_nfds"));
+
+  # Stop server
+  server_stop($pid_file);
   unlink($log_file);
 }
 
