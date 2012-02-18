@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sftp_sql -- SQL backend module for retrieving authorized keys
  *
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_sftp_sql, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_sql.c,v 1.6 2011-05-23 20:56:40 castaglia Exp $
+ * $Id: mod_sftp_sql.c,v 1.7 2012-02-18 22:44:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -41,7 +41,7 @@ struct sqlstore_key {
   const char *subject;
 
   /* Key data */
-  char *key_data;
+  unsigned char *key_data;
   uint32_t key_datalen;
 };
 
@@ -86,7 +86,7 @@ static struct sqlstore_key *sqlstore_get_key_raw(pool *p, char *blob) {
   bloblen = strlen(blob);
   bio = BIO_new(BIO_s_mem());
 
-  if (BIO_write(bio, blob, bloblen) < 0) {
+  if (BIO_write(bio, (void *) blob, bloblen) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
       "error buffering base64 data");
   }
@@ -101,7 +101,7 @@ static struct sqlstore_key *sqlstore_get_key_raw(pool *p, char *blob) {
   bmem = BIO_new(BIO_s_mem());
 
   memset(chunk, '\0', sizeof(chunk));
-  chunklen = BIO_read(bio, chunk, sizeof(chunk));
+  chunklen = BIO_read(bio, (void *) chunk, sizeof(chunk));
 
   if (chunklen < 0 &&
       !BIO_should_retry(bio)) {
@@ -118,7 +118,7 @@ static struct sqlstore_key *sqlstore_get_key_raw(pool *p, char *blob) {
   while (chunklen > 0) {
     pr_signals_handle();
 
-    if (BIO_write(bmem, chunk, chunklen) < 0) {
+    if (BIO_write(bmem, (void *) chunk, chunklen) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
         "error writing to memory BIO: %s", sftp_crypto_get_errors());
       BIO_free_all(bio);
@@ -129,7 +129,7 @@ static struct sqlstore_key *sqlstore_get_key_raw(pool *p, char *blob) {
     }
 
     memset(chunk, '\0', sizeof(chunk));
-    chunklen = BIO_read(bio, chunk, sizeof(chunk));
+    chunklen = BIO_read(bio, (void *) chunk, sizeof(chunk));
   }
 
   datalen = BIO_get_mem_data(bmem, &data);
@@ -158,10 +158,7 @@ static struct sqlstore_key *sqlstore_get_key_rfc4716(pool *p, char *blob) {
   BIO *bio = NULL, *b64 = NULL, *bmem = NULL;
   int chunklen;
   long datalen = 0;
-  size_t bloblen;
   struct sqlstore_key *key = NULL;
-
-  bloblen = strlen(blob);
 
   bio = BIO_new(BIO_s_mem());
 
@@ -175,7 +172,7 @@ static struct sqlstore_key *sqlstore_get_key_rfc4716(pool *p, char *blob) {
       continue;      
     }
 
-    if (BIO_write(bio, tok, strlen(tok)) < 0) {
+    if (BIO_write(bio, (void *) tok, strlen(tok)) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
         "error buffering RFC4716 base64 data");
       BIO_free_all(bio);
@@ -193,7 +190,7 @@ static struct sqlstore_key *sqlstore_get_key_rfc4716(pool *p, char *blob) {
   bmem = BIO_new(BIO_s_mem());
 
   memset(chunk, '\0', sizeof(chunk));
-  chunklen = BIO_read(bio, chunk, sizeof(chunk));
+  chunklen = BIO_read(bio, (void *) chunk, sizeof(chunk));
 
   if (chunklen < 0 &&
       !BIO_should_retry(bio)) {
@@ -210,7 +207,7 @@ static struct sqlstore_key *sqlstore_get_key_rfc4716(pool *p, char *blob) {
   while (chunklen > 0) {
     pr_signals_handle();
 
-    if (BIO_write(bmem, chunk, chunklen) < 0) {
+    if (BIO_write(bmem, (void *) chunk, chunklen) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
         "error writing to memory BIO: %s", sftp_crypto_get_errors());
       BIO_free_all(bio);
@@ -221,7 +218,7 @@ static struct sqlstore_key *sqlstore_get_key_rfc4716(pool *p, char *blob) {
     }
 
     memset(chunk, '\0', sizeof(chunk));
-    chunklen = BIO_read(bio, chunk, sizeof(chunk));
+    chunklen = BIO_read(bio, (void *) chunk, sizeof(chunk));
   }
 
   datalen = BIO_get_mem_data(bmem, &data);
@@ -278,7 +275,7 @@ static char *sqlstore_get_str(pool *p, char *str) {
 
 static int sqlstore_verify_host_key(sftp_keystore_t *store, pool *p,
     const char *user, const char *host_fqdn, const char *host_user,
-    char *key_data, uint32_t key_datalen) {
+    unsigned char *key_data, uint32_t key_datalen) {
   register unsigned int i;
   struct sqlstore_key *key;
   struct sqlstore_data *store_data;
@@ -380,7 +377,7 @@ static int sqlstore_verify_host_key(sftp_keystore_t *store, pool *p,
 }
 
 static int sqlstore_verify_user_key(sftp_keystore_t *store, pool *p,
-    const char *user, char *key_data, uint32_t key_datalen) {
+    const char *user, unsigned char *key_data, uint32_t key_datalen) {
   register unsigned int i;
   struct sqlstore_key *key;
   struct sqlstore_data *store_data;
