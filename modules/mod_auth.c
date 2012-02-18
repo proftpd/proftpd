@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.298 2012-02-09 18:08:42 castaglia Exp $
+ * $Id: mod_auth.c,v 1.299 2012-02-18 21:51:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -724,7 +724,7 @@ static void ensure_open_passwd(pool *p) {
 static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   struct passwd *pw;
   config_rec *c, *tmpc;
-  char *origuser,*ourname,*anonname = NULL,*anongroup = NULL,*ugroup = NULL;
+  char *origuser, *ourname,*anonname = NULL,*anongroup = NULL,*ugroup = NULL;
   char *defaulttransfermode, *defroot = NULL,*defchdir = NULL,*xferlog = NULL;
   const char *sess_ttyname;
   int aclp, i, res = 0, showsymlinks;
@@ -742,7 +742,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
   if (!user) {
     pr_log_auth(PR_LOG_NOTICE, "USER %s: user is not a UserAlias from %s [%s] "
-      "to %s:%i", origuser,session.c->remote_name,
+      "to %s:%i", origuser, session.c->remote_name,
       pr_netaddr_get_ipstr(session.c->remote_addr),
       pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
     goto auth_failure;
@@ -1601,10 +1601,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
   pr_scoreboard_entry_t *score = NULL;
   long cur = 0, hcur = 0, ccur = 0, hostsperuser = 1, usersessions = 0;
   config_rec *c = NULL, *anon_config = NULL, *maxc = NULL;
-  char *origuser;
 
   /* Determine how many users are currently connected. */
-  origuser = user;
   anon_config = pr_auth_get_anon_config(cmd->tmp_pool, &user, NULL, NULL);
 
   /* Gather our statistics. */
