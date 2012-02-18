@@ -36696,6 +36696,22 @@ echo "$as_me: error: duplicate build request for $j -- aborting" >&2;}
         if test ! -z "pg_libdirs"; then
           ac_build_addl_libdirs="$ac_build_addl_libdirs -L$pg_libdirs"
         fi
+
+        # I suspect that we will also need to look for -pthread here
+        # (a la Bug#3702), as a forums post about proftpd+postgres describes
+        # the same "Alarm clock" symptom as seen with MySQL; see:
+        #
+        #  http://forums.proftpd.org/smf/index.php/topic,1424.0.html
+
+        # pg_config --libs gives libs, with -l prefixes
+        pg_libs=`$pg_config --libs 2>/dev/null`
+        if test ! -z "$pg_libs"; then
+          for pg_lib in $pg_lib; do
+            if test x"$pg_lib" = x"-pthread"; then
+              LIBS="$LIBS -pthread"
+            fi
+          done
+        fi
       fi
     fi
   fi
