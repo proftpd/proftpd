@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: channel.c,v 1.46 2012-02-15 23:50:51 castaglia Exp $
+ * $Id: channel.c,v 1.47 2012-02-18 22:12:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -772,7 +772,7 @@ static int handle_exec_channel(struct ssh2_channel *chan,
     struct ssh2_packet *pkt, unsigned char **buf, uint32_t *buflen) {
   register unsigned int i;
   int flags = PR_STR_FL_PRESERVE_WHITESPACE, have_handler = FALSE;
-  char *command, *ptr, **reqargv, *word;
+  char *command, *ptr, *word;
   array_header *req;
   struct ssh2_channel_exec_handler **handlers;
 
@@ -790,8 +790,6 @@ static int handle_exec_channel(struct ssh2_channel *chan,
   }
 
   *((char **) push_array(req)) = NULL;
-
-  reqargv = (char **) req->elts;
 
   handlers = channel_exec_handlers->elts;
   for (i = 0; i < channel_exec_handlers->nelts; i++) {
