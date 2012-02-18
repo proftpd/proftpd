@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.142 2012-02-16 00:03:07 castaglia Exp $
+ * $Id: fxp.c,v 1.143 2012-02-18 22:28:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1809,7 +1809,7 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
     }
 
     if (*flags & SSH2_FX_ATTR_PERMISSIONS) {
-      st->st_mode = sftp_msg_read_int(fxp->pool, buf, buflen);
+      st->st_mode |= sftp_msg_read_int(fxp->pool, buf, buflen);
     }
 
     if (*flags & SSH2_FX_ATTR_ACMODTIME) {
@@ -1822,10 +1822,57 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
   } else {
     char file_type;
 
-/* XXX Use this to create different types of files?  E.g. what if the client
- * wants to OPEN a socket, or a fifo?
- */
+    /* XXX Use this to create different types of files?  E.g. what if the client
+     * wants to OPEN a socket, or a fifo?
+     */
     file_type = sftp_msg_read_byte(fxp->pool, buf, buflen);
+    switch (file_type) {
+      case SSH2_FX_ATTR_FTYPE_REGULAR:
+        st->st_mode |= S_IFREG;
+        break;
+
+      case SSH2_FX_ATTR_FTYPE_DIRECTORY:
+        st->st_mode |= S_IFDIR;
+        break;
+
+      case SSH2_FX_ATTR_FTYPE_SYMLINK:
+        st->st_mode |= S_IFLNK;
+        break;
+
+      case SSH2_FX_ATTR_FTYPE_SPECIAL:
+        /* Default to marking this as a character special device, rather than
+         * block special.
+         */
+        st->st_mode |= S_IFCHR;
+        break;
+
+      case SSH2_FX_ATTR_FTYPE_UNKNOWN:
+        /* Nothing to do here; leave st->st_mode alone. */
+        break;
+
+      case SSH2_FX_ATTR_FTYPE_SOCKET:
+        st->st_mode |= S_IFSOCK;
+        break;
+
+      case SSH2_FX_ATTR_FTYPE_CHAR_DEVICE:
+        st->st_mode |= S_IFCHR;
+        break;
+
+      case SSH2_FX_ATTR_FTYPE_BLOCK_DEVICE:
+        st->st_mode |= S_IFBLK;
+        break;
+
+#ifdef S_IFIFO
+      case SSH2_FX_ATTR_FTYPE_FIFO:
+        st->st_mode |= S_IFIFO;
+        break;
+#endif /* S_IFIFO */
+
+      default: 
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "unrecognized file type %d requested (protocol version %d)",
+          file_type, fxp_session->client_version);
+    }
 
     if (*flags & SSH2_FX_ATTR_SIZE) {
       st->st_size = fxp_msg_read_long(fxp->pool, buf, buflen);
@@ -1910,7 +1957,7 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
     }
 
     if (*flags & SSH2_FX_ATTR_PERMISSIONS) {
-      st->st_mode = sftp_msg_read_int(fxp->pool, buf, buflen);
+      st->st_mode |= sftp_msg_read_int(fxp->pool, buf, buflen);
     }
 
     if (*flags & SSH2_FX_ATTR_ACCESSTIME) {
