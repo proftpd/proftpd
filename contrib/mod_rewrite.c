@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
  *
- * Copyright (c) 2001-2011 TJ Saunders
+ * Copyright (c) 2001-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.67 2011-12-11 02:14:42 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.68 2012-02-18 22:07:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2311,7 +2311,6 @@ MODRET set_rewriterule(cmd_rec *cmd) {
   unsigned int rule_flags = 0;
   unsigned char negated = FALSE;
   int regex_flags = REG_EXTENDED, res = -1;
-  char *tmp = NULL;
   register unsigned int i = 0;
 
   if (cmd->argc-1 < 2 || cmd->argc-1 > 3)
@@ -2352,11 +2351,6 @@ MODRET set_rewriterule(cmd_rec *cmd) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to compile '",
       cmd->argv[1], "' regex: ", errstr, NULL));
   }
-
-  /* Note: scan through the substitution parameter, checking any given
-   * variables, and noting if any invalid sequences are found
-   */
-  tmp = NULL;
 
   c = add_config_param(cmd->argv[0], 6, pre, NULL, NULL, NULL, NULL, NULL);
 
