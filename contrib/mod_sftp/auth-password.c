@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-password.c,v 1.7 2012-02-15 23:50:51 castaglia Exp $
+ * $Id: auth-password.c,v 1.8 2012-02-18 22:10:05 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -56,6 +56,11 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
   /* XXX We currently don't do anything with this. */
   have_new_passwd = sftp_msg_read_bool(pkt->pool, buf, buflen);
+  if (have_new_passwd) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s",
+      "client says they have provided a new password; this functionality "
+      "is not currently supported");
+  }
 
   passwd = sftp_msg_read_string(pkt->pool, buf, buflen);
   passwd = sftp_utf8_decode_str(pkt->pool, passwd);
