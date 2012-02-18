@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.90 2012-01-26 17:55:07 castaglia Exp $
+ * $Id: auth.c,v 1.91 2012-02-18 21:53:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1099,7 +1099,7 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
 /* This is one messy function.  Yuck.  Yay legacy code. */
 config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
     char **user_name, char **anon_name) {
-  config_rec *c = NULL, *topc = NULL, *anon_c = NULL;
+  config_rec *c = NULL, *topc = NULL;
   char *config_user_name, *config_anon_name = NULL;
   unsigned char is_alias = FALSE, *auth_alias_only = NULL;
 
@@ -1197,7 +1197,6 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
 
   } else {
     find_config_set_top(c);
-    anon_c = c;
   }
 
   if (c) {
@@ -1221,8 +1220,8 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
   }
 
   if (!is_alias) {
-    /* Yes, we do want to be using c, not anon_c, here.  Otherwise, we
-     * risk a regression of Bug#3501.
+    /* Yes, we do want to be using c here.  Otherwise, we risk a regression
+     * of Bug#3501.
      */
 
     auth_alias_only = get_param_ptr(c ? c->subset : main_server->conf,
@@ -1242,8 +1241,9 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
         FALSE);
       if (*login_name &&
           auth_alias_only &&
-          *auth_alias_only == TRUE)
+          *auth_alias_only == TRUE) {
         *login_name = NULL;
+      }
 
       if ((!login_name || !c) &&
           anon_name) {
