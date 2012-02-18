@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_mysql -- Support for connecting to MySQL databases.
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2011 TJ Saunders
+ * Copyright (c) 2004-2012 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.64 2011-10-06 15:27:08 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.65 2012-02-18 22:00:11 castaglia Exp $
  */
 
 /*
@@ -1441,9 +1441,8 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
  *  If this backend does not provide this functionality, this cmd *must*
  *  return ERROR.
  */
-MODRET cmd_checkauth(cmd_rec * cmd) {
+MODRET cmd_checkauth(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
-  db_conn_t *conn = NULL;
   char scrambled[256]={'\0'};
   char *c_clear = NULL;
   char *c_hash = NULL;
@@ -1459,8 +1458,8 @@ MODRET cmd_checkauth(cmd_rec * cmd) {
   }
 
   /* get the named connection -- not used in this case, but for consistency */
-  entry = _sql_get_connection( cmd->argv[0] );
-  if (!entry) {
+  entry = _sql_get_connection(cmd->argv[0]);
+  if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_checkauth");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   }
@@ -1469,8 +1468,6 @@ MODRET cmd_checkauth(cmd_rec * cmd) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_checkauth");
     return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
   }
-
-  conn = (db_conn_t *) entry->data;
 
   c_clear = cmd->argv[1];
   c_hash = cmd->argv[2];
@@ -1481,8 +1478,7 @@ MODRET cmd_checkauth(cmd_rec * cmd) {
   make_scrambled_password(scrambled, c_clear);
 #endif
 
-  success = !strcmp(scrambled, c_hash); 
-
+  success = (strcmp(scrambled, c_hash) == 0);
   if (!success) {
 
 #ifdef HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD_323
@@ -1497,7 +1493,7 @@ MODRET cmd_checkauth(cmd_rec * cmd) {
       "checking again using deprecated legacy MySQL password algorithm");
     sql_log(DEBUG_FUNC, "%s",
       "warning: support for this legacy MySQ-3.xL password algorithm will be dropped from MySQL in the future");
-    success = !strcmp(scrambled, c_hash);
+    success = (strcmp(scrambled, c_hash) == 0);
     if (!success)
       sql_log(DEBUG_FUNC, "%s", "password mismatch");
 #else
