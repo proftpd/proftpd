@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.143 2012-02-18 22:28:27 castaglia Exp $
+ * $Id: fxp.c,v 1.144 2012-02-18 22:37:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2185,6 +2185,11 @@ static char *fxp_get_path_listing(pool *p, const char *path, struct stat *st,
     time_strlen = strftime(time_str, sizeof(time_str), "%b %e %H:%M", t);
   }
 
+  if (time_strlen == 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s",
+      "warning: strftime(3) returned 0");
+  }
+
   if (user_owner == NULL) {
     user = pr_auth_uid2name(p, st->st_uid);
 
@@ -2394,7 +2399,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
   }
 
   /* Write an 'incomplete' TransferLog entry for this. */
-  abs_path = dir_abs_path(fxh->pool, curr_path, TRUE);
+  abs_path = dir_abs_path(fxh->pool, real_path, TRUE);
 
   if (fxh->fh_flags == O_RDONLY) {
     direction = 'o';
@@ -9936,16 +9941,16 @@ static int fxp_send_display_login_file(uint32_t channel_id) {
 /* Main entry point */
 int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
     unsigned char *data, uint32_t datalen) {
-  struct ssh2_packet *pkt;
   struct fxp_packet *fxp;
   int have_cache, res;
+
+  /* Unused parameter; we read the SFTP request out of the provided buffer. */
+  (void) ssh2;
 
   if (fxp_pool == NULL) {
     fxp_pool = make_sub_pool(sftp_pool);
     pr_pool_tag(fxp_pool, "SFTP Pool");
   }
-
-  pkt = ssh2;
 
   fxp = fxp_packet_read(channel_id, &data, &datalen, &have_cache);
   while (fxp) {
