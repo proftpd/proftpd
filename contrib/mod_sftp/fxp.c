@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.145 2012-02-19 02:56:35 castaglia Exp $
+ * $Id: fxp.c,v 1.146 2012-02-19 21:37:44 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -616,6 +616,17 @@ static uint32_t fxp_errno2status(int xerrno, const char **reason) {
   }
 
   return status_code;
+}
+
+static void fxp_set_filehandle_note(cmd_rec *cmd, struct fxp_handle *fxh) {
+  if (pr_table_add(cmd->notes, "sftp.file-handle", (char *) fxh->name, 0) < 0) {
+    int xerrno = errno;
+
+    if (xerrno != EEXIST) {
+      pr_trace_msg(trace_channel, 8,
+        "error setting 'sftp.file-handle' note: %s", strerror(xerrno));
+    }
+  }
 }
 
 static void fxp_trace_v3_open_flags(pool *p, uint32_t flags) {
@@ -4655,14 +4666,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   }
 
   /* Add a note containing the file handle for logging (Bug#3707). */
-  if (pr_table_add(cmd->notes, "sftp.file-handle", (char *) fxh->name, 0) < 0) {
-    xerrno = errno;
-  
-    if (xerrno != EEXIST) {
-      pr_trace_msg(trace_channel, 8,
-        "error setting 'sftp.file-handle' note: %s", strerror(xerrno));
-    }
-  }
+  fxp_set_filehandle_note(cmd, fxh);
 
   pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
 
@@ -5164,14 +5168,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   }
 
   /* Add a note containing the file handle for logging (Bug#3707). */
-  if (pr_table_add(cmd->notes, "sftp.file-handle", (char *) fxh->name, 0) < 0) {
-    int xerrno = errno;
-    
-    if (xerrno != EEXIST) {
-      pr_trace_msg(trace_channel, 8,
-        "error setting 'sftp.file-handle' note: %s", strerror(xerrno));
-    }
-  }
+  fxp_set_filehandle_note(cmd, fxh);
 
   cmd->arg = pstrdup(cmd->tmp_pool, (fxh->fh ? fxh->fh->fh_path : fxh->dir));
 
@@ -5375,14 +5372,7 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
   }
 
   /* Add a note containing the file handle for logging (Bug#3707). */
-  if (pr_table_add(cmd->notes, "sftp.file-handle", (char *) fxh->name, 0) < 0) {
-    int xerrno = errno;
-  
-    if (xerrno != EEXIST) {
-      pr_trace_msg(trace_channel, 8,
-        "error setting 'sftp.file-handle' note: %s", strerror(xerrno));
-    }
-  }
+  fxp_set_filehandle_note(cmd, fxh);
 
   cmd_name = cmd->argv[0];
   cmd->argv[0] = "FSTAT";
@@ -6865,14 +6855,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   }
 
   /* Add a note containing the file handle for logging (Bug#3707). */
-  if (pr_table_add(cmd->notes, "sftp.file-handle", (char *) fxh->name, 0) < 0) {
-    int xerrno = errno;
-
-    if (xerrno != EEXIST) {
-      pr_trace_msg(trace_channel, 8,
-        "error setting 'sftp.file-handle' note: %s", strerror(xerrno));
-    }
-  }
+  fxp_set_filehandle_note(cmd, fxh);
 
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
@@ -7172,14 +7155,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   }
 
   /* Add a note containing the file handle for logging (Bug#3707). */
-  if (pr_table_add(cmd->notes, "sftp.file-handle", (char *) fxh->name, 0) < 0) {
-    int xerrno = errno;
-  
-    if (xerrno != EEXIST) {
-      pr_trace_msg(trace_channel, 8,
-        "error setting 'sftp.file-handle' note: %s", strerror(xerrno));
-    }
-  }
+  fxp_set_filehandle_note(cmd, fxh);
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", fxh->fh->fh_path, NULL, NULL);
@@ -9548,14 +9524,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   }
 
   /* Add a note containing the file handle for logging (Bug#3707). */
-  if (pr_table_add(cmd->notes, "sftp.file-handle", (char *) fxh->name, 0) < 0) {
-    int xerrno = errno;
-  
-    if (xerrno != EEXIST) {
-      pr_trace_msg(trace_channel, 8,
-        "error setting 'sftp.file-handle' note: %s", strerror(xerrno));
-    }
-  }
+  fxp_set_filehandle_note(cmd, fxh);
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", fxh->fh->fh_path, NULL, NULL);
