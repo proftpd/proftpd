@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.299 2012-02-18 21:51:03 castaglia Exp $
+ * $Id: mod_auth.c,v 1.300 2012-02-19 19:58:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1600,10 +1600,12 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
   void *v;
   pr_scoreboard_entry_t *score = NULL;
   long cur = 0, hcur = 0, ccur = 0, hostsperuser = 1, usersessions = 0;
-  config_rec *c = NULL, *anon_config = NULL, *maxc = NULL;
+  config_rec *c = NULL, *maxc = NULL;
 
   /* Determine how many users are currently connected. */
-  anon_config = pr_auth_get_anon_config(cmd->tmp_pool, &user, NULL, NULL);
+
+  /* We use this call to get the possibly-changed user name. */
+  (void) pr_auth_get_anon_config(cmd->tmp_pool, &user, NULL, NULL);
 
   /* Gather our statistics. */
   if (user) {
@@ -1889,9 +1891,9 @@ MODRET auth_user(cmd_rec *cmd) {
   c = pr_auth_get_anon_config(cmd->tmp_pool, &user, NULL, NULL);
 
   /* Check for AccessDenyMsg */
-  if ((denymsg = get_param_ptr((c ? c->subset : cmd->server->conf),
-      "AccessDenyMsg", FALSE)) != NULL) {
-
+  denymsg = get_param_ptr((c ? c->subset : cmd->server->conf), "AccessDenyMsg",
+    FALSE);
+  if (denymsg != NULL) {
     if (strstr(denymsg, "%u") != NULL) {
       denymsg = sreplace(cmd->tmp_pool, denymsg, "%u", user, NULL);
     }
