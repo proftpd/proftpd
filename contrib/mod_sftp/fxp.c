@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.144 2012-02-18 22:37:27 castaglia Exp $
+ * $Id: fxp.c,v 1.145 2012-02-19 02:56:35 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4582,14 +4582,16 @@ static int fxp_handle_ext_version_select(struct fxp_packet *fxp,
 /* Request handlers */
 
 static int fxp_handle_close(struct fxp_packet *fxp) {
-  int xerrno = 0, res = 0;
+  int xerrno = 0, res = 0, xfer_direction;
   unsigned char *buf, *ptr;
-  char *name;
+  char *name, *xfer_filename, *xfer_path;
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd;
+  struct timeval xfer_start_time;
+  off_t xfer_file_size, xfer_total_bytes;
 
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
@@ -4650,6 +4652,16 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
     resp->payload_sz = (bufsz - buflen);
   
     return fxp_packet_write(resp);
+  }
+
+  /* Add a note containing the file handle for logging (Bug#3707). */
+  if (pr_table_add(cmd->notes, "sftp.file-handle", (char *) fxh->name, 0) < 0) {
+    xerrno = errno;
+  
+    if (xerrno != EEXIST) {
+      pr_trace_msg(trace_channel, 8,
+        "error setting 'sftp.file-handle' note: %s", strerror(xerrno));
+    }
   }
 
   pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
@@ -4726,6 +4738,21 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
     fxh->fh = NULL;
 
+    /* Before we dispatch to the RETR/STOR handlers, make a copy of the
+     * session.xfer.path variable (and others).  The RETR/STOR handlers will
+     * clear out the session.xfer.p pool, but we will want to put that path
+     * back, after the RETR/STOR handlers, for the sake of logging e.g. a %f
+     * LogFormat variable for the CLOSE request.
+     */
+
+    xfer_direction = session.xfer.direction;
+    xfer_filename = pstrdup(fxp->pool, session.xfer.filename);
+    xfer_path = pstrdup(fxp->pool, session.xfer.path);
+    memcpy(&xfer_start_time, &(session.xfer.start_time),
+      sizeof(struct timeval));
+    xfer_file_size = session.xfer.file_size;
+    xfer_total_bytes = session.xfer.total_bytes;
+
     if (cmd2) {
       int post_phase = POST_CMD, log_phase = LOG_CMD;
 
@@ -4781,12 +4808,6 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
     fxh->dirh = NULL;
   }
 
-  /* Clear out any transfer-specific data. */
-  if (session.xfer.p) {
-    destroy_pool(session.xfer.p);
-  }
-  memset(&session.xfer, 0, sizeof(session.xfer));
-
   if (res < 0) {
     status_code = fxp_errno2status(xerrno, &reason);
 
@@ -4807,8 +4828,22 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
   fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
 
+  /* Now re-populate the session.xfer struct, for mod_log's handling of
+   * the CLOSE request.
+   */
+  session.xfer.p = fxp->pool;
+  session.xfer.direction = xfer_direction;
+  session.xfer.filename = xfer_filename;
+  session.xfer.path = xfer_path;
+  memcpy(&(session.xfer.start_time), &xfer_start_time, sizeof(struct timeval));
+  session.xfer.file_size = xfer_file_size;
+  session.xfer.total_bytes = xfer_total_bytes;
+
   pr_cmd_dispatch_phase(cmd, res < 0 ? POST_CMD_ERR : POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, res < 0 ? LOG_CMD_ERR : LOG_CMD, 0);
+
+  /* Clear out session.xfer again. */
+  memset(&session.xfer, 0, sizeof(session.xfer));
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
@@ -5128,6 +5163,16 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
+  /* Add a note containing the file handle for logging (Bug#3707). */
+  if (pr_table_add(cmd->notes, "sftp.file-handle", (char *) fxh->name, 0) < 0) {
+    int xerrno = errno;
+    
+    if (xerrno != EEXIST) {
+      pr_trace_msg(trace_channel, 8,
+        "error setting 'sftp.file-handle' note: %s", strerror(xerrno));
+    }
+  }
+
   cmd->arg = pstrdup(cmd->tmp_pool, (fxh->fh ? fxh->fh->fh_path : fxh->dir));
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
@@ -5327,6 +5372,16 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     resp->payload_sz = (bufsz - buflen);
   
     return fxp_packet_write(resp);
+  }
+
+  /* Add a note containing the file handle for logging (Bug#3707). */
+  if (pr_table_add(cmd->notes, "sftp.file-handle", (char *) fxh->name, 0) < 0) {
+    int xerrno = errno;
+  
+    if (xerrno != EEXIST) {
+      pr_trace_msg(trace_channel, 8,
+        "error setting 'sftp.file-handle' note: %s", strerror(xerrno));
+    }
   }
 
   cmd_name = cmd->argv[0];
@@ -6809,6 +6864,16 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       fxp_timeout_stalled_cb, "TimeoutStalled");
   }
 
+  /* Add a note containing the file handle for logging (Bug#3707). */
+  if (pr_table_add(cmd->notes, "sftp.file-handle", (char *) fxh->name, 0) < 0) {
+    int xerrno = errno;
+
+    if (xerrno != EEXIST) {
+      pr_trace_msg(trace_channel, 8,
+        "error setting 'sftp.file-handle' note: %s", strerror(xerrno));
+    }
+  }
+
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
@@ -7104,6 +7169,16 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     resp->payload_sz = (bufsz - buflen);
   
     return fxp_packet_write(resp);
+  }
+
+  /* Add a note containing the file handle for logging (Bug#3707). */
+  if (pr_table_add(cmd->notes, "sftp.file-handle", (char *) fxh->name, 0) < 0) {
+    int xerrno = errno;
+  
+    if (xerrno != EEXIST) {
+      pr_trace_msg(trace_channel, 8,
+        "error setting 'sftp.file-handle' note: %s", strerror(xerrno));
+    }
   }
 
   pr_scoreboard_entry_update(session.pid,
@@ -9470,6 +9545,16 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     resp->payload_sz = (bufsz - buflen);
   
     return fxp_packet_write(resp);
+  }
+
+  /* Add a note containing the file handle for logging (Bug#3707). */
+  if (pr_table_add(cmd->notes, "sftp.file-handle", (char *) fxh->name, 0) < 0) {
+    int xerrno = errno;
+  
+    if (xerrno != EEXIST) {
+      pr_trace_msg(trace_channel, 8,
+        "error setting 'sftp.file-handle' note: %s", strerror(xerrno));
+    }
   }
 
   pr_scoreboard_entry_update(session.pid,
