@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.126 2011-12-11 02:33:14 castaglia Exp $
+ * $Id: mod_log.c,v 1.127 2012-02-19 02:52:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -106,6 +106,7 @@ struct logfile_struc {
 #define META_RAW_BYTES_OUT	34
 #define META_EOS_REASON		35
 #define META_VHOST_IP		36
+#define META_NOTE_VAR		37
 
 /* For tracking the size of deleted files. */
 static off_t log_dele_filesz = 0;
@@ -241,6 +242,28 @@ static void logformat(char *nickname, char *fmts) {
           add_meta(&outs, META_VERSION, 0);
           tmp += 9;
           continue;
+        }
+
+        if (strncmp(tmp, "{note:", 6) == 0) {
+          char *ptr;
+
+          ptr = strchr(tmp + 6, '}');
+          if (ptr != NULL) {
+            char *note;
+            size_t notelen;
+
+            note = tmp + 6;
+            notelen = (ptr - note);
+
+            add_meta(&outs, META_NOTE_VAR, 0);
+            add_meta(&outs, META_ARG, 1, (int) notelen, note);
+
+            /* Advance 6 for the leading '{note:', and one more for the
+             * trailing '}' character.
+             */
+            tmp += (notelen + 6 + 1);
+            continue;
+          }
         }
 
         switch (*tmp) {
@@ -865,6 +888,31 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
           char *env = pr_env_get(cmd->tmp_pool, key);
           if (env) {
             sstrncpy(argp, env, sizeof(arg));
+          }
+        }
+      }
+
+      break;
+
+    case META_NOTE_VAR:
+      argp = arg;
+      m++;
+
+      if (*m == META_START &&
+          *(m+1) == META_ARG) {
+        char *key = get_next_meta(p, cmd, &m);
+        if (key) {
+          char *note = NULL;
+
+          /* Check in the cmd->notes table first. */
+          note = pr_table_get(cmd->notes, key, NULL);
+          if (note == NULL) {
+            /* If not there, check the session.notes table. */
+            note = pr_table_get(session.notes, key, NULL);
+          }
+ 
+          if (note) {
+            sstrncpy(argp, note, sizeof(arg));
           }
         }
       }
