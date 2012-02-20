@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.20 2012-02-08 03:26:23 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.21 2012-02-20 18:28:10 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -27,6 +27,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#HideUser">HideUser</a>
   <li><a href="#Include">Include</a>
   <li><a href="#MaxCommandRate">MaxCommandRate</a>
+  <li><a href="#MaxInstances">MaxInstances</a>
   <li><a href="#PassivePorts">PassivePorts</a>
   <li><a href="#PathAllowFilter">PathAllowFilter</a>
   <li><a href="#PathDenyFilter">PathDenyFilter</a>
@@ -36,6 +37,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#ScoreboardMutex>ScoreboardMutex</a>
   <li><a nref="#ServerIdent">ServerIdent</a>
   <li><a href="#TCPBacklog">TCPBacklog</a>
+  <li><a href="#TimeoutIdle">TimeoutIdle</a>
   <li><a href="#TimeoutLinger">TimeoutLinger</a>
   <li><a href="#Trace">Trace</a>
   <li><a href="#TraceLog">TraceLog</a>
@@ -336,6 +338,33 @@ sets a maximum command rate of 200 commands per sec. Or:
   MaxCommandRate 500 2
 </pre>
 sets a maximum command rate of 500 commands every 2 secs.
+
+<p>
+<hr>
+<h2><a name="MaxInstances">MaxInstances</a></h2>
+<strong>Syntax:</strong> MaxInstances <em>count</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.1.6p11 and later
+
+<p>
+The <code>MaxInstances</code> directive configures the maximum number of child
+(session) processes that may be spawned by the <code>proftpd</code> daemon
+process when running with "ServerType standalone" configured.  The directive
+has no effect when <code>proftpd</code> is configured with "ServerType inetd".
+
+<p>
+Each <code>proftpd</code> child process represents a single client connection,
+and thus this directive also controls the maximum number of simultaneous
+connections allowed.  Additional connections beyond the configured limit are
+logged, and silently disconnected.  The <code>MaxInstances</code> directive
+can be used to prevent undesirable denial-of-service attacks (<i>e.g.</i>
+by repeatedly connecting to the FTP control port, a malicious client could try
+to cause <code>proftpd</code> to repeatedly fork new processes, creating a
+"fork-bomb").   By default, no limit is placed on the number of child
+processes that may run at one time; it is <b>highly recommended</b> that a
+maximum number, suitable to your sites traffic, be configured.
 
 <p>
 <hr>
@@ -684,6 +713,34 @@ additional tuning considerations on Solaris.
 
 <p>
 <hr>
+<h2><a name="TimeoutIdle">TimeoutIdle</a></h2>
+<strong>Syntax:</strong> TimeoutIdle <em>seconds</em><br>
+<strong>Default:</strong> 600 seconds<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>TimeoutIdle</code> directive configures the maximum number of
+<em>seconds</em> that <code>proftpd</code> will allow clients to stay connected
+without receiving any data on either the control or data connection.  If data
+are received on either connection, the idle timer is reset.  Setting
+<code>TimeoutIdle</code> to zero disables the idle timer completely, meaning
+that clients can stay connected forever, without sending data.  <b>Note</b>:
+this is generally a <b>very bad idea</b>, as a "hung" TCP connection which is
+never properly disconnected (<i>e.g.</i> the remote network may have become
+disconnected from the Internet, <i>etc</i>) will cause a session process to
+never exit, until manually killed.  This session process will thus linger, using
+up one of the <a href="#MaxInstances"><code>MaxInstances</code></a> as well as
+any of the other configured limits.
+
+<p>
+See also: <a href="mod_auth.html#TimeoutLogin"><code>TimeoutLogin</code></a>,
+<a href="mod_xfer.html#TimeoutNoTransfer"><code>TimeoutNoTransfer</code></a>,
+<a href="mod_xfer.html#TimeoutStalled"><code>TimeoutStalled</code></a>.
+
+<p>
+<hr>
 <h2><a name="TimeoutLinger">TimeoutLinger</a></h2>
 <strong>Syntax:</strong> TimeoutLinger <em>secs</em><br>
 <strong>Default:</strong> 30<br>
@@ -844,7 +901,7 @@ The <code>mod_core</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-02-08 03:26:23 $</i><br>
+Last Updated: <i>$Date: 2012-02-20 18:28:10 $</i><br>
 
 <br><hr>
 
