@@ -1,4 +1,4 @@
-<!-- $Id: mod_xfer.html,v 1.4 2011-04-26 16:10:11 castaglia Exp $ -->
+<!-- $Id: mod_xfer.html,v 1.5 2012-02-20 18:37:00 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_xfer.html,v $ -->
 
 <html>
@@ -144,6 +144,42 @@ See also: <a href="#MaxRetrieveFileSize"><code>MaxRetrieveFileSize</code></a>
 
 <p>
 <hr>
+<h2><a name="TimeoutNoTransfer">TimeoutNoTransfer</a></h2>
+<strong>Syntax:</strong> TimeoutNoTransfer <em>seconds</em><br>
+<strong>Default:</strong> 300 seconds<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_xfer<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>TimeoutNoTransfer</code> directive configures the maximum number of
+<em>seconds</em> a client is allowed to spend connected, after authentication,
+without issuing a data transfer command which results in a data connection
+(<i>i.e.</i> sending/receiving a file, or requesting a directory listing).
+
+<p>
+See also: <a href="mod_core.html#TimeoutIdle"><code>TimeoutIdle</code></a>,
+<a href="mod_auth.html#TimeoutLogin"><code>TimeoutLogin</code></a>,
+<a href="#TimeoutStalled"><code>TimeoutStalled</code></a>.
+
+<p>
+<hr>
+<h2><a name="TimeoutStalled">TimeoutStalled</a></h2>
+<strong>Syntax:</strong> TimeoutStalled <em>seconds</em><br>
+<strong>Default:</strong> 3600 seconds<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_xfer<br>
+<strong>Compatibility:</strong> 1.1.6 and later
+
+<p>
+The <code>TimeoutStalled</code> directive sets the maximum number of
+<em>seconds</em> a data connection between <code>proftpd</code> and a client
+can exist but have no actual data transferred (<i>i.e.</i> "stalled").  If the
+<em>seconds</em> parameter is set to zero, data transfers are allowed to stall
+indefinitely; <b>note</b> that this is <b>not</b> a recommended configuration.
+
+<p>
+<hr>
 <h2><a name="TransferPriority">TransferPriority</a></h2>
 <strong>Syntax:</strong> TransferPriority <em>cmd-list "low"|"medium"|"high"|number</em><br>
 <strong>Default:</strong> None<br>
@@ -249,12 +285,12 @@ The <code>mod_xfer</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-04-26 16:10:11 $</i><br>
+Last Updated: <i>$Date: 2012-02-20 18:37:00 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2011 The ProFTPD Project<br>
+&copy; Copyright 2000-2012 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 
