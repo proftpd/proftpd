@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.56 2012-02-17 01:18:44 castaglia Exp $
+ * $Id: mod_ban.c,v 1.57 2012-02-22 01:56:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2762,11 +2762,26 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
   ban_tabfh = pr_fsio_open(ban_table, O_RDWR|O_CREAT); 
   PRIVS_RELINQUISH
 
-  if (!ban_tabfh) {
+  if (ban_tabfh == NULL) {
     pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
       ": unable to open BanTable '%s': %s", ban_table, strerror(errno));
     pr_session_disconnect(&ban_module, PR_SESS_DISCONNECT_BAD_CONFIG, NULL);
   }
+
+  if (ban_tabfh->fh_fd <= STDERR_FILENO) {
+    int usable_fd;
+
+    usable_fd = pr_fs_get_usable_fd(ban_tabfh->fh_fd);
+    if (usable_fd < 0) {
+      pr_log_debug(DEBUG0, MOD_BAN_VERSION
+        "warning: unable to find good fd for BanTable %s: %s", ban_table,
+        strerror(errno));
+
+    } else {
+      close(ban_tabfh->fh_fd);
+      ban_tabfh->fh_fd = usable_fd;
+    }
+  } 
 
   /* Get the shm for storing all of our ban info. */
   lists = ban_get_shm(ban_tabfh);
