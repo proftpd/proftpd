@@ -63,7 +63,7 @@ my $TESTS = {
 
   ban_sighup_bug3751 => {
     order => ++$order,
-    test_class => [qw(forking os_linux)],
+    test_class => [qw(bug forking os_linux)],
   },
 
 };
