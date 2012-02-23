@@ -50,6 +50,9 @@ ChangeLog files.
     SFTPDigests
       new SHA256/512 digests
 
+    SFTPOptions
+      new IgnoreSFTPSetOwners option (Bug#3757)
+
     TLSProtocol
       support TLSv1.1, TLSv1.2 (assuming OpenSSL-1.0.1 and later)
 
@@ -63,4 +66,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-02-19 02:52:49 $
+Last Updated: $Date: 2012-02-23 21:10:06 $

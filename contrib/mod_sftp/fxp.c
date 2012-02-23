@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.146 2012-02-19 21:37:44 castaglia Exp $
+ * $Id: fxp.c,v 1.147 2012-02-23 21:10:06 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1294,7 +1294,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
 
       cmd = pr_cmd_alloc(fxp->pool, 1, "SITE_CHMOD");
       cmd->arg = pstrdup(fxp->pool, path);
-      if (!dir_check(fxp->pool, cmd, "WRITE", (char *) path, NULL)) {
+      if (!dir_check(fxp->pool, cmd, G_WRITE, (char *) path, NULL)) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "chmod of '%s' blocked by <Limit> configuration", path);
 
@@ -1342,9 +1342,8 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
   if ((attr_flags & SSH2_FX_ATTR_UIDGID) ||
       (attr_flags & SSH2_FX_ATTR_OWNERGROUP)) {
     int do_chown = FALSE;
-
     uid_t client_uid = (uid_t) -1;
-    gid_t client_gid = (uid_t) -1;
+    gid_t client_gid = (gid_t) -1;
 
     if (st.st_uid != attrs->st_uid) {
       client_uid = attrs->st_uid;
@@ -1357,11 +1356,24 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
     }
 
     if (do_chown) {
-      if (fh != NULL) {
-        res = pr_fsio_fchown(fh, client_uid, client_gid);
+      cmd_rec *cmd;
+
+      cmd = pr_cmd_alloc(fxp->pool, 1, "SITE_CHGRP");
+      cmd->arg = pstrdup(fxp->pool, path);
+      if (!dir_check(fxp->pool, cmd, G_WRITE, (char *) path, NULL)) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "chown of '%s' blocked by <Limit> configuration", path);
+
+        errno = EACCES;
+        res = -1;
 
       } else {
-        res = pr_fsio_chown(path, client_uid, client_gid);
+        if (fh != NULL) {
+          res = pr_fsio_fchown(fh, client_uid, client_gid);
+
+        } else {
+          res = pr_fsio_chown(path, client_uid, client_gid);
+        }
       }
 
       if (res < 0) {
@@ -5222,6 +5234,19 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   }
   cmd->argv[0] = cmd_name;
 
+  /* If the SFTPOption for ignoring the owners for SFTP setstat requests is set,
+   * handle it by clearing the SSH2_FX_ATTR_UIDGID and SSH2_FX_ATTR_OWNERGROUP
+   * flags.
+   */
+  if ((sftp_opts & SFTP_OPT_IGNORE_SFTP_SET_OWNERS) &&
+      ((attr_flags & SSH2_FX_ATTR_UIDGID) ||
+       (attr_flags & SSH2_FX_ATTR_OWNERGROUP))) {
+    pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPSetOwners' "
+      "configured, ignoring ownership sent by client");
+    attr_flags &= ~SSH2_FX_ATTR_UIDGID;
+    attr_flags &= ~SSH2_FX_ATTR_OWNERGROUP;
+  }
+
   /* If the SFTPOption for ignoring the perms for SFTP setstat requests is set,
    * handle it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.
    */
@@ -8992,6 +9017,19 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
   cmd->argv[0] = cmd_name;
+
+  /* If the SFTPOption for ignoring the owners for SFTP setstat requests is set,
+   * handle it by clearing the SSH2_FX_ATTR_UIDGID and SSH2_FX_ATTR_OWNERGROUP
+   * flags.
+   */
+  if ((sftp_opts & SFTP_OPT_IGNORE_SFTP_SET_OWNERS) &&
+      ((attr_flags & SSH2_FX_ATTR_UIDGID) ||
+       (attr_flags & SSH2_FX_ATTR_OWNERGROUP))) {
+    pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPSetOwners' "
+      "configured, ignoring ownership sent by client");
+    attr_flags &= ~SSH2_FX_ATTR_UIDGID;
+    attr_flags &= ~SSH2_FX_ATTR_OWNERGROUP;
+  }
 
   /* If the SFTPOption for ignoring the perms for SFTP setstat requests is set,
    * handle it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.
