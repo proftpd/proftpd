@@ -59,6 +59,9 @@ ChangeLog files.
     TLSProtocol
       support TLSv1.1, TLSv1.2 (assuming OpenSSL-1.0.1 and later)
 
+    UseEncoding
+      relaxed restrictions, new "strict" keyword (Bug#3737)
+
   + Deprecated configuration directives:
 
   + API changes:
@@ -69,4 +72,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-02-24 06:02:49 $
+Last Updated: $Date: 2012-02-24 22:32:31 $
