@@ -1,4 +1,4 @@
-<!-- $Id: mod_auth.html,v 1.5 2012-02-20 18:14:27 castaglia Exp $ -->
+<!-- $Id: mod_auth.html,v 1.6 2012-02-24 06:13:39 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_auth.html,v $ -->
 
 <html>
@@ -59,7 +59,7 @@ logged.
 <p>
 <hr>
 <h2><a name="RootRevoke">RootRevoke</a></h2>
-<strong>Syntax:</strong> RootRevoke <em>on|off</em><br>
+<strong>Syntax:</strong> RootRevoke <em>on|off|UseNonCompliantActiveTransfers</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
 <strong>Module:</strong> mod_auth<br>
@@ -69,9 +69,51 @@ logged.
 The <code>RootRevoke</code> directive causes all root privileges to be dropped
 once a user is authenticated.  This will also cause active data transfers
 (<i>e.g.</i> via the <code>PORT</code>/<code>EPRT</code> FTP commands) to be
-disabled <i>if the server is listening on a port less than 1025</i>.  Note that
+disabled <i>if the server is listening on a port less than 1024</i>.  Note that
 this only affects <i>active</i> data transfers; passive transfers will not be
 blocked.
+
+<p>
+The reason for rejecting active data transfers in these cases is because of
+a requirement in RFC 959 (which defines the File Transfer Protocol) that for
+active data transfers, the data connection <b>must</b> have a source port of
+<em>L</em>-1, where <em>L</em> is the control connection port (see RFC 959, Section 3.2 "Establishing Data Connections").  Thus if the FTP server listens on
+port 21, then a client requesting an active data transfer from that server
+will have a data connection whose source port (on the server) is port 20
+(<em>L</em> = 21, <em>L</em>-1 = 20).
+
+<p>
+Even though passive data transfers are highly preferable, many FTP clients
+may still require/expect to be able to do an active data transfer.  One
+question, though, is how many FTP clients actually <i>check</i> that the
+source port of the active data transfer connection is actually <em>L</em>-1.
+Or how many networking appliances along the way (<i>i.e.</i> firewalls, NATs,
+routers, <i>etc</i>) enforce this restriction as well.
+
+<p>
+If not for that requirement, then with "RootRevoke on" in the
+<code>proftpd.conf</code>, <code>proftpd</code> would not be <i>required</i>
+to use root privileges for binding to a privileged port like port 20.
+
+<p>
+Thus the <code>RootRevoke</code> directive also accepts (as of <code>proftpd-1.3.5rc1</code>) a parameter of "UseNonCompliantActiveTransfers", <i>e.g.</i>:
+<pre>
+  # Drop root privs, but allow active data tranfers (only use a non-standard
+  # source port for the active data connection).
+  RootRevoke UseNonCompliantActiveTranfers
+</pre>
+With this configuration, <code>proftpd</code> will drop root privileges,
+<i>but</i> would <b>not</b> reject <code>PORT</code>/<code>EPRT</code>
+commands at all.  Instead, the active data transfers would be allowed as per
+normal, except that <code>proftpd</code> would not try to bind to the
+<em>L</em>-1 port for those active transfers.
+
+<p>
+This <code>RootRevoke</code> parameter is valuable because it helps in
+getting <code>proftpd</code> to drop root privileges for sessions more often,
+which is a <b>far more secure configuration</b>.  Exploits such as the
+"Roaring Beast" attack would not be possible in a session where root privileges
+have been dropped completely.
 
 <p>
 <hr>
@@ -158,7 +200,7 @@ The <code>mod_auth</code> module is compiled by default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-02-20 18:14:27 $</i><br>
+Last Updated: <i>$Date: 2012-02-24 06:13:39 $</i><br>
 
 <br><hr>
 
