@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2011 The ProFTPD Project team
+ * Copyright (c) 2008-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.14 2011-12-03 01:46:42 castaglia Exp $
+ * $Id: str.c,v 1.15 2012-02-24 07:08:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -411,6 +411,81 @@ char *pr_str_strip_end(char *s, char *ch) {
   }
 
   return s;
+}
+
+int pr_str_get_nbytes(const char *str, const char *units, off_t *nbytes) {
+  off_t sz;
+  char *ptr = NULL;
+  float factor = 0.0;
+
+  if (str == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* No negative numbers. */
+  if (*str == '-') {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (units == NULL ||
+      *units == '\0') {
+    factor = 1.0;
+
+  } else if (strncasecmp(units, "KB", 3) == 0) {
+    factor = 1024.0;
+
+  } else if (strncasecmp(units, "MB", 3) == 0) {
+    factor = 1024.0 * 1024.0;
+
+  } else if (strncasecmp(units, "GB", 3) == 0) {
+    factor = 1024.0 * 1024.0 * 1024.0;
+
+  } else if (strncasecmp(units, "TB", 3) == 0) {
+    factor = 1024.0 * 1024.0 * 1024.0 * 1024.0;
+  
+  } else if (strncasecmp(units, "B", 2) == 0) {
+    factor = 1.0;
+
+  } else {
+    errno = EINVAL;
+    return -1;
+  }
+
+  errno = 0;
+
+#ifdef HAVE_STRTOULL
+  sz = strtoull(str, &ptr, 10);
+#else
+  sz = strtoul(str, &ptr, 10);
+#endif /* !HAVE_STRTOULL */
+
+  if (errno == ERANGE) {
+    return -1;
+  }
+
+  if (ptr != NULL && *ptr) {
+    /* Error parsing the given string */
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Don't bother applying the factor if the result will overflow the result. */
+#ifdef ULLONG_MAX
+  if (sz > (ULLONG_MAX / factor)) {
+#else
+  if (sz > (ULONG_MAX / factor)) {
+#endif /* !ULLONG_MAX */
+    errno = ERANGE;
+    return -1;
+  }
+
+  if (nbytes != NULL) {
+    *nbytes = (off_t) (sz * factor);
+  }
+
+  return 0;
 }
 
 char *pr_str_get_word(char **cp, int flags) {

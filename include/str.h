@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2011 The ProFTPD Project team
+ * Copyright (c) 2008-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.h,v 1.7 2011-12-03 01:46:42 castaglia Exp $
+ * $Id: str.h,v 1.8 2012-02-24 07:08:02 castaglia Exp $
  */
 
 #ifndef PR_STR_H
@@ -44,6 +44,7 @@ char *pstrndup(pool *, const char *, size_t);
 char *pr_str_replace(pool *, unsigned int, char *, ...);
 char *pr_str_strip(pool *, char *);
 char *pr_str_strip_end(char *, char *);
+int pr_str_get_nbytes(const char *, const char *, off_t *);
 char *pr_str_get_word(char **, int);
 
 #define PR_STR_FL_PRESERVE_COMMENTS		0x0001

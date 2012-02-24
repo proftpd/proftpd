@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2011 The ProFTPD Project team
+ * Copyright (c) 2008-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* String API tests
- * $Id: str.c,v 1.6 2011-12-04 22:19:16 castaglia Exp $
+ * $Id: str.c,v 1.7 2012-02-24 07:08:03 castaglia Exp $
  */
 
 #include "tests.h"
@@ -766,6 +766,104 @@ START_TEST (is_fnmatch_test) {
 }
 END_TEST
 
+START_TEST (get_nbytes_test) {
+  char *str, *units;
+  off_t nbytes;
+  int res;
+
+  res = pr_str_get_nbytes(NULL, NULL, NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = NULL;
+  res = pr_str_get_nbytes(str, NULL, NULL);
+  fail_unless(res == -1, "Failed to handle null str argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = "1";
+  units = "f";
+  res = pr_str_get_nbytes(str, units, NULL);
+  fail_unless(res == -1, "Failed to handle bad suffix argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = "a";
+  units = "";
+  res = pr_str_get_nbytes(str, units, NULL);
+  fail_unless(res == -1, "Failed to handle invalid str argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = "1 1";
+  units = "";
+  res = pr_str_get_nbytes(str, units, NULL);
+  fail_unless(res == -1, "Failed to handle invalid str argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = "1.1";
+  units = "";
+  res = pr_str_get_nbytes(str, units, NULL);
+  fail_unless(res == -1, "Failed to handle invalid str argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = "-1";
+  units = "";
+  res = pr_str_get_nbytes(str, units, NULL);
+  fail_unless(res == -1, "Failed to handle invalid str argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  /* XXX Test good suffix: B, KB, MB, GB, TB */
+
+  str = "1";
+  units = "";
+  res = pr_str_get_nbytes(str, units, &nbytes);
+  fail_unless(res == 0, "Expected result 0, got %d: %s", res, strerror(errno));
+  fail_unless(nbytes == 1, "Expected nbytes = 1, got %" PR_LU,
+    (pr_off_t) nbytes);
+
+  str = "1";
+  units = "B";
+  res = pr_str_get_nbytes(str, units, &nbytes);
+  fail_unless(res == 0, "Expected result 0, got %d: %s", res, strerror(errno));
+  fail_unless(nbytes == 1,
+    "Expected nbytes = 1, got %" PR_LU, (pr_off_t) nbytes);
+
+  str = "1";
+  units = "KB";
+  res = pr_str_get_nbytes(str, units, &nbytes);
+  fail_unless(res == 0, "Expected result 0, got %d: %s", res, strerror(errno));
+  fail_unless(nbytes == 1024UL,
+    "Expected nbytes = 1024, got %" PR_LU, (pr_off_t) nbytes);
+
+  str = "1";
+  units = "MB";
+  res = pr_str_get_nbytes(str, units, &nbytes);
+  fail_unless(res == 0, "Expected result 0, got %d: %s", res, strerror(errno));
+  fail_unless(nbytes == 1048576UL,
+    "Expected nbytes = 1048576, got %" PR_LU, (pr_off_t) nbytes);
+
+  str = "1";
+  units = "GB";
+  res = pr_str_get_nbytes(str, units, &nbytes);
+  fail_unless(res == 0, "Expected result 0, got %d: %s", res, strerror(errno));
+  fail_unless(nbytes == 1073741824UL,
+    "Expected nbytes = 1073741824, got %" PR_LU, (pr_off_t) nbytes);
+
+  str = "1";
+  units = "TB";
+  res = pr_str_get_nbytes(str, units, &nbytes);
+  fail_unless(res == 0, "Expected result 0, got %d: %s", res, strerror(errno));
+  fail_unless(nbytes == 1099511627776UL,
+    "Expected nbytes = 1099511627776, got %" PR_LU, (pr_off_t) nbytes);
+
+  /* This should definitely trigger the ERANGE error. */
+  str = "1099511627776";
+  units = "TB";
+  res = pr_str_get_nbytes(str, units, &nbytes);
+  fail_unless(res == -1, "Expected ERANGE failure, succeeded unexpectedly");
+  fail_unless(errno == ERANGE, "Expected %s [%d], got %s [%d]",
+    strerror(ERANGE), ERANGE, strerror(errno), errno);
+}
+END_TEST
+
 Suite *tests_get_str_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -792,6 +890,7 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, get_word_test);
   tcase_add_test(testcase, is_boolean_test);
   tcase_add_test(testcase, is_fnmatch_test);
+  tcase_add_test(testcase, get_nbytes_test);
 
   suite_add_tcase(suite, testcase);
 
