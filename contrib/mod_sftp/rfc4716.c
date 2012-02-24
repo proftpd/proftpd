@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: rfc4716.c,v 1.16 2012-02-15 23:50:51 castaglia Exp $
+ * $Id: rfc4716.c,v 1.17 2012-02-24 01:29:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -197,12 +197,11 @@ static char *filestore_getline(sftp_keystore_t *store, pool *p) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "Make sure that '%s' is a RFC4716 formatted key", store_data->path);
         errno = EINVAL;
-        return NULL;
+        break;
       }
     }
   }
 
-  /* Should not be reached. */
   return NULL;
 }
 
