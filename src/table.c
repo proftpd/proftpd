@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.31 2012-02-24 01:22:23 castaglia Exp $
+ * $Id: table.c,v 1.32 2012-02-24 01:37:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -377,7 +377,7 @@ static unsigned int tab_get_seed(void) {
   fp = fopen("/dev/urandom", "rb");
   if (fp != NULL) {
     nitems = fread(&seed, sizeof(seed), 1, fp);
-    fclose(fp);
+    (void) fclose(fp);
   }
 
   if (nitems == 0) {
