@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.30 2012-02-16 00:13:03 castaglia Exp $
+ * $Id: table.c,v 1.31 2012-02-24 01:22:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -365,6 +365,7 @@ static unsigned int tab_get_seed(void) {
   unsigned int seed = 0;
 #ifndef PR_USE_OPENSSL
   FILE *fp = NULL;
+  size_t nitems = 0;
 #endif /* Not PR_USE_OPENSSL */
 
 #ifdef PR_USE_OPENSSL
@@ -375,14 +376,16 @@ static unsigned int tab_get_seed(void) {
   /* Try reading from /dev/urandom, if present */
   fp = fopen("/dev/urandom", "rb");
   if (fp != NULL) {
-    fread(&seed, sizeof(seed), 1, fp);
+    nitems = fread(&seed, sizeof(seed), 1, fp);
     fclose(fp);
+  }
 
-  } else {
+  if (nitems == 0) {
     time_t now = time(NULL);
 
-    /* No /dev/urandom present (e.g. we might be in a chroot), but we still
-     * want a seed.  Fallback to using rand(3), PID, and current time.
+    /* No /dev/urandom present (e.g. we might be in a chroot) or not able
+     * to read the needed amount of data, but we still want a seed.  Fallback
+     * to using rand(3), PID, and current time.
      */
     seed = (unsigned int) (rand() ^ getpid() ^ now);
   }
@@ -412,10 +415,8 @@ int pr_table_kadd(pr_table_t *tab, const void *key_data, size_t key_datasz,
     return -1;
   }
 
-  h = tab->keyhash(key_data, key_datasz);
-
-  /* Don't forget to add in the random seed data via XOR. */
-  h ^= tab->seed;
+  /* Don't forget to add in the random seed data. */
+  h = tab->keyhash(key_data, key_datasz) + tab->seed;
 
   /* The index of the chain to use is the hash value modulo the number
    * of chains.
@@ -508,10 +509,8 @@ int pr_table_kexists(pr_table_t *tab, const void *key_data, size_t key_datasz) {
       return tab->cache_ent->key->nents;
   }
 
-  h = tab->keyhash(key_data, key_datasz);
-
-  /* Don't forget to add in the random seed data via XOR. */
-  h ^= tab->seed;
+  /* Don't forget to add in the random seed data. */
+  h = tab->keyhash(key_data, key_datasz) + tab->seed;
 
   idx = h % tab->nchains;
 
@@ -571,10 +570,8 @@ void *pr_table_kget(pr_table_t *tab, const void *key_data, size_t key_datasz,
     return NULL;
   }
 
-  h = tab->keyhash(key_data, key_datasz);
-
-  /* Don't forget to add in the random seed data via XOR. */
-  h ^= tab->seed;
+  /* Don't forget to add in the random seed data. */
+  h = tab->keyhash(key_data, key_datasz) + tab->seed;
 
   /* Has the caller already looked up this same key previously?
    * If so, continue the lookup where we left off.  In this case,
@@ -667,10 +664,8 @@ void *pr_table_kremove(pr_table_t *tab, const void *key_data,
     return value_data;
   }
 
-  h = tab->keyhash(key_data, key_datasz);
-
-  /* Don't forget to add in the random seed data via XOR. */
-  h ^= tab->seed;
+  /* Don't forget to add in the random seed data. */
+  h = tab->keyhash(key_data, key_datasz) + tab->seed;
 
   idx = h % tab->nchains;
 
@@ -729,10 +724,8 @@ int pr_table_kset(pr_table_t *tab, const void *key_data, size_t key_datasz,
     return -1;
   }
 
-  h = tab->keyhash(key_data, key_datasz);
-
-  /* Don't forget to add in the random seed data via XOR. */
-  h ^= tab->seed;
+  /* Don't forget to add in the random seed data. */
+  h = tab->keyhash(key_data, key_datasz) + tab->seed;
 
   /* Has the caller already looked up this same key previously?
    * If so, continue the lookup where we left off.  In this case,
