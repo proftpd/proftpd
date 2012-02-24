@@ -41,6 +41,9 @@ ChangeLog files.
     LogFormat
       %{note:<name>} (Bug#3707)
 
+    RootRevoke
+      UseNonCompliantActiveTransfers (Bug#3731)
+
     ScoreboardFile
       Now possible to disable scoreboard (Bug#3701)
 
@@ -66,4 +69,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-02-23 21:10:06 $
+Last Updated: $Date: 2012-02-24 06:02:49 $

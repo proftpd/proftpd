@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.300 2012-02-19 19:58:50 castaglia Exp $
+ * $Id: mod_auth.c,v 1.301 2012-02-24 06:02:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -278,7 +278,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   char *grantmsg = NULL, *user;
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_timeout, have_group_timeout, have_class_timeout,
-    have_all_timeout, *privsdrop = NULL, *authenticated;
+    have_all_timeout, *root_revoke = NULL, *authenticated;
   struct stat st;
 
   /* Was there a precending USER command? Was the client successfully
@@ -498,9 +498,13 @@ MODRET auth_post_pass(cmd_rec *cmd) {
      pr_response_add(auth_pass_resp_code, "%s", grantmsg);
   }
 
-  privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke", FALSE);
-  if (privsdrop != NULL &&
-      *privsdrop == TRUE) {
+  /* A RootRevoke value of 0 indicates 'false', 1 indicates 'true', and
+   * 2 indicates 'NonCompliantActiveTransfer'.  We will drop root privs for any
+   * RootRevoke value greater than 0.
+   */
+  root_revoke = get_param_ptr(TOPLEVEL_CONF, "RootRevoke", FALSE);
+  if (root_revoke != NULL &&
+      *root_revoke > 0) {
     pr_signals_block();
     PRIVS_ROOT
     PRIVS_REVOKE
@@ -509,13 +513,17 @@ MODRET auth_post_pass(cmd_rec *cmd) {
     /* Disable future attempts at UID/GID manipulation. */
     session.disable_id_switching = TRUE;
 
-    /* If the server's listening port is less than 1025, block PORT
-     * commands (effectively allowing only passive connections, which is
-     * not necessarily a Bad Thing).  Only log this here -- the blocking
-     * will need to occur in mod_core's cmd_port() function.
-     */
-    if (session.c->local_port < 1025)
-      pr_log_debug(DEBUG0, "RootRevoke in effect, disabling active transfers");
+    if (*root_revoke == 1) {
+      /* If the server's listening port is less than 1024, block PORT
+       * commands (effectively allowing only passive connections, which is
+       * not necessarily a Bad Thing).  Only log this here -- the blocking
+       * will need to occur in mod_core's handling of the PORT/EPRT commands.
+       */
+      if (session.c->local_port < 1024) {
+        pr_log_debug(DEBUG0,
+          "RootRevoke in effect, disabling active transfers");
+      }
+    }
 
     pr_log_debug(DEBUG0, "RootRevoke in effect, dropped root privs");
   }
@@ -2895,20 +2903,30 @@ MODRET set_rootlogin(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: RootRevoke on|off|UseNonCompliantActiveTransfer */
 MODRET set_rootrevoke(cmd_rec *cmd) {
-  int bool = -1;
+  int root_revoke = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
-    CONF_ERROR(cmd, "expected Boolean parameter");
+  /* A RootRevoke value of 0 indicates 'false', 1 indicates 'true', and
+   * 2 indicates 'NonCompliantActiveTransfer'.
+   */
+  root_revoke = get_boolean(cmd, 1);
+  if (root_revoke == -1) {
+    if (strcasecmp(cmd->argv[1], "UseNonCompliantActiveTransfer") != 0 &&
+        strcasecmp(cmd->argv[1], "UseNonCompliantActiveTransfers") != 0) {
+      CONF_ERROR(cmd, "expected Boolean parameter");
+    }
+
+    root_revoke = 2;
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+  *((unsigned char *) c->argv[0]) = (unsigned char) root_revoke;
 
   c->flags |= CF_MERGEDOWN;
   return PR_HANDLED(cmd);

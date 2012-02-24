@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.142 2012-02-16 23:17:15 castaglia Exp $
+ * $Id: inet.c,v 1.143 2012-02-24 06:02:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -194,11 +194,12 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
      * support is enabled), otherwise use IPv4.
      */
 #ifdef PR_USE_IPV6
-    if (pr_netaddr_use_ipv6())
+    if (pr_netaddr_use_ipv6()) {
       addr_family = AF_INET6;
 
-    else
+    } else {
       addr_family = AF_INET;
+    }
 #else
     addr_family = AF_INET;
 #endif /* PR_USE_IPV6 */
@@ -220,6 +221,7 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
      * to _all_ BSDs.)
      */
 
+    if (port != INPORT_ANY) {
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
     defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
@@ -229,17 +231,20 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
     defined(SCO3) || defined(CYGWIN) || defined(SYSV4_2MP) || \
     defined(SYSV5SCO_SV6) || defined(SYSV5UNIXWARE7)
 # ifdef SOLARIS2
-    if (port != INPORT_ANY && port < 1024) {
+      if (port < 1024) {
 # endif
-      pr_signals_block();
-      PRIVS_ROOT
+        pr_signals_block();
+        PRIVS_ROOT
 # ifdef SOLARIS2
-    }
+      }
 # endif
 #endif
+    }
 
     fd = socket(addr_family, SOCK_STREAM, tcp_proto);
+    inet_errno = errno;
 
+    if (port != INPORT_ANY) {
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
     defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
@@ -249,37 +254,42 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
     defined(SCO3) || defined(CYGWIN) || defined(SYSV4_2MP) || \
     defined(SYSV5SCO_SV6) || defined(SYSV5UNIXWARE7)
 # ifdef SOLARIS2
-    if (port != INPORT_ANY && port < 1024) {
+      if (port < 1024) {
 # endif
-      PRIVS_RELINQUISH
-      pr_signals_unblock();
+        PRIVS_RELINQUISH
+        pr_signals_unblock();
 # ifdef SOLARIS2
-    }
+      }
 # endif
 #endif
+    }
 
     if (fd == -1) {
 
       /* On failure, destroy the connection and return NULL. */
-      inet_errno = errno;
-      if (reporting)
+      if (reporting) {
         pr_log_pri(PR_LOG_ERR, "socket() failed in connection initialization: "
           "%s", strerror(inet_errno));
+      }
+
       destroy_pool(c->pool);
+      errno = inet_errno;
       return NULL;
     }
 
     /* Allow address reuse. */
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *) &one,
-        sizeof(one)) < 0)
+        sizeof(one)) < 0) {
       pr_log_pri(PR_LOG_NOTICE, "error setting SO_REUSEADDR: %s",
         strerror(errno));
+    }
 
     /* Allow socket keep-alive messages. */
     if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void *) &one,
-        sizeof(one)) < 0)
+        sizeof(one)) < 0) {
       pr_log_pri(PR_LOG_NOTICE, "error setting SO_KEEPALIVE: %s",
         strerror(errno));
+    }
 
     memset(&na, 0, sizeof(na));
     pr_netaddr_set_family(&na, addr_family);
@@ -365,16 +375,17 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
       hold_errno = errno;
 
       if (res == -1 &&
-          errno == EINTR) {
+          hold_errno == EINTR) {
         pr_signals_handle();
-	i++;
-	continue;
+        i++;
+        continue;
       }
 
       if (res != -1 ||
-          errno != EADDRINUSE ||
-	  (port != INPORT_ANY && !retry_bind))
+          hold_errno != EADDRINUSE ||
+          (port != INPORT_ANY && !retry_bind)) {
         break;
+      }
 
       if (port != INPORT_ANY &&
           port < 1024) {
@@ -410,7 +421,9 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
 
       inet_errno = hold_errno;
       destroy_pool(c->pool);
-      close(fd);
+      (void) close(fd);
+
+      errno = inet_errno;
       return NULL;
     }
 
@@ -426,8 +439,9 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
 
     salen = pr_netaddr_get_sockaddr_len(&na);
     if (getsockname(fd, pr_netaddr_get_sockaddr(&na), &salen) == 0) {
-      if (!c->local_addr)
+      if (c->local_addr == NULL) {
         c->local_addr = pr_netaddr_alloc(c->pool);
+      }
 
       pr_netaddr_set_family(c->local_addr, pr_netaddr_get_family(&na));
       pr_netaddr_set_sockaddr(c->local_addr, pr_netaddr_get_sockaddr(&na));
@@ -440,15 +454,16 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
 
   } else {
     /* Make sure the netaddr has its address family set. */
-    if (pr_netaddr_get_family(&na) == 0)
+    if (pr_netaddr_get_family(&na) == 0) {
       pr_netaddr_set_family(&na, addr_family);
+    }
   }
 
   c->listen_fd = fd;
   register_cleanup(c->pool, (void *) c, conn_cleanup_cb, conn_cleanup_cb);
 
   pr_trace_msg("binding", 4, "bound address %s, port %d to socket fd %d",
-    pr_netaddr_get_ipstr(&na), port, fd);
+    pr_netaddr_get_ipstr(&na), c->local_port, fd);
 
   return c;
 }

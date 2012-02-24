@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.422 2012-02-05 18:29:12 castaglia Exp $
+ * $Id: mod_core.c,v 1.423 2012-02-24 06:02:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3714,7 +3714,7 @@ MODRET core_port(cmd_rec *cmd) {
 #endif /* PR_USE_IPV6 */
   unsigned int h1, h2, h3, h4, p1, p2;
   unsigned short port;
-  unsigned char *allow_foreign_addr = NULL, *privsdrop = NULL;
+  unsigned char *allow_foreign_addr = NULL, *root_revoke = NULL;
 
   if (session.sf_flags & SF_EPSV_ALL) {
     pr_response_add_err(R_500, _("Illegal PORT command, EPSV ALL in effect"));
@@ -3738,13 +3738,17 @@ MODRET core_port(cmd_rec *cmd) {
   }
 
   /* Block active transfers (the PORT command) if RootRevoke is in effect
-   * and the server's port is below 1025 (binding to the data port in this
+   * and the server's port is below 1024 (binding to the data port in this
    * case would require root privs, which will have been dropped).
+   *
+   * A RootRevoke value of 0 indicates 'false', 1 indicates 'true', and
+   * 2 indicates 'NonCompliantActiveTransfer'.  We only block active transfers
+   * for a RootRevoke value of 1.
    */
-  privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke", FALSE);
-  if (privsdrop != NULL &&
-      *privsdrop == TRUE &&
-      session.c->local_port < 1025) {
+  root_revoke = get_param_ptr(TOPLEVEL_CONF, "RootRevoke", FALSE);
+  if (root_revoke != NULL &&
+      *root_revoke == 1 &&
+      session.c->local_port < 1024) {
     pr_log_debug(DEBUG0, "RootRevoke in effect, unable to bind to local "
       "port %d for active transfer", session.c->local_port);
     pr_response_add_err(R_500, _("Unable to service PORT commands"));
@@ -3803,7 +3807,8 @@ MODRET core_port(cmd_rec *cmd) {
   allow_foreign_addr = get_param_ptr(TOPLEVEL_CONF, "AllowForeignAddress",
     FALSE);
 
-  if (!allow_foreign_addr || *allow_foreign_addr == FALSE) {
+  if (allow_foreign_addr == NULL ||
+      *allow_foreign_addr == FALSE) {
     pr_netaddr_t *remote_addr = session.c->remote_addr;
 
 #ifdef PR_USE_IPV6
@@ -3866,7 +3871,7 @@ MODRET core_eprt(cmd_rec *cmd) {
   pr_netaddr_t na;
   int family = 0;
   unsigned short port = 0;
-  unsigned char *allow_foreign_addr = NULL, *privsdrop = NULL;
+  unsigned char *allow_foreign_addr = NULL, *root_revoke = NULL;
   char delim = '\0', *argstr = pstrdup(cmd->tmp_pool, cmd->argv[1]);
   char *tmp = NULL;
 
@@ -3895,13 +3900,17 @@ MODRET core_eprt(cmd_rec *cmd) {
   pr_netaddr_clear(&na);
 
   /* Block active transfers (the EPRT command) if RootRevoke is in effect
-   * and the server's port is below 1025 (binding to the data port in this
+   * and the server's port is below 1024 (binding to the data port in this
    * case would require root privs, which will have been dropped.
+   *
+   * A RootRevoke value of 0 indicates 'false', 1 indicates 'true', and
+   * 2 indicates 'NonCompliantActiveTransfer'.  We only block active transfers
+   * for a RootRevoke value of 1.
    */
-  privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke", FALSE);
-  if (privsdrop != NULL &&
-      *privsdrop == TRUE &&
-      session.c->local_port < 1025) {
+  root_revoke = get_param_ptr(TOPLEVEL_CONF, "RootRevoke", FALSE);
+  if (root_revoke != NULL &&
+      *root_revoke == 1 &&
+      session.c->local_port < 1024) {
     pr_log_debug(DEBUG0, "RootRevoke in effect, unable to bind to local "
       "port %d for active transfer", session.c->local_port);
     pr_response_add_err(R_500, _("Unable to service EPRT commands"));

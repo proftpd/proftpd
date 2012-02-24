@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.138 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: data.c,v 1.139 2012-02-24 06:02:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -332,8 +332,9 @@ static int data_pasv_open(char *reason, off_t size) {
 
 static int data_active_open(char *reason, off_t size) {
   conn_t *c;
-  int rev;
+  int bind_port, rev;
   pr_netaddr_t *bind_addr;
+  unsigned char *root_revoke = NULL;
 
   if (!reason && session.xfer.filename)
     reason = session.xfer.filename;
@@ -348,8 +349,22 @@ static int data_active_open(char *reason, off_t size) {
     bind_addr = pr_netaddr_v6tov4(session.xfer.p, session.c->local_addr);
   }
 
-  session.d = pr_inet_create_conn(session.pool, -1, bind_addr,
-    session.c->local_port-1, TRUE);
+  /* Default source port to which to bind for the active transfer, as
+   * per RFC959.
+   */
+  bind_port = session.c->local_port-1;
+
+  /* A RootRevoke value of 0 indicates 'false', 1 indicates 'true', and
+   * 2 indicates 'NonCompliantActiveTransfer'.  We change the source port for
+   * a RootRevoke value of 2.
+   */
+  root_revoke = get_param_ptr(TOPLEVEL_CONF, "RootRevoke", FALSE);
+  if (root_revoke != NULL &&
+      *root_revoke == 2) {
+    bind_port = INPORT_ANY;
+  }
+
+  session.d = pr_inet_create_conn(session.pool, -1, bind_addr, bind_port, TRUE);
 
   /* Set the "stalled" timer, if any, to prevent the connection
    * open from taking too long
@@ -384,6 +399,8 @@ static int data_active_open(char *reason, off_t size) {
       session.data_port) == -1) {
     pr_response_add_err(R_425, _("Unable to build data connection: %s"),
       strerror(session.d->xerrno));
+    errno = session.d->xerrno;
+
     destroy_pool(session.d->pool);
     session.d = NULL;
     return -1;
@@ -401,12 +418,14 @@ static int data_active_open(char *reason, off_t size) {
       pr_netaddr_get_ipstr(session.d->remote_addr), session.d->remote_port);
 
     if (session.xfer.xfer_type != STOR_UNIQUE) {
-      if (size)
+      if (size) {
         pr_response_send(R_150, _("Opening %s mode data connection for %s "
           "(%" PR_LU " bytes)"), MODE_STRING, reason, (pr_off_t) size);
-      else
+
+      } else {
         pr_response_send(R_150, _("Opening %s mode data connection for %s"),
           MODE_STRING, reason);
+      }
 
     } else {
 
@@ -440,6 +459,8 @@ static int data_active_open(char *reason, off_t size) {
 
   pr_response_add_err(R_425, _("Unable to build data connection: %s"),
     strerror(session.d->xerrno));
+  errno = session.d->xerrno;
+
   destroy_pool(session.d->pool);
   session.d = NULL;
   return -1;
