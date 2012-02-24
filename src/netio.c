@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.53 2011-09-21 14:48:41 castaglia Exp $
+ * $Id: netio.c,v 1.54 2012-02-24 16:46:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -570,6 +570,7 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
           session.sf_flags |= SF_ABORT;
         }
 
+        errno = nstrm->strm_errno;
         return -1;
 
       case 0:
