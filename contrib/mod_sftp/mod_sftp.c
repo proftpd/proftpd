@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.65 2012-02-23 21:10:06 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.66 2012-02-24 07:23:22 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -407,61 +407,6 @@ MODRET set_sftpciphers(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-static uint32_t get_size(const char *bytes, const char *units) {
-  unsigned long res;
-  uint32_t nbytes;
-  char *ptr = NULL;
-  float units_factor = 0.0;
-
-  /* First, check the given units to determine the correct mulitplier. */
-  if (*units == '\0') {
-    units_factor = 1.0;
-
-  } else if (strncasecmp(units, "Gb", 3) == 0) {
-    units_factor = 1024.0 * 1024.0 * 1024.0;
-
-  } else if (strncasecmp(units, "Mb", 3) == 0) {
-    units_factor = 1024.0 * 1024.0;
-
-  } else if (strncasecmp(units, "Kb", 3) == 0) {
-    units_factor = 1024.0;
-
-  } else if (strncasecmp(units, "b", 2) == 0) {
-    units_factor = 1.0;
-
-  } else {
-    errno = EINVAL;
-    return 0;
-  }
-
-  errno = 0;
-  res = strtoul(bytes, &ptr, 10);
-
-  if (errno == ERANGE) {
-    return 0;
-  }
-
-  if (ptr && *ptr) {
-    errno = EINVAL;
-    return 0;
-  }
-
-  /* Don't bother to apply the factor if that will cause the number to
-   * overflow.
-   */
-  if (res > (ULONG_MAX / units_factor)) {
-    errno = ERANGE;
-    return 0;
-  }
-
-  nbytes = (uint32_t) (res * units_factor);
-  if (nbytes == 0) {
-    errno = EINVAL;
-  }
- 
-  return nbytes;
-}
-
 /* usage: SFTPClientAlive count interval */
 MODRET set_sftpclientalive(cmd_rec *cmd) {
   int count, interval;
@@ -592,8 +537,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
         }
       }
 
-      window_size = get_size(arg, units);
-      if (window_size == 0) {
+      if (pr_str_get_nbytes(arg, units, (off_t *) &window_size) < 0) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
           "error parsing 'channelWindowSize' value ", cmd->argv[i+1], ": ",
           strerror(errno), NULL));
@@ -664,8 +608,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
         }
       }
 
-      packet_size = get_size(arg, units);
-      if (packet_size == 0) {
+      if (pr_str_get_nbytes(arg, units, (off_t *) &packet_size) < 0) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
           "error parsing 'channelPacketSize' value ", cmd->argv[i+1], ": ",
           strerror(errno), NULL));

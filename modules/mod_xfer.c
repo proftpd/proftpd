@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.298 2012-01-13 05:42:08 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.299 2012-02-24 07:23:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -57,7 +57,7 @@ static pr_fh_t *displayfilexfer_fh = NULL;
 static unsigned char have_prot = FALSE;
 static unsigned char have_zmode = FALSE;
 static unsigned char use_sendfile = TRUE;
-static size_t use_sendfile_len = 0;
+static off_t use_sendfile_len = 0;
 static float use_sendfile_pct = -1.0;
 
 static int xfer_check_limit(cmd_rec *);
@@ -79,23 +79,21 @@ static int xfer_parse_cmdlist(const char *, config_rec *, char *);
 
 module xfer_module;
 
-static int xfer_errno;
 static int xfer_logged_sendfile_decline_msg = FALSE;
 
 static const char *trace_channel = "xfer";
 
-static unsigned long find_max_nbytes(char *directive) {
+static off_t find_max_nbytes(char *directive) {
   config_rec *c = NULL;
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_limit, have_group_limit, have_class_limit,
     have_all_limit;
-  unsigned long max_nbytes = 0UL;
+  off_t max_nbytes = 0UL;
 
   have_user_limit = have_group_limit = have_class_limit =
     have_all_limit = FALSE;
 
   c = find_config(CURRENT_CONF, CONF_PARAM, directive, FALSE);
-
   while (c) {
 
     /* This check is for more than three arguments: one argument is the
@@ -113,7 +111,7 @@ static unsigned long find_max_nbytes(char *directive) {
             /* Set the context precedence */
             ctxt_precedence = *((unsigned int *) c->argv[1]);
 
-            max_nbytes = *((unsigned long *) c->argv[0]);
+            max_nbytes = *((off_t *) c->argv[0]);
 
             have_group_limit = have_class_limit = have_all_limit = FALSE;
             have_user_limit = TRUE;
@@ -128,7 +126,7 @@ static unsigned long find_max_nbytes(char *directive) {
             /* Set the context precedence */
             ctxt_precedence = *((unsigned int *) c->argv[1]);
 
-            max_nbytes = *((unsigned long *) c->argv[0]);
+            max_nbytes = *((off_t *) c->argv[0]);
 
             have_user_limit = have_class_limit = have_all_limit = FALSE;
             have_group_limit = TRUE;
@@ -143,7 +141,7 @@ static unsigned long find_max_nbytes(char *directive) {
             /* Set the context precedence */
             ctxt_precedence = *((unsigned int *) c->argv[1]);
 
-            max_nbytes = *((unsigned long *) c->argv[0]);
+            max_nbytes = *((off_t *) c->argv[0]);
 
             have_user_limit = have_group_limit = have_all_limit = FALSE;
             have_class_limit = TRUE;
@@ -158,7 +156,7 @@ static unsigned long find_max_nbytes(char *directive) {
         /* Set the context precedence. */
         ctxt_precedence = *((unsigned int *) c->argv[1]);
 
-        max_nbytes = *((unsigned long *) c->argv[0]);
+        max_nbytes = *((off_t *) c->argv[0]);
 
         have_user_limit = have_group_limit = have_class_limit = FALSE;
         have_all_limit = TRUE;
@@ -172,74 +170,13 @@ static unsigned long find_max_nbytes(char *directive) {
   if (max_nbytes > 0UL &&
       (have_user_limit || have_group_limit ||
        have_class_limit || have_all_limit)) {
-    pr_log_debug(DEBUG5, "%s (%lu bytes) in effect for %s",
-      directive, max_nbytes,
+    pr_log_debug(DEBUG5, "%s (%" PR_LU " bytes) in effect for %s",
+      directive, (pr_off_t) max_nbytes,
       have_user_limit ? "user " : have_group_limit ? "group " :
       have_class_limit ? "class " : "all");
   }
 
   return max_nbytes;
-}
-
-static unsigned long parse_max_nbytes(char *nbytes_str, char *units_str) {
-  long res;
-  unsigned long nbytes;
-  char *endp = NULL;
-  float units_factor = 0.0;
-
-  /* clear any previous local errors */
-  xfer_errno = 0;
-
-  /* first, check the given units to determine the correct mulitplier
-   */
-  if (!strcasecmp("Gb", units_str)) {
-    units_factor = 1024.0 * 1024.0 * 1024.0;
-
-  } else if (!strcasecmp("Mb", units_str)) {
-    units_factor = 1024.0 * 1024.0;
-
-  } else if (!strcasecmp("Kb", units_str)) {
-    units_factor = 1024.0;
-
-  } else if (!strcasecmp("b", units_str)) {
-    units_factor = 1.0;
-
-  } else {
-    xfer_errno = EINVAL;
-    return 0;
-  }
-
-  /* make sure a number was given */
-  if (!isdigit((int) *nbytes_str)) {
-    xfer_errno = EINVAL;
-    return 0;
-  }
-
-  /* knowing the factor, now convert the given number string to a real
-   * number
-   */
-  res = strtol(nbytes_str, &endp, 10);
-
-  if (errno == ERANGE) {
-    xfer_errno = ERANGE;
-    return 0;
-  }
-
-  if (endp && *endp) {
-    xfer_errno = EINVAL;
-    return 0;
-  }
-
-  /* don't bother to apply the factor if that will cause the number to
-   * overflow
-   */
-  if (res > (ULONG_MAX / units_factor)) {
-    xfer_errno = ERANGE;
-    return 0;
-  }
-
-  nbytes = (unsigned long) res * units_factor;
-  return nbytes;
 }
 
 static void _log_transfer(char direction, char abort_flag) {
@@ -1933,7 +1870,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   c = find_config(CURRENT_CONF, CONF_PARAM, "UseSendfile", FALSE);
   if (c) {
     use_sendfile = *((unsigned char *) c->argv[0]);
-    use_sendfile_len = *((size_t *) c->argv[1]);
+    use_sendfile_len = *((off_t *) c->argv[1]);
     use_sendfile_pct = *((float *) c->argv[2]);
   }
 
@@ -2080,10 +2017,12 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
   /* Retrieve the number of bytes to retrieve, maximum, if present */
   nbytes_max_retrieve = find_max_nbytes("MaxRetrieveFileSize");
-  if (nbytes_max_retrieve == 0UL)
+  if (nbytes_max_retrieve == 0UL) {
     have_limit = FALSE;
-  else
+
+  } else {
     have_limit = TRUE;
+  }
 
   /* Check the MaxRetrieveFileSize.  If it is zero, or if the size
    * of the file being retrieved is greater than the MaxRetrieveFileSize,
@@ -2619,7 +2558,7 @@ MODRET set_hiddenstores(cmd_rec *cmd) {
 
 MODRET set_maxfilesize(cmd_rec *cmd) {
   config_rec *c = NULL;
-  unsigned long nbytes;
+  off_t nbytes;
   unsigned int precedence = 0;
 
   int ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
@@ -2631,8 +2570,9 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
       CONF_ERROR(cmd, "incorrect number of parameters");
     }
 
-  } else if (cmd->argc-1 != 2 && cmd->argc-1 != 4)
+  } else if (cmd->argc-1 != 2 && cmd->argc-1 != 4) {
     CONF_ERROR(cmd, "incorrect number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_ANON|CONF_VIRTUAL|CONF_GLOBAL|CONF_DIR|
     CONF_DYNDIR);
@@ -2640,21 +2580,23 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
   /* Set the precedence for this config_rec based on its configuration
    * context.
    */
-  if (ctxt & CONF_GLOBAL)
+  if (ctxt & CONF_GLOBAL) {
     precedence = 1;
 
   /* These will never appear simultaneously */
-  else if (ctxt & CONF_ROOT || ctxt & CONF_VIRTUAL)
+  } else if ((ctxt & CONF_ROOT) ||
+             (ctxt & CONF_VIRTUAL)) {
     precedence = 2;
 
-  else if (ctxt & CONF_ANON)
+  } else if (ctxt & CONF_ANON) {
     precedence = 3;
 
-  else if (ctxt & CONF_DIR)
+  } else if (ctxt & CONF_DIR) {
     precedence = 4;
 
-  else if (ctxt & CONF_DYNDIR)
+  } else if (ctxt & CONF_DYNDIR) {
     precedence = 5;
+  }
 
   /* If the directive was used with four arguments, it means the optional
    * classifiers and expression were used.  Make sure the classifier is a valid
@@ -2686,28 +2628,17 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
     /* Pass the cmd_rec off to see what number of bytes was
      * requested/configured.
      */
-    nbytes = parse_max_nbytes(cmd->argv[1], cmd->argv[2]);
-    if (nbytes == 0) {
-      if (xfer_errno == EINVAL)
-        CONF_ERROR(cmd, "invalid parameters");
-
-      if (xfer_errno == ERANGE) {
-        char ulong_max[80];
-
-        memset(ulong_max, '\0', sizeof(ulong_max));
-        snprintf(ulong_max, sizeof(ulong_max)-1, "%lu",
-          (unsigned long) ULONG_MAX);
-
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-         "number of bytes must be between 0 and ", ulong_max, NULL));
-      }
+    if (pr_str_get_nbytes(cmd->argv[1], cmd->argv[2], &nbytes) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to parse: ",
+        cmd->argv[1], " ", cmd->argv[2], ": ", strerror(errno), NULL));
     }
   }
 
-  if (cmd->argc-1 == 1 || cmd->argc-1 == 2) {
+  if (cmd->argc-1 == 1 ||
+      cmd->argc-1 == 2) {
     c = add_config_param(cmd->argv[0], 2, NULL, NULL);
-    c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
-    *((unsigned long *) c->argv[0]) = nbytes;
+    c->argv[0] = pcalloc(c->pool, sizeof(off_t));
+    *((off_t *) c->argv[0]) = nbytes;
     c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
     *((unsigned int *) c->argv[1]) = precedence;
 
@@ -3094,7 +3025,7 @@ MODRET set_transferrate(cmd_rec *cmd) {
 /* usage: UseSendfile on|off|"len units"|percentage"%" */
 MODRET set_usesendfile(cmd_rec *cmd) {
   int bool = -1;
-  size_t sendfile_len = 0;
+  off_t sendfile_len = 0;
   float sendfile_pct = -1.0;
   config_rec *c;
 
@@ -3138,23 +3069,11 @@ MODRET set_usesendfile(cmd_rec *cmd) {
     }
 
   } else if (cmd->argc-1 == 2) {
-    unsigned long nbytes;
+    off_t nbytes;
 
-    nbytes = parse_max_nbytes(cmd->argv[1], cmd->argv[2]);
-    if (nbytes == 0) {
-      if (xfer_errno == EINVAL)
-        CONF_ERROR(cmd, "invalid parameters");
-
-      if (xfer_errno == ERANGE) {
-        char ulong_max[80];
-
-        memset(ulong_max, '\0', sizeof(ulong_max));
-        snprintf(ulong_max, sizeof(ulong_max)-1, "%lu",
-          (unsigned long) ULONG_MAX);
-
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-         "number of bytes must be between 0 and ", ulong_max, NULL));
-      }
+    if (pr_str_get_nbytes(cmd->argv[1], cmd->argv[2], &nbytes) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to parse: ",
+        cmd->argv[1], " ", cmd->argv[2], ": ", strerror(errno), NULL));
     }
 
     sendfile_len = nbytes;
@@ -3167,8 +3086,8 @@ MODRET set_usesendfile(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
-  c->argv[1] = pcalloc(c->pool, sizeof(size_t));
-  *((size_t *) c->argv[1]) = sendfile_len;
+  c->argv[1] = pcalloc(c->pool, sizeof(off_t));
+  *((off_t *) c->argv[1]) = sendfile_len;
   c->argv[2] = pcalloc(c->pool, sizeof(float));
   *((float *) c->argv[2]) = sendfile_pct;
 
