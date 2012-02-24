@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.57 2012-02-22 01:56:25 castaglia Exp $
+ * $Id: mod_ban.c,v 1.58 2012-02-24 01:33:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2079,8 +2079,6 @@ MODRET ban_post_pass(cmd_rec *cmd) {
 
 /* usage: BanCache driver */
 MODRET set_bancache(cmd_rec *cmd) {
-  config_rec *c;
-
   if (cmd->argc-1 < 1 ||
       cmd->argc-1 > 3) {
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -2090,17 +2088,17 @@ MODRET set_bancache(cmd_rec *cmd) {
 
 #ifdef PR_USE_MEMCACHE
   if (strcmp(cmd->argv[1], "memcache") != 0) {
-#else
-  if (TRUE) {
-#endif /* !PR_USE_MEMCACHE */
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported BanCache driver '",
-      cmd->argv[1], "'", NULL));
+    config_rec *c;
+
+    c = add_config_param(cmd->argv[0], 1, NULL);
+    c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+
+    return PR_HANDLED(cmd);
   }
+#endif /* !PR_USE_MEMCACHE */
 
-  c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
-
-  return PR_HANDLED(cmd);
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported BanCache driver '",
+    cmd->argv[1], "'", NULL));
 }
 
 /* usage: BanCacheOptions MatchServer */
