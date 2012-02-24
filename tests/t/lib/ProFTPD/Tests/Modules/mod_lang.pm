@@ -85,13 +85,14 @@ sub lang_feat_default {
   my $pid_file = File::Spec->rel2abs("$tmpdir/lang.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/lang.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/lang.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/lang.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -110,7 +111,7 @@ sub lang_feat_default {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -207,6 +208,9 @@ sub lang_feat_default {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -221,13 +225,14 @@ sub lang_feat_engine_off {
   my $pid_file = File::Spec->rel2abs("$tmpdir/lang.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/lang.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/lang.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/lang.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -246,7 +251,7 @@ sub lang_feat_engine_off {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -346,6 +351,9 @@ sub lang_feat_engine_off {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -360,13 +368,14 @@ sub lang_lang_none_ok {
   my $pid_file = File::Spec->rel2abs("$tmpdir/lang.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/lang.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/lang.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/lang.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -385,7 +394,7 @@ sub lang_lang_none_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -457,6 +466,9 @@ sub lang_lang_none_ok {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -471,13 +483,14 @@ sub lang_lang_env_ok {
   my $pid_file = File::Spec->rel2abs("$tmpdir/lang.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/lang.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/lang.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/lang.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -496,7 +509,7 @@ sub lang_lang_env_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -573,6 +586,9 @@ sub lang_lang_env_ok {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -587,13 +603,14 @@ sub lang_lang_default_ok {
   my $pid_file = File::Spec->rel2abs("$tmpdir/lang.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/lang.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/lang.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/lang.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -612,7 +629,7 @@ sub lang_lang_default_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -700,6 +717,9 @@ sub lang_lang_default_ok {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -714,13 +734,14 @@ sub lang_lang_unknown_failed {
   my $pid_file = File::Spec->rel2abs("$tmpdir/lang.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/lang.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/lang.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/lang.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -739,7 +760,7 @@ sub lang_lang_unknown_failed {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -820,6 +841,9 @@ sub lang_lang_unknown_failed {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -834,13 +858,14 @@ sub lang_opts_utf8_ok {
   my $pid_file = File::Spec->rel2abs("$tmpdir/lang.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/lang.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/lang.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/lang.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -859,7 +884,7 @@ sub lang_opts_utf8_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -943,6 +968,9 @@ sub lang_opts_utf8_ok {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -957,13 +985,14 @@ sub lang_opts_utf8_nonbool_failed {
   my $pid_file = File::Spec->rel2abs("$tmpdir/lang.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/lang.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/lang.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/lang.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -982,7 +1011,7 @@ sub lang_opts_utf8_nonbool_failed {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -1063,6 +1092,9 @@ sub lang_opts_utf8_nonbool_failed {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1077,13 +1109,14 @@ sub lang_lang_default_en_US {
   my $pid_file = File::Spec->rel2abs("$tmpdir/lang.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/lang.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/lang.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/lang.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1102,7 +1135,7 @@ sub lang_lang_default_en_US {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   # Copy the en_US.mo file from the locale/ directory into a directory
   # that we can tell mod_lang to find.
@@ -1186,6 +1219,9 @@ sub lang_lang_default_en_US {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1200,13 +1236,14 @@ sub lang_lang_default_en_US_UTF8 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/lang.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/lang.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/lang.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/lang.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1225,7 +1262,7 @@ sub lang_lang_default_en_US_UTF8 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   # Copy the en_US.mo file from the locale/ directory into a directory
   # that we can tell mod_lang to find.
@@ -1309,6 +1346,9 @@ sub lang_lang_default_en_US_UTF8 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
