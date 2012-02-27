@@ -8,6 +8,7 @@
 ../contrib/mod_ifversion.c
 ../contrib/mod_ldap.c
 ../contrib/mod_load/getloadavg.c
+../contrib/mod_load/mod_load.c
 ../contrib/mod_qos.c
 ../contrib/mod_quotatab.c
 ../contrib/mod_quotatab_file.c
@@ -35,6 +36,8 @@
 ../contrib/mod_sftp/compress.h
 ../contrib/mod_sftp/crypto.c
 ../contrib/mod_sftp/crypto.h
+../contrib/mod_sftp/date.c
+../contrib/mod_sftp/date.h
 ../contrib/mod_sftp/disconnect.c
 ../contrib/mod_sftp/disconnect.h
 ../contrib/mod_sftp/display.c
