@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.299 2012-02-24 07:23:23 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.300 2012-02-27 21:38:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2145,31 +2145,36 @@ MODRET xfer_abor(cmd_rec *cmd) {
 }
 
 MODRET xfer_type(cmd_rec *cmd) {
-  if (cmd->argc < 2 || cmd->argc > 3) {
+  char *type;
+
+  if (cmd->argc < 2 ||
+      cmd->argc > 3) {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
     return PR_ERROR(cmd);
   }
 
-  cmd->argv[1][0] = toupper(cmd->argv[1][0]);
+  type = pstrdup(cmd->tmp_pool, cmd->argv[1]);
+  type[0] = toupper(type[0]);
 
-  if (strncmp(cmd->argv[1], "A", 2) == 0 ||
+  if (strncmp(type, "A", 2) == 0 ||
       (cmd->argc == 3 &&
-       strncmp(cmd->argv[1], "L", 2) == 0 &&
+       strncmp(type, "L", 2) == 0 &&
        strncmp(cmd->argv[2], "7", 2) == 0)) {
 
     /* TYPE A(SCII) or TYPE L 7. */
     session.sf_flags |= SF_ASCII;
 
-  } else if (strncmp(cmd->argv[1], "I", 2) == 0 ||
+  } else if (strncmp(type, "I", 2) == 0 ||
       (cmd->argc == 3 &&
-       strncmp(cmd->argv[1], "L", 2) == 0 &&
+       strncmp(type, "L", 2) == 0 &&
        strncmp(cmd->argv[2], "8", 2) == 0)) {
 
     /* TYPE I(MAGE) or TYPE L 8. */
     session.sf_flags &= (SF_ALL^(SF_ASCII|SF_ASCII_OVERRIDE));
 
   } else {
-    pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
+    pr_response_add_err(R_504, _("%s not implemented for '%s' parameter"),
+      cmd->argv[0], cmd->argv[1]);
     return PR_ERROR(cmd);
   }
 

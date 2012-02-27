@@ -267,11 +267,11 @@ sub type_other_fails {
 
       my $expected;
 
-      $expected = 500;
+      $expected = 504;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "'TYPE other' not understood";
+      $expected = "TYPE not implemented for 'other' parameter";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
