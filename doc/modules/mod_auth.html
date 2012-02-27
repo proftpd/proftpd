@@ -1,4 +1,4 @@
-<!-- $Id: mod_auth.html,v 1.6 2012-02-24 06:13:39 castaglia Exp $ -->
+<!-- $Id: mod_auth.html,v 1.7 2012-02-27 17:26:50 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_auth.html,v $ -->
 
 <html>
@@ -131,6 +131,7 @@ from the time when the client connects to the time when the client has
 successfully authenticated.  The login timer is <b>not</b> reset when a client
 transmits data, and is only removed once a client has transmitted an
 acceptable combination of <code>USER</code>/<code>PASS</code> commands.
+The maximum allowed <em>seconds</em> value is 65535 (108 minutes).
 
 <p>
 See also: <a href="mod_core.html#TimeoutIdle"><code>TimeoutIdle</code></a>,
@@ -151,7 +152,8 @@ The <code>TimeoutSession</code> directive sets the maximum number of
 <em>seconds</em> a control connection between the proftpd server and client
 can exist, after the client has successfully authenticated.  If the
 <em>seconds</em> argument is set to zero, sessions are allowed to last
-indefinitely; this is the default.
+indefinitely; this is the default.  There is no maxium value for the
+<em>seconds</em> parameter.
 
 <p>
 <hr>
@@ -200,7 +202,7 @@ The <code>mod_auth</code> module is compiled by default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-02-24 06:13:39 $</i><br>
+Last Updated: <i>$Date: 2012-02-27 17:26:50 $</i><br>
 
 <br><hr>
 

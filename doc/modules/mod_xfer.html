@@ -1,4 +1,4 @@
-<!-- $Id: mod_xfer.html,v 1.5 2012-02-20 18:37:00 castaglia Exp $ -->
+<!-- $Id: mod_xfer.html,v 1.6 2012-02-27 17:26:50 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_xfer.html,v $ -->
 
 <html>
@@ -156,6 +156,7 @@ The <code>TimeoutNoTransfer</code> directive configures the maximum number of
 <em>seconds</em> a client is allowed to spend connected, after authentication,
 without issuing a data transfer command which results in a data connection
 (<i>i.e.</i> sending/receiving a file, or requesting a directory listing).
+The maximum allowed <em>seconds</em> value is 65535 (108 minutes).
 
 <p>
 See also: <a href="mod_core.html#TimeoutIdle"><code>TimeoutIdle</code></a>,
@@ -177,6 +178,7 @@ The <code>TimeoutStalled</code> directive sets the maximum number of
 can exist but have no actual data transferred (<i>i.e.</i> "stalled").  If the
 <em>seconds</em> parameter is set to zero, data transfers are allowed to stall
 indefinitely; <b>note</b> that this is <b>not</b> a recommended configuration.
+The maximum allowed <em>seconds</em> value is 65535 (108 minutes).
 
 <p>
 <hr>
@@ -285,7 +287,7 @@ The <code>mod_xfer</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-02-20 18:37:00 $</i><br>
+Last Updated: <i>$Date: 2012-02-27 17:26:50 $</i><br>
 
 <br><hr>
 
