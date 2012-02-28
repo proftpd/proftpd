@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.58 2012-02-24 01:33:44 castaglia Exp $
+ * $Id: mod_ban.c,v 1.59 2012-02-28 18:14:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -387,8 +387,12 @@ static struct ban_data *ban_get_shm(pr_fh_t *tabfh) {
   /* Get a key for this path. */
   key = ftok(tabfh->fh_path, BAN_PROJ_ID);
   if (key == (key_t) -1) {
+    int xerrno = errno;
+
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "unable to get key for '%s': %s", tabfh->fh_path, strerror(errno));
+      "unable to get key for '%s': %s", tabfh->fh_path, strerror(xerrno));
+
+    errno = xerrno;
     return NULL;
   }
 
@@ -413,6 +417,7 @@ static struct ban_data *ban_get_shm(pr_fh_t *tabfh) {
   data = (struct ban_data *) shmat(shmid, NULL, 0);
   if (data == NULL) {
     int xerrno = errno;
+
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "unable to attach to shm: %s", strerror(xerrno));
 
@@ -2715,6 +2720,7 @@ static void ban_mod_unload_ev(const void *event_data, void *user_data) {
 
 static void ban_postparse_ev(const void *event_data, void *user_data) {
   struct ban_data *lists;
+  int xerrno;
 
   if (ban_engine != TRUE)
     return;
@@ -2726,6 +2732,7 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
 
     PRIVS_ROOT
     res = pr_log_openfile(ban_log, &ban_logfd, 0660);
+    xerrno = errno;
     PRIVS_RELINQUISH
 
     switch (res) {
@@ -2734,7 +2741,7 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
 
       case -1:
         pr_log_debug(DEBUG1, MOD_BAN_VERSION ": unable to open BanLog '%s': %s",
-          ban_log, strerror(errno));
+          ban_log, strerror(xerrno));
         break;
 
       case PR_LOG_SYMLINK:
@@ -2758,11 +2765,12 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
 
   PRIVS_ROOT
   ban_tabfh = pr_fsio_open(ban_table, O_RDWR|O_CREAT); 
+  xerrno = errno;
   PRIVS_RELINQUISH
 
   if (ban_tabfh == NULL) {
     pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
-      ": unable to open BanTable '%s': %s", ban_table, strerror(errno));
+      ": unable to open BanTable '%s': %s", ban_table, strerror(xerrno));
     pr_session_disconnect(&ban_module, PR_SESS_DISCONNECT_BAD_CONFIG, NULL);
   }
 
