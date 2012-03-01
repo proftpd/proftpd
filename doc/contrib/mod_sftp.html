@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.60 2012-02-23 21:12:55 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.61 2012-03-01 23:17:42 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -65,6 +65,7 @@ For those wishing to learn more about the SSH2 and SFTP protocols, see:
   <li><a href="http://www.faqs.org/rfcs/rfc4716.html">SSH Public Key File Format (RFC4716)</a>
   <li><a href="http://www.vandyke.com/technology/draft-ietf-secsh-filexfer.txt">SFTP Draft</a>
   <li><a href="http://tools.ietf.org/html/draft-ietf-secsh-filexfer-extensions-00">SFTP Extensions Draft</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc5656.html">SSH Elliptic Curve Algorithms (RFC5656)</a>
 </ul>
 
 <p>
@@ -683,11 +684,12 @@ the SSH2 key exchange process.
 
 <p>
 Note that the <code>SFTPHostKey</code> directive is <b>required</b>.  You
-can use either an RSA key, a DSA key, or both.  These should be the <b>exact
-same host key files as used by your SSH2 server</b>, <i>e.g.</i>:
+can use either an RSA key, a DSA key, and/or ECDSA keys.  These should be the
+<b>exact same host key files as used by your SSH2 server</b>, <i>e.g.</i>:
 <pre>
   SFTPHostKey /etc/ssh_host_dsa_key
   SFTPHostKey /etc/ssh_host_rsa_key
+  SFTPHostKey /etc/ssh_host_ecdsa_key
 </pre>
 or the equivalents in the <code>/usr/local/etc/</code> directory.  Using
 different host keys between your SSH2 server and <code>mod_sftp</code> will
@@ -745,6 +747,9 @@ The <code>SFTPKeyExchanges</code> directive is used to specify the list of
 key exchange algorithms that <code>mod_sftp</code> should use.  The current list
 of supported key exchange algorithms is:
 <ul>
+  <li>ecdh-sha2-nistp256
+  <li>ecdh-sha2-nistp384
+  <li>ecdh-sha2-nistp521
   <li>diffie-hellman-group-exchange-sha256
   <li>diffie-hellman-group-exchange-sha1
   <li>diffie-hellman-group14-sha1
@@ -1486,10 +1491,11 @@ multiple <code>&lt;VirtualHost&gt;</code> sections for the same <i>address</i>
       # Configure the server to listen on the normal SSH2 port, port 22
       Port 22
 
-      # Configure both the RSA and DSA host keys, using the same host key
+      # Configure the RSA, DSA, and ECDSA host keys, using the same host key
       # files that OpenSSH uses. 
       SFTPHostKey /etc/ssh_host_rsa_key
       SFTPHostKey /etc/ssh_host_dsa_key
+      SFTPHostKey /etc/ssh_host_ecdsa_key
 
       # Configure the file used for comparing authorized public keys of users.
       SFTPAuthorizedUserKeys file:~/.sftp/authorized_keys
@@ -1921,7 +1927,7 @@ it is something else completely, like this:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-02-23 21:12:55 $</i><br>
+Last Updated: <i>$Date: 2012-03-01 23:17:42 $</i><br>
 
 <br><hr>
 
