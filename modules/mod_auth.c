@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.301 2012-02-24 06:02:50 castaglia Exp $
+ * $Id: mod_auth.c,v 1.302 2012-03-01 23:51:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -264,11 +264,13 @@ MODRET auth_log_pass(cmd_rec *cmd) {
   pr_log_auth(PR_LOG_NOTICE, "%s %s: Login successful.",
     (session.anon_config != NULL) ? "ANON" : C_USER, session.user);
 
-  /* And scrub the memory holding the password sent by the client, for
-   * safety/security.
-   */
-  passwd_len = strlen(cmd->arg);
-  pr_memscrub(cmd->arg, passwd_len);
+  if (cmd->arg != NULL) {
+    /* And scrub the memory holding the password sent by the client, for
+     * safety/security.
+     */
+    passwd_len = strlen(cmd->arg);
+    pr_memscrub(cmd->arg, passwd_len);
+  }
 
   return PR_DECLINED(cmd);
 }
