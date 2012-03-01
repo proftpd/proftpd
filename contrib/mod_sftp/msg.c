@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: msg.c,v 1.9 2012-02-15 23:50:51 castaglia Exp $
+ * $Id: msg.c,v 1.10 2012-03-01 23:10:58 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -33,6 +33,14 @@
 #ifdef HAVE_EXECINFO_H
 # include <execinfo.h>
 #endif
+
+
+#ifdef PR_USE_OPENSSL_ECC
+/* Max GFp field length = 528 bits.  SEC1 uncompressed encoding uses 2
+ * bitstring points.  SEC1 specifies a 1 byte point type header.
+ */
+# define MAX_ECPOINT_LEN		((528*2 / 8) + 1)
+#endif /* PR_USE_OPENSSL_ECC */
 
 /* The scratch buffer used by getbuf() is a constant 8KB.  If the caller
  * requests a larger size than that, the request is fulfilled using the
@@ -236,6 +244,69 @@ char *sftp_msg_read_string(pool *p, unsigned char **buf, uint32_t *buflen) {
   return str;
 }
 
+#ifdef PR_USE_OPENSSL_ECC
+EC_POINT *sftp_msg_read_ecpoint(pool *p, unsigned char **buf, uint32_t *buflen,
+    const EC_GROUP *curve, EC_POINT *point) {
+  BN_CTX *bn_ctx;
+  unsigned char *data = NULL;
+  uint32_t datalen = 0;
+
+  bn_ctx = BN_CTX_new();
+  if (bn_ctx == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error allocating new BN_CTX: %s", sftp_crypto_get_errors());
+    return NULL;
+  }
+
+  datalen = sftp_msg_read_int(p, buf, buflen);
+
+  if (*buflen < datalen) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "message format error: unable to read %lu bytes of EC point"
+      " (buflen = %lu)", (unsigned long) datalen, (unsigned long) *buflen);
+    log_stacktrace();
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  if (datalen > MAX_ECPOINT_LEN) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "message format error: EC point length too long (%lu > max %lu)",
+      (unsigned long) datalen, (unsigned long) MAX_ECPOINT_LEN);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  data = sftp_msg_read_data(p, buf, buflen, datalen); 
+  if (data == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "message format error: unable to read %lu bytes of EC point data",
+      (unsigned long) datalen);
+    log_stacktrace();
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  if (data[0] != POINT_CONVERSION_UNCOMPRESSED) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "message format error: EC point data formatted incorrectly "
+      "(leading byte 0x%02x should be 0x%02x)", data[0],
+      POINT_CONVERSION_UNCOMPRESSED);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  if (EC_POINT_oct2point(curve, point, data, datalen, bn_ctx) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "message format error: unable to convert binary EC point data: %s",
+      sftp_crypto_get_errors());
+    log_stacktrace();
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  BN_CTX_free(bn_ctx);
+
+  pr_memscrub(data, datalen);
+  return point;
+}
+#endif /* PR_USE_OPENSSL_ECC */
+
 uint32_t sftp_msg_write_byte(unsigned char **buf, uint32_t *buflen, char byte) {
   uint32_t len = 0;
 
@@ -380,3 +451,65 @@ uint32_t sftp_msg_write_string(unsigned char **buf, uint32_t *buflen,
   return sftp_msg_write_data(buf, buflen, (const unsigned char *) str, len,
     TRUE);
 }
+
+#ifdef PR_USE_OPENSSL_ECC
+uint32_t sftp_msg_write_ecpoint(unsigned char **buf, uint32_t *buflen,
+    const EC_GROUP *curve, const EC_POINT *point) {
+  unsigned char *data = NULL;
+  size_t datalen = 0;
+  uint32_t len = 0;
+  BN_CTX *bn_ctx;
+
+  bn_ctx = BN_CTX_new();
+  if (bn_ctx == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error allocating new BN_CTX: %s", sftp_crypto_get_errors());
+    log_stacktrace();
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  datalen = EC_POINT_point2oct(curve, point, POINT_CONVERSION_UNCOMPRESSED,
+    NULL, 0, bn_ctx);
+  if (datalen > MAX_ECPOINT_LEN) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "message format error: EC point length too long (%lu > max %lu)",
+      (unsigned long) datalen, (unsigned long) MAX_ECPOINT_LEN);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  if (*buflen < datalen) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "message format error: unable to write %lu bytes of EC point "
+      "(buflen = %lu)", (unsigned long) datalen, (unsigned long) *buflen);
+    log_stacktrace();
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  data = malloc(datalen);
+  if (data == NULL) {
+    pr_log_pri(PR_LOG_CRIT, MOD_SFTP_VERSION ": Out of memory!");
+    _exit(1);
+  }
+
+  if (EC_POINT_point2oct(curve, point, POINT_CONVERSION_UNCOMPRESSED, data,
+      datalen, bn_ctx) != datalen) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error writing EC point data: Length mismatch");
+    pr_memscrub(data, datalen);
+    free(data);
+    BN_CTX_free(bn_ctx);
+
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  len = sftp_msg_write_data(buf, buflen, (const unsigned char *) data, datalen,
+    TRUE);
+
+  pr_memscrub(data, datalen);
+  free(data);
+  BN_CTX_free(bn_ctx);
+
+  return len;
+}
+#endif /* PR_USE_OPENSSL_ECC */
+

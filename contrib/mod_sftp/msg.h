@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: msg.h,v 1.5 2012-02-15 23:50:51 castaglia Exp $
+ * $Id: msg.h,v 1.6 2012-03-01 23:10:58 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -32,6 +32,10 @@
 char sftp_msg_read_byte(pool *, unsigned char **, uint32_t *);
 int sftp_msg_read_bool(pool *, unsigned char **, uint32_t *);
 unsigned char *sftp_msg_read_data(pool *, unsigned char **, uint32_t *, size_t);
+#ifdef PR_USE_OPENSSL_ECC
+EC_POINT *sftp_msg_read_ecpoint(pool *, unsigned char **, uint32_t *,
+  const EC_GROUP *, EC_POINT *);
+#endif /* PR_USE_OPENSSL_ECC */
 uint32_t sftp_msg_read_int(pool *, unsigned char **, uint32_t *);
 BIGNUM *sftp_msg_read_mpint(pool *, unsigned char **, uint32_t *);
 char *sftp_msg_read_string(pool *, unsigned char **, uint32_t *);
@@ -40,6 +44,10 @@ uint32_t sftp_msg_write_byte(unsigned char **, uint32_t *, char);
 uint32_t sftp_msg_write_bool(unsigned char **, uint32_t *, char);
 uint32_t sftp_msg_write_data(unsigned char **, uint32_t *,
   const unsigned char *, size_t, int);
+#ifdef PR_USE_OPENSSL_ECC
+uint32_t sftp_msg_write_ecpoint(unsigned char **, uint32_t *, const EC_GROUP *,
+  const EC_POINT *);
+#endif /* PR_USE_OPENSSL_ECC */
 uint32_t sftp_msg_write_int(unsigned char **, uint32_t *, uint32_t);
 uint32_t sftp_msg_write_mpint(unsigned char **, uint32_t *, const BIGNUM *);
 uint32_t sftp_msg_write_string(unsigned char **, uint32_t *, const char *);

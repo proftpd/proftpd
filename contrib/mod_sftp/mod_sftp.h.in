@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_sftp.h.in,v 1.25 2012-02-23 21:10:06 castaglia Exp $
+ * $Id: mod_sftp.h.in,v 1.26 2012-03-01 23:10:58 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_H
@@ -78,6 +78,10 @@
 # include <openssl/engine.h>
 # include <openssl/ocsp.h>
 #endif
+#ifdef PR_USE_OPENSSL_ECC
+# include <openssl/ec.h>
+# include <openssl/ecdh.h>
+#endif /* PR_USE_OPENSSL_ECC */
 
 #include <zlib.h>
 
