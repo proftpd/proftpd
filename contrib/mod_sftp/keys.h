@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.h,v 1.6 2012-03-01 23:10:58 castaglia Exp $
+ * $Id: keys.h,v 1.7 2012-03-02 23:07:34 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -29,13 +29,13 @@
 #ifndef MOD_SFTP_KEYS_H
 #define MOD_SFTP_KEYS_H
 
-enum sftp_hostkey_type_e {
-  SFTP_HOSTKEY_UNKNOWN = 0,
-  SFTP_HOSTKEY_DSA,
-  SFTP_HOSTKEY_RSA,
-  SFTP_HOSTKEY_ECDSA_256,
-  SFTP_HOSTKEY_ECDSA_384,
-  SFTP_HOSTKEY_ECDSA_521
+enum sftp_key_type_e {
+  SFTP_KEY_UNKNOWN = 0,
+  SFTP_KEY_DSA,
+  SFTP_KEY_RSA,
+  SFTP_KEY_ECDSA_256,
+  SFTP_KEY_ECDSA_384,
+  SFTP_KEY_ECDSA_521
 };
 
 /* Returns a string of colon-separated lowercase hex characters, representing
@@ -50,19 +50,20 @@ const char *sftp_keys_get_fingerprint(pool *, unsigned char *, uint32_t, int);
 
 void sftp_keys_free(void);
 int sftp_keys_get_hostkey(const char *);
-const unsigned char *sftp_keys_get_hostkey_data(pool *,
-  enum sftp_hostkey_type_e, size_t *);
+const unsigned char *sftp_keys_get_hostkey_data(pool *, enum sftp_key_type_e,
+  size_t *);
 void sftp_keys_get_passphrases(void);
 int sftp_keys_have_dsa_hostkey(void);
 int sftp_keys_have_ecdsa_hostkey(pool *, int **);
 int sftp_keys_have_rsa_hostkey(void);
 int sftp_keys_set_passphrase_provider(const char *);
-const unsigned char *sftp_keys_sign_data(pool *, enum sftp_hostkey_type_e,
+const unsigned char *sftp_keys_sign_data(pool *, enum sftp_key_type_e,
   const unsigned char *, size_t, size_t *);
 #ifdef PR_USE_OPENSSL_ECC
 int sftp_keys_validate_ecdsa_params(const EC_GROUP *, const EC_POINT *);
 #endif /* PR_USE_OPENSSL_ECC */
-int sftp_keys_verify_pubkey_type(pool *, unsigned char *, uint32_t, int);
+int sftp_keys_verify_pubkey_type(pool *, unsigned char *, uint32_t,
+  enum sftp_key_type_e);
 int sftp_keys_verify_signed_data(pool *, const char *,
   unsigned char *, uint32_t, unsigned char *, uint32_t,
   unsigned char *, size_t);

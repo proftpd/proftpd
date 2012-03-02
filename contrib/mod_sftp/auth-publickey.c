@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-publickey.c,v 1.10 2012-02-15 23:50:51 castaglia Exp $
+ * $Id: auth-publickey.c,v 1.11 2012-03-02 23:07:34 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -76,7 +76,8 @@ static int send_pubkey_ok(const char *algo, const unsigned char *pubkey_data,
 int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     const char *orig_user, const char *user, const char *service,
     unsigned char **buf, uint32_t *buflen, int *send_userauth_fail) {
-  int have_signature, pubkey_type;
+  int have_signature, res;
+  enum sftp_key_type_e pubkey_type;
   unsigned char *pubkey_data;
   char *pubkey_algo = NULL;
   uint32_t pubkey_len;
@@ -114,10 +115,21 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     pubkey_algo, have_signature ? "with signature" : "without signature");
 
   if (strncmp(pubkey_algo, "ssh-rsa", 8) == 0) {
-    pubkey_type = EVP_PKEY_RSA;
+    pubkey_type = SFTP_KEY_RSA;
 
   } else if (strncmp(pubkey_algo, "ssh-dss", 8) == 0) {
-    pubkey_type = EVP_PKEY_DSA;
+    pubkey_type = SFTP_KEY_DSA;
+
+#ifdef PR_USE_OPENSSL_ECC
+  } else if (strncmp(pubkey_algo, "ecdsa-sha2-nistp256", 20) == 0) {
+    pubkey_type = SFTP_KEY_ECDSA_256;
+
+  } else if (strncmp(pubkey_algo, "ecdsa-sha2-nistp384", 20) == 0) {
+    pubkey_type = SFTP_KEY_ECDSA_384;
+
+  } else if (strncmp(pubkey_algo, "ecdsa-sha2-nistp521", 20) == 0) {
+    pubkey_type = SFTP_KEY_ECDSA_521;
+#endif /* PR_USE_OPENSSL_ECC */
 
   /* XXX This is where we would add support for X509 public keys, e.g.:
    *
@@ -137,11 +149,20 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     return 0;
   }
 
-  if (sftp_keys_verify_pubkey_type(pkt->pool, pubkey_data, pubkey_len,
-      pubkey_type) != TRUE) {
+  res = sftp_keys_verify_pubkey_type(pkt->pool, pubkey_data, pubkey_len,
+    pubkey_type);
+  if (res != TRUE) {
+    int xerrno = errno;
+
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unable to verify that given public key matches given '%s' algorithm",
       pubkey_algo);
+
+    if (res < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error verifying public key algorithm '%s': %s", pubkey_algo,
+        strerror(xerrno));
+    }
 
     *send_userauth_fail = TRUE;
     errno = EINVAL;

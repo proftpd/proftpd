@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.30 2012-03-01 23:10:58 castaglia Exp $
+ * $Id: kex.c,v 1.31 2012-03-02 23:07:34 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -93,7 +93,7 @@ struct sftp_kex {
    *  "ssh-rsa"      --> KEX_HOSTKEY_RSA
    *  "ecdsa-sha2-*" --> KEX_HOSTKEY_ECDSA_*
    */
-  enum sftp_hostkey_type_e use_hostkey_type;
+  enum sftp_key_type_e use_hostkey_type;
 
   /* Using DH group-exchange? */
   int use_gex;
@@ -1230,7 +1230,7 @@ static struct sftp_kex *create_kex(pool *p) {
   kex->client_names = pcalloc(p, sizeof(struct sftp_kex_names));
   kex->server_names = pcalloc(p, sizeof(struct sftp_kex_names));
   kex->session_names = pcalloc(p, sizeof(struct sftp_kex_names));
-  kex->use_hostkey_type = SFTP_HOSTKEY_UNKNOWN;
+  kex->use_hostkey_type = SFTP_KEY_UNKNOWN;
   kex->dh = NULL;
   kex->e = NULL;
   kex->hash = NULL;
@@ -1473,28 +1473,28 @@ static int setup_hostkey_algo(struct sftp_kex *kex, const char *algo) {
   kex->session_names->server_hostkey_algo = (char *) algo;
 
   if (strncmp(algo, "ssh-dss", 8) == 0) {
-    kex->use_hostkey_type = SFTP_HOSTKEY_DSA;
+    kex->use_hostkey_type = SFTP_KEY_DSA;
     return 0;
   }
 
   if (strncmp(algo, "ssh-rsa", 8) == 0) {
-    kex->use_hostkey_type = SFTP_HOSTKEY_RSA;
+    kex->use_hostkey_type = SFTP_KEY_RSA;
     return 0;
   }
 
 #ifdef PR_USE_OPENSSL_ECC
   if (strncmp(algo, "ecdsa-sha2-nistp256", 20) == 0) {
-    kex->use_hostkey_type = SFTP_HOSTKEY_ECDSA_256;
+    kex->use_hostkey_type = SFTP_KEY_ECDSA_256;
     return 0;
   }
 
   if (strncmp(algo, "ecdsa-sha2-nistp384", 20) == 0) {
-    kex->use_hostkey_type = SFTP_HOSTKEY_ECDSA_384;
+    kex->use_hostkey_type = SFTP_KEY_ECDSA_384;
     return 0;
   }
 
   if (strncmp(algo, "ecdsa-sha2-nistp521", 20) == 0) {
-    kex->use_hostkey_type = SFTP_HOSTKEY_ECDSA_521;
+    kex->use_hostkey_type = SFTP_KEY_ECDSA_521;
     return 0;
   }
 #endif /* PR_USE_OPENSSL_ECC */

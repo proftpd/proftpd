@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.20 2012-03-01 23:10:58 castaglia Exp $
+ * $Id: keys.c,v 1.21 2012-03-02 23:07:34 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -814,16 +814,108 @@ static EVP_PKEY *get_pkey_from_data(pool *p, unsigned char *pkey_data,
     }
 
 #ifdef PR_USE_OPENSSL_ECC
-  } else if (strncmp(pkey_type, "ecdsa-sha2-nistp256", 20) == 0) {
+  } else if (strncmp(pkey_type, "ecdsa-sha2-nistp256", 20) == 0 ||
+             strncmp(pkey_type, "ecdsa-sha2-nistp384", 20) == 0 ||
+             strncmp(pkey_type, "ecdsa-sha2-nistp521", 20) == 0) {
+    EC_KEY *ec;
+    const char *curve_name;
+    const EC_GROUP *curve;
+    EC_POINT *point;
+    int ec_nid;
 
-  } else if (strncmp(pkey_type, "ecdsa-sha2-nistp384", 20) == 0) {
+    curve_name = sftp_msg_read_string(p, &pkey_data, &pkey_datalen);
 
-  } else if (strncmp(pkey_type, "ecdsa-sha2-nistp521", 20) == 0) {
+    /* If the curve name does not match the last 8 characters of the
+     * public key type (which, in the case of ECDSA keys, contains the
+     * curve name), then it's definitely a mismatch.
+     */
+    if (strncmp(pkey_type + 11, curve_name, 9) != 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "EC public key curve name '%s' does not match public key "
+        "algorithm '%s'", curve_name, pkey_type);
+      return NULL;
+    }
+
+    if (strncmp(curve_name, "nistp256", 9) == 0) {
+      ec_nid = NID_X9_62_prime256v1;
+
+    } else if (strncmp(curve_name, "nistp384", 9) == 0) {
+      ec_nid = NID_secp384r1;
+
+    } else if (strncmp(curve_name, "nistp521", 9) == 0) {
+      ec_nid = NID_secp521r1;
+
+    } else {
+      ec_nid = -1;
+    }
+
+    ec = EC_KEY_new_by_curve_name(ec_nid);
+    if (ec == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error allocating EC_KEY for %s: %s", pkey_type,
+        sftp_crypto_get_errors());
+      return NULL;
+    }
+
+    curve = EC_KEY_get0_group(ec);
+
+    point = EC_POINT_new(curve);
+    if (point == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error allocating EC_POINT for %s: %s", pkey_type,
+        sftp_crypto_get_errors());
+      EC_KEY_free(ec);
+      return NULL;
+    }
+
+    point = sftp_msg_read_ecpoint(p, &pkey_data, &pkey_datalen, curve, point);
+    if (point == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error reading EC_POINT from public key data: %s", strerror(errno));
+      EC_POINT_free(point);
+      EC_KEY_free(ec);
+      return NULL;
+    }
+
+    if (sftp_keys_validate_ecdsa_params(curve, point) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "erorr validating EC public key: %s", strerror(errno));
+      EC_POINT_free(point);
+      EC_KEY_free(ec);
+      return NULL;
+    }
+
+    if (EC_KEY_set_public_key(ec, point) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error setting public key on EC_KEY: %s", sftp_crypto_get_errors());
+      EC_POINT_free(point);
+      EC_KEY_free(ec);
+      return NULL;
+    }
+
+    pkey = EVP_PKEY_new();
+    if (pkey == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error allocating EVP_PKEY: %s", sftp_crypto_get_errors());
+      EC_POINT_free(point);
+      EC_KEY_free(ec);
+      return NULL;
+    }
+
+    if (EVP_PKEY_assign_EC_KEY(pkey, ec) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error assigning ECDSA-256 to EVP_PKEY: %s", sftp_crypto_get_errors());
+      EC_POINT_free(point);
+      EC_KEY_free(ec);
+      EVP_PKEY_free(pkey);
+      return NULL;
+    }
 #endif /* PR_USE_OPENSSL_ECC */
 
   } else {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported public key algorithm '%s'", pkey_type);
+    errno = EINVAL;
     return NULL;
   }
 
@@ -1257,6 +1349,48 @@ int sftp_keys_compare_keys(pool *p, unsigned char *client_pubkey_data,
 
         break;
       }
+
+#ifdef PR_USE_OPENSSL_ECC
+      case EVP_PKEY_EC: {
+        EC_KEY *client_ec, *file_ec;
+
+        client_ec = EVP_PKEY_get1_EC_KEY(client_pkey);
+        file_ec = EVP_PKEY_get1_EC_KEY(file_pkey);
+
+        if (EC_GROUP_cmp(EC_KEY_get0_group(client_ec),
+            EC_KEY_get0_group(file_ec), NULL) != 0) {
+          pr_trace_msg(trace_channel, 17, "%s",
+            "ECC key mismatch: client-sent curve does not "
+            "match local ECC curve");
+          res = FALSE;
+
+        } else {
+          if (EC_POINT_cmp(EC_KEY_get0_group(client_ec),
+              EC_KEY_get0_public_key(client_ec),
+              EC_KEY_get0_public_key(file_ec), NULL) != 0) {
+            pr_trace_msg(trace_channel, 17, "%s",
+              "ECC key mismatch: client-sent public key 'Q' does not "
+              "match local ECC public key 'Q'");
+            res = FALSE;
+
+          } else {
+            res = TRUE;
+          }
+        }
+
+        EC_KEY_free(client_ec);
+        EC_KEY_free(file_ec);
+
+        break;
+      }
+#endif /* PR_USE_OPENSSL_ECC */
+
+      default:
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "unable to compare %s keys: unsupported key type",
+          get_key_type_desc(EVP_PKEY_type(client_pkey->type)));
+        errno = ENOSYS;
+        break;
     }
 
   } else {
@@ -1334,6 +1468,11 @@ static int get_ecdsa_nid(EC_KEY *ec) {
     -1
   };
   int nid;
+
+  if (ec == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
   /* Since the EC group might be encoded in different ways, we need to try
    * different lookups to find the NID.
@@ -1598,12 +1737,12 @@ int sftp_keys_get_hostkey(const char *path) {
 }
 
 const unsigned char *sftp_keys_get_hostkey_data(pool *p,
-    enum sftp_hostkey_type_e key_type, size_t *datalen) {
+    enum sftp_key_type_e key_type, size_t *datalen) {
   unsigned char *buf = NULL, *ptr = NULL;
   uint32_t buflen = SFTP_DEFAULT_HOSTKEY_SZ;
 
   switch (key_type) {
-    case SFTP_HOSTKEY_RSA: {
+    case SFTP_KEY_RSA: {
       RSA *rsa;
 
       rsa = EVP_PKEY_get1_RSA(sftp_rsa_hostkey);
@@ -1623,7 +1762,7 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       break;
     }
 
-    case SFTP_HOSTKEY_DSA: {
+    case SFTP_KEY_DSA: {
       DSA *dsa;
 
       dsa = EVP_PKEY_get1_DSA(sftp_dsa_hostkey);
@@ -1646,7 +1785,7 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
     }
 
 #ifdef PR_USE_OPENSSL_ECC
-    case SFTP_HOSTKEY_ECDSA_256: {
+    case SFTP_KEY_ECDSA_256: {
       EC_KEY *ec;
 
       ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa256_hostkey);
@@ -1668,7 +1807,7 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       break;
     }
 
-    case SFTP_HOSTKEY_ECDSA_384: {
+    case SFTP_KEY_ECDSA_384: {
       EC_KEY *ec;
 
       ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa384_hostkey);
@@ -1690,7 +1829,7 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       break;
     }
 
-    case SFTP_HOSTKEY_ECDSA_521: {
+    case SFTP_KEY_ECDSA_521: {
       EC_KEY *ec;
 
       ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa521_hostkey);
@@ -2058,29 +2197,29 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
 #endif /* PR_USE_OPENSSL_ECC */
 
 const unsigned char *sftp_keys_sign_data(pool *p,
-    enum sftp_hostkey_type_e key_type, const unsigned char *data,
+    enum sftp_key_type_e key_type, const unsigned char *data,
     size_t datalen, size_t *siglen) {
   const unsigned char *res;
 
   switch (key_type) {
-    case SFTP_HOSTKEY_RSA:
+    case SFTP_KEY_RSA:
       res = rsa_sign_data(p, data, datalen, siglen);
       break;
 
-    case SFTP_HOSTKEY_DSA:
+    case SFTP_KEY_DSA:
       res = dsa_sign_data(p, data, datalen, siglen);
       break;
 
 #ifdef PR_USE_OPENSSL_ECC
-    case SFTP_HOSTKEY_ECDSA_256:
+    case SFTP_KEY_ECDSA_256:
       res = ecdsa_sign_data(p, data, datalen, siglen, NID_X9_62_prime256v1);
       break;
 
-    case SFTP_HOSTKEY_ECDSA_384:
+    case SFTP_KEY_ECDSA_384:
       res = ecdsa_sign_data(p, data, datalen, siglen, NID_secp384r1);
       break;
 
-    case SFTP_HOSTKEY_ECDSA_521:
+    case SFTP_KEY_ECDSA_521:
       res = ecdsa_sign_data(p, data, datalen, siglen, NID_secp521r1);
       break;
 #endif /* PR_USE_OPENSSL_ECC */
@@ -2103,9 +2242,9 @@ const unsigned char *sftp_keys_sign_data(pool *p,
 }
 
 int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
-    uint32_t pubkey_len, int pubkey_type) {
+    uint32_t pubkey_len, enum sftp_key_type_e pubkey_type) {
   EVP_PKEY *pkey;
-  int res;
+  int res = FALSE;
 
   if (pubkey_data == NULL) {
     errno = EINVAL;
@@ -2117,7 +2256,50 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
     return -1;
   }
 
-  res = (EVP_PKEY_type(pkey->type) == pubkey_type);
+  switch (pubkey_type) {
+    case SFTP_KEY_RSA:
+      res = (EVP_PKEY_type(pkey->type) == EVP_PKEY_RSA); 
+      break;
+
+    case SFTP_KEY_DSA:
+      res = (EVP_PKEY_type(pkey->type) == EVP_PKEY_DSA); 
+      break;
+
+#ifdef PR_USE_OPENSSL_ECC
+    case SFTP_KEY_ECDSA_256:
+    case SFTP_KEY_ECDSA_384:
+    case SFTP_KEY_ECDSA_521:
+      if (EVP_PKEY_type(pkey->type) == EVP_PKEY_EC) {
+        EC_KEY *ec;
+        int ec_nid;
+
+        ec = EVP_PKEY_get1_EC_KEY(pkey);
+        ec_nid = get_ecdsa_nid(ec);
+        EC_KEY_free(ec);
+
+        switch (ec_nid) {
+          case NID_X9_62_prime256v1:
+            res = (pubkey_type == SFTP_KEY_ECDSA_256);
+            break;
+
+          case NID_secp384r1:
+            res = (pubkey_type == SFTP_KEY_ECDSA_384);
+            break;
+
+          case NID_secp521r1:
+            res = (pubkey_type == SFTP_KEY_ECDSA_521);
+            break;
+        }
+      }
+      break;
+#endif /* PR_USE_OPENSSL_ECC */
+
+    default:
+      /* No matching public key type/algorithm. */
+      errno = ENOENT;
+      res = FALSE;
+      break;
+  }
 
   EVP_PKEY_free(pkey);
   return res;
@@ -2169,10 +2351,6 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
     sig_type = sftp_msg_read_string(p, &signature, &signaturelen);
   }
 
-  EVP_DigestInit(&ctx, EVP_sha1());
-  EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
-  EVP_DigestFinal(&ctx, digest, &digestlen);
-
   if (strncmp(sig_type, "ssh-rsa", 8) == 0) {
     RSA *rsa;
     int ok;
@@ -2182,6 +2360,10 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
     sig_len = sftp_msg_read_int(p, &signature, &signaturelen);
     sig = (unsigned char *) sftp_msg_read_data(p, &signature, &signaturelen,
       sig_len);
+
+    EVP_DigestInit(&ctx, EVP_sha1());
+    EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
+    EVP_DigestFinal(&ctx, digest, &digestlen);
 
     ok = RSA_verify(NID_sha1, digest, digestlen, sig, sig_len, rsa);
     if (ok == 1) {
@@ -2232,6 +2414,10 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
       res = -1;
     }
 
+    EVP_DigestInit(&ctx, EVP_sha1());
+    EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
+    EVP_DigestFinal(&ctx, digest, &digestlen);
+
     ok = DSA_do_verify(digest, digestlen, dsa_sig, dsa);
     if (ok == 1) {
       res = 0;
@@ -2244,6 +2430,85 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
 
     DSA_free(dsa);
     DSA_SIG_free(dsa_sig);
+
+#ifdef PR_USE_OPENSSL_ECC
+  } else if (strncmp(sig_type, "ecdsa-sha2-nistp256", 20) == 0 ||
+             strncmp(sig_type, "ecdsa-sha2-nistp384", 20) == 0 ||
+             strncmp(sig_type, "ecdsa-sha2-nistp521", 20) == 0) {
+    EC_KEY *ec;
+    ECDSA_SIG *ecdsa_sig;
+    const EVP_MD *md;
+    int ok;
+
+    if (strcmp(pubkey_algo, sig_type) != 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unable to verify signed data: public key algorithm '%s' does not "
+        "match signature algorithm '%s'", pubkey_algo, sig_type);
+      return -1;
+    }
+
+    ecdsa_sig = ECDSA_SIG_new();
+    if (ecdsa_sig == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error allocating new ECDSA_SIG: %s", sftp_crypto_get_errors());
+      return -1;
+    }
+
+    sig_len = sftp_msg_read_int(p, &signature, &signaturelen);
+    sig = (unsigned char *) sftp_msg_read_data(p, &signature, &signaturelen,
+      sig_len);
+
+    ecdsa_sig->r = sftp_msg_read_mpint(p, &sig, &sig_len);
+    if (ecdsa_sig->r == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error reading 'r' ECDSA signature component: %s",
+        sftp_crypto_get_errors());
+      ECDSA_SIG_free(ecdsa_sig);
+      return -1;
+    }
+
+    ecdsa_sig->s = sftp_msg_read_mpint(p, &sig, &sig_len);
+    if (ecdsa_sig->s == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error reading 's' ECDSA signature component: %s",
+        sftp_crypto_get_errors());
+      ECDSA_SIG_free(ecdsa_sig);
+      return -1;
+    }
+
+    /* Skip past the common leading prefix "ecdsa-sha2-" to compare just
+     * last 9 characters.
+     */
+
+    if (strncmp(sig_type + 11, "nistp256", 9) == 0) {
+      md = EVP_sha256();
+
+    } else if (strncmp(sig_type + 11, "nistp384", 9) == 0) {
+      md = EVP_sha384();
+
+    } else if (strncmp(sig_type + 11, "nistp521", 9) == 0) {
+      md = EVP_sha512();
+    }
+
+    EVP_DigestInit(&ctx, md);
+    EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
+    EVP_DigestFinal(&ctx, digest, &digestlen);
+
+    ec = EVP_PKEY_get1_EC_KEY(pkey);
+
+    ok = ECDSA_do_verify(digest, digestlen, ecdsa_sig, ec);
+    if (ok == 1) {
+      res = 0;
+
+    } else {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error verifying ECDSA signature: %s", sftp_crypto_get_errors());
+      res = -1;
+    }
+
+    EC_KEY_free(ec);
+    ECDSA_SIG_free(ecdsa_sig);
+#endif /* PR_USE_OPENSSL_ECC */
 
   } else {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
