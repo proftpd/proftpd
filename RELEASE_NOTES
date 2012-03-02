@@ -20,6 +20,12 @@ ChangeLog files.
     mod_tar?
     mod_snmp?
 
+  + Changed modules
+
+    Elliptic Curve Cryptography support in mod_sftp (Bug#3573)
+      ECDSA host keys, public key authentication
+      ECDH key exchange
+
   + New configuration directives:
 
     <IfAuthenticated>
@@ -72,4 +78,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-02-24 22:32:31 $
+Last Updated: $Date: 2012-03-02 23:34:28 $
