@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-hostbased.c,v 1.8 2012-02-15 23:50:51 castaglia Exp $
+ * $Id: auth-hostbased.c,v 1.9 2012-03-04 22:31:12 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -47,7 +47,7 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
   unsigned char *buf2, *ptr2;
   const unsigned char *id;
   uint32_t buflen2, bufsz2, hostkey_datalen, id_len, signature_len;
-  int pubkey_type;
+  enum sftp_key_type_e pubkey_type;
 
   if (pr_cmd_dispatch_phase(pass_cmd, PRE_CMD, 0) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -80,10 +80,21 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     hostkey_algo, host_fqdn, host_user);
 
   if (strncmp(hostkey_algo, "ssh-rsa", 8) == 0) {
-    pubkey_type = EVP_PKEY_RSA;
+    pubkey_type = SFTP_KEY_RSA;
 
   } else if (strncmp(hostkey_algo, "ssh-dss", 8) == 0) {
-    pubkey_type = EVP_PKEY_DSA;
+    pubkey_type = SFTP_KEY_DSA;
+
+#ifdef PR_USE_OPENSSL_ECC
+  } else if (strncmp(hostkey_algo, "ecdsa-sha2-nistp256", 20) == 0) {
+    pubkey_type = SFTP_KEY_ECDSA_256;
+
+  } else if (strncmp(hostkey_algo, "ecdsa-sha2-nistp256", 20) == 0) {
+    pubkey_type = SFTP_KEY_ECDSA_384;
+
+  } else if (strncmp(hostkey_algo, "ecdsa-sha2-nistp256", 20) == 0) {
+    pubkey_type = SFTP_KEY_ECDSA_521;
+#endif /* PR_USE_OPENSSL_ECC */
 
   /* XXX Need to support X509v3 certs here */
 
