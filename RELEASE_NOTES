@@ -23,7 +23,7 @@ ChangeLog files.
   + Changed modules
 
     Elliptic Curve Cryptography support in mod_sftp (Bug#3573)
-      ECDSA host keys, public key authentication
+      ECDSA host keys, hostbased/publickey authentication
       ECDH key exchange
 
   + New configuration directives:
@@ -78,4 +78,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-03-02 23:34:28 $
+Last Updated: $Date: 2012-03-04 22:31:55 $
