@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.h,v 1.7 2012-03-02 23:07:34 castaglia Exp $
+ * $Id: keys.h,v 1.8 2012-03-06 01:17:58 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -49,7 +49,7 @@ const char *sftp_keys_get_fingerprint(pool *, unsigned char *, uint32_t, int);
 #define SFTP_KEYS_FP_DIGEST_MD5		1
 
 void sftp_keys_free(void);
-int sftp_keys_get_hostkey(const char *);
+int sftp_keys_get_hostkey(pool *p, const char *);
 const unsigned char *sftp_keys_get_hostkey_data(pool *, enum sftp_key_type_e,
   size_t *);
 void sftp_keys_get_passphrases(void);

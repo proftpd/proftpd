@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.66 2012-02-24 07:23:22 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.67 2012-03-06 01:17:58 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1699,7 +1699,11 @@ static int sftp_sess_init(void) {
   while (c) {
     const char *path = c->argv[0];
 
-    if (sftp_keys_get_hostkey(path) < 0) {
+    /* XXX In the future, this pool for the hostkeys should be freed up
+     * after the key exchange, as we don't need the hostkey data around
+     * in memory after that.
+     */
+    if (sftp_keys_get_hostkey(sftp_pool, path) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error loading hostkey '%s' from disk, skipping key", path);
     }
