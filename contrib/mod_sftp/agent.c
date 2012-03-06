@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: agent.c,v 1.2 2012-03-06 01:29:46 castaglia Exp $
+ * $Id: agent.c,v 1.3 2012-03-06 07:01:32 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -29,6 +29,23 @@
 #include "msg.h"
 
 const char *trace_channel = "ssh2";
+
+/* These values from OpenSSH's PROTOCOL.agent file, with some from the
+ * OpenSSH authfd.h header.
+ */
+#define SFTP_SSH_AGENT_FAILURE			5
+#define SFTP_SSH_AGENT_SUCCESS			6
+
+#define SFTP_SSH_AGENT_REQ_IDS			11
+#define SFTP_SSH_AGENT_RESP_IDS			12
+
+#define SFTP_SSH_AGENT_REQ_SIGN_DATA		13
+#define SFTP_SSH_AGENT_RESP_SIGN_DATA		14
+
+#define SFTP_SSH_AGENT_EXTENDED_FAILURE		30
+
+/* Error code for ssh.com's ssh-agent2 process. */
+#define SFTP_SSHCOM_AGENT_FAILURE		102
 
 /* Size of the buffer we use to talk to the agent. */
 #define AGENT_REQUEST_MSGSZ		1024
