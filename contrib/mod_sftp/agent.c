@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: agent.c,v 1.1 2012-03-06 01:17:58 castaglia Exp $
+ * $Id: agent.c,v 1.2 2012-03-06 01:29:46 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -36,116 +36,9 @@ const char *trace_channel = "ssh2";
 /* Max size of the agent reply that we will handle. */
 #define AGENT_REPLY_MAXSZ		(256 * 1024)
 
-/*
-
-#define SFTP_SSH_AGENT_FAILURE                  5
-#define SFTP_SSH_AGENT_SUCCESS                  6
-
-#define SFTP_SSH_AGENT_REPLY_IDENTITIES         12
-#define SFTP_SSH_AGENT_REPLY_SIGNED_DATA        14
-
-2. Protocol Messages
-
-All protocol messages are prefixed with their length in bytes, encoded
-as a 32 bit unsigned integer. Specifically:
-
-        uint32                  message_length
-        byte[message_length]    message
-
-The following message descriptions refer only to the content the
-"message" field.
-
-
-The second constraint requires the agent to seek explicit user
-confirmation before performing private key operations with the loaded
-key. This constraint is encoded as:
-
-        byte                    SSH_AGENT_CONSTRAIN_CONFIRM
-
-Zero or more constraints may be specified when adding a key with one
-of the *_CONSTRAINED requests. Multiple constraints are appended
-consecutively to the end of the request:
-
-        byte                    constraint1_type
-        ....                    constraint1_data
-        byte                    constraint2_type
-        ....                    constraint2_data
-        ....
-        byte                    constraintN_type
-        ....                    constraintN_data
-
-Such a sequence of zero or more constraints will be referred to below
-as "constraint[]". Agents may determine whether there are constraints
-
-  Note that we will automatically skip any key with a CONFIRM constraint,
-  due to the server environment.
-
-2.5.2 Requesting a list of protocol 2 keys
-
-A client may send the following message to request a list of
-protocol 2 keys that are stored in the agent:
-
-        byte                    SSH2_AGENTC_REQUEST_IDENTITIES
-
-The agent will reply with the following message header:
-
-        byte                    SSH2_AGENT_IDENTITIES_ANSWER
-        uint32                  num_keys
-
-Followed by zero or more consecutive keys, encoded as:
-
-        string                  key_blob
-        string                  key_comment
-
-Where "key_blob" is encoded as per RFC 4253 section 6.6 "Public Key
-Algorithms" for any of the supported protocol 2 key types.
-
-Make keys.c:get_pkey_from_data() a public function,
-sftp_keys_get_pkey_from_data(), so that we can use it to populate the keylist.
-It automatically understands the key_blob format.
-
-2.6.2 Protocol 2 private key signature request
-
-A client may use the following message to request signing of data using
-a protocol 2 key:
-
-        byte                    SSH2_AGENTC_SIGN_REQUEST
-        string                  key_blob
-        string                  data
-        uint32                  flags
-
-Where "key_blob" is encoded as per RFC 4253 section 6.6 "Public Key
-Algorithms" for any of the supported protocol 2 key types. "flags" is
-a bit-mask, but at present only one possible value is defined (see below
-for its meaning):
-
-        SSH_AGENT_OLD_SIGNATURE         1
-
-Upon receiving this request, the agent will look up the private key that
-corresponds to the public key contained in key_blob. It will use this
-private key to sign the "data" and produce a signature blob using the
-key type-specific method described in RFC 4253 section 6.6 "Public Key
-Algorithms".
-
-An exception to this is for "ssh-dss" keys where the "flags" word
-contains the value SSH_AGENT_OLD_SIGNATURE. In this case, a legacy
-signature encoding is used in lieu of the standard one. In this case,
-the DSA signature blob is encoded as:
-
-        byte[40]                signature
-
-The signature will be returned in the response message:
-
-        byte                    SSH2_AGENT_SIGN_RESPONSE
-        string                  signature_blob
-
-If the agent cannot find the key specified by the supplied key_blob then
-it will return SSH_AGENT_FAILURE.
-
-XXX When is it necessary to use the OLD_SIGNATURE flag?
-
-Use keys.c:sftp_keys_get_hostkey_data() for example of how to generate
-the key_blob format for given EVP_PKEY.
+/* In sftp_keys_get_hostkey(), when dealing with the key data returned
+ * from the agent, use get_pkey_from_data() to create the EVP_PKEY.  Keep
+ * the key_data around, for signing requests to send to the agent.
  */
 
 static int agent_failure(char resp_status) {
@@ -168,8 +61,8 @@ static int agent_failure(char resp_status) {
   return failed;
 }
 
-static unsigned char *agent_request(pool *p, int fd, unsigned char *req,
-    uint32_t reqlen, uint32_t *resplen) {
+static unsigned char *agent_request(pool *p, int fd, const char *path,
+    unsigned char *req, uint32_t reqlen, uint32_t *resplen) {
   unsigned char msg[AGENT_REQUEST_MSGSZ], *buf, *ptr;
   uint32_t bufsz, buflen;
   int res;
@@ -185,7 +78,8 @@ static unsigned char *agent_request(pool *p, int fd, unsigned char *req,
   if (res < 0) {
     int xerrno = errno;
 
-    pr_trace_msg(trace_channel, 3, "error sending request length to agent: %s",
+    pr_trace_msg(trace_channel, 3,
+      "error sending request length to SSH agent at '%s': %s", path,
       strerror(xerrno));
 
     errno = xerrno;
@@ -195,8 +89,8 @@ static unsigned char *agent_request(pool *p, int fd, unsigned char *req,
   /* Handle short writes. */
   if (res != (bufsz - buflen)) {
     pr_trace_msg(trace_channel, 3,
-      "short write (%d of %lu bytes sent) when talking to agent", res,
-      (unsigned long) (bufsz - buflen));
+      "short write (%d of %lu bytes sent) when talking to SSH agent at '%s'",
+      res, (unsigned long) (bufsz - buflen), path);
     errno = EIO;
     return NULL;
   }
@@ -207,7 +101,8 @@ static unsigned char *agent_request(pool *p, int fd, unsigned char *req,
   if (res < 0) {
     int xerrno = errno;
 
-    pr_trace_msg(trace_channel, 3, "error sending request payload to agent: %s",
+    pr_trace_msg(trace_channel, 3,
+      "error sending request payload to SSH agent at '%s': %s", path,
       strerror(xerrno));
 
     errno = xerrno;
@@ -217,8 +112,8 @@ static unsigned char *agent_request(pool *p, int fd, unsigned char *req,
   /* Handle short writes. */
   if (res != reqlen) {
     pr_trace_msg(trace_channel, 3,
-      "short write (%d of %lu bytes sent) when talking to agent", res,
-      (unsigned long) reqlen);
+      "short write (%d of %lu bytes sent) when talking to SSH agent at '%s'",
+      res, (unsigned long) reqlen, path);
     errno = EIO;
     return NULL;
   }
@@ -233,7 +128,8 @@ static unsigned char *agent_request(pool *p, int fd, unsigned char *req,
     int xerrno = errno;
 
     pr_trace_msg(trace_channel, 3,
-      "error reading response length from agent: %s", strerror(xerrno));
+      "error reading response length from SSH agent at '%s': %s", path,
+      strerror(xerrno));
 
     errno = xerrno;
     return NULL;
@@ -246,8 +142,8 @@ static unsigned char *agent_request(pool *p, int fd, unsigned char *req,
    */
   if (res > AGENT_REPLY_MAXSZ) {
     pr_trace_msg(trace_channel, 1,
-      "response length (%d) from agent exceeds maximum (%lu), ignoring", res,
-      (unsigned long) AGENT_REPLY_MAXSZ);
+      "response length (%d) from SSH agent at '%s' exceeds maximum (%lu), "
+      "ignoring", res, path, (unsigned long) AGENT_REPLY_MAXSZ);
     errno = EIO;
     return NULL;
   }
@@ -269,8 +165,8 @@ static unsigned char *agent_request(pool *p, int fd, unsigned char *req,
       int xerrno = errno;
 
       pr_trace_msg(trace_channel, 3,
-        "error reading %d bytes of response payload from agent: %s",
-        (bufsz - buflen), strerror(xerrno));
+        "error reading %d bytes of response payload from SSH agent at '%s': %s",
+        (bufsz - buflen), path, strerror(xerrno));
 
       errno = xerrno;
       return NULL;
@@ -308,8 +204,8 @@ static int agent_connect(const char *path) {
   if (connect(fd, (struct sockaddr *) &sun, len) < 0) {
     int xerrno = errno;
 
-    pr_trace_msg(trace_channel, 2, "error connecting to '%s': %s", path,
-      strerror(xerrno));
+    pr_trace_msg(trace_channel, 2, "error connecting to SSH agent at '%s': %s",
+      path, strerror(xerrno));
 
     (void) close(fd);
     errno = xerrno;
@@ -339,7 +235,7 @@ int sftp_agent_get_keys(pool *p, const char *agent_path,
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH_AGENT_REQ_IDS);
 
   reqlen = reqsz - buflen;
-  resp = agent_request(p, fd, req, reqlen, &resplen);
+  resp = agent_request(p, fd, agent_path, req, reqlen, &resplen);
   if (resp == NULL) {
     int xerrno = errno;
 
@@ -355,14 +251,16 @@ int sftp_agent_get_keys(pool *p, const char *agent_path,
   resp_status = sftp_msg_read_byte(p, &resp, &resplen); 
   if (agent_failure(resp_status) == TRUE) {
     pr_trace_msg(trace_channel, 5,
-      "agent indicated failure (%d) for identities request", resp_status);
+      "SSH agent at '%s' indicated failure (%d) for identities request",
+      agent_path, resp_status);
     errno = EPERM;
     return -1;
   }
 
   if (resp_status != SFTP_SSH_AGENT_RESP_IDS) {
-    pr_trace_msg(trace_channel, 5, "unknown response type %d from agent",
-      resp_status);
+    pr_trace_msg(trace_channel, 5,
+      "unknown response type %d from SSH agent at '%s'", resp_status,
+      agent_path);
     errno = EACCES;
     return -1;
   }
@@ -402,7 +300,7 @@ const unsigned char *sftp_agent_sign_data(pool *p, const char *agent_path,
   sftp_msg_write_int(&buf, &buflen, flags);
 
   reqlen = reqsz - buflen;
-  resp = agent_request(p, fd, req, reqlen, &resplen);
+  resp = agent_request(p, fd, agent_path, req, reqlen, &resplen);
   if (resp == NULL) {
     int xerrno = errno;
 
@@ -418,14 +316,16 @@ const unsigned char *sftp_agent_sign_data(pool *p, const char *agent_path,
   resp_status = sftp_msg_read_byte(p, &resp, &resplen); 
   if (agent_failure(resp_status) == TRUE) {
     pr_trace_msg(trace_channel, 5,
-      "agent indicated failure (%d) for data signing request", resp_status);
+      "SSH agent at '%s' indicated failure (%d) for data signing request",
+      agent_path, resp_status);
     errno = EPERM;
     return NULL;
   }
 
   if (resp_status != SFTP_SSH_AGENT_RESP_SIGN_DATA) {
-    pr_trace_msg(trace_channel, 5, "unknown response type %d from agent",
-      resp_status);
+    pr_trace_msg(trace_channel, 5,
+      "unknown response type %d from SSH agent at '%s'", resp_status,
+      agent_path);
     errno = EACCES;
     return NULL;
   }
