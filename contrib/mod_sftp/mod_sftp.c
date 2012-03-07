@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.68 2012-03-06 07:01:32 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.69 2012-03-07 02:14:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1037,26 +1037,28 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: SFTPHostKey path */
+/* usage: SFTPHostKey path|"agent:/..." */
 MODRET set_sftphostkey(cmd_rec *cmd) {
   struct stat st;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (*cmd->argv[1] != '/') {
-    CONF_ERROR(cmd, "must be an absolute path");
-  }
+  if (strncmp(cmd->argv[1], "agent:", 6) != 0) {
+    if (*cmd->argv[1] != '/') {
+      CONF_ERROR(cmd, "must be an absolute path");
+    }
 
-  if (stat(cmd->argv[1], &st) < 0) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to check '", cmd->argv[1],
-      "': ", strerror(errno), NULL));
-  }
+    if (stat(cmd->argv[1], &st) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to check '", cmd->argv[1],
+        "': ", strerror(errno), NULL));
+    }
 
-  if ((st.st_mode & S_IRWXG) ||
-      (st.st_mode & S_IRWXO)) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", cmd->argv[1],
-      "' as host key, as it is group- or world-accessible", NULL));
+    if ((st.st_mode & S_IRWXG) ||
+        (st.st_mode & S_IRWXO)) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", cmd->argv[1],
+        "' as host key, as it is group- or world-accessible", NULL));
+    }
   }
 
   (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);

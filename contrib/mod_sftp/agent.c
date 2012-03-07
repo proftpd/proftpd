@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: agent.c,v 1.3 2012-03-06 07:01:32 castaglia Exp $
+ * $Id: agent.c,v 1.4 2012-03-07 02:14:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -52,6 +52,9 @@ const char *trace_channel = "ssh2";
 
 /* Max size of the agent reply that we will handle. */
 #define AGENT_REPLY_MAXSZ		(256 * 1024)
+
+/* Max number of identities/keys we're willing to handle at one time. */
+#define AGENT_MAX_KEYS			1024
 
 /* In sftp_keys_get_hostkey(), when dealing with the key data returned
  * from the agent, use get_pkey_from_data() to create the EVP_PKEY.  Keep
@@ -197,7 +200,7 @@ static unsigned char *agent_request(pool *p, int fd, const char *path,
 }
 
 static int agent_connect(const char *path) {
-  int fd, len;
+  int fd, len, res, xerrno;
   struct sockaddr_un sun;
 
   memset(&sun, 0, sizeof(sun));
@@ -207,7 +210,7 @@ static int agent_connect(const char *path) {
 
   fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (fd < 0) {
-    int xerrno = errno;
+    xerrno = errno;
 
     pr_trace_msg(trace_channel, 3, "error opening Unix domain socket: %s",
       strerror(xerrno));
@@ -218,9 +221,12 @@ static int agent_connect(const char *path) {
 
   fcntl(fd, F_SETFD, FD_CLOEXEC);
 
-  if (connect(fd, (struct sockaddr *) &sun, len) < 0) {
-    int xerrno = errno;
+  PRIVS_ROOT
+  res = connect(fd, (struct sockaddr *) &sun, len);
+  xerrno = errno;
+  PRIVS_RELINQUISH
 
+  if (res < 0) {
     pr_trace_msg(trace_channel, 2, "error connecting to SSH agent at '%s': %s",
       path, strerror(xerrno));
 
@@ -234,9 +240,10 @@ static int agent_connect(const char *path) {
 
 int sftp_agent_get_keys(pool *p, const char *agent_path,
     array_header *key_list) {
-  int fd, res;
+  register unsigned int i;
+  int fd;
   unsigned char *buf, *req, *resp;
-  uint32_t buflen, reqlen, reqsz, resplen;
+  uint32_t buflen, key_count, reqlen, reqsz, resplen;
   char resp_status;
 
   fd = agent_connect(agent_path);
@@ -282,13 +289,42 @@ int sftp_agent_get_keys(pool *p, const char *agent_path,
     return -1;
   }
 
-  /* XXX Need to process the data */
+  key_count = sftp_msg_read_int(p, &resp, &resplen);
+  if (key_count > AGENT_MAX_KEYS) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "SSH agent at '%s' returned too many keys (%lu, max %lu)", agent_path,
+      (unsigned long) key_count, (unsigned long) AGENT_MAX_KEYS);
+    errno = EPERM;
+    return -1;
+  }
 
-  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-    "agent returned %lu bytes of identity data", (unsigned long) resplen);
+  for (i = 0; i < key_count; i++) {
+    unsigned char *key_data;
+    uint32_t key_datalen;
+    char *key_comment;
+    struct agent_key *key;
 
-  errno = ENOSYS;
-  return -1;
+    key_datalen = sftp_msg_read_int(p, &resp, &resplen);
+    key_data = sftp_msg_read_data(p, &resp, &resplen, key_datalen);
+    key_comment = sftp_msg_read_string(p, &resp, &resplen);
+    if (key_comment != NULL) {
+      pr_trace_msg(trace_channel, 9,
+        "SSH agent at '%s' provided comment '%s' for key #%u", agent_path,
+        key_comment, (i + 1));
+    }
+
+    key = pcalloc(p, sizeof(struct agent_key));
+
+    key->key_data = key_data;
+    key->key_datalen = key_datalen;
+    key->agent_path = pstrdup(p, agent_path); 
+
+    *((struct agent_key **) push_array(key_list)) = key;
+  }
+
+  pr_trace_msg(trace_channel, 9, "SSH agent at '%s' provided %lu %s",
+    agent_path, (unsigned long) key_count, key_count != 1 ? "keys" : "key");
+  return 0;
 }
 
 const unsigned char *sftp_agent_sign_data(pool *p, const char *agent_path,
@@ -308,7 +344,7 @@ const unsigned char *sftp_agent_sign_data(pool *p, const char *agent_path,
   flags = 0;
 
   /* Write out the request for signing the given data. */
-  reqsz = buflen = 1 + key_datalen + datalen + 4;
+  reqsz = buflen = 1 + key_datalen + 4 + datalen + 4 + 4;
   req = buf = palloc(p, reqsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH_AGENT_REQ_SIGN_DATA);

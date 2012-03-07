@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.23 2012-03-06 07:01:32 castaglia Exp $
+ * $Id: keys.c,v 1.24 2012-03-07 02:14:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1799,7 +1799,7 @@ static int load_agent_hostkeys(pool *p, const char *path) {
   int accepted_nkeys = 0, res;
   array_header *key_list;
 
-  key_list = make_array(p, 0, sizeof(struct agent_key));  
+  key_list = make_array(p, 0, sizeof(struct agent_key *));  
 
   res = sftp_agent_get_keys(p, path, key_list);
   if (res < 0) {
@@ -1819,6 +1819,9 @@ static int load_agent_hostkeys(pool *p, const char *path) {
     errno = ENOENT;
     return -1;
   }
+
+  pr_trace_msg(trace_channel, 9, "processing %d keys from SSH agent at '%s'",
+    key_list->nelts, path);
 
   for (i = 0; i < key_list->nelts; i++) {
     EVP_PKEY *pkey;
@@ -1928,6 +1931,7 @@ int sftp_keys_get_hostkey(pool *p, const char *path) {
    * SSH agent.
    */
   if (strncmp(path, "agent:", 6) != 0) {
+    pr_trace_msg(trace_channel, 9,  "loading host key from file '%s'", path);
     res = load_file_hostkey(p, path);
 
   } else {
@@ -1935,6 +1939,9 @@ int sftp_keys_get_hostkey(pool *p, const char *path) {
 
     /* Skip past the "agent:" prefix. */
     agent_path = (path + 6);
+
+    pr_trace_msg(trace_channel, 9,  "loading host keys from SSH agent at '%s'",
+      agent_path);
     res = load_agent_hostkeys(p, agent_path);
   }
 
@@ -2140,6 +2147,38 @@ int sftp_keys_have_rsa_hostkey(void) {
   return -1;
 }
 
+static const unsigned char *agent_sign_data(pool *p, const char *agent_path,
+    const unsigned char *key_data, uint32_t key_datalen,
+    const unsigned char *data, size_t datalen, size_t *siglen) {
+  unsigned char *sig_data;
+  uint32_t sig_datalen = 0;
+
+  pr_trace_msg(trace_channel, 15,
+    "asking SSH agent at '%s' to sign data", agent_path);
+
+  /* Ask the agent to sign the data for this hostkey for us. */
+  sig_data = (unsigned char *) sftp_agent_sign_data(p, agent_path,
+    key_data, key_datalen, data, datalen, &sig_datalen);
+
+  if (sig_data == NULL) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "SSH agent at '%s' could not sign data: %s", agent_path,
+      strerror(xerrno));
+
+    errno = xerrno;
+    return NULL;
+  }
+
+  /* The SSH agent already provides the signed data in the correct
+   * SSH2-style.
+   */
+
+  *siglen = sig_datalen;
+  return sig_data;
+}
+
 static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
     size_t datalen, size_t *siglen) {
   RSA *rsa;
@@ -2150,6 +2189,12 @@ static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
   size_t bufsz;
   uint32_t buflen, dgstlen = 0, sig_datalen = 0, sig_rsalen = 0;
   int res;
+
+  if (sftp_rsa_hostkey->agent_path != NULL) {
+    return agent_sign_data(p, sftp_rsa_hostkey->agent_path,
+      sftp_rsa_hostkey->key_data, sftp_rsa_hostkey->key_datalen, data, datalen,
+      siglen);
+  }
 
   rsa = EVP_PKEY_get1_RSA(sftp_rsa_hostkey->pkey);
   if (rsa == NULL) {
@@ -2164,7 +2209,6 @@ static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
 
   sig_rsalen = RSA_size(rsa);
   sig_data = pcalloc(p, sig_rsalen);
-
   res = RSA_sign(NID_sha1, dgst, dgstlen, sig_data, &sig_datalen, rsa);
 
   /* Regardless of whether the RSA signing succeeds or fails, we are done
@@ -2212,11 +2256,17 @@ static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
   DSA_SIG *sig;
   EVP_MD_CTX ctx;
   const EVP_MD *sha1 = EVP_sha1();
-  unsigned char dgst[EVP_MAX_MD_SIZE], sig_data[SFTP_MAX_SIG_SZ];
+  unsigned char dgst[EVP_MAX_MD_SIZE], *sig_data;
   unsigned char *buf, *ptr;
   size_t bufsz;
   uint32_t buflen, dgstlen = 0;
   unsigned int rlen = 0, slen = 0;
+
+  if (sftp_dsa_hostkey->agent_path != NULL) {
+    return agent_sign_data(p, sftp_dsa_hostkey->agent_path,
+      sftp_dsa_hostkey->key_data, sftp_dsa_hostkey->key_datalen, data, datalen,
+      siglen);
+  }
 
   dsa = EVP_PKEY_get1_DSA(sftp_dsa_hostkey->pkey);
   if (dsa == NULL) {
@@ -2254,7 +2304,7 @@ static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
     return NULL;
   }
 
-  memset(sig_data, 0, sizeof(sig_data));
+  sig_data = pcalloc(p, SFTP_MAX_SIG_SZ);
 
   /* These may look strange, but the pointer arithmetic is necessary to
    * ensure the correct placement of the R and S values in the signature,
@@ -2296,11 +2346,14 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
   size_t bufsz, sig_buflen, sig_bufsz;
   uint32_t buflen, dgstlen = 0;
 
-  buflen = bufsz = SFTP_MAX_SIG_SZ;
-  ptr = buf = sftp_msg_getbuf(p, bufsz);
-
   switch (nid) {
     case NID_X9_62_prime256v1:
+      if (sftp_ecdsa256_hostkey->agent_path != NULL) {
+        return agent_sign_data(p, sftp_ecdsa256_hostkey->agent_path,
+          sftp_ecdsa256_hostkey->key_data, sftp_ecdsa256_hostkey->key_datalen,
+          data, datalen, siglen);
+      }
+
       ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa256_hostkey->pkey);
       if (ec == NULL) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -2312,6 +2365,12 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
       break;
 
     case NID_secp384r1:
+      if (sftp_ecdsa384_hostkey->agent_path != NULL) {
+        return agent_sign_data(p, sftp_ecdsa384_hostkey->agent_path,
+          sftp_ecdsa384_hostkey->key_data, sftp_ecdsa384_hostkey->key_datalen,
+          data, datalen, siglen);
+      }
+
       ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa384_hostkey->pkey);
       if (ec == NULL) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -2323,6 +2382,12 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
       break;
 
     case NID_secp521r1:
+      if (sftp_ecdsa521_hostkey->agent_path != NULL) {
+        return agent_sign_data(p, sftp_ecdsa521_hostkey->agent_path,
+          sftp_ecdsa521_hostkey->key_data, sftp_ecdsa521_hostkey->key_datalen,
+          data, datalen, siglen);
+      }
+
       ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa521_hostkey->pkey);
       if (ec == NULL) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -2338,6 +2403,9 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
         "unknown/unsupported ECDSA NID (%d) requested", nid);
       return NULL;
   }
+
+  buflen = bufsz = SFTP_MAX_SIG_SZ;
+  ptr = buf = sftp_msg_getbuf(p, bufsz);
 
   EVP_DigestInit(&ctx, md);
   EVP_DigestUpdate(&ctx, data, datalen);
@@ -2747,6 +2815,12 @@ void sftp_keys_get_passphrases(void) {
     c = find_config(s->conf, CONF_PARAM, "SFTPHostKey", FALSE);
     while (c) {
       pr_signals_handle();
+
+      /* Skip any agent-provided SFTPHostKey directives. */
+      if (strncmp(c->argv[0], "agent:", 6) == 0) {
+        c = find_config_next(c, c->next, CONF_PARAM, "SFTPHostKey", FALSE);
+        continue;
+      }
 
       k = pcalloc(s->pool, sizeof(struct sftp_pkey));      
       k->pkeysz = PEM_BUFSIZE;
