@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.446 2012-02-09 06:38:46 castaglia Exp $
+ * $Id: main.c,v 1.447 2012-03-07 15:29:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2763,12 +2763,12 @@ static void show_settings(void) {
    * we're a 32- or 64-bit machine.
    */
   res = uname(&uts);
-  if (res == 0) {
-    printf("  Platform: " PR_PLATFORM " [%s %s %s]\n", uts.sysname,
-      uts.release, uts.machine);
+  if (res < 0) {
+    printf("%s", "  Platform: " PR_PLATFORM " [unavailable]\n");
 
   } else {
-    printf("%s", "  Platform: " PR_PLATFORM " [unavailable]\n");
+    printf("  Platform: " PR_PLATFORM " [%s %s %s]\n", uts.sysname,
+      uts.release, uts.machine);
   }
 #else
   printf("%s", "  Platform: " PR_PLATFORM " [unknown]\n");
