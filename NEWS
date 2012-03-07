@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1407 2012-03-01 23:51:18 castaglia Exp $
+$Id: NEWS,v 1.1408 2012-03-07 04:17:56 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -70,6 +70,8 @@ CVS
 - Bug 3573 - Support Elliptic Curve Cryptography (ECC) in SSH.
 - Bug 3758 - ProFTPD crashes when handling mod_gss authentication due to null
   pointer.
+- Ability to load SSH host keys from an SSH agent, in addition to files on
+  disk.  See doc/contrib/mod_sftp.html#SFTPHostKey for more information.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.61 2012-03-01 23:17:42 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.62 2012-03-07 04:17:55 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -671,7 +671,7 @@ to disable the extension, use a '-' (minus) character prefix.  For example:
 <p>
 <hr>
 <h2><a name="SFTPHostKey">SFTPHostKey</a></h2>
-<strong>Syntax:</strong> SFTPHostKey <em>file</em><br>
+<strong>Syntax:</strong> SFTPHostKey <em>file</em>|agent:<em>/path</em><br>
 <strong>Default:</strong> <em>None</em><br>
 <strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
 <strong>Module:</strong> mod_sftp<br>
@@ -699,6 +699,18 @@ it is the same <i>host</i> (even the same port), just different services.
 Thus having different host keys for an SSH2 server and <code>mod_sftp</code>
 will cause clients to constantly switch the host keys they record for the
 same host (and cause confusion for users).
+
+<p>
+The <code>SFTPHostKey</code> directive, as of <code>proftpd-1.3.5rc1</code>
+and later, can also be used to load host keys from an SSH agent such as
+OpenSSH's <code>ssh-agent</code>.  For example:
+<pre>
+  # Load all of the keys from the ssh-agent configured for server use
+  SFTPHostKey agent:%{env:SSH_AUTH_SOCK}
+</pre>
+Using an SSH agent for storing host keys allows for configurations where
+the host keys are not stored on files on the server system, <i>e.g.</i>
+the keys can be loaded into the SSH agent from a PKCS#11 token.
 
 <p>
 <hr>
@@ -1927,7 +1939,7 @@ it is something else completely, like this:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-03-01 23:17:42 $</i><br>
+Last Updated: <i>$Date: 2012-03-07 04:17:55 $</i><br>
 
 <br><hr>
 
