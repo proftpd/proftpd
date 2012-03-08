@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.31 2012-03-02 23:07:34 castaglia Exp $
+ * $Id: kex.c,v 1.32 2012-03-08 23:31:10 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1164,7 +1164,9 @@ static const char *get_kexinit_exchange_list(pool *p) {
 }
 
 static const char *get_kexinit_hostkey_algo_list(pool *p) {
+#ifdef PR_USE_OPENSSL_ECC
   int *nids = NULL, res;
+#endif /* PR_USE_OPENSSL_ECC */
   char *list = "";
 
   /* Our list of supported hostkey algorithms depends on the hostkeys
@@ -3535,10 +3537,14 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
         /* This handles the case of SFTP_SSH2_MSG_KEX_DH_GEX_REQUEST_OLD as
          * well; that ID has the same value as the KEX_DH_INIT ID.
          */
+#ifdef PR_USE_OPENSSL_ECC
         if (kex->use_ecdh) {
           res = handle_kex_ecdh(pkt, kex);
 
-        } else if (kex->use_gex) {
+        } else
+#endif /* PR_USE_OPENSSL_ECC */
+
+        if (kex->use_gex) {
           res = handle_kex_dh_gex(pkt, kex, TRUE);
 
         } else {
