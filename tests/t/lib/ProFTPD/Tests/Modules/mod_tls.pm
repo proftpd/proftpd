@@ -1827,7 +1827,7 @@ sub tls_incompatible_config_bug3247 {
 
   my ($port, $config_user, $config_group) = config_write($config_file, $config);
 
-  eval { server_start($config_file, undef, $pid_file) };
+  eval { server_start($config_file, $pid_file) };
   unless ($@) {
     test_append_logfile($log_file, "server started unexpectedly");
     unlink($log_file);

@@ -688,20 +688,37 @@ sub feature_have_module_loaded {
 sub server_start {
   my $config_file = shift;
   croak("Missing config file argument") unless $config_file;
-  my $debug_level = shift;
   my $pid_file = shift;
+  my $server_opts = shift;
+  $server_opts = {} unless defined($server_opts);
 
   # Make sure that the config file is an absolute path
   my $abs_config_file = File::Spec->rel2abs($config_file);
 
   my $proftpd_bin = get_proftpd_bin();
 
-  my $cmd = "$proftpd_bin -q -c $abs_config_file";
+  my $cmd = '';
 
-  if ($debug_level) {
-    $cmd .= " -d $debug_level";
+  if (defined($server_opts->{env})) {
+    my $envs = $server_opts->{env};
 
-  } elsif ($ENV{TEST_VERBOSE}) {
+    while (my ($key, $value) = each(%$envs)) {
+      # Assume Bourne-shell syntax
+      $cmd .= "$key=$value ";
+    }
+  }
+
+  $cmd .= "$proftpd_bin -q -c $abs_config_file";
+
+  if (defined($server_opts->{define})) {
+    my $defines = $server_opts->{define};
+
+    foreach my $define (@$defines) {
+      $cmd .= " -D$define";
+    }
+  }
+
+  if ($ENV{TEST_VERBOSE}) {
     $cmd .= " -d10";
 
   } else {
@@ -795,10 +812,26 @@ sub server_wait {
   my $config_file = shift;
   my $rfh = shift;
   $server_wait_timeout = shift;
-  $server_wait_timeout = 10 unless defined($server_wait_timeout);
+  my $server_opts = {};
+
+  # Check to see if the timeout argument is a hashref (for additional
+  # server_start parameters) or not.  If not, it's just the timeout.
+
+  if (defined($server_wait_timeout)) {
+    if (ref($server_wait_timeout) eq 'HASH') {
+      $server_opts = $server_wait_timeout;
+
+      if (defined($server_opts->{timeout})) {
+        $server_wait_timeout = $server_opts->{timeout};
+      }
+    }
+
+  } else {
+    $server_wait_timeout = 10;
+  }
 
   # Start server
-  server_start($config_file);
+  server_start($config_file, undef, $server_opts);
 
   $SIG{ALRM} = \&server_wait_alarm;
   alarm($server_wait_timeout);
