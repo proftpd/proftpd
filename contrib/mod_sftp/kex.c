@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.32 2012-03-08 23:31:10 castaglia Exp $
+ * $Id: kex.c,v 1.33 2012-03-11 18:44:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3383,6 +3383,77 @@ static int handle_kex_ecdh(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 
 #endif /* PR_USE_OPENSSL_ECC */
 
+static struct ssh2_packet *recv_newkeys(pool *p, struct sftp_kex *kex) {
+  struct ssh2_packet *pkt = NULL;
+
+  pr_trace_msg(trace_channel, 9, "reading NEWKEYS message from client");
+
+  /* Keep looping until we get a NEWKEYS message, or we time out (hopefully
+   * via TimeoutLogin or somesuch).
+   */
+  while (pkt == NULL) {
+    int res;
+    char mesg_type;
+
+    pr_signals_handle();
+
+    pkt = sftp_ssh2_packet_create(p);
+    res = sftp_ssh2_packet_read(sftp_conn->rfd, pkt);
+    if (res < 0) {
+      int xerrno = errno;
+
+      destroy_kex(kex);
+      destroy_pool(pkt->pool);
+
+      errno = xerrno;
+      return NULL;
+    }
+
+    /* Per RFC 4253, Section 11, DEBUG, DISCONNECT, IGNORE, and UNIMPLEMENTED
+     * messages can occur at any time, even during KEX.  We have to be prepared
+     * for this, and Do The Right Thing(tm).
+     */
+
+    mesg_type = sftp_ssh2_packet_get_mesg_type(pkt);
+    switch (mesg_type) {
+      case SFTP_SSH2_MSG_NEWKEYS:
+        /* Exactly what we were looking for.  Excellent. */
+        break;
+
+      case SFTP_SSH2_MSG_DEBUG:
+        sftp_ssh2_packet_handle_debug(pkt);
+        pkt = NULL;
+        break;
+
+      case SFTP_SSH2_MSG_DISCONNECT:
+        sftp_ssh2_packet_handle_disconnect(pkt);
+        pkt = NULL;
+        break;
+
+      case SFTP_SSH2_MSG_IGNORE:
+        sftp_ssh2_packet_handle_ignore(pkt);
+        pkt = NULL;
+        break;
+
+      case SFTP_SSH2_MSG_UNIMPLEMENTED:
+        sftp_ssh2_packet_handle_ignore(pkt);
+        pkt = NULL;
+        break;
+
+      default:
+        /* For any other message type, it's considered a protocol error. */
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "expecting NEWKEYS message, received %s (%d), disconnecting",
+          sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
+        destroy_kex(kex);
+        destroy_pool(pkt->pool);
+        SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_PROTOCOL_ERROR, NULL);
+    }
+  }
+
+  return pkt;
+}
+
 int sftp_kex_handle(struct ssh2_packet *pkt) {
   int correct_guess = TRUE, res, sent_newkeys = FALSE;
   char mesg_type;
@@ -3608,27 +3679,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
     sent_newkeys = TRUE;
   }
 
-  pr_trace_msg(trace_channel, 9, "reading NEWKEYS message from client");
-
-  /* Read the client NEWKEYS mesg. */
-  pkt = sftp_ssh2_packet_create(kex_pool);
-
-  res = sftp_ssh2_packet_read(sftp_conn->rfd, pkt);
-  if (res < 0) {
-    destroy_kex(kex);
-    destroy_pool(pkt->pool);
-    return -1;
-  }
-
-  mesg_type = sftp_ssh2_packet_get_mesg_type(pkt);
-  if (mesg_type != SFTP_SSH2_MSG_NEWKEYS) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "expecting NEWKEYS message, received %s (%d), disconnecting",
-      sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
-    destroy_kex(kex);
-    destroy_pool(pkt->pool);
-    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_PROTOCOL_ERROR, NULL);
-  }
+  pkt = recv_newkeys(kex_pool, kex);
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "NEWKEYS"));
   cmd->arg = "";
