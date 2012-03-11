@@ -124,6 +124,10 @@ EOC
     die($ex);
   }
 
+  # Give the daemon a chance to start up
+  sleep(1);
+  server_stop($pid_file);
+
   unlink($log_file);
 }
 
@@ -207,6 +211,10 @@ EOC
 
     die($ex);
   }
+
+  # Give the daemon a chance to start up
+  sleep(1);
+  server_stop($pid_file);
 
   unlink($log_file);
 }
@@ -292,6 +300,10 @@ EOC
     die($ex);
   }
 
+  # Give the daemon a chance to start up
+  sleep(1);
+  server_stop($pid_file);
+
   unlink($log_file);
 }
 
@@ -375,6 +387,10 @@ EOC
 
     die($ex);
   }
+
+  # Give the daemon a chance to start up
+  sleep(1);
+  server_stop($pid_file);
 
   unlink($log_file);
 }
