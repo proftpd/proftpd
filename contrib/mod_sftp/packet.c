@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.38 2012-03-11 18:44:03 castaglia Exp $
+ * $Id: packet.c,v 1.39 2012-03-11 19:30:09 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1345,7 +1345,8 @@ void sftp_ssh2_packet_handle_disconnect(struct ssh2_packet *pkt) {
   }
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-    "client sent SSH_DISCONNECT message: %s (%s)", explain, reason_str);
+    "client at %s sent SSH_DISCONNECT message: %s (%s)",
+    pr_netaddr_get_ipstr(session.c->remote_addr), explain, reason_str);
   pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_CLIENT_QUIT, explain);
 }
 
