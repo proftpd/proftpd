@@ -608,6 +608,13 @@ sub feature_have_feature_enabled {
 
       if ($flag eq '+') {
         push(@$feat_list, $feature);
+
+        # Special-case hack for FIPS-enabled OpenSSL
+        if ($feature =~ /OpenSSL/i) {
+          if ($line =~ /\(FIPS enabled\)/) {
+            push(@$feat_list, "OpenSSL_FIPS");             
+          }
+        }
       }
     }
 
