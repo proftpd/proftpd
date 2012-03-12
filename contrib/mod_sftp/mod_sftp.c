@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.69 2012-03-07 02:14:38 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.70 2012-03-12 23:28:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1650,6 +1650,7 @@ static int sftp_sess_init(void) {
   if (pr_define_exists("SFTP_USE_FIPS")) {
 #ifdef OPENSSL_FIPS
     if (!FIPS_mode()) {
+
       /* Make sure OpenSSL is set to use the default RNG, as per an email
        * discussion on the OpenSSL developer list:
        *

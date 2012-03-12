@@ -26,6 +26,8 @@ ChangeLog files.
       ECDSA host keys, hostbased/publickey authentication
       ECDH key exchange
 
+    Improved FIPS support in mod_sftp (Bug#3763)
+
   + New configuration directives:
 
     <IfAuthenticated>
@@ -82,4 +84,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-03-07 04:17:56 $
+Last Updated: $Date: 2012-03-12 23:28:37 $
