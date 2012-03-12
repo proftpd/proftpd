@@ -823,6 +823,9 @@ sub server_wait {
 
       if (defined($server_opts->{timeout})) {
         $server_wait_timeout = $server_opts->{timeout};
+
+      } else {
+        $server_wait_timeout = 10;
       }
     }
 
