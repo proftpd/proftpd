@@ -308,6 +308,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_exec mod_sftp)],
     },
 
+    't/modules/mod_sftp/fips.t' => {
+      order => ++$order,
+      test_class => [qw(feat_openssl_fips mod_sftp)],
+    },
+
     't/modules/mod_sftp/rewrite.t' => {
       order => ++$order,
       test_class => [qw(mod_rewrite mod_sftp)],
