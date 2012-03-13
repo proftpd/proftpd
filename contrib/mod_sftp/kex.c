@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.33 2012-03-11 18:44:02 castaglia Exp $
+ * $Id: kex.c,v 1.34 2012-03-13 22:36:48 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1591,6 +1591,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
   pr_trace_msg(trace_channel, 8, "client-sent key exchange algorithms: %s",
     client_list);
+  pr_trace_msg(trace_channel, 8, "server-sent key exchange algorithms: %s",
+    server_list);
 
   client_pref = get_preferred_name(tmp_pool, client_list);
   server_pref = get_preferred_name(tmp_pool, server_list);
@@ -1627,6 +1629,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
   pr_trace_msg(trace_channel, 8,
     "client-sent host key algorithms: %s", client_list);
+  pr_trace_msg(trace_channel, 8,
+    "server-sent host key algorithms: %s", server_list);
 
   client_pref = get_preferred_name(tmp_pool, client_list);
   server_pref = get_preferred_name(tmp_pool, server_list);
@@ -1642,7 +1646,6 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   if (shared) {
     if (setup_hostkey_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
-(void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "error setting up for hostkey algo '%s': %s", shared, strerror(errno));
       return -1;
     }
 
@@ -1664,6 +1667,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
   pr_trace_msg(trace_channel, 8, "client-sent client encryption algorithms: %s",
     client_list);
+  pr_trace_msg(trace_channel, 8, "server-sent client encryption algorithms: %s",
+    server_list);
 
   client_pref = get_preferred_name(tmp_pool, client_list);
   server_pref = get_preferred_name(tmp_pool, server_list);
@@ -1700,6 +1705,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
   pr_trace_msg(trace_channel, 8, "client-sent server encryption algorithms: %s",
     client_list);
+  pr_trace_msg(trace_channel, 8, "server-sent server encryption algorithms: %s",
+    server_list);
 
   client_pref = get_preferred_name(tmp_pool, client_list);
   server_pref = get_preferred_name(tmp_pool, server_list);
@@ -1736,6 +1743,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
   pr_trace_msg(trace_channel, 8, "client-sent client MAC algorithms: %s",
     client_list);
+  pr_trace_msg(trace_channel, 8, "server-sent client MAC algorithms: %s",
+    server_list);
 
   client_pref = get_preferred_name(tmp_pool, client_list);
   server_pref = get_preferred_name(tmp_pool, server_list);
@@ -1772,6 +1781,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
   pr_trace_msg(trace_channel, 8, "client-sent server MAC algorithms: %s",
     client_list);
+  pr_trace_msg(trace_channel, 8, "server-sent server MAC algorithms: %s",
+    server_list);
 
   client_pref = get_preferred_name(tmp_pool, client_list);
   server_pref = get_preferred_name(tmp_pool, server_list);
@@ -1808,6 +1819,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
   pr_trace_msg(trace_channel, 8,
     "client-sent client compression algorithms: %s", client_list);
+  pr_trace_msg(trace_channel, 8,
+    "server-sent client compression algorithms: %s", server_list);
 
   client_pref = get_preferred_name(tmp_pool, client_list);
   server_pref = get_preferred_name(tmp_pool, server_list);
@@ -1844,6 +1857,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
   pr_trace_msg(trace_channel, 8,
     "client-sent server compression algorithms: %s", client_list);
+  pr_trace_msg(trace_channel, 8,
+    "server-sent server compression algorithms: %s", server_list);
 
   client_pref = get_preferred_name(tmp_pool, client_list);
   server_pref = get_preferred_name(tmp_pool, server_list);
@@ -1880,6 +1895,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
   pr_trace_msg(trace_channel, 8,
     "client-sent client languages: %s", client_list);
+  pr_trace_msg(trace_channel, 8,
+    "server-sent client languages: %s", client_list);
 
   client_pref = get_preferred_name(tmp_pool, client_list);
   server_pref = get_preferred_name(tmp_pool, server_list);
@@ -1919,6 +1936,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
 
   pr_trace_msg(trace_channel, 8,
     "client-sent server languages: %s", client_list);
+  pr_trace_msg(trace_channel, 8,
+    "server-sent server languages: %s", client_list);
 
   client_pref = get_preferred_name(tmp_pool, client_list);
   server_pref = get_preferred_name(tmp_pool, server_list);
