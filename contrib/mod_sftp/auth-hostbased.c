@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-hostbased.c,v 1.9 2012-03-04 22:31:12 castaglia Exp $
+ * $Id: auth-hostbased.c,v 1.10 2012-03-13 18:58:48 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -43,6 +43,7 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     unsigned char **buf, uint32_t *buflen, int *send_userauth_fail) {
   struct passwd *pw;
   char *hostkey_algo, *host_fqdn, *host_user, *host_user_utf8;
+  const char *fp = NULL;
   unsigned char *hostkey_data, *signature_data;
   unsigned char *buf2, *ptr2;
   const unsigned char *id;
@@ -119,10 +120,34 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     return 0;
   }
 
-  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-    "public key fingerprint: %s",
-    sftp_keys_get_fingerprint(pkt->pool, hostkey_data, hostkey_datalen,
-      SFTP_KEYS_FP_DIGEST_MD5));
+#ifdef OPENSSL_FIPS
+  if (FIPS_mode()) {
+    fp = sftp_keys_get_fingerprint(pkt->pool, hostkey_data, hostkey_datalen,
+      SFTP_KEYS_FP_DIGEST_SHA1);
+    if (fp != NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "public key SHA1 fingerprint: %s", fp);
+
+    } else {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error obtaining public key SHA1 fingerprint: %s", strerror(errno));
+    }
+
+  } else {
+#endif /* OPENSSL_FIPS */
+    fp = sftp_keys_get_fingerprint(pkt->pool, hostkey_data, hostkey_datalen,
+      SFTP_KEYS_FP_DIGEST_MD5);
+    if (fp != NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "public key MD5 fingerprint: %s", fp);
+
+    } else {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error obtaining public key MD5 fingerprint: %s", strerror(errno));
+    }
+#ifdef OPENSSL_FIPS
+  }
+#endif /* OPENSSL_FIPS */
 
   pw = pr_auth_getpwnam(pkt->pool, user);
   if (pw == NULL) {
