@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_passwd -- Various SQL password handlers
- * Copyright (c) 2009-2011 TJ Saunders
+ * Copyright (c) 2009-2012 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,14 +21,14 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.16 2011-05-23 20:56:40 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.17 2012-03-13 23:23:06 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.4"
+#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.5"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030302 
@@ -39,6 +39,8 @@
 # error "OpenSSL support required (--enable-openssl)"
 #else
 # include <openssl/evp.h>
+# include <openssl/err.h>
+# include <openssl/objects.h>
 #endif
 
 module sql_passwd_module;
@@ -124,6 +126,39 @@ static char *sql_passwd_get_str(pool *p, char *str) {
   return res->data;
 }
 
+static const char *get_crypto_errors(void) {
+  unsigned int count = 0;
+  unsigned long e = ERR_get_error();
+  BIO *bio = NULL;
+  char *data = NULL;
+  long datalen;
+  const char *str = "(unknown)";
+
+  /* Use ERR_print_errors() and a memory BIO to build up a string with
+   * all of the error messages from the error queue.
+   */
+
+  if (e)
+    bio = BIO_new(BIO_s_mem());
+
+  while (e) {
+    pr_signals_handle();
+    BIO_printf(bio, "\n  (%u) %s", ++count, ERR_error_string(e, NULL));
+    e = ERR_get_error();
+  }
+
+  datalen = BIO_get_mem_data(bio, &data);
+  if (data) {
+    data[datalen] = '\0';
+    str = pstrdup(session.pool, data);
+  }
+
+  if (bio)
+    BIO_free(bio);
+
+  return str;
+}
+
 static char *sql_passwd_encode(pool *p, unsigned char *data, size_t data_len) {
   EVP_ENCODE_CTX base64_ctxt;
   char *buf;
@@ -185,19 +220,75 @@ static unsigned char *sql_passwd_hash(pool *p, const EVP_MD *md,
 
   hash = palloc(p, EVP_MAX_MD_SIZE);
 
+  /* In OpenSSL 0.9.6, many of the EVP_Digest* functions returned void, not
+   * int.  Without these ugly OpenSSL version preprocessor checks, the
+   * compiler will error out with "void value not ignored as it ought to be".
+   */
+
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
+  if (EVP_DigestInit(&md_ctx, md) != 1) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": error initializing '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
+      get_crypto_errors());
+    errno = EPERM;
+    return NULL;
+  }
+#else
   EVP_DigestInit(&md_ctx, md);
+#endif
 
   if (prefix != NULL) {
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
+    if (EVP_DigestUpdate(&md_ctx, prefix, prefix_len) != 1) {
+      sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+        ": error updating '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
+        get_crypto_errors());
+      errno = EPERM;
+      return NULL;
+    }
+#else
     EVP_DigestUpdate(&md_ctx, prefix, prefix_len);
+#endif
   }
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
+  if (EVP_DigestUpdate(&md_ctx, data, data_len) != 1) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": error updating '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
+      get_crypto_errors());
+    errno = EPERM;
+    return NULL;
+  }
+#else
   EVP_DigestUpdate(&md_ctx, data, data_len);
+#endif
 
   if (suffix != NULL) {
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
+    if (EVP_DigestUpdate(&md_ctx, suffix, suffix_len) != 1) {
+      sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+        ": error updating '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
+        get_crypto_errors());
+      errno = EPERM;
+      return NULL;
+    }
+#else
     EVP_DigestUpdate(&md_ctx, suffix, suffix_len);
+#endif
   }
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
+  if (EVP_DigestFinal(&md_ctx, hash, hash_len) != 1) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": error finishing '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
+      get_crypto_errors());
+    errno = EPERM;
+    return NULL;
+  }
+#else
   EVP_DigestFinal(&md_ctx, hash, hash_len);
+#endif
+
   return hash;
 }
 
@@ -223,7 +314,8 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
 
   md = EVP_get_digestbyname(digest);
   if (md == NULL) {
-    sql_log(DEBUG_WARN, "no such digest '%s' supported", digest);
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": no such digest '%s' supported", digest);
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
@@ -330,10 +422,16 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
 
   hash = sql_passwd_hash(cmd->tmp_pool, md, data, data_len, prefix, prefix_len,
     suffix, suffix_len, &hash_len);
+  if (hash == NULL) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": unable to obtain password hash: %s", strerror(errno));
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
 
   encodedtext = sql_passwd_encode(cmd->tmp_pool, hash, hash_len);
   if (encodedtext == NULL) {
-    sql_log(DEBUG_WARN, "unsupported SQLPasswordEncoding configured");
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": unsupported SQLPasswordEncoding configured");
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
