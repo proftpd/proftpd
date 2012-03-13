@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.22 2012-03-12 23:28:38 castaglia Exp $
+ * $Id: crypto.c,v 1.23 2012-03-13 16:50:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -114,7 +114,7 @@ static struct sftp_cipher ciphers[] = {
   { "arcfour",		"rc4",		0,	EVP_rc4, FALSE, FALSE },
 #endif
 
-  { "3des-ctr",		NULL,		0,	NULL, TRUE, FALSE },
+  { "3des-ctr",		NULL,		0,	NULL, TRUE, TRUE },
   { "3des-cbc",		"des-ede3-cbc",	0,	EVP_des_ede3_cbc, TRUE, TRUE },
   { "none",		"null",		0,	EVP_enc_null, FALSE, TRUE },
   { NULL, NULL, 0, NULL, FALSE, FALSE }
