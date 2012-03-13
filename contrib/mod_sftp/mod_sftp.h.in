@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_sftp.h.in,v 1.26 2012-03-01 23:10:58 castaglia Exp $
+ * $Id: mod_sftp.h.in,v 1.27 2012-03-13 21:39:06 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_H
@@ -54,7 +54,7 @@
 /* Define if you have OpenSSL with SHA512 support. */
 #undef HAVE_SHA512_OPENSSL
 
-#define MOD_SFTP_VERSION	"mod_sftp/0.9.8"
+#define MOD_SFTP_VERSION	"mod_sftp/0.9.9"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
