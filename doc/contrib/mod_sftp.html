@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.62 2012-03-07 04:17:55 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.63 2012-03-13 16:53:22 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -1479,6 +1479,24 @@ you will see the following when <code>proftpd</code> starts up:
 </pre>
 
 <p>
+When <code>mod_sftp</code> detects that OpenSSL has been configured for FIPS
+mode, it will refuse to advertise support for the following cipher algorithms:
+<ul>
+  <li><code>arcfour128</code>
+  <li><code>arcfour256</code>
+  <li><code>blowfish-cbc</code>
+  <li><code>blowfish-ctr</code>
+  <li><code>cast128-cbc</code>
+</ul>
+and for the following digest algorithms:
+</ul>
+  <li><code>hmac-md5</code>
+  <li><code>hmac-md5-96</code>
+  <li><code>hmac-ripemd160</code>
+</ul>
+as these algorithms are not compliant with the FIPS specification.
+
+<p>
 For additional reading on OpenSSL and FIPS, see:
 <pre>
   <a href="http://www.openssl.org/docs/fips/SecurityPolicy-1.1.1.pdf">http://www.openssl.org/docs/fips/SecurityPolicy-1.1.1.pdf</a>
@@ -1939,7 +1957,7 @@ it is something else completely, like this:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-03-07 04:17:55 $</i><br>
+Last Updated: <i>$Date: 2012-03-13 16:53:22 $</i><br>
 
 <br><hr>
 
