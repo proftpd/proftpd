@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.25 2012-03-17 19:23:00 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.26 2012-03-17 19:39:35 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -20,6 +20,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
 <h2>Directives</h2>
 <ul>
   <li><a href="#AllowFilter">AllowFilter</a>
+  <li><a href="#DebugLevel">DebugLevel</a>
   <li><a href="#DenyFilter">DenyFilter</a>
   <li><a href="#GroupOwner">GroupOwner</a>
   <li><a href="#HideGroup">HideGroup</a>
@@ -94,6 +95,26 @@ greater detail.
 <p>
 See also: <a href="#DenyFilter"><code>DenyFilter</code></a>, <a href="#PathAllowFilter"><code>PathAllowFilter</code></a>, <a href="#PathDenyFilter"><code>PathDenyFilter</code></a>
 
+<p>
+<hr>
+<h2><a name="DebugLevel">DebugLevel</a></h2>
+<strong>Syntax:</strong> DebugLevel <em>level</em><br>
+<strong>Default:</strong> DebugLevel 0<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.8rc1 and later
+
+<p>
+The <code>DebugLevel</code> directive configures the debugging level the
+server will use when logging.  The <em>level</em> parameter must be between 0
+and 10.  This directive will take precedence over any
+<code>-d</code>/<code>--debug</code> command-line debugging option used.
+
+<p>
+The <a href="../howto/Logging.html">Logging</a> howto covers logging in
+greater detail.
+
+<p>
 <hr>
 <h2><a name="DenyFilter">DenyFilter</a></h2>
 <strong>Syntax:</strong> DenyFilter <em>pattern [flags]</em><br>
@@ -691,6 +712,7 @@ When this directive is used, <b>all</b> logging is done with the specified
   <li><code>AUTH</code> (or <code>AUTHPRIV</code>)
   <li><code>CRON</code>
   <li><code>DAEMON</code>
+  <li><code>FTP</code>
   <li><code>KERN</code>
   <li><code>LPR</code>
   <li><code>MAIL</code>
@@ -708,6 +730,10 @@ When this directive is used, <b>all</b> logging is done with the specified
 </ul>
 For more information on syslog facilities, see the <code>syslog.conf</code>
 man page.
+
+<p>
+The <a href="../howto/Logging.html">Logging</a> howto covers logging in
+greater detail.
 
 <p>
 See also: <a href="#SyslogLevel"><code>SyslogLevel</code></a>,
@@ -784,6 +810,10 @@ of higher significance will be reported as well.  For example, when:
 is configured, then messages with log levels of <code>notice</code> and
 <code>warn</code> will also be logged.  Using a level of at least
 <code>crit</code> is recommended.
+
+<p>
+The <a href="../howto/Logging.html">Logging</a> howto covers logging in
+greater detail.
 
 <p>
 See also: <a href="#SyslogFacility"><code>SyslogFacility</code></a>,
@@ -1032,7 +1062,7 @@ The <code>mod_core</code> module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-03-17 19:23:00 $</i><br>
+Last Updated: <i>$Date: 2012-03-17 19:39:35 $</i><br>
 
 <br><hr>
 
