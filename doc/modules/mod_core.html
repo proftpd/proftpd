@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.24 2012-03-12 22:28:29 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.25 2012-03-17 19:23:00 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -36,6 +36,8 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#ScoreboardFile">ScoreboardFile</a>
   <li><a href="#ScoreboardMutex">ScoreboardMutex</a>
   <li><a href="#ServerIdent">ServerIdent</a>
+  <li><a href="#SyslogFacility">SyslogFacility</a>
+  <li><a href="#SyslogLevel">SyslogLevel</a>
   <li><a href="#TCPBacklog">TCPBacklog</a>
   <li><a href="#TimeoutIdle">TimeoutIdle</a>
   <li><a href="#TimeoutLinger">TimeoutLinger</a>
@@ -663,6 +665,132 @@ An example of a custom identification string might be:
 
 <p>
 <hr>
+<h2><a name="SyslogFacility">SyslogFacility</a></h2>
+<strong>Syntax:</strong> SyslogFacility <em>facility</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.1.6 and later
+
+<p>
+By default, ProFTPD logs its activity via the Unix syslog mechanism, which
+allows for several different general classifications of logging messages,
+known as "facilities."  Normally, all authentication related messages are
+logged with the <code>AUTHPRIV</code> (or <code>AUTH</code>) facility
+(since these messages are intended to be secure, and never seen by unwanted
+eyes), while normal operational messages are logged with the
+<code>DAEMON</code> facility.  The <code>SyslogFacility</code> directive
+allows <b>all</b> logging messages to be directed to a different facility than
+the default.
+
+<p>
+When this directive is used, <b>all</b> logging is done with the specified
+<em>facility</em>, both authentication (secure) and otherwise. The
+<em>facility</em> argument must be one of the following:
+<ul>
+  <li><code>AUTH</code> (or <code>AUTHPRIV</code>)
+  <li><code>CRON</code>
+  <li><code>DAEMON</code>
+  <li><code>KERN</code>
+  <li><code>LPR</code>
+  <li><code>MAIL</code>
+  <li><code>NEWS</code>
+  <li><code>USER</code>
+  <li><code>UUCP</code>
+  <li><code>LOCAL0</code>
+  <li><code>LOCAL1</code>
+  <li><code>LOCAL2</code>
+  <li><code>LOCAL3</code>
+  <li><code>LOCAL4</code>
+  <li><code>LOCAL5</code>
+  <li><code>LOCAL6</code>
+  <li><code>LOCAL7</code>
+</ul>
+For more information on syslog facilities, see the <code>syslog.conf</code>
+man page.
+
+<p>
+See also: <a href="#SyslogLevel"><code>SyslogLevel</code></a>,
+<a href="mod_log.html#SystemLog"><code>SystemLog</code></a>
+
+<p>
+<hr>
+<h2><a name="SyslogLevel">SyslogLevel</a></h2>
+<strong>Syntax:</strong> SyslogLevel <em>level</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.0rc2 and later
+
+<p>
+The <code>SyslogLevel</code> directive adjusts the verbosity of the messages
+recorded via the default Unix syslog logging. The following <em>levels</em>
+are available, in order of decreasing significance:
+
+<p>
+<table border=1>
+  <tr>
+    <td><b>Level</b></td>
+    <td><b>Description</b></td>
+  </tr>
+
+  <tr>
+    <td><code>emerg</code></td>
+    <td>Emergencies (<i>e.g.</i> the system is unusable)</td>
+  </tr>
+
+  <tr>
+    <td><code>alert</code></td>
+    <td>Action must be taken immediately</td>
+  </tr>
+
+  <tr>
+    <td><code>crit</code></td>
+    <td>Critical conditions</td>
+  </tr>
+
+  <tr>
+    <td><code>error</code></td>
+    <td>Error conditions</td>
+  </tr>
+
+  <tr>
+    <td><code>warn</code></td>
+    <td>Warning conditions</td>
+  </tr>
+
+  <tr>
+    <td><code>notice</code></td>
+    <td>Normal but significant conditions</td>
+  </tr>
+
+  <tr>
+    <td><code>info</code></td>
+    <td>Informational</td>
+  </tr>
+
+  <tr>
+    <td><code>debug</code></td>
+    <td>Debug-level messages</td>
+  </tr>
+</table>
+
+<p>
+When a particular <em>level</em> is specified, messages from all other levels
+of higher significance will be reported as well.  For example, when:
+<pre>
+  SyslogLevel info
+</pre>
+is configured, then messages with log levels of <code>notice</code> and
+<code>warn</code> will also be logged.  Using a level of at least
+<code>crit</code> is recommended.
+
+<p>
+See also: <a href="#SyslogFacility"><code>SyslogFacility</code></a>,
+<a href="mod_log.html#SystemLog"><code>SystemLog</code></a>
+
+<p>
+<hr>
 <h2><a name="TCPBacklog">TCPBacklog</a></h2>
 <strong>Syntax:</strong> TCPBacklog <em>backlog-size</em><br>
 <strong>Default:</strong> 5<br>
@@ -904,7 +1032,7 @@ The <code>mod_core</code> module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-03-12 22:28:29 $</i><br>
+Last Updated: <i>$Date: 2012-03-17 19:23:00 $</i><br>
 
 <br><hr>
 
