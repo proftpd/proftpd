@@ -1,4 +1,4 @@
-<!-- $Id: Logging.html,v 1.5 2012-03-17 19:56:51 castaglia Exp $ -->
+<!-- $Id: Logging.html,v 1.6 2012-03-18 23:41:35 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Logging.html,v $ -->
 
 <html>
@@ -62,21 +62,19 @@ your <code>/etc/syslog.conf</code> configuration.
 
 <p>
 You can fine-tune your <code>proftpd</code>'s syslog-based logging via the
-<a href="../modules/mod_core.html#SyslogFacility"><code>SyslogFacility</code></a> and <a href="../modules/mod_core.html#SyslogLevel"><code>SyslogLevel</code></a> directives.  <b>Note</b>, however, that these directives <i>have no effect</i>
-when file-based logging is used (<i>e.g.</i> via the <a href="../modules/mod_log.html#ServerLog"><code>ServerLog</code></a> and <a href="../modules/mod_log.html#SystemLog"><code>SystemLog</code></a> directives), rather than syslog-based
-logging.
+<a href="../modules/mod_core.html#SyslogFacility"><code>SyslogFacility</code></a> and <a href="../modules/mod_core.html#SyslogLevel"><code>SyslogLevel</code></a> directives.
 
 <p><a name="LogFiles"></a>
-<b><code>Log Files</code></b><br>
+<b>Log Files</b><br>
 There are three main types of logs that a <code>proftpd</code> daemon can
-generate: <code>TransferLog</code>s, a <code>SystemLog</code>, and
-<code>ExtendedLog</code>s.
+generate: <code>TransferLog</code>, <code>SystemLog</code>, and
+<code>ExtendedLog</code>.
 
 <p><a name="TransferLog"></a>
 A <a href="../modules/mod_core.html#TransferLog"><code>TransferLog</code></a>
 is the most common log kept, recording file transfers.  Its format is described
 in the <code>xferlog(5)</code> man page,
-also available <a href="http://www.castaglia.org/proftpd/doc/xferlog.html">here</a>
+also available <a href="http://www.castaglia.org/proftpd/doc/xferlog.html">here</a>.
 
 <p><a name="SystemLog"</a>
 If the site administrator wants to have <code>proftpd</code> log its messages
@@ -100,6 +98,45 @@ Multiple <code>ExtendedLogs</code> can be configured, each with a different
 <code>LogFormat</code>.
 
 <!-- Add note/chunk about FTP response codes, from RFC959, for ExtendedLog? -->
+
+<p><a name="SyslogVSFileLog">
+<b>Use of syslog versus file logging</b><br>
+Most sites will choose to have <code>proftpd</code> log via syslog (which is
+the default) or to a file (via the <code>SystemLog</code> directive).  In
+either case, there is the question of logging <i>verbosity</i>, <i>i.e.</i>
+which messages to log.  This verbosity is determined by the
+<a href="../modules/mod_core.html#SyslogLevel"><code>SyslogLevel</code></a>
+directive.  ProFTPD will log everything by default, meaning that the default
+<code>SyslogLevel</code> is effectively <code>debug</code>.  If, however, you
+have your <code>proftpd</code> configured to log via syslog, then you
+<i>should</i> also check your <code>/etc/syslog.conf</code> file, to see what
+additional filtering of log messages is being applied by syslog.  For example,
+if <code>/etc/syslog.conf</code> contained something like:
+<pre>
+  # Log anything (except mail) of level info or higher.
+  *.info;mail.none;authpriv.none;cron.none                /var/log/messages
+</pre>
+then ProFTPD's log messages below the <code>info</code> level would be filtered
+out <b>by syslog</b>.  When you are using syslog logging, the
+<code>SyslogLevel</code> configuration directive applies only to the proftpd
+logging, and does not control the additional syslog filtering.
+
+<p>
+For finer-grained control of the <code>debug</code> level log messages, ProFTPD
+internally implements different levels for its <code>debug</code> log messages.
+Currently ProFTPD has level 1 through level 10 <code>debug</code> messages.
+The <a href="../modules/mod_core.html#DebugLevel"><code>DebugLevel</code></a>
+directive is used control the verbosity/filtering of these messages.  Since
+these different debug levels are purely a ProFTPD convention, the
+<code>DebugLevel</code> directive has no effect on syslog logging.  Also, if
+your <code>SyslogLevel</code> configuration uses a level higher than
+<code>debug</code>, then the <code>DebugLevel</code> configuration will have
+no effect &mdash; your <code>debug</code> level messages are already filtered
+out by the <code>SyslogLevel</code> filtering.
+
+<p>
+The last point to mention is that the
+<a href="../modules/mod_core.html#SyslogFacility"><code>SyslogFacility</code></a> directive only applies to syslog logging; it has no effect on file logging.
 
 <p><a name="LogAnalysis"></a>
 <b>Log Analysis</b><br>
@@ -245,8 +282,20 @@ tells proftpd to log that <code>LogFormat</code> via syslog at the "notice"
 syslog level.
 
 <p>
+<font color=red>Question</font>: I have <code>SystemLog</code> in my
+<code>proftpd.conf</code>, and when I use the <code>SyslogLevel</code> directive
+to try to filter the messages which <code>proftpd</code> logs to my
+<code>SystemLog</code>, it doesn't work.  Why not?<br>
+<font color=blue>Answer</font>: When ProFTPD is configured to log everything
+to a file via the <code>SystemLog</code> directive, it will do just that:
+log <i>everything</i>, without any filtering, regardless of any
+<code>SyslogLevel</code> directive.  <b>However</b>, this changed in
+ProFTPD 1.3.4rc1: in that release, the <code>SyslogLevel</code> directive was
+made to apply to file-based logging as well.
+
+<p>
 <hr>
-Last Updated: <i>$Date: 2012-03-17 19:56:51 $</i><br>
+Last Updated: <i>$Date: 2012-03-18 23:41:35 $</i><br>
 <hr>
 
 </body>
