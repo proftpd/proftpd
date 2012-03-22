@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1411 2012-03-14 22:15:28 castaglia Exp $
+$Id: NEWS,v 1.1412 2012-03-22 16:19:03 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -176,7 +176,7 @@ CVS
   appending them.  APPE is now denied if HiddenStores is in effect.
 - Bug 3565 - Support a MaxCommandRate, for detecting and throttling clients
   which are sending commands too quickly.
-- Bug 3599 - ExtendedLog should support EXIT command, for logging when a
+- Bug 3559 - ExtendedLog should support EXIT command, for logging when a
   session ends.
 - Bug 3538 - WrapAllowMsg directive broken due to Bug#3423.
 - Bug 3604 - Support DirFakeUser, DirFakeGroup and DirFakeMode for MLSD/MLST
