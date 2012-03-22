@@ -1,4 +1,4 @@
-<!-- $Id: mod_log.html,v 1.9 2012-03-19 00:16:08 castaglia Exp $ -->
+<!-- $Id: mod_log.html,v 1.10 2012-03-22 17:21:49 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_log.html,v $ -->
 
 <html>
@@ -96,7 +96,7 @@ This table shows the supported command classes:
 
   <tr>
     <td><code>ALL</code></td>
-    <td>All commands (<i>default</i>)</td>
+    <td>All commands <i>except</i> the <code>EXIT</code> pseudo-command (<i>default</i>)</td>
   </tr>
 
   <tr>
@@ -156,7 +156,10 @@ This table shows the supported command classes:
 
   <tr>
     <td><code>EXIT</code></td>
-    <td>Logs the configured <code>LogFormat</code> at session exit</td>
+    <td>Logs the configured <code>LogFormat</code> at session exit.
+        <b>NOTE</b>: <code>EXIT</code> is <b>not</b> part of the <code>ALL<code>
+        command class, in order to preserve backward-compatible <code>ALL</code>
+        behavior.</td>
   </tr>
 </table>
 
@@ -456,7 +459,7 @@ The <code>mod_log</code> module is compiled by default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-03-19 00:16:08 $</i><br>
+Last Updated: <i>$Date: 2012-03-22 17:21:49 $</i><br>
 
 <br><hr>
 
