@@ -3924,7 +3924,7 @@ sub extlog_exit_bug3559 {
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
 
-    LogFormat => 'custom "%{protocol} %m \"%S\" %I %O"',
+    LogFormat => 'custom "%{protocol} %L %m \"%S\" %I %O"',
     ExtendedLog => "$ext_log EXIT custom",
 
     IfModules => {
@@ -4009,16 +4009,21 @@ sub extlog_exit_bug3559 {
     while (my $line = <$fh>) {
       chomp($line);
 
-      if ($line =~ /^\S+ (\S+) (.*?) (\d+) (\d+)$/) {
-        my $cmd = $1;
-        my $resp = $2;
-        my $bytes_in = $3;
-        my $bytes_out = $4;
+      if ($line =~ /^\S+ (\S+) (\S+) (.*?) (\d+) (\d+)$/) {
+        my $local_addr = $1;
+        my $cmd = $2;
+        my $resp = $3;
+        my $bytes_in = $4;
+        my $bytes_out = $5;
 
         # Only watch for the EXIT command, to get the session total.
         next unless $cmd eq 'EXIT';
 
-        my $expected = 108;
+        my $expected = '127.0.0.1';
+        $self->assert($expected eq $local_addr,
+          test_msg("Expected %L value $expected, got $local_addr"));
+
+        $expected = 108;
         $self->assert($expected == $bytes_in,
           test_msg("Expected $expected, got $bytes_in"));
 
