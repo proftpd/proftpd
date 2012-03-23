@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1412 2012-03-22 16:19:03 castaglia Exp $
+$Id: NEWS,v 1.1413 2012-03-23 05:35:47 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -78,6 +78,7 @@ CVS
   enabled.
 - Bug 3764 - mod_sftp does not correctly handle a 'guess' KEX message when the
   client guesses correctly.
+- Bug 3765 - mod_sftp should honor the GroupOwner directive for MKDIR requests.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

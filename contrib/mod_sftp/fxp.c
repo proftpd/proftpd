@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.147 2012-02-23 21:10:06 castaglia Exp $
+ * $Id: fxp.c,v 1.148 2012-03-23 05:35:48 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -6258,7 +6258,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   cmd_name = cmd->argv[0];
   cmd->argv[0] = C_MKD;
 
-  if (!dir_check(fxp->pool, cmd, G_WRITE, path, NULL)) {
+  if (!dir_check_canon(fxp->pool, cmd, G_WRITE, path, NULL)) {
     cmd->argv[0] = cmd_name;
     have_error = TRUE;
   }
@@ -6266,7 +6266,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   cmd->argv[0] = C_XMKD;
 
   if (!have_error &&
-      !dir_check(fxp->pool, cmd, G_WRITE, path, NULL)) {
+      !dir_check_canon(fxp->pool, cmd, G_WRITE, path, NULL)) {
     cmd->argv[0] = cmd_name;
     have_error = TRUE;
   }
@@ -6357,11 +6357,13 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  /* XXX Handle GroupOwner, UserOwner?  Requires root privs, which we
-   * dropped.  Thus the admin must be warned that, to use these directives,
-   * they must explicitly use "RootRevoke off" for mod_sftp configs, and be
-   * warned of the consequences of doing so.
+  /* Handle any possible UserOwner/GroupOwner directives for created
+   * directories.
    */
+  if (sftp_misc_chown_path(path) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error changing ownership on path '%s': %s", path, strerror(errno));
+  }
 
   status_code = SSH2_FX_OK;
 
@@ -6799,7 +6801,11 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     /* Handle any possible UserOwner/GroupOwner directives for uploaded
      * files.
      */
-    sftp_misc_handle_chown(fh);
+    if (sftp_misc_chown_file(fh) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error changing ownership on file '%s': %s", fh->fh_path,
+        strerror(errno));
+    }
   }
 
   fxh = fxp_handle_create(fxp_pool);

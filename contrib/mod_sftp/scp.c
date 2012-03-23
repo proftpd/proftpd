@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.66 2012-02-15 23:50:51 castaglia Exp $
+ * $Id: scp.c,v 1.67 2012-03-23 05:35:48 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -748,6 +748,8 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
           return 1;
         }
 
+        sftp_misc_chown_path(sp->filename);
+
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "scp: error checking directory '%s': %s", sp->filename,
@@ -899,7 +901,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   pr_fsio_set_block(sp->fh);
 
-  sftp_misc_handle_chown(sp->fh);
+  sftp_misc_chown_file(sp->fh);
 
   write_confirm(p, channel_id, 0, NULL);
   return 0;
