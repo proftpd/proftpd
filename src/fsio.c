@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (C) 2001-2011 The ProFTPD Project
+ * Copyright (C) 2001-2012 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.104 2011-12-13 22:48:04 castaglia Exp $
+ * $Id: fsio.c,v 1.105 2012-03-23 05:49:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3796,22 +3796,25 @@ int pr_fs_get_usable_fd(int fd) {
 
 /* Simple multiplication and division doesn't work with very large
  * filesystems (overflows 32 bits).  This code should handle it.
+ *
+ * Note that this returns a size in KB, not bytes.
  */
-static off_t calc_fs_size(size_t blocks, size_t bsize) {
+static off_t get_fs_size(size_t nblocks, size_t blocksz) {
   off_t bl_lo, bl_hi;
   off_t res_lo, res_hi, tmp;
 
-  bl_lo = blocks & 0x0000ffff;
-  bl_hi = blocks & 0xffff0000;
+  bl_lo = nblocks & 0x0000ffff;
+  bl_hi = nblocks & 0xffff0000;
 
-  tmp = (bl_hi >> 16) * bsize;
+  tmp = (bl_hi >> 16) * blocksz;
   res_hi = tmp & 0xffff0000;
   res_lo = (tmp & 0x0000ffff) << 16;
-  res_lo += bl_lo * bsize;
+  res_lo += bl_lo * blocksz;
 
-  if (res_hi & 0xfc000000)
+  if (res_hi & 0xfc000000) {
     /* Overflow */
     return 0;
+  }
 
   return (res_lo >> 10) | (res_hi << 6);
 }
@@ -3845,16 +3848,20 @@ static int fs_getsize(char *path, off_t *fs_size) {
     return -1;
   }
 
-  /* The calc_fs_size() function is only useful for 32-bit numbers;
+  /* The getc_fs_size() function is only useful for 32-bit numbers;
    * if either of our two values are in datatypes larger than 4 bytes,
    * we'll use typecasting.
    */
   if (sizeof(fs.f_bavail) > 4 ||
       sizeof(fs.f_frsize) > 4) {
-    *fs_size = ((off_t) fs.f_bavail * (off_t) fs.f_frsize);
+
+    /* In order to return a size in KB, as get_fs_size() does, we need
+     * to divide by 1024.
+     */
+    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_frsize) / 1024);
 
   } else {
-    *fs_size = calc_fs_size(fs.f_bavail, fs.f_frsize);
+    *fs_size = get_fs_size(fs.f_bavail, fs.f_frsize);
   }
 
   return 0;
@@ -3873,16 +3880,20 @@ static int fs_getsize(char *path, off_t *fs_size) {
     return -1;
   }
 
-  /* The calc_fs_size() function is only useful for 32-bit numbers;
+  /* The get_fs_size() function is only useful for 32-bit numbers;
    * if either of our two values are in datatypes larger than 4 bytes,
    * we'll use typecasting.
    */
   if (sizeof(fs.f_bavail) > 4 ||
       sizeof(fs.f_bsize) > 4) {
-    *fs_size = ((off_t) fs.f_bavail * (off_t) fs.f_bsize);
+
+    /* In order to return a size in KB, as get_fs_size() does, we need
+     * to divide by 1024.
+     */
+    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_frsize) / 1024);
 
   } else {
-    *fs_size = calc_fs_size(fs.f_bavail, fs.f_bsize);
+    *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
   }
 
   return 0;
@@ -3901,16 +3912,20 @@ static int fs_getsize(char *path, off_t *fs_size) {
     return -1;
   }
 
-  /* The calc_fs_size() function is only useful for 32-bit numbers;
+  /* The get_fs_size() function is only useful for 32-bit numbers;
    * if either of our two values are in datatypes larger than 4 bytes,
    * we'll use typecasting.
    */
   if (sizeof(fs.f_bavail) > 4 ||
       sizeof(fs.f_bsize) > 4) {
-    *fs_size = ((off_t) fs.f_bavail * (off_t) fs.f_bsize);
+
+    /* In order to return a size in KB, as get_fs_size() does, we need
+     * to divide by 1024.
+     */
+    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_frsize) / 1024);
 
   } else {
-    *fs_size = calc_fs_size(fs.f_bavail, fs.f_bsize);
+    *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
   }
 
   return 0;
