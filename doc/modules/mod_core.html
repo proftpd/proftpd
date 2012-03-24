@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.28 2012-03-18 23:26:28 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.29 2012-03-24 17:06:35 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -46,6 +46,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#TraceLog">TraceLog</a>
   <li><a href="#TraceOptions">TraceOptions</a>
   <li><a href="#TransferLog">TransferLog</a>
+  <li><a href="#Umask">Umask</a>
 </ul>
 
 <hr>
@@ -1055,6 +1056,40 @@ See also: <a href="mod_log.html#ExtendedLog"><code>ExtendedLog</code></a>,
 
 <p>
 <hr>
+<h2><a name="Umask">Umask</a></h2>
+<strong>Syntax:</strong> Umask <em>file-umask [dir-umask]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;, &lt;Anonymous&gt;, .ftpaccess<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>Umask</code> directive sets the mask applied to newly created file
+and directory permissions.  Any parameters supplied must be an octal number,
+in the format <code>0<i>xxx</i></code>.
+
+<p>
+An optional second <em>dir-umask</em> parameter can specify a different
+<code>Umask</code> to be used when creating directories, rather than files.
+If this second parameter is not used, directories are created using the
+<em>file-umask</em> value from the first parameter. For more information on
+umasks, consult your operating system documentation/man pages.
+
+<p>
+<b>Note</b>: ProFTPD will <b>not</b> create files that have the executable bit
+enabled; this is a security-driven design decision.  The permissions of an
+uploaded file can be changed by issuing a <code>SITE CHMOD</code> command,
+<i>e.g.</i>:
+<pre>
+  SITE CHMOD 0755 /path/to/uploaded/file
+</pre>
+
+<p>
+The <code>Umask</code> <a href="../howto/Umask.html">howto</a> also talks about
+umasks in greater detail.
+
+<p>
+<hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_core</code> module is <b>always</b> installed.
 
@@ -1062,7 +1097,7 @@ The <code>mod_core</code> module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-03-18 23:26:28 $</i><br>
+Last Updated: <i>$Date: 2012-03-24 17:06:35 $</i><br>
 
 <br><hr>
 
