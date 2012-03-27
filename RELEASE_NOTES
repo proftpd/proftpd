@@ -49,6 +49,9 @@ ChangeLog files.
     LogFormat
       %{note:<name>} (Bug#3707)
 
+    RewriteCondition, RewriteRule
+      %{TIME} et al (Bug#3673)
+
     RootRevoke
       UseNonCompliantActiveTransfers (Bug#3731)
 
@@ -84,4 +87,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-03-12 23:28:37 $
+Last Updated: $Date: 2012-03-27 06:18:58 $

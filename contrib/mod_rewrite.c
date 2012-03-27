@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.68 2012-02-18 22:07:12 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.69 2012-03-27 06:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -105,9 +105,9 @@ static unsigned int rewrite_max_replace = PR_STR_MAX_REPLACEMENTS;
 
 static const char *trace_channel = "rewrite";
 
-#define REWRITE_MAX_VARS		15
+#define REWRITE_MAX_VARS		23
 
-static char rewrite_vars[REWRITE_MAX_VARS][3] = {
+static char rewrite_vars[REWRITE_MAX_VARS][13] = {
   "%a",		/* Remote IP address */
   "%c",		/* Session class */
   "%F",		/* Full path */
@@ -122,7 +122,15 @@ static char rewrite_vars[REWRITE_MAX_VARS][3] = {
   "%U",		/* Original username */
   "%u",		/* Resolved/real username */
   "%v",		/* Server name */
-  "%w"		/* Rename from (whence) */
+  "%w", 	/* Rename from (whence) */
+  "%{TIME}",	/* Timestamp: YYYYMMDDHHmmss */
+  "%{TIME_YEAR}", /* Year: YYYY */
+  "%{TIME_MON}",  /* Month: MM (1-12) */
+  "%{TIME_DAY}",  /* Day: DD (1-31, depending on month) */
+  "%{TIME_WDAY}", /* Week day: 0-6, 0 = Sunday */
+  "%{TIME_HOUR}", /* Hour: HH (0-23) */
+  "%{TIME_MIN}",  /* Minute: mm (0-59) */
+  "%{TIME_SEC}"  /* Second: ss (0-60) */
 };
 
 /* Necessary prototypes */
@@ -157,15 +165,19 @@ static int rewrite_write_fifo(int, char *, size_t);
  */
 
 #define REWRITE_CHECK_VAR(p, m) \
-    if (!p) rewrite_log("rewrite_expand_var(): %" m " expands to NULL")
+    if (p == NULL) rewrite_log("rewrite_expand_var(): %" m " expands to NULL")
 
 static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
     const char *var) {
-  if (strcmp(var, "%c") == 0) {
+  size_t varlen;
+
+  varlen = strlen(var);
+
+  if (strncmp(var, "%c", 3) == 0) {
     REWRITE_CHECK_VAR(session.conn_class, "%c");
     return (session.conn_class ? session.conn_class->cls_name : NULL);
 
-  } else if (strcmp(var, "%F") == 0) {
+  } else if (strncmp(var, "%F", 3) == 0) {
     char *cmd_name;
 
     cmd_name = rewrite_get_cmd_name(cmd);
@@ -174,17 +186,17 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
      * mod_log uses the session.xfer.xfer_path variable, but that is not yet
      * set at this stage in the command dispatch cycle.
      */
-    if (strcmp(cmd_name, C_APPE) == 0 ||
-        strcmp(cmd_name, C_RETR) == 0 ||
-        strcmp(cmd_name, C_STOR) == 0 ||
-        strcmp(cmd_name, C_DELE) == 0 ||
-        strcmp(cmd_name, C_MKD) == 0 ||
-        strcmp(cmd_name, C_MDTM) == 0 ||
-        strcmp(cmd_name, C_RMD) == 0 ||
-        strcmp(cmd_name, C_SIZE) == 0 ||
-        strcmp(cmd_name, C_STOU) == 0 ||
-        strcmp(cmd_name, C_XMKD) == 0 ||
-        strcmp(cmd_name, C_XRMD) == 0) {
+    if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_DELE_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_MDTM_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_SIZE_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_STOU_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
+        pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
       return dir_abs_path(cmd->tmp_pool, cmd->arg, FALSE);
 
     } else if (strcasecmp(cmd_name, "SITE CHGRP") == 0 ||
@@ -204,48 +216,48 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
       return NULL;
     }
 
-  } else if (strcmp(var, "%f") == 0) {
+  } else if (strncmp(var, "%f", 3) == 0) {
     REWRITE_CHECK_VAR(cmd->arg, "%f");
     return cmd->arg;
 
-  } else if (strcmp(var, "%m") == 0) {
+  } else if (strncmp(var, "%m", 3) == 0) {
     return rewrite_get_cmd_name(cmd);
 
-  } else if (strcmp(var, "%p") == 0) {
+  } else if (strncmp(var, "%p", 3) == 0) {
     char *port = pcalloc(cmd->tmp_pool, 8 * sizeof(char));
     snprintf(port, 8, "%d", main_server->ServerPort);
     port[7] = '\0';
     return port;
 
-  } else if (strcmp(var, "%U") == 0) {
+  } else if (strncmp(var, "%U", 3) == 0) {
     return pr_table_get(session.notes, "mod_auth.orig-user", NULL);
 
-  } else if (strcmp(var, "%P") == 0) {
+  } else if (strncmp(var, "%P", 3) == 0) {
     char *pid = pcalloc(cmd->tmp_pool, 8 * sizeof(char));
     snprintf(pid, 8, "%lu", (unsigned long) getpid());
     pid[7] = '\0';
     return pid;
 
-  } else if (strcmp(var, "%g") == 0) {
+  } else if (strncmp(var, "%g", 3) == 0) {
     REWRITE_CHECK_VAR(session.group, "%g");
     return session.group;
 
-  } else if (strcmp(var, "%u") == 0) {
+  } else if (strncmp(var, "%u", 3) == 0) {
     REWRITE_CHECK_VAR(session.user, "%u");
     return session.user;
 
-  } else if (strcmp(var, "%a") == 0) {
+  } else if (strncmp(var, "%a", 3) == 0) {
     return (char *) pr_netaddr_get_ipstr(session.c->remote_addr);
 
-  } else if (strcmp(var, "%h") == 0) {
+  } else if (strncmp(var, "%h", 3) == 0) {
     return (char *) session.c->remote_name;
 
-  } else if (strcmp(var, "%v") == 0) {
+  } else if (strncmp(var, "%v", 3) == 0) {
     return (char *) main_server->ServerName;
 
-  } else if (strcmp(var, "%G") == 0) {
+  } else if (strncmp(var, "%G", 3) == 0) {
 
-    if (session.groups) {
+    if (session.groups != NULL) {
       register unsigned int i = 0;
       char *suppl_groups = pstrcat(cmd->tmp_pool, "", NULL);
       char **groups = (char **) session.groups->elts;
@@ -262,36 +274,101 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
       return NULL;
     }
 
-  } else if (strcmp(var, "%w") == 0) {
-    char *cmd_name;
+  } else if (strncmp(var, "%w", 3) == 0) {
 
-    cmd_name = rewrite_get_cmd_name(cmd);
-
-    if (strcmp(cmd_name, C_RNTO) == 0) {
+    if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
       return pr_table_get(session.notes, "mod_core.rnfr-path", NULL);
 
     } else {
+      char *cmd_name;
+
+      cmd_name = rewrite_get_cmd_name(cmd);
       rewrite_log("rewrite_expand_var(): %%w not valid for this command ('%s')",
         cmd_name);
       return NULL;
     }
 
-  } else if (strcmp(var, "%t") == 0) {
+  } else if (strncmp(var, "%t", 3) == 0) {
     char *timestr = pcalloc(cmd->tmp_pool, 80 * sizeof(char));
     snprintf(timestr, 80, "%lu", (unsigned long) time(NULL));
     timestr[79] = '\0';
     return timestr;
 
-  } else if (strlen(var) > 7 &&
+  } else if (varlen > 7 &&
              strncmp(var, "%{ENV:", 6) == 0 &&
-             var[strlen(var)-1] == '}') {
+             var[varlen-1] == '}') {
     char *env, *str;
 
     str = pstrdup(cmd->tmp_pool, var);
-    str[strlen(str)-1] = '\0';
+    str[varlen-1] = '\0';
 
     env = pr_env_get(cmd->tmp_pool, str + 6);
     return env ? pstrdup(cmd->tmp_pool, env) : "";
+
+  } else if (varlen >= 7 &&
+             strncmp(var, "%{TIME", 6) == 0 &&
+             var[varlen-1] == '}') {
+    char time_str[32];
+    time_t now;
+    struct tm *tm;
+
+    /* Always use localtime(3) here. */
+    time(&now);
+    tm = pr_localtime(cmd->tmp_pool, &now);
+
+    memset(time_str, '\0', sizeof(time_str));
+
+    if (varlen == 7) {
+      /* %{TIME} */
+      snprintf(time_str, sizeof(time_str)-1, "%04d%02d%02d%02d%02d%02d",
+        tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour,
+        tm->tm_min, tm->tm_sec);
+
+    } else {
+      switch (var[7]) {
+        case 'D':
+          /* %{TIME_DAY} */ 
+          snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_mday);
+          break;
+
+        case 'H':
+          /* %{TIME_HOUR} */ 
+          snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_hour);
+          break;
+
+        case 'M':
+          if (var[8] == 'I') {
+            /* %{TIME_MIN} */ 
+            snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_min);
+
+          } else if (var[8] == 'O') {
+            /* %{TIME_MON} */ 
+            snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_mon + 1);
+          }
+          break;
+
+        case 'S':
+          /* %{TIME_SEC} */ 
+          snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_sec);
+          break;
+
+        case 'W':
+          /* %{TIME_WDAY} */ 
+          snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_wday);
+          break;
+
+        case 'Y':
+          /* %{TIME_YEAR} */ 
+          snprintf(time_str, sizeof(time_str)-1, "%04d", tm->tm_year + 1900);
+          break;
+
+        default:
+          rewrite_log("unknown variable: '%s'", var); 
+          return NULL;
+      }
+    }
+
+    return pstrdup(cmd->tmp_pool, time_str);
   }
 
   rewrite_log("unknown variable: '%s'", var); 
@@ -437,33 +514,48 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
   /* Check the condition */
   switch (cond_op) {
     case REWRITE_COND_OP_LEX_LT: {
-      int res = strcmp(cond_str, (char *) cond->argv[1]);
-      rewrite_log("rewrite_match_cond(): checking lexical LT cond");
+      int res;
 
-      if (!negated)
+      res = strcmp(cond_str, (char *) cond->argv[1]);
+      rewrite_log("rewrite_match_cond(): checked lexical LT cond: %s > %s: %d",
+        cond_str, (char *) cond->argv[1], res);
+
+      if (!negated) {
         return (res < 0 ? TRUE : FALSE);
-      else
+
+      } else {
         return (res < 0 ? FALSE : TRUE);
+      }
     }
 
     case REWRITE_COND_OP_LEX_GT: {
-      int res = strcmp(cond_str, (char *) cond->argv[1]);
-      rewrite_log("rewrite_match_cond(): checking lexical GT cond");
+      int res;
 
-      if (!negated)
+      res = strcmp(cond_str, (char *) cond->argv[1]);
+      rewrite_log("rewrite_match_cond(): checked lexical GT cond: %s < %s: %d",
+        cond_str, (char *) cond->argv[1], res);
+
+      if (!negated) {
         return (res > 0 ? TRUE : FALSE);
-      else
+
+      } else {
         return (res > 0 ? FALSE : TRUE);
+      }
     }
 
     case REWRITE_COND_OP_LEX_EQ: {
-      int res = strcmp(cond_str, (char *) cond->argv[1]);
-      rewrite_log("rewrite_match_cond(): checking lexical EQ cond");
+      int res;
 
-      if (!negated)
+      res = strcmp(cond_str, (char *) cond->argv[1]);
+      rewrite_log("rewrite_match_cond(): checked lexical EQ cond: %s == %s: %d",
+        cond_str, (char *) cond->argv[1], res);
+
+      if (!negated) {
         return (res == 0 ? TRUE : FALSE);
-      else
+
+      } else {
         return (res == 0 ? FALSE : TRUE);
+      }
     }
 
     case REWRITE_COND_OP_REGEX: {
@@ -2036,16 +2128,16 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
     cond_op = REWRITE_COND_OP_LEX_EQ;
     cond_data = pstrdup(rewrite_pool, ++cmd->argv[2]);
 
-  } else if (strcmp(cmd->argv[2], "-d") == 0) {
+  } else if (strncmp(cmd->argv[2], "-d", 3) == 0) {
     cond_op = REWRITE_COND_OP_TEST_DIR;
 
-  } else if (strcmp(cmd->argv[2], "-f") == 0) {
+  } else if (strncmp(cmd->argv[2], "-f", 3) == 0) {
     cond_op = REWRITE_COND_OP_TEST_FILE;
 
-  } else if (strcmp(cmd->argv[2], "-l") == 0) {
+  } else if (strncmp(cmd->argv[2], "-l", 3) == 0) {
     cond_op = REWRITE_COND_OP_TEST_SYMLINK;
 
-  } else if (strcmp(cmd->argv[2], "-s") == 0) {
+  } else if (strncmp(cmd->argv[2], "-s", 3) == 0) {
     cond_op = REWRITE_COND_OP_TEST_SIZE;
 
   } else {
@@ -2079,14 +2171,16 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
       unsigned char is_valid_var = FALSE;
 
       for (i = 0; i < REWRITE_MAX_VARS; i++) {
-        if (strncmp(var, rewrite_vars[i], 2) == 0) {
+        if (strcmp(var, rewrite_vars[i]) == 0) {
           is_valid_var = TRUE;
           break;
         }
       }
 
-      if (!is_valid_var)
-        pr_log_debug(DEBUG1, "invalid RewriteCondition variable used");
+      if (is_valid_var == FALSE) {
+        pr_log_debug(DEBUG0, "invalid RewriteCondition variable '%s' used",
+          var);
+      }
 
       var += 2;
     }
