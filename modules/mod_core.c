@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.423 2012-02-24 06:02:50 castaglia Exp $
+ * $Id: mod_core.c,v 1.424 2012-03-28 05:13:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4917,7 +4917,7 @@ MODRET core_dele(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  if (!dir_check_canon(cmd->tmp_pool, cmd, cmd->group, path, NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL)) {
     int xerrno = errno;
 
     pr_log_debug(DEBUG7, "deleting '%s' denied by <Limit> configuration", path);
@@ -5171,7 +5171,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
   path = dir_canonical_path(cmd->tmp_pool, path);
 
   if (!path ||
-      !dir_check_canon(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
+      !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
       !exists(path)) {
     int xerrno = errno;
 
