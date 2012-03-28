@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.424 2012-03-28 05:13:07 castaglia Exp $
+ * $Id: mod_core.c,v 1.425 2012-03-28 06:14:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4309,7 +4309,6 @@ MODRET core_epsv(cmd_rec *cmd) {
 }
 
 MODRET core_help(cmd_rec *cmd) {
-
   if (cmd->argc == 1) {
     pr_help_add_response(cmd, NULL);
 
@@ -4333,6 +4332,91 @@ MODRET core_help(cmd_rec *cmd) {
   }
 
   return PR_HANDLED(cmd);
+}
+
+MODRET core_host(cmd_rec *cmd) {
+  unsigned char *authenticated;
+  char *host;
+  pr_netaddr_t *host_addr;
+
+  if (cmd->argc != 2) {
+    pr_response_add_err(R_500, _("'%s' not understood"), cmd->argv[0]);
+    errno = EINVAL;
+    return PR_ERROR(cmd);
+  }
+
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);  
+  if (authenticated != NULL &&
+      *authenticated == TRUE) {
+
+    /* Per HOST spec, HOST after successful USER/PASS is not allowed. */
+    pr_response_add_err(R_503, _("Bad sequence of commands"));
+    errno = EPERM;
+    return PR_ERROR(cmd);
+  }
+
+  host = cmd->argv[1];
+
+#ifdef PR_USE_IPV6
+  if (pr_netaddr_use_ipv6()) {
+    /* Check for any literal IPv6 hostnames. Per HOST spec, these IPv6
+     * addresses MUST be enclosed within square brackets.
+     */
+    if (host[0] = '[') {
+      size_t hostlen;
+      hostlen = strlen(host);
+
+      if (host[hostlen-1] != ']') {
+        pr_response_add_err(R_501, _("%s: Invalid IPv6 address provided"),
+          host);
+        errno = EINVAL;
+        return PR_ERROR(cmd);
+      }
+
+      host = pstrndup(cmd->tmp_pool, host + 1, hostlen - 2);
+    }
+  }
+#endif /* PR_USE_IPV6 */
+
+  host_addr = pr_netaddr_get_addr(cmd->tmp_pool, host, NULL);
+  if (host_addr == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG1, "Unable to resolve HOST name '%s': %s", host,
+      strerror(xerrno));
+
+    pr_response_add_err(R_501, _("%s: Invalid hostname provided"),
+      cmd->argv[1]);
+    errno = EINVAL;
+    return PR_ERROR(cmd);
+  }
+
+  /* XXX Ultimately, if HOST is successful, we change the main_server pointer
+   * to point to the named server_rec.
+   *
+   * Check *every single sess_init* function, since there are MANY things
+   * which currently happen at sess_init, based on the main_server pointer,
+   * that will need to be re-done in a HOST POST_CMD handler.  This includes
+   * AuthOrder, timeouts, etc etc.  (Unfortunately, POST_CMD handlers cannot
+   * fail the given command; for modules which then need to end the connection,
+   * they'll need to use pr_session_disconnect().)  And should those modules
+   * need to know/care if the main_server pointer does NOT change (e.g. the
+   * client sent "HOST 127.0.0.1" when it had already connected to 127.0.01)?
+   * If not, then we need a specialized internal pr_host_* API, with
+   * interested modules registering handlers (NOT listeners!).  This API
+   * would also be useful e.g. to mod_tls for implementing SNI checks.
+   * In fact, the registered handler (a callback) would look exactly like
+   * the sess_init callback:
+   *
+   *  int (*handle_host)(void);
+   *
+   * so that, in many cases, the modules would simply re-register their
+   * sess_init functions.  (Make sure that sess_init functions can be called
+   * again in such context; avoid duplicate session setup.)
+   */
+
+  pr_response_add_err(R_504, _("%s: Unknown hostname provided"), cmd->argv[1]);
+  return PR_ERROR(cmd);
 }
 
 MODRET core_syst(cmd_rec *cmd) {
@@ -5990,6 +6074,7 @@ static cmdtable core_cmdtab[] = {
   { CMD, C_FEAT, G_NONE,  core_feat,	FALSE,	FALSE,  CL_INFO },
   { CMD, C_OPTS, G_NONE,  core_opts,    FALSE,	FALSE,	CL_MISC },
   { POST_CMD, C_PASS, G_NONE, core_post_pass, FALSE, FALSE },
+  { CMD, C_HOST, G_NONE,  core_host,	FALSE,	FALSE,	CL_AUTH },
   { 0, NULL }
 };
 
