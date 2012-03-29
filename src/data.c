@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.139 2012-02-24 06:02:50 castaglia Exp $
+ * $Id: data.c,v 1.140 2012-03-29 21:47:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -711,11 +711,12 @@ void pr_data_abort(int err, int quiet) {
   nstrm = NULL;
 
   if (session.d) {
-    if (!true_abort)
+    if (true_abort == FALSE) {
       pr_inet_lingering_close(session.pool, session.d, timeout_linger);
 
-    else
+    } else {
       pr_inet_lingering_abort(session.pool, session.d, timeout_linger);
+    }
 
     session.d = NULL;
   }
@@ -735,13 +736,10 @@ void pr_data_abort(int err, int quiet) {
   /* Aborts no longer necessary */
   signal(SIGURG, SIG_IGN);
 
-  if (timeout_noxfer)
-    pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
-
   if (!quiet) {
-    char	*respcode = R_426;
-    char	*msg = NULL;
-    char	msgbuf[64];
+    char *respcode = R_426;
+    char *msg = NULL;
+    char msgbuf[64];
 
     switch (err) {
 
@@ -891,12 +889,14 @@ void pr_data_abort(int err, int quiet) {
     /* If we are aborting, then a 426 response has already been sent,
      * and we don't want to add another to the error queue.
      */
-    if (!true_abort)
+    if (true_abort == FALSE) {
       pr_response_add_err(respcode, _("Transfer aborted. %s"), msg ? msg : "");
+    }
   }
 
-  if (true_abort)
+  if (true_abort) {
     session.sf_flags |= SF_POST_ABORT;
+  }
 }
 
 /* From response.c.  XXX Need to provide these symbols another way. */
