@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.44 2012-02-15 23:50:51 castaglia Exp $
+ * $Id: auth.c,v 1.45 2012-03-30 21:08:04 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -267,6 +267,8 @@ static int setup_env(pool *p, char *user) {
   char *default_chdir, *default_root, *home_dir;
   const char *sess_ttyname = NULL, *xferlog = NULL;
   cmd_rec *cmd;
+
+  session.hide_password = TRUE;
 
   pw = pr_auth_getpwnam(p, user);
 
