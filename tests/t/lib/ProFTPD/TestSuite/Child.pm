@@ -40,9 +40,15 @@ sub assert_transfer_ok {
   my $self = shift;
   my $resp_code = shift;
   my $resp_msg = shift;
+  my $aborted = shift;
+  $aborted = 0 unless $aborted;
 
   if ($resp_code == 226) {
     my $expected = "Transfer complete";
+    if ($aborted) {
+      $expected = "Abort successful";
+    }
+
     if ($expected ne $resp_msg) {
       croak("Expected response message '$expected', got '$resp_msg'");
     }
