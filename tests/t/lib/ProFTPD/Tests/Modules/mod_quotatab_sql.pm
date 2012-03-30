@@ -277,10 +277,11 @@ sub quotatab_stor_ok_user_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -308,7 +309,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -424,15 +425,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
     };
 
     if ($@) {
@@ -490,6 +483,9 @@ EOS
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -504,10 +500,11 @@ sub quotatab_appe_ok_user_limit_bytes_in_exceeded_soft_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -544,7 +541,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -662,15 +659,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       # We've exceeded the soft limit, so this upload should be denied
       $conn = $client->appe_raw('test.txt');
@@ -681,7 +670,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 552;
+      my $expected = 552;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -715,6 +704,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -729,10 +721,11 @@ sub quotatab_appe_ok_user_limit_bytes_in_exceeded_hard_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -769,7 +762,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -927,6 +920,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -941,10 +937,11 @@ sub quotatab_retr_ok_user_limit_bytes_out_exceeded {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -983,7 +980,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -1100,15 +1097,7 @@ EOS
       my $resp_code = $client->response_code(1);
       my $resp_msg = $client->response_msg(1);
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       # We've exceeded the bytes out limit, so this download should be denied
       $conn = $client->retr_raw('test.txt');
@@ -1119,7 +1108,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 451;
+      my $expected = 451;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -1153,6 +1142,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1167,10 +1159,11 @@ sub quotatab_retr_ok_user_limit_files_out_exceeded {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1209,7 +1202,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -1327,15 +1320,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       # We've exceeded the files out limit, so this download should be denied
       $conn = $client->retr_raw('test.txt');
@@ -1346,7 +1331,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 451;
+      my $expected = 451;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -1380,6 +1365,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1394,10 +1382,11 @@ sub quotatab_stor_ok_user_limit_bytes_in_exceeded_soft_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1425,7 +1414,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -1541,15 +1530,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       # We've exceeded the soft limit, so this upload should be denied
       $conn = $client->stor_raw('test.txt');
@@ -1560,7 +1541,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 552;
+      my $expected = 552;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -1594,6 +1575,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1608,10 +1592,11 @@ sub quotatab_stor_ok_user_limit_bytes_in_exceeded_hard_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1639,7 +1624,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -1797,6 +1782,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1811,10 +1799,11 @@ sub quotatab_stor_ok_user_limit_files_in_exceeded {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1842,7 +1831,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -1960,15 +1949,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Transfer complete';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $conn = $client->stor_raw('test2.txt');
       if ($conn) {
@@ -1978,7 +1959,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 552;
+      my $expected = 552;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -2010,6 +1991,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2024,7 +2008,7 @@ sub quotatab_stor_ok_group_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $group = 'ftpd';
@@ -2182,16 +2166,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
 
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -2212,14 +2187,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
     };
 
@@ -2278,6 +2246,9 @@ EOS
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2292,7 +2263,7 @@ sub quotatab_stor_ok_group_limit_bytes_in_exceeded_soft_limit  {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $group = 'ftpd';
@@ -2450,16 +2421,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
 
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -2475,7 +2437,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 552;
+      my $expected = 552;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -2509,6 +2471,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2523,7 +2488,7 @@ sub quotatab_stor_ok_group_limit_bytes_in_exceeded_hard_limit  {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $group = 'ftpd';
@@ -2683,16 +2648,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
 
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -2713,7 +2669,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 552;
+      my $expected = 552;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -2751,6 +2707,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2765,7 +2724,7 @@ sub quotatab_stor_ok_group_limit_files_in_exceeded  {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $group = 'ftpd';
@@ -2923,16 +2882,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
 
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -2948,7 +2898,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 552;
+      my $expected = 552;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -2980,6 +2930,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2994,7 +2947,7 @@ sub quotatab_stor_ok_class_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $group = 'ftpd';
@@ -3160,16 +3113,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
 
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -3190,14 +3134,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
     };
 
@@ -3256,6 +3193,9 @@ EOS
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3270,7 +3210,7 @@ sub quotatab_stor_ok_class_limit_bytes_in_exceeded_soft_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $group = 'ftpd';
@@ -3436,16 +3376,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
 
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -3461,7 +3392,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 552;
+      my $expected = 552;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -3495,6 +3426,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3509,7 +3443,7 @@ sub quotatab_stor_ok_class_limit_bytes_in_exceeded_hard_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $group = 'ftpd';
@@ -3677,16 +3611,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
 
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -3707,7 +3632,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 552;
+      my $expected = 552;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -3745,6 +3670,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3759,7 +3687,7 @@ sub quotatab_stor_ok_class_limit_files_in_exceeded {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $group = 'ftpd';
@@ -3927,16 +3855,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
 
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -3952,7 +3871,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 552;
+      my $expected = 552;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -3984,6 +3903,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3998,7 +3920,7 @@ sub quotatab_stor_ok_all_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $group = 'ftpd';
@@ -4156,16 +4078,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
 
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -4186,14 +4099,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
     };
 
@@ -4252,6 +4158,9 @@ EOS
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4266,7 +4175,7 @@ sub quotatab_stor_ok_all_limit_bytes_in_exceeded_soft_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $group = 'ftpd';
@@ -4424,16 +4333,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
 
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -4449,7 +4349,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 552;
+      my $expected = 552;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -4483,6 +4383,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4497,7 +4400,7 @@ sub quotatab_stor_ok_all_limit_bytes_in_exceeded_hard_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $group = 'ftpd';
@@ -4657,16 +4560,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
 
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -4687,7 +4581,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 552;
+      my $expected = 552;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -4725,6 +4619,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4739,7 +4636,7 @@ sub quotatab_stor_ok_all_limit_files_in_exceeded {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $group = 'ftpd';
@@ -4899,16 +4796,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
 
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -4924,7 +4812,7 @@ EOS
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      $expected = 552;
+      my $expected = 552;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -4956,6 +4844,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4970,10 +4861,11 @@ sub quotatab_stor_bug3164 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5001,7 +4893,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -5185,6 +5077,9 @@ EOS
     test_msg("Expected $expected files_xfer_used, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5199,10 +5094,11 @@ sub quotatab_dele_ok_user_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5242,7 +5138,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -5400,6 +5296,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5446,10 +5345,11 @@ sub quotatab_dele_user_owner_bug3161 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5492,7 +5392,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user,$other_user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user,$other_user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -5717,6 +5617,9 @@ EOS
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5731,10 +5634,11 @@ sub quotatab_dele_group_owner_bug3161 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5778,7 +5682,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 INSERT INTO groups (groupname, gid, members) VALUES ('$other_group', 777, '$other_user');
 
 CREATE TABLE quotalimits (
@@ -6004,6 +5908,9 @@ EOS
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6018,10 +5925,11 @@ sub quotatab_new_tally_lock_bug3086 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -6061,7 +5969,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -6228,6 +6136,9 @@ EOS
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6242,10 +6153,11 @@ sub quotatab_config_exclude_filter_bug3298 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -6273,7 +6185,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -6390,15 +6302,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
     };
 
     if ($@) {
@@ -6456,6 +6360,9 @@ EOS
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6463,7 +6370,6 @@ EOS
 }
 
 sub quotatab_config_exclude_filter_chrooted_bug3298 {
-$ENV{TEST_VERBOSE}=1;
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -6471,10 +6377,11 @@ $ENV{TEST_VERBOSE}=1;
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -6514,7 +6421,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -6631,15 +6538,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
     };
 
     if ($@) {
@@ -6697,6 +6596,9 @@ EOS
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6711,10 +6613,11 @@ sub quotatab_config_opt_scanonlogin {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/home/$user");
   mkpath($home_dir);
   my $uid = 500;
@@ -6743,7 +6646,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -6945,6 +6848,9 @@ EOH
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6959,10 +6865,11 @@ sub quotatab_config_opt_scanonlogin_chrooted {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/home/$user");
   mkpath($home_dir);
   my $uid = 500;
@@ -6991,7 +6898,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -7193,6 +7100,9 @@ EOH
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7207,10 +7117,11 @@ sub quotatab_config_opt_scanonlogin_new_tally_bug3440 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/home/$user");
   mkpath($home_dir);
   my $uid = 500;
@@ -7239,7 +7150,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -7440,6 +7351,9 @@ EOH
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7454,10 +7368,11 @@ sub quotatab_site_bug3483 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/home/$user");
   mkpath($home_dir);
   my $uid = 500;
@@ -7486,7 +7401,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -7642,6 +7557,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7656,10 +7574,11 @@ sub quotatab_dele_failed_bug3517 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -7699,7 +7618,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -7850,6 +7769,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7896,10 +7818,11 @@ sub quotatab_sql_dele_bug3524 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -7939,7 +7862,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 
 CREATE TABLE quotalimits (
   name TEXT NOT NULL,
@@ -8129,6 +8052,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8175,7 +8101,7 @@ sub quotatab_stor_deleteabortedstores_conn_abor_bug3621 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -8324,15 +8250,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Abort successful";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg, 1);
     };
 
     if ($@) {
@@ -8390,6 +8308,9 @@ EOS
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8404,7 +8325,7 @@ sub quotatab_stor_deleteabortedstores_cmd_abor_bug3621 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -8623,6 +8544,9 @@ EOS
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
