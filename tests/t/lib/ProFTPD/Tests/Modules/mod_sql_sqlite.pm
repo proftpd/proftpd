@@ -289,7 +289,7 @@ sub sql_bug2045 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -432,6 +432,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -446,7 +449,7 @@ sub sql_bug2922 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   # Bug#2922 occurred because mod_sql would "authenticate" the plaintext
   # password (if configured to do so) of a user whose info did NOT come from
@@ -588,6 +591,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -602,13 +608,14 @@ sub sql_bug3116 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   # Bug#3116 occurred because mod_sql was treating percent signs in user
   # (and group) names as variables to be substituted.
 
   my $user = 'proftpd%proftpd.org';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
@@ -633,7 +640,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 INSERT INTO groups (groupname, gid, members) VALUES ('ftpadm', 501, '$user');
 EOS
 
@@ -731,6 +738,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -745,10 +755,11 @@ sub sql_bug3124 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
@@ -873,6 +884,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -887,10 +901,11 @@ sub sql_sqlite_bug3126 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
@@ -915,7 +930,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user');
 INSERT INTO groups (groupname, gid, members) VALUES ('ftpadm', 501, '$user');
 EOS
 
@@ -1013,6 +1028,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1027,11 +1045,12 @@ sub sql_user_where_clause_ok {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $user2 = 'proftpd2';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
@@ -1058,7 +1077,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user1,$user2');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user1,$user2');
 EOS
 
     unless (close($fh)) {
@@ -1162,6 +1181,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1176,7 +1198,7 @@ sub sql_user_where_clause_with_vars_ok {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $user2 = 'proftpd2';
@@ -1315,6 +1337,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1329,7 +1354,7 @@ sub sql_group_where_clause_ok {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -1480,6 +1505,9 @@ EOC
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1494,11 +1522,12 @@ sub sql_bug3149 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user1 = 'proftpd';
   my $user2 = 'proftpd2';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
@@ -1525,7 +1554,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user1,$user2');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', 500, '$user1,$user2');
 EOS
 
     unless (close($fh)) {
@@ -1631,6 +1660,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1667,7 +1699,7 @@ sub sql_sqllog {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
@@ -1806,6 +1838,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1837,13 +1872,14 @@ sub sql_sqlite_sqllog_with_chroot {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1870,7 +1906,7 @@ sub sql_sqlite_sqllog_with_chroot {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, '$group', $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -1984,6 +2020,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2015,7 +2054,7 @@ sub sql_custom_user_info {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -2170,6 +2209,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2184,10 +2226,11 @@ sub sql_userset_bug2434 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2210,14 +2253,14 @@ CREATE TABLE ftpusers (
 );
 INSERT INTO ftpusers (userid, passwd, uid, gid, homedir, shell) VALUES ('foo', '$passwd', 500, 500, '$home_dir', '/bin/bash');
 INSERT INTO ftpusers (userid, passwd, uid, gid, homedir, shell) VALUES ('bar', '$passwd', 500, 500, '$home_dir', '/bin/bash');
-INSERT INTO ftpusers (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', 500, 500, '$home_dir', '/bin/bash');
+INSERT INTO ftpusers (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
 
 CREATE TABLE groups (
   groupname TEXT,
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
 EOS
 
     unless (close($fh)) {
@@ -2334,6 +2377,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2348,7 +2394,7 @@ sub sql_usersetfast_bug2434 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -2375,14 +2421,14 @@ CREATE TABLE ftpusers (
 );
 INSERT INTO ftpusers (userid, passwd, uid, gid, homedir, shell) VALUES ('foo', '$passwd', 500, 500, '$home_dir', '/bin/bash');
 INSERT INTO ftpusers (userid, passwd, uid, gid, homedir, shell) VALUES ('bar', '$passwd', 500, 500, '$home_dir', '/bin/bash');
-INSERT INTO ftpusers (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', 500, 500, '$home_dir', '/bin/bash');
+INSERT INTO ftpusers (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
 
 CREATE TABLE groups (
   groupname TEXT,
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
 EOS
 
     unless (close($fh)) {
@@ -2500,6 +2546,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2514,10 +2563,11 @@ sub sql_custom_group_info_bug3043 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2549,14 +2599,14 @@ CREATE TABLE users (
   homedir TEXT, 
   shell TEXT
 );
-INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', 500, 500, '$home_dir', '/bin/bash');
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
 
 CREATE TABLE ftpgroups (
   groupname TEXT,
   gid INTEGER,
   members TEXT
 );
-INSERT INTO ftpgroups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO ftpgroups (groupname, gid, members) VALUES ('$group', $gid, '$user');
 EOS
 
     unless (close($fh)) {
@@ -2671,6 +2721,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2685,10 +2738,11 @@ sub sql_groupset_bug3043 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2720,14 +2774,14 @@ CREATE TABLE users (
   homedir TEXT, 
   shell TEXT
 );
-INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', 500, 500, '$home_dir', '/bin/bash');
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
 
 CREATE TABLE ftpgroups (
   groupname TEXT,
   gid INTEGER,
   members TEXT
 );
-INSERT INTO ftpgroups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO ftpgroups (groupname, gid, members) VALUES ('$group', $gid, '$user');
 EOS
 
     unless (close($fh)) {
@@ -2843,6 +2897,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2857,10 +2914,11 @@ sub sql_groupsetfast_bug3043 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2892,14 +2950,14 @@ CREATE TABLE users (
   homedir TEXT, 
   shell TEXT
 );
-INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', 500, 500, '$home_dir', '/bin/bash');
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
 
 CREATE TABLE ftpgroups (
   groupname TEXT,
   gid INTEGER,
   members TEXT
 );
-INSERT INTO ftpgroups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO ftpgroups (groupname, gid, members) VALUES ('$group', $gid, '$user');
 EOS
 
     unless (close($fh)) {
@@ -3016,6 +3074,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3052,13 +3113,14 @@ sub sql_sqllog_var_w {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -3077,7 +3139,7 @@ sub sql_sqllog_var_w {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -3202,6 +3264,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3232,7 +3297,7 @@ sub sql_sqllog_var_w_chrooted {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
@@ -3384,6 +3449,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3414,10 +3482,11 @@ sub sql_openssl_auth_type_md5 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = '{md5}X03MO1qnZdYdgyfeuILPmQ==';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -3438,14 +3507,14 @@ CREATE TABLE users (
   shell TEXT,
   lastdir TEXT
 );
-INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', 500, 500, '$home_dir', '/bin/bash');
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
 
 CREATE TABLE groups (
   groupname TEXT,
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
 EOS
 
     unless (close($fh)) {
@@ -3554,6 +3623,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3568,10 +3640,11 @@ sub sql_openssl_auth_type_sha1 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = '{sha1}W6ph5Mm5Pz8GgiULbPgzG37mj9g=';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -3592,14 +3665,14 @@ CREATE TABLE users (
   shell TEXT,
   lastdir TEXT
 );
-INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', 500, 500, '$home_dir', '/bin/bash');
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
 
 CREATE TABLE groups (
   groupname TEXT,
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
 EOS
 
     unless (close($fh)) {
@@ -3708,6 +3781,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3745,13 +3821,14 @@ sub sql_sqllog_var_S {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -3770,7 +3847,7 @@ sub sql_sqllog_var_S {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -3884,6 +3961,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3915,13 +3995,14 @@ sub sql_sqllog_var_S_err {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -3940,7 +4021,7 @@ sub sql_sqllog_var_S_err {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -4054,6 +4135,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4085,10 +4169,11 @@ sub sql_negative_cache_bug3282 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -4109,14 +4194,14 @@ CREATE TABLE users (
   shell TEXT,
   lastdir TEXT
 );
-INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', 500, 500, '$home_dir', '/bin/bash');
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
 
 CREATE TABLE groups (
   groupname TEXT,
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
 EOS
 
     unless (close($fh)) {
@@ -4232,6 +4317,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4246,13 +4334,14 @@ sub sql_sqllog_var_T_rnfr {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -4271,7 +4360,7 @@ sub sql_sqllog_var_T_rnfr {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -4397,6 +4486,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4441,13 +4533,14 @@ sub sql_sqllog_var_T_retr {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -4466,7 +4559,7 @@ sub sql_sqllog_var_T_retr {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -4605,6 +4698,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4644,13 +4740,14 @@ sub sql_sqllog_exit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -4669,7 +4766,7 @@ sub sql_sqllog_exit {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -4782,6 +4879,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4840,13 +4940,14 @@ sub sql_sqllog_var_d_bug3395 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -4868,7 +4969,7 @@ sub sql_sqllog_var_d_bug3395 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -4982,6 +5083,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5012,7 +5116,7 @@ sub sql_sqllog_var_d_chroot_bug3395 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
@@ -5151,6 +5255,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5203,7 +5310,7 @@ sub sql_sqllog_var_uid_gid_bug3390 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
@@ -5347,6 +5454,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5381,10 +5491,11 @@ sub sql_sqlite_auth_type_backend_bug3511 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5405,14 +5516,14 @@ CREATE TABLE users (
   shell TEXT,
   lastdir TEXT
 );
-INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', 500, 500, '$home_dir', '/bin/bash');
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
 
 CREATE TABLE groups (
   groupname TEXT,
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
 EOS
 
     unless (close($fh)) {
@@ -5524,6 +5635,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5538,13 +5652,14 @@ sub sql_sqllog_pass_ok_var_s_bug3528 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5563,7 +5678,7 @@ sub sql_sqllog_pass_ok_var_s_bug3528 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -5676,6 +5791,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5703,13 +5821,14 @@ sub sql_sqllog_pass_failed_var_s_bug3528 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5728,7 +5847,7 @@ sub sql_sqllog_pass_failed_var_s_bug3528 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -5845,6 +5964,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5872,7 +5994,7 @@ sub sql_sqlshowinfo_pass_bug3423 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -6046,6 +6168,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6060,7 +6185,7 @@ sub sql_sqlshowinfo_list_bug3423 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -6252,6 +6377,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6266,7 +6394,7 @@ sub sql_multiple_users_shared_uid_gid {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -6422,6 +6550,9 @@ EOG
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6465,7 +6596,7 @@ sub sql_resolve_tag_bug3536 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -6618,6 +6749,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6667,13 +6801,14 @@ sub sql_sqllog_vars_I_O_bug3554 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -6692,7 +6827,7 @@ sub sql_sqllog_vars_I_O_bug3554 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -6831,6 +6966,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6894,13 +7032,14 @@ sub sql_sqllog_note_var_unique_id_bug3572 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -6919,7 +7058,7 @@ sub sql_sqllog_note_var_unique_id_bug3572 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -7034,6 +7173,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7064,13 +7206,14 @@ sub sql_sqllog_note_var_rewrite_bug3572 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -7091,7 +7234,7 @@ sub sql_sqllog_note_var_rewrite_bug3572 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -7216,6 +7359,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7269,7 +7415,7 @@ sub sql_sqllog_note_sql_user_info {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $group = 'ftpd',
@@ -7421,6 +7567,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7456,7 +7605,7 @@ sub sql_sqllog_var_E {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
@@ -7596,6 +7745,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7627,7 +7779,7 @@ sub sql_named_conn_bug3262 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -7827,6 +7979,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7870,7 +8025,7 @@ sub sql_named_conn_sqllog_exit_bug3645 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -8062,6 +8217,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8105,7 +8263,7 @@ sub sql_sqllog_vars_H_L_matching_server_bug3620 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
@@ -8254,6 +8412,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8283,7 +8444,7 @@ sub sql_sqllog_vars_H_L_default_server_bug3620 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
@@ -8474,6 +8635,9 @@ EOC
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8504,7 +8668,7 @@ sub sql_sqllog_exit_ifuser {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
@@ -8663,6 +8827,9 @@ EOC
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8700,7 +8867,7 @@ sub sql_sqllog_exit_ifgroup {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
@@ -8859,6 +9026,9 @@ EOC
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8896,7 +9066,7 @@ sub sql_opt_no_disconnect_on_error_with_extlog_bug3633 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
@@ -9057,6 +9227,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -9100,7 +9273,7 @@ sub sql_sqllog_ignore_errors_bad_table_bug3692 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
@@ -9239,6 +9412,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -9253,7 +9429,7 @@ sub sql_sqllog_ignore_errors_bad_db_bug3692 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
@@ -9392,6 +9568,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
