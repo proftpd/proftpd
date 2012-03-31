@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
  *
- * Copyright (c) 2001-2011 TJ Saunders
+ * Copyright (c) 2001-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.79 2011-12-11 02:14:42 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.80 2012-03-31 00:35:43 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -473,16 +473,20 @@ static int quotatab_verify(quota_tabtype_t tab_type) {
 
   /* Request the table source object to verify itself */
   if (tab_type == TYPE_TALLY) {
-    if (tally_tab->tab_verify(tally_tab))
+    if (tally_tab->tab_verify(tally_tab)) {
       return TRUE;
-    else
+
+    } else {
       quotatab_log("error: unable to use QuotaTallyTable: bad table header");
+    }
 
   } else if (tab_type == TYPE_LIMIT) {
-    if (limit_tab->tab_verify(limit_tab))
+    if (limit_tab->tab_verify(limit_tab)) {
       return TRUE;
-    else
+
+    } else {
       quotatab_log("error: unable to use QuotaLimitTable: bad table header");
+    }
   }
 
   return FALSE;
@@ -901,15 +905,111 @@ unsigned char quotatab_lookup(quota_tabtype_t tab_type, void *ptr,
     return tally_tab->tab_lookup(tally_tab, ptr, name, quota_type);
   
   } else if (tab_type == TYPE_LIMIT) {
+    int res;
 
     /* Make sure the requested table can do lookups. */
-    if (!limit_tab ||
-        !limit_tab->tab_lookup) {
+    if (limit_tab == NULL ||
+        limit_tab->tab_lookup == NULL) {
       errno = EPERM;
-      return FALSE;
+      res = FALSE;
+
+    } else {
+      res = limit_tab->tab_lookup(limit_tab, ptr, name, quota_type);
     }
 
-    return limit_tab->tab_lookup(limit_tab, ptr, name, quota_type);
+    /* If no limit has been found at this point, AND if a QuotaDefault
+     * directive has been configured, use that configured default.
+     */
+    if (res == FALSE) {
+      config_rec *c;
+
+      c = find_config(main_server->conf, CONF_PARAM, "QuotaDefault", FALSE);
+      while (c != NULL) {
+        char *type_str;
+        quota_limit_t *limit;
+
+        pr_signals_handle();
+
+        type_str = c->argv[0];
+
+        /* What quota type is being looked up, and what kind does this
+         * QuotaDefault provide?
+         */
+        switch (quota_type) {
+          case USER_QUOTA:
+            if (strncasecmp(type_str, "user", 5) != 0) {
+              c = find_config_next(c, c->next, CONF_PARAM, "QuotaDefault",
+                FALSE);
+              continue;
+            }
+            break;
+
+          case GROUP_QUOTA:
+            if (strncasecmp(type_str, "group", 6) != 0) {
+              c = find_config_next(c, c->next, CONF_PARAM, "QuotaDefault",
+                FALSE);
+              continue;
+            }
+            break;
+
+          case CLASS_QUOTA:
+            if (strncasecmp(type_str, "class", 6) != 0) {
+              c = find_config_next(c, c->next, CONF_PARAM, "QuotaDefault",
+                FALSE);
+              continue;
+            }
+            break;
+
+          case ALL_QUOTA:
+            if (strncasecmp(type_str, "all", 4) != 0) {
+              c = find_config_next(c, c->next, CONF_PARAM, "QuotaDefault",
+                FALSE);
+              continue;
+            }
+            break;
+
+           default:
+             c = find_config_next(c, c->next, CONF_PARAM, "QuotaDefault",
+              FALSE);
+            continue;
+        }
+ 
+        limit = ptr;
+
+        /* Retrieve the limit record (8 values):
+         *
+         *  per_session
+         *  limit_type
+         *  bytes_{in,out,xfer}_avail
+         *  files_{in,out,xfer}_avail
+         */
+
+        memmove(limit->name, name, strlen(name) + 1);
+        limit->quota_type = quota_type;
+
+        limit->quota_per_session = pr_str_is_boolean(c->argv[1]);
+      
+        if (strncasecmp(c->argv[2], "soft", 5) == 0) {
+          limit->quota_limit_type = SOFT_LIMIT;
+          
+        } else if (strncasecmp(c->argv[2], "hard", 5) == 0) {
+          limit->quota_limit_type = HARD_LIMIT;
+        }
+
+        limit->bytes_in_avail = atof(c->argv[3]);
+        limit->bytes_out_avail = atof(c->argv[4]);
+        limit->bytes_xfer_avail = atof(c->argv[5]);
+        limit->files_in_avail = atoi(c->argv[6]);
+        limit->files_out_avail = atoi(c->argv[7]);
+        limit->files_xfer_avail = atoi(c->argv[8]);
+
+        quotatab_log("using default limit from QuotaDefault directive");
+        res = TRUE;
+        break;
+      }
+    }
+
+    return res;
   }
 
   errno = ENOENT;
@@ -1349,21 +1449,76 @@ static int quotatab_fsio_write(pr_fh_t *fh, int fd, const char *buf,
 /* Configuration handlers
  */
 
+/* usage: QuotaDefault quota-type per-session limit-type \
+ *   bytes-avail-in bytes-avail-out bytes-avail-xfer \
+ *   files-avail-in files-avail-out files-avail-xfer
+ */
+MODRET set_quotadefault(cmd_rec *cmd) {
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 9);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 9, NULL, NULL, NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL);
+
+  /* The quota-type parameter MUST be one of "user", "group", "class", or
+   * "all".
+   */
+  if (strncasecmp(cmd->argv[1], "user", 5) != 0 &&
+      strncasecmp(cmd->argv[1], "group", 6) != 0 &&
+      strncasecmp(cmd->argv[1], "class", 6) != 0 &&
+      strncasecmp(cmd->argv[1], "all", 4) != 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown quota type '",
+      cmd->argv[1], "' configured", NULL));
+  } 
+
+  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+
+  /* per-session */
+  if (pr_str_is_boolean(cmd->argv[2]) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "expected Boolean per-session parameter: ", cmd->argv[2], NULL));
+  }
+
+  c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+
+  /* limit-type */
+  if (strncasecmp(cmd->argv[3], "soft", 5) != 0 &&
+      strncasecmp(cmd->argv[3], "hard", 5) != 0) {
+  }
+
+  c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+
+  /* bytes-avail-in, bytes-avail-out, bytes-avail-xfer */
+  c->argv[3] = pstrdup(c->pool, cmd->argv[4]);
+  c->argv[4] = pstrdup(c->pool, cmd->argv[5]);
+  c->argv[5] = pstrdup(c->pool, cmd->argv[6]);
+
+  /* files-avail-in, files-avail-out, files-avail-xfer */
+  c->argv[6] = pstrdup(c->pool, cmd->argv[7]);
+  c->argv[7] = pstrdup(c->pool, cmd->argv[8]);
+  c->argv[8] = pstrdup(c->pool, cmd->argv[9]);
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: QuotaDirectoryTally <on|off> */
 MODRET set_quotadirtally(cmd_rec *cmd) {
-  int bool = -1;
+  int b = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  b = get_boolean(cmd, 1);
+  if (b == -1) {
     CONF_ERROR(cmd, "expected boolean argument");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+  *((unsigned char *) c->argv[0]) = (unsigned char) b;
 
   return PR_HANDLED(cmd);
 }
@@ -4131,6 +4286,7 @@ static int quotatab_sess_init(void) {
  */
 
 static conftable quotatab_conftab[] = {
+  { "QuotaDefault",		set_quotadefault,	NULL },
   { "QuotaDirectoryTally",	set_quotadirtally,	NULL },
   { "QuotaDisplayUnits",	set_quotadisplayunits,	NULL },
   { "QuotaEngine",		set_quotaengine,	NULL },

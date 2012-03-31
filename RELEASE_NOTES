@@ -35,6 +35,8 @@ ChangeLog files.
     FactsOptions
       UseSlink (Bug#3747)
 
+    QuotaDefault (Bug#3766)
+
     RewriteMaxReplace
 
   + Changed configuration directives:
@@ -87,4 +89,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-03-27 06:18:58 $
+Last Updated: $Date: 2012-03-31 00:35:43 $
