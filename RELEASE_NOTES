@@ -14,7 +14,9 @@ ChangeLog files.
 
   + New modules:
 
-    mod_geoip?
+    mod_geoip
+      See doc/contrib/mod_geoip.html
+
     mod_case?
     mod_log_forensic?
     mod_tar?
@@ -89,4 +91,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-03-31 00:35:43 $
+Last Updated: $Date: 2012-04-03 20:38:57 $
