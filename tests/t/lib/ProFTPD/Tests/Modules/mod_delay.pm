@@ -18,6 +18,7 @@ my $order = 0;
 
 my $TESTS = {
   delay_cold_table => {
+    order => ++$order,
     test_class => [qw(forking)],
   },
 
@@ -54,7 +55,7 @@ sub delay_cold_table {
   my $pid_file = File::Spec->rel2abs("$tmpdir/delay.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/delay.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/delay.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/delay.group");
@@ -146,6 +147,9 @@ sub delay_cold_table {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -160,7 +164,7 @@ sub delay_warm_table {
   my $pid_file = File::Spec->rel2abs("$tmpdir/delay.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/delay.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/delay.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/delay.group");
@@ -279,6 +283,9 @@ sub delay_warm_table {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -293,7 +300,7 @@ sub delay_extra_user_cmd_bug3622 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/delay.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/delay.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/delay.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/delay.group");
@@ -437,6 +444,9 @@ sub delay_extra_user_cmd_bug3622 {
     $self->assert($ok, test_msg("Trace messages appeared unexpectedly"));
 
   } else {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die("Can't open $log_file: $!");
   }
 
@@ -595,6 +605,9 @@ sub delay_extra_pass_cmd_bug3622 {
     $self->assert($ok, test_msg("Trace messages appeared unexpectedly"));
 
   } else {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die("Can't open $log_file: $!");
   }
 
