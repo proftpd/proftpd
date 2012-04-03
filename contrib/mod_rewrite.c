@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.69 2012-03-27 06:18:59 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.70 2012-04-03 16:01:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -199,8 +199,9 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
         pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
       return dir_abs_path(cmd->tmp_pool, cmd->arg, FALSE);
 
-    } else if (strcasecmp(cmd_name, "SITE CHGRP") == 0 ||
-               strcasecmp(cmd_name, "SITE CHMOD") == 0) {
+    } else if (cmd->argc >= 3 &&
+               (strcasecmp(cmd_name, "SITE CHGRP") == 0 ||
+                strcasecmp(cmd_name, "SITE CHMOD") == 0)) {
       register unsigned int i;
       char *tmp = "";
 
@@ -2527,6 +2528,12 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
         strcasecmp(cmd->argv[1], "CHMOD") == 0) {
       register unsigned int i;
       char *tmp = "";
+
+      if (cmd->argc < 3) {
+        rewrite_log("%s %s has too few parameters (%d)", cmd->argv[0],
+          cmd->argv[1], cmd->argc);
+        return PR_DECLINED(cmd);
+      }
 
       cmd_name = pstrcat(cmd->pool, cmd->argv[0], " ", cmd->argv[1], NULL);
 
