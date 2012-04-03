@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_exec -- a module for executing external scripts
  *
- * Copyright (c) 2002-2011 TJ Saunders
+ * Copyright (c) 2002-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.25 2011-12-13 21:32:51 castaglia Exp $
+ * $Id: mod_exec.c,v 1.26 2012-04-03 16:16:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -654,23 +654,27 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
           }
         }
 
-        /* Check the time elapsed since we started. */
-        if ((time(NULL) - start_time) > exec_timeout) {
+        if (exec_timeout > 0) {
+          /* Check the time elapsed since we started. */
+          if ((time(NULL) - start_time) > exec_timeout) {
 
-          /* Send TERM, the first time, to be polite. */
-          if (send_sigterm) {
-            send_sigterm = 0;
-            exec_log("'%s' has exceeded ExecTimeout (%lu seconds), sending "
-              "SIGTERM (signal %d)", (const char *) c->argv[2],
-              (unsigned long) exec_timeout, SIGTERM);
-            kill(pid, SIGTERM);
+            /* Send TERM, the first time, to be polite. */
+            if (send_sigterm) {
+              send_sigterm = 0;
+              exec_log("'%s' has exceeded ExecTimeout (%lu seconds), sending "
+                "SIGTERM (signal %d)", (const char *) c->argv[2],
+                (unsigned long) exec_timeout, SIGTERM);
+              kill(pid, SIGTERM);
 
-          } else {
-            /* The child is still around?  Terminate with extreme prejudice. */
-            exec_log("'%s' has exceeded ExecTimeout (%lu seconds), sending "
-              "SIGKILL (signal %d)", (const char *) c->argv[2],
-              (unsigned long) exec_timeout, SIGKILL);
-            kill(pid, SIGKILL);
+            } else {
+              /* The child is still around?  Terminate with extreme
+               * prejudice.
+               */
+              exec_log("'%s' has exceeded ExecTimeout (%lu seconds), sending "
+                "SIGKILL (signal %d)", (const char *) c->argv[2],
+                (unsigned long) exec_timeout, SIGKILL);
+              kill(pid, SIGKILL);
+            }
           }
         }
 
@@ -1829,8 +1833,9 @@ static int exec_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "ExecTimeout", FALSE);
-  if (c)
+  if (c) {
     exec_timeout = *((time_t *) c->argv[0]);
+  }
 
   exec_closelog();
   exec_openlog();
