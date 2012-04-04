@@ -423,6 +423,9 @@ static unsigned char *tls_authenticated = NULL;
 /* mod_tls cleanup flags */
 #define TLS_CLEANUP_FL_SESS_INIT	0x0001
 
+/* mod_tls OCSP constants */
+#define TLS_OCSP_RESP_MAX_AGE_SECS	300
+
 static char *tls_cipher_suite = NULL;
 static char *tls_crl_file = NULL, *tls_crl_path = NULL;
 static char *tls_dhparam_file = NULL;
@@ -4658,6 +4661,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
   OCSP_RESPONSE *resp = NULL;
   OCSP_BASICRESP *basic_resp = NULL;
   SSL_CTX *ocsp_ssl_ctx = NULL;
+  ASN1_GENERALIZEDTIME *revtime, *thisupd, *nextupd;
 
   if (cert == NULL ||
       url == NULL) {
@@ -5047,9 +5051,31 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
   }
 
   res = OCSP_resp_find_status(basic_resp, cert_id, &ocsp_cert_status,
-    &ocsp_reason, NULL, NULL, NULL);
+    &ocsp_reason, &revtime, &thisupd, &nextupd);
   if (res != 1) {
     tls_log("unable to retrieve cert status from OCSP response: %s",
+      tls_get_errors());
+
+    if (ocsp_ssl_ctx != NULL) {
+      SSL_CTX_free(ocsp_ssl_ctx);
+    }
+
+    OCSP_REQUEST_free(req);
+    OCSP_BASICRESP_free(basic_resp);
+    OCSP_RESPONSE_free(resp);
+    X509_free(issuing_cert);
+    BIO_free_all(conn);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+
+    return FALSE;
+  }
+
+  /* Check the validity of the timestamps on the response. */
+  res = OCSP_check_validity(thisupd, nextupd, TLS_OCSP_RESP_MAX_AGE_SECS, -1);
+  if (res != 1) {
+    tls_log("unable validate OCSP response timestamps: %s",
       tls_get_errors());
 
     if (ocsp_ssl_ctx != NULL) {
