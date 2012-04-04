@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.128 2012-03-23 16:20:42 castaglia Exp $
+ * $Id: mod_log.c,v 1.129 2012-04-04 06:05:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -107,6 +107,8 @@ struct logfile_struc {
 #define META_EOS_REASON		35
 #define META_VHOST_IP		36
 #define META_NOTE_VAR		37
+#define META_XFER_STATUS	38
+#define META_XFER_FAILURE	39
 
 /* For tracking the size of deleted files. */
 static off_t log_dele_filesz = 0;
@@ -154,6 +156,8 @@ static xaset_t			*log_set = NULL;
    %{protocol}          - Current protocol (e.g. "ftp", "sftp", etc)
    %{uid}               - UID of logged-in user
    %{gid}               - Primary GID of logged-in user
+   %{transfer-status}   - "success", "failed", "cancelled", "timeout", or "-"
+   %{transfer-failure}  - reason, or "-"
    %{version}           - ProFTPD version
 */
 
@@ -235,6 +239,18 @@ static void logformat(char *nickname, char *fmts) {
         if (strncmp(tmp, "{uid}", 5) == 0) {
           add_meta(&outs, META_UID, 0);
           tmp += 5;
+          continue;
+        }
+
+        if (strncmp(tmp, "{transfer-failure}", 18) == 0) {
+          add_meta(&outs, META_XFER_FAILURE, 0);
+          tmp += 18;
+          continue;
+        }
+
+        if (strncmp(tmp, "{transfer-status}", 17) == 0) {
+          add_meta(&outs, META_XFER_STATUS, 0);
+          tmp += 17;
           continue;
         }
 
@@ -1216,6 +1232,121 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
+    case META_XFER_FAILURE: {
+      argp = arg;
+
+      /* If the current command is one that incurs a data transfer, then we
+       * need to do more work.  If not, it's an easy substitution.
+       */
+      if (session.curr_cmd_id == PR_CMD_APPE_ID ||
+          session.curr_cmd_id == PR_CMD_LIST_ID ||
+          session.curr_cmd_id == PR_CMD_MLSD_ID ||
+          session.curr_cmd_id == PR_CMD_NLST_ID ||
+          session.curr_cmd_id == PR_CMD_RETR_ID ||
+          session.curr_cmd_id == PR_CMD_STOR_ID ||
+          session.curr_cmd_id == PR_CMD_STOU_ID) {
+
+        /* XXX Need to deal with 'sftp', 'scp' protocols here */
+
+        if (XFER_ABORTED) {
+          sstrncpy(argp, "-", sizeof(arg));
+
+        } else {
+          int res;
+          char *resp_code = NULL, *resp_msg = NULL;
+
+          /* Get the last response code/message.  We use heuristics here to
+           * determine when to use "failed" versus "success".
+           */
+          res = pr_response_get_last(cmd->tmp_pool, &resp_code, &resp_msg);
+          if (res == 0) {
+            if (*resp_code != '2' &&
+                *resp_code != '1') {
+              char *ptr;
+
+              /* Parse out/prettify the resp_msg here */
+              ptr = strchr(resp_msg, '.');
+              if (ptr != NULL) {
+                sstrncpy(argp, ptr + 2, sizeof(arg));
+
+              } else {
+                sstrncpy(argp, resp_msg, sizeof(arg));
+              }
+
+            } else {
+              sstrncpy(argp, "-", sizeof(arg));
+            }
+
+          } else {
+            sstrncpy(argp, "-", sizeof(arg));
+          }
+        }
+
+      } else {
+        sstrncpy(argp, "-", sizeof(arg));
+      }
+
+      m++;
+      break;
+    }
+
+    case META_XFER_STATUS: {
+      argp = arg;
+
+      /* If the current command is one that incurs a data transfer, then we
+       * need to do more work.  If not, it's an easy substitution.
+       */
+      if (session.curr_cmd_id == PR_CMD_APPE_ID ||
+          session.curr_cmd_id == PR_CMD_LIST_ID ||
+          session.curr_cmd_id == PR_CMD_MLSD_ID ||
+          session.curr_cmd_id == PR_CMD_NLST_ID ||
+          session.curr_cmd_id == PR_CMD_RETR_ID ||
+          session.curr_cmd_id == PR_CMD_STOR_ID ||
+          session.curr_cmd_id == PR_CMD_STOU_ID) {
+
+        /* XXX Need to deal with 'sftp', 'scp' protocols here */
+
+        if (!(XFER_ABORTED)) {
+          int res;
+          char *resp_code = NULL, *resp_msg = NULL;
+
+          /* Get the last response code/message.  We use heuristics here to
+           * determine when to use "failed" versus "success".
+           */
+          res = pr_response_get_last(cmd->tmp_pool, &resp_code, &resp_msg);
+          if (res == 0) {
+            if (*resp_code == '2') {
+              sstrncpy(argp, "success", sizeof(arg));
+
+            } else if (*resp_code == '1') {
+              /* If the first digit of the response code is 1, then the response
+               * code (for a data transfer command) is probably 150, which means
+               * that the transfer was still in progress (didn't complete with
+               * a 2xx/4xx response code) when we are called here, which in turn
+               * means a timeout kicked in.
+               */
+              sstrncpy(argp, "timeout", sizeof(arg));
+
+            } else {
+              sstrncpy(argp, "failed", sizeof(arg));
+            }
+
+          } else {
+            sstrncpy(argp, "success", sizeof(arg));
+          }
+
+        } else {
+          sstrncpy(argp, "cancelled", sizeof(arg));
+        }
+
+      } else {
+        sstrncpy(argp, "-", sizeof(arg));
+      }
+
+      m++;
+      break;
+    }
+
     case META_VERSION:
       argp = arg;
       sstrncpy(argp, PROFTPD_VERSION_TEXT, sizeof(arg));
@@ -1256,7 +1387,6 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       sstrncpy(argp, cmd->server->ServerAddress, sizeof(arg));
       m++;
       break;
-
   }
  
   *f = m;
