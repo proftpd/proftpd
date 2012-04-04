@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.140 2012-03-29 21:47:11 castaglia Exp $
+ * $Id: data.c,v 1.141 2012-04-04 15:27:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -60,8 +60,8 @@ static int timeout_stalled = PR_TUNABLE_TIMEOUTSTALLED;
  */
 static int stalled_timeout_cb(CALLBACK_FRAME) {
   pr_event_generate("core.timeout-stalled", NULL);
-  pr_log_pri(PR_LOG_NOTICE, "Data transfer stall timeout: %d seconds",
-    timeout_stalled);
+  pr_log_pri(PR_LOG_NOTICE, "Data transfer stall timeout: %d %s",
+    timeout_stalled, timeout_stalled != 1 ? "seconds" : "second");
   pr_session_disconnect(NULL, PR_SESS_DISCONNECT_TIMEOUT,
     "TimeoutStalled during data transfer");
 
@@ -79,8 +79,9 @@ static RETSIGTYPE data_urgent(int signo) {
       "setting 'aborted' session flag", signo);
     session.sf_flags |= SF_ABORT;
 
-    if (nstrm)
+    if (nstrm) {
       pr_netio_abort(nstrm);
+    }
   }
 
   signal(SIGURG, data_urgent);
@@ -525,7 +526,7 @@ void pr_data_reset(void) {
   }
 
   session.d = NULL;
-  session.sf_flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE|SF_EPSV_ALL));
+  session.sf_flags &= (SF_ALL^(SF_ABORT|SF_POST_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE|SF_EPSV_ALL));
 }
 
 void pr_data_init(char *filename, int direction) {
@@ -533,9 +534,10 @@ void pr_data_init(char *filename, int direction) {
     data_new_xfer(filename, direction);
 
   } else {
-    if (!(session.sf_flags & SF_PASSIVE))
+    if (!(session.sf_flags & SF_PASSIVE)) {
       pr_log_debug(DEBUG0, "data_init oddity: session.xfer exists in "
         "non-PASV mode.");
+    }
 
     session.xfer.direction = direction;
   }
@@ -545,7 +547,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   int res = 0;
 
   /* Make sure that any abort flags have been cleared. */
-  session.sf_flags &= ~SF_ABORT;
+  session.sf_flags &= ~(SF_ABORT|SF_POST_ABORT);
 
   if (session.xfer.p == NULL) {
     data_new_xfer(filename, direction);
@@ -673,8 +675,9 @@ void pr_data_close(int quiet) {
   session.sf_flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
   pr_session_set_idle();
 
-  if (!quiet)
+  if (!quiet) {
     pr_response_add(R_226, _("Transfer complete"));
+  }
 }
 
 /* Note: true_abort may be false in real abort situations, because

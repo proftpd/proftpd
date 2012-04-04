@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.300 2012-02-27 21:38:39 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.301 2012-04-04 15:27:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -189,10 +189,10 @@ static void _log_transfer(char direction, char abort_flag) {
     gettimeofday(&end_time, NULL);
     end_time.tv_sec -= session.xfer.start_time.tv_sec;
 
-    if (end_time.tv_usec >= session.xfer.start_time.tv_usec)
+    if (end_time.tv_usec >= session.xfer.start_time.tv_usec) {
       end_time.tv_usec -= session.xfer.start_time.tv_usec;
 
-    else {
+    } else {
       end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
         end_time.tv_usec);
       end_time.tv_sec--;
@@ -793,19 +793,20 @@ static void stor_chown(void) {
   /* session.fsgid defaults to -1, so chown(2) won't chgrp unless specifically
    * requested via GroupOwner.
    */
-  if ((session.fsuid != (uid_t) -1) && xfer_path) {
-    int err = 0, iserr = 0;
+  if (session.fsuid != (uid_t) -1 &&
+      xfer_path != NULL) {
+    int iserr = 0, xerrno = 0;
 
     PRIVS_ROOT
     if (pr_fsio_chown(xfer_path, session.fsuid, session.fsgid) == -1) {
+      xerrno = errno;
       iserr++;
-      err = errno;
     }
     PRIVS_RELINQUISH
 
     if (iserr) {
       pr_log_pri(PR_LOG_WARNING, "chown(%s) as root failed: %s", xfer_path,
-        strerror(err));
+        strerror(xerrno));
 
     } else {
       if (session.fsgid != (gid_t) -1) {
@@ -831,15 +832,17 @@ static void stor_chown(void) {
        * session user doesn't have the necessary privileges to do so).
        */
       iserr = 0;
+      xerrno = 0;
       PRIVS_ROOT
       if (pr_fsio_chmod(xfer_path, st.st_mode) < 0) {
+        xerrno = errno;
         iserr++;
       }
       PRIVS_RELINQUISH
 
       if (iserr) {
         pr_log_debug(DEBUG0, "root chmod(%s) to %04o failed: %s", xfer_path,
-          (unsigned int) st.st_mode, strerror(errno));
+          (unsigned int) st.st_mode, strerror(xerrno));
 
       } else {
         pr_log_debug(DEBUG2, "root chmod(%s) to %04o successful", xfer_path,
@@ -847,9 +850,10 @@ static void stor_chown(void) {
       }
     }
 
-  } else if ((session.fsgid != (gid_t) -1) && xfer_path) {
+  } else if (session.fsgid != (gid_t) -1 &&
+             xfer_path != NULL) {
     register unsigned int i;
-    int res, use_root_privs = TRUE;
+    int res, use_root_privs = TRUE, xerrno = 0;
 
     /* Check if session.fsgid is in session.gids.  If not, use root privs. */
     for (i = 0; i < session.gids->nelts; i++) {
@@ -866,6 +870,7 @@ static void stor_chown(void) {
     }
 
     res = pr_fsio_chown(xfer_path, (uid_t) -1, session.fsgid);
+    xerrno = errno;
 
     if (use_root_privs) {
       PRIVS_RELINQUISH
@@ -873,7 +878,7 @@ static void stor_chown(void) {
 
     if (res == -1) {
       pr_log_pri(PR_LOG_WARNING, "%schown(%s) failed: %s",
-        use_root_privs ? "root " : "", xfer_path, strerror(errno));
+        use_root_privs ? "root " : "", xfer_path, strerror(xerrno));
 
     } else {
       pr_log_debug(DEBUG2, "%schown(%s) to gid %lu successful",
@@ -888,6 +893,7 @@ static void stor_chown(void) {
       }
 
       res = pr_fsio_chmod(xfer_path, st.st_mode);
+      xerrno = errno;
 
       if (use_root_privs) {
         PRIVS_RELINQUISH
@@ -896,7 +902,7 @@ static void stor_chown(void) {
       if (res < 0) {
         pr_log_debug(DEBUG0, "%schmod(%s) to %04o failed: %s",
           use_root_privs ? "root " : "", xfer_path, (unsigned int) st.st_mode,
-          strerror(errno));
+          strerror(xerrno));
       }
     }
   }
@@ -2137,11 +2143,18 @@ MODRET xfer_abor(cmd_rec *cmd) {
   }
 
   pr_data_abort(0, FALSE);
-  pr_data_reset();
-  pr_data_cleanup();
 
   pr_response_add(R_226, _("Abort successful"));
   return PR_HANDLED(cmd);
+}
+
+MODRET xfer_log_abor(cmd_rec *cmd) {
+
+  /* Clean up the data connection info in the session structure. */
+  pr_data_reset();
+  pr_data_cleanup();
+
+  return PR_DECLINED(cmd);
 }
 
 MODRET xfer_type(cmd_rec *cmd) {
@@ -3269,6 +3282,7 @@ static cmdtable xfer_cmdtab[] = {
   { LOG_CMD, C_APPE,	G_NONE,  xfer_log_stor,	FALSE,  FALSE },
   { LOG_CMD_ERR, C_APPE,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
   { CMD,     C_ABOR,	G_NONE,	 xfer_abor,	TRUE,	TRUE,  CL_MISC  },
+  { LOG_CMD, C_ABOR,	G_NONE,	 xfer_log_abor,	TRUE,	TRUE,  CL_MISC  },
   { CMD,     C_REST,	G_NONE,	 xfer_rest,	TRUE,	FALSE, CL_MISC  },
   { POST_CMD,C_PROT,	G_NONE,  xfer_post_prot,	FALSE,	FALSE },
   { POST_CMD,C_PASS,	G_NONE,	 xfer_post_pass,	FALSE, FALSE },
