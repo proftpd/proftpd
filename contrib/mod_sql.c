@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.221 2012-02-18 21:55:58 castaglia Exp $
+ * $Id: mod_sql.c,v 1.222 2012-04-04 04:51:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2154,7 +2154,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   const char *long_tag = NULL;
   size_t taglen;
 
-  if (strcmp(tag, "uid") == 0) {
+  if (strncmp(tag, "uid", 4) == 0) {
     char buf[64];
 
     memset(buf, '\0', sizeof(buf));
@@ -2164,7 +2164,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
-      strcmp(tag, "gid") == 0) {
+      strncmp(tag, "gid", 4) == 0) {
     char buf[64];
 
     memset(buf, '\0', sizeof(buf));
@@ -2174,7 +2174,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
-      strcmp(tag, "protocol") == 0) {
+      strncmp(tag, "protocol", 9) == 0) {
     long_tag = pr_session_get_protocol(0);
   }
 
@@ -2222,8 +2222,117 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
     long_tag = pstrdup(cmd->tmp_pool, time_str);
   }
 
+  if (long_tag == NULL &&
+      strncmp(tag, "transfer-failure", 17) == 0) {
+
+    /* If the current command is one that incurs a data transfer, then we
+     * need to do more work.  If not, it's an easy substitution.
+     */
+    if (session.curr_cmd_id == PR_CMD_APPE_ID ||
+        session.curr_cmd_id == PR_CMD_LIST_ID ||
+        session.curr_cmd_id == PR_CMD_MLSD_ID ||
+        session.curr_cmd_id == PR_CMD_NLST_ID ||
+        session.curr_cmd_id == PR_CMD_RETR_ID ||
+        session.curr_cmd_id == PR_CMD_STOR_ID ||
+        session.curr_cmd_id == PR_CMD_STOU_ID) {
+
+      /* XXX Need to deal with 'sftp', 'scp' protocols here */
+
+      if (XFER_ABORTED) {
+        long_tag = pstrdup(cmd->tmp_pool, "-");
+
+      } else {
+        int res;
+        char *resp_code = NULL, *resp_msg = NULL;
+
+        /* Get the last response code/message.  We use heuristics here to
+         * determine when to use "failed" versus "success".
+         */
+        res = pr_response_get_last(cmd->tmp_pool, &resp_code, &resp_msg);
+        if (res == 0) {
+          if (*resp_code != '2' &&
+              *resp_code != '1') {
+            char *ptr;
+
+            /* Parse out/prettify the resp_msg here */
+            ptr = strchr(resp_msg, '.');
+            if (ptr != NULL) {
+              long_tag = pstrdup(cmd->tmp_pool, ptr + 2);
+
+            } else {
+              long_tag = pstrdup(cmd->tmp_pool, resp_msg);
+            }
+
+          } else {
+            long_tag = pstrdup(cmd->tmp_pool, "-");
+          }
+
+        } else {
+          long_tag = pstrdup(cmd->tmp_pool, "-");
+        }
+      }
+
+    } else {
+      long_tag = pstrdup(cmd->tmp_pool, "-");
+    }
+  }
+
+  if (long_tag == NULL &&
+      strncmp(tag, "transfer-status", 16) == 0) {
+
+    /* If the current command is one that incurs a data transfer, then we
+     * need to do more work.  If not, it's an easy substitution.
+     */
+    if (session.curr_cmd_id == PR_CMD_APPE_ID ||
+        session.curr_cmd_id == PR_CMD_LIST_ID ||
+        session.curr_cmd_id == PR_CMD_MLSD_ID ||
+        session.curr_cmd_id == PR_CMD_NLST_ID ||
+        session.curr_cmd_id == PR_CMD_RETR_ID ||
+        session.curr_cmd_id == PR_CMD_STOR_ID ||
+        session.curr_cmd_id == PR_CMD_STOU_ID) {
+
+      /* XXX Need to deal with 'sftp', 'scp' protocols here */
+
+      if (!(XFER_ABORTED)) {
+        int res;
+        char *resp_code = NULL, *resp_msg = NULL;
+
+        /* Get the last response code/message.  We use heuristics here to
+         * determine when to use "failed" versus "success".
+         */
+        res = pr_response_get_last(cmd->tmp_pool, &resp_code, &resp_msg);
+        if (res == 0) {
+          if (*resp_code == '2') {
+            long_tag = pstrdup(cmd->tmp_pool, "success");
+
+          } else if (*resp_code == '1') {
+            /* If the first digit of the response code is 1, then the response
+             * code (for a data transfer command) is probably 150, which means
+             * that the transfer was still in progress (didn't complete with
+             * a 2xx/4xx response code) when we are called here, which in turn
+             * means a timeout kicked in.
+             */
+            long_tag = pstrdup(cmd->tmp_pool, "timeout");
+
+          } else {
+            long_tag = pstrdup(cmd->tmp_pool, "failed");
+          }
+
+        } else {
+          long_tag = pstrdup(cmd->tmp_pool, "success");
+        }
+
+      } else {
+        long_tag = pstrdup(cmd->tmp_pool, "cancelled");
+      }
+
+    } else {
+      long_tag = pstrdup(cmd->tmp_pool, "-");
+    }
+  }
+
   pr_trace_msg(trace_channel, 15, "returning long tag '%s' for tag '%s'",
-    long_tag, tag);
+    long_tag ? long_tag : "<null>", tag);
   return long_tag;
 }
 

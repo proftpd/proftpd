@@ -52,6 +52,7 @@ ChangeLog files.
 
     LogFormat
       %{note:<name>} (Bug#3707)
+      %{transfer-status}, %{transfer-failure}
 
     RewriteCondition, RewriteRule
       %{TIME} et al (Bug#3673)
@@ -75,6 +76,9 @@ ChangeLog files.
     SFTPOptions
       new IgnoreSFTPSetOwners option (Bug#3757)
 
+    SQLLog
+      %{transfer-status}, %{transfer-failure}
+
     TLSProtocol
       support TLSv1.1, TLSv1.2 (assuming OpenSSL-1.0.1 and later)
 
@@ -91,4 +95,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-04-03 20:38:57 $
+Last Updated: $Date: 2012-04-04 04:51:59 $
