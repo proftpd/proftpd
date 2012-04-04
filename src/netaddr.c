@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2011 The ProFTPD Project team
+ * Copyright (c) 2003-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.79 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: netaddr.c,v 1.80 2012-04-04 15:21:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -480,8 +480,8 @@ pr_netaddr_t *pr_netaddr_dup(pool *p, pr_netaddr_t *na) {
   return dup_na;
 }
 
-pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
-    array_header **addrs) {
+pr_netaddr_t *pr_netaddr_get_addr2(pool *p, const char *name,
+    array_header **addrs, unsigned int *flags) {
 
   struct sockaddr_in v4;
   pr_netaddr_t *na = NULL;
@@ -506,6 +506,10 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
   if (addrs == NULL) {
     na = netaddr_ipcache_get(p, name);
     if (na) {
+      if (flags != NULL) {
+        *flags |= na->na_flags;
+      }
+
       return na;
     }
   }
@@ -544,8 +548,13 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
       pr_trace_msg(trace_channel, 7, "'%s' resolved to IPv6 address %s", name,
         pr_netaddr_get_ipstr(na));
 
+      na->na_flags |= PR_NETADDR_ADDR_FL_IPV6_ADDR;
       netaddr_ipcache_set(name, na);
       netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na);
+
+      if (flags != NULL) {
+        *flags |= na->na_flags;
+      }
 
       errno = xerrno;
       return na;
@@ -572,8 +581,13 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     pr_trace_msg(trace_channel, 7, "'%s' resolved to IPv4 address %s", name,
       pr_netaddr_get_ipstr(na));
 
+    na->na_flags |= PR_NETADDR_ADDR_FL_IPV4_ADDR;
     netaddr_ipcache_set(name, na);
     netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na);
+
+    if (flags != NULL) {
+      *flags |= na->na_flags;
+    }
 
     errno = xerrno;
     return na;
@@ -625,8 +639,13 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
         info->ai_family == AF_INET ? "IPv4" : "IPv6",
         pr_netaddr_get_ipstr(na));
 
+      na->na_flags |= PR_NETADDR_ADDR_FL_DNS_NAME;
       netaddr_ipcache_set(name, na);
       netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na);
+
+      if (flags != NULL) {
+        *flags |= na->na_flags;
+      }
 
       pr_freeaddrinfo(info);
     }
@@ -696,6 +715,11 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     name);
   errno = ENOENT;
   return NULL;
+}
+
+pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
+    array_header **addrs) {
+  return pr_netaddr_get_addr2(p, name, addrs, NULL);
 }
 
 int pr_netaddr_get_family(const pr_netaddr_t *na) {

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2011 The ProFTPD Project team
+ * Copyright (c) 2008-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* NetAddr API tests
- * $Id: netaddr.c,v 1.3 2011-05-23 20:50:31 castaglia Exp $
+ * $Id: netaddr.c,v 1.4 2012-04-04 15:21:38 castaglia Exp $
  */
 
 #include "tests.h"
@@ -139,6 +139,57 @@ START_TEST (netaddr_get_addr_test) {
     strerror(errno));
   fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
     AF_INET, res->na_family);
+}
+END_TEST
+
+START_TEST (netaddr_get_addr2_test) {
+  pr_netaddr_t *res;
+  const char *name;
+  array_header *addrs = NULL;
+  unsigned int flags = 0;
+
+  res = pr_netaddr_get_addr2(NULL, NULL, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pr_netaddr_get_addr2(p, NULL, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null name");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  name = "127.0.0.1";
+
+  res = pr_netaddr_get_addr2(NULL, name, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pr_netaddr_get_addr2(p, name, NULL, &flags);
+  fail_unless(res != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
+    AF_INET, res->na_family);
+  fail_unless(flags == PR_NETADDR_ADDR_FL_IPV4_ADDR,
+    "Expected IPV4_ADDR flag, got %u", flags);
+
+  flags = 0;
+  name = "localhost";
+
+  res = pr_netaddr_get_addr2(p, name, NULL, &flags);
+  fail_unless(res != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
+    AF_INET, res->na_family);
+  fail_unless(flags == PR_NETADDR_ADDR_FL_DNS_NAME,
+    "Expected DNS_NAME flag, got %u", flags);
+
+  flags = 0;
+
+  res = pr_netaddr_get_addr2(p, name, &addrs, &flags);
+  fail_unless(res != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
+    AF_INET, res->na_family);
+  fail_unless(flags == PR_NETADDR_ADDR_FL_DNS_NAME,
+    "Expected DNS_NAME flag, got %u", flags);
 }
 END_TEST
 
@@ -314,7 +365,7 @@ START_TEST (netaddr_get_dnsstr_test) {
 
   pr_netaddr_clear(addr);
 
-  /* Clear the address doesn't work, since that removes even the address
+  /* Clearing the address doesn't work, since that removes even the address
    * info, in addition to the cached strings.
    */
   res = pr_netaddr_get_dnsstr(addr);
@@ -328,12 +379,15 @@ START_TEST (netaddr_get_dnsstr_test) {
   fail_unless(addr != NULL, "Failed to get addr for '127.0.0.1': %s",
     strerror(errno));
 
+  mark_point();
   fail_unless(addr->na_have_dnsstr == 0, "addr already has cached DNS str");
 
+  mark_point();
   res = pr_netaddr_get_dnsstr(addr);
   fail_unless(res != NULL, "Failed to get DNS str for addr: %s",
     strerror(errno));
 
+  mark_point();
   /* Depending on the contents of /etc/hosts, resolving 127.0.0.1 could
    * return either "localhost" or "localhost.localdomain".  Perhaps even
    * other variations, although these should be the most common.
@@ -465,6 +519,7 @@ Suite *tests_get_netaddr_suite(void) {
   tcase_add_test(testcase, netaddr_dup_test);
   tcase_add_test(testcase, netaddr_clear_test);
   tcase_add_test(testcase, netaddr_get_addr_test);
+  tcase_add_test(testcase, netaddr_get_addr2_test);
   tcase_add_test(testcase, netaddr_get_family_test);
   tcase_add_test(testcase, netaddr_set_family_test);
   tcase_add_test(testcase, netaddr_cmp_test);
