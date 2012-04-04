@@ -26,7 +26,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  * --- DO NOT DELETE BELOW THIS LINE ----
- * $Id: mod_geoip.c,v 1.1 2012-04-03 20:38:57 castaglia Exp $
+ * $Id: mod_geoip.c,v 1.2 2012-04-04 18:17:26 castaglia Exp $
  * $Libraries: -lGeoIP$
  */
 
@@ -37,7 +37,7 @@
  * module for Apache.
  */
 
-#define MOD_GEOIP_VERSION		"mod_geoip/0.3"
+#define MOD_GEOIP_VERSION		"mod_geoip/0.4"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -49,6 +49,7 @@
 
 module geoip_module;
 
+static int geoip_engine = FALSE;
 static int geoip_logfd = -1;
 
 static pool *geoip_pool = NULL;
@@ -1043,6 +1044,35 @@ MODRET set_geoiptable(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* Command handlers
+ */
+
+MODRET geoip_post_pass(cmd_rec *cmd) {
+  int res;
+
+  if (geoip_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* Modules such as mod_ifsession may have added new filters; check the
+   * filters again.
+   */
+  res = check_geoip_filters();
+  if (res < 0) {
+    (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+      "connection from %s denied due to GeoIP filter",
+      pr_netaddr_get_ipstr(session.c->remote_addr));
+    pr_log_pri(PR_LOG_INFO, MOD_GEOIP_VERSION
+      ": Connection denied to %s due to GeoIP filter",
+      pr_netaddr_get_ipstr(session.c->remote_addr));
+
+    pr_session_disconnect(&geoip_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+      "GeoIP Filters");
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 /* Event handlers
  */
 
@@ -1100,7 +1130,7 @@ static int geoip_init(void) {
 static int geoip_sess_init(void) {
   config_rec *c;
   array_header *sess_geoips;
-  int geoip_engine = FALSE, res;
+  int res;
   pool *tmp_pool;
 
   c = find_config(main_server->conf, CONF_PARAM, "GeoIPEngine", FALSE);
@@ -1108,8 +1138,9 @@ static int geoip_sess_init(void) {
     geoip_engine = *((int *) c->argv[0]);
   }
 
-  if (!geoip_engine)
+  if (geoip_engine == FALSE) {
     return 0;
+  }
 
   c = find_config(main_server->conf, CONF_PARAM, "GeoIPLog", FALSE);
   if (c) {
@@ -1199,6 +1230,11 @@ static conftable geoip_conftab[] = {
   { NULL }
 };
 
+static cmdtable geoip_cmdtab[] = {
+  { POST_CMD,	C_PASS,	G_NONE,	geoip_post_pass,	FALSE, FALSE },
+  { 0, NULL },
+};
+
 module geoip_module = {
   NULL, NULL,
 
@@ -1212,7 +1248,7 @@ module geoip_module = {
   geoip_conftab,
 
   /* Module command handler table */
-  NULL,
+  geoip_cmdtab,
 
   /* Module authentication handler table */
   NULL,
