@@ -23,7 +23,7 @@
  */
 
 /* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.32 2012-02-24 21:48:12 castaglia Exp $
+ * $Id: encode.c,v 1.33 2012-04-06 16:44:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -214,10 +214,12 @@ int encode_init(void) {
 
 char *pr_decode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
 #ifdef HAVE_ICONV
-  size_t inbuflen, outbuflen;
+  size_t inbuflen, outbuflen, outbufsz;
   char *inbuf, outbuf[PR_TUNABLE_PATH_MAX*2], *res = NULL;
 
-  if (!p || !in || !outlen) {
+  if (p == NULL ||
+      in == NULL ||
+      outlen == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -249,7 +251,11 @@ char *pr_decode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
     return NULL;
 
   *outlen = sizeof(outbuf) - outbuflen;
-  res = pcalloc(p, *outlen);
+
+  /* We allocate one byte more, for a terminating NUL. */
+  outbufsz = sizeof(outbuf) - outbuflen + 1;
+  res = pcalloc(p, outbufsz);
+
   memcpy(res, outbuf, *outlen);
 
   return res;
@@ -262,10 +268,12 @@ char *pr_decode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
 
 char *pr_encode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
 #ifdef HAVE_ICONV
-  size_t inbuflen, outbuflen;
+  size_t inbuflen, outbuflen, outbufsz;
   char *inbuf, outbuf[PR_TUNABLE_PATH_MAX*2], *res;
 
-  if (!p || !in || !outlen) {
+  if (p == NULL ||
+      in == NULL ||
+      outlen == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -297,7 +305,11 @@ char *pr_encode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
     return NULL;
 
   *outlen = sizeof(outbuf) - outbuflen;
-  res = pcalloc(p, *outlen);
+
+  /* We allocate one byte more, for a terminating NUL. */
+  outbufsz = sizeof(outbuf) - outbuflen + 1;
+
+  res = pcalloc(p, outbufsz);
   memcpy(res, outbuf, *outlen);
 
   return res;
