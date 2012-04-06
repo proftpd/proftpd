@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: agent.c,v 1.4 2012-03-07 02:14:38 castaglia Exp $
+ * $Id: agent.c,v 1.5 2012-04-06 16:53:52 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -201,12 +201,12 @@ static unsigned char *agent_request(pool *p, int fd, const char *path,
 
 static int agent_connect(const char *path) {
   int fd, len, res, xerrno;
-  struct sockaddr_un sun;
+  struct sockaddr_un sock;
 
-  memset(&sun, 0, sizeof(sun));
-  sun.sun_family = AF_UNIX;
-  sstrncpy(sun.sun_path, path, sizeof(sun.sun_path));
-  len = sizeof(sun);
+  memset(&sock, 0, sizeof(sock));
+  sock.sun_family = AF_UNIX;
+  sstrncpy(sock.sun_path, path, sizeof(sock.sun_path));
+  len = sizeof(sock);
 
   fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (fd < 0) {
@@ -222,7 +222,7 @@ static int agent_connect(const char *path) {
   fcntl(fd, F_SETFD, FD_CLOEXEC);
 
   PRIVS_ROOT
-  res = connect(fd, (struct sockaddr *) &sun, len);
+  res = connect(fd, (struct sockaddr *) &sock, len);
   xerrno = errno;
   PRIVS_RELINQUISH
 
