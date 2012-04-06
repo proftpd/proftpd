@@ -47,7 +47,7 @@ static: $(STATIC_MODULE_OBJS) module_glue.o
 	@dirs="$(STATIC_MODULE_DIRS)"; \
 	for dir in $$dirs; do \
 		module=`echo "$$dir" | sed -e 's/^.*\///'`; \
-		(cd $(top_srcdir)/$$dir/ && $(MAKE) static); \
+		(cd $(top_srcdir)/$$dir/ && $(MAKE) static) && \
 		cp $(top_srcdir)/$$dir/$$module.o .; \
 	done
 
