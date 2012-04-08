@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.88 2012-04-04 15:21:38 castaglia Exp $
+ * $Id: conf.h,v 1.89 2012-04-08 15:47:40 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -402,7 +402,6 @@ typedef struct {
   char na_ipstr[INET_ADDRSTRLEN];
 #endif /* PR_USE_IPV6 */
   int na_have_ipstr;
-  unsigned int na_flags;
 
   /* Note: at some point, this union might/should be replaced with
    * struct sockaddr_storage.  Why?  The sockaddr_storage struct is

@@ -23,7 +23,7 @@
  */
 
 /* NetAddr API tests
- * $Id: netaddr.c,v 1.4 2012-04-04 15:21:38 castaglia Exp $
+ * $Id: netaddr.c,v 1.5 2012-04-08 15:47:41 castaglia Exp $
  */
 
 #include "tests.h"
@@ -139,57 +139,6 @@ START_TEST (netaddr_get_addr_test) {
     strerror(errno));
   fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
     AF_INET, res->na_family);
-}
-END_TEST
-
-START_TEST (netaddr_get_addr2_test) {
-  pr_netaddr_t *res;
-  const char *name;
-  array_header *addrs = NULL;
-  unsigned int flags = 0;
-
-  res = pr_netaddr_get_addr2(NULL, NULL, NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
-
-  res = pr_netaddr_get_addr2(p, NULL, NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null name");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
-
-  name = "127.0.0.1";
-
-  res = pr_netaddr_get_addr2(NULL, name, NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
-
-  res = pr_netaddr_get_addr2(p, name, NULL, &flags);
-  fail_unless(res != NULL, "Failed to get addr for '%s': %s", name,
-    strerror(errno));
-  fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
-    AF_INET, res->na_family);
-  fail_unless(flags == PR_NETADDR_ADDR_FL_IPV4_ADDR,
-    "Expected IPV4_ADDR flag, got %u", flags);
-
-  flags = 0;
-  name = "localhost";
-
-  res = pr_netaddr_get_addr2(p, name, NULL, &flags);
-  fail_unless(res != NULL, "Failed to get addr for '%s': %s", name,
-    strerror(errno));
-  fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
-    AF_INET, res->na_family);
-  fail_unless(flags == PR_NETADDR_ADDR_FL_DNS_NAME,
-    "Expected DNS_NAME flag, got %u", flags);
-
-  flags = 0;
-
-  res = pr_netaddr_get_addr2(p, name, &addrs, &flags);
-  fail_unless(res != NULL, "Failed to get addr for '%s': %s", name,
-    strerror(errno));
-  fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
-    AF_INET, res->na_family);
-  fail_unless(flags == PR_NETADDR_ADDR_FL_DNS_NAME,
-    "Expected DNS_NAME flag, got %u", flags);
 }
 END_TEST
 
@@ -519,7 +468,6 @@ Suite *tests_get_netaddr_suite(void) {
   tcase_add_test(testcase, netaddr_dup_test);
   tcase_add_test(testcase, netaddr_clear_test);
   tcase_add_test(testcase, netaddr_get_addr_test);
-  tcase_add_test(testcase, netaddr_get_addr2_test);
   tcase_add_test(testcase, netaddr_get_family_test);
   tcase_add_test(testcase, netaddr_set_family_test);
   tcase_add_test(testcase, netaddr_cmp_test);

@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.29 2012-04-04 15:21:38 castaglia Exp $
+ * $Id: netaddr.h,v 1.30 2012-04-08 15:47:40 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -231,18 +231,6 @@ void pr_netaddr_clear(pr_netaddr_t *);
  * NULL will be return, and an error logged.
  */
 pr_netaddr_t *pr_netaddr_get_addr(pool *, const char *, array_header **);
-
-/* This function wraps the pr_netaddr_get_addr() functionality, with an
- * additional argument for providing more information about the given
- * address via flags.  If an addres is returned, the flags value will be
- * updated to indicate whether the address was an IPv4 string, IPv6 string,
- * or a DNS name.
- */
-pr_netaddr_t *pr_netaddr_get_addr2(pool *, const char *, array_header **,
-  unsigned int *);
-#define PR_NETADDR_ADDR_FL_IPV4_ADDR	0x001
-#define PR_NETADDR_ADDR_FL_IPV6_ADDR	0x002
-#define PR_NETADDR_ADDR_FL_DNS_NAME	0x004
 
 /* Compare the two given pr_netaddr_ts.  In order for the comparison to
  * be accurate, the pr_netaddr_ts must be of the same family (AF_INET or

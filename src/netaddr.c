@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.80 2012-04-04 15:21:38 castaglia Exp $
+ * $Id: netaddr.c,v 1.81 2012-04-08 15:47:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -480,8 +480,8 @@ pr_netaddr_t *pr_netaddr_dup(pool *p, pr_netaddr_t *na) {
   return dup_na;
 }
 
-pr_netaddr_t *pr_netaddr_get_addr2(pool *p, const char *name,
-    array_header **addrs, unsigned int *flags) {
+pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
+    array_header **addrs) {
 
   struct sockaddr_in v4;
   pr_netaddr_t *na = NULL;
@@ -506,10 +506,6 @@ pr_netaddr_t *pr_netaddr_get_addr2(pool *p, const char *name,
   if (addrs == NULL) {
     na = netaddr_ipcache_get(p, name);
     if (na) {
-      if (flags != NULL) {
-        *flags |= na->na_flags;
-      }
-
       return na;
     }
   }
@@ -548,13 +544,8 @@ pr_netaddr_t *pr_netaddr_get_addr2(pool *p, const char *name,
       pr_trace_msg(trace_channel, 7, "'%s' resolved to IPv6 address %s", name,
         pr_netaddr_get_ipstr(na));
 
-      na->na_flags |= PR_NETADDR_ADDR_FL_IPV6_ADDR;
       netaddr_ipcache_set(name, na);
       netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na);
-
-      if (flags != NULL) {
-        *flags |= na->na_flags;
-      }
 
       errno = xerrno;
       return na;
@@ -581,13 +572,8 @@ pr_netaddr_t *pr_netaddr_get_addr2(pool *p, const char *name,
     pr_trace_msg(trace_channel, 7, "'%s' resolved to IPv4 address %s", name,
       pr_netaddr_get_ipstr(na));
 
-    na->na_flags |= PR_NETADDR_ADDR_FL_IPV4_ADDR;
     netaddr_ipcache_set(name, na);
     netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na);
-
-    if (flags != NULL) {
-      *flags |= na->na_flags;
-    }
 
     errno = xerrno;
     return na;
@@ -639,13 +625,8 @@ pr_netaddr_t *pr_netaddr_get_addr2(pool *p, const char *name,
         info->ai_family == AF_INET ? "IPv4" : "IPv6",
         pr_netaddr_get_ipstr(na));
 
-      na->na_flags |= PR_NETADDR_ADDR_FL_DNS_NAME;
       netaddr_ipcache_set(name, na);
       netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na);
-
-      if (flags != NULL) {
-        *flags |= na->na_flags;
-      }
 
       pr_freeaddrinfo(info);
     }
@@ -715,11 +696,6 @@ pr_netaddr_t *pr_netaddr_get_addr2(pool *p, const char *name,
     name);
   errno = ENOENT;
   return NULL;
-}
-
-pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
-    array_header **addrs) {
-  return pr_netaddr_get_addr2(p, name, addrs, NULL);
 }
 
 int pr_netaddr_get_family(const pr_netaddr_t *na) {
