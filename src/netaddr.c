@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.81 2012-04-08 15:47:41 castaglia Exp $
+ * $Id: netaddr.c,v 1.82 2012-04-08 15:59:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1629,6 +1629,60 @@ uint32_t pr_netaddr_get_addrno(const pr_netaddr_t *na) {
 
   errno = EPERM;
   return 0;
+}
+
+int pr_netaddr_is_v4(const char *name) {
+  int res;
+  struct sockaddr_in v4;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  memset(&v4, 0, sizeof(v4));
+  v4.sin_family = AF_INET;
+
+# ifdef SIN_LEN
+  v4.sin_len = sizeof(struct sockaddr_in);
+# endif /* SIN_LEN */
+
+  res = pr_inet_pton(AF_INET, name, &v4.sin_addr);
+  if (res > 0) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+int pr_netaddr_is_v6(const char *name) {
+  if (name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+#ifdef PR_USE_IPV6
+  if (use_ipv6) {
+    int res;
+    struct sockaddr_in6 v6;
+
+    memset(&v6, 0, sizeof(v6));
+    v6.sin6_family = AF_INET6;
+
+# ifdef SIN6_LEN
+    v6.sin6_len = sizeof(struct sockaddr_in6);
+# endif /* SIN6_LEN */
+
+    res = pr_inet_pton(AF_INET6, name, &v6.sin6_addr);
+    if (res > 0) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+#else
+  return FALSE;
+#endif /* !PR_USE_IPV6 */
 }
 
 int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *na) {

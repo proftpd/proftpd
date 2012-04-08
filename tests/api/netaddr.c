@@ -23,7 +23,7 @@
  */
 
 /* NetAddr API tests
- * $Id: netaddr.c,v 1.5 2012-04-08 15:47:41 castaglia Exp $
+ * $Id: netaddr.c,v 1.6 2012-04-08 15:59:11 castaglia Exp $
  */
 
 #include "tests.h"
@@ -418,6 +418,60 @@ START_TEST (netaddr_get_localaddr_str_test) {
 }
 END_TEST
 
+START_TEST (netaddr_is_v4_test) {
+  int res;
+  const char *name;
+
+  res = pr_netaddr_is_v4(NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  name = "::1";
+  res = pr_netaddr_is_v4(name);
+  fail_unless(res == FALSE, "Expected 'false' for IPv6 address '%s', got %d",
+    name, res);
+
+  name = "localhost";
+  res = pr_netaddr_is_v4(name);
+  fail_unless(res == FALSE, "Expected 'false' for DNS name '%s', got %d",
+    name, res);
+
+  name = "127.0.0.1";
+  res = pr_netaddr_is_v4(name);
+  fail_unless(res == TRUE, "Expected 'true' for IPv4 address '%s', got %d",
+    name, res);
+}
+END_TEST
+
+START_TEST (netaddr_is_v6_test) {
+  int res;
+  const char *name;
+
+  res = pr_netaddr_is_v6(NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  name = "127.0.0.1";
+  res = pr_netaddr_is_v6(name);
+  fail_unless(res == FALSE, "Expected 'false' for IPv4 address '%s', got %d",
+    name, res);
+
+  name = "localhost";
+  res = pr_netaddr_is_v6(name);
+  fail_unless(res == FALSE, "Expected 'false' for DNS name '%s', got %d",
+    name, res);
+
+  pr_netaddr_enable_ipv6();
+
+  if (pr_netaddr_use_ipv6() == TRUE) {
+    name = "::1";
+    res = pr_netaddr_is_v6(name);
+    fail_unless(res == TRUE, "Expected 'true' for IPv6 address '%s', got %d",
+      name, res);
+  }
+}
+END_TEST
+
 START_TEST (netaddr_is_v4mappedv6_test) {
 }
 END_TEST
@@ -486,6 +540,8 @@ Suite *tests_get_netaddr_suite(void) {
   tcase_add_test(testcase, netaddr_get_ipstr_test);
   tcase_add_test(testcase, netaddr_validate_dns_str_test);
   tcase_add_test(testcase, netaddr_get_localaddr_str_test);
+  tcase_add_test(testcase, netaddr_is_v4_test);
+  tcase_add_test(testcase, netaddr_is_v6_test);
   tcase_add_test(testcase, netaddr_is_v4mappedv6_test);
   tcase_add_test(testcase, netaddr_disable_ipv6_test);
   tcase_add_test(testcase, netaddr_enable_ipv6_test);

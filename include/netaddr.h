@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.30 2012-04-08 15:47:40 castaglia Exp $
+ * $Id: netaddr.h,v 1.31 2012-04-08 15:59:11 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -360,6 +360,16 @@ uint32_t pr_netaddr_get_addrno(const pr_netaddr_t *);
  * FALSE otherwise.
  */
 int pr_netaddr_is_loopback(const pr_netaddr_t *);
+
+/* Returns TRUE if the given string is an IPv4 address, FALSE if not, and -1
+ * (with errno set appropriately) if there was an error.
+ */
+int pr_netaddr_is_v4(const char *);
+
+/* Returns TRUE if the given string is an IPv6 address, FALSE if not, and -1
+ * (with errno set appropriately) if there was an error.
+ */
+int pr_netaddr_is_v6(const char *);
 
 /* Returns TRUE if the given pr_netaddr_t is of the AF_INET6 family and
  * contains an IPv4-mapped IPv6 address; otherwise FALSE is returned.  A
