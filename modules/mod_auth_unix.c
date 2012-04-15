@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.50 2011-05-23 21:11:56 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.51 2012-04-15 18:04:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -131,6 +131,10 @@ extern unsigned char persistent_passwd;
 #define AUTH_UNIX_OPT_MAGIC_TOKEN_CHROOT	0x0004
 
 static unsigned long auth_unix_opts = 0UL;
+
+/* Necessary prototypes */
+static void auth_unix_exit_ev(const void *, void *);
+static int auth_unix_sess_init(void);
 
 static void p_setpwent(void) {
   if (pwdf)
@@ -1191,6 +1195,33 @@ MODRET pw_getgroups(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+/* Command handlers
+ */
+
+MODRET auth_unix_post_host(cmd_rec *cmd) {
+
+  /* If the HOST command changed the main_server pointer, reinitialize
+   * ourselves.
+   */
+  if (session.prev_server != NULL) {
+    int res;
+
+    pr_event_unregister(&auth_unix_module, "core.exit", auth_unix_exit_ev);
+    auth_unix_opts = 0UL;
+
+    res = auth_unix_sess_init();
+    if (res < 0) {
+      pr_session_disconnect(&auth_unix_module,
+        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
+
+/* Configuration handlers
+ */
+
 /* usage: AuthUnixOptions opt1 ... */
 MODRET set_authunixoptions(cmd_rec *cmd) {
   config_rec *c;
@@ -1285,6 +1316,11 @@ static conftable auth_unix_conftab[] = {
   { NULL,			NULL,				NULL }
 };
 
+static cmdtable auth_unix_cmdtab[] = {
+  { POST_CMD,	C_HOST,	G_NONE,	auth_unix_post_host,	FALSE, FALSE },
+  { 0, NULL }
+};
+
 static authtable auth_unix_authtab[] = {
   { 0,  "setpwent",	pw_setpwent },
   { 0,  "endpwent",	pw_endpwent },
@@ -1320,7 +1356,7 @@ module auth_unix_module = {
   auth_unix_conftab,
 
   /* Module command handler table */
-  NULL,
+  auth_unix_cmdtab,
 
   /* Module authentication handler table */
   auth_unix_authtab,

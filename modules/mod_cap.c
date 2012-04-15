@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2003-2011 The ProFTPD Project team
+ * Copyright (c) 2003-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.27 2011-05-23 21:11:56 castaglia Exp $
+ * $Id: mod_cap.c,v 1.28 2012-04-15 18:04:15 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -230,6 +230,28 @@ MODRET set_capengine(cmd_rec *cmd) {
 
 /* Command handlers
  */
+
+MODRET cap_post_host(cmd_rec *cmd) {
+
+  /* If the HOST command changed the main_server pointer, reinitialize
+   * ourselves.
+   */
+  if (session.prev_server != NULL) {
+    int res;
+
+    have_capabilities = FALSE;
+    use_capabilities = TRUE;
+    cap_flags = 0;
+
+    res = cap_sess_init();
+    if (res < 0) {
+      pr_session_disconnect(&cap_module,
+        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
 
 /* The POST_CMD handler for "PASS" is only called after PASS has
  * successfully completed, which means authentication is successful,
@@ -526,7 +548,8 @@ static conftable cap_conftab[] = {
 };
 
 static cmdtable cap_cmdtab[] = {
-  { POST_CMD, C_PASS, G_NONE, cap_post_pass, FALSE, FALSE },
+  { POST_CMD,	C_HOST,	G_NONE,	cap_post_host,	FALSE,	FALSE },
+  { POST_CMD,	C_PASS, G_NONE, cap_post_pass,	FALSE,	FALSE },
   { 0, NULL }
 };
 

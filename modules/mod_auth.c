@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.302 2012-03-01 23:51:18 castaglia Exp $
+ * $Id: mod_auth.c,v 1.303 2012-04-15 18:04:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -153,38 +153,56 @@ static int auth_sess_init(void) {
 
   pr_event_register(&auth_module, "core.exit", auth_exit_ev, NULL);
 
-  /* Create an entry in the scoreboard for this session. */
-  if (pr_scoreboard_entry_add() < 0)
-    pr_log_pri(PR_LOG_NOTICE, "notice: unable to add scoreboard entry: %s",
-      strerror(errno));
+  /* Create an entry in the scoreboard for this session, if we don't already
+   * have one.
+   */
+  if (pr_scoreboard_entry_get(PR_SCORE_CLIENT_ADDR) == NULL) {
+    if (pr_scoreboard_entry_add() < 0) {
+      pr_log_pri(PR_LOG_NOTICE, "notice: unable to add scoreboard entry: %s",
+        strerror(errno));
+    }
 
-  pr_scoreboard_entry_update(session.pid,
-    PR_SCORE_USER, "(none)",
-    PR_SCORE_SERVER_PORT, main_server->ServerPort,
-    PR_SCORE_SERVER_ADDR, session.c->local_addr, session.c->local_port,
-    PR_SCORE_SERVER_LABEL, main_server->ServerName,
-    PR_SCORE_CLIENT_ADDR, session.c->remote_addr,
-    PR_SCORE_CLIENT_NAME, session.c->remote_name,
-    PR_SCORE_CLASS, session.conn_class ? session.conn_class->cls_name : "",
-    PR_SCORE_PROTOCOL, "ftp",
-    PR_SCORE_BEGIN_SESSION, time(NULL),
-    NULL);
+    pr_scoreboard_entry_update(session.pid,
+      PR_SCORE_USER, "(none)",
+      PR_SCORE_SERVER_PORT, main_server->ServerPort,
+      PR_SCORE_SERVER_ADDR, session.c->local_addr, session.c->local_port,
+      PR_SCORE_SERVER_LABEL, main_server->ServerName,
+      PR_SCORE_CLIENT_ADDR, session.c->remote_addr,
+      PR_SCORE_CLIENT_NAME, session.c->remote_name,
+      PR_SCORE_CLASS, session.conn_class ? session.conn_class->cls_name : "",
+      PR_SCORE_PROTOCOL, "ftp",
+      PR_SCORE_BEGIN_SESSION, time(NULL),
+      NULL);
+
+  } else {
+    /* We're probably handling a HOST comand, and the server changed; just
+     * update the SERVER_LABEL field.
+     */
+    pr_scoreboard_entry_update(session.pid,
+      PR_SCORE_SERVER_LABEL, main_server->ServerName,
+      NULL);
+  }
 
   /* Should we create the home for a user, if they don't have one? */
   tmp = get_param_ptr(main_server->conf, "CreateHome", FALSE);
-  if (tmp != NULL && *tmp == TRUE)
+  if (tmp != NULL &&
+      *tmp == TRUE) {
     mkhome = TRUE;
-  else
+
+  } else {
     mkhome = FALSE;
+  }
 
 #ifdef PR_USE_LASTLOG
   /* Use the lastlog file, if supported and requested. */
   tmp = get_param_ptr(main_server->conf, "UseLastlog", FALSE);
   if (tmp &&
-      *tmp == TRUE)
+      *tmp == TRUE) {
     lastlog = TRUE;
-  else
+
+  } else {
     lastlog = FALSE;
+  }
 #endif /* PR_USE_LASTLOG */
 
   /* Scan the scoreboard now, in order to tally up certain values for
@@ -239,6 +257,40 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
   }
 
   return pr_auth_authenticate(p, u, pw);
+}
+
+/* Command handlers
+ */
+
+MODRET auth_post_host(cmd_rec *cmd) {
+
+  /* If the HOST command changed the main_server pointer, reinitialize
+   * ourselves.
+   */
+  if (session.prev_server != NULL) {
+    int res;
+
+    /* Remove the TimeoutLogin timer. */
+    pr_timer_remove(PR_TIMER_LOGIN, &auth_module);
+
+    pr_event_unregister(&auth_module, "core.exit", auth_exit_ev);
+
+    /* Reset the CreateHome setting. */
+    mkhome = FALSE;
+
+#ifdef PR_USE_LASTLOG
+    /* Reset the UseLastLog setting. */
+    lastlog = FALSE;
+#endif /* PR_USE_LASTLOG */
+
+    res = auth_sess_init();
+    if (res < 0) {
+      pr_session_disconnect(&auth_module,
+        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+    }
+  }
+
+  return PR_DECLINED(cmd);
 }
 
 MODRET auth_err_pass(cmd_rec *cmd) {
@@ -3206,6 +3258,7 @@ static cmdtable auth_cmdtab[] = {
   { LOG_CMD_ERR,C_PASS,	G_NONE,	auth_err_pass,  FALSE,  FALSE },
   { CMD,	C_ACCT,	G_NONE,	auth_acct,	FALSE,	FALSE,	CL_AUTH },
   { CMD,	C_REIN,	G_NONE,	auth_rein,	FALSE,	FALSE,	CL_AUTH },
+  { POST_CMD,	C_HOST,	G_NONE,	auth_post_host,	FALSE,	FALSE },
   { 0, NULL }
 };
 

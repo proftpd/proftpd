@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.48 2012-02-03 07:00:34 castaglia Exp $
+ * $Id: mod_facts.c,v 1.49 2012-04-15 18:04:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -61,6 +61,7 @@ struct mlinfo {
 
 /* Necessary prototypes */
 static void facts_mlinfobuf_flush(void);
+static int facts_sess_init(void);
 
 /* Support functions
  */
@@ -1449,6 +1450,27 @@ MODRET facts_opts_mlst(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+MODRET facts_post_host(cmd_rec *cmd) {
+
+  /* If the HOST command changed the main_server pointer, reinitialize
+   * ourselves.
+   */
+  if (session.prev_server != NULL) {
+    int res;
+
+    facts_opts = 0;
+    facts_mlinfo_opts = 0;
+
+    res = facts_sess_init();
+    if (res < 0) {
+      pr_session_disconnect(&facts_module,
+        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 /* Configuration handlers
  */
 
@@ -1563,6 +1585,7 @@ static cmdtable facts_cmdtab[] = {
   { LOG_CMD_ERR,C_MLSD,		G_NONE,	facts_mlsd_cleanup, FALSE, FALSE },
   { CMD,	C_MLST,		G_DIRS,	facts_mlst, TRUE, FALSE, CL_DIRS },
   { CMD,	C_OPTS "_MLST", G_NONE, facts_opts_mlst, FALSE, FALSE },
+  { POST_CMD,	C_HOST,		G_NONE,	facts_post_host, FALSE, FALSE },
   { 0, NULL }
 };
 

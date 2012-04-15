@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.261 2011-12-11 02:14:43 castaglia Exp $
+ * $Id: dirtree.c,v 1.262 2012-04-15 18:04:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3203,7 +3203,7 @@ int fixup_servers(xaset_t *list) {
     unsigned char *default_server = NULL;
 
     next_s = s->next;
-    if (!s->ServerAddress) {
+    if (s->ServerAddress == NULL) {
       array_header *addrs = NULL;
 
       s->ServerAddress = pr_netaddr_get_localaddr_str(s->pool);
@@ -3237,8 +3237,9 @@ int fixup_servers(xaset_t *list) {
         }
       }
  
-    } else 
+    } else {
       s->addr = pr_netaddr_get_addr(s->pool, s->ServerAddress, NULL);
+    }
 
     if (s->addr == NULL) {
       pr_log_pri(PR_LOG_WARNING,
@@ -3250,27 +3251,32 @@ int fixup_servers(xaset_t *list) {
 
       xaset_remove(list, (xasetmember_t *) s);
       destroy_pool(s->pool);
+      s->pool = NULL;
       continue;
     }
 
     s->ServerFQDN = pr_netaddr_get_dnsstr(s->addr);
 
-    if (!s->ServerFQDN)
+    if (s->ServerFQDN == NULL) {
       s->ServerFQDN = s->ServerAddress;
+    }
 
-    if (!s->ServerAdmin)
+    if (s->ServerAdmin == NULL) {
       s->ServerAdmin = pstrcat(s->pool, "root@", s->ServerFQDN, NULL);
+    }
 
-    if (!s->ServerName) {
+    if (s->ServerName == NULL) {
       server_rec *m = (server_rec *) list->xas_list;
       s->ServerName = pstrdup(s->pool, m->ServerName);
     }
 
-    if (!s->tcp_rcvbuf_len)
+    if (s->tcp_rcvbuf_len == 0) {
       s->tcp_rcvbuf_len = tcp_rcvbufsz;
+    }
 
-    if (!s->tcp_sndbuf_len)
+    if (s->tcp_sndbuf_len == 0) {
       s->tcp_sndbuf_len = tcp_sndbufsz;
+    }
 
     c = find_config(s->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
     if (c != NULL) {
@@ -3287,7 +3293,7 @@ int fixup_servers(xaset_t *list) {
     if (default_server &&
         *default_server == TRUE) {
 
-      if (!SocketBindTight) {
+      if (SocketBindTight == FALSE) {
         pr_netaddr_set_sockaddr_any(s->addr);
 
       } else {

@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.36 2011-09-05 19:19:55 castaglia Exp $
+ * $Id: trace.c,v 1.37 2012-04-15 18:04:15 castaglia Exp $
  */
 
 
@@ -362,8 +362,20 @@ int pr_trace_set_file(const char *path) {
 int pr_trace_set_levels(const char *channel, int min_level, int max_level) {
 
   if (channel == NULL) {
-    errno = EINVAL;
-    return -1;
+    void *v;
+
+    if (trace_tab == NULL) {
+      errno = EINVAL;
+      return -1;
+    }
+
+    v = pr_table_remove(trace_tab, channel, NULL);
+    if (v == NULL) {
+      errno = EINVAL;
+      return -1;
+    }
+
+    return 0;
   }
 
   if (min_level > max_level) {

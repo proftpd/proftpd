@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.447 2012-03-07 15:29:44 castaglia Exp $
+ * $Id: main.c,v 1.448 2012-04-15 18:04:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -819,72 +819,6 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, int flags) {
   return cmd;
 }
 
-static void send_session_banner(server_rec *server) {
-  config_rec *c = NULL;
-  char *display = NULL;
-  const char *serveraddress = NULL;
-  config_rec *masq = NULL;
-
-  display = get_param_ptr(server->conf, "DisplayConnect", FALSE);
-  if (display != NULL) {
-    int flags = PR_DISPLAY_FL_NO_EOM|PR_DISPLAY_FL_SEND_NOW;
-
-    if (pr_display_file(display, NULL, R_220, flags) < 0) {
-      pr_log_debug(DEBUG6, "unable to display DisplayConnect file '%s': %s",
-        display, strerror(errno));
-    }
-  }
-
-  serveraddress = pr_netaddr_get_ipstr(session.c->local_addr);
-
-  masq = find_config(server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
-  if (masq != NULL) {
-    pr_netaddr_t *masq_addr = (pr_netaddr_t *) masq->argv[0];
-    serveraddress = pr_netaddr_get_ipstr(masq_addr);
-  }
-
-  c = find_config(server->conf, CONF_PARAM, "ServerIdent", FALSE);
-  if (c == NULL ||
-      *((unsigned char *) c->argv[0]) == TRUE) {
-    unsigned char *defer_welcome = get_param_ptr(main_server->conf,
-      "DeferWelcome", FALSE);
-
-    if (c &&
-        c->argc > 1) {
-      char *server_ident = c->argv[1];
-
-      if (strstr(server_ident, "%L") != NULL) {
-        server_ident = sreplace(session.pool, server_ident, "%L",
-          pr_netaddr_get_ipstr(session.c->local_addr), NULL);
-      }
-
-      if (strstr(server_ident, "%V") != NULL) {
-        server_ident = sreplace(session.pool, server_ident, "%V",
-          main_server->ServerFQDN, NULL);
-      }
-
-      if (strstr(server_ident, "%v") != NULL) {
-        server_ident = sreplace(session.pool, server_ident, "%v",
-          main_server->ServerName, NULL);
-      }
-
-      pr_response_send(R_220, "%s", server_ident);
-
-    } else if (defer_welcome &&
-               *defer_welcome == TRUE) {
-      pr_response_send(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
-        " Server ready.");
-
-    } else {
-      pr_response_send(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
-        " Server (%s) [%s]", server->ServerName, serveraddress);
-    }
-
-  } else {
-    pr_response_send(R_220, _("%s FTP server ready"), serveraddress);
-  }
-}
-
 static void cmd_loop(server_rec *server, conn_t *c) {
 
   while (TRUE) {
@@ -1460,7 +1394,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* Make sure we can receive OOB data */
   pr_inet_set_async(session.pool, session.c);
 
-  send_session_banner(main_server);
+  pr_session_send_banner(main_server,
+    PR_DISPLAY_FL_NO_EOM|PR_DISPLAY_FL_SEND_NOW);
 
   cmd_handler(main_server, conn);
 
@@ -3310,15 +3245,8 @@ int main(int argc, char *argv[], char **envp) {
     uid_t *uid = (uid_t *) get_param_ptr(main_server->conf, "UserID", FALSE);
     gid_t *gid = (gid_t *) get_param_ptr(main_server->conf, "GroupID", FALSE);
 
-    if (uid)
-      daemon_uid = *uid;
-    else
-      daemon_uid = PR_ROOT_UID;
-
-    if (gid)
-      daemon_gid = *gid;
-    else
-      daemon_gid = PR_ROOT_GID;
+    daemon_uid = (uid != NULL ? *uid : PR_ROOT_UID);
+    daemon_gid = (gid != NULL ? *gid : PR_ROOT_GID);
   }
 
   if (daemon_uid != PR_ROOT_UID) {

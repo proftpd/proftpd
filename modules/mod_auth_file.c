@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_file - file-based authentication module that supports
  *                          restrictions on the file contents
  *
- * Copyright (c) 2002-2011 The ProFTPD Project team
+ * Copyright (c) 2002-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.41 2011-11-17 23:40:28 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.42 2012-04-15 18:04:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -83,6 +83,8 @@ typedef struct file_rec {
 /* List of server-specific Authiles */
 static authfile_file_t *af_user_file = NULL;
 static authfile_file_t *af_group_file = NULL;
+
+static int authfile_sess_init(void);
 
 static int af_setpwent(void);
 static int af_setgrent(void);
@@ -1047,6 +1049,33 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* Command handlers
+ */
+
+MODRET authfile_post_host(cmd_rec *cmd) {
+
+  /* If the HOST command changed the main_server pointer, reinitialize
+   * ourselves.
+   */
+  if (session.prev_server != NULL) {
+    int res;
+
+    af_user_file = NULL;
+    af_group_file = NULL;
+
+    res = authfile_sess_init();
+    if (res < 0) {
+      pr_session_disconnect(&auth_file_module,
+        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
+
+/* Configuration handlers
+ */
+
 /* usage: AuthUserFile path [home <regexp>] [id <min-max>] [name <regex>] */
 MODRET set_authuserfile(cmd_rec *cmd) {
   config_rec *c = NULL;
@@ -1206,6 +1235,11 @@ static conftable authfile_conftab[] = {
   { NULL }
 };
 
+static cmdtable authfile_cmdtab[] = {
+  { POST_CMD,	C_HOST,	G_NONE,	authfile_post_host,	FALSE, FALSE },
+  { 0, NULL }
+};
+
 static authtable authfile_authtab[] = {
 
   /* User information callbacks */
@@ -1248,7 +1282,7 @@ module auth_file_module = {
   authfile_conftab,
 
   /* Module command handler table */
-  NULL,
+  authfile_cmdtab,
 
   /* Module authentication handler table */
   authfile_authtab,

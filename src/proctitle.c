@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2007-2011 The ProFTPD Project team
+ * Copyright (c) 2007-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Proctitle management
- * $Id: proctitle.c,v 1.12 2011-11-19 02:44:42 castaglia Exp $
+ * $Id: proctitle.c,v 1.13 2012-04-15 18:04:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -289,8 +289,14 @@ void pr_proctitle_set(const char *fmt, ...) {
 }
 
 void pr_proctitle_set_static_str(const char *buf) {
-  pr_proctitle_set_str(buf);
-  proc_flags |= PR_PROCTITLE_FL_USE_STATIC;
+  if (buf != NULL) {
+    pr_proctitle_set_str(buf);
+    proc_flags |= PR_PROCTITLE_FL_USE_STATIC;
+
+  } else {
+    /* Reset. */
+    proc_flags = 0;
+  }
 }
 
 int pr_proctitle_get(char *buf, size_t bufsz) {

@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.129 2012-04-04 06:05:21 castaglia Exp $
+ * $Id: mod_log.c,v 1.130 2012-04-15 18:04:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -160,6 +160,9 @@ static xaset_t			*log_set = NULL;
    %{transfer-failure}  - reason, or "-"
    %{version}           - ProFTPD version
 */
+
+/* Necessary prototypes */
+static int log_sess_init(void);
 
 static void add_meta(unsigned char **s, unsigned char meta, int args, ...) {
   int arglen;
@@ -1636,6 +1639,43 @@ MODRET log_pre_dele(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+MODRET log_post_host(cmd_rec *cmd) {
+
+  /* If the HOST command changed the main_server pointer, reinitialize
+   * ourselves.
+   */
+  if (session.prev_server != NULL) {
+    int res;
+    logfile_t *lf = NULL;
+
+    pr_event_unregister(&log_module, "core.exit", log_exit_ev);
+    pr_event_unregister(&log_module, "core.timeout-stalled",
+      log_xfer_stalled_ev);
+
+    /* XXX If ServerLog configured, close/reopen syslog? */
+
+    /* XXX Close all ExtendedLog files, to prevent duplicate fds. */
+    for (lf = logs; lf; lf = lf->next) {
+      if (lf->lf_fd > -1) {
+        /* No need to close the special EXTENDED_LOG_SYSLOG (i.e. fake) fd. */
+        if (lf->lf_fd != EXTENDED_LOG_SYSLOG) {
+          (void) close(lf->lf_fd);
+        }
+
+        lf->lf_fd = -1;
+      }
+    }
+
+    res = log_sess_init();
+    if (res < 0) {
+      pr_session_disconnect(&log_module,
+        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 MODRET log_post_pass(cmd_rec *cmd) {
   logfile_t *lf;
 
@@ -1789,9 +1829,10 @@ static conftable log_conftab[] = {
 
 static cmdtable log_cmdtab[] = {
   { PRE_CMD,		C_DELE,	G_NONE,	log_pre_dele,	FALSE, FALSE },
-  { LOG_CMD,		C_ANY,	G_NONE,	log_any,		FALSE, FALSE },
-  { LOG_CMD_ERR,	C_ANY,	G_NONE,	log_any,		FALSE, FALSE },
-  { POST_CMD,		C_PASS,	G_NONE,	log_post_pass,		FALSE, FALSE },
+  { LOG_CMD,		C_ANY,	G_NONE,	log_any,	FALSE, FALSE },
+  { LOG_CMD_ERR,	C_ANY,	G_NONE,	log_any,	FALSE, FALSE },
+  { POST_CMD,		C_HOST,	G_NONE,	log_post_host,	FALSE, FALSE },
+  { POST_CMD,		C_PASS,	G_NONE,	log_post_pass,	FALSE, FALSE },
   { 0, NULL }
 };
 

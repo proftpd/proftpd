@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.301 2012-04-04 15:27:31 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.302 2012-04-15 18:04:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -70,6 +70,11 @@ static unsigned long xfer_prio_flags = 0;
 #define PR_XFER_PRIO_FL_RETR  0x0002
 #define PR_XFER_PRIO_FL_STOR  0x0004
 #define PR_XFER_PRIO_FL_STOU  0x0008
+
+static void xfer_exit_ev(const void *, void *);
+static void xfer_sigusr2_ev(const void *, void *);
+static void xfer_xfer_stalled_ev(const void *, void *);
+static int xfer_sess_init(void);
 
 static int xfer_prio_adjust(void);
 static int xfer_prio_restore(void);
@@ -2413,6 +2418,34 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
   return 0;
 }
 
+MODRET xfer_post_host(cmd_rec *cmd) {
+
+  /* If the HOST command changed the main_server pointer, reinitialize
+   * ourselves.
+   */
+  if (session.prev_server != NULL) {
+    int res;
+
+    pr_event_unregister(&xfer_module, "core.exit", xfer_exit_ev);
+    pr_event_unregister(&xfer_module, "core.timeout-stalled",
+      xfer_xfer_stalled_ev);
+    pr_event_unregister(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev);
+
+    if (displayfilexfer_fh != NULL) {
+      (void) pr_fsio_close(displayfilexfer_fh);
+      displayfilexfer_fh = NULL;
+    }
+
+    res = xfer_sess_init();
+    if (res < 0) {
+      pr_session_disconnect(&xfer_module,
+        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 MODRET xfer_post_pass(cmd_rec *cmd) {
   config_rec *c;
 
@@ -3286,6 +3319,7 @@ static cmdtable xfer_cmdtab[] = {
   { CMD,     C_REST,	G_NONE,	 xfer_rest,	TRUE,	FALSE, CL_MISC  },
   { POST_CMD,C_PROT,	G_NONE,  xfer_post_prot,	FALSE,	FALSE },
   { POST_CMD,C_PASS,	G_NONE,	 xfer_post_pass,	FALSE, FALSE },
+  { POST_CMD,C_HOST,	G_NONE,	 xfer_post_host,	FALSE, FALSE },
   { 0, NULL }
 };
 

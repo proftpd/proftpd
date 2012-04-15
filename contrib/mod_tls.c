@@ -475,6 +475,8 @@ static X509_STORE *tls_crl_store = NULL;
 static DH *tls_tmp_dh = NULL;
 static RSA *tls_tmp_rsa = NULL;
 
+static int tls_sess_init(void);
+
 /* SSL/TLS support functions */
 static void tls_closelog(void);
 static void tls_end_sess(SSL *, int, int);
@@ -6575,6 +6577,33 @@ MODRET tls_pbsz(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+MODRET tls_post_host(cmd_rec *cmd) {
+
+  /* If the HOST command changed the main_server pointer, reinitialize
+   * ourselves.
+   */
+  if (session.prev_server != NULL) {
+    int res;
+
+    /* HOST after AUTH?  Make the SNI check, close the connection if failed. */
+
+    /* HOST before AUTH?  Re-init mod_tls. */
+
+    /* XXX Has a TLS handshake already been performed?  If so, do some stuff. */
+    /* XXX Perform SNI check */
+
+#if 0
+    res = tls_sess_init();
+    if (res < 0) {
+      pr_session_disconnect(&tls_module,
+        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+    }
+#endif
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 MODRET tls_post_pass(cmd_rec *cmd) {
   config_rec *protocols_config;
 
@@ -8366,6 +8395,7 @@ static cmdtable tls_cmdtab[] = {
   { CMD,	C_CCC,	G_NONE,	tls_ccc,	FALSE,	FALSE,	CL_SEC },
   { CMD,	C_PBSZ,	G_NONE,	tls_pbsz,	FALSE,	FALSE,	CL_SEC },
   { CMD,	C_PROT,	G_NONE,	tls_prot,	FALSE,	FALSE,	CL_SEC },
+  { POST_CMD,	C_HOST,	G_NONE,	tls_post_host,	FALSE,	FALSE,	CL_SEC },
   { POST_CMD,	C_PASS,	G_NONE,	tls_post_pass,	FALSE,	FALSE,	CL_SEC },
   { 0,	NULL }
 };

@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_memcache -- a module for managing memcache data
  *
- * Copyright (c) 2010-2011 The ProFTPD Project
+ * Copyright (c) 2010-2012 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached -lmemcachedutil$
- * $Id: mod_memcache.c,v 1.17 2011-12-01 00:57:44 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.18 2012-04-15 18:04:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -43,6 +43,42 @@ module memcache_module;
 static int memcache_logfd = -1;
 static pool *memcache_pool = NULL;
 static array_header *memcache_server_lists = NULL;
+
+/* Command handlers
+ */
+
+MODRET memcache_post_host(cmd_rec *cmd) {
+
+  /* If the HOST command changed the main_server pointer, reinitialize
+   * ourselves.
+   */
+  if (session.prev_server != NULL) {
+    int res;
+    config_rec *c;
+
+    pr_event_unregister(&memcache_module, "core.exit", mcache_exit_ev, NULL);
+    (void) close(memcache_logfd);
+
+    c = find_config(session.prev_server->conf, CONF_PARAM, "MemcacheServers",
+      FALSE);
+    if (c != NULL) {
+      memcached_server_st *memcache_servers;
+
+      memcache_servers = c->argv[0];
+      memcache_set_servers(memcache_servers);
+    }
+
+    /* XXX Restore other memcache settings? */
+
+    res = memcache_sess_init();
+    if (res < 0) {
+      pr_session_disconnect(&memcache_module,
+        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
 
 /* Configuration handlers
  */
@@ -446,6 +482,11 @@ static int mcache_sess_init(void) {
 /* Module API tables
  */
 
+static cmdtable memcache_cmdtab[] = {
+  { POST_CMD,	C_HOST,	G_NONE,	memcache_post_host,	FALSE,	FALSE },
+  { 0, NULL }
+};
+
 static conftable memcache_conftab[] = {
   { "MemcacheConnectFailures",	set_memcacheconnectfailures,	NULL },
   { "MemcacheEngine",		set_memcacheengine,		NULL },
@@ -471,7 +512,7 @@ module memcache_module = {
   memcache_conftab,
 
   /* Module command handler table */
-  NULL,
+  memcache_cmdtab,
 
   /* Module authentication handler table */
   NULL,

@@ -2,7 +2,7 @@
  * ProFTPD: mod_delay -- a module for adding arbitrary delays to the FTP
  *                       session lifecycle
  *
- * Copyright (c) 2004-2011 TJ Saunders
+ * Copyright (c) 2004-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.62 2011-12-05 00:01:06 castaglia Exp $
+ * $Id: mod_delay.c,v 1.63 2012-04-15 18:04:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -127,6 +127,7 @@ static unsigned int delay_npass = 0;
 static pool *delay_pool = NULL;
 static struct timeval delay_tv;
 
+static int delay_sess_init(void);
 static void delay_table_reset(void);
 
 #define delay_swap(a, b) \
@@ -1360,6 +1361,31 @@ MODRET delay_pre_pass(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+MODRET delay_post_host(cmd_rec *cmd) {
+
+  /* If the HOST command changed the main_server pointer, reinitialize
+   * ourselves.
+   */
+  if (session.prev_server != NULL) {
+    int res;
+
+    delay_engine = TRUE;
+
+    if (delay_tab.dt_fd > 0) {
+      close(delay_tab.dt_fd);
+      delay_tab.dt_fd = -1;
+    }
+
+    res = delay_sess_init();
+    if (res < 0) {
+      pr_session_disconnect(&delay_module,
+        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 MODRET delay_post_user(cmd_rec *cmd) {
   struct timeval tv;
   unsigned int rownum;
@@ -1695,6 +1721,7 @@ static cmdtable delay_cmdtab[] = {
   { PRE_CMD,		C_USER,	G_NONE,	delay_pre_user,		FALSE, FALSE },
   { POST_CMD,		C_USER,	G_NONE,	delay_post_user,	FALSE, FALSE },
   { POST_CMD_ERR,	C_USER,	G_NONE,	delay_post_user,	FALSE, FALSE },
+  { POST_CMD,		C_HOST,	G_NONE, delay_post_host,	FALSE, FALSE },
   { 0, NULL }
 };
 
