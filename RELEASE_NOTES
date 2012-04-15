@@ -9,6 +9,11 @@ ChangeLog files.
 1.3.5rc1
 ---------
 
+  + Support for the HOST FTP command (Bug#3289)
+
+      Need doc describing name-based virtual host support (ServerAlias,
+        handling of DNS names, TLSRequireSNI, etc).
+
   + Added Japanese translation
   + Many mod_sftp bugfixes
 
@@ -95,4 +100,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-04-04 04:51:59 $
+Last Updated: $Date: 2012-04-15 18:05:49 $
