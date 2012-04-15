@@ -96,8 +96,6 @@ sub host_after_login_fails {
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
-  my $test_file = File::Spec->rel2abs($config_file);
-
   my $user = 'proftpd';
   my $passwd = 'test';
   my $group = 'ftpd';
@@ -219,8 +217,6 @@ sub host_literal_ipv6_fails_useipv6_off {
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -345,8 +341,6 @@ sub host_literal_ipv6_with_port_fails {
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
-  my $test_file = File::Spec->rel2abs($config_file);
-
   my $user = 'proftpd';
   my $passwd = 'test';
   my $group = 'ftpd';
@@ -470,8 +464,6 @@ sub host_invalid_ipv4_fails {
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
-  my $test_file = File::Spec->rel2abs($config_file);
-
   my $user = 'proftpd';
   my $passwd = 'test';
   my $group = 'ftpd';
@@ -593,8 +585,6 @@ sub host_ipv4_with_port_fails {
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -718,8 +708,6 @@ sub host_unknown_host_fails {
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
-  my $test_file = File::Spec->rel2abs($config_file);
-
   my $user = 'proftpd';
   my $passwd = 'test';
   my $group = 'ftpd';
@@ -842,8 +830,6 @@ sub host_known_ipv4_same_host_ok {
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
 
-  my $test_file = File::Spec->rel2abs($config_file);
-
   my $user = 'proftpd';
   my $passwd = 'test';
   my $group = 'ftpd';
@@ -961,8 +947,6 @@ sub host_known_ipv6_same_host_ok {
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -1084,8 +1068,6 @@ sub host_known_ipv4_different_host_fails {
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -1239,8 +1221,6 @@ sub host_known_ipv6_different_host_fails {
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -1400,8 +1380,6 @@ sub host_known_dns_ok {
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
 
   my $user = 'proftpd';
   my $passwd = 'test';
