@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.148 2012-03-23 05:35:48 castaglia Exp $
+ * $Id: fxp.c,v 1.149 2012-04-16 15:45:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4605,16 +4605,16 @@ static int fxp_handle_ext_version_select(struct fxp_packet *fxp,
 /* Request handlers */
 
 static int fxp_handle_close(struct fxp_packet *fxp) {
-  int xerrno = 0, res = 0, xfer_direction;
+  int xerrno = 0, res = 0, xfer_direction = 0;
   unsigned char *buf, *ptr;
-  char *name, *xfer_filename, *xfer_path;
+  char *name, *xfer_filename = NULL, *xfer_path = NULL;
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd;
   struct timeval xfer_start_time;
-  off_t xfer_file_size, xfer_total_bytes;
+  off_t xfer_file_size = 0, xfer_total_bytes = 0;
 
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 

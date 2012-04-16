@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.25 2012-03-13 18:58:48 castaglia Exp $
+ * $Id: keys.c,v 1.26 2012-04-16 15:45:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2385,8 +2385,7 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
   const EVP_MD *md;
   unsigned char dgst[EVP_MAX_MD_SIZE];
   unsigned char *buf, *ptr, *sig_buf, *sig_ptr;
-  size_t bufsz, sig_buflen, sig_bufsz;
-  uint32_t buflen, dgstlen = 0;
+  uint32_t bufsz, buflen, dgstlen = 0, sig_buflen, sig_bufsz;
 
   switch (nid) {
     case NID_X9_62_prime256v1:
@@ -2752,7 +2751,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
              strncmp(sig_type, "ecdsa-sha2-nistp521", 20) == 0) {
     EC_KEY *ec;
     ECDSA_SIG *ecdsa_sig;
-    const EVP_MD *md;
+    const EVP_MD *md = NULL;
     int ok;
 
     if (strcmp(pubkey_algo, sig_type) != 0) {
