@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.28 2012-04-15 18:04:15 castaglia Exp $
+ * $Id: mod_cap.c,v 1.29 2012-04-16 15:39:14 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -70,6 +70,9 @@ static unsigned int cap_flags = 0;
 #define CAP_USE_FOWNER		0x0020
 
 module cap_module;
+
+/* Necessary prototypes */
+static int cap_sess_init(void);
 
 /* log current capabilities */
 static void lp_debug(void) {
