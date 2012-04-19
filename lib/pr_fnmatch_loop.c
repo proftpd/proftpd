@@ -25,6 +25,11 @@
  * Copyright (C) 2010-2012 The ProFTPD Project
  */
 
+/* AIX requires this to be the first thing in the file.  */
+#if defined _AIX && !defined __GNUC__
+ #pragma alloca
+#endif
+
 struct STRUCT
 {
   const CHAR *pattern;
@@ -1123,10 +1128,10 @@ EXT (INT opt, const CHAR *pattern, const CHAR *string, const CHAR *string_end,
 	    struct patternlist *newp;					      \
 									      \
 	    if (opt == L('?') || opt == L('@'))				      \
-	      newp = alloca (sizeof (struct patternlist)		      \
+	      newp = __alloca (sizeof (struct patternlist)		      \
 			     + (pattern_len * sizeof (CHAR)));		      \
 	    else							      \
-	      newp = alloca (sizeof (struct patternlist)		      \
+	      newp = __alloca (sizeof (struct patternlist)		      \
 			     + ((p - startp + 1) * sizeof (CHAR)));	      \
 	    *((CHAR *) MEMPCPY (newp->str, startp, p - startp)) = L('\0');    \
 	    newp->next = NULL;						      \

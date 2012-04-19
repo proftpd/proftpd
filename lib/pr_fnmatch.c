@@ -22,8 +22,26 @@
  *
  * Changes are released under the GNU Public License, version 2.
  * Copyright (C) 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (C) 2010 The ProFTPD Project
+ * Copyright (C) 2010-2012 The ProFTPD Project
  */
+
+/* AIX requires this to be the first thing in the file.  */
+#if defined _AIX && !defined __GNUC__
+ #pragma alloca
+#endif
+
+/* Make alloca work the best possible way.  */
+#ifdef __GNUC__
+#define alloca __builtin_alloca
+#else /* not __GNUC__ */
+#if HAVE_ALLOCA_H
+#include <alloca.h>
+#else /* not __GNUC__ or HAVE_ALLOCA_H */
+#ifndef _AIX /* Already did AIX, up at the top.  */
+char *alloca ();
+#endif /* not _AIX */
+#endif /* not HAVE_ALLOCA_H */
+#endif /* not __GNUC__ */
 
 #if 0 /* Not used in ProFTPD */
 #if HAVE_CONFIG_H
@@ -358,7 +376,7 @@ pr_fnmatch (pattern, string, flags)
 #endif
       if (__builtin_expect (n < 1024, 1))
 	{
-	  wpattern = (wchar_t *) alloca ((n + 1) * sizeof (wchar_t));
+	  wpattern = (wchar_t *) __alloca ((n + 1) * sizeof (wchar_t));
 	  n = mbsrtowcs (wpattern, &p, n + 1, &ps);
 	  if (__builtin_expect (n == (size_t) -1, 0))
 	    /* Something wrong.
@@ -380,7 +398,7 @@ pr_fnmatch (pattern, string, flags)
 	       XXX Do we have to set `errno' to something which mbsrtows hasn't
 	       already done?  */
 	    return -1;
-	  wpattern = (wchar_t *) alloca ((n + 1) * sizeof (wchar_t));
+	  wpattern = (wchar_t *) __alloca ((n + 1) * sizeof (wchar_t));
 	  assert (mbsinit (&ps));
 	  (void) mbsrtowcs (wpattern, &pattern, n + 1, &ps);
 	}
@@ -394,7 +412,7 @@ pr_fnmatch (pattern, string, flags)
       p = string;
       if (__builtin_expect (n < 1024, 1))
 	{
-	  wstring = (wchar_t *) alloca ((n + 1) * sizeof (wchar_t));
+	  wstring = (wchar_t *) __alloca ((n + 1) * sizeof (wchar_t));
 	  n = mbsrtowcs (wstring, &p, n + 1, &ps);
 	  if (__builtin_expect (n == (size_t) -1, 0))
 	    /* Something wrong.
@@ -416,7 +434,7 @@ pr_fnmatch (pattern, string, flags)
 	       XXX Do we have to set `errno' to something which mbsrtows hasn't
 	       already done?  */
 	    return -1;
-	  wstring = (wchar_t *) alloca ((n + 1) * sizeof (wchar_t));
+	  wstring = (wchar_t *) __alloca ((n + 1) * sizeof (wchar_t));
 	  assert (mbsinit (&ps));
 	  (void) mbsrtowcs (wstring, &string, n + 1, &ps);
 	}
