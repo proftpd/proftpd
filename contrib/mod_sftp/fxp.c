@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.149 2012-04-16 15:45:27 castaglia Exp $
+ * $Id: fxp.c,v 1.150 2012-04-20 20:32:10 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -7598,7 +7598,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   while ((dent = pr_fsio_readdir(fxh->dirh)) != NULL) {
     char *real_path;
     struct fxp_dirent *fxd;
-    uint32_t curr_packetsz, max_entry_metadata = 128;
+    uint32_t curr_packetsz, max_entry_metadata = 256;
     uint32_t max_entrysz = (PR_TUNABLE_PATH_MAX + 1 + max_entry_metadata);
     size_t dent_len;
 
@@ -7636,7 +7636,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
      * the maximum packet size and the max entry size.
      *
      * We assume that each entry will need up to PR_TUNABLE_PATH_MAX+1 bytes for
-     * the filename, and 128 bytes of associated data.
+     * the filename, and 256 bytes of associated data.
      *
      * We have the total number of entries for this message when there is less
      * than enough space for one more maximum-sized entry.
