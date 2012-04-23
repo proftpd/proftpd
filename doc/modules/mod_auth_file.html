@@ -1,4 +1,4 @@
-<!-- $Id: mod_auth_file.html,v 1.2 2011-02-20 18:18:44 castaglia Exp $ -->
+<!-- $Id: mod_auth_file.html,v 1.3 2012-04-23 16:49:25 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_auth_file.html,v $ -->
 
 <html>
@@ -118,16 +118,39 @@ Example:
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_auth_file</code> module is compiled by default.
 
+<p><a name="FAQ">
+<b>Frequently Asked Questions</b><br>
+
+<p><a name="Password8Characters">
+<font color=red>Question</font>: I found that only the first 8 characters of
+passwords are used! This is a security bug!<br>
+<font color=blue>Answer</font>: No, it is not.
+
+<p>
+The default Unix password hashing scheme uses the <a href="http://en.wikipedia.org/wiki/Data_Encryption_Standard">Data Encryption Standard</a> (DES) algorithm.
+As per the <code>crypt(3)</code> man page, <b>only the first 8 characters
+of the password are used</b>.  Thus this 8 character limitation comes from
+the underlying system authentication, <b>not</b> from proftpd.  The whole
+purpose of the PAM system was to enable replacing the use of DES with other
+authentication algorithms, which do not have this 8 character limitation.
+
+<p>
+Later, other <code>crypt(3)</code> implementations were made which can also
+support algorithms such as MD5, or Blowfish.  Some platforms support these
+enhanced versions of <code>crypt(3)</code>, some do not.  The
+<a href="../utils/ftpasswd.html"><code>ftpasswd</code></a> script can generate
+<code>AuthUserFiles</code> which use the MD5 algorithm instead of DES.
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-02-20 18:18:44 $</i><br>
+Last Updated: <i>$Date: 2012-04-23 16:49:25 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2002-2011<br>
+&copy; Copyright 2002-2012<br>
  All Rights Reserved<br>
 </i></b></font>
 

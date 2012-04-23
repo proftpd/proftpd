@@ -1,4 +1,4 @@
-<!-- $Id: mod_auth_unix.html,v 1.5 2012-03-30 03:28:31 castaglia Exp $ -->
+<!-- $Id: mod_auth_unix.html,v 1.6 2012-04-23 16:49:25 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_auth_unix.html,v $ -->
 
 <html>
@@ -137,6 +137,24 @@ The <code>mod_auth_unix</code> module is compiled by default.
 <p><a name="FAQ">
 <b>Frequently Asked Questions</b><br>
 
+<p><a name="Password8Characters">
+<font color=red>Question</font>: I found that only the first 8 characters of
+passwords are used! This is a security bug!<br>
+<font color=blue>Answer</font>: No, it is not.
+
+<p>
+The default Unix password hashing scheme uses the <a href="http://en.wikipedia.org/wiki/Data_Encryption_Standard">Data Encryption Standard</a> (DES) algorithm.
+As per the <code>crypt(3)</code> man page, <b>only the first 8 characters
+of the password are used</b>.  Thus this 8 character limitation comes from
+the underlying system authentication, <b>not</b> from proftpd.  The whole
+purpose of the PAM system was to enable replacing the use of DES with other
+authentication algorithms, which do not have this 8 character limitation.
+
+<p>
+Later, other <code>crypt(3)</code> implementations were made which can also
+support algorithms such as MD5, or Blowfish.  Some platforms support these
+enhanced versions of <code>crypt(3)</code>, some do not.
+
 <p><a name="ExpiredPasswords">
 <font color=red>Question</font>: It appears that the handling of expired
 passwords by <code>mod_auth_unix</code> is wrong.  Is this a bug?<br>
@@ -189,7 +207,7 @@ does not see/know that the file has changed.  That is why it can look like
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-03-30 03:28:31 $</i><br>
+Last Updated: <i>$Date: 2012-04-23 16:49:25 $</i><br>
 
 <br><hr>
 
