@@ -167,6 +167,25 @@ Non-public IP addresses are defined by <a href="http://www.faqs.org/rfcs/rfc1918
 <code>172.16.<i>x</i></code> and <code>192.168.0.<i>x</i></code>.
 
 <p>
+<font color=red>Question</font>: I am using <code>MasqueradeAddress</code>
+in my config, using the external DNS name for my site, but <code>proftpd</code>
+still returns the internal/LAN IP address in the <code>PASV</code> response.
+Is it a bug?<br>
+<font color=blue>Answer</font>: Most likely not.  If you use something like:
+<pre>
+  MasqueradeAddress <i>ftp.example.com</i>
+</pre>
+and see the internal IP address in the <code>PASV</code> response, it
+suggests that <code>proftpd</code>, when starting up, resolves that DNS name
+from within your LAN, and gets that internal IP address.  Rather than using
+the DNS name, you should explicitly use the external IP address in your
+<code>MasqueradeAddress</code> directive:
+<pre>
+  MasqueradeAddress <i>1.2.3.4</i>
+</pre>
+where "1.2.3.4" is your real external IP address.
+
+<p>
 <font color=red>Question</font>: Can I configure <code>proftpd</code> so that
 it refuses to handle passive transfers?<br>
 <font color=blue>Answer</font>: If you are using a version of
@@ -218,7 +237,7 @@ For those that need to see a concrete example configuration of this:
 <p>
 <hr>
 Contributor: Tobias Ekbom &lt;tobias <i>at</i> vallcom <i>dot</i>com&gt;<br>
-Last Updated: <i>$Date: 2009-10-19 21:08:12 $</i>
+Last Updated: <i>$Date: 2012-04-23 21:10:18 $</i>
 <hr>
 
 <body>
