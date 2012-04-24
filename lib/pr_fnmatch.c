@@ -30,6 +30,8 @@
  #pragma alloca
 #endif
 
+#include <config.h>
+
 /* Make alloca work the best possible way.  */
 #ifdef __GNUC__
 #define alloca __builtin_alloca
@@ -43,11 +45,8 @@ char *alloca ();
 #endif /* not HAVE_ALLOCA_H */
 #endif /* not __GNUC__ */
 
-#if 0 /* Not used in ProFTPD */
-#if HAVE_CONFIG_H
-# include <config.h>
-#endif
-#endif /* Not used in ProFTPD */
+/* Necessary for platforms which don't use __alloca. */
+#define __alloca alloca
 
 /* Required to tell conf.h not to include the standard ProFTPD
  * header files

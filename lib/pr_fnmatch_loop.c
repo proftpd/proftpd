@@ -30,6 +30,8 @@
  #pragma alloca
 #endif
 
+#include <config.h>
+
 struct STRUCT
 {
   const CHAR *pattern;
