@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.91 2012-02-18 21:53:09 castaglia Exp $
+ * $Id: auth.c,v 1.92 2012-04-24 21:50:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -265,6 +265,14 @@ static modret_t *dispatch_auth(cmd_rec *cmd, char *match, module **m) {
 
   start_tab = pr_stash_get_symbol(PR_SYM_AUTH, match, NULL,
     &cmd->stash_index);
+  if (start_tab == NULL) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 1, "error finding start symbol for '%s': %s",
+      match, strerror(xerrno));
+    return PR_ERROR_MSG(cmd, NULL, strerror(xerrno));
+  }
+
   iter_tab = start_tab;
 
   while (iter_tab) {
@@ -315,6 +323,7 @@ static modret_t *dispatch_auth(cmd_rec *cmd, char *match, module **m) {
       /* We have looped back to the start.  Break out now and do not loop
        * around again (and again, and again...)
        */
+      pr_trace_msg(trace_channel, 15, "reached end of symbols for '%s'", match);
       mr = PR_DECLINED(cmd);
       break;
     }
@@ -394,8 +403,10 @@ struct passwd *pr_auth_getpwent(pool *p) {
   cmd = make_cmd(p, 0);
   mr = dispatch_auth(cmd, "getpwent", NULL);
 
-  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
+  if (MODRET_ISHANDLED(mr) &&
+      MODRET_HASDATA(mr)) {
     res = mr->data;
+  }
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -428,8 +439,10 @@ struct group *pr_auth_getgrent(pool *p) {
   cmd = make_cmd(p, 0);
   mr = dispatch_auth(cmd, "getgrent", NULL);
 
-  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
+  if (MODRET_ISHANDLED(mr) &&
+      MODRET_HASDATA(mr)) {
     res = mr->data;
+  }
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -459,8 +472,9 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
   mr = dispatch_auth(cmd, "getpwnam", &m);
 
   if (MODRET_ISHANDLED(mr) &&
-      MODRET_HASDATA(mr))
+      MODRET_HASDATA(mr)) {
     res = mr->data;
+  }
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -545,8 +559,10 @@ struct passwd *pr_auth_getpwuid(pool *p, uid_t uid) {
   cmd = make_cmd(p, 1, (void *) &uid);
   mr = dispatch_auth(cmd, "getpwuid", NULL);
 
-  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
+  if (MODRET_ISHANDLED(mr) &&
+      MODRET_HASDATA(mr)) {
     res = mr->data;
+  }
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -583,8 +599,10 @@ struct group *pr_auth_getgrnam(pool *p, const char *name) {
   cmd = make_cmd(p, 1, name);
   mr = dispatch_auth(cmd, "getgrnam", NULL);
 
-  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
+  if (MODRET_ISHANDLED(mr) &&
+      MODRET_HASDATA(mr)) {
     res = mr->data;
+  }
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -618,8 +636,10 @@ struct group *pr_auth_getgrgid(pool *p, gid_t gid) {
   cmd = make_cmd(p, 1, (void *) &gid);
   mr = dispatch_auth(cmd, "getgrgid", NULL);
 
-  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
+  if (MODRET_ISHANDLED(mr) &&
+      MODRET_HASDATA(mr)) {
     res = mr->data;
+  }
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -713,11 +733,12 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
 
   mr = dispatch_auth(cmd, "auth", m ? &m : NULL);
 
-  if (MODRET_ISHANDLED(mr))
+  if (MODRET_ISHANDLED(mr)) {
     res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
 
-  else if (MODRET_ISERROR(mr))
+  } else if (MODRET_ISERROR(mr)) {
     res = MODRET_ERROR(mr);
+  }
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -836,8 +857,9 @@ int pr_auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
 
   mr = dispatch_auth(cmd, "check", m ? &m : NULL);
 
-  if (MODRET_ISHANDLED(mr))
+  if (MODRET_ISHANDLED(mr)) {
     res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
+  }
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -855,11 +877,12 @@ int pr_auth_requires_pass(pool *p, const char *name) {
   cmd = make_cmd(p, 1, name);
   mr = dispatch_auth(cmd, "requires_pass", NULL);
 
-  if (MODRET_ISHANDLED(mr))
+  if (MODRET_ISHANDLED(mr)) {
     res = FALSE;
 
-  else if (MODRET_ISERROR(mr))
+  } else if (MODRET_ISERROR(mr)) {
     res = MODRET_ERROR(mr);
+  }
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -995,10 +1018,12 @@ uid_t pr_auth_name2uid(pool *p, const char *name) {
   cmd = make_cmd(p, 1, name);
   mr = dispatch_auth(cmd, "name2uid", NULL);
 
-  if (MODRET_ISHANDLED(mr))
+  if (MODRET_ISHANDLED(mr)) {
     res = *((uid_t *) mr->data);
-  else
+
+  } else {
     errno = EINVAL;
+  }
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -1016,10 +1041,12 @@ gid_t pr_auth_name2gid(pool *p, const char *name) {
   cmd = make_cmd(p, 1, name);
   mr = dispatch_auth(cmd, "name2gid", NULL);
 
-  if (MODRET_ISHANDLED(mr))
+  if (MODRET_ISHANDLED(mr)) {
     res = *((gid_t *) mr->data);
-  else
+
+  } else {
     errno = EINVAL;
+  }
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
@@ -1048,7 +1075,8 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
 
   mr = dispatch_auth(cmd, "getgroups", NULL);
 
-  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
+  if (MODRET_ISHANDLED(mr) &&
+      MODRET_HASDATA(mr)) {
     res = *((int *) mr->data);
 
     /* Note: the number of groups returned should, barring error,
