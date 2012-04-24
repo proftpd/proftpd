@@ -1778,27 +1778,34 @@ static int tls_get_passphrase(server_rec *s, const char *path,
   register unsigned int attempt;
 
   if (path) {
-    int fd, res;
+    int fd, res, xerrno;
 
     /* Open an fp on the cert file. */
     PRIVS_ROOT
     fd = open(path, O_RDONLY);
+    xerrno = errno;
     PRIVS_RELINQUISH
 
     if (fd < 0) {
-      SYSerr(SYS_F_FOPEN, errno);
+      SYSerr(SYS_F_FOPEN, xerrno);
       return -1;
     }
 
     /* Make sure the fd isn't one of the big three. */
-    res = pr_fs_get_usable_fd(fd);
-    if (res >= 0) {
-      fd = res;
+    if (fd <= STDERR_FILENO) {
+      res = pr_fs_get_usable_fd(fd);
+      if (res >= 0) {
+        close(fd);
+        fd = res;
+      }
     }
 
     keyf = fdopen(fd, "r");
     if (keyf == NULL) {
-      SYSerr(SYS_F_FOPEN, errno);
+      xerrno = errno;
+
+      (void) close(fd);
+      SYSerr(SYS_F_FOPEN, xerrno);
       return -1;
     }
   }
@@ -1817,8 +1824,10 @@ static int tls_get_passphrase(server_rec *s, const char *path,
 
     res = tls_get_pkcs12_passwd(s, keyf, prompt, buf, bufsz, flags, &pdata);
 
-    if (keyf)
+    if (keyf) {
       fclose(keyf);
+      keyf = NULL;
+    }
 
     /* Restore the normal stderr logging. */
     restore_prompt_fds();
@@ -1836,15 +1845,18 @@ static int tls_get_passphrase(server_rec *s, const char *path,
     if (pkey)
       break;
 
-    if (keyf)
+    if (keyf) {
       fseek(keyf, 0, SEEK_SET);
+    }
 
     ERR_clear_error();
     fprintf(stderr, "\nWrong passphrase for this key.  Please try again.\n");
   }
 
-  if (keyf)
+  if (keyf) {
     fclose(keyf);
+    keyf = NULL;
+  }
 
   /* Restore the normal stderr logging. */
   restore_prompt_fds();
@@ -1866,11 +1878,13 @@ static int tls_get_passphrase(server_rec *s, const char *path,
 
 #ifdef HAVE_MLOCK
    PRIVS_ROOT
-   if (mlock(buf, bufsz) < 0) 
+   if (mlock(buf, bufsz) < 0) {
      pr_log_debug(DEBUG1, MOD_TLS_VERSION
        ": error locking passphrase into memory: %s", strerror(errno));
-   else
+
+   } else {
      pr_log_debug(DEBUG1, MOD_TLS_VERSION ": passphrase locked into memory");
+   }
    PRIVS_RELINQUISH
 #endif
 
@@ -2539,6 +2553,7 @@ static int tls_init_server(void) {
       PRIVS_RELINQUISH
       tls_log("error reading TLSRSACertificateFile '%s': %s", tls_rsa_cert_file,
         tls_get_errors());
+      fclose(fh);
       return -1;
     }
 
@@ -2600,6 +2615,7 @@ static int tls_init_server(void) {
       PRIVS_RELINQUISH
       tls_log("error reading TLSDSACertificateFile '%s': %s", tls_dsa_cert_file,
         tls_get_errors());
+      fclose(fh);
       return -1;
     }
 
@@ -3675,6 +3691,7 @@ static unsigned char tls_dotlogin_allow(const char *user) {
   struct passwd *pwd = NULL;
   pool *tmp_pool = NULL;
   unsigned char allow_user = FALSE;
+  int xerrno;
 
   if (!(tls_flags & TLS_SESS_ON_CTRL) ||
       !ctrl_ssl ||
@@ -3687,7 +3704,7 @@ static unsigned char tls_dotlogin_allow(const char *user) {
   pwd = pr_auth_getpwnam(tmp_pool, user);
   PRIVS_RELINQUISH
 
-  if (!pwd) {
+  if (pwd == NULL) {
     destroy_pool(tmp_pool);
     return FALSE;
   }
@@ -3706,10 +3723,11 @@ static unsigned char tls_dotlogin_allow(const char *user) {
 
   PRIVS_ROOT
   fp = fopen(buf, "r");
+  xerrno = errno;
   PRIVS_RELINQUISH
 
-  if (!fp) {
-    tls_log(".tlslogin check: unable to open '%s': %s", buf, strerror(errno));
+  if (fp == NULL) {
+    tls_log(".tlslogin check: unable to open '%s': %s", buf, strerror(xerrno));
     return FALSE;
   }
 
@@ -7598,6 +7616,11 @@ static void tls_shutdown_ev(const void *event_data, void *user_data) {
     }
   }
 
+  if (ssl_ctx != NULL) {
+    SSL_CTX_free(ssl_ctx);
+    ssl_ctx = NULL;
+  }
+
   RAND_cleanup();
 }
 
@@ -7717,12 +7740,14 @@ static void tls_get_passphrases(void) {
      * look for TLS*CertificateFile directives (when appropriate).
      */
     rsa = find_config(s->conf, CONF_PARAM, "TLSRSACertificateKeyFile", FALSE);
-    if (rsa == NULL)
+    if (rsa == NULL) {
       rsa = find_config(s->conf, CONF_PARAM, "TLSRSACertificateFile", FALSE);
+    }
 
     dsa = find_config(s->conf, CONF_PARAM, "TLSDSACertificateKeyFile", FALSE);
-    if (dsa == NULL)
+    if (dsa == NULL) {
       dsa = find_config(s->conf, CONF_PARAM, "TLSDSACertificateFile", FALSE);
+    }
 
     pkcs12 = find_config(s->conf, CONF_PARAM, "TLSPKCS12File", FALSE);
 
