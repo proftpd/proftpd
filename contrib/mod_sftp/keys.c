@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.26 2012-04-16 15:45:27 castaglia Exp $
+ * $Id: keys.c,v 1.27 2012-04-24 20:08:31 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -566,7 +566,7 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
   char prompt[256];
   FILE *fp;
   EVP_PKEY *pkey = NULL;
-  int fd, prompt_fd = -1, res;
+  int fd, prompt_fd = -1, res, xerrno;
   struct sftp_pkey_data pdata;
   register unsigned int attempt;
 
@@ -578,22 +578,29 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
 
   PRIVS_ROOT
   fd = open(path, O_RDONLY);
+  xerrno = errno;
   PRIVS_RELINQUISH
 
   if (fd < 0) {
-    SYSerr(SYS_F_FOPEN, errno);
+    SYSerr(SYS_F_FOPEN, xerrno);
     return -1;
   }
 
   /* Make sure the fd isn't one of the big three. */
-  res = pr_fs_get_usable_fd(fd);
-  if (res >= 0) {
-    fd = res;
+  if (fd <= STDERR_FILENO) {
+    res = pr_fs_get_usable_fd(fd);
+    if (res >= 0) {
+      close(fd);
+      fd = res;
+    }
   }
 
   fp = fdopen(fd, "r");
   if (fp == NULL) {
-    SYSerr(SYS_F_FOPEN, errno);
+    xerrno = errno;
+
+    (void) close(fd); 
+    SYSerr(SYS_F_FOPEN, xerrno);
     return -1;
   }
 
