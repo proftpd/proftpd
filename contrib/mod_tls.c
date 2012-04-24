@@ -5201,7 +5201,7 @@ static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
 
       /* Add this URL to the list of OCSP URLs to check. */
       if (ocsp_urls == NULL) {
-        tmp_pool = make_sub_pool(session.pool);
+        tmp_pool = make_sub_pool((pool *) session.pool);
         ocsp_urls = make_array(tmp_pool, 1, sizeof(char *));
       }
 
@@ -6143,7 +6143,7 @@ static void tls_netio_install_ctrl(void) {
 
 static void tls_netio_install_data(void) {
   pr_netio_t *netio = tls_data_netio ? tls_data_netio :
-    (tls_data_netio = pr_alloc_netio(session.pool ? session.pool :
+    (tls_data_netio = pr_alloc_netio(session.pool ? (pool *) session.pool :
     permanent_pool));
 
   netio->abort = tls_netio_abort_cb;
