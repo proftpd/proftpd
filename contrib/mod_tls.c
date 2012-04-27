@@ -1687,6 +1687,9 @@ static int tls_get_pkcs12_passwd(server_rec *s, FILE *fp, const char *prompt,
         /* Always handle signals in a loop. */
         pr_signals_handle();
 
+        /* Clear the error queue at the start of the loop. */
+        ERR_clear_error();
+
         len = tls_passphrase_cb(buf, bufsz, 0, pdata);
         if (len > 0) {
           res = PKCS12_verify_mac(p12, buf, -1);
@@ -1713,7 +1716,6 @@ static int tls_get_pkcs12_passwd(server_rec *s, FILE *fp, const char *prompt,
           }
         }
  
-        ERR_clear_error();
         fprintf(stderr, "\nWrong password for this PKCS12 file.  Please try again.\n");
       }
     } else {
@@ -1841,6 +1843,9 @@ static int tls_get_passphrase(server_rec *s, const char *path,
     /* Always handle signals in a loop. */
     pr_signals_handle();
 
+    /* Clear the error queue at the start of the loop. */
+    ERR_clear_error();
+
     pkey = PEM_read_PrivateKey(keyf, NULL, tls_passphrase_cb, &pdata);
     if (pkey)
       break;
@@ -1849,7 +1854,6 @@ static int tls_get_passphrase(server_rec *s, const char *path,
       fseek(keyf, 0, SEEK_SET);
     }
 
-    ERR_clear_error();
     fprintf(stderr, "\nWrong passphrase for this key.  Please try again.\n");
   }
 
