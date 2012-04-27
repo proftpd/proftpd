@@ -2407,8 +2407,9 @@ static int tls_init_server(void) {
     /* Default to using locations set in the OpenSSL config file.
      */
 
-    tls_log("%s", "using default OpenSSL verification locations "
-      "(see $SSL_CERT_DIR environment variable)");
+    pr_trace_msg(trace_channel, 9,
+      "using default OpenSSL verification locations (see $SSL_CERT_DIR "
+      "environment variable)");
 
     if (SSL_CTX_set_default_verify_paths(ssl_ctx) != 1) {
       tls_log("error setting default verification locations: %s",
