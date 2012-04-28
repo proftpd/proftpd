@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.70 2012-03-12 23:28:38 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.71 2012-04-28 22:26:35 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1689,7 +1689,7 @@ static int sftp_sess_init(void) {
   if (c) {
     if (sftp_crypto_set_driver(c->argv[0]) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "unable use TLSCryptoDevice '%s': %s", (const char *) c->argv[0],
+        "unable use SFTPCryptoDevice '%s': %s", (const char *) c->argv[0],
         strerror(errno));
     }
   }
