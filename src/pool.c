@@ -25,7 +25,7 @@
  */
 
 /* Resource allocation code
- * $Id: pool.c,v 1.62 2012-02-17 15:32:48 castaglia Exp $
+ * $Id: pool.c,v 1.63 2012-05-03 03:20:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -298,20 +298,24 @@ static long walk_pools(pool *p, int level,
   char _levelpad[80] = "";
   long total = 0;
 
-  if (!p)
+  if (p == NULL) {
     return 0;
+  }
 
   if (level > 1) {
     memset(_levelpad, ' ', sizeof(_levelpad)-1);
-    if ((level - 1) * 3 >= sizeof(_levelpad))
+
+    if ((level - 1) * 3 >= sizeof(_levelpad)) }{
       _levelpad[sizeof(_levelpad)-1] = 0;
-    else
+
+    } else {
       _levelpad[(level - 1) * 3] = '\0';
+    }
   }
 
   /* The emitted message is:
    *
-   *  <pool-tag> (n B, m L, r P)
+   *  <pool-tag> [pool-ptr] (n B, m L, r P)
    *
    * where n is the number of bytes (B), m is the number of allocated blocks
    * in the pool list (L), and r is the number of sub-pools (P).
@@ -320,13 +324,13 @@ static long walk_pools(pool *p, int level,
   for (; p; p = p->sub_next) {
     total += bytes_in_block_list(p->first);
     if (level == 0) {
-      debugf("%s (%lu B, %lu L, %u P)",
-        p->tag ? p->tag : "<unnamed>", bytes_in_block_list(p->first),
+      debugf("%s [%p] (%lu B, %lu L, %u P)",
+        p->tag ? p->tag : "<unnamed>", p, bytes_in_block_list(p->first),
         blocks_in_block_list(p->first), subpools_in_pool(p));
 
     } else {
-      debugf("%s + %s (%lu B, %lu L, %u P)", _levelpad,
-        p->tag ? p->tag : "<unnamed>", bytes_in_block_list(p->first),
+      debugf("%s + %s [%p] (%lu B, %lu L, %u P)", _levelpad,
+        p->tag ? p->tag : "<unnamed>", p, bytes_in_block_list(p->first),
         blocks_in_block_list(p->first), subpools_in_pool(p));
     }
 
@@ -348,8 +352,8 @@ static void debug_pool_info(void (*debugf)(const char *, ...)) {
     debugf("Free block list: empty");
   }
 
-  debugf("%u count blocks allocated", stat_malloc);
-  debugf("%u count blocks reused", stat_freehit);
+  debugf("%u blocks allocated", stat_malloc);
+  debugf("%u blocks reused", stat_freehit);
 }
 
 void pr_pool_debug_memory(void (*debugf)(const char *, ...)) {
