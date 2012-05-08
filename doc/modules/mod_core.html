@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.29 2012-03-24 17:06:35 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.30 2012-05-08 18:37:16 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -22,6 +22,9 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#AllowFilter">AllowFilter</a>
   <li><a href="#DebugLevel">DebugLevel</a>
   <li><a href="#DenyFilter">DenyFilter</a>
+  <li><a href="#DisplayChdir">DisplayChdir</a>
+  <li><a href="#DisplayConnect">DisplayConnect</a>
+  <li><a href="#DisplayQuit">DisplayQuit</a>
   <li><a href="#GroupOwner">GroupOwner</a>
   <li><a href="#HideGroup">HideGroup</a>
   <li><a href="#HideNoAccess">HideNoAccess</a>
@@ -160,6 +163,96 @@ greater detail.
 
 <p>
 See also: <a href="#AllowFilter"><code>AllowFilter</code></a>, <a href="#PathAllowFilter"><code>PathAllowFilter</code></a>, <a href="#PathDenyFilter"><code>PathDenyFilter</code></a>
+
+<hr>
+<h2><a name="DisplayChdir">DisplayChdir</a></h2>
+<strong>Syntax:</strong> DisplayChdir <em>filename ["on"|"off"]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.3.1rc1 and later
+
+<p>
+The <code>DisplayChdir</code> directive configures the name of a text file that
+will be displayed to the user, every time they change into a directory.  If the
+text file should only be displayed <b>once</b> to the client, the first time
+they change into the directory (or if <code>proftpd</code> detects that the
+<code>DisplayChdir</code> file has been changed since it was last displayed
+to the client), then set the optional second parameter to <em>on</em> or
+<em>true</em>.
+
+<p>
+If the <em>filename</em> is relative, it is looked for in the directory that
+the user has changed into.  Note that for anonymous ftp logins,
+<em>filename</em> <b>must</b> reside within the <code>chroot()</code>ed
+directory.  If <em>filename</em> cannot be found or accessed, no error occurs
+and nothing is logged or displayed to the client.
+
+<p>
+See the <a href="../howto/DisplayFiles.html">Display files</a> howto for
+more information on the variables that can be used in a
+<code>DisplayChdir</code> file.
+
+<p>
+See also: <a href="#DisplayConnect"><code>DisplayConnect</code></a>, <a href="#DisplayQuit"><code>DisplayQuit</code></a>
+
+<hr>
+<h2><a name="DisplayConnect">DisplayConnect</a></h2>
+<strong>Syntax:</strong> DisplayConnect <em>filename</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.0pre2 and later
+
+<p>
+The <code>DisplayConnect</code> directive configures the <em>filename</em> of a
+text file that will be displayed to the user when they initially connect,
+<i>before</i> they login.  The <em>filename</em> can be either relative or
+absolute.  In the case of a relative filename, the file is searched for
+starting in the home directory of the <code>User</code> as which the server is
+running.  As this can lead confusion, absolute pathnames are <i>highly
+recommended</i>.  If <em>filename</em> cannot be found or accessed, no error
+occurs and nothing is logged or displayed to the client.
+
+<p>
+See the <a href="../howto/DisplayFiles.html">Display files</a> howto for
+more information on the variables that can be used in a
+<code>DisplayConnect</code> file.
+
+<p>
+See also: <a href="#DisplayChdir"><code>DisplayChdir</code></a>,
+<a href="#DisplayQuit"><code>DisplayQuit</code></a>
+
+<hr>
+<h2><a name="DisplayQuit">DisplayQuit</a></h2>
+<strong>Syntax:</strong> DisplayQuit <em>filename</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.0pre8 and later
+
+<p>
+The <code>DisplayQuit</code> directive configures the <em>filename</em> of a
+text file that will be displayed to the user when they explicitly end the
+FTP session using the <code>QUIT</code> command.  The <em>filename</em> can be
+either relative or absolute.  In the case of a relative filename, the file is
+searched for starting in the home directory of the logged-in user.  <b>Note</b>:
+if the session is restricted via <code>chroot</code>, either by the
+<code>DefaultRoot</code> directive or because its an
+<code>&lt;Anonymous&gt;</code> login, then <em>filename</em> must reside
+within the <code>chroot()</code> directory.  As this can lead confusion,
+absolute pathnames are <i>highly recommended</i>.  If <em>filename</em> cannot
+be found or accessed, no error occurs and nothing is logged or displayed to
+the client.
+
+<p>
+See the <a href="../howto/DisplayFiles.html">Display files</a> howto for
+more information on the variables that can be used in a
+<code>DisplayQuit</code> file.
+
+<p>
+See also: <a href="#DisplayChdir"><code>DisplayChdir</code></a>,
+<a href="#DisplayConnect"><code>DisplayConnect</code></a>
 
 <hr>
 <h2><a name="GroupOwner">GroupOwner</a></h2>
@@ -1097,7 +1190,7 @@ The <code>mod_core</code> module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-03-24 17:06:35 $</i><br>
+Last Updated: <i>$Date: 2012-05-08 18:37:16 $</i><br>
 
 <br><hr>
 
