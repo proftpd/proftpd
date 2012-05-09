@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.27 2012-04-24 20:08:31 castaglia Exp $
+ * $Id: keys.c,v 1.28 2012-05-09 18:13:56 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -583,6 +583,7 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
 
   if (fd < 0) {
     SYSerr(SYS_F_FOPEN, xerrno);
+    errno = xerrno;
     return -1;
   }
 
@@ -601,6 +602,8 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
 
     (void) close(fd); 
     SYSerr(SYS_F_FOPEN, xerrno);
+
+    errno = xerrno;
     return -1;
   }
 
@@ -2875,12 +2878,14 @@ void sftp_keys_get_passphrases(void) {
       k->server = s;
 
       if (get_passphrase(k, c->argv[0]) < 0) {
+        int xerrno = errno;
         const char *errstr;
 
         errstr = sftp_crypto_get_errors();
+
         pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
           ": error reading passphrase for SFTPHostKey '%s': %s",
-          (const char *) c->argv[0], errstr ? errstr : strerror(errno));
+          (const char *) c->argv[0], errstr ? errstr : strerror(xerrno));
 
         pr_log_pri(PR_LOG_ERR, MOD_SFTP_VERSION
           ": unable to use key in SFTPHostKey '%s', exiting",
