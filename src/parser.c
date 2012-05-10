@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.26 2012-02-09 06:34:40 castaglia Exp $
+ * $Id: parser.c,v 1.27 2012-05-10 02:47:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -392,14 +392,16 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
                 MODRET_ERRMSG(mr), cs->cs_lineno, report_path);
               exit(1);
 
-            } else
+            } else {
               pr_log_pri(PR_LOG_WARNING, "warning: %s on line %u of '%s'",
                 MODRET_ERRMSG(mr), cs->cs_lineno, report_path);
+            }
           }
         }
 
-        if (!MODRET_ISDECLINED(mr))
+        if (!MODRET_ISDECLINED(mr)) {
           found = TRUE;
+        }
 
         conftab = pr_stash_get_symbol(PR_SYM_CONF, cmd->argv[0], conftab,
           &cmd->stash_index);
@@ -416,10 +418,11 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
             report_path);
           exit(1);
 
-        } else 
+        } else {
           pr_log_pri(PR_LOG_WARNING, "warning: unknown configuration directive "
             "'%s' on line %u of '%s'", cmd->argv[0], cs->cs_lineno,
             report_path);
+        }
       }
     }
 
@@ -541,11 +544,12 @@ int pr_parser_prepare(pool *p, xaset_t **parsed_servers) {
     p = parser_pool;
   }
 
-  if (!parsed_servers)
+  if (parsed_servers == NULL) {
     parser_server_list = &server_list;
 
-  else
+  } else {
     parser_server_list = parsed_servers;
+  }
 
   parser_servstack = make_array(p, 1, sizeof(server_rec *));
   parser_curr_server = (server_rec **) push_array(parser_servstack);
