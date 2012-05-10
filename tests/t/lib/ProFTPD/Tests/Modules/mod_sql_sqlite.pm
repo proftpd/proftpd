@@ -306,6 +306,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  sql_sqlshowinfo_pass_failed_bug3782 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -11076,6 +11081,201 @@ EOS
   $expected = 'Operation not permitted';
   $self->assert($expected eq $xfer_failure,
     test_msg("Expected transfer failure '$expected', got '$xfer_failure'"));
+
+  unlink($log_file);
+}
+
+sub sql_sqlshowinfo_pass_failed_bug3782 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlite.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT, 
+  shell TEXT,
+  secure_only INTEGER
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell, secure_only) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash', 1);
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
+
+CREATE TABLE login_responses (
+  secure_only INTEGER,
+  response TEXT
+);
+
+INSERT INTO login_responses (secure_only, response) VALUES (0, "Login failed.");
+INSERT INTO login_responses (secure_only, response) VALUES (1, "You may not log into this account via FTP. Please use SFTP instead.");
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'response:20 sql:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => [
+        'AuthOrder mod_sql.c',
+
+        'SQLAuthenticate users groups',
+        'SQLAuthTypes plaintext',
+        'SQLBackend sqlite3',
+        "SQLConnectInfo $db_file",
+        "SQLLogFile $log_file",
+        'SQLMinID 100',
+
+        'SQLUserWhereClause "secure_only != 1"',
+        'SQLNamedQuery login_failure SELECT "response FROM users u, login_responses lr WHERE u.userid = \'%U\' AND u.secure_only = lr.secure_only"',
+
+
+        # Configure the equivalent of a multiline DisplayLogin file
+        # using the SQLShowInfo directive
+
+        'SQLShowInfo ERR_PASS 530 "Sorry, %U"',
+        'SQLShowInfo ERR_PASS 530 "%{login_failure}"',
+        'SQLShowInfo ERR_PASS 530 " "',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      eval { $client->login($user, $passwd) };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+      }
+
+      my $resp_msgs = $client->response_msgs();
+      my $nmsgs = scalar(@$resp_msgs);
+
+      my $expected;
+
+      $expected = 4;
+      $self->assert($expected == $nmsgs,
+        test_msg("Expected $expected, got $nmsgs")); 
+
+      $expected = "Login incorrect.";
+      $self->assert($expected eq $resp_msgs->[0],
+        test_msg("Expected response '$expected', got '$resp_msgs->[0]'"));
+
+      $expected = " Sorry, $user";
+      $self->assert($expected eq $resp_msgs->[1],
+        test_msg("Expected response '$expected', got '$resp_msgs->[1]'"));
+
+      $expected = " You may not log into this account via FTP. Please use SFTP instead.";
+      $self->assert($expected eq $resp_msgs->[2],
+        test_msg("Expected response '$expected', got '$resp_msgs->[2]'"));
+
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
 
   unlink($log_file);
 }
