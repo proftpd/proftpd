@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.222 2012-04-04 04:51:59 castaglia Exp $
+ * $Id: mod_sql.c,v 1.223 2012-05-10 03:59:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3459,6 +3459,9 @@ MODRET errinfo_master(cmd_rec *cmd) {
     memset(outs, '\0', sizeof(outs));
     outsp = outs;
 
+    pr_trace_msg(trace_channel, 15, "processing SQLShowInfo ERR_%s '%s'",
+      cmd->argv[0], cmd->argv[1]);
+
     for (tmp = c->argv[1]; *tmp; ) {
       pr_signals_handle();
 
@@ -3474,9 +3477,10 @@ MODRET errinfo_master(cmd_rec *cmd) {
             query = ++tmp;
 	    
           /* get the name of the query */
-	  while (*tmp && *tmp != '}') 
+	  while (*tmp && *tmp != '}') {
             tmp++;
-	    
+          }
+
           query = pstrndup(cmd->tmp_pool, query, (tmp - query));
 
           /* make sure it's a SELECT query */
@@ -3491,8 +3495,14 @@ MODRET errinfo_master(cmd_rec *cmd) {
 
             } else {
               sd = (sql_data_t *) mr->data;
+
+              pr_trace_msg(trace_channel, 13,
+                "SQLShowInfo ERR_%s query '%s' returned row count %d",
+                cmd->argv[0], query, sd->rnum);
+
               if (sd->rnum == 0 ||
                   sd->data[0] == NULL) {
+
                 /* If no data was returned, show nothing.  Just continue
                  * on to the next SQLShowInfo.
                  */
@@ -3560,8 +3570,9 @@ MODRET errinfo_master(cmd_rec *cmd) {
           break;
         }
 
-        if (*tmp != '\0')
+        if (*tmp != '\0') {
           tmp++;
+        }
       }
     }
       
@@ -3573,7 +3584,22 @@ MODRET errinfo_master(cmd_rec *cmd) {
        * flushing the added lines out to the client.
        */
       resp_code = c->argv[0];
-      pr_response_add(resp_code, "%s", outs);
+
+      if (*resp_code == '4' ||
+          *resp_code == '5') {
+        pr_trace_msg(trace_channel, 15,
+          "adding error response code %s, msg '%s' for SQLShowInfo ERR_%s",
+          resp_code, outs, cmd->argv[0]);
+
+        pr_response_add_err(resp_code, "%s", outs);
+
+      } else {
+        pr_trace_msg(trace_channel, 15,
+          "adding response code %s, msg '%s' for SQLShowInfo ERR_%s", resp_code,
+          outs, cmd->argv[0]);
+
+        pr_response_add(resp_code, "%s", outs);
+      }
     }
 
     sql_log(DEBUG_FUNC, "<<< errinfo_master (%s)", name);
@@ -3701,8 +3727,9 @@ MODRET errinfo_master(cmd_rec *cmd) {
           break;
         }
 
-        if (*tmp != '\0')
+        if (*tmp != '\0') {
           tmp++;
+        }
       }
     }
       
@@ -3714,7 +3741,22 @@ MODRET errinfo_master(cmd_rec *cmd) {
        * flushing the added lines out to the client.
        */
       resp_code = c->argv[0];
-      pr_response_add(resp_code, "%s", outs);
+
+      if (*resp_code == '4' ||
+          *resp_code == '5') {
+        pr_trace_msg(trace_channel, 15,
+          "adding error response code %s, msg '%s' for SQLShowInfo ERR_*",
+          resp_code, outs);
+
+        pr_response_add_err(resp_code, "%s", outs);
+
+      } else {
+        pr_trace_msg(trace_channel, 15,
+          "adding response code %s, msg '%s' for SQLShowInfo ERR_*", resp_code,
+          outs);
+
+        pr_response_add(resp_code, "%s", outs);
+      }
     }
 
     sql_log(DEBUG_FUNC, "<<< errinfo_master (%s)", name);
