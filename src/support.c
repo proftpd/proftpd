@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.115 2012-04-16 15:48:53 castaglia Exp $
+ * $Id: support.c,v 1.116 2012-05-10 03:01:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -123,13 +123,14 @@ void schedule(void (*f)(void*,void*,void*,void*),int nloops, void *a1,
   pool *p, *sub_pool;
   sched_t *s;
 
-  if (!scheds) {
+  if (scheds == NULL) {
    p = make_sub_pool(permanent_pool);
    pr_pool_tag(p, "Schedules Pool");
    scheds = xaset_create(p, NULL);
 
-  } else
-   p = scheds->pool;
+  } else {
+    p = scheds->pool;
+  }
 
   sub_pool = make_sub_pool(p);
 
@@ -145,17 +146,19 @@ void schedule(void (*f)(void*,void*,void*,void*),int nloops, void *a1,
 }
 
 void run_schedule(void) {
-  sched_t *s,*snext;
+  sched_t *s, *snext;
 
-  if (!scheds || !scheds->xas_list)
+  if (scheds == NULL ||
+      scheds->xas_list == NULL) {
     return;
+  }
 
-  for (s = (sched_t*)scheds->xas_list; s; s=snext) {
+  for (s = (sched_t *) scheds->xas_list; s; s= snext) {
     snext = s->next;
 
     if (s->loops-- <= 0) {
-      s->f(s->a1,s->a2,s->a3,s->a4);
-      xaset_remove(scheds, (xasetmember_t*)s);
+      s->f(s->a1, s->a2, s->a3, s->a4);
+      xaset_remove(scheds, (xasetmember_t *) s);
       destroy_pool(s->pool);
     }
   }
