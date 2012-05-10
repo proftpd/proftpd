@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.42 2012-04-15 18:04:14 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.43 2012-05-10 02:46:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -88,6 +88,8 @@ static int authfile_sess_init(void);
 
 static int af_setpwent(void);
 static int af_setgrent(void);
+
+static const char *trace_channel = "authfile";
 
 /* Support routines.  Move the passwd/group functions out of lib/ into here.
  */
@@ -385,8 +387,9 @@ static struct group *af_getgrent(void) {
 static struct group *af_getgrnam(const char *name) {
   struct group *grp = NULL;
 
-  if (af_setgrent() < 0)
+  if (af_setgrent() < 0) {
     return NULL;
+  }
 
   while ((grp = af_getgrent()) != NULL) {
     if (strcmp(name, grp->gr_name) == 0) {
@@ -402,8 +405,9 @@ static struct group *af_getgrnam(const char *name) {
 static struct group *af_getgrgid(gid_t gid) {
   struct group *grp = NULL;
 
-  if (af_setgrent() < 0)
+  if (af_setgrent() < 0) {
     return NULL;
+  }
 
   while ((grp = af_getgrent()) != NULL) {
     if (grp->gr_gid == gid) {
@@ -418,8 +422,8 @@ static struct group *af_getgrgid(gid_t gid) {
 
 static int af_setgrent(void) {
 
-  if (af_group_file) {
-    if (af_group_file->af_file) {
+  if (af_group_file != NULL) {
+    if (af_group_file->af_file != NULL) {
       /* If already opened, rewind */
       rewind(af_group_file->af_file);
       return 0;
@@ -427,8 +431,12 @@ static int af_setgrent(void) {
     } else {
       af_group_file->af_file = fopen(af_group_file->af_path, "r");
       if (af_group_file->af_file == NULL) {
+        int xerrno = errno;
+
         pr_log_pri(PR_LOG_ERR, "error: unable to open group file '%s': %s",
-          af_group_file->af_path, strerror(errno));
+          af_group_file->af_path, strerror(xerrno));
+
+        errno = xerrno;
         return -1;
       }
 
@@ -438,6 +446,7 @@ static int af_setgrent(void) {
     }
   }
 
+  pr_trace_msg(trace_channel, 8, "no AuthGroupFile configured");
   errno = EPERM;
   return -1;
 }
@@ -578,8 +587,9 @@ static struct passwd *af_getpwent(void) {
 static struct passwd *af_getpwnam(const char *name) {
   struct passwd *pwd = NULL;
 
-  if (af_setpwent() < 0)
+  if (af_setpwent() < 0) {
     return NULL;
+  }
 
   while ((pwd = af_getpwent()) != NULL) {
     pr_signals_handle();
@@ -602,8 +612,9 @@ static char *af_getpwpass(const char *name) {
 static struct passwd *af_getpwuid(uid_t uid) {
   struct passwd *pwd = NULL;
 
-  if (af_setpwent() < 0)
+  if (af_setpwent() < 0) {
     return NULL;
+  }
 
   while ((pwd = af_getpwent()) != NULL) {
     if (pwd->pw_uid == uid) {
@@ -618,8 +629,8 @@ static struct passwd *af_getpwuid(uid_t uid) {
 
 static int af_setpwent(void) {
 
-  if (af_user_file) {
-    if (af_user_file->af_file) {
+  if (af_user_file != NULL) {
+    if (af_user_file->af_file != NULL) {
       /* If already opened, rewind */
       rewind(af_user_file->af_file);
       return 0;
@@ -627,8 +638,11 @@ static int af_setpwent(void) {
     } else {
       af_user_file->af_file = fopen(af_user_file->af_path, "r");
       if (af_user_file->af_file == NULL) {
+        int xerrno = errno;
+
         pr_log_pri(PR_LOG_ERR, "error: unable to open passwd file '%s': %s",
-          af_user_file->af_path, strerror(errno));
+          af_user_file->af_path, strerror(xerrno));
+        errno = xerrno;
         return -1;
       }
 
@@ -638,6 +652,7 @@ static int af_setpwent(void) {
     }
   }
 
+  pr_trace_msg(trace_channel, 8, "no AuthUserFile configured");
   errno = EPERM;
   return -1;
 }
@@ -662,8 +677,9 @@ MODRET authfile_getpwnam(cmd_rec *cmd) {
   struct passwd *pwd = NULL;
   const char *name = cmd->argv[0];
 
-  if (af_setpwent() < 0)
+  if (af_setpwent() < 0) {
     return PR_DECLINED(cmd);
+  }
 
   /* Ugly -- we iterate through the file.  Time-consuming. */
   while ((pwd = af_getpwent()) != NULL) {
@@ -681,8 +697,9 @@ MODRET authfile_getpwuid(cmd_rec *cmd) {
   struct passwd *pwd = NULL;
   uid_t uid = *((uid_t *) cmd->argv[0]);
 
-  if (af_setpwent() < 0)
+  if (af_setpwent() < 0) {
     return PR_DECLINED(cmd);
+  }
 
   pwd = af_getpwuid(uid);
 
@@ -692,8 +709,9 @@ MODRET authfile_getpwuid(cmd_rec *cmd) {
 MODRET authfile_name2uid(cmd_rec *cmd) {
   struct passwd *pwd = NULL;
 
-  if (af_setpwent() < 0)
+  if (af_setpwent() < 0) {
     return PR_DECLINED(cmd);
+  }
 
   pwd = af_getpwnam(cmd->argv[0]);
 
@@ -701,8 +719,9 @@ MODRET authfile_name2uid(cmd_rec *cmd) {
 }
 
 MODRET authfile_setpwent(cmd_rec *cmd) {
-  if (af_setpwent() == 0)
+  if (af_setpwent() == 0) {
     return PR_DECLINED(cmd);
+  }
 
   return PR_DECLINED(cmd);
 }
@@ -710,8 +729,9 @@ MODRET authfile_setpwent(cmd_rec *cmd) {
 MODRET authfile_uid2name(cmd_rec *cmd) {
   struct passwd *pwd = NULL;
 
-  if (af_setpwent() < 0)
+  if (af_setpwent() < 0) {
     return PR_DECLINED(cmd);
+  }
 
   pwd = af_getpwuid(*((uid_t *) cmd->argv[0]));
 
@@ -735,8 +755,9 @@ MODRET authfile_getgrgid(cmd_rec *cmd) {
   struct group *grp = NULL;
   gid_t gid = *((gid_t *) cmd->argv[0]);
 
-  if (af_setgrent() < 0)
+  if (af_setgrent() < 0) {
     return PR_DECLINED(cmd);
+  }
 
   grp = af_getgrgid(gid);
 
@@ -747,8 +768,9 @@ MODRET authfile_getgrnam(cmd_rec *cmd) {
   struct group *grp = NULL;
   const char *name = cmd->argv[0];
 
-  if (af_setgrent() < 0)
+  if (af_setgrent() < 0) {
     return PR_DECLINED(cmd);
+  }
 
   while ((grp = af_getgrent()) != NULL) {
     if (strcmp(name, grp->gr_name) == 0) {
@@ -842,8 +864,9 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
 MODRET authfile_gid2name(cmd_rec *cmd) {
   struct group *grp = NULL;
 
-  if (af_setgrent() < 0)
+  if (af_setgrent() < 0) {
     return PR_DECLINED(cmd);
+  }
 
   grp = af_getgrgid(*((gid_t *) cmd->argv[0]));
 
@@ -853,8 +876,9 @@ MODRET authfile_gid2name(cmd_rec *cmd) {
 MODRET authfile_name2gid(cmd_rec *cmd) {
   struct group *grp = NULL;
 
-  if (af_setgrent() < 0)
+  if (af_setgrent() < 0) {
     return PR_DECLINED(cmd);
+  }
 
   grp = af_getgrnam(cmd->argv[0]);
 
@@ -862,8 +886,9 @@ MODRET authfile_name2gid(cmd_rec *cmd) {
 }
 
 MODRET authfile_setgrent(cmd_rec *cmd) {
-  if (af_setgrent() == 0)
+  if (af_setgrent() == 0) {
     return PR_DECLINED(cmd);
+  }
 
   return PR_DECLINED(cmd);
 }
@@ -872,8 +897,9 @@ MODRET authfile_auth(cmd_rec *cmd) {
   char *tmp = NULL, *cleartxt_pass = NULL;
   const char *name = cmd->argv[0];
 
-  if (af_setpwent() < 0)
+  if (af_setpwent() < 0) {
     return PR_DECLINED(cmd);
+  }
 
   /* Lookup the cleartxt password for this user. */
   tmp = af_getpwpass(name);
