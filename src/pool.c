@@ -25,7 +25,7 @@
  */
 
 /* Resource allocation code
- * $Id: pool.c,v 1.63 2012-05-03 03:20:45 castaglia Exp $
+ * $Id: pool.c,v 1.64 2012-05-10 02:55:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -58,7 +58,7 @@ union block_hdr {
   } h;
 };
 
-union block_hdr *block_freelist = NULL;
+static union block_hdr *block_freelist = NULL;
 
 /* Statistics */
 static unsigned int stat_malloc = 0;	/* incr when malloc required */
@@ -305,7 +305,7 @@ static long walk_pools(pool *p, int level,
   if (level > 1) {
     memset(_levelpad, ' ', sizeof(_levelpad)-1);
 
-    if ((level - 1) * 3 >= sizeof(_levelpad)) }{
+    if ((level - 1) * 3 >= sizeof(_levelpad)) {
       _levelpad[sizeof(_levelpad)-1] = 0;
 
     } else {
@@ -380,14 +380,13 @@ void pr_pool_tag(pool *p, const char *tag) {
 
 /* Release the entire free block list */
 static void pool_release_free_block_list(void) {
-  union block_hdr *blok,*next;
+  union block_hdr *blok = NULL, *next = NULL;
 
   pr_alarms_block();
 
-  blok = block_freelist;
-  if (blok) {
-    for (next = blok->h.next; next; blok = next, next = blok->h.next)
-      free(blok);
+  for (blok = block_freelist; blok; blok = next) {
+    next = blok->h.next;
+    free(blok);
   }
   block_freelist = NULL;
 
@@ -473,8 +472,9 @@ void free_pools(void) {
 static void clear_pool(struct pool_rec *p) {
 
   /* Sanity check. */
-  if (!p)
+  if (p == NULL) {
     return;
+  }
 
   pr_alarms_block();
 
@@ -499,23 +499,36 @@ static void clear_pool(struct pool_rec *p) {
 }
 
 void destroy_pool(pool *p) {
-  if (p == NULL)
+  if (p == NULL) {
     return;
+  }
 
   pr_alarms_block();
 
   if (p->parent) {
-    if (p->parent->sub_pools == p)
+    if (p->parent->sub_pools == p) {
       p->parent->sub_pools = p->sub_next;
+    }
 
-    if (p->sub_prev)
+    if (p->sub_prev) {
       p->sub_prev->sub_next = p->sub_next;
+    }
 
-    if (p->sub_next)
+    if (p->sub_next) {
       p->sub_next->sub_prev = p->sub_prev;
+    }
   }
+
   clear_pool(p);
   free_blocks(p->first, p->tag);
+
+#ifdef PR_DEVEL_NO_POOL_FREELIST
+  /* If configured explicitly to do so, call free(3) on the freelist after
+   * a pool is destroyed.  This can be useful for tracking down use-after-free
+   * and other memory issues using libraries such as dmalloc.
+   */
+  pool_release_free_block_list();
+#endif /* PR_EVEL_NO_POOL_FREELIST */
 
   pr_alarms_unblock();
 }
@@ -584,9 +597,7 @@ void *pcallocsz(struct pool_rec *p, size_t sz) {
   return res;
 }
 
-/*
- * Array functions
- */
+/* Array functions */
 
 array_header *make_array(pool *p, unsigned int nelts, size_t elt_size) {
   array_header *res;
@@ -742,15 +753,14 @@ array_header *append_arrays(pool *p, const array_header *first,
   return res;
 }
 
-/*
- * Generic cleanups
- */
+/* Generic cleanups */
 
 typedef struct cleanup {
   void *data;
   void (*plain_cleanup_cb)(void *);
   void (*child_cleanup_cb)(void *);
   struct cleanup *next;
+
 } cleanup_t;
 
 void register_cleanup(pool *p, void *data, void (*plain_cleanup_cb)(void*),
@@ -770,7 +780,8 @@ void unregister_cleanup(pool *p, void *data, void (*cleanup_cb)(void *)) {
   cleanup_t **lastp = &p->cleanups;
 
   while (c) {
-    if (c->data == data && c->plain_cleanup_cb == cleanup_cb) {
+    if (c->data == data &&
+        c->plain_cleanup_cb == cleanup_cb) {
 
       /* Remove the given cleanup by pointing the previous next pointer to
        * the matching cleanup's next pointer.
