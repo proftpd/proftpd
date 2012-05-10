@@ -25,7 +25,7 @@
  */
 
 /* Resource allocation code
- * $Id: pool.c,v 1.64 2012-05-10 02:55:44 castaglia Exp $
+ * $Id: pool.c,v 1.65 2012-05-10 02:59:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -522,6 +522,8 @@ void destroy_pool(pool *p) {
   clear_pool(p);
   free_blocks(p->first, p->tag);
 
+  pr_alarms_unblock();
+
 #ifdef PR_DEVEL_NO_POOL_FREELIST
   /* If configured explicitly to do so, call free(3) on the freelist after
    * a pool is destroyed.  This can be useful for tracking down use-after-free
@@ -529,8 +531,6 @@ void destroy_pool(pool *p) {
    */
   pool_release_free_block_list();
 #endif /* PR_EVEL_NO_POOL_FREELIST */
-
-  pr_alarms_unblock();
 }
 
 /* Allocation interface...
