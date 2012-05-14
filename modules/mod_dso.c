@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.26 2012-02-24 01:36:17 castaglia Exp $
+ * $Id: mod_dso.c,v 1.27 2012-05-14 16:31:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -71,7 +71,7 @@ static int dso_load_file(char *path) {
 }
 
 static int dso_load_module(char *name) {
-  int res;
+  int module_load_errno = 0, res;
   char *symbol_name, *path, *tmp;
   module *m;
   lt_ptr mh = NULL;
@@ -134,8 +134,19 @@ static int dso_load_module(char *name) {
 
     *tmp = '.';
 
+    /* Remember this errno value, for reporting later if we cannot resolve
+     * the symbol from the main executable.
+     */
+    module_load_errno = errno;
+
     pr_log_debug(DEBUG3, MOD_DSO_VERSION ": unable to dlopen '%s': %s (%s)",
       name, lt_dlerror(), strerror(xerrno));
+
+    if (xerrno == ENOENT) {
+      pr_log_pri(PR_LOG_NOTICE, MOD_DSO_VERSION
+        ": Unable to load '%s'; check to see if '%s.la' exists", name, path);
+    }
+
     pr_log_debug(DEBUG3, MOD_DSO_VERSION
       ": defaulting to 'self' for symbol resolution");
 
@@ -143,15 +154,8 @@ static int dso_load_module(char *name) {
 
     mh = lt_dlopen(NULL);
     if (mh == NULL) {
-      xerrno = errno;
-
       pr_log_debug(DEBUG0, MOD_DSO_VERSION ": error loading 'self': %s",
         lt_dlerror());
-
-      if (xerrno == ENOENT) {
-        pr_log_pri(PR_LOG_NOTICE, MOD_DSO_VERSION
-          ": check to see if '%s.la' exists", path);
-      }
 
       errno = xerrno;
       return -1;
@@ -203,7 +207,18 @@ static int dso_load_module(char *name) {
         ": check to see if '%s.la' exists", path);
     }
 
-    errno = xerrno;
+    if (module_load_errno != 0) {
+      /* If we had an error loading the original module, AND we had an error
+       * resolving the symbol in the main executable, then return the original
+       * errno from loading the module, rather than the symbol resolution
+       * error.
+       */
+      errno = module_load_errno;
+
+    } else {
+      errno = xerrno;
+    }
+
     return -1;
   }
   *tmp = '.';
@@ -333,9 +348,10 @@ static int dso_handle_insmod(pr_ctrls_t *ctrl, int reqargc,
 
   for (i = 0; i < reqargc; i++) {
     if (dso_load_module(reqargv[i]) < 0) {
+      int xerrno = errno;
 
       /* Make the error messages a little more relevant. */
-      switch (errno) {
+      switch (xerrno) {
         case EINVAL:
           pr_ctrls_add_response(ctrl, "error loading '%s': Bad module name",
             reqargv[i]);
@@ -348,7 +364,7 @@ static int dso_handle_insmod(pr_ctrls_t *ctrl, int reqargc,
 
         default:
           pr_ctrls_add_response(ctrl, "error loading '%s': %s", reqargv[i],
-            strerror(errno));
+            strerror(xerrno));
           break;
       }
 
@@ -463,8 +479,10 @@ MODRET set_loadmodule(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   if (dso_load_module(cmd->argv[1]) < 0) {
+    int xerrno = errno;
+
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error loading module '",
-      cmd->argv[1], "': ", strerror(errno), NULL));
+      cmd->argv[1], "': ", strerror(xerrno), NULL));
   }
 
   return PR_HANDLED(cmd);
