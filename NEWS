@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1423 2012-05-10 03:59:43 castaglia Exp $
+$Id: NEWS,v 1.1424 2012-05-15 21:43:43 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -90,6 +90,7 @@ CVS
 - Bug 3769 - Ensure that encoded strings are NUL-terminated.
 - Bug 3732 - AIX build error: undefined symbol: .alloca.
 - Bug 3782 - SQLShowInfo does not work properly for error responses.
+- Bug 3780 - AIX gives "error setting listen fd IP_TOS: Invalid argument".
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

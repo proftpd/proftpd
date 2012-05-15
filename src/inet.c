@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.143 2012-02-24 06:02:50 castaglia Exp $
+ * $Id: inet.c,v 1.144 2012-05-15 21:43:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1361,26 +1361,41 @@ void init_inet(void) {
   setprotoent(FALSE);
 #endif
 
+  /* AIX ships with a broken /etc/protocols file; the entry for 'ip' in that
+   * file defines a value of 252, which is unacceptable to the AIX
+   * setsockopt(2) system call (Bug#3780).
+   *
+   * To work around this, do not perform the /etc/protocols lookup for AIX;
+   * instead, keep the default IP_PROTO value defined in its other system
+   * headers.
+   */
+#ifndef _AIX
   pr = getprotobyname("ip"); 
-  if (pr != NULL)
+  if (pr != NULL) {
     ip_proto = pr->p_proto;
+  }
+#endif /* AIX */
 
 #ifdef PR_USE_IPV6
   pr = getprotobyname("ipv6"); 
-  if (pr != NULL)
+  if (pr != NULL) {
     ipv6_proto = pr->p_proto;
+  }
 #endif /* PR_USE_IPV6 */
 
   pr = getprotobyname("tcp");
-  if (pr != NULL)
+  if (pr != NULL) {
     tcp_proto = pr->p_proto;
+  }
 
 #ifdef HAVE_ENDPROTOENT
   endprotoent();
 #endif
 
-  if (inet_pool)
+  if (inet_pool) {
     destroy_pool(inet_pool);
+  }
+
   inet_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(inet_pool, "Inet Pool");
 }
