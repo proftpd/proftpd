@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.130 2012-04-15 18:04:15 castaglia Exp $
+ * $Id: mod_log.c,v 1.131 2012-05-16 18:02:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1758,10 +1758,19 @@ static int log_sess_init(void) {
   /* Open the ServerLog, if present. */
   serverlog_name = get_param_ptr(main_server->conf, "ServerLog", FALSE);
   if (serverlog_name != NULL) {
-    PRIVS_ROOT
+    int res, xerrno;
+
     log_closesyslog();
-    log_opensyslog(serverlog_name);
+
+    PRIVS_ROOT
+    res = log_opensyslog(serverlog_name);
+    xerrno = errno;
     PRIVS_RELINQUISH
+
+    if (res < 0) {
+      pr_log_debug(DEBUG4, "unable to open ServerLog '%s': %s", serverlog_name,
+        strerror(xerrno));
+    }
   }
 
   /* Open all the ExtendedLog files. */
