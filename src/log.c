@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.111 2012-03-14 00:11:38 castaglia Exp $
+ * $Id: log.c,v 1.112 2012-05-20 20:38:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -423,12 +423,16 @@ static void log_write(int priority, int f, char *s, int discard) {
     pr_netaddr_t *remote_addr = pr_netaddr_get_sess_remote_addr();
     const char *remote_name = pr_netaddr_get_sess_remote_name();
 
-    snprintf(serverinfo, sizeof(serverinfo), "%s", main_server->ServerFQDN);
+    snprintf(serverinfo, sizeof(serverinfo)-1, "%s", main_server->ServerFQDN);
     serverinfo[sizeof(serverinfo)-1] = '\0';
 
     if (remote_addr && remote_name) {
-      snprintf(serverinfo + strlen(serverinfo),
-        sizeof(serverinfo) - strlen(serverinfo), " (%s[%s])",
+      size_t serverinfo_len;
+
+      serverinfo_len = strlen(serverinfo);
+
+      snprintf(serverinfo + serverinfo_len,
+        sizeof(serverinfo) - serverinfo_len, " (%s[%s])",
         remote_name, pr_netaddr_get_ipstr(remote_addr));
 
       serverinfo[sizeof(serverinfo)-1] = '\0';
@@ -504,14 +508,15 @@ static void log_write(int priority, int f, char *s, int discard) {
 
     strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);
     buf[sizeof(buf) - 1] = '\0';
+    buflen = strlen(buf);
 
     if (*serverinfo) {
-      snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+      snprintf(buf + buflen, sizeof(buf) - buflen,
 	       "%s proftpd[%u] %s: %s\n", systemlog_host,
 	       (unsigned int) (session.pid ? session.pid : getpid()),
                serverinfo, s);
     } else {
-      snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+      snprintf(buf + buflen, sizeof(buf) - buflen,
 	       "%s proftpd[%u]: %s\n", systemlog_host,
 	       (unsigned int) (session.pid ? session.pid : getpid()), s);
     }
