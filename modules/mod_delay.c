@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.63 2012-04-15 18:04:15 castaglia Exp $
+ * $Id: mod_delay.c,v 1.64 2012-05-22 05:18:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1506,15 +1506,19 @@ static void delay_postparse_ev(const void *event_data, void *user_data) {
   config_rec *c;
 
   c = find_config(main_server->conf, CONF_PARAM, "DelayEngine", FALSE);
-  if (c && *((unsigned int *) c->argv[0]) == FALSE)
+  if (c != NULL &&
+      *((unsigned int *) c->argv[0]) == FALSE) {
     delay_engine = FALSE;
+  }
 
-  if (!delay_engine)
+  if (delay_engine == FALSE) {
     return;
+  }
 
   c = find_config(main_server->conf, CONF_PARAM, "DelayTable", FALSE);
-  if (c)
+  if (c != NULL) {
     delay_tab.dt_path = c->argv[0];
+  }
 
   (void) delay_table_init();
   return;
@@ -1525,8 +1529,12 @@ static void delay_restart_ev(const void *event_data, void *user_data) {
     register unsigned int i;
 #endif /* PR_USE_CTRLS */
 
-  if (delay_pool)
+  delay_tab.dt_path = PR_RUN_DIR "/proftpd.delay";
+  delay_tab.dt_data = NULL;
+
+  if (delay_pool) {
     destroy_pool(delay_pool);
+  }
 
   delay_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(delay_pool, MOD_DELAY_VERSION);
@@ -1655,18 +1663,22 @@ static int delay_sess_init(void) {
   config_rec *c;
   int xerrno = errno;
 
-  if (!delay_engine)
+  if (delay_engine == FALSE) {
     return 0;
+  }
 
   /* Look up DelayEngine again, as it may have been disabled in an
    * <IfClass> section.
    */
   c = find_config(main_server->conf, CONF_PARAM, "DelayEngine", FALSE);
-  if (c && *((unsigned int *) c->argv[0]) == FALSE)
+  if (c != NULL &&
+      *((unsigned int *) c->argv[0]) == FALSE) {
     delay_engine = FALSE;
+  }
 
-  if (!delay_engine)
+  if (delay_engine == FALSE) {
     return 0;
+  }
 
   delay_nuser = 0;
   delay_npass = 0;
