@@ -377,11 +377,11 @@ sub delay_extra_user_cmd_bug3622 {
 
       my $expected;
 
-      $expected = 503;
+      $expected = 500;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'You are already logged in';
+      $expected = 'Bad sequence of commands';
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
