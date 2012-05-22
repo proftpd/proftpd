@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.116 2012-05-10 03:01:20 castaglia Exp $
+ * $Id: support.c,v 1.117 2012-05-22 05:22:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -133,6 +133,7 @@ void schedule(void (*f)(void*,void*,void*,void*),int nloops, void *a1,
   }
 
   sub_pool = make_sub_pool(p);
+  pr_pool_tag(sub_pool, "schedule pool");
 
   s = pcalloc(sub_pool, sizeof(sched_t));
   s->pool = sub_pool;
@@ -142,7 +143,7 @@ void schedule(void (*f)(void*,void*,void*,void*),int nloops, void *a1,
   s->a3 = a3;
   s->a4 = a4;
   s->loops = nloops;
-  xaset_insert(scheds, (xasetmember_t*)s);
+  xaset_insert(scheds, (xasetmember_t *) s);
 }
 
 void run_schedule(void) {
@@ -153,7 +154,7 @@ void run_schedule(void) {
     return;
   }
 
-  for (s = (sched_t *) scheds->xas_list; s; s= snext) {
+  for (s = (sched_t *) scheds->xas_list; s; s = snext) {
     snext = s->next;
 
     if (s->loops-- <= 0) {
