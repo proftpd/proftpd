@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.303 2012-04-15 18:04:14 castaglia Exp $
+ * $Id: mod_auth.c,v 1.304 2012-05-22 02:25:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1934,7 +1934,7 @@ MODRET auth_user(cmd_rec *cmd) {
   unsigned char *anon_require_passwd = NULL, *login_passwd_prompt = NULL;
 
   if (logged_in)
-    return PR_ERROR_MSG(cmd, R_503, _("You are already logged in"));
+    return PR_ERROR_MSG(cmd, R_500, _("Bad sequence of commands"));
 
   if (cmd->argc < 2)
     return PR_ERROR_MSG(cmd, R_500, _("USER: command requires a parameter"));
