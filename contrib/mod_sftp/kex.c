@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.35 2012-03-14 22:15:29 castaglia Exp $
+ * $Id: kex.c,v 1.36 2012-05-22 01:46:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -610,7 +610,7 @@ static int have_good_dh(DH *dh, BIGNUM *pub_key) {
   /* The number of bits set in the public key must be greater than one.
    * Otherwise, the public key will not hold up under scrutiny, not for
    * our needs.  (The OpenSSH client is picky about the DH public keys it
-   * will accept as well, so this is necessary to pass OpenSSH's requirements.
+   * will accept as well, so this is necessary to pass OpenSSH's requirements).
    */
   if (nbits <= 1) {
     errno = EINVAL;
