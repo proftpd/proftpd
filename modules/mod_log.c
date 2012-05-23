@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.131 2012-05-16 18:02:52 castaglia Exp $
+ * $Id: mod_log.c,v 1.132 2012-05-23 00:11:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1299,7 +1299,8 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       /* If the current command is one that incurs a data transfer, then we
        * need to do more work.  If not, it's an easy substitution.
        */
-      if (session.curr_cmd_id == PR_CMD_APPE_ID ||
+      if (session.curr_cmd_id == PR_CMD_ABOR_ID ||
+          session.curr_cmd_id == PR_CMD_APPE_ID ||
           session.curr_cmd_id == PR_CMD_LIST_ID ||
           session.curr_cmd_id == PR_CMD_MLSD_ID ||
           session.curr_cmd_id == PR_CMD_NLST_ID ||
@@ -1319,7 +1320,16 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
           res = pr_response_get_last(cmd->tmp_pool, &resp_code, &resp_msg);
           if (res == 0) {
             if (*resp_code == '2') {
-              sstrncpy(argp, "success", sizeof(arg));
+
+              if (pr_cmd_cmp(cmd, PR_CMD_ABOR_ID) != 0) {
+                sstrncpy(argp, "success", sizeof(arg));
+
+              } else {
+                /* We're handling the ABOR command, so obviously the value
+                 * should be 'cancelled'.
+                 */
+                sstrncpy(argp, "cancelled", sizeof(arg));
+              }
 
             } else if (*resp_code == '1') {
               /* If the first digit of the response code is 1, then the response

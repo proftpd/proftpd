@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.223 2012-05-10 03:59:43 castaglia Exp $
+ * $Id: mod_sql.c,v 1.224 2012-05-23 00:11:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2283,7 +2283,8 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
     /* If the current command is one that incurs a data transfer, then we
      * need to do more work.  If not, it's an easy substitution.
      */
-    if (session.curr_cmd_id == PR_CMD_APPE_ID ||
+    if (session.curr_cmd_id == PR_CMD_ABOR_ID ||
+        session.curr_cmd_id == PR_CMD_APPE_ID ||
         session.curr_cmd_id == PR_CMD_LIST_ID ||
         session.curr_cmd_id == PR_CMD_MLSD_ID ||
         session.curr_cmd_id == PR_CMD_NLST_ID ||
@@ -2303,7 +2304,15 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
         res = pr_response_get_last(cmd->tmp_pool, &resp_code, &resp_msg);
         if (res == 0) {
           if (*resp_code == '2') {
-            long_tag = pstrdup(cmd->tmp_pool, "success");
+            if (pr_cmd_cmp(cmd, PR_CMD_ABOR_ID) != 0) {
+              long_tag = pstrdup(cmd->tmp_pool, "success");
+
+            } else {
+              /* We're handling the ABOR command, so obviously the value
+               * should be 'cancelled'.
+               */
+              long_tag = pstrdup(cmd->tmp_pool, "cancelled");
+            }
 
           } else if (*resp_code == '1') {
             /* If the first digit of the response code is 1, then the response
@@ -3497,8 +3506,8 @@ MODRET errinfo_master(cmd_rec *cmd) {
               sd = (sql_data_t *) mr->data;
 
               pr_trace_msg(trace_channel, 13,
-                "SQLShowInfo ERR_%s query '%s' returned row count %d",
-                cmd->argv[0], query, sd->rnum);
+                "SQLShowInfo ERR_%s query '%s' returned row count %u",
+                cmd->argv[0], query, (unsigned int) sd->rnum);
 
               if (sd->rnum == 0 ||
                   sd->data[0] == NULL) {
