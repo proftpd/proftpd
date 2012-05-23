@@ -1632,4 +1632,21 @@ sub host {
   }
 }
 
+sub abort {
+  my $self = shift;
+
+  unless ($self->{ftp}->abort()) {
+    croak("ABOR command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
 1;
