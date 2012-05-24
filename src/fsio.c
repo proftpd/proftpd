@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.106 2012-04-13 14:28:07 castaglia Exp $
+ * $Id: fsio.c,v 1.107 2012-05-24 22:42:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1524,55 +1524,97 @@ int pr_fs_dircat(char *buf, int buflen, const char *dir1, const char *dir2) {
  *           1 : interpolation done
  */
 int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
-  pool *p = NULL;
-  struct passwd *pw = NULL;
-  struct stat sbuf;
-  char *fname = NULL;
-  char user[PR_TUNABLE_LOGIN_MAX + 1] = {'\0'};
-  int len;
+  char *ptr = NULL;
+  size_t currlen, pathlen;
+  char user[PR_TUNABLE_LOGIN_MAX+1];
 
-  if (!path) {
+  if (path == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  if (path[0] == '~') {
-    fname = strchr(path, '/');
+  if (path[0] != '~') {
+    sstrncpy(buf, path, buflen);
+    return 1;
+  }
 
-    /* Copy over the username.
+  memset(user, '\0', sizeof(user));
+
+  /* The first character of the given path is '~'.
+   *
+   * We next need to see what the rest of the path looks like.  Could be:
+   *
+   *  "~"
+   *  "~user"
+   *  "~/"
+   *  "~/path"
+   *  "~user/path"
+   */
+
+  pathlen = strlen(path);
+  if (pathlen == 1) {
+    /* If the path is just "~", AND we're chrooted, then the interpolation
+     * is easy.
      */
-    if (fname) {
-      len = fname - path;
-      sstrncpy(user, path + 1, len > sizeof(user) ? sizeof(user) : len);
+    if (session.chroot_path != NULL) {
+      sstrncpy(buf, session.chroot_path, buflen);
+      return 1;
+    }
+  }
 
-      /* Advance past the '/'. */
-      fname++;
+  ptr = strchr(path, '/');
+  if (ptr == NULL) {
+    struct stat st;
 
-    } else if (pr_fsio_stat(path, &sbuf) == -1) {
+    /* No path separator present, which means path must be "~user".
+     *
+     * This means that a path of "~foo" could be a file with that exact
+     * name, or it could be that user's home directory.  Let's find out
+     * which it is.
+     */
 
-      /* Otherwise, this might be something like "~foo" which could be a file
-       * or it could be a user.  Let's find out.
-       *
-       * Must be a user, if anything...otherwise it's probably a typo.
-       */
-      len = strlen(path);
-      sstrncpy(user, path + 1, len > sizeof(user) ? sizeof(user) : len);
+    if (pr_fsio_stat(path, &st) == -1) {
+       /* Must be a user, if anything...otherwise it's probably a typo.
+        *
+        * The user name, then, is everything just past the '~' character.
+        */
+      sstrncpy(user, path+1,
+        pathlen-1 > sizeof(user)-1 ? sizeof(user)-1 : pathlen-1);
 
     } else {
-
-      /* Otherwise, this _is_ the file in question, perform no interpolation.
-       */
-      fname = (char *) path;
+      /* This IS the file in question, perform no interpolation. */
       return 0;
     }
 
-    /* If the user hasn't been explicitly specified, set it here.  This
-     * handles cases such as files beginning with "~", "~/foo" or simply "~".
-     */
-    if (!*user)
-      sstrncpy(user, session.user, sizeof(user));
+  } else {
+    currlen = ptr - path;
+    if (currlen > 1) {
+      /* Copy over the username. */
+      sstrncpy(user, path+1,
+        currlen-1 > sizeof(user)-1 ? sizeof(user)-1 : currlen-1);
+    }
 
-    /* The permanent pool is used here, rather than session.pool, as path
+    /* Advance past the '/'. */
+    ptr++;
+  }
+
+  if (user[0] == '\0') {
+    /* No user name provided.  If we are chrooted, we leave it that way.
+     * Otherwise, we're not chrooted, and we can assume the current user.
+     */
+    if (session.chroot_path == NULL) {
+      sstrncpy(user, session.user, sizeof(user)-1);
+    }
+  }
+
+  if (user[0] != '\0') {
+    struct passwd *pw = NULL;
+    pool *p = NULL;
+
+    /* We need to look up the info for the given username, and add it
+     * into the buffer.
+     *
+     * The permanent pool is used here, rather than session.pool, as path
      * interpolation can occur during startup parsing, when session.pool does
      * not exist.  It does not really matter, since the allocated sub pool
      * is destroyed shortly.
@@ -1581,8 +1623,7 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
     pr_pool_tag(p, "pr_fs_interpolate() pool");
 
     pw = pr_auth_getpwnam(p, user);
-
-    if (!pw) {
+    if (pw == NULL) {
       destroy_pool(p);
       errno = ENOENT;
       return -1;
@@ -1593,17 +1634,23 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
     /* Done with pw, which means we can destroy the temporary pool now. */
     destroy_pool(p);
 
-    len = strlen(buf);
+  } else {
+    /* We're chrooted. */
+    sstrncpy(buf, "/", buflen);
+  }
+ 
+  currlen = strlen(buf);
 
-    if (fname && len < buflen && buf[len - 1] != '/')
-      buf[len++] = '/';
+  if (ptr != NULL &&
+      currlen < buflen &&
+      buf[currlen-1] != '/') {
+    buf[currlen++] = '/';
+  }
 
-    if (fname)
-      sstrncpy(&buf[len], fname, buflen - len);
-
-  } else
-    sstrncpy(buf, path, buflen);
-
+  if (ptr != NULL) {
+    sstrncpy(&buf[currlen], ptr, buflen - currlen);
+  }
+ 
   return 1;
 }
 

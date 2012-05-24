@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1425 2012-05-22 02:25:08 castaglia Exp $
+$Id: NEWS,v 1.1426 2012-05-24 22:42:17 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -93,6 +93,7 @@ CVS
 - Bug 3780 - AIX gives "error setting listen fd IP_TOS: Invalid argument".
 - Bug 3736 - Trying to re-authenticate an existing FTP connection causes invalid
   503 response.
+- Bug 3785 - Support resolution of tilde (~) within a chrooted session.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------
