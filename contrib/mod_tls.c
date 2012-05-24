@@ -2608,6 +2608,15 @@ static int tls_init_server(void) {
         tls_rsa_key_file, tls_get_errors());
       return -1;
     }
+
+    res = SSL_CTX_check_private_key(ssl_ctx);
+    if (res != 1) {
+      PRIVS_RELINQUISH 
+
+      tls_log("error checking key from TLSRSACertificateKeyFile '%s': %s",
+        tls_rsa_key_file, tls_get_errors());
+      return -1;
+    }
   }
 
   if (tls_dsa_cert_file) {
@@ -2678,6 +2687,15 @@ static int tls_init_server(void) {
         tls_dsa_key_file, tls_get_errors());
       return -1;
     }
+
+    res = SSL_CTX_check_private_key(ssl_ctx);
+    if (res != 1) {
+      PRIVS_RELINQUISH
+
+      tls_log("error checking key from TLSDSACertificateKeyFile '%s': %s",
+        tls_dsa_key_file, tls_get_errors());
+      return -1;
+    }
   }
 
   if (tls_pkcs12_file) {
@@ -2719,6 +2737,25 @@ static int tls_init_server(void) {
     if (PKCS12_parse(p12, passwd, &pkey, &cert, NULL) != 1) {
       tls_log("error parsing info in TLSPKCS12File '%s': %s", tls_pkcs12_file,
         tls_get_errors());
+
+      PKCS12_free(p12);
+
+      if (cert)
+        X509_free(cert);
+
+      if (pkey)
+        EVP_PKEY_free(pkey);
+
+      return -1;
+    }
+
+    res = SSL_CTX_check_private_key(ssl_ctx);
+    if (res != 1) {
+      PRIVS_RELINQUISH
+
+      tls_log("error checking key from TLSPKCS12File '%s': %s", tls_pkcs12_file,
+        tls_get_errors());
+
       PKCS12_free(p12);
       return -1;
     }
@@ -8032,20 +8069,37 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
  */
 
 static int tls_init(void) {
+  unsigned long openssl_version;
 
   /* Check that the OpenSSL headers used match the version of the
    * OpenSSL library used.
    *
    * For now, we only log if there is a difference.
    */
-  if (SSLeay() != OPENSSL_VERSION_NUMBER) {
-    pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION
-      ": compiled using OpenSSL version '%s' headers, but linked to "
-      "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
-      SSLeay_version(SSLEAY_VERSION));
-    tls_log("compiled using OpenSSL version '%s' headers, but linked to "
-      "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
-      SSLeay_version(SSLEAY_VERSION));
+  openssl_version = SSLeay();
+
+  if (openssl_version != OPENSSL_VERSION_NUMBER) {
+    int unexpected_version_mismatch = TRUE;
+
+    if (OPENSSL_VERSION_NUMBER >= 0x1000000fL) {
+      /* OpenSSL versions after 1.0.0 try to maintain ABI compatibility.
+       * So we will warn about header/library version mismatches only if
+       * the library is older than the headers.
+       */
+      if (openssl_version >= OPENSSL_VERSION_NUMBER) {
+        unexpected_version_mismatch = FALSE;
+      }
+    }
+
+    if (unexpected_version_mismatch == TRUE) {
+      pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION
+        ": compiled using OpenSSL version '%s' headers, but linked to "
+        "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
+        SSLeay_version(SSLEAY_VERSION));
+      tls_log("compiled using OpenSSL version '%s' headers, but linked to "
+        "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
+        SSLeay_version(SSLEAY_VERSION));
+    }
   }
 
   pr_log_debug(DEBUG2, MOD_TLS_VERSION ": using " OPENSSL_VERSION_TEXT);
