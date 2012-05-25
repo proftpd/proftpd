@@ -57,9 +57,19 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  cwd_tilde_user_ok => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   cwd_tilde_chrooted_bug3785 => {
     order => ++$order,
-    test_class => [qw(forking rootprivs)],
+    test_class => [qw(bug forking rootprivs)],
+  },
+
+  cwd_tilde_user_chrooted_bug3785 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
   },
 
 };
@@ -1219,6 +1229,145 @@ sub cwd_tilde_ok {
   unlink($log_file);
 }
 
+sub cwd_tilde_user_ok {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $user2 = 'proftpd2';
+  my $passwd2 = 'test2';
+  my $home_dir2 = File::Spec->rel2abs("$tmpdir/1");
+  my $uid2 = 501;
+  my $gid2 = 501;
+  
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/0");
+  mkpath($sub_dir);
+  
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir, $sub_dir)) {
+      die("Can't set perms on $home_dir, $sub_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
+      die("Can't set owner of $home_dir, $sub_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_user_write($auth_user_file, $user2, $passwd2, $uid2, $gid2, $home_dir2,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid2, $user2);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'auth:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+
+      my $dir = "~$user2/0";
+      eval { $client->cwd($dir) };
+      unless ($@) {
+        die("CWD $dir succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      my $expected;
+
+      $expected = 550;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = "$dir: No such file or directory";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
 sub cwd_tilde_chrooted_bug3785 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
@@ -1313,6 +1462,146 @@ sub cwd_tilde_chrooted_bug3785 {
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "\"/0\" is the current directory";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected '$expected', got '$resp_msg'"));
+
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub cwd_tilde_user_chrooted_bug3785 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $user2 = 'proftpd2';
+  my $passwd2 = 'test2';
+  my $home_dir2 = File::Spec->rel2abs("$tmpdir/1");
+  my $uid2 = 501;
+  my $gid2 = 501;
+  
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/0");
+  mkpath($sub_dir);
+  
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir, $sub_dir)) {
+      die("Can't set perms on $home_dir, $sub_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
+      die("Can't set owner of $home_dir, $sub_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_user_write($auth_user_file, $user2, $passwd2, $uid2, $gid2, $home_dir2,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid2, $user2);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'auth:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+    DefaultRoot => '~',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+
+      my $dir = "~$user2/0";
+      eval { $client->cwd($dir) };
+      unless ($@) {
+        die("CWD $dir succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      my $expected;
+
+      $expected = 550;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+
+      $expected = "$dir: No such file or directory";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
