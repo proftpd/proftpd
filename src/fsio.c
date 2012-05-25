@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.107 2012-05-24 22:42:18 castaglia Exp $
+ * $Id: fsio.c,v 1.108 2012-05-25 05:35:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1591,7 +1591,7 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
     if (currlen > 1) {
       /* Copy over the username. */
       sstrncpy(user, path+1,
-        currlen-1 > sizeof(user)-1 ? sizeof(user)-1 : currlen-1);
+        currlen > sizeof(user)-1 ? sizeof(user)-1 : currlen);
     }
 
     /* Advance past the '/'. */
