@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1426 2012-05-24 22:42:17 castaglia Exp $
+$Id: NEWS,v 1.1427 2012-05-29 20:08:24 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -94,6 +94,7 @@ CVS
 - Bug 3736 - Trying to re-authenticate an existing FTP connection causes invalid
   503 response.
 - Bug 3785 - Support resolution of tilde (~) within a chrooted session.
+- Bug 3787 - Read-only SFTP OPEN request permissions not properly ignored.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

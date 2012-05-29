@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.150 2012-04-20 20:32:10 castaglia Exp $
+ * $Id: fxp.c,v 1.151 2012-05-29 20:08:24 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1334,7 +1334,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "client set permissions on '%s' to 0%o", path,
-          (unsigned int) attrs->st_mode);
+          (unsigned int) (attrs->st_mode & ~S_IFMT));
       }
     }
   }
@@ -6606,6 +6606,19 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, path);
     cmd2->cmd_id = pr_cmd_get_id(C_RETR);
     session.curr_cmd = C_RETR;
+
+    /* We ignore any perms sent by the client for read-only requests.
+     *
+     * This happens because we explicitly call chown(2)/chmod(2) after
+     * open(2) in order to handle UserOwner/GroupOwner directive.  But this
+     * breaks the semantics of open(2), which does not change the mode of
+     * an existing file if the flags are O_RDONLY.
+     */
+    if (attr_flags & SSH2_FX_ATTR_PERMISSIONS) {
+      pr_trace_msg(trace_channel, 7,
+        "read-only OPEN request, ignoring perms sent by client");
+      attr_flags &= ~SSH2_FX_ATTR_PERMISSIONS;
+    }
   }
 
   if (cmd2) {
