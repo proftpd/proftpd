@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.226 2012-05-29 21:59:27 castaglia Exp $
+ * $Id: mod_sql.c,v 1.227 2012-05-29 22:42:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2356,8 +2356,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
          */
         char *status;
 
-        status = (char *) pr_table_get(cmd->notes, "mod_sftp.file-status",
-          NULL);
+        status = pr_table_get(cmd->notes, "mod_sftp.file-status", NULL);
         if (status == NULL) {
           long_tag = pstrdup(cmd->tmp_pool, "success");
 
@@ -2522,6 +2521,19 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
         sstrncpy(argp, dir_abs_path(cmd->tmp_pool, session.xfer.path, TRUE),
           sizeof(arg));
 
+      } else if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
+        char *path;
+
+        path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
+        sstrncpy(arg, dir_abs_path(cmd->tmp_pool, path, TRUE), sizeof(arg));
+
+      } else if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
+                 pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
+        char *path;
+
+        path = pr_table_get(cmd->notes, "mod_xfer.stor-path", NULL);
+        sstrncpy(arg, dir_abs_path(cmd->tmp_pool, path, TRUE), sizeof(arg));
+
       } else {
 
         /* Some commands (i.e. DELE, MKD, RMD, XMKD, and XRMD) have associated
@@ -2556,6 +2568,19 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       } else if (session.xfer.p &&
                  session.xfer.path) {
         sstrncpy(argp, session.xfer.path, sizeof(arg));
+
+      } else if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
+        char *path;
+
+        path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
+        sstrncpy(arg, path, sizeof(arg));
+
+      } else if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
+                 pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
+        char *path;
+
+        path = pr_table_get(cmd->notes, "mod_xfer.stor-path", NULL);
+        sstrncpy(arg, path, sizeof(arg));
 
       } else {
         /* Some commands (i.e. DELE, MKD, RMD, XMKD, and XRMD) have associated

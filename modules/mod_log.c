@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.133 2012-05-29 21:59:28 castaglia Exp $
+ * $Id: mod_log.c,v 1.134 2012-05-29 22:42:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -823,6 +823,19 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
                  session.xfer.path) {
         sstrncpy(argp, dir_abs_path(p, session.xfer.path, TRUE), sizeof(arg));
 
+      } else if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
+        char *path;
+
+        path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
+        sstrncpy(arg, dir_abs_path(p, path, TRUE), sizeof(arg));
+
+      } else if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
+                 pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
+        char *path;
+      
+        path = pr_table_get(cmd->notes, "mod_xfer.stor-path", NULL);
+        sstrncpy(arg, dir_abs_path(p, path, TRUE), sizeof(arg));
+
       } else if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) == 0 &&
                  (strcasecmp(cmd->argv[1], "CHGRP") == 0 ||
                   strcasecmp(cmd->argv[1], "CHMOD") == 0)) {
@@ -871,6 +884,19 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       } else if (session.xfer.p &&
                  session.xfer.path) {
         sstrncpy(argp, session.xfer.path, sizeof(arg));
+
+      } else if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
+        char *path;
+
+        path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
+        sstrncpy(arg, path, sizeof(arg));
+
+      } else if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
+                 pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
+        char *path;
+
+        path = pr_table_get(cmd->notes, "mod_xfer.stor-path", NULL);
+        sstrncpy(arg, path, sizeof(arg));
 
       } else {
         /* Some commands (i.e. DELE, MKD, XMKD, RMD, XRMD) have associated
@@ -1373,8 +1399,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
            */
           char *status;
 
-          status = (char *) pr_table_get(cmd->notes, "mod_sftp.file-status",
-            NULL);
+          status = pr_table_get(cmd->notes, "mod_sftp.file-status", NULL);
           if (status == NULL) {
             sstrncpy(argp, "success", sizeof(arg));
 
