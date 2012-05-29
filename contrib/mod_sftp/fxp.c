@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.151 2012-05-29 20:08:24 castaglia Exp $
+ * $Id: fxp.c,v 1.152 2012-05-29 20:21:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -6615,7 +6615,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
      * an existing file if the flags are O_RDONLY.
      */
     if (attr_flags & SSH2_FX_ATTR_PERMISSIONS) {
-      pr_trace_msg(trace_channel, 7,
+      pr_trace_msg(trace_channel, 15,
         "read-only OPEN request, ignoring perms sent by client");
       attr_flags &= ~SSH2_FX_ATTR_PERMISSIONS;
     }
