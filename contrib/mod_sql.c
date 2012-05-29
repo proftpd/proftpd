@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.225 2012-05-29 20:04:19 castaglia Exp $
+ * $Id: mod_sql.c,v 1.226 2012-05-29 21:59:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2235,41 +2235,52 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
         session.curr_cmd_id == PR_CMD_RETR_ID ||
         session.curr_cmd_id == PR_CMD_STOR_ID ||
         session.curr_cmd_id == PR_CMD_STOU_ID) {
+      const char *proto;
 
-      /* XXX Need to deal with 'sftp', 'scp' protocols here */
+      proto = pr_session_get_protocol(0);
 
-      if (XFER_ABORTED) {
-        long_tag = pstrdup(cmd->tmp_pool, "-");
+      if (strncmp(proto, "ftp", 4) == 0 ||
+          strncmp(proto, "ftps", 5) == 0) {
 
-      } else {
-        int res;
-        char *resp_code = NULL, *resp_msg = NULL;
+        if (XFER_ABORTED) {
+          long_tag = pstrdup(cmd->tmp_pool, "-");
 
-        /* Get the last response code/message.  We use heuristics here to
-         * determine when to use "failed" versus "success".
-         */
-        res = pr_response_get_last(cmd->tmp_pool, &resp_code, &resp_msg);
-        if (res == 0) {
-          if (*resp_code != '2' &&
-              *resp_code != '1') {
-            char *ptr;
+        } else {
+          int res;
+          char *resp_code = NULL, *resp_msg = NULL;
 
-            /* Parse out/prettify the resp_msg here */
-            ptr = strchr(resp_msg, '.');
-            if (ptr != NULL) {
-              long_tag = pstrdup(cmd->tmp_pool, ptr + 2);
+          /* Get the last response code/message.  We use heuristics here to
+           * determine when to use "failed" versus "success".
+           */
+          res = pr_response_get_last(cmd->tmp_pool, &resp_code, &resp_msg);
+          if (res == 0) {
+            if (*resp_code != '2' &&
+                *resp_code != '1') {
+              char *ptr;
+
+              /* Parse out/prettify the resp_msg here */
+              ptr = strchr(resp_msg, '.');
+              if (ptr != NULL) {
+                long_tag = pstrdup(cmd->tmp_pool, ptr + 2);
+
+              } else {
+                long_tag = pstrdup(cmd->tmp_pool, resp_msg);
+              }
 
             } else {
-              long_tag = pstrdup(cmd->tmp_pool, resp_msg);
+              long_tag = pstrdup(cmd->tmp_pool, "-");
             }
 
           } else {
             long_tag = pstrdup(cmd->tmp_pool, "-");
           }
-
-        } else {
-          long_tag = pstrdup(cmd->tmp_pool, "-");
         }
+
+      } else {
+        /* Currently, for failed SFTP/SCP transfers, we can't properly
+         * populate the failure reason.  Maybe in the future.
+         */
+        long_tag = pstrdup(cmd->tmp_pool, "-");
       }
 
     } else {
@@ -2291,48 +2302,68 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
         session.curr_cmd_id == PR_CMD_RETR_ID ||
         session.curr_cmd_id == PR_CMD_STOR_ID ||
         session.curr_cmd_id == PR_CMD_STOU_ID) {
+      const char *proto;
 
-      /* XXX Need to deal with 'sftp', 'scp' protocols here */
+      proto = pr_session_get_protocol(0);
 
-      if (!(XFER_ABORTED)) {
-        int res;
-        char *resp_code = NULL, *resp_msg = NULL;
+      if (strncmp(proto, "ftp", 4) == 0 ||
+          strncmp(proto, "ftps", 5) == 0) {
 
-        /* Get the last response code/message.  We use heuristics here to
-         * determine when to use "failed" versus "success".
-         */
-        res = pr_response_get_last(cmd->tmp_pool, &resp_code, &resp_msg);
-        if (res == 0) {
-          if (*resp_code == '2') {
-            if (pr_cmd_cmp(cmd, PR_CMD_ABOR_ID) != 0) {
-              long_tag = pstrdup(cmd->tmp_pool, "success");
+        if (!(XFER_ABORTED)) {
+          int res;
+          char *resp_code = NULL, *resp_msg = NULL;
+
+          /* Get the last response code/message.  We use heuristics here to
+           * determine when to use "failed" versus "success".
+           */
+          res = pr_response_get_last(cmd->tmp_pool, &resp_code, &resp_msg);
+          if (res == 0) {
+            if (*resp_code == '2') {
+              if (pr_cmd_cmp(cmd, PR_CMD_ABOR_ID) != 0) {
+                long_tag = pstrdup(cmd->tmp_pool, "success");
+
+              } else {
+                /* We're handling the ABOR command, so obviously the value
+                 * should be 'cancelled'.
+                 */
+                long_tag = pstrdup(cmd->tmp_pool, "cancelled");
+              }
+
+            } else if (*resp_code == '1') {
+              /* If the first digit of the response code is 1, then the response
+               * code (for a data transfer command) is probably 150, which means
+               * that the transfer was still in progress (didn't complete with
+               * a 2xx/4xx response code) when we are called here, which in turn
+               * means a timeout kicked in.
+               */
+              long_tag = pstrdup(cmd->tmp_pool, "timeout");
 
             } else {
-              /* We're handling the ABOR command, so obviously the value
-               * should be 'cancelled'.
-               */
-              long_tag = pstrdup(cmd->tmp_pool, "cancelled");
+              long_tag = pstrdup(cmd->tmp_pool, "failed");
             }
 
-          } else if (*resp_code == '1') {
-            /* If the first digit of the response code is 1, then the response
-             * code (for a data transfer command) is probably 150, which means
-             * that the transfer was still in progress (didn't complete with
-             * a 2xx/4xx response code) when we are called here, which in turn
-             * means a timeout kicked in.
-             */
-            long_tag = pstrdup(cmd->tmp_pool, "timeout");
-
           } else {
-            long_tag = pstrdup(cmd->tmp_pool, "failed");
+            long_tag = pstrdup(cmd->tmp_pool, "success");
           }
 
         } else {
-          long_tag = pstrdup(cmd->tmp_pool, "success");
+          long_tag = pstrdup(cmd->tmp_pool, "cancelled");
         }
 
       } else {
-        long_tag = pstrdup(cmd->tmp_pool, "cancelled");
+        /* mod_sftp stashes a note for us in the command notes if the
+         * transfer failed.
+         */
+        char *status;
+
+        status = (char *) pr_table_get(cmd->notes, "mod_sftp.file-status",
+          NULL);
+        if (status == NULL) {
+          long_tag = pstrdup(cmd->tmp_pool, "success");
+
+        } else {
+          long_tag = pstrdup(cmd->tmp_pool, "failed");
+        }
       }
 
     } else {
