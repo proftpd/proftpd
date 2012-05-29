@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.224 2012-05-23 00:11:52 castaglia Exp $
+ * $Id: mod_sql.c,v 1.225 2012-05-29 20:04:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3506,8 +3506,8 @@ MODRET errinfo_master(cmd_rec *cmd) {
               sd = (sql_data_t *) mr->data;
 
               pr_trace_msg(trace_channel, 13,
-                "SQLShowInfo ERR_%s query '%s' returned row count %u",
-                cmd->argv[0], query, (unsigned int) sd->rnum);
+                "SQLShowInfo ERR_%s query '%s' returned row count %lu",
+                cmd->argv[0], query, sd->rnum);
 
               if (sd->rnum == 0 ||
                   sd->data[0] == NULL) {
