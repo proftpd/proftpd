@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.152 2012-05-29 20:21:19 castaglia Exp $
+ * $Id: fxp.c,v 1.153 2012-05-29 22:03:35 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2445,12 +2445,19 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
     session.curr_cmd = C_RETR;
   }
 
+  /* Add a note indicating that this is a failed transfer. */
+  if (pr_table_add(cmd->notes, "mod_sftp.file-status",
+      pstrdup(fxh->pool, "failed"), 0) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error stashing file status in command notes: %s", strerror(errno));
+  }
+
   xferlog_write(0, pr_netaddr_get_sess_remote_name(), fxh->fh_bytes_xferred,
     abs_path, 'b', direction, 'r', session.user, 'i', "_");
 
   if (cmd) {
     /* Ideally we could provide a real response code/message for any
-     * configured ExtendedLogs for these aborted uploads.  Something to
+     * configured ExtendedLogs for these aborted transfers.  Something to
      * refine in the future...
      */
     pr_response_clear(&resp_list);
