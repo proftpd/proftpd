@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.302 2012-04-15 18:04:15 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.303 2012-05-30 21:52:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3179,16 +3179,33 @@ static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
 static void xfer_exit_ev(const void *event_data, void *user_data) {
 
   if (session.sf_flags & SF_XFER) {
+    cmd_rec *cmd;
+    char *path = NULL;
+
     if (session.xfer.direction == PR_NETIO_IO_RD) {
        /* An upload is occurring... */
+      if (stor_fh != NULL) {
+        path = stor_fh->fh_path;
+      }
+
       pr_trace_msg(trace_channel, 6, "session exiting, aborting upload");
       stor_abort();
 
     } else {
       /* A download is occurring... */
+      if (retr_fh != NULL) {
+        path = retr_fh->fh_path;
+      }
+
       pr_trace_msg(trace_channel, 6, "session exiting, aborting download");
       retr_abort();
     }
+
+    pr_data_abort(0, FALSE);
+
+    cmd = pr_cmd_alloc(session.pool, 2, session.curr_cmd, path);
+    (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
   }
 
   return;
