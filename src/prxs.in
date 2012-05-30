@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
 #
-#  $Id: prxs.in,v 1.8 2012-05-30 22:56:10 castaglia Exp $
+#  $Id: prxs.in,v 1.9 2012-05-30 23:46:01 castaglia Exp $
 # ---------------------------------------------------------------------------
 
 use strict;
@@ -84,9 +84,16 @@ if (defined($opts->{c})) {
   my $srcs = [];
   my $objs = [];
 
+  my $configure_script;
+
   foreach my $file (@ARGV) {
     if ($file =~ /\.c$/) {
       push(@$srcs, $file);
+
+      if ($file =~ /\/?mod_[^\/]+\.c$/) {
+        $configure_script = $file;
+        $configure_script =~ s/\/?mod_[^\/]+\.c$/\/configure/;
+      }
 
       my $obj = $file;
       $obj =~ s/\.c$/\.lo/;
@@ -99,6 +106,15 @@ if (defined($opts->{c})) {
 
     } else {
       print STDERR "Cannot compile non-.c file $file, aborting\n";
+      exit 1;
+    }
+  }
+
+  if (defined($configure_script)) {
+    # Check for any configure script for this module.  If present, error out
+    # for now.
+    if (-f $configure_script) {
+      print STDERR "Cannot compile $mod_name using prxs; use $configure_script instead\n";
       exit 1;
     }
   }
@@ -186,10 +202,13 @@ if (defined($opts->{i})) {
   # Don't forget to remind the user to manually edit their proftpd.conf
   # and add the LoadModule to load the just-installed module.
 
+  my $load_mod_name = $mod_name;
+  $load_mod_name =~ s/^(.*)\///;
+
   print STDOUT "\nTo load your newly installed module into proftpd, be sure\n";
   print STDOUT "to edit your proftpd.conf and add the following:\n\n";
   print STDOUT "  <IfModule mod_dso.c>\n";
-  print STDOUT "    LoadModule $mod_name.c\n";
+  print STDOUT "    LoadModule $load_mod_name.c\n";
   print STDOUT "  </IfModule>\n\n";
   print STDOUT "and then restart your proftpd server, so that the config change\n";
   print STDOUT "becomes live.\n\n";
@@ -221,7 +240,7 @@ sub get_module_name {
     # Handle an argument such as 'contrib/mod_sql_sqlite.c' by keeping
     # just the name portion of the path.
 
-    if ($file =~ /\/?mod_(\S+)\.(c|la)$/) {
+    if ($file =~ /\/?mod_([^\/]+)\.(c|la)$/) {
       return "mod_$1";
     }
   }
