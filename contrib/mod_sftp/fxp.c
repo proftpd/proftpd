@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.153 2012-05-29 22:03:35 castaglia Exp $
+ * $Id: fxp.c,v 1.154 2012-05-30 17:27:16 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -6715,6 +6715,26 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
           "notice: error adding 'mod_xfer.file-modified' note: %s",
           strerror(errno));
       }
+    }
+  }
+
+  if (exists(path)) {
+    /* draft-ietf-secsh-filexfer-06.txt, section 7.1.1 specifically
+     * states that any attributes in a OPEN request are ignored if the
+     * file already exists.
+     */
+    if (attr_flags & SSH2_FX_ATTR_PERMISSIONS) {
+      pr_trace_msg(trace_channel, 15,
+        "OPEN request for existing path, ignoring perms sent by client");
+      attr_flags &= ~SSH2_FX_ATTR_PERMISSIONS;
+    }
+
+    if ((attr_flags & SSH2_FX_ATTR_UIDGID) ||
+        (attr_flags & SSH2_FX_ATTR_OWNERGROUP)) {
+      pr_trace_msg(trace_channel, 15,
+        "OPEN request for existing path, ignoring ownership sent by client");
+      attr_flags &= ~SSH2_FX_ATTR_UIDGID;
+      attr_flags &= ~SSH2_FX_ATTR_OWNERGROUP;
     }
   }
 
