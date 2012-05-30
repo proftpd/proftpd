@@ -259,6 +259,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  extlog_ftps_xfer_status_cancelled => {
+    order => ++$order,
+    test_class => [qw(forking mod_tls)],
+  },
+
   # XXX Need unit tests for all LogFormat variables
 };
 
@@ -8072,6 +8077,246 @@ EOC
 
       $self->assert($expected_xfer_reason,
         test_msg("Did not see expected transfer failure/reason in ExtendedLog"));
+
+    } else {
+      die("Can't read $ext_log: $!");
+    }
+  };
+
+  if ($@) {
+    $ex = $@;
+  }
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub ftps_data_xfer_cb {
+  my $func_name = shift;
+  my $data = shift;
+  my $data_len = shift;
+  my $total_len = shift;
+  my $user_data = shift;
+
+  if ($total_len > 0) {
+    $user_data->close();
+    croak("FOO!");
+  }
+}
+
+sub ftps_data_close_db {
+  my $func_name = shift;
+  my $data = shift;
+  my $data_len = shift;
+  my $total_len = shift;
+  my $user_data = shift;
+
+  return undef;
+}
+
+sub extlog_ftps_xfer_status_cancelled {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/extlog.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "ABCDefgh" x 32768;
+
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $timeout_idle = 20;
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 data:20 tls:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+    TimeoutIdle => $timeout_idle,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $log_file,
+        TLSProtocol => 'SSLv3 TLSv1',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+        TLSOptions => 'NoSessionReuseRequired',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  if (open(my $fh, ">> $config_file")) {
+    print $fh <<EOC;
+LogFormat custom "%m %{transfer-status}"
+ExtendedLog $ext_log ALL custom
+EOC
+    unless (close($fh)) {
+      die("Can't write $config_file: $!");
+    }
+
+  } else {
+    die("Can't open $config_file: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client = Net::FTPSSL->new('127.0.0.1',
+        Encryption => 'E',
+        Port => $port,
+        Croak => 1,
+      );
+
+      unless ($client) {
+        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      }
+
+      unless ($client->login($user, $passwd)) {
+        die("Can't login: " . $client->last_message());
+      }
+
+      unless ($client->binary()) {
+        die("Can't set transfer mode to binary: " . $client->last_message());
+      }
+
+      $client->set_callback(\&ftps_data_xfer_cb, \&ftps_data_close_cb, $client);
+
+      unless ($client->get('test.txt', '/dev/null')) {
+        die("Can't download 'test.txt': " .  $client->last_message());
+      }
+
+      $client->quit();
+
+      unless (-f $test_file) {
+        die("File $test_file does not exist as expected");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh, $timeout_idle + 3) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the %{transfer-status}
+  # variable was properly written out.
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $expected_xfer_status = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($line =~ /^(\S+) (.*)?$/) {
+          my $cmd = $1;
+          my $xfer_status = $2;
+
+          if ($cmd eq 'RETR') {
+            if ($xfer_status eq 'cancelled') {
+              $expected_xfer_status = 1;
+              last;
+            }
+          }
+        }
+      }
+
+      close($fh);
+
+      $self->assert($expected_xfer_status,
+        test_msg("Did not see expected transfer status in ExtendedLog"));
 
     } else {
       die("Can't read $ext_log: $!");
