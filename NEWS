@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1427 2012-05-29 20:08:24 castaglia Exp $
+$Id: NEWS,v 1.1428 2012-06-06 18:18:01 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -95,6 +95,8 @@ CVS
   503 response.
 - Bug 3785 - Support resolution of tilde (~) within a chrooted session.
 - Bug 3787 - Read-only SFTP OPEN request permissions not properly ignored.
+- Bug 3740 - Overwrite permission denied when reloading multiple times and
+  multiple <VirtualHost> sections in proftpd.conf.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.448 2012-04-15 18:04:15 castaglia Exp $
+ * $Id: main.c,v 1.449 2012-06-06 18:18:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1327,10 +1327,10 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   if (main_server->listen) {
     if (main_server->listen->listen_fd == conn->rfd ||
-        main_server->listen->listen_fd == conn->wfd)
+        main_server->listen->listen_fd == conn->wfd) {
       main_server->listen->listen_fd = -1;
+    }
 
-    destroy_pool(main_server->listen->pool);
     main_server->listen = NULL;
   }
 
