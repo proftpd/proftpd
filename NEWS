@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1429 2012-06-08 04:04:42 castaglia Exp $
+$Id: NEWS,v 1.1430 2012-06-18 16:48:29 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -99,6 +99,7 @@ CVS
   multiple <VirtualHost> sections in proftpd.conf.
 - Bug 3791 - Invalid handling of SCP control messages fragmented over multiple
   SSH packets.
+- Bug 3794 - Cygwin build failure in lib/tpl.c due to wrong include of mman.h.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------
