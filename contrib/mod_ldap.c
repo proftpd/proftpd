@@ -45,7 +45,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.95 2011-12-18 02:12:23 jwm Exp $
+ * $Id: mod_ldap.c,v 1.96 2012-06-26 19:54:39 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -500,7 +500,8 @@ pr_ldap_user_lookup(pool *p,
        */
       if (strcasecmp(attrs[i], ldap_attr_uidnumber) == 0) {
         if (ldap_defaultuid == -1) {
-          pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): no %s attr for DN %s and LDAPDefaultUID was not specified!", (dn = ldap_get_dn(ld, e)), ldap_attr_uidnumber);
+          dn = ldap_get_dn(ld, e);
+          pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): no %s attr for DN %s and LDAPDefaultUID was not specified!", ldap_attr_uidnumber, dn);
           free(dn);
           return NULL;
         }
@@ -512,7 +513,8 @@ pr_ldap_user_lookup(pool *p,
       }
       if (strcasecmp(attrs[i], ldap_attr_gidnumber) == 0) {
         if (ldap_defaultgid == -1) {
-          pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): no %s attr for DN %s and LDAPDefaultGID was not specified!", (dn = ldap_get_dn(ld, e)), ldap_attr_gidnumber);
+          dn = ldap_get_dn(ld, e);
+          pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): no %s attr for DN %s and LDAPDefaultGID was not specified!", ldap_attr_gidnumber, dn);
           free(dn);
           return NULL;
         }
@@ -525,7 +527,8 @@ pr_ldap_user_lookup(pool *p,
 
       if (strcasecmp(attrs[i], ldap_attr_homedirectory) == 0) {
         if (!ldap_genhdir || !ldap_genhdir_prefix || !*ldap_genhdir_prefix) {
-          pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): no %s attr for DN %s and LDAPGenerateHomedirPrefix was not enabled!", (dn = ldap_get_dn(ld, e)), ldap_attr_homedirectory);
+          dn = ldap_get_dn(ld, e);
+          pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): no %s attr for DN %s and LDAPGenerateHomedirPrefix was not enabled!", ldap_attr_homedirectory, dn);
           free(dn);
           return NULL;
         }
@@ -536,7 +539,8 @@ pr_ldap_user_lookup(pool *p,
           LDAP_VALUE_T **canon_username;
           canon_username = LDAP_GET_VALUES(ld, e, ldap_attr_uid);
           if (!canon_username) {
-            pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): couldn't get %s attr for canonical username for %s", ldap_attr_uid, (dn = ldap_get_dn(ld, e)));
+            dn = ldap_get_dn(ld, e);
+            pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): couldn't get %s attr for canonical username for %s", ldap_attr_uid, dn);
             free(dn);
             return NULL;
           }
@@ -563,7 +567,8 @@ pr_ldap_user_lookup(pool *p,
        * fall through so we can complain.
        */
 
-      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): couldn't get values for attr %s for DN %s, ignoring request (perhaps this DN's entry does not have the attr?)", attrs[i], (dn = ldap_get_dn(ld, e)));
+      dn = ldap_get_dn(ld, e);
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): couldn't get values for attr %s for DN %s, ignoring request (perhaps this DN's entry does not have the attr?)", attrs[i], dn);
       free(dn);
       ldap_msgfree(result);
       return NULL;
@@ -603,7 +608,8 @@ pr_ldap_user_lookup(pool *p,
           LDAP_VALUE_T **canon_username;
           canon_username = LDAP_GET_VALUES(ld, e, ldap_attr_uid);
           if (!canon_username) {
-            pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): couldn't get %s attr for canonical username for %s", ldap_attr_uid, (dn = ldap_get_dn(ld, e)));
+            dn = ldap_get_dn(ld, e);
+            pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): couldn't get %s attr for canonical username for %s", ldap_attr_uid, dn);
             free(dn);
             return NULL;
           }
@@ -688,7 +694,8 @@ pr_ldap_group_lookup(pool *p,
       }
 
       ldap_msgfree(result);
-      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_group_lookup(): couldn't get values for attr %s for DN %s, ignoring request (perhaps that DN does not have that attr?)", attrs[i], (dn = ldap_get_dn(ld, e)));
+      dn = ldap_get_dn(ld, e);
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_group_lookup(): couldn't get values for attr %s for DN %s, ignoring request (perhaps that DN does not have that attr?)", attrs[i], dn);
       free(dn);
       return NULL;
     }
