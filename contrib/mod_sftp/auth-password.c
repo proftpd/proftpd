@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-password.c,v 1.8 2012-02-18 22:10:05 castaglia Exp $
+ * $Id: auth-password.c,v 1.9 2012-07-10 00:52:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -112,6 +112,7 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
       pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): No such user found",
         user);
       *send_userauth_fail = TRUE;
+      errno = ENOENT;
       return 0;
 
     case PR_AUTH_BADPWD:
@@ -121,6 +122,7 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
       pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Incorrect password",
         user);
       *send_userauth_fail = TRUE;
+      errno = EINVAL;
       return 0;
 
     case PR_AUTH_AGEPWD:
@@ -130,6 +132,7 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
       pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Password expired",
         user);
       *send_userauth_fail = TRUE;
+      errno = EINVAL;
       return 0;
 
     case PR_AUTH_DISABLEDPWD:
@@ -139,12 +142,14 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
       pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Account disabled",
         user);
       *send_userauth_fail = TRUE;
+      errno = EINVAL;
       return 0;
 
     default:
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unknown authentication value (%d), returning error", res);
       *send_userauth_fail = TRUE;
+      errno = EINVAL;
       return 0;
   }
 
