@@ -36889,6 +36889,11 @@ fi
 
   { echo "$as_me:$LINENO: checking whether linking with OpenSSL functions succeeds" >&5
 echo $ECHO_N "checking whether linking with OpenSSL functions succeeds... $ECHO_C" >&6; }
+  saved_libs="$LIBS"
+
+    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="$LIBS -lcrypto"
+
   cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -36940,11 +36945,6 @@ echo "${ECHO_T}no" >&6; }
 
       { echo "$as_me:$LINENO: checking whether linking with OpenSSL functions requires -ldl" >&5
 echo $ECHO_N "checking whether linking with OpenSSL functions requires -ldl... $ECHO_C" >&6; }
-      saved_libs="$LIBS"
-
-            LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
-      LIBS="$LIBS -lcrypto -ldl"
-
       cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
