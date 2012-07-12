@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.36 2012-05-22 01:46:19 castaglia Exp $
+ * $Id: kex.c,v 1.37 2012-07-12 22:20:26 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -951,8 +951,8 @@ static int create_kexrsa(struct sftp_kex *kex, int type) {
 #ifdef PR_USE_OPENSSL_ECC
 static int create_ecdh(struct sftp_kex *kex, int type) {
   EC_KEY *ec;
-  int curve_nid;
-  char *curve_name;
+  int curve_nid = -1;
+  char *curve_name = NULL;
 
   if (type != SFTP_ECDH_SHA256 &&
       type != SFTP_ECDH_SHA384 &&
@@ -2242,7 +2242,7 @@ static int write_dh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = 8192;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_DH_REPLY);
@@ -2620,7 +2620,7 @@ static int write_dh_gex_group(struct ssh2_packet *pkt, struct sftp_kex *kex,
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 1024;
+  buflen = bufsz = 2048;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_DH_GEX_GROUP);
