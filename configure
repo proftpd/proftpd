@@ -36934,6 +36934,7 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
 
       { echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6; }
+      LIBS="$saved_libs"
 
 else
   echo "$as_me: failed program was:" >&5
