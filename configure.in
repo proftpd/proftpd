@@ -468,6 +468,42 @@ AC_ARG_WITH(mysql-config,
     fi
   ])
 
+dnl Configuration location of openssl cmdline
+openssl_cmdline="openssl"
+AC_ARG_WITH(openssl-cmdline,
+  [AC_HELP_STRING(
+    [--with-openssl-cmdline=PATH],
+    [configure location of the openssl(1) command-line tool (default=openssl)])
+  ],
+  [
+    if test x"$withval" != x; then
+      openssl_cmdline=`echo "$withval"`
+
+      if test -z "$openssl_cmdline"; then
+        openssl_cmdline="no"
+
+      elif test x"$openssl_cmdline" = xno; then
+        # do nothing
+        foo=bar
+
+      elif test x"$openssl_cmdline" = xyes; then
+        # Use the default
+        openssl_cmdline="openssl"
+
+      elif test -x "$openssl_cmdline"; then
+        # do nothing
+        foo=bar
+
+      else
+        AC_MSG_ERROR([openssl path $openssl_cmdline is not executable])
+      fi
+
+    else
+      openssl_cmdline="no"
+    fi
+  ])
+
+
 dnl Configuration location of pg_config
 pg_config="pg_config"
 AC_ARG_WITH(postgres-config,
@@ -2472,6 +2508,21 @@ if test x"$pr_use_openssl" = xyes; then
     ]
   )
   LIBS="$saved_libs"
+
+  if test x"$openssl_cmdline" != xno; then
+    if `$openssl_cmdline version 2>/dev/null 1>&2`; then
+      openssl_cflags=`$openssl_cmdline version -f 2>/dev/null`
+      if test ! -z "$openssl_cflags"; then
+        # Look for the -pthread flag, indicating that this OpenSSL was built
+        # with threads support (see Bug#3795)
+        for openssl_cflag in $openssl_cflags; do 
+          if test x"$openssl_cflag" = x"-pthread"; then
+            LIBS="$LIBS -pthread"
+          fi
+        done
+      fi
+    fi
+  fi
 fi
 
 if test x"$pr_use_postgres" = xyes; then
