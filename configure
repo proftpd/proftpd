@@ -1639,6 +1639,10 @@ Optional Packages:
                           configure location of the MySQL mysql_config script
                           (default=mysql_config)
 
+  --with-openssl-cmdline=PATH
+                          configure location of the openssl(1) command-line
+                          tool (default=openssl)
+
   --with-postgres-config=PATH
                           configure location of the Postgres pg_config script
                           (default=pg_config)
@@ -3874,13 +3878,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:3877: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:3881: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:3880: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:3884: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:3883: output\"" >&5)
+  (eval echo "\"\$as_me:3887: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -5102,7 +5106,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 5105 "configure"' > conftest.$ac_ext
+  echo '#line 5109 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -6952,11 +6956,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:6955: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:6959: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:6959: \$? = $ac_status" >&5
+   echo "$as_me:6963: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7291,11 +7295,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7294: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7298: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7298: \$? = $ac_status" >&5
+   echo "$as_me:7302: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7396,11 +7400,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7399: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7403: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7403: \$? = $ac_status" >&5
+   echo "$as_me:7407: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -7451,11 +7455,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7454: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7458: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7458: \$? = $ac_status" >&5
+   echo "$as_me:7462: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -10220,7 +10224,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10223 "configure"
+#line 10227 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -10316,7 +10320,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10319 "configure"
+#line 10323 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13989,11 +13993,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13992: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13996: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:13996: \$? = $ac_status" >&5
+   echo "$as_me:14000: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -14088,11 +14092,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14091: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14095: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14095: \$? = $ac_status" >&5
+   echo "$as_me:14099: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -14140,11 +14144,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14143: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14147: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14147: \$? = $ac_status" >&5
+   echo "$as_me:14151: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16933,6 +16937,43 @@ echo "$as_me: error: mysql_config path $my_config is not executable" >&2;}
 fi
 
 
+openssl_cmdline="openssl"
+
+# Check whether --with-openssl-cmdline was given.
+if test "${with_openssl_cmdline+set}" = set; then
+  withval=$with_openssl_cmdline;
+    if test x"$withval" != x; then
+      openssl_cmdline=`echo "$withval"`
+
+      if test -z "$openssl_cmdline"; then
+        openssl_cmdline="no"
+
+      elif test x"$openssl_cmdline" = xno; then
+        # do nothing
+        foo=bar
+
+      elif test x"$openssl_cmdline" = xyes; then
+        # Use the default
+        openssl_cmdline="openssl"
+
+      elif test -x "$openssl_cmdline"; then
+        # do nothing
+        foo=bar
+
+      else
+        { { echo "$as_me:$LINENO: error: openssl path $openssl_cmdline is not executable" >&5
+echo "$as_me: error: openssl path $openssl_cmdline is not executable" >&2;}
+   { (exit 1); exit 1; }; }
+      fi
+
+    else
+      openssl_cmdline="no"
+    fi
+
+fi
+
+
+
 pg_config="pg_config"
 
 # Check whether --with-postgres-config was given.
@@ -18003,7 +18044,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 18006 "configure"
+#line 18047 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -37153,6 +37194,21 @@ fi
 rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
   LIBS="$saved_libs"
+
+  if test x"$openssl_cmdline" != xno; then
+    if `$openssl_cmdline version 2>/dev/null 1>&2`; then
+      openssl_cflags=`$openssl_cmdline version -f 2>/dev/null`
+      if test ! -z "$openssl_cflags"; then
+        # Look for the -pthread flag, indicating that this OpenSSL was built
+        # with threads support (see Bug#3795)
+        for openssl_cflag in $openssl_cflags; do
+          if test x"$openssl_cflag" = x"-pthread"; then
+            LIBS="$LIBS -pthread"
+          fi
+        done
+      fi
+    fi
+  fi
 fi
 
 if test x"$pr_use_postgres" = xyes; then
