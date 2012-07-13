@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.49 2012-04-15 18:04:15 castaglia Exp $
+ * $Id: mod_facts.c,v 1.50 2012-07-13 18:22:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -88,73 +88,117 @@ static int facts_filters_allow_path(cmd_rec *cmd, const char *path) {
   return 0;
 }
 
-static time_t facts_mktime(unsigned int year, unsigned int month,
-    unsigned int mday, unsigned int hour, unsigned int min, unsigned int sec) {
-  struct tm tm;
-  time_t res;
-  char *env;
+#define FACTS_SECS_PER_MIN	(60)
+#define FACTS_SECS_PER_HOUR	(60 * FACTS_SECS_PER_MIN)
+#define FACTS_SECS_PER_DAY	(24 * FACTS_SECS_PER_HOUR)
+#define FACTS_EPOCH_YEAR	1970
 
-#ifdef HAVE_TZNAME
-  char *tzname_dup[2];
+/* How many days come before each month (0-12).  */
+static const unsigned short int facts_ydays_for_mon[2][13] = {
+  /* Normal years.  */
+  { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 },
 
-  /* The mktime(3) function has a nasty habit of changing the tzname global
-   * variable as a side-effect.  This can cause problems, as when the process
-   * has become chrooted, and mktime(3) sets/changes tzname wrong.  (For more
-   * information on the tzname global variable, see the tzset(3) man page.)
-   *
-   * The best way to deal with this issue (which is especially prominent
-   * on systems running glibc-2.3 or later, which is particularly ill-behaved
-   * in a chrooted environment, as it assumes the ability to find system
-   * timezone files at paths which are no longer valid within the chroot)
-   * is to set the TZ environment variable explicitly, before starting
-   * proftpd.  You can also use the SetEnv configuration directive within
-   * the proftpd.conf to set the TZ environment variable, e.g.:
-   *
-   *  SetEnv TZ PST
-   *
-   * To try to help sites which fail to do this, the tzname global variable
-   * will be copied prior to the mktime(3) call, and the copy restored after
-   * the call.  (Note that calling the ctime(3) and localtime(3) functions also
-   * causes a similar overwriting/setting of the tzname environment variable.)
-   */
-  memcpy(&tzname_dup, tzname, sizeof(tzname_dup));
-#endif /* HAVE_TZNAME */
+  /* Leap years.  */
+  { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 }
+};
 
-  env = pr_env_get(session.pool, "TZ");
+static unsigned long facts_secs_per_min(unsigned int min) {
+  unsigned long nsecs;
 
-  /* Set the TZ environment to be GMT, so that mktime(3) treats the timestamp
-   * provided by the client as being in GMT/UTC.
-   */
-  if (pr_env_set(session.pool, "TZ", "GMT") < 0) {
-    pr_log_debug(DEBUG8, MOD_FACTS_VERSION
-      ": error setting TZ environment variable to 'GMT': %s", strerror(errno));
-  }
+  nsecs = (min * FACTS_SECS_PER_MIN);
+  return nsecs;
+}
 
-  tm.tm_sec = sec;
-  tm.tm_min = min;
-  tm.tm_hour = hour;
-  tm.tm_mday = mday;
-  tm.tm_mon = (month - 1);
-  tm.tm_year = (year - 1900);
-  tm.tm_wday = 0;
-  tm.tm_yday = 0;
-  tm.tm_isdst = -1;
+static unsigned long facts_secs_per_hour(unsigned int hour) {
+  unsigned long nsecs;
 
-  res = mktime(&tm);
+  nsecs = (hour * FACTS_SECS_PER_HOUR);
+  return nsecs;
+}
 
-  /* Restore the old TZ setting, if any. */
-  if (env) {
-    if (pr_env_set(session.pool, "TZ", env) < 0) {
-      pr_log_debug(DEBUG8, MOD_FACTS_VERSION
-        ": error setting TZ environment variable to '%s': %s", env,
-        strerror(errno));
+static unsigned long facts_secs_per_day(unsigned long ndays) {
+  unsigned long nsecs;
+
+  nsecs = (ndays * FACTS_SECS_PER_DAY);
+  return nsecs;
+}
+
+/* Every 4th year is a leap year, except for every 100th year, but including
+ * every 400th year.
+ */
+static int facts_leap_year(unsigned int year) {
+  int leap_year = 0;
+
+  if ((year % 4) == 0) {
+    leap_year = 1;
+
+    if ((year % 100) == 0) {
+      leap_year = 0;
+
+      if ((year % 400) == 0) {
+        leap_year = 1;
+      }
     }
   }
 
-#ifdef HAVE_TZNAME
-  /* Restore the old tzname values prior to returning. */
-  memcpy(tzname, tzname_dup, sizeof(tzname_dup));
-#endif /* HAVE_TZNAME */
+  return leap_year;
+}
+
+static unsigned long facts_secs_per_mon(unsigned int mon, unsigned int year) {
+  int leap_year;
+  static unsigned int ndays;
+  static unsigned long nsecs;
+
+  leap_year = facts_leap_year(year);
+  ndays = facts_ydays_for_mon[leap_year][mon-1];
+
+  nsecs = facts_secs_per_day(ndays);
+  return nsecs;
+}
+
+static unsigned long facts_secs_per_year(unsigned int year) {
+  unsigned long ndays, nsecs;
+
+  ndays = (year - FACTS_EPOCH_YEAR) * 365;
+
+  /* Compute the number of leap days between 1970 and the given year
+   * (exclusive).  There is a leap day every 4th year...
+   */
+  ndays += (((year - 1) / 4) - (FACTS_EPOCH_YEAR / 4));
+
+  /* ...except every 100th year...*/
+  ndays -= (((year - 1) / 100) - (FACTS_EPOCH_YEAR / 100));
+
+  /* ...but still every 400th year. */
+  ndays += (((year - 1) / 400) - (FACTS_EPOCH_YEAR / 400));
+
+  nsecs = facts_secs_per_day(ndays);
+  return nsecs;
+}
+
+static time_t facts_mktime(unsigned int year, unsigned int month,
+    unsigned int mday, unsigned int hour, unsigned int min, unsigned int sec) {
+  time_t res;
+
+  /* Rather than using the system mktime(3) function (which requires external
+   * files such as /etc/localtime and the timezone definition files, depending
+   * on the TZ environment value setting), we use a custom mktime collection
+   * of functions.
+   *
+   * Fortunately, our homegrown collection of time conversion functions
+   * ONLY needs to generate GMT seconds here, and so we don't have to worry
+   * about DST, timezones, etc (Bug#3790).
+   */
+
+  res = facts_secs_per_year(year) +
+        facts_secs_per_mon(month, year) +
+
+        /* Subtract one day to make the mday zero-based. */
+        facts_secs_per_day(mday - 1) +
+
+        facts_secs_per_hour(hour) +
+        facts_secs_per_min(min) +
+        sec;
 
   return res;
 }
@@ -583,6 +627,13 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
   timestamp[4] = '\0';
   year = atoi(ptr);
   timestamp[4] = c;
+
+  if (year < FACTS_EPOCH_YEAR) {
+    pr_log_debug(DEBUG8, MOD_FACTS_VERSION
+      ": bad year value (%d) in timestamp '%s'", year, timestamp);
+    errno = EINVAL;
+    return -1;
+  }
 
   ptr = &(timestamp[4]);
   c = timestamp[6];
