@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1432 2012-07-13 18:22:00 castaglia Exp $
+$Id: NEWS,v 1.1433 2012-07-20 17:02:00 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -103,6 +103,8 @@ CVS
 - Bug 3795 - ProFTPD needs to use -pthread linker option if linking against
   OpenSSL with thread support.
 - Bug 3790 - Logfile timestamps change to GMT after MFMT command.
+- Bug 3798 - Downloading nonexistent file via SCP results in timeout rather
+  than error.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

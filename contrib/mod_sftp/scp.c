@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.68 2012-06-08 04:04:42 castaglia Exp $
+ * $Id: scp.c,v 1.69 2012-07-20 17:02:01 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1754,6 +1754,9 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
         destroy_pool(cmd->pool);
         session.curr_cmd_rec = NULL;
+
+        write_confirm(p, channel_id, 1,
+          pstrcat(p, sp->path, ": ", strerror(xerrno), NULL));
         return 1;
       }
     }
@@ -1784,6 +1787,9 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
     destroy_pool(cmd->pool);
     session.curr_cmd_rec = NULL;
+
+    write_confirm(p, channel_id, 1,
+      pstrcat(p, sp->path, ": ", strerror(xerrno), NULL));
     return 1;
   }
 
@@ -1808,6 +1814,9 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
         destroy_pool(cmd->pool);
         session.curr_cmd_rec = NULL;
+
+        write_confirm(p, channel_id, 1,
+          pstrcat(p, sp->path, ": ", strerror(EPERM), NULL));
         return 1;
       }
 
@@ -1820,6 +1829,9 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
       destroy_pool(cmd->pool);
       session.curr_cmd_rec = NULL;
+
+      write_confirm(p, channel_id, 1,
+        pstrcat(p, sp->path, ": ", strerror(EPERM), NULL));
       return 1;
     }
   }
@@ -1836,6 +1848,9 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
       destroy_pool(cmd->pool);
       session.curr_cmd_rec = NULL;
+
+      write_confirm(p, channel_id, 1,
+        pstrcat(p, sp->path, ": ", strerror(EACCES), NULL));
       return 1;
     }
 
@@ -1856,6 +1871,9 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
       destroy_pool(cmd->pool);
       session.curr_cmd_rec = NULL;
+
+      write_confirm(p, channel_id, 1,
+        pstrcat(p, sp->path, ": ", strerror(xerrno), NULL));
 
       errno = xerrno;
       return 1;
