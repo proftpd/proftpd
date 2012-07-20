@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp compression
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: compress.c,v 1.6 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: compress.c,v 1.7 2012-07-20 20:41:34 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -496,6 +496,7 @@ int sftp_compress_write_data(struct ssh2_packet *pkt) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "unhandled zlib error (%d) while compressing", zres);
           destroy_pool(sub_pool);
+          errno = EIO;
           return -1;
       }
     }

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mac.c,v 1.11 2012-03-12 23:28:38 castaglia Exp $
+ * $Id: mac.c,v 1.12 2012-07-20 20:41:34 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -669,6 +669,8 @@ int sftp_mac_write_data(struct ssh2_packet *pkt) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error computing MAC using %s: %s", mac->algo,
         sftp_crypto_get_errors());
+
+      errno = EIO;
       return -1;
     }
 

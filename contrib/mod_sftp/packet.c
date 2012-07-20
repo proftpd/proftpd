@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.39 2012-03-11 19:30:09 castaglia Exp $
+ * $Id: packet.c,v 1.40 2012-07-20 20:41:34 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1176,7 +1176,9 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
    */
   res = writev(sockfd, packet_iov, packet_niov);
   while (res < 0) {
-    if (errno == EINTR) {
+    int xerrno = errno;
+
+    if (xerrno == EINTR) {
       pr_signals_handle();
 
       res = writev(sockfd, packet_iov, packet_niov);
@@ -1184,12 +1186,11 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
     }
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error writing packet (fd %d): %s", sockfd, strerror(errno));
+      "error writing packet (fd %d): %s", sockfd, strerror(xerrno));
 
-    if (errno == ECONNRESET ||
-        errno == ECONNABORTED ||
-        errno == EPIPE) {
-      int xerrno = errno;
+    if (xerrno == ECONNRESET ||
+        xerrno == ECONNABORTED ||
+        xerrno == EPIPE) {
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "disconnecting client (%s)", strerror(xerrno));
@@ -1201,6 +1202,7 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
     memset(packet_iov, 0, sizeof(packet_iov));
     packet_niov = 0;
 
+    errno = xerrno;
     return -1;
   }
 
