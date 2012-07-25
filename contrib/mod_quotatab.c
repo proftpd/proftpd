@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.80 2012-03-31 00:35:43 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.81 2012-07-25 22:39:06 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -2943,9 +2943,9 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
         "tracked in the QuotaTallyTable");
     }
 
-    /* If the limit for this user is a hard limit, install our own FS handler,
-     * one that provides a custom write() function.  We will use this to
-     * return an error when writing a file causes a limit to be reached.
+    /* If the limit for this user is a hard limit, install our own FS handlers,
+     * which provide custom read() and write() functions.  We will use them to
+     * return an error when reading/writing a file causes a limit to be reached.
      */
     if (sess_limit.quota_limit_type == HARD_LIMIT) {
       pr_fs_t *fs = pr_register_fs(main_server->pool, "quotatab", "/");
@@ -4192,10 +4192,12 @@ static int quotatab_sess_init(void) {
     PRIVS_RELINQUISH
 
     /* Verify that it's a valid limit table */
-    if (quotatab_verify(TYPE_LIMIT))
+    if (quotatab_verify(TYPE_LIMIT)) {
       have_quota_limit_table = TRUE;
-    else
+
+    } else {
       use_quotas = FALSE;
+    }
   }
 
   PRIVS_ROOT
@@ -4208,10 +4210,12 @@ static int quotatab_sess_init(void) {
     PRIVS_RELINQUISH
 
     /* Verify that it's a valid tally table */
-    if (quotatab_verify(TYPE_TALLY))
+    if (quotatab_verify(TYPE_TALLY)) {
       have_quota_tally_table = TRUE;
-    else
+
+    } else {
       use_quotas = FALSE;
+    }
   }
 
   /* Make sure the tables will be closed when the child exits. */
@@ -4246,7 +4250,7 @@ static int quotatab_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "QuotaLock", FALSE);
   if (c) {
-    int fd;
+    int fd, xerrno;
     const char *path;
 
     path = c->argv[0];
@@ -4254,10 +4258,11 @@ static int quotatab_sess_init(void) {
     /* Make sure the QuotaLock file exists. */
     PRIVS_ROOT
     fd = open(path, O_RDWR|O_CREAT, 0600);
+    xerrno = errno;
     PRIVS_RELINQUISH
 
     if (fd < 0) {
-      quotatab_log("unable to open QuotaLock '%s': %s", path, strerror(errno));
+      quotatab_log("unable to open QuotaLock '%s': %s", path, strerror(xerrno));
 
     } else {
       /* Make sure that this fd is not one of the main three. */
