@@ -1,4 +1,4 @@
-<!-- $Id: mod_facts.html,v 1.7 2012-02-03 07:15:46 castaglia Exp $ -->
+<!-- $Id: mod_facts.html,v 1.8 2012-07-25 21:26:05 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_facts.html,v $ -->
 
 <html>
@@ -115,7 +115,7 @@ The currently implemented options are:
 <font color=red>Question</font>: Why does <code>MLSD</code> list all of the
 files in a directory, including the "hidden" files, where the <code>LIST</code>
 command does not?<br>
-<font color=blue>Answer</code>: The <code>MLSD</code> and <code>MLST</code>
+<font color=blue>Answer</font>: The <code>MLSD</code> and <code>MLST</code>
 commands do not have any notions of "options" like the <code>LIST</code> and
 <code>NLST</code> commands do; there is no way for a client, in the request
 to list the files in a directory, to ask the server to filter the list of
@@ -129,7 +129,7 @@ commands.
 <font color=red>Question</font>: Why does <code>MLST</code> show the UIDs/GIDs
 for listed files, where <code>LIST</code>/<code>NLST</code> show the user/group
 names?<br>
-<font color=blue>Answer</code>: The list of "facts" defined by RFC 3659 does
+<font color=blue>Answer</font>: The list of "facts" defined by RFC 3659 does
 <b>not</b> include a fact for the stringified version of user/group owner
 names, unfortunately.  This means that the <code>MLSD</code>/<code>MLST</code>
 commands do not have a good way of obtaining the user/group names.
@@ -150,7 +150,7 @@ usually fall back to using the older <code>LIST</code> command, which
 <p><a name="FactsSymlinks">
 <font color=red>Question</font>: Why does FileZilla not display symlinks
 properly, even though I have "ShowSymlinks on" in my <code>proftpd.conf</code>?<br>
-<font color=blue>Answer</code>: Newer versions of FileZilla (and other
+<font color=blue>Answer</font>: Newer versions of FileZilla (and other
 FTP clients) use the <code>MLSD</code> command for listing files, rather than
 the older <code>LIST</code> command.  And FileZilla and the
 <code>mod_facts</code> disagree on the proper syntax for indicating when a
@@ -172,7 +172,7 @@ by FileZilla (and perhaps other FTP clients). By default, the
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-02-03 07:15:46 $</i><br>
+Last Updated: <i>$Date: 2012-07-25 21:26:05 $</i><br>
 
 <br><hr>
 
