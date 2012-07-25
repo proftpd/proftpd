@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_wrap2 -- tcpwrappers-like access control
  *
- * Copyright (c) 2000-2011 TJ Saunders
+ * Copyright (c) 2000-2012 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1945,8 +1945,15 @@ static int wrap2_sess_init(void) {
   pr_event_register(&wrap2_module, "core.exit", wrap2_exit_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "WrapOptions", FALSE);
-  if (c) {
-    wrap2_opts = *((unsigned long *) c->argv[0]);
+  while (c != NULL) {
+    unsigned long opts;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    wrap2_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "WrapOptions", FALSE);
   }
 
   if (wrap2_opts & WRAP_OPT_CHECK_ON_CONNECT) {

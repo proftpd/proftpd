@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.17 2012-03-13 23:23:06 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.18 2012-07-25 23:45:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -852,8 +852,15 @@ static int sql_passwd_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordOptions", FALSE);
-  if (c) {
-    sql_passwd_opts = *((unsigned long *) c->argv[0]);
+  while (c != NULL) {
+    unsigned long opts;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    sql_passwd_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "SQLPasswordOptions", FALSE);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordSaltFile", FALSE);

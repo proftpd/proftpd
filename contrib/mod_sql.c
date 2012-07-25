@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.227 2012-05-29 22:42:21 castaglia Exp $
+ * $Id: mod_sql.c,v 1.228 2012-07-25 23:45:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -6065,9 +6065,16 @@ static int sql_sess_init(void) {
     FALSE);
 
   pr_sql_opts = 0UL;
-  ptr = get_param_ptr(main_server->conf, "SQLOptions", FALSE);
-  if (ptr != NULL) {
-    pr_sql_opts = *((unsigned long *) ptr);
+  c = find_config(main_server->conf, CONF_PARAM, "SQLOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    pr_sql_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "SQLOptions", FALSE);
   }
  
   ptr = get_param_ptr(main_server->conf, "SQLUserTable", FALSE);

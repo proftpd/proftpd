@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.71 2012-04-28 22:26:35 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.72 2012-07-25 23:45:01 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1742,8 +1742,15 @@ static int sftp_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPOptions", FALSE);
-  if (c) {
-    sftp_opts = *((unsigned long *) c->argv[0]);
+  while (c != NULL) {
+    unsigned long opts;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    sftp_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "SFTPOptions", FALSE);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "DisplayLogin", FALSE);

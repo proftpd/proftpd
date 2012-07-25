@@ -8145,7 +8145,6 @@ static int tls_init(void) {
 static int tls_sess_init(void) {
   int res = 0;
   unsigned char *tmp = NULL;
-  unsigned long *opts = NULL;
   config_rec *c = NULL;
 
   /* First, check to see whether mod_tls is even enabled. */
@@ -8191,9 +8190,17 @@ static int tls_sess_init(void) {
   tls_rsa_key_file = get_param_ptr(main_server->conf,
     "TLSRSACertificateKeyFile", FALSE);
 
-  opts = get_param_ptr(main_server->conf, "TLSOptions", FALSE);
-  if (opts != NULL)
-    tls_opts = *opts;
+  c = find_config(main_server->conf, CONF_PARAM, "TLSOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    tls_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TLSOptions", FALSE);
+  }
 
 #if OPENSSL_VERSION_NUMBER > 0x009080cfL
   /* The OpenSSL team realized that the flag added in 0.9.8l, the

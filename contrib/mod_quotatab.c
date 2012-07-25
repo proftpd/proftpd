@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.81 2012-07-25 22:39:06 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.82 2012-07-25 23:45:01 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -4244,8 +4244,15 @@ static int quotatab_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "QuotaOptions", FALSE);
-  if (c) {
-    quotatab_opts = *((unsigned long *) c->argv[0]);
+  while (c != NULL) {
+    unsigned long opts;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    quotatab_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "QuotaOptions", FALSE);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "QuotaLock", FALSE);

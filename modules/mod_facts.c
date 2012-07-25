@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.50 2012-07-13 18:22:01 castaglia Exp $
+ * $Id: mod_facts.c,v 1.51 2012-07-25 23:45:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1598,8 +1598,15 @@ static int facts_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "FactsOptions", FALSE);
-  if (c) {
-    facts_mlinfo_opts = *((unsigned long *) c->argv[0]);
+  while (c != NULL) {
+    unsigned long opts;
+
+    pr_signals_handle();
+  
+    opts = *((unsigned long *) c->argv[0]);
+    facts_mlinfo_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "FactsOptions", FALSE);
   }
 
   facts_opts = FACTS_OPT_SHOW_MODIFY|FACTS_OPT_SHOW_PERM|FACTS_OPT_SHOW_SIZE|

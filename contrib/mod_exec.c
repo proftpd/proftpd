@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.26 2012-04-03 16:16:48 castaglia Exp $
+ * $Id: mod_exec.c,v 1.27 2012-07-25 23:45:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1817,8 +1817,15 @@ static int exec_sess_init(void) {
   pr_event_register(&exec_module, "core.exit", exec_exit_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "ExecOptions", FALSE);
-  if (c) {
-    exec_opts = *((unsigned int *) c->argv[0]);
+  while (c != NULL) {
+    unsigned long opts;
+
+    pr_signals_handle();
+
+    opts = *((unsigned int *) c->argv[0]);
+    exec_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "ExecOptions", FALSE);
   }
 
   /* If we are handling an SSH2 session, then disable the sendStdout
