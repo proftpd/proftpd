@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.69 2012-07-20 17:02:01 castaglia Exp $
+ * $Id: scp.c,v 1.70 2012-07-26 22:36:00 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -384,7 +384,7 @@ static int recv_ctl(uint32_t channel_id, struct scp_path *sp,
     unsigned char **ctl_data, uint32_t *ctl_datalen) {
   register int i;
   int have_newline = FALSE;
-  unsigned char *tmp;
+  char *tmp;
   uint32_t tmplen;
 
   for (i = datalen-1; i >= 0; i--) {
