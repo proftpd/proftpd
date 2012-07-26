@@ -23,7 +23,7 @@
  */
 
 /* Response API tests
- * $Id: response.c,v 1.4 2012-02-16 17:01:52 castaglia Exp $
+ * $Id: response.c,v 1.5 2012-07-26 22:40:37 castaglia Exp $
  */
 
 #include "tests.h"
@@ -130,7 +130,6 @@ START_TEST (response_get_last_test) {
 END_TEST
 
 START_TEST (response_pool_bug3711_test) {
-  int res;
   cmd_rec *cmd;
   pool *resp_pool, *cmd_pool;
   char *err_code = R_450, *err_msg = "Busy";
