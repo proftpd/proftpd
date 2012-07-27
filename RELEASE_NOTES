@@ -46,6 +46,8 @@ ChangeLog files.
 
     RewriteMaxReplace
 
+    TLSServerCipherPreference (Bug#3801)
+
   + Changed configuration directives:
 
     AllowFilter, DenyFilter
@@ -100,4 +102,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-04-15 18:05:49 $
+Last Updated: $Date: 2012-07-27 00:12:02 $

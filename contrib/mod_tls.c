@@ -2268,6 +2268,19 @@ static int tls_init_ctx(void) {
   ssl_opts |= SSL_OP_NO_TICKET;
 #endif
 
+#ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
+  c = find_config(main_server->conf, CONF_PARAM, "TLSServerCipherPreference",
+    FALSE);
+  if (c != NULL) {
+    int use_server_pref;
+
+    use_server_pref = *((int *) c->argv[0]);
+    if (use_server_pref == TRUE) {
+      ssl_opts |= SSL_OP_CIPHER_SERVER_PREFERENCE;
+    }
+  }
+#endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
+
   SSL_CTX_set_options(ssl_ctx, ssl_opts);
 
   /* Set up session caching. */
@@ -7469,6 +7482,35 @@ MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSServerCipherPreference on|off */
+MODRET set_tlsservercipherpreference(cmd_rec *cmd) {
+  int bool = -1;
+#ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
+  config_rec *c = NULL;
+#endif
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  bool = get_boolean(cmd, 1);
+  if (bool == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+#ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = bool;
+
+#else
+  pr_log_debug(DEBUG0,
+    "%s is not supported by this version of OpenSSL, ignoring",
+    cmd->argv[0]);
+#endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: TLSSessionCache type:/info [timeout] */
 MODRET set_tlssessioncache(cmd_rec *cmd) {
   char *provider, *info, *ptr;
@@ -8509,6 +8551,7 @@ static conftable tls_conftab[] = {
   { "TLSRequired",		set_tlsrequired,	NULL },
   { "TLSRSACertificateFile",	set_tlsrsacertfile,	NULL },
   { "TLSRSACertificateKeyFile",	set_tlsrsakeyfile,	NULL },
+  { "TLSServerCipherPreference",set_tlsservercipherpreference,NULL },
   { "TLSSessionCache",		set_tlssessioncache,	NULL },
   { "TLSTimeoutHandshake",	set_tlstimeouthandshake,NULL },
   { "TLSVerifyClient",		set_tlsverifyclient,	NULL },
@@ -8538,7 +8581,7 @@ static authtable tls_authtab[] = {
 module tls_module = {
 
   /* Always NULL */
-    NULL, NULL,
+  NULL, NULL,
 
   /* Module API version */
   0x20,
