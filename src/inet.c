@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.144 2012-05-15 21:43:45 castaglia Exp $
+ * $Id: inet.c,v 1.145 2012-07-27 16:27:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1311,9 +1311,10 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
   res->mode = CM_OPEN;
 
 #if defined(HAVE_STROPTS_H) && defined(I_SRDOPT) && defined(RPROTDIS) && \
-    defined(SOLARIS2)
+    (defined(SOLARIS2_9) || defined(SOLARIS2_10))
   /* This is needed to work around control messages in STREAMS devices
-   * (as on Solaris 9/NFS).
+   * (as on Solaris 9/NFS).  The underlying issue is reported to be fixed
+   * in Solaris 11.
    */
   while (ioctl(res->rfd, I_SRDOPT, RPROTDIS) < 0) {
     if (errno == EINTR) {
