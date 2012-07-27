@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.33 2011-12-10 21:51:58 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.34 2012-07-27 00:16:48 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -15,7 +15,7 @@
 <hr><br>
 
 This module is contained in the <code>mod_tls.c</code> file for ProFTPD
-1.2.<i>x</i>/1.3.<i>x</i>, and is not compiled by default.  Installation
+1.3.<i>x</i>, and is not compiled by default.  Installation
 instructions are discussed <a href="#Installation">here</a>.
 
 <p>
@@ -66,6 +66,7 @@ is based.  His module can be found here:
   <li><a href="#TLSRequired">TLSRequired</a>
   <li><a href="#TLSRSACertificateFile">TLSRSACertificateFile</a>
   <li><a href="#TLSRSACertificateKeyFile">TLSRSACertificateKeyFile</a>
+  <li><a href="#TLSServerCipherPreference">TLSServerCipherPreference</a>
   <li><a href="#TLSSessionCache">TLSSessionCache</a>
   <li><a href="#TLSTimeoutHandshake">TLSTimeoutHandshake</a>
   <li><a href="#TLSVerifyClient">TLSVerifyClient</a>
@@ -1289,6 +1290,27 @@ Example:
 
 <p>
 <hr>
+<h2><a name="TLSServerCipherPreference">TLSServerCipherPreference</a></h2>
+<strong>Syntax:</strong> TLSServerCipherPreference <em>on|off</em><br>
+<strong>Default:</strong> Off<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.5rc1 and later
+
+<p>
+When choosing a cipher during an SSLv3 or TLSv1 handshake, normally the
+<i>client's</i> ciphersuite preference is used.  If the
+<code>TLSServerCipherPreference</code> directive is enabled, then the
+<i>server's</i> ciphersuite preference will be used instead.
+
+<p>
+For example:
+<pre>
+  TLSServerCipherPreference on
+</pre>
+
+<p>
+<hr>
 <h2><a name="TLSSessionCache">TLSSessionCache</a></h2>
 <strong>Syntax:</strong> TLSSessionCache <em>type:/info [timeout]</em><br>
 <strong>Default:</strong> None<br>
@@ -1599,11 +1621,11 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-12-10 21:51:58 $</i><br>
+Last Updated: <i>$Date: 2012-07-27 00:16:48 $</i><br>
 
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2011 TJ Saunders<br>
+&copy; Copyright 2002-2012 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
