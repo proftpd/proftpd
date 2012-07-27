@@ -61,7 +61,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.4.3"
+#define MOD_TLS_VERSION		"mod_tls/2.4.4"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402 
@@ -356,7 +356,7 @@ typedef struct tls_pkey_obj {
 static tls_pkey_t *tls_pkey_list = NULL;
 static unsigned int tls_npkeys = 0;
 
-#define TLS_DEFAULT_CIPHER_SUITE	"ALL:!ADH"
+#define TLS_DEFAULT_CIPHER_SUITE	"DEFAULT:!EXPORT:!DES"
 
 /* Module variables */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L

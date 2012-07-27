@@ -46,6 +46,9 @@ ChangeLog files.
 
     RewriteMaxReplace
 
+    TLSCipherSuite
+      Default cipher suite changed from "ALL:!ADH" to "DEFAULT:!EXPORT:!DES"
+
     TLSServerCipherPreference (Bug#3801)
 
   + Changed configuration directives:
@@ -102,4 +105,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-07-27 00:12:02 $
+Last Updated: $Date: 2012-07-27 00:20:28 $

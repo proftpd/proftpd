@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.34 2012-07-27 00:16:48 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.35 2012-07-27 00:20:28 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -278,13 +278,13 @@ does not request that the client send a certificate to be verified.
 <hr>
 <h2><a name="TLSCipherSuite">TLSCipherSuite</a></h2>
 <strong>Syntax:</strong> TLSCipherSuite <em>cipher-list</em><br>
-<strong>Default:</strong> ALL:!ADH<br>
+<strong>Default:</strong> DEFAULT:!EXPORT:!DES<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_tls<br>
 <strong>Compatibility:</strong> 1.2.7rc1 and later
 
 <p>
-Default cipher list is &quot;ALL:!ADH&quot;.
+Default cipher list is &quot;DEFAULT:!EXPORT:!DES&quot;.
 
 <p>
 How to put together a <em>cipher list</em> parameter:
@@ -1621,7 +1621,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-07-27 00:16:48 $</i><br>
+Last Updated: <i>$Date: 2012-07-27 00:20:28 $</i><br>
 
 <hr>
 <font size=2><b><i>
