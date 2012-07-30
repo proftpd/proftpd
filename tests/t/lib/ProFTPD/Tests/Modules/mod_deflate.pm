@@ -1709,8 +1709,6 @@ sub deflate_stor_64kb_binary {
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      my $expected;
-
       $expected = 226;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
@@ -1988,8 +1986,6 @@ sub deflate_stor_64kb_binary_chunks {
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-
-      my $expected;
 
       $expected = 226;
       $self->assert($expected == $resp_code,
