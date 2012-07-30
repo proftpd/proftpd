@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.67 2011-11-23 18:04:37 castaglia Exp $
+ * $Id: mod_radius.c,v 1.68 2012-07-30 15:36:06 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9.1"
@@ -461,11 +461,12 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
    * if RadiusUserInfo is indeed in effect.
    */
 
-  if (!radius_have_user_info &&
-      !radius_have_group_info &&
-      !radius_have_quota_info)
+  if (radius_have_user_info == FALSE &&
+      radius_have_group_info == FALSE &&
+      radius_have_quota_info == FALSE) {
     /* Return now if there's no reason for doing extra work. */
     return;
+  }
 
   if (radius_uid_attr_id || radius_gid_attr_id ||
       radius_home_attr_id || radius_shell_attr_id) {
@@ -1268,7 +1269,7 @@ static void radius_process_quota_info(config_rec *c) {
 static void radius_process_user_info(config_rec *c) {
   char *param = NULL;
   unsigned char have_illegal_value = FALSE;
- 
+
   /* radius_passwd.pw_name will be filled in later, after successful
    * authentication.  radius_passwd.pw_gecos will always be NULL, as there
    * is no practical need for this information.
@@ -1366,10 +1367,11 @@ static void radius_process_user_info(config_rec *c) {
       have_illegal_value = TRUE;
     }
 
-  } else
+  } else {
 
     /* Param already checked in this case. */
     radius_passwd.pw_dir = param;
+  }
 
   /* Process the shell string. */
   param = (char *) c->argv[3];
@@ -1383,15 +1385,18 @@ static void radius_process_user_info(config_rec *c) {
       have_illegal_value = TRUE;
     }
 
-  } else
+  } else {
 
     /* Param already checked in this case. */
     radius_passwd.pw_shell = param;
+  }
 
-  if (!have_illegal_value)
+  if (have_illegal_value == FALSE) {
     radius_have_user_info = TRUE;
-  else
-   radius_log("error with RadiusUserInfo parameters, ignoring them");
+
+  } else {
+    radius_log("error with RadiusUserInfo parameters, ignoring them");
+  }
 }
 
 static void radius_reset(void) {
@@ -2383,8 +2388,9 @@ static unsigned char radius_start_accting(void) {
   }
 
   /* Close the socket. */
-  if (radius_close_socket(sockfd) < 0)
+  if (radius_close_socket(sockfd) < 0) {
     radius_log("socket close failed");
+  }
 
   if (recvd_response) {
 
@@ -2515,8 +2521,9 @@ static unsigned char radius_stop_accting(void) {
   }
 
   /* Close the socket. */
-  if (radius_close_socket(sockfd) < 0)
+  if (radius_close_socket(sockfd) < 0) {
     radius_log("socket close failed");
+  }
 
   if (recvd_response) {
 
@@ -2537,8 +2544,9 @@ static unsigned char radius_stop_accting(void) {
         return FALSE;
     }
 
-  } else 
+  } else {
     radius_log("error: no acct servers responded");
+  }
 
   /* Default return value. */
   return FALSE;
@@ -2673,28 +2681,33 @@ MODRET radius_getgroups(cmd_rec *cmd) {
     if (cmd->argv[1]) {
       gids = (array_header *) cmd->argv[1];
 
-      if (radius_have_user_info)
+      if (radius_have_user_info) {
          *((gid_t *) push_array(gids)) = radius_passwd.pw_gid;
+      }
 
-      for (i = 0; i < radius_addl_group_count; i++)
+      for (i = 0; i < radius_addl_group_count; i++) {
         *((gid_t *) push_array(gids)) = radius_addl_group_ids[i];
+      }
     }
 
     if (cmd->argv[2]) {
       groups = (array_header *) cmd->argv[2];
 
-      if (radius_have_user_info)
+      if (radius_have_user_info) {
         *((char **) push_array(groups)) = radius_prime_group_name;
+      }
 
-      for (i = 0; i < radius_addl_group_count; i++)
+      for (i = 0; i < radius_addl_group_count; i++) {
         *((char **) push_array(groups)) = radius_addl_group_names[i];
+      }
     }
 
     /* Increment this count, for the sake of proper reporting back to the
      * getgroups() caller.
      */
-    if (radius_have_user_info)
+    if (radius_have_user_info) {
       radius_addl_group_count++;
+    }
 
     return mod_create_data(cmd, (void *) &radius_addl_group_count);
   }
@@ -2714,13 +2727,15 @@ MODRET radius_getpwnam(cmd_rec *cmd) {
 
   if (radius_have_user_info) {
 
-    if (!radius_passwd.pw_name)
+    if (radius_passwd.pw_name == NULL) {
       radius_passwd.pw_name = pstrdup(radius_pool, cmd->argv[0]);
+    }
 
-    if (strcmp(cmd->argv[0], radius_passwd.pw_name) == 0)
+    if (strcmp(cmd->argv[0], radius_passwd.pw_name) == 0) {
 
       /* Return the faked user information. */
       return mod_create_data(cmd, &radius_passwd);
+    }
   }
 
   /* Default response */
@@ -2729,10 +2744,11 @@ MODRET radius_getpwnam(cmd_rec *cmd) {
 
 MODRET radius_getpwent(cmd_rec *cmd) {
 
-  if (radius_have_user_info)
+  if (radius_have_user_info) {
 
     /* Return the faked user information. */
     return mod_create_data(cmd, &radius_passwd);
+  }
 
   /* Default response */
   return PR_DECLINED(cmd);
@@ -2740,13 +2756,15 @@ MODRET radius_getpwent(cmd_rec *cmd) {
 
 MODRET radius_getpwuid(cmd_rec *cmd) {
 
-  if (radius_have_user_info)
+  if (radius_have_user_info) {
 
     /* Check that given UID matches faked UID before returning. */
-    if (*((uid_t *) cmd->argv[0]) == radius_passwd.pw_uid)
+    if (*((uid_t *) cmd->argv[0]) == radius_passwd.pw_uid) {
 
       /* Return the faked user information. */
       return mod_create_data(cmd, &radius_passwd);
+    }
+  }
 
   /* Default response */
   return PR_DECLINED(cmd);
@@ -2826,14 +2844,15 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
    * to send a service type of Login, otherwise, use the Authenticate-Only
    * service type.
    */
-  if (radius_have_user_info ||
-      radius_have_group_info ||
-      radius_have_quota_info ||
-      radius_have_other_info)
+  if (radius_have_user_info == TRUE ||
+      radius_have_group_info == TRUE ||
+      radius_have_quota_info == TRUE ||
+      radius_have_other_info == TRUE) {
     service = htonl(RADIUS_SVC_LOGIN);
 
-  else
+  } else {
     service = htonl(RADIUS_SVC_AUTHENTICATE_ONLY);
+  }
 
   /* Loop through the list of servers, trying each one until the packet is
    * successfully sent.
@@ -2878,8 +2897,9 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   }
 
   /* Close the socket. */
-  if (radius_close_socket(sockfd) < 0)
+  if (radius_close_socket(sockfd) < 0) {
     radius_log("socket close failed");
+  }
 
   if (recvd_response) {
 
@@ -2921,8 +2941,9 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
         break;
     }
 
-  } else
+  } else {
     radius_log("error: no auth servers responded");
+  }
 
   return PR_DECLINED(cmd);
 }
@@ -2934,11 +2955,13 @@ MODRET radius_post_pass(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
 
   /* Fill in the username in the faked user info, if need be. */
-  if (radius_have_user_info)
+  if (radius_have_user_info) {
     radius_passwd.pw_name = session.user;
+  }
 
-  if (!radius_start_accting())
+  if (!radius_start_accting()) {
     radius_log("error: unable to start accounting");
+  }
 
   return PR_DECLINED(cmd);
 }
@@ -3481,8 +3504,9 @@ static int radius_sess_init(void) {
      * TRUE by radius_process_user_info(), unless there was some
      * illegal value.
      */
-    if (!radius_auth_server)
+    if (radius_auth_server == NULL) {
       radius_have_user_info = FALSE;
+    }
   }
 
   /* If the RadiusUserInfo directive has not been set (or if it has been
@@ -3494,10 +3518,11 @@ static int radius_sess_init(void) {
    * providing user information, then we won't get a chance to authenticate
    * the user -- unless we disable that Auth API behavior.
    */
-  if (!radius_have_user_info) {
-    if (pr_auth_add_auth_only_module("mod_radius.c") < 0)
+  if (radius_have_user_info == FALSE) {
+    if (pr_auth_add_auth_only_module("mod_radius.c") < 0) {
       pr_log_debug(DEBUG2, "error adding 'mod_radius.c' to auth-only module "
         "list: %s", strerror(errno));
+    }
   }
 
   /* Prepare any configured fake group information. */
