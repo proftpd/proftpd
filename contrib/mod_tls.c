@@ -5483,6 +5483,7 @@ int tls_sess_cache_unregister(const char *name) {
        * session-cache-in-use pointer.
        */
       if (sc->cache == tls_sess_cache) {
+        tls_sess_cache_close();
         tls_sess_cache = NULL;
       }
 
