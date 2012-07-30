@@ -5472,11 +5472,19 @@ int tls_sess_cache_unregister(const char *name) {
         tls_sess_caches = sc->next;
       }
 
-      if (sc->next)
+      if (sc->next) {
         sc->next->prev = sc->prev;
+      }
 
       sc->next = sc->prev = NULL;
       tls_sess_ncaches--;
+
+      /* If the session cache being unregistered is in use, update the
+       * session-cache-in-use pointer.
+       */
+      if (sc->cache == tls_sess_cache) {
+        tls_sess_cache = NULL;
+      }
 
       /* NOTE: a counter should be kept of the number of unregistrations,
        * as the memory for a registration is not freed on unregistration.
