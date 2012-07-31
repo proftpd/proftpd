@@ -276,7 +276,12 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
-  sql_sqllog_var_xfer_status_success => {
+  sql_sqllog_var_xfer_status_success_download => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  sql_sqllog_var_xfer_status_success_upload => {
     order => ++$order,
     test_class => [qw(forking)],
   },
@@ -9621,10 +9626,11 @@ sub get_xfer_status {
   my $db_file = shift;
   my $where = shift;
 
-  my $sql = "SELECT user, ip_addr, xfer_status FROM ftpsessions";
+  my $sql = "SELECT user, ip_addr, xfer_status, xfer_path FROM ftpsessions";
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= " LIMIT 1";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -9636,7 +9642,7 @@ sub get_xfer_status {
   chomp($res);
 
   # The default sqlite3 delimiter is '|'
-  return split(/\|/, $res);
+  return map { chomp($_); $_; } split(/\|/, $res);
 }
 
 sub sql_sqllog_var_xfer_status_nonxfer {
@@ -9685,7 +9691,8 @@ sub sql_sqllog_var_xfer_status_nonxfer {
 CREATE TABLE ftpsessions (
   user TEXT,
   ip_addr TEXT,
-  xfer_status TEXT
+  xfer_status TEXT,
+  xfer_path TEXT
 );
 EOS
 
@@ -9745,7 +9752,7 @@ EOS
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
         SQLLogFile => $log_file,
-        SQLNamedQuery => 'xfer_status FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status) VALUES (\'%u\', \'%L\', \'%{transfer-status}\')"',
+        SQLNamedQuery => 'xfer_status FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status, xfer_path) VALUES (\'%u\', \'%L\', \'%{transfer-status}\', \'%f\')"',
         SQLLog => 'PWD xfer_status',
       },
     },
@@ -9803,7 +9810,7 @@ EOS
     die($ex);
   }
 
-  my ($login, $ip_addr, $xfer_status) = get_xfer_status($db_file, "user = \'$user\'");
+  my ($login, $ip_addr, $xfer_status, $xfer_path) = get_xfer_status($db_file, "user = \'$user\'");
 
   my $expected;
 
@@ -9819,10 +9826,14 @@ EOS
   $self->assert($expected eq $xfer_status,
     test_msg("Expected transfer status '$expected', got '$xfer_status'"));
 
+  $expected = '-';
+  $self->assert($expected eq $xfer_path,
+    test_msg("Expected file path '$expected', got '$xfer_path'"));
+
   unlink($log_file);
 }
 
-sub sql_sqllog_var_xfer_status_success {
+sub sql_sqllog_var_xfer_status_success_download {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -9868,7 +9879,8 @@ sub sql_sqllog_var_xfer_status_success {
 CREATE TABLE ftpsessions (
   user TEXT,
   ip_addr TEXT,
-  xfer_status TEXT
+  xfer_status TEXT,
+  xfer_path TEXT
 );
 EOS
 
@@ -9928,7 +9940,7 @@ EOS
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
         SQLLogFile => $log_file,
-        SQLNamedQuery => 'xfer_status FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status) VALUES (\'%u\', \'%L\', \'%{transfer-status}\')"',
+        SQLNamedQuery => 'xfer_status FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status, xfer_path) VALUES (\'%u\', \'%L\', \'%{transfer-status}\', \'%f\')"',
         SQLLog => 'ERR_RETR,RETR xfer_status',
       },
     },
@@ -10001,7 +10013,7 @@ EOS
     die($ex);
   }
 
-  my ($login, $ip_addr, $xfer_status) = get_xfer_status($db_file, "user = \'$user\'");
+  my ($login, $ip_addr, $xfer_status, $xfer_path) = get_xfer_status($db_file, "user = \'$user\'");
 
   my $expected;
 
@@ -10016,6 +10028,207 @@ EOS
   $expected = 'success';
   $self->assert($expected eq $xfer_status,
     test_msg("Expected transfer status '$expected', got '$xfer_status'"));
+
+  $expected = $test_file;
+  $self->assert($expected eq $xfer_path,
+    test_msg("Expected file path '$expected', got '$xfer_path'"));
+
+  unlink($log_file);
+}
+
+sub sql_sqllog_var_xfer_status_success_upload {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlite.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE ftpsessions (
+  user TEXT,
+  ip_addr TEXT,
+  xfer_status TEXT,
+  xfer_path TEXT
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'sql:20 command:20 netio:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLEngine => 'log',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $log_file,
+        SQLNamedQuery => 'xfer_status FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status, xfer_path) VALUES (\'%u\', \'%L\', \'%{transfer-status}\', \'%f\')"',
+        SQLLog => 'ERR_STOR,STOR xfer_status',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+
+      my $conn = $client->stor_raw('test.txt');
+      unless ($conn) {
+        die("STOR test.txt failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf = "Hello, World!\n";
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  my ($login, $ip_addr, $xfer_status, $xfer_path) = get_xfer_status($db_file, "user = \'$user\'");
+
+  my $expected;
+
+  $expected = $user;
+  $self->assert($expected eq $login,
+    test_msg("Expected user '$expected', got '$login'"));
+
+  $expected = '127.0.0.1';
+  $self->assert($expected eq $ip_addr,
+    test_msg("Expected IP address '$expected', got '$ip_addr'"));
+
+  $expected = 'success';
+  $self->assert($expected eq $xfer_status,
+    test_msg("Expected transfer status '$expected', got '$xfer_status'"));
+
+  $expected = $test_file;
+  $self->assert($expected eq $xfer_path,
+    test_msg("Expected file path '$expected', got '$xfer_path'"));
 
   unlink($log_file);
 }
@@ -10066,7 +10279,8 @@ sub sql_sqllog_var_xfer_status_cancelled {
 CREATE TABLE ftpsessions (
   user TEXT,
   ip_addr TEXT,
-  xfer_status TEXT
+  xfer_status TEXT,
+  xfer_path TEXT
 );
 EOS
 
@@ -10130,7 +10344,7 @@ EOS
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
         SQLLogFile => $log_file,
-        SQLNamedQuery => 'xfer_status FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status) VALUES (\'%u\', \'%L\', \'%{transfer-status}\')"',
+        SQLNamedQuery => 'xfer_status FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status, xfer_path) VALUES (\'%u\', \'%L\', \'%{transfer-status}\', \'%f\')"',
         SQLLog => 'ERR_RETR,RETR xfer_status',
       },
     },
@@ -10203,7 +10417,7 @@ EOS
     die($ex);
   }
 
-  my ($login, $ip_addr, $xfer_status) = get_xfer_status($db_file, "user = \'$user\'");
+  my ($login, $ip_addr, $xfer_status, $xfer_path) = get_xfer_status($db_file, "user = \'$user\'");
 
   my $expected;
 
@@ -10218,6 +10432,10 @@ EOS
   $expected = 'cancelled';
   $self->assert($expected eq $xfer_status,
     test_msg("Expected transfer status '$expected', got '$xfer_status'"));
+
+  $expected = $test_file;
+  $self->assert($expected eq $xfer_path,
+    test_msg("Expected file path '$expected', got '$xfer_path'"));
 
   unlink($log_file);
 }
@@ -10268,7 +10486,8 @@ sub sql_sqllog_var_xfer_status_failed {
 CREATE TABLE ftpsessions (
   user TEXT,
   ip_addr TEXT,
-  xfer_status TEXT
+  xfer_status TEXT,
+  xfer_path TEXT
 );
 EOS
 
@@ -10335,7 +10554,7 @@ EOS
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
         SQLLogFile => $log_file,
-        SQLNamedQuery => 'xfer_status FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status) VALUES (\'%u\', \'%L\', \'%{transfer-status}\')"',
+        SQLNamedQuery => 'xfer_status FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status, xfer_path) VALUES (\'%u\', \'%L\', \'%{transfer-status}\', \'%f\')"',
         SQLLog => 'ERR_RETR,RETR xfer_status',
       },
     },
@@ -10404,7 +10623,7 @@ EOS
     die($ex);
   }
 
-  my ($login, $ip_addr, $xfer_status) = get_xfer_status($db_file, "user = \'$user\'");
+  my ($login, $ip_addr, $xfer_status, $xfer_path) = get_xfer_status($db_file, "user = \'$user\'");
 
   my $expected;
 
@@ -10419,6 +10638,10 @@ EOS
   $expected = 'failed';
   $self->assert($expected eq $xfer_status,
     test_msg("Expected transfer status '$expected', got '$xfer_status'"));
+
+  $expected = $test_file;
+  $self->assert($expected eq $xfer_path,
+    test_msg("Expected file path '$expected', got '$xfer_path'"));
 
   unlink($log_file);
 }
@@ -10469,7 +10692,8 @@ sub sql_sqllog_var_xfer_status_timeout {
 CREATE TABLE ftpsessions (
   user TEXT,
   ip_addr TEXT,
-  xfer_status TEXT
+  xfer_status TEXT,
+  xfer_path TEXT
 );
 EOS
 
@@ -10538,7 +10762,7 @@ EOS
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
         SQLLogFile => $log_file,
-        SQLNamedQuery => 'xfer_status FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status) VALUES (\'%u\', \'%L\', \'%{transfer-status}\')"',
+        SQLNamedQuery => 'xfer_status FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status, xfer_path) VALUES (\'%u\', \'%L\', \'%{transfer-status}\', \'%f\')"',
         SQLLog => 'ERR_RETR,RETR,EXIT xfer_status',
       },
     },
@@ -10628,7 +10852,7 @@ EOS
     die($ex);
   }
 
-  my ($login, $ip_addr, $xfer_status) = get_xfer_status($db_file, "user = \'$user\'");
+  my ($login, $ip_addr, $xfer_status, $xfer_path) = get_xfer_status($db_file, "user = \'$user\'");
 
   my $expected;
 
@@ -10644,6 +10868,10 @@ EOS
   $self->assert($expected eq $xfer_status,
     test_msg("Expected transfer status '$expected', got '$xfer_status'"));
 
+  $expected = $test_file;
+  $self->assert($expected eq $xfer_path,
+    test_msg("Expected file path '$expected', got '$xfer_path'"));
+
   unlink($log_file);
 }
 
@@ -10651,10 +10879,11 @@ sub get_xfer_failure {
   my $db_file = shift;
   my $where = shift;
 
-  my $sql = "SELECT user, ip_addr, xfer_status, xfer_failure FROM ftpsessions";
+  my $sql = "SELECT user, ip_addr, xfer_status, xfer_failure, xfer_path FROM ftpsessions";
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= " LIMIT 1";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -10716,7 +10945,8 @@ CREATE TABLE ftpsessions (
   user TEXT,
   ip_addr TEXT,
   xfer_status TEXT,
-  xfer_failure TEXT
+  xfer_failure TEXT,
+  xfer_path TEXT
 );
 EOS
 
@@ -10776,7 +11006,7 @@ EOS
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
         SQLLogFile => $log_file,
-        SQLNamedQuery => 'xfer_reason FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status, xfer_failure) VALUES (\'%u\', \'%L\', \'%{transfer-status}\', \'%{transfer-failure}\')"',
+        SQLNamedQuery => 'xfer_reason FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status, xfer_failure, xfer_path) VALUES (\'%u\', \'%L\', \'%{transfer-status}\', \'%{transfer-failure}\', \'%f\')"',
         SQLLog => 'ERR_RETR,RETR xfer_reason',
       },
     },
@@ -10849,7 +11079,7 @@ EOS
     die($ex);
   }
 
-  my ($login, $ip_addr, $xfer_status, $xfer_failure) = get_xfer_failure($db_file, "user = \'$user\'");
+  my ($login, $ip_addr, $xfer_status, $xfer_failure, $xfer_path) = get_xfer_failure($db_file, "user = \'$user\'");
 
   my $expected;
 
@@ -10868,6 +11098,10 @@ EOS
   $expected = '-';
   $self->assert($expected eq $xfer_failure,
     test_msg("Expected transfer failure '$expected', got '$xfer_failure'"));
+
+  $expected = $test_file;
+  $self->assert($expected eq $xfer_path,
+    test_msg("Expected file path '$expected', got '$xfer_path'"));
 
   unlink($log_file);
 }
@@ -10919,7 +11153,8 @@ CREATE TABLE ftpsessions (
   user TEXT,
   ip_addr TEXT,
   xfer_status TEXT,
-  xfer_failure TEXT
+  xfer_failure TEXT,
+  xfer_path TEXT
 );
 EOS
 
@@ -10983,7 +11218,7 @@ EOS
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
         SQLLogFile => $log_file,
-        SQLNamedQuery => 'xfer_reason FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status, xfer_failure) VALUES (\'%u\', \'%L\', \'%{transfer-status}\', \'%{transfer-failure}\')"',
+        SQLNamedQuery => 'xfer_reason FREEFORM "INSERT INTO ftpsessions (user, ip_addr, xfer_status, xfer_failure, xfer_path) VALUES (\'%u\', \'%L\', \'%{transfer-status}\', \'%{transfer-failure}\', \'%f\')"',
         SQLLog => 'ERR_RETR,RETR xfer_reason',
       },
     },
@@ -11062,7 +11297,7 @@ EOS
     die($ex);
   }
 
-  my ($login, $ip_addr, $xfer_status, $xfer_failure) = get_xfer_failure($db_file, "user = \'$user\'");
+  my ($login, $ip_addr, $xfer_status, $xfer_failure, $xfer_path) = get_xfer_failure($db_file, "user = \'$user\'");
 
   my $expected;
 
@@ -11081,6 +11316,10 @@ EOS
   $expected = 'Operation not permitted';
   $self->assert($expected eq $xfer_failure,
     test_msg("Expected transfer failure '$expected', got '$xfer_failure'"));
+
+  $expected = $test_file;
+  $self->assert($expected eq $xfer_path,
+    test_msg("Expected file path '$expected', got '$xfer_path'"));
 
   unlink($log_file);
 }
