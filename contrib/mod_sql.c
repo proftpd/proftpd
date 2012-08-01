@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.228 2012-07-25 23:45:01 castaglia Exp $
+ * $Id: mod_sql.c,v 1.229 2012-08-01 23:35:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2516,11 +2516,6 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
         sstrncpy(argp, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE),
           sizeof(arg));
 
-      } else if (session.xfer.p &&
-                 session.xfer.path) {
-        sstrncpy(argp, dir_abs_path(cmd->tmp_pool, session.xfer.path, TRUE),
-          sizeof(arg));
-
       } else if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
         char *path;
 
@@ -2531,8 +2526,13 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
                  pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
         char *path;
 
-        path = pr_table_get(cmd->notes, "mod_xfer.stor-path", NULL);
+        path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
         sstrncpy(arg, dir_abs_path(cmd->tmp_pool, path, TRUE), sizeof(arg));
+
+      } else if (session.xfer.p &&
+                 session.xfer.path) {
+        sstrncpy(argp, dir_abs_path(cmd->tmp_pool, session.xfer.path, TRUE),
+          sizeof(arg));
 
       } else {
 
@@ -2565,10 +2565,6 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
           pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
         sstrncpy(arg, path, sizeof(arg));
 
-      } else if (session.xfer.p &&
-                 session.xfer.path) {
-        sstrncpy(argp, session.xfer.path, sizeof(arg));
-
       } else if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
         char *path;
 
@@ -2579,8 +2575,12 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
                  pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
         char *path;
 
-        path = pr_table_get(cmd->notes, "mod_xfer.stor-path", NULL);
+        path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
         sstrncpy(arg, path, sizeof(arg));
+
+      } else if (session.xfer.p &&
+                 session.xfer.path) {
+        sstrncpy(argp, session.xfer.path, sizeof(arg));
 
       } else {
         /* Some commands (i.e. DELE, MKD, RMD, XMKD, and XRMD) have associated

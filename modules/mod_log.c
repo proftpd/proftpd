@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.134 2012-05-29 22:42:23 castaglia Exp $
+ * $Id: mod_log.c,v 1.135 2012-08-01 23:35:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -819,10 +819,6 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
         sstrncpy(argp, dir_abs_path(p, pr_fs_decode_path(p, cmd->arg), TRUE),
           sizeof(arg));
 
-      } else if (session.xfer.p &&
-                 session.xfer.path) {
-        sstrncpy(argp, dir_abs_path(p, session.xfer.path, TRUE), sizeof(arg));
-
       } else if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
         char *path;
 
@@ -833,8 +829,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
                  pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
         char *path;
       
-        path = pr_table_get(cmd->notes, "mod_xfer.stor-path", NULL);
+        path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
         sstrncpy(arg, dir_abs_path(p, path, TRUE), sizeof(arg));
+
+      } else if (session.xfer.p &&
+                 session.xfer.path) {
+        sstrncpy(argp, dir_abs_path(p, session.xfer.path, TRUE), sizeof(arg));
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) == 0 &&
                  (strcasecmp(cmd->argv[1], "CHGRP") == 0 ||
@@ -881,10 +881,6 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
           pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
         sstrncpy(arg, path, sizeof(arg));
 
-      } else if (session.xfer.p &&
-                 session.xfer.path) {
-        sstrncpy(argp, session.xfer.path, sizeof(arg));
-
       } else if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
         char *path;
 
@@ -895,8 +891,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
                  pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
         char *path;
 
-        path = pr_table_get(cmd->notes, "mod_xfer.stor-path", NULL);
+        path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
         sstrncpy(arg, path, sizeof(arg));
+
+      } else if (session.xfer.p &&
+                 session.xfer.path) {
+        sstrncpy(argp, session.xfer.path, sizeof(arg));
 
       } else {
         /* Some commands (i.e. DELE, MKD, XMKD, RMD, XRMD) have associated
