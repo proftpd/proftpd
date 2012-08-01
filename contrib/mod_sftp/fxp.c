@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.155 2012-07-25 23:15:38 castaglia Exp $
+ * $Id: fxp.c,v 1.156 2012-08-01 21:40:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2327,8 +2327,10 @@ static int fxp_handle_add(uint32_t channel_id, struct fxp_handle *fxh) {
 
   res = pr_table_add(fxp_session->handle_tab, fxh->name, fxh, sizeof(void *)); 
   if (res < 0) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error stashing handle: %s", strerror(errno));
+    if (errno != EEXIST) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error stashing handle: %s", strerror(errno));
+    }
   }
 
   return res;
@@ -2435,21 +2437,47 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
     cmd = fxp_cmd_alloc(fxh->pool, C_APPE, pstrdup(fxh->pool, curr_path));
     session.curr_cmd = C_APPE;
 
+    if (pr_table_add(cmd->notes, "mod_xfer.store-path",
+        pstrdup(fxh->pool, curr_path), 0) < 0) {
+      if (errno != EEXIST) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error adding 'mod_xfer.store-path: %s", strerror(errno));
+      }
+    }
+
   } else if ((fxh->fh_flags & O_WRONLY) ||
              (fxh->fh_flags & O_RDWR)) {
     cmd = fxp_cmd_alloc(fxh->pool, C_STOR, pstrdup(fxh->pool, curr_path));
     session.curr_cmd = C_STOR;
 
+    if (pr_table_add(cmd->notes, "mod_xfer.store-path",
+        pstrdup(fxh->pool, curr_path), 0) < 0) {
+      if (errno != EEXIST) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error adding 'mod_xfer.store-path: %s", strerror(errno));
+      }
+    }
+
   } else if (fxh->fh_flags == O_RDONLY) {
     cmd = fxp_cmd_alloc(fxh->pool, C_RETR, pstrdup(fxh->pool, curr_path));
     session.curr_cmd = C_RETR;
+
+    if (pr_table_add(cmd->notes, "mod_xfer.retr-path",
+        pstrdup(fxh->pool, curr_path), 0) < 0) {
+      if (errno != EEXIST) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error adding 'mod_xfer.retr-path: %s", strerror(errno));
+      }
+    }
   }
 
   /* Add a note indicating that this is a failed transfer. */
   if (pr_table_add(cmd->notes, "mod_sftp.file-status",
       pstrdup(fxh->pool, "failed"), 0) < 0) {
-    pr_trace_msg(trace_channel, 3,
-      "error stashing file status in command notes: %s", strerror(errno));
+    if (errno != EEXIST) {
+      pr_trace_msg(trace_channel, 3,
+        "error stashing file status in command notes: %s", strerror(errno));
+    }
   }
 
   xferlog_write(0, pr_netaddr_get_sess_remote_name(), fxh->fh_bytes_xferred,
@@ -4751,14 +4779,38 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
       cmd2 = fxp_cmd_alloc(fxp->pool, C_APPE, pstrdup(fxp->pool, real_path));
       cmd2->cmd_id = pr_cmd_get_id(C_APPE);
 
+      if (pr_table_add(cmd2->notes, "mod_xfer.store-path",
+          pstrdup(fxp->pool, real_path), 0) < 0) {
+        if (errno != EEXIST) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "error adding 'mod_xfer.store-path: %s", strerror(errno));
+        }
+      }
+
     } else if ((fxh->fh_flags & O_WRONLY) ||
                (fxh->fh_flags & O_RDWR)) {
       cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, pstrdup(fxp->pool, real_path));
       cmd2->cmd_id = pr_cmd_get_id(C_STOR);
 
+      if (pr_table_add(cmd2->notes, "mod_xfer.store-path",
+          pstrdup(fxp->pool, real_path), 0) < 0) {
+        if (errno != EEXIST) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "error adding 'mod_xfer.store-path: %s", strerror(errno));
+        }
+      }
+
     } else if (fxh->fh_flags == O_RDONLY) {
       cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, pstrdup(fxp->pool, real_path));
       cmd2->cmd_id = pr_cmd_get_id(C_RETR);
+
+      if (pr_table_add(cmd2->notes, "mod_xfer.retr-path",
+          pstrdup(fxp->pool, real_path), 0) < 0) {
+        if (errno != EEXIST) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "error adding 'mod_xfer.retr-path: %s", strerror(errno));
+        }
+      }
     }
 
     fxh->fh = NULL;
@@ -4790,9 +4842,11 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
         if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
             pstrdup(cmd->pool, "true"), 0) < 0) {
-          pr_log_pri(PR_LOG_NOTICE,
-            "notice: error adding 'mod_xfer.file-modified' note: %s",
-            strerror(errno));
+          if (errno != EEXIST) {
+            pr_log_pri(PR_LOG_NOTICE,
+              "notice: error adding 'mod_xfer.file-modified' note: %s",
+              strerror(errno));
+          }
         }
 
         /* Clear any existing key in the notes. */
@@ -4800,9 +4854,11 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
         if (pr_table_add(cmd2->notes, "mod_xfer.file-modified",
             pstrdup(cmd->pool, "true"), 0) < 0) {
-          pr_log_pri(PR_LOG_NOTICE,
-            "notice: error adding 'mod_xfer.file-modified' note: %s",
-            strerror(errno));
+          if (errno != EEXIST) {
+            pr_log_pri(PR_LOG_NOTICE,
+              "notice: error adding 'mod_xfer.file-modified' note: %s",
+              strerror(errno));
+          }
         }
       }
 
@@ -6596,6 +6652,14 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     cmd2->cmd_id = pr_cmd_get_id(C_APPE);
     session.curr_cmd = C_APPE;
 
+    if (pr_table_add(cmd2->notes, "mod_xfer.store-path",
+        pstrdup(fxp->pool, path), 0) < 0) {
+      if (errno != EEXIST) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error adding 'mod_xfer.store-path: %s", strerror(errno));
+      }
+    }
+
   } else if ((open_flags & O_WRONLY) ||
              (open_flags & O_RDWR)) {
     cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, path);
@@ -6609,6 +6673,14 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     }
 
     session.curr_cmd = C_STOR;
+
+    if (pr_table_add(cmd2->notes, "mod_xfer.store-path",
+        pstrdup(fxp->pool, path), 0) < 0) {
+      if (errno != EEXIST) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error adding 'mod_xfer.store-path: %s", strerror(errno));
+      }
+    }
 
   } else if (open_flags == O_RDONLY) {
     cmd->cmd_class = CL_READ;
@@ -6627,6 +6699,14 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       pr_trace_msg(trace_channel, 15,
         "read-only OPEN request, ignoring perms sent by client");
       attr_flags &= ~SSH2_FX_ATTR_PERMISSIONS;
+    }
+
+    if (pr_table_add(cmd2->notes, "mod_xfer.retr-path",
+        pstrdup(fxp->pool, path), 0) < 0) {
+      if (errno != EEXIST) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error adding 'mod_xfer.retr-path: %s", strerror(errno));
+      }
     }
   }
 
@@ -6703,9 +6783,11 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
       if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
           pstrdup(cmd->pool, "true"), 0) < 0) {
-        pr_log_pri(PR_LOG_NOTICE,
-          "notice: error adding 'mod_xfer.file-modified' note: %s",
-          strerror(errno));
+        if (errno != EEXIST) {
+          pr_log_pri(PR_LOG_NOTICE,
+            "notice: error adding 'mod_xfer.file-modified' note: %s",
+            strerror(errno));
+        }
       }
 
       /* Clear any existing key in the notes. */
@@ -6713,9 +6795,11 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
       if (pr_table_add(cmd2->notes, "mod_xfer.file-modified",
           pstrdup(cmd->pool, "true"), 0) < 0) {
-        pr_log_pri(PR_LOG_NOTICE,
-          "notice: error adding 'mod_xfer.file-modified' note: %s",
-          strerror(errno));
+        if (errno != EEXIST) {
+          pr_log_pri(PR_LOG_NOTICE,
+            "notice: error adding 'mod_xfer.file-modified' note: %s",
+            strerror(errno));
+        }
       }
     }
   }
@@ -9704,8 +9788,6 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   }
   cmd->argv[0] = cmd_name;
 
-  /* XXX Check MaxStoreFileSize */
-
   if (fxp_path_pass_regex_filters(fxp->pool, "WRITE", fxh->fh->fh_path) < 0) {
     status_code = fxp_errno2status(errno, NULL);
 
@@ -9807,6 +9889,59 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     resp->payload_sz = (bufsz - buflen);
 
     return fxp_packet_write(resp);
+  }
+
+  if (pr_fsio_fstat(fxh->fh, &st) == 0) {
+    config_rec *c;
+    off_t nbytes_max_store = 0;
+
+    /* Check MaxStoreFileSize */
+    c = find_config(get_dir_ctxt(fxp->pool, fxh->fh->fh_path), CONF_PARAM,
+      "MaxStoreFileSize", FALSE);
+    if (c != NULL) {
+      nbytes_max_store = *((off_t *) c->argv[0]);
+    }
+
+    if (nbytes_max_store > 0) {
+      if (st.st_size >= nbytes_max_store) {
+        const char *reason;
+#if defined(EFBIG)
+        int xerrno = EFBIG;
+
+#elif defined(ENOSPC)
+        int xerrno = ENOSPC;
+#else
+        int xerno = EIO;
+#endif
+
+        pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " %s) reached: "
+          "aborting transfer of '%s'", (pr_off_t) nbytes_max_store,
+          nbytes_max_store != 1 ? "bytes" : "byte", fxh->fh->fh_path);
+
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error writing %" PR_LU " bytes to '%s': %s "
+          "(MaxStoreFileSize %" PR_LU " exceeded)", (pr_off_t) datalen,
+          fxh->fh->fh_path, strerror(xerrno), (pr_off_t) nbytes_max_store);
+
+        status_code = fxp_errno2status(xerrno, &reason);
+
+        pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+          "('%s' [%d])", (unsigned long) status_code, reason,
+          xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+        fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+          NULL);
+
+        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+        resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+        resp->payload = ptr;
+        resp->payload_sz = (bufsz - buflen);
+
+        return fxp_packet_write(resp);
+      }
+    }
   }
 
   status_code = SSH2_FX_OK;
