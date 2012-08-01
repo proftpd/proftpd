@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.70 2012-07-26 22:36:00 castaglia Exp $
+ * $Id: scp.c,v 1.71 2012-08-01 22:05:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -910,9 +910,11 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   if (exists(sp->best_path)) {
     if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
         pstrdup(cmd->pool, "true"), 0) < 0) {
-      pr_log_pri(PR_LOG_NOTICE,
-        "notice: error adding 'mod_xfer.file-modified' note: %s",
-        strerror(errno));
+      if (errno != EEXIST) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "notice: error adding 'mod_xfer.file-modified' note: %s",
+          strerror(errno));
+      }
     }
 
     sp->file_existed = TRUE;
@@ -1000,10 +1002,49 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
     unsigned char *data, uint32_t datalen) {
   uint32_t writelen;
+  config_rec *c;
+  off_t nbytes_max_store = 0;
+
+  /* Check MaxStoreFileSize */
+  c = find_config(get_dir_ctxt(p, sp->fh->fh_path), CONF_PARAM,
+    "MaxStoreFileSize", FALSE);
+  if (c != NULL) {
+    nbytes_max_store = *((off_t *) c->argv[0]);
+  }
 
   writelen = datalen;
   if (writelen > (sp->filesz - sp->recvlen)) {
     writelen = (uint32_t) (sp->filesz - sp->recvlen);
+  }
+
+  if (nbytes_max_store > 0) {
+    if (sp->recvlen > nbytes_max_store) {
+#if defined(EFBIG)
+        int xerrno = EFBIG;
+#elif defined(ENOSPC)
+        int xerrno = ENOSPC;
+#else
+        int xerno = EIO;
+#endif
+
+        pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " %s) reached: "
+          "aborting transfer of '%s'", (pr_off_t) nbytes_max_store,
+          nbytes_max_store != 1 ? "bytes" : "byte", sp->fh->fh_path);
+
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error writing %lu bytes to '%s': %s "
+          "(MaxStoreFileSize %" PR_LU " exceeded)", (unsigned long) writelen,
+          sp->fh->fh_path, strerror(xerrno), (pr_off_t) nbytes_max_store);
+
+        write_confirm(p, channel_id, 1,
+          pstrcat(p, sp->filename, ": write error: ", strerror(xerrno), NULL));
+
+        pr_fsio_close(sp->fh);
+        sp->fh = NULL;
+
+        errno = xerrno;
+        return 1;
+    }
   }
 
   if (writelen > 0) {
@@ -1235,8 +1276,17 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   if (!sp->recvd_data &&
       sp->recvlen != sp->filesz) {
-    if (cmd == NULL)
+    if (cmd == NULL) {
       cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
+
+      if (pr_table_add(cmd->notes, "mod_xfer.store-path",
+          pstrdup(p, sp->best_path), 0) < 0) {
+        if (errno != EEXIST) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "error adding 'mod_xfer.store-path: %s", strerror(errno));
+        }
+      }
+    }
 
     pr_throttle_init(cmd);
 
@@ -1366,15 +1416,26 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
     /* We only send this if there were no end-of-path handling errors. */
     write_confirm(p, channel_id, 0, NULL);
 
-    if (cmd == NULL)
+    if (cmd == NULL) {
       cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
+
+      if (pr_table_add(cmd->notes, "mod_xfer.store-path",
+          pstrdup(p, sp->best_path), 0) < 0) {
+        if (errno != EEXIST) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "error adding 'mod_xfer.store-path: %s", strerror(errno));
+        }
+      }
+    }
 
     if (sp->file_existed) {
       if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
           pstrdup(cmd->pool, "true"), 0) < 0) {
-        pr_log_pri(PR_LOG_NOTICE,
-          "notice: error adding 'mod_xfer.file-modified' note: %s",
-          strerror(errno));
+        if (errno != EEXIST) {
+          pr_log_pri(PR_LOG_NOTICE,
+            "notice: error adding 'mod_xfer.file-modified' note: %s",
+            strerror(errno));
+        }
       }
     }
 
@@ -1382,8 +1443,17 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
   } else {
-    if (cmd == NULL)
+    if (cmd == NULL) {
       cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
+
+      if (pr_table_add(cmd->notes, "mod_xfer.store-path",
+          pstrdup(p, sp->best_path), 0) < 0) {
+        if (errno != EEXIST) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "error adding 'mod_xfer.store-path: %s", strerror(errno));
+        }
+      }
+    }
 
     if (sp->file_existed) {
       if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
