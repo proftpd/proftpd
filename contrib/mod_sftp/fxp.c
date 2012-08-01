@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.156 2012-08-01 21:40:43 castaglia Exp $
+ * $Id: fxp.c,v 1.157 2012-08-01 21:58:21 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -9903,7 +9903,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     }
 
     if (nbytes_max_store > 0) {
-      if (st.st_size >= nbytes_max_store) {
+      if (st.st_size > nbytes_max_store) {
         const char *reason;
 #if defined(EFBIG)
         int xerrno = EFBIG;
