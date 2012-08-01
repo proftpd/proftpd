@@ -35,6 +35,8 @@ ChangeLog files.
 
     Improved FIPS support in mod_sftp (Bug#3763)
 
+    Support for MaxStoreFileSize in mod_sftp
+
   + New configuration directives:
 
     <IfAuthenticated>
@@ -105,4 +107,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-07-27 00:20:28 $
+Last Updated: $Date: 2012-08-01 22:06:49 $
