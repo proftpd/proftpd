@@ -428,7 +428,7 @@ sub retr_ok_file {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
 
       $client->login($user, $passwd);
 
@@ -1316,15 +1316,7 @@ sub retr_ok_dir_with_spaces {
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
     };
 
     if ($@) {
@@ -1457,18 +1449,10 @@ sub retr_leading_whitespace {
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       my $buflen = length($buf);
-      $expected = $test_sz;
+      my $expected = $test_sz;
       $self->assert($expected == $buflen,
         test_msg("Expected $expected, got $buflen"));
     };
