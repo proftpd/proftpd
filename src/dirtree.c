@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.262 2012-04-15 18:04:15 castaglia Exp $
+ * $Id: dirtree.c,v 1.263 2012-08-05 20:52:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1049,8 +1049,14 @@ static int check_group_access(xaset_t *set, const char *name) {
 
 static int check_class_access(xaset_t *set, const char *name) {
   int res = 0;
-  config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
+  config_rec *c;
 
+  /* If no class was found for this session, short-circuit the check. */
+  if (session.conn_class == NULL) {
+    return res;
+  }
+
+  c = find_config(set, CONF_PARAM, name, FALSE);
   while (c) {
     pr_signals_handle();
 
@@ -2206,7 +2212,7 @@ static config_rec *_find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
         continue;
 
       len = strlen(c->name);
-      while (len > 0 &&
+      while (len > 1 &&
              (*(c->name+len-1) == '*' || *(c->name+len-1) == '/')) {
         len--;
       }
@@ -2885,7 +2891,6 @@ void find_config_set_top(config_rec *c) {
     find_config_top = NULL;
   }
 }
-
 
 config_rec *find_config(xaset_t *set, int type, const char *name, int recurse) {
   if (!set ||
