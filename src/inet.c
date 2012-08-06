@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.145 2012-07-27 16:27:23 castaglia Exp $
+ * $Id: inet.c,v 1.146 2012-08-06 23:05:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1019,6 +1019,9 @@ int pr_inet_connect_nowait(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
     if (errno != EINPROGRESS && errno != EALREADY) {
       c->mode = CM_ERROR;
       c->xerrno = errno;
+
+      pr_inet_set_block(c->pool, c);
+      errno = c->xerrno;
       return -1;
     }
 
@@ -1029,6 +1032,9 @@ int pr_inet_connect_nowait(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
 
   if (pr_inet_get_conn_info(c, c->listen_fd) < 0) {
     c->xerrno = errno;
+
+    pr_inet_set_block(c->pool, c);
+    errno = c->xerrno;
     return -1;
   }
 
