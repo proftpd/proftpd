@@ -2621,15 +2621,6 @@ static int tls_init_server(void) {
         tls_rsa_key_file, tls_get_errors());
       return -1;
     }
-
-    res = SSL_CTX_check_private_key(ssl_ctx);
-    if (res != 1) {
-      PRIVS_RELINQUISH 
-
-      tls_log("error checking key from TLSRSACertificateKeyFile '%s': %s",
-        tls_rsa_key_file, tls_get_errors());
-      return -1;
-    }
   }
 
   if (tls_dsa_cert_file) {
@@ -2688,15 +2679,6 @@ static int tls_init_server(void) {
       PRIVS_RELINQUISH
 
       tls_log("error loading TLSDSACertificateKeyFile '%s': %s",
-        tls_dsa_key_file, tls_get_errors());
-      return -1;
-    }
-
-    res = SSL_CTX_check_private_key(ssl_ctx);
-    if (res != 1) {
-      PRIVS_RELINQUISH
-
-      tls_log("error checking key from TLSDSACertificateKeyFile '%s': %s",
         tls_dsa_key_file, tls_get_errors());
       return -1;
     }
