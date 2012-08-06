@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.27 2012-05-10 02:47:21 castaglia Exp $
+ * $Id: parser.c,v 1.28 2012-08-06 03:06:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -678,6 +678,7 @@ server_rec *pr_parser_server_ctxt_open(const char *addrstr) {
   s->pool = p;
   s->config_type = CONF_VIRTUAL;
   s->sid = ++parser_sid;
+  s->notes = pr_table_nalloc(p, 0, 8);
 
   /* Have to make sure it ends up on the end of the chain, otherwise
    * main_server becomes useless.

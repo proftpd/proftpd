@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.263 2012-08-05 20:52:20 castaglia Exp $
+ * $Id: dirtree.c,v 1.264 2012-08-06 03:06:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3490,6 +3490,7 @@ void init_config(void) {
   main_server->pool = conf_pool;
   main_server->set = server_list;
   main_server->sid = 1;
+  main_server->notes = pr_table_nalloc(conf_pool, 0, 8);
 
   /* Default server port */
   main_server->ServerPort = pr_inet_getservport(main_server->pool,
