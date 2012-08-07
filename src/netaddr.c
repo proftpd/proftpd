@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.82 2012-04-08 15:59:11 castaglia Exp $
+ * $Id: netaddr.c,v 1.83 2012-08-07 06:26:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -927,6 +927,10 @@ int pr_netaddr_set_port(pr_netaddr_t *na, unsigned int port) {
 
   errno = EPERM;
   return -1;
+}
+
+int pr_netaddr_set_port2(pr_netaddr_t *na, unsigned int port) {
+  return pr_netaddr_set_port(na, htons(port));
 }
 
 int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {

@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.31 2012-04-08 15:59:11 castaglia Exp $
+ * $Id: netaddr.h,v 1.32 2012-08-07 06:26:39 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -314,9 +314,16 @@ int pr_netaddr_set_sockaddr_any(pr_netaddr_t *);
 unsigned int pr_netaddr_get_port(const pr_netaddr_t *);
 
 /* Sets the port on the contained struct sockaddr *.  Returns 0 on success,
- * or -1 on error (as when NULL is given as the argument).
+ * or -1 on error (as when NULL is given as the argument). Note that the
+ * given port number is assumed to be in network byte order already.
  */
 int pr_netaddr_set_port(pr_netaddr_t *, unsigned int);
+
+/* Sets the port on the contained struct sockaddr *.  Returns 0 on success,
+ * or -1 on error (as when NULL is given as the argument). Note that the
+ * given port number is assumed to be in host byte order.
+ */
+int pr_netaddr_set_port2(pr_netaddr_t *, unsigned int);
 
 /* Enables or disable use of reverse DNS lookups.  Returns the previous
  * setting.
