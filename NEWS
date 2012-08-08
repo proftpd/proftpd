@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1438 2012-07-30 21:47:19 castaglia Exp $
+$Id: NEWS,v 1.1439 2012-08-08 23:58:22 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -112,6 +112,7 @@ CVS
 - Bug 3804 - ioctl(RPROTDIS) code no longer needed on Solaris 11.
 - Bug 3808 - Segfault in mod_tls when mod_tls_shmcache used.
 - Bug 3809 - Segfaults in mod_radius when configured with RadiusGroupInfo.
+- Bug 3811 - ExtendedLog entries not written if MaxClients limit reached.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

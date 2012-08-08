@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.304 2012-05-22 02:25:08 castaglia Exp $
+ * $Id: mod_auth.c,v 1.305 2012-08-08 23:58:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1795,6 +1795,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
+      (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
       pr_log_auth(PR_LOG_NOTICE,
         "Connection refused (max clients %u per class %s).", *max,
         session.conn_class->cls_name);
@@ -1822,6 +1824,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
+      (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
       pr_log_auth(PR_LOG_NOTICE,
         "Connection refused (max clients per host %u).", *max);
       pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
@@ -1847,6 +1851,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
+      (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
       pr_log_auth(PR_LOG_NOTICE,
         "Connection refused (max clients per user %u).", *max);
       pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
@@ -1871,6 +1877,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
+      (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
       pr_log_auth(PR_LOG_NOTICE, "Connection refused (max clients %u).", *max);
       pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
         "Denied by MaxClients");
@@ -1894,6 +1902,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
+      (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
       pr_log_auth(PR_LOG_NOTICE, "Connection refused (max hosts per host %u).",
         *max);
       pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
