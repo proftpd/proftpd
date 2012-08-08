@@ -269,6 +269,26 @@ my $TESTS = {
     test_class => [qw(forking mod_tls)],
   },
 
+  extlog_login_maxclients_bug3811 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  extlog_login_maxclientsperclass_bug3811 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  extlog_login_maxclientsperhost_bug3811 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  extlog_login_maxclientsperuser_bug3811 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   # XXX Need unit tests for all LogFormat variables
 };
 
@@ -8565,6 +8585,698 @@ EOC
 
   if ($@) {
     $ex = $@;
+  }
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub extlog_login_maxclients_bug3811 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/extlog.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
+
+  my $test_file = File::Spec->rel2abs($config_file);
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $max_clients = 1;
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    LogFormat => 'custom "%m %s"',
+    ExtendedLog => "$ext_log AUTH custom",
+
+    MaxClients => $max_clients,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # First client should be able to log in...
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client1->login($user, $passwd);
+
+      # ...but the second client should fail to login.
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      eval { $client2->login($user, $passwd) };
+      unless ($@) {
+        die("Second login succeeded unexpectedly");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the log entries were
+  # properly written out.  Bug#3811 occurred because the session was
+  # disconnected before mod_log had a chance to do its work.
+  if (open(my $fh, "< $ext_log")) {
+    my $nuser = 0;
+    my $npass = 0;
+    my $saw_failed_pass = 0;
+
+    while (my $line = <$fh>) {
+      chomp($line);
+
+      if ($line =~ /^(\S+)\s+(\d+)$/) {
+        my $cmd = $1;
+        my $resp_code = $2;
+
+        if ($cmd eq 'USER') {
+          $nuser++;
+
+        } elsif ($cmd eq 'PASS') {
+          $npass++;
+
+          if ($npass == 2) {
+            if ($resp_code == 530) {
+              $saw_failed_pass = 1;
+            }
+          }
+        }
+      }
+    }
+
+    close($fh);
+
+    my $expected = 2;
+    $self->assert($expected == $nuser,
+      test_msg("Expected $expected USER commands, saw $nuser"));
+
+    $self->assert($expected == $npass,
+      test_msg("Expected $expected PASS commands, saw $npass"));
+
+    $self->assert($saw_failed_pass,
+      test_msg("Did not see second PASS to fail with 530"));
+
+  } else {
+    die("Can't read $ext_log: $!");
+  }
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub extlog_login_maxclientsperclass_bug3811 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/extlog.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
+
+  my $test_file = File::Spec->rel2abs($config_file);
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $class_name = "test";
+  my $max_clients = 1;
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    LogFormat => 'custom "%m %s"',
+    ExtendedLog => "$ext_log AUTH custom",
+
+    MaxClientsPerClass => "$class_name $max_clients",
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  if (open(my $fh, ">> $config_file")) {
+    print $fh <<EOC;
+<Class $class_name>
+  From all
+</Class>
+EOC
+
+    unless (close($fh)) {
+      die("Can't write $config_file: $!");
+    }
+
+  } else {
+    die("Can't open $config_file: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # First client should be able to log in...
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client1->login($user, $passwd);
+
+      # ...but the second client should fail to login.
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      eval { $client2->login($user, $passwd) };
+      unless ($@) {
+        die("Second login succeeded unexpectedly");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the log entries were
+  # properly written out.  Bug#3811 occurred because the session was
+  # disconnected before mod_log had a chance to do its work.
+  if (open(my $fh, "< $ext_log")) {
+    my $nuser = 0;
+    my $npass = 0;
+    my $saw_failed_pass = 0;
+
+    while (my $line = <$fh>) {
+      chomp($line);
+
+      if ($line =~ /^(\S+)\s+(\d+)$/) {
+        my $cmd = $1;
+        my $resp_code = $2;
+
+        if ($cmd eq 'USER') {
+          $nuser++;
+
+        } elsif ($cmd eq 'PASS') {
+          $npass++;
+
+          if ($npass == 2) {
+            if ($resp_code == 530) {
+              $saw_failed_pass = 1;
+            }
+          }
+        }
+      }
+    }
+
+    close($fh);
+
+    my $expected = 2;
+    $self->assert($expected == $nuser,
+      test_msg("Expected $expected USER commands, saw $nuser"));
+
+    $self->assert($expected == $npass,
+      test_msg("Expected $expected PASS commands, saw $npass"));
+
+    $self->assert($saw_failed_pass,
+      test_msg("Did not see second PASS to fail with 530"));
+
+  } else {
+    die("Can't read $ext_log: $!");
+  }
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub extlog_login_maxclientsperhost_bug3811 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/extlog.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
+
+  my $test_file = File::Spec->rel2abs($config_file);
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $max_clients = 1;
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    LogFormat => 'custom "%m %s"',
+    ExtendedLog => "$ext_log AUTH custom",
+
+    MaxClientsPerHost => $max_clients,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # First client should be able to log in...
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client1->login($user, $passwd);
+
+      # ...but the second client should fail to login.
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      eval { $client2->login($user, $passwd) };
+      unless ($@) {
+        die("Second login succeeded unexpectedly");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the log entries were
+  # properly written out.  Bug#3811 occurred because the session was
+  # disconnected before mod_log had a chance to do its work.
+  if (open(my $fh, "< $ext_log")) {
+    my $nuser = 0;
+    my $npass = 0;
+    my $saw_failed_pass = 0;
+
+    while (my $line = <$fh>) {
+      chomp($line);
+
+      if ($line =~ /^(\S+)\s+(\d+)$/) {
+        my $cmd = $1;
+        my $resp_code = $2;
+
+        if ($cmd eq 'USER') {
+          $nuser++;
+
+        } elsif ($cmd eq 'PASS') {
+          $npass++;
+
+          if ($npass == 2) {
+            if ($resp_code == 530) {
+              $saw_failed_pass = 1;
+            }
+          }
+        }
+      }
+    }
+
+    close($fh);
+
+    my $expected = 2;
+    $self->assert($expected == $nuser,
+      test_msg("Expected $expected USER commands, saw $nuser"));
+
+    $self->assert($expected == $npass,
+      test_msg("Expected $expected PASS commands, saw $npass"));
+
+    $self->assert($saw_failed_pass,
+      test_msg("Did not see second PASS to fail with 530"));
+
+  } else {
+    die("Can't read $ext_log: $!");
+  }
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub extlog_login_maxclientsperuser_bug3811 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/extlog.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
+
+  my $test_file = File::Spec->rel2abs($config_file);
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $max_clients = 1;
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    LogFormat => 'custom "%m %s"',
+    ExtendedLog => "$ext_log AUTH custom",
+
+    MaxClientsPerUser => $max_clients,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # First client should be able to log in...
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client1->login($user, $passwd);
+
+      # ...but the second client should fail to login.
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      eval { $client2->login($user, $passwd) };
+      unless ($@) {
+        die("Second login succeeded unexpectedly");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the log entries were
+  # properly written out.  Bug#3811 occurred because the session was
+  # disconnected before mod_log had a chance to do its work.
+  if (open(my $fh, "< $ext_log")) {
+    my $nuser = 0;
+    my $npass = 0;
+    my $saw_failed_pass = 0;
+
+    while (my $line = <$fh>) {
+      chomp($line);
+
+      if ($line =~ /^(\S+)\s+(\d+)$/) {
+        my $cmd = $1;
+        my $resp_code = $2;
+
+        if ($cmd eq 'USER') {
+          $nuser++;
+
+        } elsif ($cmd eq 'PASS') {
+          $npass++;
+
+          if ($npass == 2) {
+            if ($resp_code == 530) {
+              $saw_failed_pass = 1;
+            }
+          }
+        }
+      }
+    }
+
+    close($fh);
+
+    my $expected = 2;
+    $self->assert($expected == $nuser,
+      test_msg("Expected $expected USER commands, saw $nuser"));
+
+    $self->assert($expected == $npass,
+      test_msg("Expected $expected PASS commands, saw $npass"));
+
+    $self->assert($saw_failed_pass,
+      test_msg("Did not see second PASS to fail with 530"));
+
+  } else {
+    die("Can't read $ext_log: $!");
   }
 
   if ($ex) {
