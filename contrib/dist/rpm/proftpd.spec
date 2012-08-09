@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.83 2012-08-09 22:48:34 castaglia Exp $
+# $Id: proftpd.spec,v 1.84 2012-08-09 22:50:27 castaglia Exp $
 
 # Module List:
 #
@@ -53,8 +53,9 @@
 %global release_cand_version      rc1
 
 %global usecvsversion             0%{?_with_cvs:1}
+
 %global proftpd_cvs_version_main  1.3.5rc1
-%global proftpd_cvs_version_date  20110525
+%global proftpd_cvs_version_date  20120731
 
 # Handle optional functionality
 #
@@ -151,7 +152,7 @@ Requires(post):         /sbin/chkconfig
 Requires(preun):        /sbin/service, /sbin/chkconfig
 Requires(postun):       /sbin/service
 %endif
-BuildRequires:          pkgconfig, pam-devel, ncurses-devel, zlib-devel
+BuildRequires:          gettext, pkgconfig, pam-devel, ncurses-devel, zlib-devel
 BuildRequires:          libacl-devel, libcap-devel
 Provides:               ftpserver
 Obsoletes:              proftpd-core < %{version}-%{release}, proftpd-standalone < %{version}-%{release}, proftpd-inetd < %{version}-%{release}
@@ -373,6 +374,9 @@ install -p -m 644 contrib/dist/rpm/proftpd.logrotate %{buildroot}/etc/logrotate.
 # Create anonymous ftp area
 mkdir -p %{buildroot}%{_localstatedir}/ftp/pub/
 
+# Find translations
+%find_lang proftpd
+
 # We do not want this dangling symlink to make it into the RPM
 rm -f contrib/README.mod_sql
 
@@ -430,8 +434,7 @@ fi
 rm -rf %{buildroot}
 rm -rf %{_builddir}/%{name}-%{version}
 
-%files
-%defattr(-,root,root)
+%files -f proftpd.lang
 %{_bindir}/ftpdctl
 %{_sbindir}/ftpscrub
 %{_sbindir}/ftpshut
@@ -497,7 +500,6 @@ rm -rf %{_builddir}/%{name}-%{version}
 
 %if 0%{?_with_ldap:1}
 %files ldap
-%defattr(-,root,root)
 %doc README.LDAP contrib/mod_quotatab_ldap.ldif contrib/mod_quotatab_ldap.schema
 %{_libexecdir}/proftpd/mod_ldap.so
 %{_libexecdir}/proftpd/mod_quotatab_ldap.so
@@ -539,8 +541,16 @@ rm -rf %{_builddir}/%{name}-%{version}
 %{_mandir}/man1/ftpwho.1*
 
 %changelog
+* Tue Jul 31 2012 Paul Howarth <paul@city-fan.org>
+- Package translations and BR: gettext to make sure we get them
+- Drop %%defattr, redundant since rpm 4.4
+
 * Tue Jan 10 2012 Paul Howarth <paul@city-fan.org>
 - devel package requires gcc and libtool (for prxs)
+
+* Fri Nov 11 2011 Paul Howarth <paul@city-fan.org>
+- mod_wrap2 and friends don't need tcp_wrappers, so move them from the wrap
+  subpackage to the main package
 
 * Tue Oct  4 2011 Paul Howarth <paul@city-fan.org>
 - Upstream RPM package refactored to support Red Hat/Fedora based distributions
