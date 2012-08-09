@@ -132,7 +132,9 @@ if (scalar(@ARGV) > 0) {
     t/config/include.t
     t/config/listoptions.t
     t/config/maxclients.t
+    t/config/maxclientsperclass.t
     t/config/maxclientsperhost.t
+    t/config/maxclientsperuser.t
     t/config/maxcommandrate.t
     t/config/maxconnectionsperhost.t
     t/config/maxinstances.t
