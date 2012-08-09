@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.82 2012-01-20 03:01:35 castaglia Exp $
+# $Id: proftpd.spec,v 1.83 2012-08-09 22:48:34 castaglia Exp $
 
 # Module List:
 #
@@ -22,6 +22,9 @@
 #   mod_site_misc
 #   mod_sql
 #   mod_sql_passwd
+#   mod_wrap2
+#   mod_wrap2_file
+#   mod_wrap2_sql
 #
 # Dynamic modules with additional build or runtime dependencies, not built by default
 #
@@ -35,9 +38,6 @@
 #   mod_tls (needs openssl [--with ssl])
 #   mod_tls_shmcache (needs openssl [--with ssl])
 #   mod_wrap (needs tcp_wrappers [--with wrap])
-#   mod_wrap2 (needs tcp_wrappers [--with wrap])
-#   mod_wrap2_file (needs tcp_wrappers [--with wrap])
-#   mod_wrap2_sql (needs tcp_wrappers [--with wrap])
 #
 # Note: ALL optional features can be enabled using --with everything
 # RHEL5 and clones don't have suitably recent versions of pcre/libmemcached
@@ -105,7 +105,7 @@ BuildRequires: postgresql-devel
 BuildRequires: openssl-devel
 %endif
 #
-# --with wrap (for mod_wrap, mod_wrap2, mod_wrap2_file, mod_wrap2_sql)
+# --with wrap (for mod_wrap)
 %if 0%{?_with_wrap:1}
 # This header file might be in package tcp_wrappers or tcp_wrappers-devel
 BuildRequires: /usr/include/tcpd.h
@@ -217,7 +217,7 @@ Group:          Development/Libraries
 Requires:       proftpd = %{version}-%{release}
 # devel package requires the same devel packages as were build-required
 # for the main package
-Requires:	gcc, libtool
+Requires:       gcc, libtool
 Requires:       libacl-devel
 Requires:       libcap-devel
 Requires:       pkgconfig
@@ -289,7 +289,10 @@ STANDARD_MODULE_LIST="  mod_auth_pam            \
                         mod_rewrite             \
                         mod_shaper              \
                         mod_site_misc           \
-                        mod_sql                 "
+                        mod_sql                 \
+                        mod_wrap2               \
+                        mod_wrap2_file          \
+                        mod_wrap2_sql           "
 
 OPTIONAL_MODULE_LIST="                          \
 %{?_with_ldap:          mod_ldap}               \
@@ -303,10 +306,7 @@ OPTIONAL_MODULE_LIST="                          \
 %{?_with_ssl:           mod_tls}                \
 %{?_with_ssl:           mod_tls_shmcache}       \
 %{?_with_ssl:%{?_with_memcache:mod_tls_memcache}} \
-%{?_with_wrap:          mod_wrap}               \
-%{?_with_wrap:          mod_wrap2}              \
-%{?_with_wrap:          mod_wrap2_file}         \
-%{?_with_wrap:          mod_wrap2_sql}          "
+%{?_with_wrap:          mod_wrap}               "
 
 MODULE_LIST=$(echo ${STANDARD_MODULE_LIST} ${OPTIONAL_MODULE_LIST} mod_ifsession | tr -s '[:space:]' ':' | sed 's/:$//')
 
@@ -463,6 +463,9 @@ rm -rf %{_builddir}/%{name}-%{version}
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_tls.so}
 %{?_with_ssl:%{?_with_memcache:%{_libexecdir}/proftpd/mod_tls_memcache.so}}
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_tls_shmcache.so}
+%{_libexecdir}/proftpd/mod_wrap2.so
+%{_libexecdir}/proftpd/mod_wrap2_file.so
+%{_libexecdir}/proftpd/mod_wrap2_sql.so
 %exclude %{_libexecdir}/proftpd/*.a
 %exclude %{_libexecdir}/proftpd/*.la
 %dir %{rundir}/
@@ -502,33 +505,25 @@ rm -rf %{_builddir}/%{name}-%{version}
 
 %if 0%{?_with_mysql:1}
 %files mysql
-%defattr(-,root,root)
 %{_libexecdir}/proftpd/mod_sql_mysql.so
 %endif
 
 %if 0%{?_with_postgresql:1}
 %files postgresql
-%defattr(-,root,root)
 %{_libexecdir}/proftpd/mod_sql_postgres.so
 %endif
 
 %if 0%{?_with_wrap:1}
 %files wrap
-%defattr(-,root,root)
 %{_libexecdir}/proftpd/mod_wrap.so
-%{_libexecdir}/proftpd/mod_wrap2.so
-%{_libexecdir}/proftpd/mod_wrap2_file.so
-%{_libexecdir}/proftpd/mod_wrap2_sql.so
 %endif
 
 %files devel
-%defattr(-,root,root)
 %{_bindir}/prxs
 %{_includedir}/proftpd/
 %{_libdir}/pkgconfig/proftpd.pc
 
 %files utils
-%defattr(-,root,root)
 %doc contrib/xferstats.holger-preiss
 %{_bindir}/ftpquota
 %{_bindir}/ftpasswd
