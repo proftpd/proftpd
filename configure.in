@@ -2803,7 +2803,11 @@ BUILD_SHARED_MODULE_OBJS="$ac_build_shared_modules"
 BUILD_STATIC_MODULE_ARCHIVES="$ac_build_static_module_archives"
 BUILD_STATIC_MODULE_OBJS="$ac_build_core_modules $ac_build_static_modules"
 SHARED_MODULE_LIBS="$ac_orig_libs"
-VERSION=`cat $srcdir/include/version.h | grep "#define PROFTPD_VERSION_TEXT" | sed -e 's/^.*\"\(.*\)\"/\1/'`
+
+build_version=`cat $srcdir/include/version.h | grep "#define PROFTPD_VERSION_TEXT" | sed -e 's/^.*\"\(.*\)\"/\1/'`
+BUILD_VERSION="$build_version"
+RELEASE_VERSION=`echo $build_version | sed 's/rc.*$//'`
+RC_VERSION=`echo $build_version | sed 's/^.*rc/rc/'`
 
 dnl Substitute in our configuration paths as appropriate.  We also have to
 dnl sweet talk the environment into helping us get this right, like so...
@@ -2917,7 +2921,9 @@ AC_SUBST(LIBDIRS)
 AC_SUBST(LIBRARIES)
 AC_SUBST(CURSES_LIBS)
 AC_SUBST(UTILS_LIBS)
-AC_SUBST(VERSION)
+AC_SUBST(BUILD_VERSION)
+AC_SUBST(RELEASE_VERSION)
+AC_SUBST(RC_VERSION)
 
 AC_CONFIG_HEADER(config.h)
 

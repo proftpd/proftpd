@@ -132,7 +132,7 @@ install-pkgconfig: $(DESTDIR)$(pkgconfigdir)
 	@echo '' >> proftpd.pc
 	@echo 'Name: ProFTPD' >> proftpd.pc
 	@echo 'Description: Professional FTP Daemon' >> proftpd.pc
-	@echo 'Version: $(VERSION)' >> proftpd.pc
+	@echo 'Version: $(BUILD_VERSION)' >> proftpd.pc
 	@echo 'Requires: ' >> proftpd.pc
 	@echo 'Libs: -L$${libdir}' >> proftpd.pc
 	@echo 'Cflags: -I$${includedir}' >> proftpd.pc
