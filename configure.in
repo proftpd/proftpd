@@ -2807,7 +2807,10 @@ SHARED_MODULE_LIBS="$ac_orig_libs"
 build_version=`cat $srcdir/include/version.h | grep "#define PROFTPD_VERSION_TEXT" | sed -e 's/^.*\"\(.*\)\"/\1/'`
 BUILD_VERSION="$build_version"
 RELEASE_VERSION=`echo $build_version | sed 's/rc.*$//'`
-RC_VERSION=`echo $build_version | sed 's/^.*rc/rc/'`
+RC_VERSION=""
+if test `echo $build_version | grep -c rc` != "0"; then
+  RC_VERSION=`echo $build_version | sed 's/^.*rc/rc/'`
+fi
 
 dnl Substitute in our configuration paths as appropriate.  We also have to
 dnl sweet talk the environment into helping us get this right, like so...
