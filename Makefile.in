@@ -214,17 +214,19 @@ distclean: clean
 	rm -f include/buildstamp.h
 	rm -rf .libs/
 
-dist: depend distclean
+spec:
+	# RPM needs this in the top-level directory in order to support '-t'
+	mv -f contrib/dist/rpm/proftpd.spec .
+	cat proftpd.spec | sed 's/global proftpd_version.*/global proftpd_version\t$(RELEASE_VERSION)/' | sed 's/global release_cand_version.*/global release_cand_version\t$(RC_VERSION)/' > /tmp/proftpd-build-spec.tmp && mv /tmp/proftpd-build-spec.tmp proftpd.spec
+
+dist: depend distclean spec
 	rm -rf `find . -name CVS`
 	rm -rf `find . -name .cvsignore`
 	rm -rf `find . -name core`
 	rm -rf `find . -name '*~'`
 	rm -fr `find . -name '*.bak'`
-	# RPM needs this in the top-level directory in order to support '-t'
-	mv -f contrib/dist/rpm/proftpd.spec .
 	# Other users may need to execute these scripts
 	chmod a+x configure config.sub install-sh modules/glue.sh
-
 
 # autoheader might not change config.h.in, so touch a stamp file.
 ${srcdir}/config.h.in: stamp-h.in
