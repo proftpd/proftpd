@@ -26,7 +26,7 @@
  * This is mod_sftp_pam, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_pam.c,v 1.11 2012-07-25 23:45:01 castaglia Exp $
+ * $Id: mod_sftp_pam.c,v 1.12 2012-08-15 22:05:37 castaglia Exp $
  * $Libraries: -lpam $
  */
 
@@ -371,9 +371,11 @@ static int sftppam_driver_open(sftp_kbdint_driver_t *driver, const char *user) {
   *((unsigned char *) c->argv[0]) = FALSE;
 
   if (pr_auth_remove_auth_only_module("mod_auth_pam.c") < 0) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_PAM_VERSION
-      ": error removing 'mod_auth_pam.c' from the auth-only module list: %s",
-      strerror(errno));
+    if (errno != ENOENT) {
+      pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_PAM_VERSION
+        ": error removing 'mod_auth_pam.c' from the auth-only module list: %s",
+        strerror(errno));
+    }
   }
 
   if (pr_auth_add_auth_only_module("mod_sftp_pam.c") < 0) {
