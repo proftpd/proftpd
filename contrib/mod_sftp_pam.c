@@ -26,7 +26,7 @@
  * This is mod_sftp_pam, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_pam.c,v 1.12 2012-08-15 22:05:37 castaglia Exp $
+ * $Id: mod_sftp_pam.c,v 1.13 2012-08-16 01:25:02 castaglia Exp $
  * $Libraries: -lpam $
  */
 
@@ -410,7 +410,7 @@ static int sftppam_driver_authenticate(sftp_kbdint_driver_t *driver,
         sftppam_auth_code = PR_AUTH_BADPWD;
     }
 
-    pr_trace_msg(trace_channel, 1,
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_PAM_VERSION,
       "PAM authentication error (%d) for user '%s': %s", res, user,
       pam_strerror(sftppam_pamh, res));
 
