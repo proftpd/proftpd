@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.72 2012-07-25 23:45:01 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.73 2012-08-20 18:27:33 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1542,17 +1542,34 @@ static void sftp_wrap_conn_denied_ev(const void *event_data, void *user_data) {
  */
 
 static int sftp_init(void) {
+  unsigned long openssl_version;
 
   /* Check that the OpenSSL headers used match the version of the
    * OpenSSL library used.
    *
    * For now, we only log if there is a difference.
    */
-  if (SSLeay() != OPENSSL_VERSION_NUMBER) {
-    pr_log_pri(PR_LOG_ERR, MOD_SFTP_VERSION
-      ": compiled using OpenSSL version '%s' headers, but linked to "
-      "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
-      SSLeay_version(SSLEAY_VERSION));
+  openssl_version = SSLeay();
+
+  if (openssl_version != OPENSSL_VERSION_NUMBER) {
+    int unexpected_version_mismatch = TRUE;
+
+    if (OPENSSL_VERSION_NUMBER >= 0x1000000fL) {
+      /* OpenSSL versions after 1.0.0 try to maintain ABI compatibility.
+       * So we will warn about header/library version mismatches only if
+       * the library is older than the headers.
+       */
+      if (openssl_version >= OPENSSL_VERSION_NUMBER) {
+        unexpected_version_mismatch = FALSE;
+      }
+    }
+
+    if (unexpected_version_mismatch == TRUE) {
+      pr_log_pri(PR_LOG_ERR, MOD_SFTP_VERSION
+        ": compiled using OpenSSL version '%s' headers, but linked to "
+        "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
+        SSLeay_version(SSLEAY_VERSION));
+    }
   }
 
   pr_log_debug(DEBUG2, MOD_SFTP_VERSION ": using " OPENSSL_VERSION_TEXT);
