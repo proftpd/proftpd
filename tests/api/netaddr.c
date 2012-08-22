@@ -23,7 +23,7 @@
  */
 
 /* NetAddr API tests
- * $Id: netaddr.c,v 1.7 2012-08-22 18:02:58 castaglia Exp $
+ * $Id: netaddr.c,v 1.8 2012-08-22 21:41:06 castaglia Exp $
  */
 
 #include "tests.h"
@@ -412,9 +412,11 @@ START_TEST (netaddr_get_dnsstr_ipv6_test) {
    */
   fail_unless(strcmp(res, "localhost") == 0 ||
               strcmp(res, "localhost.localdomain") == 0 ||
+              strcmp(res, "localhost6") == 0 ||
+              strcmp(res, "localhost6.localdomain") == 0 ||
               strcmp(res, "ip6-localhost") == 0 ||
               strcmp(res, "ip6-loopback") == 0,
-    "Expected '%s', got '%s'", "localhost or localhost.localdomain", res);
+    "Expected '%s', got '%s'", "localhost, localhost.localdomain et al", res);
 }
 END_TEST
 #endif /* PR_USE_IPV6 */
