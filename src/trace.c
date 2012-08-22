@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.39 2012-08-22 23:46:29 castaglia Exp $
+ * $Id: trace.c,v 1.40 2012-08-22 23:52:37 castaglia Exp $
  */
 
 
@@ -457,6 +457,8 @@ int pr_trace_use_stderr(int use_stderr) {
       return -1;
     }
 
+    /* Avoid a file descriptor leak by closing any existing fd. */
+    (void) close(trace_logfd);
     trace_logfd = res;
   }
 
