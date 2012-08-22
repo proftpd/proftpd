@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.38 2012-08-06 03:19:12 castaglia Exp $
+ * $Id: trace.c,v 1.39 2012-08-22 23:46:29 castaglia Exp $
  */
 
 
@@ -445,6 +445,21 @@ int pr_trace_set_levels(const char *channel, int min_level, int max_level) {
 
 int pr_trace_set_options(unsigned long opts) {
   trace_opts = opts;
+  return 0;
+}
+
+int pr_trace_use_stderr(int use_stderr) {
+  if (use_stderr) {
+    int res;
+
+    res = dup(STDERR_FILENO);
+    if (res < 0) {
+      return -1;
+    }
+
+    trace_logfd = res;
+  }
+
   return 0;
 }
 
