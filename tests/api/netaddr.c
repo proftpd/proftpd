@@ -23,7 +23,7 @@
  */
 
 /* NetAddr API tests
- * $Id: netaddr.c,v 1.6 2012-04-08 15:59:11 castaglia Exp $
+ * $Id: netaddr.c,v 1.7 2012-08-22 18:02:58 castaglia Exp $
  */
 
 #include "tests.h"
@@ -283,14 +283,16 @@ END_TEST
 
 START_TEST (netaddr_get_dnsstr_test) {
   pr_netaddr_t *addr;
-  const char *res;
+  const char *ip, *res;
+
+  ip = "127.0.0.1";
 
   res = pr_netaddr_get_dnsstr(NULL);
   fail_unless(res == NULL, "Failed to handle null argument");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
-  addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
-  fail_unless(addr != NULL, "Failed to get addr for '127.0.0.1': %s",
+  addr = pr_netaddr_get_addr(p, ip, NULL);
+  fail_unless(addr != NULL, "Failed to get addr for '%s': %s", ip,
     strerror(errno));
 
   pr_netaddr_set_reverse_dns(FALSE);
@@ -298,8 +300,7 @@ START_TEST (netaddr_get_dnsstr_test) {
   res = pr_netaddr_get_dnsstr(addr);
   fail_unless(res != NULL, "Failed to get DNS str for addr: %s",
     strerror(errno));
-  fail_unless(strcmp(res, "127.0.0.1") == 0, "Expected '%s', got '%s'",
-    "127.0.0.1", res);
+  fail_unless(strcmp(res, ip) == 0, "Expected '%s', got '%s'", ip, res);
 
   pr_netaddr_set_reverse_dns(TRUE);
 
@@ -309,8 +310,7 @@ START_TEST (netaddr_get_dnsstr_test) {
   res = pr_netaddr_get_dnsstr(addr);
   fail_unless(res != NULL, "Failed to get DNS str for addr: %s",
     strerror(errno));
-  fail_unless(strcmp(res, "127.0.0.1") == 0, "Expected '%s', got '%s'",
-    "127.0.0.1", res);
+  fail_unless(strcmp(res, ip) == 0, "Expected '%s', got '%s'", ip, res);
 
   pr_netaddr_clear(addr);
 
@@ -324,8 +324,8 @@ START_TEST (netaddr_get_dnsstr_test) {
 
   /* We need to clear the netaddr internal cache as well. */
   pr_netaddr_clear_cache();
-  addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
-  fail_unless(addr != NULL, "Failed to get addr for '127.0.0.1': %s",
+  addr = pr_netaddr_get_addr(p, ip, NULL);
+  fail_unless(addr != NULL, "Failed to get addr for '%s': %s", ip,
     strerror(errno));
 
   mark_point();
@@ -337,6 +337,7 @@ START_TEST (netaddr_get_dnsstr_test) {
     strerror(errno));
 
   mark_point();
+
   /* Depending on the contents of /etc/hosts, resolving 127.0.0.1 could
    * return either "localhost" or "localhost.localdomain".  Perhaps even
    * other variations, although these should be the most common.
@@ -346,6 +347,77 @@ START_TEST (netaddr_get_dnsstr_test) {
     "Expected '%s', got '%s'", "localhost or localhost.localdomain", res);
 }
 END_TEST
+
+#ifdef PR_USE_IPV6
+START_TEST (netaddr_get_dnsstr_ipv6_test) {
+  pr_netaddr_t *addr;
+  const char *ip, *res;
+
+  ip = "::1";
+
+  res = pr_netaddr_get_dnsstr(NULL);
+  fail_unless(res == NULL, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  addr = pr_netaddr_get_addr(p, ip, NULL);
+  fail_unless(addr != NULL, "Failed to get addr for '%s': %s", ip,
+    strerror(errno));
+
+  pr_netaddr_set_reverse_dns(FALSE);
+
+  res = pr_netaddr_get_dnsstr(addr);
+  fail_unless(res != NULL, "Failed to get DNS str for addr: %s",
+    strerror(errno));
+  fail_unless(strcmp(res, ip) == 0, "Expected '%s', got '%s'", ip, res);
+
+  pr_netaddr_set_reverse_dns(TRUE);
+
+  /* Even though we should expect a DNS name, not an IP address, the
+   * previous call to pr_netaddr_get_dnsstr() cached the IP address.
+   */
+  res = pr_netaddr_get_dnsstr(addr);
+  fail_unless(res != NULL, "Failed to get DNS str for addr: %s",
+    strerror(errno));
+  fail_unless(strcmp(res, ip) == 0, "Expected '%s', got '%s'", ip, res);
+
+  pr_netaddr_clear(addr);
+
+  /* Clearing the address doesn't work, since that removes even the address
+   * info, in addition to the cached strings.
+   */
+  res = pr_netaddr_get_dnsstr(addr);
+  fail_unless(res != NULL, "Failed to get DNS str for addr: %s",
+    strerror(errno));
+  fail_unless(strcmp(res, "") == 0, "Expected '%s', got '%s'", "", res);
+
+  /* We need to clear the netaddr internal cache as well. */
+  pr_netaddr_clear_cache();
+  addr = pr_netaddr_get_addr(p, ip, NULL);
+  fail_unless(addr != NULL, "Failed to get addr for '%s': %s", ip,
+    strerror(errno));
+
+  mark_point();
+  fail_unless(addr->na_have_dnsstr == 0, "addr already has cached DNS str");
+
+  mark_point();
+  res = pr_netaddr_get_dnsstr(addr);
+  fail_unless(res != NULL, "Failed to get DNS str for addr: %s",
+    strerror(errno));
+
+  mark_point();
+
+  /* Depending on the contents of /etc/hosts, resolving ::1 could
+   * return either "localhost" or "localhost.localdomain".  Perhaps even
+   * other variations, although these should be the most common.
+   */
+  fail_unless(strcmp(res, "localhost") == 0 ||
+              strcmp(res, "localhost.localdomain") == 0 ||
+              strcmp(res, "ip6-localhost") == 0 ||
+              strcmp(res, "ip6-loopback") == 0,
+    "Expected '%s', got '%s'", "localhost or localhost.localdomain", res);
+}
+END_TEST
+#endif /* PR_USE_IPV6 */
 
 START_TEST (netaddr_get_ipstr_test) {
   pr_netaddr_t *addr;
@@ -537,6 +609,9 @@ Suite *tests_get_netaddr_suite(void) {
   tcase_add_test(testcase, netaddr_set_port_test);
   tcase_add_test(testcase, netaddr_set_reverse_dns_test);
   tcase_add_test(testcase, netaddr_get_dnsstr_test);
+#ifdef PR_USE_IPV6
+  tcase_add_test(testcase, netaddr_get_dnsstr_ipv6_test);
+#endif /* PR_USE_IPV6 */
   tcase_add_test(testcase, netaddr_get_ipstr_test);
   tcase_add_test(testcase, netaddr_validate_dns_str_test);
   tcase_add_test(testcase, netaddr_get_localaddr_str_test);
