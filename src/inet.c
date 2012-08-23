@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.146 2012-08-06 23:05:12 castaglia Exp $
+ * $Id: inet.c,v 1.147 2012-08-23 06:51:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1004,7 +1004,9 @@ int pr_inet_connect(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
 int pr_inet_connect_nowait(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
   pr_netaddr_t remote_na;
 
-  pr_inet_set_nonblock(p, c);
+  if (pr_inet_set_nonblock(p, c) < 0) {
+    return -1;
+  }
 
   /* No need to initialize the remote_na netaddr here, as we're directly
    * copying the data from the given netaddr into that memory area.
@@ -1051,8 +1053,11 @@ int pr_inet_connect_nowait(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
 int pr_inet_accept_nowait(pool *p, conn_t *c) {
   int fd;
 
-  if (c->mode == CM_LISTEN)
-    pr_inet_set_nonblock(c->pool, c);
+  if (c->mode == CM_LISTEN) {
+    if (pr_inet_set_nonblock(c->pool, c) < 0) {
+      return -1;
+    }
+  }
 
   /* A directive could enforce only IPv4 or IPv6 connections here, by
    * actually using a sockaddr argument to accept(2), and checking the
