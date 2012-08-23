@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.147 2012-08-23 06:51:36 castaglia Exp $
+ * $Id: inet.c,v 1.148 2012-08-23 07:19:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -868,7 +868,8 @@ int pr_inet_set_nonblock(pool *p, conn_t *c) {
 
   errno = EBADF;		/* Default */
 
-  if (c->mode == CM_LISTEN) {
+  if (c->mode == CM_LISTEN ||
+      c->mode == CM_CONNECT) {
     flags = fcntl(c->listen_fd, F_GETFL);
     res = fcntl(c->listen_fd, F_SETFL, flags|O_NONBLOCK);
 
@@ -893,7 +894,8 @@ int pr_inet_set_block(pool *p, conn_t *c) {
 
   errno = EBADF;		/* Default */
 
-  if (c->mode == CM_LISTEN) {
+  if (c->mode == CM_LISTEN ||
+      c->mode == CM_CONNECT) {
     flags = fcntl(c->listen_fd, F_GETFL);
     res = fcntl(c->listen_fd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
 
@@ -959,7 +961,12 @@ int pr_inet_connect(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
   pr_netaddr_t remote_na;
   int res = 0;
 
-  pr_inet_set_block(p, c);
+  c->mode = CM_CONNECT;
+  if (pr_inet_set_block(p, c) < 0) {
+    c->mode = CM_ERROR;
+    c->xerrno = errno;
+    return -1;
+  }
 
   /* No need to initialize the remote_na netaddr here, as we're directly
    * copying the data from the given netaddr into that memory area.
@@ -967,8 +974,6 @@ int pr_inet_connect(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
 
   memcpy(&remote_na, addr, sizeof(remote_na));
   pr_netaddr_set_port(&remote_na, htons(port));
-
-  c->mode = CM_CONNECT;
 
   while (TRUE) {
     if ((res = connect(c->listen_fd, pr_netaddr_get_sockaddr(&remote_na),
@@ -989,6 +994,7 @@ int pr_inet_connect(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
   c->mode = CM_OPEN;
 
   if (pr_inet_get_conn_info(c, c->listen_fd) < 0) {
+    c->mode = CM_ERROR;
     c->xerrno = errno;
     return -1;
   }
@@ -1004,7 +1010,10 @@ int pr_inet_connect(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
 int pr_inet_connect_nowait(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
   pr_netaddr_t remote_na;
 
+  c->mode = CM_CONNECT;
   if (pr_inet_set_nonblock(p, c) < 0) {
+    c->mode = CM_ERROR;
+    c->xerrno = errno;
     return -1;
   }
 
@@ -1015,7 +1024,6 @@ int pr_inet_connect_nowait(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
   memcpy(&remote_na, addr, sizeof(remote_na));
   pr_netaddr_set_port(&remote_na, htons(port));
 
-  c->mode = CM_CONNECT;
   if (connect(c->listen_fd, pr_netaddr_get_sockaddr(&remote_na),
       pr_netaddr_get_sockaddr_len(&remote_na)) == -1) {
     if (errno != EINPROGRESS && errno != EALREADY) {
@@ -1023,6 +1031,7 @@ int pr_inet_connect_nowait(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
       c->xerrno = errno;
 
       pr_inet_set_block(c->pool, c);
+
       errno = c->xerrno;
       return -1;
     }
