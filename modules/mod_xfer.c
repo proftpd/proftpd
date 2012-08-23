@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.303 2012-05-30 21:52:34 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.304 2012-08-23 05:02:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2083,8 +2083,9 @@ MODRET xfer_retr(cmd_rec *cmd) {
       int xerrno = errno;
 
       retr_abort();
-
       pr_data_abort(xerrno, FALSE);
+
+      errno = xerrno;
       return PR_ERROR(cmd);
     }
 

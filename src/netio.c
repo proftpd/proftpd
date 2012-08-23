@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.54 2012-02-24 16:46:45 castaglia Exp $
+ * $Id: netio.c,v 1.55 2012-08-23 05:03:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -180,6 +180,19 @@ static int core_netio_poll_cb(pr_netio_stream_t *nstrm) {
   tval.tv_usec = 0;
 
   res = select(nstrm->strm_fd + 1, rfdsp, wfdsp, NULL, &tval);
+  while (res < 0) {
+    int xerrno = errno;
+
+    /* Watch for EAGAIN, and handle it by delaying temporarily. */
+    if (xerrno == EAGAIN) {
+      errno = EINTR;
+      pr_signals_handle();
+      continue;
+    }
+
+    break; 
+  }
+
   return res;
 }
 
