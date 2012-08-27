@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.23 2012-03-13 16:50:02 castaglia Exp $
+ * $Id: crypto.c,v 1.24 2012-08-27 20:34:40 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -146,11 +146,9 @@ struct sftp_digest {
 static struct sftp_digest digests[] = {
 #ifdef HAVE_SHA256_OPENSSL
   { "hmac-sha2-256",	"sha256",		EVP_sha256,	0, TRUE, TRUE },
-  { "hmac-sha2-256-96",	"sha256",		EVP_sha256,	12,TRUE, TRUE },
 #endif /* SHA256 support in OpenSSL */
 #ifdef HAVE_SHA512_OPENSSL
   { "hmac-sha2-512",	"sha512",		EVP_sha512,	0, TRUE, TRUE },
-  { "hmac-sha2-512-96",	"sha512",		EVP_sha512,	12,TRUE, TRUE },
 #endif /* SHA512 support in OpenSSL */
   { "hmac-sha1",	"sha1",		EVP_sha1,	0, 	TRUE, TRUE },
   { "hmac-sha1-96",	"sha1",		EVP_sha1,	12,	TRUE, TRUE },
