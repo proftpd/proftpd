@@ -24326,7 +24326,9 @@ done
 
 
 
-for ac_header in sys/file.h sys/mman.h sys/types.h sys/ucred.h sys/uio.h
+
+
+for ac_header in sys/file.h sys/mman.h sys/types.h sys/ucred.h sys/uio.h net/if.h ifaddrs.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
@@ -31815,7 +31817,8 @@ done
 
 
 
-for ac_func in bcopy crypt fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo futimes getpgid getpgrp nl_langinfo
+
+for ac_func in bcopy crypt fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo futimes getifaddrs getpgid getpgrp nl_langinfo
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 { echo "$as_me:$LINENO: checking for $ac_func" >&5
