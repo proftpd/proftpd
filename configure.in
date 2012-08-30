@@ -1412,7 +1412,7 @@ fi
 
 AC_CHECK_HEADERS(bstring.h crypt.h ctype.h execinfo.h iconv.h inttypes.h langinfo.h limits.h locale.h)
 AC_CHECK_HEADERS(string.h strings.h stropts.h)
-AC_CHECK_HEADERS(sys/file.h sys/mman.h sys/types.h sys/ucred.h sys/uio.h)
+AC_CHECK_HEADERS(sys/file.h sys/mman.h sys/types.h sys/ucred.h sys/uio.h net/if.h ifaddrs.h)
 
 dnl These particular checks are done a little differently because on some
 dnl platforms, <sys/mount.h> wants <sys/param.h> to be included first.
@@ -1654,7 +1654,7 @@ LDFLAGS=$old_LDFLAGS
 AC_PROG_GCC_TRADITIONAL
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(bcopy crypt fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo futimes getpgid getpgrp nl_langinfo)
+AC_CHECK_FUNCS(bcopy crypt fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo futimes getifaddrs getpgid getpgrp nl_langinfo)
 AC_CHECK_FUNC(gai_strerror,
   AC_DEFINE(HAVE_GAI_STRERROR, 1,
     [Define if you have the gai_strerror() function]),
