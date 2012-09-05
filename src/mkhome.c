@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2011 The ProFTPD Project team
+ * Copyright (c) 2003-2012 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.17 2011-05-23 21:22:24 castaglia Exp $
+ * $Id: mkhome.c,v 1.18 2012-09-05 16:40:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -266,6 +266,7 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
 int create_home(pool *p, const char *home, const char *user, uid_t uid,
     gid_t gid) {
   int res;
+  unsigned long flags = 0;
   config_rec *c;
   mode_t dir_mode, dst_mode;
   uid_t dir_uid, dst_uid;
@@ -283,13 +284,16 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
   dir_gid = *((gid_t *) c->argv[5]);
   dir_mode = *((mode_t *) c->argv[2]);
   home_gid = *((gid_t *) c->argv[6]);
+  flags = *((unsigned long *) c->argv[7]);
 
   dst_uid = uid;
   dst_gid = (home_gid == -1) ? gid : home_gid;
 
   dst_mode = *((mode_t *) c->argv[1]);
 
-  PRIVS_ROOT
+  if (!(flags & PR_MKHOME_FL_USE_USER_PRIVS)) {
+    PRIVS_ROOT
+  }
 
   res = create_path(p, home, user, dir_uid, dir_gid, dir_mode,
     dst_uid, dst_gid, dst_mode);

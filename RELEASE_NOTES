@@ -58,6 +58,9 @@ ChangeLog files.
     AllowFilter, DenyFilter
       case-insensitive (from Bug#3592)
 
+    CreateHome
+      NoRootPrivs (Bug#3813)
+
     ListOptions
       Handling of -1 option (Bug#3744)
       LISTOnly, NLSTOnly keywords (Bug#3746)
@@ -107,4 +110,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-08-01 22:06:49 $
+Last Updated: $Date: 2012-09-05 16:40:57 $

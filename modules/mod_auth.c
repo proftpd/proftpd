@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.305 2012-08-08 23:58:22 castaglia Exp $
+ * $Id: mod_auth.c,v 1.306 2012-09-05 16:40:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2348,15 +2348,18 @@ MODRET set_createhome(cmd_rec *cmd) {
   config_rec *c = NULL;
   uid_t cuid = 0;
   gid_t cgid = 0, hgid = -1;
+  unsigned long flags = 0UL;
 
-  if (cmd->argc-1 < 1)
+  if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  if (bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   /* No need to process the rest if bool is FALSE. */
   if (bool == FALSE) {
@@ -2396,22 +2399,26 @@ MODRET set_createhome(cmd_rec *cmd) {
 
         skel_path = cmd->argv[++i];
 
-        if (*skel_path != '/')
+        if (*skel_path != '/') {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "skel path '",
             skel_path, "' is not a full path", NULL));
+        }
 
-        if (pr_fsio_stat(skel_path, &st) < 0)
+        if (pr_fsio_stat(skel_path, &st) < 0) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to stat '",
             skel_path, "': ", strerror(errno), NULL));
+        }
 
-        if (!S_ISDIR(st.st_mode))
+        if (!S_ISDIR(st.st_mode)) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", skel_path,
             "' is not a directory", NULL));
+        }
 
         /* Must not be world-writable. */
-        if (st.st_mode & S_IWOTH)
+        if (st.st_mode & S_IWOTH) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", skel_path,
             "' is world-writable", NULL));
+        }
 
         /* Move the index past the skel parameter */
         i++;
@@ -2492,6 +2499,10 @@ MODRET set_createhome(cmd_rec *cmd) {
         /* Move the index past the homegid parameter */
         i++;
 
+      } else if (strcasecmp(cmd->argv[i], "NoRootPrivs") == 0) {
+        flags |= PR_MKHOME_FL_USE_USER_PRIVS;
+        i++;
+
       } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown parameter: '",
           cmd->argv[i], "'", NULL));
@@ -2499,8 +2510,8 @@ MODRET set_createhome(cmd_rec *cmd) {
     }
   }
 
-  c = add_config_param(cmd->argv[0], 7, NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 8, NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL);
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
@@ -2509,8 +2520,9 @@ MODRET set_createhome(cmd_rec *cmd) {
   c->argv[2] = pcalloc(c->pool, sizeof(mode_t));
   *((mode_t *) c->argv[2]) = dirmode;
 
-  if (skel_path)
+  if (skel_path) {
     c->argv[3] = pstrdup(c->pool, skel_path);
+  }
 
   c->argv[4] = pcalloc(c->pool, sizeof(uid_t));
   *((uid_t *) c->argv[4]) = cuid;
@@ -2518,6 +2530,8 @@ MODRET set_createhome(cmd_rec *cmd) {
   *((gid_t *) c->argv[5]) = cgid;
   c->argv[6] = pcalloc(c->pool, sizeof(gid_t));
   *((gid_t *) c->argv[6]) = hgid;
+  c->argv[7] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[7]) = flags;
  
   return PR_HANDLED(cmd);
 }
