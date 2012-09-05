@@ -175,6 +175,7 @@ install-man: $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/ma
 	$(INSTALL_MAN) $(top_srcdir)/utils/ftpcount.1 $(DESTDIR)$(mandir)/man1
 	$(INSTALL_MAN) $(top_srcdir)/utils/ftptop.1   $(DESTDIR)$(mandir)/man1
 	$(INSTALL_MAN) $(top_srcdir)/utils/ftpwho.1   $(DESTDIR)$(mandir)/man1
+	$(INSTALL_MAN) $(top_srcdir)/src/proftpd.conf.5 $(DESTDIR)$(mandir)/man5
 	$(INSTALL_MAN) $(top_srcdir)/src/xferlog.5    $(DESTDIR)$(mandir)/man5
 
 install-all: install-proftpd install-modules install-utils install-conf install-man install-libs install-headers install-pkgconfig install-locales $(INSTALL_DEPS)
