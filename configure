@@ -37755,7 +37755,7 @@ _ACEOF
 ac_config_headers="$ac_config_headers config.h"
 
 
-ac_config_files="$ac_config_files contrib/Makefile include/Makefile lib/Makefile locale/Makefile modules/Makefile src/Makefile src/prxs src/ftpdctl.8 src/proftpd.8 src/xferlog.5 tests/Makefile utils/Makefile utils/ftpcount.1 utils/ftpscrub.8 utils/ftpshut.8 utils/ftptop.1 utils/ftpwho.1 Makefile Make.rules"
+ac_config_files="$ac_config_files contrib/Makefile include/Makefile lib/Makefile locale/Makefile modules/Makefile src/Makefile src/prxs src/ftpdctl.8 src/proftpd.8 src/proftpd.conf.5 src/xferlog.5 tests/Makefile utils/Makefile utils/ftpcount.1 utils/ftpscrub.8 utils/ftpshut.8 utils/ftptop.1 utils/ftpwho.1 Makefile Make.rules"
 
 ac_config_commands="$ac_config_commands default"
 
@@ -38699,6 +38699,7 @@ do
     "src/prxs") CONFIG_FILES="$CONFIG_FILES src/prxs" ;;
     "src/ftpdctl.8") CONFIG_FILES="$CONFIG_FILES src/ftpdctl.8" ;;
     "src/proftpd.8") CONFIG_FILES="$CONFIG_FILES src/proftpd.8" ;;
+    "src/proftpd.conf.5") CONFIG_FILES="$CONFIG_FILES src/proftpd.conf.5" ;;
     "src/xferlog.5") CONFIG_FILES="$CONFIG_FILES src/xferlog.5" ;;
     "tests/Makefile") CONFIG_FILES="$CONFIG_FILES tests/Makefile" ;;
     "utils/Makefile") CONFIG_FILES="$CONFIG_FILES utils/Makefile" ;;
