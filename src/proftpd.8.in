@@ -127,7 +127,7 @@ can be found on
 .BR http://www.proftpd.org/credits.html
 .PD
 .SH SEE ALSO
-.BR inetd(8), ftp(1), ftpwho(1), ftpcount(1), ftpshut(8)
+.BR proftpd.conf(5), inetd(8), ftp(1), ftpwho(1), ftpcount(1), ftpshut(8)
 .PP
 Full documentation on ProFTPD, including configuration and FAQs, is available at
 .BR http://www.proftpd.org/
