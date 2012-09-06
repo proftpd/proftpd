@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.92 2012-04-24 21:50:27 castaglia Exp $
+ * $Id: auth.c,v 1.93 2012-09-06 17:13:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1406,7 +1406,7 @@ int pr_auth_chroot(const char *path) {
   now = time(NULL);
   (void) pr_localtime(NULL, &now);
 
-  pr_event_generate("core.chroot", NULL);
+  pr_event_generate("core.chroot", path);
 
   PRIVS_ROOT
   res = pr_fsio_chroot(path);
