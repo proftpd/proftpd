@@ -100,6 +100,9 @@ ChangeLog files.
     UseEncoding
       relaxed restrictions, new "strict" keyword (Bug#3737)
 
+    <VirtualHost>, DefaultAddress, MasqueradeAddress
+      use of network interface/device names (Bug#3820)
+
   + Deprecated configuration directives:
 
   + API changes:
@@ -110,4 +113,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-09-05 16:40:57 $
+Last Updated: $Date: 2012-09-06 17:52:40 $

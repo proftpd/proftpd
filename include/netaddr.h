@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.32 2012-08-07 06:26:39 castaglia Exp $
+ * $Id: netaddr.h,v 1.33 2012-09-06 17:52:41 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -231,6 +231,11 @@ void pr_netaddr_clear(pr_netaddr_t *);
  * NULL will be return, and an error logged.
  */
 pr_netaddr_t *pr_netaddr_get_addr(pool *, const char *, array_header **);
+
+/* Like pr_netaddr_get_addr(), with the ability to specify lookup flags. */
+pr_netaddr_t *pr_netaddr_get_addr2(pool *, const char *, array_header **,
+  unsigned int);
+#define PR_NETADDR_GET_ADDR_FL_INCL_DEVICE	0x001
 
 /* Compare the two given pr_netaddr_ts.  In order for the comparison to
  * be accurate, the pr_netaddr_ts must be of the same family (AF_INET or

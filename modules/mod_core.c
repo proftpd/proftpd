@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.426 2012-04-15 18:04:15 castaglia Exp $
+ * $Id: mod_core.c,v 1.427 2012-09-06 17:52:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -414,12 +414,14 @@ MODRET set_debuglevel(cmd_rec *cmd) {
 MODRET set_defaultaddress(cmd_rec *cmd) {
   pr_netaddr_t *main_addr = NULL;
   array_header *addrs = NULL;
+  unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
   if (cmd->argc-1 < 1)
     CONF_ERROR(cmd, "wrong number of parameters");
   CHECK_CONF(cmd, CONF_ROOT);
 
-  main_addr = pr_netaddr_get_addr(main_server->pool, cmd->argv[1], &addrs);
+  main_addr = pr_netaddr_get_addr2(main_server->pool, cmd->argv[1], &addrs,
+    addr_flags);
   if (main_addr == NULL) {
     return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
       (cmd->argv)[0], ": unable to resolve \"", cmd->argv[1], "\"",
@@ -475,7 +477,8 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
       pr_netaddr_t *addr;
       addrs = NULL;
 
-      addr = pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[i], &addrs);
+      addr = pr_netaddr_get_addr2(cmd->tmp_pool, cmd->argv[i], &addrs,
+        addr_flags);
       if (addr == NULL) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '",
           cmd->argv[i], "': ", strerror(errno), NULL));
@@ -863,6 +866,7 @@ MODRET set_defaultserver(cmd_rec *cmd) {
 MODRET set_masqueradeaddress(cmd_rec *cmd) {
   config_rec *c = NULL;
   pr_netaddr_t *masq_addr = NULL;
+  unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
@@ -870,7 +874,8 @@ MODRET set_masqueradeaddress(cmd_rec *cmd) {
   /* We can only masquerade as one address, so we don't need to know if the
    * given name might map to multiple addresses.
    */
-  masq_addr = pr_netaddr_get_addr(cmd->server->pool, cmd->argv[1], NULL);
+  masq_addr = pr_netaddr_get_addr2(cmd->server->pool, cmd->argv[1], NULL,
+    addr_flags);
   if (masq_addr == NULL) {
     return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool, cmd->argv[0],
       ": unable to resolve \"", cmd->argv[1], "\"", NULL));
@@ -3317,14 +3322,16 @@ MODRET add_virtualhost(cmd_rec *cmd) {
   server_rec *s = NULL;
   pr_netaddr_t *addr = NULL;
   array_header *addrs = NULL;
+  unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
   if (cmd->argc-1 < 1)
     CONF_ERROR(cmd, "wrong number of parameters");
   CHECK_CONF(cmd, CONF_ROOT);
 
   s = pr_parser_server_ctxt_open(cmd->argv[1]);
-  if (s == NULL)
+  if (s == NULL) {
     CONF_ERROR(cmd, "unable to create virtual server configuration");
+  }
 
   /* It's possible for a server to have multiple IP addresses (e.g. a DNS
    * name that has both A and AAAA records).  We need to handle that case
@@ -3332,7 +3339,7 @@ MODRET add_virtualhost(cmd_rec *cmd) {
    * are server_recs for each one.
    */
 
-  addr = pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[1], &addrs);
+  addr = pr_netaddr_get_addr2(cmd->tmp_pool, cmd->argv[1], &addrs, addr_flags);
   if (addr == NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '", cmd->argv[1],
       "': ", strerror(errno), NULL));
@@ -3366,7 +3373,8 @@ MODRET add_virtualhost(cmd_rec *cmd) {
     for (i = 2; i < cmd->argc; i++) {
       addrs = NULL;
 
-      addr = pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[i], &addrs);
+      addr = pr_netaddr_get_addr2(cmd->tmp_pool, cmd->argv[i], &addrs,
+        addr_flags);
       if (addr == NULL) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '",
           cmd->argv[i], "': ", strerror(errno), NULL));
@@ -3401,6 +3409,7 @@ MODRET end_virtualhost(cmd_rec *cmd) {
   server_rec *s = NULL, *next_s = NULL;
   pr_netaddr_t *addr = NULL;
   const char *address = NULL;
+  unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_VIRTUAL);
@@ -3415,7 +3424,7 @@ MODRET end_virtualhost(cmd_rec *cmd) {
   /* Any additional addresses associated with the configured address have
    * already been handled, so we can ignore them here.
    */
-  addr = pr_netaddr_get_addr(cmd->tmp_pool, address, NULL);
+  addr = pr_netaddr_get_addr2(cmd->tmp_pool, address, NULL, addr_flags);
   if (addr == NULL) {
     /* This bad server context will be removed in fixup_servers(), after
      * the parsing has completed, so we need do nothing else here.
@@ -3443,7 +3452,8 @@ MODRET end_virtualhost(cmd_rec *cmd) {
           serv_addrstr = s->ServerAddress ? s->ServerAddress :
             pr_netaddr_get_localaddr_str(cmd->tmp_pool);
 
-          serv_addr = pr_netaddr_get_addr(cmd->tmp_pool, serv_addrstr, NULL);
+          serv_addr = pr_netaddr_get_addr2(cmd->tmp_pool, serv_addrstr, NULL,
+            addr_flags);
         }
 
         if (serv_addr == NULL) {

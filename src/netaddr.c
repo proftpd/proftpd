@@ -23,10 +23,17 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.84 2012-09-06 17:14:26 castaglia Exp $
+ * $Id: netaddr.c,v 1.85 2012-09-06 17:52:41 castaglia Exp $
  */
 
 #include "conf.h"
+
+#if HAVE_NET_IF_H
+# include <net/if.h>
+#endif
+#if HAVE_IFADDRS_H
+# include <ifaddrs.h>
+#endif
 
 /* Define an IPv4 equivalent of the IN6_IS_ADDR_LOOPBACK macro. */
 #undef IN_IS_ADDR_LOOPBACK
@@ -696,8 +703,94 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
   return na;
 }
 
-pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
+static pr_netaddr_t *get_addr_by_device(pool *p, const char *name,
     array_header **addrs) {
+#ifdef HAVE_GETIFADDRS
+  struct ifaddrs *ifaddr;
+  pr_netaddr_t *na = NULL;
+  int res, xerrno;
+
+  /* Try to use the given name as a device/interface name, and see if we
+   * can suss out the IP address(es) to use based on that.
+   */
+
+  res = getifaddrs(&ifaddr);
+  if (res < 0) {
+    xerrno = errno;
+
+    pr_trace_msg(trace_channel, 1,
+      "error retrieving interfaces via getifaddrs(3): %s", strerror(xerrno));
+
+  } else {
+    struct ifaddrs *ifa;
+    int found_device = FALSE;
+
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+
+      /* We're only looking for addresses, not stats. */
+      if (ifa->ifa_addr->sa_family == AF_PACKET) {
+        continue;
+      }
+
+      if (strcmp(ifa->ifa_name, name) == 0) {
+        if (found_device == FALSE) {
+          na = (pr_netaddr_t *) pcalloc(p, sizeof(pr_netaddr_t));
+
+          pr_netaddr_set_family(na, ifa->ifa_addr->sa_family);
+          pr_netaddr_set_sockaddr(na, ifa->ifa_addr);
+
+          pr_trace_msg(trace_channel, 7,
+            "resolved '%s' to interface with %s address %s", name,
+            ifa->ifa_addr->sa_family == AF_INET ? "IPv4" : "IPv6",
+            pr_netaddr_get_ipstr(na));
+
+          found_device = TRUE;
+
+          /* If the caller did not request additional addresses, then
+           * return now.  Otherwise, we keep looking for the other
+           * addresses bound to this interface.
+           */
+          if (addrs == NULL) {
+            break;
+          }
+
+        } else {
+          pr_netaddr_t **elt;
+
+          /* We've already found the first match; this block happens
+           * if the caller wants all of the addresses for this interface.
+           */
+
+          *addrs = make_array(p, 0, sizeof(pr_netaddr_t *));
+          elt = push_array(*addrs);
+
+          *elt = pcalloc(p, sizeof(pr_netaddr_t));
+          pr_netaddr_set_family(*elt, ifa->ifa_addr->sa_family);
+          pr_netaddr_set_sockaddr(*elt, ifa->ifa_addr);
+
+          pr_trace_msg(trace_channel, 7,
+            "resolved '%s' to interface with %s address %s", name,
+            ifa->ifa_addr->sa_family == AF_INET ? "IPv4" : "IPv6",
+            pr_netaddr_get_ipstr(*elt));
+        }
+      }
+    }
+
+    if (found_device) {
+      return na;
+    }
+  }
+
+  errno = ENOENT;
+#else
+  errno = ENOSYS;
+#endif /* HAVE_GETIFADDRS */
+
+  return NULL;
+}
+
+pr_netaddr_t *pr_netaddr_get_addr2(pool *p, const char *name,
+    array_header **addrs, unsigned int flags) {
   pr_netaddr_t *na = NULL;
 
   if (p == NULL ||
@@ -750,10 +843,22 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     return na;
   }
 
+  if (flags & PR_NETADDR_GET_ADDR_FL_INCL_DEVICE) {
+    na = get_addr_by_device(p, name, addrs);
+    if (na != NULL) {
+      return na;
+    }
+  }
+
   pr_trace_msg(trace_channel, 8, "failed to resolve '%s' to an IP address",
     name);
   errno = ENOENT;
   return NULL;
+}
+
+pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
+    array_header **addrs) {
+  return pr_netaddr_get_addr2(p, name, addrs, 0);
 }
 
 int pr_netaddr_get_family(const pr_netaddr_t *na) {
