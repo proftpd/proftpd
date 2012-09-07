@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.229 2012-08-01 23:35:40 castaglia Exp $
+ * $Id: mod_sql.c,v 1.230 2012-09-07 18:50:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2751,7 +2751,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
       login_user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
       if (login_user == NULL) {
-        login_user = "root";
+        login_user = "-";
       }
 
       sstrncpy(argp, login_user, sizeof(arg));
@@ -2761,18 +2761,11 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
     case 'u': {
       argp = arg;
 
-      if (session.user == NULL) {
-        char *u;
-
-        u = get_param_ptr(main_server->conf, "UserName", FALSE);
-        if (u == NULL) {
-          u = "root";
-        }
-
-        sstrncpy(argp, u, sizeof(arg));
+      if (session.user != NULL) {
+        sstrncpy(argp, session.user, sizeof(arg));
 
       } else {
-        sstrncpy(argp, session.user, sizeof(arg));
+        sstrncpy(argp, "-", sizeof(arg));
       }
 
       break;

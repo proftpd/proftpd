@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.135 2012-08-01 23:35:40 castaglia Exp $
+ * $Id: mod_log.c,v 1.136 2012-09-07 18:50:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1169,16 +1169,11 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     case META_USER:
       argp = arg;
 
-      if (session.user == NULL) {
-        char *u = get_param_ptr(cmd->server->conf, "UserName", FALSE);
-        if (u == NULL) {
-          u = "root";
-        }
-
-        sstrncpy(argp, u, sizeof(arg));
+      if (session.user != NULL) {
+        sstrncpy(argp, session.user, sizeof(arg));
 
       } else {
-        sstrncpy(argp, session.user, sizeof(arg));
+        sstrncpy(argp, "-", sizeof(arg));
       }
 
       m++;
@@ -1194,7 +1189,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
         sstrncpy(argp, login_user, sizeof(arg));
 
       } else {
-        sstrncpy(argp, "(none)", sizeof(arg));
+        sstrncpy(argp, "-", sizeof(arg));
       }
 
       m++;
