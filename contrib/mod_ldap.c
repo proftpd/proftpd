@@ -1,6 +1,6 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
- * Copyright (c) 1999-2011, John Morrissey <jwm@horde.net>
+ * Copyright (c) 1999-2012, John Morrissey <jwm@horde.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.97 2012-06-26 19:56:14 jwm Exp $
+ * $Id: mod_ldap.c,v 1.98 2012-09-07 18:48:19 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -989,7 +989,7 @@ handle_ldap_quota_lookup(cmd_rec *cmd)
 {
   char *basedn;
 
-  basedn = pr_ldap_interpolate_basedn(cmd->tmp_pool,
+  basedn = pr_ldap_interpolate_filter(cmd->tmp_pool,
     ldap_user_basedn, cmd->argv[0]);
   if (!basedn) {
     return PR_DECLINED(cmd);
