@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.85 2012-09-06 17:52:41 castaglia Exp $
+ * $Id: netaddr.c,v 1.86 2012-09-07 16:22:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -728,7 +728,11 @@ static pr_netaddr_t *get_addr_by_device(pool *p, const char *name,
     for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
 
       /* We're only looking for addresses, not stats. */
-      if (ifa->ifa_addr->sa_family == AF_PACKET) {
+      if (ifa->ifa_addr->sa_family != AF_INET
+#ifdef PR_USE_IPV6
+          && ifa->ifa_addr->sa_family != AF_INET6
+#endif /* PR_USE_IPV6 */
+         ) {
         continue;
       }
 
