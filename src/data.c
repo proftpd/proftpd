@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.141 2012-04-04 15:27:31 castaglia Exp $
+ * $Id: data.c,v 1.142 2012-09-11 23:11:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -367,6 +367,19 @@ static int data_active_open(char *reason, off_t size) {
 
   session.d = pr_inet_create_conn(session.pool, -1, bind_addr, bind_port, TRUE);
 
+  /* Default remote address to which to connect for an active transfer,
+   * if the client has not specified a different address via PORT/EPRT,
+   * as per RFC 959.
+   */
+  if (pr_netaddr_get_family(&session.data_addr) == AF_UNSPEC) {
+    pr_log_debug(DEBUG6, "Client has not sent previous PORT/EPRT command, "
+      "defaulting to %s#%u for active transfer",
+      pr_netaddr_get_ipstr(session.c->remote_addr), session.c->remote_port);
+
+    pr_netaddr_set_family(&session.data_addr, pr_netaddr_get_family(session.c->remote_addr));
+    pr_netaddr_set_sockaddr(&session.data_addr, pr_netaddr_get_sockaddr(session.c->remote_addr));
+  }
+
   /* Set the "stalled" timer, if any, to prevent the connection
    * open from taking too long
    */
@@ -398,6 +411,10 @@ static int data_active_open(char *reason, off_t size) {
 
   if (pr_inet_connect(session.d->pool, session.d, &session.data_addr,
       session.data_port) == -1) {
+    pr_log_debug(DEBUG6,
+      "Error connecting to %s#%u for active data transfer: %s",
+      pr_netaddr_get_ipstr(&session.data_addr), session.data_port,
+      strerror(session.d->xerrno));
     pr_response_add_err(R_425, _("Unable to build data connection: %s"),
       strerror(session.d->xerrno));
     errno = session.d->xerrno;
