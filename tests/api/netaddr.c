@@ -23,7 +23,7 @@
  */
 
 /* NetAddr API tests
- * $Id: netaddr.c,v 1.8 2012-08-22 21:41:06 castaglia Exp $
+ * $Id: netaddr.c,v 1.9 2012-09-12 01:24:20 castaglia Exp $
  */
 
 #include "tests.h"
@@ -547,6 +547,106 @@ START_TEST (netaddr_is_v6_test) {
 END_TEST
 
 START_TEST (netaddr_is_v4mappedv6_test) {
+  int res;
+  const char *name;
+  pr_netaddr_t *addr;
+
+  res = pr_netaddr_is_v4mappedv6(NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  name = "127.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  res = pr_netaddr_is_v4mappedv6(addr);
+  fail_unless(res == -1, "Expected -1 for IPv4 address '%s', got %d",
+    name, res);
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL; got %d [%s]",
+    errno, strerror(errno));
+
+  name = "::1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+#ifdef PR_USE_IPV6
+  fail_unless(addr != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  res = pr_netaddr_is_v4mappedv6(addr);
+  fail_unless(res == FALSE, "Expected 'false' for IPv6 address '%s', got %d",
+    name, res);
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL; got %d [%s]",
+    errno, strerror(errno));
+#else
+  fail_unless(addr == NULL,
+    "IPv6 support disabled, should not be able to get addr for '%s'", name);
+#endif /* PR_USE_IPV6 */
+
+  name = "::ffff:127.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  res = pr_netaddr_is_v4mappedv6(addr);
+#ifdef PR_USE_IPV6
+  fail_unless(res == TRUE,
+    "Expected 'true' for IPv4-mapped IPv6 address '%s', got %d", name, res);
+#else
+  fail_unless(res == -1,
+    "Expected -1 for IPv4-mapped IPv6 address '%s' (--disable-ipv6 used)");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL; got %d [%s]",
+    errno, strerror(errno));
+#endif /* PR_USE_IPV6 */
+}
+END_TEST
+
+START_TEST (netaddr_is_rfc1918_test) {
+  int res;
+  const char *name;
+  pr_netaddr_t *addr;
+
+  res = pr_netaddr_is_rfc1918(NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  name = "127.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  res = pr_netaddr_is_rfc1918(addr);
+  fail_unless(res == FALSE, "Failed to handle non-RFC1918 IPv4 address");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  name = "::1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+#ifdef PR_USE_IPV6
+  fail_unless(addr != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  res = pr_netaddr_is_rfc1918(addr);
+  fail_unless(res == FALSE, "Failed to handle IPv6 address");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+#else
+  fail_unless(addr == NULL,
+    "IPv6 support disabled, should not be able to get addr for '%s'", name);
+#endif /* PR_USE_IPV6 */
+
+  name = "10.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  res = pr_netaddr_is_rfc1918(addr);
+  fail_unless(res == TRUE, "Expected 'true' for address '%s'", name);
+
+  name = "192.168.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  res = pr_netaddr_is_rfc1918(addr);
+  fail_unless(res == TRUE, "Expected 'true' for address '%s'", name);
+
+  name = "172.31.200.55";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  res = pr_netaddr_is_rfc1918(addr);
+  fail_unless(res == TRUE, "Expected 'true' for address '%s'", name);
 }
 END_TEST
 
@@ -620,6 +720,7 @@ Suite *tests_get_netaddr_suite(void) {
   tcase_add_test(testcase, netaddr_is_v4_test);
   tcase_add_test(testcase, netaddr_is_v6_test);
   tcase_add_test(testcase, netaddr_is_v4mappedv6_test);
+  tcase_add_test(testcase, netaddr_is_rfc1918_test);
   tcase_add_test(testcase, netaddr_disable_ipv6_test);
   tcase_add_test(testcase, netaddr_enable_ipv6_test);
 
