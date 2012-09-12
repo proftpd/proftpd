@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.87 2012-09-12 01:15:13 castaglia Exp $
+ * $Id: netaddr.c,v 1.88 2012-09-12 01:18:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -697,8 +697,8 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
         pr_freeaddrinfo(info);
       }
     }
-#endif /* PR_USE_IPV6 */
   }
+#endif /* PR_USE_IPV6 */
 
   return na;
 }
@@ -2117,6 +2117,11 @@ int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *na) {
       res = IN6_IS_ADDR_V4MAPPED(
         ((struct in6_addr *) pr_netaddr_get_inaddr(na))->s6_addr32);
 # endif
+
+      if (res != TRUE) {
+        errno = EINVAL;
+      }
+
       return res;
     }
 #endif /* PR_USE_IPV6 */
