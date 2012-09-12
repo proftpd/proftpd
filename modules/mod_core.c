@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.427 2012-09-06 17:52:41 castaglia Exp $
+ * $Id: mod_core.c,v 1.428 2012-09-12 01:15:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3787,7 +3787,7 @@ MODRET core_pasv(cmd_rec *cmd) {
 }
 
 MODRET core_port(cmd_rec *cmd) {
-  pr_netaddr_t *port_addr = NULL;
+  pr_netaddr_t *listen_addr = NULL, *port_addr = NULL;
 #ifdef PR_USE_IPV6
   char buf[INET6_ADDRSTRLEN] = {'\0'};
 #else
@@ -3796,6 +3796,7 @@ MODRET core_port(cmd_rec *cmd) {
   unsigned int h1, h2, h3, h4, p1, p2;
   unsigned short port;
   unsigned char *allow_foreign_addr = NULL, *root_revoke = NULL;
+  config_rec *c;
 
   if (session.sf_flags & SF_EPSV_ALL) {
     pr_response_add_err(R_500, _("Illegal PORT command, EPSV ALL in effect"));
@@ -3878,6 +3879,29 @@ MODRET core_port(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  /* If we are NOT listening on an RFC1918 address, BUT the client HAS
+   * sent us an RFC1918 address in its PORT command (which we know to not be
+   * routable), then ignore that address, and use the client's remote address.
+   */
+  listen_addr = session.c->local_addr;
+ 
+  c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
+  if (c != NULL) {
+    listen_addr = c->argv[0];
+  }
+ 
+  if (pr_netaddr_is_rfc1918(listen_addr) != TRUE &&
+      pr_netaddr_is_rfc1918(session.c->remote_addr) != TRUE &&
+      pr_netaddr_is_rfc1918(port_addr) == TRUE) {
+    const char *rfc1918_ipstr;
+
+    rfc1918_ipstr = pr_netaddr_get_ipstr(port_addr);
+    port_addr = pr_netaddr_dup(cmd->tmp_pool, session.c->remote_addr);
+    pr_log_debug(DEBUG1, "client sent RFC1918 address '%s' in PORT command, "
+      "ignoring it and using '%s'", rfc1918_ipstr,
+      pr_netaddr_get_ipstr(port_addr));
+  }
+
   pr_netaddr_set_family(&session.data_addr, pr_netaddr_get_family(port_addr));
   pr_netaddr_set_port(&session.data_addr, htons(port));
 
@@ -3949,12 +3973,13 @@ MODRET core_port(cmd_rec *cmd) {
 }
 
 MODRET core_eprt(cmd_rec *cmd) {
-  pr_netaddr_t na;
+  pr_netaddr_t na, *listen_addr = NULL;
   int family = 0;
   unsigned short port = 0;
   unsigned char *allow_foreign_addr = NULL, *root_revoke = NULL;
   char delim = '\0', *argstr = pstrdup(cmd->tmp_pool, cmd->argv[1]);
   char *tmp = NULL;
+  config_rec *c;
 
   if (session.sf_flags & SF_EPSV_ALL) {
     pr_response_add_err(R_500, _("Illegal PORT command, EPSV ALL in effect"));
@@ -4124,6 +4149,33 @@ MODRET core_eprt(cmd_rec *cmd) {
     pr_response_add_err(R_501, _("Illegal EPRT command"));
     errno = EPERM;
     return PR_ERROR(cmd);
+  }
+
+  /* If we are NOT listening on an RFC1918 address, BUT the client HAS
+   * sent us an RFC1918 address in its PORT command (which we know to not be
+   * routable), then ignore that address, and use the client's remote address.
+   */
+  listen_addr = session.c->local_addr;
+
+  c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
+  if (c != NULL) {
+    listen_addr = c->argv[0];
+  }
+
+  if (pr_netaddr_is_rfc1918(listen_addr) != TRUE &&
+      pr_netaddr_is_rfc1918(session.c->remote_addr) != TRUE &&
+      pr_netaddr_is_rfc1918(&na) == TRUE) {
+    const char *rfc1918_ipstr;
+
+    rfc1918_ipstr = pr_netaddr_get_ipstr(&na);
+
+    pr_netaddr_clear(&na);
+    pr_netaddr_set_family(&na, pr_netaddr_get_family(session.c->remote_addr));
+    pr_netaddr_set_sockaddr(&na,
+      pr_netaddr_get_sockaddr(session.c->remote_addr));
+
+    pr_log_debug(DEBUG1, "client sent RFC1918 address '%s' in EPRT command, "
+      "ignoring it and using '%s'", rfc1918_ipstr, pr_netaddr_get_ipstr(&na));
   }
 
   /* Make sure that the address specified matches the address from which

@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.33 2012-09-06 17:52:41 castaglia Exp $
+ * $Id: netaddr.h,v 1.34 2012-09-12 01:15:13 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -372,6 +372,12 @@ uint32_t pr_netaddr_get_addrno(const pr_netaddr_t *);
  * FALSE otherwise.
  */
 int pr_netaddr_is_loopback(const pr_netaddr_t *);
+
+/* Returns TRUE if the given pr_netaddr_t contains an RFC1918 address,
+ * FALSE otherwise.  Note that -1 will be returned if there was an error,
+ * with errno set appropriately.
+ */
+int pr_netaddr_is_rfc1918(const pr_netaddr_t *);
 
 /* Returns TRUE if the given string is an IPv4 address, FALSE if not, and -1
  * (with errno set appropriately) if there was an error.

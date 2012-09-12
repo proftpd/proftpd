@@ -53,6 +53,11 @@ ChangeLog files.
 
     TLSServerCipherPreference (Bug#3801)
 
+  + Changed command handling:
+
+    PORT/EPRT
+      RFC1918 addresses (Bug#3825)
+
   + Changed configuration directives:
 
     AllowFilter, DenyFilter
@@ -113,4 +118,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-09-06 17:52:40 $
+Last Updated: $Date: 2012-09-12 01:15:12 $

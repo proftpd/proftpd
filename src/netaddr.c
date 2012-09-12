@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.86 2012-09-07 16:22:23 castaglia Exp $
+ * $Id: netaddr.c,v 1.87 2012-09-12 01:15:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1214,21 +1214,57 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
   return -1;
 }
 
+static int addr_ncmp(const unsigned char *aptr, const unsigned char *bptr,
+    unsigned int masklen) {
+  unsigned char nbits, nbytes;
+  int res;
+
+  nbytes = masklen / 8;
+  nbits = masklen % 8;
+
+  res = memcmp(aptr, bptr, nbytes);
+  if (res != 0) {
+    return -1;
+  }
+
+  if (nbits > 0) {
+    unsigned char abyte, bbyte, mask;
+
+    abyte = aptr[nbytes];
+    bbyte = bptr[nbytes];
+
+    mask = (0xff << (8 - nbits)) & 0xff;
+
+    if ((abyte & mask) > (bbyte & mask)) {
+      return 1;
+    }
+
+    if ((abyte & mask) < (bbyte & mask)) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
 int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
     unsigned int bitlen) {
   pool *tmp_pool = NULL;
   pr_netaddr_t *a, *b;
-  unsigned int nbytes, nbits;
   const unsigned char *in1, *in2;
+  int res;
 
-  if (na1 && !na2)
+  if (na1 && !na2) {
     return 1;
+  }
 
-  if (!na1 && na2)
+  if (!na1 && na2) {
     return -1;
+  }
 
-  if (!na1 && !na2)
+  if (!na1 && !na2) {
     return 0;
+  }
 
   if (pr_netaddr_get_family(na1) != pr_netaddr_get_family(na2)) {
 
@@ -1317,58 +1353,13 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
   in1 = (const unsigned char *) pr_netaddr_get_inaddr(a);
   in2 = (const unsigned char *) pr_netaddr_get_inaddr(b);
 
-  /* Determine the number of bytes, and leftover bits, in the given
-   * bit length.
-   */
-  nbytes = bitlen / 8;
-  nbits = bitlen % 8;
+  res = addr_ncmp(in1, in2, bitlen);
 
-  /* Compare bytes, using memcmp(3), first. */
-  if (nbytes > 0) {
-    int res = memcmp(in1, in2, nbytes);
-
-    /* No need to continue comparing the addresses if they differ already. */
-    if (res != 0) {
-      if (tmp_pool)
-        destroy_pool(tmp_pool);
-
-      return res;
-    }
-  }
-
-  /* Next, compare the remaining bits in the addresses. */
-  if (nbits > 0) {
-    unsigned char mask;
-
-    /* Get the bytes in the addresses that have not yet been compared. */
-    unsigned char in1byte = in1[nbytes];
-    unsigned char in2byte = in2[nbytes];
-
-    /* Build up a mask covering the bits left to be checked. */
-    mask = (0xff << (8 - nbits)) & 0xff;
-
-    if ((in1byte & mask) > (in2byte & mask)) {
-      if (tmp_pool)
-        destroy_pool(tmp_pool);
-
-      return 1;
-    }
-
-    if ((in1byte & mask) < (in2byte & mask)) {
-      if (tmp_pool)
-        destroy_pool(tmp_pool);
-
-      return -1;
-    }
-  }
-
-  if (tmp_pool)
+  if (tmp_pool) {
     destroy_pool(tmp_pool);
+  }
 
-  /* If we've made it this far, the addresses match, for the given bit
-   * length.
-   */
-  return 0;
+  return res;
 }
 
 int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern, int flags) {
@@ -1926,6 +1917,81 @@ int pr_netaddr_is_loopback(const pr_netaddr_t *na) {
       return IN6_IS_ADDR_LOOPBACK(
         ((struct in6_addr *) pr_netaddr_get_inaddr(na))->s6_addr32);
 # endif
+#endif /* PR_USE_IPV6 */
+  }
+
+  return FALSE;
+}
+
+/* RFC 1918 addresses:
+ * 
+ * 10.0.0.0 - 10.255.255.255 (10.0.0.0/8, 24-bit block)
+ * 172.16.0.0 - 172.31.255.255 (172.16.0.0/12, 20-bit block)
+ * 192.168.0.0 - 192.168.255.255 (192.168.0.0/16, 16-bit block)
+ * 
+ */
+
+static int is_10_xxx_addr(uint32_t addrno) {
+  uint32_t rfc1918_addrno;
+
+  rfc1918_addrno = htonl(0x0a000000);
+  return addr_ncmp((const unsigned char *) &addrno,
+    (const unsigned char *) &rfc1918_addrno, 8);
+}
+
+static int is_172_16_xx_addr(uint32_t addrno) {
+  uint32_t rfc1918_addrno;
+
+  rfc1918_addrno = htonl(0xac100000);
+  return addr_ncmp((const unsigned char *) &addrno,
+    (const unsigned char *) &rfc1918_addrno, 12);
+}
+
+static int is_192_168_xx_addr(uint32_t addrno) {
+  uint32_t rfc1918_addrno;
+
+  rfc1918_addrno = htonl(0xc0a80000);
+  return addr_ncmp((const unsigned char *) &addrno,
+    (const unsigned char *) &rfc1918_addrno, 16);
+}
+
+int pr_netaddr_is_rfc1918(const pr_netaddr_t *na) {
+  if (na == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  switch (pr_netaddr_get_family(na)) {
+    case AF_INET: {
+      uint32_t addrno;
+
+      addrno = pr_netaddr_get_addrno(na);
+      if (is_192_168_xx_addr(addrno) == 0 ||
+          is_172_16_xx_addr(addrno) == 0 ||
+          is_10_xxx_addr(addrno) == 0) {
+          return TRUE;
+      }
+      break;
+    }
+
+#ifdef PR_USE_IPV6
+    case AF_INET6:
+      if (pr_netaddr_is_v4mappedv6(na) == TRUE) {
+        pool *tmp_pool;
+        pr_netaddr_t *v4na;
+        int res;
+
+        tmp_pool = make_sub_pool(permanent_pool);
+        v4na = pr_netaddr_v6tov4(tmp_pool, na);
+
+        res = pr_netaddr_is_rfc1918(v4na);
+        destroy_pool(tmp_pool);
+
+        return res;
+      }
+
+      /* By definition, an IPv6 address is not an RFC1918-defined address. */
+      return FALSE;
 #endif /* PR_USE_IPV6 */
   }
 
