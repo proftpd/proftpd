@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.158 2012-08-01 22:03:16 castaglia Exp $
+ * $Id: fxp.c,v 1.159 2012-09-19 22:32:00 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2337,7 +2337,9 @@ static int fxp_handle_add(uint32_t channel_id, struct fxp_handle *fxh) {
 }
 
 static struct fxp_handle *fxp_handle_create(pool *p) {
-  char *handle, *template;
+  unsigned char *data;
+  char *handle;
+  size_t data_len, handle_len;
   pool *sub_pool;
   struct fxp_handle *fxh;
 
@@ -2345,12 +2347,15 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
   fxh = pcalloc(sub_pool, sizeof(struct fxp_handle));
   fxh->pool = sub_pool;
 
-  /* Use mktemp(3) to generate a random string usable as a handle.  Most
-   * mktemp(3) implementations support up to 6 'X' characters in the template,
-   * thus we need to allocate a string that is 7 characters long (to include
-   * the trailing NUL).
+  /* Use 8 random bytes for our handle, which means 16 bytes as hex-encoded
+   * characters.
    */
-  template = palloc(sub_pool, 7);
+  data_len = 8;
+  data = palloc(p, data_len);
+
+  handle_len = (2 * data_len);
+  handle = palloc(p, data_len + 1);
+  handle[handle_len] = '\0';
 
   while (1) {
     register unsigned int i;
@@ -2360,17 +2365,11 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
      */
     pr_signals_handle();
 
-    for (i = 0; i < 6; i++) {
-      template[i] = 'X';
-    }
-    template[6] = '\0';
+    RAND_pseudo_bytes(data, data_len);
 
-    handle = mktemp(template);
-    if (handle == NULL) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error using mktemp(3): %s", strerror(errno));
-      destroy_pool(sub_pool);
-      return NULL;
+    /* Encode the data as hex to create the handle ID. */
+    for (i = 0; i < data_len; i++) {
+      sprintf((char *) &(handle[i*2]), "%02x", data[i]);
     }
 
     if (fxp_handle_get(handle) == NULL) {
@@ -6935,6 +6934,38 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   }
 
   fxh = fxp_handle_create(fxp_pool);
+  if (fxh == NULL) {
+    uint32_t status_code;
+    const char *reason;
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error creating SFTP handle for '%s': %s", fh->fh_path, strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason,
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+      NULL);
+
+    if (cmd2) {
+      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    }
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
   fxh->fh = fh;
   fxh->fh_flags = open_flags;
   fxh->fh_existed = file_existed;
@@ -7152,6 +7183,33 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   }
 
   fxh = fxp_handle_create(fxp_pool);
+  if (fxh == NULL) {
+    uint32_t status_code;
+    const char *reason;
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error creating SFTP handle for '%s': %s", path, strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason,
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+      NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
   fxh->dirh = dirh;
   fxh->dir = pstrdup(fxh->pool, path);
 
