@@ -97,7 +97,7 @@ sub deflate_opts_modez_level {
   my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
@@ -202,6 +202,9 @@ sub deflate_opts_modez_level {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -216,7 +219,7 @@ sub deflate_feat {
   my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
@@ -337,6 +340,9 @@ sub deflate_feat {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -351,7 +357,7 @@ sub deflate_list {
   my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
@@ -502,6 +508,9 @@ sub deflate_list {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -516,7 +525,7 @@ sub deflate_list_alternating_modes {
   my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
@@ -686,6 +695,9 @@ sub deflate_list_alternating_modes {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -700,7 +712,7 @@ sub deflate_rest {
   my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
@@ -811,6 +823,9 @@ sub deflate_rest {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -825,7 +840,7 @@ sub deflate_retr {
   my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
@@ -973,6 +988,9 @@ sub deflate_retr {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -987,7 +1005,7 @@ sub deflate_rest_retr {
   my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
@@ -1173,6 +1191,9 @@ sub deflate_rest_retr {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1187,7 +1208,7 @@ sub deflate_stor {
   my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
@@ -1322,6 +1343,9 @@ sub deflate_stor {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1336,7 +1360,7 @@ sub deflate_rest_stor {
   my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
@@ -1507,6 +1531,9 @@ sub deflate_rest_stor {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1521,7 +1548,7 @@ sub deflate_stor_64kb_binary {
   my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
@@ -1760,6 +1787,9 @@ sub deflate_stor_64kb_binary {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1774,7 +1804,7 @@ sub deflate_stor_64kb_binary_chunks {
   my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
@@ -2038,6 +2068,9 @@ sub deflate_stor_64kb_binary_chunks {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2052,7 +2085,7 @@ sub deflate_mode_z_tls {
   my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
@@ -2180,6 +2213,9 @@ sub deflate_mode_z_tls {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
