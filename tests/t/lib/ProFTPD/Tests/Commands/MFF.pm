@@ -506,6 +506,10 @@ sub mff_bug3830 {
       $client->login($user, $passwd);
 
       eval { $client->quote('MFF', "foo\tbar") };
+      unless ($@) {
+        die("MFF succeeded unexpectedly");
+      }
+
       $client->quit();
     };
 
