@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.51 2012-07-25 23:45:01 castaglia Exp $
+ * $Id: mod_facts.c,v 1.52 2012-09-22 19:08:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -852,6 +852,11 @@ MODRET facts_mff(cmd_rec *cmd) {
    * find the FIRST space in cmd->arg; the path is everything past that space.
    */
   ptr = strchr(cmd->arg, ' ');
+  if (ptr == NULL) {
+    pr_response_add_err(R_501, _("Invalid command syntax"));
+    return PR_ERROR(cmd);
+  }
+
   path = pstrdup(cmd->tmp_pool, ptr + 1);
 
   decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
@@ -1004,6 +1009,11 @@ MODRET facts_mfmt(cmd_rec *cmd) {
    * find the FIRST space in cmd->arg; the path is everything past that space.
    */
   ptr = strchr(cmd->arg, ' ');
+  if (ptr == NULL) {
+    pr_response_add_err(R_501, _("Invalid command syntax"));
+    return PR_ERROR(cmd);
+  }
+
   path = pstrdup(cmd->tmp_pool, ptr + 1);
 
   decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
