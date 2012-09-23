@@ -853,7 +853,10 @@ sub rnfr_list_bad_cmd_sequence_bug3829 {
 
       # Now, to trigger Bug#3829, try to do a data transfer (e.g. LIST)
       # without having sent the RNTO command.
-      $client->list();
+      eval { $client->list() };
+      unless ($@) {
+        die("LIST command succeeded unexpectedly");
+      }
 
       $client->quit();
     };
