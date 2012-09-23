@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1451 2012-09-22 19:08:36 castaglia Exp $
+$Id: NEWS,v 1.1452 2012-09-23 02:10:18 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -132,6 +132,7 @@ CVS
 - Bug 3828 - Certain sequences of FTP data transfer commands lead to NULL
   pointer dereferences in mod_deflate.
 - Bug 3830 - MFF/MFMT command segfaults due to insufficient parameter checks.
+- Bug 3829 - RNFR without following RNTO can lead to NULL pointer dereference.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

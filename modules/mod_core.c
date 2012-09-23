@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.428 2012-09-12 01:15:13 castaglia Exp $
+ * $Id: mod_core.c,v 1.429 2012-09-23 02:10:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3534,6 +3534,7 @@ MODRET regex_filters(cmd_rec *cmd) {
 
 MODRET core_pre_any(cmd_rec *cmd) {
   unsigned long cmd_delay = 0;
+  char *rnfr_path = NULL;
 
   /* Make sure any FS caches are clear before each command. */
   pr_fs_clear_cache();
@@ -3559,6 +3560,31 @@ MODRET core_pre_any(cmd_rec *cmd) {
     pr_signals_block();
     (void) select(0, NULL, NULL, NULL, &tv);
     pr_signals_unblock();
+  }
+
+  /* Make sure that any command immediately following an RNFR command which
+   * is NOT the RNTO command is rejected (see Bug#3829).
+   *
+   * Make exception for the following commands:
+   *
+   *  HELP
+   *  NOOP
+   *  QUIT
+   *  STAT
+   */
+  rnfr_path = pr_table_get(session.notes, "mod_core.rnfr-path", NULL);
+  if (rnfr_path != NULL) {
+    if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) != 0 &&
+        pr_cmd_cmp(cmd, PR_CMD_HELP_ID) != 0 &&
+        pr_cmd_cmp(cmd, PR_CMD_NOOP_ID) != 0 &&
+        pr_cmd_cmp(cmd, PR_CMD_QUIT_ID) != 0 &&
+        pr_cmd_cmp(cmd, PR_CMD_STAT_ID) != 0) {
+      pr_log_debug(DEBUG3,
+        "RNFR followed immediately by %s rather than RNTO, rejecting command",
+        cmd->argv[0]);
+      pr_response_add_err(R_501, _("Bad sequence of commands"));
+      return PR_ERROR(cmd);
+    }
   }
 
   return PR_DECLINED(cmd);
