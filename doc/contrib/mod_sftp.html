@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.66 2012-08-27 20:39:47 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.67 2012-09-25 23:21:35 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -1110,6 +1110,20 @@ of policies; the chances columns list the probability that
 The default <code>SFTPTrafficPolicy</code> setting is "none".
 
 <p>
+<b>However</b>, <i>if</i> a client negotiates the use of a CBC cipher, then a
+defensive traffic policy will <b>automatically</b> be used.
+<a href="http://www.faqs.org/rfcs/rfc4251.html">RFC 4251</a>, Section 9.3.1,
+specifically mentions the insertion of <code>SSH_MSG_IGNORE</code> messages as
+a way of mitigating the "Rogaway" attack on CBC ciphers.  In order to disable
+this automatic mitigation behavior, you must <i>explicitly</i> configure
+a <code>SFTPTrafficPolicy</code> setting in your configuration, <i>e.g.</i>
+<pre>
+  # Disable any automatic protection when CBC ciphers are used
+  SFTPTrafficPolicy none
+</pre>
+<b>Note that this is not recommended</b>!
+
+<p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
 To install <code>mod_sftp</code>, go to the third-party module area in
@@ -1949,11 +1963,36 @@ it is something else completely, like this:
   ServerIdent on "OpenSSH_5.6p1"
 </pre>
 
+<p><a name="SFTPTrafficPolicyNetworkPerformance">
+<font color=red>Question</font>: I notice that when I use some SFTP clients
+(<i>e.g.</i> DreamWeaver) with <code>mod_sftp</code>, the network performance
+is 5-6 times slower than with other SFTP clients.  Using the same SFTP client
+against OpenSSH doesn't show the same slowdown.  Network tools such as
+Wireshark show that <code>mod_sftp</code> is sending 2 TCP packets for each
+SFTP request, whereas OpenSSH only sends 1 TCP packet for each SFTP request.
+Why is <code>mod_sftp</code> so much slower than OpenSSH, but only for some
+SFTP clients?<br>
+<font color=blue>Answer</font>: Investigations into this <code>mod_sftp</code>
+behavior have shown it to be caused by the
+<a href="#SFTPTrafficPolicy"><code>SFTPTrafficPolicy</code></a> behavior,
+particularly when the SFTP client negotiates the use of a CBC cipher.
+
+<p>
+The recommended action to take is to disable the use of CBC ciphers,
+which will cause the <code>SFTPTrafficPolicy</code> mitigation to not go
+into effect, which keeps the number of SSH messages lower, thus improving
+network latency.   Thus the change to make for your <code>mod_sftp</code>
+configuration is:
+<pre>
+  # Remove the CBC ciphers from the ciphers we advertise
+  SFTPCiphers aes256-ctr aes192-ctr aes128-ctr blowfish-ctr arcfour256 arcfour128 3des-ctr
+</pre>
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-08-27 20:39:47 $</i><br>
+Last Updated: <i>$Date: 2012-09-25 23:21:35 $</i><br>
 
 <br><hr>
 
