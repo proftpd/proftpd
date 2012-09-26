@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.304 2012-08-23 05:02:59 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.305 2012-09-26 16:40:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1244,9 +1244,12 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
   /* Otherwise everthing is good */
   if (pr_table_add(cmd->notes, "mod_xfer.store-path",
-      pstrdup(cmd->pool, path), 0) < 0)
-    pr_log_pri(PR_LOG_NOTICE, "notice: error adding 'mod_xfer.store-path': %s",
-      strerror(errno));
+      pstrdup(cmd->pool, path), 0) < 0) {
+    if (errno != EEXIST) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "notice: error adding 'mod_xfer.store-path': %s", strerror(errno));
+    }
+  }
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "HiddenStores", FALSE);
   if (c &&
@@ -1394,9 +1397,12 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
 
   /* Otherwise everthing is good */
   if (pr_table_add(cmd->notes, "mod_xfer.store-path",
-      pstrdup(cmd->pool, filename), 0) < 0)
-    pr_log_pri(PR_LOG_NOTICE, "notice: error adding 'mod_xfer.store-path': %s",
-      strerror(errno));
+      pstrdup(cmd->pool, filename), 0) < 0) {
+    if (errno != EEXIST) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "notice: error adding 'mod_xfer.store-path': %s", strerror(errno));
+    }
+  }
 
   session.xfer.xfer_type = STOR_UNIQUE;
 
