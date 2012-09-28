@@ -644,17 +644,19 @@ EOC
   $self->assert_child_ok($pid);
 
   if (open(my $fh, "< $log_file")) {
-    my $nlines = 0;
+    my $sess_nlines = 0;
     while (my $line = <$fh>) {
       chomp($line);
-print STDERR "line: $line\n";
-      $nlines++;
+
+      if ($line =~ /session (opened|closed)/) {
+        $sess_nlines++;
+      }
     }
 
     close($fh);
 
-    $self->assert($nlines == 0,
-      test_msg("Expected no lines in $log_file, got $nlines lines"));
+    $self->assert($sess_nlines == 0,
+      test_msg("Expected no lines in $log_file, got $sess_nlines lines"));
 
   } else {
     die("Can't read $system_log: $!");
@@ -800,16 +802,18 @@ EOC
   $self->assert_child_ok($pid);
 
   if (open(my $fh, "< $log_file")) {
-    my $nlines = 0;
+    my $sess_nlines = 0;
     while (my $line = <$fh>) {
       chomp($line);
-print STDERR "line: $line\n";
-      $nlines++;
+
+      if ($line =~ /session (opened|closed)/) {
+        $sess_nlines++;
+      }
     }
 
     close($fh);
 
-    $self->assert($nlines > 0,
+    $self->assert($sess_nlines > 0,
       test_msg("Expected lines in $log_file, got none"));
 
   } else {
