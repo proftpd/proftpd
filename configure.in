@@ -1412,7 +1412,27 @@ fi
 
 AC_CHECK_HEADERS(bstring.h crypt.h ctype.h execinfo.h iconv.h inttypes.h langinfo.h limits.h locale.h)
 AC_CHECK_HEADERS(string.h strings.h stropts.h)
-AC_CHECK_HEADERS(sys/file.h sys/mman.h sys/types.h sys/ucred.h sys/uio.h net/if.h ifaddrs.h)
+AC_CHECK_HEADERS(sys/file.h sys/mman.h sys/types.h sys/ucred.h sys/uio.h sys/socket.h)
+AC_MSG_CHECKING(for net/if.h)
+AC_TRY_COMPILE([
+  #include <time.h>
+  #ifdef HAVE_SYS_TYPES_H
+  # include <sys/types.h>
+  #endif
+  #ifdef HAVE_SYS_SOCKET_H
+  # include <sys/socket.h>
+  #endif
+  #include <net/if.h>
+  ], [
+  ],
+  [
+    AC_DEFINE(HAVE_NET_IF_H, 1, [Define if you have the net/if.h header.])
+    AC_MSG_RESULT(yes)
+  ], [
+    AC_MSG_RESULT(no)
+  ])
+
+AC_CHECK_HEADERS(ifaddrs.h)
 
 dnl These particular checks are done a little differently because on some
 dnl platforms, <sys/mount.h> wants <sys/param.h> to be included first.
@@ -1466,7 +1486,7 @@ AC_CHECK_HEADERS(netinet/ip.h,,,
   ])
 
 AC_CHECK_HEADERS(netinet/tcp.h arpa/inet.h libintl.h)
-AC_CHECK_HEADERS(sys/stat.h errno.h sys/socket.h sys/termios.h sys/termio.h)
+AC_CHECK_HEADERS(sys/stat.h errno.h sys/termios.h sys/termio.h)
 AC_CHECK_HEADERS(sys/statvfs.h sys/un.h sys/vfs.h sys/select.h termios.h)
 AC_CHECK_HEADERS(dirent.h ndir.h sys/ndir.h sys/dir.h vmsdir.h)
 AC_CHECK_HEADERS(ucred.h ucontext.h utime.h utmpx.h)
