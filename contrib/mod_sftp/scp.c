@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.71 2012-08-01 22:05:38 castaglia Exp $
+ * $Id: scp.c,v 1.72 2012-09-28 21:37:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -416,7 +416,7 @@ static int recv_ctl(uint32_t channel_id, struct scp_path *sp,
   memmove(tmp, sp->ctl_data, sp->ctl_datalen);
   memmove(tmp + sp->ctl_datalen, data, datalen);
 
-  sp->ctl_data = tmp;
+  sp->ctl_data = (unsigned char *) tmp;
   sp->ctl_datalen = tmplen;
 
   /* Now, if we saw a newline, we can return all of the cached data as the
