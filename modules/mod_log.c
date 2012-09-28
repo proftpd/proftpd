@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.136 2012-09-07 18:50:43 castaglia Exp $
+ * $Id: mod_log.c,v 1.137 2012-09-28 04:51:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -607,51 +607,10 @@ MODRET set_serverlog(cmd_rec *cmd) {
 
 /* Syntax: SystemLog <filename> */
 MODRET set_systemlog(cmd_rec *cmd) {
-  char *syslogfn = NULL;
-  int res, xerrno = 0;
-
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  log_closesyslog();
-
-  syslogfn = cmd->argv[1];
-
-  if (strcasecmp(syslogfn, "NONE") == 0) {
-    log_discard();
-    return PR_HANDLED(cmd);
-  }
-
-  if (*syslogfn != '/')
-    syslogfn = dir_canonical_path(cmd->tmp_pool,syslogfn);
-
-  pr_signals_block();
-
-  PRIVS_ROOT
-  res = log_opensyslog(syslogfn);
-  if (res < 0) {
-    xerrno = errno;
-  }
-  PRIVS_RELINQUISH
-
-  if (res < 0) {
-    pr_signals_unblock();
-
-    if (res == PR_LOG_WRITABLE_DIR) {
-      CONF_ERROR(cmd,
-        "you are attempting to log to a world writable directory");
-
-    } else if (res == PR_LOG_SYMLINK) {
-      CONF_ERROR(cmd, "you are attempting to log to a symbolic link");
-
-    } else {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        "unable to redirect logging to '", syslogfn, "': ",
-        strerror(xerrno), NULL));
-    }
-  }
-
-  pr_signals_unblock();
+  (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]); 
   return PR_HANDLED(cmd);
 }
 
@@ -1561,6 +1520,52 @@ static void log_exit_ev(const void *event_data, void *user_data) {
   (void) log_any(cmd);
 }
 
+static void log_startup_ev(const void *event_data, void *user_data) {
+  config_rec *c;
+
+  c = find_config(main_server->conf, CONF_PARAM, "SystemLog", FALSE);
+  if (c != NULL) {
+    char *path;
+
+    path = c->argv[0];
+    log_closesyslog();
+
+    if (strncasecmp(path, "none", 5) != 0) {
+      int res, xerrno;
+
+      path = dir_canonical_path(main_server->pool, path);
+
+      pr_signals_block();
+      PRIVS_ROOT
+      res = log_opensyslog(path);
+      xerrno = errno;
+      PRIVS_RELINQUISH
+      pr_signals_unblock();
+
+      if (res < 0) {
+        if (res == PR_LOG_WRITABLE_DIR) {
+          pr_log_pri(PR_LOG_ERR,
+            "unable to open SystemLog '%s': %s is a world-writable directory",
+            path, path);
+
+        } else if (res == PR_LOG_SYMLINK) {
+          pr_log_pri(PR_LOG_ERR,
+            "unable to open SystemLog '%s': %s is a symbolic link", path, path);
+
+        } else {
+          pr_log_pri(PR_LOG_ERR,
+            "unable to open SystemLog '%s': %s", path, strerror(xerrno));
+        }
+
+        exit(1);
+      }
+
+    } else {
+      log_discard();
+    }
+  }
+}
+
 static void log_restart_ev(const void *event_data, void *user_data) {
   destroy_pool(log_pool);
 
@@ -1574,6 +1579,7 @@ static void log_restart_ev(const void *event_data, void *user_data) {
 
   logformat("", "%h %l %u %t \"%r\" %s %b");
 
+  log_startup_ev(NULL, NULL);
   return;
 }
 
@@ -1598,6 +1604,7 @@ static int log_init(void) {
   logformat("", "%h %l %u %t \"%r\" %s %b");
 
   pr_event_register(&log_module, "core.restart", log_restart_ev, NULL);
+  pr_event_register(&log_module, "core.startup", log_startup_ev, NULL);
   return 0;
 }
 
@@ -1819,18 +1826,64 @@ static int log_sess_init(void) {
   /* Open the ServerLog, if present. */
   serverlog_name = get_param_ptr(main_server->conf, "ServerLog", FALSE);
   if (serverlog_name != NULL) {
-    int res, xerrno;
-
     log_closesyslog();
 
-    PRIVS_ROOT
-    res = log_opensyslog(serverlog_name);
-    xerrno = errno;
-    PRIVS_RELINQUISH
+    if (strncasecmp(serverlog_name, "none", 5) != 0) {
+      int res, xerrno;
 
-    if (res < 0) {
-      pr_log_debug(DEBUG4, "unable to open ServerLog '%s': %s", serverlog_name,
-        strerror(xerrno));
+      PRIVS_ROOT
+      res = log_opensyslog(serverlog_name);
+      xerrno = errno;
+      PRIVS_RELINQUISH
+
+      if (res < 0) {
+        pr_log_debug(DEBUG4, "unable to open ServerLog '%s': %s",
+          serverlog_name, strerror(xerrno));
+      }
+    }
+
+  } else {
+    config_rec *c;
+
+    c = find_config(main_server->conf, CONF_PARAM, "SystemLog", FALSE);
+    if (c != NULL) {
+      char *path;
+
+      path = c->argv[0];
+      log_closesyslog();
+
+      if (strncasecmp(path, "none", 5) != 0) {
+        int res, xerrno;
+
+        path = dir_canonical_path(main_server->pool, path);
+
+        pr_signals_block();
+        PRIVS_ROOT
+        res = log_opensyslog(path);
+        xerrno = errno;
+        PRIVS_RELINQUISH
+        pr_signals_unblock();
+
+        if (res < 0) {
+          if (res == PR_LOG_WRITABLE_DIR) {
+            pr_log_pri(PR_LOG_ERR,
+              "unable to open SystemLog '%s': %s is a world-writable directory",
+              path, path);
+
+          } else if (res == PR_LOG_SYMLINK) {
+            pr_log_pri(PR_LOG_ERR,
+              "unable to open SystemLog '%s': %s is a symbolic link", path,
+              path);
+
+          } else {
+            pr_log_pri(PR_LOG_ERR,
+              "unable to open SystemLog '%s': %s", path, strerror(xerrno));
+          }
+        }
+
+      } else {
+        log_discard();
+      }
     }
   }
 
