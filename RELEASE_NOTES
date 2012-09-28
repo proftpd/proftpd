@@ -99,6 +99,10 @@ ChangeLog files.
     SQLLog
       %{transfer-status}, %{transfer-failure}
 
+    SystemLog
+      Supports being disabled via <IfClass>, for disabling logging for
+      specific clients (Bug#3832)
+
     TLSProtocol
       support TLSv1.1, TLSv1.2 (assuming OpenSSL-1.0.1 and later)
 
@@ -118,4 +122,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-09-12 01:15:12 $
+Last Updated: $Date: 2012-09-28 04:52:55 $
