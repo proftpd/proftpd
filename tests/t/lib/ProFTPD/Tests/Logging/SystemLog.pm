@@ -522,8 +522,6 @@ sub systemlog_ifclass_matching_class_bug3832 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/systemlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/systemlog.scoreboard");
 
-  my $log_file = test_get_logfile();
-
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/systemlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/systemlog.group");
 
@@ -557,7 +555,7 @@ sub systemlog_ifclass_matching_class_bug3832 {
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    SystemLog => $system_log,
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
@@ -643,7 +641,7 @@ EOC
 
   $self->assert_child_ok($pid);
 
-  if (open(my $fh, "< $log_file")) {
+  if (open(my $fh, "< $system_log")) {
     my $sess_nlines = 0;
     while (my $line = <$fh>) {
       chomp($line);
@@ -656,20 +654,20 @@ EOC
     close($fh);
 
     $self->assert($sess_nlines == 0,
-      test_msg("Expected no lines in $log_file, got $sess_nlines lines"));
+      test_msg("Expected no lines in $system_log, got $sess_nlines lines"));
 
   } else {
     die("Can't read $system_log: $!");
   }
 
   if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+    test_append_logfile($system_log, $ex);
+    unlink($system_log);
 
     die($ex);
   }
 
-  unlink($log_file);
+  unlink($system_log);
 }
 
 sub systemlog_ifclass_not_matching_class_bug3832 {
@@ -679,8 +677,6 @@ sub systemlog_ifclass_not_matching_class_bug3832 {
   my $config_file = "$tmpdir/systemlog.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/systemlog.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/systemlog.scoreboard");
-
-  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/systemlog.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/systemlog.group");
@@ -715,7 +711,7 @@ sub systemlog_ifclass_not_matching_class_bug3832 {
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    SystemLog => $system_log,
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
@@ -801,7 +797,7 @@ EOC
 
   $self->assert_child_ok($pid);
 
-  if (open(my $fh, "< $log_file")) {
+  if (open(my $fh, "< $system_log")) {
     my $sess_nlines = 0;
     while (my $line = <$fh>) {
       chomp($line);
@@ -814,20 +810,20 @@ EOC
     close($fh);
 
     $self->assert($sess_nlines > 0,
-      test_msg("Expected lines in $log_file, got none"));
+      test_msg("Expected lines in $system_log, got none"));
 
   } else {
     die("Can't read $system_log: $!");
   }
 
   if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+    test_append_logfile($system_log, $ex);
+    unlink($system_log);
 
     die($ex);
   }
 
-  unlink($log_file);
+  unlink($system_log);
 }
 
 1;

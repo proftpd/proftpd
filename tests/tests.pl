@@ -185,6 +185,7 @@ if (scalar(@ARGV) > 0) {
     t/config/limit/filters.t
     t/config/limit/subdirs.t
     t/logging/extendedlog.t
+    t/logging/serverlog.t
     t/logging/systemlog.t
     t/logging/transferlog.t
     t/signals/term.t
