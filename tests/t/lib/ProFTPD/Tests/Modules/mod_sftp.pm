@@ -1377,13 +1377,14 @@ sub ssh2_connect_timeout_login {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1402,7 +1403,7 @@ sub ssh2_connect_timeout_login {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -1495,6 +1496,9 @@ sub ssh2_connect_timeout_login {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1509,13 +1513,14 @@ sub ssh2_kex_dh_group1_sha1 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1534,7 +1539,7 @@ sub ssh2_kex_dh_group1_sha1 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -1624,6 +1629,9 @@ sub ssh2_kex_dh_group1_sha1 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1638,13 +1646,14 @@ sub ssh2_kex_dh_group14_sha1 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1663,7 +1672,7 @@ sub ssh2_kex_dh_group14_sha1 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -1753,6 +1762,9 @@ sub ssh2_kex_dh_group14_sha1 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1767,13 +1779,14 @@ sub ssh2_kex_dh_gex_sha1 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1792,7 +1805,7 @@ sub ssh2_kex_dh_gex_sha1 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -1882,6 +1895,9 @@ sub ssh2_kex_dh_gex_sha1 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2649,13 +2665,14 @@ sub ssh2_hostkey_rsa {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2674,7 +2691,7 @@ sub ssh2_hostkey_rsa {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -2764,6 +2781,9 @@ sub ssh2_hostkey_rsa {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2778,13 +2798,14 @@ sub ssh2_hostkey_rsa_only {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2803,7 +2824,7 @@ sub ssh2_hostkey_rsa_only {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
 
@@ -2907,6 +2928,9 @@ sub ssh2_hostkey_rsa_only {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2921,13 +2945,14 @@ sub ssh2_hostkey_dss {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2946,7 +2971,7 @@ sub ssh2_hostkey_dss {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -3036,6 +3061,9 @@ sub ssh2_hostkey_dss {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3050,13 +3078,14 @@ sub ssh2_hostkey_dss_only {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -3075,7 +3104,7 @@ sub ssh2_hostkey_dss_only {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
@@ -3179,6 +3208,9 @@ sub ssh2_hostkey_dss_only {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3193,7 +3225,7 @@ sub ssh2_hostkey_dss_bug3634 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -3385,6 +3417,9 @@ sub ssh2_hostkey_dss_bug3634 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4149,13 +4184,14 @@ sub ssh2_cipher_c2s_aes256_cbc {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -4174,7 +4210,7 @@ sub ssh2_cipher_c2s_aes256_cbc {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -4264,6 +4300,9 @@ sub ssh2_cipher_c2s_aes256_cbc {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4278,13 +4317,14 @@ sub ssh2_cipher_c2s_aes192_cbc {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -4303,7 +4343,7 @@ sub ssh2_cipher_c2s_aes192_cbc {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -4393,6 +4433,9 @@ sub ssh2_cipher_c2s_aes192_cbc {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4407,13 +4450,14 @@ sub ssh2_cipher_c2s_aes128_cbc {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -4432,7 +4476,7 @@ sub ssh2_cipher_c2s_aes128_cbc {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -4522,6 +4566,9 @@ sub ssh2_cipher_c2s_aes128_cbc {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4536,13 +4583,14 @@ sub ssh2_cipher_c2s_blowfish_cbc {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -4561,7 +4609,7 @@ sub ssh2_cipher_c2s_blowfish_cbc {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -4651,6 +4699,9 @@ sub ssh2_cipher_c2s_blowfish_cbc {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4665,13 +4716,14 @@ sub ssh2_cipher_c2s_arcfour {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -4690,7 +4742,7 @@ sub ssh2_cipher_c2s_arcfour {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -4785,6 +4837,9 @@ sub ssh2_cipher_c2s_arcfour {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4799,13 +4854,14 @@ sub ssh2_cipher_c2s_cast128_cbc {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -4824,7 +4880,7 @@ sub ssh2_cipher_c2s_cast128_cbc {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -4914,6 +4970,9 @@ sub ssh2_cipher_c2s_cast128_cbc {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -4928,13 +4987,14 @@ sub ssh2_cipher_c2s_3des_cbc {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -4953,7 +5013,7 @@ sub ssh2_cipher_c2s_3des_cbc {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -5043,6 +5103,9 @@ sub ssh2_cipher_c2s_3des_cbc {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5057,13 +5120,14 @@ sub ssh2_cipher_c2s_none {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5082,7 +5146,7 @@ sub ssh2_cipher_c2s_none {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -5172,6 +5236,9 @@ sub ssh2_cipher_c2s_none {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5186,13 +5253,14 @@ sub ssh2_cipher_s2c_aes256_cbc {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5211,7 +5279,7 @@ sub ssh2_cipher_s2c_aes256_cbc {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -5301,6 +5369,9 @@ sub ssh2_cipher_s2c_aes256_cbc {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5315,13 +5386,14 @@ sub ssh2_cipher_s2c_aes192_cbc {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5340,7 +5412,7 @@ sub ssh2_cipher_s2c_aes192_cbc {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -5430,6 +5502,9 @@ sub ssh2_cipher_s2c_aes192_cbc {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5444,13 +5519,14 @@ sub ssh2_cipher_s2c_aes128_cbc {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5469,7 +5545,7 @@ sub ssh2_cipher_s2c_aes128_cbc {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -5559,6 +5635,9 @@ sub ssh2_cipher_s2c_aes128_cbc {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5573,13 +5652,14 @@ sub ssh2_cipher_s2c_blowfish_cbc {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5598,7 +5678,7 @@ sub ssh2_cipher_s2c_blowfish_cbc {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -5688,6 +5768,9 @@ sub ssh2_cipher_s2c_blowfish_cbc {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5702,13 +5785,14 @@ sub ssh2_cipher_s2c_arcfour {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5727,7 +5811,7 @@ sub ssh2_cipher_s2c_arcfour {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -5822,6 +5906,9 @@ sub ssh2_cipher_s2c_arcfour {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5836,13 +5923,14 @@ sub ssh2_cipher_s2c_cast128_cbc {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5861,7 +5949,7 @@ sub ssh2_cipher_s2c_cast128_cbc {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -5951,6 +6039,9 @@ sub ssh2_cipher_s2c_cast128_cbc {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -5965,13 +6056,14 @@ sub ssh2_cipher_s2c_3des_cbc {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -5990,7 +6082,7 @@ sub ssh2_cipher_s2c_3des_cbc {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -6080,6 +6172,9 @@ sub ssh2_cipher_s2c_3des_cbc {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6094,13 +6189,14 @@ sub ssh2_cipher_s2c_none {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -6119,7 +6215,7 @@ sub ssh2_cipher_s2c_none {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -6209,6 +6305,9 @@ sub ssh2_cipher_s2c_none {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6223,13 +6322,14 @@ sub ssh2_mac_c2s_hmac_sha1 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -6248,7 +6348,7 @@ sub ssh2_mac_c2s_hmac_sha1 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -6338,6 +6438,9 @@ sub ssh2_mac_c2s_hmac_sha1 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6352,13 +6455,14 @@ sub ssh2_mac_c2s_hmac_sha1_96 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -6377,7 +6481,7 @@ sub ssh2_mac_c2s_hmac_sha1_96 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -6467,6 +6571,9 @@ sub ssh2_mac_c2s_hmac_sha1_96 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6481,13 +6588,14 @@ sub ssh2_mac_c2s_hmac_md5 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -6506,7 +6614,7 @@ sub ssh2_mac_c2s_hmac_md5 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -6596,6 +6704,9 @@ sub ssh2_mac_c2s_hmac_md5 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6610,13 +6721,14 @@ sub ssh2_mac_c2s_hmac_md5_96 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -6635,7 +6747,7 @@ sub ssh2_mac_c2s_hmac_md5_96 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -6725,6 +6837,9 @@ sub ssh2_mac_c2s_hmac_md5_96 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6739,13 +6854,14 @@ sub ssh2_mac_c2s_hmac_ripemd160 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -6764,7 +6880,7 @@ sub ssh2_mac_c2s_hmac_ripemd160 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -6854,6 +6970,9 @@ sub ssh2_mac_c2s_hmac_ripemd160 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6868,13 +6987,14 @@ sub ssh2_mac_c2s_none {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -6893,7 +7013,7 @@ sub ssh2_mac_c2s_none {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -6983,6 +7103,9 @@ sub ssh2_mac_c2s_none {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -6997,13 +7120,14 @@ sub ssh2_mac_s2c_hmac_sha1 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -7022,7 +7146,7 @@ sub ssh2_mac_s2c_hmac_sha1 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -7112,6 +7236,9 @@ sub ssh2_mac_s2c_hmac_sha1 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7126,13 +7253,14 @@ sub ssh2_mac_s2c_hmac_sha1_96 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -7151,7 +7279,7 @@ sub ssh2_mac_s2c_hmac_sha1_96 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -7241,6 +7369,9 @@ sub ssh2_mac_s2c_hmac_sha1_96 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7255,13 +7386,14 @@ sub ssh2_mac_s2c_hmac_md5 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -7280,7 +7412,7 @@ sub ssh2_mac_s2c_hmac_md5 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -7370,6 +7502,9 @@ sub ssh2_mac_s2c_hmac_md5 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7384,13 +7519,14 @@ sub ssh2_mac_s2c_hmac_md5_96 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -7409,7 +7545,7 @@ sub ssh2_mac_s2c_hmac_md5_96 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -7499,6 +7635,9 @@ sub ssh2_mac_s2c_hmac_md5_96 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7513,13 +7652,14 @@ sub ssh2_mac_s2c_hmac_ripemd160 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -7538,7 +7678,7 @@ sub ssh2_mac_s2c_hmac_ripemd160 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -7628,6 +7768,9 @@ sub ssh2_mac_s2c_hmac_ripemd160 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7642,13 +7785,14 @@ sub ssh2_mac_s2c_none {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -7667,7 +7811,7 @@ sub ssh2_mac_s2c_none {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -7757,6 +7901,9 @@ sub ssh2_mac_s2c_none {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7771,13 +7918,14 @@ sub ssh2_compress_c2s_none {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -7796,7 +7944,7 @@ sub ssh2_compress_c2s_none {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -7886,6 +8034,9 @@ sub ssh2_compress_c2s_none {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -7900,13 +8051,14 @@ sub ssh2_compress_c2s_zlib {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -7925,7 +8077,7 @@ sub ssh2_compress_c2s_zlib {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -8017,6 +8169,9 @@ sub ssh2_compress_c2s_zlib {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8031,13 +8186,14 @@ sub ssh2_compress_s2c_none {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -8056,7 +8212,7 @@ sub ssh2_compress_s2c_none {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -8146,6 +8302,9 @@ sub ssh2_compress_s2c_none {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8160,13 +8319,14 @@ sub ssh2_compress_s2c_zlib {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -8185,7 +8345,7 @@ sub ssh2_compress_s2c_zlib {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -8277,6 +8437,9 @@ sub ssh2_compress_s2c_zlib {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8291,13 +8454,14 @@ sub ssh2_auth_hostbased {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -8316,12 +8480,13 @@ sub ssh2_auth_hostbased {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
   my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
 
   my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
@@ -8414,6 +8579,9 @@ sub ssh2_auth_hostbased {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8428,13 +8596,14 @@ sub ssh2_auth_publickey_rsa_no_match_bug3493 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -8453,12 +8622,13 @@ sub ssh2_auth_publickey_rsa_no_match_bug3493 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
   my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_subj_keys');
 
   my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
@@ -8550,6 +8720,9 @@ sub ssh2_auth_publickey_rsa_no_match_bug3493 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8564,13 +8737,14 @@ sub ssh2_auth_publickey_rsa_with_match_bug3493 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -8589,12 +8763,13 @@ sub ssh2_auth_publickey_rsa_with_match_bug3493 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
   my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_subj_keys');
 
   my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
@@ -8692,6 +8867,9 @@ sub ssh2_auth_publickey_rsa_with_match_bug3493 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8706,13 +8884,14 @@ sub ssh2_auth_publickey_rsa2048 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -8731,12 +8910,13 @@ sub ssh2_auth_publickey_rsa2048 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
   my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
 
   my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
@@ -8828,6 +9008,9 @@ sub ssh2_auth_publickey_rsa2048 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8842,13 +9025,14 @@ sub ssh2_auth_publickey_rsa4096 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -8867,7 +9051,7 @@ sub ssh2_auth_publickey_rsa4096 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -8965,6 +9149,9 @@ sub ssh2_auth_publickey_rsa4096 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -8979,13 +9166,14 @@ sub ssh2_auth_publickey_rsa8192 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -9004,7 +9192,7 @@ sub ssh2_auth_publickey_rsa8192 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -9102,6 +9290,9 @@ sub ssh2_auth_publickey_rsa8192 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -9116,7 +9307,7 @@ sub ssh2_auth_publickey_rsa16384 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -9243,6 +9434,9 @@ sub ssh2_auth_publickey_rsa16384 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -9257,13 +9451,14 @@ sub ssh2_auth_publickey_dsa1024 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -9282,12 +9477,13 @@ sub ssh2_auth_publickey_dsa1024 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $dsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_dsa_key');  my $dsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_dsa_key.pub');
+  my $dsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_dsa_key');
+  my $dsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_dsa_key.pub');
   my $dsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_dsa_keys');
 
   my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
@@ -9379,6 +9575,9 @@ sub ssh2_auth_publickey_dsa1024 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -9393,13 +9592,14 @@ sub ssh2_auth_publickey_dsa2048 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -9418,7 +9618,7 @@ sub ssh2_auth_publickey_dsa2048 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -9516,6 +9716,9 @@ sub ssh2_auth_publickey_dsa2048 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -9530,13 +9733,14 @@ sub ssh2_auth_publickey_dsa4096 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -9555,7 +9759,7 @@ sub ssh2_auth_publickey_dsa4096 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -9653,6 +9857,9 @@ sub ssh2_auth_publickey_dsa4096 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -9667,13 +9874,14 @@ sub ssh2_auth_publickey_dsa8192 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -9692,7 +9900,7 @@ sub ssh2_auth_publickey_dsa8192 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -9790,6 +9998,9 @@ sub ssh2_auth_publickey_dsa8192 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -9804,13 +10015,14 @@ sub ssh2_auth_publickey_user_var_bug3315 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -9829,12 +10041,13 @@ sub ssh2_auth_publickey_user_var_bug3315 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
   my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
 
   my $authorized_keys_dir = File::Spec->rel2abs("$tmpdir/authorized_keys");
@@ -9929,6 +10142,9 @@ sub ssh2_auth_publickey_user_var_bug3315 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -10636,13 +10852,14 @@ sub ssh2_auth_no_authorized_keys {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -10661,7 +10878,7 @@ sub ssh2_auth_no_authorized_keys {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -10764,6 +10981,9 @@ sub ssh2_auth_no_authorized_keys {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -10778,13 +10998,14 @@ sub ssh2_auth_kbdint_failed_password_ok {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -10803,7 +11024,7 @@ sub ssh2_auth_kbdint_failed_password_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -10926,6 +11147,9 @@ sub ssh2_auth_kbdint_failed_password_ok {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -11095,13 +11319,14 @@ sub ssh2_interop_scanner {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -11120,7 +11345,7 @@ sub ssh2_interop_scanner {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -11203,6 +11428,9 @@ sub ssh2_interop_scanner {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -11244,13 +11472,14 @@ sub ssh2_interop_probe {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -11269,7 +11498,7 @@ sub ssh2_interop_probe {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -11352,6 +11581,9 @@ sub ssh2_interop_probe {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -11393,13 +11625,14 @@ sub ssh2_channel_failed_ptyreq {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -11418,7 +11651,7 @@ sub ssh2_channel_failed_ptyreq {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -11518,6 +11751,9 @@ sub ssh2_channel_failed_ptyreq {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -11532,13 +11768,14 @@ sub ssh2_channel_failed_shell {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -11557,7 +11794,7 @@ sub ssh2_channel_failed_shell {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -11657,6 +11894,9 @@ sub ssh2_channel_failed_shell {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -11671,13 +11911,14 @@ sub ssh2_channel_failed_exec_cmd {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -11696,7 +11937,7 @@ sub ssh2_channel_failed_exec_cmd {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -11798,6 +12039,9 @@ sub ssh2_channel_failed_exec_cmd {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -11812,13 +12056,14 @@ sub ssh2_channel_env_default {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -11837,7 +12082,7 @@ sub ssh2_channel_env_default {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -11958,6 +12203,9 @@ sub ssh2_channel_env_default {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -11972,13 +12220,14 @@ sub ssh2_channel_env_accept_glob_char {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -11997,7 +12246,7 @@ sub ssh2_channel_env_accept_glob_char {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -12124,6 +12373,9 @@ sub ssh2_channel_env_accept_glob_char {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -12138,13 +12390,14 @@ sub ssh2_channel_env_accept_single_char {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -12163,7 +12416,7 @@ sub ssh2_channel_env_accept_single_char {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -12289,6 +12542,9 @@ sub ssh2_channel_env_accept_single_char {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -12303,13 +12559,14 @@ sub ssh2_channel_max_exceeded {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -12328,7 +12585,7 @@ sub ssh2_channel_max_exceeded {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -12432,6 +12689,9 @@ sub ssh2_channel_max_exceeded {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -12446,13 +12706,14 @@ sub ssh2_disconnect_client {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -12471,7 +12732,7 @@ sub ssh2_disconnect_client {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -12565,6 +12826,9 @@ sub ssh2_disconnect_client {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -12584,13 +12848,14 @@ sub sftp_without_auth {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -12609,7 +12874,7 @@ sub sftp_without_auth {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -12707,6 +12972,9 @@ sub sftp_without_auth {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -12721,13 +12989,14 @@ sub sftp_stat {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -12746,7 +13015,7 @@ sub sftp_stat {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -12866,6 +13135,9 @@ sub sftp_stat {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -12880,13 +13152,14 @@ sub sftp_fstat {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -12905,7 +13178,7 @@ sub sftp_fstat {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -13034,6 +13307,9 @@ sub sftp_fstat {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -13048,13 +13324,14 @@ sub sftp_lstat {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -13073,7 +13350,7 @@ sub sftp_lstat {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -13211,6 +13488,9 @@ sub sftp_lstat {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -13225,13 +13505,14 @@ sub sftp_setstat {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -13250,7 +13531,7 @@ sub sftp_setstat {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -13371,6 +13652,9 @@ sub sftp_setstat {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -13385,13 +13669,14 @@ sub sftp_setstat_sgid {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -13410,7 +13695,7 @@ sub sftp_setstat_sgid {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -13524,6 +13809,9 @@ sub sftp_setstat_sgid {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -13538,13 +13826,14 @@ sub sftp_fsetstat {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -13563,7 +13852,7 @@ sub sftp_fsetstat {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -13693,6 +13982,9 @@ sub sftp_fsetstat {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -13707,13 +13999,14 @@ sub sftp_realpath {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -13732,7 +14025,7 @@ sub sftp_realpath {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -13839,6 +14132,9 @@ sub sftp_realpath {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -13853,13 +14149,14 @@ sub sftp_open_enoent_bug3345 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -13880,7 +14177,7 @@ sub sftp_open_enoent_bug3345 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -13995,6 +14292,9 @@ sub sftp_open_enoent_bug3345 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -14009,13 +14309,14 @@ sub sftp_open_trunc_bug3449 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -14034,7 +14335,7 @@ sub sftp_open_trunc_bug3449 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -14199,6 +14500,9 @@ sub sftp_open_trunc_bug3449 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -14213,13 +14517,14 @@ sub sftp_open_creat {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -14238,7 +14543,7 @@ sub sftp_open_creat {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -14349,6 +14654,9 @@ sub sftp_open_creat {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -14363,13 +14671,14 @@ sub sftp_open_creat_excl {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -14388,7 +14697,7 @@ sub sftp_open_creat_excl {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -14525,6 +14834,9 @@ sub sftp_open_creat_excl {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -14539,13 +14851,14 @@ sub sftp_open_append_bug3450 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -14564,7 +14877,7 @@ sub sftp_open_append_bug3450 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -14698,6 +15011,9 @@ sub sftp_open_append_bug3450 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -14712,13 +15028,14 @@ sub sftp_open_rdonly {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -14737,7 +15054,7 @@ sub sftp_open_rdonly {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -14864,6 +15181,9 @@ sub sftp_open_rdonly {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -14878,13 +15198,14 @@ sub sftp_open_wronly {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -14903,7 +15224,7 @@ sub sftp_open_wronly {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -15030,6 +15351,9 @@ sub sftp_open_wronly {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -15044,13 +15368,14 @@ sub sftp_open_rdwr {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -15069,7 +15394,7 @@ sub sftp_open_rdwr {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -15196,6 +15521,9 @@ sub sftp_open_rdwr {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -15210,13 +15538,14 @@ sub sftp_upload {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -15235,7 +15564,7 @@ sub sftp_upload {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -15347,6 +15676,9 @@ sub sftp_upload {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -15361,13 +15693,14 @@ sub sftp_upload_with_compression {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -15386,7 +15719,7 @@ sub sftp_upload_with_compression {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -15506,6 +15839,9 @@ sub sftp_upload_with_compression {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -15520,13 +15856,14 @@ sub sftp_upload_zero_len_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -15545,7 +15882,7 @@ sub sftp_upload_zero_len_file {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -15661,6 +15998,9 @@ sub sftp_upload_zero_len_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -15675,13 +16015,14 @@ sub sftp_upload_largefile {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -15700,7 +16041,7 @@ sub sftp_upload_largefile {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -15861,6 +16202,9 @@ sub sftp_upload_largefile {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -15893,13 +16237,14 @@ sub sftp_upload_device_full {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -15918,7 +16263,7 @@ sub sftp_upload_device_full {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -16045,6 +16390,9 @@ sub sftp_upload_device_full {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -16059,13 +16407,14 @@ sub sftp_upload_fifo_bug3312 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -16084,7 +16433,7 @@ sub sftp_upload_fifo_bug3312 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -16199,6 +16548,9 @@ sub sftp_upload_fifo_bug3312 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -16213,13 +16565,14 @@ sub sftp_upload_fifo_bug3313 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -16238,7 +16591,7 @@ sub sftp_upload_fifo_bug3313 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -16361,6 +16714,9 @@ sub sftp_upload_fifo_bug3313 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -16375,13 +16731,14 @@ sub sftp_ext_upload_bug3550 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -16400,12 +16757,13 @@ sub sftp_ext_upload_bug3550 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
   my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
 
   my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
@@ -16609,6 +16967,9 @@ sub sftp_ext_upload_bug3550 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -16623,13 +16984,14 @@ sub sftp_download {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -16665,7 +17027,7 @@ sub sftp_download {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -16787,6 +17149,9 @@ sub sftp_download {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -16801,13 +17166,14 @@ sub sftp_download_with_compression {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -16843,7 +17209,7 @@ sub sftp_download_with_compression {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -16980,6 +17346,9 @@ sub sftp_download_with_compression {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -16994,13 +17363,14 @@ sub sftp_download_zero_len_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -17031,7 +17401,7 @@ sub sftp_download_zero_len_file {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -17153,6 +17523,9 @@ sub sftp_download_zero_len_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -17167,13 +17540,14 @@ sub sftp_download_largefile {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -17192,7 +17566,7 @@ sub sftp_download_largefile {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -17355,6 +17729,9 @@ sub sftp_download_largefile {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -17387,13 +17764,14 @@ sub sftp_download_fifo_bug3314 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -17414,7 +17792,7 @@ sub sftp_download_fifo_bug3314 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -17533,6 +17911,9 @@ sub sftp_download_fifo_bug3314 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -17547,13 +17928,14 @@ sub sftp_ext_download_bug3550 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -17572,12 +17954,13 @@ sub sftp_ext_download_bug3550 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
   my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
 
   my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
@@ -17786,6 +18169,9 @@ sub sftp_ext_download_bug3550 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -17800,7 +18186,7 @@ sub sftp_ext_download_rekey {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -18038,6 +18424,9 @@ sub sftp_ext_download_rekey {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -18052,7 +18441,7 @@ sub sftp_download_readonly_bug3787 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -18212,6 +18601,9 @@ sub sftp_download_readonly_bug3787 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -18226,13 +18618,14 @@ sub sftp_readdir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -18251,7 +18644,7 @@ sub sftp_readdir {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -18404,6 +18797,9 @@ sub sftp_readdir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -18418,13 +18814,14 @@ sub sftp_readdir_symlink_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $uid = 500;
   my $gid = 500;
 
@@ -18457,7 +18854,7 @@ sub sftp_readdir_symlink_dir {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -18611,6 +19008,9 @@ sub sftp_readdir_symlink_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -18625,7 +19025,7 @@ sub sftp_readdir_wide_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -18825,6 +19225,9 @@ sub sftp_readdir_wide_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -18839,13 +19242,14 @@ sub sftp_mkdir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -18866,7 +19270,7 @@ sub sftp_mkdir {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -18971,6 +19375,9 @@ sub sftp_mkdir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -18985,13 +19392,14 @@ sub sftp_mkdir_readdir_bug3481 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -19012,7 +19420,7 @@ sub sftp_mkdir_readdir_bug3481 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -19177,6 +19585,9 @@ sub sftp_mkdir_readdir_bug3481 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -19191,13 +19602,14 @@ sub sftp_rmdir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -19219,7 +19631,7 @@ sub sftp_rmdir {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -19324,6 +19736,9 @@ sub sftp_rmdir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -19338,7 +19753,7 @@ sub sftp_rmdir_dir_not_empty {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -19488,6 +19903,9 @@ sub sftp_rmdir_dir_not_empty {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -19502,13 +19920,14 @@ sub sftp_remove {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -19539,7 +19958,7 @@ sub sftp_remove {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -19644,6 +20063,9 @@ sub sftp_remove {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -19658,13 +20080,14 @@ sub sftp_rename {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -19697,7 +20120,7 @@ sub sftp_rename {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -19806,6 +20229,9 @@ sub sftp_rename {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -19820,13 +20246,14 @@ sub sftp_symlink {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -19859,7 +20286,7 @@ sub sftp_symlink {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -19964,6 +20391,9 @@ sub sftp_symlink {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -19978,7 +20408,7 @@ sub sftp_symlink_dst_already_exists {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -20133,6 +20563,9 @@ sub sftp_symlink_dst_already_exists {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -20147,7 +20580,7 @@ sub sftp_symlink_src_does_not_exist {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -20281,6 +20714,9 @@ sub sftp_symlink_src_does_not_exist {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -20295,13 +20731,14 @@ sub sftp_readlink {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -20337,7 +20774,7 @@ sub sftp_readlink {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -20441,6 +20878,9 @@ sub sftp_readlink {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -20455,13 +20895,14 @@ sub sftp_config_allowoverwrite {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -20480,7 +20921,7 @@ sub sftp_config_allowoverwrite {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -20603,6 +21044,9 @@ sub sftp_config_allowoverwrite {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -20617,13 +21061,14 @@ sub sftp_config_allowstorerestart {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -20642,7 +21087,7 @@ sub sftp_config_allowstorerestart {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -20768,6 +21213,9 @@ sub sftp_config_allowstorerestart {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -20782,13 +21230,14 @@ sub sftp_config_client_alive {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -20807,7 +21256,7 @@ sub sftp_config_client_alive {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -20924,6 +21373,9 @@ sub sftp_config_client_alive {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -20938,13 +21390,14 @@ sub sftp_config_client_match {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -20963,7 +21416,7 @@ sub sftp_config_client_match {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -21071,6 +21524,9 @@ sub sftp_config_client_match {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -21085,20 +21541,21 @@ sub sftp_config_createhome {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
   my $uid = 500;
   my $gid = 500;
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -21215,6 +21672,9 @@ sub sftp_config_createhome {
     test_msg("Expected $expected, got $gid_owner"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -21229,13 +21689,14 @@ sub sftp_config_defaultchdir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -21265,7 +21726,7 @@ sub sftp_config_defaultchdir {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $hidden_file = File::Spec->rel2abs("$tmpdir/.in.test.txt.");
   $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
@@ -21420,6 +21881,9 @@ sub sftp_config_defaultchdir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -21434,13 +21898,14 @@ sub sftp_config_deleteabortedstores {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -21459,7 +21924,7 @@ sub sftp_config_deleteabortedstores {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $hidden_file = File::Spec->rel2abs("$tmpdir/.in.test.txt.");
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
@@ -21576,6 +22041,9 @@ sub sftp_config_deleteabortedstores {
   }
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -21604,13 +22072,14 @@ sub sftp_config_dirfakemode {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -21629,7 +22098,7 @@ sub sftp_config_dirfakemode {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -21798,6 +22267,9 @@ sub sftp_config_dirfakemode {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -21812,13 +22284,14 @@ sub sftp_config_hiddenstores {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -21837,7 +22310,7 @@ sub sftp_config_hiddenstores {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $hidden_file = File::Spec->rel2abs("$tmpdir/.in.test.txt.");
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
@@ -21969,6 +22442,9 @@ sub sftp_config_hiddenstores {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -21983,13 +22459,14 @@ sub sftp_config_hidefiles_abs_path {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -22008,7 +22485,7 @@ sub sftp_config_hidefiles_abs_path {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -22179,6 +22656,9 @@ sub sftp_config_hidefiles_abs_path {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -22193,13 +22673,14 @@ sub sftp_config_hidefiles_deferred_path_bug3470 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -22218,7 +22699,7 @@ sub sftp_config_hidefiles_deferred_path_bug3470 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -22389,6 +22870,9 @@ sub sftp_config_hidefiles_deferred_path_bug3470 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -22403,13 +22887,14 @@ sub sftp_config_hidefiles_deferred_path_chroot_bug3470 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -22428,7 +22913,7 @@ sub sftp_config_hidefiles_deferred_path_chroot_bug3470 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -22600,6 +23085,9 @@ sub sftp_config_hidefiles_deferred_path_chroot_bug3470 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -22614,13 +23102,14 @@ sub sftp_config_hidenoaccess {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -22639,7 +23128,7 @@ sub sftp_config_hidenoaccess {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -22825,6 +23314,9 @@ sub sftp_config_hidenoaccess {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -22839,7 +23331,7 @@ sub sftp_config_max_clients_per_host_bug3630 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -22865,7 +23357,7 @@ sub sftp_config_max_clients_per_host_bug3630 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -22976,6 +23468,9 @@ EOC
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -22990,13 +23485,14 @@ sub sftp_config_max_login_attempts {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -23015,12 +23511,13 @@ sub sftp_config_max_login_attempts {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
 
   my $config = {
     PidFile => $pid_file,
@@ -23128,6 +23625,9 @@ sub sftp_config_max_login_attempts {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -23142,13 +23642,14 @@ sub sftp_config_pathdenyfilter {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -23167,7 +23668,7 @@ sub sftp_config_pathdenyfilter {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -23278,6 +23779,9 @@ sub sftp_config_pathdenyfilter {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -23292,7 +23796,7 @@ sub sftp_config_rekey_short_timeout_failed {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -23467,6 +23971,9 @@ sub sftp_config_rekey_short_timeout_failed {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -23481,7 +23988,7 @@ sub sftp_config_rekey_long_timeout_ok {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -23656,6 +24163,9 @@ sub sftp_config_rekey_long_timeout_ok {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -23670,13 +24180,14 @@ sub sftp_config_rootlogin {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 0;
   my $gid = 0;
@@ -23695,7 +24206,7 @@ sub sftp_config_rootlogin {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -23785,6 +24296,9 @@ sub sftp_config_rootlogin {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -23799,7 +24313,7 @@ sub sftp_config_protocols {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -23928,6 +24442,9 @@ sub sftp_config_protocols {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -23942,7 +24459,7 @@ sub sftp_config_serverident_off {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -24088,6 +24605,9 @@ sub sftp_config_serverident_off {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -24102,7 +24622,7 @@ sub sftp_config_serverident_on {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -24248,6 +24768,9 @@ sub sftp_config_serverident_on {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -24262,7 +24785,7 @@ sub sftp_config_serverident_on_custom {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -24410,6 +24933,9 @@ sub sftp_config_serverident_on_custom {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -24424,7 +24950,7 @@ sub sftp_config_timeoutidle {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -24591,6 +25117,9 @@ sub sftp_config_timeoutidle {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -24605,7 +25134,7 @@ sub sftp_config_timeoutlogin {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -24731,6 +25260,9 @@ sub sftp_config_timeoutlogin {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -24745,7 +25277,7 @@ sub sftp_config_timeoutnotransfer_download {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -24892,6 +25424,9 @@ sub sftp_config_timeoutnotransfer_download {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -24906,7 +25441,7 @@ sub sftp_config_timeoutnotransfer_readdir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -25053,6 +25588,9 @@ sub sftp_config_timeoutnotransfer_readdir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -25067,7 +25605,7 @@ sub sftp_config_timeoutnotransfer_upload {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -25214,6 +25752,9 @@ sub sftp_config_timeoutnotransfer_upload {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -25228,7 +25769,7 @@ sub sftp_config_timeoutstalled {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -25392,6 +25933,9 @@ sub sftp_config_timeoutstalled {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -25406,13 +25950,14 @@ sub sftp_config_ignore_upload_perms_upload {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -25431,7 +25976,7 @@ sub sftp_config_ignore_upload_perms_upload {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -25549,6 +26094,9 @@ sub sftp_config_ignore_upload_perms_upload {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -25569,13 +26117,14 @@ sub sftp_config_ignore_upload_perms_mkdir_bug3680 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -25594,7 +26143,7 @@ sub sftp_config_ignore_upload_perms_mkdir_bug3680 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -25702,6 +26251,9 @@ sub sftp_config_ignore_upload_perms_mkdir_bug3680 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -25726,7 +26278,7 @@ sub sftp_config_ignore_set_perms_bug3599 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -25878,6 +26430,9 @@ sub sftp_config_ignore_set_perms_bug3599 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -25898,7 +26453,7 @@ sub sftp_config_ignore_set_times_bug3706 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -26053,6 +26608,9 @@ sub sftp_config_ignore_set_times_bug3706 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -26077,7 +26635,7 @@ sub sftp_config_ignore_set_owners_bug3757 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -26232,6 +26790,9 @@ sub sftp_config_ignore_set_owners_bug3757 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -26256,13 +26817,14 @@ sub sftp_config_userowner {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -26286,7 +26848,7 @@ sub sftp_config_userowner {
     '/bin/bash');
   auth_user_write($auth_user_file, $owner, 'none', $owner_uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -26417,6 +26979,9 @@ sub sftp_config_userowner {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -26431,13 +26996,14 @@ sub sftp_config_groupowner_file_nonmember {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -26459,7 +27025,7 @@ sub sftp_config_groupowner_file_nonmember {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
   auth_group_write($auth_group_file, $owner, $owner_gid, 'foo');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
@@ -26591,6 +27157,9 @@ sub sftp_config_groupowner_file_nonmember {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -26623,13 +27192,14 @@ sub sftp_config_groupowner_file_member_norootprivs {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
 
   # Make sure that, if we're running as root, that the home directory has
@@ -26646,7 +27216,7 @@ sub sftp_config_groupowner_file_member_norootprivs {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
   auth_group_write($auth_group_file, $owner, $owner_gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
@@ -26779,6 +27349,9 @@ sub sftp_config_groupowner_file_member_norootprivs {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -26811,13 +27384,14 @@ sub sftp_config_groupowner_dir_member_norootprivs_bug3765 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
 
   # Make sure that, if we're running as root, that the home directory has
@@ -26834,7 +27408,7 @@ sub sftp_config_groupowner_dir_member_norootprivs_bug3765 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
   auth_group_write($auth_group_file, $owner, $owner_gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
@@ -26959,6 +27533,9 @@ sub sftp_config_groupowner_dir_member_norootprivs_bug3765 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -26973,13 +27550,14 @@ sub sftp_config_ftpaccess_bug3460 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -27065,7 +27643,7 @@ EOF
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $data_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -27223,6 +27801,9 @@ EOF
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -27237,13 +27818,14 @@ sub sftp_config_limit_appe {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -27262,7 +27844,7 @@ sub sftp_config_limit_appe {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -27395,6 +27977,9 @@ sub sftp_config_limit_appe {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -27409,13 +27994,14 @@ sub sftp_config_limit_chmod {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -27434,7 +28020,7 @@ sub sftp_config_limit_chmod {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -27555,6 +28141,9 @@ sub sftp_config_limit_chmod {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -27569,7 +28158,7 @@ sub sftp_config_limit_chgrp_bug3757 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -27722,6 +28311,9 @@ sub sftp_config_limit_chgrp_bug3757 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -27736,13 +28328,14 @@ sub sftp_config_limit_list {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -27761,7 +28354,7 @@ sub sftp_config_limit_list {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -27910,6 +28503,9 @@ sub sftp_config_limit_list {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -27924,13 +28520,14 @@ sub sftp_config_limit_nlst {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -27949,7 +28546,7 @@ sub sftp_config_limit_nlst {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -28098,6 +28695,9 @@ sub sftp_config_limit_nlst {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -28112,13 +28712,14 @@ sub sftp_multi_channels {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -28137,7 +28738,7 @@ sub sftp_multi_channels {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -28258,6 +28859,9 @@ sub sftp_multi_channels {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -28272,13 +28876,14 @@ sub sftp_multi_channel_downloads {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -28297,7 +28902,7 @@ sub sftp_multi_channel_downloads {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -28498,6 +29103,9 @@ sub sftp_multi_channel_downloads {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -28535,13 +29143,14 @@ sub sftp_log_xferlog_download {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $xferlog_file = File::Spec->rel2abs("$tmpdir/xfer.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -28574,7 +29183,7 @@ sub sftp_log_xferlog_download {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -28698,6 +29307,9 @@ sub sftp_log_xferlog_download {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -28788,13 +29400,14 @@ sub sftp_log_xferlog_download_incomplete {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $xferlog_file = File::Spec->rel2abs("$tmpdir/xfer.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -28827,7 +29440,7 @@ sub sftp_log_xferlog_download_incomplete {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -28945,6 +29558,9 @@ sub sftp_log_xferlog_download_incomplete {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -29035,13 +29651,14 @@ sub sftp_log_xferlog_delete {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $xferlog_file = File::Spec->rel2abs("$tmpdir/xfer.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -29072,7 +29689,7 @@ sub sftp_log_xferlog_delete {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -29178,6 +29795,9 @@ sub sftp_log_xferlog_delete {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -29264,13 +29884,14 @@ sub sftp_log_xferlog_delete_chrooted {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $xferlog_file = File::Spec->rel2abs("$tmpdir/xfer.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -29301,7 +29922,7 @@ sub sftp_log_xferlog_delete_chrooted {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -29408,6 +30029,9 @@ sub sftp_log_xferlog_delete_chrooted {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -29494,13 +30118,14 @@ sub sftp_log_xferlog_upload {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $xferlog_file = File::Spec->rel2abs("$tmpdir/xfer.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -29522,7 +30147,7 @@ sub sftp_log_xferlog_upload {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -29636,6 +30261,9 @@ sub sftp_log_xferlog_upload {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -29726,13 +30354,14 @@ sub sftp_log_xferlog_upload_incomplete {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $xferlog_file = File::Spec->rel2abs("$tmpdir/xfer.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -29754,7 +30383,7 @@ sub sftp_log_xferlog_upload_incomplete {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -29870,6 +30499,9 @@ sub sftp_log_xferlog_upload_incomplete {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -29960,13 +30592,14 @@ sub sftp_log_extlog_reads {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -29988,7 +30621,7 @@ sub sftp_log_extlog_reads {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -30106,6 +30739,9 @@ sub sftp_log_extlog_reads {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -30144,13 +30780,14 @@ sub sftp_log_extlog_var_s_reads {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -30188,7 +30825,7 @@ sub sftp_log_extlog_var_s_reads {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -30339,6 +30976,9 @@ sub sftp_log_extlog_var_s_reads {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -30394,13 +31034,14 @@ sub sftp_log_extlog_var_s_writes {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -30438,7 +31079,7 @@ sub sftp_log_extlog_var_s_writes {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -30571,6 +31212,9 @@ EOC
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -30629,13 +31273,14 @@ sub sftp_log_extlog_file_modified_bug3457 {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -30665,7 +31310,7 @@ sub sftp_log_extlog_file_modified_bug3457 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -30777,6 +31422,9 @@ sub sftp_log_extlog_file_modified_bug3457 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -30807,13 +31455,14 @@ sub sftp_log_extlog_retr_file_size {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -30845,7 +31494,7 @@ sub sftp_log_extlog_retr_file_size {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -30968,6 +31617,9 @@ sub sftp_log_extlog_retr_file_size {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -31009,13 +31661,14 @@ sub sftp_log_extlog_putty_mget_retr_file_size_bug3560 {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -31060,7 +31713,7 @@ sub sftp_log_extlog_putty_mget_retr_file_size_bug3560 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -31238,6 +31891,9 @@ sub sftp_log_extlog_putty_mget_retr_file_size_bug3560 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -31289,7 +31945,7 @@ sub sftp_log_extlog_var_F_mkdir_rmdir_bug3591 {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -31435,6 +32091,9 @@ sub sftp_log_extlog_var_F_mkdir_rmdir_bug3591 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -31494,7 +32153,7 @@ sub sftp_log_extlog_var_w_rename_bug3029 {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -31649,6 +32308,9 @@ sub sftp_log_extlog_var_w_rename_bug3029 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -31722,7 +32384,7 @@ sub sftp_log_extlog_var_f_remove {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -31873,6 +32535,9 @@ sub sftp_log_extlog_var_f_remove {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -32151,13 +32816,14 @@ sub sftp_sighup {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -32176,7 +32842,7 @@ sub sftp_sighup {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -32283,6 +32949,9 @@ sub sftp_sighup {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -32297,7 +32966,7 @@ sub sftp_ifsess_protocols {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -32445,6 +33114,9 @@ EOC
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -32459,7 +33131,7 @@ sub sftp_wrap_login_allowed_bug3352 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -32491,6 +33163,7 @@ sub sftp_wrap_login_allowed_bug3352 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -32509,7 +33182,7 @@ sub sftp_wrap_login_allowed_bug3352 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -32614,6 +33287,9 @@ sub sftp_wrap_login_allowed_bug3352 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -32628,7 +33304,7 @@ sub sftp_wrap_login_denied_bug3352 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -32656,6 +33332,7 @@ sub sftp_wrap_login_denied_bug3352 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -32674,12 +33351,13 @@ sub sftp_wrap_login_denied_bug3352 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
 
   my $config = {
     PidFile => $pid_file,
@@ -32769,6 +33447,9 @@ sub sftp_wrap_login_denied_bug3352 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -32783,13 +33464,14 @@ sub scp_upload {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -32808,7 +33490,7 @@ sub scp_upload {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -32911,6 +33593,9 @@ sub scp_upload {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -32925,13 +33610,14 @@ sub scp_upload_zero_len_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -32950,7 +33636,7 @@ sub scp_upload_zero_len_file {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -33066,6 +33752,9 @@ sub scp_upload_zero_len_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -33080,13 +33769,14 @@ sub scp_upload_largefile {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -33105,7 +33795,7 @@ sub scp_upload_largefile {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -33239,6 +33929,9 @@ sub scp_upload_largefile {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -33271,13 +33964,14 @@ sub scp_upload_subdir_enoent {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -33298,7 +33992,7 @@ sub scp_upload_subdir_enoent {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -33400,6 +34094,9 @@ sub scp_upload_subdir_enoent {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -33414,13 +34111,14 @@ sub scp_upload_subdir_enoent_with_limits {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -33441,7 +34139,7 @@ sub scp_upload_subdir_enoent_with_limits {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -33572,6 +34270,9 @@ EOL
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -33586,13 +34287,14 @@ sub scp_upload_fifo_bug3312 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -33611,7 +34313,7 @@ sub scp_upload_fifo_bug3312 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -33720,6 +34422,9 @@ sub scp_upload_fifo_bug3312 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -33734,13 +34439,14 @@ sub scp_upload_fifo_bug3313 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -33759,7 +34465,7 @@ sub scp_upload_fifo_bug3313 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -33859,6 +34565,9 @@ sub scp_upload_fifo_bug3313 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -33873,13 +34582,14 @@ sub scp_ext_upload_recursive_dir_bug3447 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -33898,7 +34608,7 @@ sub scp_ext_upload_recursive_dir_bug3447 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -34157,6 +34867,9 @@ sub scp_ext_upload_recursive_dir_bug3447 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -34171,7 +34884,7 @@ sub scp_ext_upload_recursive_dir_bug3792 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -34451,6 +35164,9 @@ sub scp_ext_upload_recursive_dir_bug3792 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -34465,13 +35181,14 @@ sub scp_ext_upload_different_name_bug3425 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -34490,7 +35207,7 @@ sub scp_ext_upload_different_name_bug3425 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -34644,6 +35361,9 @@ sub scp_ext_upload_different_name_bug3425 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -34658,13 +35378,14 @@ sub scp_ext_upload_recursive_empty_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -34683,12 +35404,13 @@ sub scp_ext_upload_recursive_empty_dir {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
   my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
 
   my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
@@ -34831,6 +35553,9 @@ sub scp_ext_upload_recursive_empty_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -34845,13 +35570,14 @@ sub scp_download {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -34870,7 +35596,7 @@ sub scp_download {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -34973,6 +35699,9 @@ sub scp_download {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -34987,7 +35716,7 @@ sub scp_download_enoent_bug3798 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -35111,6 +35840,9 @@ sub scp_download_enoent_bug3798 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -35125,13 +35857,14 @@ sub scp_download_zero_len_file {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -35150,7 +35883,7 @@ sub scp_download_zero_len_file {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -35266,6 +35999,9 @@ sub scp_download_zero_len_file {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -35280,13 +36016,14 @@ sub scp_download_largefile {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -35305,7 +36042,7 @@ sub scp_download_largefile {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -35439,6 +36176,9 @@ sub scp_download_largefile {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -35471,13 +36211,14 @@ sub scp_download_fifo_bug3314 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -35496,7 +36237,7 @@ sub scp_download_fifo_bug3314 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -35600,6 +36341,9 @@ sub scp_download_fifo_bug3314 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -35614,13 +36358,14 @@ sub scp_ext_download_bug3544 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -35639,12 +36384,13 @@ sub scp_ext_download_bug3544 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
   my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
 
   my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
@@ -35789,6 +36535,9 @@ sub scp_ext_download_bug3544 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -35803,7 +36552,7 @@ sub scp_ext_download_bug3798 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -35982,6 +36731,9 @@ sub scp_ext_download_bug3798 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -35996,13 +36748,14 @@ sub scp_ext_download_recursive_dir_bug3456 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -36021,12 +36774,13 @@ sub scp_ext_download_recursive_dir_bug3456 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
   my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
 
   my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
@@ -36276,6 +37030,9 @@ sub scp_ext_download_recursive_dir_bug3456 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -36290,13 +37047,14 @@ sub scp_ext_download_recursive_empty_dir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -36315,12 +37073,13 @@ sub scp_ext_download_recursive_empty_dir {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
   my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
 
   my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
@@ -36465,6 +37224,9 @@ sub scp_ext_download_recursive_empty_dir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -36479,13 +37241,14 @@ sub scp_config_ignore_upload_perms {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -36504,7 +37267,7 @@ sub scp_config_ignore_upload_perms {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -36611,6 +37374,9 @@ sub scp_config_ignore_upload_perms {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -36631,13 +37397,14 @@ sub scp_config_hiddenstores {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -36656,7 +37423,7 @@ sub scp_config_hiddenstores {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -36766,6 +37533,9 @@ sub scp_config_hiddenstores {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -36780,13 +37550,14 @@ sub scp_config_subdir_upload_allowed {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -36809,7 +37580,7 @@ sub scp_config_subdir_upload_allowed {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -36925,6 +37696,9 @@ sub scp_config_subdir_upload_allowed {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -36939,7 +37713,7 @@ sub scp_config_protocols {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -37070,6 +37844,9 @@ sub scp_config_protocols {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -37084,13 +37861,14 @@ sub scp_config_userowner {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -37114,7 +37892,7 @@ sub scp_config_userowner {
     '/bin/bash');
   auth_user_write($auth_user_file, $owner, 'none', $owner_uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -37228,6 +38006,9 @@ sub scp_config_userowner {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -37242,13 +38023,14 @@ sub scp_config_groupowner_file_nonmember {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -37270,7 +38052,7 @@ sub scp_config_groupowner_file_nonmember {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
   auth_group_write($auth_group_file, $owner, $owner_gid, 'foo');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
@@ -37385,6 +38167,9 @@ sub scp_config_groupowner_file_nonmember {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -37417,13 +38202,14 @@ sub scp_config_groupowner_file_member_norootprivs {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
 
   # Make sure that, if we're running as root, that the home directory has
@@ -37440,7 +38226,7 @@ sub scp_config_groupowner_file_member_norootprivs {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
   auth_group_write($auth_group_file, $owner, $owner_gid, 'foo');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
@@ -37556,6 +38342,9 @@ sub scp_config_groupowner_file_member_norootprivs {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -37571,13 +38360,14 @@ sub scp_log_extlog_var_f_upload {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -37610,7 +38400,7 @@ sub scp_log_extlog_var_f_upload {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -37714,6 +38504,9 @@ sub scp_log_extlog_var_f_upload {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -37755,13 +38548,14 @@ sub scp_log_extlog_file_modified_bug3457 {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -37803,7 +38597,7 @@ sub scp_log_extlog_file_modified_bug3457 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -37904,6 +38698,9 @@ sub scp_log_extlog_file_modified_bug3457 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -37934,13 +38731,14 @@ sub scp_log_xferlog_download {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $xferlog_file = File::Spec->rel2abs("$tmpdir/xfer.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -37961,7 +38759,7 @@ sub scp_log_xferlog_download {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -38067,6 +38865,9 @@ sub scp_log_xferlog_download {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -38157,13 +38958,14 @@ sub scp_log_xferlog_upload {
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $xferlog_file = File::Spec->rel2abs("$tmpdir/xfer.log");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -38198,7 +39000,7 @@ sub scp_log_xferlog_upload {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -38301,6 +39103,9 @@ sub scp_log_xferlog_upload {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -38390,13 +39195,14 @@ sub sftp_quotatab_upload_bytes_in_exceeded_soft_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -38484,7 +39290,7 @@ EOS
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -38614,6 +39420,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -38628,13 +39437,14 @@ sub sftp_sql_custom_user_info {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -38674,7 +39484,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', $gid, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
 EOS
 
     unless (close($fh)) {
@@ -38859,6 +39669,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -38873,13 +39686,14 @@ sub sftp_sql_log_retr_vars {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -38898,7 +39712,7 @@ sub sftp_sql_log_retr_vars {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -39061,6 +39875,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -39095,13 +39912,14 @@ sub sftp_sql_log_stor_vars {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -39120,7 +39938,7 @@ sub sftp_sql_log_stor_vars {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -39278,6 +40096,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -39312,13 +40133,14 @@ sub sftp_sql_log_appe_vars {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -39337,7 +40159,7 @@ sub sftp_sql_log_appe_vars {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -39506,6 +40328,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -39540,13 +40365,14 @@ sub sftp_sql_log_init_vars {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -39565,7 +40391,7 @@ sub sftp_sql_log_init_vars {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -39729,6 +40555,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -39767,13 +40596,14 @@ sub sftp_sql_log_pass_vars {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -39792,7 +40622,7 @@ sub sftp_sql_log_pass_vars {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -39956,6 +40786,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -39994,13 +40827,14 @@ sub sftp_sql_log_exit_vars {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -40019,7 +40853,7 @@ sub sftp_sql_log_exit_vars {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -40187,6 +41021,9 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
