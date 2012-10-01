@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.195 2012-10-01 17:54:01 castaglia Exp $
+ * $Id: mod_ls.c,v 1.196 2012-10-01 17:56:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -171,7 +171,8 @@ static int is_safe_symlink(const char *path, size_t pathlen) {
   /* Next, paranoidly check for uncommon occurrences, e.g. './///', '../////',
    * etc.
    */
-  if (path[0] == '.' &&
+  if (pathlen >= 2 &&
+      path[0] == '.' &&
       path[pathlen-1] == '/') {
     register unsigned int i;
 
