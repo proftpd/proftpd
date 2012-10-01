@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.194 2012-09-30 17:55:47 castaglia Exp $
+ * $Id: mod_ls.c,v 1.195 2012-10-01 17:54:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -157,6 +157,35 @@ static config_rec *find_ls_limit(char *cmd_name) {
   }
 
   return NULL;
+}
+
+static int is_safe_symlink(const char *path, size_t pathlen) {
+
+  /* First, check the most common cases: '.', './', '..', and '../'. */
+  if ((pathlen == 1 && path[0] == '.') ||
+      (pathlen == 2 && path[0] == '.' && (path[1] == '.' || path[1] == '/')) ||
+      (pathlen == 3 && path[0] == '.' && path[1] == '.' && path[2] == '/')) {
+    return FALSE;
+  }
+
+  /* Next, paranoidly check for uncommon occurrences, e.g. './///', '../////',
+   * etc.
+   */
+  if (path[0] == '.' &&
+      path[pathlen-1] == '/') {
+    register unsigned int i;
+
+    for (i = pathlen - 1; path[i] == '/' && i > 0; i--) {
+      pr_signals_handle();
+    }
+
+    if (strncmp(path, ".", i + 1) == 0 ||
+        strncmp(path, "..", i + 1) == 0) {
+      return FALSE;
+    }
+  }
+
+  return TRUE;
 }
 
 static void push_cwd(char *_cwd, unsigned char *symhold) {
@@ -464,9 +493,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         m[len] = '\0';
 
         /* If the symlink points to either '.' or '..', skip it (Bug#3719). */
-        if ((len == 1 && m[0] == '.') ||
-            (len == 2 && m[0] == '.' && (m[1] == '.' || m[1] == '/')) ||
-            (len == 3 && m[0] == '.' && m[1] == '.' && m[2] == '/')) {
+        if (is_safe_symlink(m, len) == FALSE) {
           return 0;
         }
 
@@ -489,9 +516,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       l[len] = '\0';
 
       /* If the symlink points to either '.' or '..', skip it (Bug#3719). */
-      if ((len == 1 && l[0] == '.') ||
-          (len == 2 && l[0] == '.' && (l[1] == '.' || l[1] == '/')) ||
-          (len == 3 && l[0] == '.' && l[1] == '.' && l[2] == '/')) {
+      if (is_safe_symlink(l, len) == FALSE) {
         return 0;
       }
 
