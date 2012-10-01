@@ -31,7 +31,8 @@ TEST_API_DEPS=\
   $(top_srcdir)/src/stash.o \
   $(top_srcdir)/src/modules.o \
   $(top_srcdir)/src/cmd.o \
-  $(top_srcdir)/src/response.o
+  $(top_srcdir)/src/response.o \
+  $(top_srcdir)/src/fsio.o
 
 TEST_API_LIBS=-lcheck
 
@@ -57,6 +58,7 @@ TEST_API_OBJS=\
   api/modules.o \
   api/cmd.o \
   api/response.o \
+  api/fsio.o \
   api/stubs.o \
   api/tests.o
 

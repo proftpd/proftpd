@@ -34,19 +34,16 @@ server_rec *main_server = NULL;
 module *static_modules[] = { NULL };
 module *loaded_modules = NULL;
 
+char *dir_realpath(pool *p, const char *path) {
+  return NULL;
+}
+
+struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
+  errno = ENOENT;
+  return NULL;
+}
+
 int pr_ctrls_unregister(module *m, const char *action) {
-  return 0;
-}
-
-char *pr_fs_decode_path(pool *p, const char *path) {
-  return (char *) path;
-}
-
-char *pr_fs_encode_path(pool *p, const char *path) {
-  return (char *) path;
-}
-
-int pr_fs_get_usable_fd(int fd) {
   return 0;
 }
 
