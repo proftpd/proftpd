@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.196 2012-10-01 17:56:29 castaglia Exp $
+ * $Id: mod_ls.c,v 1.197 2012-10-01 21:14:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -159,7 +159,7 @@ static config_rec *find_ls_limit(char *cmd_name) {
   return NULL;
 }
 
-static int is_safe_symlink(const char *path, size_t pathlen) {
+static int is_safe_symlink(pool *p, const char *path, size_t pathlen) {
 
   /* First, check the most common cases: '.', './', '..', and '../'. */
   if ((pathlen == 1 && path[0] == '.') ||
@@ -173,15 +173,21 @@ static int is_safe_symlink(const char *path, size_t pathlen) {
    */
   if (pathlen >= 2 &&
       path[0] == '.' &&
-      path[pathlen-1] == '/') {
-    register unsigned int i;
+      (path[pathlen-1] == '/' || path[pathlen-1] == '.')) {
+    char buf[PR_TUNABLE_PATH_MAX + 1], *full_path;
+    size_t buflen;
 
-    for (i = pathlen - 1; path[i] == '/' && i > 0; i--) {
-      pr_signals_handle();
-    }
+    full_path = pdircat(p, pr_fs_getcwd(), path, NULL);
 
-    if (strncmp(path, ".", i + 1) == 0 ||
-        strncmp(path, "..", i + 1) == 0) {
+    buf[sizeof(buf)-1] = '\0';
+    pr_fs_clean_path(full_path, buf, sizeof(buf)-1);
+    buflen = strlen(buf);
+
+    /* If the cleaned path appears in the current working directory, we
+     * have an "unsafe" symlink pointing to the current directory (or higher
+     * up the path).
+     */
+    if (strncmp(pr_fs_getcwd(), buf, buflen) == 0) {
       return FALSE;
     }
   }
@@ -494,7 +500,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         m[len] = '\0';
 
         /* If the symlink points to either '.' or '..', skip it (Bug#3719). */
-        if (is_safe_symlink(m, len) == FALSE) {
+        if (is_safe_symlink(p, m, len) == FALSE) {
           return 0;
         }
 
@@ -517,7 +523,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       l[len] = '\0';
 
       /* If the symlink points to either '.' or '..', skip it (Bug#3719). */
-      if (is_safe_symlink(l, len) == FALSE) {
+      if (is_safe_symlink(p, l, len) == FALSE) {
         return 0;
       }
 
