@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.72 2012-09-28 21:37:28 castaglia Exp $
+ * $Id: scp.c,v 1.73 2012-10-01 17:19:12 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -487,7 +487,8 @@ static int recv_errors(pool *p, uint32_t channel_id, struct scp_path *sp,
 }
 
 static int recv_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
-    unsigned char *buf, uint32_t buflen) {
+    unsigned char *buf, uint32_t buflen, unsigned char **remain,
+    uint32_t *remainlen) {
   register unsigned int i;
   unsigned char *data = NULL, *msg, *ptr = NULL;
   uint32_t datalen = 0;
@@ -500,11 +501,12 @@ static int recv_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   }
 
   if (data[0] != 'T') {
-    pr_trace_msg(trace_channel, 2, "expected T control message, got '%c'",
-      data[0]);
-    write_confirm(p, channel_id, 1,
-      pstrcat(p, sp->path, ": expected control message", NULL));
-    return 1;
+    /* Not a timeinfo message; let someone else process this. */
+    *remain = data;
+    *remainlen = datalen;
+
+    errno = EINVAL;
+    return -1;
   }
 
   for (i = 1; i < datalen; i++) {
@@ -1110,7 +1112,8 @@ static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
 }
 
 static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
-    unsigned char *buf, uint32_t buflen) {
+    unsigned char *buf, uint32_t buflen, unsigned char **remain,
+    uint32_t *remainlen) {
   struct scp_path *parent_sp;
   unsigned char *data = NULL;
   uint32_t datalen = 0;
@@ -1122,7 +1125,12 @@ static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
   }
 
   if (data[0] != 'E') {
-    return 0;
+    /* Not an EOD message; let someone else process this. */
+    *remain = data;
+    *remainlen = datalen;
+
+    errno = EINVAL;
+    return -1;
   }
 
   pr_trace_msg(trace_channel, 5, "'%s' control message: E", sp->path);
@@ -1242,8 +1250,15 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
    */
   if (sp->parent_dir != NULL &&
       sp->recvd_finfo == FALSE &&
-      sp->recvlen == 0) {
-    res = recv_eod(p, channel_id, sp, data, datalen);
+      (sp->recvlen == 0 || sp->recvd_data)) {
+    unsigned char *remain = NULL;
+    uint32_t remainlen = 0;
+
+    res = recv_eod(p, channel_id, sp, data, datalen, &remain, &remainlen);
+    if (res == 0) {
+      return res;
+    }
+
     if (res == 1) {
       struct scp_path *parent_dir = NULL;
 
@@ -1263,11 +1278,30 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
        */
       return 1;
     }
+
+    data = remain;
+    datalen = remainlen;
   }
 
   if ((scp_opts & SFTP_SCP_OPT_PRESERVE) &&
-      !sp->recvd_timeinfo) {
-    return recv_timeinfo(p, channel_id, sp, data, datalen);
+      !sp->recvd_timeinfo &&
+      !sp->recvd_finfo) {
+    unsigned char *remain = NULL;
+    uint32_t remainlen = 0;
+
+    /* It possible that this is not a timeinfo message; we need to be
+     * prepared for this.  PuTTY, for example, when recursively uploading
+     * a directory with the -p (preserve time) option enabled, does NOT
+     * send the timeinfo message, whereas OpenSSH's scp(1) does.
+     */
+    res = recv_timeinfo(p, channel_id, sp, data, datalen, &remain, &remainlen);
+    if (res < 0) {
+      data = remain;
+      datalen = remainlen;
+
+    } else {
+      return res;
+    }
   }
 
   if (!sp->recvd_finfo) {
