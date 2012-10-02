@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached -lmemcachedutil$
- * $Id: mod_memcache.c,v 1.18 2012-04-15 18:04:15 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.19 2012-10-02 19:49:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,6 +44,9 @@ static int memcache_logfd = -1;
 static pool *memcache_pool = NULL;
 static array_header *memcache_server_lists = NULL;
 
+static void mcache_exit_ev(const void *, void *);
+static int mcache_sess_init(void);
+
 /* Command handlers
  */
 
@@ -56,7 +59,7 @@ MODRET memcache_post_host(cmd_rec *cmd) {
     int res;
     config_rec *c;
 
-    pr_event_unregister(&memcache_module, "core.exit", mcache_exit_ev, NULL);
+    pr_event_unregister(&memcache_module, "core.exit", mcache_exit_ev);
     (void) close(memcache_logfd);
 
     c = find_config(session.prev_server->conf, CONF_PARAM, "MemcacheServers",
@@ -70,7 +73,7 @@ MODRET memcache_post_host(cmd_rec *cmd) {
 
     /* XXX Restore other memcache settings? */
 
-    res = memcache_sess_init();
+    res = mcache_sess_init();
     if (res < 0) {
       pr_session_disconnect(&memcache_module,
         PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
