@@ -218,7 +218,7 @@ distclean: clean
 spec:
 	# RPM needs this in the top-level directory in order to support '-t'
 	mv -f contrib/dist/rpm/proftpd.spec .
-	cat proftpd.spec | sed 's/global proftpd_version.*/global proftpd_version\t$(RELEASE_VERSION)/' | sed 's/global proftpd_cvs_version_main.*/global proftpd_cvs_version_main\t$(RELEASE_VERSION)' | sed 's/global release_cand_version.*/global release_cand_version\t$(RC_VERSION)/' > /tmp/proftpd-build-spec.tmp && mv /tmp/proftpd-build-spec.tmp proftpd.spec
+	cat proftpd.spec | sed 's/global proftpd_version.*/global proftpd_version\t$(RELEASE_VERSION)/' | sed 's/global proftpd_cvs_version_main.*/global proftpd_cvs_version_main\t$(RELEASE_VERSION)/' | sed 's/global release_cand_version.*/global release_cand_version\t$(RC_VERSION)/' > /tmp/proftpd-build-spec.tmp && mv /tmp/proftpd-build-spec.tmp proftpd.spec
 
 dist: depend distclean spec
 	rm -rf `find . -name CVS`
