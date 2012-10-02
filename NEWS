@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1454 2012-10-01 17:19:11 castaglia Exp $
+$Id: NEWS,v 1.1455 2012-10-02 21:48:46 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -135,6 +135,8 @@ CVS
 - Bug 3829 - RNFR without following RNTO can lead to NULL pointer dereference.
 - Bug 3832 - Support disabling of system logging on per-connection basis.
 - Bug 3792 - Recursive SCP uploads using preserve-time (-p) option may not work.
+- Bug 3831 - Sporadic "451 Insufficient memory or file locked" failure when
+  downloading.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

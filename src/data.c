@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.142 2012-09-11 23:11:04 castaglia Exp $
+ * $Id: data.c,v 1.143 2012-10-02 21:48:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1127,8 +1127,24 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 
         len = pr_netio_read(session.d->instrm, buf + buflen,
           session.xfer.bufsize - buflen, 1);
-        if (len < 0)
+        while (len < 0) {
+          int xerrno = errno;
+ 
+          if (xerrno == EAGAIN) {
+            /* Since our socket is in non-blocking mode, read(2) can return
+             * EAGAIN if there is no data yet for us.  Handle this by
+             * delaying temporarily, then trying again.
+             */
+            errno = EINTR;
+            pr_signals_handle();
+            
+            len = pr_netio_read(session.d->instrm, buf + buflen,
+              session.xfer.bufsize - buflen, 1);
+            continue;
+          }
+
           return -1;
+        }
 
         /* Before we process the data read from the client, generate an event
          * for any listeners which may want to examine this data.
@@ -1209,31 +1225,50 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
       /* Return how much data we actually copied into the client buffer. */
       len = buflen;
 
-    } else if ((len = pr_netio_read(session.d->instrm, cl_buf,
-        cl_size, 1)) > 0) {
+    } else {
+      len = pr_netio_read(session.d->instrm, cl_buf, cl_size, 1);
+      while (len < 0) {
+        int xerrno = errno;
 
-      /* Before we process the data read from the client, generate an event
-       * for any listeners which may want to examine this data.
-       */
+        if (xerrno == EAGAIN) {
+          /* Since our socket is in non-blocking mode, read(2) can return
+           * EAGAIN if there is no data yet for us.  Handle this by
+           * delaying temporarily, then trying again.
+           */
+          errno = EINTR;
+          pr_signals_handle();
+           
+          len = pr_netio_read(session.d->instrm, cl_buf, cl_size, 1);
+          continue;
+        }
 
-      pbuf = pcalloc(session.xfer.p, sizeof(pr_buffer_t));
-      pbuf->buf = buf;
-      pbuf->buflen = len;
-      pbuf->current = pbuf->buf;
-      pbuf->remaining = 0;
-
-      pr_event_generate("core.data-read", pbuf);
-
-      /* The event listeners may have changed the data to write out. */
-      buf = pbuf->buf;
-      len = pbuf->buflen - pbuf->remaining;
-
-      /* Non-ASCII mode doesn't need to use session.xfer.buf */
-      if (timeout_stalled) {
-        pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+        break;
       }
 
-      total += len;
+      if (len > 0) {
+        /* Before we process the data read from the client, generate an event
+         * for any listeners which may want to examine this data.
+         */
+
+        pbuf = pcalloc(session.xfer.p, sizeof(pr_buffer_t));
+        pbuf->buf = buf;
+        pbuf->buflen = len;
+        pbuf->current = pbuf->buf;
+        pbuf->remaining = 0;
+
+        pr_event_generate("core.data-read", pbuf);
+
+        /* The event listeners may have changed the data to write out. */
+        buf = pbuf->buf;
+        len = pbuf->buflen - pbuf->remaining;
+
+        /* Non-ASCII mode doesn't need to use session.xfer.buf */
+        if (timeout_stalled) {
+          pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+        }
+
+        total += len;
+      } 
     }
 
   } else { /* PR_NETIO_IO_WR */
@@ -1264,9 +1299,24 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
       }
 
       bwrote = pr_netio_write(session.d->outstrm, session.xfer.buf, xferbuflen);
+      while (bwrote < 0) {
+        int xerrno = errno;
 
-      if (bwrote < 0)
+        if (xerrno == EAGAIN) {
+          /* Since our socket is in non-blocking mode, write(2) can return
+           * EAGAIN if there is not enough from for our data yet.  Handle
+           * this by delaying temporarily, then trying again.
+           */
+          errno = EINTR;
+          pr_signals_handle();
+             
+          bwrote = pr_netio_write(session.d->outstrm, session.xfer.buf,
+            xferbuflen);
+          continue;
+        }
+
         return -1;
+      }
 
       if (bwrote > 0) {
         if (timeout_stalled) {
