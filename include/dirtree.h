@@ -25,7 +25,7 @@
  */
 
 /* Configuration structure, server, command and associated prototypes.
- * $Id: dirtree.h,v 1.84 2012-08-06 03:06:38 castaglia Exp $
+ * $Id: dirtree.h,v 1.85 2012-10-03 16:22:52 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -38,6 +38,13 @@
 typedef struct config_struc config_rec;
 
 struct conn_struc;
+
+struct tcp_keepalive {
+  int keepalive_enabled;
+  int keepalive_idle;
+  int keepalive_count;
+  int keepalive_intvl;
+};
 
 typedef struct server_struc {
   struct server_struc *next, *prev;
@@ -58,8 +65,11 @@ typedef struct server_struc {
    */
   unsigned int ServerPort;
 
-  /* TCP settings: max segment size, receive/send buffer sizes.
+  /* TCP settings: keepalive, max segment size, receive/send buffer sizes.
    */
+
+  struct tcp_keepalive *tcp_keepalive;
+
   int tcp_mss_len;
 
   /* If the tcp_rcvbuf_override/tcp_sndbuf_override flags are true, then

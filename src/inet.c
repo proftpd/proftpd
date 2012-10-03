@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.148 2012-08-23 07:19:36 castaglia Exp $
+ * $Id: inet.c,v 1.149 2012-10-03 16:22:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -742,7 +742,8 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
 }
 
 /* Set socket options on a connection.  */
-int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
+int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf,
+    struct tcp_keepalive *tcp_keepalive) {
 
   /* Linux and "most" newer networking OSes probably use a highly adaptive
    * window size system, which generally wouldn't require user-space
@@ -752,14 +753,86 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
    */
 
   if (c->listen_fd != -1) {
-    int keepalive = 0;
+    int keepalive = 1;
     int crcvbuf = 0, csndbuf = 0;
     socklen_t len;
+
+    if (tcp_keepalive != NULL) {
+      keepalive = tcp_keepalive->keepalive_enabled;
+    }
 
     if (setsockopt(c->listen_fd, SOL_SOCKET, SO_KEEPALIVE, (void *)
         &keepalive, sizeof(int)) < 0) {
       pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_KEEPALIVE: %s",
         strerror(errno));
+
+    } else {
+      /* We only try to set the TCP keepalive specifics if SO_KEEPALIVE was
+       * set successfully.
+       */
+      pr_trace_msg(trace_channel, 15,
+        "enabled SO_KEEPALIVE on socket fd %d", c->listen_fd);
+
+      if (tcp_keepalive != NULL) {
+        int val = 0;
+
+#ifdef TCP_KEEPIDLE
+        val = tcp_keepalive->keepalive_idle;
+        if (val != -1) {
+# ifdef __DragonFly__
+          /* DragonFly BSD uses millsecs as the KEEPIDLE unit. */
+          val *= 1000;
+# endif /* DragonFly BSD */
+          if (setsockopt(c->listen_fd, SOL_SOCKET, TCP_KEEPIDLE, (void *)
+              &val, sizeof(int)) < 0) {
+            pr_log_pri(PR_LOG_NOTICE,
+              "error setting TCP_KEEPIDLE %d on fd %d: %s", val, c->listen_fd,
+              strerror(errno));
+
+          } else {
+            pr_trace_msg(trace_channel, 15,
+              "enabled TCP_KEEPIDLE %d on socket fd %d", val, c->listen_fd);
+          }
+        }
+#endif /* TCP_KEEPIDLE */
+
+#ifdef TCP_KEEPCNT
+        val = tcp_keepalive->keepalive_count;
+        if (val != -1) {
+          if (setsockopt(c->listen_fd, SOL_SOCKET, TCP_KEEPCNT, (void *)
+              &val, sizeof(int)) < 0) {
+            pr_log_pri(PR_LOG_NOTICE,
+              "error setting TCP_KEEPCNT %d on fd %d: %s", val, c->listen_fd,
+              strerror(errno));
+
+          } else {
+            pr_trace_msg(trace_channel, 15,
+              "enabled TCP_KEEPCNT %d on socket fd %d", val, c->listen_fd);
+          }
+        }
+#endif /* TCP_KEEPCNT */
+
+#ifdef TCP_KEEPINTVL
+        val = tcp_keepalive->keepalive_intvl;
+        if (val != -1) {
+# ifdef __DragonFly__
+          /* DragonFly BSD uses millsecs as the KEEPINTVL unit. */
+          val *= 1000;
+# endif /* DragonFly BSD */
+          if (setsockopt(c->listen_fd, SOL_SOCKET, TCP_KEEPINTVL, (void *)
+              &val, sizeof(int)) < 0) {
+            pr_log_pri(PR_LOG_NOTICE,
+              "error setting TCP_KEEPINTVL %d on fd %d: %s", val, c->listen_fd,
+              strerror(errno));
+
+          } else {
+            pr_trace_msg(trace_channel, 15,
+              "enabled TCP_KEEPINTVL %d on socket fd %d", val, c->listen_fd);
+          }
+        }
+#endif /* TCP_KEEPINTVL */
+      }
+
     }
 
     if (sndbuf > 0) {
@@ -1325,7 +1398,7 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
   res->outstrm = pr_netio_open(res->pool, strm_type, res->wfd, PR_NETIO_IO_WR);
 
   /* Set options on the sockets. */
-  pr_inet_set_socket_opts(res->pool, res, 0, 0);
+  pr_inet_set_socket_opts(res->pool, res, 0, 0, NULL);
   pr_inet_set_block(res->pool, res);
 
   res->mode = CM_OPEN;

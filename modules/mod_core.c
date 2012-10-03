@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.429 2012-09-23 02:10:18 castaglia Exp $
+ * $Id: mod_core.c,v 1.430 2012-10-03 16:22:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1084,6 +1084,74 @@ MODRET set_socketoptions(cmd_rec *cmd) {
 
       cmd->server->tcp_sndbuf_len = value;
       cmd->server->tcp_sndbuf_override = TRUE;
+
+    /* SocketOption keepalive off
+     * SocketOption keepalive on
+     * SocketOption keepalive 7200:9:75
+     */
+    
+    } else if (strcasecmp(cmd->argv[i], "keepalive") == 0) {
+      int b;
+
+      b = get_boolean(cmd, i+1);
+      if (b == -1) {
+#if defined(TCP_KEEPIDLE) || defined(TCP_KEEPCNT) || defined(TCP_KEEPINTVL)
+        char *keepalive_spec, *ptr;
+        int idle, count, intvl;
+
+        /* Parse the given keepalive-spec */
+        keepalive_spec = cmd->argv[i+1];
+
+        ptr = strchr(keepalive_spec, ':');
+        if (ptr == NULL) {
+          CONF_ERROR(cmd, "badly formatted TCP keepalive spec");
+        }
+
+        *ptr = '\0';
+        idle = atoi(keepalive_spec);
+
+        keepalive_spec = ptr + 1;
+        ptr = strchr(keepalive_spec, ':');
+        if (ptr == NULL) {
+          CONF_ERROR(cmd, "badly formatted TCP keepalive spec");
+        }
+
+        *ptr = '\0'; 
+        count = atoi(keepalive_spec);
+
+        keepalive_spec = ptr + 1;
+        intvl = atoi(keepalive_spec);
+
+        if (idle < 1) {
+          CONF_ERROR(cmd,
+            "badly formatted TCP keepalive spec: idle cannot be less than 1");
+        }
+
+        if (count < 1) {
+          CONF_ERROR(cmd,
+            "badly formatted TCP keepalive spec: count cannot be less than 1");
+        }
+
+        if (intvl < 1) {
+          CONF_ERROR(cmd,
+            "badly formatted TCP keepalive spec: interval cannot "
+            "be less than 1");
+        }
+
+        cmd->server->tcp_keepalive->keepalive_enabled = TRUE;
+        cmd->server->tcp_keepalive->keepalive_idle = idle;
+        cmd->server->tcp_keepalive->keepalive_count = count;
+        cmd->server->tcp_keepalive->keepalive_intvl = intvl;
+#else
+        CONF_ERROR(cmd, "no platform support for TCP keepalive spec");
+#endif /* No TCP_KEEPIDLE, TCP_KEEPCNT, or TCP_KEEPINTVL */
+
+      } else {
+        cmd->server->tcp_keepalive->keepalive_enabled = b;
+      }
+
+      /* Don't forget to increment the iterator. */
+      i++;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown socket option: '",

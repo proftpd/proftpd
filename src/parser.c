@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.28 2012-08-06 03:06:39 castaglia Exp $
+ * $Id: parser.c,v 1.29 2012-10-03 16:22:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -679,6 +679,13 @@ server_rec *pr_parser_server_ctxt_open(const char *addrstr) {
   s->config_type = CONF_VIRTUAL;
   s->sid = ++parser_sid;
   s->notes = pr_table_nalloc(p, 0, 8);
+
+  /* TCP KeepAlive is enabled by default, with the system defaults. */
+  s->tcp_keepalive = palloc(s->pool, sizeof(struct tcp_keepalive));
+  s->tcp_keepalive->keepalive_enabled = TRUE;
+  s->tcp_keepalive->keepalive_idle = -1;
+  s->tcp_keepalive->keepalive_count = -1;
+  s->tcp_keepalive->keepalive_intvl = -1;
 
   /* Have to make sure it ends up on the end of the chain, otherwise
    * main_server becomes useless.

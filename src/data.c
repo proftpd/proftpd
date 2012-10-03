@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.143 2012-10-02 21:48:46 castaglia Exp $
+ * $Id: data.c,v 1.144 2012-10-03 16:22:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -262,11 +262,13 @@ static int data_pasv_open(char *reason, off_t size) {
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
     pr_inet_set_socket_opts(session.d->pool, session.d,
-      (main_server->tcp_rcvbuf_override ? main_server->tcp_rcvbuf_len : 0), 0);
+      (main_server->tcp_rcvbuf_override ? main_server->tcp_rcvbuf_len : 0), 0,
+      main_server->tcp_keepalive);
 
   } else {
     pr_inet_set_socket_opts(session.d->pool, session.d,
-      0, (main_server->tcp_sndbuf_override ? main_server->tcp_sndbuf_len : 0));
+      0, (main_server->tcp_sndbuf_override ? main_server->tcp_sndbuf_len : 0),
+      main_server->tcp_keepalive);
   }
 
   c = pr_inet_accept(session.pool, session.d, session.c, -1, -1, TRUE);
@@ -394,11 +396,13 @@ static int data_active_open(char *reason, off_t size) {
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
     pr_inet_set_socket_opts(session.d->pool, session.d,
-      (main_server->tcp_rcvbuf_override ? main_server->tcp_rcvbuf_len : 0), 0);
+      (main_server->tcp_rcvbuf_override ? main_server->tcp_rcvbuf_len : 0), 0,
+      main_server->tcp_keepalive);
     
   } else {
     pr_inet_set_socket_opts(session.d->pool, session.d,
-      0, (main_server->tcp_sndbuf_override ? main_server->tcp_sndbuf_len : 0));
+      0, (main_server->tcp_sndbuf_override ? main_server->tcp_sndbuf_len : 0),
+      main_server->tcp_keepalive);
   }
 
   /* Make sure that the necessary socket options are set on the socket prior

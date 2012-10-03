@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.264 2012-08-06 03:06:39 castaglia Exp $
+ * $Id: dirtree.c,v 1.265 2012-10-03 16:22:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3467,6 +3467,13 @@ void init_config(void) {
     /* Free the old configuration completely */
     for (s = (server_rec *) server_list->xas_list; s; s = s_next) {
       s_next = s->next;
+
+      /* Make sure that any pointers are explicitly nulled; this does not
+       * automatically happen as part of pool destruction.
+       */
+      s->conf = NULL;
+      s->set = NULL;
+
       destroy_pool(s->pool);
     }
 
@@ -3491,6 +3498,14 @@ void init_config(void) {
   main_server->set = server_list;
   main_server->sid = 1;
   main_server->notes = pr_table_nalloc(conf_pool, 0, 8);
+
+  /* TCP KeepAlive is enabled by default, with the system defaults. */
+  main_server->tcp_keepalive = palloc(main_server->pool,
+    sizeof(struct tcp_keepalive));
+  main_server->tcp_keepalive->keepalive_enabled = TRUE;
+  main_server->tcp_keepalive->keepalive_idle = -1;
+  main_server->tcp_keepalive->keepalive_count = -1;
+  main_server->tcp_keepalive->keepalive_intvl = -1;
 
   /* Default server port */
   main_server->ServerPort = pr_inet_getservport(main_server->pool,

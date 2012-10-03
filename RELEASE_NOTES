@@ -96,6 +96,9 @@ ChangeLog files.
     SFTPOptions
       new IgnoreSFTPSetOwners option (Bug#3757)
 
+    SocketOptions
+      new keepalive parameter (Bug#3833)
+
     SQLLog
       %{transfer-status}, %{transfer-failure}
 
@@ -122,4 +125,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-09-28 04:52:55 $
+Last Updated: $Date: 2012-10-03 16:22:51 $
