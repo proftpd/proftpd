@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.31 2012-05-31 16:15:10 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.32 2012-10-03 05:24:34 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -41,6 +41,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#ScoreboardFile">ScoreboardFile</a>
   <li><a href="#ScoreboardMutex">ScoreboardMutex</a>
   <li><a href="#ServerIdent">ServerIdent</a>
+  <li><a href="#SocketOptions">SocketOptions</a>
   <li><a href="#SyslogFacility">SyslogFacility</a>
   <li><a href="#SyslogLevel">SyslogLevel</a>
   <li><a href="#TCPBacklog">TCPBacklog</a>
@@ -830,6 +831,30 @@ An example of a custom identification string might be:
 
 <p>
 <hr>
+<h2><a name="SocketOptions">SocketOptions</a></h2>
+<strong>Syntax:</strong> SocketOptions <em>[maxseg <i>byte-count</i>] [rcvbuf <i>byte-count</i>] [sndbuf <i>byte-count</i>]]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.9rc1 and later
+
+<p>
+The <code>SocketOptions</code> directive is used to tune various socket-level
+options.  The <em>rcvbuf</em> and <em>sndbuf</em> parameters are used for
+setting the TCP send/receive window sizes.  The <em>maxseg</em> parameter is
+used for setting a MSS (Maximum Segment Size) via <code>setsockopt(2)</code>'s
+<code>TCP_MAXSEG</code> option.  If the MSS is larger than the network
+interface's MTU, it is ignored and has no effect.
+
+<p>
+Examples:
+<pre>
+  # Use buffer sizes of 32KB for both reading and writing
+  SocketOptions rcvbuf 32768 sndbuf 32768
+</pre>
+
+<p>
+<hr>
 <h2><a name="SyslogFacility">SyslogFacility</a></h2>
 <strong>Syntax:</strong> SyslogFacility <em>facility</em><br>
 <strong>Default:</strong> SyslogFacility daemon<br>
@@ -1240,7 +1265,7 @@ The <code>mod_core</code> module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-05-31 16:15:10 $</i><br>
+Last Updated: <i>$Date: 2012-10-03 05:24:34 $</i><br>
 
 <br><hr>
 
