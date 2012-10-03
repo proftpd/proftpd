@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.430 2012-10-03 16:22:52 castaglia Exp $
+ * $Id: mod_core.c,v 1.431 2012-10-03 16:41:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1089,14 +1089,13 @@ MODRET set_socketoptions(cmd_rec *cmd) {
      * SocketOption keepalive on
      * SocketOption keepalive 7200:9:75
      */
-    
     } else if (strcasecmp(cmd->argv[i], "keepalive") == 0) {
       int b;
 
       b = get_boolean(cmd, i+1);
       if (b == -1) {
 #if defined(TCP_KEEPIDLE) || defined(TCP_KEEPCNT) || defined(TCP_KEEPINTVL)
-        char *keepalive_spec, *ptr;
+        char *keepalive_spec, *ptr, *ptr2;
         int idle, count, intvl;
 
         /* Parse the given keepalive-spec */
@@ -1104,38 +1103,58 @@ MODRET set_socketoptions(cmd_rec *cmd) {
 
         ptr = strchr(keepalive_spec, ':');
         if (ptr == NULL) {
-          CONF_ERROR(cmd, "badly formatted TCP keepalive spec");
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            "badly formatted TCP keepalive spec '", cmd->argv[i+1], "'", NULL));
         }
 
         *ptr = '\0';
         idle = atoi(keepalive_spec);
 
         keepalive_spec = ptr + 1;
-        ptr = strchr(keepalive_spec, ':');
-        if (ptr == NULL) {
-          CONF_ERROR(cmd, "badly formatted TCP keepalive spec");
+        ptr2 = strchr(keepalive_spec, ':');
+        if (ptr2 == NULL) {
+          *ptr = ':';
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            "badly formatted TCP keepalive spec '", cmd->argv[i+1], "'", NULL));
         }
 
-        *ptr = '\0'; 
+        *ptr2 = '\0'; 
         count = atoi(keepalive_spec);
 
-        keepalive_spec = ptr + 1;
+        keepalive_spec = ptr2 + 1;
         intvl = atoi(keepalive_spec);
 
         if (idle < 1) {
-          CONF_ERROR(cmd,
-            "badly formatted TCP keepalive spec: idle cannot be less than 1");
+          char val_str[33];
+
+          memset(val_str, '\0', sizeof(val_str));
+          snprintf(val_str, sizeof(val_str)-1, "%d", idle);
+
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            "badly formatted TCP keepalive spec: idle time '", val_str,
+            "' cannot be less than 1", NULL));
         }
 
         if (count < 1) {
-          CONF_ERROR(cmd,
-            "badly formatted TCP keepalive spec: count cannot be less than 1");
+          char val_str[33];
+
+          memset(val_str, '\0', sizeof(val_str));
+          snprintf(val_str, sizeof(val_str)-1, "%d", count);
+
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            "badly formatted TCP keepalive spec: count '", val_str,
+            "' cannot be less than 1", NULL));
         }
 
         if (intvl < 1) {
-          CONF_ERROR(cmd,
-            "badly formatted TCP keepalive spec: interval cannot "
-            "be less than 1");
+          char val_str[33];
+
+          memset(val_str, '\0', sizeof(val_str));
+          snprintf(val_str, sizeof(val_str)-1, "%d", intvl);
+
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            "badly formatted TCP keepalive spec: interval time '", val_str,
+            "' cannot be less than 1", NULL));
         }
 
         cmd->server->tcp_keepalive->keepalive_enabled = TRUE;
@@ -1143,7 +1162,8 @@ MODRET set_socketoptions(cmd_rec *cmd) {
         cmd->server->tcp_keepalive->keepalive_count = count;
         cmd->server->tcp_keepalive->keepalive_intvl = intvl;
 #else
-        CONF_ERROR(cmd, "no platform support for TCP keepalive spec");
+        cmd->server->tcp_keepalive->keepalive_enabled = TRUE;
+        pr_log_debug(DEBUG0, "%s: platform does not support fine-grained TCP keepalive control, using \"keepalive on\"", cmd->argv[0]);
 #endif /* No TCP_KEEPIDLE, TCP_KEEPCNT, or TCP_KEEPINTVL */
 
       } else {
