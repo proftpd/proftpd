@@ -1,4 +1,4 @@
-<!-- $Id: Logging.html,v 1.6 2012-03-18 23:41:35 castaglia Exp $ -->
+<!-- $Id: Logging.html,v 1.7 2012-10-04 05:21:27 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Logging.html,v $ -->
 
 <html>
@@ -294,8 +294,25 @@ ProFTPD 1.3.4rc1: in that release, the <code>SyslogLevel</code> directive was
 made to apply to file-based logging as well.
 
 <p>
+<font color=red>Question</font>: How can I configure <code>proftpd</code> so
+that <b>nothing</b> is logged for certain clients/IP addresses?<br>
+<font color=blue>Answer</font>: Using a combination of <a href="Classes.html">classes</a> and the <a href="../contrib/mod_ifsession.html"><code>mod_ifsession</code></a> module, this can be done using a configuration like this:
+<pre>
+  &lt;Class invisible&gt;
+    From 1.2.3.4
+  &lt;/Class&gt;
+
+  &lt;IfClass invisible&gt;
+    # Disable all logging of these clients
+    SystemLog none
+    ExtendedLog /path/to/ext.log NONE
+    TransferLog none
+  &lt;/IfClass&gt;
+</pre>
+
+<p>
 <hr>
-Last Updated: <i>$Date: 2012-03-18 23:41:35 $</i><br>
+Last Updated: <i>$Date: 2012-10-04 05:21:27 $</i><br>
 <hr>
 
 </body>
