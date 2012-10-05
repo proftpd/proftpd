@@ -14,7 +14,7 @@ ChangeLog files.
       Need doc describing name-based virtual host support (ServerAlias,
         handling of DNS names, TLSRequireSNI, etc).
 
-  + Added Japanese translation
+  + Added Japanese and Spanish translations
   + Many mod_sftp bugfixes
 
   + New modules:
@@ -125,4 +125,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-10-03 16:22:51 $
+Last Updated: $Date: 2012-10-05 20:51:03 $
