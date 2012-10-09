@@ -1,18 +1,19 @@
-# Spanish translations for Proftpd.
+# Spanish translations for proftpd package
+# Traducciones al espa�ol para el paquete proftpd.
 # Copyright (C) 2012 The ProFTPD Project
-# This file is distributed under the same license as the PACKAGE package.
+# This file is distributed under the same license as the proftpd package.
 # vince <baron_de_moork@yahoo.fr>, 2012.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Proftpd 1.3.4b\n"
+"Project-Id-Version: proftpd 1.3.4b\n"
 "Report-Msgid-Bugs-To: core@proftpd.org\n"
 "POT-Creation-Date: 2011-04-01 09:16-0700\n"
-"PO-Revision-Date: 2012-10-05 10:05+0200\n"
+"PO-Revision-Date: 2012-10-09 09:09+0200\n"
 "Last-Translator: vince <baron_de_moork@yahoo.fr>\n"
 "Language-Team: Spanish\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Type: text/plain; charset=ISO-8859-1\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -34,7 +35,7 @@ msgstr "Login incorrecto"
 #: ../contrib/mod_site_misc.c:434 ../contrib/mod_site_misc.c:532
 #: ../modules/mod_auth.c:62 ../modules/mod_site.c:471
 msgid "Please login with USER and PASS"
-msgstr "Por favor login con USER y PASS"
+msgstr "Por favor login con USER y PAS"
 
 #: ../contrib/mod_copy.c:362 ../contrib/mod_site_misc.c:337
 #: ../contrib/mod_site_misc.c:401 ../contrib/mod_site_misc.c:496
@@ -42,15 +43,15 @@ msgstr "Por favor login con USER y PASS"
 #: ../modules/mod_site.c:400
 #, c-format
 msgid "SITE %s command successful"
-msgstr "SITIO %s comando ejecutado con éxito"
+msgstr "SITE %s comando ejecutado con éxito"
 
 #: ../contrib/mod_copy.c:367
 msgid "CPFR <sp> pathname"
-msgstr "CPFR <sp> pathname"
+msgstr "CPFR <sp> ruta"
 
 #: ../contrib/mod_copy.c:368
 msgid "CPTO <sp> pathname"
-msgstr "CPTO <sp> pathname"
+msgstr "CPTO <sp> ruta"
 
 #: ../contrib/mod_copy.c:401 ../contrib/mod_copy.c:407
 #: ../modules/mod_core.c:4419 ../modules/mod_core.c:4425
@@ -209,7 +210,7 @@ msgstr "Gb:\tilimitado"
 #: ../contrib/mod_quotatab.c:378
 #, c-format
 msgid "files:\t%u/%u"
-msgstr "archivoss:\t%u/%u"
+msgstr "archivos:\t%u/%u"
 
 #: ../contrib/mod_quotatab.c:381
 #, c-format
@@ -249,8 +250,8 @@ msgstr "%s: aviso: cupo alcanzado: usado %s"
 #: ../contrib/mod_quotatab.c:3359 ../contrib/mod_quotatab.c:3387
 #: ../contrib/mod_quotatab.c:3514 ../contrib/mod_quotatab.c:3546
 #, c-format
-msgid "%s: notice: cuota reached: '%s' removed"
-msgstr "%s: aviso cupo alcanzado: '%s' eliminado"
+msgid "%s: notice: quota reached: '%s' removed"
+msgstr "%s: aviso: cupo alcanzado: '%s' eliminado"
 
 #: ../contrib/mod_quotatab.c:3617
 msgid "'SITE QUOTA' not understood."
@@ -430,7 +431,7 @@ msgstr "Tienes que emitir el comando PBSZ antes del PROT"
 #: ../contrib/mod_tls.c:6520 ../contrib/mod_tls.c:6533
 #, c-format
 msgid "PROT %s unsupported"
-msgstr "PROT %s no compaticle"
+msgstr "PROT %s no compatible"
 
 #: ../contrib/mod_tls.c:8042 ../modules/mod_core.c:5259
 #: ../modules/mod_core.c:5261 ../modules/mod_core.c:5262
@@ -674,7 +675,7 @@ msgstr "<sp> nombre ruta"
 
 #: ../modules/mod_core.c:5234 ../modules/mod_core.c:5235
 msgid "(up one directory)"
-msgstr "(arriba un directorio"
+msgstr "(arriba un directorio)"
 
 #: ../modules/mod_core.c:5237
 msgid "(close control connection)"
@@ -694,7 +695,7 @@ msgstr "<sp> |proto|addr|port"
 
 #: ../modules/mod_core.c:5241
 msgid "(returns port |||port|)"
-msgstr "devuelve puerto |||puerto"
+msgstr "(devuelve puerto |||puerto)"
 
 #: ../modules/mod_core.c:5242
 msgid "is not implemented (ignored)"
@@ -710,7 +711,7 @@ msgstr "(devuelve sistema tipo)"
 
 #: ../modules/mod_core.c:5255
 msgid "[<sp> command]"
-msgstr "[<sp> command]"
+msgstr "[<sp> comando]"
 
 #: ../modules/mod_core.c:5256
 msgid "(no operation)"
@@ -722,7 +723,7 @@ msgstr "(devuelve lista de características)"
 
 #: ../modules/mod_core.c:5258
 msgid "<sp> command [<sp> options]"
-msgstr "<sp> comando [<sp> opciones]"
+msgstr "<sp> comando [<sp> opciones"
 
 #: ../modules/mod_core.c:5260
 msgid "(clears protection level)"
@@ -858,7 +859,7 @@ msgstr "Transfer de datos activo a"
 
 #: ../modules/mod_ls.c:2281
 msgid "Passive data transfer from"
-msgstr "Transferencia de datos pasivo desde"
+msgstr "Transferencia de datos pasivo desd"
 
 #: ../modules/mod_ls.c:2297
 msgid "No data connection"
@@ -1080,7 +1081,7 @@ msgstr "<sp> byte-count"
 
 #: ../modules/mod_xfer.c:3244
 msgid "(abort current operation)"
-msgstr "(Abortar operación corriente"
+msgstr "(Abortar operación corriente)"
 
 #: ../src/data.c:286 ../src/data.c:405
 msgid "Opening %s mode data connection for %s (%"
@@ -1116,7 +1117,7 @@ msgstr "Enlace al servidor de archivos perdido"
 #: ../src/data.c:863
 #, c-format
 msgid "Unknown or out of range errno [%d]"
-msgstr "Eron [%d] desconocido o fuera de rango"
+msgstr "Erno [%d] desconocido o fuera de rango"
 
 #: ../src/data.c:874
 #, c-format
