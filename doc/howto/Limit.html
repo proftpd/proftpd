@@ -1,4 +1,4 @@
-<!-- $Id: Limit.html,v 1.21 2012-06-01 16:26:58 castaglia Exp $ -->
+<!-- $Id: Limit.html,v 1.22 2012-10-10 20:27:28 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Limit.html,v $ -->
 
 <html>
@@ -159,7 +159,7 @@ First, a common configuration: an upload-only directory.
       DenyAll
     &lt;/Limit&gt;
 
-    &lt;Limit CDUP CWD XCWD XCUP&gt;
+    &lt;Limit CDUP CWD PWD XCWD XCUP&gt;
       AllowAll
     &lt;/Limit&gt;
 
@@ -385,7 +385,7 @@ ensuring that it cannot be deleted?  Simply include the <code>RNFR</code> and
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2012-06-01 16:26:58 $</i><br>
+Last Updated: <i>$Date: 2012-10-10 20:27:28 $</i><br>
 <hr>
 
 </body>
