@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.265 2012-10-03 16:22:52 castaglia Exp $
+ * $Id: dirtree.c,v 1.266 2012-10-10 06:31:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3323,7 +3323,7 @@ int fixup_servers(xaset_t *list) {
   return 0;
 }
 
-static void set_tcp_bufsz(void) {
+static void set_tcp_bufsz(server_rec *s) {
   int sockfd;
   socklen_t optlen = 0;
   struct protoent *p = NULL;
@@ -3335,15 +3335,15 @@ static void set_tcp_bufsz(void) {
   p = getprotobyname("tcp");
   if (p == NULL) {
 #ifndef PR_TUNABLE_RCVBUFSZ
-    tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
+    s->tcp_rcvbuf_len = tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
 #else
-    tcp_rcvbufsz = PR_TUNABLE_RCVBUFSZ;
+    s->tcp_rcvbuf_len = tcp_rcvbufsz = PR_TUNABLE_RCVBUFSZ;
 #endif /* PR_TUNABLE_RCVBUFSZ */
 
 #ifndef PR_TUNABLE_SNDBUFSZ
-    tcp_sndbufsz = PR_TUNABLE_DEFAULT_SNDBUFSZ;
+    s->tcp_sndbuf_len = tcp_sndbufsz = PR_TUNABLE_DEFAULT_SNDBUFSZ;
 #else
-    tcp_sndbufsz = PR_TUNABLE_SNDBUFSZ;
+    s->tcp_sndbuf_len = tcp_sndbufsz = PR_TUNABLE_SNDBUFSZ;
 #endif /* PR_TUNABLE_SNDBUFSZ */
 
     pr_log_debug(DEBUG3, "getprotobyname error for 'tcp': %s", strerror(errno));
@@ -3363,8 +3363,8 @@ static void set_tcp_bufsz(void) {
 
   sockfd = socket(AF_INET, SOCK_STREAM, p->p_proto);
   if (sockfd < 0) {
-    tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
-    tcp_sndbufsz = PR_TUNABLE_DEFAULT_SNDBUFSZ;
+    s->tcp_rcvbuf_len = tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
+    s->tcp_sndbuf_len = tcp_sndbufsz = PR_TUNABLE_DEFAULT_SNDBUFSZ;
 
     pr_log_debug(DEBUG3, "socket error: %s", strerror(errno));
     pr_log_debug(DEBUG4, "using default TCP receive/send buffer sizes");
@@ -3375,7 +3375,7 @@ static void set_tcp_bufsz(void) {
   optlen = sizeof(tcp_rcvbufsz);
   if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (void *) &tcp_rcvbufsz,
       &optlen) < 0) {
-    tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
+    s->tcp_rcvbuf_len = tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
 
     pr_log_debug(DEBUG3, "getsockopt error for SO_RCVBUF: %s", strerror(errno));
     pr_log_debug(DEBUG4, "using default TCP receive buffer size of %d bytes",
@@ -3384,10 +3384,11 @@ static void set_tcp_bufsz(void) {
   } else {
     pr_log_debug(DEBUG5, "using TCP receive buffer size of %d bytes",
       tcp_rcvbufsz);
+    s->tcp_rcvbuf_len = tcp_rcvbufsz;
   }
 #else
   optlen = -1;
-  tcp_rcvbufsz = PR_TUNABLE_RCVBUFSZ;
+  s->tcp_rcvbuf_len = tcp_rcvbufsz = PR_TUNABLE_RCVBUFSZ;
   pr_log_debug(DEBUG5, "using preset TCP receive buffer size of %d bytes",
     tcp_rcvbufsz);
 #endif /* PR_TUNABLE_RCVBUFSZ */
@@ -3397,7 +3398,7 @@ static void set_tcp_bufsz(void) {
   optlen = sizeof(tcp_sndbufsz);
   if (getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, (void *) &tcp_sndbufsz,
       &optlen) < 0) {
-    tcp_sndbufsz = PR_TUNABLE_DEFAULT_SNDBUFSZ;
+    s->tcp_sndbuf_len = tcp_sndbufsz = PR_TUNABLE_DEFAULT_SNDBUFSZ;
     
     pr_log_debug(DEBUG3, "getsockopt error for SO_SNDBUF: %s", strerror(errno));
     pr_log_debug(DEBUG4, "using default TCP send buffer size of %d bytes",
@@ -3406,10 +3407,11 @@ static void set_tcp_bufsz(void) {
   } else {
     pr_log_debug(DEBUG5, "using TCP send buffer size of %d bytes",
       tcp_sndbufsz);
+    s->tcp_sndbuf_len = tcp_sndbufsz;
   }
 #else
   optlen = -1;
-  tcp_sndbufsz = PR_TUNABLE_SNDBUFSZ;
+  s->tcp_sndbuf_len = tcp_sndbufsz = PR_TUNABLE_SNDBUFSZ;
   pr_log_debug(DEBUG5, "using preset TCP send buffer size of %d bytes",
     tcp_sndbufsz);
 #endif /* PR_TUNABLE_SNDBUFSZ */
@@ -3511,7 +3513,7 @@ void init_config(void) {
   main_server->ServerPort = pr_inet_getservport(main_server->pool,
     "ftp", "tcp");
 
-  set_tcp_bufsz();
+  set_tcp_bufsz(main_server);
   return;
 }
 
