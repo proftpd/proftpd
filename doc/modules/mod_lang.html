@@ -1,4 +1,4 @@
-<!-- $Id: mod_lang.html,v 1.11 2012-10-05 20:52:07 castaglia Exp $ -->
+<!-- $Id: mod_lang.html,v 1.12 2012-10-10 01:26:33 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_lang.html,v $ -->
 
 <html>
@@ -254,8 +254,8 @@ If you are interested in providing more translations, please read this
 
 <p><a name="SpecialCharacters">
 <font color=red>Question</font>: When I upload a file with special characters
-(<i>e.g.</i> umlauts, accents, cedillas, <i>etc</i>), the special characters
-are turned into '?' on the server.  What's wrong?<br>
+(<i>e.g.</i> umlauts, accents, cedillas, <i>etc</i>) in the file name, the
+special characters are turned into '?' on the server.  What's wrong?<br>
 <font color=blue>Answer</font>: There are a couple of things to check when
 this happens.
 
@@ -285,10 +285,25 @@ have been known to filter both the <code>FEAT</code> response and/or block
 commands like <code>OPTS UTF8</code>, thus interfering with the protocol and
 causing encoding problems.
 
+<p><a name="UnsupportedLanguage">
+<font color=red>Question</font>: I have configured my <code>mod_lang</code>
+module to use a language, but when I start <code>proftpd</code>, I see an
+error like this:
+<pre>
+  mod_lang/0.9: LangDefault '<i>language</i>', configured for server '<i>serverName</i>', is not a supported language, removing
+</pre>
+<font color=blue>Answer</font>:  This usually happens for one of two reasons:
+<ul>
+  <li>The configured <em>language</em> is <b>not</b> listed in <code>`setlocale -a'</code>
+  <li>The configured <em>language</em> is <b>not</b> one of the <a href="#Translations">supported translations</a>
+</ul>
+Both of these conditions <b>must</b> be true, otherwise you will see the
+"not a supported language" error.
+
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-10-05 20:52:07 $</i><br>
+Last Updated: <i>$Date: 2012-10-10 01:26:33 $</i><br>
 <br><hr>
 
 <font size=2><b><i>
