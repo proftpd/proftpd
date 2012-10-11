@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project
+ * Copyright (c) 2001-2012 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Network IO stream layer
- * $Id: netio.h,v 1.13 2011-12-21 04:16:58 castaglia Exp $
+ * $Id: netio.h,v 1.14 2012-10-11 06:12:21 castaglia Exp $
  */
 
 #ifndef PR_NETIO_H
@@ -156,6 +156,7 @@ pr_netio_stream_t *pr_netio_open(pool *, int, int, int);
 int pr_netio_postopen(pr_netio_stream_t *);
 
 int pr_netio_printf(pr_netio_stream_t *, const char *, ...);
+int pr_netio_vprintf(pr_netio_stream_t *, const char *, va_list);
 
 /* pr_netio_printf_async() is for use inside alarm handlers, where no
  * pr_netio_poll() blocking is allowed.  This is necessary because otherwise,

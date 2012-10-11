@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.55 2012-08-23 05:03:00 castaglia Exp $
+ * $Id: netio.c,v 1.56 2012-10-11 06:12:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -636,9 +636,19 @@ int pr_netio_postopen(pr_netio_stream_t *nstrm) {
   return -1;
 }
 
-int pr_netio_printf(pr_netio_stream_t *nstrm, const char *fmt, ...) {
-  va_list msg;
+int pr_netio_vprintf(pr_netio_stream_t *nstrm, const char *fmt, va_list msg) {
+  int res;
   char buf[PR_RESPONSE_BUFFER_SIZE] = {'\0'};
+
+  vsnprintf(buf, sizeof(buf), fmt, msg);
+  buf[sizeof(buf)-1] = '\0';
+
+  return pr_netio_write(nstrm, buf, strlen(buf));
+}
+
+int pr_netio_printf(pr_netio_stream_t *nstrm, const char *fmt, ...) {
+  int res;
+  va_list msg;
 
   if (!nstrm) {
     errno = EINVAL;
@@ -646,11 +656,10 @@ int pr_netio_printf(pr_netio_stream_t *nstrm, const char *fmt, ...) {
   }
 
   va_start(msg, fmt);
-  vsnprintf(buf, sizeof(buf), fmt, msg);
+  res = pr_netio_vprintf(nstrm, fmt, msg);
   va_end(msg);
-  buf[sizeof(buf)-1] = '\0';
 
-  return pr_netio_write(nstrm, buf, strlen(buf));
+  return res;
 }
 
 int pr_netio_printf_async(pr_netio_stream_t *nstrm, char *fmt, ...) {
