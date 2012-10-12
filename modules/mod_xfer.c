@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.305 2012-09-26 16:40:12 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.306 2012-10-12 02:44:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2263,7 +2263,6 @@ MODRET xfer_mode(cmd_rec *cmd) {
       /* Should 202 be returned instead??? */
       pr_response_add(R_200, _("Mode set to S"));
       return PR_HANDLED(cmd);
-      break;
 
     case 'B':
       /* FALLTHROUGH */
@@ -2272,14 +2271,11 @@ MODRET xfer_mode(cmd_rec *cmd) {
       pr_response_add_err(R_504, _("'%s' unsupported transfer mode"),
         get_full_cmd(cmd));
       return PR_ERROR(cmd);
-      break;
-
-    default:
-      pr_response_add_err(R_501, _("'%s' unrecognized transfer mode"),
-        get_full_cmd(cmd));
-      return PR_ERROR(cmd);
-      break;
   }
+
+  pr_response_add_err(R_501, _("'%s' unrecognized transfer mode"),
+    get_full_cmd(cmd));
+  return PR_ERROR(cmd);
 }
 
 MODRET xfer_allo(cmd_rec *cmd) {
