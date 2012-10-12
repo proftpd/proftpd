@@ -1,4 +1,4 @@
-<!-- $Id: FTP.html,v 1.4 2004-12-31 19:17:17 castaglia Exp $ -->
+<!-- $Id: FTP.html,v 1.5 2012-10-12 02:51:11 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/FTP.html,v $ -->
 
 <html>
@@ -19,13 +19,17 @@
   </li>
 
   <p>
+  <li><a name="ALLO"><b><code>ALLO</code></b></a><br>
+  </li>
+
+  <p>
   <li><a name="APPE"><b><code>APPE</code></b></a><br>
     Short for <b>APPE</b>nd.<br>
   </li>
 
   <p>
   <li><a name="AUTH"><b><code>AUTH</code></b></a><br>
-    Short for <b>AUTH</b>enticate (supported by <code>mod_tls</code>)<br>
+    Short for <b>AUTH</b>enticate (supported by <a href="../contrib/mod_tls.html"><code>mod_tls</code></a>)<br>
   </li>
 
   <p>
@@ -71,6 +75,10 @@
   </li>
 
   <p>
+  <li><a name="LANG"><b><code>LANG</code></b></a><br>
+  </li>
+
+  <p>
   <li><a name="LIST"><b><code>LIST</code></b></a><br>
   </li>
 
@@ -78,15 +86,51 @@
   <li><a name="MDTM"><b><code>MDTM</code></b></a><br>
     Short for <b>M</b>o<b>D</b>ification <b>T</b>i<b>M</b>e, this command
     is used by the client to request the modification time of a file on the
-    server.  This command is not defined in any formal RFCs (yet), but is
-    a commonly implemented FTP command.  <i>Note</i> that this command
-    <b>cannot</b> be used to change the modification time of the file on
-    the server; it only reports on the file's modification time.<br> 
+    server.  This command is defined formally in <a href="http://www.faqs.org/rfcs/rfc3659.html">RFC 3659</a>, and is a commonly implemented FTP command.
+    <i>Note</i> that this command <b>cannot</b> be used to change the
+    modification time of the file on the server; it only <i>reports</i> on the
+    file's modification time.  The <a href="#MFMT"><code>MFMT</code></a>
+    command is used to <i>change</i> a file's modification time.<br> 
+  </li>
+
+  <p>
+  <li><a name="MFMT"><b><code>MFMT</code></b></a><br>
+    Short for <b>M</b>odify <b>F</b>act: Last <b>M</b>odified <b>T</b>ime,
+    supported by <a href="../modules/mod_facts.html"><code>mod_facts</code></a>.
+    Some clients use this command to change the last modified timestamp on
+    a newly uploaded file so that the timestamp on the server matches the
+    timestamp of that file on the client.
   </li>
 
   <p>
   <li><a name="MKD"><b><code>MKD</code></b></a><br>
     Short for <b>M</b>a<b>K</b>e <b>D</b>irectory.<br>
+  </li>
+
+  <p>
+  <li><a name="MLSD"><b><code>MLSD</code></b></a><br>
+    Short for <b>M</b>achine <b>L</b>i<b>S</b>ting, <b>D</b>irectory, supported
+    by <a href="../modules/mod_facts.html"><code>mod_facts</code></a>.  Unlike
+    the <a href="#LIST"><code>LIST</code></a> command, whose response format
+    was never specified, the <code>MLSD</code> command has a strictly defined
+    response format (see <a href="http://www.faqs.org/rfcs/rfc3659.html">RFC 3659</a> for details).  This format was designed to be easily machine parseable,
+    for automated processing of directory listing formats; the format was also
+    designed to be platform-agnostic, and thus portable.
+  </li>
+
+  <p>
+  <li><a name="MLST"><b><code>MLST</code></b></a><br>
+    Short for <b>M</b>achine <b>L</b>i<b>ST</b>ing, supported by
+    <a href="../modules/mod_facts.html"><code>mod_facts</code></a>.  This
+    command is similar to <a href="#MLSD"><code>MLSD</code></a> in that it
+    uses the same response format.  Unlike <code>MLSD</code>, the response for a
+    <code>MLST</code> is sent back on the control connection rather than
+    using a data connection, and <b>is for a single file only</b>.
+  </li>
+
+  <p>
+  <li><a name="MODE"><b><code>MODE</code></b></a><br>
+    There are three mode types defined by <a href="http://www.faqs.org/rfcs/rfc969.html">RFC 959</a>; <code>proftpd</code> only supports one (<i>i.e.</i> <b>S</b>tream).
   </li>
 
   <p>
@@ -342,21 +386,10 @@
   </li>
 
   <p>
-  <li><a name="ALLO"><b><code>ALLO</code></b></a><br>
-  </li>
-
-  <p>
   <li><a name="MACB"><b><code>MACB</code></b></a><br>
     Short for <b>MAC</b>intosh <b>B</b>inary.  This command is not defined in
     any RFC, and is something of a hack added by Apple in order to support
     transfers of the resource forks of Mac files.<br>
-  </li>
-
-  <p>
-  <li><a name="MODE"><b><code>MODE</code></b></a><br>
-    There are three mode types defined by RFC959; <code>proftpd</code> only
-    supports one (<i>i.e.</i> <b>S</b>tream), and thus this command is not
-    supported.<br>
   </li>
 
   <p>
@@ -378,7 +411,7 @@
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-12-31 19:17:17 $</i><br>
+Last Updated: <i>$Date: 2012-10-12 02:51:11 $</i><br>
 </hr>
 
 </body>
