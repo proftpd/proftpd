@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.30 2012-10-14 03:50:12 castaglia Exp $
+ * $Id: parser.c,v 1.31 2012-10-14 03:52:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -96,15 +96,17 @@ static struct config_src *add_config_source(pr_fh_t *fh) {
 }
 
 static char *get_config_word(pool *p, char *word) {
+  size_t wordlen;
 
   /* Should this word be replaced with a value from the environment?
    * If so, tmp will contain the expanded value, otherwise tmp will
    * contain a string duped from the given pool.
    */
 
-  if (strlen(word) > 7) {
+  wordlen = strlen(word);
+
+  if (wordlen > 7) {
     char *ptr = NULL;
-    size_t wordlen;
 
     /* Does the given word use the environment syntax?
      *
@@ -113,7 +115,6 @@ static char *get_config_word(pool *p, char *word) {
      * variable syntax is embedded within the word string.
      */
 
-    wordlen = strlen(word);
     if (strncmp(word, "%{env:", 6) == 0 &&
         word[wordlen-1] == '}') {
       char *env;
