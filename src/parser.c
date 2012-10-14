@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.29 2012-10-03 16:22:52 castaglia Exp $
+ * $Id: parser.c,v 1.30 2012-10-14 03:50:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -104,6 +104,7 @@ static char *get_config_word(pool *p, char *word) {
 
   if (strlen(word) > 7) {
     char *ptr = NULL;
+    size_t wordlen;
 
     /* Does the given word use the environment syntax?
      *
@@ -112,11 +113,12 @@ static char *get_config_word(pool *p, char *word) {
      * variable syntax is embedded within the word string.
      */
 
+    wordlen = strlen(word);
     if (strncmp(word, "%{env:", 6) == 0 &&
-        word[strlen(word)-1] == '}') {
+        word[wordlen-1] == '}') {
       char *env;
 
-      word[strlen(word)-1] = '\0';
+      word[wordlen-1] = '\0';
 
       env = pr_env_get(p, word + 6);
 
