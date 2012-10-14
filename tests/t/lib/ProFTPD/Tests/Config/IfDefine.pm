@@ -363,9 +363,11 @@ sub ifdefine_exists_via_env {
   my $key = 'FOO';
   my $value = 'BAR';
 
+  $ENV{$key} = $value;
+
   if (open(my $fh, ">> $config_file")) {
     print $fh <<EOC;
-<IfDefine $key=%{env:$value}>
+<IfDefine $key=%{env:$key}>
   ServerIdent on
 </IfDefine>
 EOC
@@ -378,7 +380,7 @@ EOC
   }
 
   eval { server_start($config_file, undef,
-      { define => [$key], env => { $value => $value } }) };
+    { define => [$key . '=$' . $key] }) };
   if ($@) {
     my $ex = $@;
 
