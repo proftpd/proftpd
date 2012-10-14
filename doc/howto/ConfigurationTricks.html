@@ -1,4 +1,4 @@
-<!-- $Id: ConfigurationTricks.html,v 1.4 2011-03-30 22:27:20 castaglia Exp $ -->
+<!-- $Id: ConfigurationTricks.html,v 1.5 2012-10-14 04:11:18 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/ConfigurationTricks.html,v $ -->
 
 <html>
@@ -239,6 +239,36 @@ If you are really ambitious, you can use devious combinations of
 some terse but powerful files.
 
 <p>
+As a demonstration, here is an example making use of environment variables,
+<code>Define</code>, and <code>&lt;IfDefine&gt;</code>.  First, set an
+environment variable, <i>e.g.</i> (assuming Bourne shell syntax):
+<pre>
+  $ USE_BANS=TRUE
+  $ export USE_BANS
+</pre>
+Now start proftpd using the -D command-line option to set a define based
+on the value of that environment variable:
+<pre>
+  $ ./proftpd -DUSE_BANS=$USE_BANS ...
+</pre>
+And in the <code>proftpd.conf</code>, you might have something like:
+<pre>
+  &lt;IfDefine USE_BANS=TRUE&gt;
+    ..
+  &lt;/IfDefine&gt;
+</pre>
+in which case, the directives within that conditional section would be
+in effect when proftpd was started.  On the other hand, to disable those
+configuration directives before starting proftpd, all that you need to do
+now is change the environment variable value:
+<pre>
+  $ USE_BANS=FALSE
+  $ export USE_BANS
+</pre>
+That <code>&lt;IfDefine&gt;</code> section will no longer be in effect
+when proftpd is started.
+
+<p>
 <b>Multiple Daemons on Same Host</b><br>
 What if you wanted to run multiple instances of <code>proftpd</code> on the
 same host?  This is actually a prudent idea, for running one production
@@ -370,7 +400,7 @@ approaching full LAN network speed for the FTP data transfer.
 
 <p>
 <hr>
-<i>$Date: 2011-03-30 22:27:20 $</i><br>
+<i>$Date: 2012-10-14 04:11:18 $</i><br>
 
 </body>
 </html>
