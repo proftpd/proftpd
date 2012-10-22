@@ -98,6 +98,7 @@ if (scalar(@ARGV) > 0) {
     t/commands/site/chmod.t
     t/config/accessdenymsg.t
     t/config/accessgrantmsg.t
+    t/config/allowfilter.t
     t/config/allowoverwrite.t
     t/config/anonrejectpasswords.t
     t/config/anonrequirepassword.t
