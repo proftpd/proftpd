@@ -6892,15 +6892,23 @@ MODRET tls_prot(cmd_rec *cmd) {
 
 /* usage: TLSCACertificateFile file */
 MODRET set_tlscacertfile(cmd_rec *cmd) {
+  int res;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!file_exists(cmd->argv[1]))
+  PRIVS_ROOT
+  res = file_exists(cmd->argv[1]);
+  PRIVS_RELINQUISH
+
+  if (!res) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
+  }
 
-  if (*cmd->argv[1] != '/')
+  if (*cmd->argv[1] != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
+  }
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
@@ -6908,14 +6916,22 @@ MODRET set_tlscacertfile(cmd_rec *cmd) {
 
 /* usage: TLSCACertificatePath path */
 MODRET set_tlscacertpath(cmd_rec *cmd) {
+  int res;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-   if (!dir_exists(cmd->argv[1]))
-    CONF_ERROR(cmd, "parameter must be a directory path");
+  PRIVS_ROOT
+  res = dir_exists(cmd->argv[1]);
+  PRIVS_RELINQUISH
 
-  if (*cmd->argv[1] != '/')
+  if (!res) {
+    CONF_ERROR(cmd, "parameter must be a directory path");
+  }
+
+  if (*cmd->argv[1] != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
+  }
  
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]); 
   return PR_HANDLED(cmd);
@@ -6923,15 +6939,23 @@ MODRET set_tlscacertpath(cmd_rec *cmd) {
 
 /* usage: TLSCARevocationFile file */
 MODRET set_tlscacrlfile(cmd_rec *cmd) {
+  int res;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!file_exists(cmd->argv[1]))
+  PRIVS_ROOT
+  res = file_exists(cmd->argv[1]);
+  PRIVS_RELINQUISH
+
+  if (!res) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
+  }
 
-  if (*cmd->argv[1] != '/')
+  if (*cmd->argv[1] != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
+  }
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
@@ -6939,14 +6963,22 @@ MODRET set_tlscacrlfile(cmd_rec *cmd) {
 
 /* usage: TLSCARevocationPath path */
 MODRET set_tlscacrlpath(cmd_rec *cmd) {
+  int res;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-   if (!dir_exists(cmd->argv[1]))
-    CONF_ERROR(cmd, "parameter must be a directory path");
+  PRIVS_ROOT
+  res = dir_exists(cmd->argv[1]);
+  PRIVS_RELINQUISH
 
-  if (*cmd->argv[1] != '/')
+  if (!res) {
+    CONF_ERROR(cmd, "parameter must be a directory path");
+  }
+
+  if (*cmd->argv[1] != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
+  }
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
@@ -6954,15 +6986,23 @@ MODRET set_tlscacrlpath(cmd_rec *cmd) {
 
 /* usage: TLSCertificateChainFile file */
 MODRET set_tlscertchain(cmd_rec *cmd) {
+  int res;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!file_exists(cmd->argv[1]))
+  PRIVS_ROOT
+  res = file_exists(cmd->argv[1]);
+  PRIVS_RELINQUISH
+
+  if (!res) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
+  }
 
-  if (*cmd->argv[1] != '/')
+  if (*cmd->argv[1] != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
+  }
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
@@ -7032,15 +7072,23 @@ MODRET set_tlscryptodevice(cmd_rec *cmd) {
 
 /* usage: TLSDHParamFile file */
 MODRET set_tlsdhparamfile(cmd_rec *cmd) {
+  int res;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!file_exists(cmd->argv[1]))
+  PRIVS_ROOT
+  res = file_exists(cmd->argv[1]);
+  PRIVS_RELINQUISH
+
+  if (!res) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
+  }
 
-  if (*cmd->argv[1] != '/')
+  if (*cmd->argv[1] != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
+  }
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
@@ -7048,16 +7096,23 @@ MODRET set_tlsdhparamfile(cmd_rec *cmd) {
 
 /* usage: TLSDSACertificateFile file */
 MODRET set_tlsdsacertfile(cmd_rec *cmd) {
+  int res;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!file_exists(cmd->argv[1])) {
+  PRIVS_ROOT
+  res = file_exists(cmd->argv[1]);
+  PRIVS_RELINQUISH
+
+  if (!res) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
   }
 
-  if (*cmd->argv[1] != '/')
+  if (*cmd->argv[1] != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
+  }
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
@@ -7065,16 +7120,23 @@ MODRET set_tlsdsacertfile(cmd_rec *cmd) {
 
 /* usage: TLSDSACertificateKeyFile file */
 MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
+  int res;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!file_exists(cmd->argv[1])) {
+  PRIVS_ROOT
+  res = file_exists(cmd->argv[1]);
+  PRIVS_RELINQUISH
+
+  if (!res) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
   }
 
-  if (*cmd->argv[1] != '/')
+  if (*cmd->argv[1] != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
+  }
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
@@ -7208,16 +7270,23 @@ MODRET set_tlspassphraseprovider(cmd_rec *cmd) {
 
 /* usage: TLSPKCS12File file */
 MODRET set_tlspkcs12file(cmd_rec *cmd) {
+  int res;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!file_exists(cmd->argv[1])) {
+  PRIVS_ROOT
+  res = file_exists(cmd->argv[1]);
+  PRIVS_RELINQUISH
+
+  if (!res) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
   }
 
-  if (*cmd->argv[1] != '/')
+  if (*cmd->argv[1] != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
+  }
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
@@ -7441,16 +7510,23 @@ MODRET set_tlsrequired(cmd_rec *cmd) {
 
 /* usage: TLSRSACertificateFile file */
 MODRET set_tlsrsacertfile(cmd_rec *cmd) {
+  int res;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!file_exists(cmd->argv[1])) {
+  PRIVS_ROOT
+  res = file_exists(cmd->argv[1]);
+  PRIVS_RELINQUISH
+
+  if (!res) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
   }
 
-  if (*cmd->argv[1] != '/')
+  if (*cmd->argv[1] != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
+  }
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
@@ -7458,16 +7534,23 @@ MODRET set_tlsrsacertfile(cmd_rec *cmd) {
 
 /* usage: TLSRSACertificateKeyFile file */
 MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
+  int res;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!file_exists(cmd->argv[1])) {
+  PRIVS_ROOT
+  res = file_exists(cmd->argv[1]);
+  PRIVS_RELINQUISH
+
+  if (!res) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
   }
 
-  if (*cmd->argv[1] != '/')
+  if (*cmd->argv[1] != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
+  }
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
