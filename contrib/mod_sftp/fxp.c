@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.159 2012-09-19 22:32:00 castaglia Exp $
+ * $Id: fxp.c,v 1.160 2012-11-14 18:27:28 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -8148,7 +8148,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   } else {
     char *vpath;
 
-    vpath = dir_canonical_vpath(fxp->pool, path);
+    vpath = dir_realpath(fxp->pool, path);
     if (vpath == NULL) {
       uint32_t status_code;
       const char *reason;
@@ -8176,6 +8176,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
       return fxp_packet_write(resp);
     }
 
+    pr_trace_msg(trace_channel, 15,
+      "resolved client-sent path '%s' to local path '%s'", path, vpath);
     path = vpath;
   }
 
