@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.24 2012-08-27 20:34:40 castaglia Exp $
+ * $Id: crypto.c,v 1.25 2012-11-14 22:13:37 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -579,6 +579,7 @@ static const EVP_CIPHER *get_aes_ctr_cipher(int key_len) {
 
   memset(&aes_ctr_cipher, 0, sizeof(EVP_CIPHER));
 
+#ifdef OPENSSL_FIPS
   /* Set the NID depending on the key len. */
   switch (key_len) {
     case 16:
@@ -596,6 +597,9 @@ static const EVP_CIPHER *get_aes_ctr_cipher(int key_len) {
     default:
       aes_ctr_cipher.nid = NID_undef;
   }
+#else
+  aes_ctr_cipher.nid = NID_undef;
+#endif /* OPENSSL_FIPS */
 
   aes_ctr_cipher.block_size = AES_BLOCK_SIZE;
   aes_ctr_cipher.iv_len = AES_BLOCK_SIZE;
