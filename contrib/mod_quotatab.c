@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.82 2012-07-25 23:45:01 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.83 2012-11-15 16:33:32 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -2948,14 +2948,14 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
      * return an error when reading/writing a file causes a limit to be reached.
      */
     if (sess_limit.quota_limit_type == HARD_LIMIT) {
-      pr_fs_t *fs = pr_register_fs(main_server->pool, "quotatab", "/");
+      pr_fs_t *fs = pr_register_fs(session.pool, "quotatab", "/");
       if (fs) {
         quotatab_log("quotatab fs registered");
-
         fs->write = quotatab_fsio_write;
 
-      } else
+      } else {
         quotatab_log("error registering quotatab fs: %s", strerror(errno));
+      }
     }
 
   } else {
