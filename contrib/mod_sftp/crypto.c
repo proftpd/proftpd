@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.25 2012-11-14 22:13:37 castaglia Exp $
+ * $Id: crypto.c,v 1.26 2012-11-15 18:25:33 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -598,6 +598,32 @@ static const EVP_CIPHER *get_aes_ctr_cipher(int key_len) {
       aes_ctr_cipher.nid = NID_undef;
   }
 #else
+  /* Setting this nid member to something oether than NID_undef causes
+   * interesting problems on an OpenSolaris system, using the provided
+   * OpenSSL installation's pkcs11 engine via:
+   *
+   *  SFTPCryptoDevice pkcs11
+   *
+   * for the mod_sftp config.  I'm not sure why; I need to look into this
+   * issue more.
+   *
+   * For posterity, the issues seen when using the above config are
+   * described below.  After sending the NEWKEYS request, mod_sftp
+   * would log the following, upon receiving the next message from sftp(1):
+   *
+   *  <ssh2:20>: SSH2 packet len = 1500737511 bytes
+   *  <ssh2:20>: SSH2 packet padding len = 95 bytes
+   *  <ssh2:20>: SSH2 packet payload len = 1500737415 bytes
+   *  <ssh2:20>: payload len (1500737415 bytes) exceeds max payload len (262144), ignoring payload
+   *  client sent buggy/malicious packet payload length, ignoring
+   *
+   * and sftp(1), for its side, would report:
+   *
+   *  debug1: send SSH2_MSG_SERVICE_REQUEST
+   *  Disconnecting: Bad packet length.
+   *  debug1: Calling cleanup 0x807cc14(0x0)
+   *  Couldn't read packet: Error 0
+   */
   aes_ctr_cipher.nid = NID_undef;
 #endif /* OPENSSL_FIPS */
 
