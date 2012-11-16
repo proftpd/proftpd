@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.51 2012-04-15 18:04:14 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.52 2012-11-16 17:38:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -506,6 +506,10 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
       *expire = SP_CVT_DAYS(sp->sp_expire);
     }
 #endif /* HAVE_SPWD_SP_EXPIRE */
+
+  } else {
+    pr_log_debug(DEBUG3, "mod_auth_unix: getspnam(3) for user '%s' error: %s",
+      u, strerror(errno));
   }
 
 #ifdef PR_USE_AUTO_SHADOW
@@ -542,6 +546,10 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
       if (expire != NULL) {
         *expire = (time_t) -1;
       }
+
+    } else {
+      pr_log_debug(DEBUG3, "mod_auth_unix: getpwnam(3) for user '%s' error: %s",
+        u, strerror(errno));
     }
 
   } else {
