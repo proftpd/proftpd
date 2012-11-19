@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.27 2012-05-14 16:31:13 castaglia Exp $
+ * $Id: mod_dso.c,v 1.28 2012-11-19 23:42:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -481,8 +481,10 @@ MODRET set_loadmodule(cmd_rec *cmd) {
   if (dso_load_module(cmd->argv[1]) < 0) {
     int xerrno = errno;
 
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error loading module '",
-      cmd->argv[1], "': ", strerror(xerrno), NULL));
+    if (xerrno != EEXIST) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error loading module '",
+        cmd->argv[1], "': ", strerror(xerrno), NULL));
+    }
   }
 
   return PR_HANDLED(cmd);
