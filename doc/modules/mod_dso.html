@@ -1,4 +1,4 @@
-<!-- $Id: mod_dso.html,v 1.5 2012-11-19 21:18:53 castaglia Exp $ -->
+<!-- $Id: mod_dso.html,v 1.6 2012-11-19 21:31:29 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_dso.html,v $ -->
 
 <html>
@@ -400,11 +400,34 @@ loaded, and if not, load it:
   &lt;/IfModule&gt;
 </pre>
 
+<p><a name="DSOAlreadyLoadedSpecialModules">
+<font color=red>Question</font>: When I try to start <code>proftpd</code>, it
+fails like this:
+<pre>
+  proftpd[1234]: mod_dso/0.5: module 'mod_ctrls.c' already loaded
+  proftpd[1234]: Fatal: LoadModule: error loading module 'mod_ctrls.c': Operation not permitted on line 9 of '/etc/proftpd/proftpd.conf'
+</pre>
+I do not have any other <code>LoadModule</code> directives in my config, nor
+is the <code>mod_ctrls</code> module in my <code>--with-modules</code>
+configure option.<br><br>
+<font color=blue>Answer</font>: In this particular case, the
+<code>mod_ctrls</code> module is automatically compiled in, as a static module,
+when the <code>--enable-ctrls</code> configure option is used.  There are only
+a few such modules with this special handling:
+<ul>
+  <li><code>mod_ctrls</code> (<i>via the <code>--enable-ctrls</code> configure option</i>)
+  <li><code>mod_dso</code> (<i>via the <code>--enable-dso</code> configure option</i>)
+  <li><code>mod_lang</code> (<i>via the <code>--enable-nls</code> configure option</i>)
+  <li><code>mod_memcache</code> (<i>via the <code>--enable-memcache</code> configure option</i>)
+</ul>
+All of these modules would appear in the <code>`proftpd -l'</code> static
+module list.
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-11-19 21:18:53 $</i><br>
+Last Updated: <i>$Date: 2012-11-19 21:31:29 $</i><br>
 
 <br><hr>
 
