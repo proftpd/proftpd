@@ -1,4 +1,4 @@
-<!-- $Id: mod_dso.html,v 1.4 2011-04-06 18:23:28 castaglia Exp $ -->
+<!-- $Id: mod_dso.html,v 1.5 2012-11-19 21:18:53 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_dso.html,v $ -->
 
 <html>
@@ -336,16 +336,80 @@ of DSO modules, use the <code>--enable-dso</code> configure option:
 This option causes <code>mod_dso</code> to be compiled into
 <code>proftpd</code>.
 
+<p><a name="FAQ">
+<b>Frequently Asked Questions</b><br>
+
+<p><a name="DSOAlreadyLoaded">
+<font color=red>Question</font>: When I try to start <code>proftpd</code>, it
+fails like this:
+<pre>
+  proftpd[1234]: mod_dso/0.5: module 'mod_radius.c' already loaded
+  proftpd[1234]: Fatal: LoadModule: error loading module 'mod_radius.c': Operation not permitted on line 9 of '/etc/proftpd/proftpd.conf'
+</pre>
+How do I fix this "module already loaded" error?<br>
+<font color=blue>Answer</font>:  This happens when the proftpd configuration
+either <i>a)</i> uses the <a href="#LoadModule"><code>LoadModule</code></a>
+on a module which was compiled in as a static module, or <i>b)</i> is
+inadvertently using <code>LoadModule</code> on the same module multiple times.
+
+<p>
+To check if the module has been statically compiled into your
+<code>proftpd</code> executable, use the <code>-l</code> command-line parameter,
+<i>e.g.</i>:
+<pre>
+  # proftpd -l
+  Compiled-in modules:
+    mod_core.c
+    mod_xfer.c
+    mod_auth_unix.c
+    mod_auth_file.c
+    mod_auth.c
+    mod_ls.c
+    mod_log.c
+    mod_site.c
+    mod_delay.c
+    mod_facts.c
+    mod_dso.c
+    mod_ident.c
+    mod_auth_pam.c
+    mod_tls.c
+    mod_cap.c
+</pre>
+The modules listed via the command are the static modules.  So if your
+<code>LoadModule</code> directive is used for one of the modules in this list,
+you can remove that <code>LoadModule</code> directive; that module will already
+be loaded.
+
+<p>
+The other cause, that of having multiple <code>LoadModule</code> directives
+for the same module, usually happens when your <code>proftpd.conf</code>
+file includes other config files, <i>e.g.</i>:
+<pre>
+  Include /path/to/modules.conf
+</pre>
+and it is those other config files which have <code>LoadModule</code> directives
+of their own.
+
+<p>
+If you find yourself needs to change the configuration to work around this
+error, you can use the following to see if the module has already been
+loaded, and if not, load it:
+<pre>
+  &lt;IfModule !mod_radius.c&gt;
+    LoadModule mod_radius.c
+  &lt;/IfModule&gt;
+</pre>
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-04-06 18:23:28 $</i><br>
+Last Updated: <i>$Date: 2012-11-19 21:18:53 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2004-2011 TJ Saunders<br>
+&copy; Copyright 2004-2012 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
