@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.53 2012-11-21 15:50:40 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.54 2012-11-27 17:27:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -105,6 +105,8 @@ extern int _pw_stayopen;
 #endif
 
 module auth_unix_module;
+
+static const char *trace_channel = "auth";
 
 static FILE *pwdf = NULL;
 static FILE *grpf = NULL;
@@ -468,6 +470,9 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
   struct spwd *sp;
   char *cpw = NULL;
 
+  pr_trace_msg(trace_channel, 7,
+    "looking up user '%s' via Unix shadow mechanism", u);
+
   PRIVS_ROOT
 #ifdef HAVE_SETSPENT
   setspent();
@@ -515,6 +520,9 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
 #ifdef PR_USE_AUTO_SHADOW
   if (sp == NULL) {
     struct passwd *pw;
+
+    pr_trace_msg(trace_channel, 7,
+      "looking up user '%s' via Unix autoshadow mechanism", u);
 
     endspent();
     PRIVS_RELINQUISH
@@ -579,6 +587,9 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
   * requires that we are root in order to have the password member
   * filled in.
   */
+
+  pr_trace_msg(trace_channel, 7,
+    "looking up user '%s' via normal Unix mechanism", u);
 
   PRIVS_ROOT
 #if !defined(HAVE_GETPRPWENT) || defined(COMSEC)
