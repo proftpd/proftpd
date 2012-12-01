@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.160 2012-11-14 18:27:28 castaglia Exp $
+ * $Id: fxp.c,v 1.161 2012-12-01 04:57:23 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2440,7 +2440,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
         pstrdup(fxh->pool, curr_path), 0) < 0) {
       if (errno != EEXIST) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error adding 'mod_xfer.store-path: %s", strerror(errno));
+          "error adding 'mod_xfer.store-path' note: %s", strerror(errno));
       }
     }
 
@@ -2453,7 +2453,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
         pstrdup(fxh->pool, curr_path), 0) < 0) {
       if (errno != EEXIST) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error adding 'mod_xfer.store-path: %s", strerror(errno));
+          "error adding 'mod_xfer.store-path' note: %s", strerror(errno));
       }
     }
 
@@ -2465,7 +2465,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
         pstrdup(fxh->pool, curr_path), 0) < 0) {
       if (errno != EEXIST) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error adding 'mod_xfer.retr-path: %s", strerror(errno));
+          "error adding 'mod_xfer.retr-path' note: %s", strerror(errno));
       }
     }
   }
@@ -4782,7 +4782,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
           pstrdup(fxp->pool, real_path), 0) < 0) {
         if (errno != EEXIST) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "error adding 'mod_xfer.store-path: %s", strerror(errno));
+            "error adding 'mod_xfer.store-path' note: %s", strerror(errno));
         }
       }
 
@@ -4795,7 +4795,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
           pstrdup(fxp->pool, real_path), 0) < 0) {
         if (errno != EEXIST) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "error adding 'mod_xfer.store-path: %s", strerror(errno));
+            "error adding 'mod_xfer.store-path' note: %s", strerror(errno));
         }
       }
 
@@ -4807,7 +4807,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
           pstrdup(fxp->pool, real_path), 0) < 0) {
         if (errno != EEXIST) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "error adding 'mod_xfer.retr-path: %s", strerror(errno));
+            "error adding 'mod_xfer.retr-path' note: %s", strerror(errno));
         }
       }
     }
@@ -6655,7 +6655,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
         pstrdup(fxp->pool, path), 0) < 0) {
       if (errno != EEXIST) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error adding 'mod_xfer.store-path: %s", strerror(errno));
+          "error adding 'mod_xfer.store-path' note: %s", strerror(errno));
       }
     }
 
@@ -6677,7 +6677,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
         pstrdup(fxp->pool, path), 0) < 0) {
       if (errno != EEXIST) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error adding 'mod_xfer.store-path: %s", strerror(errno));
+          "error adding 'mod_xfer.store-path' note: %s", strerror(errno));
       }
     }
 
@@ -6704,7 +6704,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
         pstrdup(fxp->pool, path), 0) < 0) {
       if (errno != EEXIST) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error adding 'mod_xfer.retr-path: %s", strerror(errno));
+          "error adding 'mod_xfer.retr-path' note: %s", strerror(errno));
       }
     }
   }
