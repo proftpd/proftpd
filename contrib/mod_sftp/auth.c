@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.45 2012-03-30 21:08:04 castaglia Exp $
+ * $Id: auth.c,v 1.46 2012-12-03 19:06:32 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -41,6 +41,9 @@
 #include "kbdint.h"
 #include "utf8.h"
 #include "display.h"
+
+/* From response.c */
+extern pr_response_t *resp_list, *resp_err_list;
 
 /* This value of 6 is the same default as OpenSSH's MaxAuthTries. */
 static unsigned int auth_attempts_max = 6;
@@ -570,6 +573,7 @@ static int setup_env(pool *p, char *user) {
 
   /* Make sure directory config pointers are set correctly */
   cmd = pr_cmd_alloc(p, 1, C_PASS);
+  cmd->cmd_class = CL_AUTH;
   cmd->arg = "";
   dir_check_full(p, cmd, G_NONE, session.cwd, NULL);
 
@@ -864,9 +868,11 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   orig_user = sftp_msg_read_string(pkt->pool, &buf, &buflen);
 
   user_cmd = pr_cmd_alloc(pkt->pool, 2, pstrdup(pkt->pool, C_USER), orig_user);
+  user_cmd->cmd_class = CL_AUTH;
   user_cmd->arg = orig_user;
 
   pass_cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, C_PASS));
+  user_cmd->cmd_class = CL_AUTH;
   pass_cmd->arg = pstrdup(pkt->pool, "(hidden)");
 
   /* Dispatch these as a PRE_CMDs, so that mod_delay's tactics can be used
@@ -877,8 +883,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       "authentication request for user '%s' blocked by '%s' handler",
       orig_user, user_cmd->argv[0]);
 
+    pr_response_add_err(R_530, "Login incorrect.");
     pr_cmd_dispatch_phase(user_cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(user_cmd, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
 
     return -1;
   }
@@ -900,8 +908,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
         "client used different user name '%s' in USERAUTH_REQUEST (was '%s'), "
         "disconnecting", orig_user, auth_user);
 
+      pr_response_add_err(R_530, "Login incorrect.");
       pr_cmd_dispatch_phase(user_cmd, POST_CMD_ERR, 0);
       pr_cmd_dispatch_phase(user_cmd, LOG_CMD_ERR, 0);
+      pr_response_clear(&resp_err_list);
 
       return -1;
     }
@@ -921,8 +931,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
         "client used different service name '%s' in USERAUTH_REQUEST (was "
         "'%s'), disconnecting", *service, auth_service);
 
+      pr_response_add_err(R_530, "Login incorrect.");
       pr_cmd_dispatch_phase(user_cmd, POST_CMD_ERR, 0);
       pr_cmd_dispatch_phase(user_cmd, LOG_CMD_ERR, 0);
+      pr_response_clear(&resp_err_list);
 
       return -1;
     }
@@ -949,15 +961,19 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
         "client requested unknown/unsupported service name '%s' in "
         "USERAUTH_REQUEST, disconnecting", *service);
 
+      pr_response_add_err(R_530, "Login incorrect.");
       pr_cmd_dispatch_phase(user_cmd, POST_CMD_ERR, 0);
       pr_cmd_dispatch_phase(user_cmd, LOG_CMD_ERR, 0);
+      pr_response_clear(&resp_err_list);
 
       return -1;
     }
   }
 
+  pr_response_add(R_331, "Password required for %s", user);
   pr_cmd_dispatch_phase(user_cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(user_cmd, LOG_CMD, 0);
+  pr_response_clear(&resp_list);
 
   method = sftp_msg_read_string(pkt->pool, &buf, &buflen);
 
@@ -1003,8 +1019,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
      * queried.
      */
     if (send_userauth_methods() < 0) {
+      pr_response_add_err(R_530, "Login incorrect.");
       pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
       pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+      pr_response_clear(&resp_err_list);
 
       pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
       pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -1014,6 +1032,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
     pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+    pr_response_clear(&resp_list);
 
     return 0;
 
@@ -1026,8 +1045,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
 
       if (send_userauth_methods() < 0) {
+        pr_response_add_err(R_530, "Login incorrect.");
         pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+        pr_response_clear(&resp_err_list);
 
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -1051,8 +1072,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
 
       if (send_userauth_methods() < 0) {
+        pr_response_add_err(R_530, "Login incorrect.");
         pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+        pr_response_clear(&resp_err_list);
 
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -1076,8 +1099,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
 
       if (send_userauth_methods() < 0) {
+        pr_response_add_err(R_530, "Login incorrect.");
         pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+        pr_response_clear(&resp_err_list);
 
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -1101,8 +1126,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
 
       if (send_userauth_methods() < 0) {
+        pr_response_add_err(R_530, "Login incorrect.");
         pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+        pr_response_clear(&resp_err_list);
 
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -1118,8 +1145,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     }
 
   } else {
+    pr_response_add_err(R_530, "Login incorrect.");
     pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
 
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -1137,8 +1166,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   if (res <= 0) {
     int xerrno = errno;
 
+    pr_response_add_err(R_530, "Login incorrect.");
     pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
 
     pr_cmd_dispatch_phase(cmd, res == 0 ? POST_CMD : POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
@@ -1165,11 +1196,13 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
    */
 
   if (setup_env(pkt->pool, user) < 0) {
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
+    pr_response_add_err(R_530, "Login incorrect.");
     pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     if (send_userauth_failure(NULL) < 0) {
       return -1;
@@ -1179,11 +1212,13 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   }
 
   if (send_userauth_success() < 0) {
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
+    pr_response_add_err(R_530, "Login incorrect.");
     pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
     return -1;
   }
@@ -1196,11 +1231,16 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "user '%s' authenticated via '%s' method", user, method);
 
+  /* This allows for the %s response code LogFormat variable to be populated
+   * in an AUTH ExtendedLog.
+   */
+  pr_response_add(R_230, "User %s logged in", user);
+  pr_cmd_dispatch_phase(pass_cmd, POST_CMD, 0);
+  pr_cmd_dispatch_phase(pass_cmd, LOG_CMD, 0);
+  pr_response_clear(&resp_list);
+
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-
-  pr_cmd_dispatch_phase(pass_cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(pass_cmd, LOG_CMD, PR_CMD_DISPATCH_FL_CLEAR_RESPONSE);
 
   /* At this point, we can look up the Protocols config, which may have
    * been tweaked via mod_ifsession's user/group/class-specific sections.
@@ -1309,6 +1349,13 @@ int sftp_auth_handle(struct ssh2_packet *pkt) {
    */
   if (send_userauth_banner_file() < 0) {
     return -1;
+  }
+
+  if (pr_response_get_pool() == NULL) {
+    /* We set this pool for use by the Response API, for logging response codes/
+     * messages during login.
+     */
+    pr_response_set_pool(session.pool);
   }
 
   res = handle_userauth_req(pkt, &service);
