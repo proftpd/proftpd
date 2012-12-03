@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.230 2012-09-07 18:50:43 castaglia Exp $
+ * $Id: mod_sql.c,v 1.231 2012-12-03 23:55:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1446,6 +1446,9 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
         /* Assume the query only returned 1 row. */
         sd->fnum = ah->nelts;
 
+        sql_log(DEBUG_INFO,
+          "custom SQLUserInfo query '%s' returned %d columns for user '%s'",
+          cmap.usercustom, sd->fnum, realname);
         if (sd->fnum) {
           sd->rnum = 1;
           sd->data = (char **) ah->elts;
