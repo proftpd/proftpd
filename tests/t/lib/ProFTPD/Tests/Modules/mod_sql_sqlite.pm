@@ -326,6 +326,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  sql_sqlite_maxhostsperuser => {
+    order => ++$order,
+    test_class => [qw(forking mod_unique_id)],
+  }
+
 };
 
 sub new {
@@ -11881,6 +11886,217 @@ EOS
   $expected = 'Please login with USER and PASS';
   $self->assert($expected eq $resp_mesg,
     test_msg("Expected '$expected', got '$resp_mesg'"));
+
+  unlink($log_file);
+}
+
+sub sql_sqlite_maxhostsperuser {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlite.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT,
+  shell TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
+
+CREATE TABLE user_hosts (
+  session_id TEXT,
+  userid TEXT,
+  host TEXT
+);
+INSERT INTO user_hosts (session_id, userid, host) VALUES ('abc', '$user', '127.0.0.1');
+
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'response:20 sql:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => [
+        'AuthOrder mod_sql.c',
+
+        'SQLAuthenticate users groups',
+        'SQLAuthTypes plaintext',
+        'SQLBackend sqlite3',
+        "SQLConnectInfo $db_file",
+        "SQLLogFile $log_file",
+        'SQLMinID 100',
+
+        # Here, the MaxHostsPerUser limit is 3; it has to be hardcoded into
+        # the SQL query, unfortunately.  (Or maybe use a config file variable?)
+        #
+        # The LEFT JOIN is necessary for dealing with the case where the
+        # user_hosts table has no matching rows for the user logging in.
+        'SQLNamedQuery get-user-by-name SELECT "u.userid, u.passwd, u.uid, u.gid, u.homedir, u.shell, COUNT(uh.session_id) AS count FROM users u JOIN user_hosts uh ON u.userid = \"%U\" GROUP BY u.userid HAVING (count >= 0 AND count < 4)"',
+        'SQLNamedQuery get-user-by-id SELECT "userid, passwd, uid, gid, homedir, shell FROM users WHERE uid = %{0}"',
+        'SQLUserInfo custom:/get-user-by-name/get-user-by-id',
+
+        'SQLNamedQuery add-user-host FREEFORM "INSERT INTO user_hosts (session_id, userid, host) VALUES (\'%{env:UNIQUE_ID}\', \'%u\', \'%a\')"',
+        'SQLLog PASS add-user-host',
+
+        'SQLNamedQuery remove-user-host FREEFORM "DELETE FROM user_hosts WHERE session_id = \"%{env:UNIQUE_ID}\"',
+        'SQLLog EXIT remove-user-host',
+
+        'SQLShowInfo ERR_PASS 530 "Sorry, the maximum number of hosts for this user are already connected."',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client1->login($user, $passwd);
+
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client2->login($user, $passwd);
+
+      my $client3 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client3->login($user, $passwd);
+
+      my $client4 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      eval { $client4->login($user, $passwd) };
+      unless ($@) {
+        die("Fourth login succeeded unexpectedly");
+      }
+
+      my $resp_code = $client4->response_code();
+      my $resp_msgs = $client4->response_msgs();
+
+      my $expected = 530;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "Login incorrect.";
+      $self->assert($expected eq $resp_msgs->[0],
+        test_msg("Expected response '$expected', got '$resp_msgs->[0]'"));
+
+      $expected = "Sorry, the maximum number of hosts for this user are already connected.";
+      $self->assert($expected eq $resp_msgs->[1],
+        test_msg("Expected response '$expected', got '$resp_msgs->[1]'"));
+
+      $client4->quit();
+
+      $client3->quit();
+
+      $client4 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client4->login($user, $passwd);
+      $client4->quit();
+
+      $client2->quit();
+      $client1->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
 
   unlink($log_file);
 }
