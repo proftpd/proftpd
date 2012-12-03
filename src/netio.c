@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.56 2012-10-11 06:12:22 castaglia Exp $
+ * $Id: netio.c,v 1.57 2012-12-03 23:11:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -637,7 +637,6 @@ int pr_netio_postopen(pr_netio_stream_t *nstrm) {
 }
 
 int pr_netio_vprintf(pr_netio_stream_t *nstrm, const char *fmt, va_list msg) {
-  int res;
   char buf[PR_RESPONSE_BUFFER_SIZE] = {'\0'};
 
   vsnprintf(buf, sizeof(buf), fmt, msg);
