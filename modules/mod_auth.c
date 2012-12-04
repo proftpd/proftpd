@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.306 2012-09-05 16:40:58 castaglia Exp $
+ * $Id: mod_auth.c,v 1.307 2012-12-04 19:07:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1657,12 +1657,44 @@ static int auth_scan_scoreboard(void) {
   return 0;
 }
 
+static int have_client_limits(cmd_rec *cmd) {
+  if (find_config(cmd->server->conf, CONF_PARAM, "MaxClientsPerClass", FALSE) != NULL) {
+    return TRUE;
+  }
+
+  if (find_config(cmd->server->conf, CONF_PARAM, "MaxClientsPerHost", FALSE) != NULL) {
+    return TRUE;
+  }
+
+  if (find_config(cmd->server->conf, CONF_PARAM, "MaxClientsPerUser", FALSE) != NULL) {
+    return TRUE;
+  }
+
+  if (find_config(cmd->server->conf, CONF_PARAM, "MaxClients", FALSE) != NULL) {
+    return TRUE;
+  }
+
+  if (find_config(cmd->server->conf, CONF_PARAM, "MaxHostsPerUser", FALSE) != NULL) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
 static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
   char *key;
   void *v;
   pr_scoreboard_entry_t *score = NULL;
   long cur = 0, hcur = 0, ccur = 0, hostsperuser = 1, usersessions = 0;
   config_rec *c = NULL, *maxc = NULL;
+
+  /* First, check to see which Max* directives are configured.  If none
+   * are configured, then there is no need for us to needlessly scan the
+   * ScoreboardFile.
+   */
+  if (have_client_limits(cmd) == FALSE) {
+    return 0;
+  }
 
   /* Determine how many users are currently connected. */
 
