@@ -11922,6 +11922,8 @@ CREATE TABLE users (
   homedir TEXT,
   shell TEXT
 );
+CREATE INDEX i_users_userid ON users.userid;
+CREATE INDEX i_users_uid ON users.uid;
 INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
 
 CREATE TABLE groups (
@@ -11929,6 +11931,7 @@ CREATE TABLE groups (
   gid INTEGER,
   members TEXT
 );
+CREATE INDEX i_groups_gid ON groups.gid;
 INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
 
 CREATE TABLE user_hosts (
@@ -11936,6 +11939,7 @@ CREATE TABLE user_hosts (
   userid TEXT,
   host TEXT
 );
+CREATE INDEX i_user_hosts_userid ON user_hosts.userid;
 INSERT INTO user_hosts (session_id, userid, host) VALUES ('abc', '$user', '127.0.0.1');
 
 EOS
