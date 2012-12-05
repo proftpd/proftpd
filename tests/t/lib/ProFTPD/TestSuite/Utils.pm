@@ -30,6 +30,7 @@ our @FEATURES = qw(
 );
 
 our @RUNNING = qw(
+  server_restart
   server_start
   server_stop
   server_wait
@@ -690,6 +691,29 @@ sub feature_have_module_loaded {
   } else {
     croak("Error listing loaded modules");
   }
+}
+
+sub server_restart {
+  my $pid_file = shift;
+  croak("Missing PID file argument") unless $pid_file;
+
+  my $pid;
+  if (open(my $fh, "< $pid_file")) {
+    $pid = <$fh>;
+    chomp($pid);
+    close($fh);
+
+  } else {
+    die("Can't read $pid_file: $!");
+  }
+
+  my $cmd = "kill -HUP $pid";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Restarting server: $cmd\n";
+  }
+
+  my @output = `$cmd`;
 }
 
 sub server_start {
