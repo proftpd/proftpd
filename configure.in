@@ -2359,8 +2359,6 @@ if test x"$pr_use_mysql" = xyes; then
   saved_libs="$LIBS"
   saved_cppflags="$CPPFLAGS"
 
-  AC_MSG_CHECKING([for MySQL's make_scrambled_password_323])
-
   # fiddle with CPPFLAGS, LDFLAGS
   CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
   LDFLAGS="$LDFLAGS -lm -lmysqlclient -lz"
@@ -2369,6 +2367,8 @@ if test x"$pr_use_mysql" = xyes; then
   LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="$LIBS $ac_build_addl_libdirs"
 
+  # For Bug#3669, we need to check for make_scrambled_password_323.
+  AC_MSG_CHECKING([for MySQL's make_scrambled_password_323])
   AC_TRY_LINK(
     [
       #ifdef HAVE_STDLIB_H
@@ -2380,13 +2380,41 @@ if test x"$pr_use_mysql" = xyes; then
       #include <mysql.h>
     ],
     [
-      char input[32];
-      char *output = NULL;
-      (void) make_scrambled_password_323(input, output);
+      char output[32];
+      char *input = NULL;
+      (void) make_scrambled_password_323(output, input);
     ],
     [
       AC_MSG_RESULT(yes)
-      AC_DEFINE(HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD_323, 1, [Define if you have MySQL's make_scrambled_password_323])
+      AC_DEFINE(HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD_323, 1, [Define if you have MySQL's make_scrambled_password_323 function])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+
+  # For Bug#3669 in the RedHat case, we need to check for
+  # my_make_scrambled_password.
+  AC_MSG_CHECKING([for MySQL's my_make_scrambled_password])
+  AC_TRY_LINK(
+    [
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
+      #ifdef HAVE_SYS_TYPES_H
+      # include <sys/types.h>
+      #endif
+      #include <mysql.h>
+    ],
+    [
+      char output[32];
+      char *input = NULL;
+      size_t inputlen = 0;
+      my_make_scrambled_password(output, input, inputlen);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_MYSQL_MY_MAKE_SCRAMBLED_PASSWORD, 1, [Define if you have MySQL's my_make_scrambled_password function])
     ],
     [
       AC_MSG_RESULT(no)
