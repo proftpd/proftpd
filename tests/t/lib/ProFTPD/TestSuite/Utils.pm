@@ -93,6 +93,10 @@ sub get_high_numbered_port {
 sub get_passwd {
   my $user_passwd = shift;
 
+  if ($user_passwd eq '') {
+    return '';
+  }
+
   # First, try to use MD5 hashing for passwords
   my $md5_salt = '$1$' . join('', (0..9, 'A'..'Z', 'a'..'z')[rand(62), rand(62), rand(62), rand(62), rand(62), rand(62), rand(62), rand(62)]);
 
@@ -144,7 +148,7 @@ sub auth_user_write {
   my $user_name = shift;
   croak("Missing user name argument") unless $user_name;
   my $user_passwd = shift;
-  croak("Missing user password argument") unless $user_passwd;
+  croak("Missing user password argument") unless defined($user_passwd);
   my $user_id = shift;
   croak("Missing user ID argument") unless defined($user_id);
   my $group_id = shift;
