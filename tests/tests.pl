@@ -105,6 +105,7 @@ if (scalar(@ARGV) > 0) {
     t/config/authaliasonly.t
     t/config/authgroupfile.t
     t/config/authorder.t
+    t/config/authuserfile.t
     t/config/authusingalias.t
     t/config/classes.t
     t/config/commandbuffersize.t
