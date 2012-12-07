@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.43 2012-05-10 02:46:02 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.44 2012-12-07 03:21:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -83,6 +83,8 @@ typedef struct file_rec {
 /* List of server-specific Authiles */
 static authfile_file_t *af_user_file = NULL;
 static authfile_file_t *af_group_file = NULL;
+
+static int handle_empty_salt = FALSE;
 
 static int authfile_sess_init(void);
 
@@ -955,7 +957,12 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
 
   crypted_pass = crypt(cleartxt_pass, ciphertxt_pass);
-  if (!crypted_pass) {
+  if (handle_empty_salt == TRUE &&
+      strlen(ciphertxt_pass) == 0) {
+    crypted_pass = "";
+  }
+
+  if (crypted_pass == NULL) {
     pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
       ": error using crypt(3): %s", strerror(errno));
     return PR_DECLINED(cmd);
@@ -1236,6 +1243,36 @@ MODRET set_authuserfile(cmd_rec *cmd) {
 /* Initialization routines
  */
 
+static int authfile_init(void) {
+  const char *key, *salt, *hash;
+
+  /* On some Unix platforms, giving crypt(3) an empty string for the salt,
+   * no matter what the input key, results in an empty string being returned.
+   * (The salt string is what is obtained from the AuthUserFile that has been
+   * configured.)
+   *
+   * On other platforms, given crypt(3) a real key and an empty string for
+   * the salt returns in a real string.  (I'm looking at you, Mac OSX.)
+   *
+   * Thus in order to handle the edge case of an AuthUserFile with a passwd
+   * field being empty the same on such differing platforms, we perform a
+   * runtime check (at startup), to see how crypt(3) behaves -- and then
+   * preserve the principle of least surprise appropriately.
+   */
+
+  key = "key";
+  salt = "";
+  hash = crypt(key, salt);
+  if (hash != NULL) {
+    if (strcmp(hash, "") != 0) {
+      /* We're probably on a Mac OSX or similar platform. */
+      handle_empty_salt = TRUE;
+    }
+  }
+
+  return 0;
+}
+
 static int authfile_sess_init(void) {
   config_rec *c = NULL;
 
@@ -1314,7 +1351,7 @@ module auth_file_module = {
   authfile_authtab,
 
   /* Module initialization function */
-  NULL,
+  authfile_init,
 
   /* Session initialization function */
   authfile_sess_init,
