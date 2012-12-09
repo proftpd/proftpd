@@ -3138,6 +3138,13 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         break;
     }
 
+    if (on_data) {
+      pr_event_generate("mod_tls.data-handshake-failed", &errcode);
+
+    } else {
+      pr_event_generate("mod_tls.ctrl-handshake-failed", &errcode);
+    }
+
     tls_end_sess(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL, 0);
     return -3;
   }
@@ -3626,7 +3633,7 @@ static const char *tls_get_errors(void) {
   datalen = BIO_get_mem_data(bio, &data);
   if (data) {
     data[datalen] = '\0';
-    str = pstrdup(main_server->pool, data);
+    str = pstrdup(session.pool, data);
   }
 
   if (bio)
@@ -4116,17 +4123,17 @@ static void tls_setup_cert_dn_environ(const char *env_prefix, X509_NAME *name) {
 
     switch (nid) {
       case NID_countryName:
-        k = pstrcat(main_server->pool, env_prefix, "C", NULL);
-        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+        k = pstrcat(session.pool, env_prefix, "C", NULL);
+        v = pstrndup(session.pool, (const char *) entry->value->data,
           entry->value->length);
-        pr_env_set(main_server->pool, k, v);
+        pr_env_set(session.pool, k, v);
         break;
 
       case NID_commonName:
-        k = pstrcat(main_server->pool, env_prefix, "CN", NULL);
-        v = pstrndup(main_server->pool, (const char *) entry->value->data,
+        k = pstrcat(session.pool, env_prefix, "CN", NULL);
+        v = pstrndup(session.pool, (const char *) entry->value->data,
           entry->value->length);
-        pr_env_set(main_server->pool, k, v);
+        pr_env_set(session.pool, k, v);
         break;
 
       case NID_description:
@@ -6552,7 +6559,7 @@ MODRET tls_auth(cmd_rec *cmd) {
     tls_blinding_on(ctrl_ssl);
 #endif
 
-     tls_flags |= TLS_SESS_ON_CTRL;
+    tls_flags |= TLS_SESS_ON_CTRL;
 
   } else if (strncmp(cmd->argv[1], "SSL", 4) == 0 ||
              strncmp(cmd->argv[1], "TLS-P", 6) == 0) {
