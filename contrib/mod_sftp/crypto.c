@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.26 2012-11-15 18:25:33 castaglia Exp $
+ * $Id: crypto.c,v 1.27 2012-12-10 23:01:18 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -598,7 +598,7 @@ static const EVP_CIPHER *get_aes_ctr_cipher(int key_len) {
       aes_ctr_cipher.nid = NID_undef;
   }
 #else
-  /* Setting this nid member to something oether than NID_undef causes
+  /* Setting this nid member to something other than NID_undef causes
    * interesting problems on an OpenSolaris system, using the provided
    * OpenSSL installation's pkcs11 engine via:
    *
