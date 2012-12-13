@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.162 2012-12-01 18:39:42 castaglia Exp $
+ * $Id: fxp.c,v 1.163 2012-12-13 23:05:15 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5648,6 +5648,8 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
     fxp_version_add_supported2_ext(fxp->pool, &buf, &buflen);
   }
 
+  pr_event_generate("mod_sftp.sftp.protocol-version",
+    &(fxp_session->client_version));
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
@@ -10615,6 +10617,8 @@ int sftp_fxp_open_session(uint32_t channel_id) {
     fxp_sessions = sess;
   }
 
+  pr_event_generate("mod_sftp.sftp.session-opened", NULL);
+
   /* XXX Ignore any return value, for now. */
   (void) fxp_send_display_login_file(channel_id);
 
@@ -10676,8 +10680,9 @@ int sftp_fxp_close_session(uint32_t channel_id) {
       }
 
       destroy_pool(sess->pool);
-
       pr_session_set_protocol("ssh2");
+
+      pr_event_generate("mod_sftp.sftp.session-closed", NULL);
       return 0;
     }
 

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: compress.c,v 1.7 2012-07-20 20:41:34 castaglia Exp $
+ * $Id: compress.c,v 1.8 2012-12-13 23:05:15 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -205,6 +205,7 @@ int sftp_compress_init_read(int flags) {
         "error preparing decompression stream (%d)", zres);
     }
 
+    pr_event_generate("mod_sftp.ssh.client-compression", NULL);
     comp->stream_ready = TRUE;
   }
 
@@ -397,6 +398,7 @@ int sftp_compress_init_write(int flags) {
         "error preparing compression stream (%d)", zres);
     }
 
+    pr_event_generate("mod_sftp.ssh.server-compression", NULL);
     comp->stream_ready = TRUE;
   }
 

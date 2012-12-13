@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.73 2012-10-01 17:19:12 castaglia Exp $
+ * $Id: scp.c,v 1.74 2012-12-13 23:05:15 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2486,6 +2486,8 @@ int sftp_scp_open_session(uint32_t channel_id) {
     scp_sessions = sess;
   }
 
+  pr_event_generate("mod_sftp.scp.session-opened", NULL);
+
   pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
 
   timeout_stalled = pr_data_get_timeout(PR_DATA_TIMEOUT_STALLED);
@@ -2603,6 +2605,8 @@ int sftp_scp_close_session(uint32_t channel_id) {
       destroy_pool(sess->pool);
 
       pr_session_set_protocol("ssh2");
+
+      pr_event_generate("mod_sftp.scp.session-closed", NULL);
       return 0;
     }
 

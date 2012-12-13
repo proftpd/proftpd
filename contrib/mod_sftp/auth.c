@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.46 2012-12-03 19:06:32 castaglia Exp $
+ * $Id: auth.c,v 1.47 2012-12-13 23:05:15 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1038,8 +1038,20 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   } else if (strncmp(method, "publickey", 10) == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_PUBLICKEY) {
+      int xerrno;
+
       res = sftp_auth_publickey(pkt, pass_cmd, orig_user, user, *service,
         &buf, &buflen, &send_userauth_fail);
+      xerrno = errno;
+
+      if (res < 0) {
+        pr_event_generate("mod_sftp.ssh2.auth-publickey.failed", NULL);
+
+      } else {
+        pr_event_generate("mod_sftp.ssh2.auth-publickey", NULL);
+      }
+
+      errno = xerrno;
 
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
@@ -1065,8 +1077,20 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   } else if (strncmp(method, "keyboard-interactive", 21) == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_KBDINT) {
+      int xerrno = errno;
+
       res = sftp_auth_kbdint(pkt, pass_cmd, orig_user, user, *service,
         &buf, &buflen, &send_userauth_fail);
+      xerrno = errno;
+
+      if (res < 0) {
+        pr_event_generate("mod_sftp.ssh2.auth-kbdint.failed", NULL);
+
+      } else {
+        pr_event_generate("mod_sftp.ssh2.auth-kbdint", NULL);
+      }
+
+      errno = xerrno;
 
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
@@ -1092,8 +1116,20 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   } else if (strncmp(method, "password", 9) == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_PASSWORD) {
+      int xerrno;
+
       res = sftp_auth_password(pkt, pass_cmd, orig_user, user, *service,
         &buf, &buflen, &send_userauth_fail);
+      xerrno = errno;
+
+      if (res < 0) {
+        pr_event_generate("mod_sftp.ssh2.auth-password.failed", NULL);
+
+      } else {
+        pr_event_generate("mod_sftp.ssh2.auth-password", NULL);
+      }
+
+      errno = xerrno;
 
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
@@ -1119,8 +1155,20 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   } else if (strncmp(method, "hostbased", 10) == 0) {
     if (auth_meths_enabled & SFTP_AUTH_FL_METH_HOSTBASED) {
+      int xerrno;
+
       res = sftp_auth_hostbased(pkt, pass_cmd, orig_user, user, *service,
         &buf, &buflen, &send_userauth_fail);
+      xerrno = errno;
+
+      if (res < 0) {
+        pr_event_generate("mod_sftp.ssh2.auth-hostbased.failed", NULL);
+
+      } else {
+        pr_event_generate("mod_sftp.ssh2.auth-hostbased", NULL);
+      }
+
+      errno = xerrno;
 
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
