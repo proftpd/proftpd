@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # ---------------------------------------------------------------------------
-# Copyright (C) 2000-2011 TJ Saunders <tj@castaglia.org>
+# Copyright (C) 2000-2012 TJ Saunders <tj@castaglia.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 # format, or AuthGroupFile, in group(5) format.  The idea is somewhat similar
 # to Apache's htpasswd program.
 #
-#  $Id: ftpasswd,v 1.13 2011-05-23 21:25:44 castaglia Exp $
+#  $Id: ftpasswd,v 1.14 2012-12-14 00:16:26 castaglia Exp $
 # ---------------------------------------------------------------------------
 
 use strict;
@@ -64,6 +64,8 @@ GetOptions(\%opts,
   'not-previous-password',
   'not-system-password',
   'passwd',
+  'sha256',
+  'sha512',
   'shell=s',
   'stdin',
   'uid=n',
@@ -346,17 +348,35 @@ sub get_salt {
   # how to do its thing.  By default, generate a salt that triggers MD5.
 
   if (defined($opts{'des'})) {
-
     # DES salt
     $salt = join '', ('.', '/', 0..9, 'A'..'Z', 'a'..'z')[rand 64, rand 64];
 
-  } else {
-
-    # MD5 salt
+  } elsif (defined($opts{'sha256'})) {
+    # SHA-256 salt (16 characters)
     $salt = join '', (0..9, 'A'..'Z', 'a'..'z')
-      [rand 62, rand 62, rand 62, rand 62, rand 62, rand 62, rand 62, rand 62];
-    $salt = '$1$' . $salt;
+      [rand 62, rand 62, rand 62, rand 62,
+       rand 62, rand 62, rand 62, rand 62,
+       rand 62, rand 62, rand 62, rand 62,
+       rand 62, rand 62, rand 62, rand 62];
+    $salt = '$5$' . $salt;
 
+  } elsif (defined($opts{'sha512'})) {
+    # SHA-512 salt (16 characters)
+    $salt = join '', (0..9, 'A'..'Z', 'a'..'z')
+      [rand 62, rand 62, rand 62, rand 62,
+       rand 62, rand 62, rand 62, rand 62,
+       rand 62, rand 62, rand 62, rand 62,
+       rand 62, rand 62, rand 62, rand 62];
+    $salt = '$6$' . $salt;
+
+  } else {
+    # MD5 salt (16 characters)
+    $salt = join '', (0..9, 'A'..'Z', 'a'..'z')
+      [rand 62, rand 62, rand 62, rand 62,
+       rand 62, rand 62, rand 62, rand 62,
+       rand 62, rand 62, rand 62, rand 62,
+       rand 62, rand 62, rand 62, rand 62];
+    $salt = '$1$' . $salt;
   }
 
   return $salt;
@@ -372,7 +392,7 @@ sub get_passwd {
   # limit of relevant password characters.
 
   if (defined($opts{'des'}) && !defined($opts{'stdin'})) {
-    print STDOUT "\nPlease be aware that only the first 8 characters of a DES password are\nrelevant.  Use the --md5 option to select MD5 passwords, as they do not have\nthis limitation.\n";
+    print STDOUT "\nPlease be aware that only the first 8 characters of a DES password are\nrelevant.  Use the --md5, --sha256, or --sha512 options as they do not have\nthis limitation.\n";
   }
 
   if (defined($opts{'stdin'})) {
@@ -490,23 +510,55 @@ sub get_passwd {
   my $hash = crypt($passwd, $salt);
 
   # Check that the crypt() implementation properly supports use of the MD5
-  # algorithm, if specified
+  # (or other non-DES algorithm), if specified.
+  if (!defined($opts{'des'})) {
+    if (defined($opts{'md5'})) {
+      # if the first three characters of the hash are not "$1$", the crypt()
+      # implementation doesn't support MD5.  Some crypt()s will happily use
+      # "$1" as a salt even though this is not a valid DES salt.  Humf.
+      #
+      # Perl doesn't treat strings as arrays of characters, so extracting the
+      # first three characters is a little more convoluted (I'm accustomed to
+      # C's strncmp(3) for this now).
 
-  if (defined($opts{'md5'}) || !defined($opts{'des'})) {
+      my @string = split('', $hash);
+      my $prefix = $string[0] . $string[1] . $string[2];
 
-    # if the first three characters of the hash are not "$1$", the crypt()
-    # implementation doesn't support MD5.  Some crypt()s will happily use
-    # "$1" as a salt even though this is not a valid DES salt.  Humf.
-    #
-    # Perl doesn't treat strings as arrays of characters, so extracting the
-    # first three characters is a little more convoluted (I'm accustomed to
-    # C's strncmp(3) for this now).
+      if ($prefix ne '$1$') { 
+        print STDOUT "You requested MD5 passwords but your system does not support it.  Defaulting to DES passwords.\n\n";
+      }
 
-    my @string = split('', $hash);
-    my $prefix = $string[0] . $string[1] . $string[2];
+    } elsif (defined($opts{'sha256'})) {
+      # if the first three characters of the hash are not "$5$", the crypt()
+      # implementation doesn't support SHA-256.  Some crypt()s will happily use
+      # "$5" as a salt even though this is not a valid DES salt.  Humf.
+      #
+      # Perl doesn't treat strings as arrays of characters, so extracting the
+      # first three characters is a little more convoluted (I'm accustomed to
+      # C's strncmp(3) for this now).
 
-    if ($prefix ne '$1$') { 
-      print STDOUT "You requested MD5 passwords but your system does not support it.  Defaulting to DES passwords.\n\n";
+      my @string = split('', $hash);
+      my $prefix = $string[0] . $string[1] . $string[2];
+
+      if ($prefix ne '$5$') {
+        print STDOUT "You requested SHA-256 passwords but your system does not support it.  Defaulting to DES passwords.\n\n";
+      }
+
+    } elsif (defined($opts{'sha512'})) {
+      # if the first three characters of the hash are not "$6$", the crypt()
+      # implementation doesn't support SHA-512.  Some crypt()s will happily use
+      # "$6" as a salt even though this is not a valid DES salt.  Humf.
+      #
+      # Perl doesn't treat strings as arrays of characters, so extracting the
+      # first three characters is a little more convoluted (I'm accustomed to
+      # C's strncmp(3) for this now).
+
+      my @string = split('', $hash);
+      my $prefix = $string[0] . $string[1] . $string[2];
+
+      if ($prefix ne '$6$') {
+        print STDOUT "You requested SHA-512 passwords but your system does not support it.  Defaulting to DES passwords.\n\n";
+      }
     }
   }
 
@@ -824,6 +876,10 @@ usage: $program [--help] [--hash|--group|--passwd]
                 helps to enforce different passwords for different types of
                 access.
 
+    --sha256    Use the SHA-256 algorithm for encrypting passwords.
+
+    --sha512    Use the SHA-512 algorithm for encrypting passwords.
+
     --stdin
                 Read the password directly from standard in rather than
                 prompting for it.  This is useful for writing scripts that
@@ -882,6 +938,10 @@ usage: $program [--help] [--hash|--group|--passwd]
                 the specified output-file, an entry will be created for them.
                 Otherwise, the given fields will be updated.
 
+    --sha256    Use the SHA-256 algorithm for encrypting passwords.
+
+    --sha512    Use the SHA-512 algorithm for encrypting passwords.
+
     --stdin
                 Read the password directly from standard in rather than
                 prompting for it.  This is useful for writing scripts that
@@ -910,6 +970,10 @@ usage: $program [--help] [--hash|--group|--passwd]
 
     --md5       Use the MD5 algorithm for encrypting passwords.  This is the
                 default.
+
+    --sha256    Use the SHA-256 algorithm for encrypting passwords.
+
+    --sha512    Use the SHA-512 algorithm for encrypting passwords.
 
     --stdin
                 Read the password directly from standard in rather than
