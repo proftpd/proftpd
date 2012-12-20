@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.308 2012-12-09 17:52:20 castaglia Exp $
+ * $Id: mod_auth.c,v 1.309 2012-12-20 23:54:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -677,13 +677,12 @@ static char *get_default_chdir(pool *p, xaset_t *conf) {
 /* Determine if the user (non-anon) needs a default root dir other than /.
  */
 
-static char *get_default_root(pool *p) {
+static int get_default_root(pool *p, int allow_symlinks, char **root) {
   config_rec *c = NULL;
   char *dir = NULL;
-  int ret;
+  int res;
 
   c = find_config(main_server->conf, CONF_PARAM, "DefaultRoot", FALSE);
-
   while (c) {
     pr_signals_handle();
 
@@ -693,9 +692,8 @@ static char *get_default_root(pool *p) {
       break;
     }
 
-    ret = pr_expr_eval_group_and(((char **) c->argv)+1);
-
-    if (ret) {
+    res = pr_expr_eval_group_and(((char **) c->argv)+1);
+    if (res) {
       dir = c->argv[0];
       break;
     }
@@ -719,6 +717,60 @@ static char *get_default_root(pool *p) {
       char *realdir;
       int xerrno = 0;
 
+      if (allow_symlinks == FALSE) {
+        char *path, target_path[PR_TUNABLE_PATH_MAX + 1];
+        struct stat st;
+        size_t pathlen;
+
+        /* First, deal with any possible interpolation.  dir_realpath() will
+         * do this for us, but dir_realpath() ALSO automatically follows
+         * symlinks, which is what we do NOT want to do here.
+         */
+
+        path = dir;
+        if (*path != '/') {
+          if (*path == '~') {
+            if (pr_fs_interpolate(dir, target_path,
+                sizeof(target_path)-1) < 0) {
+              return -1;
+            }
+
+            path = target_path;
+          }
+        }
+
+        /* Note: lstat(2) is sensitive to the presence of a trailing slash on
+         * the path, particularly in the case of a symlink to a directory.
+         * Thus to get the correct test, we need to remove any trailing slash
+         * that might be present.  Subtle.
+         */
+        pathlen = strlen(path);
+        if (pathlen > 1 &&
+            path[pathlen-1] == '/') {
+          path[pathlen-1] = '\0';
+        }
+
+        pr_fs_clear_cache();
+        res = pr_fsio_lstat(path, &st);
+        if (res < 0) {
+          xerrno = errno;
+
+          pr_log_pri(PR_LOG_ERR, "error: unable to check %s: %s", path,
+            strerror(xerrno));
+
+          errno = xerrno;
+          return -1;
+        }
+
+        if (S_ISLNK(st.st_mode)) {
+          pr_log_pri(PR_LOG_ERR,
+            "error: DefaultRoot %s is a symlink (denied by AllowChrootSymlinks "
+            "config)", path);
+          errno = EPERM;
+          return -1;
+        }
+      }
+
       /* We need to be the final user here so that if the user has their home
        * directory with a mode the user proftpd is running (i.e. the User
        * directive) as can not traverse down, we can still have the default
@@ -727,8 +779,7 @@ static char *get_default_root(pool *p) {
 
       PRIVS_USER
       realdir = dir_realpath(p, dir);
-      if (realdir == NULL)
-        xerrno = errno;
+      xerrno = errno;
       PRIVS_RELINQUISH
 
       if (realdir) {
@@ -744,11 +795,14 @@ static char *get_default_root(pool *p) {
         pr_log_pri(PR_LOG_NOTICE,
           "notice: unable to use '%s' [resolved to '%s']: %s", dir, interp_dir,
           strerror(xerrno));
+
+        errno = xerrno;
       }
     }
   }
 
-  return dir;
+  *root = dir;
+  return 0;
 }
 
 static struct passwd *passwd_dup(pool *p, struct passwd *pw) {
@@ -789,7 +843,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   char *origuser, *ourname,*anonname = NULL,*anongroup = NULL,*ugroup = NULL;
   char *defaulttransfermode, *defroot = NULL,*defchdir = NULL,*xferlog = NULL;
   const char *sess_ttyname;
-  int aclp, i, res = 0, showsymlinks;
+  int aclp, i, res = 0, allow_chroot_symlinks = TRUE, showsymlinks;
   unsigned char *wtmp_log = NULL, *anon_require_passwd = NULL;
 
   /********************* Authenticate the user here *********************/
@@ -885,6 +939,12 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
        pr_log_debug(DEBUG2, "no supplemental groups found for user '%s'",
          pw->pw_name);
      }
+  }
+
+  tmpc = find_config(main_server->conf, CONF_PARAM, "AllowChrootSymlinks",
+    FALSE);
+  if (tmpc != NULL) {
+    allow_chroot_symlinks = *((int *) tmpc->argv[0]);
   }
 
   /* If c != NULL from this point on, we have an anonymous login */
@@ -1063,7 +1123,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   if (c) {
     struct group *grp = NULL;
     unsigned char *add_userdir = NULL;
-    char *u;
+    char *u, *chroot_dir;
 
     u = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
     add_userdir = get_param_ptr(c->subset, "UserDirRoot", FALSE);
@@ -1097,18 +1157,81 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
     if ((add_userdir && *add_userdir == TRUE) &&
         strcmp(u, user) != 0) {
-      char *userdir_path = pdircat(p, c->name, u, NULL);
+      chroot_dir = pdircat(p, c->name, u, NULL);
 
-      session.chroot_path = dir_realpath(p, userdir_path);
+    } else {
+      chroot_dir = c->name;
+    }
+
+    if (allow_chroot_symlinks == FALSE) {
+      char *chroot_path, target_path[PR_TUNABLE_PATH_MAX+1];
+      struct stat st;
+
+      chroot_path = chroot_dir;
+      if (chroot_path[0] != '/') {
+        if (chroot_path[0] == '~') {
+          if (pr_fs_interpolate(chroot_path, target_path,
+              sizeof(target_path)-1) == 0) {
+            chroot_path = target_path;
+
+          } else {
+            chroot_path = NULL;
+          }
+        }
+      }
+
+      if (chroot_path != NULL) {
+        size_t chroot_pathlen;
+
+        /* Note: lstat(2) is sensitive to the presence of a trailing slash on
+         * the path, particularly in the case of a symlink to a directory.
+         * Thus to get the correct test, we need to remove any trailing slash
+         * that might be present.  Subtle.
+         */
+        chroot_pathlen = strlen(chroot_path);
+        if (chroot_pathlen > 1 &&
+            chroot_path[chroot_pathlen-1] == '/') {
+          chroot_path[chroot_pathlen-1] = '\0';
+        }
+
+        pr_fs_clear_cache();
+        res = pr_fsio_lstat(chroot_path, &st);
+        if (res < 0) {
+          int xerrno = errno;
+
+          pr_log_pri(PR_LOG_ERR, "error: unable to check %s: %s", chroot_path,
+            strerror(xerrno));
+
+          errno = xerrno;
+          chroot_path = NULL;
+
+        } else {
+          if (S_ISLNK(st.st_mode)) {
+            pr_log_pri(PR_LOG_ERR,
+              "error: <Anonymous %s> is a symlink (denied by "
+              "AllowChrootSymlinks config)", chroot_path);
+            errno = EPERM;
+            chroot_path = NULL;
+          }
+        }
+      }
+
+      if (chroot_path != NULL) {
+        session.chroot_path = dir_realpath(p, chroot_dir);
+
+      } else {
+        session.chroot_path = NULL;
+      }
+
       if (session.chroot_path == NULL) {
-        pr_log_debug(DEBUG8, "error resolving '%s': %s", userdir_path,
+        pr_log_debug(DEBUG8, "error resolving '%s': %s", chroot_dir,
           strerror(errno));
       }
 
     } else {
-      session.chroot_path = dir_realpath(p, c->name);
+      session.chroot_path = dir_realpath(p, chroot_dir);
       if (session.chroot_path == NULL) {
-        pr_log_debug(DEBUG8, "error resolving '%s': %s", c->name,
+        pr_log_debug(DEBUG8, "error resolving '%s': %s", chroot_dir,
           strerror(errno));
       }
     }
@@ -1330,27 +1453,35 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   PRIVS_RELINQUISH
 
   /* Now check to see if the user has an applicable DefaultRoot */
-  if (!c && (defroot = get_default_root(session.pool))) {
-
-    ensure_open_passwd(p);
-
-    if (pr_auth_chroot(defroot) == -1) {
-      pr_log_pri(PR_LOG_ERR, "error: unable to set default root directory");
+  if (c == NULL) {
+    if (get_default_root(session.pool, allow_chroot_symlinks, &defroot) < 0) {
+      pr_log_pri(PR_LOG_ERR,
+        "error: unable to determine DefaultRoot directory");
       pr_response_send(R_530, _("Login incorrect."));
       pr_session_end(0);
     }
 
-    /* Re-calc the new cwd based on this root dir.  If not applicable
-     * place the user in / (of defroot)
-     */
+    ensure_open_passwd(p);
 
-    if (strncmp(session.cwd, defroot, strlen(defroot)) == 0) {
-      char *newcwd = &session.cwd[strlen(defroot)];
+    if (defroot != NULL) {
+      if (pr_auth_chroot(defroot) == -1) {
+        pr_log_pri(PR_LOG_ERR, "error: unable to set DefaultRoot directory");
+        pr_response_send(R_530, _("Login incorrect."));
+        pr_session_end(0);
+      }
 
-      if (*newcwd == '/')
-        newcwd++;
-      session.cwd[0] = '/';
-      sstrncpy(&session.cwd[1], newcwd, sizeof(session.cwd));
+      /* Re-calc the new cwd based on this root dir.  If not applicable
+       * place the user in / (of defroot)
+       */
+
+      if (strncmp(session.cwd, defroot, strlen(defroot)) == 0) {
+        char *newcwd = &session.cwd[strlen(defroot)];
+
+        if (*newcwd == '/')
+          newcwd++;
+        session.cwd[0] = '/';
+        sstrncpy(&session.cwd[1], newcwd, sizeof(session.cwd));
+      }
     }
   }
 
@@ -2287,6 +2418,26 @@ MODRET set_accessgrantmsg(cmd_rec *cmd) {
 
   c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: AllowChrootSymlinks on|off */
+MODRET set_allowchrootsymlinks(cmd_rec *cmd) {
+  int b = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  b = get_boolean(cmd, 1);
+  if (b == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = b;
 
   return PR_HANDLED(cmd);
 }
@@ -3277,6 +3428,7 @@ MODRET set_userpassword(cmd_rec *cmd) {
 static conftable auth_conftab[] = {
   { "AccessDenyMsg",		set_accessdenymsg,		NULL },
   { "AccessGrantMsg",		set_accessgrantmsg,		NULL },
+  { "AllowChrootSymlinks",	set_allowchrootsymlinks,	NULL },
   { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
   { "AnonRejectPasswords",	set_anonrejectpasswords,	NULL },
   { "AuthAliasOnly",		set_authaliasonly,		NULL },

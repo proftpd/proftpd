@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1463 2012-12-18 22:03:21 castaglia Exp $
+$Id: NEWS,v 1.1464 2012-12-20 23:54:51 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -150,6 +150,8 @@ CVS
 - Bug 3850 - ftpasswd should support generating SHA-256, SHA-512 hashes where
   possible.
 - Bug 3851 - SFTPPassPhraseProvider fails due to incorrect pointer.
+- Bug 3852 - Support directive for ignoring symlink DefaultRoot directories.
+  See the new AllowChrootSymlinks directive.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------

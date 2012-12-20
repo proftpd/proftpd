@@ -40,6 +40,8 @@ ChangeLog files.
 
   + New configuration directives:
 
+    AllowChrootSymlinks (Bug#3852)
+
     <IfAuthenticated>
 
     FactsOptions
@@ -126,4 +128,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-12-14 00:16:26 $
+Last Updated: $Date: 2012-12-20 23:54:51 $
