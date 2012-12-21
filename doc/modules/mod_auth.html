@@ -1,4 +1,4 @@
-<!-- $Id: mod_auth.html,v 1.8 2012-11-05 18:05:30 castaglia Exp $ -->
+<!-- $Id: mod_auth.html,v 1.9 2012-12-21 18:21:26 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_auth.html,v $ -->
 
 <html>
@@ -19,6 +19,7 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
 
 <h2>Directives</h2>
 <ul>
+  <li><a href="#AllowChrootSymlinks">AllowChrootSymlinks</a>
   <li><a href="#DefaultRoot">DefaultRoot</a>
   <li><a href="#MaxLoginAttempts">MaxLoginAttempts</a>
   <li><a href="#RewriteHome">RewriteHome</a>
@@ -28,6 +29,34 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
   <li><a href="#UserPassword">UserPassword</a>
 </ul>
 
+<hr>
+<h2><a name="AllowChrootSymlinks">AllowChrootSymlinks</a></h2>
+<strong>Syntax:</strong> AllowChrootSymlinks <em>on|off</em><br>
+<strong>Default:</strong> AllowChrootSymlinks on<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 1.3.5rc1 and later
+
+<p>
+The <code>AllowChrootSymlinks</code> directive configures whether
+<code>proftpd</code> will follow a symlink to the destination directory
+when performing a <code>chroot(2)</code> call.  This applies both to
+<a href="#DefaultRoot"><code>DefaultRoot</code></a> directives <b>and</b> to
+<code>&lt;Anonymous&gt;</code> sections.
+
+<p>
+<b>Security note</b>: If you permit your users the ability to remove
+directories which might be FTP users' home directories (<i>or</i>
+<code>&lt;Anonymous&gt;</code> directories) and create symlinks, then you
+<b>should</b> use:
+<pre>
+  AllowChrootSymlinks off
+</pre>
+This includes sites which are hosting providers, <i>i.e.</i> which allow
+users to run their untrusted webapps (<i>e.g.</i> PHP, Perl, Ruby, Python,
+<i>etc</i> apps) on the servers.
+
+<p>
 <hr>
 <h2><a name="DefaultRoot">DefaultRoot</a></h2>
 <strong>Syntax:</strong> DefaultRoot <em>path [group-expression]</em><br>
@@ -241,7 +270,7 @@ The <code>mod_auth</code> module is compiled by default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-11-05 18:05:30 $</i><br>
+Last Updated: <i>$Date: 2012-12-21 18:21:26 $</i><br>
 
 <br><hr>
 
