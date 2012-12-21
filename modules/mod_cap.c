@@ -23,15 +23,16 @@
  */
 
 /* Use POSIX "capabilities" in modern operating systems (currently, only
- * Linux is supported) to severely limit root's access. After user
- * authentication, this module _completely_ gives up root, except for the
- * bare minimum functionality that is required. VERY highly recommended for
- * security-consious admins. See README.capabilities for more information.
+ * Linux is supported) to severely limit the process's access. After user
+ * authentication, this module _completely_ gives up root privileges, except
+ * for the bare minimum functionality that is required. VERY highly
+ * recommended for security-consious admins. See README.capabilities for more
+ * information.
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.29 2012-04-16 15:39:14 castaglia Exp $
+ * $Id: mod_cap.c,v 1.30 2012-12-21 21:18:32 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -54,6 +55,10 @@
 
 #include "conf.h"
 #include "privs.h"
+
+#ifdef HAVE_SYS_PRCTL_H
+# include <sys/prctl.h>
+#endif
 
 #define MOD_CAP_VERSION		"mod_cap/1.1"
 
@@ -151,12 +156,32 @@ static int lp_set_cap(void) {
       strerror(errno));
     return -1;
   }
-
+ 
   return 0;
 }
 
 /* Configuration handlers
  */
+
+/* usage: CapabilitiesRootRevoke on|off */
+MODRET set_caprootrevoke(cmd_rec *cmd) {
+  int b = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  b = get_boolean(cmd, 1);
+  if (b == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = b;
+
+  return PR_HANDLED(cmd);
+}
 
 MODRET set_caps(cmd_rec *cmd) {
   unsigned int flags = 0;
@@ -261,8 +286,9 @@ MODRET cap_post_host(cmd_rec *cmd) {
  * so we can "tweak" our root access down to almost nothing.
  */
 MODRET cap_post_pass(cmd_rec *cmd) {
-  int res;
+  int cap_root_revoke = TRUE, res;
   config_rec *c;
+  uid_t dst_uid = PR_ROOT_UID;
 
   if (!use_capabilities)
     return PR_DECLINED(cmd);
@@ -300,7 +326,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
    * so we can't use PRIVS_ROOT/PRIVS_RELINQUISH. setreuid() is the
    * workaround.
    */
-  if (setreuid(session.uid, 0) < 0) {
+  if (setreuid(session.uid, PR_ROOT_UID) < 0) {
     int xerrno = errno;
     const char *proto;
 
@@ -369,13 +395,44 @@ MODRET cap_post_pass(cmd_rec *cmd) {
   if (res != -1)
     res = lp_set_cap();
 
-  if (setreuid(0, session.uid) == -1) {
-    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid: %s", strerror(errno));
+#ifdef PR_SET_KEEPCAPS
+  /* Make sure that when we switch our IDs, we still keep the capabilities
+   * we've set.
+   */
+  if (prctl(PR_SET_KEEPCAPS, 1) < 0) {
+    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": prctl(PR_SET_KEEPCAPS): %s",
+      strerror(errno));
+  }
+#endif /* PR_SET_KEEPCAPS */
+
+  /* Unless the config requests it, drop root privs completely. */
+  c = find_config(main_server->conf, CONF_PARAM, "CapabilitiesRootRevoke",
+    FALSE);
+  if (c != NULL) {
+    cap_root_revoke = *((int *) c->argv[0]);
+  }
+
+  if (cap_root_revoke == TRUE) {
+    dst_uid = session.uid;
+
+  } else {
+    pr_log_debug(DEBUG4, MOD_CAP_VERSION
+      ": CapabilitiesRootRevoke off, not dropping root privs");
+  }
+
+  if (setreuid(dst_uid, session.uid) == -1) {
+    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid(%lu, %lu): %s",
+      (unsigned long) dst_uid, (unsigned long) session.uid, strerror(errno));
     lp_free_cap();
     pr_signals_unblock();
     pr_session_disconnect(&cap_module, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
   }
   pr_signals_unblock();
+
+  pr_log_debug(DEBUG9, MOD_CAP_VERSION
+    ": uid = %lu, euid = %lu, gid = %lu, egid = %lu",
+    (unsigned long) getuid(), (unsigned long) geteuid(),
+    (unsigned long) getgid(), (unsigned long) getegid());
 
   /* Now our only capabilities consist of CAP_NET_BIND_SERVICE (and other
    * configured caps), however in order to actually be able to bind to
@@ -545,14 +602,15 @@ static int cap_module_init(void) {
  */
 
 static conftable cap_conftab[] = {
-  { "CapabilitiesEngine", set_capengine, NULL },
-  { "CapabilitiesSet",    set_caps,      NULL },
+  { "CapabilitiesEngine",	set_capengine,		NULL },
+  { "CapabilitiesRootRevoke",	set_caprootrevoke,	NULL },
+  { "CapabilitiesSet",		set_caps,		NULL },
   { NULL, NULL, NULL }
 };
 
 static cmdtable cap_cmdtab[] = {
-  { POST_CMD,	C_HOST,	G_NONE,	cap_post_host,	FALSE,	FALSE },
-  { POST_CMD,	C_PASS, G_NONE, cap_post_pass,	FALSE,	FALSE },
+  { POST_CMD,	C_HOST,	G_NONE,	cap_post_host,	FALSE, FALSE },
+  { POST_CMD,	C_PASS,	G_NONE,	cap_post_pass,	FALSE, FALSE },
   { 0, NULL }
 };
 

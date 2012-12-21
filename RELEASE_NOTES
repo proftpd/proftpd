@@ -38,6 +38,8 @@ ChangeLog files.
 
     Support for MaxStoreFileSize in mod_sftp
 
+    CapabilitiesRootRevoke in mod_cap (Bug#3839)
+
   + New configuration directives:
 
     AllowChrootSymlinks (Bug#3852)
@@ -129,4 +131,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-12-21 18:21:26 $
+Last Updated: $Date: 2012-12-21 21:18:32 $

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1464 2012-12-20 23:54:51 castaglia Exp $
+$Id: NEWS,v 1.1465 2012-12-21 21:18:32 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -152,6 +152,7 @@ CVS
 - Bug 3851 - SFTPPassPhraseProvider fails due to incorrect pointer.
 - Bug 3852 - Support directive for ignoring symlink DefaultRoot directories.
   See the new AllowChrootSymlinks directive.
+- Bug 3839 - Enhance mod_cap to support dropping root privs entirely.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------
