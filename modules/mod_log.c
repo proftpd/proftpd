@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.137 2012-09-28 04:51:49 castaglia Exp $
+ * $Id: mod_log.c,v 1.138 2012-12-26 22:36:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1520,7 +1520,7 @@ static void log_exit_ev(const void *event_data, void *user_data) {
   (void) log_any(cmd);
 }
 
-static void log_startup_ev(const void *event_data, void *user_data) {
+static void log_postparse_ev(const void *event_data, void *user_data) {
   config_rec *c;
 
   c = find_config(main_server->conf, CONF_PARAM, "SystemLog", FALSE);
@@ -1578,8 +1578,6 @@ static void log_restart_ev(const void *event_data, void *user_data) {
   pr_pool_tag(log_pool, "mod_log pool");
 
   logformat("", "%h %l %u %t \"%r\" %s %b");
-
-  log_startup_ev(NULL, NULL);
   return;
 }
 
@@ -1603,8 +1601,8 @@ static int log_init(void) {
   /* Add the "default" extendedlog format */
   logformat("", "%h %l %u %t \"%r\" %s %b");
 
+  pr_event_register(&log_module, "core.postparse", log_postparse_ev, NULL);
   pr_event_register(&log_module, "core.restart", log_restart_ev, NULL);
-  pr_event_register(&log_module, "core.startup", log_startup_ev, NULL);
   return 0;
 }
 
