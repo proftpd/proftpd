@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.138 2012-12-26 22:36:57 castaglia Exp $
+ * $Id: mod_log.c,v 1.139 2012-12-26 23:37:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1893,7 +1893,7 @@ static int log_sess_init(void) {
 
       /* Is this ExtendedLog to be written to a file, or to syslog? */
       if (strncasecmp(lf->lf_filename, "syslog:", 7) != 0) {
-        int res = 0;
+        int res = 0, xerrno;
 
         pr_log_debug(DEBUG7, "mod_log: opening ExtendedLog '%s'",
           lf->lf_filename);
@@ -1901,13 +1901,14 @@ static int log_sess_init(void) {
         pr_signals_block();
         PRIVS_ROOT
         res = pr_log_openfile(lf->lf_filename, &(lf->lf_fd), EXTENDED_LOG_MODE);
+        xerrno = errno;
         PRIVS_RELINQUISH
         pr_signals_unblock();
 
         if (res < 0) {
           if (res == -1) {
             pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': %s",
-              lf->lf_filename, strerror(errno));
+              lf->lf_filename, strerror(xerrno));
 
           } else if (res == PR_LOG_WRITABLE_DIR) {
             pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
