@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.108 2012-05-25 05:35:06 castaglia Exp $
+ * $Id: fsio.c,v 1.109 2012-12-26 23:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -173,6 +173,10 @@ static int sys_chown(pr_fs_t *fs, const char *path, uid_t uid, gid_t gid) {
 
 static int sys_fchown(pr_fh_t *fh, int fd, uid_t uid, gid_t gid) {
   return fchown(fd, uid, gid);
+}
+
+static int sys_lchown(pr_fs_t *fs, const char *path, uid_t uid, gid_t gid) {
+  return lchown(path, uid, gid);
 }
 
 /* We provide our own equivalent of access(2) here, rather than using
@@ -3434,6 +3438,33 @@ int pr_fsio_fchown(pr_fh_t *fh, uid_t uid, gid_t gid) {
   return res;
 }
 
+int pr_fsio_lchown(const char *name, uid_t uid, gid_t gid) {
+  int res;
+  pr_fs_t *fs;
+
+  fs = lookup_file_fs(name, NULL, FSIO_FILE_CHOWN);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom lchown handler.  If there are none,
+   * use the system chown.
+   */
+  while (fs && fs->fs_next && !fs->lchown) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s lchown() for path '%s'",
+    fs->fs_name, name);
+  res = (fs->lchown)(fs, name, uid, gid);
+
+  if (res == 0) {
+    pr_fs_clear_cache();
+  }
+
+  return res;
+}
+
 int pr_fsio_access(const char *path, int mode, uid_t uid, gid_t gid,
     array_header *suppl_gids) {
   pr_fs_t *fs;
@@ -4107,6 +4138,7 @@ int init_fs(void) {
   root_fs->fchmod = sys_fchmod;
   root_fs->chown = sys_chown;
   root_fs->fchown = sys_fchown;
+  root_fs->lchown = sys_lchown;
   root_fs->access = sys_access;
   root_fs->faccess = sys_faccess;
   root_fs->utimes = sys_utimes;
@@ -4187,6 +4219,12 @@ static const char *get_fs_hooks_str(pool *p, pr_fs_t *fs) {
 
   if (fs->chown)
     hooks = pstrcat(p, hooks, *hooks ? ", " : "", "chown(2)", NULL);
+
+  if (fs->fchown)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "fchown(2)", NULL);
+
+  if (fs->lchown)
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "lchown(2)", NULL);
 
   if (fs->access)
     hooks = pstrcat(p, hooks, *hooks ? ", " : "", "access(2)", NULL);

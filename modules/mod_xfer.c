@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.306 2012-10-12 02:44:30 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.307 2012-12-26 23:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -800,27 +800,25 @@ static void stor_chown(void) {
    */
   if (session.fsuid != (uid_t) -1 &&
       xfer_path != NULL) {
-    int iserr = 0, xerrno = 0;
+    int res, xerrno = 0;
 
     PRIVS_ROOT
-    if (pr_fsio_chown(xfer_path, session.fsuid, session.fsgid) == -1) {
-      xerrno = errno;
-      iserr++;
-    }
+    res = pr_fsio_lchown(xfer_path, session.fsuid, session.fsgid);
+    xerrno = errno;
     PRIVS_RELINQUISH
 
-    if (iserr) {
-      pr_log_pri(PR_LOG_WARNING, "chown(%s) as root failed: %s", xfer_path,
+    if (res < 0) {
+      pr_log_pri(PR_LOG_WARNING, "lchown(%s) as root failed: %s", xfer_path,
         strerror(xerrno));
 
     } else {
       if (session.fsgid != (gid_t) -1) {
-        pr_log_debug(DEBUG2, "root chown(%s) to uid %lu, gid %lu successful",
+        pr_log_debug(DEBUG2, "root lchown(%s) to uid %lu, gid %lu successful",
           xfer_path, (unsigned long) session.fsuid,
           (unsigned long) session.fsgid);
 
       } else {
-        pr_log_debug(DEBUG2, "root chown(%s) to uid %lu successful", xfer_path,
+        pr_log_debug(DEBUG2, "root lchown(%s) to uid %lu successful", xfer_path,
           (unsigned long) session.fsuid);
       }
 
@@ -836,16 +834,13 @@ static void stor_chown(void) {
        * root privs aren't used, the chmod() will fail because the old owner/
        * session user doesn't have the necessary privileges to do so).
        */
-      iserr = 0;
       xerrno = 0;
       PRIVS_ROOT
-      if (pr_fsio_chmod(xfer_path, st.st_mode) < 0) {
-        xerrno = errno;
-        iserr++;
-      }
+      res = pr_fsio_chmod(xfer_path, st.st_mode);
+      xerrno = errno;
       PRIVS_RELINQUISH
 
-      if (iserr) {
+      if (res < 0) {
         pr_log_debug(DEBUG0, "root chmod(%s) to %04o failed: %s", xfer_path,
           (unsigned int) st.st_mode, strerror(xerrno));
 
@@ -874,19 +869,19 @@ static void stor_chown(void) {
       PRIVS_ROOT
     }
 
-    res = pr_fsio_chown(xfer_path, (uid_t) -1, session.fsgid);
+    res = pr_fsio_lchown(xfer_path, (uid_t) -1, session.fsgid);
     xerrno = errno;
 
     if (use_root_privs) {
       PRIVS_RELINQUISH
     }
 
-    if (res == -1) {
-      pr_log_pri(PR_LOG_WARNING, "%schown(%s) failed: %s",
+    if (res < 0) {
+      pr_log_pri(PR_LOG_WARNING, "%slchown(%s) failed: %s",
         use_root_privs ? "root " : "", xfer_path, strerror(xerrno));
 
     } else {
-      pr_log_debug(DEBUG2, "%schown(%s) to gid %lu successful",
+      pr_log_debug(DEBUG2, "%slchown(%s) to gid %lu successful",
         use_root_privs ? "root " : "", xfer_path,
         (unsigned long) session.fsgid);
 

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: misc.c,v 1.3 2012-03-23 05:35:48 castaglia Exp $
+ * $Id: misc.c,v 1.4 2012-12-26 23:18:58 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -167,23 +167,23 @@ int sftp_misc_chown_path(const char *path) {
   if (session.fsuid != (uid_t) -1) {
 
     PRIVS_ROOT
-    res = pr_fsio_chown(path, session.fsuid, session.fsgid);
+    res = pr_fsio_lchown(path, session.fsuid, session.fsgid);
     xerrno = errno;
     PRIVS_RELINQUISH
 
     if (res < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "chown(%s) as root failed: %s", path, strerror(xerrno));
+        "lchown(%s) as root failed: %s", path, strerror(xerrno));
 
     } else {
       if (session.fsgid != (gid_t) -1) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "root chown(%s) to UID %lu, GID %lu successful", path,
+          "root lchown(%s) to UID %lu, GID %lu successful", path,
           (unsigned long) session.fsuid, (unsigned long) session.fsgid);
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "root chown(%s) to UID %lu successful", path,
+          "root lchown(%s) to UID %lu successful", path,
           (unsigned long) session.fsuid);
       }
 
@@ -234,7 +234,7 @@ int sftp_misc_chown_path(const char *path) {
       PRIVS_ROOT
     }
 
-    res = pr_fsio_chown(path, (uid_t) -1, session.fsgid);
+    res = pr_fsio_lchown(path, (uid_t) -1, session.fsgid);
     xerrno = errno;
 
     if (use_root_privs) {
@@ -243,12 +243,12 @@ int sftp_misc_chown_path(const char *path) {
 
     if (res < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "%schown(%s) failed: %s", use_root_privs ? "root " : "", path,
+        "%slchown(%s) failed: %s", use_root_privs ? "root " : "", path,
         strerror(xerrno));
 
     } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "%schown(%s) to GID %lu successful",
+        "%slchown(%s) to GID %lu successful",
         use_root_privs ? "root " : "", path,
         (unsigned long) session.fsgid);
 
