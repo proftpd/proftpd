@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.431 2012-10-03 16:41:29 castaglia Exp $
+ * $Id: mod_core.c,v 1.432 2012-12-27 00:38:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4870,8 +4870,9 @@ int core_chgrp(cmd_rec *cmd, char *dir, uid_t uid, gid_t gid) {
     return -1;
   }
   cmd->argv[0] = cmd_name;
+  cmd->cmd_id = -1;
 
-  return pr_fsio_chown(dir, uid, gid);
+  return pr_fsio_lchown(dir, uid, gid);
 }
 
 int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
@@ -4887,6 +4888,7 @@ int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
     return -1;
   }
   cmd->argv[0] = cmd_name;
+  cmd->cmd_id = -1;
 
   return pr_fsio_chmod(dir,mode);
 }
@@ -5221,34 +5223,33 @@ MODRET core_mkd(cmd_rec *cmd) {
    * the newly created directory.
    */
   if (session.fsuid != (uid_t) -1) {
-    int err = 0, iserr = 0;
+    int xerrno;
 
     pr_fsio_stat(dir, &st);
 
     PRIVS_ROOT
-    if (pr_fsio_chown(dir, session.fsuid, session.fsgid) == -1) {
-      iserr++;
-      err = errno;
-    }
+    res = pr_fsio_lchown(dir, session.fsuid, session.fsgid);
+    xerrno = errno;
     PRIVS_RELINQUISH
 
-    if (iserr) {
-      pr_log_pri(PR_LOG_WARNING, "chown() as root failed: %s", strerror(err));
+    if (res < 0) {
+      pr_log_pri(PR_LOG_WARNING, "lchown() as root failed: %s",
+        strerror(xerrno));
 
     } else {
       if (session.fsgid != (gid_t) -1) {
-        pr_log_debug(DEBUG2, "root chown(%s) to uid %lu, gid %lu successful",
+        pr_log_debug(DEBUG2, "root lchown(%s) to UID %lu, GID %lu successful",
           dir, (unsigned long) session.fsuid, (unsigned long) session.fsgid);
 
       } else {
-        pr_log_debug(DEBUG2, "root chown(%s) to uid %lu successful", dir,
+        pr_log_debug(DEBUG2, "root lchown(%s) to UID %lu successful", dir,
           (unsigned long) session.fsuid);
       }
     }
 
   } else if (session.fsgid != (gid_t) -1) {
     register unsigned int i;
-    int use_root_privs = TRUE;
+    int use_root_privs = TRUE, xerrno;
 
     pr_fsio_stat(dir, &st);
 
@@ -5266,18 +5267,19 @@ MODRET core_mkd(cmd_rec *cmd) {
       PRIVS_ROOT
     }
 
-    res = pr_fsio_chown(dir, (uid_t) -1, session.fsgid);
+    res = pr_fsio_lchown(dir, (uid_t) -1, session.fsgid);
+    xerrno = errno;
 
     if (use_root_privs) {
       PRIVS_RELINQUISH
     }
 
-    if (res == -1) {
-      pr_log_pri(PR_LOG_WARNING, "%schown() failed: %s",
-        use_root_privs ? "root " : "", strerror(errno));
+    if (res < 0) {
+      pr_log_pri(PR_LOG_WARNING, "%slchown() failed: %s",
+        use_root_privs ? "root " : "", strerror(xerrno));
 
     } else { 
-      pr_log_debug(DEBUG2, "%schown(%s) to gid %lu successful",
+      pr_log_debug(DEBUG2, "%slchown(%s) to GID %lu successful",
         use_root_privs ? "root " : "", dir, (unsigned long) session.fsgid);
     }
   }
