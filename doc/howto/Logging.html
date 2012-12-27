@@ -1,4 +1,4 @@
-<!-- $Id: Logging.html,v 1.7 2012-10-04 05:21:27 castaglia Exp $ -->
+<!-- $Id: Logging.html,v 1.8 2012-12-27 18:50:24 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Logging.html,v $ -->
 
 <html>
@@ -294,6 +294,27 @@ ProFTPD 1.3.4rc1: in that release, the <code>SyslogLevel</code> directive was
 made to apply to file-based logging as well.
 
 <p>
+<font color=red>Question</font>: I configured my <code>ExtendedLog</code>
+directive (or <code>SystemLog</code>, or other logs) to point to a FIFO.
+The FIFO path exists.  But when I try to start <code>proftpd</code>, it
+fails to start with this error:
+<pre>
+  unable to open ExtendedLog '/path/to/extlog.fifo': No such device or address
+</pre>
+Shouldn't this work?<br>
+<font color=blue>Answer</font>: The "No such device or address" error occurs
+when you configure <code>proftpd</code> to log to a FIFO, <b>and</b> the
+FIFO reader process has not yet been started.  In times past,
+<code>proftpd</code> would wait indefinitely on startup, waiting for the FIFO
+reader process to start; now, <code>proftpd</code> tries to open the FIFO
+in a nonblocking mode, so that it can fail immediately if there is no process
+on the other end of the FIFO.
+
+<p>
+The "fix" is to make sure that any FIFO reader processes are started
+<i>before</i> starting <code>proftpd</code>.
+
+<p>
 <font color=red>Question</font>: How can I configure <code>proftpd</code> so
 that <b>nothing</b> is logged for certain clients/IP addresses?<br>
 <font color=blue>Answer</font>: Using a combination of <a href="Classes.html">classes</a> and the <a href="../contrib/mod_ifsession.html"><code>mod_ifsession</code></a> module, this can be done using a configuration like this:
@@ -312,7 +333,7 @@ that <b>nothing</b> is logged for certain clients/IP addresses?<br>
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2012-10-04 05:21:27 $</i><br>
+Last Updated: <i>$Date: 2012-12-27 18:50:24 $</i><br>
 <hr>
 
 </body>
