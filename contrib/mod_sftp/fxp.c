@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.164 2012-12-27 22:37:39 castaglia Exp $
+ * $Id: fxp.c,v 1.165 2012-12-27 22:46:11 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -10578,8 +10578,6 @@ int sftp_fxp_open_session(uint32_t channel_id) {
   } else {
     fxp_sessions = sess;
   }
-
-  pr_event_generate("mod_sftp.sftp.session-opened", NULL);
 
   pr_event_generate("mod_sftp.sftp.session-opened", NULL);
 
