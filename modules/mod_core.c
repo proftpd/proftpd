@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.433 2012-12-27 18:59:26 castaglia Exp $
+ * $Id: mod_core.c,v 1.434 2012-12-27 22:31:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4861,16 +4861,15 @@ int core_chgrp(cmd_rec *cmd, char *dir, uid_t uid, gid_t gid) {
   char *cmd_name;
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = "SITE_CHGRP";
+  pr_cmd_set_name(cmd, "SITE_CHGRP");
   if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, dir, NULL)) {
     pr_log_debug(DEBUG7, "SITE CHGRP command denied by <Limit> config");
-    cmd->argv[0] = cmd_name;
+    pr_cmd_set_name(cmd, cmd_name);
 
     errno = EACCES;
     return -1;
   }
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   return pr_fsio_lchown(dir, uid, gid);
 }
@@ -4879,16 +4878,15 @@ int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
   char *cmd_name;
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = "SITE_CHMOD";
+  pr_cmd_set_name(cmd, "SITE_CHMOD");
   if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, dir, NULL)) {
     pr_log_debug(DEBUG7, "SITE CHMOD command denied by <Limit> config");
-    cmd->argv[0] = cmd_name;
+    pr_cmd_set_name(cmd, cmd_name);
 
     errno = EACCES;
     return -1;
   }
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   return pr_fsio_chmod(dir,mode);
 }

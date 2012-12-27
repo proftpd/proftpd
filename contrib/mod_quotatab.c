@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.83 2012-11-15 16:33:32 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.84 2012-12-27 22:31:29 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -3897,13 +3897,17 @@ MODRET quotatab_site(cmd_rec *cmd) {
 
     /* Check for <Limit> restrictions. */
     cmd_name = cmd->argv[0];
-    cmd->argv[0] = "SITE_QUOTA";
+    pr_cmd_set_name(cmd, "SITE_QUOTA");
     if (!dir_check(cmd->tmp_pool, cmd, "NONE", session.cwd, NULL)) {
-      cmd->argv[0] = cmd_name;
-      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
+      int xerrno = EPERM;
+
+      pr_cmd_set_name(cmd, cmd_name);
+      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
+
+      errno = xerrno;
       return PR_ERROR(cmd);
     }
-    cmd->argv[0] = cmd_name;
+    pr_cmd_set_name(cmd, cmd_name);
 
     /* Log that the user requested their quota. */
     quotatab_log("SITE QUOTA requested by user %s", session.user);
