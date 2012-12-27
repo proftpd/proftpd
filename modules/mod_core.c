@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.432 2012-12-27 00:38:33 castaglia Exp $
+ * $Id: mod_core.c,v 1.433 2012-12-27 18:59:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -5608,6 +5608,11 @@ MODRET core_rnto(cmd_rec *cmd) {
       pr_log_debug(DEBUG4,
         "Cannot rename directory '%s' across a filesystem mount point",
         session.xfer.path);
+
+      /* Use EPERM, rather than EISDIR, to get slightly more informative
+       * error messages.
+       */
+      xerrno = EPERM;
 
       pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
         strerror(xerrno));

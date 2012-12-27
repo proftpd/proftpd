@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.139 2012-12-26 23:37:27 castaglia Exp $
+ * $Id: mod_log.c,v 1.140 2012-12-27 18:59:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1553,8 +1553,15 @@ static void log_postparse_ev(const void *event_data, void *user_data) {
             "unable to open SystemLog '%s': %s is a symbolic link", path, path);
 
         } else {
-          pr_log_pri(PR_LOG_ERR,
-            "unable to open SystemLog '%s': %s", path, strerror(xerrno));
+          if (xerrno != ENXIO) {
+            pr_log_pri(PR_LOG_ERR,
+              "unable to open SystemLog '%s': %s", path, strerror(xerrno));
+
+          } else {
+            pr_log_pri(PR_LOG_ERR,
+              "unable to open SystemLog '%s': "
+              "FIFO reader process must be running first", path);
+          }
         }
 
         exit(1);
@@ -1835,8 +1842,15 @@ static int log_sess_init(void) {
       PRIVS_RELINQUISH
 
       if (res < 0) {
-        pr_log_debug(DEBUG4, "unable to open ServerLog '%s': %s",
-          serverlog_name, strerror(xerrno));
+        if (xerrno != ENXIO) {
+          pr_log_debug(DEBUG4, "unable to open ServerLog '%s': %s",
+            serverlog_name, strerror(xerrno));
+
+        } else {
+          pr_log_debug(DEBUG4,
+            "unable to open ServerLog '%s': "
+            "FIFO reader process must be running first", serverlog_name);
+        }
       }
     }
 
@@ -1874,8 +1888,15 @@ static int log_sess_init(void) {
               path);
 
           } else {
-            pr_log_pri(PR_LOG_ERR,
-              "unable to open SystemLog '%s': %s", path, strerror(xerrno));
+            if (xerrno != ENXIO) {
+              pr_log_pri(PR_LOG_ERR,
+                "unable to open SystemLog '%s': %s", path, strerror(xerrno));
+
+            } else {
+              pr_log_pri(PR_LOG_ERR,
+                "unable to open SystemLog '%s': "
+                "FIFO reader process must be running first", path);
+            }
           }
         }
 
@@ -1907,8 +1928,14 @@ static int log_sess_init(void) {
 
         if (res < 0) {
           if (res == -1) {
-            pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': %s",
-              lf->lf_filename, strerror(xerrno));
+            if (xerrno != ENXIO) {
+              pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': %s",
+                lf->lf_filename, strerror(xerrno));
+
+            } else {
+              pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
+                "FIFO reader process must be running first", lf->lf_filename);
+            }
 
           } else if (res == PR_LOG_WRITABLE_DIR) {
             pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
