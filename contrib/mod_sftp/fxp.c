@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.163 2012-12-13 23:05:15 castaglia Exp $
+ * $Id: fxp.c,v 1.164 2012-12-27 22:37:39 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5271,13 +5271,12 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   }
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = "SETSTAT";
+  pr_cmd_set_name(cmd, "SETSTAT");
 
   if (!dir_check(fxp->pool, cmd, G_WRITE, cmd->arg, NULL)) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
+    pr_cmd_set_name(cmd, cmd_name);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "FSETSTAT of '%s' blocked by <Limit> configuration", cmd->arg);
@@ -5297,8 +5296,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   /* If the SFTPOption for ignoring the owners for SFTP setstat requests is set,
    * handle it by clearing the SSH2_FX_ATTR_UIDGID and SSH2_FX_ATTR_OWNERGROUP
@@ -5466,13 +5464,12 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
   fxp_set_filehandle_note(cmd, fxh);
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = "FSTAT";
+  pr_cmd_set_name(cmd, "FSTAT");
 
   if (!dir_check(fxp->pool, cmd, G_NONE, fxh->fh->fh_path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
+    pr_cmd_set_name(cmd, cmd_name);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "FSTAT of '%s' blocked by <Limit> configuration", fxh->fh->fh_path);
@@ -5492,8 +5489,7 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   pr_fs_clear_cache();
   if (pr_fsio_fstat(fxh->fh, &st) < 0) {
@@ -5722,23 +5718,18 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
   buf = ptr = palloc(fxp->pool, bufsz);
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = "SYMLINK";
+  pr_cmd_set_name(cmd, "SYMLINK");
 
   if (!dir_check(fxp->pool, cmd, G_READ, src_path, NULL)) {
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
     have_error = TRUE;
   }
 
   if (!have_error &&
       !dir_check(fxp->pool, cmd, G_WRITE, dst_path, NULL)) {
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
     have_error = TRUE;
   }
 
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   if (have_error) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -6132,13 +6123,12 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   path = cmd->arg;
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = "LSTAT";
+  pr_cmd_set_name(cmd, "LSTAT");
 
   if (!dir_check(fxp->pool, cmd, G_NONE, path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
+    pr_cmd_set_name(cmd, cmd_name);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "LSTAT of '%s' blocked by <Limit> configuration", path);
@@ -6158,8 +6148,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   pr_fs_clear_cache();
   if (pr_fsio_lstat(path, &st) < 0) {
@@ -6331,25 +6320,20 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   path = cmd2->arg;
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = C_MKD;
+  pr_cmd_set_name(cmd, C_MKD);
 
   if (!dir_check_canon(fxp->pool, cmd, G_WRITE, path, NULL)) {
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
     have_error = TRUE;
   }
 
-  cmd->argv[0] = C_XMKD;
+  pr_cmd_set_name(cmd, C_XMKD);
 
   if (!have_error &&
       !dir_check_canon(fxp->pool, cmd, G_WRITE, path, NULL)) {
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
     have_error = TRUE;
   }
 
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   if (have_error) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -7290,6 +7274,8 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
       fxp_timeout_stalled_cb, "TimeoutStalled");
   }
 
+  pr_event_generate("mod_sftp.sftp.protocol-version",
+    &(fxp_session->client_version));
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
@@ -7450,13 +7436,12 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     NULL);
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = C_RETR;
+  pr_cmd_set_name(cmd, C_RETR);
 
   if (!dir_check(fxp->pool, cmd, G_READ, fxh->fh->fh_path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
+    pr_cmd_set_name(cmd, cmd_name);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "READ of '%s' blocked by <Limit> configuration", fxh->fh->fh_path);
@@ -7476,8 +7461,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   /* XXX Check MaxRetrieveFileSize */
 
@@ -7703,25 +7687,21 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   /* If blocked by <Limit LIST>/<Limit NLST>, return EOF immediately. */
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = C_LIST;
+  pr_cmd_set_name(cmd, C_LIST);
 
   if (!dir_check(fxp->pool, cmd, G_DIRS, (char *) fxh->dir, NULL)) {
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
     have_error = TRUE;
   }
 
-  cmd->argv[0] = C_NLST;
+  pr_cmd_set_name(cmd, C_NLST);
 
   if (!have_error &&
       !dir_check(fxp->pool, cmd, G_DIRS, (char *) fxh->dir, NULL)) {
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
     have_error = TRUE;
   }
 
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  /* XXX Should we also check for MLSD here? */
+  pr_cmd_set_name(cmd, cmd_name);
 
   if (have_error) {
     uint32_t status_code = SSH2_FX_EOF;
@@ -8381,13 +8361,12 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
   path = cmd2->arg;
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = C_DELE;
+  pr_cmd_set_name(cmd, C_DELE);
 
   if (!dir_check(fxp->pool, cmd, G_WRITE, path, NULL)) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
+    pr_cmd_set_name(cmd, cmd_name);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "REMOVE of '%s' blocked by <Limit> configuration", path);
@@ -8410,8 +8389,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   if (fxp_path_pass_regex_filters(fxp->pool, "REMOVE", path) < 0) {
     status_code = fxp_errno2status(errno, NULL);
@@ -8997,25 +8975,20 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   path = cmd2->arg;
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = C_RMD;
+  pr_cmd_set_name(cmd, C_RMD);
 
   if (!dir_check(fxp->pool, cmd, G_WRITE, path, NULL)) {
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
     have_error = TRUE;
   }
 
-  cmd->argv[0] = C_XRMD;
+  pr_cmd_set_name(cmd, C_XRMD);
 
   if (!have_error &&
       !dir_check(fxp->pool, cmd, G_WRITE, path, NULL)) {
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
     have_error = TRUE;
   }
 
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   if (have_error) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -9207,13 +9180,12 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   path = cmd->arg;
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = "SETSTAT";
+  pr_cmd_set_name(cmd, "SETSTAT");
 
   if (!dir_check(fxp->pool, cmd, G_WRITE, path, NULL)) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
+    pr_cmd_set_name(cmd, cmd_name);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "SETSTAT of '%s' blocked by <Limit> configuration", path);
@@ -9233,8 +9205,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   /* If the SFTPOption for ignoring the owners for SFTP setstat requests is set,
    * handle it by clearing the SSH2_FX_ATTR_UIDGID and SSH2_FX_ATTR_OWNERGROUP
@@ -9377,13 +9348,12 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   path = cmd->arg;
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = "STAT";
+  pr_cmd_set_name(cmd, "STAT");
 
   if (!dir_check(fxp->pool, cmd, G_NONE, path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
+    pr_cmd_set_name(cmd, cmd_name);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "STAT of '%s' blocked by <Limit> configuration", path);
@@ -9403,8 +9373,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   pr_fs_clear_cache();
   if (pr_fsio_stat(path, &st) < 0) {
@@ -9629,23 +9598,20 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
   }
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = "SYMLINK";
+  pr_cmd_set_name(cmd, "SYMLINK");
 
   if (!dir_check(fxp->pool, cmd, G_READ, src_path, NULL)) {
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
+    pr_cmd_set_name(cmd, cmd_name);
     have_error = TRUE;
   }
 
   if (!have_error &&
       !dir_check(fxp->pool, cmd, G_WRITE, dst_path, NULL)) {
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
+    pr_cmd_set_name(cmd, cmd_name);
     have_error = TRUE;
   }
 
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   if (have_error) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -9855,13 +9821,12 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 #endif
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = C_STOR;
+  pr_cmd_set_name(cmd, C_STOR);
 
   if (!dir_check(fxp->pool, cmd, G_WRITE, fxh->fh->fh_path, NULL)) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
+    pr_cmd_set_name(cmd, cmd_name);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "WRITE of '%s' blocked by <Limit> configuration", fxh->fh->fh_path);
@@ -9881,8 +9846,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   if (fxp_path_pass_regex_filters(fxp->pool, "WRITE", fxh->fh->fh_path) < 0) {
     status_code = fxp_errno2status(errno, NULL);
@@ -10134,13 +10098,12 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
   }
 
   cmd_name = cmd->argv[0];
-  cmd->argv[0] = "LOCK";
+  pr_cmd_set_name(cmd, "LOCK");
 
   if (!dir_check(fxp->pool, cmd, G_WRITE, fxh->fh->fh_path, NULL)) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
-    cmd->argv[0] = cmd_name;
-    cmd->cmd_id = -1;
+    pr_cmd_set_name(cmd, cmd_name);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "UNLOCK of '%s' blocked by <Limit> configuration", fxh->fh->fh_path);
@@ -10160,8 +10123,7 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  cmd->argv[0] = cmd_name;
-  cmd->cmd_id = -1;
+  pr_cmd_set_name(cmd, cmd_name);
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", fxh->fh->fh_path, NULL, NULL);
@@ -10616,6 +10578,8 @@ int sftp_fxp_open_session(uint32_t channel_id) {
   } else {
     fxp_sessions = sess;
   }
+
+  pr_event_generate("mod_sftp.sftp.session-opened", NULL);
 
   pr_event_generate("mod_sftp.sftp.session-opened", NULL);
 
