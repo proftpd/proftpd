@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: cmd.c,v 1.10 2012-04-15 18:04:15 castaglia Exp $
+ * $Id: cmd.c,v 1.11 2012-12-27 22:30:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -196,6 +196,19 @@ int pr_cmd_cmp(cmd_rec *cmd, int cmd_id) {
   }
 
   return cmd->cmd_id < cmd_id ? -1 : 1;
+}
+
+int pr_cmd_set_name(cmd_rec *cmd, const char *cmd_name) {
+  if (cmd == NULL ||
+      cmd_name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  cmd->argv[0] = cmd_name;
+  cmd->cmd_id = pr_cmd_get_id(cmd->argv[0]);
+
+  return 0;
 }
 
 int pr_cmd_strcmp(cmd_rec *cmd, const char *cmd_name) {
