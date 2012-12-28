@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.266 2012-10-10 06:31:54 castaglia Exp $
+ * $Id: dirtree.c,v 1.267 2012-12-28 22:09:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -139,14 +139,16 @@ xaset_t *get_dir_ctxt(pool *p, char *dir_path) {
   char *full_path = dir_path;
 
   if (session.chroot_path) {
-    if (*dir_path != '/')
+    if (*dir_path != '/') {
       full_path = pdircat(p, session.chroot_path, session.cwd, dir_path, NULL);
 
-    else
+    } else {
       full_path = pdircat(p, session.chroot_path, dir_path, NULL);
+    }
 
-  } else if (*dir_path != '/')
+  } else if (*dir_path != '/') {
     full_path = pdircat(p, session.cwd, dir_path, NULL);
+  }
 
   c = dir_match_path(p, full_path);
 
@@ -666,8 +668,9 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
       tmp_path = c->name;
 
       if (c->argv[1]) {
-        if (*(char *)(c->argv[1]) == '~')
+        if (*(char *)(c->argv[1]) == '~') {
           c->argv[1] = dir_canonical_path(c->pool, (char *) c->argv[1]);
+        }
 
         tmp_path = pdircat(p, (char *) c->argv[1], tmp_path, NULL);
       }
@@ -766,7 +769,10 @@ config_rec *dir_match_path(pool *p, char *path) {
   char *tmp = NULL;
   size_t tmplen;
 
-  if (!p || !path || !*path) {
+  if (p == NULL ||
+      path == NULL ||
+      *path == '\0') {
+    errno = EINVAL;
     return NULL;
   }
 
@@ -2184,7 +2190,7 @@ static void reparent_all(config_rec *newparent, xaset_t *set) {
  * directive to.
  */
 
-static config_rec *_find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
+static config_rec *find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
   config_rec *c, *res = NULL, *rres;
   size_t len, pathlen, imatchlen, tmatchlen;
 
@@ -2234,7 +2240,7 @@ static config_rec *_find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
 
       if (len < pathlen &&
           strncmp(c->name, path, len) == 0) {
-        rres = _find_best_dir(c->subset ,path, &imatchlen);
+        rres = find_best_dir(c->subset ,path, &imatchlen);
         tmatchlen = _strmatch(path, c->name);
         if (!rres &&
             tmatchlen > *matchlen) {
@@ -2292,7 +2298,7 @@ static void reorder_dirs(xaset_t *set, int flags) {
         xaset_remove(c->parent->subset, (xasetmember_t *) c);
 
       } else {
-        newparent = _find_best_dir(set, c->name, &tmp);
+        newparent = find_best_dir(set, c->name, &tmp);
         if (newparent) {
           if (!newparent->subset)
             newparent->subset = xaset_create(newparent->pool, NULL);
