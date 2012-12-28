@@ -3358,7 +3358,7 @@ EOC
           $client->response_msg());
       }
 
-      my $buf;
+      my $buf = '';
       my $tmp;
       while ($conn->read($tmp, 8192, 25)) {
         $buf .= $tmp;
