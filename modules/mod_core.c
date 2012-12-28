@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.434 2012-12-27 22:31:30 castaglia Exp $
+ * $Id: mod_core.c,v 1.435 2012-12-28 00:02:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -5203,7 +5203,8 @@ MODRET core_mkd(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  if (pr_fsio_mkdir(dir, 0777) < 0) {
+  if (pr_fsio_smkdir(cmd->tmp_pool, dir, 0777, session.fsuid,
+      session.fsgid) < 0) {
     int xerrno = errno;
 
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
@@ -5215,71 +5216,6 @@ MODRET core_mkd(cmd_rec *cmd) {
  
     errno = xerrno;
     return PR_ERROR(cmd);
-  }
-
-  /* Check to see if we need to change the ownership (user and/or group) of
-   * the newly created directory.
-   */
-  if (session.fsuid != (uid_t) -1) {
-    int xerrno;
-
-    pr_fsio_stat(dir, &st);
-
-    PRIVS_ROOT
-    res = pr_fsio_lchown(dir, session.fsuid, session.fsgid);
-    xerrno = errno;
-    PRIVS_RELINQUISH
-
-    if (res < 0) {
-      pr_log_pri(PR_LOG_WARNING, "lchown() as root failed: %s",
-        strerror(xerrno));
-
-    } else {
-      if (session.fsgid != (gid_t) -1) {
-        pr_log_debug(DEBUG2, "root lchown(%s) to UID %lu, GID %lu successful",
-          dir, (unsigned long) session.fsuid, (unsigned long) session.fsgid);
-
-      } else {
-        pr_log_debug(DEBUG2, "root lchown(%s) to UID %lu successful", dir,
-          (unsigned long) session.fsuid);
-      }
-    }
-
-  } else if (session.fsgid != (gid_t) -1) {
-    register unsigned int i;
-    int use_root_privs = TRUE, xerrno;
-
-    pr_fsio_stat(dir, &st);
-
-    /* Check if session.fsgid is in session.gids.  If not, use root privs.  */
-    for (i = 0; i < session.gids->nelts; i++) {
-      gid_t *group_ids = session.gids->elts;
-
-      if (group_ids[i] == session.fsgid) {
-        use_root_privs = FALSE;
-        break;
-      }
-    }
-
-    if (use_root_privs) {
-      PRIVS_ROOT
-    }
-
-    res = pr_fsio_lchown(dir, (uid_t) -1, session.fsgid);
-    xerrno = errno;
-
-    if (use_root_privs) {
-      PRIVS_RELINQUISH
-    }
-
-    if (res < 0) {
-      pr_log_pri(PR_LOG_WARNING, "%slchown() failed: %s",
-        use_root_privs ? "root " : "", strerror(xerrno));
-
-    } else { 
-      pr_log_debug(DEBUG2, "%slchown(%s) to GID %lu successful",
-        use_root_privs ? "root " : "", dir, (unsigned long) session.fsgid);
-    }
   }
 
   pr_response_add(R_257, _("\"%s\" - Directory successfully created"),

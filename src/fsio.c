@@ -25,10 +25,11 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.109 2012-12-26 23:18:59 castaglia Exp $
+ * $Id: fsio.c,v 1.110 2012-12-28 00:02:35 castaglia Exp $
  */
 
 #include "conf.h"
+#include "privs.h"
 
 #ifdef HAVE_SYS_STATVFS_H
 # include <sys/statvfs.h>
@@ -2547,6 +2548,170 @@ int pr_fsio_mkdir(const char *path, mode_t mode) {
   res = (fs->mkdir)(fs, path, mode);
 
   return res;
+}
+
+/* "secure mkdir" variant of mkdir(2), uses mkdtemp(3), lchown(2), and
+ * rename(2) to create a directory which cannot be hijacked by a symlink
+ * race (hopefully) before the UserOwner/GroupOwner ownership changes are
+ * applied.
+ */
+int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
+    gid_t gid) {
+  int res;
+  char *tmpl_path;
+#ifdef HAVE_MKDTEMP
+  mode_t mask, *dir_umask;
+  char *dst_dir, *tmpl, *ptr;
+  size_t tmpl_len;
+  struct stat st;
+#endif /* HAVE_MKDTEMP */
+
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+#ifdef HAVE_MKDTEMP
+  ptr = strrchr(path, '/');
+  if (ptr == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  dst_dir = pstrndup(p, path, (ptr - path));
+  res = lstat(dst_dir, &st);
+  if (res < 0) {
+    return -1;
+  }
+
+  if (!S_ISDIR(st.st_mode)) {
+    errno = EPERM;
+    return -1;
+  }
+
+  /* Allocate enough space for the temporary name: the length of the
+   * destination directory, a slash, 9 X's, 3 for the prefix, and 1 for the
+   * trailing NUL.
+   */
+  tmpl_len = strlen(path) + 14;
+  tmpl = pcalloc(p, tmpl_len);
+  snprintf(tmpl, tmpl_len-1, "%s/dstXXXXXXXXX", dst_dir);
+
+  /* Use mkdtemp(3) to create the temporary directory (in the same destination
+   * directory as the target path).
+   */
+  tmpl_path = mkdtemp(tmpl);
+  if (tmpl_path == NULL) {
+    return -1;
+  }
+#else
+
+  res = pr_fsio_mkdir(path, mode);
+  if (res < 0) {
+    return -1;
+  }
+
+  tmpl_path = pstrdup(p, path);
+
+#endif /* HAVE_MKDTEMP */
+
+  if (uid != (uid_t) -1) {
+    int xerrno;
+
+    PRIVS_ROOT
+    res = pr_fsio_lchown(tmpl_path, uid, gid);
+    xerrno = errno;
+    PRIVS_RELINQUISH
+
+    if (res < 0) {
+      pr_log_pri(PR_LOG_WARNING, "lchown(%s) as root failed: %s", tmpl_path,
+        strerror(xerrno));
+
+    } else {
+      if (gid != (gid_t) -1) {
+        pr_log_debug(DEBUG2, "root lchown(%s) to UID %lu, GID %lu successful",
+          tmpl_path, (unsigned long) uid, (unsigned long) gid);
+
+      } else {
+        pr_log_debug(DEBUG2, "root lchown(%s) to UID %lu successful",
+          tmpl_path, (unsigned long) uid);
+      }
+    }
+
+  } else if (gid != (gid_t) -1) {
+    register unsigned int i;
+    int use_root_privs = TRUE, xerrno;
+
+    /* Check if session.fsgid is in session.gids.  If not, use root privs.  */
+    for (i = 0; i < session.gids->nelts; i++) {
+      gid_t *group_ids = session.gids->elts;
+
+      if (group_ids[i] == gid) {
+        use_root_privs = FALSE;
+        break;
+      }
+    }
+
+    if (use_root_privs) {
+      PRIVS_ROOT
+    }
+
+    res = pr_fsio_lchown(tmpl_path, (uid_t) -1, gid);
+    xerrno = errno;
+
+    if (use_root_privs) {
+      PRIVS_RELINQUISH
+    }
+
+    if (res < 0) {
+      pr_log_pri(PR_LOG_WARNING, "%slchown(%s) failed: %s",
+        use_root_privs ? "root " : "", tmpl_path, strerror(xerrno));
+
+    } else {
+      pr_log_debug(DEBUG2, "%slchown(%s) to GID %lu successful",
+        use_root_privs ? "root " : "", tmpl_path, (unsigned long) gid);
+    }
+  }
+
+#ifdef HAVE_MKDTEMP
+  /* Use chmod(2) to set the permission that we want.
+   *
+   * mkdtemp(3) creates a directory with 0700 perms; we are given the
+   * target mode (modulo the configured Umask).
+   */
+  dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
+  if (dir_umask) {
+    mask = *dir_umask;
+
+  } else {
+    mask = (mode_t) 0022;
+  }
+
+  res = chmod(tmpl_path, mode & ~mask);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) rmdir(tmpl_path);
+
+    errno = xerrno;
+    return -1;
+  }
+
+  /* Use rename(2) to move the temporary directory into place at the
+   * target path.
+   */
+  res = rename(tmpl_path, path);
+  if (res < 0) {
+    int xerrno = errno;
+    
+    (void) rmdir(tmpl_path);
+    
+    errno = xerrno;
+    return -1;
+  }
+#endif /* HAVE_MKDTEMP */
+
+  return 0;
 }
 
 int pr_fsio_rmdir(const char *path) {

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.74 2012-12-13 23:05:15 castaglia Exp $
+ * $Id: scp.c,v 1.75 2012-12-28 00:02:35 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -827,7 +827,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
          * recursive directory uploads via SCP?
          */
 
-        if (pr_fsio_mkdir(sp->filename, 0777) < 0) {
+        if (pr_fsio_smkdir(p, sp->filename, 0777, (uid_t) -1, (gid_t) -1) < 0) {
           xerrno = errno;
 
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,

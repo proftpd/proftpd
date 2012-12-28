@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.165 2012-12-27 22:46:11 castaglia Exp $
+ * $Id: fxp.c,v 1.166 2012-12-28 00:02:35 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -6385,7 +6385,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "creating directory '%s' with mode 0%o", path, (unsigned int) dir_mode);
 
-  res = pr_fsio_mkdir(path, dir_mode);
+  res = pr_fsio_smkdir(fxp->pool, path, dir_mode, (uid_t) -1, (gid_t) -1);
   if (res < 0) {
     const char *reason;
     int xerrno = errno;

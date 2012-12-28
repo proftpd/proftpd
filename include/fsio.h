@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.30 2012-12-26 23:18:58 castaglia Exp $
+ * $Id: fsio.h,v 1.31 2012-12-28 00:02:35 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -244,6 +244,7 @@ int pr_fsio_mkdir(const char *, mode_t);
 int pr_fsio_rmdir(const char *);
 int pr_fsio_rename(const char *, const char *);
 int pr_fsio_rename_canon(const char *, const char *);
+int pr_fsio_smkdir(pool *, const char *, mode_t, uid_t, gid_t);
 int pr_fsio_unlink(const char *);
 int pr_fsio_unlink_canon(const char *);
 pr_fh_t *pr_fsio_open(const char *, int);
