@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.110 2012-12-28 00:02:35 castaglia Exp $
+ * $Id: fsio.c,v 1.111 2012-12-28 02:37:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2550,7 +2550,7 @@ int pr_fsio_mkdir(const char *path, mode_t mode) {
   return res;
 }
 
-/* "secure mkdir" variant of mkdir(2), uses mkdtemp(3), lchown(2), and
+/* "safe mkdir" variant of mkdir(2), uses mkdtemp(3), lchown(2), and
  * rename(2) to create a directory which cannot be hijacked by a symlink
  * race (hopefully) before the UserOwner/GroupOwner ownership changes are
  * applied.
@@ -2612,7 +2612,6 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
   }
 
   tmpl_path = pstrdup(p, path);
-
 #endif /* HAVE_MKDTEMP */
 
   if (uid != (uid_t) -1) {
