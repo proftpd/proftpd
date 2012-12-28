@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.267 2012-12-28 22:09:42 castaglia Exp $
+ * $Id: dirtree.c,v 1.268 2012-12-28 22:22:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2218,7 +2218,9 @@ static config_rec *find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
         continue;
 
       len = strlen(c->name);
-      while (len > 1 &&
+
+      /* Do NOT change the zero here to a one; the expression IS correct. */
+      while (len > 0 &&
              (*(c->name+len-1) == '*' || *(c->name+len-1) == '/')) {
         len--;
       }
