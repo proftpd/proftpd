@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.53 2012-12-28 23:17:42 castaglia Exp $
+ * $Id: mod_facts.c,v 1.54 2012-12-28 23:20:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1169,7 +1169,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
     } else {
       /* Handle the "DirFakeUser off" case (Bug#3715). */
-      fake_uid = session.uid;
+      fake_uid = (uid_t) -1;
     }
   }
 
@@ -1190,7 +1190,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
     } else {
       /* Handle the "DirFakeGroup off" case (Bug#3715). */
-      fake_gid = session.gid;
+      fake_gid = (gid_t) -1;
     }
   }
 
