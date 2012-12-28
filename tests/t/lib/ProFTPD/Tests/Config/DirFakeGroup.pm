@@ -132,16 +132,7 @@ sub dirfakegroup_list {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quit();
 
@@ -155,7 +146,7 @@ sub dirfakegroup_list {
         }
       }
 
-      $expected = {
+      my $expected = {
         'config.conf' => $fake_group,
         'config.group' => $fake_group,
         'config.passwd' => $fake_group,
@@ -313,16 +304,7 @@ sub dirfakegroup_mlsd_bug3604 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quit();
 
@@ -336,7 +318,7 @@ sub dirfakegroup_mlsd_bug3604 {
         }
       }
 
-      $expected = {
+      my $expected = {
         '.' => $fake_gid,
         '..' => $fake_gid,
         'config.conf' => $fake_gid,
@@ -562,6 +544,12 @@ sub dirfakegroup_mlsd_bug3715 {
 
   my $expected_gid = $(;
 
+  # On some systems, $( returns a space-delimited list of GIDs.
+  if ($expected_gid !~ /^\d+$/) {
+    my $gids = [sort { $a <=> $b } split(' ', $()];
+    $expected_gid = $gids->[0];
+  }
+
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
@@ -628,16 +616,7 @@ sub dirfakegroup_mlsd_bug3715 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quit();
 
@@ -651,7 +630,7 @@ sub dirfakegroup_mlsd_bug3715 {
         }
       }
 
-      $expected = {
+      my $expected = {
         '.' => $expected_gid,
         '..' => $expected_gid,
         'config.conf' => $expected_gid,
