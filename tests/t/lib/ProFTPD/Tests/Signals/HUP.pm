@@ -42,33 +42,6 @@ sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
 }
 
-sub server_restart {
-  my $pid_file = shift;
-  my $count = shift;
-  $count = 1 unless defined($count);
-
-  my $pid;
-  if (open(my $fh, "< $pid_file")) {
-    $pid = <$fh>;
-    chomp($pid);
-    close($fh);
-
-  } else {
-    croak("Can't read $pid_file: $!");
-  }
-
-  for (my $i = 0; $i < $count; $i++) {
-    unless (kill('HUP', $pid)) {
-      print STDERR "Couldn't send SIGHUP to PID $pid: $!\n";
-
-    } else {
-      if ($ENV{TEST_VERBOSE}) {
-        print STDERR "Restart #", $i + 1, ": Sent SIGHUP to PID $pid\n";
-      }
-    }
-  }
-}
-
 sub hup_daemon_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};

@@ -116,25 +116,6 @@ sub server_open_fds {
   }
 }
 
-sub server_restart {
-  my $pid_file = shift;
-  my $count = shift;
-  $count = 1 unless defined($count);
-
-  my $pid = get_server_pid($pid_file);
-
-  for (my $i = 0; $i < $count; $i++) {
-    unless (kill('HUP', $pid)) {
-      print STDERR "Couldn't send SIGHUP to PID $pid: $!\n";
-
-    } else {
-      if ($ENV{TEST_VERBOSE}) {
-        print STDERR "Restart #", $i + 1, ": Sent SIGHUP to PID $pid\n";
-      }
-    }
-  }
-}
-
 sub ban_on_event_max_login_attempts {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
