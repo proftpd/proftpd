@@ -142,16 +142,7 @@ sub dirfakeuser_list {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quit();
 
@@ -165,7 +156,11 @@ sub dirfakeuser_list {
         }
       }
 
-      $expected = {
+      # Remove the '.' and '..' entries; they aren't relevant for this test
+      delete($res->{'.'});
+      delete($res->{'..'});
+
+      my $expected = {
         'config.conf' => $fake_user,
         'config.group' => $fake_user,
         'config.passwd' => $fake_user,
@@ -324,16 +319,7 @@ sub dirfakeuser_mlsd_bug3604 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quit();
 
@@ -347,9 +333,11 @@ sub dirfakeuser_mlsd_bug3604 {
         }
       }
 
-      $expected = {
-        '.' => $fake_uid,
-        '..' => $fake_uid,
+      # Remove the '.' and '..' entries; they aren't relevant for this test
+      delete($res->{'.'});
+      delete($res->{'..'});
+
+      my $expected = {
         'config.conf' => $fake_uid,
         'config.group' => $fake_uid,
         'config.passwd' => $fake_uid,
@@ -638,16 +626,7 @@ sub dirfakeuser_mlsd_bug3715 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quit();
 
@@ -661,9 +640,11 @@ sub dirfakeuser_mlsd_bug3715 {
         }
       }
 
-      $expected = {
-        '.' => $expected_uid,
-        '..' => $expected_uid,
+      # Remove the '.' and '..' entries; they aren't relevant for this test
+      delete($res->{'.'});
+      delete($res->{'..'});
+
+      my $expected = {
         'config.conf' => $expected_uid,
         'config.group' => $expected_uid,
         'config.passwd' => $expected_uid,
@@ -822,16 +803,7 @@ sub dirfakeuser_off_mlsd_bug3734 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quit();
 
@@ -845,9 +817,11 @@ sub dirfakeuser_off_mlsd_bug3734 {
         }
       }
 
-      $expected = {
-        '.' => $fake_uid,
-        '..' => $fake_uid,
+      # Remove the '.' and '..' entries; they aren't relevant for this test
+      delete($res->{'.'});
+      delete($res->{'..'});
+
+      my $expected = {
         'config.conf' => $fake_uid,
         'config.group' => $fake_uid,
         'config.passwd' => $fake_uid,
