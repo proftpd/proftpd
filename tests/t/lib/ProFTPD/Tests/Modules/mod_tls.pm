@@ -7461,7 +7461,7 @@ sub tls_client_cert_verify_failed_selfsigned_cert_in_chain_bug3742 {
     }
 
     # Next the client CA
-    my $cert = File::Spec->rel2abs('t/etc/modules/mod_tls/bug3742-ca.pem');
+    $cert = File::Spec->rel2abs('t/etc/modules/mod_tls/bug3742-ca.pem');
 
     if (open(my $infh, "< $cert")) {
       # Slurp in all of the data at once.  Just easier that way.
@@ -7662,7 +7662,7 @@ sub tls_client_cert_verify_ok_server_selfsigned_cert_in_chain_bug3742 {
 
     # Next the client CA.  This time, use the same CA that the server is
     # using (and trusting).
-    my $cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+    $cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
 
     if (open(my $infh, "< $cert")) {
       # Slurp in all of the data at once.  Just easier that way.

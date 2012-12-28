@@ -2141,7 +2141,7 @@ EOS
       # Read PASS response
       $resp = <$client>;
 
-      my $expected = "530 Access denied\r\n";
+      $expected = "530 Access denied\r\n";
       $self->assert($expected eq $resp,
         test_msg("Expected '$expected', got '$resp'"));
  
@@ -2239,7 +2239,7 @@ EOS
       # Read PASS response
       $resp = <$client>;
 
-      my $expected = "530 Access denied\r\n";
+      $expected = "530 Access denied\r\n";
       $self->assert($expected eq $resp,
         test_msg("Expected '$expected', got '$resp'"));
  
