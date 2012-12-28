@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.435 2012-12-28 00:02:35 castaglia Exp $
+ * $Id: mod_core.c,v 1.436 2012-12-28 17:34:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -5148,7 +5148,6 @@ MODRET core_rmd(cmd_rec *cmd) {
 MODRET core_mkd(cmd_rec *cmd) {
   int res;
   char *dir;
-  struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
