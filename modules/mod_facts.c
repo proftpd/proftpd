@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.52 2012-09-22 19:08:36 castaglia Exp $
+ * $Id: mod_facts.c,v 1.53 2012-12-28 23:17:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -349,8 +349,12 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
 
   res = pr_fsio_lstat(path, &(info->st));
   if (res < 0) {
+    int xerrno = errno;
+
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": error lstat'ing '%s': %s",
-      path, strerror(errno));
+      path, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -1200,6 +1204,8 @@ MODRET facts_mlsd(cmd_rec *cmd) {
       best_path, strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
+
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -1228,8 +1234,9 @@ MODRET facts_mlsd(cmd_rec *cmd) {
       
     } else {
       abs_path = dir_canonical_path(cmd->tmp_pool, rel_path);
-      if (abs_path == NULL)
+      if (abs_path == NULL) {
         abs_path = rel_path;
+      }
 
       res = dir_check_canon(cmd->tmp_pool, cmd, cmd->group, abs_path, &hidden);
     }
