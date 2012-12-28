@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.436 2012-12-28 17:34:11 castaglia Exp $
+ * $Id: mod_core.c,v 1.437 2012-12-28 20:52:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -5984,7 +5984,7 @@ static int core_init(void) {
   pr_help_add(C_NOOP, _("(no operation)"), TRUE);
   pr_help_add(C_FEAT, _("(returns feature list)"), TRUE);
   pr_help_add(C_OPTS, _("<sp> command [<sp> options]"), TRUE);
-  pr_help_add(C_HOST, _("<cp> hostname"), TRUE);
+  /* pr_help_add(C_HOST, _("<cp> hostname"), TRUE); */
   pr_help_add(C_AUTH, _("<sp> base64-data"), FALSE);
   pr_help_add(C_CCC, _("(clears protection level)"), FALSE);
   pr_help_add(C_CONF, _("<sp> base64-data"), FALSE);
@@ -6001,7 +6001,7 @@ static int core_init(void) {
   pr_feat_add(C_MDTM);
   pr_feat_add("REST STREAM");
   pr_feat_add(C_SIZE);
-  pr_feat_add(C_HOST);
+  /* pr_feat_add(C_HOST); */
 
   pr_event_register(&core_module, "core.startup", core_startup_ev, NULL);
 
