@@ -1458,7 +1458,7 @@ sub listoptions_maxfiles {
     }
   }
  
-  my $max_files = 100000;
+  $max_files = 100000;
   my $timeout = 900;
 
   my $config = {
