@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.111 2012-12-28 02:37:41 castaglia Exp $
+ * $Id: fsio.c,v 1.112 2012-12-29 00:11:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2584,7 +2584,8 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     return -1;
   }
 
-  if (!S_ISDIR(st.st_mode)) {
+  if (!S_ISDIR(st.st_mode) &&
+      !S_ISLNK(st.st_mode)) {
     errno = EPERM;
     return -1;
   }
