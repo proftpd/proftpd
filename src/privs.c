@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: privs.c,v 1.5 2012-01-25 07:20:42 castaglia Exp $
+ * $Id: privs.c,v 1.6 2012-12-29 00:45:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -68,6 +68,9 @@ static unsigned int user_privs = 0;
 
 int pr_privs_setup(uid_t uid, gid_t gid, const char *file, int lineno) {
   if (nonroot_daemon == TRUE) {
+    session.ouid = session.uid = getuid();
+    session.gid = getgid();
+
     pr_trace_msg(trace_channel, 9,
       "PRIVS_SETUP called at %s:%d for nonroot daemon, ignoring", file, lineno);
     return 0;
