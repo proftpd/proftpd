@@ -461,8 +461,14 @@ sub showsymlinks_on_list_rel_symlinked_file {
         }
       }
 
+      # Different platforms' Perl create symlinks with different perms
+      my $expected_perms = 'lrwxr-xr-x';
+      if ($^O eq 'linux') {
+        $expected_perms = 'lrwxrwxrwx';
+      }
+
       my $expected = {
-        'test.lnk -> test.txt' => 'lrwxr-xr-x',
+        'test.lnk -> test.txt' => $expected_perms,
         'test.txt' => '-rw-r--r--',
       };
 
@@ -818,8 +824,14 @@ sub showsymlinks_on_list_rel_symlinked_dir {
         }
       }
 
+      # Different platforms' Perl create symlinks with different perms
+      my $expected_perms = 'lrwxr-xr-x';
+      if ($^O eq 'linux') {
+        $expected_perms = 'lrwxrwxrwx';
+      }
+
       my $expected = {
-        'test.lnk -> test.d/' => 'lrwxr-xr-x',
+        'test.lnk -> test.d/' => $expected_perms,
         'test.d/' => 'drwxr-xr-x',
       };
 
@@ -3718,6 +3730,12 @@ sub showsymlinks_on_stat_rel_symlinked_file {
       my $path = $2;
 
       $expected = 'lrwxr-xr-x';
+
+      # Different platforms' Perl create symlinks with different perms
+      if ($^O eq 'linux') {
+        $expected = 'lrwxrwxrwx';
+      }
+
       $self->assert($expected eq $info,
         test_msg("Expected '$expected', got '$info'"));
 
