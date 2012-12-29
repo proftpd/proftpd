@@ -140,7 +140,6 @@ sub xferlog_retr_ascii_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('ascii');
 
@@ -152,7 +151,13 @@ sub xferlog_retr_ascii_ok {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $client->quit();
     };
 
     if ($@) {
@@ -301,7 +306,6 @@ sub xferlog_retr_binary_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('binary');
 
@@ -313,7 +317,13 @@ sub xferlog_retr_binary_ok {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $client->quit();
     };
 
     if ($@) {
@@ -480,7 +490,6 @@ sub xferlog_retr_aborted {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('binary');
 
@@ -637,7 +646,6 @@ sub xferlog_stor_ascii_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('ascii');
 
@@ -649,7 +657,13 @@ sub xferlog_stor_ascii_ok {
 
       my $buf = "Foo!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $client->quit();
     };
 
     if ($@) {
@@ -798,7 +812,6 @@ sub xferlog_stor_binary_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('binary');
 
@@ -810,7 +823,13 @@ sub xferlog_stor_binary_ok {
 
       my $buf = "Foo!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $client->quit();
     };
 
     if ($@) {
@@ -959,7 +978,6 @@ sub xferlog_stor_aborted {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('binary');
 
@@ -1128,7 +1146,6 @@ sub xferlog_dele_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('binary');
 
@@ -1293,7 +1310,6 @@ sub xferlog_device_full {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('binary');
 
