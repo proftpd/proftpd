@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.35 2012-07-27 00:20:28 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.36 2012-12-29 02:49:35 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -685,7 +685,7 @@ The currently implemented options are:
     <p>
     In order to prevent certain attacks (<i>e.g.</i> the so-called
     <a href="http://www.kb.cert.org/vuls/id/864643">&quotBEAST&quot;
-    attack</a>), the <code>mod_tls/code> module was changed to use OpenSSL's
+    attack</a>), the <code>mod_tls</code> module was changed to use OpenSSL's
     builtin countermeasure of inserting <a href="http://www.openssl.org/~bodo/tls-cbc.txt">empty fragments</a>.  However, some browsers/clients may not handle
     such empty fragments well.  Use this <code>NoEmptyFragaments</code>
     TLSOption in order to interoperate with such clients, with risk of losing
@@ -1621,7 +1621,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-07-27 00:20:28 $</i><br>
+Last Updated: <i>$Date: 2012-12-29 02:49:35 $</i><br>
 
 <hr>
 <font size=2><b><i>
