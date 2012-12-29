@@ -2900,16 +2900,9 @@ sub extlog_ftp_raw_bytes_bug3554 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
       $client->quit();
 
-      my $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Transfer complete';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
     };
 
     if ($@) {
@@ -3086,16 +3079,9 @@ sub extlog_ftp_sendfile_raw_bytes_bug3554 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
       $client->quit();
 
-      my $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Transfer complete';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg); 
     };
 
     if ($@) {
@@ -3268,16 +3254,9 @@ sub extlog_ftp_deflate_raw_bytes_bug3554 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
       $client->quit();
 
-      my $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Transfer complete';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
     };
 
     if ($@) {
@@ -4042,16 +4021,9 @@ sub extlog_exit_bug3559 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
       $client->quit();
 
-      my $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Transfer complete';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
     };
 
     if ($@) {
