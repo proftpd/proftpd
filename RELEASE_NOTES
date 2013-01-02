@@ -9,121 +9,217 @@ ChangeLog files.
 1.3.5rc1
 ---------
 
-  + Support for the HOST FTP command (Bug#3289)
-
-      Need doc describing name-based virtual host support (ServerAlias,
-        handling of DNS names, TLSRequireSNI, etc).
-
-  + Added Japanese and Spanish translations
   + Added support for SHA-256, SHA-512 password hashes to the ftpasswd tool
   + Many mod_sftp bugfixes
+  + Added Japanese and Spanish translations
 
-  + New modules:
+  + New Modules
 
     mod_geoip
-      See doc/contrib/mod_geoip.html
+      The mod_geoip module provides lookup of geographic information based
+      on the IP address of the connecting client.  This information can
+      be logged, and used to drop the connection if necessary.  See
+      doc/contrib/mod_geoip.html for complete information.
 
-    mod_case?
-    mod_log_forensic?
-    mod_tar?
-    mod_snmp?
 
-  + Changed modules
+  + Changed Modules
 
-    Elliptic Curve Cryptography support in mod_sftp (Bug#3573)
-      ECDSA host keys, hostbased/publickey authentication
-      ECDH key exchange
+    mod_sftp
+      The mod_sftp module now supports use of Elliptic Curve Cryptography
+      (ECC).  This includes ECDSA host keys and user keys, and the ECDH
+      key exchange method.
 
-    Improved FIPS support in mod_sftp (Bug#3763)
+      Improved FIPS support in mod_sftp.
 
-    Support for MaxStoreFileSize in mod_sftp
+      The mod_sftp module now honors the MaxStoreFileSize directive.
 
-    CapabilitiesRootRevoke in mod_cap (Bug#3839)
 
-  + New configuration directives:
+  + New Configuration Directive:
 
-    AllowChrootSymlinks (Bug#3852)
-      See doc/modules/mod_auth.html#AllowChrootSymlinks
+    AllowChrootSymlinks
+      By default, when chrooting a process (via the DefaultRoot directive
+      or for <Anonymous> logins), proftpd will follow a symlink.  Some sites
+      wish to restrict this; for these sites, there is the new
+      AllowChrootSymlinks directive.  See
+      doc/modules/mod_auth.html#AllowChrootSymlinks for details.
+
+    CapabilitiesRootRevoke
+      The mod_cap module now completely drops root privileges; the retained
+      Linux capabilities should suffice.  To revert to the previous behavior,
+      use this new CapabilitiesRootRevoke directive; see
+      doc/modules/mod_cap.html#CapabilitiesRootRevoke.
 
     <IfAuthenticated>
+      There are times when a site might wish to have directives that apply
+      <b>only</b> to sessions once the user has been authenticated, and not
+      before then.  The mod_ifsession module now provides this ability via
+      the <IfAuthenticated> section; see
+      doc/contrib/mod_ifsession.html#IfAuthenticated.
 
     FactsOptions
-      UseSlink (Bug#3747)
+      The FactsOptions directive is used to tweak the outputs used by
+      the mod_facts module for the MLSD/MLST output.  One such option is
+      UseSlink, which provides better compatibility with the output expected
+      e.g. by FileZilla.  The doc/modules/mod_facts.html#FactsOptions
+      description has more details.
 
-    QuotaDefault (Bug#3766)
+    QuotaDefault
+      The QuotaDefault directive is used to provide a "default" quota,
+      via the mod_quotatab module, if mod_quotatab is unable to find a
+      quota for the logging-in user.  See
+      doc/contrib/mod_quotatab.html#QuotaDefault for details.
 
     RewriteMaxReplace
+      The RewriteMaxReplace directive is used to change the number of
+      replacements that mod_rewrite will do when rewriting commands.  See
+      doc/contrib/mod_rewrite.html#RewriteMaxReplace for more details.
 
-    TLSCipherSuite
-      Default cipher suite changed from "ALL:!ADH" to "DEFAULT:!EXPORT:!DES"
+    TLSServerCipherPreference
+      This directive can be used to configure mod_tls so that the server
+      ciphersuites are preferred, rather than preferring the client
+      ciphersuites.  See doc/contrib/mod_tls.html#TLSServerCipherPreference
+      for more information.
 
-    TLSServerCipherPreference (Bug#3801)
 
-  + Changed command handling:
-
-    PORT/EPRT
-      RFC1918 addresses (Bug#3825)
-
-  + Changed configuration directives:
+  + Changed Configuration Directives
 
     AllowFilter, DenyFilter
-      case-insensitive (from Bug#3592)
+      The "[NC]" (or "[nocase]") case-insensitive flags for the PathAllowFilter
+      and PathDenyFilter directives have now been extended to apply to the
+      AllowFilter and DenyFilter directives as well.  For example:
+
+        AllowFilter \.html [NC]
+        DenyFilter \.jpg$ [nocase]
 
     CreateHome
-      NoRootPrivs (Bug#3813)
+      When creating a home directory via the CreateHome directive, proftpd
+      will automatically use root privileges, in order to create the
+      necessary directories with configured ownership and permissions.
+      However, for some sites which use e.g. NFS, use of root privileges
+      will cause problems.  For such situations, the CreateHome directive
+      now supports a NoRootPrivs parameter; see doc/howto/CreateHome.html
+      for examples.
 
     ListOptions
-      Handling of -1 option (Bug#3744)
-      LISTOnly, NLSTOnly keywords (Bug#3746)
+      The mod_ls module now supports the -1 option (list one file per line),
+      which can also be configured via the ListOptions directive.
+
+      The ListOptions directive now supports new "LISTOnly" and "NLSTOnly"
+      keywords, for applying the restrictions only to the LIST (or NLST)
+      FTP commands.
 
     LogFormat
-      %{note:<name>} (Bug#3707)
-      %{transfer-status}, %{transfer-failure}
+      The LogFormat directive can now handle logging variables of the format
+      %{note:<name>}, where <name> refers to an internal "note" name.  The
+      supported names vary depending on the various modules.  In most cases,
+      these note names are not useful for general purpose logging, however.
 
     RewriteCondition, RewriteRule
-      %{TIME} et al (Bug#3673)
+      The RewriteCondition and RewriteRule directives of the mod_rewrite
+      module now support time-related variables; see
+      doc/contrib/mod_rewrite.html#RewriteCondition for more information.
 
     RootRevoke
-      UseNonCompliantActiveTransfers (Bug#3731)
+      The RootRevoke directive now supports a "UseNonCompliantActiveTransfers"
+      parameter, for dropping root privileges BUT still allowing active
+      data transfers by using a non-standard source port for the active
+      transfer.  See doc/modules/mod_auth.html#RootRevoke for more information.
 
     ScoreboardFile
-      Now possible to disable scoreboard (Bug#3701)
+      Some sites have found that maintaining the ScoreboardFile can lead to
+      a fair amount of overhead.  Those sites who wish to remove this overhead
+      can now disable use of the ScoreboardFile altogether by using:
+
+        ScoreboardFile off
+
+      Note that doing so means that certain configuration directives (e.g.
+      MaxClients) and certain tools (e.g. ftptop, ftpwho, ftpcount) will no
+      longer work.  See doc/modules/mod_core.html#ScoreboardFile for details.
 
     ServerIdent
-      Now applicable to mod_sftp (Bug#3739)
+      The ServerIdent directive is now honored by the mod_sftp module.
+      For example, you can configure mod_sftp to not provide any version
+      information at all, or to provide a different server name/token
+      altogether; see doc/contrib/mod_sftp.html#SFTPVersionId.
 
     SFTPDigests
-      new SHA256/512 digests
+      The SFTPDigests directive (see doc/contrib/mod_sftp.html#SFTPDigests)
+      now handles/supports the SHA-256 and SHA-512 digest algorithms.
 
     SFTPHostKey
-      SSH agent support
-      doc/contrib/mod_sftp.html#SFTPHostKey
+      The mod_sftp module can now load its host keys from an SSH agent
+      process such as OpenSSH ssh-agent(1) tool; see
+      doc/contrib/mod_sftp.html#SFTPHostKey for details.
 
     SFTPOptions
-      new IgnoreSFTPSetOwners option (Bug#3757)
+      To prevent users from changing the ownership of their files via SFTP,
+      the SFTPOptions directive (doc/contrib/mod_sftp.html#SFTPOptions) now
+      supports an IgnoreSFTPSetOwners parameter.
 
     SocketOptions
-      new keepalive parameter (Bug#3833)
+      The SocketOptions directive (see doc/modules/mod_core.html#SocketOptions)
+      now supports a new "keepalive" parameter, for tuning the TCP keepalive
+      behavior.  A more detailed explanation of TCP keepalives, and other
+      forms of keepalive, is provided in doc/howto/KeepAlives.html.
 
-    SQLLog
-      %{transfer-status}, %{transfer-failure}
+    SQLLog, LogFormat
+      The LogFormat and SQLLog directives support two new logging variables:
+      %{transfer-status} and %{transfer-failure}.  The %{transfer-status}
+      variable indicates the status of a data transfer: "success", "failed",
+      "cancelled", "timeout", or "-" (if not applicable).  The
+      %{transfer-failure} variable indicates the reason for the data transfer
+      failure, or "-" if there was no failure.
 
     SystemLog
-      Supports being disabled via <IfClass>, for disabling logging for
-      specific clients (Bug#3832)
+      The SystemLog can now be disabled via <IfClass>, e.g. for disabling
+      logging for specific clients.
+
+    TLSCipherSuite
+      The default SSL/TLS ciphersuites offered/used by mod_tls have changed
+      from "ALL:!ADH" to a more secure ordering of "DEFAULT:!EXPORT:!DES".
 
     TLSProtocol
-      support TLSv1.1, TLSv1.2 (assuming OpenSSL-1.0.1 and later)
+      When compiled using OpenSSL 1.0.1 or later, the TLSProtocol directive
+      can be used to specify TLS versionf "TLSv1.1" and "TLSv1.2".
 
     UseEncoding
-      relaxed restrictions, new "strict" keyword (Bug#3737)
+      When the UseEncoding directive (doc/modules/mod_lang.html#UseEncoding)
+      is used to specify encodings, it used to require that the client use
+      these encodings, and not allow clients to request different encodings.
+      This requirement is now related.  To preserve the old behavior, a
+      new "strict" keyword is supported; the directive documentation covers
+      this in more details.
 
-    <VirtualHost>, DefaultAddress, MasqueradeAddress
-      use of network interface/device names (Bug#3820)
+    <VirtualHost>, MasqueradeAddress, DefaultAddress
+      All of these directives can now take an interface name, in addition
+      to DNS names or IP addresses, to be resolved to an IP address.  This
+      is useful in cases where the same proftpd.conf needs to be deployed or
+      shared across a cluster; each machine has the same interface name which
+      handles different IP addresses.
 
-  + Deprecated configuration directives:
+      Examples:
 
-  + API changes:
+        DefaultAddress lo0
+        MasqueradeAddress eth0
+
+        <VirtualHost eth0>
+          ...
+        </VirtualHost>
+
+
+  + Changed Command Handling
+
+    PORT/EPRT
+      When handling PORT and EPRT FTP commands from clients, proftpd now
+      checks for RFC 1918 addresses in those commands; these are non-publicly
+      routable IP addresses, and should NOT be being sent by clients.  When
+      proftpd detects these RFC1918 addresses being used for a WAN server
+      address, then proftpd will ignore the RFC1918 address, and instead
+      use the IP address of the connecting client.  This change should help
+      interoperability of data transfers for some FTP clients.
+
+
+  + API Changes
 
     The session.class struct member has been renamed to session.conn_class.
     This was done to allow for support of C++ modules.  Similarly, the
@@ -131,4 +227,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2012-12-21 21:18:32 $
+Last Updated: $Date: 2013-01-02 21:08:39 $
