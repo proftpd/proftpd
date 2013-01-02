@@ -2221,15 +2221,6 @@ static int tls_init_ctx(void) {
 #endif /* OPENSSL_FIPS */
   }
 
-#ifdef ZLIB
-  {
-    COMP_METHOD *cm = COMP_zlib();
-    if (cm != NULL && cm->type != NID_undef) {
-       SSL_COMP_add_compression_method(0xe0, cm); /* Eric Young's ZLIB ID */
-    }
-  }
-#endif /* ZLIB */
-
   if (ssl_ctx != NULL) {
     SSL_CTX_free(ssl_ctx);
     ssl_ctx = NULL;
