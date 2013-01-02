@@ -6691,7 +6691,6 @@ MODRET tls_post_host(cmd_rec *cmd) {
    * ourselves.
    */
   if (session.prev_server != NULL) {
-    int res;
 
     /* HOST after AUTH?  Make the SNI check, close the connection if failed. */
 
@@ -6701,6 +6700,8 @@ MODRET tls_post_host(cmd_rec *cmd) {
     /* XXX Perform SNI check */
 
 #if 0
+    int res;
+
     res = tls_sess_init();
     if (res < 0) {
       pr_session_disconnect(&tls_module,
