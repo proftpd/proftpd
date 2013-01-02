@@ -4,7 +4,6 @@ use lib qw(t/lib);
 use base qw(ProFTPD::TestSuite::Child);
 use strict;
 
-use DateTime;
 use File::Path qw(mkpath);
 use File::Spec;
 use IO::Handle;
@@ -206,7 +205,43 @@ sub new {
 }
 
 sub list_tests {
-  return testsuite_get_runnable_tests($TESTS);
+  my @tests = testsuite_get_runnable_tests($TESTS);
+
+  eval "use DateTime";
+  if ($@) {
+    # If the DateTime module is not present, disable time-related tests
+
+    my $timevar_tests = {
+      rewrite_cond_time_var_bug3673 => 1,
+      rewrite_cond_time_year_var_bug3673 => 1,
+      rewrite_cond_time_mon_var_bug3673 => 1,
+      rewrite_cond_time_day_var_bug3673 => 1,
+      rewrite_cond_time_wday_var_bug3673 => 1,
+      rewrite_cond_time_hour_var_bug3673 => 1,
+      rewrite_cond_time_min_var_bug3673 => 1,
+      rewrite_cond_time_sec_var_bug3673 => 1,
+      rewrite_rule_time_year_var_bug3673 => 1,
+      rewrite_rule_time_mon_var_bug3673 => 1,
+      rewrite_rule_time_day_var_bug3673 => 1,
+      rewrite_rule_time_wday_var_bug3673 => 1,
+      rewrite_rule_time_hour_var_bug3673 => 1,
+      rewrite_rule_time_min_var_bug3673 => 1,
+    };
+
+    # We use arrays, not hashes, here in order to preserve test order
+    foreach my $key (keys(%$timevar_tests)) {
+      my $ntests = scalar(@tests);
+
+      for (my $i = 0; $i < $ntests; $i++) {
+        if ($tests[$i] eq $key) {
+          splice(@tests, $i, 1);
+          last;
+        }
+      }
+    }
+  }
+
+  return @tests;
 }
 
 sub rewrite_map_lowercase {
@@ -1292,7 +1327,7 @@ sub rewrite_bug3169 {
         #
         #  http://forums.proftpd.org/smf/index.php/topic,3726.0.html
         #
-        # The bug (Bug33169) was that these multiple RewriteRules *should*
+        # The bug (Bug#3169) was that these multiple RewriteRules *should*
         # work in conjunction, but were not.
 
         'RewriteCondition %m ^STOR$',
@@ -1339,16 +1374,7 @@ sub rewrite_bug3169 {
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $self->assert(-f $test_file,
         test_msg("$test_file file does not exist as expected"));
@@ -3350,6 +3376,8 @@ sub rewrite_cond_time_var_bug3673 {
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
 
+  require DateTime;
+
   my $dt = DateTime->now();
   $dt->set_time_zone('America/Los_Angeles');
   $dt->subtract(seconds => 3);
@@ -3505,6 +3533,8 @@ sub rewrite_cond_time_year_var_bug3673 {
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
 
+  require DateTime;
+
   my $dt = DateTime->now();
   $dt->set_time_zone('America/Los_Angeles');
   my $timestamp = sprintf("%04d", $dt->year());
@@ -3657,6 +3687,8 @@ sub rewrite_cond_time_mon_var_bug3673 {
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
+
+  require DateTime;
 
   my $dt = DateTime->now();
   $dt->set_time_zone('America/Los_Angeles');
@@ -3811,6 +3843,8 @@ sub rewrite_cond_time_day_var_bug3673 {
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
 
+  require DateTime;
+
   my $dt = DateTime->now();
   $dt->set_time_zone('America/Los_Angeles');
   my $timestamp = sprintf("%02d", $dt->day());
@@ -3963,6 +3997,8 @@ sub rewrite_cond_time_wday_var_bug3673 {
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
+
+  require DateTime;
 
   my $dt = DateTime->now();
   $dt->set_time_zone('America/Los_Angeles');
@@ -4117,6 +4153,8 @@ sub rewrite_cond_time_hour_var_bug3673 {
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
 
+  require DateTime;
+
   my $dt = DateTime->now();
   $dt->set_time_zone('America/Los_Angeles');
   my $timestamp = sprintf("%02d", $dt->hour());
@@ -4269,6 +4307,8 @@ sub rewrite_cond_time_min_var_bug3673 {
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
+
+  require DateTime;
 
   my $dt = DateTime->now();
   $dt->set_time_zone('America/Los_Angeles');
@@ -4423,6 +4463,8 @@ sub rewrite_cond_time_sec_var_bug3673 {
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
 
+  require DateTime;
+
   my $dt = DateTime->now();
   $dt->set_time_zone('America/Los_Angeles');
   my $timestamp = sprintf("%02d", $dt->second());
@@ -4545,6 +4587,8 @@ sub rewrite_rule_time_year_var_bug3673 {
  
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
+
+  require DateTime;
 
   my $dt = DateTime->now();
   $dt->set_time_zone('America/Los_Angeles');
@@ -4695,6 +4739,8 @@ sub rewrite_rule_time_mon_var_bug3673 {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
+  require DateTime;
+
   my $dt = DateTime->now();
   $dt->set_time_zone('America/Los_Angeles');
 
@@ -4843,6 +4889,8 @@ sub rewrite_rule_time_day_var_bug3673 {
  
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
+
+  require DateTime;
 
   my $dt = DateTime->now();
   $dt->set_time_zone('America/Los_Angeles');
@@ -4993,6 +5041,8 @@ sub rewrite_rule_time_wday_var_bug3673 {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
+  require DateTime;
+
   my $dt = DateTime->now();
   $dt->set_time_zone('America/Los_Angeles');
 
@@ -5142,6 +5192,8 @@ sub rewrite_rule_time_hour_var_bug3673 {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
+  require DateTime;
+
   my $dt = DateTime->now();
   $dt->set_time_zone('America/Los_Angeles');
 
@@ -5290,6 +5342,8 @@ sub rewrite_rule_time_min_var_bug3673 {
  
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
+
+  require DateTime;
 
   my $dt = DateTime->now();
   $dt->set_time_zone('America/Los_Angeles');
