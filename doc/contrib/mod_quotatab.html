@@ -1,4 +1,4 @@
-<!-- $Id: mod_quotatab.html,v 1.17 2011-11-15 21:10:33 castaglia Exp $ -->
+<!-- $Id: mod_quotatab.html,v 1.18 2013-01-02 19:06:40 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_quotatab.html,v $ -->
 
 <html>
@@ -63,6 +63,7 @@ for overwritten files.
 
 <h2>Directives</h2>
 <ul>
+  <li><a href="#QuotaDefault">QuotaDefault</a>
   <li><a href="#QuotaDirectoryTally">QuotaDirectoryTally</a>
   <li><a href="#QuotaDisplayUnits">QuotaDisplayUnits</a>
   <li><a href="#QuotaEngine">QuotaEngine</a>
@@ -81,6 +82,41 @@ for overwritten files.
   <li><a href="#SITE_QUOTA">SITE QUOTA</a>
 </ul>
 
+<hr>
+<h2><a name="QuotaDefault">QuotaDefault</a></h2>
+<strong>Syntax:</strong> QuotaDefault <em>quota-type per-session limit-type bytes-avail-in bytes-avail-out bytes-avail-xfer files-avail-in files-avail-out files-avail-xfer</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_quotatab<br>
+<strong>Compatibility:</strong> 1.3.5rc1 and later
+
+<p>
+The <code>QuotaDefault</code> directive configures a "default" quota limit,
+to be used when a limit is not found for the current user (<i>e.g.</i> a limit
+has not yet been configured for the user via one of the mod_quotatab backends).
+Since this "default" needs to provide all of the limit information required
+by <code>mod_quotatab</b>, there are quite a few required parameters:
+<ul>
+  <li><em>quota-type</em>
+  <li><em>per-session</em>
+  <li><em>limit-type</em>
+  <li><em>bytes-avail-in</em>
+  <li><em>bytes-avail-out</em>
+  <li><em>bytes-avail-xfer</em>
+  <li><em>files-avail-in</em>
+  <li><em>files-avail-out</em>
+  <li><em>files-avail-xfer</em>
+</ul>
+The meaning of these parameters is discussed in more detail
+<a href="#QuotaLookup">here</a>.
+
+<p>
+For example, you might use:
+<pre>
+  QuotaDefault user false hard 10485760 0 0 0 0 0
+</pre>
+
+<p>
 <hr>
 <h2><a name="QuotaDirectoryTally">QuotaDirectoryTally</a></h2>
 <strong>Syntax:</strong> QuotaDirectoryTally <em>on|off</em><br>
@@ -581,12 +617,12 @@ for that module.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2011-11-15 21:10:33 $</i><br>
+Last Updated: <i>$Date: 2013-01-02 19:06:40 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2007 TJ Saunders<br>
+&copy; Copyright 2000-2013 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
