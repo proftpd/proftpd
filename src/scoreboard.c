@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.76 2012-02-16 00:13:26 castaglia Exp $
+ * $Id: scoreboard.c,v 1.77 2013-01-02 21:50:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -747,10 +747,18 @@ int pr_restore_scoreboard(void) {
     return -1;
   }
 
+  if (current_pos == 0) {
+    /* This can happen if pr_restore_scoreboard() is called BEFORE
+     * pr_rewind_scoreboard() has been called.
+     */
+    errno = EPERM;
+    return -1;
+  }
+
   /* Position the file position pointer of the scoreboard back to
    * where it was, prior to the last pr_rewind_scoreboard() call.
    */
-  if (lseek(scoreboard_fd, current_pos, SEEK_SET) < 0) {
+  if (lseek(scoreboard_fd, current_pos, SEEK_SET) == (off_t) -1) {
     return -1;
   }
 
@@ -758,6 +766,8 @@ int pr_restore_scoreboard(void) {
 }
 
 int pr_rewind_scoreboard(void) {
+  off_t res;
+
   if (scoreboard_engine == FALSE) {
     return 0;
   }
@@ -767,13 +777,18 @@ int pr_rewind_scoreboard(void) {
     return -1;
   }
 
-  current_pos = lseek(scoreboard_fd, (off_t) 0, SEEK_CUR);
+  res = lseek(scoreboard_fd, (off_t) 0, SEEK_CUR);
+  if (res == (off_t) -1) {
+    return -1;
+  }
+
+  current_pos = res;
 
   /* Position the file position pointer of the scoreboard at the
    * start of the scoreboard (past the header).
    */
   if (lseek(scoreboard_fd, (off_t) sizeof(pr_scoreboard_header_t),
-      SEEK_SET) < 0) {
+      SEEK_SET) == (off_t) -1) {
     return -1;
   }
 
