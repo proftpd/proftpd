@@ -546,7 +546,7 @@ sub dirfakegroup_mlsd_bug3715 {
 
   # On some systems, $( returns a space-delimited list of GIDs.
   if ($expected_gid !~ /^\d+$/) {
-    my $gids = [sort { $a <=> $b } split(' ', $()];
+    my $gids = [split(' ', $()];
     $expected_gid = $gids->[0];
   }
 
@@ -630,9 +630,11 @@ sub dirfakegroup_mlsd_bug3715 {
         }
       }
 
+      # Remove the '.' and '..' entries; they are relevant to this test.
+      delete($res->{'.'});
+      delete($res->{'..'});
+
       my $expected = {
-        '.' => $expected_gid,
-        '..' => $expected_gid,
         'config.conf' => $expected_gid,
         'config.group' => $expected_gid,
         'config.passwd' => $expected_gid,
