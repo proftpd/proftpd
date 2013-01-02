@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2012 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2013 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -2744,16 +2744,14 @@ static int tls_init_server(void) {
       return -1;
     }
 
-    res = SSL_CTX_check_private_key(ssl_ctx);
-    if (res != 1) {
-      PRIVS_RELINQUISH
-
-      tls_log("error checking key from TLSPKCS12File '%s': %s", tls_pkcs12_file,
-        tls_get_errors());
-
-      PKCS12_free(p12);
-      return -1;
-    }
+    /* Note: You MIGHT be tempted to call SSL_CTX_check_private_key(ssl_ctx)
+     * here, to make sure that the private key can be used.  But doing so
+     * will not work as expected, and will error out with:
+     *
+     *  SSL_CTX_check_private_key:no certificate assigned
+     *
+     * To make PKCS#12 support work, do not make that call here.
+     */
 
     res = SSL_CTX_use_certificate(ssl_ctx, cert);
     if (res <= 0) {
