@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.77 2013-01-02 21:50:50 castaglia Exp $
+ * $Id: scoreboard.c,v 1.78 2013-01-02 21:56:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -608,6 +608,18 @@ int pr_open_scoreboard(int flags) {
     }
 
     return -1;
+  }
+
+  /* Find a usable fd for the just-opened scoreboard fd. */
+  if (scoreboard_fd <= STDERR_FILENO) {
+    res = pr_fs_get_usable_fd(scoreboard_fd);
+    if (res < 0) {
+      pr_log_debug(DEBUG0, "warning: unable to find good fd for "
+        "ScoreboardFile fd %d: %s", scoreboard_fd, strerror(errno));
+
+    } else {
+      scoreboard_fd = res;
+    }
   }
 
   /* Make certain that the scoreboard mode will be read-only for everyone
