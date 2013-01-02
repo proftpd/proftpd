@@ -176,7 +176,7 @@ ChangeLog files.
 
     TLSCipherSuite
       The default SSL/TLS ciphersuites offered/used by mod_tls have changed
-      from "ALL:!ADH" to a more secure ordering of "DEFAULT:!EXPORT:!DES".
+      from "ALL:!ADH" to a more secure ordering of "DEFAULT:!DH:!EXPORT:!DES".
 
     TLSProtocol
       When compiled using OpenSSL 1.0.1 or later, the TLSProtocol directive
@@ -227,4 +227,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-01-02 21:08:39 $
+Last Updated: $Date: 2013-01-02 23:45:05 $

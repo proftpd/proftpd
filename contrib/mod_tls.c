@@ -356,7 +356,7 @@ typedef struct tls_pkey_obj {
 static tls_pkey_t *tls_pkey_list = NULL;
 static unsigned int tls_npkeys = 0;
 
-#define TLS_DEFAULT_CIPHER_SUITE	"DEFAULT:!EXPORT:!DES"
+#define TLS_DEFAULT_CIPHER_SUITE	"DEFAULT:!ADH:!EXPORT:!DES"
 
 /* Module variables */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
@@ -2267,6 +2267,11 @@ static int tls_init_ctx(void) {
 #ifdef SSL_OP_NO_TICKET
   ssl_opts |= SSL_OP_NO_TICKET;
 #endif
+
+  /* Disable SSL compression. */
+#ifdef SSL_OP_NO_COMPRESSION
+  ssl_opts |= SSL_OP_NO_COMPRESSION;
+#endif /* SSL_OP_NO_COMPRESSION */
 
 #ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
   c = find_config(main_server->conf, CONF_PARAM, "TLSServerCipherPreference",
