@@ -1621,22 +1621,25 @@ EOS
   }
 
   if (open(my $fh, "< $log_file")) {
-    while (my $line = <$fh>) {
+    my $line;
+    while ($line = <$fh>) {
       unless ($line =~ /stdout from '$script'/) {
         next;
       }
 
       chomp($line);
-      close($fh);
-
-      $line =~ /stdout from '$script': '(.*?)'/;
-      my $stdout = $1;
-
-      my $expected = 'addr=127.0.0.1';
-
-      $self->assert($expected eq $stdout,
-        test_msg("Expected '$expected', got '$stdout'"));
+      last;
     }
+
+    close($fh);
+
+    $line =~ /stdout from '$script': '(.*?)'/;
+    my $stdout = $1;
+
+    my $expected = 'addr=127.0.0.1';
+
+    $self->assert($expected eq $stdout,
+      test_msg("Expected '$expected', got '$stdout'"));
 
   } else {
     die("Can't read $log_file: $!");
