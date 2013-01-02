@@ -2199,15 +2199,20 @@ EOS
         DelayEngine => 'off',
       },
 
-      'mod_sql.c' => {
-        SQLAuthTypes => 'plaintext',
-        SQLBackend => 'sqlite3',
-        SQLConnectInfo => $db_file,
-        SQLLogFile => $log_file,
-        SQLNamedQuery => 'get-sql-user SELECT "userid, passwd, uid, gid, homedir, shell FROM ftpusers WHERE userid = \'%U\'"',
-        SQLUserInfo => 'custom:/get-sql-user',
-      },
+      'mod_sql.c' => [
+        'SQLAuthTypes plaintext',
+        'SQLBackend sqlite3',
+        "SQLConnectInfo $db_file",
+        "SQLLogFile $log_file",
+        'SQLNamedQuery get-user-by-name SELECT "userid, passwd, uid, gid, homedir, shell FROM ftpusers WHERE userid = \'%U\'"',
+        'SQLNamedQuery get-user-by-id SELECT "userid, passwd, uid, gid, homedir, shell FROM ftpusers WHERE uid = %{0}"',
+         'SQLNamedQuery get-user-names SELECT "userid FROM ftpusers"',
+         'SQLNamedQuery get-all-users SELECT "userid, passwd, uid, gid, homedir, shell FROM ftpusers"',
+        'SQLUserInfo custom:/get-user-by-name/get-user-by-id/get-user-names/get-all-users',
+      ],
     },
+
+
   };
 
   my ($port, $config_user, $config_group) = config_write($config_file, $config);
@@ -6635,6 +6640,12 @@ sub get_cmds {
   }
 
   my $rows = [`$cmd`];
+
+  if ($ENV{TEST_VERBOSE}) {
+    use Data::Dumper;
+    print STDERR "Results: ", Dumper($rows), "\n";
+  }
+
   my $res;
 
   # Return the last row found, for now
@@ -6645,6 +6656,7 @@ sub get_cmds {
     $res = [split(/\|/, $row)];
   }
 
+  return unless $res;
   return @$res;
 }
 
@@ -6818,15 +6830,8 @@ EOS
   my ($login, $ip_addr, $req);
   ($login, $ip_addr, $cmd, $req) = get_cmds($db_file, "user = \'$config_user\'");
 
-  my $expected;
-
-  $expected = $config_user;
-  $self->assert($expected eq $login,
-    test_msg("Expected '$expected', got '$login'"));
-
-  $expected = '127.0.0.1';
-  $self->assert($expected eq $ip_addr,
-    test_msg("Expected '$expected', got '$ip_addr'"));
+  $self->assert(!defined($login), test_msg("Expected undef, got '$login'"));
+  $self->assert(!defined($ip_addr), test_msg("Expected undef, got '$ip_addr'"));
 
   unlink($log_file);
 }
@@ -7972,8 +7977,11 @@ EOS
         "SQLConnectInfo $userdb_file",
         "SQLNamedConnectInfo logdb sqlite3 $logdb_file foo bar PERSESSION",
         "SQLLogFile $log_file",
-        'SQLNamedQuery get-sql-user SELECT "userid, passwd, uid, gid, homedir, shell FROM ftpusers WHERE userid = \'%U\'"',
-        'SQLUserInfo custom:/get-sql-user',
+        'SQLNamedQuery get-user-by-name SELECT "userid, passwd, uid, gid, homedir, shell FROM ftpusers WHERE userid = \'%U\'"',
+        'SQLNamedQuery get-user-by-id SELECT "userid, passwd, uid, gid, homedir, shell FROM ftpusers WHERE uid = %{0}"',
+        'SQLNamedQuery get-user-names SELECT "userid FROM ftpusers"',
+        'SQLNamedQuery get-all-users SELECT "userid, passwd, uid, gid, homedir, shell FROM ftpusers"',
+        'SQLUserInfo custom:/get-user-by-name/get-user-by-id/get-user-names/get-all-users',
         'SQLNamedQuery session_start FREEFORM "INSERT INTO ftpsessions (user, ip_addr, timestamp) VALUES (\'%u\', \'%L\', \'%{time:%Y-%m-%d %H:%M:%S}\')" logdb',
         'SQLLog PASS session_start',
       ],
