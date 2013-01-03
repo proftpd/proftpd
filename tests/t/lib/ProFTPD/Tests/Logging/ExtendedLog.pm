@@ -401,7 +401,6 @@ sub extlog_retr_bug3137 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->retr_raw($test_file);
@@ -413,6 +412,12 @@ sub extlog_retr_bug3137 {
       my $buf;
       $conn->read($buf, 8192, 30);
       eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $client->quit();
     };
 
     if ($@) {
@@ -3516,7 +3521,7 @@ sub extlog_ftps_raw_bytes_bug3554 {
           test_msg("Expected $expected_min - $expected_max, got $bytes_in"));
 
         $expected_min = 6828;
-        $expected_max = 6848;
+        $expected_max = 8140;
         $self->assert($expected_min <= $bytes_out &&
                       $expected_max >= $bytes_out,
           test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
@@ -5167,9 +5172,9 @@ sub extlog_eos_reason_timeoutstalled {
         # Only watch for the EXIT command, to get the end-of-session reason.
         next unless $cmd eq 'EXIT';
 
-        my $expected = "Timeout exceeded: TimeoutStalled during data transfer";
-        $self->assert($expected eq $reason,
-          test_msg("Expected '$expected', got '$reason'"));
+        my $expected = "TimeoutStalled during data transfer";
+        $self->assert(qr/$expected/, $reason,
+          test_msg("Expected failure reason '$expected', got '$reason'"));
 
         $ok = 1;
       }
