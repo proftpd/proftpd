@@ -247,20 +247,20 @@ sub wrap2_allow_msg {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
 
-      my ($resp_code, $resp_msg);
-
-      ($resp_code, $resp_msg) = $client->login($user, $passwd);
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg(0);
 
       my $expected;
 
       $expected = 230;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "User $user allowed by access rules";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
