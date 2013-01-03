@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.140 2012-12-27 18:59:26 castaglia Exp $
+ * $Id: mod_log.c,v 1.141 2013-01-03 20:20:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -838,19 +838,6 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
         path = dir_best_path(cmd->tmp_pool,
           pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
-        sstrncpy(arg, path, sizeof(arg));
-
-      } else if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
-        char *path;
-
-        path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
-        sstrncpy(arg, path, sizeof(arg));
-
-      } else if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
-                 pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
-        char *path;
-
-        path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
         sstrncpy(arg, path, sizeof(arg));
 
       } else if (session.xfer.p &&

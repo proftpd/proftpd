@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2012 TJ Saunders
+ * Copyright (c) 2004-2013 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.231 2012-12-03 23:55:52 castaglia Exp $
+ * $Id: mod_sql.c,v 1.232 2013-01-03 20:20:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2566,19 +2566,6 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
         path = dir_best_path(cmd->tmp_pool,
           pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
-        sstrncpy(arg, path, sizeof(arg));
-
-      } else if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
-        char *path;
-
-        path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
-        sstrncpy(arg, path, sizeof(arg));
-
-      } else if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
-                 pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
-        char *path;
-
-        path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
         sstrncpy(arg, path, sizeof(arg));
 
       } else if (session.xfer.p &&

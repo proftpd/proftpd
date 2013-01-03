@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.167 2013-01-03 18:10:22 castaglia Exp $
+ * $Id: fxp.c,v 1.168 2013-01-03 20:20:03 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4742,8 +4742,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
     }
 
     res = pr_fsio_close(fxh->fh);
-    if (res < 0) 
-      xerrno = errno;
+    xerrno = errno;
 
     session.curr_cmd = "CLOSE";
 
@@ -6471,7 +6470,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
 
 static int fxp_handle_open(struct fxp_packet *fxp) {
   unsigned char *buf, *ptr;
-  char *path, *hiddenstore_path = NULL;
+  char *path, *orig_path, *hiddenstore_path = NULL;
   uint32_t attr_flags, buflen, bufsz, desired_access = 0, flags;
   int file_existed = FALSE, open_flags, res, timeout_stalled;
   pr_fh_t *fh;
@@ -6485,6 +6484,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
+  orig_path = path;
   cmd = fxp_cmd_alloc(fxp->pool, "OPEN", path);
 
   /* Set the command class to MISC for now; we'll change it later to
@@ -7041,7 +7041,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   memset(&session.xfer, 0, sizeof(session.xfer));
 
   session.xfer.p = pr_pool_create_sz(fxp_pool, 64);
-  session.xfer.path = pstrdup(session.xfer.p, path);
+  session.xfer.path = pstrdup(session.xfer.p, orig_path);
   memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
   gettimeofday(&session.xfer.start_time, NULL);
 
