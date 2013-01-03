@@ -1102,9 +1102,16 @@ EOS
       eval { $conn->close() };
 
       my $resp_code = $client->response_code(1);
-      my $resp_msg = $client->response_msg(1);
+
+      my $msg_idx = 1;
+      if ($resp_code == 150) {
+        $msg_idx = 0;
+      }
+      my $resp_msg = $client->response_msg($msg_idx);
 
       $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      sleep(1);
 
       # We've exceeded the bytes out limit, so this download should be denied
       $conn = $client->retr_raw('test.txt');
@@ -1117,11 +1124,11 @@ EOS
 
       my $expected = 451;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'RETR denied: quota exceeded: used \S+ of \S+ download bytes';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $client->quit();
     };
