@@ -189,7 +189,7 @@ sub ssh2_rewrite_auth {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -312,6 +312,9 @@ sub ssh2_rewrite_auth {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -326,7 +329,7 @@ sub sftp_rewrite_stat {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -494,6 +497,9 @@ sub sftp_rewrite_stat {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -508,7 +514,7 @@ sub sftp_rewrite_lstat {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -678,6 +684,9 @@ sub sftp_rewrite_lstat {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -692,7 +701,7 @@ sub sftp_rewrite_setstat {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -858,6 +867,9 @@ sub sftp_rewrite_setstat {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -872,7 +884,7 @@ sub sftp_rewrite_realpath {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -1023,6 +1035,9 @@ sub sftp_rewrite_realpath {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1037,7 +1052,7 @@ sub sftp_rewrite_upload {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -1188,6 +1203,9 @@ sub sftp_rewrite_upload {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1202,7 +1220,7 @@ sub sftp_rewrite_download {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -1373,6 +1391,9 @@ sub sftp_rewrite_download {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1387,7 +1408,7 @@ sub sftp_rewrite_readdir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -1578,6 +1599,9 @@ sub sftp_rewrite_readdir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1592,7 +1616,7 @@ sub sftp_rewrite_mkdir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -1733,6 +1757,9 @@ sub sftp_rewrite_mkdir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1747,7 +1774,7 @@ sub sftp_rewrite_rmdir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -1889,6 +1916,9 @@ sub sftp_rewrite_rmdir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -1903,7 +1933,7 @@ sub sftp_rewrite_remove {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -2054,6 +2084,9 @@ sub sftp_rewrite_remove {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2068,7 +2101,7 @@ sub sftp_rewrite_rename {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -2225,6 +2258,9 @@ sub sftp_rewrite_rename {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2239,7 +2275,7 @@ sub sftp_rewrite_rename_file_var_w_bug3643 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -2397,6 +2433,9 @@ sub sftp_rewrite_rename_file_var_w_bug3643 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2411,7 +2450,7 @@ sub sftp_rewrite_rename_dir_var_w_bug3643 {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -2560,6 +2599,9 @@ sub sftp_rewrite_rename_dir_var_w_bug3643 {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2574,7 +2616,7 @@ sub sftp_rewrite_symlink {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -2730,6 +2772,9 @@ sub sftp_rewrite_symlink {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2744,7 +2789,7 @@ sub sftp_rewrite_readlink {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -2899,6 +2944,9 @@ sub sftp_rewrite_readlink {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -2913,7 +2961,7 @@ sub sftp_rewrite_homedir {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -3056,6 +3104,9 @@ sub sftp_rewrite_homedir {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3070,7 +3121,7 @@ sub scp_rewrite_upload {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -3208,6 +3259,9 @@ sub scp_rewrite_upload {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -3222,7 +3276,7 @@ sub scp_rewrite_download {
   my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
@@ -3372,6 +3426,9 @@ sub scp_rewrite_download {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
