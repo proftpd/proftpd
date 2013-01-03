@@ -22,6 +22,7 @@ our @CONFIG = qw(
 );
 
 our @FEATURES = qw(
+  feature_get_compiled_modules
   feature_get_shared_modules
   feature_get_version
   feature_have_feature_enabled
@@ -633,14 +634,11 @@ sub feature_have_feature_enabled {
   }
 }
 
-sub feature_have_module_compiled {
-  my $module = shift;
-
+sub feature_get_compiled_modules {
   my $proftpd_bin = get_proftpd_bin();
+  my $mod_list = [];
 
   if (open(my $cmdh, "$proftpd_bin -l |")) {
-    my $mod_list;
-
     while (my $line = <$cmdh>) {
       chomp($line);
 
@@ -652,13 +650,19 @@ sub feature_have_module_compiled {
 
     close($cmdh);
 
-    my $matches = grep { /^$module$/ } @$mod_list;
-
-    return $matches;
-
   } else {
     croak("Error listing compiled modules");
   }
+
+  return $mod_list;
+}
+
+sub feature_have_module_compiled {
+  my $module = shift;
+
+  my $mod_list = feature_get_compiled_modules();
+  my $matches = grep { /^$module$/ } @$mod_list;
+  return $matches;
 }
 
 sub feature_have_module_loaded {
