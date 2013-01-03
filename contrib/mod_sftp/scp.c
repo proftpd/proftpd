@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.76 2013-01-03 21:49:44 castaglia Exp $
+ * $Id: scp.c,v 1.77 2013-01-03 21:51:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1897,7 +1897,6 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
     return 1;
   }
 
-pr_log_debug(DEBUG0, MOD_SFTP_VERSION ": scp: '%s' mode %o", sp->path, st.st_mode);
   if (!S_ISREG(st.st_mode)
 #ifdef S_ISFIFO
       && !S_ISFIFO(st.st_mode)
