@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.112 2012-12-29 00:11:38 castaglia Exp $
+ * $Id: fsio.c,v 1.113 2013-01-03 18:08:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2703,9 +2703,9 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
   res = rename(tmpl_path, path);
   if (res < 0) {
     int xerrno = errno;
-    
+
     (void) rmdir(tmpl_path);
-    
+
     errno = xerrno;
     return -1;
   }
