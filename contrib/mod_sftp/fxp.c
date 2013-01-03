@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.166 2012-12-28 00:02:35 castaglia Exp $
+ * $Id: fxp.c,v 1.167 2013-01-03 18:10:22 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -6321,6 +6321,28 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
 
   cmd_name = cmd->argv[0];
   pr_cmd_set_name(cmd, C_MKD);
+
+  path = dir_canonical_path(fxp->pool, path);
+  if (path == NULL) {
+    status_code = fxp_errno2status(EINVAL, NULL);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   if (!dir_check_canon(fxp->pool, cmd, G_WRITE, path, NULL)) {
     have_error = TRUE;
