@@ -142,14 +142,14 @@ sub quotatab_file_single_suppl_group {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/quotatab.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/quotatab.group");
 
   my $user = 'proftpd';
-  my $group = 'ftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   mkpath($home_dir);
 
@@ -238,16 +238,7 @@ sub quotatab_file_single_suppl_group {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quit();
     };
@@ -307,6 +298,9 @@ sub quotatab_file_single_suppl_group {
     test_msg("Expected $expected, got $files_xfer_used"));
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
@@ -321,14 +315,14 @@ sub quotatab_file_all_limit {
   my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
   my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $log_file = test_get_logfile();
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/quotatab.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/quotatab.group");
 
   my $user = 'proftpd';
-  my $group = 'ftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   mkpath($home_dir);
 
@@ -424,16 +418,7 @@ sub quotatab_file_all_limit {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quit();
     };
@@ -461,6 +446,9 @@ sub quotatab_file_all_limit {
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
     die($ex);
   }
 
