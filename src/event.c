@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2012 The ProFTPD Project team
+ * Copyright (c) 2003-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.24 2012-12-24 22:51:30 castaglia Exp $
+ * $Id: event.c,v 1.25 2013-01-03 19:12:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -92,13 +92,15 @@ int pr_event_register(module *m, const char *event,
 
   for (evl = events; evl; evl = evl->next) {
     if (strncmp(evl->event, event, evl->event_len + 1) == 0) {
-      struct event_handler *evhi;
+      struct event_handler *evhi, *evhl;
 
       evhi = evl->handlers;
       if (evhi) {
         /* Make sure this event handler is added to the START of the list,
          * in order to preserve module load order handling of events (i.e.
-         * last module loaded, first module handled).
+         * last module loaded, first module handled).  The exception to this
+         * rule are core callbacks (i.e. where m == NULL); these will always
+         * be invoked last.
          *
          * Before that, though, check for duplicate registration/subscription.
          */ 
@@ -115,15 +117,23 @@ int pr_event_register(module *m, const char *event,
             break;
           }
 
+          evhl = evhi;
           evhi = evhi->next;
         }
 
-        if (evl->handlers->next != NULL) {
-          evl->handlers->next->prev = evh;
-        }
+        if (evh->module != NULL) {
+          if (evl->handlers->next != NULL) {
+            evl->handlers->next->prev = evh;
+          }
 
-        evh->next = evl->handlers;
-        evl->handlers = evh;
+          evh->next = evl->handlers;
+          evl->handlers = evh;
+
+        } else {
+          /* Core event listeners go at the end. */
+          evh->prev = evhl;
+          evhl->next = evh;
+        }
 
       } else {
         evl->handlers = evh;
@@ -306,12 +316,13 @@ void pr_event_generate(const char *event, const void *event_data) {
 
         if (evh->module) {
           pr_trace_msg(trace_channel, 8,
-            "dispatching event '%s' to mod_%s (at %p)", event,
-            evh->module->name, evh->cb);
+            "dispatching event '%s' to mod_%s (at %p, use cache = %s)", event,
+            evh->module->name, evh->cb, use_cache ? "true" : "false");
 
         } else {
           pr_trace_msg(trace_channel, 8,
-            "dispatching event '%s' to core (at %p)", event, evh->cb);
+            "dispatching event '%s' to core (at %p, use cache = %s)", event,
+            evh->cb, use_cache ? "true" : "false");
         }
 
         evh->cb(event_data, evh->user_data);
