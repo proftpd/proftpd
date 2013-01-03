@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.75 2012-12-28 00:02:35 castaglia Exp $
+ * $Id: scp.c,v 1.76 2013-01-03 21:49:44 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1866,7 +1866,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
     }
 
     if (strcmp(sp->path, cmd->arg) != 0) {
-      sp->path = cmd->arg;
+      sp->path = pstrdup(scp_session->pool, cmd->arg);
     }
   }
 
@@ -1897,6 +1897,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
     return 1;
   }
 
+pr_log_debug(DEBUG0, MOD_SFTP_VERSION ": scp: '%s' mode %o", sp->path, st.st_mode);
   if (!S_ISREG(st.st_mode)
 #ifdef S_ISFIFO
       && !S_ISFIFO(st.st_mode)
