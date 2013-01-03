@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.437 2012-12-28 20:52:03 castaglia Exp $
+ * $Id: mod_core.c,v 1.438 2013-01-03 22:35:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -788,6 +788,7 @@ MODRET set_sysloglevel(cmd_rec *cmd) {
 
 /* usage: ServerAlias hostname [hostname ...] */
 MODRET set_serveralias(cmd_rec *cmd) {
+#ifdef PR_USE_HOST
   register unsigned int i;
 
   if (cmd->argc < 2) {
@@ -801,6 +802,9 @@ MODRET set_serveralias(cmd_rec *cmd) {
   }
 
   return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, "not yet implemented");
+#endif /* PR_USE_HOST */
 }
 
 /* usage: ServerIdent off|on [name] */
@@ -4582,6 +4586,7 @@ MODRET core_help(cmd_rec *cmd) {
 }
 
 MODRET core_host(cmd_rec *cmd) {
+#ifdef PR_USE_HOST
   const char *local_ipstr;
   char *host;
   size_t hostlen;
@@ -4777,6 +4782,9 @@ MODRET core_host(cmd_rec *cmd) {
 
   pr_session_send_banner(main_server, 0);
   return PR_HANDLED(cmd);
+#else
+  return PR_DECLINED(cmd);
+#endif /* PR_USE_HOST */
 }
 
 MODRET core_post_host(cmd_rec *cmd) {
