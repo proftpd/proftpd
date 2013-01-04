@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.84 2012-08-09 22:50:27 castaglia Exp $
+# $Id: proftpd.spec,v 1.85 2013-01-04 22:16:41 castaglia Exp $
 
 # Module List:
 #
@@ -55,7 +55,7 @@
 %global usecvsversion             0%{?_with_cvs:1}
 
 %global proftpd_cvs_version_main  1.3.5rc1
-%global proftpd_cvs_version_date  20120731
+%global proftpd_cvs_version_date  20130104
 
 # Handle optional functionality
 #
