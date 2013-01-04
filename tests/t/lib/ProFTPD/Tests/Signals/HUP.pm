@@ -70,13 +70,12 @@ sub hup_daemon_ok {
 
   # Start server
   server_start($config_file); 
+  sleep(2);
 
   my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-  my ($resp_code, $resp_msg);
-
-  $resp_code = $client->response_code();
-  $resp_msg = $client->response_msg();
+  my $resp_code = $client->response_code();
+  my $resp_msg = $client->response_msg();
 
   my $expected;
     
@@ -92,6 +91,7 @@ sub hup_daemon_ok {
   $config->{ServerIdent} = 'on bar';
   ($port, $config_user, $config_group) = config_write($config_file, $config);
   server_restart($pid_file);
+  sleep(2);
 
   $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
