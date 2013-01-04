@@ -151,19 +151,11 @@ sub stor_ok_raw_active {
       $conn->write($buf, length($buf), 25);
       eval { $conn->close() };
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
     };
 
     if ($@) {
@@ -279,19 +271,11 @@ sub stor_ok_raw_passive {
       $conn->write($buf, length($buf), 25);
       eval { $conn->close() };
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
     };
 
     if ($@) {
@@ -409,21 +393,13 @@ sub stor_ok_file {
       $conn->write($buf, length($buf), 25);
       eval { $conn->close() };
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
-      my $expected;
+      $client->quit();
 
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
-      $expected = -s $test_file;
+      my $expected = -s $test_file;
       my $size = length($buf);
       $self->assert($expected == $size,
         test_msg("Expected $expected, got $size"));
@@ -1028,19 +1004,11 @@ sub stor_leading_whitespace {
       $conn->write($buf, length($buf), 25);
       eval { $conn->close() };
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
 
       unless (-f $test_file) {
         die("File $test_file does not exist as expected");
@@ -1162,19 +1130,11 @@ sub stor_multiple_periods {
       $conn->write($buf, length($buf), 25);
       eval { $conn->close() };
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
 
       unless (-f $test_file) {
         die("File $test_file does not exist as expected");
