@@ -1303,15 +1303,7 @@ sub list_fails_enoent_glob {
       # Unlike NLST, for LIST proftpd returns 226, and simply sends an
       # empty list.
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
     };
 
     if ($@) {
@@ -2064,16 +2056,7 @@ sub list_leading_whitespace_bug3268 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-   
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Transfer complete';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
@@ -2085,7 +2068,7 @@ sub list_leading_whitespace_bug3268 {
         }
       }
 
-      $expected = {
+      my $expected = {
         ' test.txt' => 1,
       };
 
@@ -2226,16 +2209,7 @@ sub list_leading_whitespace_with_opts_bug3268 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-   
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Transfer complete';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
@@ -2247,7 +2221,7 @@ sub list_leading_whitespace_with_opts_bug3268 {
         }
       }
 
-      $expected = {
+      my $expected = {
         ' test.txt' => 1,
       };
 
@@ -2390,16 +2364,7 @@ sub list_leading_whitespace_with_strict_opts_bug3268 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-   
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Transfer complete';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
@@ -2411,7 +2376,7 @@ sub list_leading_whitespace_with_strict_opts_bug3268 {
         }
       }
 
-      $expected = {
+      my $expected = {
         ' test.txt' => 1,
       };
 
@@ -2636,19 +2601,9 @@ EOL
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Transfer complete';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quote('CWD', '..');
-
       $client->quit();
     };
 
@@ -2790,20 +2745,11 @@ sub list_showsymlinks_on {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Transfer complete';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       chomp($buf);
 
-      $expected = '^l\S+\s+\d+\s+\S+\s+\S+\s+\d+\s+\S+\s+\d+\s+\S+\s+(.*?)$';
+      my $expected = '^l\S+\s+\d+\s+\S+\s+\S+\s+\d+\s+\S+\s+\d+\s+\S+\s+(.*?)$';
       $self->assert(qr/$expected/, $buf,
         test_msg("Expected '$expected', got '$buf'"));
 
@@ -3791,16 +3737,7 @@ sub list_opt_noerrorifabsent_bug3506 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Transfer complete';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -3959,16 +3896,7 @@ sub list_slashstar_bug3529 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Transfer complete';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quit();
 
@@ -3982,7 +3910,7 @@ sub list_slashstar_bug3529 {
         }
       }
 
-      $expected = {
+      my $expected = {
         '/AAA' => 1,
         '/cmds.conf' => 1,
         '/cmds.group' => 1,
@@ -4149,16 +4077,7 @@ sub list_star_bug3529 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Transfer complete';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quit();
 
@@ -4172,7 +4091,7 @@ sub list_star_bug3529 {
         }
       }
 
-      $expected = {
+      my $expected = {
         'AAA' => 1,
         'cmds.conf' => 1,
         'cmds.group' => 1,
