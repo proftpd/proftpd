@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1466 2012-12-28 00:02:35 castaglia Exp $
+$Id: NEWS,v 1.1467 2013-01-04 21:47:14 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -155,6 +155,7 @@ CVS
 - Bug 3839 - Enhance mod_cap to support dropping root privs entirely.
 - Bug 3841 - Possible symlink race when applying UserOwner to newly created
   directory.
+- Bug 3855 - Restarting proftpd may cause Include files not to be parsed.
 
 1.3.4 - Released 09-Nov-2011
 --------------------------------
