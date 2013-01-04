@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.25 2013-01-03 19:12:34 castaglia Exp $
+ * $Id: event.c,v 1.26 2013-01-04 19:34:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -92,7 +92,7 @@ int pr_event_register(module *m, const char *event,
 
   for (evl = events; evl; evl = evl->next) {
     if (strncmp(evl->event, event, evl->event_len + 1) == 0) {
-      struct event_handler *evhi, *evhl;
+      struct event_handler *evhi, *evhl = NULL;
 
       evhi = evl->handlers;
       if (evhi) {
@@ -131,8 +131,13 @@ int pr_event_register(module *m, const char *event,
 
         } else {
           /* Core event listeners go at the end. */
-          evh->prev = evhl;
-          evhl->next = evh;
+          if (evhl != NULL) {
+            evhl->next = evh;
+            evh->prev = evhl;
+
+          } else {
+            evl->handlers = evh;
+          }
         }
 
       } else {
