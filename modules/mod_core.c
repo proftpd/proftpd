@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.438 2013-01-03 22:35:29 castaglia Exp $
+ * $Id: mod_core.c,v 1.439 2013-01-04 20:12:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -5952,9 +5952,6 @@ static void core_startup_ev(const void *event_data, void *user_data) {
         &core_module, core_scrub_scoreboard_cb, "scoreboard scrubbing");
     }
   }
-
-  /* Add a restart handler to scrub the scoreboard, too. */
-  pr_event_register(&core_module, "core.restart", core_restart_ev, NULL);
 }
 
 /* Initialization/finalization routines
@@ -5992,7 +5989,9 @@ static int core_init(void) {
   pr_help_add(C_NOOP, _("(no operation)"), TRUE);
   pr_help_add(C_FEAT, _("(returns feature list)"), TRUE);
   pr_help_add(C_OPTS, _("<sp> command [<sp> options]"), TRUE);
-  /* pr_help_add(C_HOST, _("<cp> hostname"), TRUE); */
+#ifdef PR_USE_HOST
+  pr_help_add(C_HOST, _("<cp> hostname"), TRUE);
+#endif /* PR_USE_HOST */
   pr_help_add(C_AUTH, _("<sp> base64-data"), FALSE);
   pr_help_add(C_CCC, _("(clears protection level)"), FALSE);
   pr_help_add(C_CONF, _("<sp> base64-data"), FALSE);
@@ -6009,8 +6008,11 @@ static int core_init(void) {
   pr_feat_add(C_MDTM);
   pr_feat_add("REST STREAM");
   pr_feat_add(C_SIZE);
-  /* pr_feat_add(C_HOST); */
+#ifdef PR_USE_HOST
+  pr_feat_add(C_HOST);
+#endif /* PR_USE_HOST */
 
+  pr_event_register(&core_module, "core.restart", core_restart_ev, NULL);
   pr_event_register(&core_module, "core.startup", core_startup_ev, NULL);
 
   return 0;
