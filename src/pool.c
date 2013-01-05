@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Resource allocation code
- * $Id: pool.c,v 1.65 2012-05-10 02:59:15 castaglia Exp $
+ * $Id: pool.c,v 1.66 2013-01-05 16:30:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -549,6 +549,11 @@ static void *alloc_pool(struct pool_rec *p, size_t reqsz, int exact) {
   union block_hdr *blok = p->last;
   char *first_avail = blok->h.first_avail;
   char *new_first_avail;
+
+  if (reqsz == 0) {
+    /* Don't try to allocate memory of zero length. */
+    return NULL;
+  }
 
   new_first_avail = first_avail + sz;
 
