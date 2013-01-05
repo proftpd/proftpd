@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.26 2013-01-04 19:34:38 castaglia Exp $
+ * $Id: event.c,v 1.27 2013-01-05 03:36:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -113,11 +113,12 @@ int pr_event_register(module *m, const char *event,
             return -1;
           }
 
+          evhl = evhi;
+
           if (evhi->next == NULL) {
             break;
           }
 
-          evhl = evhi;
           evhi = evhi->next;
         }
 
@@ -165,7 +166,7 @@ int pr_event_register(module *m, const char *event,
   curr_event = NULL;
   curr_evl = NULL;
   curr_evh = NULL;
-  
+
   return 0;
 }
 
@@ -362,7 +363,7 @@ void pr_event_dump(void (*dumpf)(const char *, ...)) {
   for (evl = events; evl; evl = evl->next) {
     pr_signals_handle();
 
-    if (!evl->handlers) {
+    if (evl->handlers == NULL) {
       dumpf("No handlers registered for '%s'", evl->event);
 
     } else { 
@@ -370,7 +371,7 @@ void pr_event_dump(void (*dumpf)(const char *, ...)) {
 
       dumpf("Registered for '%s':", evl->event);
       for (evh = evl->handlers; evh; evh = evh->next) {
-        if (evh->module) {
+        if (evh->module != NULL) {
           dumpf("  mod_%s.c", evh->module->name);
 
         } else {

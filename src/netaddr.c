@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2012 The ProFTPD Project team
+ * Copyright (c) 2003-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.88 2012-09-12 01:18:39 castaglia Exp $
+ * $Id: netaddr.c,v 1.89 2013-01-05 03:36:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1995,6 +1995,7 @@ int pr_netaddr_is_rfc1918(const pr_netaddr_t *na) {
 #endif /* PR_USE_IPV6 */
   }
 
+  errno = EINVAL;
   return FALSE;
 }
 

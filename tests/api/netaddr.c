@@ -23,7 +23,7 @@
  */
 
 /* NetAddr API tests
- * $Id: netaddr.c,v 1.9 2012-09-12 01:24:20 castaglia Exp $
+ * $Id: netaddr.c,v 1.10 2013-01-05 03:36:39 castaglia Exp $
  */
 
 #include "tests.h"
@@ -612,7 +612,8 @@ START_TEST (netaddr_is_rfc1918_test) {
     strerror(errno));
   res = pr_netaddr_is_rfc1918(addr);
   fail_unless(res == FALSE, "Failed to handle non-RFC1918 IPv4 address");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
+    strerror(errno), errno);
 
   name = "::1";
   addr = pr_netaddr_get_addr(p, name, NULL);

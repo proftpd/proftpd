@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2012 The ProFTPD Project team
+ * Copyright (c) 2008-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Scoreboard API tests
- * $Id: scoreboard.c,v 1.9 2012-02-15 19:03:09 castaglia Exp $
+ * $Id: scoreboard.c,v 1.10 2013-01-05 03:36:39 castaglia Exp $
  */
 
 #include "tests.h"
@@ -387,6 +387,26 @@ START_TEST (scoreboard_restore_test) {
     (void) rmdir(dir);
 
     fail("Failed to open scoreboard: %s", strerror(xerrno));
+  }
+
+  res = pr_restore_scoreboard();
+  if (res == 0) {
+    (void) unlink(path);
+    (void) unlink(mutex_path);
+    (void) rmdir(dir);
+
+    fail("restoring scoreboard before rewind succeeded unexpectedly");
+  }
+
+  res = pr_rewind_scoreboard();
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) unlink(path);
+    (void) unlink(mutex_path);
+    (void) rmdir(dir);
+
+    fail("Failed to rewind scoreboard: %s", strerror(xerrno));
   }
 
   res = pr_restore_scoreboard();

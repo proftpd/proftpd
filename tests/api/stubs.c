@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server API testsuite
- * Copyright (c) 2008-2012 The ProFTPD Project team
+ * Copyright (c) 2008-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,6 +35,11 @@ module *static_modules[] = { NULL };
 module *loaded_modules = NULL;
 
 char *dir_realpath(pool *p, const char *path) {
+  return NULL;
+}
+
+void *get_param_ptr(xaset_t *set, const char *name, int recurse) {
+  errno = ENOENT;
   return NULL;
 }
 
