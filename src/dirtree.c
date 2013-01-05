@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.269 2013-01-04 21:47:15 castaglia Exp $
+ * $Id: dirtree.c,v 1.270 2013-01-05 00:26:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3198,7 +3198,11 @@ int parse_config_path(pool *p, const char *path) {
          * we have root privs.  See Bug#3855.
          */
         PRIVS_ROOT
-        pr_parser_parse_file(p, file, NULL, 0);
+        if (pr_parser_parse_file(p, file, NULL, 0) < 0) {
+          pr_log_pri(PR_LOG_ERR,
+            "error: unable to open parse file '%s': %s", file,
+            strerror(errno));
+        }
         PRIVS_RELINQUISH
       }
     }

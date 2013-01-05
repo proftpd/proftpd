@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.31 2012-10-14 03:52:08 castaglia Exp $
+ * $Id: parser.c,v 1.32 2013-01-05 00:26:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -328,7 +328,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
   pool *tmp_pool;
   char *report_path;
 
-  if (!path) {
+  if (path == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -345,7 +345,11 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
 
   fh = pr_fsio_open(path, O_RDONLY);
   if (fh == NULL) {
+    int xerrno = errno;
+
     destroy_pool(tmp_pool);
+
+    errno = xerrno;
     return -1;
   }
 
