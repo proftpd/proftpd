@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.168 2013-01-03 20:20:03 castaglia Exp $
+ * $Id: fxp.c,v 1.169 2013-01-05 22:49:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -7296,8 +7296,6 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
       fxp_timeout_stalled_cb, "TimeoutStalled");
   }
 
-  pr_event_generate("mod_sftp.sftp.protocol-version",
-    &(fxp_session->client_version));
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
