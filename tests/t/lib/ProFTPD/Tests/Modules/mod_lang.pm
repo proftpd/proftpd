@@ -1857,9 +1857,28 @@ sub lang_opts_utf8_useencoding_charsets_strict {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      my ($resp_code, $resp_msg) = $client->opts('UTF8', 'off');
+
+      # Make sure the OPTS UTF8 command does not appear in the FEAT listing;
+      # see Bug#3737.
+      $client->feat(); 
+      my $resp_code = $client->response_code();
+      my $resp_msgs = $client->response_msgs();
 
       my $expected;
+
+      $expected = 211;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      foreach my $feat (@$resp_msgs) {
+print STDERR "feat: '$feat'\n";
+        if ($feat =~ /^ UTF8$/) {
+          die("'$feat' feature listed unexpectedly via FEAT");
+        }
+      }
+
+      my $resp_msg;
+      ($resp_code, $resp_msg) = $client->opts('UTF8', 'off');
 
       $expected = 200;
       $self->assert($expected == $resp_code,
