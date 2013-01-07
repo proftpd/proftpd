@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.55 2013-01-07 18:52:07 castaglia Exp $
+ * $Id: mod_facts.c,v 1.56 2013-01-07 20:30:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -381,8 +381,12 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
       pr_fs_clear_cache();
       res = pr_fsio_stat(path, &target_st);
       if (res < 0) {
+        int xerrno = errno;
+
         pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": error stat'ing '%s': %s",
-          path, strerror(errno));
+          path, strerror(xerrno));
+
+        errno = xerrno;
         return -1;
       }
 
@@ -442,7 +446,12 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
         }
 
       } else {
-        info->type = "file";
+        if (S_ISDIR(target_st.st_mode)) {
+          info->type = "dir";
+
+        } else {
+          info->type = "file";
+        }
       }
 
     } else {
