@@ -1,4 +1,4 @@
-<!-- $Id: mod_geoip.html,v 1.3 2013-01-07 21:25:12 castaglia Exp $ -->
+<!-- $Id: mod_geoip.html,v 1.4 2013-01-07 21:26:02 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_geoip.html,v $ -->
 
 <html>
@@ -250,12 +250,12 @@ The <code>mod_geoip</code> module requires that the GeoIP library be installed.
 <p>
 After installing GeoIP, follow the usual steps for using contrib modules in
 proftpd:
-To install <code>mod_geoip</code>, copy the <code>mod_unique_id.c</code>
+To install <code>mod_geoip</code>, copy the <code>mod_geoip.c</code>
 file into:
 <pre>
   cp mod_geoip.c <i>proftpd-dir</i>/contrib/
 </pre>
-after unpacking the latest proftpd-1.3 source code.  For including
+after unpacking the latest proftpd-1.3.<i>x</i> source code.  For including
 <code>mod_geoip</code> as a staticly linked module:
 <pre>
   ./configure --with-modules=mod_geoip
@@ -413,7 +413,7 @@ according to need, demand, inclination, and time:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-01-07 21:25:12 $</i><br>
+Last Updated: <i>$Date: 2013-01-07 21:26:02 $</i><br>
 
 <br><hr>
 
