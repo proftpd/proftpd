@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.35 2013-01-07 21:08:49 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.36 2013-01-07 21:33:43 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -22,6 +22,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#AllowFilter">AllowFilter</a>
   <li><a href="#AuthOrder">AuthOrder</a>
   <li><a href="#DebugLevel">DebugLevel</a>
+  <li><a href="#DefaultAddress">DefaultAddress</a>
   <li><a href="#DenyFilter">DenyFilter</a>
   <li><a href="#DisplayChdir">DisplayChdir</a>
   <li><a href="#DisplayConnect">DisplayConnect</a>
@@ -170,6 +171,54 @@ and 10.  This directive will take precedence over any
 <p>
 The <a href="../howto/Logging.html">Logging</a> howto covers logging in
 greater detail.
+
+<p>
+<hr>
+<h2><a name="DefaultAddress">DefaultAddress</a></h2>
+<strong>Syntax:</strong> DefaultAddress <em>ip-address|dns-name</em> <em>[ip-address|dns-name ...]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.7rc1 and later
+
+<p>
+The <code>DefaultAddress</code> directive sets the the address to which the
+main server instance (<i>i.e.</i> the server configured by the "server config"
+context) will bind.  The default behaviour is to select whatever IP address
+is reported by the operating system as the primary IP address.
+
+<p>
+Starting with <code>proftpd-1.3.0rc1</code>, it is possible to use more than
+one FQDN or IP address.
+
+<p>
+Examples
+<pre>
+  ServerName "Default FTP Server"
+  Port 21
+
+  # We want the main server instance to listen on a specific IP
+  DefaultAddress 192.168.10.30
+
+  # Since 1.3.0rc1 it's also possible to use the following:
+  DefaultAddress 192.168.10.30 my.domain.tld
+</pre>
+
+<p>
+In <code>proftpd-1.3.5rc1</code>, the <code>DefaultAddress</code> directive
+also handles names which indicates the <em>device-name</em> (or
+<em>interface-name</em>); the IP address associated with this device/interface
+will be used.  For example, you can use:
+<pre>
+  DefaultAddress eth0
+</pre>
+Using the device/interface name is useful in cases where the same
+<code>proftpd.conf</code> file is going to be deployed to multiple different
+machines, which will have the same device/interface names but different IP
+addresses.
+
+<p>
+See also: <a href="VirtualHost"><code>&lt;VirtualHost&gt;</code></a>
 
 <p>
 <hr>
@@ -1371,7 +1420,7 @@ The <code>mod_core</code> module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-01-07 21:08:49 $</i><br>
+Last Updated: <i>$Date: 2013-01-07 21:33:43 $</i><br>
 
 <br><hr>
 
