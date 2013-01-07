@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_geoip -- a module for looking up country/city/etc for clients
  *
- * Copyright (c) 2010-2011 TJ Saunders
+ * Copyright (c) 2010-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  * --- DO NOT DELETE BELOW THIS LINE ----
- * $Id: mod_geoip.c,v 1.2 2012-04-04 18:17:26 castaglia Exp $
+ * $Id: mod_geoip.c,v 1.3 2013-01-07 22:55:44 castaglia Exp $
  * $Libraries: -lGeoIP$
  */
 
@@ -37,7 +37,7 @@
  * module for Apache.
  */
 
-#define MOD_GEOIP_VERSION		"mod_geoip/0.4"
+#define MOD_GEOIP_VERSION		"mod_geoip/0.5"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -120,12 +120,22 @@ static struct geoip_filter_key geoip_filter_keys[] = {
   { NULL, -1 }
 };
 
+/* GeoIP policies */
+typedef enum {
+  GEOIP_POLICY_ALLOW_DENY,
+  GEOIP_POLICY_DENY_ALLOW
+
+} geoip_policy_e;
+
+static geoip_policy_e geoip_policy = GEOIP_POLICY_ALLOW_DENY;
+
 static const char *trace_channel = "geoip";
 
 static const char *get_geoip_filter_name(int);
 static const char *get_geoip_filter_value(int);
 
-static int check_geoip_filters(void) {
+static int check_geoip_filters(geoip_policy_e policy) {
+  int matched_allow_filter = FALSE, allow_conn = 0;
 #if PR_USE_REGEX
   config_rec *c;
 
@@ -162,6 +172,7 @@ static int check_geoip_filters(void) {
       return -1;
     }
 
+    matched_allow_filter = TRUE;
     c = find_config_next(c, c->next, CONF_PARAM, "GeoIPAllowFilter", FALSE);
   }
 
@@ -202,7 +213,22 @@ static int check_geoip_filters(void) {
   }
 #endif /* !HAVE_REGEX_H or !HAVE_REGCOMP */
 
-  return 0;
+  switch (policy) {
+    case GEOIP_POLICY_ALLOW_DENY:
+      allow_conn = 0;
+      break;
+
+    case GEOIP_POLICY_DENY_ALLOW:
+      if (matched_allow_filter == FALSE) {
+        /* If we have not explicitly matched any allow filters, then
+         * reject the connection.
+         */
+        allow_conn = -1;
+      }
+      break;
+  }
+
+  return allow_conn;
 }
 
 static const char *get_geoip_filter_name(int filter_id) {
@@ -991,6 +1017,32 @@ MODRET set_geoiplog(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: GeoIPPolicy "allow,deny"|"deny,allow" */
+MODRET set_geoippolicy(cmd_rec *cmd) {
+  geoip_policy_e policy;
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strcasecmp(cmd->argv[1], "allow,deny") == 0) {
+    policy = GEOIP_POLICY_ALLOW_DENY;
+
+  } else if (strcasecmp(cmd->argv[1], "deny,allow") == 0) {
+    policy = GEOIP_POLICY_DENY_ALLOW;
+
+  } else {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": '", cmd->argv[1],
+      "' is not one of the approved GeoIPPolicy settings", NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(geoip_policy_e));
+  *((geoip_policy_e *) c->argv[0]) = policy;
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: GeoIPTable path [flags] */
 MODRET set_geoiptable(cmd_rec *cmd) {
   config_rec *c;
@@ -1057,13 +1109,13 @@ MODRET geoip_post_pass(cmd_rec *cmd) {
   /* Modules such as mod_ifsession may have added new filters; check the
    * filters again.
    */
-  res = check_geoip_filters();
+  res = check_geoip_filters(geoip_policy);
   if (res < 0) {
     (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
-      "connection from %s denied due to GeoIP filter",
+      "connection from %s denied due to GeoIP filter/policy",
       pr_netaddr_get_ipstr(session.c->remote_addr));
     pr_log_pri(PR_LOG_INFO, MOD_GEOIP_VERSION
-      ": Connection denied to %s due to GeoIP filter",
+      ": Connection denied to %s due to GeoIP filter/policy",
       pr_netaddr_get_ipstr(session.c->remote_addr));
 
     pr_session_disconnect(&geoip_module, PR_SESS_DISCONNECT_CONFIG_ACL,
@@ -1148,10 +1200,12 @@ static int geoip_sess_init(void) {
 
     path = c->argv[0];
     if (strcasecmp(path, "none") != 0) {
+      int xerrno;
 
       pr_signals_block();
       PRIVS_ROOT
-      res = pr_log_openfile(path, &geoip_logfd, 0600);
+      res = pr_log_openfile(path, &geoip_logfd, PR_LOG_SYSTEM_MODE);
+      xerrno = errno;
       PRIVS_RELINQUISH
       pr_signals_unblock();
 
@@ -1159,7 +1213,7 @@ static int geoip_sess_init(void) {
         if (res == -1) {
           pr_log_pri(PR_LOG_NOTICE, MOD_GEOIP_VERSION
             ": notice: unable to open GeoIPLog '%s': %s", path,
-            strerror(errno));
+            strerror(xerrno));
 
         } else if (res == PR_LOG_WRITABLE_DIR) {
           pr_log_pri(PR_LOG_NOTICE, MOD_GEOIP_VERSION
@@ -1195,13 +1249,32 @@ static int geoip_sess_init(void) {
 
   get_geoip_info(sess_geoips);
 
-  res = check_geoip_filters();
+  c = find_config(main_server->conf, CONF_PARAM, "GeoIPPolicy", FALSE);
+  if (c) {
+    geoip_policy = *((geoip_policy_e *) c->argv[0]);
+  }
+
+  switch (geoip_policy) {
+    case GEOIP_POLICY_ALLOW_DENY:
+      (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+        "using policy of allowing connections unless rejected by "
+        "GeoIPDenyFilters");
+      break;
+
+    case GEOIP_POLICY_DENY_ALLOW:
+      (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+        "using policy of rejecting connections unless allowed by "
+        "GeoIPAllowFilters");
+      break;
+  }
+
+  res = check_geoip_filters(geoip_policy);
   if (res < 0) {
     (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
-      "connection from %s denied due to GeoIP filter",
+      "connection from %s denied due to GeoIP filter/policy",
       pr_netaddr_get_ipstr(session.c->remote_addr));
     pr_log_pri(PR_LOG_INFO, MOD_GEOIP_VERSION
-      ": Connection denied to %s due to GeoIP filter",
+      ": Connection denied to %s due to GeoIP filter/policy",
       pr_netaddr_get_ipstr(session.c->remote_addr));
 
     /* XXX send_geoip_mesg(tmp_pool, mesg) */
@@ -1226,6 +1299,7 @@ static conftable geoip_conftab[] = {
   { "GeoIPDenyFilter",	set_geoipfilter,	NULL },
   { "GeoIPEngine",	set_geoipengine,	NULL },
   { "GeoIPLog",		set_geoiplog,		NULL },
+  { "GeoIPPolicy",	set_geoippolicy,	NULL },
   { "GeoIPTable",	set_geoiptable,		NULL },
   { NULL }
 };
