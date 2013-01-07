@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_facts -- a module for handling "facts" [RFC3659]
  *
- * Copyright (c) 2007-2012 The ProFTPD Project
+ * Copyright (c) 2007-2013 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.54 2012-12-28 23:20:59 castaglia Exp $
+ * $Id: mod_facts.c,v 1.55 2013-01-07 18:52:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1138,8 +1138,17 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
   /* Determine whether to display symlinks as such. */
   ptr = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
-  if (ptr &&
-      *ptr == TRUE) {
+  if (ptr != NULL) {
+    if (*ptr == TRUE) {
+      flags |= FACTS_MLINFO_FL_SHOW_SYMLINKS;
+
+      if (facts_mlinfo_opts & FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK) {
+        flags |= FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK;
+      }
+    }
+
+  } else {
+    /* ShowSymlinks is documented as being 'on' by default. */
     flags |= FACTS_MLINFO_FL_SHOW_SYMLINKS;
 
     if (facts_mlinfo_opts & FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK) {
