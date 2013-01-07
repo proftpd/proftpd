@@ -1,4 +1,4 @@
-<!-- $Id: mod_geoip.html,v 1.4 2013-01-07 21:26:02 castaglia Exp $ -->
+<!-- $Id: mod_geoip.html,v 1.5 2013-01-07 23:00:00 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_geoip.html,v $ -->
 
 <html>
@@ -46,6 +46,7 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#GeoIPDenyFilter">GeoIPDenyFilter</a>
   <li><a href="#GeoIPEngine">GeoIPEngine</a>
   <li><a href="#GeoIPLog">GeoIPLog</a>
+  <li><a href="#GeoIPPolicy">GeoIPPolicy</a>
   <li><a href="#GeoIPTable">GeoIPTable</a>
 </ul>
 
@@ -158,6 +159,31 @@ parameter given must be the full path to the file to use for logging.
 Note that this path must <b>not</b> be to a world-writable directory and,
 unless <code>AllowLogSymlinks</code> is explicitly set to <em>on</em>
 (generally a bad idea), the path must <b>not</b> be a symbolic link.
+
+<p>
+<hr>
+<h2><a name="GeoIPPolicy">GeoIPPolicy</a></h2>
+<strong>Syntax:</strong> GeoIPPolicy <em>"allow,deny"|"deny,allow"</em><br>
+<strong>Default:</strong> GeoIPPolicy allow,deny<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_geoip<br>
+<strong>Compatibility:</strong> 1.3.5rc1 and later
+
+<p>
+The <code>GeoIPPolicy</code> directive determines whether the
+<code>mod_geoip</code> module will allow a connection by default or not.
+
+<p>
+If <code>GeoIPPolicy</code> is configured using <em>"allow,deny"</em> (which
+is the default setting), then the <code>mod_geoip</code> module will allow the
+connection, <i>unless</i> the connecting client is rejected by <i>any</i>
+<a href="#GeoIPDenyFilter"><code>GeoIPDenyFilter</code></a> rules.
+
+<p>
+If <code>GeoIPPolicy</code> is configured using <em>"deny,allow"</em>, then
+the <code>mod_geoip</code> module will <b>reject</b> any connection,
+<i>unless</i> the connecting client matches any configured
+<a href="#GeoIPAllowFilter"><code>GeoIPAllowFilter</code></a> rules.
 
 <p>
 <hr>
@@ -413,7 +439,7 @@ according to need, demand, inclination, and time:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-01-07 21:26:02 $</i><br>
+Last Updated: <i>$Date: 2013-01-07 23:00:00 $</i><br>
 
 <br><hr>
 
