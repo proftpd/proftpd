@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
  *
- * Copyright (c) 2004-2012 TJ Saunders
+ * Copyright (c) 2004-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.59 2012-02-28 18:14:42 castaglia Exp $
+ * $Id: mod_ban.c,v 1.60 2013-01-07 23:59:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1094,6 +1094,7 @@ static void ban_list_expire(void) {
         ban_lists->bans.bl_entries[i].be_name,
         (unsigned long) now - ban_lists->bans.bl_entries[i].be_expires);
 
+      pr_event_generate("mod_ban.ban.expired", NULL);
       ban_list_remove(ban_lists->bans.bl_entries[i].be_type, 0,
         ban_lists->bans.bl_entries[i].be_name);
     }
