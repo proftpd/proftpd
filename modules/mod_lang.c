@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.39 2013-01-06 01:48:30 castaglia Exp $
+ * $Id: mod_lang.c,v 1.40 2013-01-07 17:43:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -866,7 +866,7 @@ static int lang_init(void) {
 
 static int lang_sess_init(void) {
   config_rec *c;
-  int strict_encoding = FALSE;
+  int strict_encoding = FALSE, utf8_client_encoding = FALSE;
 
   c = find_config(main_server->conf, CONF_PARAM, "LangEngine", FALSE);
   if (c)
@@ -935,6 +935,11 @@ static int lang_sess_init(void) {
       client_charset = c->argv[1];
       strict_encoding = *((int *) c->argv[2]);
 
+      if (strcasecmp(client_charset, "UTF8") == 0 ||
+          strcasecmp(client_charset, "UTF-8") == 0) {
+        utf8_client_encoding = TRUE;
+      }
+
       if (pr_encode_set_charset_encoding(local_charset, client_charset) < 0) {
         pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
           ": error setting local charset '%s', client charset '%s': %s",
@@ -961,8 +966,12 @@ static int lang_sess_init(void) {
     pr_fs_use_encoding(TRUE);
   }
 
-  if (strict_encoding == FALSE) {
-    /* UTF8 should show up in FEAT. */
+  /* If strict encoding is not required, OR if the encoding configured
+   * explicitly requests UTF8 from the client, then we can list UTF8 in
+   * the FEAT response. 
+   */
+  if (strict_encoding == FALSE ||
+      utf8_client_encoding == TRUE) {
     pr_feat_add("UTF8");
   }
 
