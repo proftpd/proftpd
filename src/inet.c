@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.149 2012-10-03 16:22:52 castaglia Exp $
+ * $Id: inet.c,v 1.150 2013-01-08 06:56:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -831,8 +831,12 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf,
           }
         }
 #endif /* TCP_KEEPINTVL */
-      }
 
+        /* Avoid compiler warnings on platforms which do not support any
+         * of the above TCP keepalive macros.
+         */
+        (void) val;
+      }
     }
 
     if (sndbuf > 0) {
