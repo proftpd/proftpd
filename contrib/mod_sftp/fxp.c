@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.170 2013-01-06 00:13:09 castaglia Exp $
+ * $Id: fxp.c,v 1.171 2013-01-08 21:03:11 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2400,9 +2400,20 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
 
   /* Is this a file or a directory handle? */
   if (fxh->dirh != NULL) {
+    cmd = fxp_cmd_alloc(fxh->pool, C_MLSD, (char *) fxh->dir);
+    cmd->cmd_class = CL_DIRS;
+    cmd->cmd_id = pr_cmd_get_id(C_MLSD);
+
     if (pr_fsio_closedir(fxh->dirh) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error closing aborted directory '%s': %s", fxh->dir, strerror(errno));
+
+      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    } else {
+      pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
     }
 
     fxh->dirh = NULL;
@@ -4876,7 +4887,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   } else if (fxh->dirh != NULL) {
     cmd_rec *cmd2;
 
-    cmd2 = fxp_cmd_alloc(fxp->pool, C_MLSD, fxh->dir);
+    cmd2 = fxp_cmd_alloc(fxp->pool, C_MLSD, (char *) fxh->dir);
     cmd2->cmd_class = CL_DIRS;
     cmd2->cmd_id = pr_cmd_get_id(C_MLSD);
 
