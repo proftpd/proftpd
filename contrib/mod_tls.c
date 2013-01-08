@@ -523,7 +523,8 @@ static pool *tls_act_pool = NULL;
 static ctrls_acttab_t tls_acttab[];
 #endif /* PR_USE_CTRLS */
 
-static int tls_need_init_handshake = TRUE;
+static int tls_ctrl_need_init_handshake = TRUE;
+static int tls_data_need_init_handshake = TRUE;
 
 static const char *trace_channel = "tls";
 
@@ -561,7 +562,8 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
       /* If we have already completed our initial handshake, then this might
        * a session renegotiation.
        */
-      if (!tls_need_init_handshake) {
+      if ((ssl == ctrl_ssl && !tls_ctrl_need_init_handshake) ||
+          (ssl != ctrl_ssl && !tls_data_need_init_handshake)) {
 
         /* Yes, this is indeed a session renegotiation. If it's a
          * renegotiation that we requested, allow it.  If it is from a
@@ -592,7 +594,8 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
 
 #if OPENSSL_VERSION_NUMBER >= 0x009080cfL
     } else if (ssl_state & SSL_ST_RENEGOTIATE) {
-      if (!tls_need_init_handshake) {
+      if ((ssl == ctrl_ssl && !tls_ctrl_need_init_handshake) ||
+          (ssl != ctrl_ssl && !tls_data_need_init_handshake)) {
 
         if (ssl == ctrl_ssl &&
             !(tls_flags & TLS_SESS_CTRL_RENEGOTIATING) &&
@@ -631,16 +634,30 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
     }
 
   } else if (where & SSL_CB_HANDSHAKE_DONE) {
-    if (!tls_need_init_handshake) {
-      /* If this is an accepted renegotiation, log the possibly-changed
-       * ciphersuite et al.
-       */
-      tls_log("%s renegotiation accepted, using cipher %s (%d bits)",
-        SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
-        SSL_get_cipher_bits(ssl, NULL));
-    }
+    if (ssl == ctrl_ssl) {
+      if (tls_ctrl_need_init_handshake == FALSE) {
+        /* If this is an accepted renegotiation, log the possibly-changed
+         * ciphersuite et al.
+         */
+        tls_log("%s renegotiation accepted, using cipher %s (%d bits)",
+          SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+          SSL_get_cipher_bits(ssl, NULL));
+      }
 
-    tls_need_init_handshake = FALSE;
+      tls_ctrl_need_init_handshake = FALSE;
+
+    } else {
+      if (tls_data_need_init_handshake == FALSE) {
+        /* If this is an accepted renegotiation, log the possibly-changed
+         * ciphersuite et al.
+         */
+        tls_log("%s renegotiation accepted, using cipher %s (%d bits)",
+          SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+          SSL_get_cipher_bits(ssl, NULL));
+      }
+
+      tls_data_need_init_handshake = FALSE;
+    }
 
     /* Clear the flags set for server-requested renegotiations. */
     if (tls_flags & TLS_SESS_CTRL_RENEGOTIATING) {
@@ -5956,6 +5973,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
       X509 *ctrl_cert = NULL, *data_cert = NULL;
 
       tls_log("%s", "starting TLS negotiation on data connection");
+      tls_data_need_init_handshake = TRUE;
       if (tls_accept(session.d, TRUE) < 0) {
         tls_log("%s", "unable to open data connection: TLS negotiation failed");
         session.d->xerrno = EPERM;
