@@ -1770,6 +1770,7 @@ sub ban_sighup_bug3751 {
 
   # Start the server
   server_start($config_file);
+  sleep(1);
 
   # Use proc(5) filesystem to count the number of open fds in the daemon
   my $orig_nfds = server_open_fds($pid_file);
