@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.60 2013-01-07 23:59:18 castaglia Exp $
+ * $Id: mod_ban.c,v 1.61 2013-01-08 06:59:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2518,24 +2518,37 @@ static void ban_handle_event(unsigned int ev_type, int ban_type,
 
         end_session = TRUE;
 
-      } else
+      } else {
         (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
           "updated count for %s event entry: %u curr, %u max", event,
           bee->bee_count_curr, bee->bee_count_max);
+      }
     }
   }
 
   ban_lock_shm(LOCK_UN);
 
   if (end_session) {
+    char *ban_desc;
+
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "%s autoban threshold reached, ending session", event);
     pr_log_debug(DEBUG3, MOD_BAN_VERSION
       ": autoban threshold reached, ending session");
+
+    /* Generate a specific event for listeners who want to know when mod_ban
+     * disconnects a client, and why.
+     */
+    ban_desc = pstrcat(tmp_pool,
+      ban_type == BAN_TYPE_USER ? "USER:" :
+        ban_type == BAN_TYPE_HOST ? "HOST:" : "CLASS:", event, NULL);
+    pr_event_generate("mod_ban.ban.client-disconnected", ban_desc);
+
     ban_send_mesg(tmp_pool, ban_type == BAN_TYPE_USER ? src : "(none)", NULL);
     pr_session_disconnect(&ban_module, PR_SESS_DISCONNECT_BANNED, NULL);
   }
 
+  destroy_pool(tmp_pool);
   return;
 }
 
