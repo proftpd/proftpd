@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.439 2013-01-04 20:12:09 castaglia Exp $
+ * $Id: mod_core.c,v 1.440 2013-01-09 23:53:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3757,6 +3757,7 @@ MODRET core_pasv(cmd_rec *cmd) {
   char *addrstr = NULL, *tmp = NULL;
   config_rec *c = NULL;
   pr_netaddr_t *bind_addr;
+  const char *proto;
 
   if (session.sf_flags & SF_EPSV_ALL) {
     pr_response_add_err(R_500, _("Illegal PASV command, EPSV ALL in effect"));
@@ -3876,11 +3877,30 @@ MODRET core_pasv(cmd_rec *cmd) {
   addrstr = (char *) pr_netaddr_get_ipstr(session.d->local_addr);
 
   /* Check for a MasqueradeAddress configuration record, and return that
-   * addr if appropriate.
+   * addr if appropriate.  Note that if TLSMasqueradeAddress is configured AND
+   * this is an FTPS session, TLSMasqueradeAddress will take precedence;
+   * see Bug#3862.
    */
-  c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
-  if (c != NULL) {
-    addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+  proto = pr_session_get_protocol(0);
+  if (strncmp(proto, "ftps", 5) == 0) {
+    c = find_config(main_server->conf, CONF_PARAM, "TLSMasqueradeAddress",
+      FALSE);
+    if (c != NULL) {
+      addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+
+    } else {
+      c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
+        FALSE);
+      if (c != NULL) {
+        addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+      }
+    }
+
+  } else {
+    c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
+    if (c != NULL) {
+      addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+    }
   }
 
   /* Fixup the address string for the PASV response. */
@@ -3915,6 +3935,7 @@ MODRET core_port(cmd_rec *cmd) {
   unsigned short port;
   unsigned char *allow_foreign_addr = NULL, *root_revoke = NULL;
   config_rec *c;
+  const char *proto;
 
   if (session.sf_flags & SF_EPSV_ALL) {
     pr_response_add_err(R_500, _("Illegal PORT command, EPSV ALL in effect"));
@@ -4002,10 +4023,27 @@ MODRET core_port(cmd_rec *cmd) {
    * routable), then ignore that address, and use the client's remote address.
    */
   listen_addr = session.c->local_addr;
- 
-  c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
-  if (c != NULL) {
-    listen_addr = c->argv[0];
+
+  proto = pr_session_get_protocol(0);
+  if (strncmp(proto, "ftps", 5) == 0) {
+    c = find_config(main_server->conf, CONF_PARAM, "TLSMasqueradeAddress",
+      FALSE);
+    if (c != NULL) {
+      listen_addr = c->argv[0];
+
+    } else {
+      c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
+        FALSE);
+      if (c != NULL) {
+        listen_addr = c->argv[0];
+      }
+    }
+
+  } else {
+    c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
+    if (c != NULL) {
+      listen_addr = c->argv[0];
+    }
   }
  
   if (pr_netaddr_is_rfc1918(listen_addr) != TRUE &&
@@ -4098,6 +4136,7 @@ MODRET core_eprt(cmd_rec *cmd) {
   char delim = '\0', *argstr = pstrdup(cmd->tmp_pool, cmd->argv[1]);
   char *tmp = NULL;
   config_rec *c;
+  const char *proto;
 
   if (session.sf_flags & SF_EPSV_ALL) {
     pr_response_add_err(R_500, _("Illegal PORT command, EPSV ALL in effect"));
@@ -4275,9 +4314,26 @@ MODRET core_eprt(cmd_rec *cmd) {
    */
   listen_addr = session.c->local_addr;
 
-  c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
-  if (c != NULL) {
-    listen_addr = c->argv[0];
+  proto = pr_session_get_protocol(0);
+  if (strncmp(proto, "ftps", 5) == 0) {
+    c = find_config(main_server->conf, CONF_PARAM, "TLSMasqueradeAddress",
+      FALSE);
+    if (c != NULL) {
+      listen_addr = c->argv[0];
+
+    } else {
+      c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
+        FALSE);
+      if (c != NULL) {
+        listen_addr = c->argv[0];
+      }
+    }
+
+  } else {
+    c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
+    if (c != NULL) {
+      listen_addr = c->argv[0];
+    }
   }
 
   if (pr_netaddr_is_rfc1918(listen_addr) != TRUE &&
@@ -4542,7 +4598,7 @@ MODRET core_epsv(cmd_rec *cmd) {
    * clients will simply use EPSV, rather than PASV, in existing IPv4 networks.
    *
    * Disable the honoring of MasqueradeAddress for EPSV until this can
-   * be officially determined (Bug#2369).
+   * be officially determined (Bug#2369).  See also Bug#3862.
    */
 #if 0
   c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);

@@ -7190,6 +7190,31 @@ MODRET set_tlslog(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSMasqueradeAddress ip-addr|dns-name */
+MODRET set_tlsmasqaddr(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  pr_netaddr_t *masq_addr = NULL;
+  unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
+
+  /* We can only masquerade as one address, so we don't need to know if the
+   * given name might map to multiple addresses.
+   */
+  masq_addr = pr_netaddr_get_addr2(cmd->server->pool, cmd->argv[1], NULL,
+    addr_flags);
+  if (masq_addr == NULL) {
+    return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool, cmd->argv[0],
+      ": unable to resolve \"", cmd->argv[1], "\"", NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 2, (void *) masq_addr, NULL);
+  c->argv[1] = pstrdup(c->pool, cmd->argv[1]);
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: TLSOptions opt1 opt2 ... */
 MODRET set_tlsoptions(cmd_rec *cmd) {
   config_rec *c = NULL;
@@ -8636,6 +8661,7 @@ static conftable tls_conftab[] = {
   { "TLSDSACertificateKeyFile",	set_tlsdsakeyfile,	NULL },
   { "TLSEngine",		set_tlsengine,		NULL },
   { "TLSLog",			set_tlslog,		NULL },
+  { "TLSMasqueradeAddress",	set_tlsmasqaddr,	NULL },
   { "TLSOptions",		set_tlsoptions,		NULL },
   { "TLSPassPhraseProvider",	set_tlspassphraseprovider, NULL },
   { "TLSPKCS12File", 		set_tlspkcs12file,	NULL },
