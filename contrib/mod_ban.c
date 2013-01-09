@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.61 2013-01-08 06:59:47 castaglia Exp $
+ * $Id: mod_ban.c,v 1.62 2013-01-09 22:53:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1085,18 +1085,27 @@ static void ban_list_expire(void) {
     if (ban_lists->bans.bl_entries[i].be_type &&
         ban_lists->bans.bl_entries[i].be_expires &&
         !(ban_lists->bans.bl_entries[i].be_expires > now)) {
+      char *ban_desc, *ban_name;
+      int ban_type;
+      pool *tmp_pool;
+
+      ban_type = ban_lists->bans.bl_entries[i].be_type;
+      ban_name = ban_lists->bans.bl_entries[i].be_name;
 
       (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
         "ban for %s '%s' has expired (%lu seconds ago)",
-        ban_lists->bans.bl_entries[i].be_type == BAN_TYPE_USER ? "user" : 
-        ban_lists->bans.bl_entries[i].be_type == BAN_TYPE_HOST ? "host" :
-          "class",
-        ban_lists->bans.bl_entries[i].be_name,
+        ban_type == BAN_TYPE_USER ? "user" : 
+          ban_type == BAN_TYPE_HOST ? "host" : "class", ban_name,
         (unsigned long) now - ban_lists->bans.bl_entries[i].be_expires);
 
-      pr_event_generate("mod_ban.ban.expired", NULL);
-      ban_list_remove(ban_lists->bans.bl_entries[i].be_type, 0,
-        ban_lists->bans.bl_entries[i].be_name);
+      tmp_pool = make_sub_pool(ban_pool ? ban_pool : session.pool);
+      ban_desc = pstrcat(tmp_pool,
+        ban_type == BAN_TYPE_USER ? "USER:" :
+          ban_type == BAN_TYPE_HOST ? "HOST:" : "CLASS:", ban_name, NULL);
+      pr_event_generate("mod_ban.ban.expired", ban_desc);
+      destroy_pool(tmp_pool);
+
+      ban_list_remove(ban_type, 0, ban_name);
     }
   }
 }
