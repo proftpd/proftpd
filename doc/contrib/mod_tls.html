@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.36 2012-12-29 02:49:35 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.37 2013-01-10 00:43:23 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -57,6 +57,7 @@ is based.  His module can be found here:
   <li><a href="#TLSDSACertificateKeyFile">TLSDSACertificateKeyFile</a>
   <li><a href="#TLSEngine">TLSEngine</a>
   <li><a href="#TLSLog">TLSLog</a>
+  <li><a href="#TLSMasqueradeAddress">TLSMasqueradeAddress</a>
   <li><a href="#TLSOptions">TLSOptions</a>
   <li><a href="#TLSPKCS12File">TLSPKCS12File</a>
   <li><a href="#TLSPassPhraseProvider">TLSPassPhraseProvider</a>
@@ -545,6 +546,66 @@ parameter given must be the full path to the file to use for logging.
 Note that this path must <b>not</b> be to a world-writable directory and,
 unless <code>AllowLogSymlinks</code> is explicitly set to <em>on</em>
 (generally a bad idea), the path must <b>not</b> be a symbolic link.
+
+<p>
+<hr>
+<h2><a name="TLSMasqueradeAddress">TLSMasqueradeAddress</a></h2>
+<strong>Syntax:</strong> TLSMasqueradeAddress <em>ip-address|dns-name|device-name</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code><br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.5rc2 and later
+
+<p>
+The <code>TLSMasqueradeAddress</code> directive functions exactly like the
+<a href="../modules/mod_core.html#MasqueradeAddress"><code>MasqueradeAddress</code></a>, except that it applies <b>only to FTPS sessions</b>.  (Note that if
+<em>both</em> <code>MasqueradeAddress</code> <b>and</b>
+<code>TLSMasqueradeAddress</code> are configured, then the
+<code>TLSMasqueradeAddress</code> directive will take precedence, but only
+for FTPS sessions.)
+
+<p>
+<b><i>Discussion</i></b><br>
+Why is something like <code>TLSMasqueradeAddress</code> needed?  There are
+cases where some sites run <code>proftpd</code> within a restricted VLAN/DMZ,
+with some sort of firewall/proxy/router device which handles FTP and FTPS
+connections from the Internet to that <code>proftpd</code> server:
+<pre>
+  <i>client</i> &lt;---&gt; <i>firewall</i> &lt;---&gt; <i>load balancer</i> &lt;---&gt; <i>server</i>
+</pre>
+In many cases, the firewall/proxy/router device will look at the FTP responses
+for the <code>PASV</code>/<code>EPSV</code> commands (in which
+<code>proftpd</code> may be sending its internal, non-public IP address), and
+rewrite the responses to have the IP address of the firewall/proxy/router
+device.
+
+<p>
+Normally, the <code>MasqueradeAddress</code> directive can be used for such
+cases, so that <code>proftpd</code> sends the configured address in the
+<code>PASV</code>/<code>EPSV</code> responses.  With that configuration,
+the firewall/proxy/router device will not need to rewrite the responses.
+And this approach works for FTPS sessions as well, where the
+firewall/proxy/router device <b><i>cannot</i></b> rewrite the response due to
+the SSL/TLS protection.
+
+<p>
+Sometimes, though, sites <b>want</b> their firewall/proxy/router device to be
+able to properly rewrite FTP responses.  But due to bugs/implementation details
+in the firewall/proxy/router devices, <i>if</i> a
+<code>PASV</code>/<code>EPSV</code> response contains a public IP address, the
+device will drop/break that FTP connection.
+
+<p>
+This leaves the site in a case where it does <b>not</b> want to use
+<code>MasqueradeAddress</code> (so that the device can properly rewrite FTP
+responses), which works -- but only for plain FTP sessions.  Yet the site
+<b>does</b> want to use <code>MasqueradeAddress</code> -- but only for FTPS
+sessions, since the device cannot rewrite FTPS responses.
+
+<p>
+For these situations, then, the <code>TLSMasqueradeAddress</code> directive
+can/should be used: it provides <code>MasqueradeAddress</code> functionality,
+but only for FTPS sessions.
 
 <p>
 <hr>
@@ -1621,7 +1682,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-12-29 02:49:35 $</i><br>
+Last Updated: <i>$Date: 2013-01-10 00:43:23 $</i><br>
 
 <hr>
 <font size=2><b><i>
