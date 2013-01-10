@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.114 2013-01-10 20:07:02 castaglia Exp $
+ * $Id: fsio.c,v 1.115 2013-01-10 22:44:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2557,12 +2557,12 @@ int pr_fsio_mkdir(const char *path, mode_t mode) {
  */
 int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     gid_t gid) {
-  int res;
+  int res, use_root_privs = TRUE, xerrno = 0;
   char *tmpl_path;
 #ifdef HAVE_MKDTEMP
   mode_t mask, *dir_umask;
   char *dst_dir, *tmpl, *ptr;
-  size_t tmpl_len;
+  size_t dst_dirlen, tmpl_len;
   struct stat st;
 #endif /* HAVE_MKDTEMP */
 
@@ -2579,9 +2579,11 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
   }
 
   if (ptr != path) {
-    dst_dir = pstrndup(p, path, (ptr - path));
+    dst_dirlen = (ptr - path);
+    dst_dir = pstrndup(p, path, dst_dirlen);
 
   } else {
+    dst_dirlen = 1;
     dst_dir = "/";
   }
 
@@ -2602,7 +2604,8 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
    */
   tmpl_len = strlen(path) + 14;
   tmpl = pcalloc(p, tmpl_len);
-  snprintf(tmpl, tmpl_len-1, "%s/dstXXXXXXXXX", dst_dir);
+  snprintf(tmpl, tmpl_len-1, "%s/dstXXXXXXXXX",
+    dst_dirlen > 1 ? dst_dir : "");
 
   /* Use mkdtemp(3) to create the temporary directory (in the same destination
    * directory as the target path).
@@ -2622,8 +2625,6 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
 #endif /* HAVE_MKDTEMP */
 
   if (uid != (uid_t) -1) {
-    int xerrno;
-
     PRIVS_ROOT
     res = pr_fsio_lchown(tmpl_path, uid, gid);
     xerrno = errno;
@@ -2646,7 +2647,6 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
 
   } else if (gid != (gid_t) -1) {
     register unsigned int i;
-    int use_root_privs = TRUE, xerrno;
 
     /* Check if session.fsgid is in session.gids.  If not, use root privs.  */
     for (i = 0; i < session.gids->nelts; i++) {
@@ -2693,9 +2693,20 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     mask = (mode_t) 0022;
   }
 
+  if (use_root_privs) {
+    PRIVS_ROOT
+  }
+
   res = chmod(tmpl_path, mode & ~mask);
+  xerrno = errno;
+
+  if (use_root_privs) {
+    PRIVS_RELINQUISH
+  }
+
   if (res < 0) {
-    int xerrno = errno;
+    pr_log_pri(PR_LOG_WARNING, "%schmod(%s) failed: %s",
+      use_root_privs ? "root " : "", tmpl_path, strerror(xerrno));
 
     (void) rmdir(tmpl_path);
 
@@ -2708,7 +2719,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
    */
   res = rename(tmpl_path, path);
   if (res < 0) {
-    int xerrno = errno;
+    xerrno = errno;
 
     (void) rmdir(tmpl_path);
 
