@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.115 2013-01-10 22:44:19 castaglia Exp $
+ * $Id: fsio.c,v 1.116 2013-01-10 22:47:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2720,6 +2720,9 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
   res = rename(tmpl_path, path);
   if (res < 0) {
     xerrno = errno;
+
+    pr_log_pri(PR_LOG_WARNING, "renaming '%s' to '%s' failed: %s", tmpl_path,
+      path, strerror(xerrno));
 
     (void) rmdir(tmpl_path);
 
