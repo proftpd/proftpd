@@ -3786,9 +3786,16 @@ static unsigned char tls_dotlogin_allow(const char *user) {
   int xerrno;
 
   if (!(tls_flags & TLS_SESS_ON_CTRL) ||
-      !ctrl_ssl ||
-      !user)
+      ctrl_ssl == NULL ||
+      user == NULL) {
     return FALSE;
+  }
+
+  /* If the client did not provide a cert, we cannot do the .tlslogin check. */
+  client_cert = SSL_get_peer_certificate(ctrl_ssl);
+  if (client_cert == NULL) {
+    return FALSE;
+  }
 
   tmp_pool = make_sub_pool(permanent_pool);
 
@@ -3823,19 +3830,17 @@ static unsigned char tls_dotlogin_allow(const char *user) {
     return FALSE;
   }
 
-  client_cert = SSL_get_peer_certificate(ctrl_ssl);
-  if (!client_cert) {
-    fclose(fp);
-    return FALSE;
-  }
-
   while ((file_cert = PEM_read_X509(fp, NULL, NULL, NULL))) {
-    if (!M_ASN1_BIT_STRING_cmp(client_cert->signature, file_cert->signature))
+    pr_signals_handle();
+
+    if (!M_ASN1_BIT_STRING_cmp(client_cert->signature, file_cert->signature)) {
       allow_user = TRUE;
+    }
 
     X509_free(file_cert);
-    if (allow_user)
+    if (allow_user) {
       break;
+    }
   }
 
   X509_free(client_cert);
@@ -6347,9 +6352,9 @@ MODRET tls_authenticate(cmd_rec *cmd) {
       session.auth_mech = "mod_tls.c";
       return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
 
-    } else
-      tls_log("TLS/X509 .tlslogin check failed for user '%s'",
-        cmd->argv[0]);
+    } else {
+      tls_log("TLS/X509 .tlslogin check failed for user '%s'", cmd->argv[0]);
+    }
   }
 
   return PR_DECLINED(cmd);
@@ -6383,9 +6388,10 @@ MODRET tls_auth_check(cmd_rec *cmd) {
       session.auth_mech = "mod_tls.c";
       return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
 
-    } else
+    } else {
       tls_log("TLS/X509 .tlslogin check failed for user '%s'",
         cmd->argv[1]);
+    }
   }
 
   return PR_DECLINED(cmd);
