@@ -4482,6 +4482,7 @@ static void tls_setup_environ(SSL *ssl) {
 
 static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
   config_rec *c;
+  int verify_err = 0;
 
   /* We can configure the server to skip the peer's cert verification */
   if (!(tls_flags & TLS_SESS_VERIFY_CLIENT))
@@ -4519,6 +4520,7 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
   if (!ok) {
     X509 *cert = X509_STORE_CTX_get_current_cert(ctx);
     int depth = X509_STORE_CTX_get_error_depth(ctx);
+    verify_err = ctx->error;
 
     tls_log("error: unable to verify certificate at depth %d", depth);
     tls_log("error: cert subject: %s", tls_x509_name_oneline(
@@ -4566,6 +4568,13 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
         ok = 0;
         break;
     }
+  }
+
+  if (ok) {
+    pr_event_generate("mod_tls.verify-client", NULL);
+
+  } else {
+    pr_event_generate("mod_tls.verify-client-failed", &verify_err);
   }
 
   return ok;
