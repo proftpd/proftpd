@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.47 2012-12-13 23:05:15 castaglia Exp $
+ * $Id: auth.c,v 1.48 2013-01-10 02:06:18 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1203,6 +1203,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported authentication method '%s' requested", method);
+
+    incr_auth_attempts(user);
     return -1;
   }
 
@@ -1230,10 +1232,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       }
     }
 
-    if (res < 0) {
-      incr_auth_attempts(user);
-    }
-
+    incr_auth_attempts(user);
     return res;
   }
 

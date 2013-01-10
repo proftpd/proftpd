@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1471 2013-01-09 23:53:46 castaglia Exp $
+$Id: NEWS,v 1.1472 2013-01-10 02:06:18 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -15,6 +15,7 @@ CVS
 - Bug 3860 - Add a default deny option for mod_geoip.
 - Bug 3862 - Support for FTPS-specific MasqueradeAddress functionality.  A
   new TLSMasqueradeAddress directive has been added to mod_tls.
+- Bug 3863 - mod_sftp does not handle MaxLoginAttempts properly.
 
 1.3.5rc1 - Released 04-Jan-2013
 --------------------------------
