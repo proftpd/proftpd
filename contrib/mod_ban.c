@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.63 2013-01-11 17:35:17 castaglia Exp $
+ * $Id: mod_ban.c,v 1.64 2013-01-11 18:33:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1800,8 +1800,8 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     return ban_handle_info(ctrl, reqargc, reqargv);
 
   } else {
-    pr_ctrls_add_response(ctrl, "unknown ban type requested: '%s'",
-      reqargv[optind]);
+    pr_ctrls_add_response(ctrl, "unknown ban action requested: '%s'",
+      reqargv[0]);
     return -1;
   }
 
@@ -2043,7 +2043,7 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     ban_lock_shm(LOCK_UN);
  
   } else {
-    pr_ctrls_add_response(ctrl, "unknown ban type requested: '%s'",
+    pr_ctrls_add_response(ctrl, "unknown ban action requested: '%s'",
       reqargv[0]);
     return -1;
   }
