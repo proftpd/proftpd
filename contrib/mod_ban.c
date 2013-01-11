@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.62 2013-01-09 22:53:20 castaglia Exp $
+ * $Id: mod_ban.c,v 1.63 2013-01-11 17:35:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -139,6 +139,12 @@ struct ban_data {
 
 static struct ban_data *ban_lists = NULL;
 static int ban_engine = -1;
+
+/* Track whether "BanEngine on" was EVER seen in the configuration; see
+ * Bug#3865.
+ */
+static int ban_engine_overall = -1;
+
 static int ban_logfd = -1;
 static char *ban_log = NULL;
 static char *ban_mesg = NULL;
@@ -1592,7 +1598,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     return -1;
   }
 
-  if (ban_engine != TRUE) {
+  if (ban_engine_overall != TRUE) {
     pr_ctrls_add_response(ctrl, MOD_BAN_VERSION " not enabled");
     return -1;
   }
@@ -1824,7 +1830,7 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     return -1;
   }
 
-  if (ban_engine != TRUE) {
+  if (ban_engine_overall != TRUE) {
     pr_ctrls_add_response(ctrl, MOD_BAN_VERSION " not enabled");
     return -1;
   }
@@ -2178,22 +2184,28 @@ MODRET set_banctrlsacls(cmd_rec *cmd) {
 
 /* usage: BanEngine on|off */
 MODRET set_banengine(cmd_rec *cmd) {
-  int bool = -1, ctxt_type;
+  int engine = -1, ctx_type;
   config_rec *c;
 
   CHECK_ARGS(cmd, 1);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  ctxt_type = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+  if (engine == TRUE) {
+    /* If "BanEngine on" is configured anywhere, then set this flag. */
+    ban_engine_overall = engine;
+  }
+
+  ctx_type = (cmd->config && cmd->config->config_type != CONF_PARAM ?
      cmd->config->config_type : cmd->server->config_type ?
      cmd->server->config_type : CONF_ROOT);
 
-  if (ctxt_type == CONF_ROOT) {
+  if (ctx_type == CONF_ROOT) {
     /* If ban_engine has not been initialized yet, and this is the
      * "server config" section, we can do it here.  And even if the
      * previously initialized value is 0 ("BanEngine off"), if the
@@ -2203,17 +2215,17 @@ MODRET set_banengine(cmd_rec *cmd) {
      */
 
     if (ban_engine == -1) {
-      ban_engine = bool;
+      ban_engine = engine;
     }
 
-    if (bool == TRUE) {
-      ban_engine = bool;
+    if (engine == TRUE) {
+      ban_engine = engine;
     }
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = palloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = engine;
 
   return PR_HANDLED(cmd);
 }
@@ -2745,12 +2757,13 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
   struct ban_data *lists;
   int xerrno;
 
-  if (ban_engine != TRUE)
+  if (ban_engine_overall != TRUE) {
     return;
+  }
 
   /* Open the BanLog. */
   if (ban_log &&
-      strcasecmp(ban_log, "none") != 0) {
+      strncasecmp(ban_log, "none", 5) != 0) {
     int res;
 
     PRIVS_ROOT
