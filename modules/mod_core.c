@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.440 2013-01-09 23:53:46 castaglia Exp $
+ * $Id: mod_core.c,v 1.441 2013-01-11 00:57:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -303,20 +303,23 @@ MODRET start_ifmodule(cmd_rec *cmd) {
       sizeof(buf))) != NULL) {
     char *bufp;
 
+    pr_signals_handle();
+
     /* Advance past any leading whitespace. */
     for (bufp = config_line; *bufp && isspace((int) *bufp); bufp++);
 
-    if (strncasecmp(bufp, "<IfModule", 9) == 0)
+    if (strncasecmp(bufp, "<IfModule", 9) == 0) {
       ifmodule_ctx_count++;
 
-    if (strcasecmp(bufp, "</IfModule>") == 0)
+    } else if (strcasecmp(bufp, "</IfModule>") == 0) {
       ifmodule_ctx_count--;
+    }
   }
 
-  /* If there are still unclosed <IfModule> sections, signal an error.
-   */
-  if (ifmodule_ctx_count)
+  /* If there are still unclosed <IfModule> sections, signal an error. */
+  if (ifmodule_ctx_count) {
     CONF_ERROR(cmd, "unclosed <IfModule> context");
+  }
 
   return PR_HANDLED(cmd);
 }
