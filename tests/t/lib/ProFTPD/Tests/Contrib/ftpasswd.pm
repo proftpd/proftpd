@@ -15,7 +15,7 @@ $| = 1;
 my $order = 0;
 
 my $TESTS = {
-  ftpasswd_append_user_bugXXXX => {
+  ftpasswd_append_user_bug3867 => {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
@@ -43,7 +43,7 @@ sub get_ftpasswd_bin {
   return $ftpasswd_bin;
 }
 
-sub ftpasswd_append_user_bugXXXX {
+sub ftpasswd_append_user_bug3867 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
