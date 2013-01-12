@@ -58,7 +58,7 @@ sub ftpwho {
 
   my $ftpwho_bin;
   if ($ENV{PROFTPD_TEST_PATH}) {
-    $ftpwho_bin = "$ENV{PROFTPD_TEST_PATH}/ftpwho";
+    $ftpwho_bin = "$ENV{PROFTPD_TEST_PATH}/../ftpwho";
 
   } else {
     $ftpwho_bin = '../ftpwho';
