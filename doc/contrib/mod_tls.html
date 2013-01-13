@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.37 2013-01-10 00:43:23 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.38 2013-01-13 21:39:05 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -449,11 +449,25 @@ may be used to list all of the engine drivers supported by OpenSSL.
 
 <p>
 The <code>TLSDHParamFile</code> directive is used to configure a file that
-<code>mod_tls</code> will use when engaging in a Diffie-Hellman key exchange.
-Such a key exchange can be computationally intensive, in terms for parameter
-generation; to help speed up the process, the parameters used may be generated
-in advance, and stored in a file.  The <code>dhparam</code> utility that comes
-with OpenSSL may be used to generate an appropriate file for this directive.
+contains pre-computed Diffie-Hellman (DH) group parameters.  The
+<code>mod_tls</code> module will use these parameters when engaging in
+Diffie-Hellman key exchanges.
+
+<p>
+Such key exchanges can be computationally intensive, in terms for parameter
+generation.  To help speed up the process and avoid latency for Diffie-Hellman
+key exchanges, the DH group parameters used may be generated in advance, and
+stored in a <code>TLSDHParamFile</code>.  The <code>dhparam</code> utility
+that comes with OpenSSL may be used to generate an appropriate file for this
+directive:
+<pre>
+  # openssl dhparam -outform PEM -2 <i>nbits</i> &gt;&gt; dhparams.pem
+  # openssl dhparam -outform PEM -5 <i>nbits</i> &gt;&gt; dhparams.pem
+<pre>
+Using either -2 or -5 as the generator is fine. The <em>nbits</em> value used
+should vary between 512 and 4096, inclusive.
+
+<p>
 The <em>file</em> parameter must be an absolute path.
 
 <p>
@@ -1682,11 +1696,11 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-01-10 00:43:23 $</i><br>
+Last Updated: <i>$Date: 2013-01-13 21:39:05 $</i><br>
 
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2012 TJ Saunders<br>
+&copy; Copyright 2002-2013 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
