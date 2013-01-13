@@ -472,7 +472,7 @@ static tls_sess_cache_t *tls_sess_cache = NULL;
 static SSL *ctrl_ssl = NULL;
 static SSL_CTX *ssl_ctx = NULL;
 static X509_STORE *tls_crl_store = NULL;
-static DH *tls_tmp_dh = NULL;
+static array_header *tls_tmp_dhs = NULL;
 static RSA *tls_tmp_rsa = NULL;
 
 static int tls_sess_init(void);
@@ -2104,58 +2104,56 @@ static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
 #endif
 
 static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
-  FILE *fp = NULL;
+  DH *dh = NULL;
 
-  if (tls_tmp_dh) {
-    return tls_tmp_dh;
-  }
+  if (tls_tmp_dhs != NULL &&
+      tls_tmp_dhs->nelts > 0) {
+    register unsigned int i;
+    DH **dhs;
 
-  if (tls_dhparam_file) {
-    fp = fopen(tls_dhparam_file, "r");
-    if (fp) {
-      tls_tmp_dh = PEM_read_DHparams(fp, NULL, NULL, NULL);
-      fclose(fp);
-
-      if (tls_tmp_dh) {
-        return tls_tmp_dh;
+    dhs = tls_tmp_dhs->elts;
+    for (i = 0; i < tls_tmp_dhs->nelts; i++) {
+      /* Note: the keylength argument is in BITS, but DH_size() returns
+       * the number of BYTES.
+       */
+      if (DH_size(dhs[i]) == (keylength / 8)) {
+        return dhs[i];
       }
-
-    } else {
-      pr_log_debug(DEBUG3, MOD_TLS_VERSION
-        ": unable to open TLSDHParamFile '%s': %s", tls_dhparam_file,
-          strerror(errno));
     }
   }
 
   switch (keylength) {
     case 512:
-      tls_tmp_dh = get_dh512();
+      dh = get_dh512();
       break;
 
     case 768:
-      tls_tmp_dh = get_dh768();
+      dh = get_dh768();
       break;
 
      case 1024:
-       tls_tmp_dh = get_dh1024();
+       dh = get_dh1024();
        break;
 
      case 1536:
-       tls_tmp_dh = get_dh1536();
+       dh = get_dh1536();
        break;
 
      case 2048:
-       tls_tmp_dh = get_dh2048();
+       dh = get_dh2048();
        break;
 
      default:
        tls_log("unsupported DH key length %d requested, returning 1024 bits",
          keylength);
-       tls_tmp_dh = get_dh1024();
+       dh = get_dh1024();
        break;
   }
 
-  return tls_tmp_dh;
+  /* Add this DH to the list, so that it can be freed properly later. */
+  *((DH **) push_array(tls_tmp_dhs)) = dh;
+
+  return dh;
 }
 
 /* Post 0.9.7a, RSA blinding is turned on by default, so there is no need to
@@ -3426,9 +3424,16 @@ static void tls_cleanup(int flags) {
     ssl_ctx = NULL;
   }
 
-  if (tls_tmp_dh) {
-    DH_free(tls_tmp_dh);
-    tls_tmp_dh = NULL;
+  if (tls_tmp_dhs) {
+    register unsigned int i;
+    DH **dhs;
+
+    dhs = tls_tmp_dhs->elts;
+    for (i = 0; i < tls_tmp_dhs->nelts; i++) {
+      DH_free(dhs[i]);
+    }
+
+    tls_tmp_dhs = NULL;
   }
 
   if (tls_tmp_rsa) {
@@ -8353,6 +8358,38 @@ static int tls_sess_init(void) {
   tls_crl_path = get_param_ptr(main_server->conf, "TLSCARevocationPath", FALSE);
 
   tls_dhparam_file = get_param_ptr(main_server->conf, "TLSDHParamFile", FALSE);
+  if (tls_dhparam_file != NULL) {
+    FILE *fp;
+    int xerrno;
+
+    /* Load the DH params from the file. */
+    PRIVS_ROOT
+    fp = fopen(tls_dhparam_file, "r");
+    xerrno = errno;
+    PRIVS_RELINQUISH
+
+    if (fp != NULL) {
+      DH *dh;
+
+      dh = PEM_read_DHparams(fp, NULL, NULL, NULL);
+      if (dh != NULL) {
+        tls_tmp_dhs = make_array(session.pool, 1, sizeof(DH *));
+      }
+
+      while (dh != NULL) {
+        pr_signals_handle();
+        *((DH **) push_array(tls_tmp_dhs)) = dh;
+        dh = PEM_read_DHparams(fp, NULL, NULL, NULL);
+      }
+
+      fclose(fp);
+
+    } else {
+      pr_log_debug(DEBUG3, MOD_TLS_VERSION
+        ": unable to open TLSDHParamFile '%s': %s", tls_dhparam_file,
+          strerror(xerrno));
+    }
+  }
 
   tls_dsa_cert_file = get_param_ptr(main_server->conf, "TLSDSACertificateFile",
     FALSE);
