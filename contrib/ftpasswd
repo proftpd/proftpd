@@ -21,7 +21,7 @@
 # format, or AuthGroupFile, in group(5) format.  The idea is somewhat similar
 # to Apache's htpasswd program.
 #
-#  $Id: ftpasswd,v 1.15 2013-01-11 19:32:09 castaglia Exp $
+#  $Id: ftpasswd,v 1.16 2013-01-13 21:05:14 castaglia Exp $
 # ---------------------------------------------------------------------------
 
 use strict;
@@ -119,12 +119,6 @@ if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
 
   # check for and handle the --delete-user option.
   if (defined($opts{'delete-user'})) {
-
-    # make sure we can write/update the file first
-    unless (chmod 0644, $output_file) {
-      die "$program: unable to set permissions on $output_file to 0644: $!\n";
-    }
-
     open_output_file();
 
     my ($pass, $uid, $gid, $gecos, $home, $shell) = find_passwd_entry(name =>
@@ -207,12 +201,6 @@ if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
 
   # check for and handle the --delete-group option.
   if (defined($opts{'delete-group'})) {
-
-    # make sure we can write/update the file first
-    unless (chmod 0644, $output_file) {
-      die "$program: unable to set permissions on $output_file to 0644: $!\n";
-    }
-
     open_output_file();
 
     handle_group_entry(name => $opts{'name'},
@@ -774,6 +762,11 @@ sub open_output_file {
   # If the file already exists, slurp up its contents for later updating.
 
   if (-f $output_file) {
+    # make sure we can write/update the file first
+    unless (chmod 0644, $output_file) {
+      die "$program: unable to set permissions on $output_file to 0644: $!\n";
+    }
+
     open(INPUT, "< $output_file") or
       die "$program: unable to open $output_file: $!\n";
     chomp(@data = <INPUT>);
