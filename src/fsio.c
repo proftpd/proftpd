@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.118 2013-01-14 00:38:22 castaglia Exp $
+ * $Id: fsio.c,v 1.119 2013-01-14 16:51:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2608,7 +2608,6 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
 
     res = lstat(dst_dir, &st);
     if (res < 0) {
-      errno = xerrno;
       return -1;
     }
 
