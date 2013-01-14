@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2012 The ProFTPD Project
+ * Copyright (c) 2001-2013 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.31 2012-12-28 00:02:35 castaglia Exp $
+ * $Id: fsio.h,v 1.32 2013-01-14 00:33:35 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -274,6 +274,11 @@ int pr_fsio_faccess(pr_fh_t *, int, uid_t, gid_t, array_header *);
 int pr_fsio_utimes(const char *, struct timeval *);
 int pr_fsio_futimes(pr_fh_t *, struct timeval *);
 off_t pr_fsio_lseek(pr_fh_t *, off_t, int);
+
+/* Set a flag determining whether to use mkdtemp(3) (if available) or not.
+ * Returns the previously-set value.
+ */
+int pr_fsio_set_use_mkdtemp(int);
 
 /* FS-related functions */
 

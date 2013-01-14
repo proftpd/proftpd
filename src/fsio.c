@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.116 2013-01-10 22:47:24 castaglia Exp $
+ * $Id: fsio.c,v 1.117 2013-01-14 00:33:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -80,6 +80,13 @@ static unsigned char chk_fs_map = FALSE;
 /* Virtual working directory */
 static char vwd[PR_TUNABLE_PATH_MAX + 1] = "/";
 static char cwd[PR_TUNABLE_PATH_MAX + 1] = "/";
+
+/* Runtime enabling/disabling of mkdtemp(3) use. */
+#ifdef HAVE_MKDTEMP
+static int use_mkdtemp = TRUE;
+#else
+static int use_mkdtemp = FALSE;
+#endif /* HAVE_MKDTEMP */
 
 /* Runtime enabling/disabling of encoding of paths. */
 static int use_encoding = TRUE;
@@ -2550,6 +2557,18 @@ int pr_fsio_mkdir(const char *path, mode_t mode) {
   return res;
 }
 
+int pr_fsio_set_use_mkdtemp(int value) {
+  int prev_value;
+
+  prev_value = use_mkdtemp;
+
+#ifdef HAVE_MKDTEMP
+  use_mkdtemp = value;
+#endif /* HAVE_MKDTEMP */
+
+  return prev_value;
+}
+
 /* "safe mkdir" variant of mkdir(2), uses mkdtemp(3), lchown(2), and
  * rename(2) to create a directory which cannot be hijacked by a symlink
  * race (hopefully) before the UserOwner/GroupOwner ownership changes are
@@ -2559,70 +2578,70 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     gid_t gid) {
   int res, use_root_privs = TRUE, xerrno = 0;
   char *tmpl_path;
-#ifdef HAVE_MKDTEMP
-  mode_t mask, *dir_umask;
-  char *dst_dir, *tmpl, *ptr;
+  char *dst_dir, *tmpl;
   size_t dst_dirlen, tmpl_len;
-  struct stat st;
-#endif /* HAVE_MKDTEMP */
 
   if (path == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-#ifdef HAVE_MKDTEMP
-  ptr = strrchr(path, '/');
-  if (ptr == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
+  if (use_mkdtemp == TRUE) {
+    char *ptr;
+    struct stat st;
 
-  if (ptr != path) {
-    dst_dirlen = (ptr - path);
-    dst_dir = pstrndup(p, path, dst_dirlen);
+    ptr = strrchr(path, '/');
+    if (ptr == NULL) {
+      errno = EINVAL;
+      return -1;
+    }
+
+    if (ptr != path) {
+      dst_dirlen = (ptr - path);
+      dst_dir = pstrndup(p, path, dst_dirlen);
+
+    } else {
+      dst_dirlen = 1;
+      dst_dir = "/";
+    }
+
+    res = lstat(dst_dir, &st);
+    if (res < 0) {
+      errno = xerrno;
+      return -1;
+    }
+
+    if (!S_ISDIR(st.st_mode) &&
+        !S_ISLNK(st.st_mode)) {
+      errno = EPERM;
+      return -1;
+    }
+
+    /* Allocate enough space for the temporary name: the length of the
+     * destination directory, a slash, 9 X's, 3 for the prefix, and 1 for the
+     * trailing NUL.
+     */
+    tmpl_len = dst_dirlen + 14;
+    tmpl = pcalloc(p, tmpl_len);
+    snprintf(tmpl, tmpl_len-1, "%s/dstXXXXXXXXX",
+      dst_dirlen > 1 ? dst_dir : "");
+
+    /* Use mkdtemp(3) to create the temporary directory (in the same destination
+     * directory as the target path).
+     */
+    tmpl_path = mkdtemp(tmpl);
+    if (tmpl_path == NULL) {
+      return -1;
+    }
 
   } else {
-    dst_dirlen = 1;
-    dst_dir = "/";
+    res = pr_fsio_mkdir(path, mode);
+    if (res < 0) {
+      return -1;
+    }
+
+    tmpl_path = pstrdup(p, path);
   }
-
-  res = lstat(dst_dir, &st);
-  if (res < 0) {
-    return -1;
-  }
-
-  if (!S_ISDIR(st.st_mode) &&
-      !S_ISLNK(st.st_mode)) {
-    errno = EPERM;
-    return -1;
-  }
-
-  /* Allocate enough space for the temporary name: the length of the
-   * destination directory, a slash, 9 X's, 3 for the prefix, and 1 for the
-   * trailing NUL.
-   */
-  tmpl_len = strlen(path) + 14;
-  tmpl = pcalloc(p, tmpl_len);
-  snprintf(tmpl, tmpl_len-1, "%s/dstXXXXXXXXX",
-    dst_dirlen > 1 ? dst_dir : "");
-
-  /* Use mkdtemp(3) to create the temporary directory (in the same destination
-   * directory as the target path).
-   */
-  tmpl_path = mkdtemp(tmpl);
-  if (tmpl_path == NULL) {
-    return -1;
-  }
-#else
-
-  res = pr_fsio_mkdir(path, mode);
-  if (res < 0) {
-    return -1;
-  }
-
-  tmpl_path = pstrdup(p, path);
-#endif /* HAVE_MKDTEMP */
 
   if (uid != (uid_t) -1) {
     PRIVS_ROOT
@@ -2679,57 +2698,59 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     }
   }
 
-#ifdef HAVE_MKDTEMP
-  /* Use chmod(2) to set the permission that we want.
-   *
-   * mkdtemp(3) creates a directory with 0700 perms; we are given the
-   * target mode (modulo the configured Umask).
-   */
-  dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
-  if (dir_umask) {
-    mask = *dir_umask;
+  if (use_mkdtemp == TRUE) {
+    mode_t mask, *dir_umask;
 
-  } else {
-    mask = (mode_t) 0022;
-  }
+    /* Use chmod(2) to set the permission that we want.
+     *
+     * mkdtemp(3) creates a directory with 0700 perms; we are given the
+     * target mode (modulo the configured Umask).
+     */
+    dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
+    if (dir_umask) {
+      mask = *dir_umask;
 
-  if (use_root_privs) {
-    PRIVS_ROOT
-  }
+    } else {
+      mask = (mode_t) 0022;
+    }
 
-  res = chmod(tmpl_path, mode & ~mask);
-  xerrno = errno;
+    if (use_root_privs) {
+      PRIVS_ROOT
+    }
 
-  if (use_root_privs) {
-    PRIVS_RELINQUISH
-  }
-
-  if (res < 0) {
-    pr_log_pri(PR_LOG_WARNING, "%schmod(%s) failed: %s",
-      use_root_privs ? "root " : "", tmpl_path, strerror(xerrno));
-
-    (void) rmdir(tmpl_path);
-
-    errno = xerrno;
-    return -1;
-  }
-
-  /* Use rename(2) to move the temporary directory into place at the
-   * target path.
-   */
-  res = rename(tmpl_path, path);
-  if (res < 0) {
+    res = chmod(tmpl_path, mode & ~mask);
     xerrno = errno;
 
-    pr_log_pri(PR_LOG_WARNING, "renaming '%s' to '%s' failed: %s", tmpl_path,
-      path, strerror(xerrno));
+    if (use_root_privs) {
+      PRIVS_RELINQUISH
+    }
 
-    (void) rmdir(tmpl_path);
+    if (res < 0) {
+      pr_log_pri(PR_LOG_WARNING, "%schmod(%s) failed: %s",
+        use_root_privs ? "root " : "", tmpl_path, strerror(xerrno));
 
-    errno = xerrno;
-    return -1;
+      (void) rmdir(tmpl_path);
+
+      errno = xerrno;
+      return -1;
+    }
+
+    /* Use rename(2) to move the temporary directory into place at the
+     * target path.
+     */
+    res = rename(tmpl_path, path);
+    if (res < 0) {
+      xerrno = errno;
+
+      pr_log_pri(PR_LOG_WARNING, "renaming '%s' to '%s' failed: %s", tmpl_path,
+        path, strerror(xerrno));
+
+      (void) rmdir(tmpl_path);
+
+      errno = xerrno;
+      return -1;
+    }
   }
-#endif /* HAVE_MKDTEMP */
 
   return 0;
 }
