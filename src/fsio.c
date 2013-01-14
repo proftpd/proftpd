@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.117 2013-01-14 00:33:35 castaglia Exp $
+ * $Id: fsio.c,v 1.118 2013-01-14 00:38:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2586,6 +2586,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     return -1;
   }
 
+#ifdef HAVE_MKDTEMP
   if (use_mkdtemp == TRUE) {
     char *ptr;
     struct stat st;
@@ -2642,6 +2643,15 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
 
     tmpl_path = pstrdup(p, path);
   }
+#else
+
+  res = pr_fsio_mkdir(path, mode);
+  if (res < 0) {
+    return -1;
+  }
+
+  tmpl_path = pstrdup(p, path);
+#endif /* HAVE_MKDTEMP */
 
   if (uid != (uid_t) -1) {
     PRIVS_ROOT
