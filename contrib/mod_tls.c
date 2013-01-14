@@ -1107,7 +1107,7 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
     }
   }
 
-  /* Next, heck the subjectAltName X509v3 extensions, as is proper, for
+  /* Next, check the subjectAltName X509v3 extensions, as is proper, for
    * the IP address and FQDN.
    */
   if ((tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) ||
