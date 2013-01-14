@@ -3062,13 +3062,13 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   blocking = tls_get_block(conn);
   if (blocking) {
     /* Put the connection in non-blocking mode for the duration of the
-     * SSL handshake.  This lets us handle EGAIN/retries better (i.e.
+     * SSL handshake.  This lets us handle EAGAIN/retries better (i.e.
      * without spinning in a tight loop and consuming the CPU).
      */
     pr_inet_set_nonblock(conn->pool, conn);
   }
 
-  /* This works with either rfd or wfd (I hope)  */
+  /* This works with either rfd or wfd (I hope). */
   rbio = BIO_new_socket(conn->rfd, FALSE);
   wbio = BIO_new_socket(conn->rfd, FALSE);
   SSL_set_bio(ssl, rbio, wbio);
@@ -3289,7 +3289,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
        * Shutdown the SSL session unless the conditions are met.  By
        * requiring these conditions, we make sure that the client which is
        * talking to us on the control connection is indeed the same client
-       * that is using this data connection.  Without this checks, a
+       * that is using this data connection.  Without these checks, a
        * malicious client might be able to hijack/steal the data transfer.
        */
 
