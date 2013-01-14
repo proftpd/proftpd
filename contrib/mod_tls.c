@@ -3059,15 +3059,6 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     return -2;
   }
 
-  blocking = tls_get_block(conn);
-  if (blocking) {
-    /* Put the connection in non-blocking mode for the duration of the
-     * SSL handshake.  This lets us handle EAGAIN/retries better (i.e.
-     * without spinning in a tight loop and consuming the CPU).
-     */
-    pr_inet_set_nonblock(conn->pool, conn);
-  }
-
   /* This works with either rfd or wfd (I hope). */
   rbio = BIO_new_socket(conn->rfd, FALSE);
   wbio = BIO_new_socket(conn->rfd, FALSE);
@@ -3080,6 +3071,16 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   }
 
   retry:
+
+  blocking = tls_get_block(conn);
+  if (blocking) {
+    /* Put the connection in non-blocking mode for the duration of the
+     * SSL handshake.  This lets us handle EAGAIN/retries better (i.e.
+     * without spinning in a tight loop and consuming the CPU).
+     */
+    pr_inet_set_nonblock(conn->pool, conn);
+  }
+
   pr_signals_handle();
   res = SSL_accept(ssl);
   if (res == -1) {
