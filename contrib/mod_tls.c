@@ -2151,6 +2151,10 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
   }
 
   /* Add this DH to the list, so that it can be freed properly later. */
+  if (tls_tmp_dhs == NULL) {
+    tls_tmp_dhs = make_array(session.pool, 1, sizeof(DH *));
+  }
+
   *((DH **) push_array(tls_tmp_dhs)) = dh;
 
   return dh;
