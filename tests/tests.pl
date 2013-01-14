@@ -93,6 +93,7 @@ if (scalar(@ARGV) > 0) {
     t/commands/mlst.t
     t/commands/mff.t
     t/commands/mfmt.t
+    t/commands/opts.t
     t/commands/host.t
     t/commands/site/chgrp.t
     t/commands/site/chmod.t
