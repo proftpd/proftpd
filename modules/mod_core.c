@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.441 2013-01-11 00:57:29 castaglia Exp $
+ * $Id: mod_core.c,v 1.442 2013-01-14 20:43:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -47,6 +47,9 @@ extern modret_t *site_dispatch(cmd_rec*);
 /* For bytes-retrieving directives */
 #define PR_BYTES_BAD_UNITS	-1
 #define PR_BYTES_BAD_FORMAT	-2
+
+/* Maximum number of parameters for OPTS commands (see Bug#3870). */
+#define PR_OPTS_MAX_PARAM_COUNT		8
 
 module core_module;
 char AddressCollisionCheck = TRUE;
@@ -5778,6 +5781,20 @@ MODRET core_opts(cmd_rec *cmd) {
   cmd_rec *subcmd;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
+
+  /* Impose a maximum number of allowed arguments, to prevent malicious
+   * clients from trying to do Bad Things(tm).  See Bug#3870.
+   */
+  if ((cmd->argc-1) > PR_OPTS_MAX_PARAM_COUNT) {
+    int xerrno = EINVAL;
+
+    pr_log_debug(DEBUG2,
+      "OPTS command with too many parameters (%d), rejecting", cmd->argc-1);
+    pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(xerrno));
+
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
 
   subcmd = pr_cmd_alloc(cmd->tmp_pool, cmd->argc-1, NULL);
   subcmd->argv[0] = pstrcat(cmd->tmp_pool, "OPTS_", cmd->argv[1], NULL);
