@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.173 2013-01-15 19:50:07 castaglia Exp $
+ * $Id: fxp.c,v 1.174 2013-01-15 19:55:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -8187,7 +8187,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "REALPATH", path);
-  cmd->cmd_class = CL_DIRS;
+  cmd->cmd_class = CL_INFO;
 
   if (fxp_session->client_version >= 6 &&
       fxp->payload_sz >= sizeof(char)) {
