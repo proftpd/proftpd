@@ -1168,18 +1168,87 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
 
           case GEN_IPADD:
             if (tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) {
+              pr_netaddr_t *cert_addr;
+              unsigned char *cert_data, reqd_ipv6 = FALSE;
+              char *rep = NULL;
+              int res;
+#ifdef PR_USE_IPV6
+              char cert_ipstr[INET6_ADDRSTRLEN + 1] = {'\0'};
+#else
               char cert_ipstr[INET_ADDRSTRLEN + 1] = {'\0'};
-              const char *cert_ipaddr = (const char *) name->d.ia5->data;
+#endif /* PR_USE_IPV6 */
 
-              /* Note: OpenSSL doesn't support IPv6 addresses in the
-               * ipAddress name yet.
-               */
+              cert_data = name->d.ip->data;
               memset(cert_ipstr, '\0', sizeof(cert_ipstr));
-              snprintf(cert_ipstr, sizeof(cert_ipstr) - 1, "%u.%u.%u.%u",
-                cert_ipaddr[0], cert_ipaddr[1], cert_ipaddr[2], cert_ipaddr[3]);
+
+              if (name->d.ip->length == 4) {
+                /* IPv4 address */
+                snprintf(cert_ipstr, sizeof(cert_ipstr)-1, "%d.%d.%d.%d",
+                  cert_data[0], cert_data[1], cert_data[2], cert_data[3]);
+
+#ifdef PR_USE_IPV6
+              } else if (name->d.ip->length == 16) {
+
+                /* Make sure that IPv6 support is enabled, at least for the
+                 * scope of these checks, if necessary.
+                 */
+                if (pr_netaddr_use_ipv6() == FALSE) {
+                  reqd_ipv6 = TRUE;
+                }
+
+                rep = pr_inet_ntop(AF_INET6, cert_data, cert_ipstr,
+                  sizeof(cert_ipstr)-1);
+                if (rep == NULL) {
+                  tls_log("unable to convert client cert iPAddress value "
+                    "(length %d) to IPv6 representation: %s",
+                    name->d.ip->length, strerror(errno));
+
+                  GENERAL_NAME_free(name);
+                  sk_GENERAL_NAME_free(sk_alt_names);
+                  X509_free(cert);
+                  return FALSE;
+                }
+#endif /* PR_USE_IPV6 */ 
+
+              } else {
+                /* Malformed IP address SubjectAltName extension. */
+                tls_log("unexpected client cert iPAddress value length (%d)",
+                  name->d.ip->length);
+
+                GENERAL_NAME_free(name);
+                sk_GENERAL_NAME_free(sk_alt_names);
+                X509_free(cert);
+                return FALSE;
+              }
+
               have_ipaddr_ext = TRUE;
 
-              if (strcmp(cert_ipstr, pr_netaddr_get_ipstr(conn->remote_addr))) {
+              if (reqd_ipv6) {
+                pr_netaddr_enable_ipv6();
+              }
+
+              cert_addr = pr_netaddr_get_addr(session.pool, cert_ipstr, NULL);
+              if (cert_addr == NULL) {
+                if (reqd_ipv6) {
+                  pr_netaddr_disable_ipv6();
+                }
+
+                tls_log("unable to resolve client cert iPAddress value "
+                  "'%s' to address: %s", cert_ipstr, strerror(errno));
+
+                GENERAL_NAME_free(name);
+                sk_GENERAL_NAME_free(sk_alt_names);
+                X509_free(cert);
+                return FALSE;
+              }
+
+              res = pr_netaddr_cmp(cert_addr, conn->remote_addr);
+
+              if (reqd_ipv6) {
+                pr_netaddr_disable_ipv6();
+              }
+
+              if (res != 0) {
                 tls_log("client cert iPAddress value '%s' != client IP '%s'",
                   cert_ipstr, pr_netaddr_get_ipstr(conn->remote_addr));
 
@@ -1189,7 +1258,8 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
                 return FALSE;
               }
 
-              tls_log("%s", "client cert iPAddress matches client IP");
+              tls_log("%s", "client cert iPAddress matches client IP '%s'",
+                pr_netaddr_get_ipstr(conn->remote_addr));
               ok = TRUE;
               continue;
             }
