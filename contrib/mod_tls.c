@@ -1169,7 +1169,7 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
           case GEN_IPADD:
             if (tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) {
               pr_netaddr_t *cert_addr;
-              unsigned char *cert_data, reqd_ipv6 = FALSE;
+              unsigned char *cert_data, ipv6_reqd = FALSE;
               char *rep = NULL;
               int res;
 #ifdef PR_USE_IPV6
@@ -1193,7 +1193,7 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
                  * scope of these checks, if necessary.
                  */
                 if (pr_netaddr_use_ipv6() == FALSE) {
-                  reqd_ipv6 = TRUE;
+                  ipv6_reqd = TRUE;
                 }
 
                 rep = pr_inet_ntop(AF_INET6, cert_data, cert_ipstr,
@@ -1223,13 +1223,13 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
 
               have_ipaddr_ext = TRUE;
 
-              if (reqd_ipv6) {
+              if (ipv6_reqd) {
                 pr_netaddr_enable_ipv6();
               }
 
               cert_addr = pr_netaddr_get_addr(session.pool, cert_ipstr, NULL);
               if (cert_addr == NULL) {
-                if (reqd_ipv6) {
+                if (ipv6_reqd) {
                   pr_netaddr_disable_ipv6();
                 }
 
@@ -1244,7 +1244,7 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
 
               res = pr_netaddr_cmp(cert_addr, conn->remote_addr);
 
-              if (reqd_ipv6) {
+              if (ipv6_reqd) {
                 pr_netaddr_disable_ipv6();
               }
 
