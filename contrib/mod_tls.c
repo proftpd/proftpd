@@ -2141,6 +2141,12 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
 }
 
 static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
+
+  /* Guard against a timer firing as the SSL session is being torn down. */
+  if (ctrl_ssl == NULL) {
+    return 0;
+  }
+
   if (tls_flags & TLS_SESS_ON_CTRL) {
 
     if (TRUE
