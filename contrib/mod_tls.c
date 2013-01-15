@@ -2380,9 +2380,6 @@ static int tls_init_ctx(void) {
   SSL_CTX_set_options(ssl_ctx, ssl_opts);
 
   /* Set up session caching. */
-  SSL_CTX_set_session_id_context(ssl_ctx, (unsigned char *) MOD_TLS_VERSION,
-    strlen(MOD_TLS_VERSION));
-
   c = find_config(main_server->conf, CONF_PARAM, "TLSSessionCache", FALSE);
   if (c) {
     const char *provider;
