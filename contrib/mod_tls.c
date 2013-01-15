@@ -1258,7 +1258,7 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
                 return FALSE;
               }
 
-              tls_log("%s", "client cert iPAddress matches client IP '%s'",
+              tls_log("client cert iPAddress matches client IP '%s'",
                 pr_netaddr_get_ipstr(conn->remote_addr));
               ok = TRUE;
               continue;
