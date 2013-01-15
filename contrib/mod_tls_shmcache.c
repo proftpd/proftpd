@@ -2,7 +2,7 @@
  * ProFTPD: mod_tls_shmcache -- a module which provides a shared SSL session
  *                              cache using SysV shared memory
  *
- * Copyright (c) 2009-2011 TJ Saunders
+ * Copyright (c) 2009-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_shmcache.c,v 1.11 2011-05-23 20:56:40 castaglia Exp $
+ *  $Id: mod_tls_shmcache.c,v 1.12 2013-01-15 21:57:04 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -139,7 +139,7 @@ static pr_fh_t *shmcache_fh = NULL;
 
 static array_header *shmcache_sess_list = NULL;
 
-static const char *trace_channel = "tls_shmcache";
+static const char *trace_channel = "tls.shmcache";
 
 static int shmcache_close(tls_sess_cache_t *);
 
@@ -740,7 +740,10 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
 }
 
 static int shmcache_close(tls_sess_cache_t *cache) {
-  pr_trace_msg(trace_channel, 9, "closing shmcache cache %p", cache);
+
+  if (cache != NULL) {
+    pr_trace_msg(trace_channel, 9, "closing shmcache cache %p", cache);
+  }
 
   if (cache != NULL &&
       cache->cache_pool != NULL) {
@@ -1268,7 +1271,9 @@ static int shmcache_remove(tls_sess_cache_t *cache) {
     return 0;
   }
 
-  pr_trace_msg(trace_channel, 9, "removing shmcache cache %p", cache); 
+  if (cache != NULL) {
+    pr_trace_msg(trace_channel, 9, "removing shmcache cache %p", cache); 
+  }
 
   cache_file = shmcache_fh->fh_path;
   (void) shmcache_close(cache);
