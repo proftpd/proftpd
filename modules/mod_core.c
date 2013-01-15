@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.442 2013-01-14 20:43:46 castaglia Exp $
+ * $Id: mod_core.c,v 1.443 2013-01-15 19:04:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2999,62 +2999,62 @@ MODRET add_limit(cmd_rec *cmd) {
 
   elts = (char **) list->elts;
   for (i = 0; i < list->nelts; i++) {
-    if (strcasecmp(elts[i], "CDUP") == 0) {
+    if (strcasecmp(elts[i], C_CDUP) == 0) {
       have_cdup = TRUE;
 
-    } else if (strcasecmp(elts[i], "XCUP") == 0) {
+    } else if (strcasecmp(elts[i], C_XCUP) == 0) {
       have_xcup = TRUE; 
 
-    } else if (strcasecmp(elts[i], "MKD") == 0) {
+    } else if (strcasecmp(elts[i], C_MKD) == 0) {
       have_mkd = TRUE;
 
-    } else if (strcasecmp(elts[i], "XMKD") == 0) {
+    } else if (strcasecmp(elts[i], C_XMKD) == 0) {
       have_xmkd = TRUE;
 
-    } else if (strcasecmp(elts[i], "PWD") == 0) {
+    } else if (strcasecmp(elts[i], C_PWD) == 0) {
       have_pwd = TRUE;
 
-    } else if (strcasecmp(elts[i], "XPWD") == 0) {
+    } else if (strcasecmp(elts[i], C_XPWD) == 0) {
       have_xpwd = TRUE;
 
-    } else if (strcasecmp(elts[i], "RMD") == 0) {
+    } else if (strcasecmp(elts[i], C_RMD) == 0) {
       have_rmd = TRUE;
 
-    } else if (strcasecmp(elts[i], "XRMD") == 0) {
+    } else if (strcasecmp(elts[i], C_XRMD) == 0) {
       have_xrmd = TRUE;
     }
   }
 
   if (have_cdup && !have_xcup) {
-    *((char **) push_array(list)) = pstrdup(c->pool, "XCUP");
+    *((char **) push_array(list)) = pstrdup(c->pool, C_XCUP);
   }
 
   if (!have_cdup && have_xcup) {
-    *((char **) push_array(list)) = pstrdup(c->pool, "CDUP");
+    *((char **) push_array(list)) = pstrdup(c->pool, C_CDUP);
   }
 
   if (have_mkd && !have_xmkd) {
-    *((char **) push_array(list)) = pstrdup(c->pool, "XMKD");
+    *((char **) push_array(list)) = pstrdup(c->pool, C_XMKD);
   }
 
   if (!have_mkd && have_xmkd) {
-    *((char **) push_array(list)) = pstrdup(c->pool, "MKD");
+    *((char **) push_array(list)) = pstrdup(c->pool, C_MKD);
   }
 
   if (have_pwd && !have_xpwd) {
-    *((char **) push_array(list)) = pstrdup(c->pool, "XPWD");
+    *((char **) push_array(list)) = pstrdup(c->pool, C_XPWD);
   }
 
   if (!have_pwd && have_xpwd) {
-    *((char **) push_array(list)) = pstrdup(c->pool, "PWD");
+    *((char **) push_array(list)) = pstrdup(c->pool, C_PWD);
   }
 
   if (have_rmd && !have_xrmd) {
-    *((char **) push_array(list)) = pstrdup(c->pool, "XRMD");
+    *((char **) push_array(list)) = pstrdup(c->pool, C_XRMD);
   }
 
   if (!have_rmd && have_xrmd) {
-    *((char **) push_array(list)) = pstrdup(c->pool, "RMD");
+    *((char **) push_array(list)) = pstrdup(c->pool, C_RMD);
   }
 
   c->argc = list->nelts;
