@@ -636,12 +636,17 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
   } else if (where & SSL_CB_HANDSHAKE_DONE) {
     if (ssl == ctrl_ssl) {
       if (tls_ctrl_need_init_handshake == FALSE) {
+        int reused;
+
         /* If this is an accepted renegotiation, log the possibly-changed
          * ciphersuite et al.
          */
-        tls_log("%s renegotiation accepted, using cipher %s (%d bits)",
+
+        reused = SSL_session_reused((SSL *) ssl);
+        tls_log("%s renegotiation accepted, using cipher %s (%d bits%s)",
           SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
-          SSL_get_cipher_bits(ssl, NULL));
+          SSL_get_cipher_bits(ssl, NULL),
+          reused > 0 ? ", resumed session" : "");
       }
 
       tls_ctrl_need_init_handshake = FALSE;
@@ -1170,7 +1175,7 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
             if (tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) {
               pr_netaddr_t *cert_addr;
               unsigned char *cert_data, ipv6_reqd = FALSE;
-              char *rep = NULL;
+              const char *rep = NULL;
               int res;
 #ifdef PR_USE_IPV6
               char cert_ipstr[INET6_ADDRSTRLEN + 1] = {'\0'};
@@ -3332,14 +3337,16 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       }
     }
 
-    tls_log("%s connection accepted, using cipher %s (%d bits)",
+    reused = SSL_session_reused(ssl);
+
+    tls_log("%s connection accepted, using cipher %s (%d bits%s)",
       SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
-      SSL_get_cipher_bits(ssl, NULL));
+      SSL_get_cipher_bits(ssl, NULL),
+      reused > 0 ? ", resumed session" : "");
 
     /* Setup the TLS environment variables, if requested. */
     tls_setup_environ(ssl);
 
-    reused = SSL_session_reused(ssl);
     if (reused > 0) {
       pr_log_writefile(tls_logfd, MOD_TLS_VERSION, "%s",
         "client reused previous SSL session for control connection");
@@ -8612,17 +8619,8 @@ static int tls_sess_init(void) {
    * cache sessions from all vhosts together, and we need to keep them
    * separate.
    */
-  SSL_CTX_set_session_id_context(ssl_ctx, (unsigned char *) main_server,
-    sizeof(main_server));
-
-  /* Update the session ID context to use.  This is important; it ensures
-   * that the session IDs for this particular vhost will differ from those
-   * for another vhost.  An external SSL session cache will possibly
-   * cache sessions from all vhosts together, and we need to keep them
-   * separate.
-   */
-  SSL_CTX_set_session_id_context(ssl_ctx, (unsigned char *) main_server,
-    sizeof(main_server));
+  SSL_CTX_set_session_id_context(ssl_ctx,
+    (unsigned char *) &(main_server->sid), sizeof(main_server->sid));
 
   /* Install our data channel NetIO handlers. */
   tls_netio_install_data();
