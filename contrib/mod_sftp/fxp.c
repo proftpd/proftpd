@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.174 2013-01-15 19:55:51 castaglia Exp $
+ * $Id: fxp.c,v 1.175 2013-01-16 21:50:18 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -8434,7 +8434,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
   path = cmd->arg;
 
   cmd2 = fxp_cmd_alloc(fxp_pool, C_DELE, path);
-  if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) == -1) {
+  if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -8446,8 +8446,11 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
+    pr_response_add_err(R_550, "%s: %s", path, strerror(EPERM));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
@@ -8464,7 +8467,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
   cmd_name = cmd->argv[0];
   pr_cmd_set_name(cmd, C_DELE);
 
-  if (!dir_check(fxp->pool, cmd, G_WRITE, path, NULL)) {
+  if (!dir_check_canon(fxp->pool, cmd, G_WRITE, path, NULL)) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     pr_cmd_set_name(cmd, cmd_name);
@@ -8478,8 +8481,11 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
+    pr_response_add_err(R_550, "%s: %s", path, strerror(EPERM));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
@@ -8493,6 +8499,8 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
   pr_cmd_set_name(cmd, cmd_name);
 
   if (fxp_path_pass_regex_filters(fxp->pool, "REMOVE", path) < 0) {
+    int xerrno = errno;
+
     status_code = fxp_errno2status(errno, NULL);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
@@ -8501,8 +8509,11 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
@@ -8529,8 +8540,11 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
       NULL);
 
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
@@ -8557,8 +8571,11 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
       NULL);
 
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
@@ -8584,8 +8601,11 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
       NULL);
 
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
@@ -8608,8 +8628,10 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error unlinking '%s': %s", real_path, strerror(xerrno));
 
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
 
     errno = xerrno;
 
@@ -8624,8 +8646,11 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
       'b', 'd', 'r', session.user, 'c', "_");
 
+    pr_response_add(R_250, "%s command successful", cmd2->argv[0]);
     pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
+    pr_response_clear(&resp_list);
+
     errno = 0;
   }
 
