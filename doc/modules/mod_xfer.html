@@ -1,4 +1,4 @@
-<!-- $Id: mod_xfer.html,v 1.7 2013-01-16 07:20:01 castaglia Exp $ -->
+<!-- $Id: mod_xfer.html,v 1.8 2013-01-16 17:25:13 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_xfer.html,v $ -->
 
 <html>
@@ -132,6 +132,15 @@ helps prevent <i>1)</i> incomplete uploads and <i>2)</i> files being used
 while they are still being uploaded.
 
 <p>
+Note that if the temporary file name is already in use (<i>e.g.</i>, a server
+crash during upload), it will prevent the file from being uploaded.
+
+<p>
+The FTP <code>REST</code> command is automatically blocked when
+<code>HiddenStores</code> is enabled, with the server returning a 501 error
+code to the client.
+
+<p>
 In <code>proftpd-1.3.3rc2</code> and later, the ".in." prefix can be
 customised via the <code>HiddenStores</code> directive, <i>e.g.</i>:
 <pre>
@@ -140,13 +149,34 @@ customised via the <code>HiddenStores</code> directive, <i>e.g.</i>:
 </pre>
 
 <p>
-Note: if the temporary file name is already in use (<i>e.g.</i>, a server
-crash during upload), it will prevent the file from being uploaded.
+In <code>proftpd-1.3.5rc2</code> and later, the "." suffix can be customised
+using the <code>HiddenStores</code> directive as well, <i>e.g.</i>:
+<pre>
+  # Use a different prefix <b>and</b> suffix for HiddenStores
+  HiddenStores incoming- .lock
+</pre>
+You can also use this capability to configure <em>no</em> prefix, and just
+a suffix:
+<pre>
+  # Use an empty string as the prefix, and a suffix of ".filepart".
+  HiddenStores "" ".filepart"
+</pre>
+<b>Note</b> that in order to specify the suffix, you <b>must</b> specify a
+prefix as well.
 
 <p>
-The FTP <code>REST</code> command is automatically blocked when
-<code>HiddenStores</code> is enabled, with the server returning a 501 error
-code to the client.
+<b><i>Discussion</i></b><br>
+When would you want or need to specify different prefix and suffix values
+for <code>HiddenStores</code>?  You might need this when, for example, your
+<code>proftpd</code> writes files to an NFS-mounted filesystem.  Another
+machine mounts that same filesystem remotely using a CIFS client (<i>e.g.</i>
+a NetApp machine).  The trailing "." suffix causes the CIFS client to list
+the temporary filenames different (<i>e.g.</i> in a Windows 8.3 file format
+style): "in.test." becomes "INTES~1".  This view confuses users/admins.
+
+<p>
+By changing the default <code>HiddenStores</code> suffix, then, that modified
+CIFS client filename view can be avoided.
 
 <p>
 See also: <a href="#AllowStoreRestart"><code>AllowStoreRestart</code></a>,
@@ -401,7 +431,7 @@ The <code>mod_xfer</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-01-16 07:20:01 $</i><br>
+Last Updated: <i>$Date: 2013-01-16 17:25:13 $</i><br>
 
 <br><hr>
 
