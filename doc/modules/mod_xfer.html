@@ -1,4 +1,4 @@
-<!-- $Id: mod_xfer.html,v 1.6 2012-02-27 17:26:50 castaglia Exp $ -->
+<!-- $Id: mod_xfer.html,v 1.7 2013-01-16 07:20:01 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_xfer.html,v $ -->
 
 <html>
@@ -40,8 +40,122 @@ file transfers.
 
 <p>
 <hr>
+<h2><a name="AllowOverwrite">AllowOverwrite</a></h2>
+<strong>Syntax:</strong> AllowOverwrite <em>on|off</em><br>
+<strong>Default:</strong> <code>AllowOverwrite off</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
+<strong>Module:</strong> mod_xfer<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>AllowOverwrite</code> directive permits newly transfered files to
+overwrite existing files. By default, FTP clients <b>cannot</b> overwrite
+existing files.
+
+<p>
+<hr>
+<h2><a name="AllowRetrieveRestart">AllowRetrieveRestart</a></h2>
+<strong>Syntax:</strong> AllowRetrieveRestart <em>on|off</em><br>
+<strong>Default:</strong> <code>AllowRetrieveRestart on</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
+<strong>Module:</strong> mod_xfer<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>AllowRetrieveRestart</code> directive permits (or denies) clients
+from performing "restart" download (retrieve) file transfers via the FTP
+<code>REST</code> command. By default, restarted downloads are allowed, so
+that clients may resume interrupted file transfers at a later time without
+losing previously collected data.
+
+<p>
+See also: <a href="#AllowStoreRestart"><code>AllowStoreRestart</code></a>
+
+<p>
+<hr>
+<h2><a name="AllowStoreRestart">AllowStoreRestart</a></h2>
+<strong>Syntax:</strong> AllowStoreRestart <em>on|off</em><br>
+<strong>Default:</strong> <code>AllowStoreRestart on</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
+<strong>Module:</strong> mod_xfer<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>AllowStoreRestart</code> directive permits (or denies) clients from
+"restarting" interrupted upload (store) transfers. By default restarting (via
+the FTP <code>REST</code> command) is <b>not</b> permitted when uploading
+files to the server.  Care should be taken to disallow anonymous FTP
+"incoming" transfers to be restarted, as this will allow clients to corrupt or
+increase the size of previously stored files (even if not their own).
+
+<p>
+The FTP <code>REST</code> command is automatically blocked when
+<code>HiddenStores</code> is enabled, with the server returning a 501 error
+code to the client.
+
+<p> 
+See also: <a href="#AllowRetrieveRestart"><code>AllowRetrieveRestart</code></a>,
+<a href="#DeleteAbortedStores"><code>DeleteAbortedStore</code></a>,
+<a href="#HiddenStores"><code>HiddenStores</code></a>
+
+<p>
+<hr>
+<h2><a name="DeleteAbortedStores">DeleteAbortedStores</a></h2>
+<strong>Syntax:</strong> DeleteAbortedStores <em>on|off</em><br>
+<strong>Default:</strong> <code>DeleteAbortedStores off</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
+<strong>Module:</strong> mod_xfer<br>
+<strong>Compatibility:</strong> 1.2.0rc2 and later
+
+<p>
+The <code>DeleteAbortedStores</code> directive controls whether ProFTPD
+deletes partially uploaded files if the transfer is stopped via the
+FTP <code>ABOR</code> command (as opposed to a connection failure).
+
+<p>
+See also: <a href="#HiddenStores"><code>HiddenStores</code></a>
+
+<p>
+<hr>
+<h2><a name="HiddenStores">HiddenStores</a></h2>
+<strong>Syntax:</strong> HiddenStores <em>on|off|prefix</em><br>
+<strong>Default:</strong> <code>HiddenStores off</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code><br>
+<strong>Module:</strong> mod_xfer<br>
+<strong>Compatibility:</strong> 1.2.7rc1 and later
+
+<p>
+The <code>HiddenStores</code> directive enables two-step file uploads: files
+are uploaded as ".in.<em>filename</em>." and once the upload is complete,
+renamed to just <em>filename</em>.  This provides a degree of atomicity and
+helps prevent <i>1)</i> incomplete uploads and <i>2)</i> files being used
+while they are still being uploaded.
+
+<p>
+In <code>proftpd-1.3.3rc2</code> and later, the ".in." prefix can be
+customised via the <code>HiddenStores</code> directive, <i>e.g.</i>:
+<pre>
+  # Use a different prefix for HiddenStores
+  HiddenStores filepart-
+</pre>
+
+<p>
+Note: if the temporary file name is already in use (<i>e.g.</i>, a server
+crash during upload), it will prevent the file from being uploaded.
+
+<p>
+The FTP <code>REST</code> command is automatically blocked when
+<code>HiddenStores</code> is enabled, with the server returning a 501 error
+code to the client.
+
+<p>
+See also: <a href="#AllowStoreRestart"><code>AllowStoreRestart</code></a>,
+<a href="#DeleteAbortedStores"><code>DeleteAbortedStores</code></a>
+
+<p>
+<hr>
 <h2><a name="MaxRetrieveFileSize">MaxRetrieveFileSize</a></h2>
-<strong>Syntax:</strong> MaxRetrieveFileSize <em>[number|"*" units ["user"|"group"|"class" expression]]</em>
+<strong>Syntax:</strong> MaxRetrieveFileSize <em>[number|"*" units ["user"|"group"|"class" expression]]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
 <strong>Module:</strong> mod_xfer<br>
@@ -73,7 +187,7 @@ found for the current user, then a limit with no expression (<i>i.e.</i> no
 
 <p>
 Examples:
-</pre>
+<pre>
   # Restrict downloads to only 1 gigabyte
   MaxRetrieveFileSize 1 Gb
 
@@ -89,7 +203,7 @@ See also: <a href="#MaxStoreFileSize"><code>MaxStoreFileSize</code></a>
 <p>
 <hr>
 <h2><a name="MaxStoreFileSize">MaxStoreFileSize</a></h2>
-<strong>Syntax:</strong> MaxStoreFileSize <em>[number|"*" units ["user"|"group"|"class" expression]]</em>
+<strong>Syntax:</strong> MaxStoreFileSize <em>[number|"*" units ["user"|"group"|"class" expression]]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
 <strong>Module:</strong> mod_xfer<br>
@@ -287,12 +401,12 @@ The <code>mod_xfer</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-02-27 17:26:50 $</i><br>
+Last Updated: <i>$Date: 2013-01-16 07:20:01 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2012 The ProFTPD Project<br>
+&copy; Copyright 2000-2013 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 
