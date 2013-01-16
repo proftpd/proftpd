@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.307 2012-12-26 23:18:59 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.308 2013-01-16 17:12:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -994,12 +994,13 @@ static int stor_complete(void) {
   return res;
 }
 
-static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix) {
+static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
+    char *suffix) {
   char *c = NULL, *hidden_path;
   int dotcount = 0, foundslash = 0, basenamestart = 0, maxlen;
 
   /* We have to also figure out the temporary hidden file name for receiving
-   * this transfer.  Length is +(N+1) due to prepended prefix and "." at end.
+   * this transfer.  Length is +(N+M) due to prepended prefix and suffix.
    */
 
   /* Figure out where the basename starts */
@@ -1017,8 +1018,9 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix) {
        * this the possible start of the basename.
        */
       if ((dotcount > 2) &&
-          !basenamestart)
+          !basenamestart) {
         basenamestart = ((unsigned long) c - (unsigned long) path) - dotcount;
+      }
 
     } else {
 
@@ -1026,8 +1028,9 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix) {
        * we found one since the last slash, remember this as the possible
        * start of the basename.
        */
-      if (!basenamestart)
+      if (!basenamestart) {
         basenamestart = ((unsigned long) c - (unsigned long) path) - dotcount;
+      }
     }
   }
 
@@ -1042,10 +1045,10 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix) {
     return -1;
   }
 
-  /* Add N+1 for the prefix and "." characters, plus one for a terminating
+  /* Add N+M for the prefix and suffix characters, plus one for a terminating
    * NUL.
    */
-  maxlen = strlen(path) + strlen(prefix) + 2;
+  maxlen = strlen(prefix) + strlen(path) + strlen(suffix) + 1;
 
   if (maxlen > PR_TUNABLE_PATH_MAX) {
     session.xfer.xfer_type = STOR_DEFAULT;
@@ -1067,7 +1070,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix) {
   if (!foundslash) {
 
     /* Simple local file name */
-    hidden_path = pstrcat(cmd->tmp_pool, prefix, path, ".", NULL);
+    hidden_path = pstrcat(cmd->tmp_pool, prefix, path, suffix, NULL);
 
     pr_log_pri(PR_LOG_DEBUG, "HiddenStore: local path, will rename %s to %s",
       hidden_path, path);
@@ -1079,7 +1082,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix) {
     hidden_path[basenamestart] = '\0';
 
     hidden_path = pstrcat(cmd->pool, hidden_path, prefix,
-      path + basenamestart, ".", NULL);
+      path + basenamestart, suffix, NULL);
 
     pr_log_pri(PR_LOG_DEBUG, "HiddenStore: complex path, will rename %s to %s",
       hidden_path, path);
@@ -1249,7 +1252,10 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   c = find_config(CURRENT_CONF, CONF_PARAM, "HiddenStores", FALSE);
   if (c &&
       *((int *) c->argv[0]) == TRUE) {
-    char *prefix = c->argv[1];
+    char *prefix, *suffix;
+
+    prefix = c->argv[1];
+    suffix = c->argv[2];
 
     /* If we're using HiddenStores, then REST won't work. */
     if (session.restart_pos) {
@@ -1260,7 +1266,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    /* APPE is not compatible with HiddenStores either (Bug#3598) */
+    /* APPE is not compatible with HiddenStores either (Bug#3598). */
     if (session.xfer.xfer_type == STOR_APPEND) {
       pr_log_debug(DEBUG9, "HiddenStore in effect, refusing APPE upload");
       pr_response_add_err(R_550,
@@ -1269,7 +1275,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    if (get_hidden_store_path(cmd, path, prefix) < 0) {
+    if (get_hidden_store_path(cmd, path, prefix, suffix) < 0) {
       return PR_ERROR(cmd);
     }
   }
@@ -2552,13 +2558,13 @@ MODRET set_displayfiletransfer(cmd_rec *cmd) {
 }
 
 MODRET set_hiddenstores(cmd_rec *cmd) {
-  int bool = -1, add_periods = TRUE;
+  int enabled = -1, add_periods = TRUE;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
-  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
 
   /* Handle the case where the admin may, for some reason, want a custom
    * prefix which could also be construed to be a Boolean value by
@@ -2568,13 +2574,20 @@ MODRET set_hiddenstores(cmd_rec *cmd) {
   if ((cmd->argv[1])[0] == '.' &&
       (cmd->argv[1])[strlen(cmd->argv[1])-1] == '.') {
     add_periods = FALSE;
-    bool = -1;
+    enabled = -1;
 
   } else {
-    bool = get_boolean(cmd, 1);
+    enabled = get_boolean(cmd, 1);
   }
 
-  if (bool == -1) {
+  /* If a suffix has been configured as well, assume that we do NOT
+   * automatically want periods.
+   */
+  if (cmd->argc == 3) {
+    add_periods = FALSE;
+  }
+
+  if (enabled == -1) {
     /* If the parameter is not a Boolean parameter, assume that the
      * admin is configuring a specific prefix to use instead of the
      * default ".in.".
@@ -2591,13 +2604,23 @@ MODRET set_hiddenstores(cmd_rec *cmd) {
       c->argv[1] = pstrdup(c->pool, cmd->argv[1]);
     }
 
+    if (cmd->argc == 3) {
+      c->argv[2] = pstrdup(c->pool, cmd->argv[2]);
+
+    } else {
+      c->argv[2] = pstrdup(c->pool, ".");
+    }
+
   } else {
     c->argv[0] = pcalloc(c->pool, sizeof(int));
-    *((int *) c->argv[0]) = bool;
+    *((int *) c->argv[0]) = enabled;
 
-    if (bool) {
+    if (enabled) {
       /* The default HiddenStore prefix */
       c->argv[1] = pstrdup(c->pool, ".in.");
+
+      /* The default HiddenStores suffix. */
+      c->argv[2] = pstrdup(c->pool, ".");
     }
   }
 
