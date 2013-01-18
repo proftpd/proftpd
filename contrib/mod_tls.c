@@ -2381,7 +2381,7 @@ static int tls_init_ctx(void) {
 
   /* Set up session caching. */
   c = find_config(main_server->conf, CONF_PARAM, "TLSSessionCache", FALSE);
-  if (c) {
+  if (c != NULL) {
     const char *provider;
     long timeout;
 
@@ -2389,60 +2389,102 @@ static int tls_init_ctx(void) {
     provider = c->argv[0];
     timeout = *((long *) c->argv[2]);
 
-    if (strncmp(provider, "internal", 9) != 0) {
-      tls_sess_cache = tls_sess_cache_get_cache(provider);
+    if (provider != NULL) {
+      if (strncmp(provider, "internal", 9) != 0) {
+        tls_sess_cache = tls_sess_cache_get_cache(provider);
 
-      pr_log_debug(DEBUG8, MOD_TLS_VERSION ": opening '%s' TLSSessionCache",
-        provider);
+        pr_log_debug(DEBUG8, MOD_TLS_VERSION ": opening '%s' TLSSessionCache",
+          provider);
 
-      if (tls_sess_cache_open(c->argv[1], timeout) == 0) {
-        long cache_mode, cache_flags;
+        if (tls_sess_cache_open(c->argv[1], timeout) == 0) {
+          long cache_mode, cache_flags;
 
-        cache_mode = SSL_SESS_CACHE_SERVER;
+          cache_mode = SSL_SESS_CACHE_SERVER;
 
-        /* We could force OpenSSL to use ONLY the configured external session
-         * caching mechanism by using the SSL_SESS_CACHE_NO_INTERNAL mode flag
-         * (available in OpenSSL 0.9.6h and later).
-         *
-         * However, consider the case where the serialized session data is
-         * too large for the external cache, or the external cache refuses
-         * to add the session for some reason.  If OpenSSL is using only our
-         * external cache, that session is lost (which could cause problems
-         * e.g. for later protected data transfers, which require that the
-         * SSL session from the control connection be reused).
-         *
-         * If the external cache can be reasonably sure that session data
-         * can be added, then the NO_INTERNAL flag is a good idea; it keeps
-         * OpenSSL from allocating more memory than necessary.  Having both
-         * an internal and an external cache of the same data is a bit
-         * unresourceful.  Thus we ask the external cache mechanism what
-         * additional cache mode flags to use.
-         */
+          /* We could force OpenSSL to use ONLY the configured external session
+           * caching mechanism by using the SSL_SESS_CACHE_NO_INTERNAL mode flag
+           * (available in OpenSSL 0.9.6h and later).
+           *
+           * However, consider the case where the serialized session data is
+           * too large for the external cache, or the external cache refuses
+           * to add the session for some reason.  If OpenSSL is using only our
+           * external cache, that session is lost (which could cause problems
+           * e.g. for later protected data transfers, which require that the
+           * SSL session from the control connection be reused).
+           *
+           * If the external cache can be reasonably sure that session data
+           * can be added, then the NO_INTERNAL flag is a good idea; it keeps
+           * OpenSSL from allocating more memory than necessary.  Having both
+           * an internal and an external cache of the same data is a bit
+           * unresourceful.  Thus we ask the external cache mechanism what
+           * additional cache mode flags to use.
+           */
 
-        cache_flags = tls_sess_cache_get_cache_mode();
-        cache_mode |= cache_flags;
+          cache_flags = tls_sess_cache_get_cache_mode();
+          cache_mode |= cache_flags;
 
-        SSL_CTX_set_session_cache_mode(ssl_ctx, cache_mode);
-        SSL_CTX_set_timeout(ssl_ctx, timeout);
+          SSL_CTX_set_session_cache_mode(ssl_ctx, cache_mode);
+          SSL_CTX_set_timeout(ssl_ctx, timeout);
 
-        SSL_CTX_sess_set_new_cb(ssl_ctx, tls_sess_cache_add_sess_cb);
-        SSL_CTX_sess_set_get_cb(ssl_ctx, tls_sess_cache_get_sess_cb);
-        SSL_CTX_sess_set_remove_cb(ssl_ctx, tls_sess_cache_delete_sess_cb);
+          SSL_CTX_sess_set_new_cb(ssl_ctx, tls_sess_cache_add_sess_cb);
+          SSL_CTX_sess_set_get_cb(ssl_ctx, tls_sess_cache_get_sess_cb);
+          SSL_CTX_sess_set_remove_cb(ssl_ctx, tls_sess_cache_delete_sess_cb);
+
+        } else {
+          pr_log_debug(DEBUG1, MOD_TLS_VERSION
+            ": error opening '%s' TLSSessionCache: %s", provider,
+            strerror(errno));
+
+          /* Default to using OpenSSL's own internal session caching. */
+          SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
+        }
 
       } else {
-        pr_log_debug(DEBUG1, MOD_TLS_VERSION
-          ": error opening '%s' TLSSessionCache: %s", provider,
-          strerror(errno));
-
         /* Default to using OpenSSL's own internal session caching. */
         SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
+        SSL_CTX_set_timeout(ssl_ctx, timeout);
       }
 
     } else {
-      /* Default to using OpenSSL's own internal session caching. */
-      SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
-      SSL_CTX_set_timeout(ssl_ctx, timeout);
+      /* SSL session caching has been explicitly turned off. */
+
+      pr_log_debug(DEBUG3, MOD_TLS_VERSION
+        ": TLSSessionCache off, disabling SSL session caching and setting "
+        "NoSessionReuseRequired TLSOption");
+
+      SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_OFF);
+
+      /* Make sure we automatically relax the "SSL session reuse required
+       * for data connections" requirement; to enforce such a requirement
+       * SSL session caching MUST be enabled.  So if session caching has been
+       * explicitly disabled, relax that policy as well.
+       */
+      tls_opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;
     }
+
+  } else {
+    long timeout = 0;
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+    /* If we support renegotations, then make the cache lifetime be 10%
+     * longer than the control connection renegotiation timer.
+     */
+    timeout = 15840;
+
+#else
+    /* If we are not supporting reneogtiations because the OpenSSL version
+     * is too old, then set the default cache lifetime to 30 minutes.
+     */
+    timeout = 1800;
+#endif /* OpenSSL older than 0.9.7. */
+
+    /* Make sure that we enable OpenSSL internal caching, AND that the
+     * cache timeout is longer than the default control channel
+     * renegotiation.
+     */
+
+    SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
+    SSL_CTX_set_timeout(ssl_ctx, timeout);
   }
 
   SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
@@ -7735,11 +7777,12 @@ MODRET set_tlsservercipherpreference(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: TLSSessionCache type:/info [timeout] */
+/* usage: TLSSessionCache "off"|type:/info [timeout] */
 MODRET set_tlssessioncache(cmd_rec *cmd) {
-  char *provider, *info, *ptr;
+  char *provider = NULL, *info = NULL;
   config_rec *c;
   long timeout = -1;
+  int enabled = -1;
 
   if (cmd->argc < 2 ||
       cmd->argc > 3) {
@@ -7748,26 +7791,32 @@ MODRET set_tlssessioncache(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT);
 
-  /* Separate the type/info parameter into pieces. */
-  ptr = strchr(cmd->argv[1], ':');
-  if (ptr == NULL) {
-    CONF_ERROR(cmd, "badly formatted parameter");
-  }
+  /* Has session caching been explicitly turned off? */
+  enabled = get_boolean(cmd, 1);
+  if (enabled != FALSE) {
+    char *ptr;
 
-  *ptr = '\0';
-  provider = cmd->argv[1];
-  info = ptr + 1;
+    /* Separate the type/info parameter into pieces. */
+    ptr = strchr(cmd->argv[1], ':');
+    if (ptr == NULL) {
+      CONF_ERROR(cmd, "badly formatted parameter");
+    }
 
-  /* Verify that the requested cache type has been registered. */
-  if (strncmp(provider, "internal", 9) != 0) {
-    if (tls_sess_cache_get_cache(provider) == NULL) {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "session cache type '",
+    *ptr = '\0';
+    provider = cmd->argv[1];
+    info = ptr + 1;
+
+    /* Verify that the requested cache type has been registered. */
+    if (strncmp(provider, "internal", 9) != 0) {
+      if (tls_sess_cache_get_cache(provider) == NULL) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "session cache type '",
         provider, "' not available", NULL));
+      }
     }
   }
 
   if (cmd->argc == 3) {
-    ptr = NULL;
+    char *ptr = NULL;
    
     timeout = strtol(cmd->argv[2], &ptr, 10);
     if (ptr && *ptr) {
@@ -7785,8 +7834,14 @@ MODRET set_tlssessioncache(cmd_rec *cmd) {
   }
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
-  c->argv[0] = pstrdup(c->pool, provider);
-  c->argv[1] = pstrdup(c->pool, info);
+  if (provider != NULL) {
+    c->argv[0] = pstrdup(c->pool, provider);
+  }
+
+  if (info != NULL) {
+    c->argv[1] = pstrdup(c->pool, info);
+  }
+
   c->argv[2] = palloc(c->pool, sizeof(long));
   *((long *) c->argv[2]) = timeout;
 
