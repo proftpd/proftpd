@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2012 The ProFTPD Project team
+ * Copyright (c) 2003-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.18 2012-09-05 16:40:58 castaglia Exp $
+ * $Id: mkhome.c,v 1.19 2013-01-18 23:35:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -93,7 +93,7 @@ static int create_path(pool *p, const char *path, const char *user,
     return -1;
   }
 
-  pr_event_generate("core.create-home", user);
+  pr_event_generate("core.creating-home", user);
 
   /* The special-case values of -1 for dir UID/GID mean that the destination
    * UID/GID should be used for the parent directories.
@@ -131,6 +131,8 @@ static int create_path(pool *p, const char *path, const char *user,
 
     pr_signals_handle();
   }
+
+  pr_event_generate("core.created-home", user);
 
   pr_trace_msg(trace_channel, 5, "home directory '%s' created", path);
   pr_log_debug(DEBUG3, "home directory '%s' created", path);
