@@ -25338,7 +25338,7 @@ done
 
 
 
-for ac_header in sys/statvfs.h sys/un.h sys/vfs.h sys/select.h termios.h
+for ac_header in sys/statfs.h sys/statvfs.h sys/un.h sys/vfs.h sys/select.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
@@ -25482,7 +25482,8 @@ done
 
 
 
-for ac_header in dirent.h ndir.h sys/ndir.h sys/dir.h vmsdir.h
+
+for ac_header in termios.h dirent.h ndir.h sys/ndir.h sys/dir.h vmsdir.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
@@ -34117,6 +34118,266 @@ if test $ac_cv_member_struct_sockaddr_in_sin_len = yes; then
 
 cat >>confdefs.h <<\_ACEOF
 #define SIN_LEN 1
+_ACEOF
+
+fi
+
+
+{ echo "$as_me:$LINENO: checking for struct statfs.f_fstypename" >&5
+echo $ECHO_N "checking for struct statfs.f_fstypename... $ECHO_C" >&6; }
+if test "${ac_cv_member_struct_statfs_f_fstypename+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
+    #if HAVE_SYS_PARAM_H
+    # include <sys/param.h>
+    #endif
+    #if HAVE_SYS_MOUNT_H
+    # include <sys/mount.h>
+    #endif
+    #if HAVE_SYS_VFS_H
+    # include <sys/vfs.h>
+    #endif
+
+
+int
+main ()
+{
+static struct statfs ac_aggr;
+if (ac_aggr.f_fstypename)
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_member_struct_statfs_f_fstypename=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
+    #if HAVE_SYS_PARAM_H
+    # include <sys/param.h>
+    #endif
+    #if HAVE_SYS_MOUNT_H
+    # include <sys/mount.h>
+    #endif
+    #if HAVE_SYS_VFS_H
+    # include <sys/vfs.h>
+    #endif
+
+
+int
+main ()
+{
+static struct statfs ac_aggr;
+if (sizeof ac_aggr.f_fstypename)
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_member_struct_statfs_f_fstypename=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_member_struct_statfs_f_fstypename=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_member_struct_statfs_f_fstypename" >&5
+echo "${ECHO_T}$ac_cv_member_struct_statfs_f_fstypename" >&6; }
+if test $ac_cv_member_struct_statfs_f_fstypename = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_STATFS_F_FSTYPENAME 1
+_ACEOF
+
+fi
+
+
+{ echo "$as_me:$LINENO: checking for struct statfs.f_type" >&5
+echo $ECHO_N "checking for struct statfs.f_type... $ECHO_C" >&6; }
+if test "${ac_cv_member_struct_statfs_f_type+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
+    #if HAVE_SYS_PARAM_H
+    # include <sys/param.h>
+    #endif
+    #if HAVE_SYS_MOUNT_H
+    # include <sys/mount.h>
+    #endif
+    #if HAVE_SYS_VFS_H
+    # include <sys/vfs.h>
+    #endif
+
+
+int
+main ()
+{
+static struct statfs ac_aggr;
+if (ac_aggr.f_type)
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_member_struct_statfs_f_type=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
+    #if HAVE_SYS_PARAM_H
+    # include <sys/param.h>
+    #endif
+    #if HAVE_SYS_MOUNT_H
+    # include <sys/mount.h>
+    #endif
+    #if HAVE_SYS_VFS_H
+    # include <sys/vfs.h>
+    #endif
+
+
+int
+main ()
+{
+static struct statfs ac_aggr;
+if (sizeof ac_aggr.f_type)
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_member_struct_statfs_f_type=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_member_struct_statfs_f_type=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_member_struct_statfs_f_type" >&5
+echo "${ECHO_T}$ac_cv_member_struct_statfs_f_type" >&6; }
+if test $ac_cv_member_struct_statfs_f_type = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_STATFS_F_TYPE 1
 _ACEOF
 
 fi
