@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2012 The ProFTPD Project team
+dnl Copyright (c) 2001-2013 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -1487,8 +1487,8 @@ AC_CHECK_HEADERS(netinet/ip.h,,,
 
 AC_CHECK_HEADERS(netinet/tcp.h arpa/inet.h libintl.h)
 AC_CHECK_HEADERS(sys/stat.h errno.h sys/termios.h sys/termio.h)
-AC_CHECK_HEADERS(sys/statvfs.h sys/un.h sys/vfs.h sys/select.h termios.h)
-AC_CHECK_HEADERS(dirent.h ndir.h sys/ndir.h sys/dir.h vmsdir.h)
+AC_CHECK_HEADERS(sys/statfs.h sys/statvfs.h sys/un.h sys/vfs.h sys/select.h)
+AC_CHECK_HEADERS(termios.h dirent.h ndir.h sys/ndir.h sys/dir.h vmsdir.h)
 AC_CHECK_HEADERS(ucred.h ucontext.h utime.h utmpx.h)
 AC_CHECK_HEADERS(regex.h)
 AC_CHECK_HEADER(syslog.h, have_syslog_h="yes",)
@@ -1836,6 +1836,41 @@ AC_CHECK_MEMBER(struct sockaddr_in.sin_len,
     #endif
     #if HAVE_NETINET_IN_H
     # include <netinet/in.h>
+    #endif
+  ])
+
+dnl NFS-related checks
+AC_CHECK_MEMBER(struct statfs.f_fstypename,
+  [AC_DEFINE(HAVE_STATFS_F_FSTYPENAME, 1, [Define if you have struct statfs.f_fstypename])],,
+  [
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
+    #if HAVE_SYS_PARAM_H
+    # include <sys/param.h>
+    #endif
+    #if HAVE_SYS_MOUNT_H
+    # include <sys/mount.h>
+    #endif
+    #if HAVE_SYS_VFS_H
+    # include <sys/vfs.h>
+    #endif
+  ])
+
+AC_CHECK_MEMBER(struct statfs.f_type,
+  [AC_DEFINE(HAVE_STATFS_F_TYPE, 1, [Define if you have struct statfs.f_type])],,
+  [
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
+    #if HAVE_SYS_PARAM_H
+    # include <sys/param.h>
+    #endif
+    #if HAVE_SYS_MOUNT_H
+    # include <sys/mount.h>
+    #endif
+    #if HAVE_SYS_VFS_H
+    # include <sys/vfs.h>
     #endif
   ])
 

@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.308 2013-01-16 17:12:40 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.309 2013-01-19 00:21:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1106,6 +1106,14 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
       strerror(errno));
   }
 
+  /* Only use the O_EXCL open(2) flag if the path is NOT on an NFS-mounted
+   * filesystem (see Bug#3874).
+   */
+  if (pr_fs_is_nfs(hidden_path) == TRUE) {
+    (void) pr_table_set(cmd->notes, "mod_xfer.store-hidden-nfs",
+      pstrdup(cmd->pool, "1"), 0);
+  }
+
   session.xfer.xfer_type = STOR_HIDDEN;
   return 0;
 }
@@ -1493,8 +1501,21 @@ MODRET xfer_stor(cmd_rec *cmd) {
   pr_fs_setcwd(pr_fs_getcwd());
 
   if (session.xfer.xfer_type == STOR_HIDDEN) {
-    stor_fh = pr_fsio_open(session.xfer.path_hidden,
-      O_WRONLY|(session.restart_pos ? 0 : O_CREAT|O_EXCL));
+    void *nfs;
+    int oflags;
+
+    oflags = O_WRONLY;
+
+    if (session.restart_pos == 0) {
+      oflags |= O_CREAT;
+    }
+
+    nfs = pr_table_get(cmd->notes, "mod_xfer.store-hidden-nfs", NULL);
+    if (nfs == NULL) {
+      oflags |= O_EXCL;
+    }
+
+    stor_fh = pr_fsio_open(session.xfer.path_hidden, oflags);
     if (stor_fh == NULL) {
       ferrno = errno;
 

@@ -471,6 +471,12 @@
 /* Define if you have the statfs function.  */
 #undef HAVE_STATFS
 
+/* Define if you have the struct statfs.f_fstypename member.  */
+#undef HAVE_STATFS_F_FSTYPENAME
+
+/* Define if you have the struct statfs.f_type member.  */
+#undef HAVE_STATFS_F_TYPE
+
 /* Define if you have the strchr function.  */
 #undef HAVE_STRCHR
 

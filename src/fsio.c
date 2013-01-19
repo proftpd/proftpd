@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.120 2013-01-15 15:57:18 castaglia Exp $
+ * $Id: fsio.c,v 1.121 2013-01-19 00:21:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -33,9 +33,17 @@
 
 #ifdef HAVE_SYS_STATVFS_H
 # include <sys/statvfs.h>
-#elif defined(HAVE_SYS_VFS_H)
+#endif
+
+#ifdef HAVE_SYS_VFS_H
 # include <sys/vfs.h>
-#elif defined(HAVE_SYS_MOUNT_H)
+#endif
+
+#ifdef HAVE_SYS_PARAM_H
+# include <sys/param.h>
+#endif
+
+#ifdef HAVE_SYS_MOUNT_H
 # include <sys/mount.h>
 #endif
 
@@ -4145,7 +4153,7 @@ static int fs_getsize(char *path, off_t *fs_size) {
     return -1;
   }
 
-  /* The getc_fs_size() function is only useful for 32-bit numbers;
+  /* The get_fs_size() function is only useful for 32-bit numbers;
    * if either of our two values are in datatypes larger than 4 bytes,
    * we'll use typecasting.
    */
@@ -4249,6 +4257,43 @@ off_t pr_fs_getsize(char *path) {
 
 int pr_fs_getsize2(char *path, off_t *fs_size) {
   return fs_getsize(path, fs_size);
+}
+
+int pr_fs_is_nfs(const char *path) {
+#ifdef HAVE_STATFS
+  struct statfs fs;
+  int res = FALSE;
+
+  pr_trace_msg(trace_channel, 18, "using statfs() on '%s'", path);
+  if (statfs(path, &fs) < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3, "statfs() error using '%s': %s",
+      path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+# if defined(HAVE_STATFS_F_FSTYPENAME)
+  if (strcasecmp(fs.f_fstypename, "nfs") == 0) {
+    res = TRUE;
+  }
+# elif defined(HAVE_STATFS_F_TYPE)
+#  ifdef NFS_SUPER_MAGIC
+  /* Probably a Linux system. */
+  if (fs.f_type == NFS_SUPER_MAGIC) {
+    res = TRUE;
+  }
+#  endif /* No NFS_SUPER_MAGIC */
+# endif /* No HAVE_STATFS_F_FSTYPENAME or HAVE_STATFS_F_TYPE */
+
+  return res;
+
+#else
+  errno = ENOSYS;
+  return -1;
+#endif /* HAVE_STATFS */
 }
 
 int pr_fsio_puts(const char *buf, pr_fh_t *fh) {
