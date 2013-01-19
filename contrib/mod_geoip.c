@@ -26,7 +26,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  * --- DO NOT DELETE BELOW THIS LINE ----
- * $Id: mod_geoip.c,v 1.3 2013-01-07 22:55:44 castaglia Exp $
+ * $Id: mod_geoip.c,v 1.4 2013-01-19 18:20:59 castaglia Exp $
  * $Libraries: -lGeoIP$
  */
 
@@ -1256,13 +1256,13 @@ static int geoip_sess_init(void) {
 
   switch (geoip_policy) {
     case GEOIP_POLICY_ALLOW_DENY:
-      (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+      pr_trace_msg(trace_channel, 8,
         "using policy of allowing connections unless rejected by "
         "GeoIPDenyFilters");
       break;
 
     case GEOIP_POLICY_DENY_ALLOW:
-      (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+      pr_trace_msg(trace_channel, 8,
         "using policy of rejecting connections unless allowed by "
         "GeoIPAllowFilters");
       break;
