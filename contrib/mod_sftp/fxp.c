@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.176 2013-01-19 00:21:00 castaglia Exp $
+ * $Id: fxp.c,v 1.177 2013-01-21 18:28:11 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -6810,7 +6810,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       hiddenstore_path = pr_table_get(cmd2->notes,
         "mod_xfer.store-hidden-path", NULL);
 
-      nfs = pr_table_get(cmd->notes, "mod_xfer.store-hidden-nfs", NULL);
+      nfs = pr_table_get(cmd2->notes, "mod_xfer.store-hidden-nfs", NULL);
       if (nfs == NULL) {
         open_flags |= O_EXCL;
       }
