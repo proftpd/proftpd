@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
  *
- * Copyright (c) 2001-2012 TJ Saunders
+ * Copyright (c) 2001-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.84 2012-12-27 22:31:29 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.85 2013-01-21 06:43:31 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -1407,6 +1407,10 @@ static int quotatab_fsio_write(pr_fh_t *fh, int fd, const char *buf,
   if (res < 0)
     return res;
 
+  if (have_quota_update == 0) {
+    return res;
+  }
+
   /* Check to see if we've exceeded our upload limit.  mod_xfer will
    * have called pr_data_xfer(), which will have updated
    * session.xfer.total_bytes, before calling pr_fsio_write(), so
@@ -1833,10 +1837,13 @@ MODRET quotatab_pre_appe(cmd_rec *cmd) {
   have_err_response = FALSE;
 
   /* Sanity check */
-  if (!use_quotas)
+  if (!use_quotas) {
     return PR_DECLINED(cmd);
+  }
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
+    have_quota_update = 0;
+
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
@@ -2128,10 +2135,13 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
   have_err_response = FALSE;
 
   /* Sanity check */
-  if (!use_quotas)
+  if (!use_quotas) {
     return PR_DECLINED(cmd);
+  }
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->argv[1])) {
+    have_quota_update = 0;
+
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->argv[1], quota_exclude_filter);
     return PR_DECLINED(cmd);
@@ -3388,10 +3398,13 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
   have_err_response = FALSE;
 
   /* Sanity check */
-  if (!use_quotas)
+  if (!use_quotas) {
     return PR_DECLINED(cmd);
+  }
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
+    have_quota_update = 0;
+
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1483 2013-01-19 00:21:00 castaglia Exp $
+$Id: NEWS,v 1.1484 2013-01-21 06:43:31 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -33,6 +33,8 @@ CVS
 - Bug 3869 - Use longer SSL session cache expiration by default.
 - Bug 3874 - Use of O_EXCL flag on HiddenStores files might break for NFS
   filesystems.
+- Bug 3878 - QuotaExcludeFilter not honored for uploads when 'hard' limits are
+  used.
 
 1.3.5rc1 - Released 04-Jan-2013
 --------------------------------
