@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.309 2013-01-19 00:21:00 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.310 2013-01-21 22:05:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1062,9 +1062,11 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
   }
 
   if (pr_table_add(cmd->notes, "mod_xfer.store-hidden-path", NULL, 0) < 0) {
-    pr_log_pri(PR_LOG_NOTICE,
-      "notice: error adding 'mod_xfer.store-hidden-path': %s",
-      strerror(errno));
+    if (errno != EEXIST) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "notice: error adding 'mod_xfer.store-hidden-path': %s",
+        strerror(errno));
+    }
   }
 
   if (!foundslash) {
@@ -1242,9 +1244,11 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
     if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
         pstrdup(cmd->pool, "true"), 0) < 0) {
-      pr_log_pri(PR_LOG_NOTICE,
-        "notice: error adding 'mod_xfer.file-modified' note: %s",
-        strerror(errno));
+      if (errno != EEXIST) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "notice: error adding 'mod_xfer.file-modified' note: %s",
+          strerror(errno));
+      }
     }
   }
 
@@ -1957,9 +1961,12 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
   /* Otherwise everthing is good */
   if (pr_table_add(cmd->notes, "mod_xfer.retr-path",
-      pstrdup(cmd->pool, dir), 0) < 0)
-    pr_log_pri(PR_LOG_NOTICE, "notice: error adding 'mod_xfer.retr-path': %s",
-      strerror(errno));
+      pstrdup(cmd->pool, dir), 0) < 0) {
+    if (errno != EEXIST) {
+      pr_log_pri(PR_LOG_NOTICE, "notice: error adding 'mod_xfer.retr-path': %s",
+        strerror(errno));
+    }
+  }
 
   (void) xfer_prio_adjust();
   return PR_HANDLED(cmd);
