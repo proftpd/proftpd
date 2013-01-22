@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.178 2013-01-22 06:44:41 castaglia Exp $
+ * $Id: fxp.c,v 1.179 2013-01-22 15:20:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2745,7 +2745,7 @@ static struct fxp_packet *fxp_packet_create(pool *p, uint32_t channel_id) {
   pool *sub_pool;
   struct fxp_packet *fxp;
 
-  sub_pool = pr_pool_create_sz(p, 64);
+  sub_pool = pr_pool_create_sz(p, 128);
   fxp = pcalloc(sub_pool, sizeof(struct fxp_packet));
   fxp->pool = sub_pool;
   fxp->channel_id = channel_id;
