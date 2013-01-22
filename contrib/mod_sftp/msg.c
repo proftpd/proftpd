@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp message format
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: msg.c,v 1.10 2012-03-01 23:10:58 castaglia Exp $
+ * $Id: msg.c,v 1.11 2013-01-22 01:12:26 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -54,12 +54,17 @@ static void log_stacktrace(void) {
     defined(HAVE_BACKTRACE_SYMBOLS)
   void *trace[PR_TUNABLE_CALLER_DEPTH];
   char **strings;
-  size_t tracesz;
+  int tracesz;
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "-----BEGIN STACK TRACE-----");
 
   tracesz = backtrace(trace, PR_TUNABLE_CALLER_DEPTH);
+  if (tracesz < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "backtrace(3) error: %s", strerror(errno));
+  }
+
   strings = backtrace_symbols(trace, tracesz);
   if (strings != NULL) {
     register unsigned int i;
