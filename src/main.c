@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.450 2013-01-22 01:05:08 castaglia Exp $
+ * $Id: main.c,v 1.451 2013-01-22 01:10:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1871,7 +1871,7 @@ static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
   ucontext_t *uc = (ucontext_t *) ptr;
   void *trace[PR_TUNABLE_CALLER_DEPTH];
   char **strings;
-  size_t tracesz;
+  int tracesz;
 
   /* Call the "normal" signal handler. */
   table_handling_signal(TRUE);
