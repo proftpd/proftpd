@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.177 2013-01-21 18:28:11 castaglia Exp $
+ * $Id: fxp.c,v 1.178 2013-01-22 06:44:41 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -56,6 +56,12 @@
 #define SSH2_FX_ATTR_UNTRANSLATED_NAME	0x00004000
 #define SSH2_FX_ATTR_CTIME		0x00008000
 #define SSH2_FX_ATTR_EXTENDED		0x80000000
+
+/* FX_ATTR_TEXT_HINT values */
+#define SSH2_FX_ATTR_KNOWN_TEXT		0x00
+#define SSH2_FX_ATTR_GUESSED_TEXT	0x01
+#define SSH2_FX_ATTR_KNOWN_BINARY	0x02
+#define SSH2_FX_ATTR_GUESSED_BINARY	0x03
 
 /* FXP_ATTRS file types */
 #define SSH2_FX_ATTR_FTYPE_REGULAR		1
@@ -1156,12 +1162,10 @@ static uint64_t fxp_msg_read_long(pool *p, unsigned char **buf,
   return val;
 }
 
-#if 0
-/* XXX Not used yet, if ever. */
-static struct fxp_extpair *fxp_msg_read_extpair(pool *p, char **buf,
+static struct fxp_extpair *fxp_msg_read_extpair(pool *p, unsigned char **buf,
     uint32_t *buflen) {
   uint32_t namelen, datalen;
-  char *name, *data;
+  unsigned char *name, *data;
   struct fxp_extpair *extpair;
 
   namelen = sftp_msg_read_int(p, buf, buflen);
@@ -1187,13 +1191,12 @@ static struct fxp_extpair *fxp_msg_read_extpair(pool *p, char **buf,
   }
 
   extpair = palloc(p, sizeof(struct fxp_extpair));
-  extpair->ext_name = name;
+  extpair->ext_name = (char *) name;
   extpair->ext_datalen = datalen;
   extpair->ext_data = data;
 
   return extpair;
 }
-#endif
 
 static uint32_t fxp_msg_write_short(unsigned char **buf, uint32_t *buflen,
     uint16_t val) {
@@ -1901,6 +1904,16 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
       st->st_size = fxp_msg_read_long(fxp->pool, buf, buflen);
     }
 
+    if (*flags & SSH2_FX_ATTR_ALLOCATION_SIZE) {
+      /* Read (and ignore) any allocation size attribute. */
+      uint64_t allosz;
+
+      allosz = fxp_msg_read_long(fxp->pool, buf, buflen);
+      pr_trace_msg(trace_channel, 15,
+        "protocol version %lu: read ALLOCATION_SIZE attribute: %" PR_LU,
+        (unsigned long) fxp_session->client_version, (pr_off_t) allosz);
+    }
+
     if (*flags & SSH2_FX_ATTR_OWNERGROUP) {
       char *name;
       uid_t uid;
@@ -1985,13 +1998,191 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
 
     if (*flags & SSH2_FX_ATTR_ACCESSTIME) {
       st->st_atime = fxp_msg_read_long(fxp->pool, buf, buflen);
+
+      if (*flags & SSH2_FX_ATTR_SUBSECOND_TIMES) {
+        /* Read (and ignore) the nanoseconds field. */
+        uint32_t nanosecs;
+
+        nanosecs = sftp_msg_read_int(fxp->pool, buf, buflen);
+        pr_trace_msg(trace_channel, 15,
+          "protocol version %lu: read ACCESSTIME SUBSECOND attribute: %lu",
+          (unsigned long) fxp_session->client_version,
+          (unsigned long) nanosecs);
+      }
+    }
+
+    if (*flags & SSH2_FX_ATTR_CREATETIME) {
+      /* Read (and ignore) the create time attribute. */
+      uint64_t create_time;
+
+      create_time = fxp_msg_read_long(fxp->pool, buf, buflen);
+      pr_trace_msg(trace_channel, 15,
+        "protocol version %lu: read CREATETIME attribute: %" PR_LU,
+        (unsigned long) fxp_session->client_version, (pr_off_t) create_time);
+
+      if (*flags & SSH2_FX_ATTR_SUBSECOND_TIMES) {
+        /* Read (and ignore) the nanoseconds field. */
+        uint32_t nanosecs;
+
+        nanosecs = sftp_msg_read_int(fxp->pool, buf, buflen);
+        pr_trace_msg(trace_channel, 15,
+          "protocol version %lu: read CREATETIME SUBSECOND attribute: %lu",
+          (unsigned long) fxp_session->client_version,
+          (unsigned long) nanosecs);
+      }
     }
 
     if (*flags & SSH2_FX_ATTR_MODIFYTIME) {
       st->st_mtime = fxp_msg_read_long(fxp->pool, buf, buflen);
+
+      if (*flags & SSH2_FX_ATTR_SUBSECOND_TIMES) {
+        /* Read (and ignore) the nanoseconds field. */
+        uint32_t nanosecs;
+
+        nanosecs = sftp_msg_read_int(fxp->pool, buf, buflen);
+        pr_trace_msg(trace_channel, 15,
+          "protocol version %lu: read MOTIFYTIME SUBSECOND attribute: %lu",
+          (unsigned long) fxp_session->client_version,
+          (unsigned long) nanosecs);
+      }
     }
 
-    /* XXX Vendor-specific extensions */
+    if (*flags & SSH2_FX_ATTR_CTIME) {
+      /* Read (and ignore) the ctime attribute. */
+      uint64_t change_time;
+
+      change_time = fxp_msg_read_long(fxp->pool, buf, buflen);
+      pr_trace_msg(trace_channel, 15,
+        "protocol version %lu: read CTIME attribute: %" PR_LU,
+        (unsigned long) fxp_session->client_version, (pr_off_t) change_time);
+
+      if (*flags & SSH2_FX_ATTR_SUBSECOND_TIMES) {
+        /* Read (and ignore) the nanoseconds field. */
+        uint32_t nanosecs;
+
+        nanosecs = sftp_msg_read_int(fxp->pool, buf, buflen);
+        pr_trace_msg(trace_channel, 15,
+          "protocol version %lu: read CTIME SUBSECOND attribute: %lu",
+          (unsigned long) fxp_session->client_version,
+          (unsigned long) nanosecs);
+      }
+    }
+
+    if (*flags & SSH2_FX_ATTR_ACL) {
+      /* Read (and ignore) the ACL attribute. */
+      char *acl;
+
+      acl = sftp_msg_read_string(fxp->pool, buf, buflen);
+      pr_trace_msg(trace_channel, 15,
+        "protocol version %lu: read ACL attribute: '%s'",
+        (unsigned long) fxp_session->client_version, acl ? acl : "(nil)");
+    }
+
+    if (*flags & SSH2_FX_ATTR_BITS) {
+      /* Read (and ignore) the BITS attributes. */
+      uint32_t attr_bits, attr_valid_bits;
+
+      attr_bits = sftp_msg_read_int(fxp->pool, buf, buflen);
+      attr_valid_bits = sftp_msg_read_int(fxp->pool, buf, buflen);
+
+      /* XXX Use a separate function for decoding these bits.  For now,
+       * just log the values.
+       */
+      pr_trace_msg(trace_channel, 15,
+        "protocol version %lu: read BITS attribute: bits %lu, valid_bits %lu",
+        (unsigned long) fxp_session->client_version,
+        (unsigned long) attr_bits, (unsigned long) attr_valid_bits);
+    }
+
+    if (*flags & SSH2_FX_ATTR_TEXT_HINT) {
+      /* Read (and ignore) the TEXT_HINT attribute. */
+      char hint, *hint_type;
+
+      hint = sftp_msg_read_byte(fxp->pool, buf, buflen);
+      switch (hint) {
+        case SSH2_FX_ATTR_KNOWN_TEXT:
+          hint_type = "KNOWN_TEXT";
+          break;
+
+        case SSH2_FX_ATTR_GUESSED_TEXT:
+          hint_type = "GUESSED_TEXT";
+          break;
+
+        case SSH2_FX_ATTR_KNOWN_BINARY:
+          hint_type = "KNOWN_BINARY";
+          break;
+
+        case SSH2_FX_ATTR_GUESSED_BINARY:
+          hint_type = "GUESSED_BINARY";
+          break;
+
+        default:
+          hint_type = "(unknown)";
+          break;
+      }
+
+      pr_trace_msg(trace_channel, 15,
+        "protocol version %lu: read TEXT_HINT attribute: '%s'",
+        (unsigned long) fxp_session->client_version, hint_type);
+    }
+
+    if (*flags & SSH2_FX_ATTR_MIME_TYPE) {
+      /* Read (and ignore) the MIME_TYPE attribute. */
+      char *mime_type;
+
+      mime_type = sftp_msg_read_string(fxp->pool, buf, buflen);
+      pr_trace_msg(trace_channel, 15,
+        "protocol version %lu: read MIME_TYPE attribute: '%s'",
+        (unsigned long) fxp_session->client_version,
+        mime_type ? mime_type : "(nil)");
+    }
+
+    if (*flags & SSH2_FX_ATTR_LINK_COUNT) {
+      /* Read (and ignore) the LINK_COUNT attribute. */
+      uint32_t link_count;
+
+      link_count = sftp_msg_read_int(fxp->pool, buf, buflen);
+      pr_trace_msg(trace_channel, 15,
+        "protocol version %lu: read LINK_COUNT attribute: %lu",
+        (unsigned long) fxp_session->client_version,
+        (unsigned long) link_count);
+    }
+
+    if (*flags & SSH2_FX_ATTR_UNTRANSLATED_NAME) {
+      /* Read (and ignore) the UNTRANSLATED_NAME attribute. */
+      char *untranslated;
+
+      untranslated = sftp_msg_read_string(fxp->pool, buf, buflen);
+      pr_trace_msg(trace_channel, 15,
+        "protocol version %lu: read UNTRANSLATED_NAME attribute: '%s'",
+        (unsigned long) fxp_session->client_version,
+        untranslated ? untranslated : "(nil)");
+    }
+
+    /* Vendor-specific extensions */
+    if (*flags & SSH2_FX_ATTR_EXTENDED) {
+      /* Read (and ignore) the EXTENDED attribute. */
+      register unsigned int i;
+      uint32_t extpair_count;
+
+      extpair_count = sftp_msg_read_int(fxp->pool, buf, buflen);
+      pr_trace_msg(trace_channel, 15,
+        "protocol version %lu: read EXTENDED attribute: %lu extensions",
+        (unsigned long) fxp_session->client_version,
+        (unsigned long) extpair_count);
+
+      for (i = 0; i < extpair_count; i++) {
+        struct fxp_extpair *ext;
+
+        ext = fxp_msg_read_extpair(fxp->pool, buf, buflen);
+        pr_trace_msg(trace_channel, 15,
+          "protocol version %lu: read EXTENDED attribute: "
+          "extension '%s' (%lu bytes of data)",
+          (unsigned long) fxp_session->client_version, ext->ext_name,
+          (unsigned long) ext->ext_datalen);
+      }
+    }
+
   }
 
   return st;
