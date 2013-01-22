@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.449 2012-06-06 18:18:02 castaglia Exp $
+ * $Id: main.c,v 1.450 2013-01-22 01:05:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1880,6 +1880,9 @@ static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
   pr_log_pri(PR_LOG_ERR, "-----BEGIN STACK TRACE-----");
 
   tracesz = backtrace(trace, PR_TUNABLE_CALLER_DEPTH);
+  if (tracesz < 0) {
+    pr_log_pri(PR_LOG_ERR, "backtrace(3) error: %s", strerror(errno));
+  }
 
   /* Overwrite sigaction with caller's address */
 #if defined(REG_EIP)
@@ -1889,6 +1892,9 @@ static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
 #endif
 
   strings = backtrace_symbols(trace, tracesz);
+  if (strings == NULL) {
+    pr_log_pri(PR_LOG_ERR, "backtrace_symbols(3) error: %s", strerror(errno));
+  }
 
   /* Skip first stack frame; it just points here. */
   for (i = 1; i < tracesz; ++i) {
