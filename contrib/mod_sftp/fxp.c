@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.179 2013-01-22 15:20:19 castaglia Exp $
+ * $Id: fxp.c,v 1.180 2013-01-23 07:22:26 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4870,6 +4870,10 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
+    pr_trace_msg(trace_channel, 17,
+      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
+      strerror(errno));
+
     status_code = SSH2_FX_INVALID_HANDLE;
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
@@ -5351,6 +5355,10 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
     fxh = fxp_handle_get(handle);
     if (fxh == NULL) {
+      pr_trace_msg(trace_channel, 17,
+        "%s: unable to find handle for name '%s': %s", cmd->argv[0], handle,
+        strerror(errno));
+
       status_code = SSH2_FX_INVALID_HANDLE;
 
       pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
@@ -5436,6 +5444,10 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
+    pr_trace_msg(trace_channel, 17,
+      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
+      strerror(errno));
+
     status_code = SSH2_FX_INVALID_HANDLE;
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
@@ -5634,7 +5646,13 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
-    uint32_t status_code = SSH2_FX_INVALID_HANDLE;
+    uint32_t status_code;
+
+    pr_trace_msg(trace_channel, 17,
+      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
+      strerror(errno));
+
+    status_code = SSH2_FX_INVALID_HANDLE;
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -6044,6 +6062,10 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
+    pr_trace_msg(trace_channel, 17,
+      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
+      strerror(errno));
+
     status_code = SSH2_FX_INVALID_HANDLE;
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
@@ -7631,7 +7653,13 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
-    uint32_t status_code = SSH2_FX_INVALID_HANDLE;
+    uint32_t status_code;
+
+    pr_trace_msg(trace_channel, 17,
+      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
+      strerror(errno));
+
+    status_code = SSH2_FX_INVALID_HANDLE;
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -7941,7 +7969,13 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
-    uint32_t status_code = SSH2_FX_INVALID_HANDLE;
+    uint32_t status_code;
+
+    pr_trace_msg(trace_channel, 17,
+      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
+      strerror(errno));
+
+    status_code = SSH2_FX_INVALID_HANDLE;
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -10040,6 +10074,10 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
+    pr_trace_msg(trace_channel, 17,
+      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
+      strerror(errno));
+
     status_code = SSH2_FX_INVALID_HANDLE;
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
@@ -10380,6 +10418,10 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
+    pr_trace_msg(trace_channel, 17,
+      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
+      strerror(errno));
+
     status_code = SSH2_FX_INVALID_HANDLE;
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
