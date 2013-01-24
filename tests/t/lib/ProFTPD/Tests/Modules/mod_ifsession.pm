@@ -129,6 +129,7 @@ sub ifuser_allowoverwrite {
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
 
+    AllowOverride => 'on',
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
 
@@ -139,8 +140,7 @@ sub ifuser_allowoverwrite {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config,
-    { NoAllowOverride => 1 });
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
 
   # Append the mod_ifsession config to the end of the config file
   if (open(my $fh, ">> $config_file")) {
@@ -436,6 +436,12 @@ sub ifuser_dir_allow_mkd_bug3467 {
 
   # Append the mod_ifsession config to the end of the config file
   if (open(my $fh, ">> $config_file")) {
+    my $limit_dir = $home_dir;
+    if ($^O eq 'darwin') {
+      # MacOSX hack
+      $limit_dir = ('/private' . $home_dir);
+    }
+
     print $fh <<EOC;
 <Directory />
   <Limit ALL>
@@ -444,7 +450,7 @@ sub ifuser_dir_allow_mkd_bug3467 {
 </Directory>
 
 <IfUser $user>
-  <Directory $home_dir>
+  <Directory $limit_dir>
     <Limit MKD>
       AllowAll
     </Limit>
@@ -572,6 +578,11 @@ sub ifclass_dir_allow_mkd_bug3467 {
 
   # Append the mod_ifsession config to the end of the config file
   if (open(my $fh, ">> $config_file")) {
+    my $limit_dir = $home_dir;
+    if ($^O eq 'darwin') {
+      $limit_dir = ('/private' . $home_dir);
+    }
+
     print $fh <<EOC;
 <Class local>
   From 127.0.0.1
@@ -584,7 +595,7 @@ sub ifclass_dir_allow_mkd_bug3467 {
 </Directory>
 
 <IfClass local>
-  <Directory $home_dir>
+  <Directory $limit_dir>
     <Limit MKD>
       AllowAll
     </Limit>
@@ -1108,6 +1119,8 @@ sub ifauthenticated_bug3629 {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'directory:20',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
@@ -1125,6 +1138,12 @@ sub ifauthenticated_bug3629 {
 
   # Append the mod_ifsession config to the end of the config file
   if (open(my $fh, ">> $config_file")) {
+    my $limit_dir = $home_dir;
+    if ($^O eq 'darwin') {
+      # MacOSX hack 
+      $limit_dir = ('/private' . $home_dir);
+    }
+
     print $fh <<EOC;
 <Directory />
   <Limit WRITE>
@@ -1134,7 +1153,7 @@ sub ifauthenticated_bug3629 {
 
 <IfModule mod_ifsession.c>
   <IfAuthenticated>
-    <Directory $home_dir>
+    <Directory $limit_dir>
       <Limit WRITE>
         AllowAll
       </Limit>
@@ -1174,7 +1193,12 @@ EOC
           $client->response_msg());
       }
 
-      $conn->close();
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
       $client->quit();
     };
 
