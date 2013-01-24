@@ -2,7 +2,7 @@
  * ProFTPD: mod_ifsession -- a module supporting conditional
  *                            per-user/group/class configuration contexts.
  *
- * Copyright (c) 2002-2011 TJ Saunders
+ * Copyright (c) 2002-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,12 +26,12 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.39 2011-12-11 02:14:42 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.40 2013-01-24 22:32:35 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_IFSESSION_VERSION	"mod_ifsession/1.2"
+#define MOD_IFSESSION_VERSION		"mod_ifsession/1.3"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -51,6 +51,9 @@ module ifsession_module;
 
 static int ifsess_ctx = -1;
 static int ifsess_merged = FALSE;
+
+/* For supporting DisplayLogin files in <IfUser>/<IfGroup> sections. */
+static pr_fh_t *displaylogin_fh = NULL;
 
 static const char *trace_channel = "ifsession";
 
@@ -333,6 +336,149 @@ MODRET end_ifctxt(cmd_rec *cmd) {
 /* Command handlers
  */
 
+MODRET ifsess_pre_pass(cmd_rec *cmd) {
+  config_rec *c;
+  char *displaylogin = NULL, *sess_user, *sess_group, *user, *group;
+  array_header *groups = NULL, *sess_groups = NULL;
+  struct passwd *pw;
+  struct group *gr;
+
+  /* Look for a DisplayLogin file which has an absolute path.  If we find one,
+   * open a filehandle, such that that file can be displayed even if the
+   * session is chrooted.  DisplayLogin files with relative paths will be
+   * handled after chroot, preserving the old behavior.
+   */
+
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL); 
+  if (user == NULL) {
+    return PR_DECLINED(cmd);
+  }
+
+  pw = pr_auth_getpwnam(cmd->tmp_pool, user);
+  if (pw == NULL) {
+    return PR_DECLINED(cmd);
+  }
+ 
+  gr = pr_auth_getgrgid(cmd->tmp_pool, pw->pw_gid);
+  if (gr == NULL) {
+    return PR_DECLINED(cmd);
+  }
+
+  group = gr->gr_name;
+
+  (void) pr_auth_getgroups(cmd->tmp_pool, group, NULL, &groups);
+ 
+  /* Temporarily set session.user, session.group, session.groups, for the
+   * sake of the pr_eval_*() function calls.
+   */
+  sess_user = session.user;
+  sess_group = session.group;
+  sess_groups = session.groups;
+
+  session.user = user;
+  session.group = group;
+  session.groups = groups;
+
+  c = find_config(main_server->conf, -1, IFSESS_GROUP_TEXT, FALSE);
+  while (c) {
+    config_rec *list = NULL;
+
+    pr_signals_handle();
+
+    list = find_config(c->subset, IFSESS_GROUP_NUMBER, NULL, FALSE);
+    if (list != NULL) {
+#ifdef PR_USE_REGEX
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
+        pr_regex_t *pre = list->argv[2];
+
+        if (session.group != NULL) {
+          if (pr_regexp_exec(pre, session.group, 0, NULL, 0, 0, 0) == 0) {
+            displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+          }
+        }
+
+        if (displaylogin == NULL &&
+            session.groups != NULL) {
+          register int j = 0;
+
+          for (j = session.groups->nelts-1; j >= 0; j--) {
+            char *suppl_group;
+
+            suppl_group = *(((char **) session.groups->elts) + j);
+
+            if (pr_regexp_exec(pre, suppl_group, 0, NULL, 0, 0, 0) == 0) {
+              displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+              break;
+            }
+          }
+        }
+
+      } else
+#endif /* regex support */
+   
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
+          pr_expr_eval_group_or((char **) &list->argv[2]) == TRUE) {
+        displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+
+      } else if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_AND &&
+          pr_expr_eval_group_and((char **) &list->argv[2]) == TRUE) {
+
+        displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+      }
+    }
+
+    c = find_config_next(c, c->next, -1, IFSESS_GROUP_TEXT, FALSE);
+  }
+
+  c = find_config(main_server->conf, -1, IFSESS_USER_TEXT, FALSE);
+  while (c) {
+    config_rec *list = NULL;
+
+    pr_signals_handle();
+
+    list = find_config(c->subset, IFSESS_USER_NUMBER, NULL, FALSE);
+    if (list != NULL) {
+#ifdef PR_USE_REGEX
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
+        pr_regex_t *pre = list->argv[2];
+
+        if (pr_regexp_exec(pre, session.user, 0, NULL, 0, 0, 0) == 0) {
+          displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+        }
+
+      } else
+#endif /* regex support */
+
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
+          pr_expr_eval_user_or((char **) &list->argv[2]) == TRUE) {
+        displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+
+      } else if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_AND &&
+          pr_expr_eval_user_and((char **) &list->argv[2]) == TRUE) {
+        displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+      }
+    }
+
+    c = find_config_next(c, c->next, -1, IFSESS_USER_TEXT, FALSE);
+  }
+
+  /* Restore the original session.user, session.group, session.groups values. */
+  session.user = sess_user;
+  session.group = sess_group;
+  session.groups = sess_groups;
+
+  if (displaylogin != NULL&&
+      *displaylogin == '/') {
+
+    displaylogin_fh = pr_fsio_open(displaylogin, O_RDONLY);
+    if (displaylogin_fh == NULL)
+      pr_log_debug(DEBUG6, "unable to open DisplayLogin file '%s': %s",
+        displaylogin, strerror(errno));
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 MODRET ifsess_post_pass(cmd_rec *cmd) {
   register unsigned int i = 0;
   config_rec *c = NULL;
@@ -580,6 +726,19 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
       pr_session_disconnect(&ifsession_module, PR_SESS_DISCONNECT_CONFIG_ACL,
         "Denied by <Limit LOGIN>");
     }
+
+    /* Try to honor any DisplayLogin directives that may have been merged
+     * in (Bug#3882).
+     */
+    if (displaylogin_fh != NULL) {
+      if (pr_display_fh(displaylogin_fh, NULL, R_230, 0) < 0) {
+        pr_log_debug(DEBUG6, "unable to display DisplayLogin file '%s': %s",
+          displaylogin_fh->fh_path, strerror(errno));
+      }
+
+      pr_fsio_close(displaylogin_fh);
+      displaylogin_fh = NULL;
+    }
   }
 
   return PR_DECLINED(cmd);
@@ -739,7 +898,8 @@ static conftable ifsess_conftab[] = {
 };
 
 static cmdtable ifsess_cmdtab[] = {
-  { POST_CMD, C_PASS, G_NONE, ifsess_post_pass, FALSE, FALSE },
+  { PRE_CMD,	C_PASS, G_NONE, ifsess_pre_pass, FALSE, FALSE },
+  { POST_CMD,	C_PASS, G_NONE, ifsess_post_pass, FALSE, FALSE },
   { 0, NULL }
 };
 
