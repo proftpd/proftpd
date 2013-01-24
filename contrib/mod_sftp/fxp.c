@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.180 2013-01-23 07:22:26 castaglia Exp $
+ * $Id: fxp.c,v 1.181 2013-01-24 22:30:47 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2534,7 +2534,7 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
   pool *sub_pool;
   struct fxp_handle *fxh;
 
-  sub_pool = pr_pool_create_sz(p, 64);
+  sub_pool = pr_pool_create_sz(p, 128);
   fxh = pcalloc(sub_pool, sizeof(struct fxp_handle));
   fxh->pool = sub_pool;
 
@@ -2545,10 +2545,10 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
   data = palloc(p, data_len);
 
   handle_len = (2 * data_len);
-  handle = palloc(p, data_len + 1);
+  handle = palloc(fxh->pool, data_len + 1);
   handle[handle_len] = '\0';
 
-  while (1) {
+  while (TRUE) {
     register unsigned int i;
 
     /* Keep trying until mktemp(3) returns a string that we haven't used
@@ -3989,7 +3989,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
   cmd = pr_cmd_alloc(fxp->pool, 4, pstrdup(fxp->pool, "SITE"),
     pstrdup(fxp->pool, "COPY"), src, dst);
   cmd->arg = pstrcat(fxp->pool, "COPY ", src, " ", dst, NULL);
-  cmd->tmp_pool = pr_pool_create_sz(fxp->pool, 64);
+  cmd->tmp_pool = pr_pool_create_sz(fxp->pool, 128);
   cmd->cmd_class = CL_WRITE;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
