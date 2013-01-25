@@ -61,7 +61,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.4.4"
+#define MOD_TLS_VERSION		"mod_tls/2.4.5"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402 
@@ -6047,18 +6047,22 @@ static pr_netio_stream_t *tls_netio_open_cb(pr_netio_stream_t *nstrm, int fd,
 
   /* Cache a pointer to this stream. */
   if (nstrm->strm_type == PR_NETIO_STRM_CTRL) {
-    if (nstrm->strm_mode == PR_NETIO_IO_RD)
+    if (nstrm->strm_mode == PR_NETIO_IO_RD) {
       tls_ctrl_rd_nstrm = nstrm;
+    }
 
-    if (nstrm->strm_mode == PR_NETIO_IO_WR)
+    if (nstrm->strm_mode == PR_NETIO_IO_WR) {
       tls_ctrl_wr_nstrm = nstrm;
+    }
 
   } else if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
-    if (nstrm->strm_mode == PR_NETIO_IO_RD)
+    if (nstrm->strm_mode == PR_NETIO_IO_RD) {
       tls_data_rd_nstrm = nstrm;
+    }
 
-    if (nstrm->strm_mode == PR_NETIO_IO_WR)
+    if (nstrm->strm_mode == PR_NETIO_IO_WR) {
       tls_data_wr_nstrm = nstrm;
+    }
 
     /* Note: from the FTP-TLS Draft 9.2:
      * 
@@ -6609,7 +6613,7 @@ MODRET tls_any(cmd_rec *cmd) {
           pr_cmd_cmp(cmd, PR_CMD_STOU_ID) == 0) {
         tls_log("SSL/TLS required but absent on data channel, "
           "denying %s command", cmd->argv[0]);
-        pr_response_add_err(R_550, _("SSL/TLS required on the data channel"));
+        pr_response_add_err(R_522, _("SSL/TLS required on the data channel"));
         return PR_ERROR(cmd);
       }
     }
@@ -6646,7 +6650,7 @@ MODRET tls_any(cmd_rec *cmd) {
             cmd->argv[0], session.dir_config ? session.dir_config->name :
             session.anon_config ? session.anon_config->name :
             main_server->ServerName);
-          pr_response_add_err(R_550, _("SSL/TLS required on the data channel"));
+          pr_response_add_err(R_522, _("SSL/TLS required on the data channel"));
           return PR_ERROR(cmd);
         }
       }
