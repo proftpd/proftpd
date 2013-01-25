@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.44 2013-01-25 20:24:58 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.45 2013-01-25 20:58:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -380,17 +380,23 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
 
   pw = pr_auth_getpwnam(cmd->tmp_pool, user);
   if (pw == NULL) {
+    pr_trace_msg(trace_channel, 9,
+      "unable to lookup user '%s' (%s), skipping pre-PASS handling",
+      user, strerror(errno));
     return PR_DECLINED(cmd);
   }
  
   gr = pr_auth_getgrgid(cmd->tmp_pool, pw->pw_gid);
   if (gr == NULL) {
+    pr_trace_msg(trace_channel, 9,
+      "unable to lookup group ID %lu (%s), skipping pre-PASS handling",
+      (unsigned long) pw->pw_gid, strerror(errno));
     return PR_DECLINED(cmd);
   }
 
   group = gr->gr_name;
 
-  (void) pr_auth_getgroups(cmd->tmp_pool, group, &gids, &groups);
+  (void) pr_auth_getgroups(cmd->tmp_pool, user, &gids, &groups);
  
   /* Temporarily set session.user, session.group, session.groups, for the
    * sake of the pr_eval_*() function calls.
