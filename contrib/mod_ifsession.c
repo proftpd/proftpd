@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.45 2013-01-25 20:58:15 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.46 2013-01-25 21:03:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -361,10 +361,10 @@ MODRET end_ifctxt(cmd_rec *cmd) {
 
 MODRET ifsess_pre_pass(cmd_rec *cmd) {
   config_rec *c;
-  char *displaylogin = NULL, *sess_user, *sess_group, *user, *group;
+  char *displaylogin = NULL, *sess_user, *sess_group, *user, *group = NULL;
   array_header *gids = NULL, *groups = NULL, *sess_groups = NULL;
-  struct passwd *pw;
-  struct group *gr;
+  struct passwd *pw = NULL;
+  struct group *gr = NULL;
   xaset_t *config_set = NULL;
 
   /* Look for a DisplayLogin file which has an absolute path.  If we find one,
@@ -387,14 +387,9 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
   }
  
   gr = pr_auth_getgrgid(cmd->tmp_pool, pw->pw_gid);
-  if (gr == NULL) {
-    pr_trace_msg(trace_channel, 9,
-      "unable to lookup group ID %lu (%s), skipping pre-PASS handling",
-      (unsigned long) pw->pw_gid, strerror(errno));
-    return PR_DECLINED(cmd);
+  if (gr != NULL) {
+    group = gr->gr_name;
   }
-
-  group = gr->gr_name;
 
   (void) pr_auth_getgroups(cmd->tmp_pool, user, &gids, &groups);
  
