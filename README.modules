@@ -151,6 +151,11 @@ Feature modules:
         See doc/contrib/mod_load.html
         Contributed by TJ Saunders <tj@castaglia.org>
 
+    mod_log_forensic
+        Only write log information when criteria are met.
+        See doc/contrib/mod_log_forensic.html
+        Contributed by TJ Saunders <tj@castaglia.org>
+
     mod_qos
         Tweak the network TCP QoS bits for better routing
         See doc/contrib/mod_qos.html

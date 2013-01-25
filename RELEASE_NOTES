@@ -11,6 +11,10 @@ ChangeLog files.
 
   + New Modules
 
+    mod_log_forensic
+      The mod_log_forensic module ...
+      See doc/contrib/mod_log_forensic.html for more information.
+
 
   + New Configuration Directives
 
@@ -246,4 +250,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-01-18 20:29:46 $
+Last Updated: $Date: 2013-01-25 00:04:13 $
