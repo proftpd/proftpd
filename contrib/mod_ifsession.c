@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.41 2013-01-25 01:30:13 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.42 2013-01-25 02:39:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -490,13 +490,15 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
   session.group = sess_group;
   session.groups = sess_groups;
 
-  if (displaylogin != NULL&&
+  if (displaylogin != NULL &&
       *displaylogin == '/') {
 
     displaylogin_fh = pr_fsio_open(displaylogin, O_RDONLY);
-    if (displaylogin_fh == NULL)
-      pr_log_debug(DEBUG6, "unable to open DisplayLogin file '%s': %s",
+    if (displaylogin_fh == NULL) {
+      pr_log_debug(DEBUG6,
+        MOD_IFSESSION_VERSION ": unable to open DisplayLogin file '%s': %s",
         displaylogin, strerror(errno));
+    }
   }
 
   return PR_DECLINED(cmd);
