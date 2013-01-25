@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.40 2013-01-24 22:32:35 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.41 2013-01-25 01:30:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -60,12 +60,20 @@ static const char *trace_channel = "ifsession";
 /* Support routines
  */
 
-static void ifsess_remove_param(xaset_t *set, const char *name) {
+static void ifsess_remove_param(xaset_t *set, int config_type,
+    const char *name) {
   config_rec *c = NULL;
+  int lookup_type = -1;
 
-  pr_trace_msg(trace_channel, 9, "removing '%s' config", name);
+  if (config_type == CONF_DIR) {
+    pr_trace_msg(trace_channel, 9, "removing <Directory %s> config", name);
+    lookup_type = CONF_DIR;
 
-  c = find_config(set, -1, name, TRUE);
+  } else {
+    pr_trace_msg(trace_channel, 9, "removing '%s' config", name);
+  }
+
+  c = find_config(set, lookup_type, name, TRUE);
   while (c != NULL) {
     xaset_t *fset;
 
@@ -74,7 +82,7 @@ static void ifsess_remove_param(xaset_t *set, const char *name) {
     fset = c->set;
     xaset_remove(fset, (xasetmember_t *) c);
 
-    c = find_config(set, -1, name, TRUE);
+    c = find_config(set, lookup_type, name, TRUE);
   }
 }
 
@@ -82,10 +90,16 @@ static void ifsess_dup_param(pool *dst_pool, xaset_t **dst, config_rec *c,
     config_rec *parent) {
   config_rec *dup_c = NULL;
 
-  pr_trace_msg(trace_channel, 9, "adding '%s' config", c->name);
+  if (c->config_type == CONF_DIR) {
+    pr_trace_msg(trace_channel, 9, "adding <Directory %s> config", c->name);
 
-  if (!*dst)
+  } else {
+    pr_trace_msg(trace_channel, 9, "adding '%s' config", c->name);
+  }
+
+  if (!*dst) {
     *dst = xaset_create(dst_pool, NULL);
+  }
 
   dup_c = add_config_set(dst, c->name);
   dup_c->config_type = c->config_type;
@@ -103,11 +117,13 @@ static void ifsess_dup_param(pool *dst_pool, xaset_t **dst, config_rec *c,
     dst_argv = dup_c->argv;
     dst_argc = dup_c->argc;
 
-    while (dst_argc--)
+    while (dst_argc--) {
       *dst_argv++ = *src_argv++;
+    }
 
-    if (dst_argv)
+    if (dst_argv) {
       *dst_argv++ = NULL;
+    }
   }
 
   if (c->subset) {
@@ -122,7 +138,7 @@ static void ifsess_dup_param(pool *dst_pool, xaset_t **dst, config_rec *c,
           !(c->flags & CF_MULTI)) {
           pr_trace_msg(trace_channel, 15, "removing '%s' config because "
             "c->flags does not contain MULTI or MERGEDOWN_MULTI", c->name);
-        ifsess_remove_param(dup_c->subset, c->name);
+        ifsess_remove_param(dup_c->subset, c->config_type, c->name);
       }
 
       ifsess_dup_param(dst_pool, &dup_c->subset, c, dup_c);
@@ -140,8 +156,9 @@ static void ifsess_dup_set(pool *dst_pool, xaset_t *dst, xaset_t *src) {
     if (c->config_type == IFSESS_CLASS_NUMBER ||
         c->config_type == IFSESS_GROUP_NUMBER ||
         c->config_type == IFSESS_USER_NUMBER ||
-        c->config_type == IFSESS_AUTHN_NUMBER)
+        c->config_type == IFSESS_AUTHN_NUMBER) {
       continue;
+    }
 
     /* If this directive does not allow multiple instances, make sure
      * it is removed from the destination set first.  The "source"
@@ -149,9 +166,15 @@ static void ifsess_dup_set(pool *dst_pool, xaset_t *dst, xaset_t *src) {
      */
     if (c->config_type == CONF_PARAM &&
         !(c->flags & CF_MERGEDOWN_MULTI)) {
-        pr_trace_msg(trace_channel, 15, "removing '%s' config because "
-          "c->flags does not contain MERGEDOWN_MULTI", c->name);
-      ifsess_remove_param(dst, c->name);
+      pr_trace_msg(trace_channel, 15, "removing '%s' config because "
+        "c->flags does not contain MERGEDOWN_MULTI", c->name);
+      ifsess_remove_param(dst, c->config_type, c->name);
+    }
+
+    if (c->config_type == CONF_DIR) {
+      pr_trace_msg(trace_channel, 15, "removing old <Directory %s> config "
+        "because new <Directory %s> takes precedence", c->name, c->name);
+      ifsess_remove_param(dst, c->config_type, c->name);
     }
 
     ifsess_dup_param(dst_pool, &dst, c, NULL);
