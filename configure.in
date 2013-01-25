@@ -2394,13 +2394,13 @@ if test x"$pr_use_mysql" = xyes; then
   saved_libs="$LIBS"
   saved_cppflags="$CPPFLAGS"
 
-  # fiddle with CPPFLAGS, LDFLAGS
+  # Fiddle with CPPFLAGS, LDFLAGS
   CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
-  LDFLAGS="$LDFLAGS -lm -lmysqlclient -lz"
+  LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
 
   dnl Splice out -lsupp, since that library hasn't been built yet
   LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
-  LIBS="$LIBS $ac_build_addl_libdirs"
+  LIBS="$LIBS -lm -lmysqlclient -lz"
 
   # For Bug#3669, we need to check for make_scrambled_password_323.
   AC_MSG_CHECKING([for MySQL's make_scrambled_password_323])
@@ -2618,11 +2618,11 @@ if test x"$pr_use_postgres" = xyes; then
 
   # fiddle with CPPFLAGS, LDFLAGS
   CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
-  LDFLAGS="$LDFLAGS -lm -lpq"
+  LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
 
   dnl Splice out -lsupp, since that library hasn't been built yet
   LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
-  LIBS="$LIBS $ac_build_addl_libdirs"
+  LIBS="$LIBS -lm -lpq"
 
   AC_TRY_LINK(
     [
