@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.43 2013-01-25 16:15:20 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.44 2013-01-25 20:24:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -362,7 +362,7 @@ MODRET end_ifctxt(cmd_rec *cmd) {
 MODRET ifsess_pre_pass(cmd_rec *cmd) {
   config_rec *c;
   char *displaylogin = NULL, *sess_user, *sess_group, *user, *group;
-  array_header *groups = NULL, *sess_groups = NULL;
+  array_header *gids = NULL, *groups = NULL, *sess_groups = NULL;
   struct passwd *pw;
   struct group *gr;
   xaset_t *config_set = NULL;
@@ -390,7 +390,7 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
 
   group = gr->gr_name;
 
-  (void) pr_auth_getgroups(cmd->tmp_pool, group, NULL, &groups);
+  (void) pr_auth_getgroups(cmd->tmp_pool, group, &gids, &groups);
  
   /* Temporarily set session.user, session.group, session.groups, for the
    * sake of the pr_eval_*() function calls.
