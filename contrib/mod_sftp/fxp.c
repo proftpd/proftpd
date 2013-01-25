@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.181 2013-01-24 22:30:47 castaglia Exp $
+ * $Id: fxp.c,v 1.182 2013-01-25 19:51:58 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -57,7 +57,21 @@
 #define SSH2_FX_ATTR_CTIME		0x00008000
 #define SSH2_FX_ATTR_EXTENDED		0x80000000
 
-/* FX_ATTR_TEXT_HINT values */
+/* FX_ATTR_BITS values (see draft-ietf-secsh-filexfer-13, Section 7.9) */
+#define SSH2_FX_ATTR_BIT_FL_READONLY		0x00000001
+#define SSH2_FX_ATTR_BIT_FL_SYSTEM		0x00000002
+#define SSH2_FX_ATTR_BIT_FL_HIDDEN		0x00000004
+#define SSH2_FX_ATTR_BIT_FL_CASE_INSENSITIVE	0x00000008
+#define SSH2_FX_ATTR_BIT_FL_ARCHIVE		0x00000010
+#define SSH2_FX_ATTR_BIT_FL_ENCRYPTED		0x00000020
+#define SSH2_FX_ATTR_BIT_FL_COMPRESSED		0x00000040
+#define SSH2_FX_ATTR_BIT_FL_SPARSE		0x00000080
+#define SSH2_FX_ATTR_BIT_FL_APPEND_ONLY		0x00000100
+#define SSH2_FX_ATTR_BIT_FL_IMMUTABLE		0x00000200
+#define SSH2_FX_ATTR_BIT_FL_SYNC		0x00000400
+#define SSH2_FX_ATTR_BIT_FL_TRANSLATION_ERR	0x00000800
+
+/* FX_ATTR_TEXT_HINT values (see draft-ietf-secsh-filexfer-13, Section 7.10) */
 #define SSH2_FX_ATTR_KNOWN_TEXT		0x00
 #define SSH2_FX_ATTR_GUESSED_TEXT	0x01
 #define SSH2_FX_ATTR_KNOWN_BINARY	0x02
@@ -731,6 +745,87 @@ static int fxp_get_v3_open_flags(uint32_t flags) {
   }
 
   return res;
+}
+
+static void fxp_trace_v5_bit_flags(pool *p, uint32_t attr_bits,
+    uint32_t attr_valid_bits) {
+  uint32_t flags;
+  char *flags_str = "";
+  int trace_level = 15;
+
+  if (pr_trace_get_level(trace_channel) < trace_level) {
+    return;
+  }
+
+  /* We're only interested in which, of the valid bits, are turned on/enabled
+   * in the bits value, for logging.
+   */
+
+  flags = (attr_bits & attr_valid_bits);
+
+  if (flags & SSH2_FX_ATTR_BIT_FL_READONLY) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FLAGS_READONLY", NULL);
+  }
+
+  if (flags & SSH2_FX_ATTR_BIT_FL_SYSTEM) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FLAGS_SYSTEM", NULL);
+  }
+
+  if (flags & SSH2_FX_ATTR_BIT_FL_HIDDEN) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FLAGS_HIDDEN", NULL);
+  }
+
+  if (flags & SSH2_FX_ATTR_BIT_FL_CASE_INSENSITIVE) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FLAGS_CASE_INSENSITIVE", NULL);
+  }
+
+  if (flags & SSH2_FX_ATTR_BIT_FL_ARCHIVE) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FLAGS_ARCHIVE", NULL);
+  }
+
+  if (flags & SSH2_FX_ATTR_BIT_FL_ENCRYPTED) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FLAGS_ENCRYPTED", NULL);
+  }
+
+  if (flags & SSH2_FX_ATTR_BIT_FL_COMPRESSED) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FLAGS_COMPRESSED", NULL);
+  }
+
+  if (flags & SSH2_FX_ATTR_BIT_FL_SPARSE) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FLAGS_SPARSE", NULL);
+  }
+
+  if (flags & SSH2_FX_ATTR_BIT_FL_APPEND_ONLY) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FLAGS_APPEND_ONLY", NULL);
+  }
+
+  if (flags & SSH2_FX_ATTR_BIT_FL_IMMUTABLE) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FLAGS_IMMUTABLE", NULL);
+  }
+
+  if (flags & SSH2_FX_ATTR_BIT_FL_SYNC) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FLAGS_SYNC", NULL);
+  }
+
+  if (flags & SSH2_FX_ATTR_BIT_FL_TRANSLATION_ERR) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FLAGS_TRANSLATION_ERR", NULL);
+  }
+
+  pr_trace_msg(trace_channel, 15,
+    "protocol version %lu: read BITS attribute: bits %s requested",
+    (unsigned long) fxp_session->client_version, flags_str);
 }
 
 static void fxp_trace_v5_open_flags(pool *p, uint32_t desired_access,
@@ -2085,13 +2180,7 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
       attr_bits = sftp_msg_read_int(fxp->pool, buf, buflen);
       attr_valid_bits = sftp_msg_read_int(fxp->pool, buf, buflen);
 
-      /* XXX Use a separate function for decoding these bits.  For now,
-       * just log the values.
-       */
-      pr_trace_msg(trace_channel, 15,
-        "protocol version %lu: read BITS attribute: bits %lu, valid_bits %lu",
-        (unsigned long) fxp_session->client_version,
-        (unsigned long) attr_bits, (unsigned long) attr_valid_bits);
+      fxp_trace_v5_bit_flags(fxp->pool, attr_bits, attr_valid_bits);
     }
 
     if (*flags & SSH2_FX_ATTR_TEXT_HINT) {
