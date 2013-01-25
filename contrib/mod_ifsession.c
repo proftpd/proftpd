@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.42 2013-01-25 02:39:44 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.43 2013-01-25 16:15:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -365,6 +365,7 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
   array_header *groups = NULL, *sess_groups = NULL;
   struct passwd *pw;
   struct group *gr;
+  xaset_t *config_set = NULL;
 
   /* Look for a DisplayLogin file which has an absolute path.  If we find one,
    * open a filehandle, such that that file can be displayed even if the
@@ -417,6 +418,11 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
         if (session.group != NULL) {
           if (pr_regexp_exec(pre, session.group, 0, NULL, 0, 0, 0) == 0) {
             displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+            if (displaylogin != NULL) {
+              if (*displaylogin == '/') {
+                config_set = c->subset;
+              }
+            }
           }
         }
 
@@ -431,6 +437,12 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
 
             if (pr_regexp_exec(pre, suppl_group, 0, NULL, 0, 0, 0) == 0) {
               displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+              if (displaylogin != NULL) {
+                if (*displaylogin == '/') {
+                  config_set = c->subset;
+                }
+              }
+
               break;
             }
           }
@@ -442,11 +454,21 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
           pr_expr_eval_group_or((char **) &list->argv[2]) == TRUE) {
         displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+        if (displaylogin != NULL) {
+          if (*displaylogin == '/') {
+            config_set = c->subset;
+          }
+        }
 
       } else if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_AND &&
           pr_expr_eval_group_and((char **) &list->argv[2]) == TRUE) {
 
         displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+        if (displaylogin != NULL) {
+          if (*displaylogin == '/') {
+            config_set = c->subset;
+          }
+        }
       }
     }
 
@@ -467,6 +489,11 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
 
         if (pr_regexp_exec(pre, session.user, 0, NULL, 0, 0, 0) == 0) {
           displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+          if (displaylogin != NULL) {
+            if (*displaylogin == '/') {
+              config_set = c->subset;
+            }
+          }
         }
 
       } else
@@ -475,10 +502,20 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
           pr_expr_eval_user_or((char **) &list->argv[2]) == TRUE) {
         displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+        if (displaylogin != NULL) {
+          if (*displaylogin == '/') {
+            config_set = c->subset;
+          }
+        }
 
       } else if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_AND &&
           pr_expr_eval_user_and((char **) &list->argv[2]) == TRUE) {
         displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+        if (displaylogin != NULL) {
+          if (*displaylogin == '/') {
+            config_set = c->subset;
+          }
+        }
       }
     }
 
@@ -491,13 +528,17 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
   session.groups = sess_groups;
 
   if (displaylogin != NULL &&
-      *displaylogin == '/') {
+      config_set != NULL) {
 
     displaylogin_fh = pr_fsio_open(displaylogin, O_RDONLY);
     if (displaylogin_fh == NULL) {
       pr_log_debug(DEBUG6,
         MOD_IFSESSION_VERSION ": unable to open DisplayLogin file '%s': %s",
         displaylogin, strerror(errno));
+
+    } else {
+      /* Remove the directive from the set, since we'll be handling it. */
+      remove_config(config_set, "DisplayLogin", FALSE);
     }
   }
 
