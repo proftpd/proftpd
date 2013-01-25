@@ -1417,18 +1417,26 @@ sub ifgroup_dir_allow_stor_bug3881 {
   my $user = 'proftpd';
   my $passwd = 'test';
   my $group = 'ftpd'; 
-  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $home_dir = File::Spec->rel2abs("$tmpdir/users/$user");
+  mkpath($home_dir);
   my $uid = 500;
   my $gid = 500;
+
+  my $sub_dir = File::Spec->rel2abs("$home_dir/test.d");
+  mkpath($sub_dir);
+
+  if ($^O eq 'darwin') {
+    $home_dir = ('/private' . $home_dir);
+  }
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
+    unless (chmod(0755, $home_dir, $sub_dir)) {
       die("Can't set perms on $home_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir)) {
+    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
       die("Can't set owner of $home_dir to $uid/$gid: $!");
     }
   }
@@ -1442,7 +1450,7 @@ sub ifgroup_dir_allow_stor_bug3881 {
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
     TraceLog => $log_file,
-    Trace => 'directory:20 fileperms:10',
+    Trace => 'directory:20 fileperms:10 ifsession:20',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
@@ -1459,7 +1467,7 @@ sub ifgroup_dir_allow_stor_bug3881 {
 
   # Append the mod_ifsession config to the end of the config file
   if (open(my $fh, ">> $config_file")) {
-    my $limit_dir = $home_dir;
+    my $limit_dir = File::Spec->rel2abs($tmpdir) . '/*/*';
     if ($^O eq 'darwin') {
       # MacOSX hack
       $limit_dir = ('/private' . $limit_dir);
@@ -1473,7 +1481,7 @@ sub ifgroup_dir_allow_stor_bug3881 {
 </Directory>
 
 <IfGroup $group>
-  <Directory $limit_dir>
+  <Directory ~/test.d/*>
     <Limit MKD XMKD RMD XRMD>
       DenyAll
     </Limit>
@@ -1509,6 +1517,7 @@ EOC
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->cwd('test.d');
 
       my $path = 'test.txt';
       my $conn = $client->stor_raw($path);
