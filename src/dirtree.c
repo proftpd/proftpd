@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.271 2013-01-05 00:30:44 castaglia Exp $
+ * $Id: dirtree.c,v 1.272 2013-01-25 22:07:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2658,9 +2658,10 @@ void resolve_anonymous_dirs(xaset_t *clist) {
 void resolve_deferred_dirs(server_rec *s) {
   config_rec *c;
 
-  if (!s ||
-      !s->conf)
+  if (s == NULL ||
+      s->conf == NULL) {
     return;
+  }
 
   for (c = (config_rec *) s->conf->xas_list; c; c = c->next) {
     if (c->config_type == CONF_DIR &&
@@ -2670,14 +2671,18 @@ void resolve_deferred_dirs(server_rec *s) {
       /* Check for any expandable variables. */
       c->name = path_subst_uservar(c->pool, &c->name);
 
+      /* Handle any '~' interpolation. */
+      c->name = dir_interpolate(c->pool, c->name);
+
       realdir = dir_best_path(c->pool, c->name);
       if (realdir) {
         c->name = realdir;
 
       } else {
         realdir = dir_canonical_path(c->pool, c->name);
-        if (realdir)
+        if (realdir) {
           c->name = realdir;
+        }
       }
     }
   }
