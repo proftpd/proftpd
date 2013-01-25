@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp Display files
- * Copyright (c) 2010-2011 TJ Saunders
+ * Copyright (c) 2010-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.9 2011-12-11 02:14:42 castaglia Exp $
+ * $Id: display.c,v 1.10 2013-01-25 17:11:33 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -66,7 +66,7 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
   pr_fsio_fstat(fh, &st);
   fh->fh_iosz = st.st_blksize;
 
-  res = pr_fs_getsize2(fh->fh_path, &fs_size);
+  res = pr_fs_fgetsize(fh->fh_fd, &fs_size);
   if (res < 0 &&
       errno != ENOSYS) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,

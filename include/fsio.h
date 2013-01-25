@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.33 2013-01-19 00:21:00 castaglia Exp $
+ * $Id: fsio.h,v 1.34 2013-01-25 17:11:33 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -340,6 +340,11 @@ off_t pr_fs_getsize(char *);
  * filesystem stats.
  */
 int pr_fs_getsize2(char *, off_t *);
+
+/* Similar to pr_fs_getsize2(), except that this operates on an already-opened
+ * file descriptor, rather than a path.
+ */
+int pr_fs_fgetsize(int, off_t *);
 
 /* Returns TRUE if the given path is on an NFS-mounted filesystem, FALSE
  * if not on an NFS-mounted filesystem, and -1 if there was an error

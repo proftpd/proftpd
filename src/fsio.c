@@ -1,8 +1,8 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (C) 2001-2013 The ProFTPD Project
+ * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (c) 2001-2013 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.123 2013-01-25 02:08:43 castaglia Exp $
+ * $Id: fsio.c,v 1.124 2013-01-25 17:11:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4124,7 +4124,9 @@ static off_t get_fs_size(size_t nblocks, size_t blocksz) {
   return (res_lo >> 10) | (res_hi << 6);
 }
 
-static int fs_getsize(char *path, off_t *fs_size) {
+static int fs_getsize(int fd, char *path, off_t *fs_size) {
+  int res = -1;
+
 # if defined(HAVE_SYS_STATVFS_H)
 
 #  if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && \
@@ -4142,12 +4144,31 @@ static int fs_getsize(char *path, off_t *fs_size) {
   struct statvfs fs;
 #  endif /* LFS && !Solaris 2.5.1 && !Solaris 2.6 && !Solaris 2.7 */
 
-  pr_trace_msg(trace_channel, 18, "using statvfs() on '%s'", path);
-  if (statvfs(path, &fs) < 0) {
+  if (path != NULL) {
+    pr_trace_msg(trace_channel, 18, "using statvfs() on '%s'", path);
+
+  } else {
+    pr_trace_msg(trace_channel, 18, "using statvfs() on fd %d", fd);
+  }
+
+  if (path != NULL) {
+    res = statvfs(path, &fs);
+
+  } else {
+    res = fstatvfs(fd, &fs);
+  }
+
+  if (res < 0) {
     int xerrno = errno;
 
-    pr_trace_msg(trace_channel, 3, "statvfs() error using '%s': %s",
-      path, strerror(xerrno));
+    if (path != NULL) {
+      pr_trace_msg(trace_channel, 3, "statvfs() error using '%s': %s",
+        path, strerror(xerrno));
+
+    } else {
+      pr_trace_msg(trace_channel, 3, "statvfs() error using fd %d: %s",
+        fd, strerror(xerrno));
+    }
 
     errno = xerrno;
     return -1;
@@ -4174,12 +4195,31 @@ static int fs_getsize(char *path, off_t *fs_size) {
 # elif defined(HAVE_SYS_VFS_H)
   struct statfs fs;
 
-  pr_trace_msg(trace_channel, 18, "using statfs() on '%s'", path);
-  if (statfs(path, &fs) < 0) {
+  if (path != NULL) {
+    pr_trace_msg(trace_channel, 18, "using statfs() on '%s'", path);
+
+  } else {
+    pr_trace_msg(trace_channel, 18, "using statfs() on fd %d", fd);
+  }
+
+  if (path != NULL) {
+    res = statfs(path, &fs);
+
+  } else {
+    res = fstatfs(fd, &fs);
+  }
+
+  if (res < 0) {
     int xerrno = errno;
 
-    pr_trace_msg(trace_channel, 3, "statfs() error using '%s': %s",
-      path, strerror(xerrno));
+    if (path != NULL) {
+      pr_trace_msg(trace_channel, 3, "statfs() error using '%s': %s",
+        path, strerror(xerrno));
+
+    } else {
+      pr_trace_msg(trace_channel, 3, "statfs() error using fd %d: %s",
+        fd, strerror(xerrno));
+    }
 
     errno = xerrno;
     return -1;
@@ -4206,12 +4246,31 @@ static int fs_getsize(char *path, off_t *fs_size) {
 # elif defined(HAVE_STATFS)
   struct statfs fs;
 
-  pr_trace_msg(trace_channel, 18, "using statfs() on '%s'", path);
-  if (statfs(path, &fs) < 0) {
+  if (path != NULL) {
+    pr_trace_msg(trace_channel, 18, "using statfs() on '%s'", path);
+
+  } else {
+    pr_trace_msg(trace_channel, 18, "using statfs() on fd %d", fd);
+  }
+
+  if (path != NULL) {
+    res = statfs(path, &fs);
+
+  } else {
+    res = fstatfs(fd, &fs);
+  }
+
+  if (res < 0) {
     int xerrno = errno;
 
-    pr_trace_msg(trace_channel, 3, "statfs() error using '%s': %s",
-      path, strerror(xerrno));
+    if (path != NULL) {
+      pr_trace_msg(trace_channel, 3, "statfs() error using '%s': %s",
+        path, strerror(xerrno));
+
+    } else {
+      pr_trace_msg(trace_channel, 3, "statfs() error using fd %d: %s",
+        fd, strerror(xerrno));
+    }
 
     errno = xerrno;
     return -1;
@@ -4256,7 +4315,11 @@ off_t pr_fs_getsize(char *path) {
 #endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
 
 int pr_fs_getsize2(char *path, off_t *fs_size) {
-  return fs_getsize(path, fs_size);
+  return fs_getsize(-1, path, fs_size);
+}
+
+int pr_fs_fgetsize(int fd, off_t *fs_size) {
+  return fs_getsize(fd, NULL, fs_size);
 }
 
 int pr_fs_is_nfs(const char *path) {
