@@ -2,7 +2,7 @@
  * ProFTPD: mod_tls_memcache -- a module which provides a shared SSL session
  *                              cache using memcached servers
  *
- * Copyright (c) 2011 TJ Saunders
+ * Copyright (c) 2011-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_memcache.c,v 1.3 2011-09-05 19:26:54 castaglia Exp $
+ *  $Id: mod_tls_memcache.c,v 1.4 2013-01-28 01:20:22 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -343,19 +343,19 @@ static int tls_mcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
   pr_trace_msg(trace_channel, 9, "opening memcache cache %p", cache);
 
   /* This is a little messy, but necessary. The mod_memcache module does
-   * set the configured list of memcached servers until a connection
+   * not set the configured list of memcached servers until a connection
    * arrives.  But mod_tls opens its session cache prior to that, when the
    * server is starting up.  Thus we need to set the configured list of
    * memcached servers ourselves.
    */
   c = find_config(main_server->conf, CONF_PARAM, "MemcacheEngine", FALSE);
-  if (c) {
+  if (c != NULL) {
     int engine;
 
     engine = *((int *) c->argv[0]);
     if (engine == FALSE) {
       pr_trace_msg(trace_channel, 2, "%s",
-        "memcache support disabled (see MemcachedEngine directive)");
+        "memcache support disabled (see MemcacheEngine directive)");
       errno = EPERM;
       return -1;
     }
