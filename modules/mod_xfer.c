@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.311 2013-01-29 21:58:14 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.312 2013-01-29 22:42:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1526,7 +1526,15 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
     nfs = pr_table_get(cmd->notes, "mod_xfer.store-hidden-nfs", NULL);
     if (nfs == NULL) {
+      pr_trace_msg("fsio", 9,
+        "HiddenStores path '%s' is NOT on NFS, using O_EXCL open(2) flags",
+        session.xfer.path_hidden);
       oflags |= O_EXCL;
+
+    } else {
+      pr_trace_msg("fsio", 9,
+        "HiddenStores path '%s' is on NFS, NOT using O_EXCL open(2) flags",
+        session.xfer.path_hidden);
     }
 
     stor_fh = pr_fsio_open(session.xfer.path_hidden, oflags);
