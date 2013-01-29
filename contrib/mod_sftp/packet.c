@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp packet IO
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.41 2012-12-13 23:05:15 castaglia Exp $
+ * $Id: packet.c,v 1.42 2013-01-29 07:29:22 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -447,11 +447,11 @@ static void read_packet_discard(int sockfd) {
 }
 
 static int read_packet_len(int sockfd, struct ssh2_packet *pkt,
-    char *buf, size_t *offset, size_t *buflen, size_t bufsz) {
+    unsigned char *buf, size_t *offset, size_t *buflen, size_t bufsz) {
   uint32_t packet_len = 0, len = 0;
   size_t blocksz; 
   int res;
-  char *ptr = NULL;
+  unsigned char *ptr = NULL;
 
   blocksz = sftp_cipher_get_block_size();
 
@@ -465,8 +465,7 @@ static int read_packet_len(int sockfd, struct ssh2_packet *pkt,
     return res;
 
   len = res;
-  if (sftp_cipher_read_data(pkt->pool, (unsigned char *) buf, blocksz, &ptr,
-      &len) < 0) {
+  if (sftp_cipher_read_data(pkt->pool, buf, blocksz, &ptr, &len) < 0) {
     return -1;
   }
 
@@ -489,7 +488,7 @@ static int read_packet_len(int sockfd, struct ssh2_packet *pkt,
 }
 
 static int read_packet_padding_len(int sockfd, struct ssh2_packet *pkt,
-    char *buf, size_t *offset, size_t *buflen, size_t bufsz) {
+    unsigned char *buf, size_t *offset, size_t *buflen, size_t bufsz) {
 
   if (*buflen > sizeof(char)) {
     /* XXX Assume the data in the buffer is unecrypted, and thus usable. */
@@ -509,8 +508,8 @@ static int read_packet_padding_len(int sockfd, struct ssh2_packet *pkt,
 }
 
 static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
-    char *buf, size_t *offset, size_t *buflen, size_t bufsz) {
-  char *ptr = NULL;
+    unsigned char *buf, size_t *offset, size_t *buflen, size_t bufsz) {
+  unsigned char *ptr = NULL;
   int res;
   uint32_t payload_len = pkt->payload_len, padding_len = pkt->padding_len,
     data_len, len = 0;
@@ -604,8 +603,8 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
   }
  
   len = res;
-  if (sftp_cipher_read_data(pkt->pool, (unsigned char *) buf + *offset,
-      data_len, &ptr, &len) < 0) {
+  if (sftp_cipher_read_data(pkt->pool, buf + *offset, data_len, &ptr,
+      &len) < 0) {
     return -1;
   }
 
@@ -619,7 +618,8 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
   return 0;
 }
 
-static int read_packet_mac(int sockfd, struct ssh2_packet *pkt, char *buf) {
+static int read_packet_mac(int sockfd, struct ssh2_packet *pkt,
+    unsigned char *buf) {
   int res;
   uint32_t mac_len = pkt->mac_len;
 
@@ -806,7 +806,7 @@ int sftp_ssh2_packet_set_client_alive(unsigned int max, unsigned int interval) {
 }
 
 int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
-  char buf[SFTP_MAX_PACKET_LEN];
+  unsigned char buf[SFTP_MAX_PACKET_LEN];
   size_t buflen, bufsz = SFTP_MAX_PACKET_LEN, offset = 0;
 
   pr_session_set_idle();
@@ -1058,7 +1058,7 @@ static struct iovec packet_iov[SFTP_SSH2_PACKET_IOVSZ];
 static unsigned int packet_niov = 0;
 
 int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
-  char buf[SFTP_MAX_PACKET_LEN * 2], mesg_type;
+  unsigned char buf[SFTP_MAX_PACKET_LEN * 2], mesg_type;
   size_t buflen = 0, bufsz = SFTP_MAX_PACKET_LEN;
   uint32_t packet_len = 0;
   int res, write_len = 0;

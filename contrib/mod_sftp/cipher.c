@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp ciphers
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: cipher.c,v 1.12 2012-07-20 20:41:34 castaglia Exp $
+ * $Id: cipher.c,v 1.13 2013-01-29 07:29:22 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -436,7 +436,7 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
 }
 
 int sftp_cipher_read_data(pool *p, unsigned char *data, uint32_t data_len,
-    char **buf, uint32_t *buflen) {
+    unsigned char **buf, uint32_t *buflen) {
   struct sftp_cipher *cipher;
   EVP_CIPHER_CTX *cipher_ctx;
   size_t cipher_blocksz;
@@ -463,7 +463,7 @@ int sftp_cipher_read_data(pool *p, unsigned char *data, uint32_t data_len,
       ptr = palloc(p, bufsz);
 
     } else {
-      ptr = (unsigned char *) *buf;
+      ptr = *buf;
     }
 
     res = EVP_Cipher(cipher_ctx, ptr, data, data_len);
@@ -475,12 +475,12 @@ int sftp_cipher_read_data(pool *p, unsigned char *data, uint32_t data_len,
     }
 
     *buflen = data_len;
-    *buf = (char *) ptr;
+    *buf = ptr;
 
     return 0;
   }
 
-  *buf = (char *) data;
+  *buf = data;
   *buflen = data_len;
   return 0;
 }
@@ -596,7 +596,8 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   return 0;
 }
 
-int sftp_cipher_write_data(struct ssh2_packet *pkt, char *buf, size_t *buflen) {
+int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
+    size_t *buflen) {
   struct sftp_cipher *cipher;
   EVP_CIPHER_CTX *cipher_ctx;
 
@@ -616,8 +617,7 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, char *buf, size_t *buflen) {
     sftp_msg_write_data(&data, &datalen, pkt->payload, pkt->payload_len, FALSE);
     sftp_msg_write_data(&data, &datalen, pkt->padding, pkt->padding_len, FALSE);
 
-    res = EVP_Cipher(cipher_ctx, (unsigned char *) buf,
-      (unsigned char *) ptr, (datasz - datalen));
+    res = EVP_Cipher(cipher_ctx, buf, ptr, (datasz - datalen));
     if (res != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error encrypting %s data for client: %s", cipher->algo,
