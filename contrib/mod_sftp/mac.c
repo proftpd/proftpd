@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp MACs
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mac.c,v 1.12 2012-07-20 20:41:34 castaglia Exp $
+ * $Id: mac.c,v 1.13 2013-01-29 07:40:45 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -145,7 +145,6 @@ static void clear_mac(struct sftp_mac *mac) {
 static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
     const unsigned char *k, uint32_t klen, const char *h, uint32_t hlen,
     char *letter, const unsigned char *id, uint32_t id_len) {
- 
   EVP_MD_CTX ctx;
   unsigned char *key = NULL;
   size_t key_sz;
@@ -459,7 +458,7 @@ int sftp_mac_read_data(struct ssh2_packet *pkt) {
 #endif /* OpenSSL-0.9.7 and later */
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000001L
-    if (HMAC_Update(mac_ctx, (unsigned char *) ptr, (bufsz - buflen)) != 1) {
+    if (HMAC_Update(mac_ctx, ptr, (bufsz - buflen)) != 1) {
       pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error adding %lu bytes of data to  HMAC context: %s",
         (unsigned long) (bufsz - buflen), sftp_crypto_get_errors());
@@ -474,7 +473,7 @@ int sftp_mac_read_data(struct ssh2_packet *pkt) {
       return -1;
     }
 #else
-    HMAC_Update(mac_ctx, (unsigned char *) ptr, (bufsz - buflen));
+    HMAC_Update(mac_ctx, ptr, (bufsz - buflen));
     HMAC_Final(mac_ctx, mac_data, &mac_len);
 #endif /* OpenSSL-1.0.0 and later */
 
@@ -643,7 +642,7 @@ int sftp_mac_write_data(struct ssh2_packet *pkt) {
 #endif /* OpenSSL-0.9.7 and later */
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000001L
-    if (HMAC_Update(mac_ctx, (unsigned char *) ptr, (bufsz - buflen)) != 1) {
+    if (HMAC_Update(mac_ctx, ptr, (bufsz - buflen)) != 1) {
       pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error adding %lu bytes of data to  HMAC context: %s",
         (unsigned long) (bufsz - buflen), sftp_crypto_get_errors());
@@ -658,7 +657,7 @@ int sftp_mac_write_data(struct ssh2_packet *pkt) {
       return -1;
     }
 #else
-    HMAC_Update(mac_ctx, (unsigned char *) ptr, (bufsz - buflen));
+    HMAC_Update(mac_ctx, ptr, (bufsz - buflen));
     HMAC_Final(mac_ctx, mac_data, &mac_len);
 #endif /* OpenSSL-1.0.0 and later */
 
