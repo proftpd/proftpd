@@ -334,10 +334,7 @@ sub list_tests {
     }
   }
 
-#  return testsuite_get_runnable_tests($TESTS);
-  return qw(
-    tls_limit_prot_bug3887
-  );
+  return testsuite_get_runnable_tests($TESTS);
 }
 
 sub tls_login_rsa {
