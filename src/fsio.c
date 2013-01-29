@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.126 2013-01-29 06:51:11 castaglia Exp $
+ * $Id: fsio.c,v 1.127 2013-01-29 21:58:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4366,6 +4366,11 @@ int pr_fs_is_nfs(const char *path) {
 #ifdef HAVE_STATFS
   struct statfs fs;
   int res = FALSE;
+
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
   pr_trace_msg(trace_channel, 18, "using statfs() on '%s'", path);
   if (statfs(path, &fs) < 0) {

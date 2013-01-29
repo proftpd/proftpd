@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.310 2013-01-21 22:05:03 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.311 2013-01-29 21:58:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -996,8 +996,8 @@ static int stor_complete(void) {
 
 static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
     char *suffix) {
-  char *c = NULL, *hidden_path;
-  int dotcount = 0, foundslash = 0, basenamestart = 0, maxlen;
+  char *c = NULL, *hidden_path, *parent_dir = NULL;
+  int dotcount = 0, found_slash = FALSE, basenamestart = 0, maxlen;
 
   /* We have to also figure out the temporary hidden file name for receiving
    * this transfer.  Length is +(N+M) due to prepended prefix and suffix.
@@ -1007,7 +1007,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
   for (c = path; *c; ++c) {
 
     if (*c == '/') {
-      foundslash = 1;
+      found_slash = TRUE;
       basenamestart = dotcount = 0;
 
     } else if (*c == '.') {
@@ -1069,7 +1069,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
     }
   }
 
-  if (!foundslash) {
+  if (found_slash == FALSE) {
 
     /* Simple local file name */
     hidden_path = pstrcat(cmd->tmp_pool, prefix, path, suffix, NULL);
@@ -1111,7 +1111,17 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
   /* Only use the O_EXCL open(2) flag if the path is NOT on an NFS-mounted
    * filesystem (see Bug#3874).
    */
-  if (pr_fs_is_nfs(hidden_path) == TRUE) {
+  if (found_slash == FALSE) {
+    parent_dir = "./";
+
+  } else if (basenamestart == 0) {
+    parent_dir = "/";
+
+  } else {
+    parent_dir = pstrndup(cmd->tmp_pool, path, basenamestart);
+  }
+
+  if (pr_fs_is_nfs(parent_dir) == TRUE) {
     (void) pr_table_set(cmd->notes, "mod_xfer.store-hidden-nfs",
       pstrdup(cmd->pool, "1"), 0);
   }
