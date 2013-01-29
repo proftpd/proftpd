@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.272 2013-01-25 22:07:29 castaglia Exp $
+ * $Id: dirtree.c,v 1.273 2013-01-29 00:47:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1984,6 +1984,7 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
         pr_cmd_cmp(cmd, PR_CMD_EPSV_ID) != 0 &&
         pr_cmd_cmp(cmd, PR_CMD_PASV_ID) != 0 &&
         pr_cmd_cmp(cmd, PR_CMD_PORT_ID) != 0 &&
+        pr_cmd_cmp(cmd, PR_CMD_PROT_ID) != 0 &&
         strncmp(cmd->argv[0], C_OPTS, 4) != 0) {
       res = dir_check_limits(cmd, c, "ALL", op_hidden || regex_hidden);
     }
@@ -2142,6 +2143,7 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
         pr_cmd_cmp(cmd, PR_CMD_EPSV_ID) != 0 &&
         pr_cmd_cmp(cmd, PR_CMD_PASV_ID) != 0 &&
         pr_cmd_cmp(cmd, PR_CMD_PORT_ID) != 0 &&
+        pr_cmd_cmp(cmd, PR_CMD_PROT_ID) != 0 &&
         strncmp(cmd->argv[0], C_OPTS, 4) != 0) {
       res = dir_check_limits(cmd, c, "ALL", op_hidden || regex_hidden);
     }
