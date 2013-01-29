@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SSH2 constants
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: ssh2.h,v 1.6 2012-03-01 23:10:58 castaglia Exp $
+ * $Id: ssh2.h,v 1.7 2013-01-29 07:08:05 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_SSH2_H
@@ -32,11 +32,11 @@
  * impose a maximum size here to prevent overly-large packets from being
  * used by attackers.  The maximum size is a bit arbitrary.
  */
-#define SFTP_MAX_PACKET_LEN             (1024 * 128)
+#define SFTP_MAX_PACKET_LEN             (1024 * 256)
 
 /* SSH2 package message types */
 
-#define SFTP_SSH2_MSG_DISCONNECT			1
+#define SFTP_SSH2_MSG_DISCONNECT		1
 #define SFTP_SSH2_MSG_IGNORE			2
 #define SFTP_SSH2_MSG_UNIMPLEMENTED		3
 #define SFTP_SSH2_MSG_DEBUG			4
