@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.125 2013-01-29 00:21:32 castaglia Exp $
+ * $Id: fsio.c,v 1.126 2013-01-29 06:51:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2151,7 +2151,7 @@ char *pr_fs_decode_path(pool *p, const char *path) {
     if (pr_trace_get_level("encode") >= 14) {
       /* Write out the path we tried (and failed) to decode, in hex. */
       register unsigned int i;
-      char *raw_path;
+      unsigned char *raw_path;
       size_t pathlen, raw_pathlen;
 
       pathlen = strlen(path);
@@ -2160,10 +2160,11 @@ char *pr_fs_decode_path(pool *p, const char *path) {
 
       for (i = 0; i < pathlen; i++) {
         snprintf((char *) (raw_path + (i * 5)), (raw_pathlen - 1) - (i * 5),
-          "0x%02x ", path[i]);
+          "0x%02x ", (unsigned char) path[i]);
       }
 
-      pr_trace_msg("encode", 14, "unable to decode (raw bytes): %s", raw_path);
+      pr_trace_msg("encode", 14, "unable to decode path (raw bytes): %s",
+        raw_path);
     } 
 
     return (char *) path;
@@ -2193,7 +2194,7 @@ char *pr_fs_encode_path(pool *p, const char *path) {
     if (pr_trace_get_level("encode") >= 14) {
       /* Write out the path we tried (and failed) to encode, in hex. */
       register unsigned int i; 
-      char *raw_path;
+      unsigned char *raw_path;
       size_t pathlen, raw_pathlen;
       
       pathlen = strlen(path);
@@ -2202,10 +2203,11 @@ char *pr_fs_encode_path(pool *p, const char *path) {
 
       for (i = 0; i < pathlen; i++) {
         snprintf((char *) (raw_path + (i * 5)), (raw_pathlen - 1) - (i * 5),
-          "0x%02x ", path[i]);
+          "0x%02x ", (unsigned char) path[i]);
       }
 
-      pr_trace_msg("encode", 14, "unable to encode (raw bytes): %s", raw_path);
+      pr_trace_msg("encode", 14, "unable to encode path (raw bytes): %s",
+        raw_path);
     } 
 
     return (char *) path;

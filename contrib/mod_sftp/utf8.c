@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: utf8.c,v 1.17 2013-01-29 00:21:32 castaglia Exp $
+ * $Id: utf8.c,v 1.18 2013-01-29 06:51:11 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -241,7 +241,7 @@ char *sftp_utf8_decode_str(pool *p, const char *str) {
     if (pr_trace_get_level("sftp") >= 14) {
       /* Write out the string we tried (and failed) to decode, in hex. */
       register unsigned int i;
-      char *raw_str;
+      unsigned char *raw_str;
       size_t len, raw_len;
       
       len = strlen(str);
@@ -250,10 +250,11 @@ char *sftp_utf8_decode_str(pool *p, const char *str) {
 
       for (i = 0; i < len; i++) {
         snprintf((char *) (raw_str + (i * 5)), (raw_len - 1) - (i * 5),
-          "0x%02x ", str[i]);
+          "0x%02x ", (unsigned char) str[i]);
       }
 
-      pr_trace_msg("sftp", 14, "unable to decode (raw bytes): %s", raw_str);
+      pr_trace_msg("sftp", 14, "unable to decode string (raw bytes): %s",
+        raw_str);
     }
 
     return (char *) str;
@@ -299,7 +300,7 @@ char *sftp_utf8_encode_str(pool *p, const char *str) {
     if (pr_trace_get_level("sftp") >= 14) {
       /* Write out the string we tried (and failed) to encode, in hex. */
       register unsigned int i;
-      char *raw_str;
+      unsigned char *raw_str;
       size_t len, raw_len;
 
       len = strlen(str);
@@ -308,10 +309,11 @@ char *sftp_utf8_encode_str(pool *p, const char *str) {
 
       for (i = 0; i < len; i++) {
         snprintf((char *) (raw_str + (i * 5)), (raw_len - 1) - (i * 5),
-          "0x%02x ", str[i]);
+          "0x%02x ", (unsigned char) str[i]);
       }
 
-      pr_trace_msg("sftp", 14, "unable to encode (raw bytes): %s", raw_str);
+      pr_trace_msg("sftp", 14, "unable to encode string (raw bytes): %s",
+        raw_str);
     }
 
     return (char *) str;
