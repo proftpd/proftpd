@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.56 2013-01-07 20:30:57 castaglia Exp $
+ * $Id: mod_facts.c,v 1.57 2013-01-30 22:37:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -294,7 +294,7 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
  * channel, wherease MLSD's output is sent via a data transfer, much like
  * LIST or NLST.
  */
-static char *mlinfo_buf = NULL;
+static char *mlinfo_buf = NULL, *mlinfo_bufptr = NULL;
 static size_t mlinfo_bufsz = 0;
 static size_t mlinfo_buflen = 0;
 
@@ -307,6 +307,7 @@ static void facts_mlinfobuf_init(void) {
   }
 
   memset(mlinfo_buf, '\0', mlinfo_bufsz);
+  mlinfo_bufptr = mlinfo_buf;
   mlinfo_buflen = 0;
 }
 
@@ -323,7 +324,8 @@ static void facts_mlinfobuf_add(struct mlinfo *info) {
     (void) facts_mlinfobuf_flush();
   }
 
-  sstrcat(mlinfo_buf, buf, mlinfo_bufsz);
+  sstrcat(mlinfo_bufptr, buf, mlinfo_bufsz - mlinfo_buflen);
+  mlinfo_bufptr += buflen;
   mlinfo_buflen += buflen;
 }
 
@@ -331,12 +333,19 @@ static void facts_mlinfobuf_flush(void) {
   if (mlinfo_buflen > 0) {
     int res;
 
+    /* Make sure the ASCII flags are cleared from the session flags,
+     * so that the pr_data_xfer() function does not try to perform
+     * ASCII translation on this data.
+     */
+    session.sf_flags &= SF_ASCII_OVERRIDE;
     res = pr_data_xfer(mlinfo_buf, mlinfo_buflen);
     if (res < 0 &&
         errno != 0) {
       pr_log_debug(DEBUG3, MOD_FACTS_VERSION
         ": error transferring data: [%d] %s", errno, strerror(errno));
     }
+
+    session.sf_flags |= SF_ASCII_OVERRIDE;
   }
 
   facts_mlinfobuf_init();

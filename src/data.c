@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.144 2012-10-03 16:22:52 castaglia Exp $
+ * $Id: data.c,v 1.145 2013-01-30 22:37:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -926,14 +926,14 @@ void pr_data_abort(int err, int quiet) {
 /* From response.c.  XXX Need to provide these symbols another way. */
 extern pr_response_t *resp_list, *resp_err_list;
 
-/* pr_data_xfer() actually transfers the data on the data connection ..
- * ASCII translation is performed if necessary.  direction set
- * when data connection was opened determine if the client buffer
- * is read from or written to.  return 0 if reading and data connection
- * closes, or -1 if error
+/* pr_data_xfer() actually transfers the data on the data connection.  ASCII
+ * translation is performed if necessary.  `direction' is set when the data
+ * connection was opened.
+ *
+ * We determine if the client buffer is read from or written to.  Returns 0 if
+ * reading and data connection closes, or -1 if error (with errno set).
  */
-
-int pr_data_xfer(char *cl_buf, int cl_size) {
+int pr_data_xfer(char *cl_buf, size_t cl_size) {
   int len = 0;
   int total = 0;
   int res = 0;
@@ -1190,9 +1190,11 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
            * end of data, this is so that xfrm_ascii_read() won't sit
            * forever waiting for the next character after a final '\r'.
            */
-          if (len > 0 || buflen > 1)
+          if (len > 0 ||
+              buflen > 1) {
             xfrm_ascii_read(buf, &buflen, &adjlen);
-	
+          }
+
           /* Now copy everything we can into cl_buf */
           if (buflen > cl_size) {
             /* Because we have to cut our buffer short, make sure this
@@ -1211,8 +1213,9 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
            * anything remains, copy it to the start of the buffer.
            */
 
-          if (adjlen > 0)
-            memcpy(buf, buf+buflen, adjlen);
+          if (adjlen > 0) {
+            memcpy(buf, buf + buflen, adjlen);
+          }
 
           /* Store everything back in session.xfer. */
           session.xfer.buflen = adjlen;
@@ -1284,8 +1287,9 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 
       pr_signals_handle();
 
-      if (buflen > pr_config_get_server_xfer_bufsz(PR_NETIO_IO_WR))
+      if (buflen > pr_config_get_server_xfer_bufsz(PR_NETIO_IO_WR)) {
         buflen = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_WR);
+      }
 
       xferbuflen = buflen;
 
@@ -1293,7 +1297,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
       memcpy(session.xfer.buf, cl_buf, buflen);
 
       if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
-
+pr_log_debug(DEBUG0, "data_xfer: IO_WR: SF_ASCII (or SF_ASCII_OVERRIDE) in effect, performing ASCII translation");
         /* Scan the internal buffer, looking for LFs with no preceding CRs.
          * Add CRs (and expand the internal buffer) as necessary. xferbuflen
          * will be adjusted so that it contains the length of data in
