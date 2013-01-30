@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.312 2013-01-29 22:42:12 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.313 2013-01-30 01:24:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1122,7 +1122,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
   }
 
   if (pr_fs_is_nfs(parent_dir) == TRUE) {
-    (void) pr_table_set(cmd->notes, "mod_xfer.store-hidden-nfs",
+    (void) pr_table_add(cmd->notes, "mod_xfer.store-hidden-nfs",
       pstrdup(cmd->pool, "1"), 0);
   }
 
