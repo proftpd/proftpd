@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.129 2013-01-29 23:38:13 castaglia Exp $
+ * $Id: fsio.c,v 1.130 2013-01-30 00:49:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -53,6 +53,13 @@
 
 #ifdef HAVE_ACL_LIBACL_H
 # include <acl/libacl.h>
+#endif
+
+/* For determining whether a file is on an NFS filesystem.  Note that
+ * this value is Linux specific.  See Bug#3874 for details.
+ */
+#ifndef NFS_SUPER_MAGIC
+# define NFS_SUPER_MAGIC	0x6969
 #endif
 
 typedef struct fsopendir fsopendir_t;
@@ -4390,11 +4397,11 @@ int pr_fs_is_nfs(const char *path) {
     res = TRUE;
   }
 # elif defined(HAVE_STATFS_F_TYPE)
-#  ifdef NFS_SUPER_MAGIC
   /* Probably a Linux system. */
   if (fs.f_type == NFS_SUPER_MAGIC) {
     pr_trace_msg(trace_channel, 12,
-      "path '%s' resides on an NFS_SUPER_MAGIC filesystem (type 0x%08x)", path);
+      "path '%s' resides on an NFS_SUPER_MAGIC filesystem (type 0x%08x)", path,
+      fs.f_type);
     res = TRUE;
 
   } else {
@@ -4402,11 +4409,6 @@ int pr_fs_is_nfs(const char *path) {
       "path '%s' resides on a filesystem of type 0x%08x (not NFS_SUPER_MAGIC)",
       path, fs.f_type);
   }
-#  else
-  pr_trace_msg(trace_channel, 12,
-    "path '%s' resides on a filesystem of type 0x%08x (NFS_SUPER_MAGIC "
-    "undefined)", path, fs.f_type);
-#  endif /* No NFS_SUPER_MAGIC */
 # else
   pr_trace_msg(trace_channel, 12,
     "unable to determine filesystem type for path '%s'", path);
