@@ -22,9 +22,15 @@ ChangeLog files.
 
     TLSMasqueradeAddress (Bug#3862)
 
+
   + Changed Configuration Directives
 
     HiddenStores (Bug#3872)
+
+    LogFormat (Bug#3889)
+      %{iso8601}
+      %{microsecs}
+      %{millisecs}
 
     TLSSessionCache (Bug#3869)
 
@@ -250,4 +256,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-01-25 00:04:13 $
+Last Updated: $Date: 2013-01-31 17:38:56 $

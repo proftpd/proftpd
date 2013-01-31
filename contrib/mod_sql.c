@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.233 2013-01-03 22:16:05 castaglia Exp $
+ * $Id: mod_sql.c,v 1.234 2013-01-31 17:38:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2173,6 +2173,55 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
     memset(buf, '\0', sizeof(buf));
     snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) session.login_gid);
     
+    long_tag = pstrdup(cmd->tmp_pool, buf);
+  }
+
+  if (long_tag == NULL &&
+      strncasecmp(tag, "iso8601", 8) == 0) {
+    char buf[32];
+    struct timeval now;
+    struct tm *tm;
+    size_t len;
+    unsigned long millis;
+
+    memset(buf, '\0', sizeof(buf));
+    gettimeofday(&now, NULL);
+    tm = pr_localtime(NULL, (const time_t *) &(now.tv_sec));
+
+    len = strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S", tm);
+
+    /* Convert microsecs to millisecs. */
+    millis = now.tv_usec / 1000;
+
+    snprintf(buf + len, sizeof(buf) - len, ",%03lu", millis);
+    long_tag = pstrdup(cmd->tmp_pool, buf);
+  }
+
+  if (long_tag == NULL &&
+      strncmp(tag, "microsecs", 10) == 0) {
+    char buf[7];
+    struct timeval now;
+
+    memset(buf, '\0', sizeof(buf));
+    gettimeofday(&now, NULL); 
+
+    snprintf(buf, sizeof(buf), "%06lu", (unsigned long) now.tv_usec);
+    long_tag = pstrdup(cmd->tmp_pool, buf);
+  }
+
+  if (long_tag == NULL &&
+      strncmp(tag, "millisecs", 10) == 0) {
+    char buf[4];
+    struct timeval now;
+    unsigned long millis;
+
+    memset(buf, '\0', sizeof(buf));
+    gettimeofday(&now, NULL);
+
+    /* Convert microsecs to millisecs. */
+    millis = now.tv_usec / 1000;
+
+    snprintf(buf, sizeof(buf), "%03lu", millis);
     long_tag = pstrdup(cmd->tmp_pool, buf);
   }
 

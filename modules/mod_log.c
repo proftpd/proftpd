@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.141 2013-01-03 20:20:03 castaglia Exp $
+ * $Id: mod_log.c,v 1.142 2013-01-31 17:38:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -109,6 +109,9 @@ struct logfile_struc {
 #define META_NOTE_VAR		37
 #define META_XFER_STATUS	38
 #define META_XFER_FAILURE	39
+#define META_MICROSECS		40
+#define META_MILLISECS		41
+#define META_ISO8601		42
 
 /* For tracking the size of deleted files. */
 static off_t log_dele_filesz = 0;
@@ -153,6 +156,10 @@ static xaset_t			*log_set = NULL;
    %w                   - RNFR path ("whence" a rename comes, i.e. the source)
    %{file-modified}     - Indicates whether a file is being modified
                           (i.e. already exists) or not.
+   %{iso8601}           - ISO-8601 timestamp: YYYY-MM-dd HH:mm:ss,SSS
+                            for example: "1999-11-27 15:49:37,459"
+   %{microsecs}         - 6 digits of microseconds of current time
+   %{millisecs}         - 3 digits of milliseconds of current time
    %{protocol}          - Current protocol (e.g. "ftp", "sftp", etc)
    %{uid}               - UID of logged-in user
    %{gid}               - Primary GID of logged-in user
@@ -230,6 +237,24 @@ static void logformat(char *nickname, char *fmts) {
         if (strncmp(tmp, "{gid}", 5) == 0) {
           add_meta(&outs, META_GID, 0);
           tmp += 5;
+          continue;
+        }
+
+        if (strncasecmp(tmp, "{iso8601}", 9) == 0) {
+          add_meta(&outs, META_ISO8601, 0);
+          tmp += 9;
+          continue;
+        }
+
+        if (strncmp(tmp, "{microsecs}", 11) == 0) {
+          add_meta(&outs, META_MICROSECS, 0);
+          tmp += 11;
+          continue;
+        }
+
+        if (strncmp(tmp, "{millisecs}", 11) == 0) {
+          add_meta(&outs, META_MILLISECS, 0);
+          tmp += 11;
           continue;
         }
 
@@ -618,7 +643,7 @@ static struct tm *_get_gmtoff(int *tz) {
   time_t tt = time(NULL);
   struct tm gmt;
   struct tm *t;
-  int days,hours,minutes;
+  int days, hours, minutes;
 
   gmt = *gmtime(&tt);
   t = pr_localtime(NULL, &tt);
@@ -1005,6 +1030,33 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
+    case META_MICROSECS: {
+      struct timeval now;
+
+      argp = arg;
+      gettimeofday(&now, NULL);
+
+      snprintf(argp, sizeof(arg), "%06lu", (unsigned long) now.tv_usec);
+      m++;
+      break;
+    }
+
+    case META_MILLISECS: {
+      struct timeval now;
+      unsigned long millis;
+
+      argp = arg;
+
+      gettimeofday(&now, NULL);
+
+      /* Convert microsecs to millisecs. */
+      millis = now.tv_usec / 1000;
+
+      snprintf(argp, sizeof(arg), "%03lu", millis);
+      m++;
+      break;
+    }
+
     case META_TIME:
       {
         char *time_fmt = "[%d/%b/%Y:%H:%M:%S ";
@@ -1042,6 +1094,27 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
         }
       }
       break;
+
+    case META_ISO8601: {
+      struct tm *tm;
+      struct timeval now;
+      unsigned long millis;
+      size_t len;
+
+      argp = arg;
+
+      gettimeofday(&now, NULL);
+      tm = pr_localtime(NULL, (const time_t *) &(now.tv_sec));
+
+      len = strftime(argp, sizeof(arg), "%Y-%m-%d %H:%M:%S", tm);
+
+      /* Convert microsecs to millisecs. */
+      millis = now.tv_usec / 1000;
+
+      snprintf(argp + len, sizeof(arg), ",%03lu", millis);
+      m++;
+      break;
+    }
 
     case META_SECONDS:
       argp = arg;
