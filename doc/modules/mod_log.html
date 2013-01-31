@@ -1,4 +1,4 @@
-<!-- $Id: mod_log.html,v 1.11 2012-04-04 06:10:19 castaglia Exp $ -->
+<!-- $Id: mod_log.html,v 1.12 2013-01-31 17:47:16 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_log.html,v $ -->
 
 <html>
@@ -296,6 +296,11 @@ indicated when logging.
   </tr>
 
   <tr>
+    <td>&nbsp;<code>%{iso8601}</code>&nbsp;</td>
+    <td>shorthand form of <code>%{%Y-%m-%d %H:%M:%S}t,%{millisecs}</code>, <i>e.g.</i> "2013-01-30 20:14:05,670"</td>
+  </tr>
+
+  <tr>
     <td>&nbsp;<code>%J</code>&nbsp;</td>
     <td>Command arguments received from client, <i>e.g.</i> "file.txt"</td>
   </tr>
@@ -314,6 +319,16 @@ indicated when logging.
   <tr>
     <td>&nbsp;<code>%m</code>&nbsp;</td>
     <td>Command (method) name received from client, <i>e.g.</i> <code>RETR</code></td>
+  </tr>
+
+  <tr>
+    <td>&nbsp;<code>%{microsecs}</code>&nbsp;</td>
+    <td>6 digit value of the microseconds of the current time</td>
+  </tr>
+
+  <tr>
+    <td>&nbsp;<code>%{millisecs}</code>&nbsp;</td>
+    <td>3 digit value of the milliseconds of the current time</td>
   </tr>
 
   <tr>
@@ -469,12 +484,12 @@ The <code>mod_log</code> module is compiled by default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-04-04 06:10:19 $</i><br>
+Last Updated: <i>$Date: 2013-01-31 17:47:16 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2002-2012<br>
+&copy; Copyright 2002-2013<br>
  All Rights Reserved<br>
 </i></b></font>
 
