@@ -35,6 +35,22 @@ ChangeLog files.
     TLSSessionCache (Bug#3869)
 
 
+  + Logging Format changes
+
+    Note that the logging format for SystemLog, TraceLog, and all per-module
+    log files has changed.  Specifically, the log lines now have an ISO-8601
+    timestamp format, so that they now look like:
+
+      2013-01-31 15:33:03,832
+
+    instead of:
+
+      Jan 31 15:33:03
+
+    The new format does not use textual month abbreviations, and includes
+    milliseconds in the timestamp.
+
+
 1.3.5rc1
 ---------
 
@@ -256,4 +272,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-01-31 17:38:56 $
+Last Updated: $Date: 2013-01-31 23:51:39 $
