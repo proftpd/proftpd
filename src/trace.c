@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2012 The ProFTPD Project team
+ * Copyright (c) 2006-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.40 2012-08-22 23:52:37 castaglia Exp $
+ * $Id: trace.c,v 1.41 2013-01-31 20:35:54 castaglia Exp $
  */
 
 
@@ -109,7 +109,7 @@ static int trace_write(const char *channel, int level, const char *msg,
     now = time(NULL);
     tm = pr_localtime(NULL, &now);
 
-    strftime(buf, sizeof(buf)-1, "%b %d %H:%M:%S", tm);
+    strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S", tm);
 
   } else {
     struct timeval now;
@@ -119,7 +119,7 @@ static int trace_write(const char *channel, int level, const char *msg,
 
     tm = pr_localtime(NULL, (const time_t *) &(now.tv_sec));
 
-    strftime(buf, sizeof(buf)-1, "%b %d %H:%M:%S", tm);
+    strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S", tm);
 
     buflen = strlen(buf);
 
