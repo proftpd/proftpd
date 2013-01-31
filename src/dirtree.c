@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.273 2013-01-29 00:47:13 castaglia Exp $
+ * $Id: dirtree.c,v 1.274 2013-01-31 19:40:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2668,24 +2668,33 @@ void resolve_deferred_dirs(server_rec *s) {
   for (c = (config_rec *) s->conf->xas_list; c; c = c->next) {
     if (c->config_type == CONF_DIR &&
         (c->flags & CF_DEFER)) {
-      char *realdir;
+      char *interp_dir = NULL, *real_dir = NULL;
 
       /* Check for any expandable variables. */
       c->name = path_subst_uservar(c->pool, &c->name);
 
       /* Handle any '~' interpolation. */
-      c->name = dir_interpolate(c->pool, c->name);
+      interp_dir = dir_interpolate(c->pool, c->name);
+      if (interp_dir == NULL) {
+        /* This can happen when the '~' is just that, and does not refer
+         * to any known user.
+         */
+        interp_dir = c->name;
+      }
 
-      realdir = dir_best_path(c->pool, c->name);
-      if (realdir) {
-        c->name = realdir;
+      real_dir = dir_best_path(c->pool, interp_dir);
+      if (real_dir) {
+        c->name = real_dir;
 
       } else {
-        realdir = dir_canonical_path(c->pool, c->name);
-        if (realdir) {
-          c->name = realdir;
+        real_dir = dir_canonical_path(c->pool, c->name);
+        if (real_dir) {
+          c->name = real_dir;
         }
       }
+
+      /* Clear the CF_DEFER flag. */
+      c->flags &= ~CF_DEFER;
     }
   }
 }
@@ -2772,10 +2781,11 @@ static void fixup_globals(xaset_t *list) {
 }
 
 void fixup_dirs(server_rec *s, int flags) {
-  if (!s)
+  if (s == NULL) {
     return;
+  }
 
-  if (!s->conf) {
+  if (s->conf == NULL) {
     if (!(flags & CF_SILENT)) {
       pr_log_debug(DEBUG5, "%s", "");
       pr_log_debug(DEBUG5, "Config for %s:", s->ServerName);
