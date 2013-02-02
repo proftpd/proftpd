@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.145 2013-01-30 22:37:04 castaglia Exp $
+ * $Id: data.c,v 1.146 2013-02-02 06:04:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1297,7 +1297,6 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
       memcpy(session.xfer.buf, cl_buf, buflen);
 
       if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
-pr_log_debug(DEBUG0, "data_xfer: IO_WR: SF_ASCII (or SF_ASCII_OVERRIDE) in effect, performing ASCII translation");
         /* Scan the internal buffer, looking for LFs with no preceding CRs.
          * Add CRs (and expand the internal buffer) as necessary. xferbuflen
          * will be adjusted so that it contains the length of data in

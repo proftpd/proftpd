@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.198 2013-01-30 22:37:04 castaglia Exp $
+ * $Id: mod_ls.c,v 1.199 2013-02-02 06:04:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -326,7 +326,7 @@ static int sendline(int flags, char *fmt, ...) {
        * so that the pr_data_xfer() function does not try to perform
        * ASCII translation on this data.
        */
-      session.sf_flags &= SF_ASCII_OVERRIDE;
+      session.sf_flags &= ~SF_ASCII_OVERRIDE;
 
       res = pr_data_xfer(listbuf, listbuflen);
       if (res < 0 &&
@@ -342,6 +342,7 @@ static int sendline(int flags, char *fmt, ...) {
       }
 
       session.sf_flags |= SF_ASCII_OVERRIDE;
+
       memset(listbuf, '\0', listbufsz);
       listbuf_ptr = listbuf;
       listbuflen = 0;
@@ -367,7 +368,7 @@ static int sendline(int flags, char *fmt, ...) {
      * so that the pr_data_xfer() function does not try to perform
      * ASCII translation on this data.
      */
-    session.sf_flags &= SF_ASCII_OVERRIDE;
+    session.sf_flags &= ~SF_ASCII_OVERRIDE;
 
     res = pr_data_xfer(listbuf, listbuflen);
     if (res < 0 &&
@@ -384,6 +385,7 @@ static int sendline(int flags, char *fmt, ...) {
     }
 
     session.sf_flags |= SF_ASCII_OVERRIDE;
+
     memset(listbuf, '\0', listbufsz);
     listbuf_ptr = listbuf;
     listbuflen = 0;
@@ -400,8 +402,9 @@ static int sendline(int flags, char *fmt, ...) {
 static void ls_done(cmd_rec *cmd) {
   int quiet = FALSE;
 
-  if (session.sf_flags & SF_ABORT)
+  if (session.sf_flags & SF_ABORT) {
     quiet = TRUE;
+  }
 
   pr_data_close(quiet);
 }
@@ -2007,8 +2010,10 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
     /* Open data connection */
     if (!opt_STAT) {
-      if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+      if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
         return -1;
+      }
+
       session.sf_flags |= SF_ASCII_OVERRIDE;
     }
 
@@ -2906,8 +2911,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
       if (xerrno == ENOENT &&
           (list_flags & LS_FL_NO_ERROR_IF_ABSENT)) {
-        if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+        if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
           return PR_ERROR(cmd);
+        }
         session.sf_flags |= SF_ASCII_OVERRIDE;
         pr_response_add(R_226, _("Transfer complete"));
         ls_done(cmd);
@@ -2934,8 +2940,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
             *ignore_hidden == TRUE) {
 
           if (list_flags & LS_FL_NO_ERROR_IF_ABSENT) {
-            if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+            if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
               return PR_ERROR(cmd);
+            }
             session.sf_flags |= SF_ASCII_OVERRIDE;
             pr_response_add(R_226, _("Transfer complete"));
             ls_done(cmd);
@@ -2964,8 +2971,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
       if (xerrno == ENOENT &&
           (list_flags & LS_FL_NO_ERROR_IF_ABSENT)) {
-        if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+        if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
           return PR_ERROR(cmd);
+        }
         session.sf_flags |= SF_ASCII_OVERRIDE;
         pr_response_add(R_226, _("Transfer complete"));
         ls_done(cmd);
@@ -2980,15 +2988,17 @@ MODRET ls_nlst(cmd_rec *cmd) {
     }
 
     if (S_ISREG(st.st_mode)) {
-      if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+      if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
         return PR_ERROR(cmd);
+      }
       session.sf_flags |= SF_ASCII_OVERRIDE;
 
       res = nlstfile(cmd, target);
 
     } else if (S_ISDIR(st.st_mode)) {
-      if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+      if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
         return PR_ERROR(cmd);
+      }
       session.sf_flags |= SF_ASCII_OVERRIDE;
 
       res = nlstdir(cmd, target);

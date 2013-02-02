@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.57 2013-01-30 22:37:04 castaglia Exp $
+ * $Id: mod_facts.c,v 1.58 2013-02-02 06:04:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -337,7 +337,8 @@ static void facts_mlinfobuf_flush(void) {
      * so that the pr_data_xfer() function does not try to perform
      * ASCII translation on this data.
      */
-    session.sf_flags &= SF_ASCII_OVERRIDE;
+    session.sf_flags &= ~SF_ASCII_OVERRIDE;
+
     res = pr_data_xfer(mlinfo_buf, mlinfo_buflen);
     if (res < 0 &&
         errno != 0) {
