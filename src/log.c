@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.113 2013-01-31 23:44:50 castaglia Exp $
+ * $Id: log.c,v 1.114 2013-02-02 06:24:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -518,7 +518,7 @@ static void log_write(int priority, int f, char *s, int discard) {
     gettimeofday(&now, NULL);
     tm = pr_localtime(NULL, (const time_t *) &(now.tv_sec));
     if (tm == NULL) {
-      return -1;
+      return;
     }
 
     len = strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm);
