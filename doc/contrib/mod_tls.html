@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.38 2013-01-13 21:39:05 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.39 2013-02-03 02:11:43 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -1082,7 +1082,7 @@ Example:
 <h2><a name="TLSProtocol">TLSProtocol</a></h2>
 <strong>Syntax:</strong> TLSProtocol <em>protocol1</em> ... <em>protocolN</em><br>
 <strong>Default:</strong> SSLv3 TLSv1<br>
-<strong>Context:</strong> server config<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_tls<br>
 <strong>Compatibility:</strong> 1.2.7rc1 and later
 
@@ -1140,8 +1140,7 @@ All use of SSLv2 is disabled.  SSLv2 <b>should not</b> be used.
 <h2><a name="TLSRandomSeed">TLSRandomSeed</a></h2>
 <strong>Syntax:</strong> TLSRandomSeed <em>seed</em><br>
 <strong>Default:</strong> <i>openssl-dir</i><code>/.rnd</code><br>
-<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code
->&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_tls<br>
 <strong>Compatibility:</strong> 1.2.7rc1 and later
 
@@ -1696,7 +1695,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-01-13 21:39:05 $</i><br>
+Last Updated: <i>$Date: 2013-02-03 02:11:43 $</i><br>
 
 <hr>
 <font size=2><b><i>
