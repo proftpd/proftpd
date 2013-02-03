@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.78 2013-01-02 21:56:02 castaglia Exp $
+ * $Id: scoreboard.c,v 1.79 2013-02-03 01:04:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -156,8 +156,9 @@ static int rlock_scoreboard(void) {
       continue;
     }
 
-    pr_trace_msg("lock", 3, "read-lock of scoreboard mutex fd %d failed: %s",
-      scoreboard_mutex_fd, strerror(xerrno));
+    pr_trace_msg("lock", 3,
+      "read-lock (attempt #%u) of scoreboard mutex fd %d failed: %s",
+      nattempts, scoreboard_mutex_fd, strerror(xerrno));
     if (xerrno == EACCES) {
       struct flock locker;
 
@@ -189,17 +190,18 @@ static int rlock_scoreboard(void) {
         continue;
       }
 
-      pr_trace_msg("lock", 9,
-        "unable to acquire read-lock on scoreboard mutex fd %d: %s",
-        scoreboard_mutex_fd, strerror(xerrno));
+      pr_trace_msg("lock", 9, "unable to acquire read-lock on "
+        "scoreboard mutex fd %d after %u %s: %s", scoreboard_mutex_fd,
+        nattempts, nattempts != 1 ? "attempts" : "attempt", strerror(xerrno));
     }
 
     errno = xerrno;
     return -1;
   }
 
-  pr_trace_msg("lock", 9, "read-lock of scoreboard mutex fd %d successful",
-    scoreboard_mutex_fd);
+  pr_trace_msg("lock", 9,
+    "read-lock of scoreboard mutex fd %d successful after %u %s",
+    scoreboard_mutex_fd, nattempts, nattempts != 1 ? "attempts" : "attempt");
 
   scoreboard_read_locked = TRUE;
   return 0;
@@ -254,8 +256,9 @@ static int unlock_scoreboard(void) {
       continue;
     }
 
-    pr_trace_msg("lock", 3, "unlock of scoreboard mutex fd %d failed: %s",
-      scoreboard_mutex_fd, strerror(xerrno));
+    pr_trace_msg("lock", 3,
+      "unlock (attempt #%u) of scoreboard mutex fd %d failed: %s",
+      nattempts, scoreboard_mutex_fd, strerror(xerrno));
     if (xerrno == EACCES) {
       struct flock locker;
 
@@ -289,16 +292,18 @@ static int unlock_scoreboard(void) {
       }
 
       pr_trace_msg("lock", 9,
-        "unable to unlock scoreboard mutex fd %d: %s",
-        scoreboard_mutex_fd, strerror(xerrno));
+        "unable to unlock scoreboard mutex fd %d after %u %s: %s",
+        scoreboard_mutex_fd, nattempts, nattempts != 1 ? "attempts" : "attempt",
+        strerror(xerrno));
     }
 
     errno = xerrno;
     return -1;
   }
 
-  pr_trace_msg("lock", 9, "unlock of scoreboard mutex fd %d successful",
-    scoreboard_mutex_fd);
+  pr_trace_msg("lock", 9,
+    "unlock of scoreboard mutex fd %d successful after %u %s",
+    scoreboard_mutex_fd, nattempts, nattempts != 1 ? "attempts" : "attempt");
 
   scoreboard_read_locked = scoreboard_write_locked = FALSE;
   return 0;
@@ -388,16 +393,17 @@ static int wlock_scoreboard(void) {
       }
 
       pr_trace_msg("lock", 9, "unable to acquire write-lock on "
-        "scoreboard mutex fd %d after %u attempts: %s",
-        nattempts, scoreboard_mutex_fd, strerror(xerrno));
+        "scoreboard mutex fd %d after %u %s: %s", scoreboard_mutex_fd,
+        nattempts, nattempts != 1 ? "attempts" : "attempt", strerror(xerrno));
     }
 
     errno = xerrno;
     return -1;
   }
 
-  pr_trace_msg("lock", 9, "write-lock of scoreboard mutex fd %d successful",
-    scoreboard_mutex_fd);
+  pr_trace_msg("lock", 9,
+    "write-lock of scoreboard mutex fd %d successful after %u %s",
+    scoreboard_mutex_fd, nattempts, nattempts != 1 ? "attempts" : "attempt");
 
   scoreboard_write_locked = TRUE;
   return 0;
