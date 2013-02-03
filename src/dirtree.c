@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.274 2013-01-31 19:40:09 castaglia Exp $
+ * $Id: dirtree.c,v 1.275 2013-02-03 21:46:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1949,7 +1949,7 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
       }
 
     } else {
-        session.fsgid = session.gid;
+      session.fsgid = session.gid;
     }
   }
 
