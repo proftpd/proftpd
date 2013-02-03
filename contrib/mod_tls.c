@@ -378,7 +378,7 @@ static char *tls_passphrase_provider = NULL;
 #define TLS_PROTO_TLS_V1		0x0002
 #define TLS_PROTO_TLS_V1_1		0x0004
 #define TLS_PROTO_TLS_V1_2		0x0008
-static unsigned int tls_protocol = TLS_PROTO_SSL_V3|TLS_PROTO_TLS_V1;
+#define TLS_PROTO_DEFAULT		TLS_PROTO_SSL_V3|TLS_PROTO_TLS_V1
 
 #ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
 static int tls_ssl_opts = (SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE)^SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
@@ -2497,12 +2497,16 @@ static int tls_init_ctx(void) {
 }
 
 static int tls_init_server(void) {
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
   config_rec *c = NULL;
-#endif
   char *tls_ca_cert = NULL, *tls_ca_path = NULL, *tls_ca_chain = NULL;
   X509 *server_dsa_cert = NULL, *server_rsa_cert = NULL;
   int verify_mode = SSL_VERIFY_PEER;
+  unsigned int tls_protocol = TLS_PROTO_DEFAULT;
+
+  c = find_config(main_server->conf, CONF_PARAM, "TLSProtocol", FALSE);
+  if (c != NULL) {
+    tls_protocol = *((unsigned int *) c->argv[0]);
+  }
 
   if ((tls_protocol & TLS_PROTO_SSL_V3) &&
       (tls_protocol & TLS_PROTO_TLS_V1)) {
@@ -7491,13 +7495,14 @@ MODRET set_tlspkcs12file(cmd_rec *cmd) {
 /* usage: TLSProtocol version1 ... versionN */
 MODRET set_tlsprotocol(cmd_rec *cmd) {
   register unsigned int i;
+  config_rec *c;
+  unsigned int tls_protocol = 0;
 
-  if (cmd->argc-1 == 0)
+  if (cmd->argc-1 == 0) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
-  CHECK_CONF(cmd, CONF_ROOT);
-
-  tls_protocol = 0;
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   for (i = 1; i < cmd->argc; i++) {
     if (strncasecmp(cmd->argv[i], "SSLv23", 7) == 0) {
@@ -7529,6 +7534,10 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
         cmd->argv[i], "'", NULL));
     }
   }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = tls_protocol;
 
   return PR_HANDLED(cmd);
 }

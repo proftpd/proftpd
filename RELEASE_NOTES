@@ -32,6 +32,8 @@ ChangeLog files.
       %{microsecs}
       %{millisecs}
 
+    TLSProtocol (Bug#3891)
+
     TLSSessionCache (Bug#3869)
 
 
@@ -272,4 +274,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-01-31 23:51:39 $
+Last Updated: $Date: 2013-02-03 02:09:33 $
