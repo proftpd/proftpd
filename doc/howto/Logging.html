@@ -1,4 +1,4 @@
-<!-- $Id: Logging.html,v 1.8 2012-12-27 18:50:24 castaglia Exp $ -->
+<!-- $Id: Logging.html,v 1.9 2013-02-04 21:15:51 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Logging.html,v $ -->
 
 <html>
@@ -332,8 +332,41 @@ that <b>nothing</b> is logged for certain clients/IP addresses?<br>
 </pre>
 
 <p>
+<font color=red>Question</font>: How can I configure <code>proftpd</code> so
+that it does <em>no logging at all</em>?  I have a very small embedded system
+for development/testing, and so do not need or want the logging.<br>
+<font color=blue>Answer</font>: To do this, you will need to disable much
+of the builtin, default logging that <code>proftpd</code> does, <i>e.g.</i>:
+<pre>
+  # Direct the normal logging to /dev/null
+  SystemLog /dev/null
+
+  # Disable xferlog(5) logging
+  TransferLog none
+
+  # Disable logging to b/u/wtmp files
+  WtmpLog off
+</pre>
+In addition, you may need to go through your <code>proftpd.conf</code> file
+(as well as any <code>Include</code> config files), and remove all
+<code>ExtendedLog</code> and <code>TraceLog</code> directives.  Also remove
+any per-module <code><i>*</i>Log</code> directives like <code>BanLog</code>,
+<code>SFTPLog</code>, <code>SQLLogFile</code>, <code>TLSLog</code>, <i>etc</i>.
+
+<p>
+You might be tempted to symlink the log files configured to
+<code>/dev/null</code>, rather than changing the <code>proftpd.conf</code>.
+This approach can work, <b><i>if you also use the <code>AllowLogSymlinks</code> directive</i></b>, <i>i.e.</i>:
+<pre>
+  # Allow proftpd to write logs to symlinks; note that this is insecure,
+  # as the symlinks might be changed to point to other files such that
+  # proftpd will overwrite them.
+  AllowLogSymlinks on
+</pre>
+
+<p>
 <hr>
-Last Updated: <i>$Date: 2012-12-27 18:50:24 $</i><br>
+Last Updated: <i>$Date: 2013-02-04 21:15:51 $</i><br>
 <hr>
 
 </body>
