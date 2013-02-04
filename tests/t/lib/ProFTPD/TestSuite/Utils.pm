@@ -131,6 +131,19 @@ sub auth_group_write {
 
   my @member_names = @_;
 
+  my $existed = -f $group_file;
+  my $prev_mode;
+
+  if ($existed) {
+    # Get current permissions
+    $prev_mode = (stat($group_file))[2];
+
+    # Set needed permissions
+    unless (chmod(0666, $group_file)) {
+      croak("Can't set perms on $group_file: $!");
+    }
+  }
+
   if (open(my $fh, ">> $group_file")) {
     print $fh "$group_name:*:$group_id:" . join(',', @member_names) . "\n";
 
@@ -140,6 +153,19 @@ sub auth_group_write {
 
   } else {
     croak("Can't open $group_file: $!");
+  }
+
+  if ($existed) {
+    # Restore previous perms
+    unless (chmod($prev_mode, $group_file)) {
+      croak("Can't set perms on $group_file: $!");
+    }
+
+  } else {
+    # Set correct perms
+    unless (chmod(0440, $group_file)) {
+      croak("Can't set perms on $group_file: $!");
+    }
   }
 }
 
@@ -158,8 +184,20 @@ sub auth_user_write {
   croak("Missing home directory argument") unless $home;
   my $shell = shift;
   croak("Missing shell argument") unless $shell;
+  my $existed = -f $user_file;
+  my $prev_mode;
 
   my $passwd = get_passwd($user_passwd);
+
+  if ($existed) {
+    # Get current permissions
+    $prev_mode = (stat($user_file))[2];
+ 
+    # Set needed permissions
+    unless (chmod(0666, $user_file)) {
+      croak("Can't set perms on $user_file: $!");
+    }
+  }
 
   if (open(my $fh, ">> $user_file")) {
     print $fh join(':', ($user_name, $passwd, $user_id, $group_id, '', $home,
@@ -171,6 +209,19 @@ sub auth_user_write {
 
   } else {
     croak("Can't open $user_file: $!");
+  }
+
+  if ($existed) {
+    # Restore previous perms
+    unless (chmod($prev_mode, $user_file)) {
+      croak("Can't set perms on $user_file: $!");
+    }
+
+  } else {
+    # Set correct perms
+    unless (chmod(0440, $user_file)) {
+      croak("Can't set perms on $user_file: $!");
+    }
   }
 }
 
