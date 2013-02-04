@@ -23,7 +23,7 @@
  */
 
 /* Controls API routines
- * $Id: ctrls.c,v 1.36 2013-02-04 05:58:24 castaglia Exp $
+ * $Id: ctrls.c,v 1.37 2013-02-04 06:46:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -337,12 +337,22 @@ int pr_ctrls_unregister(module *mod, const char *action) {
   return 0;
 }
 
-int pr_ctrls_add_arg(pr_ctrls_t *ctrl, char *ctrls_arg) {
+int pr_ctrls_add_arg(pr_ctrls_t *ctrl, char *ctrls_arg, size_t ctrls_arglen) {
+  register unsigned int i;
 
   /* Sanity checks */
-  if (!ctrl || !ctrls_arg) {
+  if (ctrl == NULL ||
+      ctrls_arg == NULL) {
     errno = EINVAL;
     return -1;
+  }
+
+  /* Scan for non-printable characters. */
+  for (i = 0; i < ctrls_arglen; i++) {
+    if (!isprint((int) ctrls_arg[i])) {
+      errno = EPERM;
+      return -1;
+    }
   }
 
   /* Make sure the pr_ctrls_t has a temporary pool, from which the args will
@@ -353,8 +363,9 @@ int pr_ctrls_add_arg(pr_ctrls_t *ctrl, char *ctrls_arg) {
     pr_pool_tag(ctrl->ctrls_tmp_pool, "ctrls tmp pool");
   }
 
-  if (!ctrl->ctrls_cb_args)
+  if (!ctrl->ctrls_cb_args) {
     ctrl->ctrls_cb_args = make_array(ctrl->ctrls_tmp_pool, 0, sizeof(char *));
+  }
 
   /* Add the given argument */
   *((char **) push_array(ctrl->ctrls_cb_args)) = pstrdup(ctrl->ctrls_tmp_pool,
@@ -636,7 +647,7 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
       return -1;
     }
 
-    if (pr_ctrls_add_arg(ctrl, reqarg)) {
+    if (pr_ctrls_add_arg(ctrl, reqarg, reqarglen)) {
       int xerrno = errno;
 
       pr_signals_unblock();
