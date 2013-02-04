@@ -23,7 +23,7 @@
  */
 
 /* Controls API routines
- * $Id: ctrls.c,v 1.37 2013-02-04 06:46:22 castaglia Exp $
+ * $Id: ctrls.c,v 1.38 2013-02-04 15:43:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -615,6 +615,11 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
 
       errno = xerrno;
       return -1;
+    }
+
+    if (reqarglen == 0) {
+      /* Skip any zero-length arguments. */
+      continue;
     }
 
     if (reqarglen > CTRLS_MAX_REQARGLEN) {
