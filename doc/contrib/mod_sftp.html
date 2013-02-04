@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.68 2013-02-03 21:27:02 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.69 2013-02-04 05:39:10 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -1200,8 +1200,14 @@ sessions) which are honored by <code>mod_sftp</code>:
   </li>
 
   <p>
+  <li><code>&lt;Limit MLSD&gt;</code><br>
+    Applies to the <code>OPENDIR</code> SFTP request
+  </li>
+
+  <p>
   <li><code>&lt;Limit LIST NLST&gt;</code><br>
-    Applies to the <code>READDIR</code> SFTP request
+    Applies to the <code>READDIR</code> SFTP request, resulting in an
+    <em>empty directory listing</em>.
   </li>
 
   <p>
@@ -1264,6 +1270,12 @@ that FTP supports these commands:
   <li><code>&lt;Limit OPEN&gt;</code><br>
     Applies to the <code>OPEN</code> SFTP request
   </li>
+
+  <p>
+  <li><code>&lt;Limit READLINK&gt;</code><br>
+    Applies to the <code>READLINK</code> SFTP request
+  </li>
+
   <p>
   <li><code>&lt;Limit SETSTAT&gt;</code><br>
     Applies to the <code>FSETSTAT</code> and <code>SETSTAT</code> SFTP requests
@@ -1992,7 +2004,7 @@ configuration is:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-02-03 21:27:02 $</i><br>
+Last Updated: <i>$Date: 2013-02-04 05:39:10 $</i><br>
 
 <br><hr>
 
