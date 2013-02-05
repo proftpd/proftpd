@@ -1,4 +1,4 @@
-<!-- $Id: mod_auth_file.html,v 1.3 2012-04-23 16:49:25 castaglia Exp $ -->
+<!-- $Id: mod_auth_file.html,v 1.4 2013-02-05 17:24:08 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_auth_file.html,v $ -->
 
 <html>
@@ -67,6 +67,15 @@ Example:
 </pre>
 
 <p>
+<b>Note</b>: In order to prevent other users from modifying the
+<code>AuthGroupFile</code>, the <code>mod_auth_file</code> module
+<b>requires</b> that the permissions on the file <b>not</b> be world-readable
+<b>or</b> world-writable, <b>and</b> that the directory containing the
+file <b>not</b> be world-writable.  In addition, if the file is not a file
+(<i>e.g.</i> the path points to a symlink, or a FIFO, <i>etc</i>), a warning
+will be logged on server startup/restart.
+
+<p>
 <hr>
 <h2><a name="AuthUserFile">AuthUserFile</a></h2>
 <strong>Syntax:</strong> AuthUserFile <em>path [id min-max] [home regex] [name regex]</em><br>
@@ -114,6 +123,15 @@ Example:
 </pre>
 
 <p>
+<b>Note</b>: In order to prevent other users from modifying the
+<code>AuthUserFile</code>, the <code>mod_auth_file</code> module
+<b>requires</b> that the permissions on the file <b>not</b> be world-readable
+<b>or</b> world-writable, <b>and</b> that the directory containing the
+file <b>not</b> be world-writable.  In addition, if the file is not a file
+(<i>e.g.</i> the path points to a symlink, or a FIFO, <i>etc</i>), a warning
+will be logged on server startup/restart.
+
+<p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_auth_file</code> module is compiled by default.
@@ -145,12 +163,12 @@ enhanced versions of <code>crypt(3)</code>, some do not.  The
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-04-23 16:49:25 $</i><br>
+Last Updated: <i>$Date: 2013-02-05 17:24:08 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2002-2012<br>
+&copy; Copyright 2002-2013<br>
  All Rights Reserved<br>
 </i></b></font>
 
