@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_file - file-based authentication module that supports
  *                          restrictions on the file contents
  *
- * Copyright (c) 2002-2012 The ProFTPD Project team
+ * Copyright (c) 2002-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.44 2012-12-07 03:21:02 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.45 2013-02-05 17:03:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@
 # include <crypt.h>
 #endif
 
-#define MOD_AUTH_FILE_VERSION	"mod_auth_file/0.9"
+#define MOD_AUTH_FILE_VERSION	"mod_auth_file/1.0"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001020702
@@ -59,6 +59,7 @@ typedef union {
 typedef struct file_rec {
   char *af_path;
   FILE *af_file;
+  unsigned int af_lineno;
 
   unsigned char af_restricted_ids;
   authfile_id_t af_min_id;
@@ -93,8 +94,90 @@ static int af_setgrent(void);
 
 static const char *trace_channel = "authfile";
 
-/* Support routines.  Move the passwd/group functions out of lib/ into here.
- */
+/* Support routines.  Move the passwd/group functions out of lib/ into here. */
+
+static int af_check_file(pool *p, const char *name, const char *path) {
+  struct stat st;
+  int res;
+  char *dir_path, *ptr = NULL;
+
+  res = stat(path, &st);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION ": unable to stat %s '%s': %s",
+      name, path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  /* World-readable/writable files are insecure, and are thus not
+   * usable/trusted.
+   */
+  if (st.st_mode & S_IROTH) {
+    int xerrno = EPERM;
+
+    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
+      ": unable to use world-readable %s '%s': %s",
+      name, path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (st.st_mode & S_IWOTH) {
+    int xerrno = EPERM;
+
+    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
+      ": unable to use world-writable %s '%s': %s",
+      name, path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (!S_ISREG(st.st_mode)) {
+    pr_log_pri(PR_LOG_WARNING, MOD_AUTH_FILE_VERSION
+      ": %s '%s' is not a regular file", name, path);
+  }
+
+  /* Check the parent directory of this file.  If the parent directory
+   * is world-writable, that too is insecure.
+   */
+  ptr = strrchr(path, '/');
+  if (ptr != path) {
+    dir_path = pstrndup(p, path, ptr - path);
+
+  } else {
+    dir_path = "/";
+  }
+
+  res = stat(dir_path, &st);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
+      ": unable to stat %s directory '%s': %s", name, dir_path,
+      strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (st.st_mode & S_IWOTH) {
+    int xerrno = EPERM;
+  
+    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
+      ": unable to use %s from world-writable directory '%s': %s",
+      name, dir_path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
 
 #ifndef HAVE_FGETPWENT
 
@@ -104,7 +187,7 @@ static char pwdbuf[BUFSIZ];
 static char *pwdfields[NPWDFIELDS];
 static struct passwd pwent;
 
-static struct passwd *af_getpasswd(const char *buf) {
+static struct passwd *af_getpasswd(const char *buf, unsigned int lineno) {
   register unsigned int i;
   register char *cp = NULL;
   char *ep = NULL, *buffer = NULL;
@@ -120,29 +203,41 @@ static struct passwd *af_getpasswd(const char *buf) {
 
   for (cp = buffer, i = 0; i < NPWDFIELDS && cp; i++) {
     fields[i] = cp;
-    while (*cp && *cp != ':')
+    while (*cp && *cp != ':') {
       ++cp;
+    }
 
-    if (*cp)
+    if (*cp) {
       *cp++ = '\0';
 
-    else
+    } else {
       cp = 0;
+    }
   }
 
-  if (i != NPWDFIELDS || *fields[2] == '\0' || *fields[3] == '\0')
+  if (i != NPWDFIELDS) {
+    pr_log_pri(PR_LOG_ERR, "Malformed entry in AuthUserFile file (line %u)",
+      lineno);
     return NULL;
+  }
+
+  if (*fields[2] == '\0' ||
+      *fields[3] == '\0') {
+    return NULL;
+  }
 
   pwd->pw_name = fields[0];
   pwd->pw_passwd = fields[1];
 
   if (fields[2][0] == '\0' ||
-     ((pwd->pw_uid = strtol(fields[2], &ep, 10)) == 0 && *ep))
+     ((pwd->pw_uid = strtol(fields[2], &ep, 10)) == 0 && *ep)) {
        return NULL;
+  }
 
   if (fields[3][0] == '\0' ||
-     ((pwd->pw_gid = strtol(fields[3], &ep, 10)) == 0 && *ep))
+     ((pwd->pw_gid = strtol(fields[3], &ep, 10)) == 0 && *ep)) {
        return NULL;
+  }
 
   pwd->pw_gecos = fields[4];
   pwd->pw_dir = fields[5];
@@ -162,15 +257,19 @@ static struct group grent;
 static char *grpfields[NGRPFIELDS];
 static char *members[MAXMEMBERS+1];
 
-static char *af_getgrentline(char **buf, int *buflen, FILE *fp) {
+static char *af_getgrentline(char **buf, int *buflen, FILE *fp,
+    unsigned int *lineno) {
   char *cp = *buf;
 
   while (fgets(cp, (*buflen) - (cp - *buf), fp) != NULL) {
     pr_signals_handle();
 
+    (*lineno)++;
+
     /* Is this a full line? */
-    if (strchr(cp, '\n'))
+    if (strchr(cp, '\n')) {
       return *buf;
+    }
 
     /* No -- allocate a larger buffer, doubling buflen. */
     *buflen += *buflen;
@@ -179,8 +278,9 @@ static char *af_getgrentline(char **buf, int *buflen, FILE *fp) {
       char *new_buf;
 
       new_buf = realloc(*buf, *buflen);
-      if (new_buf == NULL)
+      if (new_buf == NULL) {
         break;
+      }
 
       *buf = new_buf;
     }
@@ -201,18 +301,20 @@ static char **af_getgrmems(char *s) {
 
   while (s && *s && nmembers < MAXMEMBERS) {
     members[nmembers++] = s;
-    while (*s && *s != ',')
+    while (*s && *s != ',') {
       s++;
+    }
 
-    if (*s)
+    if (*s) {
       *s++ = '\0';
+    }
   }
 
   members[nmembers] = NULL;
   return members;
 }
 
-static struct group *af_getgrp(const char *buf) {
+static struct group *af_getgrp(const char *buf, unsigned int lineno) {
   int i;
   char *cp;
 
@@ -225,8 +327,9 @@ static struct group *af_getgrp(const char *buf) {
     char *new_buf;
 
     new_buf = realloc(grpbuf, i);
-    if (new_buf == NULL)
+    if (new_buf == NULL) {
       return NULL;
+    }
 
     grpbuf = new_buf;
   }
@@ -237,24 +340,28 @@ static struct group *af_getgrp(const char *buf) {
   sstrncpy(grpbuf, buf, i);
 
   cp = strrchr(grpbuf, '\n');
-  if (cp)
+  if (cp) {
     *cp = '\0';
+  }
 
   for (cp = grpbuf, i = 0; i < NGRPFIELDS && cp; i++) {
     grpfields[i] = cp;
 
     cp = strchr(cp, ':');
-    if (cp)
+    if (cp) {
       *cp++ = 0;
+    }
   }
 
   if (i < (NGRPFIELDS - 1)) {
-    pr_log_pri(PR_LOG_ERR, "Malformed entry in group file: %s", buf);
+    pr_log_pri(PR_LOG_ERR, "Malformed entry in AuthGroupFile file (line %u)",
+      lineno);
     return NULL;
   }
 
-  if (*grpfields[2] == '\0')
+  if (*grpfields[2] == '\0') {
     return NULL;
+  }
 
   grent.gr_name = grpfields[0];
   grent.gr_passwd = grpfields[1];
@@ -320,6 +427,7 @@ static void af_endgrent(void) {
       af_group_file->af_file) {
     fclose(af_group_file->af_file);
     af_group_file->af_file = NULL;
+    af_group_file->af_lineno = 0;
   }
 
   return;
@@ -351,7 +459,8 @@ static struct group *af_getgrent(void) {
     }
     grp = NULL;
 
-    while (af_getgrentline(&buf, &buflen, af_group_file->af_file) != NULL) {
+    while (af_getgrentline(&buf, &buflen, af_group_file->af_file,
+        &(af_group_file->af_lineno)) != NULL) {
 
       /* Ignore comment and empty lines */
       if (buf[0] == '\0' ||
@@ -360,10 +469,11 @@ static struct group *af_getgrent(void) {
       }
 
       cp = strchr(buf, '\n');
-      if (cp != NULL)
+      if (cp != NULL) {
         *cp = '\0';
+      }
 
-      grp = af_getgrp(buf);
+      grp = af_getgrp(buf, af_group_file->af_lineno);
       free(buf);
 
       break;
@@ -525,6 +635,7 @@ static void af_endpwent(void) {
       af_user_file->af_file) {
     fclose(af_user_file->af_file);
     af_user_file->af_file = NULL;
+    af_user_file->af_lineno = 0;
   }
 
   return;
@@ -554,6 +665,8 @@ static struct passwd *af_getpwent(void) {
     while (fgets(buf, sizeof(buf)-1, af_user_file->af_file) != NULL) {
       pr_signals_handle();
 
+      af_user_file->af_lineno++;
+
       /* Ignore empty and comment lines */
       if (buf[0] == '\0' ||
           buf[0] == '#') {
@@ -562,7 +675,7 @@ static struct passwd *af_getpwent(void) {
       }
 
       buf[strlen(buf)-1] = '\0';
-      pwd = af_getpasswd(buf);
+      pwd = af_getpasswd(buf, af_user_file->af_lineno);
       break;
     }
 #endif /* !HAVE_FGETPWENT */
@@ -985,18 +1098,28 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
   authfile_file_t *file = NULL;
 
 #ifdef PR_USE_REGEX
-  if (cmd->argc-1 < 1 || cmd->argc-1 > 5)
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 5) {
 #else
-  if (cmd->argc-1 < 1 || cmd->argc-1 > 2)
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 2) {
 #endif /* regex support */
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (*(cmd->argv[1]) != '/')
+  if (*(cmd->argv[1]) != '/') {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "unable to use relative path for ", cmd->argv[0], " '",
       cmd->argv[1], "'.", NULL));
+  }
+
+  /* Make sure the configured file has the correct permissions. */
+  if (af_check_file(cmd->tmp_pool, cmd->argv[0], cmd->argv[1]) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "unable to use ", cmd->argv[1], ": ", strerror(errno), NULL));
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
 
@@ -1009,7 +1132,7 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
     register unsigned int i = 0;
 
     for (i = 2; i < cmd->argc; i++) {
-      if (strcmp(cmd->argv[i], "id") == 0) {
+      if (strncmp(cmd->argv[i], "id", 3) == 0) {
         gid_t min, max;
         char *sep = NULL, *tmp = NULL;
 
@@ -1018,32 +1141,34 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
          */
 
         sep = strchr(cmd->argv[++i], '-');
-        if (sep == NULL)
+        if (sep == NULL) {
           CONF_ERROR(cmd, "badly formatted ID restriction parameter");
+        }
 
         *sep = '\0';
 
         min = strtol(cmd->argv[i], &tmp, 10);
-
-        if (tmp && *tmp)
+        if (tmp && *tmp) {
           CONF_ERROR(cmd, "badly formatted minimum ID");
+        }
 
         tmp = NULL;
 
         max = strtol(sep+1, &tmp, 10);
-
-        if (tmp && *tmp)
+        if (tmp && *tmp) {
           CONF_ERROR(cmd, "badly formatted maximum ID");
+        }
 
-        if (min > max)
+        if (min > max) {
           CONF_ERROR(cmd, "minimum cannot be larger than maximum");
+        }
 
         file->af_min_id.gid = min;
         file->af_max_id.gid = max;
         file->af_restricted_ids = TRUE;
 
 #ifdef PR_USE_REGEX
-      } else if (strcmp(cmd->argv[i], "name") == 0) {
+      } else if (strncmp(cmd->argv[i], "name", 5) == 0) {
         char *filter = cmd->argv[++i];
         pr_regex_t *pre = NULL;
         int res = 0;
@@ -1115,18 +1240,28 @@ MODRET set_authuserfile(cmd_rec *cmd) {
   authfile_file_t *file = NULL;
 
 #ifdef PR_USE_REGEX
-  if (cmd->argc-1 < 1 || cmd->argc-1 > 7)
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 7) {
 #else
-  if (cmd->argc-1 < 1 || cmd->argc-1 > 2)
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 2) {
 #endif /* regex support */
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (*(cmd->argv[1]) != '/')
+  if (*(cmd->argv[1]) != '/') {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "unable to use relative path for ", cmd->argv[0], " '",
       cmd->argv[1], "'.", NULL));
+  }
+
+  /* Make sure the configured file has the correct permissions. */
+  if (af_check_file(cmd->tmp_pool, cmd->argv[0], cmd->argv[1]) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "unable to use ", cmd->argv[1], ": ", strerror(errno), NULL));
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
 
@@ -1139,7 +1274,7 @@ MODRET set_authuserfile(cmd_rec *cmd) {
     register unsigned int i = 0;
 
     for (i = 2; i < cmd->argc; i++) {
-      if (strcmp(cmd->argv[i], "id") == 0) {
+      if (strncmp(cmd->argv[i], "id", 3) == 0) {
         uid_t min, max;
         char *sep = NULL, *tmp = NULL;
 
@@ -1148,32 +1283,35 @@ MODRET set_authuserfile(cmd_rec *cmd) {
          */
 
         sep = strchr(cmd->argv[++i], '-');
-        if (sep == NULL)
+        if (sep == NULL) {
           CONF_ERROR(cmd, "badly formatted ID restriction parameter");
+        }
 
         *sep = '\0';
 
         min = strtol(cmd->argv[i], &tmp, 10);
-
-        if (tmp && *tmp)
+        if (tmp && *tmp) {
           CONF_ERROR(cmd, "badly formatted minimum ID");
+        }
 
         tmp = NULL;
 
         max = strtol(sep+1, &tmp, 10);
 
-        if (tmp && *tmp)
+        if (tmp && *tmp) {
           CONF_ERROR(cmd, "badly formatted maximum ID");
+        }
 
-        if (min > max)
+        if (min > max) {
           CONF_ERROR(cmd, "minimum cannot be larger than maximum");
+        }
 
         file->af_min_id.uid = min;
         file->af_max_id.uid = max;
         file->af_restricted_ids = TRUE;
 
 #ifdef PR_USE_REGEX
-      } else if (strcmp(cmd->argv[i], "home") == 0) {
+      } else if (strncmp(cmd->argv[i], "home", 5) == 0) {
         char *filter = cmd->argv[++i];
         pr_regex_t *pre = NULL;
         int res = 0;
@@ -1201,7 +1339,7 @@ MODRET set_authuserfile(cmd_rec *cmd) {
         file->af_home_regex = pre;
         file->af_restricted_homes = TRUE;
 
-      } else if (strcmp(cmd->argv[i], "name") == 0) {
+      } else if (strncmp(cmd->argv[i], "name", 5) == 0) {
         char *filter = cmd->argv[++i];
         pr_regex_t *pre = NULL;
         int res = 0;

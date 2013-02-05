@@ -25,6 +25,9 @@ ChangeLog files.
 
   + Changed Configuration Directives
 
+    AuthUserFile, AuthGroupFile (Bug#3892)
+      No world-readable/world-writable files, no world-writable parent dir
+
     HiddenStores (Bug#3872)
 
     LogFormat (Bug#3889)
@@ -274,4 +277,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-02-03 02:09:33 $
+Last Updated: $Date: 2013-02-05 17:03:55 $
