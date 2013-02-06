@@ -23,7 +23,7 @@
  */
 
 /* Resource limits
- * $Id: rlimit.h,v 1.1 2013-02-06 06:51:04 castaglia Exp $
+ * $Id: rlimit.h,v 1.2 2013-02-06 06:55:39 castaglia Exp $
  */
 
 #ifndef PR_RLIMIT_H
@@ -37,7 +37,7 @@ int pr_rlimit_set_cpu(rlim_t current, rlim_t max);
 int pr_rlimit_get_files(rlim_t *current, rlim_t *max);
 int pr_rlimit_set_files(rlim_t current, rlim_t max);
 
-/* Uses RLIMIT_AS or RLIMIT_VMEM. */
+/* Uses RLIMIT_AS, RLIMIT_DATA, or RLIMIT_VMEM. */
 int pr_rlimit_get_memory(rlim_t *current, rlim_t *max);
 int pr_rlimit_set_memory(rlim_t current, rlim_t max);
 

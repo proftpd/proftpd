@@ -23,7 +23,7 @@
  */
 
 /* Resource limits implementation
- * $Id: rlimit.c,v 1.1 2013-02-06 06:51:05 castaglia Exp $
+ * $Id: rlimit.c,v 1.2 2013-02-06 06:55:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -117,10 +117,13 @@ int pr_rlimit_get_memory(rlim_t *current, rlim_t *max) {
 #elif defined(RLIMIT_DATA)
   return get_rlimit(RLIMIT_DATA, current, max);
 
+#elif defined(RLIMIT_VMEM)
+  return get_rlimit(RLIMIT_VMEM, current, max);
+
 #else
   errno = ENOSYS;
   return -1;
-#endif /* No RLIMIT_AS or RLIMIT_DATA */
+#endif /* No RLIMIT_AS, RLIMIT_DATA, or RLIMIT_VMEM. */
 }
 
 int pr_rlimit_set_memory(rlim_t current, rlim_t max) {
