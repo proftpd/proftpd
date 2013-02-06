@@ -13160,7 +13160,7 @@ EOS
   $self->assert(qr/$expected/, $timestamp,
     test_msg("Expected '$expected', got '$timestamp'"));
 
-#  unlink($log_file);
+  unlink($log_file);
 }
 
 1;
