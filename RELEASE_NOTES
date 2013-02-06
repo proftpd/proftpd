@@ -20,6 +20,8 @@ ChangeLog files.
 
     GeoIPPolicy (Bug#3860)
 
+    SQLLogOnEvent (Bug#3893)
+
     TLSMasqueradeAddress (Bug#3862)
 
 
@@ -277,4 +279,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-02-05 17:03:55 $
+Last Updated: $Date: 2013-02-06 00:19:14 $

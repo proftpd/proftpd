@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.234 2013-01-31 17:38:56 castaglia Exp $
+ * $Id: mod_sql.c,v 1.235 2013-02-06 00:19:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3077,6 +3077,53 @@ MODRET process_sqllog(cmd_rec *cmd, config_rec *c, const char *label,
   return mr;
 }
 
+static int eventlog_master(const char *event_name) {
+  char *name = NULL;
+  cmd_rec *cmd = NULL;
+  config_rec *c = NULL;
+  modret_t *mr = NULL;
+
+  if (!(cmap.engine & SQL_ENGINE_FL_LOG)) {
+    return 0;
+  }
+ 
+  /* Need to create fake cmd_rec for dispatching, since we need
+   * cmd->pool, cmd->tmp_pool.  The cmd_rec MUST have
+   * fake/unknown name (i.e. cmd->argv[0], cmd->cmd_id), so that it does
+   * not run afoul of other logging variables.
+   */
+  cmd = _sql_make_cmd(session.pool, 1, "EVENT");
+ 
+  name = pstrcat(cmd->tmp_pool, "SQLLog_Event_", event_name, NULL);
+
+  c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
+  while (c) {
+    int flags = 0;
+
+    pr_signals_handle();
+
+    if (c->argc == 3 &&
+        strncmp(c->argv[2], "ignore", 7) == 0) {
+      flags |= SQL_LOG_FL_IGNORE_ERRORS;
+    }
+
+    pr_trace_msg(trace_channel, 12,
+      "executing SQLNamedQuery '%s' for event '%s'", (char *) c->argv[0],
+      event_name);
+    mr = process_sqllog(cmd, c, "eventlog_master", flags);
+    if (mr != NULL &&
+        MODRET_ISERROR(mr)) {
+      SQL_FREE_CMD(cmd);
+      return -1;
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
+  }
+
+  SQL_FREE_CMD(cmd);
+  return 0;
+}
+
 MODRET log_master(cmd_rec *cmd) {
   char *name = NULL;
   config_rec *c = NULL;
@@ -5300,11 +5347,104 @@ MODRET set_sqllog(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: SQLLogFile path */
 MODRET set_sqllogfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return PR_HANDLED(cmd);
+}
+
+/* usage: SQLLogOnEvent event query-name ["IGNORE_ERRORS"] */
+MODRET set_sqllogonevent(cmd_rec *cmd) {
+  config_rec *c;
+  char *event_name, *config_name;
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
+
+  if (cmd->argc < 3 ||
+      cmd->argc > 4) {
+    CONF_ERROR(cmd, "expected event query-name [IGNORE_ERRORS]");
+  }
+
+  /* Provide convenience aliases, falling back to "raw" event name. */ 
+  if (strcasecmp(cmd->argv[1], "MaxClientsPerClass") == 0) {
+    event_name = "mod_auth.max-clients-per-class";
+
+  } else if (strcasecmp(cmd->argv[1], "MaxClientsPerHost") == 0) {
+    event_name = "mod_auth.max-clients-per-host";
+
+  } else if (strcasecmp(cmd->argv[1], "MaxClientsPerUser") == 0) {
+    event_name = "mod_auth.max-clients-per-user";
+
+  } else if (strcasecmp(cmd->argv[1], "MaxCommandRate") == 0) {
+    event_name = "core.max-command-rate";
+
+  } else if (strcasecmp(cmd->argv[1], "MaxConnectionsPerHost") == 0) {
+    event_name = "mod_auth.max-connections-per-host";
+
+  } else if (strcasecmp(cmd->argv[1], "MaxHostsPerUser") == 0) {
+    event_name = "mod_auth.max-hosts-per-user";
+
+  } else if (strcasecmp(cmd->argv[1], "MaxLoginAttempts") == 0) {
+    event_name = "mod_auth.max-login-attempts";
+
+  } else if (strcasecmp(cmd->argv[1], "RootLogin") == 0) {
+    event_name = "mod_auth.root-login";
+
+  } else if (strcasecmp(cmd->argv[1], "TimeoutIdle") == 0) {
+    event_name = "core.timeout-idle";
+
+  } else if (strcasecmp(cmd->argv[1], "TimeoutLogin") == 0) {
+    event_name = "core.timeout-login";
+
+  } else if (strcasecmp(cmd->argv[1], "TimeoutNoTransfer") == 0) {
+    event_name = "core.timeout-no-transfer";
+
+  } else if (strcasecmp(cmd->argv[1], "TimeoutStalled") == 0) {
+    event_name = "core.timeout-stalled";
+
+  } else if (strcasecmp(cmd->argv[1], "UserBanned") == 0) {
+    event_name = "mod_ban.ban-user";
+
+  } else if (strcasecmp(cmd->argv[1], "HostBanned") == 0) {
+    event_name = "mod_ban.ban-host";
+
+  } else if (strcasecmp(cmd->argv[1], "ClassBanned") == 0) {
+    event_name = "mod_ban.ban-class";
+
+  } else {
+    event_name = cmd->argv[1];
+  }
+
+  /* Add a 'SQLLog_Event_<event>' config_rec.  This is an optimization that
+   * speeds up logging and also simplifies the logging code.
+   */
+  config_name = pstrcat(cmd->tmp_pool, "SQLLog_Event_", event_name, NULL);
+  if (cmd->argc == 4 &&
+      strcasecmp(cmd->argv[3], "IGNORE_ERRORS") == 0) {
+    c = add_config_param_str(config_name, 3, cmd->argv[2], event_name,
+      "ignore");
+
+  } else {
+    c = add_config_param_str(config_name, 2, cmd->argv[2], event_name);
+  }
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* If the mod_ifsession module is in use, then we need to set the
+     * CF_MULTI flag, so that SQLLogOnEvent directives that appear in
+     * mod_ifsession's <IfClass>/<IfGroup>/<IfUser> sections work
+     * properly.
+     */
+    c->flags |= CF_MULTI;
+  }
+
+  /* In addition, we also need to set a SQLLogOnEvent config_rec, for
+   * lookup in sess_init(), so that we know to which events to subscribe.
+   */
+  add_config_param_str(cmd->argv[0], 1, event_name);
+
   return PR_HANDLED(cmd);
 }
 
@@ -5978,6 +6118,17 @@ static void sql_preparse_ev(const void *event_data, void *user_data) {
 }
 #endif /* PR_SHARED_MODULE */
 
+static void sql_eventlog_ev(const void *event_data, void *user_data) {
+  const char *event_name;
+  int res;
+
+  event_name = user_data;
+  res = eventlog_master(event_name);
+  if (res < 0) {
+    sql_log(DEBUG_FUNC, "SQLLogOnEvent '%s' query failed", event_name);
+  }
+}
+
 /* Initialization routines
  */
 
@@ -6019,17 +6170,18 @@ static int sql_sess_init(void) {
   /* Open any configured SQLLogFile */
   res = sql_openlog();
   if (res < 0) {
-    if (res == -1)
+    if (res == -1) {
       pr_log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: %s",
         strerror(errno));
 
-    else if (res == PR_LOG_WRITABLE_DIR)
+    } else if (res == PR_LOG_WRITABLE_DIR) {
       pr_log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: "
-          "parent directory is world writeable");
+          "parent directory is world-writable");
 
-    else if (res == PR_LOG_SYMLINK)
+    } else if (res == PR_LOG_SYMLINK) {
       pr_log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: "
           "cannot log to a symbolic link");
+    }
   }
 
   ptr = get_param_ptr(main_server->conf, "SQLBackend", FALSE);
@@ -6043,14 +6195,17 @@ static int sql_sess_init(void) {
       sql_log(DEBUG_INFO, "unable to load SQL backend: %s", strerror(errno));
     }
 
+    destroy_pool(tmp_pool);
     return -1;
   }
  
   /* Get our backend info and toss it up */
   cmd = _sql_make_cmd(tmp_pool, 1, "foo");
   mr = _sql_dispatch(cmd, "sql_identify");
-  if (check_response(mr, 0) < 0)
+  if (check_response(mr, 0) < 0) {
+    destroy_pool(tmp_pool);
     return -1;
+  }
 
   sd = (sql_data_t *) mr->data;
 
@@ -6455,6 +6610,7 @@ static int sql_sess_init(void) {
           /* Restore the default connection policy. */
           pr_sql_conn_policy = default_conn_policy;
 
+          destroy_pool(tmp_pool);
           return -1;
         }
 
@@ -6490,6 +6646,18 @@ static int sql_sess_init(void) {
     }
 
     cmap.engine = SQL_ENGINE_FL_AUTH|SQL_ENGINE_FL_LOG;
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "SQLLogOnEvent", FALSE);
+  while (c) {
+    char *event_name;
+
+    pr_signals_handle();
+
+    event_name = c->argv[0];
+
+    pr_event_register(&sql_module, event_name, sql_eventlog_ev, event_name);
+    c = find_config_next(c, c->next, CONF_PARAM, "SQLLogOnEvent", FALSE);
   }
 
   sql_log(DEBUG_INFO, "mod_sql engine     : %s", cmap.engine ? "on" : "off");
@@ -6628,6 +6796,7 @@ static conftable sql_conftab[] = {
 
   { "SQLLog", set_sqllog, NULL },
   { "SQLLogFile", set_sqllogfile, NULL },
+  { "SQLLogOnEvent", set_sqllogonevent, NULL },
   { "SQLNamedQuery", set_sqlnamedquery, NULL },
   { "SQLShowInfo", set_sqlshowinfo, NULL },
 
