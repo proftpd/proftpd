@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.443 2013-01-15 19:04:52 castaglia Exp $
+ * $Id: mod_core.c,v 1.444 2013-02-06 07:34:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -65,11 +65,10 @@ static const char *trace_log = NULL;
 static int core_sess_init(void);
 static void reset_server_auth_order(void);
 
-static ssize_t get_num_bytes(char *nbytes_str) {
-  ssize_t nbytes = 0;
+static int get_num_bytes(const char *nbytes_str, rlim_t *nbytes) {
   unsigned long inb;
   char units, junk;
-  int result;
+  int res;
 
   /* Scan in the given argument, checking for the leading number-of-bytes
    * as well as a trailing G, M, K, or B (case-insensitive).  The junk
@@ -78,47 +77,52 @@ static ssize_t get_num_bytes(char *nbytes_str) {
    * NOTE: There is no portable way to scan in an ssize_t, so we do unsigned
    * long and cast it.  This probably places a 32-bit limit on rlimit values.
    */
-  if ((result = sscanf(nbytes_str, "%lu%c%c", &inb, &units, &junk)) == 2) {
-
+  res = sscanf(nbytes_str, "%lu%c%c", &inb, &units, &junk);
+  if (res == 2) {
     if (units != 'G' && units != 'g' &&
         units != 'M' && units != 'm' &&
         units != 'K' && units != 'k' &&
-        units != 'B' && units != 'b')
-      return PR_BYTES_BAD_UNITS;
+        units != 'B' && units != 'b') {
+      errno = EINVAL;
+      return -1;
+    }
 
-    nbytes = (ssize_t)inb;
+    *nbytes = inb;
 
     /* Calculate the actual bytes, multiplying by the given units.  Doing
      * it this way means that <math.h> and -lm aren't required.
      */
-    if (units == 'G' || units == 'g')
-      nbytes *= (1024 * 1024 * 1024);
+    if (units == 'G' ||
+        units == 'g') {
+      *nbytes *= (1024 * 1024 * 1024);
+    }
 
-    if (units == 'M' || units == 'm')
-      nbytes *= (1024 * 1024);
+    if (units == 'M' ||
+        units == 'm') {
+      *nbytes *= (1024 * 1024);
+    }
 
-    if (units == 'K' || units == 'k')
-      nbytes *= 1024;
+    if (units == 'K' ||
+        units == 'k') {
+      *nbytes *= 1024;
+    }
 
     /* Silently ignore units of 'B' and 'b', as they don't affect
      * the requested number of bytes anyway.
      */
 
-    /* NB: should we check for a maximum numeric value of calculated bytes?
-     *  Probably not, as it varies (int to rlim_t) from platform to
-     *  platform)...at least, not yet.
-     */
-    return nbytes;
+    return 0;
 
-  } else if (result == 1) {
-
+  } else if (res == 1) {
     /* No units given.  Return the number of bytes as is. */
-    return (ssize_t) inb;
+    *nbytes = inb;
+    return 0;
   }
 
   /* Default return value: the given argument was badly formatted.
    */
-  return PR_BYTES_BAD_FORMAT;
+  errno = EINVAL;
+  return -1;
 }
 
 /* These are for handling any configured MaxCommandRate. */
@@ -1723,9 +1727,14 @@ MODRET set_regexoptions(cmd_rec *cmd) {
 
 MODRET set_rlimitcpu(cmd_rec *cmd) {
 #ifdef RLIMIT_CPU
+  config_rec *c = NULL;
+  rlim_t current, max;
+
   /* Make sure the directive has between 1 and 3 parameters */
-  if (cmd->argc-1 < 1 || cmd->argc-1 > 3)
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 3) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   /* The context check for this directive depends on the first parameter.
    * For backwards compatibility, this parameter may be a number, or it
@@ -1741,130 +1750,9 @@ MODRET set_rlimitcpu(cmd_rec *cmd) {
     CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
   }
 
-  /* Handle the newer format, which uses "daemon" or "session" or "none"
-   * as the first parameter.
-   */
-  if (strncmp(cmd->argv[1], "daemon", 7) == 0 ||
-      strncmp(cmd->argv[1], "session", 8) == 0) {
-    config_rec *c = NULL;
-    struct rlimit *rlim = pcalloc(cmd->server->pool, sizeof(struct rlimit));
-
-    /* Retrieve the current values */
-    if (getrlimit(RLIMIT_CPU, rlim) < 0)
-      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_CPU): %s",
-        strerror(errno));
-
-    if (strcasecmp("max", cmd->argv[2]) == 0) {
-      rlim->rlim_cur = RLIM_INFINITY;
-
-    } else {
-
-      /* Check that the non-max argument is a number, and error out if not.
-       */
-      char *tmp = NULL;
-      unsigned long num = strtoul(cmd->argv[2], &tmp, 10);
-
-      if (tmp && *tmp)
-        CONF_ERROR(cmd, "badly formatted argument");
-
-      rlim->rlim_cur = num;
-    }
-
-    /* Handle the optional "hard limit" parameter, if present. */
-    if (cmd->argc-1 == 3) {
-      if (strcasecmp("max", cmd->argv[3]) == 0) {
-        rlim->rlim_max = RLIM_INFINITY;
-
-      } else {
-
-        /* Check that the non-max argument is a number, and error out if not.
-         */
-        char *tmp = NULL;
-        unsigned long num = strtoul(cmd->argv[3], &tmp, 10);
-
-        if (tmp && *tmp)
-          CONF_ERROR(cmd, "badly formatted argument");
-
-        rlim->rlim_max = num;
-      }
-    }
-
-    c = add_config_param(cmd->argv[0], 2, (void *) rlim, NULL);
-    c->argv[1] = pstrdup(c->pool, cmd->argv[1]);
-
-  /* Handle the older format, which will have a number as the first
-   * parameter.
-   */
-  } else {
-    struct rlimit *rlim = pcalloc(cmd->server->pool, sizeof(struct rlimit));
-
-    /* Retrieve the current values */
-    if (getrlimit(RLIMIT_CPU, rlim) < 0)
-      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_CPU): %s",
-        strerror(errno));
-
-    if (strcasecmp("max", cmd->argv[1]) == 0) {
-      rlim->rlim_cur = RLIM_INFINITY;
-
-    } else {
-
-      /* Check that the non-max argument is a number, and error out if not.
-       */
-      char *tmp = NULL;
-      long num = strtol(cmd->argv[1], &tmp, 10);
-
-      if (tmp && *tmp)
-        CONF_ERROR(cmd, "badly formatted argument");
-
-      rlim->rlim_cur = num;
-    }
-
-    /* Handle the optional "hard limit" parameter, if present. */
-    if (cmd->argc-1 == 2) {
-      if (strcasecmp("max", cmd->argv[2]) == 0) {
-        rlim->rlim_max = RLIM_INFINITY;
-
-      } else {
-
-        /* Check that the non-max argument is a number, and error out if not.
-         */
-        char *tmp = NULL;
-        long num = strtol(cmd->argv[2], &tmp, 10);
-
-        if (tmp && *tmp)
-          CONF_ERROR(cmd, "badly formatted argument");
-
-        rlim->rlim_max = num;
-      }
-    }
-
-    add_config_param(cmd->argv[0], 2, (void *) rlim, NULL);
-  }
-
-  return PR_HANDLED(cmd);
-#else
-  CONF_ERROR(cmd, "RLimitCPU is not supported on this platform");
-#endif
-}
-
-MODRET set_rlimitmemory(cmd_rec *cmd) {
-#if defined(RLIMIT_DATA) || defined(RLIMIT_AS) || defined(RLIMIT_VMEM)
-  /* Make sure the directive has between 1 and 3 parameters */
-  if (cmd->argc-1 < 1 || cmd->argc-1 > 3)
-    CONF_ERROR(cmd, "wrong number of parameters");
-
-  /* The context check for this directive depends on the first parameter.
-   * For backwards compatibility, this parameter may be a number, or it
-   * may be "daemon", "session", or "none".  If it happens to be
-   * "daemon", then this directive should be in the CONF_ROOT context only.
-   * Otherwise, it can appear in the full range of server contexts.
-   */
-
-  if (strncmp(cmd->argv[1], "daemon", 7) == 0) {
-    CHECK_CONF(cmd, CONF_ROOT);
-
-  } else {
-    CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  if (pr_rlimit_get_cpu(&current, &max) < 0) {
+    pr_log_pri(PR_LOG_NOTICE, "unable to retrieve CPU resource limits: %s",
+      strerror(errno));
   }
 
   /* Handle the newer format, which uses "daemon" or "session" or "none"
@@ -1872,229 +1760,55 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
    */
   if (strncmp(cmd->argv[1], "daemon", 7) == 0 ||
       strncmp(cmd->argv[1], "session", 8) == 0) {
-    config_rec *c = NULL;
-    struct rlimit *rlim = pcalloc(cmd->server->pool, sizeof(struct rlimit));
 
-    /* Retrieve the current values */
-#if defined(RLIMIT_DATA)
-    if (getrlimit(RLIMIT_DATA, rlim) == -1)
-      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_DATA): %s",
-        strerror(errno));
-#elif defined(RLIMIT_AS)
-    if (getrlimit(RLIMIT_AS, rlim) == -1)
-      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_AS): %s",
-        strerror(errno));
-#elif defined(RLIMIT_VMEM)
-    if (getrlimit(RLIMIT_VMEM, rlim) == -1)
-      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_VMEM): %s",
-        strerror(errno));
-#endif
-
-    if (strcasecmp("max", cmd->argv[2]) == 0) {
-      rlim->rlim_cur = RLIM_INFINITY;
-
-    } else {
-      rlim->rlim_cur = get_num_bytes(cmd->argv[2]);
-
-      /* Check for bad return values. */
-      if (rlim->rlim_cur == PR_BYTES_BAD_UNITS) {
-        CONF_ERROR(cmd, "unknown units used");
-      }
-
-      if (rlim->rlim_cur == PR_BYTES_BAD_FORMAT) {
-        CONF_ERROR(cmd, "badly formatted parameter");
-      }
-    }
-
-    /* Handle the optional "hard limit" parameter, if present. */
-    if (cmd->argc-1 == 3) {
-      if (strcasecmp("max", cmd->argv[3]) == 0) {
-        rlim->rlim_max = RLIM_INFINITY;
-
-      } else {
-        rlim->rlim_max = get_num_bytes(cmd->argv[3]);
-
-        /* Check for bad return values. */
-        if (rlim->rlim_max == PR_BYTES_BAD_UNITS) {
-          CONF_ERROR(cmd, "unknown units used");
-        }
-
-        if (rlim->rlim_max == PR_BYTES_BAD_FORMAT) {
-          CONF_ERROR(cmd, "badly formatted parameter");
-        }
-      }
-    }
-
-    c = add_config_param(cmd->argv[0], 2, (void *) rlim, NULL);
-    c->argv[1] = pstrdup(c->pool, cmd->argv[1]);
-
-  /* Handle the older format, which will have a number as the first
-   * parameter.
-   */
-  } else {
-    struct rlimit *rlim = pcalloc(cmd->server->pool, sizeof(struct rlimit));
-
-    /* Retrieve the current values */
-#if defined(RLIMIT_DATA)
-    if (getrlimit(RLIMIT_DATA, rlim) < 0)
-      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_DATA): %s",
-        strerror(errno));
-#elif defined(RLIMIT_AS)
-    if (getrlimit(RLIMIT_AS, rlim) < 0)
-      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_AS): %s",
-        strerror(errno));
-#elif defined(RLIMIT_VMEM)
-    if (getrlimit(RLIMIT_VMEM, rlim) < 0)
-      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_VMEM): %s",
-        strerror(errno));
-#endif
-
-    if (strcasecmp("max", cmd->argv[1]) == 0) {
-      rlim->rlim_cur = RLIM_INFINITY;
-
-    } else {
-      rlim->rlim_cur = get_num_bytes(cmd->argv[1]);
-
-      /* Check for bad return values. */
-      if (rlim->rlim_cur == PR_BYTES_BAD_UNITS) {
-        CONF_ERROR(cmd, "unknown units used");
-      }
-
-      if (rlim->rlim_cur == PR_BYTES_BAD_FORMAT) {
-        CONF_ERROR(cmd, "badly formatted parameter");
-      }
-    }
-
-    /* Handle the optional "hard limit" parameter, if present. */
-    if (cmd->argc-1 == 2) {
-      if (strcasecmp("max", cmd->argv[2]) == 0) {
-        rlim->rlim_max = RLIM_INFINITY;
-
-      } else {
-        rlim->rlim_max = get_num_bytes(cmd->argv[2]);
-
-        /* Check for bad return values. */
-        if (rlim->rlim_max == PR_BYTES_BAD_UNITS) {
-          CONF_ERROR(cmd, "unknown units used");
-        }
-
-        if (rlim->rlim_max == PR_BYTES_BAD_FORMAT) {
-          CONF_ERROR(cmd, "badly formatted parameter");
-        }
-      }
-    }
-
-    add_config_param(cmd->argv[0], 2, (void *) rlim, NULL);
-  }
-
-  return PR_HANDLED(cmd);
-#else
-  CONF_ERROR(cmd, "RLimitMemory is not supported on this platform");
-#endif
-}
-
-MODRET set_rlimitopenfiles(cmd_rec *cmd) {
-#if defined(RLIMIT_NOFILE) || defined(RLIMIT_OFILE)
-  /* Make sure the directive has between 1 and 3 parameters */
-  if (cmd->argc-1 < 1 || cmd->argc-1 > 3)
-    CONF_ERROR(cmd, "wrong number of parameters");
-
-  /* The context check for this directive depends on the first parameter.
-   * For backwards compatibility, this parameter may be a number, or it
-   * may be "daemon", "session", or "none".  If it happens to be
-   * "daemon", then this directive should be in the CONF_ROOT context only.
-   * Otherwise, it can appear in the full range of server contexts.
-   */
-
-  if (strncmp(cmd->argv[1], "daemon", 7) == 0) {
-    CHECK_CONF(cmd, CONF_ROOT);
-
-  } else {
-    CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-  }
-
-  /* Handle the newer format, which uses "daemon" or "session" or "none"
-   * as the first parameter.
-   */
-  if (strncmp(cmd->argv[1], "daemon", 7) == 0 ||
-      strncmp(cmd->argv[1], "session", 8) == 0) {
-    config_rec *c = NULL;
-    struct rlimit *rlim = pcalloc(cmd->server->pool, sizeof(struct rlimit));
-
-    /* Retrieve the current values */
-#if defined(RLIMIT_NOFILE)
-    if (getrlimit(RLIMIT_NOFILE, rlim) < 0) {
-      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_NOFILE): %s",
-        strerror(errno));
-    }
-#elif defined(RLIMIT_OFILE)
-    if (getrlimit(RLIMIT_OFILE, rlim) < 0) {
-      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_OFILE): %s",
-        strerror(errno));
-    }
-#endif
-
-    if (strcasecmp("max", cmd->argv[2]) == 0) {
-      rlim->rlim_cur = sysconf(_SC_OPEN_MAX);
+    if (strcasecmp(cmd->argv[2], "max") == 0 ||
+        strcasecmp(cmd->argv[2], "unlimited") == 0) {
+      current = RLIM_INFINITY;
 
     } else {
       /* Check that the non-max argument is a number, and error out if not. */
       char *ptr = NULL;
-      long num = strtol(cmd->argv[2], &ptr, 10);
+      unsigned long num = strtoul(cmd->argv[2], &ptr, 10);
 
       if (ptr && *ptr) {
         CONF_ERROR(cmd, "badly formatted argument");
       }
 
-      rlim->rlim_cur = num;
+      current = num;
     }
 
     /* Handle the optional "hard limit" parameter, if present. */
     if (cmd->argc-1 == 3) {
-      if (strcasecmp("max", cmd->argv[3]) == 0) {
-        rlim->rlim_max = sysconf(_SC_OPEN_MAX);
+      if (strcasecmp(cmd->argv[3], "max") == 0 ||
+          strcasecmp(cmd->argv[3], "unlimited") == 0) {
+        max = RLIM_INFINITY;
 
       } else {
         /* Check that the non-max argument is a number, and error out if not. */
         char *ptr = NULL;
-        long num = strtol(cmd->argv[3], &ptr, 10);
+        unsigned long num = strtoul(cmd->argv[3], &ptr, 10);
 
         if (ptr && *ptr) {
           CONF_ERROR(cmd, "badly formatted argument");
         }
 
-        rlim->rlim_max = num;
+        max = num;
       }
-
-    } else {
-      /* Assume that the hard limit should be the same as the soft limit. */
-      rlim->rlim_max = rlim->rlim_cur;
     }
 
-    c = add_config_param(cmd->argv[0], 2, (void *) rlim, NULL);
-    c->argv[1] = pstrdup(c->pool, cmd->argv[1]);
+    c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+    c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+    c->argv[1] = palloc(c->pool, sizeof(rlim_t));
+    *((rlim_t *) c->argv[1]) = current;
+    c->argv[2] = palloc(c->pool, sizeof(rlim_t));
+    *((rlim_t *) c->argv[2]) = max;
 
-  /* Handle the older format, which will have a number as the first
-   * parameter.
+  /* Handle the older format, which will have a number as the first parameter.
    */
   } else {
-    struct rlimit *rlim = pcalloc(cmd->server->pool, sizeof(struct rlimit));
-
-    /* Retrieve the current values */
-#if defined(RLIMIT_NOFILE)
-    if (getrlimit(RLIMIT_NOFILE, rlim) < 0) {
-      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_NOFILE): %s",
-        strerror(errno));
-    }
-#elif defined(RLIMIT_OFILE)
-    if (getrlimit(RLIMIT_OFILE, rlim) < 0) {
-      pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_OFILE): %s",
-        strerror(errno));
-    }
-#endif
-
-    if (strcasecmp("max", cmd->argv[1]) == 0) {
-      rlim->rlim_cur = sysconf(_SC_OPEN_MAX);
+    if (strcasecmp(cmd->argv[1], "max") == 0 ||
+        strcasecmp(cmd->argv[1], "unlimited") == 0) {
+      current = RLIM_INFINITY;
 
     } else {
       /* Check that the non-max argument is a number, and error out if not. */
@@ -2105,13 +1819,14 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
         CONF_ERROR(cmd, "badly formatted argument");
       }
 
-      rlim->rlim_cur = num;
+      current = num;
     }
 
     /* Handle the optional "hard limit" parameter, if present. */
     if (cmd->argc-1 == 2) {
-      if (strcasecmp("max", cmd->argv[2]) == 0) {
-        rlim->rlim_max = sysconf(_SC_OPEN_MAX);
+      if (strcasecmp(cmd->argv[2], "max") == 0 ||
+          strcasecmp(cmd->argv[2], "unlimited") == 0) {
+        max = RLIM_INFINITY;
 
       } else {
         /* Check that the non-max argument is a number, and error out if not. */
@@ -2122,15 +1837,263 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
           CONF_ERROR(cmd, "badly formatted argument");
         }
 
-        rlim->rlim_max = num;
+        max = num;
+      }
+    }
+
+    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+    c->argv[0] = palloc(c->pool, sizeof(rlim_t));
+    *((rlim_t *) c->argv[0]) = current;
+    c->argv[1] = palloc(c->pool, sizeof(rlim_t));
+    *((rlim_t *) c->argv[1]) = max;
+  }
+
+  return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, "RLimitCPU is not supported on this platform");
+#endif
+}
+
+MODRET set_rlimitmemory(cmd_rec *cmd) {
+#if defined(RLIMIT_AS) || defined(RLIMIT_DATA) || defined(RLIMIT_VMEM)
+  config_rec *c = NULL;
+  rlim_t current, max;
+
+  /* Make sure the directive has between 1 and 3 parameters */
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 3) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  /* The context check for this directive depends on the first parameter.
+   * For backwards compatibility, this parameter may be a number, or it
+   * may be "daemon", "session", or "none".  If it happens to be
+   * "daemon", then this directive should be in the CONF_ROOT context only.
+   * Otherwise, it can appear in the full range of server contexts.
+   */
+
+  if (strncmp(cmd->argv[1], "daemon", 7) == 0) {
+    CHECK_CONF(cmd, CONF_ROOT);
+
+  } else {
+    CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  }
+
+  /* Retrieve the current values */
+  if (pr_rlimit_get_memory(&current, &max) < 0) {
+    pr_log_pri(PR_LOG_NOTICE, "unable to get memory resource limits: %s",
+      strerror(errno));
+  }
+
+  /* Handle the newer format, which uses "daemon" or "session" or "none"
+   * as the first parameter.
+   */
+  if (strncmp(cmd->argv[1], "daemon", 7) == 0 ||
+      strncmp(cmd->argv[1], "session", 8) == 0) {
+
+    if (strcasecmp(cmd->argv[2], "max") == 0 ||
+        strcasecmp(cmd->argv[2], "unlimited") == 0) {
+      current = RLIM_INFINITY;
+
+    } else {
+      if (get_num_bytes(cmd->argv[2], &current) < 0) {
+        CONF_ERROR(cmd, "badly formatted argument");
+      }
+    }
+
+    /* Handle the optional "hard limit" parameter, if present. */
+    if (cmd->argc-1 == 3) {
+      if (strcasecmp(cmd->argv[3], "max") == 0 ||
+          strcasecmp(cmd->argv[3], "unlimited") == 0) {
+        max = RLIM_INFINITY;
+
+      } else {
+        if (get_num_bytes(cmd->argv[3], &max) < 0) {
+          CONF_ERROR(cmd, "badly formatted argument");
+        }
+      }
+    }
+
+    c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+    c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+    c->argv[1] = palloc(c->pool, sizeof(rlim_t));
+    *((rlim_t *) c->argv[1]) = current;
+    c->argv[2] = palloc(c->pool, sizeof(rlim_t));
+    *((rlim_t *) c->argv[2]) = max;
+
+  /* Handle the older format, which will have a number as the first
+   * parameter.
+   */
+  } else {
+
+    if (strcasecmp(cmd->argv[1], "max") == 0 ||
+        strcasecmp(cmd->argv[1], "unlimited") == 0) {
+      current = RLIM_INFINITY;
+
+    } else {
+      if (get_num_bytes(cmd->argv[1], &current) < 0) {
+        CONF_ERROR(cmd, "badly formatted argument");
+      }
+    }
+
+    /* Handle the optional "hard limit" parameter, if present. */
+    if (cmd->argc-1 == 2) {
+      if (strcasecmp(cmd->argv[2], "max") == 0 ||
+          strcasecmp(cmd->argv[2], "unlimited") == 0) {
+        max = RLIM_INFINITY;
+
+      } else {
+        if (get_num_bytes(cmd->argv[2], &max) < 0) {
+          CONF_ERROR(cmd, "badly formatted argument");
+        }
+      }
+    }
+
+    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+    c->argv[0] = palloc(c->pool, sizeof(rlim_t));
+    *((rlim_t *) c->argv[0]) = current;
+    c->argv[1] = palloc(c->pool, sizeof(rlim_t));
+    *((rlim_t *) c->argv[1]) = max;
+  }
+
+  return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, "RLimitMemory is not supported on this platform");
+#endif
+}
+
+MODRET set_rlimitopenfiles(cmd_rec *cmd) {
+#if defined(RLIMIT_NOFILE) || defined(RLIMIT_OFILE)
+  config_rec *c = NULL;
+  rlim_t current, max;
+
+  /* Make sure the directive has between 1 and 3 parameters */
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 3) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  /* The context check for this directive depends on the first parameter.
+   * For backwards compatibility, this parameter may be a number, or it
+   * may be "daemon", "session", or "none".  If it happens to be
+   * "daemon", then this directive should be in the CONF_ROOT context only.
+   * Otherwise, it can appear in the full range of server contexts.
+   */
+
+  if (strncmp(cmd->argv[1], "daemon", 7) == 0) {
+    CHECK_CONF(cmd, CONF_ROOT);
+
+  } else {
+    CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  }
+
+  /* Retrieve the current values */
+  if (pr_rlimit_get_files(&current, &max) < 0) {
+    pr_log_pri(PR_LOG_NOTICE, "unable to get file resource limits: %s",
+      strerror(errno));
+  }
+
+  /* Handle the newer format, which uses "daemon" or "session" or "none"
+   * as the first parameter.
+   */
+  if (strncmp(cmd->argv[1], "daemon", 7) == 0 ||
+      strncmp(cmd->argv[1], "session", 8) == 0) {
+
+    if (strcasecmp(cmd->argv[2], "max") == 0 ||
+        strcasecmp(cmd->argv[2], "unlimited") == 0) {
+      current = sysconf(_SC_OPEN_MAX);
+
+    } else {
+      /* Check that the non-max argument is a number, and error out if not. */
+      char *ptr = NULL;
+      long num = strtol(cmd->argv[2], &ptr, 10);
+
+      if (ptr && *ptr) {
+        CONF_ERROR(cmd, "badly formatted argument");
+      }
+
+      current = num;
+    }
+
+    /* Handle the optional "hard limit" parameter, if present. */
+    if (cmd->argc-1 == 3) {
+      if (strcasecmp(cmd->argv[3], "max") == 0 ||
+          strcasecmp(cmd->argv[3], "unlimited") == 0) {
+        max = sysconf(_SC_OPEN_MAX);
+
+      } else {
+        /* Check that the non-max argument is a number, and error out if not. */
+        char *ptr = NULL;
+        long num = strtol(cmd->argv[3], &ptr, 10);
+
+        if (ptr && *ptr) {
+          CONF_ERROR(cmd, "badly formatted argument");
+        }
+
+        max = num;
       }
 
     } else {
       /* Assume that the hard limit should be the same as the soft limit. */
-      rlim->rlim_max = rlim->rlim_cur;
+      max = current;
     }
 
-    add_config_param(cmd->argv[0], 2, (void *) rlim, NULL);
+    c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+    c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+    c->argv[1] = palloc(c->pool, sizeof(rlim_t));
+    *((rlim_t *) c->argv[1]) = current;
+    c->argv[2] = palloc(c->pool, sizeof(rlim_t));
+    *((rlim_t *) c->argv[2]) = max;
+
+  /* Handle the older format, which will have a number as the first
+   * parameter.
+   */
+  } else {
+
+    if (strcasecmp(cmd->argv[1], "max") == 0 ||
+        strcasecmp(cmd->argv[1], "unlimited") == 0) {
+      current = sysconf(_SC_OPEN_MAX);
+
+    } else {
+      /* Check that the non-max argument is a number, and error out if not. */
+      char *ptr = NULL;
+      long num = strtol(cmd->argv[1], &ptr, 10);
+
+      if (ptr && *ptr) {
+        CONF_ERROR(cmd, "badly formatted argument");
+      }
+
+      current = num;
+    }
+
+    /* Handle the optional "hard limit" parameter, if present. */
+    if (cmd->argc-1 == 2) {
+      if (strcasecmp(cmd->argv[2], "max") == 0 ||
+          strcasecmp(cmd->argv[2], "unlimited") == 0) {
+        max = sysconf(_SC_OPEN_MAX);
+
+      } else {
+        /* Check that the non-max argument is a number, and error out if not. */
+        char *ptr = NULL;
+        long num = strtol(cmd->argv[2], &ptr, 10);
+
+        if (ptr && *ptr) {
+          CONF_ERROR(cmd, "badly formatted argument");
+        }
+
+        max = num;
+      }
+
+    } else {
+      /* Assume that the hard limit should be the same as the soft limit. */
+      max = current;
+    }
+
+    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+    c->argv[0] = palloc(c->pool, sizeof(rlim_t));
+    *((rlim_t *) c->argv[0]) = current;
+    c->argv[1] = palloc(c->pool, sizeof(rlim_t));
+    *((rlim_t *) c->argv[1]) = max;
   }
 
   return PR_HANDLED(cmd);

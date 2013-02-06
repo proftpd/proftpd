@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.451 2013-01-22 01:10:31 castaglia Exp $
+ * $Id: main.c,v 1.452 2013-02-06 07:34:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2244,260 +2244,231 @@ static void install_signal_handlers(void) {
 
 void set_daemon_rlimits(void) {
   config_rec *c = NULL;
-  struct rlimit rlim;
+  rlim_t current, max;
+  int res, xerrno = 0;
 
-  if (getrlimit(RLIMIT_CORE, &rlim) < 0)
-    pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_CORE): %s",
+  res = pr_rlimit_get_core(&current, &max);
+  if (res < 0) {
+    pr_log_pri(PR_LOG_NOTICE, "unable to get core resource limits: %s",
       strerror(errno));
 
-  else {
+  } else {
 #ifdef PR_DEVEL_COREDUMP
-    rlim.rlim_cur = rlim.rlim_max = RLIM_INFINITY;
+    current = max = RLIM_INFINITY;
 #else
-    rlim.rlim_cur = rlim.rlim_max = 0;
+    current = max = 0;
 #endif /* PR_DEVEL_COREDUMP */
 
     PRIVS_ROOT
-    if (setrlimit(RLIMIT_CORE, &rlim) < 0) {
-      int xerrno = errno;
+    res = pr_rlimit_set_core(current, max);
+    xerrno = errno;
+    PRIVS_RELINQUISH
 
-      PRIVS_RELINQUISH
-      pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_CORE): %s",
+    if (res < 0) {
+      pr_log_pri(PR_LOG_ERR, "error setting core resource limits: %s",
         strerror(xerrno));
       return;
     }
-    PRIVS_RELINQUISH
   }
 
   /* Now check for the configurable resource limits */
   c = find_config(main_server->conf, CONF_PARAM, "RLimitCPU", FALSE);
-
-#ifdef RLIMIT_CPU
   while (c) {
+    pr_signals_handle();
+
     /* Does this limit apply to the daemon? */
-    if (c->argv[1] == NULL ||
-        strncmp(c->argv[1], "daemon", 7) == 0) {
-      struct rlimit *cpu_rlimit = (struct rlimit *) c->argv[0];
+    if (c->argc == 3 &&
+        strncmp(c->argv[0], "daemon", 7) == 0) {
+      rlim_t current, max;
+
+      current = *((rlim_t *) c->argv[1]);
+      max = *((rlim_t *) c->argv[2]);
 
       PRIVS_ROOT
-      if (setrlimit(RLIMIT_CPU, cpu_rlimit) < 0) {
-        int xerrno = errno;
-
-        PRIVS_RELINQUISH
-        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_CPU): %s",
-          strerror(xerrno));
-        return;
-      }
+      res = pr_rlimit_set_cpu(current, max);
+      xerrno = errno;
       PRIVS_RELINQUISH
 
-      pr_log_debug(DEBUG2, "set RLimitCPU for daemon");
+      if (res < 0) {
+        pr_log_pri(PR_LOG_ERR, "error setting CPU resource limits: %s",
+          strerror(xerrno));
+
+      } else {
+        pr_log_debug(DEBUG2, "set CPU resource limits for daemon");
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RLimitCPU", FALSE);
   }
-#endif /* defined RLIMIT_CPU */
 
   c = find_config(main_server->conf, CONF_PARAM, "RLimitMemory", FALSE);
-
-#if defined(RLIMIT_DATA) || defined(RLIMIT_AS) || defined(RLIMIT_VMEM)
   while (c) {
+    pr_signals_handle();
+
     /* Does this limit apply to the daemon? */
-    if (c->argv[1] == NULL ||
-        strncmp(c->argv[1], "daemon", 7) == 0) {
-      struct rlimit *memory_rlimit = (struct rlimit *) c->argv[0];
+    if (c->argc == 3 &&
+        strncmp(c->argv[0], "daemon", 7) == 0) {
+      rlim_t current, max;
+
+      current = *((rlim_t *) c->argv[1]);
+      max = *((rlim_t *) c->argv[2]);
 
       PRIVS_ROOT
-#  if defined(RLIMIT_DATA)
-      if (setrlimit(RLIMIT_DATA, memory_rlimit) < 0) {
-        int xerrno = errno;
-
-        PRIVS_RELINQUISH
-        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_DATA): %s",
-          strerror(xerrno));
-        return;
-      }
-#  elif defined(RLIMIT_AS)
-      if (setrlimit(RLIMIT_AS, memory_rlimit) < 0) {
-        int xerrno = errno;
-
-        PRIVS_RELINQUISH
-        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_AS): %s",
-          strerror(xerrno));
-        return;
-      }
-#  elif defined(RLIMIT_VMEM)
-      if (setrlimit(RLIMIT_VMEM, memory_rlimit) < 0) {
-        int xerrno = errno;
-
-        PRIVS_RELINQUISH
-        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_VMEM): %s",
-          strerror(xerrno));
-        return;
-      }
-#  endif
+      res = pr_rlimit_set_memory(current, max);
+      xerrno = errno;
       PRIVS_RELINQUISH
 
-      pr_log_debug(DEBUG2, "set RLimitMemory for daemon");
+      if (res < 0) {
+        pr_log_pri(PR_LOG_ERR, "error setting memory resource limits: %s",
+          strerror(xerrno));
+
+      } else {
+        pr_log_debug(DEBUG2, "set memory resource limits for daemon");
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RLimitMemory", FALSE);
   }
-#endif /* no RLIMIT_DATA || RLIMIT_AS || RLIMIT_VMEM */
 
   c = find_config(main_server->conf, CONF_PARAM, "RLimitOpenFiles", FALSE);
-
-#if defined(RLIMIT_NOFILE) || defined(RLIMIT_OFILE)
   while (c) {
+    pr_signals_handle();
+
     /* Does this limit apply to the daemon? */
-    if (c->argv[1] == NULL ||
-        strncmp(c->argv[1], "daemon", 7) == 0) {
-      struct rlimit *nofile_rlimit = (struct rlimit *) c->argv[0];
+    if (c->argc == 3 &&
+        strncmp(c->argv[0], "daemon", 7) == 0) {
+      rlim_t current, max;
+
+      current = *((rlim_t *) c->argv[1]);
+      max = *((rlim_t *) c->argv[2]);
 
       PRIVS_ROOT
-#  if defined(RLIMIT_NOFILE)
-      if (setrlimit(RLIMIT_NOFILE, nofile_rlimit) < 0) {
-        int xerrno = errno;
-
-        PRIVS_RELINQUISH
-        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_NOFILE): %s",
-          strerror(xerrno));
-        return;
-      }
-#  elif defined(RLIMIT_OFILE)
-      if (setrlimit(RLIMIT_OFILE, nofile_rlimit) < 0) {
-        int xerrno = errno;
-
-        PRIVS_RELINQUISH
-        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_OFILE): %s",
-          strerror(xerrno));
-        return;
-      }
-#  endif
+      res = pr_rlimit_set_files(current, max);
+      xerrno = errno;
       PRIVS_RELINQUISH
 
-      pr_log_debug(DEBUG2, "set RLimitOpenFiles for daemon");
+      if (res < 0) {
+        pr_log_pri(PR_LOG_ERR, "error setting file resource limits: %s",
+          strerror(xerrno));
+
+      } else {
+        pr_log_debug(DEBUG2, "set file resource limits for daemon");
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RLimitOpenFiles", FALSE);
   }
-#endif /* defined RLIMIT_NOFILE or defined RLIMIT_OFILE */
 }
 
 void set_session_rlimits(void) {
   config_rec *c = NULL;
+  int res, xerrno = 0;
 
   /* now check for the configurable rlimits */
   c = find_config(main_server->conf, CONF_PARAM, "RLimitCPU", FALSE);
-
-#ifdef RLIMIT_CPU
   while (c) {
+    pr_signals_handle();
+
     /* Does this limit apply to the session? */
-    if (c->argv[1] == NULL ||
-        strncmp(c->argv[1], "session", 8) == 0) {
-      struct rlimit *cpu_rlimit = (struct rlimit *) c->argv[0];
+    if (c->argc == 2 ||
+        (c->argc == 3 && strncmp(c->argv[0], "session", 8) == 0)) {
+      rlim_t current, max;
+
+      if (c->argc == 2) {
+        current = *((rlim_t *) c->argv[0]);
+        max = *((rlim_t *) c->argv[1]);
+
+      } else {
+        current = *((rlim_t *) c->argv[1]);
+        max = *((rlim_t *) c->argv[2]);
+      }
 
       PRIVS_ROOT
-      if (setrlimit(RLIMIT_CPU, cpu_rlimit) < 0) {
-        int xerrno = errno;
-
-        PRIVS_RELINQUISH
-        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_CPU): %s",
-          strerror(xerrno));
-        return;
-      }
+      res = pr_rlimit_set_cpu(current, max);
+      xerrno = errno;
       PRIVS_RELINQUISH
 
-      pr_log_debug(DEBUG2, "set RLimitCPU for session");
+      if (res < 0) {
+        pr_log_pri(PR_LOG_ERR, "error setting CPU resource limits: %s",
+          strerror(xerrno));
+
+      } else {
+        pr_log_debug(DEBUG2, "set CPU resource limits for session");
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RLimitCPU", FALSE);
   }
-#endif /* defined RLIMIT_CPU */
 
   c = find_config(main_server->conf, CONF_PARAM, "RLimitMemory", FALSE);
-
-#if defined(RLIMIT_DATA) || defined(RLIMIT_AS) || defined(RLIMIT_VMEM)
   while (c) {
+    pr_signals_handle();
+
     /* Does this limit apply to the session? */
-    if (c->argv[1] == NULL ||
-        strncmp(c->argv[1], "session", 8) == 0) {
-      struct rlimit *memory_rlimit = (struct rlimit *) c->argv[0];
+    if (c->argc == 2 ||
+        (c->argc == 3 && strncmp(c->argv[0], "session", 8) == 0)) {
+      rlim_t current, max;
+
+      if (c->argc == 2) {
+        current = *((rlim_t *) c->argv[0]);
+        max = *((rlim_t *) c->argv[1]);
+
+      } else {
+        current = *((rlim_t *) c->argv[1]);
+        max = *((rlim_t *) c->argv[2]);
+      }
 
       PRIVS_ROOT
-#  if defined(RLIMIT_DATA)
-      if (setrlimit(RLIMIT_DATA, memory_rlimit) < 0) {
-        int xerrno = errno;
-
-        PRIVS_RELINQUISH
-        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_DATA): %s",
-          strerror(xerrno));
-        return;
-      }
-#  elif defined(RLIMIT_AS)
-      if (setrlimit(RLIMIT_AS, memory_rlimit) < 0) {
-        int xerrno = errno;
-
-        PRIVS_RELINQUISH
-        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_AS): %s",
-          strerror(xerrno));
-        return;
-      }
-#  elif defined(RLIMIT_VMEM)
-      if (setrlimit(RLIMIT_VMEM, memory_rlimit) < 0) {
-        int xerrno = errno;
-
-        PRIVS_RELINQUISH
-        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_VMEM): %s",
-          strerror(xerrno));
-        return;
-      }
-#  endif
+      res = pr_rlimit_set_memory(current, max);
+      xerrno = errno;
       PRIVS_RELINQUISH
 
-      pr_log_debug(DEBUG2, "set RLimitMemory for session");
+      if (res < 0) {
+        pr_log_pri(PR_LOG_ERR, "error setting memory resource limits: %s",
+          strerror(xerrno));
+
+      } else {
+        pr_log_debug(DEBUG2, "set memory resource limits for session");
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RLimitMemory", FALSE);
   }
-#endif /* no RLIMIT_DATA || RLIMIT_AS || RLIMIT_VMEM */
 
   c = find_config(main_server->conf, CONF_PARAM, "RLimitOpenFiles", FALSE);
-
-#if defined(RLIMIT_NOFILE) || defined(RLIMIT_OFILE)
   while (c) {
+    pr_signals_handle();
+
     /* Does this limit apply to the session? */
-    if (c->argv[1] == NULL ||
-        strncmp(c->argv[1], "session", 8) == 0) {
-      struct rlimit *nofile_rlimit = (struct rlimit *) c->argv[0];
+    if (c->argc == 2 ||
+        (c->argc == 3 && strncmp(c->argv[0], "session", 8) == 0)) {
+      rlim_t current, max;
+
+      if (c->argc == 2) {
+        current = *((rlim_t *) c->argv[0]);
+        max = *((rlim_t *) c->argv[1]);
+
+      } else {
+        current = *((rlim_t *) c->argv[1]);
+        max = *((rlim_t *) c->argv[2]);
+      }
 
       PRIVS_ROOT
-#  if defined(RLIMIT_NOFILE)
-      if (setrlimit(RLIMIT_NOFILE, nofile_rlimit) < 0) {
-        int xerrno = errno;
-
-        PRIVS_RELINQUISH
-        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_NOFILE): %s",
-          strerror(xerrno));
-        return;
-      }
-#  elif defined(RLIMIT_OFILE)
-      if (setrlimit(RLIMIT_OFILE, nofile_rlimit) < 0) {
-        int xerrno = errno;
-
-        PRIVS_RELINQUISH
-        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_OFILE): %s",
-          strerror(xerrno));
-        return;
-      }
-#  endif /* defined RLIMIT_OFILE */
+      res = pr_rlimit_set_files(current, max);
+      xerrno = errno;
       PRIVS_RELINQUISH
 
-      pr_log_debug(DEBUG2, "set RLimitOpenFiles for session");
+      if (res < 0) {
+        pr_log_pri(PR_LOG_ERR, "error setting file resource limits: %s",
+          strerror(xerrno));
+
+      } else {
+        pr_log_debug(DEBUG2, "set file resource limits for session");
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RLimitOpenFiles", FALSE);
   }
-#endif /* defined RLIMIT_NOFILE or defined RLIMIT_OFILE */
 }
 
 static void daemonize(void) {

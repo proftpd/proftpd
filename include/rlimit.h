@@ -23,14 +23,18 @@
  */
 
 /* Resource limits
- * $Id: rlimit.h,v 1.2 2013-02-06 06:55:39 castaglia Exp $
+ * $Id: rlimit.h,v 1.3 2013-02-06 07:34:54 castaglia Exp $
  */
 
 #ifndef PR_RLIMIT_H
 #define PR_RLIMIT_H
 
+/* Uses RLIMIT_CORE. */
+int pr_rlimit_get_core(rlim_t *current, rlim_t *max);
+int pr_rlimit_set_core(rlim_t current, rlim_t max);
+
 /* Uses RLIMIT_CPU. */
-int pr_rlimit_get_get(rlim_t *current, rlim_t *max);
+int pr_rlimit_get_cpu(rlim_t *current, rlim_t *max);
 int pr_rlimit_set_cpu(rlim_t current, rlim_t max);
 
 /* Uses RLMIT_NOFILE or RLIMIT_OFILE. */

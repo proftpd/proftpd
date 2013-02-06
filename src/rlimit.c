@@ -23,7 +23,7 @@
  */
 
 /* Resource limits implementation
- * $Id: rlimit.c,v 1.2 2013-02-06 06:55:39 castaglia Exp $
+ * $Id: rlimit.c,v 1.3 2013-02-06 07:34:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -62,6 +62,26 @@ static int set_rlimit(int resource, rlim_t current, rlim_t max) {
 
   res = setrlimit(resource, &rlim);
   return res;
+}
+
+int pr_rlimit_get_core(rlim_t *current, rlim_t *max) {
+#if defined(RLIMIT_CORE)
+  return get_rlimit(RLIMIT_CORE, current, max);
+
+#else
+  errno = ENOSYS;
+  return -1;
+#endif /* No RLIMIT_CORE */
+}
+
+int pr_rlimit_set_core(rlim_t current, rlim_t max) {
+#if defined(RLIMIT_CORE)
+  return set_rlimit(RLIMIT_CORE, current, max);
+
+#else
+  errno = ENOSYS;
+  return -1;
+#endif /* No RLIMIT_CORE */
 }
 
 int pr_rlimit_get_cpu(rlim_t *current, rlim_t *max) {
