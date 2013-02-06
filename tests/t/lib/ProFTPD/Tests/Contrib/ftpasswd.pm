@@ -88,7 +88,7 @@ $ ls -l /home/astocker/proftpd.passwd
 
       # Make sure the permissions on the passwd file are as expected
       my $file_mode = sprintf("%lo", (stat($passwd_file))[2] & 07777);
-      my $expected = '444';
+      my $expected = '440';
       $self->assert($expected eq $file_mode,
         test_msg("Expected perms '$expected', got '$file_mode'"));
 
@@ -139,7 +139,7 @@ ftpasswd: unable to open /home/astocker/proftpd.passwd: Permission denied
 
       # Make sure the permissions on the passwd file are as expected
       my $file_mode = sprintf("%lo", (stat($passwd_file))[2] & 07777);
-      my $expected = '444';
+      my $expected = '440';
       $self->assert($expected eq $file_mode,
         test_msg("Expected perms '$expected', got '$file_mode'"));
 
