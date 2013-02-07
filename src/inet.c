@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.150 2013-01-08 06:56:32 castaglia Exp $
+ * $Id: inet.c,v 1.151 2013-02-07 15:44:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -632,6 +632,38 @@ int pr_inet_set_proto_cork(int sockfd, int cork) {
 #endif
 
   return res;
+}
+
+int pr_inet_set_proto_nodelay(pool *p, conn_t *conn, int nodelay) {
+
+#if defined(TCP_NODELAY)
+  int res = 0;
+# ifdef SOL_TCP
+  int tcp_level = SOL_TCP;
+# else
+  int tcp_level = tcp_proto;
+# endif /* SOL_TCP */
+
+  if (conn->rfd != -1) {
+    res = setsockopt(conn->rfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
+      sizeof(nodelay));
+    if (res < 0) {
+      pr_log_pri(PR_LOG_NOTICE, "error setting read fd %d TCP_NODELAY %d: %s",
+       conn->rfd, nodelay, strerror(errno));
+    }
+  }
+
+  if (conn->wfd != -1) {
+    res = setsockopt(conn->wfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
+      sizeof(nodelay));
+    if (res < 0) {
+      pr_log_pri(PR_LOG_NOTICE, "error setting write fd %d TCP_NODELAY %d: %s",
+       conn->wfd, nodelay, strerror(errno));
+    }
+  }
+#endif
+
+  return 0;
 }
 
 int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,

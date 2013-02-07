@@ -3194,6 +3194,11 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       &tls_module, tls_handshake_timeout_cb, "SSL/TLS handshake");
   }
 
+  if (on_data) {
+    /* Make sure that TCP_NODELAY is enabled for the handshake. */
+    pr_inet_set_proto_nodelay(conn->pool, conn, 1);
+  }
+
   retry:
 
   blocking = tls_get_block(conn);
@@ -3287,6 +3292,11 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     return -3;
   }
 
+  if (on_data) {
+    /* Disable TCP_NODELAY, now that the handshake is done. */
+    pr_inet_set_proto_nodelay(conn->pool, conn, 0);
+  }
+ 
   /* Disable the handshake timer. */
   pr_timer_remove(tls_handshake_timer_id, &tls_module);
 
