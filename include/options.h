@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* User configurable defaults and tunable parameters.
- * $Id: options.h,v 1.33 2011-05-23 20:35:35 castaglia Exp $
+ * $Id: options.h,v 1.34 2013-02-07 06:37:24 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -68,7 +68,7 @@
  * "tcpBackLog" configuration directive, this value is just the default.
  */
 
-#define PR_TUNABLE_DEFAULT_BACKLOG	5
+#define PR_TUNABLE_DEFAULT_BACKLOG	32
 
 /* The default TCP send/receive buffer sizes, should explicit sizes not
  * be defined at compile time, or should the runtime determination process
