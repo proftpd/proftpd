@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.444 2013-02-06 07:34:54 castaglia Exp $
+ * $Id: mod_core.c,v 1.445 2013-02-08 03:21:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1421,13 +1421,13 @@ MODRET set_trace(cmd_rec *cmd) {
 
       res = pr_trace_parse_levels(ptr + 1, &min_level, &max_level);
       if (res < 0) {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing level ", ptr + 1,
-          " for channel '", channel, "': ", strerror(errno), NULL));
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing level \"",
+          ptr + 1, "\" for channel '", channel, "': ", strerror(errno), NULL));
       }
 
       if (pr_trace_set_levels(channel, min_level, max_level) < 0) {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error setting level ", ptr + 1,
-          " for channel '", channel, "': ", strerror(errno), NULL));
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error setting level \"",
+          ptr + 1, "\" for channel '", channel, "': ", strerror(errno), NULL));
       }
 
       *ptr = ':';
