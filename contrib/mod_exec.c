@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_exec -- a module for executing external scripts
  *
- * Copyright (c) 2002-2012 TJ Saunders
+ * Copyright (c) 2002-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.27 2012-07-25 23:45:01 castaglia Exp $
+ * $Id: mod_exec.c,v 1.28 2013-02-08 07:43:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,7 +44,7 @@
 module exec_module;
 
 static pool *exec_pool = NULL;
-static unsigned char exec_engine = FALSE;
+static int exec_engine = FALSE;
 static unsigned int exec_nexecs = 0;
 
 static int exec_logfd = -1;
@@ -1367,22 +1367,23 @@ MODRET set_execbeforecommand(cmd_rec *cmd) {
 
 /* usage: ExecEngine on|off */
 MODRET set_execengine(cmd_rec *cmd) {
-  int bool = -1;
+  int engine = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = engine;
 
   /* Also set this here, for the daemon process. */
-  exec_engine = bool;
+  exec_engine = engine;
  
   return PR_HANDLED(cmd);
 }
@@ -1799,7 +1800,7 @@ static void exec_restart_ev(const void *event_data, void *user_data) {
  */
 
 static int exec_sess_init(void) {
-  unsigned char *use_exec = NULL;
+  int *use_exec = NULL;
   config_rec *c = NULL;
   const char *proto;
 
