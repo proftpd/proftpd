@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.42 2013-02-08 03:21:06 castaglia Exp $
+ * $Id: trace.c,v 1.43 2013-02-08 04:54:52 castaglia Exp $
  */
 
 
@@ -255,7 +255,7 @@ int pr_trace_parse_levels(char *str, int *min_level, int *max_level) {
   }
 
   /* Watch for blank strings for levels (i.e. misconfigured/typo in config). */
-  if (strlen(str) == 0) {
+  if (*str == '\0') {
     errno = EINVAL;
     return -1;
   }
