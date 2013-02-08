@@ -15,6 +15,10 @@ ChangeLog files.
       The mod_log_forensic module ...
       See doc/contrib/mod_log_forensic.html for more information.
 
+    mod_rlimit
+      Same RLimitCPU, RLimitMemory, RLimitOpenFiles directives
+      New setting of RLIMIT_NPROC (unless mod_exec.c/ExecEngine on)
+
 
   + New Configuration Directives
 
@@ -279,4 +283,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-02-06 00:19:14 $
+Last Updated: $Date: 2013-02-08 07:25:24 $
