@@ -180,6 +180,7 @@ sub exec_on_connect {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->quit();
     };
 
     if ($@) {
@@ -204,26 +205,36 @@ sub exec_on_connect {
 
   $self->assert_child_ok($pid);
 
+  eval {
+    # MacOSX hack
+    if ($^O eq 'darwin') {
+      $connect_file = ('/private' . $connect_file);
+    }
+
+    if (open(my $fh, "< $connect_file")) {
+      my $line = <$fh>;
+      close($fh);
+
+      chomp($line);
+
+      my $expected = '127.0.0.1';
+
+      $self->assert($expected eq $line,
+        test_msg("Expected '$expected', got '$line'"));
+
+    } else {
+      die("Can't read $connect_file: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
   if ($ex) {
     test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
-  }
-
-  if (open(my $fh, "< $connect_file")) {
-    my $line = <$fh>;
-    close($fh);
-
-    chomp($line);
-
-    my $expected = '127.0.0.1';
-
-    $self->assert($expected eq $line,
-      test_msg("Expected '$expected', got '$line'"));
-
-  } else {
-    die("Can't read $connect_file: $!");
   }
 
   unlink($log_file);
