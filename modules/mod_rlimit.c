@@ -23,7 +23,7 @@
  */
 
 /* Resource limit module
- * $Id: mod_rlimit.c,v 1.1 2013-02-08 07:19:49 castaglia Exp $
+ * $Id: mod_rlimit.c,v 1.2 2013-02-08 07:38:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -740,11 +740,34 @@ static int rlimit_init(void) {
 }
 
 static int rlimit_sess_init(void) {
+  int set_nproc = TRUE;
+
   /* Since we're a child process, we do not need to set the core resource
    * limits; we have inherited the limit from our parent.
    */
+ 
+  if (pr_module_exists("mod_exec.c")) {
+    /* If mod_exec is loaded, we need to check if it is enabled for this
+     * session.  If so, then we should NOT set the RLIMIT_NPROC limit,
+     * as that would prevent mod_exec from working properly.
+     */
+    config_rec *c;
 
-  rlimit_set_nproc(SESSION_SCOPE);
+    c = find_config(main_server->conf, CONF_PARAM, "ExecEngine", FALSE);
+    if (c != NULL) {
+      int engine;
+
+      engine = *((int *) c->argv[0]);
+      if (engine == TRUE) {
+        set_nproc = FALSE;
+      }
+    }
+  }
+
+  if (set_nproc) { 
+    rlimit_set_nproc(SESSION_SCOPE);
+  }
+
   rlimit_set_cpu(SESSION_SCOPE);
   rlimit_set_memory(SESSION_SCOPE);
   rlimit_set_files(SESSION_SCOPE);
