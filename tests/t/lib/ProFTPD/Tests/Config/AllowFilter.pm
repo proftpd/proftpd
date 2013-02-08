@@ -191,11 +191,11 @@ sub allowfilter_dele_allowed {
 
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "DELE command successful";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $client->quit();
     };
@@ -264,6 +264,14 @@ sub allowfilter_dele_denied {
     }
   }
 
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.tmp");
+  if (open(my $fh, "> $test_file")) {
+    close($fh);
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
@@ -272,6 +280,8 @@ sub allowfilter_dele_denied {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 filter:10',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
@@ -287,6 +297,7 @@ sub allowfilter_dele_denied {
       DELE => {
         AllowFilter => '\.txt$',
         DenyAll => '',
+        Order => 'deny,allow',
       },
     },
   };
@@ -325,11 +336,11 @@ sub allowfilter_dele_denied {
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "$filename: Operation not permitted";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $client->quit();
     };
@@ -558,6 +569,7 @@ sub allowfilter_mkd_denied {
       'MKD XMKD' => {
         AllowFilter => '\.txt$',
         DenyAll => '',
+        Order => 'deny,allow',
       },
     },
   };
@@ -824,6 +836,7 @@ sub allowfilter_rmd_denied {
       'RMD XRMD' => {
         AllowFilter => '\.txt$',
         DenyAll => '',
+        Order => 'deny,allow',
       },
     },
   };
@@ -1090,6 +1103,7 @@ sub allowfilter_rnfr_denied {
       RNFR => {
         AllowFilter => '\.dir$',
         DenyAll => '',
+        Order => 'deny,allow',
       },
     },
   };
@@ -1360,6 +1374,7 @@ sub allowfilter_rnto_denied {
       RNTO => {
         AllowFilter => '\.d$',
         DenyAll => '',
+        Order => 'deny,allow',
       },
     },
   };
@@ -1636,6 +1651,7 @@ sub allowfilter_stor_denied {
       STOR => {
         AllowFilter => '\.txt$',
         DenyAll => '',
+        Order => 'deny,allow',
       },
     },
   };
