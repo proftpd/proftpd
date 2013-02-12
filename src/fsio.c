@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.130 2013-01-30 00:49:12 castaglia Exp $
+ * $Id: fsio.c,v 1.131 2013-02-12 22:49:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2631,7 +2631,8 @@ int pr_fsio_set_use_mkdtemp(int value) {
  */
 int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     gid_t gid) {
-  int res, use_root_privs = TRUE, xerrno = 0;
+  int res, parent_suid = FALSE, parent_sgid = FALSE, use_root_privs = TRUE,
+    xerrno = 0;
   char *tmpl_path;
   char *dst_dir, *tmpl;
   size_t dst_dirlen, tmpl_len;
@@ -2674,6 +2675,14 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
         !S_ISLNK(st.st_mode)) {
       errno = EPERM;
       return -1;
+    }
+
+    if (st.st_mode & S_ISUID) {
+      parent_suid = TRUE;
+    }
+
+    if (st.st_mode & S_ISGID) {
+      parent_sgid = TRUE;
     }
 
     /* Allocate enough space for the temporary name: the length of the
@@ -2767,7 +2776,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
   }
 
   if (use_mkdtemp == TRUE) {
-    mode_t mask, *dir_umask;
+    mode_t mask, *dir_umask, perms;
 
     /* Use chmod(2) to set the permission that we want.
      *
@@ -2782,11 +2791,21 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
       mask = (mode_t) 0022;
     }
 
+    perms = (mode & ~mask);
+
+    if (parent_suid) {
+      perms |= S_ISUID;
+    }
+
+    if (parent_sgid) {
+      perms |= S_ISGID;
+    }
+
     if (use_root_privs) {
       PRIVS_ROOT
     }
 
-    res = chmod(tmpl_path, mode & ~mask);
+    res = chmod(tmpl_path, perms);
     xerrno = errno;
 
     if (use_root_privs) {
