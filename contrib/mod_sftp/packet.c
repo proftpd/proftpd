@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.42 2013-01-29 07:29:22 castaglia Exp $
+ * $Id: packet.c,v 1.43 2013-02-12 21:39:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -813,6 +813,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
 
   while (1) {
     uint32_t req_blocksz;
+    int res;
 
     pr_signals_handle();
 
@@ -981,7 +982,19 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
     }
 
     packet_client_seqno++;
-    pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
+
+    /* Handle the case where timers might be being processed at the
+     * moment.
+     */
+    res = pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
+    while (res < 0) {
+      if (errno == EINTR) {
+        pr_signals_handle();
+        res = pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
+      }
+
+      break;
+    }
 
     break;
   }
