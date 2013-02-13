@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.313 2013-01-30 01:24:15 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.314 2013-02-13 17:48:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1785,24 +1785,31 @@ MODRET xfer_stor(cmd_rec *cmd) {
     pr_throttle_pause(nbytes_stored, TRUE);
 
     if (stor_complete() < 0) {
+      int xerrno = errno;
+
+      _log_transfer('i', 'i');
+
       /* Check errno for EDQOUT (or the most appropriate alternative).
        * (I hate the fact that FTP has a special response code just for
        * this, and that clients actually expect it.  Special cases are
        * stupid.)
        */
 #if defined(EDQUOT)
-      if (errno == EDQUOT) {
-        pr_response_add_err(R_552, "%s: %s", cmd->arg, strerror(errno));
+      if (xerrno == EDQUOT) {
+        pr_response_add_err(R_552, "%s: %s", cmd->arg, strerror(xerrno));
+        errno = xerrno;
         return PR_ERROR(cmd);
       }
 #elif defined(EFBIG)
-      if (errno == EFBIG) {
-        pr_response_add_err(R_552, "%s: %s", cmd->arg, strerror(errno));
+      if (xerrno == EFBIG) {
+        pr_response_add_err(R_552, "%s: %s", cmd->arg, strerror(xerrno));
+        errno = xerrno;
         return PR_ERROR(cmd);
       }
 #endif
 
-      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
+      errno = xerrno;
       return PR_ERROR(cmd);
     }
 
@@ -2414,7 +2421,6 @@ MODRET xfer_log_stor(cmd_rec *cmd) {
 }
 
 MODRET xfer_log_retr(cmd_rec *cmd) {
-
   _log_transfer('o', 'c');
 
   /* Increment the file counters. */
