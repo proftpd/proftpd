@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.48 2013-01-10 02:06:18 castaglia Exp $
+ * $Id: auth.c,v 1.49 2013-02-14 19:29:15 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -621,6 +621,7 @@ static int send_userauth_banner_file(void) {
   config_rec *c;
   pr_fh_t *fh;
   pool *sub_pool;
+  struct stat st;
 
   if (auth_sent_userauth_banner_file) {
     /* Already sent the banner; no need to do it again. */
@@ -643,6 +644,27 @@ static int send_userauth_banner_file(void) {
   if (fh == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error opening SFTPDisplayBanner '%s': %s", path, strerror(errno));
+    return 0;
+  }
+
+  res = pr_fsio_fstat(fh, &st);
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to stat SFTPDisplayBanner '%s': %s", path, strerror(xerrno));
+
+    pr_fsio_close(fh);
+    return 0;
+  }
+
+  if (S_ISDIR(st.st_mode)) {
+    int xerrno = EISDIR;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to use SFTPDisplayBanner '%s': %s", path, strerror(xerrno));
+    
+    pr_fsio_close(fh);
     return 0;
   }
 
