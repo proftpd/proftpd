@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.45 2013-02-05 17:03:55 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.46 2013-02-14 18:33:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -552,6 +552,13 @@ static int af_setgrent(void) {
         return -1;
       }
 
+      if (fcntl(fileno(af_group_file->af_file), F_SETFD, FD_CLOEXEC) < 0) {
+        pr_log_pri(PR_LOG_WARNING, MOD_AUTH_FILE_VERSION
+          ": unable to set CLOEXEC on AuthGroupFile %s (fd %d): %s",
+          af_group_file->af_path, fileno(af_group_file->af_file),
+          strerror(errno));
+      }
+
       pr_log_debug(DEBUG7, MOD_AUTH_FILE_VERSION ": using group file '%s'",
         af_group_file->af_path);
       return 0;
@@ -759,6 +766,13 @@ static int af_setpwent(void) {
           af_user_file->af_path, strerror(xerrno));
         errno = xerrno;
         return -1;
+      }
+
+      if (fcntl(fileno(af_user_file->af_file), F_SETFD, FD_CLOEXEC) < 0) {
+        pr_log_pri(PR_LOG_WARNING, MOD_AUTH_FILE_VERSION
+          ": unable to set CLOEXEC on AuthUserFile %s (fd %d): %s",
+          af_user_file->af_path, fileno(af_user_file->af_file),
+          strerror(errno));
       }
 
       pr_log_debug(DEBUG7, MOD_AUTH_FILE_VERSION ": using passwd file '%s'",
