@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
  *
- * Copyright (c) 2001-2012 TJ Saunders
+ * Copyright (c) 2001-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.70 2012-04-03 16:01:48 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.71 2013-02-14 21:48:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -724,6 +724,13 @@ static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *txtmap) {
   /* Make sure the file exists. */
   if (pr_fsio_stat(txtmap->txt_path, &st) < 0) {
     rewrite_log("rewrite_parse_map_txt(): unable to stat %s: %s",
+      txtmap->txt_path, strerror(errno));
+    return FALSE;
+  }
+
+  if (S_ISDIR(st.st_mode)) {
+    errno = EISDIR;
+    rewrite_log("rewrite_parse_map_txt(): unable to use %s: %s",
       txtmap->txt_path, strerror(errno));
     return FALSE;
   }

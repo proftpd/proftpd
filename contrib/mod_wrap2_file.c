@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_file.c,v 1.11 2011-05-23 20:56:40 castaglia Exp $
+ * $Id: mod_wrap2_file.c,v 1.12 2013-02-14 21:48:34 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -264,7 +264,28 @@ static wrap2_table_t *filetab_open_cb(pool *parent_pool, char *srcinfo) {
 
   /* Stat the opened file to determine the optimal buffer size for IO. */
   memset(&st, 0, sizeof(st));
-  pr_fsio_fstat((pr_fh_t *) tab->tab_handle, &st);
+  if (pr_fsio_fstat((pr_fh_t *) tab->tab_handle, &st) < 0) {
+    int xerrno = errno;
+
+    destroy_pool(tab->tab_pool);
+    pr_fsio_close((pr_fh_t *) tab->tab_handle);
+    tab->tab_handle = NULL;
+
+    errno = xerrno;
+    return NULL;
+  }
+
+  if (S_ISDIR(st.st_mode)) {
+    int xerrno = EISDIR;
+
+    destroy_pool(tab->tab_pool);
+    pr_fsio_close((pr_fh_t *) tab->tab_handle);
+    tab->tab_handle = NULL;
+
+    errno = xerrno;
+    return NULL;
+  }
+
   ((pr_fh_t *) tab->tab_handle)->fh_iosz = st.st_blksize;
 
   tab->tab_name = pstrdup(tab->tab_pool, srcinfo);

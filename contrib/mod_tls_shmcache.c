@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_shmcache.c,v 1.12 2013-01-15 21:57:04 castaglia Exp $
+ *  $Id: mod_tls_shmcache.c,v 1.13 2013-02-14 21:48:34 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -570,9 +570,10 @@ static unsigned int shmcache_flush(void) {
  */
 
 static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
-  int fd;
+  int fd, xerrno;
   char *ptr;
   size_t requested_size;
+  struct stat st;
 
   pr_trace_msg(trace_channel, 9, "opening shmcache cache %p", cache);
 
@@ -680,12 +681,39 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
 
   PRIVS_ROOT
   shmcache_fh = pr_fsio_open(info, O_RDWR|O_CREAT);
+  xerrno = errno;
   PRIVS_RELINQUISH
 
   if (shmcache_fh == NULL) {
     pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-      ": error: unable to open file '%s': %s", info, strerror(errno));
+      ": error: unable to open file '%s': %s", info, strerror(xerrno));
 
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (pr_fsio_fstat(shmcache_fh, &st) < 0) {
+    xerrno = errno;
+
+    pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
+      ": error: unable to stat file '%s': %s", info, strerror(xerrno));
+
+    pr_fsio_close(shmcache_fh);
+    shmcache_fh = NULL;
+
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (S_ISDIR(st.st_mode)) {
+    xerrno = EISDIR;
+
+    pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
+      ": error: unable to use file '%s': %s", info, strerror(xerrno));
+
+    pr_fsio_close(shmcache_fh);
+    shmcache_fh = NULL;
+    
     errno = EINVAL;
     return -1;
   }
@@ -718,7 +746,7 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
 
   shmcache_data = shmcache_get_shm(shmcache_fh, requested_size);
   if (shmcache_data == NULL) {
-    int xerrno = errno;
+    xerrno = errno;
 
     pr_trace_msg(trace_channel, 1,
       "unable to allocate shm: %s", strerror(xerrno));
