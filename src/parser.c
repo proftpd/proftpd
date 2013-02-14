@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.34 2013-02-14 19:14:41 castaglia Exp $
+ * $Id: parser.c,v 1.35 2013-02-14 19:21:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -362,6 +362,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
   memset(&st, 0, sizeof(st));
   pr_fsio_fstat(fh, &st);
   if (S_ISDIR(st.st_mode)) {
+    pr_fsio_close(fh);
     destroy_pool(tmp_pool);
 
     errno = EISDIR;
