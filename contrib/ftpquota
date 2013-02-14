@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # -------------------------------------------------------------------------
-# Copyright (C) 2000-2011 TJ Saunders <tj@castaglia.org>
+# Copyright (C) 2000-2013 TJ Saunders <tj@castaglia.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
 #
-#  $Id: ftpquota,v 1.3 2011-05-23 21:25:44 castaglia Exp $
+#  $Id: ftpquota,v 1.4 2013-02-14 00:26:04 castaglia Exp $
 # -------------------------------------------------------------------------
 
 use strict;
@@ -342,7 +342,7 @@ sub get_display_bytes {
   if ($byte_units eq "byte") {
     # no calculation necessary
 
-    unless ($bytes eq "unlimited") {
+    unless ($bytes eq "unlimited" || $bytes <= 0) {
       return sprintf "bytes:\t%.2f", $bytes;
     } else {
       return sprintf "bytes:\tunlimited";
@@ -352,7 +352,7 @@ sub get_display_bytes {
     # divide by 1024.0
     my $adj_bytes = $bytes / 1024.0;
 
-    unless ($bytes eq "unlimited") {
+    unless ($bytes eq "unlimited" || $bytes <= 0) {
       return sprintf "Kb:\t%.2f", $adj_bytes;
     } else {
       return sprintf "Kb:\tunlimited";
@@ -362,7 +362,7 @@ sub get_display_bytes {
     # divide by 1024.0 * 1024.0
     my $adj_bytes = $bytes / (1024.0 * 1024.0);
 
-    unless ($bytes eq "unlimited") {
+    unless ($bytes eq "unlimited" || $bytes <= 0) {
       return sprintf "Mb:\t%.2f", $adj_bytes;
     } else {
       return sprintf "Mb:\tunlimited";
@@ -372,7 +372,7 @@ sub get_display_bytes {
     # divide by 1024.0 * 1024.0 * 1024.0
     my $adj_bytes = $bytes / (1024.0 * 1024.0 * 1024.0);
 
-    unless ($bytes eq "unlimited") {
+    unless ($bytes eq "unlimited" || $bytes <= 0) {
       return sprintf "Gb:\t%.2f", $adj_bytes;
     } else {
       return sprintf "Gb:\tunlimited";
@@ -749,13 +749,13 @@ sub print_record {
 
   # print "unlimited" if quota is unlimited, but only for limit tables
   if ($table_type == $LIMIT_TABLE) {
-    $bytes_in = "unlimited" if ($bytes_in < 0.0);
-    $bytes_out = "unlimited" if ($bytes_out < 0.0);
-    $bytes_xfer = "unlimited" if ($bytes_xfer < 0.0);
+    $bytes_in = "unlimited" if ($bytes_in <= 0.0);
+    $bytes_out = "unlimited" if ($bytes_out <= 0.0);
+    $bytes_xfer = "unlimited" if ($bytes_xfer <= 0.0);
 
-    $files_in = "unlimited" if ($files_in == 0);
-    $files_out = "unlimited" if ($files_out == 0);
-    $files_xfer = "unlimited" if ($files_xfer == 0);
+    $files_in = "unlimited" if ($files_in <= 0);
+    $files_out = "unlimited" if ($files_out <= 0);
+    $files_xfer = "unlimited" if ($files_xfer <= 0);
   }
 
   print STDOUT "-------------------------------------------\n";
