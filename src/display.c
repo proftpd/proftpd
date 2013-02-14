@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.28 2013-01-25 17:11:33 castaglia Exp $
+ * $Id: display.c,v 1.29 2013-02-14 19:22:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -418,15 +418,30 @@ int pr_display_file(const char *path, const char *fs, const char *code,
     int flags) {
   pr_fh_t *fh = NULL;
   int res, xerrno;
+  struct stat st;
 
-  if (!path || !code) {
+  if (path == NULL ||
+      code == NULL) {
     errno = EINVAL;
     return -1;
   }
 
   fh = pr_fsio_open_canon(path, O_RDONLY);
-  if (fh == NULL)
+  if (fh == NULL) {
     return -1;
+  }
+
+  res = pr_fsio_fstat(fh, &st);
+  if (res < 0) {
+    pr_fsio_close(fh);
+    return -1;
+  }
+
+  if (S_ISDIR(st.st_mode)) {
+    pr_fsio_close(fh);
+    errno = EISDIR;
+    return -1;
+  }
 
   res = display_fh(fh, fs, code, flags);
   xerrno = errno;
