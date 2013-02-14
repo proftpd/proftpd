@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.33 2013-01-19 01:07:24 castaglia Exp $
+ * $Id: parser.c,v 1.34 2013-02-14 19:14:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -361,6 +361,13 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
   /* Stat the opened file to determine the optimal buffer size for IO. */
   memset(&st, 0, sizeof(st));
   pr_fsio_fstat(fh, &st);
+  if (S_ISDIR(st.st_mode)) {
+    destroy_pool(tmp_pool);
+
+    errno = EISDIR;
+    return -1;
+  }
+
   fh->fh_iosz = st.st_blksize;
 
   /* Push the configuration information onto the stack of configuration
