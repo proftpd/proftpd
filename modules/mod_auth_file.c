@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.46 2013-02-14 18:33:38 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.47 2013-02-14 19:18:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -106,6 +106,16 @@ static int af_check_file(pool *p, const char *name, const char *path) {
     int xerrno = errno;
 
     pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION ": unable to stat %s '%s': %s",
+      name, path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (S_ISDIR(st.st_mode)) {
+    int xerrno = EISDIR;
+
+    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION ": unable to use %s '%s': %s",
       name, path, strerror(xerrno));
 
     errno = xerrno;
