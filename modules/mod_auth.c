@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.309 2012-12-20 23:54:52 castaglia Exp $
+ * $Id: mod_auth.c,v 1.310 2013-02-14 19:38:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2282,11 +2282,30 @@ MODRET auth_pre_pass(cmd_rec *cmd) {
   displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
   if (displaylogin &&
       *displaylogin == '/') {
+    struct stat st;
 
     displaylogin_fh = pr_fsio_open(displaylogin, O_RDONLY);
-    if (displaylogin_fh == NULL)
+    if (displaylogin_fh == NULL) {
       pr_log_debug(DEBUG6, "unable to open DisplayLogin file '%s': %s",
         displaylogin, strerror(errno));
+
+    } else {
+      if (pr_fsio_fstat(displaylogin_fh, &st) < 0) {
+        pr_log_debug(DEBUG6, "unable to stat DisplayLogin file '%s': %s",
+          displaylogin, strerror(errno));
+        pr_fsio_close(displaylogin_fh);
+        displaylogin_fh = NULL;
+
+      } else {
+        if (S_ISDIR(st.st_mode)) {
+          errno = EISDIR;
+          pr_log_debug(DEBUG6, "unable to use DisplayLogin file '%s': %s",
+            displaylogin, strerror(errno));
+          pr_fsio_close(displaylogin_fh);
+          displaylogin_fh = NULL;
+        }
+      }
+    }
   }
 
   return PR_DECLINED(cmd);

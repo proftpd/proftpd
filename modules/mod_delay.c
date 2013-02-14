@@ -2,7 +2,7 @@
  * ProFTPD: mod_delay -- a module for adding arbitrary delays to the FTP
  *                       session lifecycle
  *
- * Copyright (c) 2004-2012 TJ Saunders
+ * Copyright (c) 2004-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.64 2012-05-22 05:18:46 castaglia Exp $
+ * $Id: mod_delay.c,v 1.65 2013-02-14 19:38:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -425,9 +425,7 @@ static int delay_table_init(void) {
 
   PRIVS_ROOT
   fh = pr_fsio_open(delay_tab.dt_path, flags);
-  if (fh == NULL) {
-    xerrno = errno;
-  }
+  xerrno = errno;
   PRIVS_RELINQUISH
 
   if (fh == NULL) {
@@ -445,6 +443,18 @@ static int delay_table_init(void) {
 
     pr_trace_msg(trace_channel, 1, "error stat'ing DelayTable '%s': %s",
       delay_tab.dt_path, strerror(xerrno));
+    pr_fsio_close(fh);
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (S_ISDIR(st.st_mode)) {
+    xerrno = EISDIR;
+
+    pr_trace_msg(trace_channel, 1, "error using DelayTable '%s': %s",
+      delay_tab.dt_path, strerror(xerrno));
+    pr_fsio_close(fh);
 
     errno = xerrno;
     return -1;
@@ -945,9 +955,7 @@ static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
 
   PRIVS_ROOT
   fh = pr_fsio_open(delay_tab.dt_path, O_RDWR);
-  if (fh == NULL) {
-    xerrno = errno;
-  }
+  xerrno = errno;
   PRIVS_RELINQUISH
 
   if (fh == NULL) {
@@ -1097,12 +1105,10 @@ static int delay_handle_reset(pr_ctrls_t *ctrl, int reqargc,
 
   PRIVS_ROOT
   fh = pr_fsio_open(delay_tab.dt_path, O_RDWR);
-  if (fh == NULL) {
-    xerrno = errno;
-  }
+  xerrno = errno;
   PRIVS_RELINQUISH
 
-  if (!fh) {
+  if (fh == NULL) {
     pr_ctrls_add_response(ctrl,
       "unable to open DelayTable '%s': %s", delay_tab.dt_path,
       strerror(xerrno));
@@ -1564,9 +1570,7 @@ static void delay_shutdown_ev(const void *event_data, void *user_data) {
 
   PRIVS_ROOT
   fh = pr_fsio_open(delay_tab.dt_path, O_RDWR);
-  if (fh == NULL) {
-    xerrno = errno;
-  }
+  xerrno = errno;
   PRIVS_RELINQUISH
 
   if (fh == NULL) {
@@ -1687,9 +1691,7 @@ static int delay_sess_init(void) {
 
   PRIVS_ROOT
   fh = pr_fsio_open(delay_tab.dt_path, O_RDWR);
-  if (fh == NULL) {
-    xerrno = errno;
-  }
+  xerrno = errno;
   PRIVS_RELINQUISH
 
   if (fh == NULL) {

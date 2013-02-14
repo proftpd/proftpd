@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.314 2013-02-13 17:48:21 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.315 2013-02-14 19:38:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3346,11 +3346,32 @@ static int xfer_sess_init(void) {
     FALSE);
   if (displayfilexfer &&
       *displayfilexfer == '/') {
+    struct stat st;
 
     displayfilexfer_fh = pr_fsio_open(displayfilexfer, O_RDONLY);
-    if (displayfilexfer_fh == NULL)
+    if (displayfilexfer_fh == NULL) {
       pr_log_debug(DEBUG6, "unable to open DisplayFileTransfer file '%s': %s",
         displayfilexfer, strerror(errno));
+
+    } else {
+      if (pr_fsio_fstat(displayfilexfer_fh, &st) < 0) {
+        pr_log_debug(DEBUG6, "unable to stat DisplayFileTransfer file '%s': %s",
+          displayfilexfer, strerror(errno));
+        pr_fsio_close(displayfilexfer_fh);
+        displayfilexfer_fh = NULL;
+
+      } else {
+        if (S_ISDIR(st.st_mode)) {
+          errno = EISDIR;
+
+          pr_log_debug(DEBUG6,
+            "unable to use DisplayFileTransfer file '%s': %s",
+            displayfilexfer, strerror(errno));
+          pr_fsio_close(displayfilexfer_fh);
+          displayfilexfer_fh = NULL;
+        }
+      }
+    }
   }
 
   return 0;
