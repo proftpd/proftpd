@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.318 2013-02-14 22:54:23 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.319 2013-02-14 23:44:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1127,16 +1127,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
       pr_log_pri(PR_LOG_NOTICE,
         "notice: error adding 'mod_xfer.store-hidden-nfs' note: %s",
         strerror(errno));
-    } else {
-      pr_trace_msg("fsio", 3,
-        "added 'mod_xfer.store-hidden-nfs' note for HiddenStores path '%s'",
-        hidden_path);
     }
-
-  } else {
-    pr_trace_msg("fsio", 9,
-      "HiddenStores path '%s' parent directory '%s' is not on NFS", hidden_path,
-      parent_dir);
   }
 
   session.xfer.xfer_type = STOR_HIDDEN;
@@ -1527,7 +1518,6 @@ MODRET xfer_stor(cmd_rec *cmd) {
    */
   pr_fs_setcwd(pr_fs_getcwd());
 
-pr_trace_msg("fsio", 3, "xfer_stor: xfer_type = %d", session.xfer.xfer_type);
   if (session.xfer.xfer_type == STOR_HIDDEN) {
     void *nfs;
     int oflags;
@@ -1537,8 +1527,6 @@ pr_trace_msg("fsio", 3, "xfer_stor: xfer_type = %d", session.xfer.xfer_type);
     if (session.restart_pos == 0) {
       oflags |= O_CREAT;
     }
-
-pr_trace_msg("fsio", 3, "checking for HiddenStores NFS note");
 
     nfs = pr_table_get(cmd->notes, "mod_xfer.store-hidden-nfs", NULL);
     if (nfs == NULL) {
@@ -1552,8 +1540,6 @@ pr_trace_msg("fsio", 3, "checking for HiddenStores NFS note");
         "HiddenStores path '%s' is on NFS, NOT using O_EXCL open(2) flags",
         session.xfer.path_hidden);
     }
-
-pr_trace_msg("fsio", 3, "opening HiddenStores path %s with open(2) flags %04x", session.xfer.path_hidden, oflags);
 
     stor_fh = pr_fsio_open(session.xfer.path_hidden, oflags);
     if (stor_fh == NULL) {
