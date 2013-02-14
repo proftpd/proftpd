@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.446 2013-02-08 07:19:49 castaglia Exp $
+ * $Id: mod_core.c,v 1.447 2013-02-14 19:44:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -5943,11 +5943,30 @@ static int core_sess_init(void) {
   displayquit = get_param_ptr(TOPLEVEL_CONF, "DisplayQuit", FALSE);
   if (displayquit &&
       *displayquit == '/') {
+    struct stat st;
 
     displayquit_fh = pr_fsio_open(displayquit, O_RDONLY);
-    if (displayquit_fh == NULL)
+    if (displayquit_fh == NULL) {
       pr_log_debug(DEBUG6, "unable to open DisplayQuit file '%s': %s",
         displayquit, strerror(errno));
+
+    } else {
+      if (pr_fsio_fstat(displayquit_fh, &st) < 0) {
+        pr_log_debug(DEBUG6, "unable to stat DisplayQuit file '%s': %s",
+          displayquit, strerror(errno));
+        pr_fsio_close(displayquit_fh);
+        displayquit_fh = NULL;
+
+      } else {
+        if (S_ISDIR(st.st_mode)) {
+          errno = EISDIR;
+          pr_log_debug(DEBUG6, "unable to use DisplayQuit file '%s': %s",
+            displayquit, strerror(errno));
+          pr_fsio_close(displayquit_fh);
+          displayquit_fh = NULL;
+        }
+      }
+    }
   }
 
   /* Check for any ProcessTitles setting. */
