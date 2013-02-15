@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.277 2013-02-15 00:21:49 castaglia Exp $
+ * $Id: dirtree.c,v 1.278 2013-02-15 18:19:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -547,7 +547,7 @@ void kludge_enable_umask(void) {
 }
 
 /* Adds a config_rec to the specified set */
-config_rec *add_config_set(xaset_t **set, const char *name) {
+config_rec *add_config_set(xaset_t **set, const char *name, int flags) {
   pool *conf_pool = NULL, *set_pool = NULL;
   config_rec *c, *parent = NULL;
 
@@ -593,14 +593,20 @@ config_rec *add_config_set(xaset_t **set, const char *name) {
     c->config_id = pr_config_set_id(c->name);
   }
 
-  xaset_insert_end(*set, (xasetmember_t *) c);
+  if (flags & PR_CONFIG_FL_INSERT_HEAD) {
+    xaset_insert(*set, (xasetmember_t *) c);
+    
+  } else {
+    xaset_insert_end(*set, (xasetmember_t *) c);
+  }
+
   return c;
 }
 
 /* Adds a config_rec to the given server.  If no server is specified, the
  * config_rec is added to the current "level".
  */
-config_rec *add_config(server_rec *s, const char *name) {
+config_rec *add_config(server_rec *s, const char *name, int flags) {
   config_rec *parent = NULL, *c = NULL;
   pool *p = NULL;
   xaset_t **set = NULL;
@@ -636,7 +642,7 @@ config_rec *add_config(server_rec *s, const char *name) {
     *set = xaset_create(p, NULL);
   }
 
-  c = add_config_set(set, name);
+  c = add_config_set(set, name, flags);
   c->parent = parent;
 
   return c;
@@ -1711,7 +1717,7 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
 
       pr_trace_msg("ftpaccess", 6, "adding config for '%s'", ftpaccess_name);
 
-      d = add_config_set(set, ftpaccess_name);
+      d = add_config_set(set, ftpaccess_name, 0);
       d->config_type = CONF_DIR;
       d->argc = 1;
       d->argv = pcalloc(d->pool, 2 * sizeof (void *));
@@ -1726,7 +1732,7 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
 
         pr_trace_msg("ftpaccess", 6, "adding config for '%s'", ftpaccess_name);
 
-        newd = add_config_set(set, ftpaccess_name);
+        newd = add_config_set(set, ftpaccess_name, 0);
         newd->config_type = CONF_DIR;
         newd->argc = 1;
         newd->argv = pcalloc(newd->pool, 2 * sizeof(void *));
@@ -2543,10 +2549,11 @@ static config_rec *copy_config_from(const config_rec *src, config_rec *dst) {
   /* If the destination parent config_rec doesn't already have a subset
    * container, allocate one.
    */
-  if (dst->subset == NULL)
+  if (dst->subset == NULL) {
     dst->subset = xaset_create(dst->pool, NULL);
+  }
 
-  c = add_config_set(&dst->subset, src->name);
+  c = add_config_set(&dst->subset, src->name, 0);
   c->config_type = src->config_type;
   c->flags = src->flags;
   c->config_id = src->config_id;
@@ -2731,7 +2738,7 @@ static void copy_recur(xaset_t **set, pool *p, config_rec *c,
   if (!*set)
     *set = xaset_create(p, NULL);
 
-  newconf = add_config_set(set, c->name);
+  newconf = add_config_set(set, c->name, 0);
   newconf->config_type = c->config_type;
   newconf->flags = c->flags;
   newconf->parent = new_parent;
@@ -3036,7 +3043,7 @@ int remove_config(xaset_t *set, const char *name, int recurse) {
 
 config_rec *add_config_param_set(xaset_t **set, const char *name,
     int num, ...) {
-  config_rec *c = add_config_set(set, name);
+  config_rec *c = add_config_set(set, name, 0);
   void **argv;
   va_list ap;
 
@@ -3058,7 +3065,7 @@ config_rec *add_config_param_set(xaset_t **set, const char *name,
 }
 
 config_rec *add_config_param_str(const char *name, int num, ...) {
-  config_rec *c = add_config(NULL, name);
+  config_rec *c = add_config(NULL, name, 0);
   char *arg = NULL;
   void **argv = NULL;
   va_list ap;
@@ -3087,7 +3094,7 @@ config_rec *add_config_param_str(const char *name, int num, ...) {
 
 config_rec *pr_conf_add_server_config_param_str(server_rec *s, const char *name,
     int num, ...) {
-  config_rec *c = add_config(s, name);
+  config_rec *c = add_config(s, name, 0);
   char *arg = NULL;
   void **argv = NULL;
   va_list ap;
@@ -3124,7 +3131,7 @@ config_rec *add_config_param(const char *name, int num, ...) {
     return NULL;
   }
 
-  c = add_config(NULL, name);
+  c = add_config(NULL, name, 0);
   if (c) {
     c->config_type = CONF_PARAM;
     c->argc = num;

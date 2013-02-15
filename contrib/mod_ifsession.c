@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.46 2013-01-25 21:03:38 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.47 2013-02-15 18:19:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -76,11 +76,13 @@ static void ifsess_remove_param(xaset_t *set, int config_type,
   c = find_config(set, lookup_type, name, TRUE);
   while (c != NULL) {
     xaset_t *fset;
+    xasetmember_t *member;
 
     pr_signals_handle();
 
     fset = c->set;
-    xaset_remove(fset, (xasetmember_t *) c);
+    member = (xasetmember_t *) c;
+    xaset_remove(fset, member);
 
     c = find_config(set, lookup_type, name, TRUE);
   }
@@ -93,6 +95,9 @@ static void ifsess_dup_param(pool *dst_pool, xaset_t **dst, config_rec *c,
   if (c->config_type == CONF_DIR) {
     pr_trace_msg(trace_channel, 9, "adding <Directory %s> config", c->name);
 
+  } else if (c->config_type == CONF_LIMIT) {
+    pr_trace_msg(trace_channel, 9, "adding <Limit %s> config", c->argv[0]);
+
   } else {
     pr_trace_msg(trace_channel, 9, "adding '%s' config", c->name);
   }
@@ -101,7 +106,7 @@ static void ifsess_dup_param(pool *dst_pool, xaset_t **dst, config_rec *c,
     *dst = xaset_create(dst_pool, NULL);
   }
 
-  dup_c = add_config_set(dst, c->name);
+  dup_c = add_config_set(dst, c->name, PR_CONFIG_FL_INSERT_HEAD);
   dup_c->config_type = c->config_type;
   dup_c->flags = c->flags;
   dup_c->parent = parent;
@@ -132,8 +137,12 @@ static void ifsess_dup_param(pool *dst_pool, xaset_t **dst, config_rec *c,
       /* If this directive does not allow multiple instances, make sure
        * it is removed from the destination set first.  The "source"
        * directive then effectively replaces any directive there.
+       *
+       * Note that we only want to do this IF the config is NOT part of
+       * of a <Limit> section.
        */
-      if (c->config_type == CONF_PARAM &&
+      if (c->parent->config_type != CONF_LIMIT &&
+          c->config_type == CONF_PARAM &&
           !(c->flags & CF_MERGEDOWN_MULTI) &&
           !(c->flags & CF_MULTI)) {
           pr_trace_msg(trace_channel, 15, "removing '%s' config because "
@@ -163,8 +172,12 @@ static void ifsess_dup_set(pool *dst_pool, xaset_t *dst, xaset_t *src) {
     /* If this directive does not allow multiple instances, make sure
      * it is removed from the destination set first.  The "source"
      * directive then effectively replaces any directive there.
+     *
+     * Note that we only want to do this IF the config is NOT part of
+     * of a <Limit> section.
      */
-    if (c->config_type == CONF_PARAM &&
+    if (c->parent->config_type != CONF_LIMIT &&
+        c->config_type == CONF_PARAM &&
         !(c->flags & CF_MERGEDOWN_MULTI)) {
       pr_trace_msg(trace_channel, 15, "removing '%s' config because "
         "c->flags does not contain MERGEDOWN_MULTI", c->name);
@@ -593,8 +606,8 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
        * sections that use absolute paths, and again for any added <Directory>
        * sections that use deferred-resolution paths (e.g. "~").
        */
-      fixup_dirs(main_server, 0);
-      fixup_dirs(main_server, CF_DEFER);
+      fixup_dirs(main_server, CF_SILENT);
+      fixup_dirs(main_server, CF_DEFER|CF_SILENT);
 
       ifsess_merged = TRUE;
     }
@@ -680,8 +693,8 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
          * sections that use absolute paths, and again for any added <Directory>
          * sections that use deferred-resolution paths (e.g. "~").
          */
-        fixup_dirs(main_server, 0);
-        fixup_dirs(main_server, CF_DEFER);
+        fixup_dirs(main_server, CF_SILENT);
+        fixup_dirs(main_server, CF_DEFER|CF_SILENT);
 
         ifsess_merged = TRUE;
 
@@ -759,8 +772,8 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
          * sections that use absolute paths, and again for any added <Directory>
          * sections that use deferred-resolution paths (e.g. "~").
          */
-        fixup_dirs(main_server, 0);
-        fixup_dirs(main_server, CF_DEFER);
+        fixup_dirs(main_server, CF_SILENT);
+        fixup_dirs(main_server, CF_DEFER|CF_SILENT);
 
         ifsess_merged = TRUE;
 
@@ -925,8 +938,8 @@ static int ifsess_sess_init(void) {
          * sections that use absolute paths, and again for any added <Directory>
          * sections that use deferred-resolution paths (e.g. "~").
          */
-        fixup_dirs(main_server, 0);
-        fixup_dirs(main_server, CF_DEFER);
+        fixup_dirs(main_server, CF_SILENT);
+        fixup_dirs(main_server, CF_DEFER|CF_SILENT);
 
         ifsess_merged = TRUE;
 

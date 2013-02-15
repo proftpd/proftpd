@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Configuration structure, server, command and associated prototypes.
- * $Id: dirtree.h,v 1.85 2012-10-03 16:22:52 castaglia Exp $
+ * $Id: dirtree.h,v 1.86 2013-02-15 18:19:18 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -237,8 +237,11 @@ unsigned char pr_define_exists(const char *);
 void init_config(void);
 int fixup_servers(xaset_t *list);
 int parse_config_path(pool *, const char *);
-config_rec *add_config_set(xaset_t **, const char *);
-config_rec *add_config(server_rec *, const char *);
+
+#define PR_CONFIG_FL_INSERT_HEAD	0x001
+config_rec *add_config_set(xaset_t **, const char *, int);
+config_rec *add_config(server_rec *, const char *, int);
+
 config_rec *add_config_param(const char *, int, ...);
 config_rec *add_config_param_str(const char *, int, ...);
 config_rec *add_config_param_set(xaset_t **, const char *, int, ...);
