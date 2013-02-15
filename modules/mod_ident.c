@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ident -- a module for performing identd lookups [RFC1413]
  *
- * Copyright (c) 2008-2012 The ProFTPD Project
+ * Copyright (c) 2008-2013 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_ident.c,v 1.10 2012-04-15 18:04:15 castaglia Exp $
+ * $Id: mod_ident.c,v 1.11 2013-02-15 22:50:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -248,7 +248,7 @@ static char *ident_lookup(pool *p, conn_t *conn) {
     tok = pr_str_get_token(&tmp, ":");
     if (tok &&
         (tok = pr_str_get_token(&tmp, ":"))) {
-      while (*tok && isspace((int) *tok)) {
+      while (*tok && PR_ISSPACE(*tok)) {
         pr_signals_handle();
         tok++;
       }
@@ -257,7 +257,7 @@ static char *ident_lookup(pool *p, conn_t *conn) {
 
       if (strcasecmp(tok, "ERROR") == 0) {
         if (tmp) {
-          while (*tmp && isspace((int) *tmp)) {
+          while (*tmp && PR_ISSPACE(*tmp)) {
             pr_signals_handle();
             tmp++;
           }
@@ -272,7 +272,7 @@ static char *ident_lookup(pool *p, conn_t *conn) {
         if (tmp &&
             (tok = pr_str_get_token(&tmp, ":"))) {
           if (tmp) {
-            while (*tmp && isspace((int) *tmp)) {
+            while (*tmp && PR_ISSPACE(*tmp)) {
               pr_signals_handle();
               tmp++;
             }

@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.200 2013-02-15 00:06:09 castaglia Exp $
+ * $Id: mod_ls.c,v 1.201 2013-02-15 22:50:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -484,7 +484,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
        * octal escape sequence equivalent.
        */
       for (i = 0, j = 0; i < display_namelen && j < printable_namelen; i++) {
-        if (!isprint((int) display_name[i])) {
+        if (!PR_ISPRINT(display_name[i])) {
           register unsigned int k;
           int replace_len = 0;
           char replace[32];
@@ -1393,7 +1393,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
    */
   ptr = *opt;
 
-  while (isspace((int) *ptr)) {
+  while (PR_ISSPACE(*ptr)) {
     pr_signals_handle();
     ptr++;
   }
@@ -1407,7 +1407,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
   while (*opt && **opt == '-') {
     pr_signals_handle();
 
-    while ((*opt)++ && isascii((int) **opt) && isalnum((int) **opt)) {
+    while ((*opt)++ && PR_ISALNUM(**opt)) {
       switch (**opt) {
         case '1':
           if (strcmp(session.curr_cmd, C_STAT) != 0) {
@@ -1503,7 +1503,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
     ptr = *opt;
 
     while (*ptr &&
-           isspace((int) *ptr)) {
+           PR_ISSPACE(*ptr)) {
       pr_signals_handle();
       ptr++;
     }
@@ -1530,7 +1530,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
   while (*opt && **opt == '+') {
     pr_signals_handle();
 
-    while ((*opt)++ && isascii((int) **opt) && isalnum((int) **opt)) {
+    while ((*opt)++ && PR_ISALNUM(**opt)) {
       switch (**opt) {
         case '1':
           opt_1 = opt_l = opt_C = 0;
@@ -1613,7 +1613,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
     ptr = *opt;
 
     while (*ptr &&
-           isspace((int) *ptr)) {
+           PR_ISSPACE(*ptr)) {
       pr_signals_handle();
       ptr++;
     }
@@ -1701,7 +1701,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
        */
       ptr = arg;
 
-      while (isspace((int) *ptr)) {
+      while (PR_ISSPACE(*ptr)) {
         pr_signals_handle();
         ptr++;
       }
@@ -1713,13 +1713,14 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
       while (arg && *arg == '-') {
         /* Advance to the next whitespace */
-        while (*arg != '\0' && !isspace((int) *arg))
+        while (*arg != '\0' && !PR_ISSPACE(*arg)) {
           arg++;
+        }
 
         ptr = arg;
 
         while (*ptr &&
-               isspace((int) *ptr)) {
+               PR_ISSPACE(*ptr)) {
           pr_signals_handle();
           ptr++;
         }
@@ -2086,7 +2087,7 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
      * escape sequence equivalent.
      */
     for (i = 0, j = 0; i < display_namelen && j < printable_namelen; i++) {
-      if (!isprint((int) display_name[i])) {
+      if (!PR_ISPRINT(display_name[i])) {
         register unsigned int k;
         int replace_len = 0;
         char replace[32];
@@ -2500,12 +2501,12 @@ MODRET ls_stat(cmd_rec *cmd) {
 
   /* Get to the actual argument. */
   if (*arg == '-') {
-    while (arg && *arg && !isspace((int) *arg)) {
+    while (arg && *arg && !PR_ISSPACE(*arg)) {
       arg++;
     }
   }
 
-  while (arg && *arg && isspace((int) *arg)) {
+  while (arg && *arg && PR_ISSPACE(*arg)) {
     arg++;
   }
 
@@ -2686,7 +2687,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
        */
       ptr = target;
 
-      while (isspace((int) *ptr)) {
+      while (PR_ISSPACE(*ptr)) {
         pr_signals_handle();
         ptr++;
       }
@@ -2698,13 +2699,13 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
       while (target && *target == '-') {
         /* Advance to the next whitespace */
-        while (*target != '\0' && !isspace((int) *target))
+        while (*target != '\0' && !PR_ISSPACE(*target))
           target++;
 
         ptr = target;
 
         while (*ptr &&
-               isspace((int) *ptr)) {
+               PR_ISSPACE(*ptr)) {
           pr_signals_handle();
           ptr++;
         }

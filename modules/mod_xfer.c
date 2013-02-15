@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.319 2013-02-14 23:44:37 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.320 2013-02-15 22:50:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -232,8 +232,9 @@ static char *get_cmd_from_list(char **list) {
   char *res = NULL, *dst = NULL;
   unsigned char quote_mode = FALSE;
 
-  while (**list && isspace((int) **list))
+  while (**list && PR_ISSPACE(**list)) {
     (*list)++;
+  }
 
   if (!**list)
     return NULL;
@@ -246,7 +247,7 @@ static char *get_cmd_from_list(char **list) {
   }
 
   while (**list && **list != ',' &&
-      (quote_mode ? (**list != '\"') : (!isspace((int) **list)))) {
+      (quote_mode ? (**list != '\"') : (!PR_ISSPACE(**list)))) {
 
     if (**list == '\\' && quote_mode) {
 

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.449 2013-02-15 18:33:14 castaglia Exp $
+ * $Id: mod_core.c,v 1.450 2013-02-15 22:50:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -253,7 +253,7 @@ MODRET start_ifmodule(cmd_rec *cmd) {
     pr_signals_handle();
 
     /* Advance past any leading whitespace. */
-    for (bufp = config_line; *bufp && isspace((int) *bufp); bufp++);
+    for (bufp = config_line; *bufp && PR_ISSPACE(*bufp); bufp++);
 
     if (strncasecmp(bufp, "<IfModule", 9) == 0) {
       ifmodule_ctx_count++;
@@ -3751,7 +3751,7 @@ MODRET core_eprt(cmd_rec *cmd) {
   }
 
   /* Now, skip past those numeric characters that atoi() used. */
-  while (isdigit((unsigned char) *argstr)) {
+  while (PR_ISDIGIT(*argstr)) {
     argstr++;
   }
 
@@ -3826,7 +3826,7 @@ MODRET core_eprt(cmd_rec *cmd) {
 
   port = atoi(argstr);
 
-  while (isdigit((unsigned char) *argstr)) {
+  while (PR_ISDIGIT(*argstr)) {
     argstr++;
   }
 
