@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.48 2013-02-15 18:33:14 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.49 2013-02-15 19:27:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -96,7 +96,7 @@ static void ifsess_dup_param(pool *dst_pool, xaset_t **dst, config_rec *c,
     pr_trace_msg(trace_channel, 9, "adding <Directory %s> config", c->name);
 
   } else if (c->config_type == CONF_LIMIT) {
-    pr_trace_msg(trace_channel, 9, "adding <Limit %s> config", c->argv[0]);
+    pr_trace_msg(trace_channel, 9, "adding <Limit> config");
 
   } else {
     pr_trace_msg(trace_channel, 9, "adding '%s' config", c->name);
