@@ -25,7 +25,7 @@
  */
 
 /* Configuration structure, server, command and associated prototypes.
- * $Id: dirtree.h,v 1.86 2013-02-15 18:19:18 castaglia Exp $
+ * $Id: dirtree.h,v 1.87 2013-02-15 18:33:14 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -237,11 +237,8 @@ unsigned char pr_define_exists(const char *);
 void init_config(void);
 int fixup_servers(xaset_t *list);
 int parse_config_path(pool *, const char *);
-
-#define PR_CONFIG_FL_INSERT_HEAD	0x001
-config_rec *add_config_set(xaset_t **, const char *, int);
-config_rec *add_config(server_rec *, const char *, int);
-
+config_rec *add_config_set(xaset_t **, const char *);
+config_rec *add_config(server_rec *, const char *);
 config_rec *add_config_param(const char *, int, ...);
 config_rec *add_config_param_str(const char *, int, ...);
 config_rec *add_config_param_set(xaset_t **, const char *, int, ...);
@@ -252,6 +249,10 @@ config_rec *find_config_next(config_rec *, config_rec *, int,
 config_rec *find_config(xaset_t *, int, const char *, int);
 void find_config_set_top(config_rec *);
 int remove_config(xaset_t *, const char *, int);
+
+#define PR_CONFIG_FL_INSERT_HEAD	0x001
+config_rec *pr_config_add_set(xaset_t **, const char *, int);
+config_rec *pr_config_add(server_rec *, const char *, int);
 
 /* Returns the assigned ID for the provided directive name, or zero
  * if no ID mapping was found.

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.448 2013-02-15 18:19:19 castaglia Exp $
+ * $Id: mod_core.c,v 1.449 2013-02-15 18:33:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4642,7 +4642,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
       c = find_config(cmd->server->conf, CONF_USERDATA, session.cwd, FALSE);
       if (!c) {
         time(&prev);
-        c = add_config_set(&cmd->server->conf, session.cwd, 0);
+        c = pr_config_add_set(&cmd->server->conf, session.cwd, 0);
         c->config_type = CONF_USERDATA;
         c->argc = 1;
         c->argv = pcalloc(c->pool, sizeof(void **) * 2);

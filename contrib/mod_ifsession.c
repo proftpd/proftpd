@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.47 2013-02-15 18:19:18 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.48 2013-02-15 18:33:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -106,7 +106,7 @@ static void ifsess_dup_param(pool *dst_pool, xaset_t **dst, config_rec *c,
     *dst = xaset_create(dst_pool, NULL);
   }
 
-  dup_c = add_config_set(dst, c->name, PR_CONFIG_FL_INSERT_HEAD);
+  dup_c = pr_config_add_set(dst, c->name, PR_CONFIG_FL_INSERT_HEAD);
   dup_c->config_type = c->config_type;
   dup_c->flags = c->flags;
   dup_c->parent = parent;
