@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.90 2013-02-06 07:14:32 castaglia Exp $
+ * $Id: conf.h,v 1.91 2013-02-15 22:33:23 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -420,6 +420,7 @@ typedef struct {
 
 #include "pool.h"
 #include "str.h"
+#include "ascii.h"
 #include "table.h"
 #include "proftpd.h"
 #include "support.h"
