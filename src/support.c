@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.118 2012-08-06 03:17:06 castaglia Exp $
+ * $Id: support.c,v 1.119 2013-02-15 22:39:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -514,19 +514,19 @@ char *safe_token(char **s) {
   if (!s || !*s)
     return res;
 
-  while (isspace((int) **s) && **s)
+  while (PR_ISSPACE(**s) && **s)
     (*s)++;
 
   if (**s) {
     res = *s;
 
-    while (!isspace((int) **s) && **s)
+    while (!PR_ISSPACE(**s) && **s)
       (*s)++;
 
     if (**s)
       *(*s)++ = '\0';
 
-    while (isspace((int) **s) && **s)
+    while (PR_ISSPACE(**s) && **s)
       (*s)++;
   }
 

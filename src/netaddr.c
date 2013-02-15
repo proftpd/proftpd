@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.90 2013-02-15 00:06:09 castaglia Exp $
+ * $Id: netaddr.c,v 1.91 2013-02-15 22:39:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -421,7 +421,7 @@ char *pr_netaddr_validate_dns_str(char *buf) {
   for (p = buf; p && *p; p++) {
 
     /* Per RFC requirements, these are all that are valid from a DNS. */
-    if ((!isascii((int) *p) || !isalnum((int) *p)) &&
+    if (!PR_ISALNUM(*p) &&
         *p != '.' &&
         *p != '-'
 #ifdef PR_USE_IPV6

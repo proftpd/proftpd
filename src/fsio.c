@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.131 2013-02-12 22:49:53 castaglia Exp $
+ * $Id: fsio.c,v 1.132 2013-02-15 22:39:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4063,7 +4063,7 @@ char *pr_fsio_getline(char *buf, int buflen, pr_fh_t *fh,
            * Advance past any leading whitespace, to see if the first
            * non-whitespace character is the comment character.
            */
-          for (bufp = buf; *bufp && isspace((int) *bufp); bufp++);
+          for (bufp = buf; *bufp && PR_ISSPACE(*bufp); bufp++);
 
           if (*bufp == '#')
              continue;

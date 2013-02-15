@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.93 2012-09-06 17:13:36 castaglia Exp $
+ * $Id: auth.c,v 1.94 2013-02-15 22:39:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1312,7 +1312,7 @@ int pr_auth_banned_by_ftpusers(xaset_t *ctx, const char *user) {
       CHOP(buf);
 
       ptr = buf;
-      while (isspace((int) *ptr) && *ptr) {
+      while (PR_ISSPACE(*ptr) && *ptr) {
         ptr++;
       }
 

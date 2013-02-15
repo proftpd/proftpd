@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.453 2013-02-08 07:19:49 castaglia Exp $
+ * $Id: main.c,v 1.454 2013-02-15 22:39:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -784,13 +784,15 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, int flags) {
   /* Be pedantic (and RFC-compliant) by not allowing leading whitespace
    * in an issued FTP command.  Will this cause troubles with many clients?
    */
-  if (isspace((int) buf[0]))
+  if (PR_ISSPACE(buf[0])) {
     return NULL;
+  }
 
   /* Nothing there...bail out. */
   wrd = pr_str_get_word(&cp, str_flags);
-  if (wrd == NULL)
+  if (wrd == NULL) {
     return NULL;
+  }
 
   subpool = make_sub_pool(p);
   cmd = (cmd_rec *) pcalloc(subpool, sizeof(cmd_rec));

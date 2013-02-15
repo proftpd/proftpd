@@ -23,7 +23,7 @@
  */
 
 /* Controls API routines
- * $Id: ctrls.c,v 1.38 2013-02-04 15:43:59 castaglia Exp $
+ * $Id: ctrls.c,v 1.39 2013-02-15 22:39:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -201,8 +201,9 @@ static char *ctrls_sep(char **str) {
   if (!str || !*str || !**str)
     return NULL;
 
-  while (**str && isspace((int) **str))
+  while (**str && PR_ISSPACE(**str)) {
     (*str)++;
+  }
 
   if (!**str)
     return NULL;
@@ -215,7 +216,7 @@ static char *ctrls_sep(char **str) {
   }
 
   while (**str &&
-         (quoted ? (**str != '\"') : !isspace((int) **str))) {
+         (quoted ? (**str != '\"') : !PR_ISSPACE(**str))) {
 
     if (**str == '\\' && quoted) {
 
@@ -1707,7 +1708,7 @@ static char *ctrls_argsep(char **arg) {
   if (!arg || !*arg || !**arg)
     return NULL;
 
-  while (**arg && isspace((int) **arg))
+  while (**arg && PR_ISSPACE(**arg))
     (*arg)++;
 
   if (!**arg)
@@ -1721,7 +1722,7 @@ static char *ctrls_argsep(char **arg) {
   }
 
   while (**arg && **arg != ',' &&
-      (quote_mode ? (**arg != '\"') : (!isspace((int) **arg)))) {
+      (quote_mode ? (**arg != '\"') : (!PR_ISSPACE(**arg)))) {
 
     if (**arg == '\\' && quote_mode) {
 

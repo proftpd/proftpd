@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2012 The ProFTPD Project team
+ * Copyright (c) 2008-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.15 2012-02-24 07:08:03 castaglia Exp $
+ * $Id: str.c,v 1.16 2013-02-15 22:39:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -372,10 +372,10 @@ char *pr_str_strip(pool *p, char *str) {
   }
  
   /* First, find the non-whitespace start of the given string */
-  for (start = str; isspace((int) *start); start++);
+  for (start = str; PR_ISSPACE(*start); start++);
  
   /* Now, find the non-whitespace end of the given string */
-  for (finish = &str[strlen(str)-1]; isspace((int) *finish); finish--);
+  for (finish = &str[strlen(str)-1]; PR_ISSPACE(*finish); finish--);
 
   /* finish is now pointing to a non-whitespace character.  So advance one
    * character forward, and set that to NUL.
@@ -500,8 +500,9 @@ char *pr_str_get_word(char **cp, int flags) {
   }
 
   if (!(flags & PR_STR_FL_PRESERVE_WHITESPACE)) {
-    while (**cp && isspace((int) **cp))
+    while (**cp && PR_ISSPACE(**cp)) {
       (*cp)++;
+    }
   }
 
   if (!**cp)
@@ -520,7 +521,7 @@ char *pr_str_get_word(char **cp, int flags) {
     (*cp)++;
   }
 
-  while (**cp && (quote_mode ? (**cp != '\"') : !isspace((int) **cp))) {
+  while (**cp && (quote_mode ? (**cp != '\"') : !PR_ISSPACE(**cp))) {
     if (**cp == '\\' && quote_mode) {
 
       /* Escaped char */

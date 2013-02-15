@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.35 2013-02-14 19:21:03 castaglia Exp $
+ * $Id: parser.c,v 1.36 2013-02-15 22:39:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -638,7 +638,7 @@ char *pr_parser_read_line(char *buf, size_t bufsz) {
     }
 
     /* Advance past any leading whitespace. */
-    for (bufp = buf; *bufp && isspace((int) *bufp); bufp++);
+    for (bufp = buf; *bufp && PR_ISSPACE(*bufp); bufp++);
 
     /* Check for commented or blank lines at this point, and just continue on
      * to the next configuration line if found.  If not, return the
