@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ctrls_admin -- a module implementing admin control handlers
  *
- * Copyright (c) 2000-2011 TJ Saunders
+ * Copyright (c) 2000-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.45 2011-05-24 00:04:12 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.46 2013-02-15 22:46:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -71,15 +71,17 @@ static time_t ctrls_admin_start = 0;
 #if 0
 /* Will be used when scheduled shutdowns are supported.. */
 static unsigned char isnumeric(char *str) {
-  while (str && isspace((int) *str))
+  while (str && PR_ISSPACE(*str)) {
     str++;
+  }
 
   if (!str || !*str)
     return FALSE;
 
   for (; str && *str; str++) {
-    if (!isdigit((int) *str))
+    if (!PR_ISDIGIT(*str)) {
       return TRUE;
+    }
   }
 
   return 1;

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.43 2013-02-12 21:39:19 castaglia Exp $
+ * $Id: packet.c,v 1.44 2013-02-15 22:46:42 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1307,8 +1307,8 @@ void sftp_ssh2_packet_handle_debug(struct ssh2_packet *pkt) {
    * characters.
    */
   for (i = 0; i < strlen(str); i++) {
-    if (iscntrl((int) str[i]) ||
-        !isprint((int) str[i])) {
+    if (PR_ISCNTRL(str[i]) ||
+        !PR_ISPRINT(str[i])) {
       str[i] = '?';
     }
   }
@@ -1348,7 +1348,7 @@ void sftp_ssh2_packet_handle_disconnect(struct ssh2_packet *pkt) {
 
   /* Sanity-check the message for control characters. */
   for (i = 0; i < strlen(explain); i++) {
-    if (iscntrl((int) explain[i])) {
+    if (PR_ISCNTRL(explain[i])) {
       explain[i] = '?';
     }
   }

@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.235 2013-02-06 00:19:14 castaglia Exp $
+ * $Id: mod_sql.c,v 1.236 2013-02-15 22:46:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2916,7 +2916,7 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name, int flags) {
             unsigned char is_numeric_tag = TRUE;
 
             for (i = 0; i < taglen-1; i++) {
-              if (!isdigit((char) tag[i])) {
+              if (!PR_ISDIGIT(tag[i])) {
                 is_numeric_tag = FALSE;
                 break;
               }

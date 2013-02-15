@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.71 2013-02-14 21:48:34 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.72 2013-02-15 22:46:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -383,8 +383,9 @@ static char *rewrite_argsep(char **arg) {
   if (!arg || !*arg || !**arg)
     return NULL;
 
-  while (**arg && isspace((int) **arg))
+  while (**arg && PR_ISSPACE(**arg)) {
     (*arg)++;
+  }
 
   if (!**arg)
     return NULL;
@@ -397,7 +398,7 @@ static char *rewrite_argsep(char **arg) {
   }
 
   while (**arg && **arg != ',' &&
-      (quote_mode ? (**arg != '\"') : (!isspace((int) **arg)))) {
+      (quote_mode ? (**arg != '\"') : (!PR_ISSPACE(**arg)))) {
 
     if (**arg == '\\' && quote_mode) {
 
@@ -770,7 +771,7 @@ static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *txtmap) {
     pr_signals_handle();
 
     /* Skip leading whitespace. */
-    for (pos = 0; pos < linelen && isspace(linebuf[pos]); pos++);
+    for (pos = 0; pos < linelen && PR_ISSPACE(linebuf[pos]); pos++);
 
     /* Ignore comments and blank lines. */
     if (linebuf[pos] == '#')
@@ -785,7 +786,7 @@ static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *txtmap) {
     key_so = pos;
     for (; pos < linelen; pos++) {
  
-      if (isspace(linebuf[pos])) {
+      if (PR_ISSPACE(linebuf[pos])) {
         if (!key_eo)
           key_eo = pos;
 
@@ -1783,8 +1784,6 @@ static char *rewrite_map_int_toupper(pool *map_pool, char *key) {
   return value;
 }
 
-#define REWRITE_IS_XDIGIT(c) (isxdigit(((unsigned char)(c))))
-
 /* Unescapes the hex escape sequences in the given string (typically a URL-like
  * path).  Returns the escaped string on success, NULL on error; failures can
  * be caused by: bad % escape sequences, decoding %00, or a special character.
@@ -1799,7 +1798,7 @@ static char *rewrite_map_int_unescape(pool *map_pool, char *key) {
 
     } else {
 
-      if (!REWRITE_IS_XDIGIT(key[j+1]) || !REWRITE_IS_XDIGIT(key[j+2])) {
+      if (!PR_ISXDIGIT(key[j+1]) || !PR_ISXDIGIT(key[j+2])) {
         rewrite_log("rewrite_map_int_unescape(): bad escape sequence '%c%c%c'",
           key[j], key[j+1], key[j+2]);
         return NULL;
@@ -2174,7 +2173,7 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
 
     while (*var != '\0' &&
            (var = strchr(var, '%')) != NULL && strlen(var) > 1 &&
-            !isdigit(*(var+1))) {
+            !PR_ISDIGIT(*(var+1))) {
       register unsigned int i = 0;
       unsigned char is_valid_var = FALSE;
 

@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_wrap2 -- tcpwrappers-like access control
  *
- * Copyright (c) 2000-2012 TJ Saunders
+ * Copyright (c) 2000-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -390,7 +390,7 @@ static char *wrap2_skip_whitespace(char *str) {
   /* Skip any leading whitespace. */
   tmp = str;
   for (i = 0; str[i]; i++) {
-    if (isspace((int) str[i])) {
+    if (PR_ISSPACE(str[i])) {
       tmp = &str[i+1];
       continue;
     }
@@ -832,9 +832,10 @@ static char *wrap2_opt_trim_string(char *string) {
   char *start = NULL, *end = NULL, *cp = NULL;
 
   for (cp = string; *cp; cp++) {
-    if (!isspace((int) *cp)) {
-      if (start == '\0')
+    if (!PR_ISSPACE(*cp)) {
+      if (start == '\0') {
         start = cp;
+      }
       end = cp;
     }
   }

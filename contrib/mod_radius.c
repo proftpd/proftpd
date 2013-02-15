@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_radius -- a module for RADIUS authentication and accounting
  *
- * Copyright (c) 2001-2012 TJ Saunders
+ * Copyright (c) 2001-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.69 2012-07-30 21:47:19 castaglia Exp $
+ * $Id: mod_radius.c,v 1.70 2013-02-15 22:46:42 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9.2"
@@ -300,8 +300,9 @@ static char *radius_argsep(char **arg) {
   if (!arg || !*arg || !**arg)
     return NULL;
 
-  while (**arg && isspace((int) **arg))
+  while (**arg && PR_ISSPACE(**arg)) {
     (*arg)++;
+  }
 
   if (!**arg)
     return NULL;
@@ -314,7 +315,7 @@ static char *radius_argsep(char **arg) {
   }
 
   while (**arg && **arg != ',' &&
-      (quote_mode ? (**arg != '\"') : (!isspace((int) **arg)))) {
+      (quote_mode ? (**arg != '\"') : (!PR_ISSPACE(**arg)))) {
 
     if (**arg == '\\' && quote_mode) {
 

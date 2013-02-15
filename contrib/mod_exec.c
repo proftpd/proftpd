@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.28 2013-02-08 07:43:17 castaglia Exp $
+ * $Id: mod_exec.c,v 1.29 2013-02-15 22:46:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -106,8 +106,9 @@ static char *exec_get_cmd(char **list) {
   char *res = NULL, *dst = NULL;
   unsigned char quote_mode = FALSE;
 
-  while (**list && isspace((unsigned char) **list))
+  while (**list && PR_ISSPACE(**list)) {
     (*list)++;
+  }
 
   if (!**list)
     return NULL;
@@ -120,7 +121,7 @@ static char *exec_get_cmd(char **list) {
   }
 
   while (**list && **list != ',' &&
-      (quote_mode ? (**list != '\"') : (!isspace((unsigned char) **list)))) {
+      (quote_mode ? (**list != '\"') : (!PR_ISSPACE(**list)))) {
 
     if (**list == '\\' && quote_mode) {
 

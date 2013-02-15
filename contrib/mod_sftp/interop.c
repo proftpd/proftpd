@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp interoperability
- * Copyright (c) 2008-2011 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: interop.c,v 1.14 2011-05-23 21:03:12 castaglia Exp $
+ * $Id: interop.c,v 1.15 2013-02-15 22:46:42 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -152,7 +152,7 @@ int sftp_interop_handle_version(const char *client_version) {
    */
 
   for (i = 0; i < version_len; i++) {
-    if (!isprint((int) client_version[i]) &&
+    if (!PR_ISPRINT(client_version[i]) &&
         client_version[i] != '-' &&
         client_version[i] != ' ') {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,

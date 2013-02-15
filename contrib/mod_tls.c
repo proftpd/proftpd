@@ -998,7 +998,7 @@ static const char *get_printable_subjaltname(pool *p, const char *data,
    */
 
   for (i = 0; i < datalen; i++) {
-    if (isprint((int) data[i])) {
+    if (PR_ISPRINT(data[i])) {
       reslen++;
 
     } else {
@@ -1010,7 +1010,7 @@ static const char *get_printable_subjaltname(pool *p, const char *data,
   ptr = res = pcalloc(p, reslen + 1);
 
   for (i = 0; i < datalen; i++) {
-    if (isprint((int) data[i])) {
+    if (PR_ISPRINT(data[i])) {
       *(ptr++) = data[i];
 
     } else {
