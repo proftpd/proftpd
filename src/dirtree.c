@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.276 2013-02-08 07:15:42 castaglia Exp $
+ * $Id: dirtree.c,v 1.277 2013-02-15 00:21:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2199,16 +2199,17 @@ static void reparent_all(config_rec *newparent, xaset_t *set) {
 /* Recursively find the most appropriate place to move a CONF_DIR
  * directive to.
  */
-
 static config_rec *find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
   config_rec *c, *res = NULL, *rres;
   size_t len, pathlen, imatchlen, tmatchlen;
 
   *matchlen = 0;
 
-  if (!set ||
-      !set->xas_list)
+  if (set == NULL ||
+      set->xas_list == NULL) {
+    errno = EINVAL;
     return NULL;
+  }
 
   pathlen = strlen(path);
 
@@ -2222,10 +2223,11 @@ static config_rec *find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
        * doing direct pointer/address comparisons is valid.  If ever this
        * assumption is broken, we will need to revert back to a more
        * costly (especially when there are many <Directory> config sections)
-       * use of strcmp().
+       * use of strcmp(3).
        */
-      if (c->name == path)
+      if (c->name == path) {
         continue;
+      }
 
       len = strlen(c->name);
 
@@ -2235,8 +2237,7 @@ static config_rec *find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
         len--;
       }
 
-      /*
-       * Just a partial match on the pathname does not mean that the longer
+      /* Just a partial match on the pathname does not mean that the longer
        * path is the subdirectory of the other -- they might just be sharing
        * the last path component!
        * /var/www/.1
@@ -2245,10 +2246,19 @@ static config_rec *find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
        * /var/www/.1
        * /var/www/.1/images
        *            ^ -- /, is subdir
+       *
+       * And then there are glob considerations, e.g.:
+       *
+       *   /var/www/<glob>/dir2
+       *   /var/www/dir1/dir2
+       *
+       * In these cases, we need to make sure that the glob path appears
+       * BEFORE the exact path.  Right?
        */
       if (pathlen > len &&
-          path[len] != '/')
-          continue;
+          path[len] != '/') {
+        continue;
+      }
 
       if (len < pathlen &&
           strncmp(c->name, path, len) == 0) {
@@ -2279,11 +2289,17 @@ static void reorder_dirs(xaset_t *set, int flags) {
   int defer = 0;
   size_t tmp;
 
-  if (!set || !set->xas_list)
+  if (set == NULL ||
+      set->xas_list == NULL) {
     return;
+  }
 
-  if (!(flags & CF_DEFER))
+  /* Ignore the CF_SILENT flag for purposes of reordering. */
+  flags &= ~CF_SILENT;
+
+  if (!(flags & CF_DEFER)) {
     defer = 1;
+  }
 
   for (c = (config_rec *) set->xas_list; c; c = cnext) {
     cnext = c->next;
