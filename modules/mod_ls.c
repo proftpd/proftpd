@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.199 2013-02-02 06:04:35 castaglia Exp $
+ * $Id: mod_ls.c,v 1.200 2013-02-15 00:06:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1407,7 +1407,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
   while (*opt && **opt == '-') {
     pr_signals_handle();
 
-    while ((*opt)++ && isalnum((int) **opt)) {
+    while ((*opt)++ && isascii((int) **opt) && isalnum((int) **opt)) {
       switch (**opt) {
         case '1':
           if (strcmp(session.curr_cmd, C_STAT) != 0) {
@@ -1530,7 +1530,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
   while (*opt && **opt == '+') {
     pr_signals_handle();
 
-    while ((*opt)++ && isalnum((int) **opt)) {
+    while ((*opt)++ && isascii((int) **opt) && isalnum((int) **opt)) {
       switch (**opt) {
         case '1':
           opt_1 = opt_l = opt_C = 0;
