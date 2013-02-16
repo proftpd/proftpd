@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.279 2013-02-15 18:33:14 castaglia Exp $
+ * $Id: dirtree.c,v 1.280 2013-02-16 01:03:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2725,7 +2725,7 @@ void resolve_deferred_dirs(server_rec *s) {
         c->name = real_dir;
 
       } else {
-        real_dir = dir_canonical_path(c->pool, c->name);
+        real_dir = dir_canonical_path(c->pool, interp_dir);
         if (real_dir) {
           c->name = real_dir;
         }
