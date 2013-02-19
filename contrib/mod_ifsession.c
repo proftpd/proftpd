@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.49 2013-02-15 19:27:40 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.50 2013-02-19 16:24:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -551,8 +551,29 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
         displaylogin, strerror(errno));
 
     } else {
-      /* Remove the directive from the set, since we'll be handling it. */
-      remove_config(config_set, "DisplayLogin", FALSE);
+      struct stat st;
+
+      if (pr_fsio_fstat(displaylogin_fh, &st) < 0) {
+        pr_log_debug(DEBUG6,
+          MOD_IFSESSION_VERSION ": unable to stat DisplayLogin file '%s': %s",
+          displaylogin, strerror(errno));
+        pr_fsio_close(displaylogin_fh);
+        displaylogin_fh = NULL;
+
+      } else {
+        if (S_ISDIR(st.st_mode)) {
+          errno = EISDIR;
+          pr_log_debug(DEBUG6,
+            MOD_IFSESSION_VERSION ": unable to use DisplayLogin file '%s': %s",
+            displaylogin, strerror(errno));
+          pr_fsio_close(displaylogin_fh);
+          displaylogin_fh = NULL;
+
+        } else {
+          /* Remove the directive from the set, since we'll be handling it. */
+          remove_config(config_set, "DisplayLogin", FALSE);
+        }
+      }
     }
   }
 
