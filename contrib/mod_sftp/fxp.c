@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.183 2013-02-04 05:35:13 castaglia Exp $
+ * $Id: fxp.c,v 1.184 2013-02-19 21:24:11 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -8533,8 +8533,34 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
   return fxp_packet_write(resp);
 }
 
+static void fxp_trace_v6_realpath_flags(pool *p, unsigned char flags) {
+  char *flags_str = "";
+  int trace_level = 15;
+
+  if (pr_trace_get_level(trace_channel) < trace_level) {
+    return;
+  }
+
+  if (flags & SSH2_FXRP_NO_CHECK) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FX_REALPATH_NO_CHECK", NULL);
+  }
+
+  if (flags & SSH2_FXRP_STAT_IF) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FX_REALPATH_STAT_IF", NULL);
+  }
+
+  if (flags & SSH2_FXRP_STAT_ALWAYS) {
+    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
+      "FX_REALPATH_STAT_ALWAYS", NULL);
+  }
+
+  pr_trace_msg(trace_channel, trace_level, "REALPATH flags = %s", flags_str);
+}
+
 static int fxp_handle_realpath(struct fxp_packet *fxp) {
-  unsigned char *buf, *ptr;
+  unsigned char *buf, *ptr, realpath_flags = 0;
   char *path;
   uint32_t buflen, bufsz;
   struct stat st;
@@ -8567,27 +8593,35 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   cmd = fxp_cmd_alloc(fxp->pool, "REALPATH", path);
   cmd->cmd_class = CL_INFO;
 
-  if (fxp_session->client_version >= 6 &&
-      fxp->payload_sz >= sizeof(char)) {
-    char ctrl_flags;
-    char *composite_path;
+  if (fxp_session->client_version >= 6) {
+    /* See Section 8.9 of:
+     *
+     *  http://tools.ietf.org/id/draft-ietf-secsh-filexfer-13.txt
+     *
+     * for the semantics and defaults of these crazy flags.
+     */
+    realpath_flags = SSH2_FXRP_NO_CHECK;
 
-    ctrl_flags = sftp_msg_read_byte(fxp->pool, &fxp->payload,
-      &fxp->payload_sz);
-(void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "handle_realpath: ctrl_flags = %d", ctrl_flags);
+    if (fxp->payload_sz >= sizeof(char)) {
+      char *composite_path;
 
-    if (fxp->payload_sz > 0) {
-      composite_path = sftp_msg_read_string(fxp->pool, &fxp->payload,
+      realpath_flags = sftp_msg_read_byte(fxp->pool, &fxp->payload,
         &fxp->payload_sz);
+      fxp_trace_v6_realpath_flags(fxp->pool, realpath_flags);
+
+      if (fxp->payload_sz > 0) {
+        composite_path = sftp_msg_read_string(fxp->pool, &fxp->payload,
+          &fxp->payload_sz);
 (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "handle_realpath: have composite-path = '%s'", composite_path);
 
-      /* XXX One problem with the most recent SFTP Draft is that it does NOT
-       * include a count of the number of composite-paths that the client
-       * may send.  The format of the REALPATH request, currently, only allows
-       * for one composite-path element; the description of this feature
-       * implies that multiple such composite-path elements could be supplied.
-       * Sigh.  I'll need to provide feedback on this, I see.
-       */
+        /* XXX One problem with the most recent SFTP Draft is that it does NOT
+         * include a count of the number of composite-paths that the client
+         * may send.  The format of the REALPATH request, currently, only allows
+         * for one composite-path element; the description of this feature
+         * implies that multiple such composite-path elements could be supplied.
+         * Sigh.  I'll need to provide feedback on this, I see.
+         */
+      }
     }
   }
 
@@ -8600,11 +8634,27 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "REALPATH of '%s' blocked by '%s' handler", path, cmd->argv[0]);
 
-    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
-      (unsigned long) status_code, fxp_strerror(status_code));
+    if (fxp_session->client_version <= 5 ||
+        (fxp_session->client_version >= 6 &&
+         !(realpath_flags & SSH2_FXRP_NO_CHECK))) {
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+        (unsigned long) status_code, fxp_strerror(status_code));
 
-    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
-      fxp_strerror(status_code), NULL);
+      fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+        fxp_strerror(status_code), NULL);
+
+    } else {
+      uint32_t attr_flags = 0;
+
+      memset(&st, 0, sizeof(st));
+      st.st_uid = (uid_t) -1;
+      st.st_gid = (gid_t) -1;
+  
+      pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
+        path, fxp_strattrs(fxp->pool, &st, &attr_flags));
+      fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
+        "nobody");
+    }
 
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -8637,12 +8687,28 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
       status_code = fxp_errno2status(xerrno, &reason);
 
-      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-        "('%s' [%d])", (unsigned long) status_code, reason,
-        xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      if (fxp_session->client_version <= 5 ||
+          (fxp_session->client_version >= 6 &&
+           !(realpath_flags & SSH2_FXRP_NO_CHECK))) {
+        pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+          "('%s' [%d])", (unsigned long) status_code, reason,
+          xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
-      fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
-        NULL);
+        fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+          NULL);
+
+      } else {
+        uint32_t attr_flags = 0;
+
+        memset(&st, 0, sizeof(st));
+        st.st_uid = (uid_t) -1;
+        st.st_gid = (gid_t) -1;
+
+        pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
+          path, fxp_strattrs(fxp->pool, &st, &attr_flags));
+        fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
+          "nobody");
+      }
 
       pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
       pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -8675,12 +8741,29 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
     status_code = fxp_errno2status(xerrno, &reason);
 
-    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+    if (fxp_session->client_version <= 5 ||
+        (fxp_session->client_version >= 6 &&
+         !(realpath_flags & SSH2_FXRP_NO_CHECK))) {
 
-    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
-      NULL);
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+        "('%s' [%d])", (unsigned long) status_code, reason,
+        xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+      fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+        NULL);
+
+    } else {
+      uint32_t attr_flags = 0;
+
+      memset(&st, 0, sizeof(st));
+      st.st_uid = (uid_t) -1;
+      st.st_gid = (gid_t) -1;
+
+      pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
+        path, fxp_strattrs(fxp->pool, &st, &attr_flags));
+      fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
+        "nobody");
+    }
 
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -8699,12 +8782,29 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
       status_code = fxp_errno2status(xerrno, &reason);
 
-      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-        "('%s' [%d])", (unsigned long) status_code, reason,
-        xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      if (fxp_session->client_version <= 5 ||
+          (fxp_session->client_version >= 6 &&
+           !(realpath_flags & SSH2_FXRP_NO_CHECK))) {
 
-      fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
-        NULL);
+        pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+          "('%s' [%d])", (unsigned long) status_code, reason,
+          xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+        fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+          NULL);
+
+      } else {
+        uint32_t attr_flags = 0;
+
+        memset(&st, 0, sizeof(st));
+        st.st_uid = (uid_t) -1;
+        st.st_gid = (gid_t) -1;
+
+        pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
+          path, fxp_strattrs(fxp->pool, &st, &attr_flags));
+        fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
+          "nobody");
+      }
 
       pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
       pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
