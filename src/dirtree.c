@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.280 2013-02-16 01:03:23 castaglia Exp $
+ * $Id: dirtree.c,v 1.281 2013-02-19 22:23:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2706,7 +2706,12 @@ void resolve_deferred_dirs(server_rec *s) {
   for (c = (config_rec *) s->conf->xas_list; c; c = c->next) {
     if (c->config_type == CONF_DIR &&
         (c->flags & CF_DEFER)) {
-      char *interp_dir = NULL, *real_dir = NULL;
+      char *interp_dir = NULL, *real_dir = NULL, *orig_name = NULL;
+      const char *trace_channel = "directory";
+
+      if (pr_trace_get_level(trace_channel) >= 11) {
+        orig_name = pstrdup(c->pool, c->name);
+      }
 
       /* Check for any expandable variables. */
       c->name = path_subst_uservar(c->pool, &c->name);
@@ -2730,6 +2735,9 @@ void resolve_deferred_dirs(server_rec *s) {
           c->name = real_dir;
         }
       }
+
+      pr_trace_msg(trace_channel, 11,
+        "resolved <Directory %s> to <Directory %s>", orig_name, c->name);
 
       /* Clear the CF_DEFER flag. */
       c->flags &= ~CF_DEFER;
