@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.281 2013-02-19 22:23:17 castaglia Exp $
+ * $Id: dirtree.c,v 1.282 2013-02-19 23:13:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2738,9 +2738,6 @@ void resolve_deferred_dirs(server_rec *s) {
 
       pr_trace_msg(trace_channel, 11,
         "resolved <Directory %s> to <Directory %s>", orig_name, c->name);
-
-      /* Clear the CF_DEFER flag. */
-      c->flags &= ~CF_DEFER;
     }
   }
 }
