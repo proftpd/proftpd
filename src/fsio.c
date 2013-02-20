@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.132 2013-02-15 22:39:00 castaglia Exp $
+ * $Id: fsio.c,v 1.133 2013-02-20 01:04:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4065,17 +4065,20 @@ char *pr_fsio_getline(char *buf, int buflen, pr_fh_t *fh,
            */
           for (bufp = buf; *bufp && PR_ISSPACE(*bufp); bufp++);
 
-          if (*bufp == '#')
+          if (*bufp == '#') {
              continue;
+          }
  
-        } else
+        } else {
           return start;
+        }
       }
     }
 
     /* Be careful of reading too much. */
-    if (buflen - inlen == 0)
+    if (buflen - inlen == 0) {
       return buf;
+    }
 
     buf += inlen;
     buflen -= inlen;
