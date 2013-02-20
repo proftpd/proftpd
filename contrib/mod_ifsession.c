@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.52 2013-02-20 16:48:20 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.53 2013-02-20 17:25:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -51,6 +51,9 @@ module ifsession_module;
 
 static int ifsess_ctx = -1;
 static int ifsess_merged = FALSE;
+
+/* For storing the home directory of user, symlinks resolved. */
+static const char *ifsess_home_dir = NULL;
 
 /* For supporting DisplayLogin files in <IfUser>/<IfGroup> sections. */
 static pr_fh_t *displaylogin_fh = NULL;
@@ -198,6 +201,84 @@ static void ifsess_dup_set(pool *dst_pool, xaset_t *dst, xaset_t *src) {
   }
 }
 
+/* Similar to dir_interpolate(), except that we are cognizant of being
+ * chrooted, and so try to Do The Right Thing(tm).
+ */
+static char *ifsess_dir_interpolate(pool *p, const char *path) {
+  char *ret = (char *) path;
+
+  if (ret == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (*ret == '~') {
+    char *interp_dir = NULL, *user, *ptr;
+
+    user = pstrdup(p, ret+1);
+    ptr = strchr(user, '/');
+
+    if (ptr != NULL) {
+      *ptr++ = '\0';
+    }
+
+    if (!*user) {
+      user = session.user;
+
+      if (ifsess_home_dir != NULL) {
+        /* We're chrooted; we already the interpolated path. */
+        interp_dir = (char *) ifsess_home_dir;
+      }
+    }
+
+    if (interp_dir == NULL) {
+      struct passwd *pw;
+      struct stat st;
+      size_t interp_dirlen;
+
+      pw = pr_auth_getpwnam(p, user);
+      if (pw == NULL) {
+        errno = ENOENT;
+        return NULL;
+      }
+
+      if (pw->pw_dir == NULL) {
+        errno = EPERM;
+        return NULL;
+      }
+
+      interp_dir = pstrdup(p, pw->pw_dir);
+      interp_dirlen = strlen(interp_dir);
+
+      /* If the given directory is a symlink, follow it.  Note that for
+       * proper handling of such paths, we need to ensure that the path does
+       * not end in a slash.
+       */
+      if (interp_dir[interp_dirlen] == '/') {
+        interp_dir[interp_dirlen--] = '\0';
+      }
+
+      if (pr_fsio_lstat(interp_dir, &st) == 0) {
+        if (S_ISLNK(st.st_mode)) {
+          char link_path[PR_TUNABLE_PATH_MAX+1];
+
+          memset(link_path, '\0', sizeof(link_path));
+          if (pr_fs_resolve_path(interp_dir, link_path, sizeof(link_path)-1,
+              FSIO_DIR_CHDIR) < 0) {
+            return NULL;
+          }
+
+          interp_dir = pstrdup(p, link_path);
+        }
+      }
+    }
+
+    ret = pdircat(p, interp_dir, ptr, NULL);
+  }
+
+  return ret;
+}
+
 /* Similar to resolve_deferred_dirs(), except that we need to recurse
  * and resolve ALL <Directory> paths.
  */
@@ -212,7 +293,7 @@ static void ifsess_resolve_dir(config_rec *c) {
   c->name = path_subst_uservar(c->pool, &c->name);
 
   /* Handle any '~' interpolation. */
-  interp_dir = dir_interpolate(c->pool, c->name);
+  interp_dir = ifsess_dir_interpolate(c->pool, c->name);
   if (interp_dir == NULL) {
     /* This can happen when the '~' is just that, and does not refer
      * to any known user.
@@ -921,6 +1002,10 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
 /* Event handlers
  */
 
+static void ifsess_chroot_ev(const void *event_data, void *user_data) {
+  ifsess_home_dir = (const char *) event_data;
+}
+
 #ifdef PR_SHARED_MODULE
 static void ifsess_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_ifsession.c", (const char *) event_data) == 0) {
@@ -967,6 +1052,8 @@ static int ifsess_init(void) {
     ifsess_mod_unload_ev, NULL);
 #endif /* PR_SHARED_MODULE */
 
+  pr_event_register(&ifsession_module, "core.chroot",
+    ifsess_chroot_ev, NULL);
   pr_event_register(&ifsession_module, "core.postparse",
     ifsess_postparse_ev, NULL);
 
