@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.50 2013-02-19 16:24:58 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.51 2013-02-20 00:43:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -955,12 +955,10 @@ static int ifsess_sess_init(void) {
          */
         *((config_rec **) push_array(class_remove_list)) = c;
 
-        /* We need to call fixup_dirs() twice: once for any added <Directory>
-         * sections that use absolute paths, and again for any added <Directory>
-         * sections that use deferred-resolution paths (e.g. "~").
+        /* Do NOT call fixup_dirs() here; we need to wait until after
+         * authentication to do so (in which case, mod_auth will handle the
+         * call to fixup_dirs() for us).
          */
-        fixup_dirs(main_server, CF_SILENT);
-        fixup_dirs(main_server, CF_DEFER|CF_SILENT);
 
         ifsess_merged = TRUE;
 
