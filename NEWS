@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1499 2013-02-19 21:24:11 castaglia Exp $
+$Id: NEWS,v 1.1500 2013-02-20 06:53:52 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -58,6 +58,7 @@ CVS
 - Bug 3895 - Missing TransferLog entry under some out-of-space conditions.
 - Bug 3897 - mod_sftp does not handle a REALPATH request properly for SFTP
   protocol version 6.
+- Bug 3896 - Warn when world-writable config files are used.
 
 1.3.5rc1 - Released 04-Jan-2013
 --------------------------------

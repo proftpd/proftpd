@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.37 2013-02-20 01:09:26 castaglia Exp $
+ * $Id: parser.c,v 1.38 2013-02-20 06:53:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -360,13 +360,32 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
 
   /* Stat the opened file to determine the optimal buffer size for IO. */
   memset(&st, 0, sizeof(st));
-  pr_fsio_fstat(fh, &st);
+  if (pr_fsio_fstat(fh, &st) < 0) {
+    int xerrno = errno;
+
+    pr_fsio_close(fh);
+    destroy_pool(tmp_pool);
+
+    errno = xerrno;
+    return -1;
+  }
+
   if (S_ISDIR(st.st_mode)) {
     pr_fsio_close(fh);
     destroy_pool(tmp_pool);
 
     errno = EISDIR;
     return -1;
+  }
+
+  /* Check for world-writable files (and later, files in world-writable
+   * directories).
+   *
+   * For now, just warn about these; later, we will be more draconian.
+   */
+  if (st.st_mode & S_IWOTH) {
+    pr_log_pri(PR_LOG_WARNING, "warning: config file '%s' is world-writable",
+     path); 
   }
 
   fh->fh_iosz = st.st_blksize;
