@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.51 2013-02-20 00:43:36 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.52 2013-02-20 16:48:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -56,6 +56,10 @@ static int ifsess_merged = FALSE;
 static pr_fh_t *displaylogin_fh = NULL;
 
 static const char *trace_channel = "ifsession";
+
+/* Necessary prototypes */
+static void ifsess_resolve_dirs(config_rec *);
+static void ifsess_resolve_server_dirs(server_rec *);
 
 /* Support routines
  */
@@ -191,6 +195,72 @@ static void ifsess_dup_set(pool *dst_pool, xaset_t *dst, xaset_t *src) {
     }
 
     ifsess_dup_param(dst_pool, &dst, c, NULL);
+  }
+}
+
+/* Similar to resolve_deferred_dirs(), except that we need to recurse
+ * and resolve ALL <Directory> paths.
+ */
+static void ifsess_resolve_dir(config_rec *c) {
+  char *interp_dir = NULL, *real_dir = NULL, *orig_name = NULL;
+
+  if (pr_trace_get_level(trace_channel) >= 11) {
+    orig_name = pstrdup(c->pool, c->name);
+  }
+
+  /* Check for any expandable variables. */
+  c->name = path_subst_uservar(c->pool, &c->name);
+
+  /* Handle any '~' interpolation. */
+  interp_dir = dir_interpolate(c->pool, c->name);
+  if (interp_dir == NULL) {
+    /* This can happen when the '~' is just that, and does not refer
+     * to any known user.
+     */
+    interp_dir = c->name;
+  }
+
+  real_dir = dir_best_path(c->pool, interp_dir);
+  if (real_dir) {
+    c->name = real_dir;
+
+  } else {
+    real_dir = dir_canonical_path(c->pool, interp_dir);
+    if (real_dir) {
+      c->name = real_dir;
+    }
+  }
+
+  pr_trace_msg(trace_channel, 11,
+    "resolved <Directory %s> to <Directory %s>", orig_name, c->name);
+}
+
+void ifsess_resolve_dirs(config_rec *c) {
+  ifsess_resolve_dir(c);
+
+  if (c->subset != NULL) {
+    config_rec *subc;
+
+    for (subc = (config_rec *) c->subset->xas_list; subc; subc = subc->next) {
+      if (subc->config_type == CONF_DIR) {
+        ifsess_resolve_dirs(subc);
+      }
+    }
+  }
+}
+
+void ifsess_resolve_server_dirs(server_rec *s) {
+  config_rec *c;
+
+  if (s == NULL ||
+      s->conf == NULL) {
+    return;
+  }
+
+  for (c = (config_rec *) s->conf->xas_list; c; c = c->next) {
+    if (c->config_type == CONF_DIR) {
+      ifsess_resolve_dirs(c);
+    }
   }
 }
 
@@ -621,6 +691,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
        */
       *((config_rec **) push_array(authn_remove_list)) = c;
 
+      ifsess_resolve_server_dirs(main_server);
       resolve_deferred_dirs(main_server);
 
       /* We need to call fixup_dirs() twice: once for any added <Directory>
@@ -708,6 +779,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
          */
         *((config_rec **) push_array(group_remove_list)) = c;
 
+        ifsess_resolve_server_dirs(main_server);
         resolve_deferred_dirs(main_server);
 
         /* We need to call fixup_dirs() twice: once for any added <Directory>
@@ -787,6 +859,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
          */
         *((config_rec **) push_array(user_remove_list)) = c;
 
+        ifsess_resolve_server_dirs(main_server);
         resolve_deferred_dirs(main_server);
 
         /* We need to call fixup_dirs() twice: once for any added <Directory>
