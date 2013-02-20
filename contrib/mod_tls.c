@@ -3922,7 +3922,7 @@ static void tls_fatal_error(long error, int lineno) {
 /* This function checks if the client's cert is in the ~/.tlslogin file
  * of the "user".
  */
-static unsigned char tls_dotlogin_allow(const char *user) {
+static int tls_dotlogin_allow(const char *user) {
   char buf[512] = {'\0'}, *home = NULL;
   FILE *fp = NULL;
   X509 *client_cert = NULL, *file_cert = NULL;
@@ -3950,6 +3950,7 @@ static unsigned char tls_dotlogin_allow(const char *user) {
   PRIVS_RELINQUISH
 
   if (pwd == NULL) {
+    X509_free(client_cert);
     destroy_pool(tmp_pool);
     return FALSE;
   }
@@ -3972,6 +3973,7 @@ static unsigned char tls_dotlogin_allow(const char *user) {
   PRIVS_RELINQUISH
 
   if (fp == NULL) {
+    X509_free(client_cert);
     tls_log(".tlslogin check: unable to open '%s': %s", buf, strerror(xerrno));
     return FALSE;
   }
@@ -3995,19 +3997,179 @@ static unsigned char tls_dotlogin_allow(const char *user) {
   return allow_user;
 }
 
-/* This is unused...for now. */
-#if 0
-static char *tls_cert_to_user(pool *cert_pool, X509 *cert) {
-  if (!cert_pool || !cert)
+static int tls_cert_to_user(const char *user_name, const char *field_name) {
+  X509 *client_cert = NULL;
+  unsigned char allow_user = FALSE;
+  unsigned char *field_value = NULL;
+
+  if (!(tls_flags & TLS_SESS_ON_CTRL) ||
+      ctrl_ssl == NULL ||
+      user_name == NULL ||
+      field_name == NULL) {
     return FALSE;
+  }
 
-  /* NOTE: insert cert->user translation code here.  Possibly add
-   * TLSOptions that affect this mapping process.
+  /* If the client did not provide a cert, we cannot do the TLSUserName
+   * check.
    */
+  client_cert = SSL_get_peer_certificate(ctrl_ssl);
+  if (client_cert == NULL) {
+    return FALSE;
+  }
 
-  return NULL;
+  if (strcmp(field_name, "CommonName") == 0) {
+    X509_NAME *name;
+    int pos = -1;
+ 
+    name = X509_get_subject_name(client_cert);
+
+    while (TRUE) {
+      X509_NAME_ENTRY *entry;
+      ASN1_STRING *data;
+      int data_len;
+      unsigned char *data_str = NULL;
+
+      pr_signals_handle();
+
+      pos = X509_NAME_get_index_by_NID(name, NID_commonName, pos);
+      if (pos == -1) {
+        break;
+      }
+
+      entry = X509_NAME_get_entry(name, pos);
+      data = X509_NAME_ENTRY_get_data(entry);
+      data_len = ASN1_STRING_length(data);
+      data_str = ASN1_STRING_data(data);
+
+      /* Watch for any embedded NULs, which can cause verification
+       * problems via spoofing.
+       */
+      if (data_len != strlen((char *) data_str)) {
+        tls_log("%s", "client cert CommonName contains embedded NULs, "
+          "ignoring as possible spoof attempt");
+        tls_log("suspicious CommonName value: '%s'", data_str);
+
+      } else {
+
+        /* There can be multiple CommonNames... */
+        if (strcmp((char *) data_str, user_name) == 0) {
+          field_value = data_str;
+          allow_user = TRUE;
+
+          tls_log("matched client cert CommonName '%s' to user '%s'",
+            field_value, user_name);
+          break;
+        }
+      }
+    }
+
+  } else if (strcmp(field_name, "EmailSubjAltName") == 0) {
+    STACK_OF(GENERAL_NAME) *sk_alt_names;
+
+    sk_alt_names = X509_get_ext_d2i(client_cert, NID_subject_alt_name, NULL,
+      NULL);
+    if (sk_alt_names != NULL) {
+      register unsigned int i;
+      int nnames = sk_GENERAL_NAME_num(sk_alt_names);
+
+      for (i = 0; i < nnames; i++) {
+        GENERAL_NAME *name = sk_GENERAL_NAME_value(sk_alt_names, i);
+
+        /* We're only looking for the Email type. */
+        if (name->type == GEN_EMAIL) {
+          int data_len;
+          unsigned char *data_str = NULL;
+
+          data_len = ASN1_STRING_length(name->d.ia5);
+          data_str = ASN1_STRING_data(name->d.ia5);
+
+          /* Watch for any embedded NULs, which can cause verification
+           * problems via spoofing.
+           */
+          if (data_len != strlen((char *) data_str)) {
+            tls_log("%s", "client cert Email SAN contains embedded NULs, "
+              "ignoring as possible spoof attempt");
+            tls_log("suspicious Email SubjAltName value: '%s'", data_str);
+
+          } else {
+
+            /* There can be multiple Email SANs... */
+            if (strcmp((char *) data_str, user_name) == 0) {
+              field_value = data_str;
+              allow_user = TRUE;
+
+              tls_log("matched client cert Email SubjAltName '%s' to user '%s'",
+                field_value, user_name);
+              GENERAL_NAME_free(name);
+              break;
+            }
+          }
+        }
+
+        GENERAL_NAME_free(name);
+      }
+
+      sk_GENERAL_NAME_free(sk_alt_names);
+    }
+
+  } else {
+    /* Custom OID. */
+    int nexts;
+
+    nexts = X509_get_ext_count(client_cert);
+    if (nexts > 0) {
+      register unsigned int i;
+
+      for (i = 0; i < nexts; i++) {
+        X509_EXTENSION *ext = NULL;
+        ASN1_OBJECT *asn_object = NULL;
+        char oid[PR_TUNABLE_PATH_MAX];
+
+        ext = X509_get_ext(client_cert, i);
+        asn_object = X509_EXTENSION_get_object(ext);
+
+        /* Get the OID of this extension, as a string. */
+        memset(oid, '\0', sizeof(oid));
+        if (OBJ_obj2txt(oid, sizeof(oid)-1, asn_object, 1) > 0) {
+          if (strcmp(oid, field_name) == 0) {
+            ASN1_OCTET_STRING *asn_data = NULL;
+            unsigned char *asn_datastr = NULL;
+            int asn_datalen;
+
+            asn_data = X509_EXTENSION_get_data(ext);
+            asn_datalen = ASN1_STRING_length(asn_data);
+            asn_datastr = ASN1_STRING_data(asn_data);
+
+            /* Watch for any embedded NULs, which can cause verification
+             * problems via spoofing.
+             */
+            if (asn_datalen != strlen((char *) asn_datastr)) {
+              tls_log("client cert %s extension contains embedded NULs, "
+                "ignoring as possible spoof attempt", field_name);
+              tls_log("suspicious %s extension value: '%s'", field_name,
+                asn_datastr);
+
+            } else {
+
+              /* There might be multiple matching extensions? */
+              if (strcmp((char *) asn_datastr, user_name) == 0) {
+                field_value = asn_datastr;
+                allow_user = TRUE;
+
+                tls_log("matched client cert %s extension '%s' to user '%s'",
+                  field_name, field_value, user_name);
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  X509_free(client_cert);
+  return allow_user;
 }
-#endif
 
 static int tls_readmore(int rfd) {
   fd_set rfds;
@@ -6491,8 +6653,9 @@ static int tls_openlog(void) {
  *   cmd->argv[1]: cleartext password
  */
 MODRET tls_authenticate(cmd_rec *cmd) {
-  if (!tls_engine)
+  if (!tls_engine) {
     return PR_DECLINED(cmd);
+  }
 
   /* Possible authentication combinations:
    *
@@ -6500,19 +6663,38 @@ MODRET tls_authenticate(cmd_rec *cmd) {
    *  TLS handshake + .tlslogin (passwd ignored)
    */
 
-  if ((tls_flags & TLS_SESS_ON_CTRL) &&
-      (tls_opts & TLS_OPT_ALLOW_DOT_LOGIN)) {
+  if (tls_flags & TLS_SESS_ON_CTRL) {
+    config_rec *c;
 
-    if (tls_dotlogin_allow(cmd->argv[0])) {
-      tls_log("TLS/X509 .tlslogin check successful for user '%s'",
-       cmd->argv[0]);
-      pr_log_auth(PR_LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
-        "successful", cmd->argv[0]);
-      session.auth_mech = "mod_tls.c";
-      return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
+    if (tls_opts & TLS_OPT_ALLOW_DOT_LOGIN) {
+      if (tls_dotlogin_allow(cmd->argv[0])) {
+        tls_log("TLS/X509 .tlslogin check successful for user '%s'",
+          cmd->argv[0]);
+        pr_log_auth(PR_LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
+          "successful", cmd->argv[0]);
+        session.auth_mech = "mod_tls.c";
+        return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
 
-    } else {
-      tls_log("TLS/X509 .tlslogin check failed for user '%s'", cmd->argv[0]);
+      } else {
+        tls_log("TLS/X509 .tlslogin check failed for user '%s'", cmd->argv[0]);
+      }
+    }
+
+    c = find_config(main_server->conf, CONF_PARAM, "TLSUserName", FALSE);
+    if (c != NULL) {
+      if (tls_cert_to_user(cmd->argv[0], c->argv[0])) {
+        tls_log("TLS/X509 TLSUserName '%s' check successful for user '%s'",
+          (char *) c->argv[0], (char *) cmd->argv[0]);
+        pr_log_auth(PR_LOG_NOTICE,
+          "USER %s: TLS/X509 TLSUserName authentication successful",
+          cmd->argv[0]);
+        session.auth_mech = "mod_tls.c";
+        return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
+
+      } else {
+        tls_log("TLS/X509 TLSUserName '%s' check failed for user '%s'",
+          (char *) c->argv[0], (char *) cmd->argv[0]);
+      }
     }
   }
 
@@ -6536,20 +6718,39 @@ MODRET tls_auth_check(cmd_rec *cmd) {
    *  TLS handshake + .tlslogin (passwd ignored)
    */
 
-  if ((tls_flags & TLS_SESS_ON_CTRL) &&
-      (tls_opts & TLS_OPT_ALLOW_DOT_LOGIN)) {
+  if (tls_flags & TLS_SESS_ON_CTRL) {
+    config_rec *c;
 
-    if (tls_dotlogin_allow(cmd->argv[1])) {
-      tls_log("TLS/X509 .tlslogin check successful for user '%s'",
-       cmd->argv[0]);
-      pr_log_auth(PR_LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
-        "successful", cmd->argv[1]);
-      session.auth_mech = "mod_tls.c";
-      return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
+    if (tls_opts & TLS_OPT_ALLOW_DOT_LOGIN) {
+      if (tls_dotlogin_allow(cmd->argv[1])) {
+        tls_log("TLS/X509 .tlslogin check successful for user '%s'",
+          (char *) cmd->argv[0]);
+        pr_log_auth(PR_LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
+          "successful", cmd->argv[1]);
+        session.auth_mech = "mod_tls.c";
+        return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
 
-    } else {
-      tls_log("TLS/X509 .tlslogin check failed for user '%s'",
-        cmd->argv[1]);
+      } else {
+        tls_log("TLS/X509 .tlslogin check failed for user '%s'",
+          (char *) cmd->argv[1]);
+      }
+    }
+
+    c = find_config(main_server->conf, CONF_PARAM, "TLSUserName", FALSE);
+    if (c != NULL) {
+      if (tls_cert_to_user(cmd->argv[0], c->argv[0])) {
+        tls_log("TLS/X509 TLSUserName '%s' check successful for user '%s'",
+          (char *) c->argv[0], (char *) cmd->argv[0]);
+        pr_log_auth(PR_LOG_NOTICE,
+          "USER %s: TLS/X509 TLSUserName authentication successful",
+          cmd->argv[0]);
+        session.auth_mech = "mod_tls.c";
+        return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
+
+      } else {
+        tls_log("TLS/X509 TLSUserName '%s' check failed for user '%s'",
+          (char *) c->argv[0], (char *) cmd->argv[0]);
+      }
     }
   }
 
@@ -7892,6 +8093,34 @@ MODRET set_tlstimeouthandshake(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSUserName CommonName|EmailSubjAltName|custom-oid */
+MODRET set_tlsusername(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  /* Make sure the parameter is either "CommonName",
+   * "EmailSubjAltName", or a custom OID.
+   */
+  if (strcmp(cmd->argv[1], "CommonName") != 0 &&
+      strcmp(cmd->argv[1], "EmailSubjAltName") != 0) {
+    register unsigned int i;
+    char *param;
+    size_t param_len;
+
+    param = cmd->argv[1];
+    param_len = strlen(param);
+    for (i = 0; i < param_len; i++) {
+      if (!PR_ISDIGIT(param[i]) &&
+          param[i] != '.') {
+        CONF_ERROR(cmd, "badly formatted OID parameter");
+      }
+    }
+  }
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return PR_HANDLED(cmd);
+}
+
 /* usage: TLSVerifyClient on|off */
 MODRET set_tlsverifyclient(cmd_rec *cmd) {
   int bool = -1;
@@ -8880,6 +9109,7 @@ static conftable tls_conftab[] = {
   { "TLSServerCipherPreference",set_tlsservercipherpreference,NULL },
   { "TLSSessionCache",		set_tlssessioncache,	NULL },
   { "TLSTimeoutHandshake",	set_tlstimeouthandshake,NULL },
+  { "TLSUserName",		set_tlsusername,	NULL },
   { "TLSVerifyClient",		set_tlsverifyclient,	NULL },
   { "TLSVerifyDepth",		set_tlsverifydepth,	NULL },
   { "TLSVerifyOrder",		set_tlsverifyorder,	NULL },
