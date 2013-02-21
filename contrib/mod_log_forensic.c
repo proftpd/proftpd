@@ -2,7 +2,7 @@
  * mod_log_forensic - a buffering log module for aiding in server behavior
  *                    forensic analysis
  *
- * Copyright (c) 2011 TJ Saunders
+ * Copyright (c) 2011-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -217,24 +217,27 @@ static const char *forensic_get_level_str(int log_level) {
 }
 
 static void forensic_write_metadata(void) {
-  const char *client_ip, *server_ip;
+  const char *client_ip, *server_ip, *proto;
   int server_port;
-  char server_port_str[32],
+  char server_port_str[32], uid_str[32], gid_str[32],
     raw_bytes_in_str[64], raw_bytes_out_str[64],
     total_bytes_in_str[64], total_bytes_out_str[64],
     total_files_in_str[64], total_files_out_str[64];
 
-  /* 32 vectors is currently more than necessary, but it's better to have
+  /* 64 vectors is currently more than necessary, but it's better to have
    * too many than too little.
    */
-  struct iovec iov[32];
+  struct iovec iov[64];
   int niov = 0, res;
 
   /* Write session metadata in key/value message headers:
    *
    * Client-Address:
    * Server-Address:
+   * Protocol:
    * User:
+   * UID:
+   * GID:
    * Raw-Bytes-In:
    * Raw-Bytes-Out:
    * Total-Bytes-In:
@@ -243,9 +246,9 @@ static void forensic_write_metadata(void) {
    * Total-Files-Out:
    */
 
-  client_ip = pr_netaddr_get_ipstr(session.c->remote_addr);
-  server_ip = pr_netaddr_get_ipstr(session.c->local_addr);
-  server_port = pr_netaddr_get_port(session.c->local_addr);
+  client_ip = pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr());
+  server_ip = pr_netaddr_get_ipstr(pr_netaddr_get_sess_local_addr());
+  server_port = ntohs(pr_netaddr_get_port(pr_netaddr_get_sess_local_addr()));
 
   /* Client address */
   iov[niov].iov_base = "Client-Address: ";
@@ -276,6 +279,20 @@ static void forensic_write_metadata(void) {
   iov[niov].iov_len = res;
   niov++;
 
+  /* Protocol */
+  proto = pr_session_get_protocol(0);
+  iov[niov].iov_base = "Protocol: ";
+  iov[niov].iov_len = 10;
+  niov++;
+
+  iov[niov].iov_base = proto;
+  iov[niov].iov_len = strlen(proto);
+  niov++;
+
+  iov[niov].iov_base = "\n";
+  iov[niov].iov_len = 1;
+  niov++;
+
   /* User */
   if (session.user) {
     iov[niov].iov_base = "User: ";
@@ -290,6 +307,30 @@ static void forensic_write_metadata(void) {
     iov[niov].iov_len = 1;
     niov++;
   }
+
+  /* UID */
+  iov[niov].iov_base = "UID: ";
+  iov[niov].iov_len = 5;
+  niov++;
+
+  memset(uid_str, '\0', sizeof(uid_str));
+  res = snprintf(uid_str, sizeof(uid_str)-1, "%lu\n",
+    (unsigned long) geteuid());
+  iov[niov].iov_base = uid_str;
+  iov[niov].iov_len = res;
+  niov++;
+
+  /* GID */
+  iov[niov].iov_base = "GID: ";
+  iov[niov].iov_len = 5;
+  niov++;
+
+  memset(gid_str, '\0', sizeof(gid_str));
+  res = snprintf(gid_str, sizeof(gid_str)-1, "%lu\n",
+    (unsigned long) getegid());
+  iov[niov].iov_base = gid_str;
+  iov[niov].iov_len = res;
+  niov++;
 
   /* Raw bytes in */
   iov[niov].iov_base = "Raw-Bytes-In: ";
