@@ -23,7 +23,7 @@
  */
 
 /* Resource limit module
- * $Id: mod_rlimit.c,v 1.2 2013-02-08 07:38:17 castaglia Exp $
+ * $Id: mod_rlimit.c,v 1.3 2013-02-21 19:21:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -490,6 +490,30 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
 #endif
 }
 
+/* usage: RLimitProcesses on|off */
+MODRET set_rlimitprocesses(cmd_rec *cmd) {
+#if defined(RLIMIT_NPROC)
+  int set_nproc = 0;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  set_nproc = get_boolean(cmd, 1);
+  if (set_nproc == -1) {
+    CONF_ERROR(cmd, "expecting Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = set_nproc;
+
+  return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, "RLimitProcesses is not supported on this platform");
+#endif
+}
+
 static int rlimit_set_core(int scope) {
   rlim_t current, max;
   int res, xerrno;
@@ -764,6 +788,18 @@ static int rlimit_sess_init(void) {
     }
   }
 
+  if (set_nproc) {
+    config_rec *c;
+
+    /* Check whether RLimitProcesses was used to disable the default setting
+     * of the nproc limit.
+     */
+    c = find_config(main_server->conf, CONF_PARAM, "RLimitProcesses", FALSE);
+    if (c != NULL) {
+      set_nproc = *((int *) c->argv[0]);
+    }
+  }
+
   if (set_nproc) { 
     rlimit_set_nproc(SESSION_SCOPE);
   }
@@ -782,6 +818,7 @@ static conftable rlimit_conftab[] = {
   { "RLimitCPU",		set_rlimitcpu,			NULL },
   { "RLimitMemory",		set_rlimitmemory,		NULL },
   { "RLimitOpenFiles",		set_rlimitopenfiles,		NULL },
+  { "RLimitProcesses",		set_rlimitprocesses,		NULL },
 
   { NULL, NULL, NULL }
 };
