@@ -41,6 +41,7 @@ module log_forensic_module;
 static pool *forensic_pool = NULL;
 static int forensic_engine = FALSE;
 static int forensic_logfd = -1;
+static struct timeval forensic_tv;
 
 /* Criteria for flushing out the "forensic" logs. */
 #define FORENSIC_CRIT_FAILED_LOGIN		0x00001
@@ -219,7 +220,7 @@ static const char *forensic_get_level_str(int log_level) {
 static void forensic_write_metadata(void) {
   const char *client_ip, *server_ip, *proto;
   int server_port;
-  char server_port_str[32], uid_str[32], gid_str[32],
+  char server_port_str[32], uid_str[32], gid_str[32], elapsed_str[64],
     raw_bytes_in_str[64], raw_bytes_out_str[64],
     total_bytes_in_str[64], total_bytes_out_str[64],
     total_files_in_str[64], total_files_out_str[64];
@@ -229,11 +230,14 @@ static void forensic_write_metadata(void) {
    */
   struct iovec iov[64];
   int niov = 0, res;
+  struct timeval now;
+  unsigned long elapsed;
 
   /* Write session metadata in key/value message headers:
    *
    * Client-Address:
    * Server-Address:
+   * Elapsed:
    * Protocol:
    * User:
    * UID:
@@ -279,13 +283,28 @@ static void forensic_write_metadata(void) {
   iov[niov].iov_len = res;
   niov++;
 
+  /* Elapsed (in ms) */
+  iov[niov].iov_base = "Elapsed: ";
+  iov[niov].iov_len = 9;
+  niov++;
+
+  gettimeofday(&now, NULL);
+  elapsed = (((now.tv_sec - forensic_tv.tv_sec) * 1000L) +
+    ((now.tv_usec - forensic_tv.tv_usec) / 1000L));
+
+  memset(elapsed_str, '\0', sizeof(elapsed_str));
+  res = snprintf(elapsed_str, sizeof(elapsed_str)-1, "%lu\n", elapsed);
+  iov[niov].iov_base = (void *) elapsed_str;
+  iov[niov].iov_len = res;
+  niov++;
+
   /* Protocol */
   proto = pr_session_get_protocol(0);
   iov[niov].iov_base = "Protocol: ";
   iov[niov].iov_len = 10;
   niov++;
 
-  iov[niov].iov_base = proto;
+  iov[niov].iov_base = (char *) proto;
   iov[niov].iov_len = strlen(proto);
   niov++;
 
@@ -820,14 +839,12 @@ static int forensic_sess_init(void) {
 
   /* Is this module enabled? */
   c = find_config(main_server->conf, CONF_PARAM, "ForensicLogEngine", FALSE);
-  if (c == NULL) {
-    return 0;
-
-  } else {
+  if (c != NULL) {
     forensic_engine = *((int *) c->argv[0]);
-    if (forensic_engine != TRUE) {
-      return 0;
-    }
+  }
+
+  if (forensic_engine != TRUE) {
+    return 0;
   }
 
   /* Do we have the required path for our logging? */
@@ -835,6 +852,7 @@ static int forensic_sess_init(void) {
   if (c == NULL) {
     pr_log_debug(DEBUG1, MOD_LOG_FORENSIC_VERSION
       ": missing required ForensicLogFile setting, disabling module");
+    forensic_engine = FALSE;
     return 0;
   }
 
@@ -868,8 +886,11 @@ static int forensic_sess_init(void) {
 
     pr_log_debug(DEBUG1, MOD_LOG_FORENSIC_VERSION
       ": unable to ForensicLogFile '%s', disabling module", path);
+    forensic_engine = FALSE;
     return 0;
   }
+
+  gettimeofday(&forensic_tv, NULL);
 
   /* Are there any log types for which we shouldn't be listening? */
   c = find_config(main_server->conf, CONF_PARAM, "ForensicLogCapture", FALSE);
