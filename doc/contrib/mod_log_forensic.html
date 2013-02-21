@@ -1,4 +1,4 @@
-<!-- $Id: mod_log_forensic.html,v 1.1 2013-01-25 00:04:14 castaglia Exp $ -->
+<!-- $Id: mod_log_forensic.html,v 1.2 2013-02-21 22:20:59 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_log_forensic.html,v $ -->
 
 <html>
@@ -207,6 +207,11 @@ contain a block of log lines, <i>e.g.</i>:
   -----BEGIN FAILED LOGIN FORENSICS-----
   Client-Address: 127.0.0.1
   Server-Address: ::ffff:127.0.0.1:5376
+  Elapsed: 1245
+  Protocol: ftp
+  User: tj
+  UID: 501
+  GID: 501
   Raw-Bytes-In: 46
   Raw-Bytes-Out: 158
   Total-Bytes-In: 0
@@ -235,6 +240,11 @@ For sessions which suffer an "untimely death", the begin/end markers in the
   -----BEGIN UNTIMELY DEATH FORENSICS-----
   Client-Address: 127.0.0.1
   Server-Address: ::ffff:127.0.0.1:5376
+  Elapsed: 1245
+  Protocol: ftp
+  User: tj
+  UID: 501
+  GID: 501
   Raw-Bytes-In: 46
   Raw-Bytes-Out: 158
   Total-Bytes-In: 0
@@ -286,12 +296,12 @@ the verbose logging enabled all of the time.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-01-25 00:04:14 $</i><br>
+Last Updated: <i>$Date: 2013-02-21 22:20:59 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2011 TJ Saunders<br>
+&copy; Copyright 2011-2013 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
