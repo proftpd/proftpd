@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.184 2013-02-19 21:24:11 castaglia Exp $
+ * $Id: fxp.c,v 1.185 2013-02-21 18:08:48 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2634,7 +2634,7 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
   data = palloc(p, data_len);
 
   handle_len = (2 * data_len);
-  handle = palloc(fxh->pool, data_len + 1);
+  handle = palloc(fxh->pool, handle_len + 1);
   handle[handle_len] = '\0';
 
   while (TRUE) {
