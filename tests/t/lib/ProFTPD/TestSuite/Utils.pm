@@ -350,6 +350,10 @@ sub config_write {
 
   unless (defined($config->{User})) {
     $config->{User} = $user_name;
+
+    if ($< == 0) {
+      $config->{User} = 'root';
+    }
   }
 
   unless (defined($config->{Group})) {
