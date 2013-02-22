@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.186 2013-02-22 01:47:44 castaglia Exp $
+ * $Id: fxp.c,v 1.187 2013-02-22 02:02:41 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2720,6 +2720,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
 
   if (fxh->fh_flags & O_APPEND) {
     cmd = fxp_cmd_alloc(fxh->pool, C_APPE, pstrdup(fxh->pool, curr_path));
+    cmd->cmd_class = CL_WRITE;
     session.curr_cmd = C_APPE;
 
     if (pr_table_add(cmd->notes, "mod_xfer.store-path",
@@ -2733,6 +2734,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
   } else if ((fxh->fh_flags & O_WRONLY) ||
              (fxh->fh_flags & O_RDWR)) {
     cmd = fxp_cmd_alloc(fxh->pool, C_STOR, pstrdup(fxh->pool, curr_path));
+    cmd->cmd_class = CL_WRITE;
     session.curr_cmd = C_STOR;
 
     if (pr_table_add(cmd->notes, "mod_xfer.store-path",
@@ -2745,6 +2747,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
 
   } else if (fxh->fh_flags == O_RDONLY) {
     cmd = fxp_cmd_alloc(fxh->pool, C_RETR, pstrdup(fxh->pool, curr_path));
+    cmd->cmd_class = CL_READ;
     session.curr_cmd = C_RETR;
 
     if (pr_table_add(cmd->notes, "mod_xfer.retr-path",
