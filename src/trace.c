@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.43 2013-02-08 04:54:52 castaglia Exp $
+ * $Id: trace.c,v 1.44 2013-02-22 03:21:02 castaglia Exp $
  */
 
 
@@ -527,6 +527,7 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
 
   if (discard == FALSE &&
       level > levels->max_level) {
+    discard = TRUE;
 
     if (pr_log_event_listening(PR_LOG_TYPE_TRACELOG) == FALSE) {
       return 0;
