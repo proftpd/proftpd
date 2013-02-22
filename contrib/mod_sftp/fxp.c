@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.185 2013-02-21 18:08:48 castaglia Exp $
+ * $Id: fxp.c,v 1.186 2013-02-22 01:47:44 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -386,7 +386,6 @@ static cmd_rec *fxp_cmd_alloc(pool *p, const char *name, char *arg) {
 
   cmd = pr_cmd_alloc(p, 2, pstrdup(p, name), arg ? arg : "");
   cmd->arg = arg;
-  cmd->tmp_pool = pr_pool_create_sz(p, 64);
 
   return cmd;
 }
