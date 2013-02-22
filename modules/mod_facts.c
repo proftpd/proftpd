@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_facts.c,v 1.58 2013-02-02 06:04:34 castaglia Exp $
+ * $Id: mod_facts.c,v 1.59 2013-02-22 07:06:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1310,6 +1310,15 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 }
 
 MODRET facts_mlsd_cleanup(cmd_rec *cmd) {
+  const char *proto;
+
+  proto = pr_session_get_protocol(0);
+
+  /* Ignore this for SFTP connections. */
+  if (strncmp(proto, "sftp", 5) == 0) {
+    return PR_DECLINED(cmd);
+  }
+
   if (session.xfer.p) {
     destroy_pool(session.xfer.p);
   }
