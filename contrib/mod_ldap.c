@@ -45,7 +45,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.99 2013-02-24 17:09:23 jwm Exp $
+ * $Id: mod_ldap.c,v 1.100 2013-02-24 17:10:14 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -282,7 +282,7 @@ _ldap_connect(LDAP **conn_ld, int do_bind)
       pr_ldap_unbind();
       return -1;
     }
-    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": successfully bound as %s with password %s", ldap_dn ? ldap_dn : "(anonymous)", ldap_dnpass ? ldap_dnpass : "(none)");
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": successfully bound as %s with password %s", ldap_dn ? ldap_dn : "(anonymous)", ldap_dnpass ? "(see config)" : "(none)");
   }
 
 #ifdef LDAP_OPT_DEREF
