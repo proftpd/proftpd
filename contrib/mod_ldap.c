@@ -45,14 +45,14 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.100 2013-02-24 17:10:14 jwm Exp $
+ * $Id: mod_ldap.c,v 1.101 2013-02-24 17:10:44 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.9.2"
+#define MOD_LDAP_VERSION	"mod_ldap/2.9.3"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030103
 # error MOD_LDAP_VERSION " requires ProFTPD 1.3.1rc3 or later"
