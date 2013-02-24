@@ -1,6 +1,6 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
- * Copyright (c) 1999-2012, John Morrissey <jwm@horde.net>
+ * Copyright (c) 1999-2013, John Morrissey <jwm@horde.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.98 2012-09-07 18:48:19 jwm Exp $
+ * $Id: mod_ldap.c,v 1.99 2013-02-24 17:09:23 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1707,6 +1707,9 @@ set_ldap_userlookups(cmd_rec *cmd)
   config_rec *c;
 
   CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_GLOBAL);
+  if ((strcmp(cmd->argv[1], "on") == 0) || (strcmp(cmd->argv[1], "on") == 0)) {
+    CONF_ERROR(cmd, "LDAPUsers: first argument is base DN, not on/off.");
+  }
 
   c = add_config_param(cmd->argv[0], cmd->argc - 1, NULL, NULL, NULL);
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
@@ -1865,6 +1868,9 @@ set_ldap_grouplookups(cmd_rec *cmd)
   config_rec *c;
 
   CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_GLOBAL);
+  if ((strcmp(cmd->argv[1], "on") == 0) || (strcmp(cmd->argv[1], "on") == 0)) {
+    CONF_ERROR(cmd, "LDAPGroups: first argument is base DN, not on/off.");
+  }
 
   c = add_config_param(cmd->argv[0], cmd->argc - 1, NULL);
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
