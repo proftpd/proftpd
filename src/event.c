@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.27 2013-01-05 03:36:39 castaglia Exp $
+ * $Id: event.c,v 1.28 2013-02-24 16:46:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,6 +38,7 @@ struct event_handler {
   module *module;
   void (*cb)(const void *, void *);
   void *user_data;
+  unsigned long flags;
 };
 
 struct event_list {
@@ -55,15 +56,32 @@ static const char *curr_event = NULL;
 static struct event_list *curr_evl = NULL;
 static struct event_handler *curr_evh = NULL;
 
+/* Certain events are NOT logged via Trace logging (in order to prevent
+ * event/trace loops).
+ */
+static const char *untraced_events[] = {
+  PR_LOG_NAME_UNSPEC,
+  PR_LOG_NAME_XFERLOG,
+  PR_LOG_NAME_SYSLOG,
+  PR_LOG_NAME_SYSTEMLOG,
+  PR_LOG_NAME_EXTLOG,
+  PR_LOG_NAME_TRACELOG,
+  NULL
+};
+
+#define PR_EVENT_FL_UNTRACED		0x001
+
 static const char *trace_channel = "event";
 
 #define EVENT_POOL_SZ	256
 
 int pr_event_register(module *m, const char *event,
     void (*cb)(const void *, void *), void *user_data) {
+  register unsigned int i;
   struct event_handler *evh;
   struct event_list *evl;
   pool *evl_pool;
+  unsigned long flags = 0;
 
   if (event == NULL ||
       cb == NULL) {
@@ -85,6 +103,16 @@ int pr_event_register(module *m, const char *event,
   evh->module = m;
   evh->cb = cb;
   evh->user_data = user_data;
+
+  /* Is this an untraced event? */
+  for (i = 0; untraced_events[i] != NULL; i++) {
+    if (strcmp(event, untraced_events[i]) == 0) {
+      flags = PR_EVENT_FL_UNTRACED;
+      break;
+    }
+  }
+
+  evh->flags = flags;
 
   /* Scan the currently registered lists, looking for where to add this
    * registration.
@@ -320,15 +348,17 @@ void pr_event_generate(const char *event, const void *event_data) {
          */
         curr_evh = evh->next;
 
-        if (evh->module) {
-          pr_trace_msg(trace_channel, 8,
-            "dispatching event '%s' to mod_%s (at %p, use cache = %s)", event,
-            evh->module->name, evh->cb, use_cache ? "true" : "false");
+        if (!(evh->flags & PR_EVENT_FL_UNTRACED)) {
+          if (evh->module) {
+            pr_trace_msg(trace_channel, 8,
+              "dispatching event '%s' to mod_%s (at %p, use cache = %s)", event,
+              evh->module->name, evh->cb, use_cache ? "true" : "false");
 
-        } else {
-          pr_trace_msg(trace_channel, 8,
-            "dispatching event '%s' to core (at %p, use cache = %s)", event,
-            evh->cb, use_cache ? "true" : "false");
+          } else {
+            pr_trace_msg(trace_channel, 8,
+              "dispatching event '%s' to core (at %p, use cache = %s)", event,
+              evh->cb, use_cache ? "true" : "false");
+          }
         }
 
         evh->cb(event_data, evh->user_data);

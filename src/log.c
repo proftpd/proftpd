@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.114 2013-02-02 06:24:50 castaglia Exp $
+ * $Id: log.c,v 1.115 2013-02-24 16:46:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -720,27 +720,27 @@ static const char *get_log_event_name(unsigned int log_type) {
 
   switch (log_type) {
     case PR_LOG_TYPE_UNSPEC:
-      event_name = "core.log.unspec";
+      event_name = PR_LOG_NAME_UNSPEC;
       break;
 
     case PR_LOG_TYPE_XFERLOG:
-      event_name = "core.log.xferlog";
+      event_name = PR_LOG_NAME_XFERLOG;
       break;
 
     case PR_LOG_TYPE_SYSLOG:
-      event_name = "core.log.syslog"; 
+      event_name = PR_LOG_NAME_SYSLOG;
       break;
 
     case PR_LOG_TYPE_SYSTEMLOG:
-      event_name = "core.log.systemlog"; 
+      event_name = PR_LOG_NAME_SYSTEMLOG;
       break;
 
     case PR_LOG_TYPE_EXTLOG:
-      event_name = "core.log.extendedlog"; 
+      event_name = PR_LOG_NAME_EXTLOG;
       break;
 
     case PR_LOG_TYPE_TRACELOG:
-      event_name = "core.log.tracelog"; 
+      event_name = PR_LOG_NAME_TRACELOG;
       break;
 
     default:
