@@ -830,6 +830,7 @@ sub server_start {
   # codes are not that nice yet, sadly.  Instead, we'll use the PidFile
   # written out by the server, if provided.
   if ($pid_file) {
+    sleep(1);
 
     my $pid;
     if (open(my $fh, "< $pid_file")) {
