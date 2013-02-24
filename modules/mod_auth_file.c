@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.47 2013-02-14 19:18:04 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.48 2013-02-24 16:42:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -96,65 +96,11 @@ static const char *trace_channel = "authfile";
 
 /* Support routines.  Move the passwd/group functions out of lib/ into here. */
 
-static int af_check_file(pool *p, const char *name, const char *path) {
+static int af_check_parent_dir(pool *p, const char *name, const char *path) {
   struct stat st;
   int res;
   char *dir_path, *ptr = NULL;
 
-  res = stat(path, &st);
-  if (res < 0) {
-    int xerrno = errno;
-
-    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION ": unable to stat %s '%s': %s",
-      name, path, strerror(xerrno));
-
-    errno = xerrno;
-    return -1;
-  }
-
-  if (S_ISDIR(st.st_mode)) {
-    int xerrno = EISDIR;
-
-    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION ": unable to use %s '%s': %s",
-      name, path, strerror(xerrno));
-
-    errno = xerrno;
-    return -1;
-  }
-
-  /* World-readable/writable files are insecure, and are thus not
-   * usable/trusted.
-   */
-  if (st.st_mode & S_IROTH) {
-    int xerrno = EPERM;
-
-    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
-      ": unable to use world-readable %s '%s': %s",
-      name, path, strerror(xerrno));
-
-    errno = xerrno;
-    return -1;
-  }
-
-  if (st.st_mode & S_IWOTH) {
-    int xerrno = EPERM;
-
-    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
-      ": unable to use world-writable %s '%s': %s",
-      name, path, strerror(xerrno));
-
-    errno = xerrno;
-    return -1;
-  }
-
-  if (!S_ISREG(st.st_mode)) {
-    pr_log_pri(PR_LOG_WARNING, MOD_AUTH_FILE_VERSION
-      ": %s '%s' is not a regular file", name, path);
-  }
-
-  /* Check the parent directory of this file.  If the parent directory
-   * is world-writable, that too is insecure.
-   */
   ptr = strrchr(path, '/');
   if (ptr != path) {
     dir_path = pstrndup(p, path, ptr - path);
@@ -177,12 +123,113 @@ static int af_check_file(pool *p, const char *name, const char *path) {
 
   if (st.st_mode & S_IWOTH) {
     int xerrno = EPERM;
-  
+
     pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
       ": unable to use %s from world-writable directory '%s': %s",
       name, dir_path, strerror(xerrno));
 
     errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
+
+static int af_check_file(pool *p, const char *name, const char *path) {
+  struct stat st;
+  int res;
+  const char *orig_path;
+
+  orig_path = path;
+
+  res = lstat(path, &st);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION ": unable to lstat %s '%s': %s",
+      name, path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (S_ISLNK(st.st_mode)) {
+    char buf[PR_TUNABLE_PATH_MAX+1];
+
+    /* Check the permissions on the parent directory; if they're world-writable,
+     * then this symlink can be deleted/pointed somewhere else.
+     */
+    res = af_check_parent_dir(p, name, path);
+    if (res < 0) {
+      return -1;
+    }
+
+    /* Follow the link to the target path; that path will then have its
+     * parent directory checked.
+     */
+    memset(buf, '\0', sizeof(buf));
+    res = pr_fsio_readlink(path, buf, sizeof(buf)-1);
+    if (res > 0) {
+      path = pstrdup(p, buf);
+    }
+
+    res = stat(orig_path, &st);
+    if (res < 0) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION ": unable to stat %s '%s': %s",
+        name, orig_path, strerror(xerrno));
+
+      errno = xerrno;
+      return -1;
+    }
+  }
+
+  if (S_ISDIR(st.st_mode)) {
+    int xerrno = EISDIR;
+
+    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION ": unable to use %s '%s': %s",
+      name, orig_path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  /* World-readable/writable files are insecure, and are thus not
+   * usable/trusted.
+   */
+  if (st.st_mode & S_IROTH) {
+    int xerrno = EPERM;
+
+    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
+      ": unable to use world-readable %s '%s': %s",
+      name, orig_path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (st.st_mode & S_IWOTH) {
+    int xerrno = EPERM;
+
+    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
+      ": unable to use world-writable %s '%s': %s",
+      name, orig_path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (!S_ISREG(st.st_mode)) {
+    pr_log_pri(PR_LOG_WARNING, MOD_AUTH_FILE_VERSION
+      ": %s '%s' is not a regular file", name, orig_path);
+  }
+
+  /* Check the parent directory of this file.  If the parent directory
+   * is world-writable, that too is insecure.
+   */
+  res = af_check_parent_dir(p, name, path);
+  if (res < 0) {
     return -1;
   }
 
