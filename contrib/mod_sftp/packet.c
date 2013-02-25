@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.44 2013-02-15 22:46:42 castaglia Exp $
+ * $Id: packet.c,v 1.45 2013-02-25 20:29:50 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -308,7 +308,7 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
 static char peek_mesg_type(struct ssh2_packet *pkt) {
   char mesg_type;
 
-  memcpy(&mesg_type, pkt->payload, sizeof(char));
+  memmove(&mesg_type, pkt->payload, sizeof(char));
   return mesg_type;
 }
 
@@ -469,7 +469,7 @@ static int read_packet_len(int sockfd, struct ssh2_packet *pkt,
     return -1;
   }
 
-  memcpy(&packet_len, ptr, sizeof(uint32_t));
+  memmove(&packet_len, ptr, sizeof(uint32_t));
   pkt->packet_len = ntohl(packet_len);
 
   ptr += sizeof(uint32_t);
@@ -479,7 +479,7 @@ static int read_packet_len(int sockfd, struct ssh2_packet *pkt,
    * buffer.
    */
   if (len > 0) {
-    memcpy(buf, ptr, len);
+    memmove(buf, ptr, len);
     *buflen = (size_t) len;
   }
 
@@ -492,7 +492,7 @@ static int read_packet_padding_len(int sockfd, struct ssh2_packet *pkt,
 
   if (*buflen > sizeof(char)) {
     /* XXX Assume the data in the buffer is unecrypted, and thus usable. */
-    memcpy(&pkt->padding_len, buf + *offset, sizeof(char));
+    memmove(&pkt->padding_len, buf + *offset, sizeof(char));
 
     /* Advance the buffer past the byte we just read off. */
     *offset += sizeof(char);
@@ -544,7 +544,7 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
    */
   if (*buflen > 0) {
     if (*buflen < payload_len) {
-      memcpy(pkt->payload, buf + *offset, *buflen);
+      memmove(pkt->payload, buf + *offset, *buflen);
 
       payload_len -= *buflen;
       *offset = 0;
@@ -552,7 +552,7 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
 
     } else {
       /* There's enough already for the payload length.  Nice. */
-      memcpy(pkt->payload, buf + *offset, payload_len);
+      memmove(pkt->payload, buf + *offset, payload_len);
 
       *offset += payload_len;
       *buflen -= payload_len;
@@ -569,7 +569,7 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
    */
   if (*buflen > 0) {
     if (*buflen < padding_len) {
-      memcpy(pkt->padding, buf + *offset, *buflen);
+      memmove(pkt->padding, buf + *offset, *buflen);
 
       padding_len -= *buflen;
       *offset = 0;
@@ -577,7 +577,7 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
 
     } else {
       /* There's enough already for the padding length.  Nice. */
-      memcpy(pkt->padding, buf + *offset, padding_len);
+      memmove(pkt->padding, buf + *offset, padding_len);
 
       *offset += padding_len;
       *buflen -= padding_len;
@@ -609,11 +609,11 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
   }
 
   if (payload_len > 0) {
-    memcpy(pkt->payload + (pkt->payload_len - payload_len), ptr,
+    memmove(pkt->payload + (pkt->payload_len - payload_len), ptr,
       payload_len);
   }
 
-  memcpy(pkt->padding + (pkt->padding_len - padding_len), ptr + payload_len,
+  memmove(pkt->padding + (pkt->padding_len - padding_len), ptr + payload_len,
     padding_len);
   return 0;
 }
@@ -631,7 +631,7 @@ static int read_packet_mac(int sockfd, struct ssh2_packet *pkt,
     return res;
 
   pkt->mac = palloc(pkt->pool, pkt->mac_len);
-  memcpy(pkt->mac, buf, res);
+  memmove(pkt->mac, buf, res);
 
   return 0;
 }
@@ -640,7 +640,7 @@ struct ssh2_packet *sftp_ssh2_packet_create(pool *p) {
   pool *tmp_pool;
   struct ssh2_packet *pkt;
 
-  tmp_pool = pr_pool_create_sz(p, 128);
+  tmp_pool = make_sub_pool(p);
   pr_pool_tag(tmp_pool, "SSH2 packet pool");
 
   pkt = pcalloc(tmp_pool, sizeof(struct ssh2_packet));
@@ -659,7 +659,7 @@ int sftp_ssh2_packet_get_last_recvd(time_t *tp) {
     return -1;
   }
 
-  memcpy(tp, &last_recvd, sizeof(time_t));
+  memmove(tp, &last_recvd, sizeof(time_t));
   return 0;
 }
 
@@ -669,14 +669,14 @@ int sftp_ssh2_packet_get_last_sent(time_t *tp) {
     return -1;
   }
 
-  memcpy(tp, &last_sent, sizeof(time_t));
+  memmove(tp, &last_sent, sizeof(time_t));
   return 0;
 }
 
 char sftp_ssh2_packet_get_mesg_type(struct ssh2_packet *pkt) {
   char mesg_type;
 
-  memcpy(&mesg_type, pkt->payload, sizeof(char));
+  memmove(&mesg_type, pkt->payload, sizeof(char));
   pkt->payload += sizeof(char);
   pkt->payload_len -= sizeof(char);
 
