@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.45 2013-02-22 07:20:50 castaglia Exp $
+ * $Id: trace.c,v 1.46 2013-02-25 19:40:43 castaglia Exp $
  */
 
 
@@ -509,7 +509,7 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
   if (levels == NULL) {
     discard = TRUE;
 
-    if (pr_log_event_listening(PR_LOG_TYPE_TRACELOG) == FALSE) {
+    if (pr_log_event_listening(PR_LOG_TYPE_TRACELOG) <= 0) {
       return -1;
     }
   }
@@ -518,7 +518,7 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
       level < levels->min_level) {
     discard = TRUE;
 
-    if (pr_log_event_listening(PR_LOG_TYPE_TRACELOG) == FALSE) {
+    if (pr_log_event_listening(PR_LOG_TYPE_TRACELOG) <= 0) {
       return 0;
     }
   }
@@ -527,23 +527,22 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
       level > levels->max_level) {
     discard = TRUE;
 
-    if (pr_log_event_listening(PR_LOG_TYPE_TRACELOG) == FALSE) {
+    if (pr_log_event_listening(PR_LOG_TYPE_TRACELOG) <= 0) {
       return 0;
     }
   }
 
-  vsnprintf(buf, sizeof(buf), fmt, msg);
+  buflen = vsnprintf(buf, sizeof(buf), fmt, msg);
 
   /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf)-1] = '\0';
 
   /* Trim trailing newlines. */
-  buflen = strlen(buf);
   while (buflen >= 1 &&
          buf[buflen-1] == '\n') {
     pr_signals_handle();
     buf[buflen-1] = '\0';
-    buflen = strlen(buf);
+    buflen--;
   }
 
   return trace_write(channel, level, buf, discard);
