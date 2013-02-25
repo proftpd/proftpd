@@ -73,7 +73,7 @@ static unsigned long forensic_criteria = FORENSIC_CRIT_DEFAULT;
  *
  * Why 256 messages per sub-pool?
  *
- *  80 chars (avg) per message * 512 messages = 20 KB
+ *  80 chars (avg) per message * 256 messages = 20 KB
  *
  * This means that a given sub-pool will hold roughly 20 KB.  Which means
  * that 20 KB + ring max size is the largest memory that mod_log_forensic
@@ -112,6 +112,7 @@ static const char *forensic_log_levels[] = {
 static void forensic_add_msg(unsigned int log_type, int log_level,
     const char *log_msg, size_t log_msglen) {
   struct forensic_msg *fm;
+  pool *sub_pool;
 
   /* Get the message that's currently in the ring where we want add our new
    * one.
@@ -127,9 +128,9 @@ static void forensic_add_msg(unsigned int log_type, int log_level,
   }
 
   /* Add this message into the ring. */
-
-  fm = pcalloc(forensic_subpool, sizeof(struct forensic_msg)); 
-  fm->fm_pool = forensic_subpool;
+  sub_pool = pr_pool_create_sz(forensic_subpool, 128);
+  fm = pcalloc(sub_pool, sizeof(struct forensic_msg)); 
+  fm->fm_pool = sub_pool;
   fm->fm_pool_msgno = forensic_subpool_msgno;
   fm->fm_log_type = log_type;
   fm->fm_log_level = log_level;
