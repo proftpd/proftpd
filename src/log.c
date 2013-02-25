@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.115 2013-02-24 16:46:42 castaglia Exp $
+ * $Id: log.c,v 1.116 2013-02-25 20:27:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -491,8 +491,8 @@ static void log_write(int priority, int f, char *s, int discard) {
 
   if (syslog_discard) {
     /* Only return now if we don't have any log listeners. */
-    if (pr_log_event_listening(PR_LOG_TYPE_SYSLOG) == FALSE &&
-        pr_log_event_listening(PR_LOG_TYPE_SYSTEMLOG) == FALSE) {
+    if (pr_log_event_listening(PR_LOG_TYPE_SYSLOG) <= 0 &&
+        pr_log_event_listening(PR_LOG_TYPE_SYSTEMLOG) <= 0) {
       return;
     }
   }
@@ -502,8 +502,8 @@ static void log_write(int priority, int f, char *s, int discard) {
       priority > *max_priority) {
 
     /* Only return now if we don't have any log listeners. */
-    if (pr_log_event_listening(PR_LOG_TYPE_SYSLOG) == FALSE &&
-        pr_log_event_listening(PR_LOG_TYPE_SYSTEMLOG) == FALSE) {
+    if (pr_log_event_listening(PR_LOG_TYPE_SYSLOG) <= 0 &&
+        pr_log_event_listening(PR_LOG_TYPE_SYSTEMLOG) <= 0) {
       return;
     }
   }
@@ -695,8 +695,8 @@ void pr_log_debug(int level, const char *fmt, ...) {
   if (debug_level < level) {
     discard = TRUE;
 
-    if (pr_log_event_listening(PR_LOG_TYPE_SYSLOG) == FALSE &&
-        pr_log_event_listening(PR_LOG_TYPE_SYSTEMLOG) == FALSE) {
+    if (pr_log_event_listening(PR_LOG_TYPE_SYSLOG) <= 0 &&
+        pr_log_event_listening(PR_LOG_TYPE_SYSTEMLOG) <= 0) {
       return;
     }
   }
@@ -762,7 +762,7 @@ int pr_log_event_generate(unsigned int log_type, int log_fd, int log_level,
     return -1;
   }
 
-  if (pr_log_event_listening(log_type) == FALSE) {
+  if (pr_log_event_listening(log_type) <= 0) {
     errno = ENOENT;
     return -1;
   }
